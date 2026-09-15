@@ -2,18 +2,18 @@
 
 Copy the text below into a fresh AI chat, then append the new bug symptoms, reproduction steps, screenshots, logs, and any relevant files.
 
-A short chat prompt may simply tell the AI to read `AGENTS.md`, `AI_HANDOFF.md`, and this file from `custom-release`; the repository documents contain the persistent workflow.
+A short chat prompt may simply tell the AI to read `AGENTS.md`, `AI_HANDOFF.md`, `FORK_MAINTENANCE.md`, and this file from `custom-release`; the repository documents contain the persistent workflow.
 
 ---
 
-I maintain a personal fork of Luker and want you to take over a new bug from repository state rather than relying on prior chat memory.
+I maintain a personal Luker fork independently and want you to take over a new bug from live repository state rather than relying on prior chat memory.
 
-Repositories:
+Repository:
 
-- Upstream: `https://github.com/funnycups/Luker`
 - My fork: `https://github.com/ZZZdragondYNGPHX/Luker`
-- Upstream/fork mirror branch: `release`
-- Personal integration branch: `custom-release`
+- Primary development/integration branch: `custom-release`
+- Optional upstream/reference repository: `https://github.com/funnycups/Luker`
+- Optional upstream-reference/mirror branch in my fork: `release`
 
 Before touching code, first fetch and read these files from **my fork's `custom-release` branch**:
 
@@ -27,36 +27,51 @@ Treat those repository documents as the persistent handoff contract for this for
 
 For every new bug, follow this workflow:
 
-1. Check the live HEAD of `funnycups/Luker:release`.
-2. Check the latest relevant successful official `Build Android APK` GitHub Actions run and its `head_sha`.
-3. Compare those values and explain any mismatch before selecting a source baseline.
-4. Check whether `ZZZdragondYNGPHX/Luker:release` matches the authoritative upstream baseline.
-5. Keep my fork's `release` as a clean upstream mirror. Never put private fixes or AI-maintenance files into `release`.
-6. For an unrelated new bug, create a fresh `fix/<short-bug-name>` branch from the latest synchronized `release`. Do not continue from an old fix branch and do not use `custom-release` as the base unless this bug explicitly depends on a private patch.
-7. Reproduce or establish the exact failure path and identify the root cause before editing. Pay special attention to async initialization, stale state, scope switching, persistence, lifecycle ordering, race conditions, and Android/Web differences when relevant.
-8. Make the smallest compatible fix. Avoid unrelated refactors and preserve existing data/config formats unless a migration is truly required.
-9. Inspect the complete diff before committing and keep one bug/feature per branch and per PR.
-10. Run the most relevant available checks for the touched code: targeted tests first, then syntax/lint/build checks as appropriate.
-11. If you have write access to my GitHub fork, commit the fix to the new `fix/*` branch. Do not modify `release` directly.
-12. If the change is suitable for upstream, prepare a clean upstream PR from the isolated `fix/*` branch. Do not include `AGENTS.md`, `AI_HANDOFF.md`, `FORK_MAINTENANCE.md`, `NEW_BUG_PROMPT.md`, `NEW_FEATURE_PROMPT.md`, or `.github/copilot-instructions.md` in the upstream PR unless the maintainer explicitly requests them.
-13. Do not integrate the new fix into `custom-release` until the fix is understood and verified. After verification, integrate it as a traceable private change and record its state in `AI_HANDOFF.md`.
-14. If upstream later implements the same fix, mark/remove the redundant private patch during the next custom-release refresh rather than maintaining duplicate logic forever.
+1. Fetch the live HEAD of `ZZZdragondYNGPHX/Luker:custom-release` and use that as the normal source baseline.
+2. Inspect the relevant current code, recent commits, existing tests, and any private fix/feature behavior in the same subsystem.
+3. Create a fresh `fix/<short-bug-name>` branch from the latest `custom-release` HEAD. Do not continue unrelated work from an old `fix/*` or `feat/*` branch.
+4. Reproduce or establish the exact failure path and identify the root cause before editing. Pay special attention to async initialization, stale state, scope switching, persistence, lifecycle ordering, race conditions, and Android/Web differences when relevant.
+5. Make the smallest compatible fix while preserving unrelated behavior already present in `custom-release`.
+6. Avoid unrelated refactors and preserve existing data/config formats unless a migration is truly required.
+7. Inspect the complete diff before committing and keep one independent bug per branch.
+8. Run the most relevant available checks for the touched code: targeted tests first, then syntax/lint/build checks as appropriate.
+9. If you have write access to my GitHub fork, commit the fix to the new `fix/*` branch. Do not develop directly on `release`.
+10. After the fix is understood and sufficiently checked, merge it into `custom-release` when I ask for integration or when the task explicitly includes integration.
+11. Update `AI_HANDOFF.md` only if the fix creates durable architectural, behavioral, migration, dependency, or maintenance context that future sessions should know.
+12. Do not require upstream synchronization, upstream Android Actions verification, or an upstream PR for ordinary private bug fixing.
+
+## Upstream comparison is optional
+
+Inspect `funnycups/Luker` only when it is useful for the specific bug, such as:
+
+- checking whether upstream already fixed the same issue;
+- comparing an inherited code path;
+- evaluating compatibility before importing an upstream change;
+- preparing an upstream contribution that I explicitly requested.
+
+If upstream is inspected, report what was compared and any relevant conflict or compatibility finding. Do not silently replace fork behavior merely because upstream differs.
+
+## Upstream PR policy
+
+Do not prepare or submit an upstream PR by default.
+
+Only do so when I explicitly request it. If requested, first determine whether the fix can be cleanly separated from private fork dependencies and keep fork-only maintenance documents out of the upstream PR unless the maintainer explicitly asks for them.
 
 At the end of the task, always report:
 
-- upstream baseline SHA used;
-- latest checked official Android build SHA;
+- `custom-release` baseline SHA used;
 - fix branch name;
 - root cause;
 - changed files;
 - tests/checks run and their result;
 - resulting commit SHA;
-- whether the fix is cleanly upstream-compatible;
-- whether an upstream PR was created/prepared;
-- whether the fix has been integrated into `custom-release`;
-- whether any older private patch has become obsolete or conflicting.
+- whether the fix has been merged into `custom-release`;
+- whether it depends on or changes existing private fork behavior;
+- persistent data/config or migration impact, if any;
+- Web/Android differences, if relevant;
+- upstream comparison or PR status only if upstream work was actually requested or performed.
 
-Do not rely on version numbers, branch timestamps, or old chat memory alone when deciding what is latest. Verify the repository and Actions state live.
+Do not rely on version numbers, timestamps, or old chat memory alone when deciding what is current. Verify `custom-release` live.
 
 New bug:
 
