@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Fork-only workflow for ZZZdragondYNGPHX/Luker custom-release builds.
+
+name: Fork Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - custom-release
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODEJS_MOBILE_ASSET_URL: https://github.com/funnycups/nodejs-mobile/releases/latest/download/nodejs-mobile-android.zip
+  NODEJS_MOBILE_ASSET_NAME: nodejs-mobile-android.zip
+  NODEJS_MOBILE_RUNTIME_MAJOR: "24"
+  NODEJS_MOBILE_MIN_MAJOR: "24"
+  NODEJS_MOBILE_ENFORCE_MIN_MAJOR: "1"
+
+jobs:
+  build-debug-apk:
+    if: github.repository == 'ZZZdragondYNGPHX/Luker'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: bash android-app/scripts/build-android-apk.sh debug
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luker-custom-release-debug-apk-${{ github.sha }}
+          path: android-app/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
