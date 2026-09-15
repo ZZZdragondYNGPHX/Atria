@@ -183,7 +183,7 @@ class StorageInspector {
             seg.style.background = this._colorFor(e);
             seg.title = `${translate(e.label)}: ${humanFileSize(e.sizeBytes)}`;
             seg.addEventListener('click', () => {
-                if (e.canDrill) this.navigateTo([...this.pathStack, e.key]);
+                if (!resp.isLeaf && e.canDrill) this.navigateTo([...this.pathStack, e.key]);
             });
             bar.appendChild(seg);
         }
@@ -247,14 +247,15 @@ class StorageInspector {
         const maxSize = Math.max(...resp.entries.map(e => e.sizeBytes ?? 0), 1);
 
         for (const e of resp.entries) {
-            list.appendChild(this._renderEntry(e, maxSize));
+            list.appendChild(this._renderEntry(e, maxSize, !resp.isLeaf));
         }
     }
 
-    _renderEntry(entry, maxSize) {
+    _renderEntry(entry, maxSize, allowDrill = true) {
         const row = document.createElement('div');
+        const canDrill = allowDrill && entry.canDrill;
         row.className = 'storageInspectorEntry';
-        if (entry.canDrill) row.classList.add('storageInspectorEntryDrillable');
+        if (canDrill) row.classList.add('storageInspectorEntryDrillable');
         if (entry.kind === 'sensitive-blob') row.classList.add('storageInspectorSensitiveBlob');
         row.dataset.kind = entry.kind;
         row.dataset.key = entry.key;
@@ -313,7 +314,7 @@ class StorageInspector {
             row.appendChild(del);
         }
 
-        if (entry.canDrill) {
+        if (canDrill) {
             const chev = document.createElement('span');
             chev.className = 'storageInspectorEntryChevron';
             const chevIcon = document.createElement('i');
