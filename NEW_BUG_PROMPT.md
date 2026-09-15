@@ -2,6 +2,8 @@
 
 Copy the text below into a fresh AI chat, then append the new bug symptoms, reproduction steps, screenshots, logs, and any relevant files.
 
+A short chat prompt may simply tell the AI to read `AGENTS.md`, `AI_HANDOFF.md`, and this file from `custom-release`; the repository documents contain the persistent workflow.
+
 ---
 
 I maintain a personal fork of Luker and want you to take over a new bug from repository state rather than relying on prior chat memory.
@@ -18,7 +20,8 @@ Before touching code, first fetch and read these files from **my fork's `custom-
 1. `AGENTS.md`
 2. `AI_HANDOFF.md`
 3. `FORK_MAINTENANCE.md`
-4. `.github/copilot-instructions.md` if relevant
+4. `NEW_BUG_PROMPT.md`
+5. `.github/copilot-instructions.md` if relevant
 
 Treat those repository documents as the persistent handoff contract for this fork. Do not assume this chat contains the newest repository state.
 
@@ -35,7 +38,7 @@ For every new bug, follow this workflow:
 9. Inspect the complete diff before committing and keep one bug/feature per branch and per PR.
 10. Run the most relevant available checks for the touched code: targeted tests first, then syntax/lint/build checks as appropriate.
 11. If you have write access to my GitHub fork, commit the fix to the new `fix/*` branch. Do not modify `release` directly.
-12. If the change is suitable for upstream, prepare a clean upstream PR from the isolated `fix/*` branch. Do not include `AGENTS.md`, `AI_HANDOFF.md`, `FORK_MAINTENANCE.md`, `NEW_BUG_PROMPT.md`, or `.github/copilot-instructions.md` in the upstream PR unless the maintainer explicitly requests them.
+12. If the change is suitable for upstream, prepare a clean upstream PR from the isolated `fix/*` branch. Do not include `AGENTS.md`, `AI_HANDOFF.md`, `FORK_MAINTENANCE.md`, `NEW_BUG_PROMPT.md`, `NEW_FEATURE_PROMPT.md`, or `.github/copilot-instructions.md` in the upstream PR unless the maintainer explicitly requests them.
 13. Do not integrate the new fix into `custom-release` until the fix is understood and verified. After verification, integrate it as a traceable private change and record its state in `AI_HANDOFF.md`.
 14. If upstream later implements the same fix, mark/remove the redundant private patch during the next custom-release refresh rather than maintaining duplicate logic forever.
 
