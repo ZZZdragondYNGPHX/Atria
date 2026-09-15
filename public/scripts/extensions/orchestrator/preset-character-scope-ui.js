@@ -32,7 +32,7 @@ import {
     setActivePresetId,
     writeActivePreset,
 } from './preset-library.js';
-import { setDisplayedScopeForMode } from './editor-state.js';
+import { setDisplayedScopeForMode, uiState } from './editor-state.js';
 
 const MODULE_NAME = 'orchestrator';
 const MIXED_MARKER = 'lukerMixedPresetSelect';
@@ -53,6 +53,16 @@ function getSettings(context) {
 
 function normalizeScope(scope) {
     return scope === 'character' ? 'character' : 'global';
+}
+
+function setExplicitDisplayedScope(context, settings, mode, scope) {
+    const safeScope = normalizeScope(scope);
+    if (!uiState.explicitDisplayedScopes || typeof uiState.explicitDisplayedScopes !== 'object') {
+        uiState.explicitDisplayedScopes = {};
+    }
+    uiState.explicitDisplayedScopes[mode] = safeScope;
+    setDisplayedScopeForMode(context, settings, mode, safeScope);
+    return safeScope;
 }
 
 function encodeValue(scope, id) {
@@ -303,7 +313,7 @@ function prepareSelectionForMain(select) {
     const settings = getSettings(context);
     const mode = String(select.getAttribute('data-mode') || '');
     if (!context || !settings || !mode) return;
-    setDisplayedScopeForMode(context, settings, mode, descriptor.scope);
+    setExplicitDisplayedScope(context, settings, mode, descriptor.scope);
     select.setAttribute('data-scope', descriptor.scope);
     const bar = select.closest('.luker_orch_preset_bar');
     if (bar) {
@@ -324,7 +334,7 @@ function prepareNewPresetForCharacter(button) {
     const mode = String(button?.getAttribute('data-mode') || '');
     if (!context || !settings || !avatar || !mode) return;
     if (!ensureCharacterPresetContainer(context, avatar)) return;
-    setDisplayedScopeForMode(context, settings, mode, 'character');
+    setExplicitDisplayedScope(context, settings, mode, 'character');
     button.setAttribute('data-scope', 'character');
     const bar = button.closest('.luker_orch_preset_bar');
     const select = bar?.querySelector('[data-luker-preset-select]');
@@ -383,7 +393,7 @@ async function promoteCharacterPreset(button) {
     if (typeof context.saveSettings === 'function') {
         await context.saveSettings();
     }
-    setDisplayedScopeForMode(context, settings, mode, 'global');
+    setExplicitDisplayedScope(context, settings, mode, 'global');
     select.setAttribute('data-scope', 'global');
     enhanceSelect(select, { force: true });
     select.value = encodeValue('global', newId);
