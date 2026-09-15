@@ -4,6 +4,8 @@ const STORAGE_UNITS = Object.freeze({
     MiB: 1024 * 1024,
     GiB: 1024 * 1024 * 1024,
 });
+const MANAGER_WAIT_INTERVAL_MS = 50;
+const MANAGER_WAIT_ATTEMPTS = 100;
 
 function formatBytes(value) {
     const bytes = Number(value);
@@ -253,6 +255,33 @@ function initializeVisibleManagers() {
     document.querySelectorAll('.userBackupManager').forEach(initializeManager);
 }
 
-const observer = new MutationObserver(initializeVisibleManagers);
-observer.observe(document.documentElement, { childList: true, subtree: true });
+let managerWaitGeneration = 0;
+function waitForManager(generation, attempt = 0) {
+    if (generation !== managerWaitGeneration) {
+        return;
+    }
+
+    const managers = document.querySelectorAll('.userBackupManager');
+    if (managers.length > 0) {
+        managers.forEach(initializeManager);
+        return;
+    }
+
+    if (attempt >= MANAGER_WAIT_ATTEMPTS) {
+        return;
+    }
+
+    setTimeout(() => waitForManager(generation, attempt + 1), MANAGER_WAIT_INTERVAL_MS);
+}
+
+document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target?.closest('.userBackupButton')) {
+        return;
+    }
+
+    managerWaitGeneration += 1;
+    waitForManager(managerWaitGeneration);
+});
+
 initializeVisibleManagers();
