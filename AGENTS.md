@@ -4,13 +4,14 @@ This file is the authoritative entry point for AI assistants working on `ZZZdrag
 
 ## Repository identity
 
-- Upstream: `funnycups/Luker`
+- Historical upstream/reference: `funnycups/Luker`
 - Maintained fork: `ZZZdragondYNGPHX/Luker`
-- Upstream baseline branch: `release`
-- Fork mirror branch: `release`
-- Fork personal integration branch: `custom-release`
+- Fork development baseline and daily integration branch: `custom-release`
+- Optional upstream-reference/mirror branch: `release`
 - Isolated bug fixes: `fix/*`
 - Isolated features: `feat/*`
+
+This fork is maintained independently. `custom-release` is the source of truth for normal development. New fixes and features are based on the current `custom-release`, not on upstream `release`.
 
 ## Mandatory startup protocol
 
@@ -20,41 +21,44 @@ Before changing code for any new task:
 2. If the task is a bug fix, also read `NEW_BUG_PROMPT.md`.
 3. If the task is a new feature, also read `NEW_FEATURE_PROMPT.md`.
 4. Read `.github/copilot-instructions.md` when the environment uses it.
-5. Fetch the current HEAD of `funnycups/Luker:release`.
-6. Check the latest relevant successful official Android `Build Android APK` workflow run and record its `head_sha`.
-7. Compare that SHA with upstream `release` HEAD. Do not assume an Actions artifact, timestamp, or visible version number proves which source revision is newest.
-8. Compare `ZZZdragondYNGPHX/Luker:release` with upstream `release`.
-9. If the fork mirror is behind, synchronize the fork `release` before creating work branches. The mirror must remain free of private patches and fork-only AI documents.
+5. Fetch the current HEAD of `ZZZdragondYNGPHX/Luker:custom-release` and treat that commit as the normal work baseline.
+6. Inspect relevant existing private fixes/features and recent history before creating a work branch so dependencies are not accidentally lost or duplicated.
+7. Consult `funnycups/Luker:release` only when the task specifically requires upstream comparison, porting, compatibility analysis, or a deliberate upstream refresh.
+
+Do not block ordinary private development on upstream HEAD, upstream Android Actions, or synchronization of the fork's `release` branch.
 
 ## Task routing
 
 ### Bug fix
 
-- Create a fresh `fix/<short-bug-name>` branch from the synchronized `release` unless the bug explicitly depends on an existing private patch.
-- Follow `NEW_BUG_PROMPT.md` for investigation, testing, reporting, PR, and `custom-release` integration rules.
+- Create a fresh `fix/<short-bug-name>` branch from the latest `custom-release`.
+- Follow `NEW_BUG_PROMPT.md` for investigation, testing, reporting, and reintegration rules.
+- After the fix is understood and checked, merge it back into `custom-release` when the user wants it in the daily build.
 
 ### New feature
 
-- Create a fresh `feat/<short-feature-name>` branch from the synchronized `release` unless the feature explicitly depends on existing private behavior.
-- Follow `NEW_FEATURE_PROMPT.md` for architecture analysis, implementation, testing, reporting, PR, and `custom-release` integration rules.
+- Create a fresh `feat/<short-feature-name>` branch from the latest `custom-release`.
+- Follow `NEW_FEATURE_PROMPT.md` for architecture analysis, implementation, testing, reporting, and reintegration rules.
+- After the feature is understood and checked, merge it back into `custom-release` when the user wants it in the daily build.
 
 ## Non-negotiable branch rules
 
-- `release` is an upstream mirror. Never develop directly on it.
-- Never merge `custom-release` into `release`.
+- `custom-release` is the authoritative personal development/integration branch.
+- Start every unrelated `fix/*` or `feat/*` branch from the latest `custom-release` unless the user explicitly selects another base.
 - Never start unrelated work from an old `fix/*` or `feat/*` branch.
-- One independent bug or feature = one branch = one upstream PR.
-- `custom-release` is for verified personal fixes/features intended for daily use/builds plus fork-only maintenance documents.
-- Private work should be integrated into `custom-release` only after it is understood, checked, and user-verified when practical.
-- If upstream later contains an equivalent fix or feature, remove the redundant private implementation when refreshing `custom-release`.
+- One independent bug or feature = one branch. Keep changes reviewable and traceable even though upstream PRs are no longer the default goal.
+- Do not develop directly on `release`; it is only an optional upstream-reference/mirror branch.
+- Never merge `custom-release` into `release` merely to keep `release` current.
+- Private maintenance documents belong on `custom-release` and should travel with work branches created from it.
+- Do not remove existing fork behavior merely because upstream differs. Upstream changes are inputs to evaluate, not automatically authoritative for this fork.
 
 ## Engineering rules
 
-For bugs, reproduce or establish the failure path and identify root cause before editing. For features, inspect existing architecture and reuse the appropriate state/service/UI/persistence path before introducing new infrastructure.
+For bugs, reproduce or establish the failure path and identify root cause before editing. For features, inspect existing fork architecture and reuse the appropriate state/service/UI/persistence path before introducing new infrastructure.
 
 For all code work:
 
-1. Prefer the smallest compatible change.
+1. Prefer the smallest compatible change that preserves the fork's current behavior unless the task intentionally changes it.
 2. Avoid unrelated refactors.
 3. Preserve existing data/config formats unless a migration is explicitly required.
 4. Consider Web and Android behavior when shared frontend/runtime code is touched.
@@ -65,30 +69,26 @@ For all code work:
 9. Run targeted checks first, followed by syntax/lint/unit/e2e/build checks appropriate to the touched code.
 10. Report only checks actually executed.
 
-## Upstream and Android-build verification
+## Upstream relationship
 
-The upstream project often distributes Android builds through GitHub Actions. Therefore, every claim that a source tree is "latest" must be verified against both:
+`funnycups/Luker` remains a useful reference, but this fork no longer treats upstream synchronization or upstream PR submission as the default development workflow.
 
-- `funnycups/Luker:release` HEAD; and
-- the `head_sha` of the latest relevant successful official Android build.
+Check upstream when it is useful to:
 
-If they differ, explain why before selecting a baseline. Never silently base work on an arbitrary PR branch or a third-party fork just because it has a newer timestamp.
+- compare implementations;
+- import a bug fix or feature;
+- assess compatibility or conflicts;
+- deliberately refresh `custom-release` with upstream changes;
+- determine whether an upstream change makes a private patch obsolete.
+
+When performing an upstream refresh, compare and preserve fork-specific behavior deliberately. Do not reset `custom-release` to upstream or discard private changes just to make histories match.
 
 ## Existing private work
 
-See `AI_HANDOFF.md` for the current list of private fixes/features, their branches, integration state, and historical context. Do not infer current patch status from branch names alone; verify commits/diffs.
+See `AI_HANDOFF.md` and the live `custom-release` history for private fixes/features and historical context. The handoff document is a convenience snapshot and may be incomplete; Git history and current code are authoritative for what is actually integrated.
 
-## PR discipline
+## Upstream PR policy
 
-Upstream PRs should contain only the isolated code change. Do not include fork-maintenance documents such as:
+Upstream PRs are optional and must only be prepared when the user explicitly asks for one.
 
-- `AGENTS.md`
-- `AI_HANDOFF.md`
-- `FORK_MAINTENANCE.md`
-- `NEW_BUG_PROMPT.md`
-- `NEW_FEATURE_PROMPT.md`
-- `.github/copilot-instructions.md`
-
-unless the upstream maintainer explicitly requests them.
-
-When preparing an upstream PR, use the isolated `fix/*` or `feat/*` branch created from official `release`, not `custom-release`.
+If an upstream PR is requested, first determine whether the change can be cleanly separated from fork-only dependencies. Do not rewrite the normal fork workflow around upstream constraints, and do not include fork-maintenance documents unless the upstream maintainer explicitly requests them.
