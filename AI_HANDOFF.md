@@ -7,8 +7,10 @@ This document stores fork-specific context that should survive across chats and 
 1. `AGENTS.md`
 2. `AI_HANDOFF.md`
 3. `FORK_MAINTENANCE.md`
-4. The files directly relevant to the reported bug
-5. Upstream `funnycups/Luker:release` and the latest official Android Actions build metadata
+4. `NEW_BUG_PROMPT.md` for bug work, or `NEW_FEATURE_PROMPT.md` for feature work
+5. `.github/copilot-instructions.md` when applicable
+6. Files directly relevant to the task
+7. Upstream `funnycups/Luker:release` and the latest relevant official Android Actions build metadata
 
 ## Current repository model
 
@@ -17,8 +19,9 @@ This document stores fork-specific context that should survive across chats and 
 - Fork default / mirror branch: `release`
 - Personal integration branch: `custom-release`
 - Per-bug branches: `fix/*`
+- Per-feature branches: `feat/*`
 
-The `release` branch is intentionally kept clean so it can track upstream without private changes. The `custom-release` branch is where verified personal patches and these AI-maintenance documents live.
+The `release` branch is intentionally kept clean so it can track upstream without private changes. The `custom-release` branch is where verified personal patches/features and these AI-maintenance documents live.
 
 ## Current verified private fix
 
@@ -47,11 +50,11 @@ Integration state:
 
 - The isolated fix branch exists for upstream PR purposes.
 - `custom-release` includes this private fix.
-- Do not use this fix branch as the base for unrelated bugs.
+- Do not use this fix branch as the base for unrelated bugs or features.
 
 ## Last known official baseline snapshot
 
-At the time this handoff was written:
+At the time this handoff was originally written:
 
 - Upstream `funnycups/Luker:release` HEAD: `bb8ab49ed2c1dbad0fb8a12e362ef3fc0085b964`
 - Fork `ZZZdragondYNGPHX/Luker:release` matched that SHA.
@@ -62,9 +65,9 @@ At the time this handoff was written:
 
 ## How to handle a new bug
 
-When the user reports a new bug, do not immediately patch `custom-release`.
+When the user reports a new bug, follow `NEW_BUG_PROMPT.md`.
 
-First:
+In short:
 
 1. Verify live upstream `release` and official Android build SHA.
 2. Synchronize the fork mirror if required.
@@ -72,24 +75,45 @@ First:
 4. Investigate the failure path and root cause.
 5. Implement and test the minimal isolated fix.
 6. Keep fork-only AI docs out of the upstream PR.
-7. After the user confirms the fix works, integrate the fix into `custom-release` as a separate, traceable change.
+7. After the user verifies the fix works, integrate it into `custom-release` as a separate, traceable change and update this handoff.
 
-If a new bug exists only because of a private patch already in `custom-release`, state that explicitly and create the new work from the relevant private integration state instead of pretending it is an upstream bug.
+If a bug exists only because of a private patch already in `custom-release`, state that explicitly and base the work on the relevant private integration state rather than pretending it is an upstream bug.
 
-## What to tell the user after each fix
+## How to handle a new feature
+
+When the user requests new functionality, follow `NEW_FEATURE_PROMPT.md`.
+
+In short:
+
+1. Verify live upstream `release` and official Android build SHA.
+2. Synchronize the fork mirror if required.
+3. Create a fresh `feat/<feature-name>` from fork `release`.
+4. Inspect existing architecture before coding and identify the correct module/state/service/UI/persistence path.
+5. Prefer reuse and a minimal coherent implementation over parallel infrastructure.
+6. Test the feature and report Web/Android or persistence implications.
+7. Keep fork-only AI docs out of an upstream PR.
+8. After user verification, integrate the feature into `custom-release` as a traceable change and update this handoff.
+
+If the feature explicitly depends on private behavior already in `custom-release`, document that dependency before implementation and state whether the feature can still be separated for upstream.
+
+## What to tell the user after each task
 
 Always report:
 
 - upstream baseline SHA used;
-- fix branch name;
-- root cause;
+- latest checked official Android build SHA;
+- branch name;
+- root cause for bugs, or architecture/design summary for features;
 - changed files;
-- tests/checks run;
+- persistent data/config changes or migration status when relevant;
+- Web/Android differences when relevant;
+- tests/checks actually run;
 - resulting commit SHA;
-- whether the fix is upstream-compatible;
+- whether the change is upstream-compatible;
+- upstream PR status;
 - whether it has been integrated into `custom-release`;
-- whether any existing private patch became obsolete.
+- whether any existing private patch became obsolete, conflicting, or redundant.
 
 ## Maintenance warning
 
-Never treat this document's SHA/version snapshot as permanently current. Its purpose is to preserve architecture, branch policy, and historical private-fix context. Live repository state must still be queried at the start of every new task.
+Never treat this document's SHA/version snapshot as permanently current. Its purpose is to preserve architecture, branch policy, and historical private-work context. Live repository state must still be queried at the start of every new task.
