@@ -7,7 +7,9 @@ import { getBackupRetentionConfig, pruneBackupDirectory, startBackupRetentionSch
 
 export const router = express.Router();
 
-startBackupRetentionScheduler();
+if (process.env.NODE_ENV !== 'test') {
+    startBackupRetentionScheduler();
+}
 
 router.post('/chat/get', async (request, response) => {
     try {
