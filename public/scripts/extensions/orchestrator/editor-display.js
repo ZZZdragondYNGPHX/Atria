@@ -38,11 +38,18 @@ import {
 export function getDisplayedScopeForMode(context, settings, mode = ORCH_EXECUTION_MODE_SPEC) {
     const key = getScopePreferenceStateKey(mode);
     const preferredScope = String(uiState[key] || '');
+    const activeAvatar = String(getCurrentAvatar(context) || '').trim();
+    const explicitScope = String(uiState.explicitDisplayedScopes?.[mode] || '');
+    if (explicitScope === 'character' && activeAvatar) {
+        return 'character';
+    }
+    if (explicitScope === 'global') {
+        return 'global';
+    }
     const storedScope = getStoredDisplayedScopeForMode(context, settings, mode);
     if (storedScope === 'character') {
         return 'character';
     }
-    const activeAvatar = String(getCurrentAvatar(context) || '').trim();
     if (preferredScope === 'character' && activeAvatar) {
         return 'character';
     }
