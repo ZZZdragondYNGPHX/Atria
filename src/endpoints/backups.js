@@ -3,11 +3,18 @@ import fs, { promises as fsPromises } from 'node:fs';
 import path from 'node:path';
 import sanitize from 'sanitize-filename';
 import { CHAT_BACKUPS_PREFIX, getChatInfo } from './chats.js';
+import { getBackupRetentionConfig, pruneBackupDirectory, startBackupRetentionScheduler } from '../backup-retention.js';
 
 export const router = express.Router();
 
+startBackupRetentionScheduler();
+
 router.post('/chat/get', async (request, response) => {
     try {
+        // Keep the visible backup list consistent with the retention policy even
+        // if the periodic cleanup has not run yet.
+        pruneBackupDirectory(request.user.directories.backups);
+
         const backupModels = [];
         const backupFiles = await fsPromises
             .readdir(request.user.directories.backups, { withFileTypes: true })
@@ -23,6 +30,17 @@ router.post('/chat/get', async (request, response) => {
         }
 
         return response.json(backupModels);
+    } catch (error) {
+        console.error(error);
+        return response.sendStatus(500);
+    }
+});
+
+router.post('/retention/status', async (request, response) => {
+    try {
+        const policy = getBackupRetentionConfig();
+        const result = pruneBackupDirectory(request.user.directories.backups, policy);
+        return response.json({ policy, usage: result });
     } catch (error) {
         console.error(error);
         return response.sendStatus(500);
