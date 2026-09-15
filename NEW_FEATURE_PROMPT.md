@@ -1,17 +1,17 @@
 # Reusable New-Feature Handoff Prompt
 
-Use this document when adding a new feature to the personal Luker fork. A short chat prompt may simply instruct the AI to read `AGENTS.md`, `AI_HANDOFF.md`, and `FORK_MAINTENANCE.md`; those documents route feature work here.
+Use this document when adding a new feature to the personal Luker fork. A short chat prompt may simply instruct the AI to read `AGENTS.md`, `AI_HANDOFF.md`, `FORK_MAINTENANCE.md`, and this file from `custom-release`.
 
 ---
 
-I maintain a personal fork of Luker and want you to take over a new feature from the live repository state rather than relying on prior chat memory.
+I maintain a personal Luker fork independently and want you to take over a new feature from the live repository state rather than relying on prior chat memory.
 
-Repositories:
+Repository:
 
-- Upstream: `funnycups/Luker`
 - My fork: `ZZZdragondYNGPHX/Luker`
-- Upstream/fork mirror branch: `release`
-- Personal integration branch: `custom-release`
+- Primary development/integration branch: `custom-release`
+- Optional upstream/reference repository: `funnycups/Luker`
+- Optional upstream-reference/mirror branch in my fork: `release`
 
 Before designing or editing code, read from my fork's `custom-release` branch:
 
@@ -27,27 +27,25 @@ Treat those files as the persistent handoff contract for this fork. Do not assum
 
 For every new feature:
 
-1. Fetch the live HEAD of `funnycups/Luker:release`.
-2. Check the latest relevant successful official `Build Android APK` GitHub Actions run and record its `head_sha`.
-3. Compare the Action SHA with upstream `release` HEAD and explain any mismatch before choosing a baseline.
-4. Confirm `ZZZdragondYNGPHX/Luker:release` matches the authoritative upstream baseline.
-5. Keep `release` as a clean upstream mirror. Never add private features, fixes, or AI-maintenance documents directly to it.
+1. Fetch the live HEAD of `ZZZdragondYNGPHX/Luker:custom-release`.
+2. Use that commit as the normal development baseline.
+3. Inspect relevant current code, recent commits, existing tests, and private behavior already integrated in the same subsystem.
+4. Do not require the fork's `release` branch to match upstream before starting work.
+5. Do not require upstream Android Actions verification for ordinary private feature development.
 
 ## Branch policy
 
-For an unrelated new feature, create a fresh branch from the latest synchronized `release`:
+For an unrelated new feature, create a fresh branch from the latest `custom-release`:
 
 `feat/<short-feature-name>`
 
-Do not start new feature work from an old `fix/*`, old `feat/*`, or `custom-release` by default.
+Do not start new feature work from an old `fix/*` or `feat/*` branch unless the user explicitly asks to continue that branch.
 
-Only use `custom-release` or another private branch as the base when the new feature explicitly depends on existing private behavior. If so, state that dependency before implementation and explain whether the result can still be separated for upstream.
-
-One independent feature = one branch = one upstream PR.
+One independent feature = one branch. Keep it isolated and reviewable even though an upstream PR is not the default destination.
 
 ## Architecture analysis before coding
 
-Before implementation, inspect the current project and determine:
+Before implementation, inspect the current fork and determine:
 
 - which existing module owns the feature;
 - whether a similar implementation already exists and can be reused;
@@ -56,22 +54,23 @@ Before implementation, inspect the current project and determine:
 - whether import/export or migration behavior is affected;
 - whether Web and Android share the same code path;
 - whether Android shell, WebView, native bridge, storage permissions, keyboard/viewport, or filesystem behavior matters;
-- whether the feature depends on a private patch already present in `custom-release`;
-- whether the feature is broadly upstream-compatible or intentionally private-only.
+- whether the feature depends on private behavior already present in `custom-release`;
+- whether the requested design should intentionally differ from upstream.
 
-Prefer existing architecture over introducing parallel infrastructure. Keep one source of truth for state and business behavior where practical.
+Prefer existing fork architecture over introducing parallel infrastructure. Keep one source of truth for state and business behavior where practical.
 
 Give a short architecture/design conclusion before making edits.
 
 ## Implementation rules
 
-- Make the smallest coherent implementation that fits the existing architecture.
+- Make the smallest coherent implementation that fits the existing fork architecture.
+- Preserve unrelated behavior already present in `custom-release`.
 - Avoid unrelated refactors.
 - Reuse existing services, stores, helpers, UI components, persistence mechanisms, and i18n conventions where possible.
 - Preserve existing data/config formats unless a new field or migration is genuinely required.
 - If adding persistent data, define safe defaults and maintain backward compatibility where practical.
 - Do not duplicate business logic only to simplify UI code.
-- Follow existing Luker UI/interaction conventions.
+- Follow existing Luker UI/interaction conventions unless the task intentionally redesigns them.
 - Use the existing localization system for user-facing text when applicable.
 - Do not change the app version just to land a normal feature.
 - Never commit credentials, tokens, keystores, local paths, user data, APKs, downloaded binaries, caches, or generated build output.
@@ -88,50 +87,48 @@ Before committing:
 4. Run syntax, lint, unit, regression/e2e, build, or Android checks appropriate to the touched code.
 5. Report exactly which checks were actually run and which were not. Never call an unexecuted check "passed."
 
-If write access is available, commit the feature to the isolated `feat/*` branch. Never modify `release` directly.
+If write access is available, commit the feature to the isolated `feat/*` branch.
+
+After the feature is understood and sufficiently checked, merge it into `custom-release` when I ask for integration or when the task explicitly includes integration.
+
+## Upstream policy
+
+Upstream is optional reference material, not the default development target.
+
+Inspect `funnycups/Luker` when it is useful for:
+
+- comparing an existing implementation;
+- importing an upstream feature or API change;
+- checking compatibility/conflicts;
+- deliberately refreshing the fork;
+- preparing an upstream contribution that I explicitly requested.
+
+Do not redesign the feature around upstream contribution constraints unless I ask for that.
 
 ## Upstream PR policy
 
-If the feature is generally useful and does not depend on private fork behavior, keep the implementation clean enough for an upstream PR.
+Do not prepare or submit an upstream PR by default.
 
-An upstream PR must not include fork-only maintenance files unless the maintainer explicitly asks for them:
-
-- `AGENTS.md`
-- `AI_HANDOFF.md`
-- `FORK_MAINTENANCE.md`
-- `NEW_BUG_PROMPT.md`
-- `NEW_FEATURE_PROMPT.md`
-- `.github/copilot-instructions.md`
-
-If the feature is intentionally private-only, say so clearly instead of forcing an upstream-shaped design.
+Only do so when I explicitly request it. If requested, determine whether the feature can be separated cleanly from private fork dependencies and keep fork-only maintenance documents out of the upstream PR unless the maintainer explicitly asks for them.
 
 ## custom-release integration
 
-Do not automatically integrate a newly implemented feature into `custom-release` merely because the code compiles.
+`custom-release` is the destination for successful private development, not a secondary copy of upstream.
 
-First complete the isolated `feat/*` implementation and relevant checks. After the user verifies the feature in real use, integrate it into `custom-release` as a traceable private change and update `AI_HANDOFF.md` with:
+When integrating a finished `feat/*` branch:
 
-- feature purpose;
-- architecture/design summary;
-- feature branch;
-- commit SHA;
-- changed areas;
-- persistent data/config additions or migrations;
-- private-patch dependencies;
-- Web/Android caveats;
-- upstream PR status;
-- `custom-release` integration status;
-- long-term maintenance notes.
+- preserve traceable history;
+- resolve conflicts in favor of the intended fork behavior;
+- run relevant checks after integration when practical;
+- update `AI_HANDOFF.md` only when the feature introduces durable architecture, migration, dependency, or maintenance context.
 
-If upstream later implements equivalent functionality, compare the implementations and prefer removing the redundant private implementation when upstream fully covers the need.
+Do not wait for upstream acceptance before integrating a feature intended for this fork.
 
 ## Required final report
 
 At the end of every feature task, report:
 
-- upstream `release` SHA used;
-- latest checked official Android build SHA;
-- whether those SHAs match;
+- `custom-release` baseline SHA used;
 - feature branch name;
 - architecture owner/module;
 - existing infrastructure reused;
@@ -141,10 +138,10 @@ At the end of every feature task, report:
 - Web/Android differences;
 - tests/checks actually run and results;
 - resulting commit SHA;
-- upstream suitability;
-- PR created/prepared status;
-- `custom-release` integration status;
-- new long-term maintenance burden or dependency, if any.
+- whether the feature has been merged into `custom-release`;
+- dependency on existing private fork behavior, if any;
+- new long-term maintenance burden, if any;
+- upstream comparison or PR status only if upstream work was actually requested or performed.
 
 New feature:
 
