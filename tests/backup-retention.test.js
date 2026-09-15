@@ -2,7 +2,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { getBackupEntityKey, pruneBackupDirectory } from '../src/backup-retention.js';
+import {
+    getBackupDirectoryUsage,
+    getBackupEntityKey,
+    getBackupRetentionConfig,
+    hasBackupRetentionOverride,
+    pruneBackupDirectory,
+    resetBackupRetentionConfig,
+    saveBackupRetentionConfig,
+} from '../src/backup-retention.js';
 
 function makeTempDirectory() {
     return fs.mkdtempSync(path.join(os.tmpdir(), 'luker-backup-retention-'));
@@ -100,5 +108,68 @@ describe('backup retention manager', () => {
         });
 
         expect(fs.existsSync(unrelated)).toBe(true);
+    });
+
+    test('persists and reloads a per-user retention override', () => {
+        const userDirectories = { root: directory, backups: path.join(directory, 'backups') };
+        const saved = saveBackupRetentionConfig(userDirectories, {
+            enabled: false,
+            maxPerEntity: 7,
+            maxTotalBackups: 42,
+            maxTotalSizeBytes: 123456,
+        });
+
+        expect(hasBackupRetentionOverride(userDirectories)).toBe(true);
+        expect(saved.enabled).toBe(false);
+        expect(saved.maxPerEntity).toBe(7);
+        expect(saved.maxTotalBackups).toBe(42);
+        expect(saved.maxTotalSizeBytes).toBe(123456);
+
+        const reloaded = getBackupRetentionConfig(userDirectories);
+        expect(reloaded.enabled).toBe(false);
+        expect(reloaded.maxPerEntity).toBe(7);
+        expect(reloaded.maxTotalBackups).toBe(42);
+        expect(reloaded.maxTotalSizeBytes).toBe(123456);
+    });
+
+    test('rejects invalid persisted limits', () => {
+        const userDirectories = { root: directory, backups: path.join(directory, 'backups') };
+        expect(() => saveBackupRetentionConfig(userDirectories, {
+            enabled: true,
+            maxPerEntity: -2,
+            maxTotalBackups: 10,
+            maxTotalSizeBytes: 1024,
+        })).toThrow(/maxPerEntity/);
+        expect(hasBackupRetentionOverride(userDirectories)).toBe(false);
+    });
+
+    test('reset removes the per-user override', () => {
+        const userDirectories = { root: directory, backups: path.join(directory, 'backups') };
+        saveBackupRetentionConfig(userDirectories, {
+            enabled: true,
+            maxPerEntity: 1,
+            maxTotalBackups: 2,
+            maxTotalSizeBytes: 3,
+        });
+        expect(hasBackupRetentionOverride(userDirectories)).toBe(true);
+
+        resetBackupRetentionConfig(userDirectories);
+        expect(hasBackupRetentionOverride(userDirectories)).toBe(false);
+        expect(fs.existsSync(path.join(directory, 'backup-retention.json'))).toBe(false);
+    });
+
+    test('reports managed chat and settings usage without deleting anything', () => {
+        const backupsDirectory = path.join(directory, 'backups');
+        fs.mkdirSync(backupsDirectory, { recursive: true });
+        writeBackup(backupsDirectory, 'chat_a_2026-09-15@10h00m00s.jsonl', '1234', 1_000);
+        writeBackup(backupsDirectory, 'settings_default-user_2026-09-15@11h00m00s.json', '56', 2_000);
+        fs.writeFileSync(path.join(backupsDirectory, 'manual-export.zip'), 'ignored', 'utf8');
+
+        const usage = getBackupDirectoryUsage(backupsDirectory);
+        expect(usage.remaining).toBe(2);
+        expect(usage.chatBackups).toBe(1);
+        expect(usage.settingsBackups).toBe(1);
+        expect(usage.remainingBytes).toBe(6);
+        expect(fs.existsSync(path.join(backupsDirectory, 'chat_a_2026-09-15@10h00m00s.jsonl'))).toBe(true);
     });
 });
