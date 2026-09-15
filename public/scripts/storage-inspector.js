@@ -176,6 +176,10 @@ class StorageInspector {
     _renderStackedBar(resp) {
         const bar = this.container.querySelector('.storageInspectorStackedBar');
         bar.innerHTML = '';
+        const showSummary = resp.entries.some(e => e.canDrill);
+        bar.classList.toggle('displayNone', !showSummary);
+        if (!showSummary) return;
+
         const total = resp.entries.reduce((s, e) => s + (e.sizeBytes ?? 0), 0) || 1;
         for (const e of resp.entries) {
             if (!e.sizeBytes) continue;
@@ -194,6 +198,10 @@ class StorageInspector {
     _renderLegend(resp) {
         const legend = this.container.querySelector('.storageInspectorLegend');
         legend.innerHTML = '';
+        const showSummary = resp.entries.some(e => e.canDrill);
+        legend.classList.toggle('displayNone', !showSummary);
+        if (!showSummary) return;
+
         for (const e of resp.entries) {
             if (!e.sizeBytes) continue;
             const item = document.createElement('span');

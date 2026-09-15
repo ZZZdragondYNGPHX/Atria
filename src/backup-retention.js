@@ -9,7 +9,7 @@ const DEFAULT_MAX_TOTAL_BACKUPS = 500;
 const DEFAULT_MAX_TOTAL_SIZE_BYTES = 1024 * 1024 * 1024;
 const DEFAULT_CLEANUP_INTERVAL_MS = 60_000;
 const MIN_CLEANUP_INTERVAL_MS = 10_000;
-const BACKUP_TIMESTAMP_MARKER = /_\d{4}-\d{2}-\d{2}@/;
+const BACKUP_TIMESTAMP_MARKER = /_\d{8}-\d{6}$/;
 const BACKUP_RETENTION_SETTINGS_FILE = 'backup-retention.json';
 const PERSISTED_POLICY_KEYS = Object.freeze([
     'enabled',
@@ -175,7 +175,7 @@ export function resetBackupRetentionConfig(userDirectories) {
 
 /**
  * Maps a Luker backup filename to the logical entity it belongs to.
- * Both chat backups and settings snapshots end with `_YYYY-MM-DD@...`.
+ * Both chat backups and settings snapshots end with `_YYYYMMDD-HHMMSS`.
  * Unknown files are deliberately ignored by the retention manager.
  *
  * @param {string} fileName Backup filename
