@@ -1,6 +1,6 @@
 # AI Handoff Context
 
-This document stores fork-specific context that should survive across chats and across different AI tools. It is a snapshot, not a substitute for live GitHub verification.
+This document stores fork-specific context that should survive across chats and different AI tools. It is a snapshot and navigation aid; live `custom-release` code and Git history remain authoritative.
 
 ## Read order for a new AI session
 
@@ -10,58 +10,46 @@ This document stores fork-specific context that should survive across chats and 
 4. `NEW_BUG_PROMPT.md` for bug work, or `NEW_FEATURE_PROMPT.md` for feature work
 5. `.github/copilot-instructions.md` when applicable
 6. Files directly relevant to the task
-7. Upstream `funnycups/Luker:release` and the latest relevant official Android Actions build metadata
+7. Relevant `custom-release` history and existing private implementations
+
+Only inspect `funnycups/Luker` when the task actually benefits from upstream comparison, porting, compatibility analysis, or a deliberate upstream refresh.
 
 ## Current repository model
 
-- Upstream repository: `funnycups/Luker`
-- User fork: `ZZZdragondYNGPHX/Luker`
-- Fork default / mirror branch: `release`
-- Personal integration branch: `custom-release`
+- Historical upstream/reference repository: `funnycups/Luker`
+- Maintained personal fork: `ZZZdragondYNGPHX/Luker`
+- Primary development/integration branch: `custom-release`
+- Optional upstream-reference/mirror branch: `release`
 - Per-bug branches: `fix/*`
 - Per-feature branches: `feat/*`
 
-The `release` branch is intentionally kept clean so it can track upstream without private changes. The `custom-release` branch is where verified personal patches/features and these AI-maintenance documents live.
+The maintenance model is now independent-fork first. `custom-release` is the normal source of truth and the base for new work.
 
-## Current verified private fix
+## Current maintenance mode
 
-### Orchestrator character/global preset visibility
+The owner intends to maintain this fork primarily for personal use rather than organize every change around upstream contribution.
 
-Branch:
+Therefore:
 
-`fix/orchestrator-character-global-presets`
+- new `fix/*` branches start from the latest `custom-release`;
+- new `feat/*` branches start from the latest `custom-release`;
+- existing private behavior is part of the baseline and must not be silently dropped;
+- upstream synchronization is optional and deliberate;
+- upstream PRs are optional and only prepared when explicitly requested;
+- the fork's current behavior takes precedence over upstream parity during normal development.
 
-Known fix commit:
+## Historical private-work context
 
-`9ff33cc27e94a55c8d9663cfc770b5d66bb4be20`
+Older handoff versions tracked individual private patches as if each were primarily an upstream candidate. That model is obsolete.
 
-Purpose:
+The repository may contain multiple fixes/features already merged into `custom-release`. Do not assume this document has a complete inventory. Before changing a related area, inspect:
 
-- Keep global orchestrator presets visible/accessible while inside a character card.
-- Default preset creation inside a character context to character scope.
-- Allow a character-scoped preset to be copied/saved as a global preset without deleting the character copy.
-- Prevent editor refresh/late character hydration from automatically forcing the displayed scope back to Character after the user explicitly selects Global.
+- current code;
+- recent commits affecting the same subsystem;
+- relevant `fix/*` or `feat/*` branches when they still exist;
+- tests added by previous fixes/features.
 
-Important historical root cause:
-
-The orchestrator UI had coupled *character override existence* to *which scope the preset editor should display*. Character hydration could therefore cause the UI to render Global first and later switch to Character, making global presets appear to disappear. The fix separates user-visible scope choice from the mere existence of character overrides and exposes both libraries in character context.
-
-Integration state:
-
-- The isolated fix branch exists for upstream PR purposes.
-- `custom-release` includes this private fix.
-- Do not use this fix branch as the base for unrelated bugs or features.
-
-## Last known official baseline snapshot
-
-At the time this handoff was originally written:
-
-- Upstream `funnycups/Luker:release` HEAD: `bb8ab49ed2c1dbad0fb8a12e362ef3fc0085b964`
-- Fork `ZZZdragondYNGPHX/Luker:release` matched that SHA.
-- The latest checked successful official Android `Build Android APK` run also used that SHA.
-- `package.json` reported version `2.7.0`.
-
-**This snapshot will become stale. Every new task must re-check live upstream and Actions state before choosing a baseline.**
+One known historical example is the orchestrator character/global preset work, which separated user-visible preset scope from character override existence. Treat it as integrated fork behavior if it is present in current `custom-release`; verify the live implementation rather than relying on an old commit list here.
 
 ## How to handle a new bug
 
@@ -69,15 +57,16 @@ When the user reports a new bug, follow `NEW_BUG_PROMPT.md`.
 
 In short:
 
-1. Verify live upstream `release` and official Android build SHA.
-2. Synchronize the fork mirror if required.
-3. Create a fresh `fix/<bug-name>` from fork `release`.
-4. Investigate the failure path and root cause.
-5. Implement and test the minimal isolated fix.
-6. Keep fork-only AI docs out of the upstream PR.
-7. After the user verifies the fix works, integrate it into `custom-release` as a separate, traceable change and update this handoff.
+1. Fetch the latest `ZZZdragondYNGPHX/Luker:custom-release` HEAD.
+2. Inspect the current failure path and nearby private behavior.
+3. Create a fresh `fix/<bug-name>` from that `custom-release` HEAD.
+4. Identify the root cause before editing.
+5. Implement and test the smallest compatible fix.
+6. Preserve unrelated private behavior.
+7. Merge the verified fix back into `custom-release` when the user wants it integrated.
+8. Update this handoff only when the fix creates durable context future sessions should know.
 
-If a bug exists only because of a private patch already in `custom-release`, state that explicitly and base the work on the relevant private integration state rather than pretending it is an upstream bug.
+If upstream comparison is useful, perform it as supporting analysis rather than as the mandatory source baseline.
 
 ## How to handle a new feature
 
@@ -85,35 +74,49 @@ When the user requests new functionality, follow `NEW_FEATURE_PROMPT.md`.
 
 In short:
 
-1. Verify live upstream `release` and official Android build SHA.
-2. Synchronize the fork mirror if required.
-3. Create a fresh `feat/<feature-name>` from fork `release`.
-4. Inspect existing architecture before coding and identify the correct module/state/service/UI/persistence path.
-5. Prefer reuse and a minimal coherent implementation over parallel infrastructure.
-6. Test the feature and report Web/Android or persistence implications.
-7. Keep fork-only AI docs out of an upstream PR.
-8. After user verification, integrate the feature into `custom-release` as a traceable change and update this handoff.
+1. Fetch the latest `ZZZdragondYNGPHX/Luker:custom-release` HEAD.
+2. Inspect the fork's current architecture and integrated private behavior.
+3. Create a fresh `feat/<feature-name>` from that `custom-release` HEAD.
+4. Identify the correct module/state/service/UI/persistence path before coding.
+5. Reuse existing infrastructure and keep the implementation coherent with the fork.
+6. Test the feature and report persistence/Web/Android implications when relevant.
+7. Merge the verified feature back into `custom-release` when the user wants it integrated.
+8. Update this handoff only when the feature introduces durable architecture, migration, or maintenance context.
 
-If the feature explicitly depends on private behavior already in `custom-release`, document that dependency before implementation and state whether the feature can still be separated for upstream.
+## Deliberate upstream refreshes
+
+Upstream is still useful as a source of improvements and bug fixes, but refreshing from it is a separate maintenance task.
+
+For an upstream refresh:
+
+1. Inspect current `custom-release` and current upstream state.
+2. Review the incoming upstream changes before integrating them.
+3. Identify overlap/conflicts with private patches.
+4. Preserve fork-specific behavior unless the user intentionally chooses the upstream behavior instead.
+5. Integrate selectively or merge/rebase with full conflict review as appropriate.
+6. Run relevant regression checks after integration.
+7. Record any private patches that became obsolete, replaced, or conflict-prone.
+
+Do not reset `custom-release` to upstream merely to make histories match.
 
 ## What to tell the user after each task
 
 Always report:
 
-- upstream baseline SHA used;
-- latest checked official Android build SHA;
-- branch name;
+- `custom-release` baseline SHA used;
+- work branch name;
 - root cause for bugs, or architecture/design summary for features;
 - changed files;
 - persistent data/config changes or migration status when relevant;
 - Web/Android differences when relevant;
 - tests/checks actually run;
 - resulting commit SHA;
-- whether the change is upstream-compatible;
-- upstream PR status;
-- whether it has been integrated into `custom-release`;
-- whether any existing private patch became obsolete, conflicting, or redundant.
+- whether the work has been merged into `custom-release`;
+- any dependency on older private behavior;
+- any compatibility concern discovered with upstream, if upstream was actually inspected.
+
+Only report upstream SHA, official Android Actions SHA, or upstream PR status when those were relevant to the task and actually checked.
 
 ## Maintenance warning
 
-Never treat this document's SHA/version snapshot as permanently current. Its purpose is to preserve architecture, branch policy, and historical private-work context. Live repository state must still be queried at the start of every new task.
+Do not treat old SHA/version snapshots in chats or documents as current. For normal work, verify `custom-release` live. For an upstream-related task, also verify the relevant upstream state live.
