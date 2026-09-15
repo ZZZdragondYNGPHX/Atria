@@ -9,44 +9,61 @@ This file is the authoritative entry point for AI assistants working on `ZZZdrag
 - Upstream baseline branch: `release`
 - Fork mirror branch: `release`
 - Fork personal integration branch: `custom-release`
-- Isolated fixes: `fix/*`
+- Isolated bug fixes: `fix/*`
+- Isolated features: `feat/*`
 
 ## Mandatory startup protocol
 
 Before changing code for any new task:
 
 1. Read `AGENTS.md`, `AI_HANDOFF.md`, and `FORK_MAINTENANCE.md` from the fork's `custom-release` branch.
-2. Fetch the current HEAD of `funnycups/Luker:release`.
-3. Check the latest successful official Android `Build Android APK` workflow run and record its `head_sha`.
-4. Compare that SHA with upstream `release` HEAD. Do not assume that an Actions artifact or a visible version number proves which source revision is newest.
-5. Compare `ZZZdragondYNGPHX/Luker:release` with upstream `release`.
-6. If the fork mirror is behind, synchronize the fork `release` to upstream before creating a new fix branch. The mirror branch must remain free of private patches.
-7. Create one fresh `fix/<short-bug-name>` branch from the synchronized fork `release` unless the bug explicitly depends on an existing private patch.
+2. If the task is a bug fix, also read `NEW_BUG_PROMPT.md`.
+3. If the task is a new feature, also read `NEW_FEATURE_PROMPT.md`.
+4. Read `.github/copilot-instructions.md` when the environment uses it.
+5. Fetch the current HEAD of `funnycups/Luker:release`.
+6. Check the latest relevant successful official Android `Build Android APK` workflow run and record its `head_sha`.
+7. Compare that SHA with upstream `release` HEAD. Do not assume an Actions artifact, timestamp, or visible version number proves which source revision is newest.
+8. Compare `ZZZdragondYNGPHX/Luker:release` with upstream `release`.
+9. If the fork mirror is behind, synchronize the fork `release` before creating work branches. The mirror must remain free of private patches and fork-only AI documents.
+
+## Task routing
+
+### Bug fix
+
+- Create a fresh `fix/<short-bug-name>` branch from the synchronized `release` unless the bug explicitly depends on an existing private patch.
+- Follow `NEW_BUG_PROMPT.md` for investigation, testing, reporting, PR, and `custom-release` integration rules.
+
+### New feature
+
+- Create a fresh `feat/<short-feature-name>` branch from the synchronized `release` unless the feature explicitly depends on existing private behavior.
+- Follow `NEW_FEATURE_PROMPT.md` for architecture analysis, implementation, testing, reporting, PR, and `custom-release` integration rules.
 
 ## Non-negotiable branch rules
 
 - `release` is an upstream mirror. Never develop directly on it.
 - Never merge `custom-release` into `release`.
-- Never start an unrelated bug from an old `fix/*` branch.
-- One bug or feature = one branch = one upstream PR.
-- `custom-release` is for verified personal fixes intended for daily use/builds.
-- A private fix should be integrated into `custom-release` only after it is understood and verified.
-- If upstream later contains an equivalent fix, remove the redundant private patch when refreshing `custom-release`.
+- Never start unrelated work from an old `fix/*` or `feat/*` branch.
+- One independent bug or feature = one branch = one upstream PR.
+- `custom-release` is for verified personal fixes/features intended for daily use/builds plus fork-only maintenance documents.
+- Private work should be integrated into `custom-release` only after it is understood, checked, and user-verified when practical.
+- If upstream later contains an equivalent fix or feature, remove the redundant private implementation when refreshing `custom-release`.
 
 ## Engineering rules
 
-For bug fixing:
+For bugs, reproduce or establish the failure path and identify root cause before editing. For features, inspect existing architecture and reuse the appropriate state/service/UI/persistence path before introducing new infrastructure.
 
-1. Reproduce or establish the failure path before editing.
-2. Identify the root cause. Do not patch only the visible symptom if lifecycle, persistence, async initialization, scope selection, or stale state is the real cause.
-3. Prefer the smallest compatible change. Avoid unrelated refactors.
-4. Preserve existing data formats and configuration compatibility unless a migration is explicitly required.
-5. Consider Web and Android behavior when shared frontend/runtime code is touched.
-6. Do not change the app version merely to land a normal bug fix.
-7. Do not add generated artifacts, downloaded binaries, credentials, tokens, keystores, local paths, or user data to commits.
-8. Before committing, inspect the diff for unrelated changes.
-9. Run the most relevant available checks: targeted tests first, then syntax/lint/build checks appropriate to the touched files.
-10. In the handoff, state the root cause, changed files, tests performed, remaining risks, and exact branch/commit.
+For all code work:
+
+1. Prefer the smallest compatible change.
+2. Avoid unrelated refactors.
+3. Preserve existing data/config formats unless a migration is explicitly required.
+4. Consider Web and Android behavior when shared frontend/runtime code is touched.
+5. Pay attention to async initialization, lifecycle order, hydration, stale state, scope switching, persistence, and race conditions when relevant.
+6. Do not change the app version merely to land a normal bug fix or feature.
+7. Do not add generated artifacts, downloaded binaries, credentials, tokens, keystores, local paths, caches, APKs, or user data to commits.
+8. Before committing, inspect the complete diff for unrelated changes.
+9. Run targeted checks first, followed by syntax/lint/unit/e2e/build checks appropriate to the touched code.
+10. Report only checks actually executed.
 
 ## Upstream and Android-build verification
 
@@ -55,14 +72,23 @@ The upstream project often distributes Android builds through GitHub Actions. Th
 - `funnycups/Luker:release` HEAD; and
 - the `head_sha` of the latest relevant successful official Android build.
 
-If they differ, explain why before selecting a baseline. Never silently base a fix on an arbitrary PR branch or a third-party fork just because it has a newer timestamp.
+If they differ, explain why before selecting a baseline. Never silently base work on an arbitrary PR branch or a third-party fork just because it has a newer timestamp.
 
 ## Existing private work
 
-See `AI_HANDOFF.md` for the current list of private fixes, their branches, and their integration state. Do not infer current patch status from branch names alone; verify commits/diffs.
+See `AI_HANDOFF.md` for the current list of private fixes/features, their branches, integration state, and historical context. Do not infer current patch status from branch names alone; verify commits/diffs.
 
 ## PR discipline
 
-Upstream PRs should contain only the isolated fix. Do not include fork-maintenance documents such as `AGENTS.md`, `AI_HANDOFF.md`, `FORK_MAINTENANCE.md`, or `.github/copilot-instructions.md` unless the upstream maintainer explicitly asks for them.
+Upstream PRs should contain only the isolated code change. Do not include fork-maintenance documents such as:
 
-When preparing an upstream PR, use the isolated `fix/*` branch created from official `release`, not `custom-release`.
+- `AGENTS.md`
+- `AI_HANDOFF.md`
+- `FORK_MAINTENANCE.md`
+- `NEW_BUG_PROMPT.md`
+- `NEW_FEATURE_PROMPT.md`
+- `.github/copilot-instructions.md`
+
+unless the upstream maintainer explicitly requests them.
+
+When preparing an upstream PR, use the isolated `fix/*` or `feat/*` branch created from official `release`, not `custom-release`.
