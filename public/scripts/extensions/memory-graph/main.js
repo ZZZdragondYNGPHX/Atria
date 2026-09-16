@@ -85,6 +85,7 @@ import { recallHybridMemory } from './hybrid-runtime.js';
 import { memoryTokenBudget, memoryTokenCounter } from './hybrid-retrieval.js';
 import { readStateProviders } from './state-providers.js';
 import { existingStatePrompt } from './state-prompt.js';
+import { openMemoryOsInspector } from './graph-inspector.js';
 import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
@@ -15204,7 +15205,15 @@ function bindUi() {
     });
 
     root.find('#luker_rpg_memory_view_graph').off('click').on('click', async function () {
-        await openGraphInspectorPopup(context);
+        const live = getContext();
+        if (isMemoryOsEnabled(getEffectiveSettings(live, getSettings()))) {
+            await openMemoryOsInspector(live, {
+                load: () => sourceLifecycle.retrievalSnapshot(live),
+                correct: (command, snapshot) => sourceLifecycle.correct(live, command, snapshot),
+                loadCytoscape: ensureCytoscapeLoaded,
+                openLegacy: () => openGraphInspectorPopup(live),
+            });
+        } else await openGraphInspectorPopup(live);
     });
 
     root.find('#luker_rpg_memory_fill').off('click').on('click', async function () {

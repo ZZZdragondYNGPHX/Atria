@@ -10,7 +10,7 @@ export function normalizeProvenance(raw) {
     const state = emptyProvenance();
     if (!raw || raw.version !== 1) return state;
     state.scopeId = String(raw.scopeId || '');
-    for (const key of ['sources', 'episodes', 'facts', 'entities', 'relations', 'entityPending', 'predicates', 'providerSources', 'providerSnapshots']) {
+    for (const key of ['sources', 'episodes', 'facts', 'entities', 'relations', 'entityPending', 'predicates', 'providerSources', 'providerSnapshots', 'corrections']) {
         if (raw[key] && typeof raw[key] === 'object' && !Array.isArray(raw[key])) {
             state[key] = structuredClone(raw[key]);
         }
@@ -181,4 +181,11 @@ export function projectCurrentSources(store, state, chat, scopeId) {
         store.lastRecallProjection = null;
     }
     return invalidIds;
+}
+
+/** User corrections are explicit scope-local sources, never fabricated Episodes. */
+export function isCurrentMemorySupport(state, ref, chat) {
+    if (ref?.manualId) return state.corrections?.[ref.manualId]?.scopeId === state.scopeId
+        && Array.isArray(ref.episodeIds) && (!ref.episodeIds.length || episodesAreCurrent(state, ref.episodeIds, chat, state.scopeId));
+    return Array.isArray(ref?.episodeIds) && episodesAreCurrent(state, ref.episodeIds, chat, state.scopeId);
 }

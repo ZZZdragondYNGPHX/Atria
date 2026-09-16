@@ -26,6 +26,29 @@ function fixture() {
 }
 
 describe('Memory OS production source lifecycle', () => {
+    test('manual corrections persist atomically and reject an outdated inspector', async () => {
+        const f = fixture();
+        const snapshot = await f.lifecycle.retrievalSnapshot(f.context);
+        await f.lifecycle.correct(f.context, { action: 'entity', name: 'Alice', type: 'Character', reason: 'User named entity' }, snapshot);
+        expect((await f.lifecycle.listGraph(f.context)).entities[0].canonicalName).toBe('Alice');
+        expect(Object.keys(f.disk.get(f.context.key).corrections)).toHaveLength(1);
+        await expect(f.lifecycle.correct(f.context, { action: 'entity', name: 'Old window', type: 'Concept', reason: 'test' }, snapshot)).rejects.toThrow('changed');
+    });
+    test('manual correction refuses source mutation at the persistence boundary', async () => {
+        const f = fixture(); const snapshot = await f.lifecycle.retrievalSnapshot(f.context);
+        const update = f.context.updateChatState;
+        f.context.updateChatState = async (...args) => { f.context.chat[1].mes = 'Changed'; return update(...args); };
+        await expect(f.lifecycle.correct(f.context, { action: 'entity', name: 'No write', type: 'Concept', reason: 'test' }, snapshot)).rejects.toThrow('changed');
+        expect(f.disk.get(f.context.key)?.corrections).toBeUndefined();
+    });
+    test('manual correction refuses chat switching and feature disable', async () => {
+        const f = fixture(); const context = f.context; const snapshot = await f.lifecycle.retrievalSnapshot(context);
+        const command = { action: 'entity', name: 'No write', type: 'Concept', reason: 'test' };
+        f.switchChat({ ...context, key: 'other', chat: [] });
+        await expect(f.lifecycle.correct(context, command, snapshot)).rejects.toThrow('changed');
+        f.switchChat(context); context.enabled = false;
+        await expect(f.lifecycle.correct(context, command, snapshot)).rejects.toThrow('disabled');
+    });
     test('fact writes persist through the same ledger and source edits invalidate rereads', async () => {
         const f = fixture();
         const ticket = await f.lifecycle.capture(f.context, [1]);

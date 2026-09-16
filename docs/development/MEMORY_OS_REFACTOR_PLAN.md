@@ -1446,6 +1446,8 @@ Context budget：可配置
 
 ## Phase 7 — Graph UI
 
+已实现；当前代码映射、用户纠错来源和验证范围见 [Phase 7 执行记录](MEMORY_OS_PHASE7_GRAPH_UI.md)。
+
 - Global Graph；
 - Local Graph；
 - Inspector；

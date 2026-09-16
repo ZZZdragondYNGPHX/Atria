@@ -6,6 +6,7 @@ import {
 } from './source-provenance.js';
 import { applyFactOperations, projectFacts } from './atomic-facts.js';
 import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from './temporal-graph.js';
+import { applyManualCorrection } from './manual-corrections.js';
 import { reconcileProviders } from './provider-provenance.js';
 
 export const PROVENANCE_NAMESPACE = 'memory_graph__provenance';
@@ -333,6 +334,16 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         return { key: scope.key, state: structuredClone(state), chat: structuredClone(scope.chat), assertCurrent, recordAccess };
     }
 
-    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts,
+    async function correct(context, command, snapshot) {
+        if (!enabled(context) || !snapshot) throw new Error('Memory OS is disabled or missing review snapshot');
+        snapshot.assertCurrent();
+        return transaction(context, (state, scope) => {
+            const result = applyManualCorrection(state, command, scope.chat, newId);
+            Object.assign(state, result.state);
+            return result.correctionId;
+        }, snapshot.assertCurrent);
+    }
+
+    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts, correct,
         writeBatch, listGraph, retrievalSnapshot, resolveEntity: resolveEntityInContext };
 }

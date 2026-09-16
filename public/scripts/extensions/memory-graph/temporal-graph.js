@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { addDependency, episodesAreCurrent } from './source-provenance.js';
+import { addDependency, isCurrentMemorySupport } from './source-provenance.js';
 import { projectFacts } from './atomic-facts.js';
 
 export const ENTITY_TYPES = ['Character', 'Location', 'Organization', 'Item', 'Event', 'Quest', 'Concept'];
@@ -11,7 +11,7 @@ const defaults = {
     visited: { policy: 'multi_active', exclusiveSide: 'source' },
     member_of: { policy: 'multi_active', exclusiveSide: 'source' },
 };
-const current = (state, ref, chat) => Array.isArray(ref?.episodeIds) && episodesAreCurrent(state, ref.episodeIds, chat, state.scopeId);
+const current = isCurrentMemorySupport;
 const text = (value, field, max = 300) => {
     if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`Invalid ${field}`);
     return value.trim();
@@ -47,7 +47,7 @@ function canonicalId(state, id, chat) {
 
 export function projectTemporalGraph(state, chat, { includeInactive = false, at = null } = {}) {
     const entities = Object.values(state.entities || {}).filter(entity => entity?.scopeId === state.scopeId && Array.isArray(entity.names)).map(entity => {
-        const names = entity.names.filter(name => current(state, name, chat));
+        const names = entity.names.filter(name => !name.manualDisabled && current(state, name, chat));
         const canonical = names.filter(name => name.kind === 'canonical').at(-1) || names[0];
         const merge = latestMerge(entity);
         const status = !names.length ? 'stale' : merge && !merge.undone
@@ -78,7 +78,7 @@ export function projectTemporalGraph(state, chat, { includeInactive = false, at 
         if (status === 'active' && (relation.validUntil !== undefined || relation.untilOrder !== undefined)) status = 'superseded';
         return { ...structuredClone(relation), sourceEntityId: source, targetEntityId: target,
             originalSourceEntityId: relation.sourceEntityId, originalTargetEntityId: relation.targetEntityId,
-            status, confidence: Math.max(0, ...factViews.filter(fact => fact.status === 'active').map(fact => fact.confidence)) };
+            status: relation.manualDisabled ? 'rejected' : status, confidence: Math.max(0, ...factViews.filter(fact => fact.status === 'active').map(fact => fact.confidence)) };
     });
     const supported = new Set(relations.filter(relation => ['active', 'superseded'].includes(relation.status)).map(relation => relation.id));
     for (const relation of relations) {
@@ -110,7 +110,7 @@ export function projectTemporalGraph(state, chat, { includeInactive = false, at 
         relations: relations.filter(relation => includeInactive || (Number.isFinite(at)
             ? relation.validAt === true && ['active', 'superseded'].includes(relation.status) : relation.status === 'active')),
         pending: Object.values(state.entityPending || {}).map(item => ({ ...structuredClone(item),
-            status: item.resolvedTo ? 'resolved' : current(state, item, chat) ? 'pending' : 'stale' })) };
+            status: item.manualDisabled ? 'rejected' : item.resolvedTo ? 'resolved' : current(state, item, chat) ? 'pending' : 'stale' })) };
 }
 
 export function resolveEntity(state, chat, name, type) {
@@ -138,7 +138,8 @@ function temporalOrder(relation) {
 }
 
 /** Whole-batch copy-on-write. Entity refs are local to this batch, never durable IDs. */
-export function applyTemporalOperations(ledger, operations, ticket, chat, factResults = [], newId = () => crypto.randomUUID(), now = Date.now()) {
+export function applyTemporalOperations(ledger, operations, ticket, chat, factResults = [], newId = () => crypto.randomUUID(), now = Date.now(), manualProof = null) {
+    if (manualProof && (!manualProof.manualId || !current(ledger, manualProof, chat))) throw new Error('Invalid user correction source');
     if (!ticket || ticket.scopeId !== ledger.scopeId || !current(ledger, ticket, chat)) throw new Error('Graph requires a current source ticket');
     if (!Array.isArray(operations) || operations.length > 64) throw new Error('Invalid graph operation batch');
     const state = structuredClone(ledger);
@@ -147,7 +148,7 @@ export function applyTemporalOperations(ledger, operations, ticket, chat, factRe
     const results = [];
     const entityId = id => refs.has(id) ? refs.get(id) : id;
     for (const op of operations) {
-        const proof = support(state, op, ticket, newId, now);
+        const proof = manualProof && current(state, manualProof, chat) ? structuredClone(manualProof) : support(state, op, ticket, newId, now);
         const view = projectTemporalGraph(state, chat, { includeInactive: true });
         const activeFacts = new Map(projectFacts(state, chat).map(fact => [fact.id, fact]));
         const hasExplicitSupport = relation => relation.supports.some(ref => current(state, ref, chat) && activeFacts.get(ref.factId)?.type === 'explicit');
@@ -192,7 +193,7 @@ export function applyTemporalOperations(ledger, operations, ticket, chat, factRe
         }
         if (op.action === 'resolve_pending') {
             const pending = state.entityPending[op.pendingId];
-            if (!pending || pending.resolvedTo || activeEntities.get(targetId)?.type !== pending.type) throw new Error('Invalid pending entity resolution');
+            if (!pending || pending.manualDisabled || pending.resolvedTo || activeEntities.get(targetId)?.type !== pending.type) throw new Error('Invalid pending entity resolution');
             pending.resolvedTo = targetId;
             pending.resolution = { reason: text(op.reason, 'entity resolution reason', 2000), ...proof };
             state.entities[targetId].names.push({ name: pending.name, kind: 'alias', ...proof });
@@ -229,7 +230,7 @@ export function applyTemporalOperations(ledger, operations, ticket, chat, factRe
             for (const id of op.loserIds) {
                 const loser = view.relations.find(relation => relation.id === id);
                 if (!loser || id === winner.id || !sameSlot(winner, loser) || !['active', 'disputed'].includes(loser.status)) throw new Error('Invalid conflict loser');
-                if (hasExplicitSupport(state.relations[id]) && !hasExplicitSupport(state.relations[winner.id])) throw new Error('Inference cannot resolve an explicit conflict');
+                if (!manualProof && hasExplicitSupport(state.relations[id]) && !hasExplicitSupport(state.relations[winner.id])) throw new Error('Inference cannot resolve an explicit conflict');
                 state.relations[id].supersededBy.push({ relationId: winner.id, reason: op.reason, ...proof });
                 for (const episodeId of proof.episodeIds) addDependency(state, `episode:${episodeId}`, `relation:${id}`);
             }
@@ -256,7 +257,7 @@ export function applyTemporalOperations(ledger, operations, ticket, chat, factRe
         const contract = { policy, exclusiveSide };
         if (state.predicates[predicate] && JSON.stringify(state.predicates[predicate]) !== JSON.stringify(contract)) throw new Error('Predicate policy cannot change within a scope');
         state.predicates[predicate] = contract;
-        let relation = Object.values(state.relations).find(item => item.sourceEntityId === originalSource && item.targetEntityId === targetId && item.predicate === predicate
+        let relation = Object.values(state.relations).find(item => !item.manualDisabled && item.sourceEntityId === originalSource && item.targetEntityId === targetId && item.predicate === predicate
             && item.validFrom === op.validFrom && item.validUntil === op.validUntil && item.timeOrder === op.timeOrder && item.untilOrder === op.untilOrder && !item.supersededBy.length);
         if (!relation) {
             relation = { id: newId(), scopeId: state.scopeId, sourceEntityId: originalSource, targetEntityId: targetId, predicate,

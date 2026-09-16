@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { addDependency, episodesAreCurrent } from './source-provenance.js';
+import { addDependency, episodesAreCurrent, isCurrentMemorySupport } from './source-provenance.js';
 
 const TYPES = ['explicit', 'inferred', 'summary'];
 const CAPS = { explicit: 0.95, inferred: 0.65, summary: 0.75 };
@@ -7,7 +7,7 @@ const canonical = text => text.normalize('NFKC').trim().replace(/\s+/g, ' ').toL
 const bounded = (value, fallback, ceiling = 1) => Number.isFinite(value) ? Math.max(0, Math.min(ceiling, value)) : fallback;
 
 function currentSupport(state, support, chat) {
-    return support && Array.isArray(support.episodeIds) && episodesAreCurrent(state, support.episodeIds, chat, state.scopeId);
+    return isCurrentMemorySupport(state, support, chat);
 }
 
 /** Projection only: history and evidence remain intact in the source ledger. */
@@ -24,7 +24,7 @@ export function projectFacts(state, chat, { includeInactive = false } = {}) {
         }
         if (supports.length && fact.mergedInto) status = episodesAreCurrent(state, fact.mergeEpisodeIds || [], chat, state.scopeId) ? 'superseded' : 'disputed';
         return {
-            ...structuredClone(fact), status,
+            ...structuredClone(fact), status: fact.manualDisabled ? 'rejected' : status,
             confidence: supports.length ? Math.max(...supports.map(s => bounded(s.confidence, 0, CAPS[fact.type]))) : 0,
             episodeIds: [...new Set(fact.supports.flatMap(s => s.episodeIds))],
         };

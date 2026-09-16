@@ -48,7 +48,7 @@ export function buildMemoryCorpus(snapshot, at = null) {
     // Keep that supporting assertion out of current-state recall as well.
     const inactiveFacts = new Set(graph.relations.filter(relation => relation.status !== 'active').flatMap(relation => relation.supports.map(ref => ref.factId)));
     const activeFacts = new Set(graph.relations.filter(relation => relation.status === 'active').flatMap(relation => relation.supports.map(ref => ref.factId)));
-    const uncertainFacts = new Set(graph.relations.filter(relation => ['stale', 'disputed'].includes(relation.status)).flatMap(relation => relation.supports.map(ref => ref.factId)));
+    const uncertainFacts = new Set(graph.relations.filter(relation => ['stale', 'disputed', 'rejected'].includes(relation.status)).flatMap(relation => relation.supports.map(ref => ref.factId)));
     const documents = facts.filter(fact => eligible(fact) && (!uncertainFacts.has(fact.id) || activeFacts.has(fact.id))).map(fact => ({ ...fact, id: `fact:${fact.id}`, kind: 'fact', factId: fact.id,
         status: fact.validUntil !== undefined || inactiveFacts.has(fact.id) && !activeFacts.has(fact.id) ? 'superseded' : fact.status,
         validAt: Number.isFinite(at) && Number.isFinite(fact.validFrom) && (fact.validUntil === undefined || Number.isFinite(fact.validUntil))
@@ -56,11 +56,11 @@ export function buildMemoryCorpus(snapshot, at = null) {
             && (!inactiveFacts.has(fact.id) || activeFacts.has(fact.id)
                 || graph.relations.some(relation => relation.validAt === true && relation.supports.some(ref => ref.factId === fact.id)))
             ? at >= fact.validFrom && (fact.validUntil === undefined || at < fact.validUntil) : null,
-        episodeIds: evidenceIds(fact, state, chat) }));
+        manualSources: (fact.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(fact, state, chat) }));
     documents.push(...graph.relations.filter(eligible).map(relation => ({ ...relation, id: `relation:${relation.id}`, kind: 'relation',
         text: `${names.get(relation.sourceEntityId)} — ${relation.predicate} → ${names.get(relation.targetEntityId)}`,
         type: facts.find(fact => relation.supports.some(ref => ref.factId === fact.id))?.type || 'inferred',
-        episodeIds: evidenceIds(relation, state, chat) })));
+        manualSources: (relation.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(relation, state, chat) })));
     documents.push(...Object.values(state.episodes).filter(episode => episodesAreCurrent(state, [episode.id], chat, state.scopeId))
         .map(episode => ({ ...episode, id: `episode:${episode.id}`, kind: 'episode', text: episode.content,
             type: 'source', episodeIds: [episode.id], confidence: 0.5 })));
@@ -164,7 +164,7 @@ export async function composeMemory(candidates, { countTokens, budget, corePacke
             : doc.kind === 'state' ? 'Provider current state / conflicts'
                 : doc.kind === 'relation' ? 'Current relations' : 'Current facts';
         const record = JSON.stringify({ id: doc.id, type: doc.type, status: doc.status, confidence: doc.confidence, text: doc.text,
-            validFrom: doc.validFrom, validUntil: doc.validUntil, sources: doc.episodeIds, providerSources: doc.providerRefs });
+            validFrom: doc.validFrom, validUntil: doc.validUntil, sources: doc.episodeIds, providerSources: doc.providerRefs, userCorrections: doc.manualSources });
         const next = `${text || header}\n${section}\n${record}`;
         const count = await countTokens([corePacket, next].filter(Boolean).join('\n'));
         assertCurrent();
@@ -197,7 +197,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             const collectionId = `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`;
             guard();
             const items = await Promise.all(corpus.documents.map(async (doc, index) => {
-                const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs]));
+                const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
                 return { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index, metadata: { id: doc.id, fingerprint } };
             }));
             guard();
