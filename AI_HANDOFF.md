@@ -1,13 +1,15 @@
 # AI Handoff Context
 
-## Agent & Memory UI v2 — feature branch delivery (not integrated)
+## Agent & Memory UI v2 — authorized integration
 
 `feat/agent-memory-ui-v2` replaces the Orchestrator dual-definition UI with one native
 Unified Preset Library and default/character/conversation ID bindings, plus the six-tab
 Agent & Memory Workspace. Runtime/Engine/Memory remain authoritative. See
 `docs/development/AGENT_MEMORY_UI_V2_DELIVERY.md` for the implementation/caller audit,
-retired UI contracts, automated tests and coverage gaps. Do not revive legacy preset
-stores/override writers or merge this branch without the owner's instruction.
+retired UI contracts, automated tests and coverage gaps. Implementation is committed as
+`d3cc768207c6694be69af3a594dec97324d2cd02`. The owner subsequently explicitly authorized
+merging into `custom-release` and pushing both `feat/agent-memory-ui-v2` and
+`custom-release`. Do not revive legacy preset stores/override writers.
 
 The full isolated host currently cannot reach app readiness because baseline
 `slash-commands.js` raises a SlashCommandParser TDZ error. Production-module Edge/Chromium

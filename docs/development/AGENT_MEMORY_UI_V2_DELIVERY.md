@@ -65,4 +65,4 @@ Browser（生产模块，离线 fixture，无真实模型）：
 4. 导出的 metadata trace 能回放状态和来源引用，不能恢复未导出的结果/记忆正文，也不会恢复或执行 Runtime。私有详情依赖当前进程中的既有 runtime；进程重启后的恢复边界仍由 Runtime v2 决定。
 5. 旧编排 AI iteration popup、角色内 preset definitions、旧格式导入已主动退役。新的结构编辑使用表单/Plan JSON；不提供旧 override 的兼容入口。
 
-保持在 feature branch；不自动 merge `custom-release`，也不自动 push。
+初次交付停留在 feature branch。用户随后明确授权合并到 `custom-release`，并同步远端 `feat/agent-memory-ui-v2` 与 `custom-release`。实现提交为 `d3cc768207c6694be69af3a594dec97324d2cd02`；本次集成不修改实现或上述验证边界。
