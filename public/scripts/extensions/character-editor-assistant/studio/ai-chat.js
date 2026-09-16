@@ -444,38 +444,16 @@ function buildTools() {
  },
  },
  },
- // ==================== Orchestrator (per-character override) ====================
- {
- type: 'function',
- function: {
- name: TOOL_NAMES.ORCHESTRATOR_GET_OVERRIDE,
- description: 'Read the orchestrator override summary for the active character card. Always character-scoped — never reads global orchestrator settings. Returns `{ mode, enabled }` for the saved execution mode (or null when no per-character preset library exists for that mode). The full per-mode preset payload (spec / agenda / loop / director) is stored in `presetLibraries.<mode>` on the card and is managed through the orchestrator iteration studio rather than this tool.',
- parameters: { type: 'object', properties: {}, additionalProperties: false },
- },
- },
- {
- type: 'function',
- function: {
- name: TOOL_NAMES.ORCHESTRATOR_SET_OVERRIDE,
- description: 'Toggle the per-character orchestrator override enabled flag for the saved execution mode (overrideEnabled[mode]). The card\'s preset library is preserved either way; only the flag flips. Always character-scoped — global orchestrator settings are never touched. The card must already have a preset library for the saved mode (otherwise there is nothing to enable / disable); populate it through the orchestrator iteration studio first.',
- parameters: {
- type: 'object',
- properties: {
- enabled: { type: 'boolean', description: 'true → apply the card\'s preset library; false → fall back to the global profile while preserving the library for re-enabling later.' },
- },
- required: ['enabled'],
- additionalProperties: false,
- },
- },
- },
- {
- type: 'function',
- function: {
- name: TOOL_NAMES.ORCHESTRATOR_CLEAR_OVERRIDE,
- description: 'Remove every orchestrator override from the active character card. Wipes the per-mode preset libraries, the active-preset ids, the enabled flags, and the saved-mode pin so the card falls back to global orchestrator settings. Always character-scoped.',
- parameters: { type: 'object', properties: {}, additionalProperties: false },
- },
- },
+ // Unified Workspace bindings.
+ { type: 'function', function: { name: TOOL_NAMES.ORCHESTRATOR_GET_OVERRIDE,
+ description: 'Read the current character presetId binding and list the unified preset library.',
+ parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+ { type: 'function', function: { name: TOOL_NAMES.ORCHESTRATOR_SET_OVERRIDE,
+ description: 'Bind the character to an existing Unified Workspace preset ID. Does not copy the definition.',
+ parameters: { type: 'object', properties: { presetId: { type: 'string' } }, required: ['presetId'], additionalProperties: false } } },
+ { type: 'function', function: { name: TOOL_NAMES.ORCHESTRATOR_CLEAR_OVERRIDE,
+ description: 'Clear the character preset binding and fall back to the default preset.',
+ parameters: { type: 'object', properties: {}, additionalProperties: false } } },
  // ==================== Memory Graph (per-character override) ====================
  {
  type: 'function',
@@ -1252,83 +1230,17 @@ async function executeTool(charId, toolName, args, options = {}) {
  return { ok: true, message: `Regex script "${idStr}" deleted from ${scope} scope.` };
  }
  // ==================== Orchestrator (per-character override) ====================
- case TOOL_NAMES.ORCHESTRATOR_GET_OVERRIDE: {
- if (__ctx.characterId === undefined || __ctx.characterId === null) {
- return { ok: false, error: 'No active character' };
- }
- const orch = __ctx.getExtensionApi('orchestrator');
- if (!orch) return { ok: false, error: 'orchestrator extension is not loaded' };
- const lukerCtx = getContext();
- const charData = characters[__ctx.characterId];
- const avatar = String(charData?.avatar || '').trim();
- if (!avatar) return { ok: false, error: 'Character has no avatar' };
- const override = orch.getCharacterOverrideByAvatar(lukerCtx, avatar);
- return { ok: true, override: override || null };
- }
- case TOOL_NAMES.ORCHESTRATOR_SET_OVERRIDE: {
- if (__ctx.characterId === undefined || __ctx.characterId === null) {
- return { ok: false, error: 'No active character' };
- }
- if (typeof args?.enabled !== 'boolean') {
- return { ok: false, error: 'enabled must be a boolean' };
- }
- const orch = __ctx.getExtensionApi('orchestrator');
- if (!orch) return { ok: false, error: 'orchestrator extension is not loaded' };
- const lukerCtx = getContext();
- const charData = characters[__ctx.characterId];
- const avatar = String(charData?.avatar || '').trim();
- if (!avatar) return { ok: false, error: 'Character has no avatar' };
- const savedMode = orch.getCharacterSavedExecutionModeByAvatar
- ? orch.getCharacterSavedExecutionModeByAvatar(lukerCtx, avatar)
- : '';
- if (!savedMode) {
- return { ok: false, error: 'Character has no orchestrator preset library to enable. Populate one through the orchestrator iteration studio first.' };
- }
- const setter = ({
- spec: orch.setCharacterSpecOverrideEnabled,
- agenda: orch.setCharacterAgendaOverrideEnabled,
- loop: orch.setCharacterLoopOverrideEnabled,
- director: orch.setCharacterDirectorOverrideEnabled,
- })[savedMode];
- if (typeof setter !== 'function') {
- return { ok: false, error: `No enable-toggle setter for mode "${savedMode}"` };
- }
- const ok = await setter(lukerCtx, avatar, args.enabled);
- if (ok) {
- orch.applyCharacterExecutionModeForAvatar(lukerCtx, extension_settings?.orchestrator, avatar);
- }
- return ok
- ? { ok: true, message: `Orchestrator override ${args.enabled ? 'enabled' : 'disabled'} for mode "${savedMode}".`, mode: savedMode, enabled: args.enabled }
- : { ok: false, error: 'Failed to toggle orchestrator override flag' };
- }
+ case TOOL_NAMES.ORCHESTRATOR_GET_OVERRIDE:
+ case TOOL_NAMES.ORCHESTRATOR_SET_OVERRIDE:
  case TOOL_NAMES.ORCHESTRATOR_CLEAR_OVERRIDE: {
- if (__ctx.characterId === undefined || __ctx.characterId === null) {
- return { ok: false, error: 'No active character' };
- }
  const orch = __ctx.getExtensionApi('orchestrator');
  if (!orch) return { ok: false, error: 'orchestrator extension is not loaded' };
- const lukerCtx = getContext();
- const charData = characters[__ctx.characterId];
- const avatar = String(charData?.avatar || '').trim();
- if (!avatar) return { ok: false, error: 'Character has no avatar' };
- const characterIndex = orch.getCharacterIndexByAvatar(lukerCtx, avatar);
- if (characterIndex < 0) return { ok: false, error: 'Character not found in context' };
- const previous = orch.getCharacterExtensionDataByAvatar(lukerCtx, avatar);
- const nextPayload = { ...previous };
- delete nextPayload.override;
- delete nextPayload.presetLibraries;
- delete nextPayload.activePresetIds;
- delete nextPayload.overrideEnabled;
- // Pass null when nothing else is left so the server-side handler
- // removes the whole extensions.orchestrator blob instead of leaving {}.
- const finalPayload = Object.keys(nextPayload).length === 0 ? null : nextPayload;
- const ok = await orch.persistOrchestratorCharacterExtension(lukerCtx, characterIndex, finalPayload);
- if (ok) {
- // Realign mode flag — the runtime would otherwise keep the prior
- // override's pinned mode active even though the override is gone.
- orch.applyCharacterExecutionModeForAvatar(lukerCtx, extension_settings?.orchestrator, avatar);
- }
- return ok ? { ok: true, message: 'Orchestrator override cleared (falling back to global).' } : { ok: false, error: 'Failed to clear orchestrator override' };
+ const avatar = String(characters[__ctx.characterId]?.avatar || '');
+ if (!avatar) return { ok: false, error: 'No active character' };
+ if (toolName === TOOL_NAMES.ORCHESTRATOR_GET_OVERRIDE) return { ok: true, binding: orch.getPresetBinding('character', avatar), presets: orch.listWorkspacePresets() };
+ const presetId = toolName === TOOL_NAMES.ORCHESTRATOR_CLEAR_OVERRIDE ? null : args?.presetId;
+ try { return { ok: orch.setPresetBinding('character', avatar, presetId) }; }
+ catch (error) { return { ok: false, error: error.message }; }
  }
  // ==================== Memory Graph (per-character override) ====================
  case TOOL_NAMES.MEMORY_GRAPH_GET: {
@@ -2156,54 +2068,17 @@ Op-log handles flat scalars. For deeply nested state (quest journal with sub-obj
 
 ## Per-character orchestrator and memory graph
 
-Two more layers can be tailored *per character card* — both are **always character-scoped writes** through the dedicated tools below; they never touch the user's global orchestrator/memory-graph settings.
+Orchestration uses one Unified Preset Library. Characters store only a preset ID binding; Memory schema settings remain character-scoped.
 
-### Orchestrator override
+### Agent & Memory Workspace binding
 
-**What the orchestrator actually does — read this before designing an override.** The orchestrator does **not** replace the main reply generation. Before each user turn, it runs a separate planning pipeline whose only output is a single block of text called the **capsule** (剧情指引 — orchestration guidance). The capsule is then injected as a system-role message into the main reply LLM's prompt at a configured position (\`atDepth\`, \`before\`, \`after\`); the main LLM still does straight-line generation and writes everything the user reads. Stage agents / planner agents / sub-agents inside the orchestrator do **not** write dialogue, do **not** speak in character, and do **not** produce the user-facing reply — their job is to assemble the guidance text. Only the **last stage's** output forms the capsule body; intermediate stage outputs flow as inputs to downstream stages but never reach the prompt directly.
+Loop, Spec and Agenda produce guidance for the reply model. Director owns and submits the actual reply. The admitted Plan decides output ownership, capabilities, graph edges and arbitration; the Workspace displays Runtime/Engine/Memory projections.
 
-So when a user says "I want a separate writer agent" or "I want this agent to actually write the reply", that's not what the orchestrator gives them — they're describing a different system. With the orchestrator, every "writer/critic/planner" name is a guidance-author, not a reply-author.
+- \`character_get_orchestrator\` returns the character binding and available native presets (stable ID, name, mode).
+- \`character_update_orchestrator({presetId})\` binds an existing shared definition. Fetch the list first and use an exact ID.
+- \`character_clear_orchestrator\` clears the character binding. Resolution is conversation binding, then character binding, then library default.
 
-Mode picker:
-
-- \`loop\` (default for most cards): a single iterative agent gathers context via tool calls (chat read, lorebook lookup, memory search, web search, scratch notes) over up to N rounds, then calls \`finalize(capsule_text)\` to commit the capsule. Best when reply quality is the bottleneck and the user just wants "something smarter thinking before the reply."
-- \`agenda\`: a planner step builds a TODO list and dispatches sub-agents (distiller / lorebook_reader / planner / critic / finalizer by default); the **finalizer** agent merges their outputs into the capsule. Best when the user wants explicit decomposed reasoning ("plan first, then audit, then write the guidance").
-- \`spec\`: an explicit DAG of named stages (default: distill → grounding → reason → review → finalize), each containing one or more nodes that run serially or in parallel. The **last stage's synthesizer node** produces the capsule. Best when the user wants named, reorderable, reusable stages.
-
-Storage and tools (all character-scoped, never global):
-
-- \`character_get_orchestrator\` → reads \`character.data.extensions.orchestrator.override\` for the active card. Returns \`null\` if no override is set (card runs whatever global orchestrator config the user has).
-- \`character_update_orchestrator({override})\` → replaces the override. The override object must include a \`mode\` ('spec' | 'agenda' | 'loop') and the corresponding sub-payload (\`spec\`, \`agenda\`, or \`loop\`). Mode is auto-pinned by content if you leave it implicit. Sanitizers fill in missing fields with defaults — pass a minimal skeleton and let the runtime normalize the rest.
-- \`character_clear_orchestrator\` → removes the override; the card falls back to the user's global orchestrator config.
-
-Minimal skeletons (fields not listed are filled by the sanitizer with sensible defaults; check current shape with \`character_get_orchestrator\` before overwriting):
-
-\`\`\`js
-// loop — the simplest override
-{ mode: 'loop', loop: { system_prompt: '<your "剧情指引员" instructions>' } }
-
-// agenda — planner + agents (default agent set kept; just override what you need)
-{ mode: 'agenda', agenda: {
-    planner: { systemPrompt: '...', userPromptTemplate: '...' },
-    // agents: { distiller: {...}, planner: {...}, finalizer: {...}, ... }   // optional overrides
-    finalAgentId: 'finalizer',  // which agent's output becomes the capsule body
-} }
-
-// spec — DAG of stages
-{ mode: 'spec', spec: { stages: [
-    { id: 'distill',  mode: 'serial',   nodes: ['distiller'] },
-    { id: 'reason',   mode: 'parallel', nodes: ['planner', 'lorebook_reader'] },
-    { id: 'finalize', mode: 'serial',   nodes: ['synthesizer'] },  // last stage → capsule
-] } }
-\`\`\`
-
-Capsule injection knobs (optional, common to all modes; loop mode reads them from \`loop.capsule_inject\`, the global orchestrator settings hold the spec/agenda equivalents):
-
-- \`position\` — \`'atDepth'\` (default), \`'before'\` (before all chat), \`'after'\` (after chat / before reply). Same semantics as world-info \`position\`.
-- \`depth\` — when \`position: 'atDepth'\`, how many messages back from the tail. Default \`0\` (right before the latest message).
-- \`role\` — \`'system'\` (default), \`'user'\`, or \`'assistant'\`. The role label the capsule arrives under.
-
-Before writing a non-trivial override, fetch the existing one (it might already be set), and consult orchestrator docs via \`list_luker_docs({filter: "orchestrator"})\` and \`read_luker_doc(...)\` to confirm the schema for the mode you're targeting. Don't invent fields — the orchestrator validates on load.
+Create or edit definitions in Agent & Memory Workspace → Presets. These tools never write preset definitions onto character cards. Do not send override objects or invent preset IDs. Single Agent is a one-node Spec template.
 
 ### Memory-graph schema
 

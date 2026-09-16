@@ -790,7 +790,8 @@ export async function installMinimalDirectorProfile(page, {
         settings.requestApiPresetName = '';
         settings.requestLlmPresetName = '';
 
-        const presetLib = await import('/scripts/extensions/orchestrator/preset-library.js');
+        const { updatePresetLibrary, emptyPresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
+        const { compilePreset } = await import('/scripts/extensions/orchestrator/engine-v2/preset-compiler.js');
         const dirDefaults = await import('/scripts/extensions/orchestrator/director-defaults.js');
 
         const minimalProfile = {
@@ -821,8 +822,19 @@ export async function installMinimalDirectorProfile(page, {
             discardOnAbort: false,
         };
         const sanitized = dirDefaults.sanitizeDirectorProfile(minimalProfile);
-        const writeResult = presetLib.writeActivePreset(settings, 'director', 'global', sanitized);
-        if (!writeResult.ok) throw new Error(`writeActivePreset failed; library not seeded (${writeResult.reason}: ${writeResult.hint})`);
+        // Convert this test's transport fixture into the native authoring format.
+        // Production never imports legacy libraries.
+        const id = 'e2e-director', plan = structuredClone(compilePreset(sanitized, {mode:'director', presetId:id}));
+        delete plan.compatibility; plan.source = { mode:'director', presetId:id };
+        const options = structuredClone(sanitized); delete options.mainAgent; delete options.subAgents;
+        plan.metadata = {hostAdapters:{luker:options}};
+        for (const agent of plan.agents) {
+            const config = structuredClone(agent.metadata.config);
+            delete config.systemPrompt; delete config.apiPresetName; delete config.promptPresetName;
+            agent.metadata = {hostAdapters:{luker:config}}; agent.tools = ['*'];
+        }
+        settings.agentWorkspace = updatePresetLibrary(emptyPresetLibrary(), {type:'save', preset:{schemaVersion:1,id,name:'E2E Director',mode:'director',planTemplate:plan}});
+        settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'bind',scope:'default',presetId:id});
         try { await ctx.saveSettings?.(0, { directSave: true }); } catch (_) { /* best-effort */ }
         ctx.saveSettingsDebounced?.();
     }, { mainSystemPrompt, subAgents, tools });

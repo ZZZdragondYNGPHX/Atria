@@ -4,6 +4,6 @@ export function createResult({ runId, nodeId, agentId, attempt = 1, status = 'co
     [runId, nodeId, agentId].forEach(id => requireId(id));
     if (!['completed', 'partial', 'failed', 'cancelled'].includes(status)) throw new Error('Invalid result status');
     if (!Number.isSafeInteger(attempt) || attempt < 1) throw new Error('Invalid result attempt');
-    return policyCopy({ resultId: `${runId}/result/${encodeURIComponent(nodeId)}/${attempt}`, runId, nodeId, agentId,
+    return policyCopy({ resultId: `${runId}/result/${encodeURIComponent(nodeId)}/${attempt}`, runId, nodeId, agentId, attempt,
         status, value, structured, provenance, createdAt });
 }

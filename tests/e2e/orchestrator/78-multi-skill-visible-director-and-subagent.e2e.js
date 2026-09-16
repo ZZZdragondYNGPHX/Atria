@@ -72,26 +72,11 @@ test.describe('#78 — Multi-skill visible: live director dispatch', () => {
         await page.evaluate(async (names) => {
             const ctx = window.Luker.getContext();
             const settings = ctx.extensionSettings.orchestrator;
-            const presetLib = await import('/scripts/extensions/orchestrator/preset-library.js');
-            const dirDefaults = await import('/scripts/extensions/orchestrator/director-defaults.js');
-            const currentResult = presetLib.getActivePreset(settings, 'director', { scope: 'global', context: ctx });
-            const current = (currentResult.ok && currentResult.state) ? currentResult.state : {};
-            const next = dirDefaults.sanitizeDirectorProfile({
-                ...current,
-                skills: { visible: [...names], deny: [] },
-                mainAgent: {
-                    ...(current?.mainAgent || {}),
-                    skills: { visible: ['+'], deny: [] }, // inherit mode
-                },
-                subAgents: (current?.subAgents || []).map(a => ({
-                    ...a,
-                    skills: { visible: ['+'], deny: [] }, // inherit mode
-                })),
-            });
-            const writeResult = presetLib.writeActivePreset(settings, 'director', 'global', next);
-            if (!writeResult.ok) {
-                throw new Error(`writeActivePreset failed: ${writeResult.reason}: ${writeResult.hint}`);
-            }
+            const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
+            const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
+            preset.planTemplate.metadata.hostAdapters.luker.skills = {visible:[...names],deny:[]};
+            for (const agent of preset.planTemplate.agents) agent.metadata.hostAdapters.luker.skills = {visible:['+'],deny:[]};
+            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'save',preset});
             // No saveSettings flush needed — this spec does not restart the
             // server; the in-memory preset write is all the director-runtime
             // reads from on the very next turn.

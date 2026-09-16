@@ -4520,6 +4520,22 @@ function buildRecallFinalizeInputTail({
     ].join('\n');
 }
 
+export function getMemoryWorkspacePorts(context) {
+    return {
+        load: () => sourceLifecycle.retrievalSnapshot(context),
+        inspect: async snapshot => (await import('./inspector-compute.js')).computeInspector(snapshot),
+        correct: (command, snapshot) => sourceLifecycle.correct(context, command, snapshot),
+        openHistory: () => openHistoryBuildPopup(context, createMemoryHistoryBuilder()),
+        mountKnowledge: (container, signal, onInspect) => openMemoryOsInspector(context, {
+            container, signal, onInspect,
+            load: () => sourceLifecycle.retrievalSnapshot(context),
+            correct: (command, snapshot) => sourceLifecycle.correct(context, command, snapshot),
+            loadCytoscape: ensureCytoscapeLoaded,
+            openHistory: () => openHistoryBuildPopup(context, createMemoryHistoryBuilder()),
+        }),
+    };
+}
+
 export function createMemoryHistoryBuilder() {
     return createHistoryBuilder({ lifecycle: sourceLifecycle,
         extract: async (context, { state, ticket, signal }) => {

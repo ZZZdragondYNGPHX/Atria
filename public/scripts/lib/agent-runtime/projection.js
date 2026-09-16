@@ -1,11 +1,12 @@
 import { copy } from './contracts.js';
+import { sanitizeEngineProjection } from '../orchestration-engine/projection.js';
 
 const terminal = new Set(['completed', 'failed', 'cancelled']);
 const reasons = new Set(['stage_dispatch', 'review_rerun', 'agenda_plan', 'agenda_dispatch', 'agenda_finalize', 'director_dispatch', 'director_inline_dispatch']);
 const textFields = ['eventId', 'type', 'runId', 'parentRunId', 'stepId', 'effectId', 'agentId', 'status', 'toolName',
     'branchId', 'childRunId', 'handoffId', 'fromAgentId', 'toAgentId', 'contextPolicy', 'tokenCounting', 'budgetScope', 'failureKind',
-    'planId', 'nodeId', 'resultId', 'outcome', 'routing', 'capability'];
-const engineEvent = /^(graph\.(compiled|mutated|node\.(started|completed|failed))|result\.created|output\.ready|arbitration\.(started|completed)|capability\.denied)$/;
+    'planId', 'nodeId', 'resultId', 'outcome', 'routing', 'capability', 'relatedEffectId'];
+const engineEvent = /^(graph\.(snapshot|compiled|mutated|node\.(started|completed|failed))|result\.created|output\.ready|arbitration\.(started|completed)|capability\.denied)$/;
 
 /** Allowlist execution metadata. Never retain task/prompt/args/results, headers or host objects. */
 export function sanitizeRuntimeEvent(raw) {
@@ -13,6 +14,8 @@ export function sanitizeRuntimeEvent(raw) {
         || !Number.isInteger(raw.version) || !Number.isInteger(raw.generation)) return null;
     if (!engineEvent.test(raw.type) && !/^(run\.(started|running|completed|failed|cancelled|resumed|waiting_user)|context\.compiled|effect\.(stale|failed)|(policy\.advance|model\.request|memory\.recall|tool\.execute|agent\.handoff|parallel\.fanout|parallel\.join)\.(started|completed)|parallel\.branch\.(started|completed|failed|cancelled|stale))$/.test(raw.type)) return null;
     const event = { schemaVersion: 1, version: raw.version, generation: raw.generation };
+    // Engine observer supplies a metadata-only projection, never the policy checkpoint.
+    if (raw.engine && ['graph.compiled', 'graph.snapshot'].includes(raw.type)) event.engine = sanitizeEngineProjection(raw.engine);
     for (const field of textFields) if (typeof raw[field] === 'string') event[field] = raw[field];
     if (typeof raw.ok === 'boolean') event.ok = raw.ok;
     if (Number.isInteger(raw.restoredVersion)) event.restoredVersion = raw.restoredVersion;
@@ -49,6 +52,11 @@ export class RuntimeProjection {
         }
         if (['effect.stale', 'parallel.branch.stale'].includes(event.type)) run.staleEffects.push(event.effectId);
         const current = event.generation > run.generation || (event.generation === run.generation && event.version >= run.version);
+        if (current && event.engine) {
+            const { resultsDelta, ...engine } = event.engine;
+            if (resultsDelta) engine.results = [...new Map([...(run.engine?.results || []), ...engine.results].map(result => [result.resultId, result])).values()];
+            run.engine = engine;
+        }
         if (!current || (terminal.has(run.status) && event.generation === run.generation)) return true;
         Object.assign(run, { generation: event.generation, version: event.version,
             status: event.status || run.status, agentId: event.agentId || run.agentId, stepId: event.stepId || run.stepId });

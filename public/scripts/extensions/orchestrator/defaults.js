@@ -503,7 +503,7 @@ export const defaultPresets = {
     },
     synthesizer: {
         systemPrompt: 'You are the final orchestration synthesizer. Produce the single draft-ready guidance for generation. Output one concise <thought>...</thought> before your function call.',
-        userPromptTemplate: `Distiller output:\n{{distiller}}\n\nPrevious outputs:\n{{previous_outputs}}\n\nTask:\n- Use the auto-injected previous orchestration result above as continuity context.\n- Merge the approved worker outputs into one coherent final guidance.\n- Also obey the auto-injected approved review feedback as a refinement layer on top of prior worker outputs.\n- Preserve lorebook hard constraints and anti-data writing policy in final directives.\n- Prioritize actionable directives and keep risk notes concise.\n- Keep output compact and directly usable for roleplay drafting.\n\nReturn function-call fields only.\nPut final injected guidance in field \`text\` (string).\nThe \`text\` content is injected directly as-is.`,
+        userPromptTemplate: 'Distiller output:\n{{distiller}}\n\nPrevious outputs:\n{{previous_outputs}}\n\nTask:\n- Use the auto-injected previous orchestration result above as continuity context.\n- Merge the approved worker outputs into one coherent final guidance.\n- Also obey the auto-injected approved review feedback as a refinement layer on top of prior worker outputs.\n- Preserve lorebook hard constraints and anti-data writing policy in final directives.\n- Prioritize actionable directives and keep risk notes concise.\n- Keep output compact and directly usable for roleplay drafting.\n\nReturn function-call fields only.\nPut final injected guidance in field `text` (string).\nThe `text` content is injected directly as-is.',
     },
 };
 
@@ -586,10 +586,6 @@ export const defaultLoopProfile = {
 
 export const defaultSettings = {
     enabled: false,
-    executionMode: ORCH_EXECUTION_MODE_SPEC,
-    singleAgentModeEnabled: false,
-    singleAgentSystemPrompt: DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT,
-    singleAgentUserPromptTemplate: DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE,
     llmNodeApiPresetName: '',
     llmNodePresetName: '',
     includeWorldInfoWithPreset: true,
@@ -601,13 +597,6 @@ export const defaultSettings = {
     capsuleInjectDepth: 0,
     capsuleInjectRole: extension_prompt_roles.SYSTEM,
     capsuleCustomInstruction: DEFAULT_CAPSULE_CUSTOM_INSTRUCTION,
-    // NEW: per-mode preset libraries + active pointers. Initial Default
-    // entries are seeded lazily by preset-library.js on first read so the
-    // factory data isn't duplicated across this constant.
-    presetLibraries: { spec: {}, agenda: {}, loop: {}, director: {} },
-    activePresetIds: { spec: '', agenda: '', loop: '', director: '' },
-    presetLibrariesMigrationDone: 0,
-    chatOverrides: {},
     requestApiPresetName: '',
     requestLlmPresetName: '',
     requestSystemPrompt: getDefaultRequestSystemPrompt(),
@@ -616,8 +605,7 @@ export const defaultSettings = {
 
 /**
  * Build a factory "Default" preset entry for the given mode. Used by
- * preset-library.js when seeding the first entry of an empty library and
- * by the global one-shot migration when no legacy data exists.
+ * the Workspace host adapter to construct native built-in Plan templates.
  *
  * Director mode returns an array of entries (Full + Minimal); all other
  * modes return a single object. Callers must branch on `Array.isArray`.

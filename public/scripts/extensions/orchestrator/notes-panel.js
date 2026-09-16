@@ -5,8 +5,8 @@
  * User-facing Notes panel for the orchestrator extension drawer.
  *
  * Mounts inside the second inline-drawer of the orchestrator settings
- * container (see `ui-templates.js` → `buildOrchestratorSettingsHtml`).
- * Renders the `NOTES_PANEL_TEMPLATE` from `ui-templates.js`, attaches a
+ * container (see `notes-template.js` → `buildOrchestratorSettingsHtml`).
+ * Renders the `NOTES_PANEL_TEMPLATE` from `notes-template.js`, attaches a
  * floor-state adapter via `attachNotesFloorState`, and wires up the
  * Open/Closed tab switcher plus the per-row Close / Edit / Delete
  * actions.
@@ -22,9 +22,14 @@
  * floor-state plumbing.
  */
 
-import { NOTES_PANEL_TEMPLATE } from './ui-templates.js';
+import { NOTES_PANEL_TEMPLATE } from './notes-template.js';
 import { attachNotesFloorState, onNotesChanged } from './loop-runtime.js';
 import { i18n as t } from './i18n.js';
+
+if (typeof document !== 'undefined' && !document.getElementById('orchestrator-notes-css')) {
+    const style = document.createElement('link'); style.id = 'orchestrator-notes-css'; style.rel = 'stylesheet';
+    style.href = new URL('./notes.css', import.meta.url).href; document.head.append(style);
+}
 
 const MODULE_NAME = 'orchestrator';
 

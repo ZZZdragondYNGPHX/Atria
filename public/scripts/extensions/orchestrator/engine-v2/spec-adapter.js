@@ -1,6 +1,6 @@
 import { compilePreset } from './preset-compiler.js';
 import { runEnginePlan } from './runtime-bridge.js';
-import { assertOutputAuthorized } from './output-adapter.js';
+import { assertOutputAuthorized, guidanceOutput } from './output-adapter.js';
 import { effectiveCapabilities } from '../../../lib/orchestration-engine/capabilities.js';
 import { createFirstChunkBarrier } from '../dispatch-barrier.js';
 import { resolveOrchestrationAgentApiPresetName, resolveOrchestrationAgentPromptPresetName } from '../agent-resolution.js';
@@ -18,6 +18,10 @@ export async function runSpecEngine({ context, payload, messages, profile, runti
         for (const result of inputs) {
             const node = plan.nodes.find(node => node.nodeId === result.nodeId);
             const meta = node?.metadata;
+            if (profile.orchestrationPlan) {
+                if (!sameStage) map.set(meta?.nodeSpec?.id || result.nodeId, result.value);
+                continue;
+            }
             if (!meta?.nodeSpec || meta.nodeSpec.type === 'review') continue;
             if (sameStage ? meta.stageIndex === stageIndex && meta.nodeIndex < nodeIndex : meta.stageIndex < stageIndex) map.set(meta.nodeSpec.id, result.value);
         }
@@ -36,13 +40,15 @@ export async function runSpecEngine({ context, payload, messages, profile, runti
                 ...item.metadata, nodeId: item.metadata.nodeSpec.id, feedback: item.feedback,
             })) };
         const options = { engineNode: true, engineParentRunId: request.parentRunId, engineCapabilities: effectiveCapabilities(plan, node),
+            engineTools: profile.orchestrationPlan ? plan.agents.find(agent => agent.id === node.agentId).tools : null,
             runtimeRunId: request.runId, runtimeAgentId: node.agentId, stageIndex, nodeIndex, stageId, isFinalStage,
             runtime: localRuntime, defaultTools: runtime.specDefaultTools,
             rerunReason: request.payload.rerunReason ?? undefined };
         if (nodeSpec.type === 'review') {
             const decision = await runReviewNode(context, payload, profile, nodeSpec, preset, messages, prior, current, request.signal, options);
             const targetSlotIds = decision.action === 'rerun'
-                ? resolveReviewTargetEntries(runtime.stages, stageIndex, nodeIndex, decision.targetNodeIds).map(entry => `stage:${entry.stageIndex}/node:${entry.nodeIndex}`) : [];
+                ? resolveReviewTargetEntries(runtime.stages, stageIndex, nodeIndex, decision.targetNodeIds).map(entry =>
+                    plan.nodes.find(node => node.metadata?.stageIndex === entry.stageIndex && node.metadata?.nodeIndex === entry.nodeIndex)?.nodeId).filter(Boolean) : [];
             return { engineResult: true, status: 'completed', value: null, structured: { ...decision, targetSlotIds } };
         }
         for (const [id, value] of current) prior.set(id, value);
@@ -65,6 +71,8 @@ export async function runSpecEngine({ context, payload, messages, profile, runti
         } } });
     if (result.state.status !== 'completed') throw new Error(result.state.error || `Engine ${result.state.status}`);
     assertOutputAuthorized({ plan, state: result.state, generation: result.state.generation });
+    if (profile.orchestrationPlan) return { ...guidanceOutput({ plan, state: result.state, generation: result.state.generation }),
+        reviewRerunCount: result.state.policyState.reviewRerunCount };
     const latest = new Map(result.state.policyState.results.map(result => [result.nodeId, result]));
     const previousNodeOutputs = new Map();
     const stageOutputs = runtime.stages.map((stage, stageIndex) => {

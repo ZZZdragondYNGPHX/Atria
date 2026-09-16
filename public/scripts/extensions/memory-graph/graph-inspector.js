@@ -53,7 +53,7 @@ const select = (parent, label, entries) => {
     return input;
 };
 
-export async function openMemoryOsInspector(context, { load, correct, loadCytoscape, openLegacy, openHistory }) {
+export async function openMemoryOsInspector(context, { load, correct, loadCytoscape, openLegacy, openHistory, container, signal, onInspect }) {
     const root = node('section'); root.className = 'memory-os-inspector';
     if (!document.querySelector('link[data-memory-os-inspector]')) {
         const css = node('link', undefined, document.head); css.rel = 'stylesheet'; css.href = new URL('./graph-inspector.css', import.meta.url).href; css.dataset.memoryOsInspector = '';
@@ -89,12 +89,14 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     const fail = error => { status.textContent = `未完成：${error.message}。来源变化时请刷新。`; };
     const guarded = run => async () => { try { snapshot.assertCurrent(); await run(); } catch (error) { fail(error); } };
     const display = (record, kind) => {
+        try { snapshot.assertCurrent(); } catch (error) { fail(error); return; }
         record = { ...snapshot.state[{ entity: 'entities', relation: 'relations', fact: 'facts', pending: 'entityPending' }[kind]]?.[record.id], ...record };
         selected = { record, kind }; inspector.replaceChildren();
         node('h4', record.canonicalName || record.text || record.predicate || record.name, inspector);
         if (kind === 'entity') button(inspector, '以此实体查看局部图谱', () => { center.value = record.id; render(); });
         const data = structuredClone(record);
         node('pre', JSON.stringify(data, null, 2), inspector);
+        onInspect?.(record, inspector);
         const refs = [...(record.supports || []), ...(record.names || []), ...(record.merges || []), ...(record.resolutions || []), record.resolution || {}, record];
         const ids = [...new Set(refs.flatMap(ref => ref.episodeIds || []))];
         for (const id of ids) {
@@ -198,7 +200,7 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     button(toolbar, '刷新', () => { refresh().catch(fail); });
     button(toolbar, '记忆诊断', guarded(() => openMemoryDiagnostics(context, snapshot)));
     button(toolbar, '适应视图', () => cy?.fit(undefined, 30));
-    button(toolbar, '旧版节点图', () => { Promise.resolve().then(openLegacy).catch(fail); });
+    if (openLegacy) button(toolbar, '旧版节点图', () => { Promise.resolve().then(openLegacy).catch(fail); });
     if (openHistory) button(toolbar, '历史构建 / 回滚', () => { Promise.resolve().then(openHistory).then(refresh).catch(fail); });
     for (const element of [search, type, predicate, history, center, hops]) element.addEventListener('change', render);
     action.addEventListener('change', renderFields);
@@ -217,7 +219,11 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
             await correct(command, snapshot); await refresh(); status.textContent = '修正已保存；已保留用户来源和历史记录。';
         } catch (error) { fail(error); } finally { busy = false; save.disabled = false; }
     });
-    const popup = context.callGenericPopup(root, context.POPUP_TYPE.TEXT, '', { wide: true, wider: true, large: true, allowVerticalScrolling: true });
+    if (container) container.append(root);
+    const popup = container ? new Promise(resolve => {
+        if (signal?.aborted) resolve();
+        else signal?.addEventListener('abort', resolve, { once: true });
+    }) : context.callGenericPopup(root, context.POPUP_TYPE.TEXT, '', { wide: true, wider: true, large: true, allowVerticalScrolling: true });
     // Dispose as soon as the popup closes, including during lazy script loading.
     const closing = Promise.resolve(popup).finally(() => { disposed = true; generation++; computation?.abort(); cy?.destroy(); });
     try {

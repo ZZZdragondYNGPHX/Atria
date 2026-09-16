@@ -672,6 +672,9 @@ const SCHEMAS = [
             const result = await port.recall({ query: args.query, at: args.at, signal: context.signal || context.abortSignal });
             result.assertCurrent();
             context.__agentRuntimeMemoryGuard?.(result.assertCurrent);
+            Luker.getContext().getExtensionApi?.('orchestrator')?.recordMemoryRecall?.(context, {
+                references: result.references, tokens: result.tokens, diagnostics: result.diagnostics,
+            });
             return { ok: true, context: result.content, sources: result.references.map(ref => ref.id), tokens: result.tokens,
                 budget: result.budget, providers: result.providers, diagnostics: result.diagnostics };
         },

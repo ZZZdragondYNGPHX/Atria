@@ -23,11 +23,11 @@ try {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     const evidence = await page.evaluate(async () => {
         const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
-        const panel = await import('/scripts/extensions/orchestrator/run-panel/panel.js');
+        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
         const { replayRuntimeEvents } = await import('/scripts/lib/agent-runtime/projection.js');
         const { runRoutedLegacyWorkflow, createLegacyAgentGraph } = await import('/scripts/extensions/orchestrator/legacy-agent-routing.js');
         const { modelIntent, toolIntent } = await import('/scripts/extensions/orchestrator/legacy-workflow-adapter.js');
-        panel.initRunPanel();
+        panel.initWorkspace();
         const controller = new AbortController(); let release, ready, models = 0, writes = 0;
         const pending = new Promise(resolve => { release = resolve; });
         const started = new Promise(resolve => { ready = resolve; });
@@ -43,36 +43,36 @@ try {
         store.appendRound({ runId: id, round: { id: 'round' } });
         store.ensureSection({ runId: id, roundId: 'round', section: { id: 'text', kind: 'text' } });
         store.appendToSection({ runId: id, roundId: 'round', sectionId: 'text', delta: 'once' });
-        panel.openRunPanel(); panel.openRunPanel();
+        panel.openWorkspace('Diagnostics'); panel.openWorkspace('Diagnostics');
         await new Promise(resolve => requestAnimationFrame(resolve));
-        const singleText = document.querySelector('[data-section-id="text"] pre').textContent;
+        const singleText = store.getCurrentRun().rounds[0].sections[0].body;
         const unchanged = before === JSON.stringify(store.getCurrentRun().runtime);
-        const details = document.querySelector('.runtime-trace'); details.open = true;
+        const details = document.querySelector('#agent-memory-workspace main'); for (const item of details.querySelectorAll('details')) item.open = true;
         await new Promise(resolve => setTimeout(resolve, 0));
         const traceVisible = details.textContent.includes('offline-profile');
-        document.querySelector('[data-action="stop"]').click(); panel.openRunPanel();
-        const requestSurvivedRefresh = document.querySelector('[data-action="stop"]').disabled && store.getCurrentRun().stopRequested;
+        [...document.querySelectorAll('#agent-memory-workspace header button')].find(button => /Stop|Stopping/.test(button.textContent)).click(); panel.openWorkspace('Diagnostics');
+        const requestSurvivedRefresh = [...document.querySelectorAll('#agent-memory-workspace header button')].find(button => /Stop|Stopping/.test(button.textContent)).disabled && store.getCurrentRun().stopRequested;
         const ended = await running;
         release('late'); await new Promise(resolve => setTimeout(resolve, 0));
         store.finishRun({ runId: id, status: 'aborted' });
-        panel.openRunPanel(); document.querySelector('.runtime-trace').open = true;
+        panel.openWorkspace('Diagnostics'); for (const item of document.querySelectorAll('#agent-memory-workspace details')) item.open = true;
         const snapshot = store.getCurrentRun().runtime;
         const replayEqual = JSON.stringify(replayRuntimeEvents(snapshot.events)) === JSON.stringify(snapshot);
         return { singleText, unchanged, traceVisible, requestSurvivedRefresh, ended, models, writes, replayEqual,
             stale: snapshot.events.some(e => e.type === 'effect.stale'), status: snapshot.runs[0].status,
             noPrivateTask: !JSON.stringify(snapshot).includes('PRIVATE TASK'),
-            noScriptNodes: document.querySelector('.runtime-trace').querySelectorAll('script').length === 0 };
+            noScriptNodes: document.querySelector('#agent-memory-workspace main').querySelectorAll('script').length === 0 };
     });
     assert.deepEqual(evidence, { singleText: 'once', unchanged: true, traceVisible: true, requestSurvivedRefresh: true,
         ended: 'AbortError', models: 1, writes: 0, replayEqual: true, stale: true, status: 'cancelled', noPrivateTask: true, noScriptNodes: true });
     await page.screenshot({ path: resolve(root, '../.git/phase5-panel.png') });
     const downloadPromise = page.waitForEvent('download');
-    await page.locator('[data-action="export"]').click();
+    await page.getByRole('button', { name: 'Export Trace', exact: true }).click();
     const download = await downloadPromise;
     const path = resolve(root, '../.git/phase5-panel-export.json'); await download.saveAs(path);
-    const exported = JSON.parse(await readFile(path, 'utf8'));
-    assert.equal(exported.runtime.runs[0].status, 'cancelled');
-    assert.ok(exported.runtime.events.some(e => e.type === 'agent.handoff.completed'));
+    const exported = (await readFile(path, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    assert.ok(exported.some(e => e.type === 'run.cancelled'));
+    assert.ok(exported.some(e => e.type === 'agent.handoff.completed'));
     assert.equal(exported.abortFn, undefined); assert.equal(exported.stopFn, undefined);
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ browser: 'Edge headless mobile viewport', evidence, exported: true, pageErrors: errors }));

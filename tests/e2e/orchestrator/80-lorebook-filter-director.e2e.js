@@ -162,21 +162,10 @@ test.describe('#80 — Director mode lorebookFilter blocks context injection and
         await page.evaluate(async ({ privateBook }) => {
             const ctx = window.Luker.getContext();
             const settings = ctx.extensionSettings.orchestrator;
-            const [presetLib, dirDefaults] = await Promise.all([
-                import('/scripts/extensions/orchestrator/preset-library.js'),
-                import('/scripts/extensions/orchestrator/director-defaults.js'),
-            ]);
-            const currentResult = presetLib.getActivePreset(settings, 'director', { scope: 'global', context: ctx });
-            const current = (currentResult.ok && currentResult.state) ? currentResult.state : {};
-            const next = dirDefaults.sanitizeDirectorProfile({
-                ...current,
-                lorebookFilter: {
-                    bookPattern: `^${privateBook}$`,
-                    entryPattern: '^secret_',
-                },
-            });
-            const write = presetLib.writeActivePreset(settings, 'director', 'global', next);
-            if (!write.ok) throw new Error(`writeActivePreset(director) failed: ${write.reason}: ${write.hint}`);
+            const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
+            const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
+            preset.planTemplate.metadata.hostAdapters.luker.lorebookFilter = {bookPattern:`^${privateBook}$`,entryPattern:'^secret_'};
+            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'save',preset});
             try { await ctx.saveSettings?.(0, { directSave: true }); } catch { /* best-effort */ }
             ctx.saveSettingsDebounced?.();
 

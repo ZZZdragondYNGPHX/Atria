@@ -752,7 +752,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
     panelRunId = null,
     activeOrchPresetName = '',
     onFirstChunk = null,
-    engineNode = false, runtimeRunId, engineParentRunId, onRuntimeEvent, engineCapabilities,
+    engineNode = false, runtimeRunId, engineParentRunId, onRuntimeEvent, engineCapabilities, engineTools,
 }, abortSignal = null) {
     const settings = extension_settings[MODULE_NAME];
     const planner = createAgendaPlannerDraft(profile?.planner);
@@ -941,7 +941,8 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
     // notes adapter, activated lorebook keys) per attachToolContext.
     const loopToolSchemas = getEnabledToolSchemas({ tools: resolvedToolFlags }, customToolRegistry)
         .filter(s => String(s?.function?.name || '') !== 'finalize');
-    const tools = [...loopToolSchemas, resultToolSchema].filter(tool => !engineCapabilities || engineCapabilities[toolCapability(tool.function.name, 'agenda')]);
+    const tools = [...loopToolSchemas, resultToolSchema].filter(tool => (!engineCapabilities || engineCapabilities[toolCapability(tool.function.name, 'agenda')])
+        && (!engineTools || engineTools.includes('*') || engineTools.includes(tool.function.name)));
     const allowedNames = new Set(tools.map(t => String(t?.function?.name || '').trim()).filter(Boolean));
     const toolContext = await attachToolContext(context, payload);
     if (toolContext && customToolRegistry) {

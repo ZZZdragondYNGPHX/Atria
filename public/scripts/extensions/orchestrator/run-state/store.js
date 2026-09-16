@@ -15,6 +15,7 @@ const freeze = value => {
 };
 
 let currentRun = null;
+const engineInspectors = new Map();
 let runCounter = 0;
 const listeners = new Set();
 
@@ -49,6 +50,7 @@ export function startRun({ mode, chatKey, abortFn = null, stopFn = null, quiet =
     }
     if (currentRun) currentRun = null;
     runtimeProjection = new RuntimeProjection();
+    engineInspectors.clear();
     cachedRuntimeProjection = null;
     runCounter += 1;
     const runId = `run_${runCounter}_${Date.now().toString(36)}`;
@@ -103,6 +105,22 @@ export function recordRuntimeEvent({ runId, event }) {
     return true;
 }
 
+/** Observation of the existing read-only Memory tool. No content enters the journal. */
+export function recordMemoryRecall(context, metadata) {
+    const run = getCurrentRun();
+    const execution = run?.runtime.runs.find(item => item.runId === context.runId);
+    if (!execution || run.status !== 'running' || context.signal?.aborted || context.abortSignal?.aborted || !context.effectId) return false;
+    const engine = run.runtime.runs.find(item => item.engine)?.engine;
+    const nodeId = context.nodeId || engine?.nodes.find(node => node.agentId === execution.agentId)?.nodeId;
+    return recordRuntimeEvent({ runId: run.runId, event: {
+        eventId: `${context.effectId}/memory-recall`, type: 'memory.recall.completed', runId: execution.runId,
+        generation: execution.generation, version: execution.version, agentId: execution.agentId,
+        nodeId,
+        stepId: context.stepId || execution.stepId, relatedEffectId: context.effectId,
+        references: metadata.references, tokens: metadata.tokens, diagnostics: metadata.diagnostics,
+    } });
+}
+
 /** UI issues a command request; only Runtime events describe execution completion. */
 export function requestRunStop(runId) {
     if (!currentRun || currentRun.runId !== runId || currentRun.status !== 'running' || currentRun.stopRequested) return false;
@@ -113,12 +131,26 @@ export function requestRunStop(runId) {
     return true;
 }
 export function clearCurrentRun() {
+    engineInspectors.clear();
     if (currentRun !== null) {
         currentRun = null;
         runtimeProjection = new RuntimeProjection();
         cachedRuntimeProjection = null;
         emit({ type: EV.RUN_CLEARED });
     }
+}
+
+export function bindEngineInspector(panelRunId, engineRunId, inspect) {
+    if (currentRun?.runId === panelRunId) engineInspectors.set(engineRunId, inspect);
+}
+
+export function inspectEngineNode(panelRunId, nodeId) {
+    if (currentRun?.runId !== panelRunId) throw new Error('Run selection changed');
+    for (const inspect of engineInspectors.values()) {
+        const detail = inspect(nodeId);
+        if (detail) return structuredClone(detail);
+    }
+    return null;
 }
 
 function findRound(roundId) {

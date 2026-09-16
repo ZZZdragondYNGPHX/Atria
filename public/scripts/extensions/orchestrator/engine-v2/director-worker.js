@@ -19,9 +19,10 @@ export function createDirectorDelegateExecutor(maxConcurrency) {
 }
 
 /** A delegate is a child run. It never changes the parent's current agent. */
-export async function runDirectorWorker({ runId, parentRunId, agentId, task, messages, tools, maxRounds,
+export async function runDirectorWorker({ runId, parentRunId, agentId, nodeId, task, messages, tools, maxRounds,
     requestRound, executeTool, signal, context = {}, onEvent, recovering = false, delegate = createDirectorDelegateExecutor(1), transformOutput = value => value }) {
-    const observer = createRuntimeObserver({ onEvent });
+    const sink = createRuntimeObserver({ onEvent });
+    const observer = event => sink({ ...event, ...(nodeId ? { nodeId } : {}) });
     const execute = async branch => {
         const store = await openRuntimeCheckpointStore(branch.runId);
         if (recovering && !store) throw new Error('Durable Director child checkpoint required for recovery');
@@ -81,7 +82,7 @@ export async function runDirectorWorker({ runId, parentRunId, agentId, task, mes
                     const state = runtime.getState(branch.runId).policyState;
                     const result = await invokePort(executeTool(effect.toolName, effect.args, state.round, state.index), 'tool', intent => {
                         Object.assign(intent.context, { signal: effect.signal, abortSignal: effect.signal, runId: branch.runId,
-                            effectId: effect.effectId, __agentRuntimeMemoryGuard: guard => guards.add(guard) });
+                            effectId: effect.effectId, stepId: effect.stepId, nodeId, __agentRuntimeMemoryGuard: guard => guards.add(guard) });
                         return intent.execute(intent.name, intent.args, intent.context);
                     });
                     assertFresh(); throwIfAborted(effect.signal);

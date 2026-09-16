@@ -27,7 +27,6 @@ const deleteCharacterChatByName = __ctx.deleteCharacterChat;
 const lukerRenameChat = __ctx.renameChat;
 const lukerSetVariable = __ctx.setVariable;
 const getContext = Luker.getContext;
-const extension_settings = __ctx.extensionSettings;
 const lukerGetCharacterState = __ctx.getCharacterState;
 const lukerSetCharacterState = __ctx.setCharacterState;
 const lukerUpdateCharacterState = __ctx.updateCharacterState;
@@ -1108,100 +1107,18 @@ export function buildContext(container, charId, config) {
             await saveScriptsByType(next, scriptType);
         },
 
-        // ==================== Orchestrator (per-character override) ====================
-
-        /**
-         * Get the orchestrator override summary for the active character.
-         * Returns a `{ mode, enabled }` view per active mode (or `null`
-         * when no per-character preset library exists for that mode).
-         * Always character-scoped — never reads the global
-         * `extension_settings.orchestrator`. The full per-mode preset
-         * payload is read separately through the preset-library
-         * accessors.
-         *
-         * @returns {object|null}
-         */
-        getOrchestratorOverride() {
-            const lukerCtx = getContext();
-            const charData = characters[__ctx.characterId];
-            const avatar = String(charData?.avatar || '').trim();
-            if (!avatar) return null;
-            const orch = requireExtensionApi('orchestrator');
-            return orch.getCharacterOverrideByAvatar(lukerCtx, avatar);
+        // Character bindings refer to the single Workspace library.
+        getOrchestratorBinding() {
+            const avatar = String(characters[__ctx.characterId]?.avatar || '');
+            return avatar ? requireExtensionApi('orchestrator').getPresetBinding('character', avatar) : null;
         },
-
-        /**
-         * Toggle the per-character orchestrator override enabled flag for
-         * the saved execution mode (`overrideEnabled[mode]`). The card's
-         * preset library is preserved either way; only the flag flips.
-         * Always character-scoped.
-         *
-         * The override mode must already have a preset library on the
-         * card (otherwise there is nothing to enable / disable). Use the
-         * orchestrator editor to populate it first.
-         *
-         * @param {{enabled:boolean}} options
-         * @returns {Promise<boolean>} true on success
-         */
-        async setOrchestratorOverride(options) {
-            if (!options || typeof options !== 'object' || typeof options.enabled !== 'boolean') {
-                throw new Error('[CardApp] setOrchestratorOverride requires { enabled: boolean }');
-            }
-            const lukerCtx = getContext();
-            const charData = characters[__ctx.characterId];
-            const avatar = String(charData?.avatar || '').trim();
+        async setOrchestratorBinding({ presetId }) {
+            const avatar = String(characters[__ctx.characterId]?.avatar || '');
             if (!avatar) throw new Error('[CardApp] No active character');
-            const orch = requireExtensionApi('orchestrator');
-            const characterIndex = orch.getCharacterIndexByAvatar(lukerCtx, avatar);
-            if (characterIndex < 0) throw new Error('[CardApp] Character not found in context');
-            const savedMode = orch.getCharacterSavedExecutionModeByAvatar
-                ? orch.getCharacterSavedExecutionModeByAvatar(lukerCtx, avatar)
-                : '';
-            if (!savedMode) return false;
-            const setter = ({
-                spec: orch.setCharacterSpecOverrideEnabled,
-                agenda: orch.setCharacterAgendaOverrideEnabled,
-                loop: orch.setCharacterLoopOverrideEnabled,
-                director: orch.setCharacterDirectorOverrideEnabled,
-            })[savedMode];
-            if (typeof setter !== 'function') return false;
-            const ok = await setter(lukerCtx, avatar, options.enabled);
-            if (ok) {
-                orch.applyCharacterExecutionModeForAvatar(lukerCtx, extension_settings?.orchestrator, avatar);
-            }
-            return ok;
+            return requireExtensionApi('orchestrator').setPresetBinding('character', avatar, presetId);
         },
-
-        /**
-         * Remove the orchestrator override from the active character card
-         * so it falls back to global orchestrator settings. Wipes every
-         * mode's preset library, active-preset id, enabled flag, and
-         * the saved-mode pin. Always character-scoped.
-         * @returns {Promise<boolean>} true on success
-         */
-        async clearOrchestratorOverride() {
-            const lukerCtx = getContext();
-            const charData = characters[__ctx.characterId];
-            const avatar = String(charData?.avatar || '').trim();
-            if (!avatar) throw new Error('[CardApp] No active character');
-            const orch = requireExtensionApi('orchestrator');
-            const characterIndex = orch.getCharacterIndexByAvatar(lukerCtx, avatar);
-            if (characterIndex < 0) throw new Error('[CardApp] Character not found in context');
-            const previous = orch.getCharacterExtensionDataByAvatar(lukerCtx, avatar);
-            const nextPayload = { ...previous };
-            delete nextPayload.override;
-            delete nextPayload.presetLibraries;
-            delete nextPayload.activePresetIds;
-            delete nextPayload.overrideEnabled;
-            // If nothing else is left on the orchestrator blob, pass null
-            // so persistOrchestratorCharacterExtension removes the whole
-            // key server-side instead of leaving an empty {} behind.
-            const finalPayload = Object.keys(nextPayload).length === 0 ? null : nextPayload;
-            const ok = await orch.persistOrchestratorCharacterExtension(lukerCtx, characterIndex, finalPayload);
-            if (ok) {
-                orch.applyCharacterExecutionModeForAvatar(lukerCtx, extension_settings?.orchestrator, avatar);
-            }
-            return ok;
+        async clearOrchestratorBinding() {
+            return this.setOrchestratorBinding({ presetId: null });
         },
 
         // ==================== Memory Graph (per-character override) ====================

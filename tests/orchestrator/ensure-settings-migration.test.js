@@ -143,20 +143,11 @@ jest.unstable_mockModule('../../public/scripts/slash-commands.js', () => ({
 // migrateLegacyCapsuleInjectPosition, normalizeCapsuleInjectPosition,
 // sanitizeLoopProfile, cloneDefault, normalizeExecutionMode) come from
 // the REAL modules — those imports are not mocked here.
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/ui-templates.js', () => ({
-    buildOrchestrationEditorPopupPanelHtml: () => '',
-    buildOrchestratorSettingsHtml: () => '',
-    injectWorkspaceIntoTabHost: () => {},
-    refreshPresetSelectorBars: () => {},
-    renderInheritOrOverridePanel: () => '',
-    renderSkillChipsPlaceholder: () => '',
-}));
+
 // anchors.js is leaf-pure (no imports) and small; load the real module
 // so persistence.js (also real, transitively imported via the persistence
 // → anchors chain) finds its named exports.
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/styles.js', () => ({
-    ensureStyles: () => {},
-}));
+
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/abort-utils.js', () => ({
     isAbortError: () => false,
     isAbortSignalLike: () => false,
@@ -287,65 +278,10 @@ jest.unstable_mockModule('../../public/scripts/skills/embed-export-hook.js', () 
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/profile-projection.js', () => ({
     sanitizeProfileForAiPrompt: (v) => v,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/editor-state.js', () => ({
-    createNewStage: () => ({}),
-    ensureDirectorEditorIntegrity: (v) => v,
-    ensureEditorIntegrity: (v) => v,
-    ensureLoopEditorIntegrity: (v) => v,
-    ensureLorebookFilterOnEditor: (v) => v,
-    initializeUiState: () => {},
-    loadCharacterAgendaEditorState: () => ({}),
-    loadCharacterDirectorEditorState: () => ({}),
-    loadCharacterEditorState: () => ({}),
-    loadCharacterLoopEditorState: () => ({}),
-    loadGlobalAgendaEditorState: () => ({}),
-    loadGlobalDirectorEditorState: () => ({}),
-    loadGlobalEditorState: () => ({}),
-    loadGlobalLoopEditorState: () => ({}),
-    pickDefaultPreset: () => '',
-    setDisplayedScopeForMode: () => {},
-    syncCharacterEditorWithActiveAvatar: () => {},
-    uiState: {},
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/editor-display.js', () => ({
-    getAgendaEditorByScope: () => ({}),
-    getAgendaScopeFromElement: () => 'global',
-    getCopyScopeFromElement: () => 'global',
-    getDisplayedScope: () => 'global',
-    getDisplayedScopeForMode: () => 'global',
-    getDisplayedScopeLabel: () => '',
-    getEditorByScope: () => ({}),
-    getExplicitScopeFromElement: () => 'global',
-    getIterationDefaultScope: () => 'global',
-    getLoopEditorByScope: () => ({}),
-    getPopupEditingLabel: () => '',
-    getProfileTitleForScope: () => '',
-    getScopeFromElementOrMode: () => 'global',
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/editor-persist.js', () => ({
-    createPortableAgendaProfileFromEditor: () => ({}),
-    createPortableDirectorProfileFromEditor: () => ({}),
-    createPortableLoopProfileFromEditor: () => ({}),
-    createPortableProfileFromEditor: () => ({}),
-    persistCharacterAgendaEditor: async () => {},
-    persistCharacterDirectorEditor: async () => {},
-    persistCharacterEditor: async () => {},
-    persistCharacterLoopEditor: async () => {},
-    persistCustomToolsPatch: async () => {},
-    persistGlobalAgendaEditorFrom: async () => {},
-    persistGlobalDirectorEditorFrom: async () => {},
-    persistGlobalEditorFrom: async () => {},
-    persistGlobalLoopEditorFrom: async () => {},
-    persistOrchestratorCharacterExtension: async () => {},
-    persistRuntimeLimitsPatch: async () => {},
-    setCharacterAgendaOverrideEnabled: async () => {},
-    setCharacterDirectorOverrideEnabled: async () => {},
-    setCharacterLoopOverrideEnabled: async () => {},
-    setCharacterSpecOverrideEnabled: async () => {},
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/iter-studio/studio.js', () => ({
-    openOrchestratorIterationStudio: async () => null,
-}));
+
+
+
+
 jest.unstable_mockModule('../../public/scripts/iteration-library/simulation-review/index.js', () => ({
     openSimulationReview: async () => null,
 }));
@@ -372,25 +308,21 @@ beforeEach(() => {
     delete extensionSettings.orchestrator;
 });
 
-describe('ensureSettings — runs migration once', () => {
-    test('first call migrates legacy fields and sets the flag', () => {
-        extensionSettings.orchestrator = {
-            loopProfile: { system_prompt: 'LEGACY' },
-            // no presetLibrariesMigrationDone
-        };
+describe('ensureSettings — native Workspace initialization', () => {
+    test('retires old definitions instead of migrating or dual-writing them', () => {
+        extensionSettings.orchestrator = { loopProfile: { system_prompt: 'LEGACY' }, presetLibraries: { loop: {} } };
         main.ensureSettings();
         expect(extensionSettings.orchestrator.loopProfile).toBeUndefined();
-        expect(extensionSettings.orchestrator.presetLibraries.loop.default.system_prompt).toBe('LEGACY');
-        expect(extensionSettings.orchestrator.presetLibrariesMigrationDone).toBe(1);
+        expect(extensionSettings.orchestrator.presetLibraries).toBeUndefined();
+        expect(extensionSettings.orchestrator.agentWorkspace.presets).toHaveLength(4);
+        expect(JSON.stringify(extensionSettings.orchestrator.agentWorkspace)).not.toContain('LEGACY');
     });
-
-    test('second call is a no-op', () => {
-        extensionSettings.orchestrator = {
-            presetLibrariesMigrationDone: 1,
-            presetLibraries: { loop: { foo: { name: 'Foo', system_prompt: 'KEEP', tools: {}, max_rounds: 5, wall_clock_budget_ms: 60000 } }, spec: {}, agenda: {}, director: {} },
-            activePresetIds: { spec: '', agenda: '', loop: 'foo', director: '' },
-        };
+    test('reinitialization retains native IDs and bindings', () => {
         main.ensureSettings();
-        expect(extensionSettings.orchestrator.presetLibraries.loop.foo.system_prompt).toBe('KEEP');
+        const library = extensionSettings.orchestrator.agentWorkspace;
+        library.bindings.defaultPresetId = 'builtin-loop';
+        main.ensureSettings();
+        expect(extensionSettings.orchestrator.agentWorkspace).toBe(library);
+        expect(library.bindings.defaultPresetId).toBe('builtin-loop');
     });
 });

@@ -1,5 +1,21 @@
 # AI Handoff Context
 
+## Agent & Memory UI v2 — feature branch delivery (not integrated)
+
+`feat/agent-memory-ui-v2` replaces the Orchestrator dual-definition UI with one native
+Unified Preset Library and default/character/conversation ID bindings, plus the six-tab
+Agent & Memory Workspace. Runtime/Engine/Memory remain authoritative. See
+`docs/development/AGENT_MEMORY_UI_V2_DELIVERY.md` for the implementation/caller audit,
+retired UI contracts, automated tests and coverage gaps. Do not revive legacy preset
+stores/override writers or merge this branch without the owner's instruction.
+
+The full isolated host currently cannot reach app readiness because baseline
+`slash-commands.js` raises a SlashCommandParser TDZ error. Production-module Edge/Chromium
+Workspace/IndexedDB/Memory Worker smokes and relevant unit suites pass; this is not a claim
+of full-host, Android or real-model acceptance. Native Plan execution keeps a run-local
+snapshot; edits/binding changes affect future runs only. Private result/Memory bodies are
+not included in exported metadata traces.
+
 ## Orchestration Engine v2 — authorized integration
 
 Implementation completed at `feat/orchestration-engine-v2@64789f790`, based on the completed Runtime integration at

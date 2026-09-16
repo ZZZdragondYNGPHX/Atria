@@ -230,25 +230,15 @@ test.describe('#79 — Loop mode lorebookFilter blocks context injection and lor
             settings.requestApiPresetName = '';
             settings.requestLlmPresetName = '';
 
-            const [presetLib, persistence] = await Promise.all([
-                import('/scripts/extensions/orchestrator/preset-library.js'),
-                import('/scripts/extensions/orchestrator/persistence.js'),
-            ]);
-
-            const loopProfile = persistence.sanitizeLoopProfile({
-                system_prompt: 'You are the test loop agent. Call finalize with a short capsule when you have enough context.',
-                lorebookFilter: {
-                    bookPattern: `^${privateBook}$`,
-                    entryPattern: '^secret_',
-                },
-                // Force max_rounds low so a misbehaving router can't wedge
-                // the loop into infinite retries.
-                max_rounds: 6,
-                wall_clock_budget_ms: 60000,
-            });
-
-            const write = presetLib.writeActivePreset(settings, 'loop', 'global', loopProfile);
-            if (!write.ok) throw new Error(`writeActivePreset(loop) failed: ${write.reason}: ${write.hint}`);
+            const { createWorkspaceFactoryPreset } = await import('/scripts/extensions/orchestrator/workspace/host-presets.js');
+            const { updatePresetLibrary, emptyPresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
+            const preset = createWorkspaceFactoryPreset('loop','e2e-loop');
+            preset.planTemplate.agents[0].instructions = 'You are the test loop agent. Call finalize with a short capsule when you have enough context.';
+            preset.planTemplate.metadata.hostAdapters.luker.lorebookFilter = {bookPattern:`^${privateBook}$`,entryPattern:'^secret_'};
+            preset.planTemplate.budgets.maxSteps = 6;
+            preset.planTemplate.metadata.hostAdapters.luker.wall_clock_budget_ms = 60000;
+            settings.agentWorkspace = updatePresetLibrary(emptyPresetLibrary(),{type:'save',preset});
+            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'bind',scope:'default',presetId:preset.id});
 
             try { await ctx.saveSettings?.(0, { directSave: true }); } catch { /* best-effort */ }
             ctx.saveSettingsDebounced?.();

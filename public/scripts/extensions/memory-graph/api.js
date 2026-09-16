@@ -30,6 +30,7 @@ import {
     addInjectionChangedListener,
 } from './external-api.js';
 import {
+    getMemoryWorkspacePorts,
     ensureMemoryStoreLoaded,
     resolveChatKeyForSession,
     commitSessionMutation,
@@ -137,6 +138,7 @@ async function withReadApi(context) {
 }
 
 registerExtensionApi('memory-graph', {
+    getWorkspacePorts: getMemoryWorkspacePorts,
     openSession,
     listFacts: (context, options) => listMemoryFacts(context, options),
     listTemporalGraph: (context, options) => listMemoryGraph(context, options),

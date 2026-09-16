@@ -119,6 +119,7 @@ export async function runAgendaEngine({ context, payload, messages, profile, set
                         kind: kind === 'final' ? 'final' : 'agent', finalReason: request.payload.finalizeReason, customToolRegistry,
                         panelRunId, activeOrchPresetName, onRuntimeEvent, engineNode: true, runtimeRunId: request.runId, engineParentRunId: request.parentRunId,
                         engineCapabilities: effectiveCapabilities(plan, plan.nodes.find(node => node.nodeId === nodeId)),
+                        engineTools: profile.orchestrationPlan ? plan.agents.find(agent => agent.id === plan.nodes.find(node => node.nodeId === nodeId).agentId).tools : null,
                         onFirstChunk: slot.role === 'lead' ? slot.signalFirstChunk : null,
                     }, request.signal);
                 } finally { slot.release(); }

@@ -3,7 +3,7 @@ import { copy } from '../../../lib/agent-runtime/contracts.js';
 import { createHostTokenCounter, createDelegatedMemoryPort, guardRequestCallbacks } from '../../../lib/agent-runtime/host-ports.js';
 import { withRuntimeContext } from '../../../lib/agent-runtime/prepared-context.js';
 import { initialPolicyState, planIdentity, createResult, assertCapability } from '../../../lib/orchestration-engine/index.js';
-import { toolCapability } from '../../../lib/orchestration-engine/capabilities.js';
+import { toolCapability, effectiveCapabilities } from '../../../lib/orchestration-engine/capabilities.js';
 import { compilePreset } from './preset-compiler.js';
 import { openRuntimeCheckpointStore } from '../runtime-checkpoints.js';
 import { createEngineObserver } from './observer.js';
@@ -26,6 +26,10 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
     const context = deps.contextForNotes || {};
     const plan = compilePreset(profile, { mode: 'director', settings: deps.settings || {}, toolsByNode: { owner: toolSchemas.map(tool => tool.function.name) } });
     const owner = plan.nodes.find(node => node.nodeId === 'owner');
+    const permissions = effectiveCapabilities(plan, owner);
+    const allowedTools = plan.agents.find(agent => agent.id === owner.agentId).tools;
+    toolSchemas.splice(0, toolSchemas.length, ...toolSchemas.filter(tool => permissions[toolCapability(tool.function.name, 'director')]
+        && (allowedTools.includes('*') || allowedTools.includes(tool.function.name))));
     const fingerprint = planIdentity(plan), runId = deps.engineRunId || `${deps.runId || createLegacyWorkflowRunId()}/engine`;
     const signal = eventData?.abortSignal, ownedStore = deps.engineStore ? null : await openRuntimeCheckpointStore(runId);
     const store = deps.engineStore || ownedStore;

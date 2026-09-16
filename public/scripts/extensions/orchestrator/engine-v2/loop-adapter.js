@@ -5,7 +5,7 @@ import { withRuntimeContext } from '../../../lib/agent-runtime/prepared-context.
 import { compilePreset } from './preset-compiler.js';
 import { initialPolicyState, planIdentity, createResult } from '../../../lib/orchestration-engine/index.js';
 import { assertOutputAuthorized } from './output-adapter.js';
-import { toolCapability } from '../../../lib/orchestration-engine/capabilities.js';
+import { toolCapability, effectiveCapabilities } from '../../../lib/orchestration-engine/capabilities.js';
 import { openRuntimeCheckpointStore } from '../runtime-checkpoints.js';
 import { createEngineObserver } from './observer.js';
 import { throwIfAborted, createAbortError } from '../abort-utils.js';
@@ -18,6 +18,11 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
     sendLlm, executeTool, runId: panelRunId, deadline, record, resolveToolSource, isStructuredToolError,
     makeOkToolMessage, makeErrorToolMessage, normalizeToolOk }) {
     const plan = compilePreset(profile, { mode: 'loop', settings: deps.settings || {}, toolsByNode: { owner: tools.map(tool => tool.function.name) } });
+    const owner = plan.nodes.find(node => node.nodeId === plan.output.ownerNodeId);
+    const permissions = effectiveCapabilities(plan, owner);
+    const allowedTools = plan.agents.find(agent => agent.id === owner.agentId).tools;
+    tools.splice(0, tools.length, ...tools.filter(tool => permissions[toolCapability(tool.function.name, 'loop')]
+        && (allowedTools.includes('*') || allowedTools.includes(tool.function.name))));
     const fingerprint = planIdentity(plan), runId = deps.engineRunId || `${panelRunId}/engine`;
     const signal = payload?.signal;
     const ownedStore = deps.engineStore ? null : await openRuntimeCheckpointStore(runId);
@@ -44,7 +49,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
         const status = state.capsule === null ? 'budget_exhausted' : 'completed';
         if (reason) record('budget_exhausted', { round: state.round, reason, limit: reason === 'no_tool_call_streak' ? 3 : profile.max_rounds, streak: state.noToolCallStreak });
         const value = state.capsule ?? state.lastNaturalText;
-        const result = createResult({ runId, nodeId: 'owner', agentId: 'loop/owner', status: status === 'completed' ? 'completed' : 'partial', value });
+        const result = createResult({ runId, nodeId: 'owner', agentId: owner.agentId, status: status === 'completed' ? 'completed' : 'partial', value });
         state.results = [result]; state.resultRefs = [result.resultId];
         state.outputState = { kind: 'guidance', ownerNodeId: 'owner', status, value, resultId: result.resultId, reason };
         return { intent: { type: 'complete', output: { ...state.outputState, capsule: value, total_rounds: state.round } }, policyState: state };
@@ -59,7 +64,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
         settle(state.round, `tool-${state.index}`, error ? 'failed' : 'done');
     };
     let runtime;
-    runtime = new AgentRuntime({ store, registry: new AgentRegistry([{ id: 'loop/owner', tools: toolNames }]),
+    runtime = new AgentRuntime({ store, registry: new AgentRegistry([{ id: owner.agentId, tools: toolNames }]),
         eventSink: createEngineObserver({ plan, getState: id => runtime.getState(id), panelRunId, onEvent: deps.onRuntimeEvent }), countTokens: createHostTokenCounter(context), contextBudget: Number.MAX_SAFE_INTEGER,
         contextInput: async ({ state }) => {
             await rebuild(state.policyState);
@@ -127,17 +132,17 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
                     const call = state.calls[state.index], name = sourceName(call.name);
                     record('tool_call', { round: state.round, name: call.name, tool_call_id: call.id, source: resolveToolSource(name, toolContext) });
                     section(state.round, `tool-${state.index}`, 'tool_call', i18nFormat('Tool: ${0}', call.name), { args: call.args });
+                    if (!toolNames.includes(name) || toolCapability(name, 'loop').startsWith('reply.')) {
+                        state.events.push({ type: 'capability.denied', nodeId: 'owner', toolName: name, capability: toolCapability(name, 'loop') });
+                        const error = { message: `Tool '${call.name}' is not enabled.`, code: 'NOT_IMPLEMENTED', hint: 'Pick an enabled tool or finalize.' };
+                        recordToolResult(state, call, makeErrorToolMessage(call.id, error, state.round), error);
+                        state.index++; continue;
+                    }
                     if (name === 'finalize') {
                         const text = String(call.args.capsule_text || '').trim();
                         const error = text ? null : { message: 'finalize requires a non-empty capsule_text.', code: 'FINALIZE_EMPTY', hint: 'Provide a non-empty capsule_text describing the guidance for the next turn.' };
                         recordToolResult(state, call, error ? makeErrorToolMessage(call.id, error, state.round) : makeOkToolMessage(call.id, { ok: true, finalized: true }, state.round), error);
                         if (text) { state.capsule = text; await rebuild(state); return finish(state); }
-                        state.index++; continue;
-                    }
-                    if (!toolNames.includes(name) || toolCapability(name, 'loop').startsWith('reply.')) {
-                        state.events.push({ type: 'capability.denied', nodeId: 'owner', toolName: name, capability: toolCapability(name, 'loop') });
-                        const error = { message: `Tool '${call.name}' is not enabled.`, code: 'NOT_IMPLEMENTED', hint: 'Pick an enabled tool or finalize.' };
-                        recordToolResult(state, call, makeErrorToolMessage(call.id, error, state.round), error);
                         state.index++; continue;
                     }
                     state.pending = 'tool';
@@ -158,7 +163,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
         throwIfAborted(signal);
         const saved = runtime.getState(runId);
         if (saved && saved.policyState?.planFingerprint !== fingerprint) throw new Error('Plan fingerprint mismatch');
-        const state = await (deps.engineResume ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId: 'loop/owner', controlMode: 'policy', maxSteps: profile.max_rounds,
+        const state = await (deps.engineResume ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId: owner.agentId, controlMode: 'policy', maxSteps: profile.max_rounds,
             policyState: { ...initialPolicyState(plan), pending: null, round: 0, history: [], calls: [], index: 0, noToolCallStreak: 0, capsule: null, lastNaturalText: null, deadline } }));
         if (state.status === 'cancelled') throw createAbortError('Orchestration aborted.');
         if (state.status !== 'completed') throw new Error(state.error || 'Loop failed');

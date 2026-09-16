@@ -133,17 +133,8 @@ jest.unstable_mockModule('../../public/scripts/slash-commands.js', () => ({
     ARGUMENT_TYPE: { STRING: 'string' },
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/ui-templates.js', () => ({
-    buildOrchestrationEditorPopupPanelHtml: () => '',
-    buildOrchestratorSettingsHtml: () => '',
-    injectWorkspaceIntoTabHost: () => {},
-    refreshPresetSelectorBars: () => {},
-    renderInheritOrOverridePanel: () => '',
-    renderSkillChipsPlaceholder: () => '',
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/styles.js', () => ({
-    ensureStyles: () => {},
-}));
+
+
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/abort-utils.js', () => ({
     isAbortError: () => false,
     isAbortSignalLike: () => false,
@@ -275,65 +266,10 @@ jest.unstable_mockModule('../../public/scripts/skills/embed-export-hook.js', () 
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/profile-projection.js', () => ({
     sanitizeProfileForAiPrompt: (v) => v,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/editor-state.js', () => ({
-    createNewStage: () => ({}),
-    ensureDirectorEditorIntegrity: (v) => v,
-    ensureEditorIntegrity: (v) => v,
-    ensureLoopEditorIntegrity: (v) => v,
-    ensureLorebookFilterOnEditor: (v) => v,
-    initializeUiState: () => {},
-    loadCharacterAgendaEditorState: () => ({}),
-    loadCharacterDirectorEditorState: () => ({}),
-    loadCharacterEditorState: () => ({}),
-    loadCharacterLoopEditorState: () => ({}),
-    loadGlobalAgendaEditorState: () => ({}),
-    loadGlobalDirectorEditorState: () => ({}),
-    loadGlobalEditorState: () => ({}),
-    loadGlobalLoopEditorState: () => ({}),
-    pickDefaultPreset: () => '',
-    setDisplayedScopeForMode: () => {},
-    syncCharacterEditorWithActiveAvatar: () => {},
-    uiState: {},
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/editor-display.js', () => ({
-    getAgendaEditorByScope: () => ({}),
-    getAgendaScopeFromElement: () => 'global',
-    getCopyScopeFromElement: () => 'global',
-    getDisplayedScope: () => 'global',
-    getDisplayedScopeForMode: () => 'global',
-    getDisplayedScopeLabel: () => '',
-    getEditorByScope: () => ({}),
-    getExplicitScopeFromElement: () => 'global',
-    getIterationDefaultScope: () => 'global',
-    getLoopEditorByScope: () => ({}),
-    getPopupEditingLabel: () => '',
-    getProfileTitleForScope: () => '',
-    getScopeFromElementOrMode: () => 'global',
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/editor-persist.js', () => ({
-    createPortableAgendaProfileFromEditor: () => ({}),
-    createPortableDirectorProfileFromEditor: () => ({}),
-    createPortableLoopProfileFromEditor: () => ({}),
-    createPortableProfileFromEditor: () => ({}),
-    persistCharacterAgendaEditor: async () => {},
-    persistCharacterDirectorEditor: async () => {},
-    persistCharacterEditor: async () => {},
-    persistCharacterLoopEditor: async () => {},
-    persistCustomToolsPatch: async () => {},
-    persistGlobalAgendaEditorFrom: async () => {},
-    persistGlobalDirectorEditorFrom: async () => {},
-    persistGlobalEditorFrom: async () => {},
-    persistGlobalLoopEditorFrom: async () => {},
-    persistOrchestratorCharacterExtension: async () => {},
-    persistRuntimeLimitsPatch: async () => {},
-    setCharacterAgendaOverrideEnabled: async () => {},
-    setCharacterDirectorOverrideEnabled: async () => {},
-    setCharacterLoopOverrideEnabled: async () => {},
-    setCharacterSpecOverrideEnabled: async () => {},
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/iter-studio/studio.js', () => ({
-    openOrchestratorIterationStudio: async () => null,
-}));
+
+
+
+
 jest.unstable_mockModule('../../public/scripts/iteration-library/simulation-review/index.js', () => ({
     openSimulationReview: async () => null,
 }));
@@ -360,177 +296,27 @@ beforeEach(() => {
     currentAvatar = '';
 });
 
-function ctxWithCard(avatar, ext) {
-    return { characters: [{ avatar, data: { extensions: { orchestrator: ext || {} } } }] };
-}
-
-describe('getEffectiveProfile — picks active preset from current scope', () => {
-    test('director mode global → returns global active director preset', () => {
-        extensionSettings.orchestrator = {
-            executionMode: 'director',
-            presetLibrariesMigrationDone: 1,
-            presetLibraries: {
-                spec: {}, agenda: {}, loop: {},
-                director: {
-                    d1: {
-                        name: 'D1',
-                        mainAgent: { systemPrompt: 'DIRECTOR-D1' },
-                        subAgents: [],
-                        maxRounds: 10,
-                        maxConcurrentSubagents: 2,
-                        maxTotalSubagentRuns: 8,
-                        tools: {},
-                        discardOnAbort: false,
-                    },
-                },
-            },
-            activePresetIds: { spec: '', agenda: '', loop: '', director: 'd1' },
-        };
-        const ctx = { characters: [] };
-        const profile = main.getEffectiveProfile(ctx);
-        expect(profile.mainAgent.systemPrompt).toBe('DIRECTOR-D1');
-        expect(profile.source).toBe('global');
-    });
-
-    test('director mode + character with overrideEnabled.director → returns character active preset', () => {
-        extensionSettings.orchestrator = {
-            executionMode: 'director',
-            presetLibrariesMigrationDone: 1,
-            presetLibraries: {
-                spec: {}, agenda: {}, loop: {},
-                director: {
-                    gd: {
-                        name: 'GD',
-                        mainAgent: { systemPrompt: 'GLOBAL-D' },
-                        subAgents: [],
-                        maxRounds: 10,
-                        maxConcurrentSubagents: 2,
-                        maxTotalSubagentRuns: 8,
-                        tools: {},
-                        discardOnAbort: false,
-                    },
-                },
-            },
-            activePresetIds: { spec: '', agenda: '', loop: '', director: 'gd' },
-        };
-        const ctx = ctxWithCard('alice.png', {
-            override: { mode: 'director' },
-            overrideEnabled: { director: true },
-            presetLibraries: {
-                director: {
-                    cd: {
-                        name: 'CD',
-                        mainAgent: { systemPrompt: 'CARD-D' },
-                        subAgents: [],
-                        maxRounds: 10,
-                        maxConcurrentSubagents: 2,
-                        maxTotalSubagentRuns: 8,
-                        tools: {},
-                        discardOnAbort: false,
-                    },
-                },
-            },
-            activePresetIds: { director: 'cd' },
-        });
-        currentAvatar = 'alice.png';
-        const profile = main.getEffectiveProfile(ctx);
-        expect(profile.mainAgent.systemPrompt).toBe('CARD-D');
-        expect(profile.source).toBe('character');
-    });
+test('effective profile resolves a native default and ignores retired per-mode libraries', async () => {
+    const { getWorkspaceLibrary } = await import('../../public/scripts/extensions/orchestrator/workspace/host-presets.js');
+    extensionSettings.orchestrator = { executionMode: 'director', presetLibraries: { director: { old: {} } } };
+    const library = getWorkspaceLibrary(extensionSettings.orchestrator);
+    library.bindings.defaultPresetId = 'builtin-director';
+    const profile = main.getEffectiveProfile({ characters: [] });
+    expect(profile.mode).toBe('director'); expect(profile.source).toBe('default');
+    expect(profile.orchestrationPlan.source.presetId).toBe('builtin-director');
 });
 
-describe('getEffectiveProfile — agenda branch threads lorebookFilter', () => {
-    // agenda-profile.js is mocked passthrough (`sanitizeAgendaWorkingProfile: (v) => v`)
-    // at file top, so whatever `lorebookFilter` we stash on the source profile
-    // is what `p.lorebookFilter` reads inside main.getEffectiveProfile.
-
-    const FILTER = { bookPattern: '^private$', entryPattern: '^internal_' };
-
-    test('agenda global scope: return object carries lorebookFilter from active preset', () => {
-        extensionSettings.orchestrator = {
-            executionMode: 'agenda',
-            presetLibrariesMigrationDone: 1,
-            presetLibraries: {
-                spec: {}, loop: {}, director: {},
-                agenda: {
-                    a1: {
-                        name: 'A1',
-                        planner: {},
-                        agents: { finalizer: {} },
-                        finalAgentId: 'finalizer',
-                        limits: {},
-                        lorebookFilter: FILTER,
-                    },
-                },
-            },
-            activePresetIds: { spec: '', agenda: 'a1', loop: '', director: '' },
-        };
-        const profile = main.getEffectiveProfile({ characters: [] });
-        expect(profile.source).toBe('global');
-        expect(profile.mode).toBe('agenda');
-        expect(profile.lorebookFilter).toEqual(FILTER);
-    });
-
-    test('spec global scope: return object carries lorebookFilter from active preset spec', () => {
-        // sanitizeSpec places lorebookFilter inside `.spec`; getEffectiveProfile
-        // must additionally expose it at the top level so downstream consumers
-        // (`onWorldInfoFinalized` preFilter read, runMeta.lorebookFilter for
-        // Channel B tools) can consume it uniformly across all four modes
-        // without branching on nested-vs-flat placement.
-        extensionSettings.orchestrator = {
-            executionMode: 'spec',
-            presetLibrariesMigrationDone: 1,
-            presetLibraries: {
-                agenda: {}, loop: {}, director: {},
-                spec: {
-                    s1: {
-                        name: 'S1',
-                        spec: {
-                            stages: [],
-                            lorebookFilter: FILTER,
-                        },
-                        presets: {},
-                    },
-                },
-            },
-            activePresetIds: { spec: 's1', agenda: '', loop: '', director: '' },
-        };
-        const profile = main.getEffectiveProfile({ characters: [] });
-        expect(profile.source).toBe('global');
-        expect(profile.mode).toBe('spec');
-        expect(profile.lorebookFilter).toEqual(FILTER);
-    });
-
-    test('agenda chat-override scope: return object carries lorebookFilter from chat override', () => {
-        extensionSettings.orchestrator = {
-            executionMode: 'agenda',
-            presetLibrariesMigrationDone: 1,
-            presetLibraries: {
-                spec: {}, loop: {}, director: {},
-                agenda: {},
-            },
-            activePresetIds: { spec: '', agenda: '', loop: '', director: '' },
-            // getChatKey is mocked to return '' — chat override keyed on ''.
-            chatOverrides: {
-                '': {
-                    agenda: {
-                        enabled: true,
-                        planner: {},
-                        agents: { finalizer: {} },
-                        finalAgentId: 'finalizer',
-                        limits: {},
-                        lorebookFilter: FILTER,
-                    },
-                },
-            },
-        };
-        const profile = main.getEffectiveProfile({ characters: [] });
-        expect(profile.source).toBe('chat');
-        expect(profile.mode).toBe('agenda');
-        expect(profile.lorebookFilter).toEqual(FILTER);
-    });
+test('character stores only a binding and selects a single shared definition', async () => {
+    const { getWorkspaceLibrary } = await import('../../public/scripts/extensions/orchestrator/workspace/host-presets.js');
+    extensionSettings.orchestrator = {};
+    const library = getWorkspaceLibrary(extensionSettings.orchestrator);
+    library.bindings.entries.push({ scope: 'character', subjectId: 'alice.png', presetId: 'builtin-agenda' });
+    currentAvatar = 'alice.png';
+    const profile = main.getEffectiveProfile({ characters: [{ avatar: currentAvatar }] });
+    expect(profile.mode).toBe('agenda'); expect(profile.source).toBe('character');
+    expect(profile.presetId).toBe('builtin-agenda');
+    expect(library.presets).toHaveLength(4);
 });
-
 
 test('loop dispatcher preserves budget exhaustion alongside partial guidance', async () => {
     const { runOrchestration } = await import('../../public/scripts/extensions/orchestrator/main.js');

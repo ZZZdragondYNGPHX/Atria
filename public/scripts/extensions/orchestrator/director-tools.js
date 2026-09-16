@@ -1,6 +1,7 @@
 import { runDirectorWorker, createDirectorDelegateExecutor } from './engine-v2/director-worker.js';
 import { runRoutedLegacyWorkflow, createLegacyAgentGraph, agentKey } from './legacy-agent-routing.js';
 import { copy } from '../../lib/agent-runtime/contracts.js';
+import { effectiveCapabilities, toolCapability } from '../../lib/orchestration-engine/capabilities.js';
 import { modelIntent, toolIntent, createLegacyWorkflowRunId } from './legacy-workflow-adapter.js';
 /**
  * Director mode tools — schemas + executors.
@@ -515,6 +516,7 @@ export { SUB_AGENT_MAX_ROUNDS };
  *     so chat-reading tools work.
  */
 export function createSubagentDispatcher({
+    orchestrationPlan,
     subAgents,
     directorProfile = null,
     limits,
@@ -885,6 +887,16 @@ export function createSubagentDispatcher({
         // wins; null/undefined falls back to profile.tools default.
         const resolvedTools = resolveAgentToolFlags(agentTools, tools);
         const subToolSchemas = buildSubAgentToolSchemas({ tools: resolvedTools || {}, customToolRegistry });
+        const admittedNode = orchestrationPlan?.nodes.find(node => node.metadata?.legacyAgentId === displayId);
+        if (orchestrationPlan) {
+            const node = isInline ? orchestrationPlan.nodes.find(node => node.nodeId === orchestrationPlan.output.ownerNodeId)
+                : orchestrationPlan.nodes.find(node => node.metadata?.legacyAgentId === displayId);
+            if (!node) throw new Error('Delegate is absent from admitted Plan');
+            const capabilities = effectiveCapabilities(orchestrationPlan, node);
+            const allowed = orchestrationPlan.agents.find(agent => agent.id === node.agentId).tools;
+            subToolSchemas.splice(0, subToolSchemas.length, ...subToolSchemas.filter(tool => capabilities[toolCapability(tool.function.name, 'director')]
+                && (allowed.includes('*') || allowed.includes(tool.function.name))));
+        }
 
         // Splice the takeover-captured messages verbatim between
         // <story_context> open/close system messages. Director hard-codes
@@ -1191,7 +1203,8 @@ export function createSubagentDispatcher({
             try {
                 if (settings?.agentRuntimeV2 !== false) {
                     const finalText = await runDirectorWorker({ runId: `${runtimeParentId}/${handleId}`, parentRunId: runtimeParentId,
-                        agentId: agentKey('director', targetId), task, messages: subMessages, tools: subToolSchemas,
+                        agentId: admittedNode?.agentId || agentKey('director', targetId), nodeId: admittedNode?.nodeId,
+                        task, messages: subMessages, tools: subToolSchemas,
                         maxRounds: effectiveMaxRounds, signal: childSignal, context: contextForNotes || {}, onEvent: onRuntimeEvent, recovering: restoring, delegate,
                         transformOutput: regexAgentPluginOutput,
                         requestRound: async function* (round) {

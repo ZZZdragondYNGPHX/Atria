@@ -438,6 +438,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     const contentPayload = getContentPayload();
 
     const dispatcher = createSubagentDispatcher({
+        orchestrationPlan: safeProfile.orchestrationPlan,
         subAgents: director.subAgents || [],
         onRuntimeEvent: event => {
             if (event.type === 'agent.handoff.completed') deps?.recordTraceEvent?.(deps?.trace, event.type, event);

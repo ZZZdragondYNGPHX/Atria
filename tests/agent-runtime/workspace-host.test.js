@@ -1,0 +1,37 @@
+import { test, expect } from '@jest/globals';
+import { createWorkspaceFactoryPreset, workspaceHostProfile, getWorkspaceLibrary, resolveWorkspaceProfile } from '../../public/scripts/extensions/orchestrator/workspace/host-presets.js';
+import { compilePreset } from '../../public/scripts/extensions/orchestrator/engine-v2/preset-compiler.js';
+import { updatePresetLibrary } from '../../public/scripts/lib/agent-workspace/presets.js';
+import { executionConfigText } from '../../public/scripts/extensions/orchestrator/execution-mode-contract.js';
+
+test.each(['spec', 'loop', 'agenda', 'director'])('native %s factory compiles and adapts without storing a second definition', mode => {
+    const preset = createWorkspaceFactoryPreset(mode, `test-${mode}`);
+    const profile = workspaceHostProfile(preset);
+    expect(profile.mode).toBe(mode);
+    expect(compilePreset(profile).source).toMatchObject({ mode, presetId: `test-${mode}` });
+    expect(preset.planTemplate.source.profile).toBeUndefined();
+    expect(preset.planTemplate.compatibility).toBeUndefined();
+    if (mode === 'spec') expect(profile.spec.stages.flatMap(stage => stage.nodes).length).toBeGreaterThan(0);
+    if (mode === 'agenda') expect(profile.agents[profile.finalAgentId]).toBeDefined();
+    if (mode === 'director') expect(profile.mainAgent.systemPrompt).toBeTruthy();
+    if (mode === 'loop') expect(profile.systemPrompt).toBeTruthy();
+});
+
+test('native effective resolver ignores old libraries and retains one default binding', () => {
+    const settings = { presetLibraries: { spec: { bad: {} } }, activePresetIds: { spec: 'bad' } };
+    const library = getWorkspaceLibrary(settings);
+    expect(library.presets).toHaveLength(4);
+    expect(resolveWorkspaceProfile(settings, {}).presetId).toBe('builtin-spec');
+    expect(getWorkspaceLibrary(settings)).toBe(library);
+});
+
+test('editing a library definition affects the next resolution, never the admitted run snapshot', () => {
+    const settings = {};
+    const admitted = resolveWorkspaceProfile(settings, {});
+    const fingerprint = executionConfigText(admitted, settings, admitted.presetId);
+    const edited = structuredClone(getWorkspaceLibrary(settings).presets[0]);
+    edited.planTemplate.agents[0].instructions = 'Changed for next run';
+    settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, {type:'save',preset:edited});
+    expect(executionConfigText(admitted, settings, admitted.presetId)).toBe(fingerprint);
+    expect(executionConfigText(resolveWorkspaceProfile(settings, {}), settings, admitted.presetId)).not.toBe(fingerprint);
+});

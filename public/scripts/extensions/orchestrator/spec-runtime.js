@@ -720,7 +720,8 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
         : [];
     const tools = (enableLoopTools
         ? [...loopToolSchemas, ...outputToolSchemas]
-        : outputToolSchemas).filter(tool => !options.engineCapabilities || options.engineCapabilities[toolCapability(tool.function.name, 'spec')]);
+        : outputToolSchemas).filter(tool => (!options.engineCapabilities || options.engineCapabilities[toolCapability(tool.function.name, 'spec')])
+            && (!options.engineTools || options.engineTools.includes('*') || options.engineTools.includes(tool.function.name)));
     const allowedNames = new Set(tools.map(tool => String(tool?.function?.name || '').trim()).filter(Boolean));
     const maxRounds = getNodeIterationMaxRounds(settings);
     const outputToolName = isFinalStage ? 'luker_orch_final_guidance' : 'luker_orch_node_output';
