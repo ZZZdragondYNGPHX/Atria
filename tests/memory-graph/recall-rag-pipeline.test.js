@@ -51,6 +51,15 @@ beforeEach(() => {
 });
 
 describe('runRagRecall — vector only', () => {
+    test('Memory OS enabled keeps vector recall on the same backend', async () => {
+        const memoryOsEnabled = true;
+        const { runRagRecall } = await retrieverModulePromise;
+        findSimilarNodesMock.mockResolvedValue([{ nodeId: 'n_a', score: 0.8 }]);
+        const result = await runRagRecall(makeStore(), 'alpha', 'chat-1', { memoryOsEnabled });
+        expect(result.candidates.map(c => c.nodeId)).toEqual(['n_a']);
+        expect(findSimilarNodesMock).toHaveBeenCalledTimes(1);
+        expect(findSimilarNodesMock.mock.calls[0][3]).toBe('chat-1');
+    });
     test('returns nodes in vector score order with no rerank or rewrite', async () => {
         const { runRagRecall } = await retrieverModulePromise;
         findSimilarNodesMock.mockResolvedValue([

@@ -24,6 +24,7 @@
  */
 
 import { LEVEL, normalizeText, isExtractableAssistantMessage } from './primitives.js';
+import { copyEvidence } from './source-provenance.js';
 import {
     addEdge,
     dropNode,
@@ -407,6 +408,7 @@ export function normalizeStoreForRuntime(store) {
             childrenIds: Array.isArray(rawNode.childrenIds) ? rawNode.childrenIds.map(child => String(child || '').trim()).filter(Boolean) : [],
             parentId: String(rawNode.parentId || '').trim(),
             archived: Boolean(rawNode.archived),
+            ...(copyEvidence(rawNode.memoryOsEvidence) ? { memoryOsEvidence: copyEvidence(rawNode.memoryOsEvidence) } : {}),
         };
         normalized.seqCounter = Math.max(normalized.seqCounter, seqTo);
         const extractedNodeSeq = Number(String(nodeId).replace(/^n_/, ''));

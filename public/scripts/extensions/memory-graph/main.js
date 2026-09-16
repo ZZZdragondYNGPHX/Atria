@@ -81,14 +81,26 @@ import {
     buildSchemaEditorPopupHtml,
 } from './ui-templates.js';
 import { runRagRecall } from './retriever.js';
+import { recallHybridMemory } from './hybrid-runtime.js';
+import { memoryTokenBudget, memoryTokenCounter } from './hybrid-retrieval.js';
+import { readStateProviders } from './state-providers.js';
+import { existingStatePrompt } from './state-prompt.js';
+import { openMemoryOsInspector } from './graph-inspector.js';
+import { createHistoryBuilder, computeHistoryBatch } from './history-build.js';
+import { projectFacts } from './atomic-facts.js';
+import { projectTemporalGraph } from './temporal-graph.js';
+import { openHistoryBuildPopup } from './history-build-ui.js';
+import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
+import { configureSourceLifecycle } from './source-lifecycle.js';
+import { sourceContent } from './source-provenance.js';
+import { FACT_TOOL_NAME, factExtractionTool, factExtractionContext, readFactToolCalls } from './fact-extraction.js';
+import { temporalExtractionContext, readTemporalToolCalls } from './temporal-extraction.js';
 import {
     getVectorConfigFromSettings,
     getRerankProfileFromSettings,
     validateVectorConfig,
-    syncVectorIndex,
     ensureVectorIndexState,
     buildCollectionId,
-    purgeVectorCollection,
 } from './vector-index.js';
 import {
     renderProfileSelect,
@@ -158,6 +170,16 @@ import {
 import { __recordInjectedNodeIds } from './external-api.js';
 
 const MODULE_NAME = 'memory_graph';
+const sourceLifecycle = configureSourceLifecycle({
+    getContext,
+    resolveScope: (context, target = null) => ({
+        key: getChatKey(context, target),
+        target: buildMemoryTargetFromContext(context, target),
+    }),
+    enabled: context => isMemoryOsEnabled(getEffectiveSettings(context, getSettings())),
+    readProviders: context => readStateProviders(context, getEffectiveSettings(context, getSettings())),
+    onInvalidation: () => { latestRecallSnapshot = null; },
+});
 const CHAT_STATE_NAMESPACE = MODULE_NAME;
 const META_NAMESPACE = floorStateAdapterConstants.META_NAMESPACE;
 const META_SCHEMA_VERSION = floorStateAdapterConstants.SCHEMA_VERSION;
@@ -443,6 +465,10 @@ const EXTRACT_PROMPT_EDGE_TYPE_LINES = [
 
 
 const defaultSettings = {
+    memoryOsEnabled: MEMORY_OS_DEFAULT_ENABLED,
+    memoryOsTokenBudget: 2400,
+    memoryOsStateMappings: [],
+    memoryOsStateOwners: {},
     enabled: false,
     autoExtractionEnabled: true,
     autoCompressionEnabled: true,
@@ -980,6 +1006,10 @@ function normalizeAdvancedSettings(source = null, fallbackSource = null) {
     const toolRetryRaw = Number(input.toolCallRetryMax);
     const rpmLimitRaw = Number(input.rpmLimit);
     return {
+        memoryOsTokenBudget: memoryTokenBudget(input.memoryOsTokenBudget === undefined ? base : input),
+        memoryOsStateMappings: structuredClone(Array.isArray(input.memoryOsStateMappings) ? input.memoryOsStateMappings : base.memoryOsStateMappings || []),
+        memoryOsStateOwners: structuredClone(input.memoryOsStateOwners && typeof input.memoryOsStateOwners === 'object'
+            && !Array.isArray(input.memoryOsStateOwners) ? input.memoryOsStateOwners : base.memoryOsStateOwners || {}),
         recentRawTurns: Math.max(
             0,
             Math.floor(Number.isFinite(recentRawTurnsRaw) ? recentRawTurnsRaw : Number(base.recentRawTurns ?? defaultSettings.recentRawTurns)),
@@ -1477,7 +1507,7 @@ async function replaceGraphLogForTarget(context, store, seq, floor) {
     const patches = await buildObjectPatchOperationsAsync({}, finalPayload);
 
     if (Array.isArray(patches) && patches.length > 0 && floorResolved) {
-        const result = await fs.reset([{ floor, swipeId, patches }]);
+        const result = await fs.reset([{ floor, swipeId, patches }], { validate: sourceLifecycle.commitGuard(context, normalizedStore) });
         return {
             payload: finalPayload,
             hasCommit: result.ok,
@@ -1632,6 +1662,10 @@ async function commitMemoryStoreReplaceByChatKey(context, chatKey, store, seq, {
     if (!target) {
         throw new Error('Memory store target is unavailable.');
     }
+    if (Number.isInteger(floor)) {
+        const ticket = await sourceLifecycle.capture(context, [Math.max(0, floor - 1), floor]);
+        if (ticket) await sourceLifecycle.bind(context, { nodes: {}, edges: [] }, store, ticket);
+    }
     const normalizedStore = normalizeStoreForRuntime(store);
     const normalizedSeq = Math.max(0, Math.floor(Number(seq || getStoreCoveredSeqTo(normalizedStore) || 0)));
 
@@ -1694,6 +1728,10 @@ async function commitMemoryStoreDiffByChatKey(context, chatKey, beforeStore, aft
     if (!target) {
         throw new Error('Memory store target is unavailable.');
     }
+    if (Number.isInteger(floor)) {
+        const ticket = await sourceLifecycle.capture(context, [Math.max(0, floor - 1), floor]);
+        if (ticket) await sourceLifecycle.bind(context, beforeStore, afterStore, ticket);
+    }
     const fs = await getFloorStateInstance(context);
     const normalizedBefore = normalizeStoreForRuntime(beforeStore);
     const normalizedAfter = normalizeStoreForRuntime(afterStore);
@@ -1735,7 +1773,7 @@ async function commitMemoryStoreDiffByChatKey(context, chatKey, beforeStore, aft
         }
         let committed;
         try {
-            committed = await fs.update(() => afterPayload, { floor });
+            committed = await fs.update(() => afterPayload, { floor, validate: sourceLifecycle.commitGuard(context, normalizedAfter) });
         } catch (error) {
             // fs.update is envelope-typed now and shouldn't throw, but if a
             // dep injection bug or older build leaks through we still
@@ -1840,7 +1878,9 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
     memoryStoreTargets.set(chatKey, target);
 
     if (!force && memoryStoreCache.has(chatKey)) {
-        return memoryStoreCache.get(chatKey);
+        const cached = memoryStoreCache.get(chatKey);
+        await refreshMemorySources(context, cached);
+        return cached;
     }
     if (!force && memoryLoadTasks.has(chatKey)) {
         return await memoryLoadTasks.get(chatKey);
@@ -1875,7 +1915,9 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
                 { floor: seqToFloor(context, migrationSeq) },
             );
         }
-        return memoryStoreCache.get(chatKey) || loaded.store;
+        const current = memoryStoreCache.get(chatKey) || loaded.store;
+        await refreshMemorySources(context, current);
+        return current;
     })();
     memoryLoadTasks.set(chatKey, task);
 
@@ -1888,7 +1930,21 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
 
 export function getMemoryStore(context) {
     const chatKey = getChatKey(context);
-    return memoryStoreCache.get(chatKey) || null;
+    const store = memoryStoreCache.get(chatKey) || null;
+    if (store) sourceLifecycle.project(store, context);
+    return store;
+}
+
+async function refreshMemorySources(context, store) {
+    try {
+        const invalid = await sourceLifecycle.refresh(store, context);
+        if (invalid.size) {
+            latestRecallSnapshot = null;
+        }
+    } catch (error) {
+        latestRecallSnapshot = null;
+        console.warn(`[${MODULE_NAME}] Source validation failed; derived nodes excluded`, error);
+    }
 }
 
 /**
@@ -1946,7 +2002,7 @@ export async function commitSessionMutation(context, chatKey, beforeStore, after
     const key = String(chatKey || '').trim();
     const store = afterStore;
     if (!key || !store || typeof store !== 'object') return;
-    memoryStoreCache.set(key, store);
+    if (!isMemoryOsEnabled(getSettings())) memoryStoreCache.set(key, store);
     clearRollbackHistory(key);
 
     const anchor = resolveInFlightAnchor(context);
@@ -4464,6 +4520,22 @@ function buildRecallFinalizeInputTail({
     ].join('\n');
 }
 
+export function createMemoryHistoryBuilder() {
+    return createHistoryBuilder({ lifecycle: sourceLifecycle,
+        extract: async (context, { state, ticket, signal }) => {
+            const messages = ticket.episodeIds.map(id => {
+                const floor = state.episodes[id].sourceFloor;
+                return { ...context.chat[floor], source_index: floor, seq: floor + 1 };
+            });
+            const ops = await extractNodesWithLLM(context, createEmptyStore(), getEffectiveSettings(context, getSettings()), [], messages,
+                { sourceTicket: ticket, memoryState: state, abortSignal: signal, rebuildCreateOnly: true });
+            const result = ops.find(op => op.op === 'memory_facts');
+            if (!result) throw new Error('History extraction did not return Memory OS facts');
+            return { facts: result.operations, graph: result.graphOperations };
+        },
+    });
+}
+
 async function extractNodesWithLLM(context, store, settings, schema, messageBatch, options = {}) {
     const messages = (Array.isArray(messageBatch) ? messageBatch : [])
         .map(item => ({
@@ -4540,7 +4612,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     const baseExtractSystemPrompt = String(settings.extractSystemPrompt || '').trim() || DEFAULT_EXTRACT_SYSTEM_PROMPT;
     const cadenceSeq = Number.isFinite(Number(extractionMaxSeq)) ? Number(extractionMaxSeq) : 0;
     const activeTypes = computeActiveExtractionTypes(schema, cadenceSeq);
-    if (activeTypes.size === 0) {
+    if (activeTypes.size === 0 && !options.sourceTicket) {
         store.lastExtractionDebug = {
             ...(store.lastExtractionDebug || {}),
             extracted: false,
@@ -4574,6 +4646,14 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
         activeTypes,
     });
     const allowedNames = new Set(['luker_rpg_extract_done', ...specByToolName.keys()]);
+    let factContext = '';
+    if (options.sourceTicket) {
+        tools.push(factExtractionTool());
+        allowedNames.add(FACT_TOOL_NAME);
+        factContext = factExtractionContext(options.sourceTicket, options.memoryState ? projectFacts(options.memoryState, context.chat) : await sourceLifecycle.listFacts(context));
+        factContext += '\n' + temporalExtractionContext(options.memoryState ? projectTemporalGraph(options.memoryState, context.chat, { includeInactive: true }) : await sourceLifecycle.listGraph(context, { includeInactive: true }));
+        if (options.memoryState) factContext += '\nHistory build: graph actions are limited to entity, alias, relation. Do not rename, merge, split or adjudicate identities. Do not modify user-corrected Facts; their IDs are: ' + JSON.stringify(Object.values(options.memoryState.facts || {}).filter(fact => fact.manualDisabled || fact.supports?.some(ref => ref.manualId)).map(fact => fact.id));
+    }
     const semanticRetries = Math.max(0, Math.min(10, Math.floor(Number(settings?.toolCallRetryMax) || 0)));
     const editableNodes = new Map(
         listNodesByLevel(store, LEVEL.SEMANTIC)
@@ -4597,9 +4677,10 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     let lastRetryableError = null;
     for (let attempt = 0; attempt <= semanticRetries; attempt++) {
         const reminderText = attempt > 0
-            ? `Previous response was incomplete. Return COMPLETE extraction tool calls in one response: exactly one final luker_rpg_extract_done as the last call (SKIP-all with done-only is valid).${retryReason ? ` Fix: ${retryReason}` : ''}`
+            ? `Previous response was incomplete. Return COMPLETE extraction tool calls in one response: exactly one final luker_rpg_extract_done as the last call (${options.sourceTicket ? 'SKIP-all still requires luker_memory_facts with operations: [] and graphOperations: [] before done' : 'SKIP-all with done-only is valid'}).${retryReason ? ` Fix: ${retryReason}` : ''}`
             : '';
         const tailParts = [extractInputTail];
+        if (factContext) tailParts.push(factContext);
         if (perTypeRulesBlock) tailParts.push(perTypeRulesBlock);
         if (reminderText) tailParts.push(reminderText);
         const taskMessages = [
@@ -4758,6 +4839,18 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
                 retryReason = `Missing force-update type tool calls: ${missingForceTypes.join(', ')}.`;
                 continue;
             }
+        if (options.sourceTicket) {
+            try {
+                const factOps = readFactToolCalls(calls);
+                const graphOps = readTemporalToolCalls(calls, FACT_TOOL_NAME);
+                if (options.memoryState) await computeHistoryBatch(options.memoryState, { facts: factOps, graph: graphOps }, options.sourceTicket, context.chat, options.abortSignal);
+                else sourceLifecycle.validateFacts(context, factOps, options.sourceTicket, graphOps);
+                ops.push({ op: 'memory_facts', operations: factOps, graphOperations: graphOps });
+            } catch (error) {
+                retryReason = `Invalid atomic facts: ${error.message}`;
+                continue;
+            }
+        }
             validatedOps = ops;
             return validatedOps;
     }
@@ -5936,7 +6029,10 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
     const startFrame = source[safeStart];
     const startFrameSeq = Number(startFrame?.seq || 0);
     const extractionMinSeq = Number.isFinite(startFrameSeq) ? Math.max(0, Math.floor(startFrameSeq)) : null;
+    const sourceTicket = await sourceLifecycle.capture(context, extractBatch.map(item => item.source_index), options.sourceSnapshot);
+    const sourceBefore = sourceTicket ? structuredClone(store) : null;
     const operations = await extractNodesWithLLM(context, store, settings, schema, extractBatch, {
+        sourceTicket,
         maxSeq: extractionMaxSeq,
         abortSignal: options?.abortSignal || null,
         rebuildCreateOnly: Boolean(options?.rebuildCreateOnly),
@@ -5944,16 +6040,22 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
             ? await buildExtractionCrawlGraph(context, store, settings, schema, extractBatch, { maxSeq: extractionMaxSeq, abortSignal: options?.abortSignal || null })
             : null,
     });
+    sourceLifecycle.assertTicket(sourceTicket, context);
     if (operations.length === 0) {
         return { processed: true, changed: false };
     }
 
-    applyExtractionOpsImpl(store, operations, {
+    const graphOperations = operations.filter(op => op.op !== 'memory_facts');
+    applyExtractionOpsImpl(store, graphOperations, {
         maxSeq: extractionMaxSeq,
         minSeq: extractionMinSeq,
         context,
         settings,
     });
+    if (sourceTicket) await sourceLifecycle.bind(context, sourceBefore, store, sourceTicket);
+    for (const op of operations.filter(op => op.op === 'memory_facts')) {
+        await sourceLifecycle.writeBatch(context, op.operations, op.graphOperations, sourceTicket);
+    }
 
     return { processed: true, changed: true };
 }
@@ -6200,6 +6302,7 @@ async function runExtractionForStore(context, store, {
     getEffectiveLatestSeq = null,
 } = {}) {
     const settings = getEffectiveSettings(context, getSettings());
+    const sourceSnapshot = isMemoryOsEnabled(settings) ? (context.chat || []).map(sourceContent) : null;
     const window = computeExtractionWindow(context, store, startSeq, settings);
     const frames = window.frames;
     const latestSeq = window.latestSeq;
@@ -6297,6 +6400,7 @@ async function runExtractionForStore(context, store, {
                         compressionStats,
                         abortSignal,
                         rebuildCreateOnly: Boolean(rebuildCreateOnly),
+                        sourceSnapshot,
                     },
                 );
                 success = Boolean(batchResult?.processed);
@@ -7931,12 +8035,20 @@ function areManagedLorebookEntriesEqual(
     return true;
 }
 
-async function upsertManagedLorebookProjection(context, settings, {
+let managedProjectionQueue = Promise.resolve();
+function upsertManagedLorebookProjection(context, settings, options = {}) {
+    const next = managedProjectionQueue.catch(() => {}).then(() => applyManagedLorebookProjection(context, settings, options));
+    managedProjectionQueue = next;
+    return next;
+}
+
+async function applyManagedLorebookProjection(context, settings, {
     commentPrefix,
     sections,
     orderBase,
     allowCreate = true,
     entryConfig = undefined,
+    assertCurrent = () => {},
 } = {}) {
     const prefix = String(commentPrefix || '').trim();
     if (!prefix) {
@@ -7951,8 +8063,9 @@ async function upsertManagedLorebookProjection(context, settings, {
     let bookName = SHARED_LOREBOOK_NAME;
     let data = null;
     const loaded = await context.loadWorldInfo(bookName);
+    assertCurrent();
     if (loaded && typeof loaded === 'object') {
-        data = loaded;
+        data = structuredClone(loaded);
     }
 
     if (!data) {
@@ -7961,7 +8074,8 @@ async function upsertManagedLorebookProjection(context, settings, {
         }
         bookName = await ensureSharedLorebook(context, true);
         const created = await context.loadWorldInfo(bookName);
-        data = created && typeof created === 'object' ? created : { entries: {} };
+        data = created && typeof created === 'object' ? structuredClone(created) : { entries: {} };
+        assertCurrent();
     }
 
     if (!data.entries || typeof data.entries !== 'object') {
@@ -7991,14 +8105,25 @@ async function upsertManagedLorebookProjection(context, settings, {
         nextUid += 1;
     }
 
+    assertCurrent();
     await context.saveWorldInfo(bookName, data, true, { refreshEditor: true });
-    if (bookName === SHARED_LOREBOOK_NAME) {
-        await refreshSharedLorebookVisibilityAndSelection(context, Boolean(settings?.enabled));
+    try {
+        assertCurrent();
+        if (bookName === SHARED_LOREBOOK_NAME) {
+            await refreshSharedLorebookVisibilityAndSelection(context, Boolean(settings?.enabled));
+        }
+        assertCurrent();
+    } catch (error) {
+        // A source can change during the save itself. Withdraw this packet.
+        for (const entry of getManagedLorebookEntries(data, prefix)) delete data.entries[entry.uid];
+        await context.saveWorldInfo(bookName, data, true, { refreshEditor: true });
+        throw error;
     }
     return { changed: true, bookName };
 }
 
-async function syncPersistentLorebookProjection(context, settings, store) {
+async function syncPersistentLorebookProjection(context, settings, store, assertCurrent = undefined) {
+    assertCurrent ||= () => {};
     const semanticNodes = listNodesByLevel(store, LEVEL.SEMANTIC)
         .filter(node => node && !node.archived);
     if (semanticNodes.length === 0) {
@@ -8026,14 +8151,25 @@ async function syncPersistentLorebookProjection(context, settings, store) {
         context,
         collectOptions,
     );
-    const corePacket = normalizeMultilineText(
+    let corePacket = normalizeMultilineText(
         buildFocusTablesText(alwaysInjectNodes, settings, { tablePrefix: 'Core' }, context),
     );
+    if (isMemoryOsEnabled(settings)) {
+        const count = memoryTokenCounter(context);
+        const budget = Math.max(0, memoryTokenBudget(settings) - await count(existingStatePrompt(context, settings)));
+        while (alwaysInjectNodes.length && await count(corePacket) > budget) {
+            assertCurrent();
+            alwaysInjectNodes.pop();
+            corePacket = normalizeMultilineText(buildFocusTablesText(alwaysInjectNodes, settings, { tablePrefix: 'Core' }, context));
+        }
+        if (!alwaysInjectNodes.length) corePacket = '';
+    }
     const result = await upsertManagedLorebookProjection(context, settings, {
         commentPrefix: PERSISTENT_LOREBOOK_COMMENT_PREFIX,
         sections: [['CORE_PACKET', corePacket]],
         orderBase: Math.max(100, Number(settings.lorebookEntryOrderBase || 9800)),
         allowCreate: true,
+        assertCurrent,
     });
     return {
         changed: Boolean(result?.changed),
@@ -8042,7 +8178,8 @@ async function syncPersistentLorebookProjection(context, settings, store) {
     };
 }
 
-async function syncRuntimeLorebookProjection(context, settings, store) {
+async function syncRuntimeLorebookProjection(context, settings, store, assertCurrent = undefined) {
+    assertCurrent ||= () => {};
     const projection = getLastRecallProjection(store);
     const focusPacket = normalizeMultilineText(projection?.blocks?.focusPacket || projection?.focusPacket || '');
     const result = await upsertManagedLorebookProjection(context, settings, {
@@ -8050,6 +8187,7 @@ async function syncRuntimeLorebookProjection(context, settings, store) {
         sections: focusPacket ? [['FOCUS_PACKET', focusPacket]] : [],
         orderBase: Math.max(100, Number(settings.lorebookEntryOrderBase || 9800)) + 50,
         allowCreate: Boolean(focusPacket),
+        assertCurrent,
     });
     return {
         changed: Boolean(result?.changed),
@@ -8539,6 +8677,7 @@ async function ensureStoreSyncedWithChat(context) {
 async function injectMemoryPrompts(context, payload) {
     const settings = getEffectiveSettings(context, getSettings());
     const generationType = String(payload?.type || '').trim().toLowerCase();
+    context = Object.assign(Object.create(context), { memoryOsGenerationType: generationType });
     const isDryRun = payload?.dryRun === true;
     const generationAbortSignal = isAbortSignalLike(payload?.__lukerRpgMemoryGenerationSignal)
         ? payload.__lukerRpgMemoryGenerationSignal
@@ -8575,9 +8714,14 @@ async function injectMemoryPrompts(context, payload) {
         return false;
     }
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const persistentSync = await syncPersistentLorebookProjection(context, settings, store);
+    const sourceSnapshot = isMemoryOsEnabled(settings) ? await sourceLifecycle.retrievalSnapshot(context) : null;
+    const persistentSync = await syncPersistentLorebookProjection(context, settings, store, () => {
+        throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
+        sourceSnapshot?.assertCurrent();
+    });
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
     const corePacket = normalizeMultilineText(persistentSync.corePacket || '');
+    const coreGuard = isMemoryOsEnabled(settings) ? sourceLifecycle.commitGuard(context, store) : null;
     if (isAbortSignalLike(payload?.signal) && payload.signal.aborted) {
         const chatKey = getChatKey(context);
         store.lastRecallProjection = { at: Date.now(), blocks: { corePacket, focusPacket: '' } };
@@ -8594,7 +8738,7 @@ async function injectMemoryPrompts(context, payload) {
     const chatKey = getChatKey(context);
     const anchor = buildLastUserAnchor(context, payload?.coreChat);
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const shouldReuseSnapshot = settings.recallEnabled
+    const shouldReuseSnapshot = !isMemoryOsEnabled(settings) && settings.recallEnabled
         && RECALL_REUSE_GENERATION_TYPES.has(generationType)
         && canReuseLatestRecallSnapshot(chatKey, anchor);
     if (shouldReuseSnapshot) {
@@ -8633,9 +8777,23 @@ async function injectMemoryPrompts(context, payload) {
     );
     let selectedNodes = [];
     let trace = [];
+    let hybrid = null;
+    let clearedHybridPacket = false;
 
     if (!settings.recallEnabled) {
         // Skip recall; fall through to clear runtime lorebook projection.
+    } else if (isMemoryOsEnabled(settings)) {
+        // Clear the previous packet before asynchronous retrieval can fail.
+        clearedHybridPacket = await clearRuntimeLorebookProjection(context, settings);
+        store.lastRecallProjection = { at: Date.now(), blocks: { corePacket, focusPacket: '' } };
+        await persistRecallMetadataByChatKey(context, chatKey, { trace: [], projection: store.lastRecallProjection });
+        const queryBundle = getRecallQueryBundle(payload, context, settings);
+        hybrid = await recallHybridMemory(context, queryBundle.last_user || queryBundle.fullText || '', {
+            corePacket, signal: payload?.signal, settings, accountExistingState: true,
+        });
+        hybrid.assertCurrent();
+        trace = [{ tool: 'memory_os_hybrid', selected: hybrid.selected, tokens: hybrid.tokenCount,
+            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, providers: hybrid.providers, diagnostics: hybrid.diagnostics, metrics: hybrid.metrics }];
     } else if (recallMethod === 'rag') {
         const queryBundle = getRecallQueryBundle(payload, context, settings);
         const queryText = normalizeText(queryBundle.fullText || '');
@@ -8645,7 +8803,7 @@ async function injectMemoryPrompts(context, payload) {
         if (!vs.hashToNodeId || Object.keys(vs.hashToNodeId).length === 0) {
             const syncVectorConfig = getVectorConfigFromSettings(settings);
             const effectiveSchema = getEffectiveNodeTypeSchema(context, settings);
-            await syncVectorIndex(store, syncVectorConfig, chatKey, {
+            await getMemoryVectorStore(settings).sync(store, syncVectorConfig, chatKey, {
                 schema: effectiveSchema,
                 signal: payload?.signal,
             });
@@ -8789,13 +8947,13 @@ async function injectMemoryPrompts(context, payload) {
     // what's already in the main model context. Read via
     // `getCurrentlyInjectedNodeIds(context)` from external-api.js.
     __recordInjectedNodeIds({
-        alwaysInjectIds: alwaysInjectNodes.map(node => String(node?.id || '')).filter(Boolean),
+        alwaysInjectIds: (isMemoryOsEnabled(settings) ? persistentSync.alwaysInjectNodes : alwaysInjectNodes).map(node => String(node?.id || '')).filter(Boolean),
         recallSelectedIds: selectedNodes.map(node => String(node?.id || '')).filter(Boolean),
     });
 
     const blocks = {
         corePacket,
-        focusPacket: normalizeMultilineText(buildFocusTablesText(selectedNodes, settings, { tablePrefix: 'Recall' }, context)),
+        focusPacket: hybrid ? hybrid.text : normalizeMultilineText(buildFocusTablesText(selectedNodes, settings, { tablePrefix: 'Recall' }, context)),
     };
     store.lastRecallProjection = {
         at: Date.now(),
@@ -8806,7 +8964,15 @@ async function injectMemoryPrompts(context, payload) {
         projection: store.lastRecallProjection,
     });
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const runtimeSync = await syncRuntimeLorebookProjection(context, settings, store);
+    hybrid?.assertCurrent();
+    coreGuard?.();
+    const runtimeSync = await syncRuntimeLorebookProjection(context, settings, store, () => {
+        throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
+        hybrid?.assertCurrent();
+        coreGuard?.();
+    });
+    runtimeSync.changed ||= clearedHybridPacket;
+    hybrid?.assertCurrent();
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
     if (payload && typeof payload === 'object') {
         payload.__lukerRpgMemoryNeedRescan = Boolean(persistentSync.changed || runtimeSync.changed);
@@ -8820,10 +8986,10 @@ async function injectMemoryPrompts(context, payload) {
             anchorHash: anchor.hash,
             blocks: structuredClone(blocks),
             trace: structuredClone(trace),
-            selectedCount: selectedNodes.length,
+            selectedCount: hybrid ? hybrid.selected.length : selectedNodes.length,
         }
         : null;
-    updateUiStatus(i18nFormat('Recall ready. selected=${0}', selectedNodes.length));
+    updateUiStatus(i18nFormat('Recall ready. selected=${0}', hybrid ? hybrid.selected.length : selectedNodes.length));
     return Boolean(persistentSync.changed || runtimeSync.changed);
 }
 
@@ -9136,7 +9302,7 @@ async function runScheduledExtractionPass(chatKey) {
                 if (validateVectorConfig(vectorConfig).valid) {
                     const chatIdForVector = String(chatKey || '').trim();
                     const effectiveSchema = settings.nodeTypeSchema || defaultSettings.nodeTypeSchema;
-                    await syncVectorIndex(effectiveStore, vectorConfig, chatIdForVector, {
+                    await getMemoryVectorStore(settings).sync(effectiveStore, vectorConfig, chatIdForVector, {
                         signal: extractionAbortController.signal,
                         schema: effectiveSchema,
                     });
@@ -14657,7 +14823,7 @@ async function runVectorRecompute(context, settings, store, chatKey, { mode }) {
 
     notifyInfo(i18n('Starting vector recompute…'));
     try {
-        const result = await syncVectorIndex(store, vectorConfig, chatKey, {
+        const result = await getMemoryVectorStore(settings).sync(store, vectorConfig, chatKey, {
             schema,
             purge,
             tolerateErrors: true,
@@ -15061,7 +15227,16 @@ function bindUi() {
     });
 
     root.find('#luker_rpg_memory_view_graph').off('click').on('click', async function () {
-        await openGraphInspectorPopup(context);
+        const live = getContext();
+        if (isMemoryOsEnabled(getEffectiveSettings(live, getSettings()))) {
+            await openMemoryOsInspector(live, {
+                load: () => sourceLifecycle.retrievalSnapshot(live),
+                correct: (command, snapshot) => sourceLifecycle.correct(live, command, snapshot),
+                loadCytoscape: ensureCytoscapeLoaded,
+                openLegacy: () => openGraphInspectorPopup(live),
+                openHistory: () => openHistoryBuildPopup(live, createMemoryHistoryBuilder()),
+            });
+        } else await openGraphInspectorPopup(live);
     });
 
     root.find('#luker_rpg_memory_fill').off('click').on('click', async function () {
@@ -15459,7 +15634,7 @@ function bindUi() {
         try {
             const vectorConfig = getVectorConfigFromSettings(settings);
             if (vectorConfig) {
-                await purgeVectorCollection(buildCollectionId(chatKey));
+                await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey));
             }
         } catch (vectorError) {
             console.warn(`[${MODULE_NAME}] Failed to purge vector collection on reset`, vectorError);
@@ -15748,6 +15923,7 @@ async function applyMutationInvalidationImpl(fromSeq = null, { scheduleReplay = 
         store = memoryStoreCache.get(chatKey) || null;
     }
     if (store) {
+        await refreshMemorySources(liveContext, store);
         updateStoreSourceState(store, liveContext);
         store.lastRecallTrace = [];
         store.lastRecallProjection = null;
@@ -15965,6 +16141,7 @@ export function _setPersistentDrainHookForTest(hook) {
     __testPersistentDrainHook = (typeof hook === 'function') ? hook : null;
 }
 export { buildRoleSplitChatMessages as _buildRoleSplitChatMessagesForTest };
+export { processPendingMessageBatchWithLLM as _processPendingMessageBatchWithLLMForTest };
 
 jQuery(() => {
     const context = getContext();
@@ -16082,6 +16259,7 @@ jQuery(() => {
     if (context.eventTypes.CHAT_BRANCH_CREATED) {
         context.eventSource.on(context.eventTypes.CHAT_BRANCH_CREATED, async (payload) => {
             try {
+                await sourceLifecycle.inherit(getContext(), payload);
                 await inheritMemoryStoreForBranch(getContext(), payload);
             } catch (error) {
                 console.warn(`[${MODULE_NAME}] Failed to inherit memory graph for branch`, error);
@@ -16103,8 +16281,23 @@ jQuery(() => {
             : findAssistantSeqFromPlayableSeq(runtimeContext, playableFromSeq);
         scheduleMutationInvalidation(fromSeq, 'delete');
     });
+    if (context.eventTypes.MESSAGE_EDITED) {
+        context.eventSource.on(context.eventTypes.MESSAGE_EDITED, messageId => {
+            sourceLifecycle.observeMutation(getContext(), Number(messageId));
+            if (!isMemoryOsEnabled(getSettings())) return;
+            scheduleMutationInvalidation(findAffectedAssistantSeqFromMessageIndex(getContext(), messageId), 'refresh');
+        });
+    }
+    if (context.eventTypes.MESSAGE_SWIPE_DELETED) {
+        context.eventSource.on(context.eventTypes.MESSAGE_SWIPE_DELETED, payload => {
+            sourceLifecycle.observeMutation(getContext(), Number(payload?.messageId));
+            if (!isMemoryOsEnabled(getSettings())) return;
+            scheduleMutationInvalidation(null, 'refresh');
+        });
+    }
     if (context.eventTypes.MESSAGE_SWIPED) {
         context.eventSource.on(context.eventTypes.MESSAGE_SWIPED, (messageId, _meta) => {
+            sourceLifecycle.observeMutation(getContext(), Number(messageId));
             // chat[0] is first_mes; its swipe deck IS the character card's
             // alternate_greetings array, so a swipe here only swaps opening
             // greetings — not new conversation content. Mirrors the
@@ -16116,6 +16309,7 @@ jQuery(() => {
     }
     if (context.eventTypes.MESSAGE_RECEIVED) {
         context.eventSource.on(context.eventTypes.MESSAGE_RECEIVED, (messageId, generationType) => {
+            sourceLifecycle.observeMutation(getContext(), Number(messageId));
             const normalizedType = String(generationType || '').trim().toLowerCase();
             if (!['swipe', 'continue', 'append', 'appendfinal'].includes(normalizedType)) {
                 return;

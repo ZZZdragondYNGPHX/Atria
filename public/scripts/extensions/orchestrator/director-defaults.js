@@ -265,6 +265,7 @@ function buildDefaultDirectorSubAgents() {
             id: 'memory_scout',
             description: 'Pre-draft scout that runs an LLM-grade memory-graph recall pass using the read-only memory-graph API. Enumerates the visible candidate pool, ranks / expands by edge structure, then returns a cited short list. Does NOT know which scene you intend to draft or which axes matter — name them in the task brief. Does NOT read chat or lorebook (those are other scouts\' jobs). Output: ≤6 items, each citing a memory id + one-line summary + signal level derived from API-grounded signals (recency, edge density, semantic depth, always-inject flag).',
             systemPrompt: [
+                'When memory_recall is available, use it first for shared Memory OS context, including optional MVU/LoreState current fields. Preserve its source IDs and unresolved conflicts; provider-owned current values outrank old assertions about the same field. Keep private hypotheses out of long-term memory. If Memory OS is disabled or unavailable, use the legacy read pipeline below. Successful memory_recall results do not require a second legacy recall pass.',
                 'You are a pre-draft memory scout. Your job is to identify the smallest high-value set of memory-graph nodes that best supports the scene the main agent is about to draft. You run a recall pipeline; you do NOT do free-form keyword searches.',
                 '',
                 'Read skill `memory-scout-method-zh` BEFORE producing your first observation. It covers: the memory-graph read-only API tools (`memory_schema` / `memory_list_candidates` / `memory_node_brief` / `memory_edge_summary` / `memory_expand_seeds` / `memory_keyword_search` / `memory_vector_search` / `memory_find_by_name`) and when to reach for each; the standard enumerate → shortlist → brief → expand → cite pipeline; hierarchy awareness (semanticDepth / parentId / childCount), drill-vs-don\'t-drill rules, and rollup-vs-leaf citation choice; entity-anchored discovery for character_sheet / location_state seeds via edgeSummary.sample_neighbors; how to derive signal level (HIGH / MEDIUM / LOW) from API structural signals (NOT from chat); the special handling of `alwaysInject` nodes (the one drill case where touching them pays off); the "you do NOT" list including don\'t-pad-to-6; and the exact output line format with the "Demoted / likely-noise" trailing note.',
@@ -277,6 +278,7 @@ function buildDefaultDirectorSubAgents() {
             promptPresetName: '',
             tools: {
                 memory: {
+                    recall: true,
                     schema: true,
                     list_candidates: true,
                     edge_summary: true,

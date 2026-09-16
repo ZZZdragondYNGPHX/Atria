@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import {
     registerMemoryGraphOrchestrationTools,
     unregisterMemoryGraphOrchestrationTools,
@@ -7,6 +7,24 @@ import {
 import { __getExtensionRegistryForTest } from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
 
 describe('memory-graph orchestrator tools', () => {
+    test('shared recall reads guarded context and never consumes private scratch', async () => {
+        await registerMemoryGraphOrchestrationTools();
+        const { __setSessionForTest } = await import('../../public/scripts/extensions/memory-graph/orchestrator-tools.js');
+        const ctx = { scratch: 'Private hypothesis, not evidence' };
+        const assertCurrent = jest.fn();
+        const recallMemory = jest.fn(async () => ({ text: 'Shared evidence', selected: ['state:location'], tokenCount: 20, budget: 100, assertCurrent }));
+        __setSessionForTest(ctx, { recallMemory });
+        const tool = __getExtensionRegistryForTest().get('memory_recall');
+        expect((await tool.exec({ query: 'Where?' }, ctx)).context).toBe('Shared evidence');
+        expect(recallMemory.mock.calls[0][0]).toBe('Where?');
+        expect(JSON.stringify(recallMemory.mock.calls)).not.toContain('Private hypothesis');
+        expect(assertCurrent).toHaveBeenCalledTimes(1);
+        assertCurrent.mockImplementation(() => { throw new Error('Source changed'); });
+        await expect(tool.exec({ query: 'Where?' }, ctx)).rejects.toThrow('Source changed');
+        const before = recallMemory.mock.calls.length;
+        expect(await tool.simulate({}, ctx)).toMatchObject({ simulated: true, sources: [] });
+        expect(recallMemory).toHaveBeenCalledTimes(before);
+    });
     beforeEach(async () => {
         __getExtensionRegistryForTest().clear();
         // The register implementation is async (it dynamically imports
@@ -14,9 +32,10 @@ describe('memory-graph orchestrator tools', () => {
         await unregisterMemoryGraphOrchestrationTools();
     });
 
-    test('exports the canonical list of 15 tool names', () => {
-        expect(MEMORY_TOOL_NAMES).toHaveLength(15);
+    test('exports the canonical list of 16 tool names', () => {
+        expect(MEMORY_TOOL_NAMES).toHaveLength(16);
         expect(MEMORY_TOOL_NAMES).toEqual(expect.arrayContaining([
+            'memory_recall',
             'memory_list_candidates',
             'memory_edge_summary',
             'memory_node_brief',

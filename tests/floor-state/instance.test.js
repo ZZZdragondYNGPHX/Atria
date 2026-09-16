@@ -203,6 +203,30 @@ async function flush() {
 
 // --- tests ---
 
+describe('optional source validation at the persistence boundary', () => {
+    test('rejects a source change after async diff computation without appending a log entry', async () => {
+        const { store, deps } = makeDeps({ value: [msg()] });
+        const validate = jest.fn();
+        const build = deps.buildObjectPatchOperationsAsync;
+        deps.buildObjectPatchOperationsAsync = async (before, after) => {
+            const operations = await build(before, after);
+            validate.mockImplementation(() => { throw new Error('source changed'); });
+            return operations;
+        };
+        const fs = createFloorStateWithDeps({ namespace: 'source_guard' }, deps);
+        await expect(fs.update(() => ({ fact: 'old source' }), { floor: 0, validate })).rejects.toThrow('source changed');
+        expect(store._raw.get('source_guard__floor_log')).toBeUndefined();
+    });
+    test('reset validates inside the state write and preserves the previous log on rejection', async () => {
+        const { store, deps } = makeDeps({ value: [msg()] });
+        const fs = createFloorStateWithDeps({ namespace: 'source_reset' }, deps);
+        await fs.patch([{ op: 'add', path: '/fact', value: 'valid' }]);
+        const before = structuredClone(store._raw.get('source_reset__floor_log'));
+        await expect(fs.reset([], { validate: () => { throw new Error('chat changed'); } })).rejects.toThrow('chat changed');
+        expect(store._raw.get('source_reset__floor_log')).toEqual(before);
+    });
+});
+
 describe('createFloorStateWithDeps — basic operations', () => {
     test('throws when namespace is empty', () => {
         const chatRef = { value: [] };

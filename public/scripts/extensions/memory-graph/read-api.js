@@ -58,7 +58,9 @@ import {
 } from './main.js';
 import { compareNodesByTimeline } from './graph-ops.js';
 import { getEffectiveNodeTypeSchema, getEffectiveSettings } from './character-overrides.js';
-import { findSimilarNodes, getVectorConfigFromSettings } from './vector-index.js';
+import { getVectorConfigFromSettings } from './vector-index.js';
+import { getMemoryVectorStore } from './memory-os.js';
+import { projectMemorySources } from './source-lifecycle.js';
 import {
     addInjectionChangedListener,
     getCurrentlyInjectedNodeIds,
@@ -331,6 +333,7 @@ function freezeNodeBriefView(brief) {
  */
 export function getMemoryGraphReadApi(store, context = null) {
     function resolveStore() {
+        if (store && typeof store === 'object') projectMemorySources(store, context);
         return (store && typeof store === 'object') ? store : null;
     }
 
@@ -973,7 +976,7 @@ export function getMemoryGraphReadApi(store, context = null) {
         }
 
         const chatId = String(context?.chatId || context?.chat_metadata?.chatId || '');
-        const hits = await findSimilarNodes(queryText, store, profile, chatId, { topK: Math.max(limit, 20) });
+        const hits = await getMemoryVectorStore(settings).search(queryText, store, profile, chatId, { topK: Math.max(limit, 20) });
         const scored = [];
         for (const hit of hits) {
             const node = lookupNodeById(store, hit.nodeId);

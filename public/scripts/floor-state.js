@@ -267,8 +267,11 @@ export function createFloorStateWithDeps(options, deps) {
      *
      * @returns {Promise<{ok: true} | {ok: false, reason: string, hint: string}>}
      */
-    async function writeLog(nextLog) {
-        const result = await runtime.updateChatState(logNamespace, () => nextLog);
+    async function writeLog(nextLog, validate) {
+        const result = await runtime.updateChatState(logNamespace, () => {
+            validate?.();
+            return nextLog;
+        });
         if (!result || result.ok === false) {
             const hint = logWriteFailedHint(namespace, result?.hint);
             console.warn(`[floor-state:${namespace}] writeLog failed`, result);
@@ -302,7 +305,7 @@ export function createFloorStateWithDeps(options, deps) {
      *
      * @returns {Promise<{ok: true} | {ok: false, reason: string, hint: string}>}
      */
-    async function appendCommit(commit) {
+    async function appendCommit(commit, validate) {
         if (!isValidCommit(commit)) {
             return makeStateError(
                 STATE_ERROR_REASONS.VALIDATION_COMMIT,
@@ -310,6 +313,7 @@ export function createFloorStateWithDeps(options, deps) {
             );
         }
         const result = await runtime.updateChatState(logNamespace, (current) => {
+            validate?.();
             const next = normalizeLog(current);
             let toAppend = commit;
             if (next.commits.length > 0) {
@@ -519,6 +523,9 @@ export function createFloorStateWithDeps(options, deps) {
      * stale snapshot would otherwise land patches whose floor is below
      * the log tail written by an earlier queued op.
      */
+    // options.validate is an optional synchronous guard. It runs inside the
+    // state updater (including retries), after asynchronous diff/log reads.
+    // Throw to reject a stale source or target; no log mutation is then returned.
     async function patchImpl(operations, options) {
         const hasOverride = options !== null && options !== undefined
             && typeof options === 'object'
@@ -555,7 +562,7 @@ export function createFloorStateWithDeps(options, deps) {
                 floor: target.floor,
                 swipeId: target.swipeId,
                 patches: operations,
-            });
+            }, options?.validate);
             if (!appendResult.ok) return appendResult;
             invalidateCache();
             return makeStateOk({ updated: true });
@@ -636,9 +643,10 @@ export function createFloorStateWithDeps(options, deps) {
      * `get()` for replay semantics).
      *
      * @param {object[]} commits — commit list in replay order
+     * @param {{validate?: function}} [options] Optional synchronous pre-write guard.
      * @returns {Promise<boolean>} true when the new log is durably persisted
      */
-    async function reset(commits) {
+    async function reset(commits, options) {
         if (destroyed) {
             return makeStateError(STATE_ERROR_REASONS.INSTANCE_DESTROYED,
                 `floor-state instance for namespace=${namespace} was destroyed`);
@@ -666,7 +674,7 @@ export function createFloorStateWithDeps(options, deps) {
             }
             beginPending();
             try {
-                const writeResult = await writeLog({ version: LOG_VERSION, commits });
+                const writeResult = await writeLog({ version: LOG_VERSION, commits }, options?.validate);
                 if (!writeResult.ok) return writeResult;
                 invalidateCache();
                 return makeStateOk({ updated: true });
