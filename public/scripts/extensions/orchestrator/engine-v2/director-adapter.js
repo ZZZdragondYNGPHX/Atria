@@ -6,7 +6,7 @@ import { initialPolicyState, planIdentity, createResult, assertCapability } from
 import { toolCapability } from '../../../lib/orchestration-engine/capabilities.js';
 import { compilePreset } from './preset-compiler.js';
 import { openRuntimeCheckpointStore } from '../runtime-checkpoints.js';
-import { createRuntimeObserver } from '../run-state/runtime-observer.js';
+import { createEngineObserver } from './observer.js';
 import { createLegacyWorkflowRunId } from '../legacy-workflow-adapter.js';
 import { throwIfAborted, createAbortError } from '../abort-utils.js';
 import { appendToSection, ensureSection, setSectionStatus, setRoundStatus } from '../run-state/store.js';
@@ -41,6 +41,7 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
     const policyController = { advance({ policyState, receipt, effectId }) {
         if (policyState.planFingerprint !== fingerprint) throw new Error('Plan fingerprint mismatch');
         const state = copy(policyState);
+        state.events = [];
         assertFresh();
         if (state.pending === 'model') {
             const { result, toolCalls, reasoningAccum } = receipt;
@@ -72,6 +73,7 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
             const call = state.calls[state.index];
             assertCapability(plan, owner, toolCapability(call.name, 'director'));
             if (!toolNames.includes(call.name)) {
+                state.events.push({ type: 'capability.denied', nodeId: 'owner', toolName: call.name, capability: toolCapability(call.name, 'director') });
                 state.history.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify({ ok: false, error: `unknown tool: ${call.name}` }), _round: state.round });
                 state.index++; continue;
             }
@@ -96,7 +98,7 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
     } };
     let runtime;
     runtime = new AgentRuntime({ store, registry: new AgentRegistry([{ id: owner.agentId, tools: toolNames }]), countTokens: createHostTokenCounter(context),
-        contextBudget: Number.MAX_SAFE_INTEGER, eventSink: createRuntimeObserver({ panelRunId: deps.runId, onEvent: deps.onRuntimeEvent }),
+        contextBudget: Number.MAX_SAFE_INTEGER, eventSink: createEngineObserver({ plan, getState: id => runtime.getState(id), panelRunId: deps.runId, onEvent: deps.onRuntimeEvent }),
         contextInput: ({ state }) => { render(state.policyState); return { legacyMessages: messages, tools: toolSchemas }; },
         ports: { memory: createDelegatedMemoryPort(assertFresh), policy: policyController,
             model: { async request(effect) {

@@ -7,7 +7,7 @@ import { initialPolicyState, planIdentity, createResult } from '../../../lib/orc
 import { assertOutputAuthorized } from './output-adapter.js';
 import { toolCapability } from '../../../lib/orchestration-engine/capabilities.js';
 import { openRuntimeCheckpointStore } from '../runtime-checkpoints.js';
-import { createRuntimeObserver } from '../run-state/runtime-observer.js';
+import { createEngineObserver } from './observer.js';
 import { throwIfAborted, createAbortError } from '../abort-utils.js';
 import { appendRound, appendToSection, ensureSection, setSectionStatus, setRoundStatus, addTokenUsage } from '../run-state/store.js';
 import { i18n, i18nFormat } from '../i18n.js';
@@ -58,7 +58,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
     };
     let runtime;
     runtime = new AgentRuntime({ store, registry: new AgentRegistry([{ id: 'loop/owner', tools: toolNames }]),
-        eventSink: createRuntimeObserver({ panelRunId, onEvent: deps.onRuntimeEvent }), countTokens: createHostTokenCounter(context), contextBudget: Number.MAX_SAFE_INTEGER,
+        eventSink: createEngineObserver({ plan, getState: id => runtime.getState(id), panelRunId, onEvent: deps.onRuntimeEvent }), countTokens: createHostTokenCounter(context), contextBudget: Number.MAX_SAFE_INTEGER,
         contextInput: async ({ state }) => {
             await rebuild(state.policyState);
             record('llm_request', { round: state.policyState.round, max_rounds: profile.max_rounds, message_count: messages.length });
@@ -95,6 +95,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
                 if (policyState.planFingerprint !== fingerprint) throw new Error('Plan fingerprint mismatch');
                 assertFresh();
                 const state = copy(policyState);
+                state.events = [];
                 if (state.pending === 'tool') {
                     const call = state.calls[state.index];
                     if (!toolResults.has(receipt.value.reference)) throw new Error('Transient Loop tool result unavailable');
@@ -132,6 +133,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
                         state.index++; continue;
                     }
                     if (!toolNames.includes(name) || toolCapability(name, 'loop').startsWith('reply.')) {
+                        state.events.push({ type: 'capability.denied', nodeId: 'owner', toolName: name, capability: toolCapability(name, 'loop') });
                         const error = { message: `Tool '${call.name}' is not enabled.`, code: 'NOT_IMPLEMENTED', hint: 'Pick an enabled tool or finalize.' };
                         recordToolResult(state, call, makeErrorToolMessage(call.id, error, state.round), error);
                         state.index++; continue;

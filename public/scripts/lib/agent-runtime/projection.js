@@ -3,18 +3,21 @@ import { copy } from './contracts.js';
 const terminal = new Set(['completed', 'failed', 'cancelled']);
 const reasons = new Set(['stage_dispatch', 'review_rerun', 'agenda_plan', 'agenda_dispatch', 'agenda_finalize', 'director_dispatch', 'director_inline_dispatch']);
 const textFields = ['eventId', 'type', 'runId', 'parentRunId', 'stepId', 'effectId', 'agentId', 'status', 'toolName',
-    'branchId', 'childRunId', 'handoffId', 'fromAgentId', 'toAgentId', 'contextPolicy', 'tokenCounting', 'budgetScope', 'failureKind'];
+    'branchId', 'childRunId', 'handoffId', 'fromAgentId', 'toAgentId', 'contextPolicy', 'tokenCounting', 'budgetScope', 'failureKind',
+    'planId', 'nodeId', 'resultId', 'outcome', 'routing', 'capability'];
+const engineEvent = /^(graph\.(compiled|mutated|node\.(started|completed|failed))|result\.created|output\.ready|arbitration\.(started|completed)|capability\.denied)$/;
 
 /** Allowlist execution metadata. Never retain task/prompt/args/results, headers or host objects. */
 export function sanitizeRuntimeEvent(raw) {
     if (!raw || typeof raw.eventId !== 'string' || typeof raw.runId !== 'string'
         || !Number.isInteger(raw.version) || !Number.isInteger(raw.generation)) return null;
-    if (!/^(run\.(started|running|completed|failed|cancelled|resumed|waiting_user)|context\.compiled|effect\.(stale|failed)|(policy\.advance|model\.request|memory\.recall|tool\.execute|agent\.handoff|parallel\.fanout|parallel\.join)\.(started|completed)|parallel\.branch\.(started|completed|failed|cancelled|stale))$/.test(raw.type)) return null;
+    if (!engineEvent.test(raw.type) && !/^(run\.(started|running|completed|failed|cancelled|resumed|waiting_user)|context\.compiled|effect\.(stale|failed)|(policy\.advance|model\.request|memory\.recall|tool\.execute|agent\.handoff|parallel\.fanout|parallel\.join)\.(started|completed)|parallel\.branch\.(started|completed|failed|cancelled|stale))$/.test(raw.type)) return null;
     const event = { schemaVersion: 1, version: raw.version, generation: raw.generation };
     for (const field of textFields) if (typeof raw[field] === 'string') event[field] = raw[field];
     if (typeof raw.ok === 'boolean') event.ok = raw.ok;
     if (Number.isInteger(raw.restoredVersion)) event.restoredVersion = raw.restoredVersion;
     if (Number.isFinite(raw.tokens)) event.tokens = raw.tokens;
+    if (Number.isSafeInteger(raw.graphRevision) && raw.graphRevision >= 0) event.graphRevision = raw.graphRevision;
     if (raw.reason) event.reason = reasons.has(raw.reason) ? raw.reason : 'custom_handoff';
     if (raw.modelProfile) event.modelProfile = Object.fromEntries(['apiPresetName', 'promptPresetName'].map(key =>
         [key, typeof raw.modelProfile[key] === 'string' ? raw.modelProfile[key] : '']));

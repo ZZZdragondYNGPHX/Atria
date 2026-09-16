@@ -2,7 +2,7 @@ import { AgentRuntime, AgentRegistry, ParallelExecutor, createRuntimeBranchPort 
 import { createDelegatedMemoryPort, createHostTokenCounter } from '../../../lib/agent-runtime/host-ports.js';
 import { validateGraph, createPolicyController, initialPolicyState, planIdentity } from '../../../lib/orchestration-engine/index.js';
 import { openRuntimeCheckpointStore } from '../runtime-checkpoints.js';
-import { createRuntimeObserver } from '../run-state/runtime-observer.js';
+import { createEngineObserver } from './observer.js';
 import { throwIfAborted } from '../abort-utils.js';
 
 /** Host supplies child Runtime factories. Engine owns no provider, pool, storage or long-term memory. */
@@ -12,7 +12,6 @@ export async function runEnginePlan({ plan: input, runId, createChildRuntime, br
     throwIfAborted(signal);
     const ownedStore = store ? null : await openRuntimeCheckpointStore(runId);
     store ||= ownedStore;
-    const observer = createRuntimeObserver({ panelRunId, onEvent });
     const parentId = `engine:${plan.planId}`;
     const registry = new AgentRegistry([{ id: parentId, handoffs: plan.agents.map(agent => agent.id),
         policies: { maxConcurrency: plan.budgets.maxConcurrency } }, ...plan.agents]);
@@ -25,15 +24,7 @@ export async function runEnginePlan({ plan: input, runId, createChildRuntime, br
         assertFresh();
         return result;
     }]));
-    const sink = event => {
-        observer(event);
-        if (event.type === 'policy.advance.completed') {
-            const state = runtime.getState(runId);
-            for (const [index, detail] of (state.policyState?.events || []).entries()) {
-                runtime.publish(state, detail.type, { ...detail, eventId: `${event.eventId}/engine/${index}` });
-            }
-        }
-    };
+    const sink = createEngineObserver({ plan, panelRunId, onEvent, getState: id => runtime.getState(id) });
     runtime = new AgentRuntime({ registry, store, eventSink: sink, countTokens: createHostTokenCounter(context),
         ports: { policy: { advance(request) { assertFresh(); return controller.advance(request); } }, memory: createDelegatedMemoryPort(assertFresh),
             model: { request() { throw new Error('Engine coordinator has no model port'); } },

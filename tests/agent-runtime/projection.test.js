@@ -12,6 +12,20 @@ beforeEach(() => clearCurrentRun());
 const event = (version, type, extra = {}) => ({ eventId: `event-${version}-${type}`, runId: 'r', generation: 1,
     version, type, agentId: 'a', status: 'running', ...extra });
 
+test('Engine diagnostics preserve IDs and outcomes without source material or policy state', () => {
+    const projection = new RuntimeProjection();
+    for (const [index, type] of ['graph.compiled', 'graph.mutated', 'graph.node.started', 'result.created', 'arbitration.started', 'capability.denied', 'output.ready'].entries()) {
+        projection.append(event(index, type, { planId: 'p', nodeId: 'n', resultId: 'r', graphRevision: 2,
+            outcome: 'partial', routing: 'delegate', capability: 'reply.submit', task: 'SECRET TASK',
+            policyState: { history: 'SECRET HISTORY' }, value: 'SECRET RESULT', planFingerprint: 'SECRET PROFILE' }));
+    }
+    const snapshot = projection.snapshot();
+    expect(snapshot.events).toHaveLength(7);
+    expect(snapshot.events.at(-1)).toMatchObject({ outcome: 'partial', planId: 'p', nodeId: 'n', resultId: 'r', graphRevision: 2 });
+    expect(JSON.stringify(snapshot)).not.toContain('SECRET');
+    expect(replayRuntimeEvents(snapshot.events)).toEqual(snapshot);
+});
+
 test('event journal replay reconstructs the same key path and ignores duplicate deliveries', async () => {
     const projection = new RuntimeProjection();
     const fake = fakePorts([{ type: 'tool', toolName: 'read' }, { type: 'complete', output: 'private-result' }]);

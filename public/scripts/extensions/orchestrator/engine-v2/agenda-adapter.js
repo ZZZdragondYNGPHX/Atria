@@ -138,7 +138,7 @@ export async function runAgendaEngine({ context, payload, messages, profile, set
         const output = guidanceOutput({ plan, state, generation: state.generation });
         syncTrace(state.policyState.agenda);
         finalizeTrace(state.output.status, { capsuleText: state.output.value, note: state.policyState.finalizeReason });
-        finishRun({ runId: panelRunId, status: state.output.status === 'completed' ? 'committed' : 'budget_exhausted', finalText: state.output.value });
+        finishRun({ runId: panelRunId, status: state.output.status === 'completed' ? 'committed' : state.output.status, finalText: state.output.value });
         return { ...output, stageOutputs: [{ id: 'finalize', mode: 'serial', nodes: [{ node: profile.finalAgentId, output: state.output.value }] }],
             previousNodeOutputs: new Map([[profile.finalAgentId, state.output.value]]), runtimeTrace: trace, reviewRerunCount: 0, agendaState: state.policyState.agenda };
     } catch (error) {

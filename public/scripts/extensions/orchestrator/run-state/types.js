@@ -1,7 +1,7 @@
 // public/scripts/extensions/orchestrator/run-state/types.js
 /**
  * @typedef {'director'|'loop'|'agenda'|'spec'} RunMode
- * @typedef {'running'|'committed'|'aborted'|'error'} RunStatus
+ * @typedef {'running'|'committed'|'aborted'|'error'|'partial'|'budget_exhausted'|'waiting_user'} RunStatus
  * @typedef {'running'|'done'|'failed'} StepStatus
  * @typedef {'reasoning'|'text'|'tool_call'|'tool_result'|'sub_agent'|'note'|'messages_dump'} SectionKind
  */
