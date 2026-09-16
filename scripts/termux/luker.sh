@@ -102,8 +102,10 @@ start_server() {
   log "Starting Luker on ${URL}..."
   nohup node server.js \
     --port "${PORT}" \
+    --listen false \
     --enableIPv4 true \
     --enableIPv6 false \
+    --disableCsrf false \
     --browserLaunchEnabled false \
     >>"${LOG_FILE}" 2>&1 &
   local pid=$!
