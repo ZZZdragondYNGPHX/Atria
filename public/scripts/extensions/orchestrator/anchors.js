@@ -234,6 +234,7 @@ export function normalizeOrchestrationSnapshot(raw) {
     return {
         anchorHash: String(source.anchorHash || '').trim(),
         capsuleText,
+        ...(typeof source.executionIdentity === 'string' && source.executionIdentity ? { executionIdentity: source.executionIdentity } : {}),
         stageOutputs: Array.isArray(source.stageOutputs) ? structuredClone(source.stageOutputs) : [],
     };
 }

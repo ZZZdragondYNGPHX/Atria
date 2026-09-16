@@ -1,9 +1,9 @@
 # 执行模式重整方案书
 
-状态：建议定案，尚未批准实施。本文中的“现状”为源码分析，“建议／目标”为待实现设计。
+状态：用户已批准实施，功能已在独立分支完成。第 2—11 节保留原始分析与验收规划；实际实现、验证范围及差异以第 12 节为准。
 
 基线：`ZZZdragondYNGPHX/Luker:custom-release`，`112baa3b5f2ad1109a0b143bcffa3d39ec8dc470`。
-工作分支：`feat/execution-mode-design`。本轮只新增方案书，不改变程序、配置、版本或用户数据。
+工作分支：`feat/execution-mode-design`。方案提交后继续在此分支实装；未合并至 custom-release。
 
 ## 1. 建议拍板的结论
 
@@ -202,3 +202,30 @@ Single 的价值是低配置成本，值得保留；它没有独立的调度机�
 参考路由：tavern-card-builder；指南库快照 2026-08-18；读取 ST-A0 与 ST-A4 的相关部分，用于最小变更和提示词边界；其他路由候选不作为已读证据。架构核查采用 code-quality-workflow 的只分析边界。精确行为以本仓库源码为依据，宿主行为待后续真机验收。
 
 新增维护负担：一份尚待采纳的设计文档。实施后需同步本文状态和用户文档，避免建议被误认为已实现。下一步为按已采纳方案实施阶段 1；不得从本文推导出已获模式重写、数据迁移或合并授权。
+
+## 12. 实施回执（2026-09-16）
+
+架构归属仍为 `public/scripts/extensions/orchestrator/`，复用现有 runtime 分派、预设库、角色扩展保存、编辑作用域与楼层快照。保留私人修复确立的“生效来源与编辑作用域分离”，以及角色优先模型解析、Agenda 聊天覆盖和现有工具／Skill 路径。
+
+已实现：
+
+- 辅助正文／接管正文入口，Loop、Spec、Agenda、Director 四主模式的用途说明与 Single 兼容分组；展示本次生效和正在编辑的来源及预设名。
+- 新建单节点 Spec 快捷模板，关闭探索工具；Single 可预览后复制到全局或角色库，生成独立 ID，默认不激活；旧字段保持可用。简单工作流可直接编辑两段提示词。
+- 新快照可选字段 `executionIdentity`：SHA-256 摘要绑定有效模式、来源、预设及关键运行设置；历史快照可读，但无指纹不复用。无 Web Crypto 时安全地跳过复用；不迁移旧用户配置，不增加第二套模式存储。
+- 切换或停用时取消运行，并在异步完成边界检查聊天与有效配置，避免过时结果注入及更新当前缓存。
+- Loop 适配保留 `budget_exhausted`；Agenda 同时遵守全局与预设预算，并暴露到限原因及未完成任务。部分指引仍可使用，但不写为成功缓存。
+
+实现取舍：采用原生分组下拉框而非选择卡，保留原选择器及键盘操作，适配窄屏。保留现有各模式工厂提示词，使用模式文档中的同一场景实例说明独特用处；新增工厂能力仅为单节点快捷模板，未批量替换用户提示词。各阶段以一个实现提交交付，原方案另有独立提交。
+
+变更文件：
+
+- 运行与界面：`main.js`、`ui-templates.js`、`i18n.js`、`agenda-runtime.js`、`anchors.js`、`snapshot-cache.js`、`preset-library.js`；新增 `execution-mode-contract.js`、`quick-guidance.js`（均在编排器目录）。
+- 单元测试：`tests/orchestrator/execution-mode-contract.test.js`、`custom-tool-runtime-agenda.test.js`、`get-effective-profile-presets.test.js`、`preset-library.test.js`、`snapshot-cache-hits-invalidates.test.js`。
+- 浏览器测试：`tests/frontend/ExecutionModes.e2e.js`。
+- 说明：本文、`AI_HANDOFF.md`；中／英／繁体 Single 文档；简体 overview、Spec 与新增 `execution-modes.md`。
+
+实际验证：编排器 Jest 全套 109 suites／1242 tests 通过；隔离本地服务器的 Edge 浏览器检查覆盖复制、激活、编辑、刷新、390px 窄屏模式选择和角色生效时独立编辑全局预设。前端 webpack 编译通过。针对生产改动的 ESLint 与原基线对比无新增诊断；已有 33 条诊断仍在，不能称全量 lint 通过。差异及 JavaScript 语法检查通过。
+
+Web 与 Android 共用前端实现，未改 Android 原生代码或版本；未执行 Android 真机、真实模型调用及全部生成类型的浏览器验收。已有相关 runtime 单元回归通过不代表真机验收完成。
+
+维护负担：运行配置新增关键依赖时需更新指纹白名单；快捷编辑器只展示可表达的单节点配置；各语言模式名称与用途说明需同步。后续若要求日常集成，再合并 custom-release 并按届时最新分支验证。

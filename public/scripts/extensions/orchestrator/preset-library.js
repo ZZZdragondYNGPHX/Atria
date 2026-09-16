@@ -152,7 +152,7 @@ export function getPreset(settings, mode, scope, presetId, { context, avatar } =
     return sanitizePresetEntry(mode, raw);
 }
 
-export function createPreset(settings, mode, scope, { name, seedFrom } = {}, { context, avatar } = {}) {
+export function createPreset(settings, mode, scope, { name, seedFrom, payload } = {}, { context, avatar } = {}) {
     const c = getScopeContainer(settings, scope, { context, avatar });
     if (!c) return '';
     if (!c.libraries[mode]) c.libraries[mode] = {};
@@ -160,7 +160,7 @@ export function createPreset(settings, mode, scope, { name, seedFrom } = {}, { c
     const seed = seedFrom && c.libraries[mode][seedFrom]
         ? structuredClone(c.libraries[mode][seedFrom])
         : {};
-    const sanitized = sanitizePresetEntry(mode, { ...seed, name: name || DEFAULT_PRESET_NAME });
+    const sanitized = sanitizePresetEntry(mode, { ...(payload || seed), name: name || DEFAULT_PRESET_NAME });
     c.libraries[mode][id] = sanitized;
     return id;
 }

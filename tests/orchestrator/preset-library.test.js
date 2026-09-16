@@ -455,3 +455,36 @@ describe('preset-library — migration persistence hook', () => {
         expect(calls).toEqual([]);
     });
 });
+
+
+describe('quick guidance copies', () => {
+    test.each(['global', 'character'])('copies without replacing the active preset or legacy prompts (%s)', async (scope) => {
+        const { createQuickGuidanceProfile, createSingleAgentProfile, getQuickGuidancePreset } = await import('../../public/scripts/extensions/orchestrator/quick-guidance.js');
+        const settings = { ...freshSettings(), singleAgentSystemPrompt: 'Keep the secret', singleAgentUserPromptTemplate: '{{last_user}}', llmNodeApiPresetName: 'API', llmNodePresetName: 'Writer' };
+        const context = { characters: [{ avatar: 'a.png', data: { extensions: { orchestrator: freshSettings() } } }] };
+        const options = { context, avatar: 'a.png' };
+        const existing = lib.createPreset(settings, 'spec', scope, { name: 'Quick guidance' }, options);
+        lib.setActivePresetId(settings, 'spec', scope, existing, options);
+        const before = lib.getPreset(settings, 'spec', scope, existing, options);
+        const payload = createQuickGuidanceProfile(settings, true);
+        const id = lib.createPreset(settings, 'spec', scope, { name: 'Quick guidance', payload }, options);
+        expect(id).not.toBe(existing);
+        expect(lib.getActivePresetId(settings, 'spec', { scope, ...options })).toBe(existing);
+        expect(lib.getPreset(settings, 'spec', scope, existing, options)).toEqual(before);
+        const copy = lib.getPreset(settings, 'spec', scope, id, options);
+        expect(copy.spec).toEqual(createSingleAgentProfile(settings).spec);
+        expect(getQuickGuidancePreset(copy)).toMatchObject({ systemPrompt: 'Keep the secret', userPromptTemplate: '{{last_user}}', apiPresetName: 'API', promptPresetName: 'Writer' });
+        expect(settings.singleAgentSystemPrompt).toBe('Keep the secret');
+        expect(settings.singleAgentUserPromptTemplate).toBe('{{last_user}}');
+        copy.spec.stages.push({ id: 'review', nodes: ['critic'] });
+        expect(getQuickGuidancePreset(copy)).toBeNull();
+    });
+    test('new quick template disables exploration without changing legacy defaults', async () => {
+        const { createQuickGuidanceProfile, createSingleAgentProfile } = await import('../../public/scripts/extensions/orchestrator/quick-guidance.js');
+        const { resolveAgentToolFlags, hasAnyToolEnabled } = await import('../../public/scripts/extensions/orchestrator/persistence.js');
+        const profile = createQuickGuidanceProfile({}, false);
+        const flags = resolveAgentToolFlags(profile.spec.stages[0].nodes[0].tools, profile.spec.defaultTools);
+        expect(hasAnyToolEnabled(flags)).toBe(false);
+        expect(createSingleAgentProfile({}).spec.defaultTools).not.toBeNull();
+    });
+});
