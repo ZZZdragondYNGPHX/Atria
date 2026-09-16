@@ -7,6 +7,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/function-call-runtime.
 let context;
 let processBatch;
 let disk;
+let createHistory;
 beforeAll(async () => {
     const base = global.Luker.getContext();
     context = Object.assign(Object.create(base), {
@@ -17,6 +18,7 @@ beforeAll(async () => {
     global.Luker.getContext = () => context;
     const main = await import('../../public/scripts/extensions/memory-graph/main.js');
     processBatch = main._processPendingMessageBatchWithLLMForTest;
+    createHistory = main.createMemoryHistoryBuilder;
 });
 beforeEach(() => {
     disk = new Map();
@@ -49,6 +51,19 @@ function run(settings = {}) {
         [{ ...context.chat[0], seq: 1, source_index: 0 }], 0, 0);
 }
 describe('production extraction dispatch with simulated model responses', () => {
+    test('history uses production tool dispatch and validates against the staged prior batch', async () => {
+        context.chat = Array.from({ length: 7 }, () => ({ mes: 'Roland keeps the sword.', is_user: false }));
+        context.generateTask = jest.fn(async request => answer(request, null, true));
+        const builder = createHistory();
+        const result = await builder.run(context, { floors: [0, 1, 2, 3, 4, 5, 6] });
+        expect(result.errors).toEqual([]); expect(result.status).toBe('completed');
+        expect(context.generateTask).toHaveBeenCalledTimes(2);
+        const tail = context.generateTask.mock.calls[1][0].taskMessages.at(-1).content;
+        expect(tail).toContain('"canonicalName":"Roland"');
+        expect(Object.values(disk.get('memory_graph__provenance').entities)).toHaveLength(2);
+        await builder.rollback(context);
+        expect(disk.get('memory_graph__provenance').entities).toEqual({});
+    });
     test('persists same-response Facts, entities and semantic relations atomically', async () => {
         context.generateTask = jest.fn(async request => answer(request, null, true));
         await run();

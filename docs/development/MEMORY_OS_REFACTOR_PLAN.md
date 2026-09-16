@@ -1457,6 +1457,8 @@ Context budget：可配置
 
 ## Phase 8 — Migration / Rebuild
 
+已实现；分批抽取、用户修正保留、取消与检查点回滚见 [Phase 8 执行记录](MEMORY_OS_PHASE8_HISTORY_BUILD.md)。
+
 - 历史记忆构建；
 - 进度；
 - 取消；

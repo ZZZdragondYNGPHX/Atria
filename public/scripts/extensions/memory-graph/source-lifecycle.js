@@ -7,6 +7,7 @@ import {
 import { applyFactOperations, projectFacts } from './atomic-facts.js';
 import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from './temporal-graph.js';
 import { applyManualCorrection } from './manual-corrections.js';
+import { historyData } from './history-build.js';
 import { reconcileProviders } from './provider-provenance.js';
 
 export const PROVENANCE_NAMESPACE = 'memory_graph__provenance';
@@ -96,7 +97,7 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         return next.finally(() => { if (queues.get(key) === next) queues.delete(key); });
     }
 
-    async function transaction(context, run, validate = () => {}) {
+    async function transaction(context, run, validate = () => {}, validateStored = null) {
         const scope = session(context);
         return enqueue(scope.key, async () => {
             scope.assertLive();
@@ -131,10 +132,11 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             validate();
             validateProviders();
             if (before !== JSON.stringify(state)) {
-                const saved = await context.updateChatState(PROVENANCE_NAMESPACE, () => {
+                const saved = await context.updateChatState(PROVENANCE_NAMESPACE, currentState => {
                     scope.assertLive();
                     validate();
                     validateProviders();
+                    if (validateStored) validateStored(normalizeProvenance(currentState));
                     return state;
                 }, { target: scope.target });
                 scope.assertLive();
@@ -344,6 +346,20 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         }, snapshot.assertCurrent);
     }
 
-    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts, correct,
+    async function publishHistory(context, draft, checkpoint, snapshot, checkAbort = () => {}) {
+        const validate = () => { checkAbort(); snapshot.assertCurrent(); };
+        const validateStored = state => {
+            if (state.scopeId !== snapshot.state.scopeId || JSON.stringify(historyData(state)) !== JSON.stringify(historyData(snapshot.state))
+                || JSON.stringify(state.historyBuild) !== JSON.stringify(snapshot.state.historyBuild)) throw abort();
+        };
+        validate();
+        return transaction(context, state => {
+            validateStored(state);
+            Object.assign(state, historyData(draft));
+            state.historyBuild = structuredClone(checkpoint);
+        }, validate, validateStored);
+    }
+
+    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts, correct, publishHistory,
         writeBatch, listGraph, retrievalSnapshot, resolveEntity: resolveEntityInContext };
 }

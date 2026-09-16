@@ -86,6 +86,10 @@ import { memoryTokenBudget, memoryTokenCounter } from './hybrid-retrieval.js';
 import { readStateProviders } from './state-providers.js';
 import { existingStatePrompt } from './state-prompt.js';
 import { openMemoryOsInspector } from './graph-inspector.js';
+import { createHistoryBuilder, applyHistoryBatch } from './history-build.js';
+import { projectFacts } from './atomic-facts.js';
+import { projectTemporalGraph } from './temporal-graph.js';
+import { openHistoryBuildPopup } from './history-build-ui.js';
 import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
@@ -4516,6 +4520,22 @@ function buildRecallFinalizeInputTail({
     ].join('\n');
 }
 
+export function createMemoryHistoryBuilder() {
+    return createHistoryBuilder({ lifecycle: sourceLifecycle,
+        extract: async (context, { state, ticket, signal }) => {
+            const messages = ticket.episodeIds.map(id => {
+                const floor = state.episodes[id].sourceFloor;
+                return { ...context.chat[floor], source_index: floor, seq: floor + 1 };
+            });
+            const ops = await extractNodesWithLLM(context, createEmptyStore(), getEffectiveSettings(context, getSettings()), [], messages,
+                { sourceTicket: ticket, memoryState: state, abortSignal: signal, rebuildCreateOnly: true });
+            const result = ops.find(op => op.op === 'memory_facts');
+            if (!result) throw new Error('History extraction did not return Memory OS facts');
+            return { facts: result.operations, graph: result.graphOperations };
+        },
+    });
+}
+
 async function extractNodesWithLLM(context, store, settings, schema, messageBatch, options = {}) {
     const messages = (Array.isArray(messageBatch) ? messageBatch : [])
         .map(item => ({
@@ -4630,8 +4650,9 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     if (options.sourceTicket) {
         tools.push(factExtractionTool());
         allowedNames.add(FACT_TOOL_NAME);
-        factContext = factExtractionContext(options.sourceTicket, await sourceLifecycle.listFacts(context));
-        factContext += '\n' + temporalExtractionContext(await sourceLifecycle.listGraph(context, { includeInactive: true }));
+        factContext = factExtractionContext(options.sourceTicket, options.memoryState ? projectFacts(options.memoryState, context.chat) : await sourceLifecycle.listFacts(context));
+        factContext += '\n' + temporalExtractionContext(options.memoryState ? projectTemporalGraph(options.memoryState, context.chat, { includeInactive: true }) : await sourceLifecycle.listGraph(context, { includeInactive: true }));
+        if (options.memoryState) factContext += '\nHistory build: graph actions are limited to entity, alias, relation. Do not rename, merge, split or adjudicate identities. Do not modify user-corrected Facts; their IDs are: ' + JSON.stringify(Object.values(options.memoryState.facts || {}).filter(fact => fact.manualDisabled || fact.supports?.some(ref => ref.manualId)).map(fact => fact.id));
     }
     const semanticRetries = Math.max(0, Math.min(10, Math.floor(Number(settings?.toolCallRetryMax) || 0)));
     const editableNodes = new Map(
@@ -4822,7 +4843,8 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
             try {
                 const factOps = readFactToolCalls(calls);
                 const graphOps = readTemporalToolCalls(calls, FACT_TOOL_NAME);
-                sourceLifecycle.validateFacts(context, factOps, options.sourceTicket, graphOps);
+                if (options.memoryState) applyHistoryBatch(options.memoryState, { facts: factOps, graph: graphOps }, options.sourceTicket, context.chat);
+                else sourceLifecycle.validateFacts(context, factOps, options.sourceTicket, graphOps);
                 ops.push({ op: 'memory_facts', operations: factOps, graphOperations: graphOps });
             } catch (error) {
                 retryReason = `Invalid atomic facts: ${error.message}`;
@@ -15212,6 +15234,7 @@ function bindUi() {
                 correct: (command, snapshot) => sourceLifecycle.correct(live, command, snapshot),
                 loadCytoscape: ensureCytoscapeLoaded,
                 openLegacy: () => openGraphInspectorPopup(live),
+                openHistory: () => openHistoryBuildPopup(live, createMemoryHistoryBuilder()),
             });
         } else await openGraphInspectorPopup(live);
     });

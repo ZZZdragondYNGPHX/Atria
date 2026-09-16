@@ -53,7 +53,7 @@ const select = (parent, label, entries) => {
     return input;
 };
 
-export async function openMemoryOsInspector(context, { load, correct, loadCytoscape, openLegacy }) {
+export async function openMemoryOsInspector(context, { load, correct, loadCytoscape, openLegacy, openHistory }) {
     const root = node('section'); root.className = 'memory-os-inspector';
     if (!document.querySelector('link[data-memory-os-inspector]')) {
         const css = node('link', undefined, document.head); css.rel = 'stylesheet'; css.href = new URL('./graph-inspector.css', import.meta.url).href; css.dataset.memoryOsInspector = '';
@@ -185,6 +185,7 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     button(toolbar, '刷新', () => { refresh().catch(fail); });
     button(toolbar, '适应视图', () => cy?.fit(undefined, 30));
     button(toolbar, '旧版节点图', () => { Promise.resolve().then(openLegacy).catch(fail); });
+    if (openHistory) button(toolbar, '历史构建 / 回滚', () => { Promise.resolve().then(openHistory).then(refresh).catch(fail); });
     for (const element of [search, type, predicate, history, center, hops]) element.addEventListener('change', render);
     action.addEventListener('change', renderFields);
     form.addEventListener('submit', async event => {
