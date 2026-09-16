@@ -86,7 +86,7 @@ import { memoryTokenBudget, memoryTokenCounter } from './hybrid-retrieval.js';
 import { readStateProviders } from './state-providers.js';
 import { existingStatePrompt } from './state-prompt.js';
 import { openMemoryOsInspector } from './graph-inspector.js';
-import { createHistoryBuilder, applyHistoryBatch } from './history-build.js';
+import { createHistoryBuilder, computeHistoryBatch } from './history-build.js';
 import { projectFacts } from './atomic-facts.js';
 import { projectTemporalGraph } from './temporal-graph.js';
 import { openHistoryBuildPopup } from './history-build-ui.js';
@@ -4843,7 +4843,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
             try {
                 const factOps = readFactToolCalls(calls);
                 const graphOps = readTemporalToolCalls(calls, FACT_TOOL_NAME);
-                if (options.memoryState) applyHistoryBatch(options.memoryState, { facts: factOps, graph: graphOps }, options.sourceTicket, context.chat);
+                if (options.memoryState) await computeHistoryBatch(options.memoryState, { facts: factOps, graph: graphOps }, options.sourceTicket, context.chat, options.abortSignal);
                 else sourceLifecycle.validateFacts(context, factOps, options.sourceTicket, graphOps);
                 ops.push({ op: 'memory_facts', operations: factOps, graphOperations: graphOps });
             } catch (error) {
@@ -8793,7 +8793,7 @@ async function injectMemoryPrompts(context, payload) {
         });
         hybrid.assertCurrent();
         trace = [{ tool: 'memory_os_hybrid', selected: hybrid.selected, tokens: hybrid.tokenCount,
-            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, providers: hybrid.providers, diagnostics: hybrid.diagnostics }];
+            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, providers: hybrid.providers, diagnostics: hybrid.diagnostics, metrics: hybrid.metrics }];
     } else if (recallMethod === 'rag') {
         const queryBundle = getRecallQueryBundle(payload, context, settings);
         const queryText = normalizeText(queryBundle.fullText || '');

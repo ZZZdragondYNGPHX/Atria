@@ -189,3 +189,20 @@ export function isCurrentMemorySupport(state, ref, chat) {
         && Array.isArray(ref.episodeIds) && (!ref.episodeIds.length || episodesAreCurrent(state, ref.episodeIds, chat, state.scopeId));
     return Array.isArray(ref?.episodeIds) && episodesAreCurrent(state, ref.episodeIds, chat, state.scopeId);
 }
+
+/** Short-lived synchronous projection index. Never retain across an await or mutation. */
+export function createMemorySupportChecker(state, chat) {
+    const lookup = sourceLookup(chat); const contents = new Map(); const episodes = new Map();
+    const valid = id => {
+        if (!episodes.has(id)) {
+            const episode = state.episodes[id]; const found = lookup.get(episode?.messageIds?.[0]);
+            if (found && !contents.has(found.floor)) contents.set(found.floor, sourceContent(found.message));
+            episodes.set(id, Boolean(episode?.status === 'active' && episode.scopeId === state.scopeId && found
+                && found.floor === episode.sourceFloor && contents.get(found.floor) === episode.sourceContent));
+        }
+        return episodes.get(id);
+    };
+    return ref => Boolean(Array.isArray(ref?.episodeIds) && (ref.manualId
+        ? state.corrections?.[ref.manualId]?.scopeId === state.scopeId && ref.episodeIds.every(valid)
+        : ref.episodeIds.length && ref.episodeIds.every(valid)));
+}

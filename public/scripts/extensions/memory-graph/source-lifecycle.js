@@ -117,10 +117,11 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             };
             if (providers.length || state.providerSources) reconcileProviders(state, providers, scope.chat, newId);
             const output = await run(state, scope);
-            if (state.facts) {
+            const changed = before !== JSON.stringify(state);
+            if (changed && state.facts) {
                 for (const fact of projectFacts(state, scope.chat, { includeInactive: true })) state.facts[fact.id] = fact;
             }
-            if (state.entities) {
+            if (changed && state.entities) {
                 const graph = projectTemporalGraph(state, scope.chat, { includeInactive: true });
                 for (const entity of graph.entities) state.entities[entity.id].status = entity.status;
                 for (const relation of graph.relations) {

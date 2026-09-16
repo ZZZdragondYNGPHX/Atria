@@ -78,7 +78,12 @@ try {
     checks.push('rejected relation leaves active graph and remains in history');
     await page.setViewportSize({ width: 390, height: 844 });
     await root.getByRole('button', { name: '适应视图', exact: true }).click();
-    assert(await root.evaluate(el => el.scrollWidth <= el.clientWidth + 2));
+    // Cytoscape's ResizeObserver updates its canvas after the viewport change.
+    await page.waitForFunction(el => el.scrollWidth <= el.clientWidth + 2, await root.elementHandle(), { timeout: 5000 });
+    const overflow = await root.evaluate(el => ({ width: el.clientWidth, scroll: el.scrollWidth,
+        children: [...el.querySelectorAll('*')].filter(child => child.getBoundingClientRect().right > el.getBoundingClientRect().right + 2)
+            .map(child => ({ tag: child.tagName, class: child.className, width: child.getBoundingClientRect().width })).slice(0, 12) }));
+    assert(overflow.scroll <= overflow.width + 2, JSON.stringify(overflow));
     checks.push('390px layout has no horizontal overflow');
     if (process.argv[4]) await page.screenshot({ path: process.argv[4], fullPage: false });
     await page.reload(); await page.waitForFunction(() => !!window.Luker?.getContext && !document.getElementById('preloader'));

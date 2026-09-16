@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ENTITY_TYPES, projectTemporalGraph } from './temporal-graph.js';
-import { projectFacts } from './atomic-facts.js';
+import { ENTITY_TYPES } from './temporal-graph.js';
+import { computeInspector, openMemoryDiagnostics } from './inspector-compute.js';
 import { projectProviders } from './provider-provenance.js';
 
 /** Bounded graph projection; edges always refer to persisted semantic relations. */
@@ -85,10 +85,11 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     const fields = node('div', undefined, form); fields.className = 'mos-form';
     const save = node('button', '保存修正', form); save.type = 'submit'; save.className = 'menu_button';
     let snapshot, view, facts, cy, disposed = false, busy = false, generation = 0;
-    let selected = null;
+    let selected = null; let computation = null;
     const fail = error => { status.textContent = `未完成：${error.message}。来源变化时请刷新。`; };
     const guarded = run => async () => { try { snapshot.assertCurrent(); await run(); } catch (error) { fail(error); } };
     const display = (record, kind) => {
+        record = { ...snapshot.state[{ entity: 'entities', relation: 'relations', fact: 'facts', pending: 'entityPending' }[kind]]?.[record.id], ...record };
         selected = { record, kind }; inspector.replaceChildren();
         node('h4', record.canonicalName || record.text || record.predicate || record.name, inspector);
         if (kind === 'entity') button(inspector, '以此实体查看局部图谱', () => { center.value = record.id; render(); });
@@ -121,9 +122,10 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     const renderFields = () => {
         fields.replaceChildren(); if (!view) return;
         const a = action.value; const record = selected?.record || {};
-        const entities = view.entities.map(entity => [entity.id, `${entity.canonicalName} · ${entity.type} · ${entity.id.slice(0, 8)}`]);
-        const relations = view.relations.map(edge => [edge.id, `${edge.predicate} · ${edge.status} · ${edge.id.slice(0, 8)}`]);
-        const pending = view.pending.filter(item => item.status === 'pending').map(item => [item.id, item.name]);
+        const prioritized = [record.id, record.sourceEntityId, record.targetEntityId];
+        const entities = [...view.entities.filter(entity => prioritized.includes(entity.id)), ...view.entities.filter(entity => !prioritized.includes(entity.id)).slice(0, 500)].map(entity => [entity.id, `${entity.canonicalName} · ${entity.type} · ${entity.id.slice(0, 8)}`]);
+        const relations = [...view.relations.filter(edge => edge.id === record.id), ...view.relations.filter(edge => edge.id !== record.id).slice(0, 500)].map(edge => [edge.id, `${edge.predicate} · ${edge.status} · ${edge.id.slice(0, 8)}`]);
+        const pending = view.pending.filter(item => item.status === 'pending').slice(0, 500).map(item => [item.id, item.name]);
         if (['rename', 'alias', 'remove_alias', 'merge_entity', 'split_entity', 'resolve_pending', 'relation', 'edit_relation'].includes(a)) input('targetId', '目标实体 target', record.targetEntityId || record.id || '', entities);
         if (['merge_entity', 'relation', 'edit_relation'].includes(a)) input('sourceId', '来源实体 source', record.sourceEntityId || '', entities);
         if (['entity', 'rename', 'alias', 'remove_alias'].includes(a)) input('name', '名称 / 别名', a === 'rename' ? record.canonicalName || '' : '');
@@ -147,6 +149,14 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     };
     const render = () => {
         if (!view || disposed) return;
+        const previousCenter = center.value;
+        const needle = search.value.normalize('NFKC').toLowerCase().trim();
+        const choices = view.entities.filter(entity => !needle || [entity.canonicalName, ...entity.aliases].some(name => name.normalize('NFKC').toLowerCase().includes(needle))).slice(0, 500);
+        const anchor = view.entities.find(entity => entity.id === previousCenter);
+        if (anchor && !choices.includes(anchor)) choices.unshift(anchor);
+        center.replaceChildren();
+        for (const [value, label] of [['', '全局图谱'], ...choices.map(entity => [entity.id, entity.canonicalName])]) { const option = node('option', label, center); option.value = value; }
+        center.value = previousCenter;
         const graph = selectGraph(view, { query: search.value, type: type.value, predicate: predicate.value, history: Boolean(history.value), center: center.value, hops: hops.value });
         status.textContent = `显示 ${graph.entities.length}/${graph.total} 实体，${graph.relations.length}/${graph.totalRelations} 关系。上限 250 / 600；请搜索或缩小局部范围。`;
         cy?.elements().remove();
@@ -159,13 +169,16 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
             .forEach(([record, kind]) => button(listing, `${record.canonicalName || record.predicate} · ${record.status}`, () => display(record, kind)));
     };
     const refresh = async () => {
-        const version = ++generation; const next = await load();
+        const version = ++generation; computation?.abort(); const active = new AbortController(); computation = active;
+        const next = await load();
+        if (disposed || version !== generation) return;
+        const computed = await computeInspector(next, { signal: active.signal });
         if (disposed || version !== generation) return;
         snapshot = next; snapshot.assertCurrent(); selected = null;
-        view = projectTemporalGraph(snapshot.state, snapshot.chat, { includeInactive: true }); facts = projectFacts(snapshot.state, snapshot.chat, { includeInactive: true });
+        view = computed.graph; facts = computed.facts;
         const refill = (element, entries) => { const previous = element.value; element.replaceChildren(); entries.forEach(([value, label]) => { const option = node('option', label, element); option.value = value; }); element.value = entries.some(([value]) => value === previous) ? previous : ''; };
         refill(predicate, [['', '全部'], ...[...new Set(view.relations.map(edge => edge.predicate))].sort().map(value => [value, value])]);
-        refill(center, [['', '全局图谱'], ...view.entities.map(entity => [entity.id, entity.canonicalName])]);
+        refill(center, [['', '全局图谱'], ...view.entities.slice(0, 500).map(entity => [entity.id, entity.canonicalName])]);
         inspector.replaceChildren(); node('p', '点击实体或关系查看详情、来源及审计记录。', inspector);
         reviewBody.replaceChildren();
         const pending = view.pending.filter(item => item.status === 'pending'); const disputed = view.relations.filter(edge => edge.status === 'disputed');
@@ -177,12 +190,13 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
         const providers = projectProviders(snapshot.state, snapshot.chat);
         node('h4', '外部状态与字段映射 · 只读', reviewBody);
         node('p', '普通文字卡无需外部状态。此处展示 MVU / LoreState 的提供者状态、字段路径及映射；修正操作不会写入它们。', reviewBody);
-        node('pre', JSON.stringify(providers, null, 2), reviewBody);
+        node('pre', JSON.stringify(providers, null, 2).slice(0, 32000), reviewBody);
         const audit = node('details', undefined, reviewBody); node('summary', '用户修正记录（最近 100 条）', audit);
-        node('pre', JSON.stringify(Object.values(snapshot.state.corrections || {}).slice(-100), null, 2), audit);
+        node('pre', JSON.stringify(Object.values(snapshot.state.corrections || {}).slice(-100), null, 2).slice(0, 32000), audit);
         renderFields(); render();
     };
     button(toolbar, '刷新', () => { refresh().catch(fail); });
+    button(toolbar, '记忆诊断', guarded(() => openMemoryDiagnostics(context, snapshot)));
     button(toolbar, '适应视图', () => cy?.fit(undefined, 30));
     button(toolbar, '旧版节点图', () => { Promise.resolve().then(openLegacy).catch(fail); });
     if (openHistory) button(toolbar, '历史构建 / 回滚', () => { Promise.resolve().then(openHistory).then(refresh).catch(fail); });
@@ -205,7 +219,7 @@ export async function openMemoryOsInspector(context, { load, correct, loadCytosc
     });
     const popup = context.callGenericPopup(root, context.POPUP_TYPE.TEXT, '', { wide: true, wider: true, large: true, allowVerticalScrolling: true });
     // Dispose as soon as the popup closes, including during lazy script loading.
-    const closing = Promise.resolve(popup).finally(() => { disposed = true; generation++; cy?.destroy(); });
+    const closing = Promise.resolve(popup).finally(() => { disposed = true; generation++; computation?.abort(); cy?.destroy(); });
     try {
         const cytoscape = await loadCytoscape();
         if (!disposed) {

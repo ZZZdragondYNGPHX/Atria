@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { projectFacts } from './atomic-facts.js';
 import { projectTemporalGraph } from './temporal-graph.js';
-import { episodesAreCurrent } from './source-provenance.js';
+import { createMemorySupportChecker } from './source-provenance.js';
 import { projectProviders, providerProofCurrent } from './provider-provenance.js';
 import { resolveProviderFields } from './state-providers.js';
 import { stateClaimAlreadyPresent } from './state-prompt.js';
@@ -17,11 +17,12 @@ const terms = text => {
     return words.flatMap((word, index) => /\p{Script=Han}/u.test(word) && /\p{Script=Han}/u.test(words[index + 1] || '')
         ? [word, word + words[index + 1]] : [word]);
 };
-const evidenceIds = (record, state, chat) => [...new Set((record.supports || [])
-    .filter(ref => episodesAreCurrent(state, ref.episodeIds || [], chat, state.scopeId)).flatMap(ref => ref.episodeIds))];
+const evidenceIds = (record, check) => [...new Set((record.supports || [])
+    .filter(check).flatMap(ref => ref.episodeIds))];
 
 export function analyzeMemoryQuery(query, entities, { at = null } = {}) {
     const text = normalized(query);
+    const queryWords = tokens(text);
     const history = Number.isFinite(at) || /以前|过去|曾经|当时|历史|之前|\b(past|before|previous|history|formerly|used to)\b/u.test(text);
     const intent = /哪里|在哪|何处|\bwhere\b/u.test(text) ? 'location'
         : /为什么|为何|\bwhy\b/u.test(text) ? 'cause'
@@ -29,7 +30,6 @@ export function analyzeMemoryQuery(query, entities, { at = null } = {}) {
     const entityIds = entities.filter(entity => [entity.canonicalName, ...entity.aliases].some(name => {
         const needle = normalized(name);
         const words = tokens(needle);
-        const queryWords = tokens(text);
         return needle && (/\p{Script=Han}/u.test(needle) ? text.includes(needle)
             : words.length && queryWords.some((_, start) => words.every((word, offset) => queryWords[start + offset] === word)));
     })).map(entity => entity.id).slice(0, RETRIEVAL_DEFAULTS.maxEntities);
@@ -39,7 +39,9 @@ export function analyzeMemoryQuery(query, entities, { at = null } = {}) {
 /** Build only source-valid records; stale/disputed records never reach any lane. */
 export function buildMemoryCorpus(snapshot, at = null) {
     const { state, chat } = snapshot;
-    const facts = projectFacts(state, chat, { includeInactive: true });
+    const check = createMemorySupportChecker(state, chat);
+    const facts = projectFacts(state, chat, { includeInactive: true, checkSupport: check });
+    const factOrder = new Map(facts.map((fact, index) => [fact.id, index]));
     const graph = projectTemporalGraph(state, chat, { includeInactive: true, at });
     const entities = graph.entities.filter(entity => entity.status === 'active');
     const names = new Map(entities.map(entity => [entity.id, entity.canonicalName]));
@@ -56,12 +58,12 @@ export function buildMemoryCorpus(snapshot, at = null) {
             && (!inactiveFacts.has(fact.id) || activeFacts.has(fact.id)
                 || graph.relations.some(relation => relation.validAt === true && relation.supports.some(ref => ref.factId === fact.id)))
             ? at >= fact.validFrom && (fact.validUntil === undefined || at < fact.validUntil) : null,
-        manualSources: (fact.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(fact, state, chat) }));
+        manualSources: (fact.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(fact, check) }));
     documents.push(...graph.relations.filter(eligible).map(relation => ({ ...relation, id: `relation:${relation.id}`, kind: 'relation',
         text: `${names.get(relation.sourceEntityId)} — ${relation.predicate} → ${names.get(relation.targetEntityId)}`,
-        type: facts.find(fact => relation.supports.some(ref => ref.factId === fact.id))?.type || 'inferred',
-        manualSources: (relation.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(relation, state, chat) })));
-    documents.push(...Object.values(state.episodes).filter(episode => episodesAreCurrent(state, [episode.id], chat, state.scopeId))
+        type: facts[relation.supports.reduce((index, ref) => Math.min(index, factOrder.get(ref.factId) ?? Infinity), Infinity)]?.type || 'inferred',
+        manualSources: (relation.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(relation, check) })));
+    documents.push(...Object.values(state.episodes).filter(episode => check({ episodeIds: [episode.id] }))
         .map(episode => ({ ...episode, id: `episode:${episode.id}`, kind: 'episode', text: episode.content,
             type: 'source', episodeIds: [episode.id], confidence: 0.5 })));
     const providers = projectProviders(state, chat);
@@ -95,11 +97,15 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
         && !overridden.includes(doc) && !overriddenFacts.has(doc.factId)
         && (plan.at === null || doc.kind !== 'episode' && doc.validAt === true));
     const queryTerms = [...new Set(terms(query))];
-    const bags = documents.map(doc => terms(doc.text));
+    const bags = documents.map(doc => {
+        const words = terms(doc.text); const counts = new Map();
+        for (const word of words) counts.set(word, (counts.get(word) || 0) + 1);
+        return { length: words.length, counts };
+    });
     const average = bags.reduce((sum, bag) => sum + bag.length, 0) / (bags.length || 1) || 1;
-    const df = new Map(queryTerms.map(term => [term, bags.filter(bag => bag.includes(term)).length]));
+    const df = new Map(queryTerms.map(term => [term, bags.filter(bag => bag.counts.has(term)).length]));
     const lexical = documents.map((doc, index) => ({ id: doc.id, score: queryTerms.reduce((sum, term) => {
-        const count = bags[index].filter(value => value === term).length;
+        const count = bags[index].counts.get(term) || 0;
         return sum + Math.log(1 + (documents.length - df.get(term) + 0.5) / (df.get(term) + 0.5))
             * count * 2.2 / (count + 1.2 * (0.25 + 0.75 * bags[index].length / average));
     }, 0) })).filter(hit => hit.score > 0).sort((a, b) => b.score - a.score).slice(0, cfg.topK);
@@ -188,19 +194,25 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         if (signal?.aborted) throw Object.assign(new Error('Memory recall aborted'), { name: 'AbortError' });
         snapshot.assertCurrent();
     };
+    const started = performance.now();
     guard();
     const corpus = buildMemoryCorpus(snapshot, at);
+    const corpusReady = performance.now();
     const diagnostics = [];
     let vectorIds = [];
     if (service && profile && String(query).trim()) {
         try {
             const collectionId = `memory_os_${await digest(JSON.stringify([snapshot.key, profile]))}`;
             guard();
-            const items = await Promise.all(corpus.documents.map(async (doc, index) => {
-                const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
-                return { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index, metadata: { id: doc.id, fingerprint } };
-            }));
-            guard();
+            const items = [];
+            for (let start = 0; start < corpus.documents.length; start += 64) {
+                const chunk = await Promise.all(corpus.documents.slice(start, start + 64).map(async (doc, offset) => {
+                    const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
+                    return { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index: start + offset, metadata: { id: doc.id, fingerprint } };
+                }));
+                guard(); items.push(...chunk);
+                if (start + 64 < corpus.documents.length) { await new Promise(resolve => setTimeout(resolve, 0)); guard(); }
+            }
             const desired = new Map(items.map(item => [item.hash, item]));
             if (desired.size !== items.length) throw new Error('Memory vector hash collision');
             const remote = new Set((await service.listHashes({ collectionId, profile, signal })).map(Number));
@@ -221,6 +233,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             diagnostics.push('vector_unavailable');
         }
     } else diagnostics.push('vector_unconfigured');
+    const vectorsReady = performance.now();
     const result = rankMemory(query, corpus, vectorIds, { at });
     result.candidates = result.candidates.filter(doc => !(doc.kind === 'state' && doc.type === 'provider'
         && doc.claims?.every(claim => stateClaimAlreadyPresent(claim, existingStateText))));
@@ -245,5 +258,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         ? [doc.factId] : doc.kind === 'relation' ? doc.supports.map(ref => ref.factId) : []);
     if (accessed.length && snapshot.recordAccess) { await snapshot.recordAccess(accessed); guard(); }
     return { ...composition, plan: result.plan, diagnostics,
+        metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
+            corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, totalMs: performance.now() - started },
         providers: corpus.providers.map(provider => ({ providerId: provider.providerId, status: provider.status })), assertCurrent: guard };
 }

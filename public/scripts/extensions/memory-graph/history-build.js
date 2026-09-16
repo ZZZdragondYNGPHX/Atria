@@ -2,6 +2,7 @@
 import { applyFactOperations } from './atomic-facts.js';
 import { applyTemporalOperations } from './temporal-graph.js';
 import { sourceContent } from './source-provenance.js';
+import { computeInspector } from './inspector-compute.js';
 
 export const HISTORY_FIELDS = ['facts', 'entities', 'relations', 'entityPending', 'predicates', 'corrections', 'dependencies'];
 const running = new Set();
@@ -81,6 +82,12 @@ export function historyFloors(chat, { range = '50', from = 0, to = chat.length -
         && !message.is_system && String(message.mes || '').trim()).map(({ floor }) => floor);
 }
 
+export function computeHistoryBatch(state, batch, ticket, chat, signal, newId) {
+    return computeInspector({ state, chat, assertCurrent() {} }, { mode: 'batch', batch,
+        ticket: { scopeId: ticket.scopeId, episodeIds: ticket.episodeIds }, signal,
+        fallback: () => applyHistoryBatch(state, batch, ticket, chat, newId) });
+}
+
 export function createHistoryBuilder({ lifecycle, extract, newId = () => crypto.randomUUID() }) {
     async function run(context, { floors, mode = 'append', signal, onProgress = () => {} }) {
         if (!['append', 'rebuild'].includes(mode)) throw new Error('Invalid history mode');
@@ -114,7 +121,7 @@ export function createHistoryBuilder({ lifecycle, extract, newId = () => crypto.
                 const part = { ...ticket, sources, episodeIds: sources.map(source => source.episodeId) };
                 try {
                     const result = await extract(context, { state: structuredClone(draft), ticket: part, signal });
-                    guard(); draft = applyHistoryBatch(draft, result, part, snapshot.chat, newId);
+                    guard(); draft = await computeHistoryBatch(draft, result, part, snapshot.chat, signal, newId); guard();
                     part.episodeIds.forEach(id => processed.add(id));
                 } catch (error) {
                     guard();

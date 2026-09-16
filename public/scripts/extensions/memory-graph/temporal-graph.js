@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { addDependency, isCurrentMemorySupport } from './source-provenance.js';
+import { addDependency, isCurrentMemorySupport, createMemorySupportChecker } from './source-provenance.js';
 import { projectFacts } from './atomic-facts.js';
 
 export const ENTITY_TYPES = ['Character', 'Location', 'Organization', 'Item', 'Event', 'Quest', 'Concept'];
@@ -33,29 +33,33 @@ function latestMerge(entity) {
 }
 
 /** Resolve endpoints without rewriting their historical identity. */
-function canonicalId(state, id, chat) {
-    const seen = new Set();
+function canonicalId(state, id, chat, cache = new Map(), check = ref => current(state, ref, chat)) {
+    const seen = new Set(); let result = null;
     while (state.entities?.[id]) {
-        if (seen.has(id)) return null;
+        if (cache.has(id)) { result = cache.get(id); break; }
+        if (seen.has(id)) break;
         seen.add(id);
         const merge = latestMerge(state.entities[id]);
-        if (!merge || merge.undone || !current(state, merge, chat)) return id;
+        if (!merge || merge.undone || !check(merge)) { result = id; break; }
         id = merge.targetId;
     }
-    return null;
+    for (const visited of seen) cache.set(visited, result);
+    return result;
 }
 
 export function projectTemporalGraph(state, chat, { includeInactive = false, at = null } = {}) {
+    const check = createMemorySupportChecker(state, chat); const canonicalCache = new Map();
+    const resolveCanonical = id => canonicalId(state, id, chat, canonicalCache, check);
     const entities = Object.values(state.entities || {}).filter(entity => entity?.scopeId === state.scopeId && Array.isArray(entity.names)).map(entity => {
-        const names = entity.names.filter(name => !name.manualDisabled && current(state, name, chat));
+        const names = entity.names.filter(name => !name.manualDisabled && check(name));
         const canonical = names.filter(name => name.kind === 'canonical').at(-1) || names[0];
         const merge = latestMerge(entity);
         const status = !names.length ? 'stale' : merge && !merge.undone
-            ? current(state, merge, chat) ? 'merged' : 'disputed' : 'active';
+            ? check(merge) ? 'merged' : 'disputed' : 'active';
         return { ...structuredClone(entity), canonicalName: canonical?.name || entity.canonicalName,
             displayName: canonical?.name || entity.displayName,
             aliases: [...new Set(names.map(name => name.name).filter(name => name !== canonical?.name))],
-            status, resolvedId: canonicalId(state, entity.id, chat) };
+            status, resolvedId: resolveCanonical(entity.id) };
     });
     const entityMap = new Map(entities.map(entity => [entity.id, entity]));
     // An active merge contributes searchable names only while both identities are usable.
@@ -63,11 +67,11 @@ export function projectTemporalGraph(state, chat, { includeInactive = false, at 
         const target = entityMap.get(entity.resolvedId);
         if (target?.status === 'active') target.aliases = [...new Set([...target.aliases, entity.canonicalName, ...entity.aliases])].filter(name => name !== target.canonicalName);
     }
-    const facts = new Map(projectFacts(state, chat, { includeInactive: true }).map(fact => [fact.id, fact]));
+    const facts = new Map(projectFacts(state, chat, { includeInactive: true, checkSupport: check }).map(fact => [fact.id, fact]));
     const relations = Object.values(state.relations || {}).filter(relation => relation?.scopeId === state.scopeId && Array.isArray(relation.supports)).map(relation => {
-        const source = canonicalId(state, relation.sourceEntityId, chat);
-        const target = canonicalId(state, relation.targetEntityId, chat);
-        const supports = relation.supports.filter(ref => current(state, ref, chat));
+        const source = resolveCanonical(relation.sourceEntityId);
+        const target = resolveCanonical(relation.targetEntityId);
+        const supports = relation.supports.filter(ref => check(ref));
         const factViews = supports.map(ref => facts.get(ref.factId)).filter(Boolean);
         let status = factViews.some(fact => fact.status === 'active') ? 'active'
             : factViews.some(fact => fact.status === 'superseded') ? 'superseded'
@@ -84,20 +88,28 @@ export function projectTemporalGraph(state, chat, { includeInactive = false, at 
     for (const relation of relations) {
         if (!['active', 'superseded'].includes(relation.status)) continue;
         if (relation.supersededBy?.length) {
-            const successor = relation.supersededBy.find(ref => supported.has(ref.relationId) && current(state, ref, chat));
+            const successor = relation.supersededBy.find(ref => supported.has(ref.relationId) && check(ref));
             relation.status = successor ? 'superseded' : 'disputed';
             if (successor?.validUntil !== undefined) relation.validUntil ??= successor.validUntil;
             if (Number.isFinite(successor?.untilOrder)) relation.untilOrder ??= successor.untilOrder;
             continue;
         }
-        const resolved = new Set((relation.resolutions || []).filter(ref => current(state, ref, chat)).flatMap(ref => ref.loserIds));
+        const resolved = new Set((relation.resolutions || []).filter(ref => check(ref)).flatMap(ref => ref.loserIds));
         if ((relation.conflictIds || []).some(id => !resolved.has(id))) relation.status = 'disputed';
     }
     // Merging endpoints can reveal a conflict without adding a relation. Never let
     // two incompatible replace_current edges escape simply because IDs changed.
-    for (const relation of relations.filter(item => item.status === 'active' && item.policy === 'replace_current')) {
-        const peers = relations.filter(other => other.id !== relation.id && other.status === 'active' && sameSlot(relation, other) && !sameEndpoints(relation, other));
-        if (peers.length) { relation.status = 'disputed'; for (const peer of peers) peer.status = 'disputed'; }
+    const slots = new Map();
+    for (const relation of relations) {
+        if (relation.status !== 'active' || relation.policy !== 'replace_current') continue;
+        const key = JSON.stringify([relation.predicate, relation.exclusiveSide, relation.exclusiveSide === 'target' ? relation.targetEntityId : relation.sourceEntityId]);
+        if (!slots.has(key)) slots.set(key, []);
+        slots.get(key).push(relation);
+    }
+    for (const peers of slots.values()) {
+        if (new Set(peers.map(edge => JSON.stringify([edge.sourceEntityId, edge.targetEntityId]))).size > 1) {
+            for (const edge of peers) edge.status = 'disputed';
+        }
     }
     for (const relation of relations) {
         const from = temporalOrder(relation);
@@ -110,7 +122,7 @@ export function projectTemporalGraph(state, chat, { includeInactive = false, at 
         relations: relations.filter(relation => includeInactive || (Number.isFinite(at)
             ? relation.validAt === true && ['active', 'superseded'].includes(relation.status) : relation.status === 'active')),
         pending: Object.values(state.entityPending || {}).map(item => ({ ...structuredClone(item),
-            status: item.manualDisabled ? 'rejected' : item.resolvedTo ? 'resolved' : current(state, item, chat) ? 'pending' : 'stale' })) };
+            status: item.manualDisabled ? 'rejected' : item.resolvedTo ? 'resolved' : check(item) ? 'pending' : 'stale' })) };
 }
 
 export function resolveEntity(state, chat, name, type) {

@@ -1,28 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { addDependency, episodesAreCurrent, isCurrentMemorySupport } from './source-provenance.js';
+import { addDependency, episodesAreCurrent, createMemorySupportChecker } from './source-provenance.js';
 
 const TYPES = ['explicit', 'inferred', 'summary'];
 const CAPS = { explicit: 0.95, inferred: 0.65, summary: 0.75 };
 const canonical = text => text.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 const bounded = (value, fallback, ceiling = 1) => Number.isFinite(value) ? Math.max(0, Math.min(ceiling, value)) : fallback;
 
-function currentSupport(state, support, chat) {
-    return isCurrentMemorySupport(state, support, chat);
-}
-
 /** Projection only: history and evidence remain intact in the source ledger. */
-export function projectFacts(state, chat, { includeInactive = false } = {}) {
+export function projectFacts(state, chat, { includeInactive = false, checkSupport = createMemorySupportChecker(state, chat) } = {}) {
     const facts = Object.values(state.facts || {}).filter(fact => fact && typeof fact.id === 'string' && typeof fact.text === 'string'
         && TYPES.includes(fact.type) && fact.scopeId === state.scopeId && Array.isArray(fact.supports)
         && fact.supports.every(support => support && Array.isArray(support.episodeIds)));
-    const supported = new Map(facts.map(fact => [fact.id, fact.supports.filter(s => currentSupport(state, s, chat))]));
+    const supported = new Map(facts.map(fact => [fact.id, fact.supports.filter(s => checkSupport(s))]));
     return facts.map(fact => {
         const supports = supported.get(fact.id);
         let status = supports.length ? 'active' : 'stale';
         if (supports.length && fact.supersededBy?.length) {
             status = fact.supersededBy.some(id => supported.get(id)?.length) ? 'superseded' : 'disputed';
         }
-        if (supports.length && fact.mergedInto) status = episodesAreCurrent(state, fact.mergeEpisodeIds || [], chat, state.scopeId) ? 'superseded' : 'disputed';
+        if (supports.length && fact.mergedInto) status = checkSupport({ episodeIds: fact.mergeEpisodeIds || [] }) ? 'superseded' : 'disputed';
         return {
             ...structuredClone(fact), status: fact.manualDisabled ? 'rejected' : status,
             confidence: supports.length ? Math.max(...supports.map(s => bounded(s.confidence, 0, CAPS[fact.type]))) : 0,

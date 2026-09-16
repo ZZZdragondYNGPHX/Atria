@@ -1467,6 +1467,8 @@ Context budget：可配置
 
 ## Phase 9 — Optimization
 
+实现与自动化验证记录见 [Phase 9 执行记录](MEMORY_OS_PHASE9_OPTIMIZATION.md)。原生 Android 与真实模型准确率仍未验证；保留原检索权重，后续以真实质量样本决定调权。
+
 - 大图性能；
 - retrieval 调权；
 - extraction 准确率；
