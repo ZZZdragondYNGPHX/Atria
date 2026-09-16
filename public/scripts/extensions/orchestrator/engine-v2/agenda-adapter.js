@@ -7,12 +7,13 @@ import { createFirstChunkBarrier } from '../dispatch-barrier.js';
 import { resolveOrchestrationAgentApiPresetName, resolveOrchestrationAgentPromptPresetName } from '../agent-resolution.js';
 import { appendRound, appendToSection, ensureSection, setSectionStatus, setRoundStatus, finishRun } from '../run-state/store.js';
 import { throwIfAborted } from '../abort-utils.js';
+import { hasRuntimeCheckpoints } from '../runtime-checkpoints.js';
 
 /** Legacy authoring vocabulary -> durable dynamic policy; no generator or private promise pool. */
 export async function runAgendaEngine({ context, payload, messages, profile, settings, runId: panelRunId, trace, customToolRegistry,
     activeOrchPresetName, onRuntimeEvent, runAgendaPlannerStep, runAgendaTextAgent, applyAgendaPlannerOps, normalizeAgendaDispatches, syncTrace, finalizeTrace }) {
     const plan = compilePreset(profile, { mode: 'agenda', settings });
-    const runId = `${panelRunId}/engine`, fingerprint = planIdentity(plan);
+    const runId = payload?.engineRunId || `${panelRunId}/engine`, fingerprint = planIdentity(plan);
     const planner = plan.nodes.find(node => node.nodeId === 'planner');
     const initial = { ...initialPolicyState(plan), agenda: { plannerRounds: 0,
         todos: [{ id: 'main', goal: 'Produce the best next-turn orchestration guidance for the current request.', status: 'todo' }], runs: [], finalGuidance: '' },
@@ -133,7 +134,11 @@ export async function runAgendaEngine({ context, payload, messages, profile, set
     };
     try {
         const { state } = await runEnginePlan({ plan, runId, context, signal: payload.signal, panelRunId, onEvent: onRuntimeEvent,
-            policyController, initialState: initial, branchPort: { execute, resume: execute } });
+            resume: payload.engineResume === true, store: payload.engineStore,
+            policyController, initialState: initial, branchPort: { execute, resume: request => {
+                if (!hasRuntimeCheckpoints()) throw new Error('Durable Agenda child checkpoints required for recovery');
+                return execute(request);
+            } } });
         if (state.status !== 'completed') throw new Error(state.error || `Engine ${state.status}`);
         const output = guidanceOutput({ plan, state, generation: state.generation });
         syncTrace(state.policyState.agenda);

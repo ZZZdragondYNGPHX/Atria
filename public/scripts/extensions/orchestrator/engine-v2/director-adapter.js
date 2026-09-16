@@ -10,6 +10,7 @@ import { createEngineObserver } from './observer.js';
 import { createLegacyWorkflowRunId } from '../legacy-workflow-adapter.js';
 import { throwIfAborted, createAbortError } from '../abort-utils.js';
 import { appendToSection, ensureSection, setSectionStatus, setRoundStatus } from '../run-state/store.js';
+import { ensureEngineRound } from './panel-adapter.js';
 
 /** Execute one already-admitted port operation using the existing transport/retry formatter. */
 export async function invokePort(iterator, kind, execute) {
@@ -26,7 +27,8 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
     const plan = compilePreset(profile, { mode: 'director', settings: deps.settings || {}, toolsByNode: { owner: toolSchemas.map(tool => tool.function.name) } });
     const owner = plan.nodes.find(node => node.nodeId === 'owner');
     const fingerprint = planIdentity(plan), runId = deps.engineRunId || `${deps.runId || createLegacyWorkflowRunId()}/engine`;
-    const signal = eventData?.abortSignal, store = await openRuntimeCheckpointStore(runId);
+    const signal = eventData?.abortSignal, ownedStore = deps.engineStore ? null : await openRuntimeCheckpointStore(runId);
+    const store = deps.engineStore || ownedStore;
     const guards = new Set(), transient = new Map(), base = messages.slice();
     const assertFresh = () => { for (const guard of guards) guard(); };
     const toolNames = toolSchemas.map(tool => tool.function.name);
@@ -80,7 +82,10 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
             state.pending = 'tool';
             return { intent: { type: 'tool', toolName: call.name, args: call.args }, policyState: state };
         }
-        if (state.round >= 0 && deps.runId) setRoundStatus({ runId: deps.runId, roundId: `main-${state.round}`, status: 'done' });
+        if (state.round >= 0 && deps.runId) {
+            ensureEngineRound(deps.runId, `main-${state.round}`);
+            setRoundStatus({ runId: deps.runId, roundId: `main-${state.round}`, status: 'done' });
+        }
         state.round++;
         if (state.round >= limits.maxRounds) {
             if (state.budgetSubmit) return { intent: { type: 'fail', error: 'Director budget exhausted without a valid reply' }, policyState: state };
@@ -117,6 +122,7 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
                 const policy = state.policyState;
                 if (deps.runId) {
                     const roundId = `main-${policy.round}`;
+                    ensureEngineRound(deps.runId, roundId);
                     const id = ensureSection({ runId: deps.runId, roundId, section: { id: `tool-${policy.index}`, kind: 'tool_call', title: effect.toolName,
                         meta: { args: effect.args, source: resolveToolSource(effect.toolName, { __customToolRegistry: customToolRegistry }) } } });
                     appendToSection({ runId: deps.runId, roundId, sectionId: id, delta: JSON.stringify(effect.args) });
@@ -145,19 +151,23 @@ export async function runDirectorEngine({ profile, handle, eventData, deps, tool
             } },
         } });
     const cancel = () => { if (runtime.getState(runId)) runtime.cancelRun(runId); };
-    store?.bindCancel(cancel); signal?.addEventListener('abort', cancel, { once: true });
+    store?.bindCancel?.(cancel); signal?.addEventListener('abort', cancel, { once: true });
     try {
         throwIfAborted(signal);
         if (deps.engineResume) {
             const saved = runtime.getState(runId);
             if (!store || saved?.policyState?.planFingerprint !== fingerprint) throw new Error('Durable matching Director checkpoint required');
-            render(saved.policyState);
-            await dispatcher.restore(saved.policyState.delegates, messages);
+            if (!['completed', 'cancelled', 'failed'].includes(saved.status)) {
+                render(saved.policyState);
+                // Runtime must reconcile an unknown write before any descendant may resume.
+                const uncertainTool = saved.pendingEffect?.type === 'tool.execute' && !saved.completedEffects[saved.pendingEffect.effectId];
+                if (!uncertainTool) await dispatcher.restore(saved.policyState.delegates, messages);
+            }
         }
         const result = await (deps.engineResume ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId: owner.agentId, controlMode: 'policy', maxSteps: limits.maxRounds,
             policyState: { ...initialPolicyState(plan), round: -1, history: [], parentHistory: [], calls: [], index: 0, pending: null, delegates: dispatcher.snapshot() } }));
         if (result.status === 'cancelled') throw createAbortError('Orchestration aborted.');
         if (result.status !== 'completed') throw new Error(result.error || 'Director Engine failed');
         return result.output;
-    } finally { dispatcher.cancelAll(); signal?.removeEventListener('abort', cancel); store?.close(); transient.clear(); guards.clear(); }
+    } finally { dispatcher.cancelAll(); signal?.removeEventListener('abort', cancel); ownedStore?.close(); transient.clear(); guards.clear(); }
 }

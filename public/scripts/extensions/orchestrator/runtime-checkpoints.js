@@ -12,6 +12,8 @@ export function configureRuntimeCheckpoints(options) {
     configuration = options;
 }
 
+export function hasRuntimeCheckpoints() { return Boolean(configuration); }
+
 async function openBackend() {
     if (!configuration) return null;
     return openIndexedDBCheckpoints({ scope: configuration.getScope(), indexedDB: configuration.indexedDB });

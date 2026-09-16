@@ -1,6 +1,6 @@
 # Luker Orchestration Engine v2 — 多智能体编排深化重构方案
 
-> 状态：Approved design / 待实现  
+> 状态：Phase 0–9 已实施；验收与保留兼容边界见 [Phase 9 记录](ORCHESTRATION_ENGINE_V2_PHASE9.md)。全库非全绿，已完成基线对照。
 > 工作分支：`feat/orchestration-engine-v2`  
 > 正式开发基线：`custom-release@5cc185d9b9518efa5c1b06144bcb82584a52c5fd`  
 > Runtime 基线：`feat/agent-runtime-v2@5cc185d9b9518efa5c1b06144bcb82584a52c5fd`  

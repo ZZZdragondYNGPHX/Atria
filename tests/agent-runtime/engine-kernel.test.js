@@ -132,3 +132,24 @@ test('consensus uses structural equality and synthesis rejects duplicate referen
     const id = results[0].resultId;
     expect(() => arbitrate(results, { kind: 'synthesize' }, { text: 'x', inputResultIds: [id, id] })).toThrow(/references/);
 });
+
+test('cancelled Judge cannot publish a late decision or output', async () => {
+    const p = plan(); p.nodes[1].kind = 'judge';
+    let release, started;
+    const entered = new Promise(resolve => { started = resolve; });
+    const late = new Promise(resolve => { release = resolve; });
+    const fake = fakePorts();
+    const runtime = new AgentRuntime({ registry: new AgentRegistry([{ id: 'engine', handoffs: ['worker'] }, { id: 'worker' }]),
+        countTokens: () => 1, ports: { ...fake.ports, policy: createPolicyController(p),
+            parallel: new ParallelExecutor({ execute: async request => {
+                if (request.payload.nodeId === 'first') return 'candidate';
+                started(); return late;
+            } }) } });
+    const running = runtime.startRun({ runId: 'cancel-judge', agentId: 'engine', controlMode: 'policy', policyState: initialPolicyState(p) });
+    await entered; runtime.cancelRun('cancel-judge');
+    expect((await running).status).toBe('cancelled');
+    release({ engineResult: true, status: 'completed', structured: { choice: 'cancel-judge/result/first/1', reason: 'late' } });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(runtime.getState('cancel-judge').output).toBeUndefined();
+    expect(runtime.getState('cancel-judge').policyState.results).toHaveLength(1);
+});

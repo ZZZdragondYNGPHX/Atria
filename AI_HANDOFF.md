@@ -1,5 +1,24 @@
 # AI Handoff Context
 
+## Orchestration Engine v2 — feature branch implementation
+
+Work is on `feat/orchestration-engine-v2`, based on the completed Runtime integration at
+`custom-release@5cc185d9b`. The owner explicitly requires stopping on this branch: **do not merge or push
+to custom-release without a new instruction**. The ten-phase plan and phase-specific records are under
+`docs/development/ORCHESTRATION_ENGINE_V2_*.md`; Phase 9 is the current caller/acceptance record.
+
+Default Single/Spec, Loop, Agenda and Director now use Engine policies and existing Runtime execution.
+The compiler, graph/scheduler, capabilities, ResultEnvelope/arbitration and guidance/reply contracts are
+implemented. Director children use native Runtime policies and a shared Runtime ParallelExecutor;
+worker draft-edit grants remain compatible, while finalize stays owner-only. Explicit legacy selectors
+and direct node APIs remain active compatibility callers and are not safe to delete blindly.
+
+Four-mode receipt recovery, no-replay submission, cancellation/late Judge rejection, and offline Edge/
+Chromium page-destruction recovery are covered. Lost transient Memory OS feedback still fails closed;
+there is no automatic whole-scene/draft restoration, new long-term memory or real-model acceptance claim.
+Android, real models and manual RP are nonblocking coverage gaps. Test counts, full-repo failures and
+baseline comparisons are in the Phase 9 record; do not describe unrelated failures as fixed.
+
 ## Agent Runtime v2 — active work on feat/agent-runtime-v2
 
 Work baseline is `cb68da1f4` (plan commit), parent `cfb959530` (Memory OS integration into custom-release).

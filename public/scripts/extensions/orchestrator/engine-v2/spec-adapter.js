@@ -6,11 +6,12 @@ import { createFirstChunkBarrier } from '../dispatch-barrier.js';
 import { resolveOrchestrationAgentApiPresetName, resolveOrchestrationAgentPromptPresetName } from '../agent-resolution.js';
 import { throwIfAborted } from '../abort-utils.js';
 import { runArbitrationNode } from './arbitration-adapter.js';
+import { hasRuntimeCheckpoints } from '../runtime-checkpoints.js';
 
 export async function runSpecEngine({ context, payload, messages, profile, runtime, settings,
     runWorkerNode, runReviewNode, normalizeNodeSpec, resolveReviewTargetEntries, createStageOutputSnapshot }) {
     const plan = compilePreset({ ...profile, spec: runtime.spec }, { mode: profile.source === 'single' ? 'single' : 'spec', settings });
-    const runId = `${runtime.runId}/engine`;
+    const runId = payload?.engineRunId || `${runtime.runId}/engine`;
     const barriers = new Map();
     const previousOutputs = (inputs, stageIndex, nodeIndex, sameStage) => {
         const map = new Map();
@@ -57,7 +58,11 @@ export async function runSpecEngine({ context, payload, messages, profile, runti
         } finally { slot.release(); }
     };
     const result = await runEnginePlan({ plan, runId, context, signal: payload?.signal, panelRunId: runtime.runId,
-        onEvent: runtime.onRuntimeEvent, branchPort: { execute, resume: execute } });
+        resume: payload?.engineResume === true, store: payload?.engineStore,
+        onEvent: runtime.onRuntimeEvent, branchPort: { execute, resume: request => {
+            if (!hasRuntimeCheckpoints()) throw new Error('Durable Spec child checkpoints required for recovery');
+            return execute(request);
+        } } });
     if (result.state.status !== 'completed') throw new Error(result.state.error || `Engine ${result.state.status}`);
     assertOutputAuthorized({ plan, state: result.state, generation: result.state.generation });
     const latest = new Map(result.state.policyState.results.map(result => [result.nodeId, result]));

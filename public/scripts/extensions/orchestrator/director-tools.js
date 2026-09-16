@@ -540,6 +540,10 @@ export function createSubagentDispatcher({
     const inflight = new Map();  // handleId -> Promise<{ outputText, error? }>
     const descriptors = new Map();
     const completed = new Map();
+    const rememberFailure = result => {
+        completed.set(result.handleId, copy(result));
+        inflight.set(result.handleId, Promise.resolve(result));
+    };
     // Per-sub-agent abort controller. Each dispatch creates a child
     // controller chained off the shared abortSignal; cancel(handleId)
     // fires only that child, leaving siblings running.
@@ -758,11 +762,11 @@ export function createSubagentDispatcher({
             const errMsg = `subagent budget exhausted (maxTotalSubagentRuns=${maxTotalSubagentRuns})`;
             panelSetSectionStatus(roundId, sectionId, 'failed', { err: errMsg });
             panelSetRoundStatus(roundId, 'failed');
-            inflight.set(handleId, Promise.resolve({
+            rememberFailure({
                 handleId,
                 subagentId,
                 error: errMsg,
-            }));
+            });
             completionNotifications.push({ handleId, subagentId, status: 'failed', summary: errMsg });
             return handleId;
         }
@@ -773,11 +777,11 @@ export function createSubagentDispatcher({
             const errMsg = `unknown sub-agent id: ${subagentId}`;
             panelSetSectionStatus(roundId, sectionId, 'failed', { err: errMsg });
             panelSetRoundStatus(roundId, 'failed');
-            inflight.set(handleId, Promise.resolve({
+            rememberFailure({
                 handleId,
                 subagentId,
                 error: errMsg,
-            }));
+            });
             completionNotifications.push({ handleId, subagentId, status: 'failed', summary: errMsg });
             return handleId;
         }
@@ -814,11 +818,11 @@ export function createSubagentDispatcher({
             const errMsg = `subagent budget exhausted (maxTotalSubagentRuns=${maxTotalSubagentRuns})`;
             panelSetSectionStatus(roundId, sectionId, 'failed', { err: errMsg });
             panelSetRoundStatus(roundId, 'failed');
-            inflight.set(handleId, Promise.resolve({
+            rememberFailure({
                 handleId,
                 subagentId: displayId,
                 error: errMsg,
-            }));
+            });
             completionNotifications.push({ handleId, subagentId: displayId, status: 'failed', summary: errMsg });
             return handleId;
         }
@@ -829,11 +833,11 @@ export function createSubagentDispatcher({
             const errMsg = 'dispatch_inline_subagent requires non-empty systemPrompt';
             panelSetSectionStatus(roundId, sectionId, 'failed', { err: errMsg });
             panelSetRoundStatus(roundId, 'failed');
-            inflight.set(handleId, Promise.resolve({
+            rememberFailure({
                 handleId,
                 subagentId: displayId,
                 error: errMsg,
-            }));
+            });
             completionNotifications.push({ handleId, subagentId: displayId, status: 'failed', summary: errMsg });
             return handleId;
         }

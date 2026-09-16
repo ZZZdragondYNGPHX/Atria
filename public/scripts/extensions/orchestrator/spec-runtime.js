@@ -1135,7 +1135,7 @@ async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset,
     // be distracted by general skill content. Workers consult skills; review
     // nodes consult workers' outputs.
     throwIfAborted(abortSignal, 'Orchestration aborted.');
-    if (Boolean(options?.isFinalStage)) {
+    if (options?.isFinalStage) {
         throw new Error(`Review node '${nodeSpec.id}' cannot be used in the final stage.`);
     }
 

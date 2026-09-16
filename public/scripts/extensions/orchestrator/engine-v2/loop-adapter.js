@@ -9,7 +9,8 @@ import { toolCapability } from '../../../lib/orchestration-engine/capabilities.j
 import { openRuntimeCheckpointStore } from '../runtime-checkpoints.js';
 import { createEngineObserver } from './observer.js';
 import { throwIfAborted, createAbortError } from '../abort-utils.js';
-import { appendRound, appendToSection, ensureSection, setSectionStatus, setRoundStatus, addTokenUsage } from '../run-state/store.js';
+import { appendToSection, setSectionStatus, setRoundStatus, addTokenUsage } from '../run-state/store.js';
+import { ensureEngineRound, ensureEngineSection } from './panel-adapter.js';
 import { i18n, i18nFormat } from '../i18n.js';
 
 /** Single-agent iterative policy. Only execution scratch is persisted; tool bodies stay source guarded. */
@@ -19,15 +20,16 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
     const plan = compilePreset(profile, { mode: 'loop', settings: deps.settings || {}, toolsByNode: { owner: tools.map(tool => tool.function.name) } });
     const fingerprint = planIdentity(plan), runId = deps.engineRunId || `${panelRunId}/engine`;
     const signal = payload?.signal;
-    const store = await openRuntimeCheckpointStore(runId);
+    const ownedStore = deps.engineStore ? null : await openRuntimeCheckpointStore(runId);
+    const store = deps.engineStore || ownedStore;
     const toolResults = new Map(), guards = new Set();
     const assertFresh = () => { for (const guard of guards) guard(); };
     const baseMessages = messages.filter(message => !String(message.content).startsWith('<runtime_state>'));
     const toolNames = tools.map(tool => tool.function.name.replace(/\./g, '_'));
     const sourceName = name => String(name || '').replace(/\./g, '_');
-    const section = (round, id, kind, title, meta = {}) => ensureSection({ runId: panelRunId, roundId: `agent-${round}`, section: { id, kind, title, meta } });
-    const settle = (round, id, status = 'done') => setSectionStatus({ runId: panelRunId, roundId: `agent-${round}`, sectionId: id, status });
-    const append = (round, id, delta) => appendToSection({ runId: panelRunId, roundId: `agent-${round}`, sectionId: id, delta });
+    const section = (round, id, kind, title, meta = {}) => ensureEngineSection(panelRunId, `agent-${round}`, { id, kind, title, meta });
+    const settle = (round, id, status = 'done') => { section(round, id, id === 'text' ? 'text' : 'tool_result', id); setSectionStatus({ runId: panelRunId, roundId: `agent-${round}`, sectionId: id, status }); };
+    const append = (round, id, delta) => { section(round, id, id === 'text' ? 'text' : 'tool_result', id); appendToSection({ runId: panelRunId, roundId: `agent-${round}`, sectionId: id, delta }); };
     const rebuild = async state => {
         const history = state.history.map(entry => {
             if (!entry.toolResultRef) return entry;
@@ -62,7 +64,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
         contextInput: async ({ state }) => {
             await rebuild(state.policyState);
             record('llm_request', { round: state.policyState.round, max_rounds: profile.max_rounds, message_count: messages.length });
-            appendRound({ runId: panelRunId, round: { id: `agent-${state.policyState.round}`, label: i18nFormat('Agent · round ${0}', state.policyState.round) } });
+            ensureEngineRound(panelRunId, `agent-${state.policyState.round}`);
             section(state.policyState.round, 'text', 'text', i18n('Text'));
             return { legacyMessages: messages, tools, budgetScope: 'task-messages-and-tools' };
         },
@@ -151,7 +153,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
             } },
         } });
     const cancel = () => { if (runtime.getState(runId)) runtime.cancelRun(runId); };
-    store?.bindCancel(cancel); signal?.addEventListener('abort', cancel, { once: true });
+    store?.bindCancel?.(cancel); signal?.addEventListener('abort', cancel, { once: true });
     try {
         throwIfAborted(signal);
         const saved = runtime.getState(runId);
@@ -162,5 +164,5 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
         if (state.status !== 'completed') throw new Error(state.error || 'Loop failed');
         assertOutputAuthorized({ plan, state, generation: state.generation, assertFresh });
         return state.output;
-    } finally { signal?.removeEventListener('abort', cancel); store?.close(); toolResults.clear(); guards.clear(); }
+    } finally { signal?.removeEventListener('abort', cancel); ownedStore?.close(); toolResults.clear(); guards.clear(); }
 }

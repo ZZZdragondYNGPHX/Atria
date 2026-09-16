@@ -56,3 +56,10 @@ Skill receipt: code-quality-workflow route, library snapshot 2026-08-18, ST-A0 o
 confirmed: goal = approved Engine plan; red lines = its ADRs and fork maintenance rules; acceptance =
 its Definition of Done plus executed regression/browser evidence. No design catalog candidate adopted.
 Android, real models and human play are coverage gaps, not approval gates.
+
+## Final implementation audit
+
+The table above records the pre-change baseline. Default mode execution now follows the Engine adapters;
+see `ORCHESTRATION_ENGINE_V2_PHASE9.md` for the final caller audit and verification. The Director audit
+corrected one baseline assumption: worker write/patch tools can be explicitly enabled in existing presets.
+Phase 6 preserves those grants while enforcing default denial and owner-only finalize in code.
