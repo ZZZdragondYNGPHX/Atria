@@ -283,7 +283,8 @@ update_repo() {
   log "Updating current branch with fast-forward only..."
   git pull --ff-only
   log "Refreshing production dependencies..."
-  npm_config_nodedir="${PREFIX:-}" npm ci --omit=dev --no-audit --no-fund
+  npm_package_config_node_gyp_nodedir="${PREFIX:-}" npm ci --omit=dev --no-audit --no-fund
+  bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
   npm run init
   doctor
 
@@ -307,7 +308,7 @@ Commands:
   url          Print the local browser URL
   logs [-f]    Show recent logs; -f follows them
   doctor       Check Termux, Node/npm and native SQLite
-  update       Fast-forward the current branch, npm ci, and restart if needed
+  update       Fast-forward the current branch, npm ci, repair native SQLite, and restart if needed
 
 Environment:
   LUKER_TERMUX_PORT=8000
