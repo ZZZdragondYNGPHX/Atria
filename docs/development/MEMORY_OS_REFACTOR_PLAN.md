@@ -1365,7 +1365,7 @@ Context budget：可配置
 
 ## Phase 2 — Provenance / Episode
 
-执行记录：[MEMORY_OS_PHASE2_PROVENANCE.md](MEMORY_OS_PHASE2_PROVENANCE.md)。已实现来源/Episode/失效链；真机验收范围与剩余门槛见记录，完成后再进入 Phase 3。
+执行记录：[MEMORY_OS_PHASE2_PROVENANCE.md](MEMORY_OS_PHASE2_PROVENANCE.md)。已实现来源/Episode/失效链并完成可用环境的测试。依用户 2026-09-16 最新指示，保留未覆盖的真机/模型项目，继续后续阶段，不要求用户先手动验收。
 
 - Episode Store；
 - Source revision；
@@ -1375,6 +1375,8 @@ Context budget：可配置
 这一阶段通过后再继续。
 
 ## Phase 3 — Atomic Facts
+
+执行记录：[MEMORY_OS_PHASE3_ATOMIC_FACTS.md](MEMORY_OS_PHASE3_ATOMIC_FACTS.md)。
 
 - Fact extraction；
 - explicit/inferred 区分；

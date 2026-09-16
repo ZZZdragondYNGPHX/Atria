@@ -4,6 +4,7 @@ import {
     SOURCE_ID_FIELD, normalizeProvenance, emptyProvenance, sourceContent,
     reconcileSources, captureEpisodes, episodesAreCurrent, bindDerivedChanges, projectCurrentSources,
 } from './source-provenance.js';
+import { applyFactOperations, projectFacts } from './atomic-facts.js';
 
 export const PROVENANCE_NAMESPACE = 'memory_graph__provenance';
 
@@ -22,6 +23,13 @@ export function captureMemorySourceSession(context) {
 }
 export function assertMemorySourceSession(ticket, context) {
     configuredLifecycle?.assertTicket(ticket, context);
+}
+export function listMemoryFacts(context, options) {
+    return configuredLifecycle?.listFacts(context, options) || Promise.resolve([]);
+}
+export function writeMemoryFacts(context, operations, ticket) {
+    if (!configuredLifecycle) throw new Error('Memory source lifecycle is not initialized');
+    return configuredLifecycle.writeFacts(context, operations, ticket);
 }
 
 /** Runtime I/O is injected so lifecycle/race tests use the same production path. */
@@ -73,7 +81,7 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         return next.finally(() => { if (queues.get(key) === next) queues.delete(key); });
     }
 
-    async function transaction(context, run) {
+    async function transaction(context, run, validate = () => {}) {
         const scope = session(context);
         return enqueue(scope.key, async () => {
             scope.assertLive();
@@ -87,10 +95,15 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             const dirty = new Map(pending.get(scope.key));
             reconcileSources(state, scope.chat, new Set(dirty.keys()));
             const output = await run(state, scope);
+            if (state.facts) {
+                for (const fact of projectFacts(state, scope.chat, { includeInactive: true })) state.facts[fact.id] = fact;
+            }
             scope.assertLive();
+            validate();
             if (before !== JSON.stringify(state)) {
                 const saved = await context.updateChatState(PROVENANCE_NAMESPACE, () => {
                     scope.assertLive();
+                    validate();
                     return state;
                 }, { target: scope.target });
                 scope.assertLive();
@@ -153,7 +166,8 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         return transaction(context, (state, current) => {
             if (expected && selected.some(floor => expected[floor] !== sourceContent(current.chat[floor]))) throw abort();
             const episodeIds = captureEpisodes(state, current.chat, selected, state.scopeId);
-            return { key: current.key, scopeId: state.scopeId, episodeIds, chat: current.chat, epoch: epochs.get(current.key) || 0 };
+            return { key: current.key, scopeId: state.scopeId, episodeIds, chat: current.chat, epoch: epochs.get(current.key) || 0,
+                sources: episodeIds.map(id => ({ episodeId: id, content: state.episodes[id].content, role: state.episodes[id].role })) };
         });
     }
 
@@ -214,5 +228,25 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         return validate;
     }
 
-    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard };
+    async function listFacts(context, options) {
+        return transaction(context, (state, scope) => projectFacts(state, scope.chat, options));
+    }
+
+    async function writeFacts(context, operations, ticket) {
+        if (!enabled(context)) throw new Error('Memory OS is disabled');
+        if (!ticket) throw new Error('Facts require a source ticket');
+        assertTicket(ticket, context);
+        return transaction(context, (state, scope) => {
+            const result = applyFactOperations(state, operations, ticket, scope.chat, newId);
+            Object.assign(state, result.state);
+            return result.results;
+        }, () => assertTicket(ticket, context));
+    }
+
+    function validateFacts(context, operations, ticket) {
+        assertTicket(ticket, context);
+        return applyFactOperations(cache.get(session(context).key), operations, ticket, context.chat, newId);
+    }
+
+    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts };
 }

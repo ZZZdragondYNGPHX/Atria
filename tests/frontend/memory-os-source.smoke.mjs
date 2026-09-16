@@ -2,6 +2,7 @@
 // Manual real-server smoke. Run ONLY against a disposable data root:
 // node tests/frontend/memory-os-source.smoke.mjs <isolated-server-url> [browser-channel]
 // Creates a test character and changes settings in that disposable instance.
+/* global window, document */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { createBlankCharacter } from '../e2e/_lib/ui-character.js';
@@ -60,6 +61,18 @@ try {
     assert.equal(before.store.nodes[created.id].archived, false);
     const episodeId = before.store.nodes[created.id].memoryOsEvidence.episodeIds[0];
     assert.equal(before.ledger.state.episodes[episodeId].content, 'The archive key is blue.');
+    const factIds = await page.evaluate(async () => {
+        const session = window.memorySourceSmokeSession;
+        const [source] = session.getFactSources();
+        const evidence = [{ episodeId: source.episodeId, excerpt: source.content }];
+        return session.applyFacts([
+            { action: 'create', text: 'The archive key is blue.', type: 'explicit', evidence },
+            { action: 'create', text: 'Blue may identify archive access.', type: 'inferred', confidence: 1, evidence },
+        ]);
+    });
+    const factsBefore = await page.evaluate(() => window.memorySourceSmokeSession.listFacts());
+    assert.equal(factsBefore.length, 2);
+    assert.equal(factsBefore.find(fact => fact.type === 'inferred').confidence, 0.65);
 
     await editMessageViaUI(page, 0, 'The archive key is red.');
     const after = await snapshot();
@@ -67,6 +80,8 @@ try {
     assert.equal(after.store.nodes[created.id].archived, true);
     assert.equal(after.ledger.state.episodes[episodeId].status, 'stale');
     assert.equal(after.ledger.state.episodes[episodeId].content, 'The archive key is blue.');
+    assert.equal(after.ledger.state.facts[factIds[0].id].status, 'stale');
+    assert.deepEqual(await page.evaluate(() => window.memorySourceSmokeSession.listFacts()), []);
     const late = await page.evaluate(async () => {
         try {
             await window.memorySourceSmokeSession.createNode({ type: 'event', fields: { summary: 'Late blue' } });
@@ -83,6 +98,7 @@ try {
     assert.equal(reloaded.sourceId, before.sourceId);
     assert.equal(reloaded.ledger.state.episodes[episodeId].status, 'stale');
     assert.equal(reloaded.store.nodes[created.id].archived, true);
+    assert.equal(reloaded.ledger.state.facts[factIds[0].id].status, 'stale');
     const replacement = await page.evaluate(async () => {
         const ctx = window.Luker.getContext();
         const session = await ctx.getExtensionApi('memory-graph').openSession(ctx);
@@ -103,6 +119,7 @@ try {
         'original Episode retained', 'late session write rejected without leaked node',
         'reload preserves identity and stale exclusion', 'fresh session captures new revision',
         'disabling flag does not revive stale evidence', 'no pageerror',
+        'atomic facts persisted with confidence separation', 'fact evidence invalidation survives reload',
     ] }, null, 2));
 } finally {
     await browser.close();

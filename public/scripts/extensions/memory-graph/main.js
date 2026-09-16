@@ -84,6 +84,7 @@ import { runRagRecall } from './retriever.js';
 import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
+import { FACT_TOOL_NAME, factExtractionTool, factExtractionContext, readFactToolCalls } from './fact-extraction.js';
 import {
     getVectorConfigFromSettings,
     getRerankProfileFromSettings,
@@ -4577,7 +4578,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     const baseExtractSystemPrompt = String(settings.extractSystemPrompt || '').trim() || DEFAULT_EXTRACT_SYSTEM_PROMPT;
     const cadenceSeq = Number.isFinite(Number(extractionMaxSeq)) ? Number(extractionMaxSeq) : 0;
     const activeTypes = computeActiveExtractionTypes(schema, cadenceSeq);
-    if (activeTypes.size === 0) {
+    if (activeTypes.size === 0 && !options.sourceTicket) {
         store.lastExtractionDebug = {
             ...(store.lastExtractionDebug || {}),
             extracted: false,
@@ -4611,6 +4612,12 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
         activeTypes,
     });
     const allowedNames = new Set(['luker_rpg_extract_done', ...specByToolName.keys()]);
+    let factContext = '';
+    if (options.sourceTicket) {
+        tools.push(factExtractionTool());
+        allowedNames.add(FACT_TOOL_NAME);
+        factContext = factExtractionContext(options.sourceTicket, await sourceLifecycle.listFacts(context));
+    }
     const semanticRetries = Math.max(0, Math.min(10, Math.floor(Number(settings?.toolCallRetryMax) || 0)));
     const editableNodes = new Map(
         listNodesByLevel(store, LEVEL.SEMANTIC)
@@ -4634,9 +4641,10 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     let lastRetryableError = null;
     for (let attempt = 0; attempt <= semanticRetries; attempt++) {
         const reminderText = attempt > 0
-            ? `Previous response was incomplete. Return COMPLETE extraction tool calls in one response: exactly one final luker_rpg_extract_done as the last call (SKIP-all with done-only is valid).${retryReason ? ` Fix: ${retryReason}` : ''}`
+            ? `Previous response was incomplete. Return COMPLETE extraction tool calls in one response: exactly one final luker_rpg_extract_done as the last call (${options.sourceTicket ? 'SKIP-all still requires luker_memory_facts with operations: [] before done' : 'SKIP-all with done-only is valid'}).${retryReason ? ` Fix: ${retryReason}` : ''}`
             : '';
         const tailParts = [extractInputTail];
+        if (factContext) tailParts.push(factContext);
         if (perTypeRulesBlock) tailParts.push(perTypeRulesBlock);
         if (reminderText) tailParts.push(reminderText);
         const taskMessages = [
@@ -4795,6 +4803,16 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
                 retryReason = `Missing force-update type tool calls: ${missingForceTypes.join(', ')}.`;
                 continue;
             }
+        if (options.sourceTicket) {
+            try {
+                const factOps = readFactToolCalls(calls);
+                sourceLifecycle.validateFacts(context, factOps, options.sourceTicket);
+                ops.push({ op: 'memory_facts', operations: factOps });
+            } catch (error) {
+                retryReason = `Invalid atomic facts: ${error.message}`;
+                continue;
+            }
+        }
             validatedOps = ops;
             return validatedOps;
     }
@@ -5976,6 +5994,7 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
     const sourceTicket = await sourceLifecycle.capture(context, extractBatch.map(item => item.source_index), options.sourceSnapshot);
     const sourceBefore = sourceTicket ? structuredClone(store) : null;
     const operations = await extractNodesWithLLM(context, store, settings, schema, extractBatch, {
+        sourceTicket,
         maxSeq: extractionMaxSeq,
         abortSignal: options?.abortSignal || null,
         rebuildCreateOnly: Boolean(options?.rebuildCreateOnly),
@@ -5988,13 +6007,17 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
         return { processed: true, changed: false };
     }
 
-    applyExtractionOpsImpl(store, operations, {
+    const graphOperations = operations.filter(op => op.op !== 'memory_facts');
+    applyExtractionOpsImpl(store, graphOperations, {
         maxSeq: extractionMaxSeq,
         minSeq: extractionMinSeq,
         context,
         settings,
     });
     if (sourceTicket) await sourceLifecycle.bind(context, sourceBefore, store, sourceTicket);
+    for (const op of operations.filter(op => op.op === 'memory_facts')) {
+        await sourceLifecycle.writeFacts(context, op.operations, sourceTicket);
+    }
 
     return { processed: true, changed: true };
 }
@@ -16009,6 +16032,7 @@ export function _setPersistentDrainHookForTest(hook) {
     __testPersistentDrainHook = (typeof hook === 'function') ? hook : null;
 }
 export { buildRoleSplitChatMessages as _buildRoleSplitChatMessagesForTest };
+export { processPendingMessageBatchWithLLM as _processPendingMessageBatchWithLLMForTest };
 
 jQuery(() => {
     const context = getContext();

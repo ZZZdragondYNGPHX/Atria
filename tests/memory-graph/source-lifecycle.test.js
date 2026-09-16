@@ -26,6 +26,36 @@ function fixture() {
 }
 
 describe('Memory OS production source lifecycle', () => {
+    test('fact writes persist through the same ledger and source edits invalidate rereads', async () => {
+        const f = fixture();
+        const ticket = await f.lifecycle.capture(f.context, [1]);
+        const [result] = await f.lifecycle.writeFacts(f.context, [{ action: 'create', type: 'explicit', text: 'Alice is at home',
+            evidence: [{ episodeId: ticket.episodeIds[0], excerpt: 'At home' }] }], ticket);
+        expect(f.disk.get(f.context.key).facts[result.id].status).toBe('active');
+        expect(await f.lifecycle.listFacts(f.context)).toHaveLength(1);
+        f.context.chat[1].mes = 'At work';
+        expect(await f.lifecycle.listFacts(f.context)).toHaveLength(0);
+        expect(f.disk.get(f.context.key).facts[result.id].status).toBe('stale');
+    });
+    test('fact persistence rejects mutations at the async state updater boundary', async () => {
+        const f = fixture();
+        const ticket = await f.lifecycle.capture(f.context, [1]);
+        const update = f.context.updateChatState;
+        f.context.updateChatState = async (...args) => {
+            f.context.chat[1].mes = 'Changed during save';
+            return update(...args);
+        };
+        await expect(f.lifecycle.writeFacts(f.context, [{ action: 'create', type: 'explicit', text: 'Alice is home',
+            evidence: [{ episodeId: ticket.episodeIds[0], excerpt: 'At home' }] }], ticket)).rejects.toThrow('changed');
+        expect(f.disk.get(f.context.key).facts).toBeUndefined();
+    });
+    test('fact writes are disabled by the opt-in flag and require original ticket', async () => {
+        const f = fixture();
+        await expect(f.lifecycle.writeFacts(f.context, [], null)).rejects.toThrow('ticket');
+        const ticket = await f.lifecycle.capture(f.context, [1]);
+        f.context.enabled = false;
+        await expect(f.lifecycle.writeFacts(f.context, [], ticket)).rejects.toThrow('disabled');
+    });
     test('flag off does no I/O and does not assign message identities', async () => {
         const f = fixture();
         f.context.enabled = false;

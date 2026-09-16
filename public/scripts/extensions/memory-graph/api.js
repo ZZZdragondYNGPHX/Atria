@@ -22,7 +22,7 @@
 // open a fresh session per chat.
 
 const registerExtensionApi = Luker.getContext().registerExtensionApi;
-import { captureMemorySourceSession, assertMemorySourceSession } from './source-lifecycle.js';
+import { captureMemorySourceSession, assertMemorySourceSession, listMemoryFacts, writeMemoryFacts } from './source-lifecycle.js';
 import {
     getCurrentlyInjectedNodeIds,
     addInjectionChangedListener,
@@ -85,6 +85,9 @@ export async function openSession(context) {
     // callers that need them — openSession deliberately doesn't proxy them
     // to keep the LLM-facing surface small.
     return Object.freeze({
+        getFactSources: () => structuredClone(sourceTicket?.sources || []),
+        listFacts: options => listMemoryFacts(context, options),
+        applyFacts: operations => writeMemoryFacts(context, operations, sourceTicket),
         // Read
         listVisibleCandidates: (opts) => read.listVisibleCandidates(opts),
         getEdgeSummary: (id, opts) => read.getEdgeSummary(id, opts),
@@ -129,6 +132,7 @@ async function withReadApi(context) {
 
 registerExtensionApi('memory-graph', {
     openSession,
+    listFacts: (context, options) => listMemoryFacts(context, options),
     // Per-character override accessors (character-overrides.js).
     getSchemaScopeInfo,
     getAdvancedScopeInfo,
