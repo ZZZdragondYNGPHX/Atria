@@ -11,7 +11,8 @@ export function policyCopy(value) {
         if (item === null || typeof item === 'string' || typeof item === 'boolean') return;
         if (typeof item === 'number' && Number.isFinite(item)) return;
         if (typeof item !== 'object' || seen.has(item)
-            || (!Array.isArray(item) && Object.getPrototypeOf(item) !== Object.prototype)) {
+            || (!Array.isArray(item) && Object.getPrototypeOf(item) !== null
+                && (Object.prototype.toString.call(item) !== '[object Object]' || Object.getPrototypeOf(item)?.constructor?.name !== 'Object'))) {
             throw new TypeError('Policy state must be JSON-safe');
         }
         seen.add(item);
