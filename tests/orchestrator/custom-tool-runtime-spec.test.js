@@ -73,13 +73,16 @@ jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/pro
 // mock surface (LLM is slow / non-deterministic). Everything else runs
 // the real product modules.
 const llmResponses = [];
+const llmRequests = [];
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
-    requestToolCallsWithRetry: async () => {
+    requestToolCallsWithRetry: async (_context, _settings, request) => {
+        llmRequests.push({ ...request, taskMessages: structuredClone(request.taskMessages) });
         if (llmResponses.length === 0) {
             throw new Error('LLM stub exhausted');
         }
-        return llmResponses.shift();
+        const next = llmResponses.shift();
+        return typeof next === 'function' ? next(request) : next;
     },
     requestToolCallWithRetry: async () => ({}),
     serializeToolResultContent: (r) => JSON.stringify(r),
@@ -102,6 +105,114 @@ beforeAll(async () => {
 beforeEach(() => {
     llmResponses.length = 0;
     customToolDispatches.length = 0;
+    llmRequests.length = 0;
+});
+
+function singleWithTools() {
+    return {
+        source: 'single', mode: 'single',
+        spec: { stages: [{ id: 'single', mode: 'serial', nodes: [{ id: 'single_agent', preset: 'p' }] }] },
+        presets: { p: { systemPrompt: 'private system', userPromptTemplate: 'private task' } },
+        customTools: [{
+            name: 'my_tool', description: 'test', parameters: {}, mode: 'read',
+            body: 'globalThis.__customToolDispatchSink.push({ x: args.x, ctx }); return { x: args.x };',
+        }],
+    };
+}
+
+const guidance = () => ({ toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'done' } }], assistantText: '' });
+
+describe('Single Runtime equivalence', () => {
+    test('two calls preserve order, IDs, reasoning, results and unchanged settings', async () => {
+        const profile = singleWithTools();
+        const before = JSON.stringify(profile);
+        const run = async agentRuntimeV2 => {
+            customToolDispatches.length = 0;
+            llmRequests.length = 0;
+            llmResponses.push({
+                assistantText: 'working', reasoning: 'thought', reasoningBlocks: [{ text: 'block' }], reasoningDetails: [{ text: 'detail' }],
+                toolCalls: [1, 2].map(x => ({ id: `provider-${x}`, name: x === 1 ? 'my.tool' : 'my_tool', args: { x } })),
+            }, guidance());
+            const output = await runSpecOrchestration({}, { agentRuntimeV2 }, [], profile);
+            return { output, messages: llmRequests.map(r => r.taskMessages), calls: [...customToolDispatches] };
+        };
+        const modern = await run(true), legacy = await run(false);
+        expect(modern.messages).toEqual(legacy.messages);
+        expect(modern.output.stageOutputs).toEqual(legacy.output.stageOutputs);
+        expect(modern.output.runtimeTrace.attempts[0].conversation).toEqual(legacy.output.runtimeTrace.attempts[0].conversation);
+        expect(modern.calls.map(c => c.x)).toEqual([1, 2]);
+        expect(modern.calls[0].ctx).toBe(modern.calls[1].ctx);
+        expect(modern.messages[1].filter(m => m.role === 'tool').map(m => m.tool_call_id)).toEqual(['provider-1', 'provider-2']);
+        expect(JSON.stringify(profile)).toBe(before);
+        const events = modern.output.runtimeTrace.events.filter(e => e.type === 'agent_runtime_v2').map(e => e.runtimeEvent);
+        expect(events.filter(e => e.type === 'run.started')).toHaveLength(1);
+        expect(events.filter(e => e.type === 'tool.execute.completed')).toHaveLength(2);
+    });
+
+    test('structured tool errors remain model-visible feedback in both paths', async () => {
+        const outputs = [];
+        for (const agentRuntimeV2 of [true, false]) {
+            const profile = singleWithTools();
+            profile.customTools[0].body = 'throw Object.assign(new Error("recoverable"), { name: "ToolError", code: "RETRY", hint: "again" });';
+            llmRequests.length = 0;
+            llmResponses.push({ toolCalls: [{ id: 'err', name: 'my_tool', args: {} }] }, guidance());
+            await runSpecOrchestration({}, { agentRuntimeV2 }, [], profile);
+            outputs.push(llmRequests[1].taskMessages.find(m => m.role === 'tool'));
+        }
+        expect(outputs[0]).toEqual(outputs[1]);
+        expect(JSON.parse(outputs[0].content)).toEqual({ ok: false, error: 'recoverable', code: 'RETRY', hint: 'again' });
+    });
+
+    test('same round limit executes the final tool batch but never adds an extra model call', async () => {
+        for (const agentRuntimeV2 of [true, false]) {
+            customToolDispatches.length = 0;
+            llmRequests.length = 0;
+            for (let x = 0; x < 3; x++) llmResponses.push({ toolCalls: [{ id: `round-${x}`, name: 'my_tool', args: { x } }] });
+            await expect(runSpecOrchestration({}, { agentRuntimeV2 }, [], singleWithTools())).rejects.toThrow('exceeded max iteration rounds (3)');
+            expect(customToolDispatches.map(c => c.x)).toEqual([0, 1, 2]);
+            expect(llmRequests).toHaveLength(3);
+        }
+    });
+
+    test('cancellation in the first tool prevents the second tool and next model request', async () => {
+        const controller = new AbortController();
+        globalThis.__singleTestAbort = () => controller.abort();
+        const profile = singleWithTools();
+        profile.customTools[0].body = 'globalThis.__customToolDispatchSink.push(args.x); globalThis.__singleTestAbort(); return "late";';
+        llmResponses.push({ toolCalls: [1, 2].map(x => ({ id: `c-${x}`, name: 'my_tool', args: { x } })) });
+        try {
+            await expect(runSpecOrchestration({}, { signal: controller.signal }, [], profile)).rejects.toMatchObject({ name: 'AbortError' });
+            expect(customToolDispatches).toEqual([1]);
+            expect(llmRequests).toHaveLength(1);
+        } finally { delete globalThis.__singleTestAbort; }
+    });
+
+    test('unknown infrastructure errors stop subsequent tools instead of becoming successful feedback', async () => {
+        const profile = singleWithTools();
+        profile.customTools[0].body = 'globalThis.__customToolDispatchSink.push(args.x); throw new Error("broken tool");';
+        llmResponses.push({ toolCalls: [1, 2].map(x => ({ id: `c-${x}`, name: 'my_tool', args: { x } })) });
+        await expect(runSpecOrchestration({}, {}, [], profile)).rejects.toThrow('broken tool');
+        expect(customToolDispatches).toEqual([1]);
+        expect(llmRequests).toHaveLength(1);
+    });
+
+    test('final output wins over same-response ordinary tools', async () => {
+        const profile = singleWithTools();
+        for (const agentRuntimeV2 of [true, false]) {
+            llmResponses.push({ toolCalls: [{ id: 'skip', name: 'my_tool', args: { x: 1 } }, ...guidance().toolCalls] });
+            const output = await runSpecOrchestration({}, { agentRuntimeV2 }, [], profile);
+            expect(output.stageOutputs[0].nodes[0].output).toBe('done');
+        }
+        expect(customToolDispatches).toHaveLength(0);
+    });
+
+    test('empty final output fails before any same-response tool writes', async () => {
+        for (const agentRuntimeV2 of [true, false]) {
+            llmResponses.push({ toolCalls: [{ id: 'skip', name: 'my_tool', args: {} }, { name: 'luker_orch_final_guidance', args: { text: '' } }] });
+            await expect(runSpecOrchestration({}, { agentRuntimeV2 }, [], singleWithTools())).rejects.toThrow('empty final guidance');
+        }
+        expect(customToolDispatches).toHaveLength(0);
+    });
 });
 
 describe('spec runtime Layer-3 dispatch', () => {
@@ -124,7 +235,7 @@ describe('spec runtime Layer-3 dispatch', () => {
         expect(JSON.stringify(profile)).toBe(before);
     });
 
-    test('Single with inherited tool defaults stays on the full legacy tool path', async () => {
+    test('Single with inherited tool defaults now enters Runtime', async () => {
         const profile = {
             source: 'single', mode: 'single',
             spec: { stages: [{ id: 'single', mode: 'serial', nodes: [{ id: 'single_agent', preset: 'single_agent' }] }] },
@@ -132,7 +243,7 @@ describe('spec runtime Layer-3 dispatch', () => {
         };
         llmResponses.push({ toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'done' } }], assistantText: '' });
         const result = await runSpecOrchestration({}, {}, [], profile);
-        expect(result.runtimeTrace.events.some(e => e.type === 'agent_runtime_v2')).toBe(false);
+        expect(result.runtimeTrace.events.some(e => e.type === 'agent_runtime_v2')).toBe(true);
         expect(result.stageOutputs[0].nodes[0].output).toBe('done');
     });
 

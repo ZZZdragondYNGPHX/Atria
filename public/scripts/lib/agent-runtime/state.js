@@ -8,7 +8,7 @@ export function initialState({ runId, agentId, task, maxSteps = 32 }) {
         schemaVersion: 1, runId, currentAgentId: agentId, task: String(task || ''), payload: null,
         status: 'idle', generation: 1, step: 0, stepId: null, effectSequence: 0,
         scratch: [], handoffStack: [], memoryRefs: [], budget: { maxSteps },
-        checkpointVersion: 0, pendingEffect: null, completedEffects: {},
+        checkpointVersion: 0, pendingEffect: null, pendingTools: [], completedEffects: {},
     };
 }
 
@@ -33,6 +33,13 @@ function nextStep(state) {
     schedule(state, 'memory.recall');
 }
 
+function nextTool(state) {
+    const call = state.pendingTools.shift();
+    schedule(state, 'tool.execute', {
+        toolName: call.toolName, args: call.args ?? {}, providerCallId: call.providerCallId ?? null, metadata: call.metadata ?? {},
+    });
+}
+
 /** Pure transition: callers persist before executing the returned pending effect. */
 export function transition(previous, event) {
     const state = copy(previous);
@@ -42,6 +49,7 @@ export function transition(previous, event) {
         state.status = 'cancelling';
         state.generation++;
         state.pendingEffect = null;
+        state.pendingTools = [];
     } else if (event.type === 'run.cancelled' && state.status === 'cancelling') {
         state.status = 'cancelled';
     } else if (terminal) {
@@ -55,6 +63,7 @@ export function transition(previous, event) {
         state.status = 'failed';
         state.error = event.error;
         state.pendingEffect = null;
+        state.pendingTools = [];
     } else if (event.type === 'effect.consumed' && state.pendingEffect?.effectId === event.effectId) {
         const effect = state.pendingEffect;
         const receipt = state.completedEffects[effect.effectId];
@@ -66,8 +75,9 @@ export function transition(previous, event) {
             state.memoryRefs = result.references;
             schedule(state, 'model.request');
         } else if (effect.type === 'tool.execute') {
-            state.scratch.push({ toolCallId: effect.effectId, tool: effect.toolName, result });
-            nextStep(state);
+            state.scratch.push({ toolCallId: effect.effectId, providerCallId: effect.providerCallId ?? effect.effectId, tool: effect.toolName, result, step: state.step });
+            if (state.pendingTools?.length) nextTool(state);
+            else nextStep(state);
         } else if (effect.type === 'agent.handoff') {
             state.handoffStack.push(result);
             state.currentAgentId = result.toAgentId;
@@ -86,6 +96,10 @@ export function transition(previous, event) {
                 nextStep(state);
             } else if (result.type === 'tool') {
                 schedule(state, 'tool.execute', { toolName: result.toolName, args: result.args ?? {} });
+            } else if (result.type === 'tools') {
+                if (result.turn) state.scratch.push({ modelTurn: result.turn, step: state.step });
+                state.pendingTools = result.calls;
+                nextTool(state);
             } else if (result.type === 'handoff') {
                 schedule(state, 'agent.handoff', { handoff: result });
             } else throw new Error('Invalid model receipt');

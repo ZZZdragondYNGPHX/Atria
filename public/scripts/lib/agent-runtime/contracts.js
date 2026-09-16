@@ -17,12 +17,18 @@ export const TERMINAL = Object.freeze(['completed', 'failed', 'cancelled']);
 
 /** Validate normalized ModelPort output before it can schedule an effect. */
 export function validateDecision(decision, agent, registry) {
-    if (!decision || !['complete', 'continue', 'tool', 'handoff', 'wait'].includes(decision.type)) {
+    if (!decision || !['complete', 'continue', 'tool', 'tools', 'handoff', 'wait'].includes(decision.type)) {
         throw new TypeError('Invalid model decision');
     }
     if (decision.type === 'tool') {
         requireId(decision.toolName, 'toolName');
         if (!agent.tools.includes(decision.toolName)) throw new Error('Tool not allowed');
+    }
+    if (decision.type === 'tools') {
+        if (!Array.isArray(decision.calls) || !decision.calls.length) throw new TypeError('Empty tool batch');
+        for (const call of decision.calls) {
+            validateDecision({ type: 'tool', toolName: call?.toolName }, agent, registry);
+        }
     }
     if (decision.type === 'handoff') {
         requireId(decision.toAgentId, 'toAgentId');

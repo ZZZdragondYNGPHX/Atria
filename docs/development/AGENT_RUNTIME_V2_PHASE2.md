@@ -1,4 +1,52 @@
-# Phase 2 — first compatibility slice (remaining migration open)
+# Phase 2 — Single compatibility adapter
+
+## Current completion boundary
+
+Continuation base: `168ed1b33c2ff1fa7ca5a5783e172d0fae74df16`; integration baseline remains
+`cfb95953071d6459c911e3e6a3bed0144e86ba72`. Work stays on `feat/agent-runtime-v2`.
+
+The Phase 2 minimum gate (one complete legacy mode) is now met for Single, including inherited ordinary tools.
+Single's model rounds and serial tool batches are owned by AgentRuntime's state machine. The old worker loop is
+entered only for other modes or the explicit `agentRuntimeV2: false` request override. No saved preset is changed.
+This is not a claim that Spec/Agenda/Loop/Director have all migrated; their existing paths remain active.
+
+The shared prepareRequest path preserves presets, world info, skills, stable system prefix and fresh per-round notes.
+The adapter maps model replies into typed serial tool batches or completion. Final output takes precedence over all
+ordinary tools in the same reply, including when invalid empty final text must fail before executing tools.
+Provider call IDs and missing-ID deterministic fallbacks are distinct from runtime effect IDs. Provider reasoning
+blocks/details, source labels, ordered results and existing trace conversations survive the round trip.
+Structured ToolError feedback stays model-visible; infrastructure errors stop the run. The last permitted round's
+tool batch still executes, matching legacy behavior, but no extra model round is sent after budget exhaustion.
+
+The run-scoped tool context retains its prototype, notes and custom/extension registries and receives the active
+signal and runtime IDs. It is reused across the batch. Tool content stays in a run-local map and is discarded when
+the adapter finishes; checkpoint receipts contain transient result references, not copies of Memory OS tool text.
+Persistent rehydration/source revalidation is deliberately unavailable in this legacy adapter until the later ports/
+recovery work. A lost transient result fails closed rather than reconstructing memory from a checkpoint copy.
+
+Two race boundaries now guard model dispatch after asynchronous context preparation and after context observers.
+The serial queue is cleared on cancel/fail; one completed tool receipt can be consumed after an interrupted checkpoint
+without replaying that tool. This is an in-memory recovery test, not durable process restart acceptance.
+
+Validation on 2026-09-16:
+
+- Focused kernel/adapter/production-Single/notes selection: 48 tests passed.
+- Full selected regression: 162 suites / 1992 tests passed (orchestrator, memory-graph, floor-state and agent-runtime).
+- Real Edge headless offline smoke passed: sequential two-tool Single round, next-model history, provider IDs,
+  cancellation and module loading; zero page errors.
+- Kernel, adapter and protocol pass repository ESLint. Spec runtime passes with only its pre-existing
+  no-extra-boolean-cast rule violation suppressed for that file; the unrelated original statement remains unchanged.
+- No live Luker session, real-model or Android-device claim. Those remain later play-test gaps, not manual blockers.
+
+Change gate: one Single execution boundary, existing dispatcher/tool/memory owners preserved; source/protocol/state/
+adapter and related test/docs files only. Phase-sized budget: up to 14 files and 800 changed lines, including tests
+and documentation. This supersedes the generic 5-file/200-line skill default for this authorized stage.
+Rollback is a revert of this continuation commit; old loops and explicit fallback remain available.
+
+Next: Phase 3 production ports and tokenizer/layer integration, then continued mode migration. Do not remove legacy
+loops, enable parallel batches, or advertise durable memory-safe recovery based on this phase alone.
+
+## Historical first slice (168ed1b33)
 
 Parent: `1d745e184`. Work branch: `feat/agent-runtime-v2`.
 
@@ -30,7 +78,7 @@ Verification:
   `if (Boolean(options?.isFinalStage))`, also present in parent `1d745e184`; unrelated line not changed.
 - Android, real model and live Luker session integration remain untested. Offline Edge is not a full live-app acceptance.
 
-## Next bounded change
+## First-slice next step (completed by the continuation above)
 
 Continue Phase 2 with default Single's serial tool rounds. Required before widening the eligibility gate:
 

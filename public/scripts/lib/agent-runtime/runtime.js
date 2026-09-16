@@ -108,7 +108,7 @@ export class AgentRuntime {
     }
 
     async #execute(effect, state, agent, signal, memory) {
-        const request = { ...copy(effect), agent, signal, generation: state.generation };
+        const request = { ...copy(effect), agent, signal, step: state.step, generation: state.generation };
         if (effect.type === 'memory.recall') return this.ports.memory.recall({ ...request, query: state.task, agentId: agent.id });
         if (effect.type === 'tool.execute') {
             const result = await this.ports.tool.execute({ ...request, toolCallId: effect.effectId, context: { runId: state.runId, scratch: copy(state.scratch) } });
@@ -122,9 +122,13 @@ export class AgentRuntime {
         if (signal.aborted || this.store.load(state.runId)?.generation !== state.generation) throw new Error('Cancelled or superseded');
         if (typeof recalled?.assertCurrent !== 'function') throw new TypeError('Memory guard required');
         recalled.assertCurrent();
-        const compiled = compileContext({ ...this.contextInput, agent, state, memory: recalled, countTokens: this.countTokens, budget: this.contextBudget });
+        const contextInput = typeof this.contextInput === 'function'
+            ? await this.contextInput({ state: copy(state), agent, signal }) : this.contextInput;
+        if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
+        const compiled = compileContext({ ...contextInput, agent, state, memory: recalled, countTokens: this.countTokens, budget: this.contextBudget });
         this.publish(state, 'context.compiled', { tokens: compiled.tokens });
         recalled.assertCurrent();
+        if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
         const result = await this.ports.model.request({ ...request, messages: compiled.messages, tools: agent.tools });
         recalled.assertCurrent();
         return { ...validateDecision(result, agent, this.registry), memoryRefs: copy(recalled.references || []) };

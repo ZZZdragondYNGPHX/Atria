@@ -154,6 +154,24 @@ beforeEach(() => {
     capturedCalls.length = 0;
 });
 
+test.each([false, true])('Single re-reads open notes on every model round (v2=%s)', async useV2Single => {
+    const context = makeNotesContext();
+    context.chat = [{ is_user: true, mes: 'hi', name: 'user' }];
+    let reads = 0;
+    context.__floorStateForNotes.listAcrossFloors = async () => [{ id: 'n', text: `revision-${++reads}`, status: 'open' }];
+    llmResponses.push(
+        { toolCalls: [{ id: 'read', name: 'chat_read_range', args: { start: 0, end: 0 } }] },
+        { toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'done' } }] },
+    );
+    await runWorkerNode(context, {}, { id: 'single', tools: { chat: { read_range: true } } },
+        { systemPrompt: 'same system', userPromptTemplate: 'same user' }, [], new Map(), null,
+        { isFinalStage: true, runtime: { useV2Single, runId: 'notes-test', contextForNotes: context } });
+    expect(capturedCalls).toHaveLength(2);
+    expect(capturedCalls[0].taskMessages.at(-1).content).toContain('revision-1');
+    expect(capturedCalls[1].taskMessages.at(-1).content).toContain('revision-2');
+    expect(capturedCalls[0].taskMessages[0]).toEqual(capturedCalls[1].taskMessages[0]);
+});
+
 describe('agenda mode: Open Notes reach planner + agent (single-round path)', () => {
     test('agenda planner receives the ## Open Notes block inlined at the tail of userText (cache-aligned)', async () => {
         const profile = {

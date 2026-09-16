@@ -1,6 +1,7 @@
 import { test, expect } from '@jest/globals';
 import { runLegacySingleRequest } from '../../public/scripts/extensions/orchestrator/legacy-runtime-adapter.js';
 import { deferred } from './fakes.js';
+import { MemoryCheckpointStore } from '../../public/scripts/lib/agent-runtime/index.js';
 
 test('Single adapter preserves legacy input, output, schema and routing fields', async () => {
     const messages = [{ role: 'system', content: 'user custom system' }, { role: 'user', content: 'notes + skill + task' }];
@@ -22,4 +23,23 @@ test('Single adapter preserves errors and cancellation unwinds uncooperative sen
     controller.abort();
     await expect(running).rejects.toMatchObject({ name: 'AbortError' });
     pending.resolve({ toolCalls: [] });
+});
+
+test('legacy tool content reaches the next model but never enters checkpoint receipts', async () => {
+    const store = new MemoryCheckpointStore();
+    const replies = [{ toolCalls: [{ id: 'vendor', name: 'memory_recall', args: { query: 'x' } }] }, { toolCalls: [{ name: 'final', args: { text: 'done' } }] }];
+    let messages;
+    await runLegacySingleRequest({
+        runId: 'memory-tool', store, request: { tools: [{ function: { name: 'memory_recall' } }] },
+        send: async request => { messages = request.taskMessages; return replies.shift(); },
+        worker: {
+            nodeId: 'single', outputToolName: 'final', isFinalStage: true, enableLoopTools: true, maxRounds: 2,
+            prepareRequest: async (_round, history) => ({ taskMessages: history }),
+            execute: async () => 'private-memory-result', serialize: JSON.stringify,
+            getSource: () => 'extension', onTurn: () => {}, isStructuredToolError: () => false,
+        },
+    });
+    expect(JSON.stringify(messages)).toContain('private-memory-result');
+    expect(JSON.stringify(store.load('memory-tool'))).not.toContain('private-memory-result');
+    expect(store.load('memory-tool').scratch[1].result.value).toHaveProperty('transientToolResult');
 });

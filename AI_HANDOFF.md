@@ -7,9 +7,12 @@ Phase 0 is committed as `137610247`; CURRENT_MAP and ADR record actual browser/b
 Phase 1 is committed as `1d745e184`: headless kernel under `public/scripts/lib/agent-runtime/`, injected ports,
 serial effects, typed handoffs, cancellation/stale guards and in-memory CAS receipts. This is not durable crash recovery.
 See `docs/development/AGENT_RUNTIME_V2_PHASE1.md` for tests and boundaries.
-Phase 2 has only the first tool-free Single compatibility slice; see `AGENT_RUNTIME_V2_PHASE2.md` for the remaining
-default-Single tool-round migration. Default Single inherits Layer-2 tools, so do not widen the gate without batch/tool-result tests.
-Other legacy modes remain active. The explicit request payload `agentRuntimeV2: false` bypasses the pilot without changing presets.
+Phase 2 now covers full Single serial tool rounds, including inherited Layer-2/custom tools; see
+`docs/development/AGENT_RUNTIME_V2_PHASE2.md` for golden/race tests and scope. Ordered batches live in Runtime state;
+provider IDs, final-output priority, notes refresh and structured tool errors retain legacy semantics.
+Tool result content is transient run-local data, not checkpoint memory. Durable rehydration is not enabled.
+Next is Phase 3 production ports/tokenizer integration and further mode migration; other legacy modes remain active.
+The explicit request payload `agentRuntimeV2: false` bypasses the Single adapter without changing presets.
 The owner prefers autonomous offline/browser verification and will check real play later; missing Android/real-model checks
 are coverage gaps, not mandatory manual approval gates. No merge into custom-release or remote push has been performed.
 

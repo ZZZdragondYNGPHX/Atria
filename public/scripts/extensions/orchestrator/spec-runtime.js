@@ -760,74 +760,95 @@ export async function runWorkerNode(context, payload, nodeSpec, preset, messages
         abortSignal,
     });
 
+    const prepareRequest = async (round, history) => {
+        lastRound = round;
+        throwIfAborted(abortSignal, 'Orchestration aborted.');
+        const iterationPrompt = [
+            autoInjectedPrelude,
+            baseUserPrompt,
+            buildNodeIterationContractText(nodeSpec, { isFinalStage }),
+        ].filter(Boolean).join('\n\n');
+
+        const systemText = String(preset.systemPrompt || '').trim();
+        // System prefix is kept stable (preset.systemPrompt + skills
+        // catalog): both are node-attempt-level constants that don't
+        // change across rounds of the same node. Volatile per-round
+        // context (Open Notes) is inlined into the trailing user
+        // `iterationPrompt` so the system prefix stays byte-identical
+        // and upstream prompt cache holds — pushing a trailing user
+        // `<runtime_state>` message instead would violate the
+        // consecutive-user-role constraint (iterationPrompt is
+        // already user role and some providers reject that).
+        const systemForRound = systemText && nodeSystemSuffix
+            ? systemText + '\n\n' + nodeSystemSuffix
+            : (systemText || nodeSystemSuffix);
+        const openNotesBlockForNode = await loadOpenNotesBlock(options?.runtime?.contextForNotes);
+        const iterationPromptWithNotes = openNotesBlockForNode
+            ? iterationPrompt + '\n\n' + openNotesBlockForNode
+            : iterationPrompt;
+        const taskMessages = [
+            ...(systemForRound ? [{ role: 'system', content: systemForRound }] : []),
+            ...history,
+            { role: 'user', content: iterationPromptWithNotes },
+        ];
+        conversation.messages.push({ role: 'user', content: iterationPromptWithNotes, _round: round });
+
+        return {
+            taskMessages,
+            runtimeWorldInfo,
+            apiPresetName,
+            llmPresetName,
+            tools,
+            allowedNames,
+            abortSignal,
+            includeAssistantText: true,
+            allowNoToolCalls: false,
+            // Fire the cache-warmup barrier signal only on round 1
+            // — subsequent rounds of this same worker node don't
+            // race sibling worker nodes for the same cache slot
+            // (siblings warmed it on their own round 1 or moved
+            // past it). See dispatch-barrier.js and the
+            // Promise.all(nodes.map(...)) parallel-stage fan-out
+            // in runStage for the caller side.
+            onFirstChunk: round === 1 && typeof options?.onFirstChunk === 'function'
+                ? options.onFirstChunk
+                : null,
+            onUsage: options?.runtime?.runId
+                ? (usage) => {
+                    try { addTokenUsage({ runId: options.runtime.runId, usage }); } catch (_) { /* store may have been cleared */ }
+                }
+                : null,
+
+        };
+    };
+
     try {
-        for (let round = 1; round <= maxRounds; round++) {
-            lastRound = round;
-            throwIfAborted(abortSignal, 'Orchestration aborted.');
-            const iterationPrompt = [
-                autoInjectedPrelude,
-                baseUserPrompt,
-                buildNodeIterationContractText(nodeSpec, { isFinalStage }),
-            ].filter(Boolean).join('\n\n');
-
-            const systemText = String(preset.systemPrompt || '').trim();
-            // System prefix is kept stable (preset.systemPrompt + skills
-            // catalog): both are node-attempt-level constants that don't
-            // change across rounds of the same node. Volatile per-round
-            // context (Open Notes) is inlined into the trailing user
-            // `iterationPrompt` so the system prefix stays byte-identical
-            // and upstream prompt cache holds — pushing a trailing user
-            // `<runtime_state>` message instead would violate the
-            // consecutive-user-role constraint (iterationPrompt is
-            // already user role and some providers reject that).
-            const systemForRound = systemText && nodeSystemSuffix
-                ? systemText + '\n\n' + nodeSystemSuffix
-                : (systemText || nodeSystemSuffix);
-            const openNotesBlockForNode = await loadOpenNotesBlock(options?.runtime?.contextForNotes);
-            const iterationPromptWithNotes = openNotesBlockForNode
-                ? iterationPrompt + '\n\n' + openNotesBlockForNode
-                : iterationPrompt;
-            const taskMessages = [
-                ...(systemForRound ? [{ role: 'system', content: systemForRound }] : []),
-                ...runtimeToolMessages,
-                { role: 'user', content: iterationPromptWithNotes },
-            ];
-            conversation.messages.push({ role: 'user', content: iterationPromptWithNotes, _round: round });
-
-            const send = request => requestToolCallsWithRetry(context, settings, request);
-            const sendNode = options?.runtime?.useV2Single && !enableLoopTools
-                ? request => runLegacySingleRequest({
-                    runId: `${options.runtime.runId}/single/${nodeSpec.id}`,
-                    request, send,
-                    onEvent: event => recordRuntimeEvent(trace, 'agent_runtime_v2', { runtimeEvent: event }),
-                })
-                : send;
-            const detailed = await sendNode({
-                taskMessages,
-                runtimeWorldInfo,
-                apiPresetName,
-                llmPresetName,
-                tools,
-                allowedNames,
-                abortSignal,
-                includeAssistantText: true,
-                allowNoToolCalls: false,
-                // Fire the cache-warmup barrier signal only on round 1
-                // — subsequent rounds of this same worker node don't
-                // race sibling worker nodes for the same cache slot
-                // (siblings warmed it on their own round 1 or moved
-                // past it). See dispatch-barrier.js and the
-                // Promise.all(nodes.map(...)) parallel-stage fan-out
-                // in runStage for the caller side.
-                onFirstChunk: round === 1 && typeof options?.onFirstChunk === 'function'
-                    ? options.onFirstChunk
-                    : null,
-                onUsage: options?.runtime?.runId
-                    ? (usage) => {
-                        try { addTokenUsage({ runId: options.runtime.runId, usage }); } catch (_) { /* store may have been cleared */ }
-                    }
-                    : null,
+        if (options?.runtime?.useV2Single) {
+            const output = await runLegacySingleRequest({
+                runId: `${options.runtime.runId}/single/${nodeSpec.id}`,
+                request: { tools, abortSignal },
+                send: request => requestToolCallsWithRetry(context, settings, request),
+                onEvent: event => recordRuntimeEvent(trace, 'agent_runtime_v2', { runtimeEvent: event }),
+                worker: {
+                    nodeId: nodeSpec.id, outputToolName, isFinalStage, enableLoopTools, maxRounds,
+                    prepareRequest, isStructuredToolError, serialize: serializeToolResultContent,
+                    getSource: name => resolveToolSource(name, toolContext),
+                    onTurn: turn => conversation.messages.push(turn),
+                    execute: effect => {
+                        // One run-scoped context, retaining its host prototype, notes and registries.
+                        Object.assign(toolContext, {
+                            signal: effect.signal, abortSignal: effect.signal,
+                            runId: effect.runId, stepId: effect.stepId, effectId: effect.effectId,
+                        });
+                        return executeLoopTool(effect.toolName, effect.args, toolContext);
+                    },
+                },
             });
+            finishRuntimeNodeAttempt(trace, traceAttempt, { status: 'completed', output, conversation });
+            return output;
+        }
+        for (let round = 1; round <= maxRounds; round++) {
+            const detailed = await requestToolCallsWithRetry(context, settings, await prepareRequest(round, runtimeToolMessages));
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             const calls = Array.isArray(detailed?.toolCalls) ? detailed.toolCalls : [];
             if (calls.length === 0) {

@@ -45,9 +45,28 @@ try {
         const cancelled = runLegacySingleRequest({ runId: 'cancel', request: { taskMessages: [], abortSignal: controller.signal }, send: () => new Promise(() => {}) }).catch(e => e.name);
         controller.abort();
         const legacy = await runLegacySingleRequest({ runId: 'legacy', request: { taskMessages: [{ role: 'user', content: 'unchanged' }] }, send: async r => ({ text: r.taskMessages[0].content }) });
-        return { status: state.status, requests, tools, cancellation: await cancelled, legacy };
+        let workerRequests = 0;
+        const workerTools = [], turns = [];
+        const workerOutput = await runLegacySingleRequest({
+            runId: 'single-tools', request: { tools: [{ function: { name: 'lookup' } }] },
+            send: async request => {
+                if (++workerRequests === 1) return { toolCalls: [1, 2].map(n => ({ id: `vendor-${n}`, name: 'lookup', args: { n } })) };
+                if (request.taskMessages.filter(m => m.role === 'tool').length !== 2) throw new Error('Lost tool history');
+                return { toolCalls: [{ name: 'final', args: { text: 'worker done' } }] };
+            },
+            worker: {
+                nodeId: 'single', outputToolName: 'final', isFinalStage: true, enableLoopTools: true, maxRounds: 3,
+                prepareRequest: async (_round, history) => ({ taskMessages: [{ role: 'system', content: 'same' }, ...history, { role: 'user', content: 'task' }] }),
+                getSource: () => 'builtin', onTurn: turn => turns.push(turn), serialize: JSON.stringify,
+                isStructuredToolError: () => false,
+                execute: async effect => { workerTools.push(effect.args.n); return effect.args.n; },
+            },
+        });
+        return { status: state.status, requests, tools, cancellation: await cancelled, legacy,
+            worker: { workerOutput, workerRequests, workerTools, toolIds: turns.filter(t => t.role === 'tool').map(t => t.tool_call_id) } };
     });
-    assert.deepEqual(evidence, { status: 'completed', requests: 2, tools: 1, cancellation: 'AbortError', legacy: { text: 'unchanged' } });
+    assert.deepEqual(evidence, { status: 'completed', requests: 2, tools: 1, cancellation: 'AbortError', legacy: { text: 'unchanged' },
+        worker: { workerOutput: 'worker done', workerRequests: 2, workerTools: [1, 2], toolIds: ['vendor-1', 'vendor-2'] } });
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ browser: 'Edge headless', evidence, pageErrors: errors }));
 } finally {
