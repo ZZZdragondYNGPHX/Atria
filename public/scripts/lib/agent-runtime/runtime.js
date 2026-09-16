@@ -1,4 +1,4 @@
-import { copy, TERMINAL, validateDecision, validatePorts } from './contracts.js';
+import { copy, policyCopy, readonlyCopy, TERMINAL, validateDecision, validatePorts } from './contracts.js';
 import { initialState, transition } from './state.js';
 import { createEventBus } from './events.js';
 import { CheckpointPersistenceError } from './durable-checkpoint-store.js';
@@ -165,6 +165,15 @@ export class AgentRuntime {
     async #execute(effect, state, agent, signal, memory) {
         const request = { ...copy(effect), agent, signal, step: state.step, generation: state.generation };
         if (effect.type === 'policy.advance') {
+            if (state.controlMode === 'policy') {
+                const result = await this.ports.policy.advance({ ...request,
+                    receipt: effect.receiptId ? copy(state.completedEffects[effect.receiptId].result) : null,
+                    policyState: readonlyCopy(state.policyState), runSnapshot: readonlyCopy(state) });
+                if (!['complete', 'model', 'tool', 'handoff', 'fanout', 'wait', 'fail'].includes(result?.intent?.type)) throw new TypeError('Invalid policy intent');
+                const intent = ['model', 'fail'].includes(result.intent.type) ? policyCopy(result.intent)
+                    : validateDecision(result.intent, agent, this.registry);
+                return { intent, policyState: policyCopy(result.policyState) };
+            }
             const result = await this.ports.policy.advance({ ...request, receipt: effect.receiptId ? copy(state.completedEffects[effect.receiptId].result) : null });
             if (!['complete', 'model', 'tool', 'handoff'].includes(result?.type)) throw new TypeError('Invalid policy intent');
             if (result.type === 'tool' && (typeof result.toolName !== 'string' || !result.toolName)) throw new TypeError('Invalid policy tool');
@@ -225,6 +234,6 @@ export class AgentRuntime {
         if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
         const result = await this.ports.model.request({ ...request, messages: compiled.messages, tools: agent.tools });
         recalled.assertCurrent();
-        return { ...(state.legacyPolicy ? copy(result) : validateDecision(result, agent, this.registry)), memoryRefs: copy(recalled.references || []) };
+        return { ...(state.legacyPolicy || state.controlMode === 'policy' ? copy(result) : validateDecision(result, agent, this.registry)), memoryRefs: copy(recalled.references || []) };
     }
 }

@@ -1,12 +1,14 @@
-import { copy, requireId, TERMINAL } from './contracts.js';
+import { copy, policyCopy, requireId, TERMINAL } from './contracts.js';
 
-export function initialState({ runId, agentId, task, maxSteps = 32, legacyPolicy = false, payload = null, scratch = [], parentRunId }) {
+export function initialState({ runId, agentId, task, maxSteps = 32, legacyPolicy = false, controlMode = 'model', policyState = null, payload = null, scratch = [], parentRunId }) {
     requireId(runId, 'runId');
     requireId(agentId, 'agentId');
     if (!Number.isInteger(maxSteps) || maxSteps < 1) throw new TypeError('Invalid step budget');
     if (!Array.isArray(scratch)) throw new TypeError('Invalid initial scratch');
+    if (!['model', 'policy'].includes(controlMode)) throw new TypeError('Invalid control mode');
     return {
         schemaVersion: 1, legacyPolicy, runId, currentAgentId: agentId, task: String(task || ''), payload: copy(payload),
+        controlMode, policyState: policyCopy(policyState),
         ...(parentRunId ? { parentRunId: requireId(parentRunId, 'parent run ID') } : {}),
         status: 'idle', generation: 1, step: 0, stepId: null, effectSequence: 0,
         scratch: copy(scratch), handoffStack: [], memoryRefs: [], budget: { maxSteps },
@@ -57,13 +59,14 @@ export function transition(previous, event) {
     } else if (terminal) {
         throw new Error(`Invalid transition from ${state.status}`);
     } else if (event.type === 'startRun' && state.status === 'idle') {
-        if (state.legacyPolicy) {
+        if (state.legacyPolicy || state.controlMode === 'policy') {
             state.stepId = `${state.runId}/step/0`;
             schedule(state, 'policy.advance');
         } else nextStep(state);
     } else if (event.type === 'appendUserInput' && state.status === 'waiting_user') {
         state.scratch.push({ user: String(event.input) });
-        nextStep(state);
+        if (state.controlMode === 'policy') schedule(state, 'policy.advance');
+        else nextStep(state);
     } else if (event.type === 'run.fail') {
         state.status = 'failed';
         state.error = event.error;
@@ -73,18 +76,23 @@ export function transition(previous, event) {
         const effect = state.pendingEffect;
         const receipt = state.completedEffects[effect.effectId];
         if (!receipt || receipt.consumed) throw new Error('Effect has no unconsumed receipt');
-        const result = receipt.result;
+        const result = effect.type === 'policy.advance' && state.controlMode === 'policy'
+            ? receipt.result.intent : receipt.result;
         receipt.consumed = true;
         state.pendingEffect = null;
         if (effect.type === 'policy.advance') {
+            if (state.controlMode === 'policy') state.policyState = policyCopy(receipt.result.policyState);
             if (result.type === 'complete') {
                 state.status = 'completed';
                 state.output = result.output;
             } else if (result.type === 'model') nextStep(state);
             else if (result.type === 'handoff') schedule(state, 'agent.handoff', { handoff: result });
-            else if (result.type === 'tool') schedule(state, 'tool.execute', { toolName: result.toolName });
+            else if (result.type === 'tool') schedule(state, 'tool.execute', { toolName: result.toolName, ...(state.controlMode === 'policy' ? { args: result.args ?? {} } : {}) });
+            else if (result.type === 'fanout') schedule(state, 'parallel.fanout', { branches: result.branches, concurrency: result.concurrency, failurePolicy: result.failurePolicy });
+            else if (result.type === 'wait') state.status = 'waiting_user';
+            else if (result.type === 'fail') { state.status = 'failed'; state.error = result.error; }
             else throw new Error('Invalid legacy policy intent');
-        } else if (state.legacyPolicy && ['model.request', 'tool.execute'].includes(effect.type)) {
+        } else if ((state.legacyPolicy || state.controlMode === 'policy') && ['model.request', 'tool.execute'].includes(effect.type)) {
             schedule(state, 'policy.advance', { receiptId: effect.effectId });
         } else if (effect.type === 'memory.recall') {
             state.memoryRefs = result.references;
@@ -96,8 +104,8 @@ export function transition(previous, event) {
         } else if (effect.type === 'parallel.fanout') {
             schedule(state, 'parallel.join', { fanoutEffectId: effect.effectId });
         } else if (effect.type === 'parallel.join') {
-            state.scratch.push({ parallel: result });
-            nextStep(state);
+            if (state.controlMode === 'policy') schedule(state, 'policy.advance', { receiptId: effect.effectId });
+            else { state.scratch.push({ parallel: result }); nextStep(state); }
         } else if (effect.type === 'agent.handoff') {
             state.handoffStack.push(result);
             state.currentAgentId = result.toAgentId;
@@ -105,7 +113,7 @@ export function transition(previous, event) {
             state.payload = result.payload ?? null;
             if (result.contextPolicy === 'task_only') state.scratch = [];
             state.memoryRefs = [];
-            if (state.legacyPolicy) schedule(state, 'policy.advance', { receiptId: effect.effectId });
+            if (state.legacyPolicy || state.controlMode === 'policy') schedule(state, 'policy.advance', { receiptId: effect.effectId });
             else nextStep(state);
         } else if (effect.type === 'model.request') {
             if (result.type === 'complete') {

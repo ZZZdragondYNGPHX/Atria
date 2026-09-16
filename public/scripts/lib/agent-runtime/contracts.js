@@ -4,6 +4,32 @@ export function copy(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
+/** Reject lossy checkpoint data instead of silently dropping controller state. */
+export function policyCopy(value) {
+    const seen = new Set();
+    const visit = item => {
+        if (item === null || typeof item === 'string' || typeof item === 'boolean') return;
+        if (typeof item === 'number' && Number.isFinite(item)) return;
+        if (typeof item !== 'object' || seen.has(item)
+            || (!Array.isArray(item) && Object.getPrototypeOf(item) !== Object.prototype)) {
+            throw new TypeError('Policy state must be JSON-safe');
+        }
+        seen.add(item);
+        for (const child of Object.values(item)) visit(child);
+        seen.delete(item);
+    };
+    visit(value);
+    return copy(value);
+}
+
+export function readonlyCopy(value) {
+    const freeze = item => {
+        if (item && typeof item === 'object') { Object.values(item).forEach(freeze); Object.freeze(item); }
+        return item;
+    };
+    return freeze(copy(value));
+}
+
 export function requireId(value, label = 'id') {
     if (typeof value !== 'string' || !value.trim()) throw new TypeError(`Invalid ${label}`);
     return value;
