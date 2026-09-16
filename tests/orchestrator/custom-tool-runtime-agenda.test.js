@@ -192,3 +192,20 @@ describe('agenda runtime Layer-3 dispatch', () => {
         expect(myToolCall.hasRegistry).toBe(true);
     });
 });
+
+
+test.each([['plannerMaxRounds', 1, 12], ['maxTotalRuns', 4, 1]])('budget ending %s remains visible after successful summarization', async (reason, rounds, runs) => {
+    const profile = {
+        mode: 'agenda', planner: { systemPrompt: 'plan', userPromptTemplate: 'plan' },
+        agents: { writer: { systemPrompt: 'write', userPromptTemplate: 'task', tools: { chat: { read_range: true } } } },
+        finalAgentId: 'writer', limits: { plannerMaxRounds: rounds, maxConcurrentAgents: 1, maxTotalRuns: runs },
+    };
+    plannerResponses.push({ dispatches: [{ todo_id: 'main', agent: 'writer', task_brief: 'investigate', input_run_ids: [] }] });
+    for (const text of ['evidence', 'partial summary']) agentResponses.push({ toolCalls: [{ id: text, name: 'luker_orch_submit_result', args: { text } }] });
+    const result = await runAgendaOrchestration({}, { signal: new AbortController().signal }, [], profile);
+    expect(result.status).toBe('budget_exhausted');
+    expect(result.runtimeTrace.status).toBe('budget_exhausted');
+    expect(result.agendaState.budgetReason).toBe(reason);
+    expect(result.agendaState.unfinishedTodoIds).toContain('main');
+    expect(result.stageOutputs[0].nodes[0].output).toBe('partial summary');
+});

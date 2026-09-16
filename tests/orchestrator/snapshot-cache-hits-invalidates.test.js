@@ -4,12 +4,8 @@
 //   - Same spec input twice → second is instant (cache hit).
 //   - Change one field in spec → cache misses, full re-run.
 //
-// Source-of-truth: snapshot-cache.js — `canReuseLatestOrchestrationSnapshot`
-// is the cache-hit predicate. It returns true iff the active snapshot's
-// chatKey + anchorPlayableFloor + anchorHash all match the candidate
-// anchor. The anchorHash is computed from the source content (the user
-// message + scenario fields the orchestration depends on); when the
-// spec changes, the hash changes, and the predicate returns false.
+// Reuse requires both a matching user anchor and execution identity. A changed
+// mode or preset is independent of the user's message hash.
 //
 // The e2e file's third case originally drove the lifecycle through
 // `storeCompletedOrchestrationSnapshot`, which requires a live
@@ -74,6 +70,7 @@ describe('#77 — Snapshot cache: hits and invalidates', () => {
             playableFloor: anchorFloor,
             snapshot: {
                 anchorHash,
+                executionIdentity: 'v1:fixture',
                 capsuleText,
                 stageOutputs,
             },
@@ -90,24 +87,24 @@ describe('#77 — Snapshot cache: hits and invalidates', () => {
         expect(sc.canReuseLatestOrchestrationSnapshot(chatKey, {
             playableFloor: anchorFloor,
             hash: anchorHash,
-        })).toBe(true);
+        }, 'v1:fixture')).toBe(true);
 
         // Mismatched: same chatKey + same floor but different hash.
         expect(sc.canReuseLatestOrchestrationSnapshot(chatKey, {
             playableFloor: anchorFloor,
             hash: anchorHash + '_mutated',
-        })).toBe(false);
+        }, 'v1:fixture')).toBe(false);
 
         // Mismatched: same chatKey + same hash but different floor.
         expect(sc.canReuseLatestOrchestrationSnapshot(chatKey, {
             playableFloor: anchorFloor + 100,
             hash: anchorHash,
-        })).toBe(false);
+        }, 'v1:fixture')).toBe(false);
 
         // Mismatched: foreign chatKey (different chat / character).
         expect(sc.canReuseLatestOrchestrationSnapshot('char:foreign.png:other', {
             playableFloor: anchorFloor,
             hash: anchorHash,
-        })).toBe(false);
+        }, 'v1:fixture')).toBe(false);
     });
 });

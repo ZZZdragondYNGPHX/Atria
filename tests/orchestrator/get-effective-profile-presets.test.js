@@ -203,7 +203,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/spec-runt
     runSpecOrchestration: async () => ({}),
 }));
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/loop-runtime.js', () => ({
-    runLoopOrchestration: async () => ({}),
+    runLoopOrchestration: async () => ({ status: 'budget_exhausted', capsule: 'partial guidance' }),
     attachNotesFloorState: () => {},
 }));
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-runtime.js', () => ({
@@ -529,4 +529,12 @@ describe('getEffectiveProfile — agenda branch threads lorebookFilter', () => {
         expect(profile.mode).toBe('agenda');
         expect(profile.lorebookFilter).toEqual(FILTER);
     });
+});
+
+
+test('loop dispatcher preserves budget exhaustion alongside partial guidance', async () => {
+    const { runOrchestration } = await import('../../public/scripts/extensions/orchestrator/main.js');
+    const result = await runOrchestration({}, {}, [], { mode: 'loop' });
+    expect(result.status).toBe('budget_exhausted');
+    expect(result.stageOutputs[0].nodes[0].output).toBe('partial guidance');
 });

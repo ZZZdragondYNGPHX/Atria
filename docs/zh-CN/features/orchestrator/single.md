@@ -1,67 +1,22 @@
-# 单 Agent 模式
+# 快捷指引与 Single 兼容入口
 
-单 Agent 是编排器最轻的执行模式——只有一个节点跑一次 LLM，产出一段 capsule 注入主模型。本质是个只剩一个节点的退化 Spec，但因为没有多节点协作，扩展抽屉里直接给你两个简化字段，完全不用走编排编辑器。
+Single 用两段全局提示词合成一个单节点 Spec，生成指引交给正文模型。它仍可从执行模式选择器的**兼容入口**使用。
 
-::: tip 这个模式给谁用
-不需要多 agent 协作、不需要工具循环、只想要「一段简单的引导文本」注入主模型的场景。比如：一段 OOC 提醒、一段世界书摘要、一句风格约束。如果你在想「我要是能让主模型回复前先读一下 XXX 就好了」，这个模式可能正合适。
-:::
+新配置可用**新建快捷指引工作流**创建全局或角色级 Spec 预设。它提供两个简化编辑字段，默认关闭探索工具；需要更多阶段时进入完整编辑器。
 
-## 切到单 Agent
+## 保留旧配置并复制
 
-扩展抽屉里把执行模式选成 **单 Agent**。Spec / Agenda / Loop 的编辑器入口收起，扩展抽屉里多两个简化字段——**System Prompt** 和 **User Prompt 模板**。
+1. 选择“快捷指引（兼容）”，在 Agents 页查看原提示词。
+2. 点击“复制为固定流程预设”。
+3. 核对提示词，填写名称，选择全局或角色范围。
+4. 可选勾选“保存后启用此工作流”，然后保存。
 
-直接在这两个字段里写 prompt 即可，不需要打开编排编辑器。
+复制不删除 Single 字段，也不覆盖已有预设。普通模式切换不会自动同步 Single 和 Spec；显式复制才创建副本。
 
-## 模板变量
+旧 Single 不参与角色模式预设库；复制后的 Spec 才使用完整预设库和作用域。复制保留原来有效的提示词、模型绑定和继承工具。全局注入设置继续共享。
 
-User Prompt 模板支持以下占位符，和 Spec 模式一致：
+模板可使用 `{{recent_chat}}`、`{{last_user}}` 等现有 Spec 占位符。上一回合指引按原有规则自动注入。
 
-| 变量 | 含义 |
-|---|---|
-| <span v-pre>`{{recent_chat}}`</span> | 最近的聊天消息 |
-| <span v-pre>`{{last_user}}`</span> | 最后一条用户消息 |
-| <span v-pre>`{{previous_orchestration}}`</span> | 上一回合的编排结果。**运行时自动注入，模板里一般不用写。** |
+单节点不保证只有一次网络请求：工具轮次、格式重试及缓存都会影响调用次数。Spec 和 Agenda 的工作代理也能调用工具。
 
-## 适用场景
-
-- **简单 capsule** — 主对话只需要一段 OOC 提醒、一段 lorebook 摘要、一句约束指令
-- **想用 capsule 注入，但不想付多 agent 延迟** — 只跑一次 LLM，延迟最低
-- **新提示词调试** — 先单 agent 跑通基础 prompt，验证 capsule 注入位置 / 角色 / 深度都符合预期，再升级到多 agent
-- **预算敏感** — 一次 LLM 调用比 Spec 默认工作流的 5–10 次便宜得多
-
-## 不适用场景
-
-- 需要 agent 读世界书、查记忆、做调研 → 用 [Loop 模式](/zh-CN/features/orchestrator/loop)
-- 需要多步规划、审查、合成 → 用 [Spec 模式](/zh-CN/features/orchestrator/spec)
-- 需要根据中间结果决定下一步 → 用 [Agenda 模式](/zh-CN/features/orchestrator/agenda)
-
-## AI 帮你写 prompt
-
-不会写 prompt?[AI 迭代工作台](/zh-CN/features/orchestrator/iteration-studio)在单 Agent 模式下也能用——切到单 Agent 后打开工作台，描述你想要 agent 干什么，它会帮你生成 system / user prompt。
-
-## 与 Spec 的关系
-
-单 Agent 模式底层是只有一个节点的 Spec profile。这意味着：
-
-- 切到单 Agent → 只有一个节点 + 简化 UI，不打开编排编辑器
-- 切回 Spec → 看到的就是这一个节点，可以继续手搓加节点
-
-两者之间切换不会丢配置（System Prompt + User Prompt 在 Spec 模式下是节点 0 的配置）。
-
-## 与其他模式对比
-
-| 维度 | 单 Agent | Spec | Agenda | Loop |
-|---|---|---|---|---|
-| LLM 调用次数 | 1 | 5–10 | 视 Planner 调度 | 视 agent 决定（默认 ≤ 20 轮） |
-| 配置成本 | 两个字段 | 画 DAG + 多 prompt | Planner prompt + worker pool | 一段 system prompt + 工具开关 |
-| 工具调用 | ❌ | ❌ | ✅ Planner | ✅ agent 自由调 |
-| 流程可变 | ❌ | 拓扑固定 | Planner 决定 | agent 自己决定 |
-| 角色卡覆写 | ✅ | ✅ | ✅ | ✅ |
-| 适合场景 | 简单 capsule | 流程明确 / stage 固定 | 复杂任务需要调度 | 速度与效果平衡 / 探索性研究 |
-
-## 相关页面
-
-- [编排器概览](/zh-CN/features/orchestrator/) — 通用配置 / 触发时机 / 角色卡绑定
-- [Spec 模式](/zh-CN/features/orchestrator/spec) — 多节点 DAG 版本
-- [AI 迭代工作台](/zh-CN/features/orchestrator/iteration-studio) — AI 帮你写 prompt
-- [Loop 模式](/zh-CN/features/orchestrator/loop) — 想让 agent 调工具就用这个
+参见[执行模式选择与实例](./execution-modes)、[固定流程](./spec)、[迭代工作台](./iteration-studio)。

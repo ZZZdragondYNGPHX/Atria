@@ -1715,14 +1715,38 @@ export function buildOrchestratorSettingsHtml(deps) {
         </div>
         <div class="inline-drawer-content">
             <label class="checkbox_label"><input id="luker_orch_enabled" type="checkbox" /> ${escapeHtml(i18n('Enabled'))}</label>
+            <label for="luker_orch_output">${escapeHtml(i18n('Output responsibility'))}</label>
+            <select id="luker_orch_output" class="text_pole">
+                <option value="guidance">${escapeHtml(i18n('Assist the reply'))}</option>
+                <option value="reply">${escapeHtml(i18n('Take over the reply'))}</option>
+            </select>
             <label for="luker_orch_execution_mode">${escapeHtml(i18n('Execution mode'))}</label>
             <select id="luker_orch_execution_mode" class="text_pole">
-                <option value="${ORCH_EXECUTION_MODE_SPEC}">${escapeHtml(i18n('Spec workflow'))}</option>
-                <option value="${ORCH_EXECUTION_MODE_SINGLE}">${escapeHtml(i18n('Single agent'))}</option>
-                <option value="${ORCH_EXECUTION_MODE_AGENDA}">${escapeHtml(i18n('Agenda planner'))}</option>
-                <option value="${ORCH_EXECUTION_MODE_LOOP}">${escapeHtml(i18n('Loop'))}</option>
-                <option value="${ORCH_EXECUTION_MODE_DIRECTOR}" data-i18n="Director">${escapeHtml(i18n('Director'))}</option>
+                <optgroup label="${escapeHtml(i18n('Assist the reply'))}">
+                    <option value="${ORCH_EXECUTION_MODE_LOOP}">${escapeHtml(i18n('Research · Loop'))}</option>
+                    <option value="${ORCH_EXECUTION_MODE_SPEC}">${escapeHtml(i18n('Fixed workflow · Spec'))}</option>
+                    <option value="${ORCH_EXECUTION_MODE_AGENDA}">${escapeHtml(i18n('Dynamic delegation · Agenda'))}</option>
+                </optgroup>
+                <optgroup label="${escapeHtml(i18n('Take over the reply'))}">
+                    <option value="${ORCH_EXECUTION_MODE_DIRECTOR}">${escapeHtml(i18n('Direct writing · Director'))}</option>
+                </optgroup>
+                <optgroup label="${escapeHtml(i18n('Compatibility'))}">
+                    <option value="${ORCH_EXECUTION_MODE_SINGLE}">${escapeHtml(i18n('Quick guidance (legacy)'))}</option>
+                </optgroup>
             </select>
+            <p id="luker_orch_mode_description" role="status"></p>
+            <div id="luker_orch_mode_sources" class="text_muted" aria-live="polite"></div>
+            <div class="luker_orch_mode_row">
+                <button type="button" class="menu_button" id="luker_orch_quick_template">${escapeHtml(i18n('New quick guidance workflow'))}</button>
+                <button type="button" class="menu_button" id="luker_orch_copy_single" data-orch-mode="single">${escapeHtml(i18n('Copy to a fixed workflow'))}</button>
+            </div>
+            <fieldset id="luker_orch_quick_fields" hidden>
+                <legend>${escapeHtml(i18n('Quick guidance prompts'))}</legend>
+                <label for="luker_orch_quick_system">${escapeHtml(i18n('System prompt'))}</label>
+                <textarea id="luker_orch_quick_system" class="text_pole" rows="4"></textarea>
+                <label for="luker_orch_quick_user">${escapeHtml(i18n('User prompt template'))}</label>
+                <textarea id="luker_orch_quick_user" class="text_pole" rows="4"></textarea>
+            </fieldset>
             ${tabsHtml}
             <hr />
             <small id="luker_orch_last_run_state" class="luker_orch_state_summary"></small>
