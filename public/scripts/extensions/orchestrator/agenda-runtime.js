@@ -1,3 +1,4 @@
+import { runLegacyParallel } from './legacy-parallel-adapter.js';
 import { runRoutedLegacyWorkflow, createLegacyAgentGraph, agentKey, selectHandoffInputs } from './legacy-agent-routing.js';
 import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
@@ -725,7 +726,7 @@ export function runAgendaTextAgent(...args) {
         graph: agendaAgentGraph(args[3]), fromAgentId: agentKey('agenda', 'planner'),
         toAgentId: agentKey('agenda', `worker:${args[5]?.agent}`), task: args[5]?.taskBrief,
         reason: args[6]?.kind === 'final' ? 'agenda_finalize' : 'agenda_dispatch', inputIds: [...selected.keys()],
-        parentRunId: args[6]?.panelRunId, context: args[0], signal: args[7], onEvent: args[6]?.onRuntimeEvent,
+        runId: args[6]?.runtimeRunId, parentRunId: args[6]?.panelRunId, context: args[0], signal: args[7], onEvent: args[6]?.onRuntimeEvent,
     });
 }
 
@@ -994,7 +995,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             // subsequent rounds of this same agenda-agent dispatch
             // don't race sibling dispatches (siblings warmed the
             // cache on their own round 1 or moved past it). See
-            // dispatch-barrier.js and the Promise.all(dispatches.map)
+            // dispatch-barrier.js and the runLegacyParallel batch
             // fan-out in the agenda main loop for the caller side.
             onFirstChunk: round === 1 && typeof onFirstChunk === 'function'
                 ? onFirstChunk
@@ -1233,14 +1234,14 @@ export async function runAgendaOrchestration(context, payload, messages, profile
                 break;
             }
             // Cache-warmup barrier scoped to this planner round's
-            // Promise.all fan-out. Same rationale as director sub-
+            // Runtime fan-out. Same rationale as director sub-
             // agent fan-out and spec parallel stage (see
             // dispatch-barrier.js): dispatches on the same resolved
             // connection profile serialize their upstream first-chunk
             // moment so followers hit warm cache instead of racing a
             // cold cache-write.
             const roundBarrier = createFirstChunkBarrier();
-            const newRuns = await Promise.all(dispatches.map(async (dispatch, dispatchIndex) => {
+            const newRuns = await runLegacyParallel(dispatches, async (dispatch, dispatchIndex, { signal: abortSignal, runId: branchRunId }) => {
                 const attempt = beginRuntimeNodeAttempt(trace, {
                     stageIndex: round - 1,
                     stageId: `agenda_agents_round_${round}`,
@@ -1272,7 +1273,7 @@ export async function runAgendaOrchestration(context, payload, messages, profile
                         throwIfAborted(abortSignal, 'Orchestration aborted.');
                     }
                     const result = await runAgendaTextAgent(contextForNotes, payload, messages, profile, state, dispatch, {
-                        kind: 'agent', onRuntimeEvent,
+                        kind: 'agent', onRuntimeEvent, runtimeRunId: branchRunId,
                         customToolRegistry,
                         panelRunId: runId,
                         activeOrchPresetName,
@@ -1305,7 +1306,7 @@ export async function runAgendaOrchestration(context, payload, messages, profile
                     // still-waiting followers by contract.
                     try { barrierSlot.release(); } catch { /* barrier release must never throw */ }
                 }
-            }));
+            }, { context, signal: abortSignal, panelRunId: runId });
             state.runs.push(...newRuns);
             syncAgendaTrace(trace, state);
             if (state.runs.length >= maxTotalRuns) {

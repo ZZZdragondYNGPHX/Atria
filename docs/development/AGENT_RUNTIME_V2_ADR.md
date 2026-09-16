@@ -131,3 +131,26 @@ Do not serialize or replay an async generator to imitate recovery. Lost legacy p
 source-guarded transient tool results fail closed. Native execution and compatible Single requests can explicitly
 resume; automatic refresh continuation of entire legacy mode coordinators is not claimed. Diagnostic event logs
 remain a separate in-memory projection. See AGENT_RUNTIME_V2_PHASE6.md for tested boundaries and limitations.
+
+## ADR-014 — Phase 7 composes child Runtimes, then consumes an explicit join
+
+Add fanout decisions admitted through existing typed handoff capability/context validation. Static agent policy
+caps model-selected concurrency (default 4); child step limits inherit the parent limit. The parent schedules
+parallel.fanout and parallel.join as separate stable effects, each protected by the existing durable receipt/
+consumption barriers. ParallelExecutor only schedules child invocations; it is not another agent state store.
+
+Child run IDs derive from the parent effect ID and unique encoded branch IDs. The native branch port loads
+the child's existing Runtime checkpoint before starting/resuming and requires durable storage during recovery.
+Saved fan-out/join receipts bypass branch execution. Native child parentRunId references protect completed
+child receipts from retention cleanup while their parent is nonterminal. Explicit payload/scratch copies feed
+the existing ContextCompiler; siblings do not merge scratch or acquire another long-term memory namespace.
+
+fail_fast cancels siblings/queued work and fails the join; settled preserves ordered partial outcomes. Branch
+and parent cancellation use child signals and existing Runtime abort guards. Late results remain trace-only.
+Concurrency is bounded per group, not across independent application features or devices.
+
+Migrate fixed Spec/Agenda batches through a legacy parent tool adapter while retaining existing batch widths,
+cache-first-chunk barriers, trace and output ordering. Keep live results transient. Director's active dynamic
+dispatch/await policy is not rewritten as a fixed batch. Lost legacy coordinators retain Phase 6 fail-closed
+recovery; new primitives are not evidence that active compatibility code can be removed. Phase 8 must inspect
+actual callers. See AGENT_RUNTIME_V2_PHASE7.md for automated and browser evidence.

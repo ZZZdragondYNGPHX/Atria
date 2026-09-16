@@ -34,9 +34,17 @@ Legacy generator continuations/transient results are not reconstructed: loss fai
 See AGENT_RUNTIME_V2_PHASE6.md: 215 suites / 2473 expanded checks and 119 suites / 1352 final mode checks pass;
 three offline Edge smokes pass, including real IndexedDB page destruction, strict durability, CAS and cancellation.
 That report records retention, recovery policies and browser-local boundaries.
-The Runtime event journal remains in memory. Next is Phase 7 explicit fan-out/join; this does not imply automatic
-refresh continuation of an entire legacy mode or a cross-device server runner.
-Legacy mode coordinators remain compatibility policies, and existing parallel behavior remains for Phase 7.
+Phase 7 adds explicit parallel.fanout/parallel.join effects, child Runtime composition, per-group bounded
+concurrency, branch cancellation and fail_fast/settled policies. Spec/Agenda fixed batches use the shared
+executor with stable branch run IDs; cache barriers, preset widths and ordered outputs remain compatible.
+Completed native child checkpoints are retained while their parent is nonterminal. Single child identity now
+includes the admitted handoff attempt, avoiding duplicate node/replay collisions in durable storage.
+See AGENT_RUNTIME_V2_PHASE7.md: 216 suites / 2490 expanded checks and 120 suites / 1370 final mode checks pass;
+four Edge smokes pass, including parent/child page destruction, retention cleanup and no duplicate writes.
+Director's dynamic dispatch/
+await policy remains an active compatibility path. Next is Phase 8: remove only paths proven to have no callers.
+The Runtime event journal remains in memory; there is no automatic whole-legacy-mode refresh continuation,
+new branch-control UI or cross-device server runner.
 The explicit request payload `agentRuntimeV2: false` selects Single's legacy protocol adapter without changing presets; both paths now use Runtime scheduling.
 The owner prefers autonomous offline/browser verification and will check real play later; missing Android/real-model checks
 are coverage gaps, not mandatory manual approval gates. No merge into custom-release or remote push has been performed.

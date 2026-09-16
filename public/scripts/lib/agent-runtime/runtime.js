@@ -59,6 +59,12 @@ export class AgentRuntime {
         return this.#drive(this.save(transition(this.store.load(runId), { type: 'appendUserInput', input })));
     }
 
+    cancelBranch(runId, branchId) {
+        const pending = this.store.load(runId)?.pendingEffect;
+        if (pending?.type !== 'parallel.fanout') return false;
+        return this.ports.parallel?.cancelBranch(pending.effectId, branchId) || false;
+    }
+
     resumeRun(runId) {
         let state = this.store.load(runId);
         if (!state) throw new Error('Unknown run');
@@ -77,7 +83,7 @@ export class AgentRuntime {
             this.publish(state, 'run.failed');
             return this.#finishRecovery(state);
         }
-        if (pending?.type === 'tool.execute' && !state.completedEffects[pending.effectId]) {
+        if (['tool.execute', 'parallel.fanout'].includes(pending?.type) && !state.completedEffects[pending.effectId]) {
             state = this.save({ ...state, recoveryEffectId: pending.effectId });
         }
         this.publish(state, 'run.resumed', { restoredVersion });
@@ -165,6 +171,22 @@ export class AgentRuntime {
             return result.type === 'handoff' ? validateDecision(result, agent, this.registry) : copy(result);
         }
         if (effect.type === 'memory.recall') return this.ports.memory.recall({ ...request, query: state.task, agentId: agent.id });
+        if (effect.type === 'parallel.fanout') {
+            memory?.assertCurrent();
+            const method = state.recoveryEffectId === effect.effectId ? 'resume' : 'run';
+            if (typeof this.ports.parallel?.[method] !== 'function') throw new Error('Parallel continuation unavailable');
+            const result = await this.ports.parallel[method]({ ...request,
+                branches: effect.branches.map(branch => ({ ...branch, maxSteps: state.budget.maxSteps })), scratch: copy(state.scratch),
+                assertCurrent: () => memory?.assertCurrent(),
+                onEvent: event => this.publish(state, event.type, event) });
+            if (typeof result?.ok !== 'boolean' || !Array.isArray(result.branches)) throw new TypeError('Invalid parallel result');
+            return copy(result);
+        }
+        if (effect.type === 'parallel.join') {
+            const result = state.completedEffects[effect.fanoutEffectId]?.result;
+            if (!result?.ok) throw new Error(result?.branches?.find(branch => branch.status === 'failed')?.error || 'Parallel branch failed or cancelled');
+            return copy(result);
+        }
         if (effect.type === 'tool.execute') {
             if (state.recoveryEffectId === effect.effectId) {
                 const resolution = await this.ports.tool.reconcile?.({ ...request, toolCallId: effect.effectId });

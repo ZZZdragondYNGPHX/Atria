@@ -1,13 +1,15 @@
 import { copy, requireId, TERMINAL } from './contracts.js';
 
-export function initialState({ runId, agentId, task, maxSteps = 32, legacyPolicy = false }) {
+export function initialState({ runId, agentId, task, maxSteps = 32, legacyPolicy = false, payload = null, scratch = [], parentRunId }) {
     requireId(runId, 'runId');
     requireId(agentId, 'agentId');
     if (!Number.isInteger(maxSteps) || maxSteps < 1) throw new TypeError('Invalid step budget');
+    if (!Array.isArray(scratch)) throw new TypeError('Invalid initial scratch');
     return {
-        schemaVersion: 1, legacyPolicy, runId, currentAgentId: agentId, task: String(task || ''), payload: null,
+        schemaVersion: 1, legacyPolicy, runId, currentAgentId: agentId, task: String(task || ''), payload: copy(payload),
+        ...(parentRunId ? { parentRunId: requireId(parentRunId, 'parent run ID') } : {}),
         status: 'idle', generation: 1, step: 0, stepId: null, effectSequence: 0,
-        scratch: [], handoffStack: [], memoryRefs: [], budget: { maxSteps },
+        scratch: copy(scratch), handoffStack: [], memoryRefs: [], budget: { maxSteps },
         checkpointVersion: 0, pendingEffect: null, pendingTools: [], completedEffects: {},
     };
 }
@@ -91,6 +93,11 @@ export function transition(previous, event) {
             state.scratch.push({ toolCallId: effect.effectId, providerCallId: effect.providerCallId ?? effect.effectId, tool: effect.toolName, result, step: state.step });
             if (state.pendingTools?.length) nextTool(state);
             else nextStep(state);
+        } else if (effect.type === 'parallel.fanout') {
+            schedule(state, 'parallel.join', { fanoutEffectId: effect.effectId });
+        } else if (effect.type === 'parallel.join') {
+            state.scratch.push({ parallel: result });
+            nextStep(state);
         } else if (effect.type === 'agent.handoff') {
             state.handoffStack.push(result);
             state.currentAgentId = result.toAgentId;
@@ -117,6 +124,9 @@ export function transition(previous, event) {
                 nextTool(state);
             } else if (result.type === 'handoff') {
                 schedule(state, 'agent.handoff', { handoff: result });
+            } else if (result.type === 'fanout') {
+                schedule(state, 'parallel.fanout', { branches: result.branches,
+                    concurrency: result.concurrency, failurePolicy: result.failurePolicy });
             } else throw new Error('Invalid model receipt');
         } else throw new Error('Unknown effect');
     } else {

@@ -11,6 +11,10 @@ export class AgentRegistry {
             const agent = copy({ instructions: '', tools: [], handoffs: [], ...definition });
             if (!Array.isArray(agent.tools) || !Array.isArray(agent.handoffs)) throw new TypeError('Invalid agent capabilities');
             const contextPolicies = agent.policies?.handoffContextPolicies;
+            if (agent.policies?.maxConcurrency !== undefined
+                && (!Number.isSafeInteger(agent.policies.maxConcurrency) || agent.policies.maxConcurrency < 1)) {
+                throw new TypeError('Invalid agent concurrency limit');
+            }
             if (contextPolicies !== undefined && (!Array.isArray(contextPolicies)
                 || contextPolicies.some(policy => !['task_only', 'include_scratch'].includes(policy)))) {
                 throw new TypeError('Invalid agent handoff context policies');

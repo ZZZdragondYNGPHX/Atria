@@ -56,8 +56,15 @@ export async function openIndexedDBCheckpoints({ scope, indexedDB = globalThis.i
             store.openCursor().onsuccess = event => {
                 const cursor = event.target.result;
                 if (!cursor) return;
-                if (TERMINAL.includes(cursor.value.status) && cursor.value.updatedAt < before) cursor.delete();
-                cursor.continue();
+                if (!TERMINAL.includes(cursor.value.status) || cursor.value.updatedAt >= before) { cursor.continue(); return; }
+                const parentRunId = cursor.value.parentRunId;
+                if (!parentRunId) { cursor.delete(); cursor.continue(); return; }
+                // A finished child is still a required receipt while its parent can recover.
+                store.get(parentRunId).onsuccess = parentEvent => {
+                    const parent = parentEvent.target.result;
+                    if (!parent || TERMINAL.includes(parent.status)) cursor.delete();
+                    cursor.continue();
+                };
             };
         }),
         close: () => db.close(),

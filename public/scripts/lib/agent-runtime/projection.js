@@ -3,13 +3,13 @@ import { copy } from './contracts.js';
 const terminal = new Set(['completed', 'failed', 'cancelled']);
 const reasons = new Set(['stage_dispatch', 'review_rerun', 'agenda_plan', 'agenda_dispatch', 'agenda_finalize', 'director_dispatch', 'director_inline_dispatch']);
 const textFields = ['eventId', 'type', 'runId', 'parentRunId', 'stepId', 'effectId', 'agentId', 'status', 'toolName',
-    'handoffId', 'fromAgentId', 'toAgentId', 'contextPolicy', 'tokenCounting', 'budgetScope', 'failureKind'];
+    'branchId', 'childRunId', 'handoffId', 'fromAgentId', 'toAgentId', 'contextPolicy', 'tokenCounting', 'budgetScope', 'failureKind'];
 
 /** Allowlist execution metadata. Never retain task/prompt/args/results, headers or host objects. */
 export function sanitizeRuntimeEvent(raw) {
     if (!raw || typeof raw.eventId !== 'string' || typeof raw.runId !== 'string'
         || !Number.isInteger(raw.version) || !Number.isInteger(raw.generation)) return null;
-    if (!/^(run\.(started|running|completed|failed|cancelled|resumed|waiting_user)|context\.compiled|effect\.(stale|failed)|(policy\.advance|model\.request|memory\.recall|tool\.execute|agent\.handoff)\.(started|completed))$/.test(raw.type)) return null;
+    if (!/^(run\.(started|running|completed|failed|cancelled|resumed|waiting_user)|context\.compiled|effect\.(stale|failed)|(policy\.advance|model\.request|memory\.recall|tool\.execute|agent\.handoff|parallel\.fanout|parallel\.join)\.(started|completed)|parallel\.branch\.(started|completed|failed|cancelled|stale))$/.test(raw.type)) return null;
     const event = { schemaVersion: 1, version: raw.version, generation: raw.generation };
     for (const field of textFields) if (typeof raw[field] === 'string') event[field] = raw[field];
     if (typeof raw.ok === 'boolean') event.ok = raw.ok;
@@ -44,17 +44,17 @@ export class RuntimeProjection {
             this.#runs.set(event.runId, run);
             this.#effectIndexes.set(event.runId, new Map());
         }
-        if (event.type === 'effect.stale') run.staleEffects.push(event.effectId);
+        if (['effect.stale', 'parallel.branch.stale'].includes(event.type)) run.staleEffects.push(event.effectId);
         const current = event.generation > run.generation || (event.generation === run.generation && event.version >= run.version);
         if (!current || (terminal.has(run.status) && event.generation === run.generation)) return true;
         Object.assign(run, { generation: event.generation, version: event.version,
             status: event.status || run.status, agentId: event.agentId || run.agentId, stepId: event.stepId || run.stepId });
-        if (event.effectId && /\.(started|completed|failed)$/.test(event.type) && !event.type.startsWith('run.')) {
+        if (event.effectId && /\.(started|completed|failed|cancelled)$/.test(event.type) && !event.type.startsWith('run.')) {
             const index = this.#effectIndexes.get(event.runId);
             let effect = index.get(event.effectId);
             if (!effect) { effect = { effectId: event.effectId, stepId: event.stepId, agentId: event.agentId }; run.effects.push(effect); index.set(event.effectId, effect); }
-            Object.assign(effect, { type: event.type === 'effect.failed' ? effect.type : event.type.replace(/\.(started|completed|failed)$/, ''),
-                status: event.type.endsWith('.failed') || event.ok === false ? 'failed' : event.type.endsWith('.completed') ? 'completed' : 'running',
+            Object.assign(effect, { type: event.type === 'effect.failed' ? effect.type : event.type.replace(/\.(started|completed|failed|cancelled)$/, ''),
+                status: event.type.endsWith('.cancelled') ? 'cancelled' : event.type.endsWith('.failed') || event.ok === false ? 'failed' : event.type.endsWith('.completed') ? 'completed' : 'running',
                 ...(event.toolName ? { toolName: event.toolName } : {}) });
         }
         if (event.type === 'agent.handoff.completed') run.handoffs.push(event);

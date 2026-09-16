@@ -157,3 +157,20 @@ refresh restart or second memory/provider runtime. Runtime diagnostic events rem
 getExtensionApi('orchestrator').listRuntimeCheckpoints lists metadata; cancelRuntimeCheckpoint closes interrupted
 execution and routes same-page active cancellation through the live Runtime. The existing panel Stop path remains
 unchanged. Browser-local persistence and cross-device/server execution are distinct boundaries.
+
+## Phase 7 update — fixed batches and native fan-out/join
+
+Native model fanout decision -> typed branch/capability/concurrency admission -> parallel.fanout effect ->
+ParallelExecutor -> createRuntimeBranchPort -> existing child AgentRuntime and scoped checkpoint ->
+fanout receipt -> parallel.join effect/receipt -> ordered parent scratch -> next model step.
+Branch IDs derive from the parent effect; explicit parentRunId protects finished child checkpoints until
+their parent terminates. Child source guards and the existing provider/Memory OS adapters remain authoritative.
+
+Spec executeStage parallel path / Agenda dispatch batch -> runLegacyParallel -> legacy parent Runtime tool
+effect -> shared ParallelExecutor -> existing routed worker Runtime with a stable branch run ID. Spec native
+Single IDs now include the admitted handoff attempt, avoiding durable collisions during repeated node/replay work.
+Both paths retain first-chunk cache barriers and legacy output ordering/Agenda error handling.
+
+Director dispatch/await handles remain an active compatibility caller, including its existing Promise.all join.
+Do not remove this policy during Phase 8 merely because fixed-batch code moved. Native branch cancellation is
+an execution API; no new branch UI controls or automatic legacy refresh continuation are claimed.

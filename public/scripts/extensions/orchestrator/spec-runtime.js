@@ -1,3 +1,4 @@
+import { runLegacyParallel } from './legacy-parallel-adapter.js';
 import { runRoutedLegacyWorkflow, createSpecAgentRoute, selectHandoffInputs } from './legacy-agent-routing.js';
 import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
@@ -646,11 +647,11 @@ export function runWorkerNode(...args) {
     const inputs = args[5] instanceof Map ? args[5] : new Map();
     args[5] = selectHandoffInputs(inputs, [...inputs.keys()]);
     return runRoutedLegacyWorkflow(handoff => {
-        args[7] = { ...args[7], runtimeAgentId: handoff.toAgentId };
+        args[7] = { ...args[7], runtimeAgentId: handoff.toAgentId, runtimeExecutionId: handoff.handoffId };
         return runWorkerNodePolicy(...args);
     }, {
         ...createSpecAgentRoute(args[2], args[3], args[7], {}, normalizeNodeSpec), inputIds: [...inputs.keys()],
-        context: args[0], signal: args[6], onEvent: args[7]?.runtime?.onRuntimeEvent,
+        runId: args[7]?.runtimeRunId, context: args[0], signal: args[6], onEvent: args[7]?.runtime?.onRuntimeEvent,
     });
 }
 
@@ -822,7 +823,7 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
             // race sibling worker nodes for the same cache slot
             // (siblings warmed it on their own round 1 or moved
             // past it). See dispatch-barrier.js and the
-            // Promise.all(nodes.map(...)) parallel-stage fan-out
+            // Runtime parallel-stage fan-out
             // in runStage for the caller side.
             onFirstChunk: round === 1 && typeof options?.onFirstChunk === 'function'
                 ? options.onFirstChunk
@@ -839,7 +840,7 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
     try {
         if (options?.runtime?.useV2Single) {
             const output = await runLegacySingleRequest({
-                runId: `${options.runtime.runId}/single/${nodeSpec.id}`,
+                runId: `${options.runtimeExecutionId || options.runtime.runId}/single/${nodeSpec.id}`,
                 agentId: options.runtimeAgentId,
                 request: { tools, abortSignal },
                 hostContext: context,
@@ -1394,12 +1395,12 @@ export async function executeStage(context, payload, messages, profile, runtime,
             // per-stage (not per-run) because different stages are
             // sequential and cache-warmth naturally carries across from
             // the previous stage's write; barrier only helps within
-            // the concurrent Promise.all fan-out here.
+            // the concurrent Runtime batch here.
             const stageBarrier = createFirstChunkBarrier();
-            const outputs = await Promise.all(nodes
-                .map((nodeSpec, nodeIndex) => ({ nodeSpec, nodeIndex }))
-                .filter(({ nodeSpec }) => shouldRunWorkerNode(nodeSpec.id) || !stageWorkerOutputs.has(nodeSpec.id))
-                .map(async ({ nodeSpec, nodeIndex }) => {
+            const outputs = await runLegacyParallel(
+                nodes.map((nodeSpec, nodeIndex) => ({ nodeSpec, nodeIndex }))
+                    .filter(({ nodeSpec }) => shouldRunWorkerNode(nodeSpec.id) || !stageWorkerOutputs.has(nodeSpec.id)),
+                async ({ nodeSpec, nodeIndex }, _index, { signal: abortSignal, runId: branchRunId }) => {
                     if (isReviewNodeSpec(nodeSpec)) {
                         throw new Error(`Review node '${nodeSpec.id}' cannot run in a parallel execution stage.`);
                     }
@@ -1428,7 +1429,7 @@ export async function executeStage(context, payload, messages, profile, runtime,
                             throwIfAborted(abortSignal, 'Orchestration aborted.');
                         }
                         const result = await runWorkerNode(context, payload, nodeSpec, nodePreset, messages, previousNodeOutputs, abortSignal, {
-                            isFinalStage,
+                            isFinalStage, runtimeRunId: branchRunId,
                             handoffFrom: options.handoffFrom,
                             rerunReason: resolveRerunReasonForNode(nodeSpec.id),
                             stageIndex,
@@ -1459,7 +1460,9 @@ export async function executeStage(context, payload, messages, profile, runtime,
                         // any still-waiting followers by contract.
                         try { barrierSlot.release(); } catch { /* barrier release must never throw */ }
                     }
-                }));
+                },
+                { context, signal: abortSignal, panelRunId },
+            );
             for (const [nodeId, output] of outputs) {
                 stageWorkerOutputs.set(nodeId, output);
             }
