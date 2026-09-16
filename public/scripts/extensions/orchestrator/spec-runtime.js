@@ -41,6 +41,7 @@
 
 const extension_settings = Luker.getContext().extensionSettings;
 import { isAbortSignalLike, throwIfAborted } from './abort-utils.js';
+import { runLegacySingleRequest } from './legacy-runtime-adapter.js';
 import { canonicalStringifyArgs } from './canonical-stringify.js';
 import { extractLastUserMessage, getRecentMessages } from './anchors.js';
 import { readPluginFloors } from '../../lib/plugin-floors.js';
@@ -793,7 +794,15 @@ export async function runWorkerNode(context, payload, nodeSpec, preset, messages
             ];
             conversation.messages.push({ role: 'user', content: iterationPromptWithNotes, _round: round });
 
-            const detailed = await requestToolCallsWithRetry(context, settings, {
+            const send = request => requestToolCallsWithRetry(context, settings, request);
+            const sendNode = options?.runtime?.useV2Single && !enableLoopTools
+                ? request => runLegacySingleRequest({
+                    runId: `${options.runtime.runId}/single/${nodeSpec.id}`,
+                    request, send,
+                    onEvent: event => recordRuntimeEvent(trace, 'agent_runtime_v2', { runtimeEvent: event }),
+                })
+                : send;
+            const detailed = await sendNode({
                 taskMessages,
                 runtimeWorldInfo,
                 apiPresetName,
@@ -1571,6 +1580,8 @@ export async function runSpecOrchestration(context, payload, messages, profile, 
     })();
     const runtime = {
         stages,
+        // Explicit diagnostic opt-out; never mutates saved mode/preset settings.
+        useV2Single: profile.source === 'single' && payload?.agentRuntimeV2 !== false,
         stageOutputs: [],
         reviewRerunCount: 0,
         approvedReviewFeedbackEntries: [],

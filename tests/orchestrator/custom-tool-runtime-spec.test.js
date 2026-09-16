@@ -105,6 +105,37 @@ beforeEach(() => {
 });
 
 describe('spec runtime Layer-3 dispatch', () => {
+    test('Single v2 and explicit legacy fallback produce identical stage outputs', async () => {
+        const profile = {
+            source: 'single', mode: 'single',
+            spec: { defaultTools: null, stages: [{ id: 'single', mode: 'serial', nodes: [{ id: 'single_agent', preset: 'single_agent' }] }] },
+            presets: { single_agent: { systemPrompt: 'private system', userPromptTemplate: 'private task' } },
+        };
+        const before = JSON.stringify(profile);
+        const run = async agentRuntimeV2 => {
+            llmResponses.push({ toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'same guidance' } }], assistantText: '' });
+            return runSpecOrchestration({}, { agentRuntimeV2 }, [], profile);
+        };
+        const modern = await run(true);
+        const legacy = await run(false);
+        expect(modern.stageOutputs).toEqual(legacy.stageOutputs);
+        expect(modern.runtimeTrace.events.some(e => e.type === 'agent_runtime_v2')).toBe(true);
+        expect(legacy.runtimeTrace.events.some(e => e.type === 'agent_runtime_v2')).toBe(false);
+        expect(JSON.stringify(profile)).toBe(before);
+    });
+
+    test('Single with inherited tool defaults stays on the full legacy tool path', async () => {
+        const profile = {
+            source: 'single', mode: 'single',
+            spec: { stages: [{ id: 'single', mode: 'serial', nodes: [{ id: 'single_agent', preset: 'single_agent' }] }] },
+            presets: { single_agent: { systemPrompt: 'private system', userPromptTemplate: 'private task' } },
+        };
+        llmResponses.push({ toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'done' } }], assistantText: '' });
+        const result = await runSpecOrchestration({}, {}, [], profile);
+        expect(result.runtimeTrace.events.some(e => e.type === 'agent_runtime_v2')).toBe(false);
+        expect(result.stageOutputs[0].nodes[0].output).toBe('done');
+    });
+
     test('threads customToolRegistry into the per-call executeLoopTool ctx', async () => {
         // Profile: one stage, one worker node with memory.search enabled
         // and a single custom tool the LLM is told to call. The body

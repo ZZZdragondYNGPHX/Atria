@@ -8,13 +8,14 @@ import { abortable } from './abort.js';
 /** Serial headless driver. Host services enter only through injected ports. */
 export class AgentRuntime {
     #runs = new Map();
-    constructor({ registry, ports, store = new MemoryCheckpointStore(), countTokens, contextBudget = 4096 }) {
+    constructor({ registry, ports, store = new MemoryCheckpointStore(), countTokens, contextBudget = 4096, contextInput = {} }) {
         validatePorts(ports);
         this.registry = registry;
         this.ports = ports;
         this.store = store;
         this.countTokens = countTokens;
         this.contextBudget = contextBudget;
+        this.contextInput = contextInput;
         this.events = createEventBus();
     }
 
@@ -121,7 +122,7 @@ export class AgentRuntime {
         if (signal.aborted || this.store.load(state.runId)?.generation !== state.generation) throw new Error('Cancelled or superseded');
         if (typeof recalled?.assertCurrent !== 'function') throw new TypeError('Memory guard required');
         recalled.assertCurrent();
-        const compiled = compileContext({ agent, state, memory: recalled, countTokens: this.countTokens, budget: this.contextBudget });
+        const compiled = compileContext({ ...this.contextInput, agent, state, memory: recalled, countTokens: this.countTokens, budget: this.contextBudget });
         this.publish(state, 'context.compiled', { tokens: compiled.tokens });
         recalled.assertCurrent();
         const result = await this.ports.model.request({ ...request, messages: compiled.messages, tools: agent.tools });
