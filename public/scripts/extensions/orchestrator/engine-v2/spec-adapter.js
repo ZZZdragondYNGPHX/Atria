@@ -5,6 +5,7 @@ import { effectiveCapabilities } from '../../../lib/orchestration-engine/capabil
 import { createFirstChunkBarrier } from '../dispatch-barrier.js';
 import { resolveOrchestrationAgentApiPresetName, resolveOrchestrationAgentPromptPresetName } from '../agent-resolution.js';
 import { throwIfAborted } from '../abort-utils.js';
+import { runArbitrationNode } from './arbitration-adapter.js';
 
 export async function runSpecEngine({ context, payload, messages, profile, runtime, settings,
     runWorkerNode, runReviewNode, normalizeNodeSpec, resolveReviewTargetEntries, createStageOutputSnapshot }) {
@@ -24,6 +25,7 @@ export async function runSpecEngine({ context, payload, messages, profile, runti
     const execute = async request => {
         throwIfAborted(request.signal);
         const node = plan.nodes.find(node => node.nodeId === request.payload.nodeId);
+        if (['judge', 'synthesize'].includes(node.kind)) return runArbitrationNode({ plan, node, request, context, settings, onEvent: runtime.onRuntimeEvent });
         const { stageIndex, nodeIndex, stageId, nodeSpec: raw, isFinalStage } = node.metadata;
         const nodeSpec = normalizeNodeSpec(raw), preset = profile.presets[nodeSpec.preset] || {};
         const prior = previousOutputs(request.payload.inputs, stageIndex, nodeIndex, false);

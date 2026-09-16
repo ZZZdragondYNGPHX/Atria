@@ -3,7 +3,7 @@ import { planIdentity } from './contracts.js';
 import { validateGraph, applyTaskProposal } from './graph.js';
 import { assertCapability } from './capabilities.js';
 import { createResult } from './results.js';
-import { arbitrate } from './arbitration.js';
+import { arbitrate, latestResults } from './arbitration.js';
 import { selectReadyNodes, routeEdges } from './scheduler.js';
 
 export function initialPolicyState(plan) {
@@ -52,7 +52,9 @@ export function createPolicyController(input) {
                 return { id: `${node.nodeId}/${attempt}`, toAgentId: node.agentId, task: tasks?.[index]?.task || node.task || 'Execute the configured node.',
                     reason: 'Engine delegate; parent retains control', contextPolicy: 'task_only', payload: {
                         planId: plan.planId, nodeId: node.nodeId, attempt, parentRunId: runId,
-                        inputs: copy(state.results.filter(result => !node.inputPolicy?.nodeIds || node.inputPolicy.nodeIds.includes(result.nodeId))),
+                        inputs: copy(kind === 'arbitration'
+                            ? state.results.filter(result => state.arbitrationState.inputResultIds.includes(result.resultId))
+                            : latestResults(state.results, node.inputPolicy?.nodeIds)),
                         taskGraph: copy(state.taskGraph), node: copy(node),
                         reviewRerunCount: state.reviewRerunCount, reviewFeedback: copy(state.reviewFeedback), rerunReason: state.rerunReasons[node.nodeId] ?? null,
                     } };
@@ -86,8 +88,9 @@ export function createPolicyController(input) {
                 } else if (pending.kind === 'arbitration') {
                     if (result.status !== 'completed') return finish(state, 'failed', 'Arbitration agent failed');
                     const candidates = state.arbitrationState.inputResultIds.map(id => state.results.find(result => result.resultId === id));
-                    const selection = arbitrate(candidates, plan.arbitration, result.structured || result.value);
+                    const selection = arbitrate(candidates, state.arbitrationState.policy, result.structured || result.value);
                     result.value = selection.value; result.status = selection.partial ? 'partial' : 'completed';
+                    result.provenance.push(...selection.inputResultIds.map(resultId => ({ resultId })));
                     state.arbitrationState = { ...selection, completed: true };
                     state.completedNodeIds.push(node.nodeId);
                 } else {
@@ -144,7 +147,7 @@ export function createPolicyController(input) {
         let deterministic;
         while ((deterministic = selectReadyNodes(plan, state).filter(node => ['router', 'join', 'terminal'].includes(node.kind))).length) {
             for (const node of deterministic) {
-                const parents = state.results.filter(result => (node.inputs || plan.edges.filter(edge => edge.to === node.nodeId).map(edge => edge.from)).includes(result.nodeId));
+                const parents = latestResults(state.results, node.inputs || plan.edges.filter(edge => edge.to === node.nodeId).map(edge => edge.from));
                 const selection = node.metadata?.entry ? { value: null, partial: false } : arbitrate(parents, node.arbitration || plan.arbitration);
                 const result = createResult({ runId: runSnapshot.runId, nodeId: node.nodeId, agentId: node.agentId,
                     value: selection.value, status: selection.partial ? 'partial' : 'completed' });
@@ -157,9 +160,15 @@ export function createPolicyController(input) {
         const advanced = runnable.find(node => ['judge', 'synthesize'].includes(node.kind));
         if (advanced) {
             assertCapability(plan, advanced, 'result.judge');
-            if (state.budgets.arbitrationCalls >= (plan.arbitration.maxCalls || 1)) return finish(state, 'budget_exhausted', 'arbitration');
+            const policy = { ...plan.arbitration, ...advanced.arbitration, kind: advanced.kind };
+            if (state.budgets.arbitrationCalls >= (policy.maxCalls ?? 1)) return finish(state, 'budget_exhausted', 'arbitration');
+            const inputs = latestResults(state.results, advanced.inputPolicy?.nodeIds || plan.edges.filter(edge => edge.to === advanced.nodeId).map(edge => edge.from));
+            const admitted = inputs.filter(result => result.status === 'completed' || (policy.allowPartial && result.status === 'partial'));
+            if (!admitted.length || (policy.conflict === 'fail' && admitted.length !== inputs.length)) return finish(state, 'failed', 'No admissible arbitration inputs');
+            if (new TextEncoder().encode(JSON.stringify(admitted)).length > (policy.maxInputBytes ?? 262144)) return finish(state, 'budget_exhausted', 'arbitration input bytes');
             state.budgets.arbitrationCalls++;
-            state.arbitrationState = { inputResultIds: state.results.filter(result => result.nodeId !== advanced.nodeId).map(result => result.resultId) };
+            state.arbitrationState = { policy, inputResultIds: inputs.map(result => result.resultId) };
+            state.events.push({ type: 'arbitration.started', nodeId: advanced.nodeId, routing: advanced.kind });
             return delegate(state, [advanced], runSnapshot.runId, 'arbitration');
         }
         return delegate(state, runnable.slice(0, plan.budgets.maxConcurrency), runSnapshot.runId);

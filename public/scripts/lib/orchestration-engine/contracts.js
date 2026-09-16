@@ -23,5 +23,7 @@ export function normalizePlan(input) {
         || (plan.output.kind === 'reply') !== (plan.source.mode === 'director')) throw new Error('Invalid output contract');
     if (plan.output.submitCapability !== (plan.output.kind === 'reply' ? 'reply.submit' : 'result.submit')) throw new Error('Invalid submit capability');
     if (!['pass-through', 'merge', 'synthesize', 'judge', 'consensus', 'best-effort'].includes(plan.arbitration?.kind)) throw new Error('Invalid arbitration policy');
+    for (const key of ['maxCalls', 'maxInputBytes']) if (plan.arbitration[key] !== undefined
+        && (!Number.isSafeInteger(plan.arbitration[key]) || plan.arbitration[key] < 0)) throw new Error(`Invalid arbitration budget: ${key}`);
     return readonlyCopy(plan);
 }

@@ -1,4 +1,12 @@
 import { copy } from '../agent-runtime/contracts.js';
+import { planIdentity } from './contracts.js';
+
+/** One current result per node: old attempts cannot receive extra votes or enter a Judge pool. */
+export function latestResults(results, nodeIds) {
+    const latest = new Map();
+    for (const result of results) if (!nodeIds || nodeIds.includes(result.nodeId)) latest.set(result.nodeId, result);
+    return [...latest.values()];
+}
 
 export function arbitrate(results, policy, decision = null) {
     const selected = policy.inputResultIds ? policy.inputResultIds.map(id => {
@@ -19,13 +27,14 @@ export function arbitrate(results, policy, decision = null) {
     }
     if (policy.kind === 'synthesize') {
         if (!decision || typeof decision.text !== 'string' || !Array.isArray(decision.inputResultIds)
-            || !decision.inputResultIds.length || decision.inputResultIds.some(id => !inputs.includes(id))) throw new Error('Invalid synthesis references');
+            || !decision.inputResultIds.length || new Set(decision.inputResultIds).size !== decision.inputResultIds.length
+            || decision.inputResultIds.some(id => !inputs.includes(id))) throw new Error('Invalid synthesis references');
         return { value: decision.text, inputResultIds: decision.inputResultIds, partial };
     }
     if (policy.kind === 'consensus') {
         const groups = new Map();
         for (const result of candidates) {
-            const key = JSON.stringify(result.value);
+            const key = planIdentity(result.value);
             groups.set(key, [...(groups.get(key) || []), result]);
         }
         const ranked = [...groups.values()].sort((a, b) => b.length - a.length);

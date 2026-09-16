@@ -95,3 +95,40 @@ test('arbitration validates stable references, majority and partial admission', 
     expect(arbitrate(results, { kind: 'merge' }).value).toHaveLength(2);
     expect(() => arbitrate(results, { kind: 'merge', conflict: 'fail' })).toThrow();
 });
+
+test.each(['judge', 'synthesize'])('bounded %s delegates one decision and retains candidate provenance', async kind => {
+    const p = plan(); p.nodes[1].kind = kind;
+    const calls = [];
+    const result = await run(p, async request => {
+        calls.push(request);
+        if (request.payload.nodeId === 'first') return 'candidate';
+        const id = request.payload.inputs[0].resultId;
+        return { engineResult: true, status: 'completed', structured: kind === 'judge' ? { choice: id, reason: 'fit' } : { text: 'synthesis', inputResultIds: [id] } };
+    });
+    expect(result.status).toBe('completed');
+    expect(result.output.value).toBe(kind === 'judge' ? 'candidate' : 'synthesis');
+    expect(result.policyState.budgets.arbitrationCalls).toBe(1);
+    expect(result.policyState.results.at(-1).provenance).toContainEqual({ resultId: 'graph/result/first/1' });
+    expect(calls).toHaveLength(2);
+});
+
+test.each([{ maxCalls: 0 }, { maxInputBytes: 1 }])('arbitration budget prevents admission: %j', async budget => {
+    const p = plan(); p.nodes[1].kind = 'judge'; Object.assign(p.arbitration, budget);
+    let calls = 0;
+    const result = await run(p, async () => { calls++; return 'candidate'; });
+    expect(result.output.status).toBe('budget_exhausted'); expect(calls).toBe(1);
+});
+
+test('invalid Judge IDs fail without publishing a reply', async () => {
+    const p = plan(); p.nodes[1].kind = 'judge';
+    const result = await run(p, async request => request.payload.nodeId === 'first' ? 'candidate'
+        : { engineResult: true, status: 'completed', structured: { choice: 'old-run/result/first/1', reason: 'stale' } });
+    expect(result.status).toBe('failed'); expect(result.error).toMatch(/Judge/); expect(result.output).toBeUndefined();
+});
+
+test('consensus uses structural equality and synthesis rejects duplicate references', () => {
+    const results = [{ a: 1, b: 2 }, { b: 2, a: 1 }, 'different'].map((value, index) => createResult({ runId: 'r', nodeId: String(index), agentId: 'w', value }));
+    expect(arbitrate(results, { kind: 'consensus' }).value).toEqual({ a: 1, b: 2 });
+    const id = results[0].resultId;
+    expect(() => arbitrate(results, { kind: 'synthesize' }, { text: 'x', inputResultIds: [id, id] })).toThrow(/references/);
+});
