@@ -109,21 +109,7 @@ import {
 } from './run-state/store.js';
 import { openRunPanel, initRunPanel } from './run-panel/panel.js';
 
-// Local no-op stubs for the legacy runtime-trace API. The trace module
-// was deleted when the run-panel store became the source of truth for
-// run progress, and each runner now writes through RunStateStore directly.
-// These stubs let main.js continue to compile while downstream code
-// paths (reuse-snapshot finalize, simulation review export) still pass
-// the legacy trace shape around. Wholesale removal of the stubs is
-// deferred until the iter-studio simulation review either reads from
-// RunStateStore directly or accepts a richer per-mode payload.
-const clearLatestOrchestrationRuntimeTrace = () => {};
-const createOrchestrationRuntimeTrace = () => ({ director: null, finalMessage: '', finalReasoning: '' });
-const finalizeOrchestrationRuntimeTrace = () => {};
-const getLatestOrchestrationRuntimeTrace = () => null;
-const recordOrchestrationRuntimeEvent = () => {};
-const truncateOrchestrationRuntimePreview = (s) => String(s || '');
-const attachOrchestrationRuntimeDirectorState = () => {};
+// Historical result popup placeholder; its edit action remains active.
 const renderLastOrchestrationResultHtml = () => '';
 import {
     canReuseLatestOrchestrationSnapshot,
@@ -213,11 +199,8 @@ import { augmentStudioPromptWithCustomTools } from './studio-prompt-augment.js';
 import { reviewIncomingCustomTools } from './character-import-tools-review.js';
 import {
     CUSTOM_TOOL_ITER_STUDIO_TOOL_DEFS,
-    CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES,
     isCustomToolIterStudioTool,
     executeCustomToolIterStudioCall,
-    commitApprovedCustomToolProposal,
-    resanitizeProfileCustomTools,
 } from './custom-tool-iter-studio.js';
 import {
     collectCustomToolsFromCardExtension,
@@ -1148,7 +1131,6 @@ async function onWorldInfoFinalized(payload) {
         }
         const messages = structuredClone(Array.isArray(payload?.coreChat) ? payload.coreChat : []);
         if (messages.length === 0) {
-            clearLatestOrchestrationRuntimeTrace(context);
             clearCapsulePrompt(context);
             refreshActiveSnapshotFromCache(context);
             await emitOrchestratorResultEvent(context, payload, 'cancelled', {
@@ -1177,18 +1159,6 @@ async function onWorldInfoFinalized(payload) {
         if (canReuseLatestOrchestrationSnapshot(chatKey, anchor, executionIdentity)) {
             const capsuleText = String(getActiveSnapshot()?.capsuleText || '').trim();
             if (capsuleText) {
-                const reuseTraceStages = String(profile?.mode || '') === ORCH_EXECUTION_MODE_AGENDA
-                    ? []
-                    : (sanitizeSpec(profile.spec)?.stages || []);
-                const reuseTrace = createOrchestrationRuntimeTrace(context, payload, reuseTraceStages, {
-                    status: 'reused',
-                    note: i18n('Reused previous orchestration snapshot. No nodes executed.'),
-                    capsuleText,
-                });
-                finalizeOrchestrationRuntimeTrace(reuseTrace, 'reused', {
-                    capsuleText,
-                    note: i18n('Reused previous orchestration snapshot. No nodes executed.'),
-                });
                 // Director mode produces the assistant message directly via
                 // the takeover hook — there is no capsule to inject. Skip
                 // here to avoid polluting the prompt with stale text on the
@@ -1228,9 +1198,6 @@ async function onWorldInfoFinalized(payload) {
             stopRequestPromise,
         ]);
         if (raced?.stopped) {
-            finalizeOrchestrationRuntimeTrace(getLatestOrchestrationRuntimeTrace(context), 'cancelled', {
-                note: i18n('Orchestration cancelled by user before completion.'),
-            });
             clearCapsulePrompt(context);
             await emitOrchestratorResultEvent(context, payload, 'cancelled', {
                 reason: 'user_stopped',
@@ -1258,10 +1225,6 @@ async function onWorldInfoFinalized(payload) {
         assertCurrent();
         injectCapsuleToPayload(payload, capsuleText, settings);
         ensureUi();
-        finalizeOrchestrationRuntimeTrace(finalRun?.runtimeTrace || getLatestOrchestrationRuntimeTrace(context), outcome, {
-            capsuleText,
-            reviewRerunCount: Number(finalRun?.reviewRerunCount || 0),
-        });
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
         await emitOrchestratorResultEvent(context, payload, outcome, {
             includeSnapshot: outcome === 'completed',
@@ -1272,11 +1235,6 @@ async function onWorldInfoFinalized(payload) {
     } catch (error) {
         if (getChatKey(getContext()) !== runChatKey) return;
         if (isAbortError(error, orchestrationPayload?.signal)) {
-            finalizeOrchestrationRuntimeTrace(getLatestOrchestrationRuntimeTrace(context), 'cancelled', {
-                note: isAbortSignalLike(payload?.signal) && payload.signal.aborted
-                    ? i18n('Generation aborted before orchestration completed.')
-                    : i18n('Orchestration cancelled by user.'),
-            });
             clearCapsulePrompt(context);
             const generationAborted = Boolean(isAbortSignalLike(payload?.signal) && payload.signal.aborted);
             updateUiStatus(generationAborted
@@ -1292,9 +1250,6 @@ async function onWorldInfoFinalized(payload) {
             clearRunInfoToast();
             return;
         }
-        finalizeOrchestrationRuntimeTrace(getLatestOrchestrationRuntimeTrace(context), 'failed', {
-            error: String(error?.message || error),
-        });
         clearCapsulePrompt(context);
         console.warn(`[${MODULE_NAME}] Orchestration failed`, error);
         const failText = i18nFormat('Orchestrator failed: ${0}', String(error?.message || error));
@@ -2784,7 +2739,7 @@ function renderAgendaIterationWorkingProfile(session, { profileOverride = null, 
     <div class="luker_orch_iter_stage_mode">${escapeHtml(agentId === profile.finalAgentId ? i18n('Final Agent') : i18n('Worker'))}</div>
     <div class="luker_orch_iter_preset_line"><b>API:</b> ${escapeHtml(getPresetApiPresetName(preset) || i18n('(Global orchestration API preset)'))}</div>
     <div class="luker_orch_iter_preset_line"><b>Preset:</b> ${escapeHtml(getPresetPromptPresetName(preset) || i18n('(Current preset)'))}</div>
-    <div class="luker_orch_iter_stage_nodes">${escapeHtml(truncateOrchestrationRuntimePreview(preset?.systemPrompt || '', 180) || '(empty)')}</div>
+    <div class="luker_orch_iter_stage_nodes">${escapeHtml(String(preset?.systemPrompt || '') || '(empty)')}</div>
 </div>`).join('');
     const simulationSummary = '';
     return `
@@ -4657,9 +4612,7 @@ async function runAiIterationSimulation(context, session, args = {}, abortSignal
                     setActiveSnapshot(snapshotBefore ? structuredClone(snapshotBefore) : null);
                 }
             }
-            const trace = run?.runtimeTrace
-                || getLatestOrchestrationRuntimeTrace(context)
-                || null;
+            const trace = run?.runtimeTrace || null;
             let attemptKind, attemptPayload;
             if (isAgendaIterationSession(session)) {
                 attemptKind = 'orch-agenda';

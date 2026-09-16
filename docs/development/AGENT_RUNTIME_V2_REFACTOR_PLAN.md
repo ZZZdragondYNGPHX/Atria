@@ -1,6 +1,6 @@
 # Luker Agent Runtime v2 — 智能体编排代码级重构方案
 
-> 状态：Phase 0–7 已完成；下一阶段 Phase 8（原生 Runtime 支持恢复与并行；旧策略现场丢失仍安全失败，活跃兼容路径不得误删；证据与边界见对应 PHASE 文档）
+> 状态：Phase 0–8 已完成；Phase 8 调用审计和无效追踪清理已完成（原生 Runtime 支持恢复与并行；旧策略现场丢失仍安全失败，活跃兼容路径不得误删；证据与边界见对应 PHASE 文档）
 > 工作分支：`feat/agent-runtime-v2`  
 > 开发基线：`custom-release@cfb95953071d6459c911e3e6a3bed0144e86ba72`  
 > 基线提交：`merge: integrate Memory OS into custom-release`  

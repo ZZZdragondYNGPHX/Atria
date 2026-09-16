@@ -42,12 +42,15 @@ includes the admitted handoff attempt, avoiding duplicate node/replay collisions
 See AGENT_RUNTIME_V2_PHASE7.md: 216 suites / 2490 expanded checks and 120 suites / 1370 final mode checks pass;
 four Edge smokes pass, including parent/child page destruction, retention cleanup and no duplicate writes.
 Director's dynamic dispatch/
-await policy remains an active compatibility path. Next is Phase 8: remove only paths proven to have no callers.
+await policy remains an active compatibility path. Phase 8 completes the caller audit and removes main.js
+no-op trace scaffolding, discarded trace-only state and unused imports. Active mode/context policies remain.
+See docs/development/AGENT_RUNTIME_V2_PHASE8.md for removal evidence and integration scope.
 The Runtime event journal remains in memory; there is no automatic whole-legacy-mode refresh continuation,
 new branch-control UI or cross-device server runner.
 The explicit request payload `agentRuntimeV2: false` selects Single's legacy protocol adapter without changing presets; both paths now use Runtime scheduling.
 The owner prefers autonomous offline/browser verification and will check real play later; missing Android/real-model checks
-are coverage gaps, not mandatory manual approval gates. No merge into custom-release or remote push has been performed.
+are coverage gaps, not mandatory manual approval gates. The owner has authorized Phase 8 integration into custom-release and pushing both custom-release and
+feat/agent-runtime-v2. Verify the live refs for the final integration state; no release/tag is requested.
 
 This document stores fork-specific context that should survive across chats and different AI tools. It is a snapshot and navigation aid; live `custom-release` code and Git history remain authoritative.
 

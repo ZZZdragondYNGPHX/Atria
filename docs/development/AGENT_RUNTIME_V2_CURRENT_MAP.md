@@ -174,3 +174,27 @@ Both paths retain first-chunk cache barriers and legacy output ordering/Agenda e
 Director dispatch/await handles remain an active compatibility caller, including its existing Promise.all join.
 Do not remove this policy during Phase 8 merely because fixed-batch code moved. Native branch cancellation is
 an execution API; no new branch UI controls or automatic legacy refresh continuation are claimed.
+
+
+## Phase 8 — live caller audit (2026-09-17)
+
+Base: `15b4e82ea6a6d64fa8a9d4cc2f5aefd7e5106c47`. Earlier line numbers above are historical.
+Whole-repository symbol searches and the Phase 1–7 Git history establish the following removal boundary:
+
+| Surface | Current callers / decision |
+| --- | --- |
+| main legacy trace clear/create/finalize/get/record/attach stubs | Local no-ops only; remove definitions, calls, discarded reuseTrace/stages and constant-null simulation fallback. Simulation still consumes run.runtimeTrace. |
+| truncateOrchestrationRuntimePreview | One main preview call; inline its actual String conversion, preserving the prior non-truncating behavior. |
+| Three main custom-tool imports | Unused bindings removed; constants and commit/resanitize implementations remain used in custom-tool-iter-studio and iter-studio/studio. |
+| Spec worker/review loops | runSpecOrchestration -> executeStage -> routed worker/review; active generator intents and native Single adapter retained. |
+| Agenda, Loop, Director policies | main dispatches all modes; modelIntent/toolIntent -> runLegacyWorkflow -> AgentRuntime. Keep live policy state and mode-specific output assembly. |
+| Director dynamic dispatch/await | director-runtime -> director-tools inflight handles; active, distinct from fixed-batch fanout. Keep cancellation/cache barriers. |
+| Context assembly | worker prepareRequest and host generate-task assembly feed compiler/runtimeContext; complementary layers, not abandoned duplicate loops. |
+| Historical result popup | openLastOrchestrationResult still owns editing; retain placeholder and edit behavior. |
+
+Audit commands: `rg -n` for each removed trace symbol over the repository; then production-only `public src`
+and `tests` checks. No removed trace symbol remains in production. The sole remaining test mention is a comment
+in custom-tool-per-run.test.js, not a caller. Search runLegacyWorkflow/runLegacySingleRequest/runLegacyParallel,
+modelIntent/toolIntent and runtimeContext to reproduce the retained execution/context routes.
+No additional uncalled execution loop or context builder was established; do not delete active compatibility
+policies to inflate cleanup. Preset formats, Memory OS and src/luker-dispatch remain unchanged.
