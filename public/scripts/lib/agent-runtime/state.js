@@ -90,8 +90,7 @@ export function transition(previous, event) {
             else if (result.type === 'tool') schedule(state, 'tool.execute', { toolName: result.toolName, ...(state.controlMode === 'policy' ? { args: result.args ?? {} } : {}) });
             else if (result.type === 'fanout') schedule(state, 'parallel.fanout', { branches: result.branches, concurrency: result.concurrency, failurePolicy: result.failurePolicy });
             else if (result.type === 'wait') state.status = 'waiting_user';
-            else if (result.type === 'fail') { state.status = 'failed'; state.error = result.error; }
-            else throw new Error('Invalid legacy policy intent');
+            else if (result.type === 'fail') { state.status = 'failed'; state.error = result.error; } else throw new Error('Invalid legacy policy intent');
         } else if ((state.legacyPolicy || state.controlMode === 'policy') && ['model.request', 'tool.execute'].includes(effect.type)) {
             schedule(state, 'policy.advance', { receiptId: effect.effectId });
         } else if (effect.type === 'memory.recall') {

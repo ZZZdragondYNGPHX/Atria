@@ -6,7 +6,29 @@ import { abortable } from './abort.js';
  */
 export class ParallelExecutor {
     #groups = new Map();
-    constructor(branchPort) { this.branchPort = branchPort; }
+    #active = 0;
+    #waiters = [];
+    constructor(branchPort, { maxConcurrency = Number.MAX_SAFE_INTEGER } = {}) {
+        if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 1) throw new Error('Invalid executor concurrency');
+        this.branchPort = branchPort;
+        this.maxConcurrency = maxConcurrency;
+    }
+
+    async #admit(signal) {
+        if (signal.aborted) throw new DOMException('Branch cancelled', 'AbortError');
+        if (this.#active < this.maxConcurrency) { this.#active++; return; }
+        await new Promise((resolve, reject) => {
+            const waiter = { resolve: () => { signal.removeEventListener('abort', cancel); resolve(); } };
+            const cancel = () => { this.#waiters = this.#waiters.filter(item => item !== waiter); reject(new DOMException('Branch cancelled', 'AbortError')); };
+            signal.addEventListener('abort', cancel, { once: true }); this.#waiters.push(waiter);
+        });
+    }
+
+    #release() {
+        const waiter = this.#waiters.shift();
+        if (waiter) waiter.resolve();
+        else this.#active--;
+    }
 
     cancelBranch(effectId, branchId) {
         const controller = this.#groups.get(effectId)?.get(branchId);
@@ -43,9 +65,11 @@ export class ParallelExecutor {
                     } catch { /* Observers do not own scheduling. */ }
                 };
                 const result = { id: branch.id, runId: childRunId, status: 'cancelled' };
+                let admitted = false;
                 results[index] = result;
                 if (controller.signal.aborted || failed) { emit('cancelled'); controllers.delete(branch.id); continue; }
                 try {
+                    await this.#admit(controller.signal); admitted = true;
                     request.assertCurrent?.();
                     emit('started');
                     if (controller.signal.aborted) throw new DOMException('Branch cancelled', 'AbortError');
@@ -67,7 +91,7 @@ export class ParallelExecutor {
                     result.error = String(error?.message || error);
                     emit(result.status);
                     if (plan.failurePolicy === 'fail_fast') { failed = true; cancel(); }
-                } finally { controllers.delete(branch.id); }
+                } finally { controllers.delete(branch.id); if (admitted) this.#release(); }
             }
         };
         try {

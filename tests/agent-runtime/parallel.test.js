@@ -15,6 +15,20 @@ function setup(executor, store) {
 }
 const start = runtime => runtime.startRun({ runId: 'parent', agentId: 'a', task: 'fork' });
 
+test('dynamic groups share executor concurrency and cancelled queued groups never start', async () => {
+    const gate = deferred(), entered = [];
+    const executor = new ParallelExecutor({ async execute(request) { entered.push(request.id); await gate.promise; return request.id; } }, { maxConcurrency: 1 });
+    const first = executor.run({ ...plan, effectId: 'one', branches: [branch('one')], signal: new AbortController().signal });
+    await until(() => entered.length === 1);
+    const abort = new AbortController();
+    const second = executor.run({ ...plan, effectId: 'two', branches: [branch('two')], signal: abort.signal });
+    const rejected = expect(second).rejects.toMatchObject({ name: 'AbortError' });
+    abort.abort(); gate.resolve();
+    await first; await rejected;
+    await executor.run({ ...plan, effectId: 'three', branches: [branch('three')], signal: new AbortController().signal });
+    expect(entered).toEqual(['one', 'three']);
+});
+
 test('bounded fanout preserves input order despite out-of-order completion and records explicit join', async () => {
     const gates = new Map(), entered = [];
     let active = 0, peak = 0;

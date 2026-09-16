@@ -167,8 +167,9 @@ describe('director sub-agent Layer-3 dispatch', () => {
         expect(subCall).toBeTruthy();
         expect(subCall.ctx.__customToolRegistry).toBeTruthy();
         expect(subCall.ctx.__customToolRegistry.has('my_sub_tool')).toBe(true);
-        expect(getRuntimePanelState().runtime.runs[0].handoffs).toHaveLength(1);
-        expect(getRuntimePanelState().runtime.runs[0].status).toBe('completed');
+        expect(getRuntimePanelState().runtime.events.some(e => e.type === 'parallel.branch.completed')).toBe(true);
+        expect(getRuntimePanelState().runtime.events.some(e => e.type === 'agent.handoff.completed')).toBe(false);
+        expect(getRuntimePanelState().runtime.runs.some(run => run.status === 'completed')).toBe(true);
         clearRuntimePanel();
     });
 });

@@ -122,8 +122,8 @@ export async function runAgendaEngine({ context, payload, messages, profile, set
                     }, request.signal);
                 } finally { slot.release(); }
                 // Conversations may contain source-guarded Memory OS tool text; never checkpoint them.
-                const { conversation: _conversation, ...executionResult } = result;
-                result = executionResult;
+                result = { ...result };
+                delete result.conversation;
             }
             appendToSection({ runId: panelRunId, roundId, sectionId, delta: kind === 'planner' ? JSON.stringify(result) : result.outputText });
             setSectionStatus({ runId: panelRunId, roundId, sectionId, status: 'done' });

@@ -1,3 +1,4 @@
+import { runDirectorWorker, createDirectorDelegateExecutor } from './engine-v2/director-worker.js';
 import { runRoutedLegacyWorkflow, createLegacyAgentGraph, agentKey } from './legacy-agent-routing.js';
 import { copy } from '../../lib/agent-runtime/contracts.js';
 import { modelIntent, toolIntent, createLegacyWorkflowRunId } from './legacy-workflow-adapter.js';
@@ -533,9 +534,12 @@ export function createSubagentDispatcher({
     onRuntimeEvent,
 }) {
     const runtimeParentId = runId || createLegacyWorkflowRunId();
+    const delegate = createDirectorDelegateExecutor(Math.max(1, Math.floor(Number(limits?.maxConcurrentSubagents) || 16)));
     const list = copy(Array.isArray(subAgents) ? subAgents : []);
     const byId = new Map(list.map(a => [a.id, a]));
     const inflight = new Map();  // handleId -> Promise<{ outputText, error? }>
+    const descriptors = new Map();
+    const completed = new Map();
     // Per-sub-agent abort controller. Each dispatch creates a child
     // controller chained off the shared abortSignal; cancel(handleId)
     // fires only that child, leaving siblings running.
@@ -850,8 +854,13 @@ export function createSubagentDispatcher({
         });
     }
 
-    async function runDispatchInternal({ handleId, displayId, isInline, systemPrompt, apiPresetName, promptPresetName, task, parentMessages, agentTools, agentMaxRounds, agentConfig = null }) {
-        totalRuns++;
+    async function runDispatchInternal(options) {
+        const { handleId, displayId, isInline, systemPrompt, apiPresetName, promptPresetName, task, parentMessages, agentTools, agentMaxRounds, agentConfig = null, restoring = false } = options;
+        if (!restoring) totalRuns++;
+        // Persist descriptions and child identity, never promises or copied Memory OS feedback.
+        descriptors.set(handleId, { handleId, displayId, isInline, systemPrompt, apiPresetName, promptPresetName,
+            task: String(task || ''), agentTools: agentTools || null, agentMaxRounds: agentMaxRounds || null, agentConfig,
+            parentMessageCount: parentMessages?.length || 0 });
         // Flat naming: one top-level round per sub-agent dispatch.
         // Inside that round we anchor a `reasoning` section and a `text`
         // section — same shape the main agent uses for its rounds, so the
@@ -1034,12 +1043,125 @@ export function createSubagentDispatcher({
             abortSignal: childSignal,
         };
 
+        async function* executeWorkerTool(name, args, r, i) {
+            // Record each sub-agent tool invocation as a
+            // section in this dispatch's round so the panel
+            // can show the same "tool: X" / "tool result: X"
+            // breakdown the main agent's rounds have. Section
+            // ids include round + tool index to keep them
+            // unique across the mini-loop's multi-round
+            // tool-call history.
+            const callSource = resolveToolSource(name, { __customToolRegistry: customToolRegistry });
+            const toolCallSectionId = panelEnsureSection(
+                roundId,
+                `tool-${r}-${i}`,
+                'tool_call',
+                i18nFormat('Tool: ${0}', name),
+                { args, source: callSource },
+            );
+            panelAppendToSection(roundId, toolCallSectionId, stringifyForSection(args));
+            let toolResult;
+            if (name === 'get_draft') {
+                toolResult = yield toolIntent(name, args, {}, () => executeGetDraftTool(handle));
+            } else if (name === 'draft_search') {
+                toolResult = yield toolIntent(name, args, {}, () => executeDraftSearchTool(handle, args));
+            } else if (name === 'write_message') {
+                // Only reachable when tools.message.write_message
+                // is enabled — buildSubAgentToolSchemas gates the
+                // schema on the same flag. Reuses the same
+                // executor as the main agent, so both roles
+                // mutate the shared draft via the same handle.
+                toolResult = yield toolIntent(name, args, {}, () => executeWriteMessageTool(handle, args));
+            } else if (name === 'apply_message_patches') {
+                // Same gating as write_message. Roll-back-on-
+                // failure semantics are inherited from
+                // executeApplyPatchesTool.
+                toolResult = yield toolIntent(name, args, {}, () => executeApplyPatchesTool(handle, args));
+            } else if (typeof executeLoopTool === 'function') {
+                try {
+                    // Inherit from `contextForNotes` so
+                    // prototype-resolved methods (e.g.
+                    // `updateChatState`, needed by Layer-2
+                    // tools that lazily open chat-scoped
+                    // state) survive on the dispatched ctx.
+                    // See director-runtime.js's main-agent
+                    // path for the matching pattern.
+                    const toolCtx = Object.create(contextForNotes || null);
+                    toolCtx.chat = chat;
+                    toolCtx.__customToolRegistry = customToolRegistry;
+                    // Mirror director-runtime.js main-agent path:
+                    // thread per-run lorebookFilter into the sub-
+                    // agent's tool ctx so the 5 lorebook exec
+                    // functions suppress filtered books/entries at
+                    // source. wiFinalizedPayload stays null —
+                    // director's takeover fires after WI join, so
+                    // force_activate cleanly hits NO_PAYLOAD.
+                    toolCtx.__lukerRun = {
+                        lorebookFilter: directorProfile?.lorebookFilter || { bookPattern: '', entryPattern: '' },
+                        activatedEntryKeys: new Set(),
+                        wiFinalizedPayload: null,
+                    };
+                    // Mirror director-runtime.js main-agent path:
+                    // give custom tools a stable sync way to read
+                    // the in-flight draft body without round-tripping
+                    // through the built-in `get_draft` tool.
+                    toolCtx.director = {
+                        getDraft() {
+                            try {
+                                if (handle && typeof handle.getText === 'function') return handle.getText();
+                            } catch (_) { /* fall through */ }
+                            return '';
+                        },
+                    };
+                    // Sub-agent scoped skill visibility — see
+                    // director-runtime.js main-agent path for
+                    // matching wiring.
+                    toolCtx.__visibleSkillsForAgent = visibleSkillsForSubAgent;
+                    // Race against childSignal so a hanging
+                    // tool can't pin this sub-agent open
+                    // after stop. Same pattern + reasoning
+                    // as the main-agent loop.
+                    const raw = yield toolIntent(name, args, toolCtx, () => raceAbortSignal(
+                        executeLoopTool(name, args, toolCtx),
+                        childSignal,
+                    ));
+                    toolResult = { ok: true, result: raw };
+                } catch (err) {
+                    // Let abort errors propagate to the
+                    // outer try / catch which routes the
+                    // sub-agent into the `cancelled` status
+                    // exit; swallowing them here would mask
+                    // the cancel as a generic tool failure
+                    // in the messages stream and let the
+                    // round loop charge ahead.
+                    if (isAbortError(err, childSignal)) throw err;
+                    toolResult = { ok: false, error: String(err?.message || err) };
+                }
+            } else {
+                toolResult = { ok: false, error: `tool execution unavailable: ${name}` };
+            }
+            // Pair the tool-call section with a tool-result
+            // section so the panel renders both halves the
+            // same way the main agent's rounds render them.
+            const toolResultSectionId = panelEnsureSection(
+                roundId,
+                `tool-result-${r}-${i}`,
+                'tool_result',
+                i18nFormat('Tool result: ${0}', name),
+                { ok: !!toolResult?.ok, err: toolResult?.error || null },
+            );
+            panelAppendToSection(roundId, toolResultSectionId, stringifyForSection(toolResult));
+            panelSetSectionStatus(roundId, toolResultSectionId, toolResult?.ok ? 'done' : 'failed');
+            panelSetSectionStatus(roundId, toolCallSectionId, toolResult?.ok ? 'done' : 'failed');
+            return toolResult;
+        }
+
         const targetId = isInline ? `inline:${handleId}` : `named:${displayId}`;
         const graph = createLegacyAgentGraph('director', [
             ...Array.from(byId.values(), preset => ({ id: `named:${preset.id}`, preset })),
             ...(isInline ? [{ id: targetId, preset: { systemPrompt, apiPresetName, promptPresetName } }] : []),
         ]);
-        const promise = runRoutedLegacyWorkflow(async function* () {
+        const workflow = async function* () {
             // Panel context for runOneRound — the dispatch round and
             // its reasoning + text sections were ensured at the top of
             // runDispatchInternal. We pass these ids per call so chunks
@@ -1063,6 +1185,23 @@ export function createSubagentDispatcher({
             const barrierKey = streamEnabledForBarrier ? String(apiPresetName || '').trim() : '';
             const barrierSlot = firstChunkBarrier.acquire(barrierKey);
             try {
+                if (settings?.agentRuntimeV2 !== false) {
+                    const finalText = await runDirectorWorker({ runId: `${runtimeParentId}/${handleId}`, parentRunId: runtimeParentId,
+                        agentId: agentKey('director', targetId), task, messages: subMessages, tools: subToolSchemas,
+                        maxRounds: effectiveMaxRounds, signal: childSignal, context: contextForNotes || {}, onEvent: onRuntimeEvent, recovering: restoring, delegate,
+                        transformOutput: regexAgentPluginOutput,
+                        requestRound: async function* (round) {
+                            if (round === 0 && barrierSlot.role === 'follower') await barrierSlot.wait;
+                            throwIfAborted(childSignal);
+                            return yield* runOneRound(subMessages, panelCtx, baseOpts, subToolSchemas,
+                                round === 0 && barrierSlot.role === 'lead' ? barrierSlot.signalFirstChunk : null);
+                        }, executeTool: executeWorkerTool });
+                    panelSetSectionStatus(roundId, reasoningSectionId, 'done');
+                    panelSetSectionStatus(roundId, textSectionId, 'done');
+                    panelSetRoundStatus(roundId, 'done');
+                    completionNotifications.push({ handleId, subagentId: displayId, status: 'completed', summary: `output: ${finalText.length} chars` });
+                    return { handleId, subagentId: displayId, outputText: finalText };
+                }
                 let finalText = '';
                 let converged = false;
                 for (let r = 0; r < effectiveMaxRounds; r++) {
@@ -1164,121 +1303,8 @@ export function createSubagentDispatcher({
                         const callId = assistantToolCallEntries[i].id;
                         const name = String(call?.name || '');
                         const args = call?.args;
-                        // Record each sub-agent tool invocation as a
-                        // section in this dispatch's round so the panel
-                        // can show the same "tool: X" / "tool result: X"
-                        // breakdown the main agent's rounds have. Section
-                        // ids include round + tool index to keep them
-                        // unique across the mini-loop's multi-round
-                        // tool-call history.
-                        const callSource = assistantToolCallEntries[i].source;
-                        const toolCallSectionId = panelEnsureSection(
-                            roundId,
-                            `tool-${r}-${i}`,
-                            'tool_call',
-                            i18nFormat('Tool: ${0}', name),
-                            { args, source: callSource },
-                        );
-                        panelAppendToSection(roundId, toolCallSectionId, stringifyForSection(args));
-                        let toolResult;
-                        if (name === 'get_draft') {
-                            toolResult = await executeGetDraftTool(handle);
-                        } else if (name === 'draft_search') {
-                            toolResult = await executeDraftSearchTool(handle, args);
-                        } else if (name === 'write_message') {
-                            // Only reachable when tools.message.write_message
-                            // is enabled — buildSubAgentToolSchemas gates the
-                            // schema on the same flag. Reuses the same
-                            // executor as the main agent, so both roles
-                            // mutate the shared draft via the same handle.
-                            toolResult = await executeWriteMessageTool(handle, args);
-                        } else if (name === 'apply_message_patches') {
-                            // Same gating as write_message. Roll-back-on-
-                            // failure semantics are inherited from
-                            // executeApplyPatchesTool.
-                            toolResult = await executeApplyPatchesTool(handle, args);
-                        } else if (typeof executeLoopTool === 'function') {
-                            try {
-                                // Inherit from `contextForNotes` so
-                                // prototype-resolved methods (e.g.
-                                // `updateChatState`, needed by Layer-2
-                                // tools that lazily open chat-scoped
-                                // state) survive on the dispatched ctx.
-                                // See director-runtime.js's main-agent
-                                // path for the matching pattern.
-                                const toolCtx = Object.create(contextForNotes || null);
-                                toolCtx.chat = chat;
-                                toolCtx.__customToolRegistry = customToolRegistry;
-                                // Mirror director-runtime.js main-agent path:
-                                // thread per-run lorebookFilter into the sub-
-                                // agent's tool ctx so the 5 lorebook exec
-                                // functions suppress filtered books/entries at
-                                // source. wiFinalizedPayload stays null —
-                                // director's takeover fires after WI join, so
-                                // force_activate cleanly hits NO_PAYLOAD.
-                                toolCtx.__lukerRun = {
-                                    lorebookFilter: directorProfile?.lorebookFilter || { bookPattern: '', entryPattern: '' },
-                                    activatedEntryKeys: new Set(),
-                                    wiFinalizedPayload: null,
-                                };
-                                // Mirror director-runtime.js main-agent path:
-                                // give custom tools a stable sync way to read
-                                // the in-flight draft body without round-tripping
-                                // through the built-in `get_draft` tool.
-                                toolCtx.director = {
-                                    getDraft() {
-                                        try {
-                                            if (handle && typeof handle.getText === 'function') return handle.getText();
-                                        } catch (_) { /* fall through */ }
-                                        return '';
-                                    },
-                                };
-                                // Sub-agent scoped skill visibility — see
-                                // director-runtime.js main-agent path for
-                                // matching wiring.
-                                toolCtx.__visibleSkillsForAgent = visibleSkillsForSubAgent;
-                                // Race against childSignal so a hanging
-                                // tool can't pin this sub-agent open
-                                // after stop. Same pattern + reasoning
-                                // as the main-agent loop.
-                                const raw = yield toolIntent(name, args, toolCtx, () => raceAbortSignal(
-                                    executeLoopTool(name, args, toolCtx),
-                                    childSignal,
-                                ));
-                                toolResult = { ok: true, result: raw };
-                            } catch (err) {
-                                // Let abort errors propagate to the
-                                // outer try / catch which routes the
-                                // sub-agent into the `cancelled` status
-                                // exit; swallowing them here would mask
-                                // the cancel as a generic tool failure
-                                // in the messages stream and let the
-                                // round loop charge ahead.
-                                if (isAbortError(err, childSignal)) throw err;
-                                toolResult = { ok: false, error: String(err?.message || err) };
-                            }
-                        } else {
-                            toolResult = { ok: false, error: `tool execution unavailable: ${name}` };
-                        }
-                        subMessages.push({
-                            role: 'tool',
-                            tool_call_id: callId,
-                            content: JSON.stringify(toolResult),
-                            _round: r,
-                        });
-                        // Pair the tool-call section with a tool-result
-                        // section so the panel renders both halves the
-                        // same way the main agent's rounds render them.
-                        const toolResultSectionId = panelEnsureSection(
-                            roundId,
-                            `tool-result-${r}-${i}`,
-                            'tool_result',
-                            i18nFormat('Tool result: ${0}', name),
-                            { ok: !!toolResult?.ok, err: toolResult?.error || null },
-                        );
-                        panelAppendToSection(roundId, toolResultSectionId, stringifyForSection(toolResult));
-                        panelSetSectionStatus(roundId, toolResultSectionId, toolResult?.ok ? 'done' : 'failed');
-                        panelSetSectionStatus(roundId, toolCallSectionId, toolResult?.ok ? 'done' : 'failed');
+                        const toolResult = yield* executeWorkerTool(name, args, r, i);
+                        subMessages.push({ role: 'tool', tool_call_id: callId, content: JSON.stringify(toolResult), _round: r });
                     }
                 }
                 if (childSignal.aborted && !converged) {
@@ -1326,16 +1352,20 @@ export function createSubagentDispatcher({
                 // Follower release is a no-op by contract.
                 try { barrierSlot.release(); } catch { /* barrier release must never throw */ }
             }
-        }, { graph, parentRunId: runtimeParentId, toAgentId: agentKey('director', targetId), task, reason: isInline ? 'director_inline_dispatch' : 'director_dispatch',
-            inputIds: mainRoundsDigest ? ['story_context', 'main_rounds_digest'] : ['story_context'],
-            context: contextForNotes || {}, signal: childSignal, runId: `${runtimeParentId}/${handleId}`, onEvent: onRuntimeEvent }).catch(error => {
+        };
+        const execution = settings?.agentRuntimeV2 !== false
+            ? workflow().next().then(result => { if (!result.done) throw new Error('Unexpected Director worker intent'); return result.value; })
+            : runRoutedLegacyWorkflow(workflow, { graph, parentRunId: runtimeParentId, toAgentId: agentKey('director', targetId), task, reason: isInline ? 'director_inline_dispatch' : 'director_dispatch',
+                inputIds: mainRoundsDigest ? ['story_context', 'main_rounds_digest'] : ['story_context'],
+                context: contextForNotes || {}, signal: childSignal, runId: `${runtimeParentId}/${handleId}`, onEvent: onRuntimeEvent });
+        const promise = execution.catch(error => {
             const msg = childSignal.aborted ? 'cancelled' : String(error?.message || error);
             if (!completionNotifications.some(item => item.handleId === handleId)) {
                 completionNotifications.push({ handleId, subagentId: displayId, status: childSignal.aborted ? 'cancelled' : 'failed', summary: msg });
             }
             return { handleId, subagentId: displayId, error: msg };
         });
-        inflight.set(handleId, promise);
+        inflight.set(handleId, promise.then(result => { completed.set(handleId, copy(result)); return result; }));
         return handleId;
     }
 
@@ -1370,7 +1400,20 @@ export function createSubagentDispatcher({
         return completionNotifications.splice(0);
     }
 
-    return { dispatch, dispatchInline, awaitAll, cancel, drainCompletionNotifications };
+    const snapshot = () => ({ nextHandleId, totalRuns, descriptors: [...descriptors.values()], results: [...completed.entries()] });
+    const restore = async (saved, parentMessages) => {
+        if (!saved) return;
+        if (inflight.size) throw new Error('Director dispatcher already active');
+        nextHandleId = saved.nextHandleId; totalRuns = saved.totalRuns;
+        for (const [id, result] of saved.results) { completed.set(id, result); inflight.set(id, Promise.resolve(result)); }
+        for (const descriptor of saved.descriptors) {
+            descriptors.set(descriptor.handleId, descriptor);
+            if (!completed.has(descriptor.handleId)) await runDispatchInternal({ ...descriptor, restoring: true,
+                parentMessages: parentMessages.slice(0, descriptor.parentMessageCount) });
+        }
+    };
+    const cancelAll = () => { for (const id of childAborts.keys()) cancel(id); };
+    return { dispatch, dispatchInline, awaitAll, cancel, cancelAll, drainCompletionNotifications, snapshot, restore };
 }
 
 function makeSubagentToolCallId() {

@@ -144,11 +144,11 @@ export function createPolicyController(input) {
         let deterministic;
         while ((deterministic = selectReadyNodes(plan, state).filter(node => ['router', 'join', 'terminal'].includes(node.kind))).length) {
             for (const node of deterministic) {
-            const parents = state.results.filter(result => (node.inputs || plan.edges.filter(edge => edge.to === node.nodeId).map(edge => edge.from)).includes(result.nodeId));
-            const selection = node.metadata?.entry ? { value: null, partial: false } : arbitrate(parents, node.arbitration || plan.arbitration);
-            const result = createResult({ runId: runSnapshot.runId, nodeId: node.nodeId, agentId: node.agentId,
-                value: selection.value, status: selection.partial ? 'partial' : 'completed' });
-            state.results.push(result); state.resultRefs.push(result.resultId); state.completedNodeIds.push(node.nodeId);
+                const parents = state.results.filter(result => (node.inputs || plan.edges.filter(edge => edge.to === node.nodeId).map(edge => edge.from)).includes(result.nodeId));
+                const selection = node.metadata?.entry ? { value: null, partial: false } : arbitrate(parents, node.arbitration || plan.arbitration);
+                const result = createResult({ runId: runSnapshot.runId, nodeId: node.nodeId, agentId: node.agentId,
+                    value: selection.value, status: selection.partial ? 'partial' : 'completed' });
+                state.results.push(result); state.resultRefs.push(result.resultId); state.completedNodeIds.push(node.nodeId);
             }
         }
         if (state.completedNodeIds.includes(owner.nodeId)) return finish(state, 'completed');

@@ -1,3 +1,4 @@
+import { buildPerRunCustomToolRegistry } from '../../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
 import { describe, expect, test, jest } from '@jest/globals';
 import { runMainAgentLoop } from '../../../public/scripts/extensions/orchestrator/director-runtime.js';
 import { createSubagentDispatcher } from '../../../public/scripts/extensions/orchestrator/director-tools.js';
@@ -14,6 +15,8 @@ import { createMessageEditorHandle } from '../../../public/scripts/message-takeo
 // and a fast follow-up regenerate lands on the same chat slot while
 // the stale loop is still writing — the dual-write race described in
 // the takeover-handle auto-abort tests.
+
+const fixtureTools = ['mark_a', 'mark_b', 'mark_c', 'mark_only', 'hang_forever'].map(name => ({ name, description: name, parameters: {}, mode: 'read', body: 'return {};', simulateBody: '' }));
 
 function makeHandle(abortSignal) {
     const chat = [{ mes: '', extra: { reasoning: '' }, is_user: false }];
@@ -68,7 +71,7 @@ describe('director abort discipline — main-agent tool loop', () => {
         try {
             await runMainAgentLoop({
                 handle,
-                profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
+                profile: { customTools: fixtureTools, mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
                 eventData: ev,
                 deps: {
                     generateTaskStreamForMainAgent: fakeStream,
@@ -117,7 +120,7 @@ describe('director abort discipline — main-agent tool loop', () => {
         try {
             await runMainAgentLoop({
                 handle,
-                profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
+                profile: { customTools: fixtureTools, mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
                 eventData: ev,
                 deps: {
                     generateTaskStreamForMainAgent: fakeStream,
@@ -171,7 +174,7 @@ describe('director abort discipline — long-running tools race the signal', () 
         try {
             await runMainAgentLoop({
                 handle,
-                profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
+                profile: { customTools: fixtureTools, mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
                 eventData: ev,
                 deps: {
                     generateTaskStreamForMainAgent: fakeStream,
@@ -242,7 +245,7 @@ describe('director abort discipline — sub-agent tool loop', () => {
             executeLoopTool,
             chat: [],
             contextForNotes: null,
-            customToolRegistry: null,
+            customToolRegistry: buildPerRunCustomToolRegistry({ customTools: fixtureTools }, null),
         });
 
         // Fire abort once the sub-agent has plausibly entered its

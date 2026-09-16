@@ -1,3 +1,26 @@
+import { buildPerRunCustomToolRegistry } from '../../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
+
+test.each([false, true])('worker write grant %s never grants finalize or recursive dispatch', async allowed => {
+    const { handle } = setupHandle({ initialText: 'original' });
+    const steps = [{ assistantText: '', toolCalls: [
+        { id: 'w', name: 'write_message', args: { text: 'worker draft' } },
+        { id: 'f', name: 'finalize', args: {} },
+        { id: 'd', name: 'dispatch_inline_subagent', args: { systemPrompt: 'unauthorized' } },
+    ] }, { assistantText: 'done', toolCalls: [] }];
+    const fallback = jest.fn();
+    const dispatcher = createSubagentDispatcher({ subAgents: [{ id: 's', systemPrompt: 's', maxRounds: 2 }],
+        handle, tools: { message: { write_message: allowed } }, executeLoopTool: fallback,
+        generateTask: async () => steps.shift(), abortSignal: new AbortController().signal });
+    const id = await dispatcher.dispatch({ subagentId: 's', task: 'inspect' });
+    expect((await dispatcher.awaitAll([id]))[0].outputText).toBe('done');
+    expect(handle.getText()).toBe(allowed ? 'originalworker draft' : 'original');
+    expect(handle.isSettled()).toBe(false);
+    expect(fallback).not.toHaveBeenCalled();
+    const snapshot = JSON.parse(JSON.stringify(dispatcher.snapshot()));
+    const restored = createSubagentDispatcher({ subAgents: [], generateTask: () => { throw new Error('must not replay'); } });
+    await restored.restore(snapshot, []);
+    expect((await restored.awaitAll([id]))[0].outputText).toBe('done');
+});
 import { describe, expect, test, jest } from '@jest/globals';
 import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
 import {
@@ -827,6 +850,7 @@ describe('subagent dispatcher', () => {
             generateTask: fakeGenerate,
             abortSignal: new AbortController().signal,
             tools: { custom: { memory_keyword_search: true } },
+            customToolRegistry: buildPerRunCustomToolRegistry({ customTools: [{ name: 'memory_keyword_search', description: 'test', parameters: {}, mode: 'read', body: 'return {};', simulateBody: '' }] }, null),
             executeLoopTool,
             chat: [],
             contextForNotes: notesCtx,
@@ -918,12 +942,12 @@ describe('subagent dispatcher', () => {
     });
 });
 
-test('configured and inline Director children record distinct handoffs before model execution', async () => {
+test('configured and inline Director children record distinct delegate branches before model execution', async () => {
     const events = [], specs = [{ id: 'critic', systemPrompt: 'original' }];
     const dispatcher = createSubagentDispatcher({ subAgents: specs, limits: { maxTotalSubagentRuns: 3 }, runId: 'director-parent',
         onRuntimeEvent: event => events.push(event),
         generateTask: async () => {
-            expect(events.some(e => e.type === 'agent.handoff.completed')).toBe(true);
+            expect(events.some(e => e.type === 'parallel.branch.started')).toBe(true);
             return { assistantText: 'done', toolCalls: [] };
         }, abortSignal: new AbortController().signal,
     });
@@ -931,11 +955,12 @@ test('configured and inline Director children record distinct handoffs before mo
     const named = await dispatcher.dispatch({ subagentId: 'critic', task: 'review' });
     const inline = await dispatcher.dispatchInline({ systemPrompt: 'one-off role', task: 'inspect' });
     expect((await dispatcher.awaitAll([named, inline])).map(item => item.outputText)).toEqual(['done', 'done']);
-    const handoffs = events.filter(e => e.type === 'agent.handoff.completed');
+    const handoffs = events.filter(e => e.type === 'parallel.branch.started');
+    expect(events.some(e => e.type === 'agent.handoff.completed')).toBe(false);
     expect(handoffs).toHaveLength(2);
-    expect(handoffs.every(e => e.fromAgentId === 'director/controller' && e.parentRunId === 'director-parent')).toBe(true);
+    expect(handoffs.every(e => e.runId === 'director-parent')).toBe(true);
     expect(handoffs.map(e => e.toAgentId)).toEqual(expect.arrayContaining(['director/agent/named%3Acritic', expect.stringMatching(/^director\/agent\/inline%3A/)]));
-    expect(new Set(handoffs.map(e => e.handoffId)).size).toBe(2);
+    expect(new Set(handoffs.map(e => e.childRunId)).size).toBe(2);
 });
 
 test('Director duplicate configured IDs preserve the existing last-definition lookup', async () => {

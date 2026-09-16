@@ -36,7 +36,7 @@ export function compileAgentDefinition(plan, node, availableTools) {
     if (!agent) throw new Error('Unknown node agent');
     const caps = effectiveCapabilities(plan, node);
     const tools = agent.tools.filter(name => availableTools.includes(name) && caps[toolCapability(name, plan.source.mode)]
-        && (!['reply.write', 'reply.submit'].includes(toolCapability(name, plan.source.mode)) || node.nodeId === plan.output.ownerNodeId));
+        && (toolCapability(name, plan.source.mode) !== 'reply.submit' || node.nodeId === plan.output.ownerNodeId));
     return { ...agent, tools, handoffs: caps['agent.handoff'] ? agent.handoffs || [] : [],
         policies: { ...agent.policies, maxConcurrency: Math.min(agent.policies?.maxConcurrency || plan.budgets.maxConcurrency, plan.budgets.maxConcurrency) } };
 }

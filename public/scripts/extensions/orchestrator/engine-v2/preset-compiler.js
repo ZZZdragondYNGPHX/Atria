@@ -22,6 +22,10 @@ export function compilePreset(profile, { mode = profile.mode || profile.source |
         compatibility: { readOnly: true, sourceMode: mode } };
     const node = (nodeId, config, metadata = {}, role = 'worker') => {
         const capabilities = privileges(role, mode);
+        if (mode === 'director' && role === 'worker') {
+            const flags = config?.tools || source.director?.tools || source.tools || {};
+            capabilities['reply.write'] = flags.message?.write_message === true || flags.message?.apply_message_patches === true;
+        }
         const agentId = `agent:${nodeId}`;
         plan.agents.push({ id: agentId, instructions: String(config?.systemPrompt || ''),
             modelProfile: { apiPresetName: String(config?.apiPresetName || ''), promptPresetName: String(config?.promptPresetName || '') },
@@ -76,7 +80,7 @@ export function compilePreset(profile, { mode = profile.mode || profile.source |
         const config = mode === 'director' ? source.director || source : source;
         plan.entryNodeId = node('owner', mode === 'director' ? config.mainAgent : config, {}, 'owner');
         plan.output.ownerNodeId = plan.entryNodeId;
-        if (mode === 'director') for (const agent of config.subAgents || []) {
+        if (mode === 'director') for (const agent of new Map((config.subAgents || []).map(agent => [agent.id, agent])).values()) {
             const id = node(`worker:${agent.id}`, agent, { legacyAgentId: agent.id });
             plan.nodes.at(-1).required = false; edge(plan.entryNodeId, id);
         }

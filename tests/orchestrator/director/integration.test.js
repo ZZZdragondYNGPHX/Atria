@@ -1,4 +1,13 @@
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
+
+test('owner cannot call disabled write tools even when the model invents their names', async () => {
+    const { handle, chat } = makeHandle(); handle.setText('original');
+    const calls = [{ assistantText: '', toolCalls: [{ id: 'w', name: 'write_message', args: { text: 'unauthorized' } }] },
+        { assistantText: '', toolCalls: [{ id: 'f', name: 'finalize', args: {} }] }];
+    await runMainAgentLoop({ handle, profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], tools: {}, maxRounds: 3 } },
+        eventData: { abortSignal: new AbortController().signal }, deps: { generateTaskStreamForMainAgent: async () => calls.shift(), chat } });
+    expect(handle.getText()).toBe('original');
+});
 import { runMainAgentLoop } from '../../../public/scripts/extensions/orchestrator/director-runtime.js';
 import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
 import {
@@ -96,7 +105,7 @@ describe('director integration — scripted main agent', () => {
         handle.setText('placeholder');
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 3, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 3, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -148,7 +157,7 @@ describe('director integration — scripted main agent', () => {
         handle.setText('placeholder');
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 3, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 3, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -192,7 +201,7 @@ describe('director integration — scripted main agent', () => {
 
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -246,7 +255,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 10,
                     maxConcurrentSubagents: 2,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -329,7 +338,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 5,
                     maxConcurrentSubagents: 2,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -426,7 +435,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 5,
                     maxConcurrentSubagents: 2,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -488,7 +497,7 @@ describe('director integration — scripted main agent', () => {
 
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -544,7 +553,7 @@ describe('director integration — scripted main agent', () => {
 
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 10, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 10, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -594,7 +603,7 @@ describe('director integration — scripted main agent', () => {
 
         await expect(runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 10, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 10, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -637,7 +646,7 @@ describe('director integration — scripted main agent', () => {
 
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 4, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 4, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -779,7 +788,7 @@ describe('director integration — scripted main agent', () => {
 
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: {} } },
+            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 5, tools: { message: { write_message: true, apply_message_patches: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,
@@ -839,7 +848,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 5,
                     maxConcurrentSubagents: 2,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -918,7 +927,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 6,
                     maxConcurrentSubagents: 2,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -997,7 +1006,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 8,
                     maxConcurrentSubagents: 2,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -1070,7 +1079,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 4,
                     maxConcurrentSubagents: 3,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -1148,7 +1157,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 5,
                     maxConcurrentSubagents: 1,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -1220,7 +1229,7 @@ describe('director integration — scripted main agent', () => {
                     maxRounds: 4,
                     maxConcurrentSubagents: 2,
                     maxTotalSubagentRuns: 5,
-                    tools: {},
+                    tools: { message: { write_message: true, apply_message_patches: true } },
                 },
             },
             eventData: ev,
@@ -1349,7 +1358,7 @@ describe('director integration — scripted main agent', () => {
         handle.setText('placeholder');
         await runMainAgentLoop({
             handle,
-            profile: { mode: 'director', director: { mainAgent: {}, subAgents: [], maxRounds: 3, tools: { custom: { memory_keyword_search: true } } } },
+            profile: { mode: 'director', customTools: [{ name: 'memory_keyword_search', description: 'Fixture memory tool', parameters: {}, mode: 'read', body: 'return {};', simulateBody: '' }], director: { mainAgent: {}, subAgents: [], maxRounds: 3, tools: { custom: { memory_keyword_search: true } } } },
             eventData: ev,
             deps: {
                 generateTaskStreamForMainAgent: fakeStream,

@@ -1,4 +1,5 @@
 import { AgentRegistry } from '../../lib/agent-runtime/index.js';
+import { runDirectorEngine } from './engine-v2/director-adapter.js';
 import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Director-mode runtime.
@@ -370,6 +371,10 @@ export function renderMainAgentSystemPromptWithOpenNotes(systemPrompt, openNotes
  * legitimate way to exit; `maxRounds` is just the upper bound.
  */
 export function runMainAgentLoop(...args) {
+    if (args[0]?.eventData?.agentRuntimeV2 !== false) return runMainAgentLoopPolicy(...args).next().then(result => {
+        if (!result.done) throw new Error('Director Engine yielded a legacy continuation');
+        return result.value;
+    });
     return runLegacyWorkflow(() => runMainAgentLoopPolicy(...args), {
         registry: new AgentRegistry([{ id: 'director/controller' }]), agentId: 'director/controller',
         runId: args[0]?.deps?.runId, context: args[0]?.deps?.contextForNotes || {},
@@ -548,52 +553,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
 
     const panelRunId = deps?.runId || null;
 
-    for (let round = 0; round < limits.maxRounds; round++) {
-        if (eventData?.abortSignal?.aborted) {
-            // User clicked stop between rounds. Use handle.abort() to
-            // preserve whatever sub-agent reasoning + partial main-agent
-            // output the user has been watching, but signal the kernel
-            // to skip its natural-completion finalize pipeline (no
-            // emit / persist / autoContinue). Discarding here would
-            // wipe the entire reasoning fold, which is the opposite of
-            // what the user wants when they stop mid-orchestration.
-            if (!handle.complete._settled) {
-                try { await handle.abort(); } catch (_) { /* abort is idempotent / best-effort */ }
-            }
-            return;
-        }
-
-        // Snapshot the main-agent history visible to any sub-agent
-        // dispatched during this round. Captured BEFORE generate so the
-        // snapshot ends on a complete round boundary (last completed
-        // round's assistant + tool_results) and contains no in-flight
-        // tool-call pending state. Forwarded as __parentMessages to
-        // dispatch_subagent / dispatch_inline_subagent below.
-        const parentMessagesForRound = messages.slice();
-        // Drain sub-agent completion notifications since last round and
-        // inject them as system messages so the main agent learns about
-        // completed (or cancelled / failed) sub-agents without polling.
-        // Each handle is reported exactly once; the drainer clears the
-        // queue. The notification is independent of await — it only says
-        // "X is done, you can await it now"; the actual output still
-        // arrives via await_subagents.
-        const notifs = typeof dispatcher.drainCompletionNotifications === 'function'
-            ? dispatcher.drainCompletionNotifications()
-            : [];
-        for (const n of notifs) {
-            const tail = n.status === 'completed'
-                ? `completed (${n.summary || 'no summary'}). Call await_subagents(["${n.handleId}"]) to retrieve the output.`
-                : `${n.status} — ${n.summary || ''}`;
-            messages.push({
-                role: 'system',
-                content: `[Runtime] sub-agent ${n.handleId} (${n.subagentId}) ${tail}`,
-            });
-        }
-        // Anchor a named section for this round's main-agent output. Live
-        // chunks flow into the run-panel store (the run-panel renders
-        // them); the chat message reasoning fold is no longer touched
-        // by the director runtime, so chat persistence stays untouched
-        // until the final commit writes `mes`.
+    async function* requestRound(round) {
         // No-tool-call retry inner loop. Each round MUST produce a
         // tool call; an empty toolCalls list means the model balked
         // and we discard that attempt entirely — not pushed into
@@ -718,6 +678,172 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                 throw new Error(`Main agent produced no tool call after ${maxNoToolRetries + 1} attempt(s) (toolCallRetryMax=${maxNoToolRetries}).`);
             }
         }
+        return { result, toolCalls, reasoningAccum, panelRoundId };
+    }
+
+    async function* executeMainTool(name, args, parentMessagesForRound) {
+        let toolResult;
+        if (name === 'dispatch_subagent') {
+            const h = yield toolIntent(name, args, {}, () => raceAbortSignal(
+                dispatcher.dispatch({ ...(args || {}), __parentMessages: parentMessagesForRound }),
+                eventData?.abortSignal,
+            ));
+            toolResult = { ok: true, handle: h };
+        } else if (name === 'dispatch_inline_subagent') {
+            const h = yield toolIntent(name, args, {}, () => raceAbortSignal(
+                dispatcher.dispatchInline({ ...(args || {}), __parentMessages: parentMessagesForRound }),
+                eventData?.abortSignal,
+            ));
+            toolResult = { ok: true, handle: h };
+        } else if (name === 'await_subagents') {
+            // Race the awaitAll against the user-side signal so a
+            // stop unblocks the main loop even when a sub-agent's
+            // transport is stuck ignoring its (chained) child
+            // signal. The sub-agent promise keeps running in the
+            // background; we just stop waiting on it.
+            const results = yield toolIntent(name, args, {}, () => raceAbortSignal(
+                dispatcher.awaitAll(args?.handles || []),
+                eventData?.abortSignal,
+            ));
+            toolResult = { ok: true, results };
+            // No reasoning-fold surfacing here on purpose: the
+            // dispatcher already streamed each sub-agent's chunks
+            // into its own named section as they arrived. Re-emitting
+            // the terminal text on await would duplicate everything
+            // the user has already been watching.
+        } else if (name === 'write_message') {
+            toolResult = yield toolIntent(name, args, {}, () => executeWriteMessageTool(handle, args));
+        } else if (name === 'apply_message_patches') {
+            toolResult = yield toolIntent(name, args, {}, () => executeApplyPatchesTool(handle, args));
+        } else if (name === 'get_draft') {
+            toolResult = yield toolIntent(name, args, {}, () => executeGetDraftTool(handle));
+        } else if (name === 'draft_search') {
+            toolResult = yield toolIntent(name, args, {}, () => executeDraftSearchTool(handle, args));
+        } else if (name === 'cancel_subagent') {
+            toolResult = yield toolIntent(name, args, {}, () => dispatcher.cancel(args?.handle));
+        } else if (name === 'finalize') {
+            toolResult = yield toolIntent(name, args, {}, () => executeFinalizeTool(handle));
+        } else if (typeof deps?.executeLoopTool === 'function') {
+            try {
+                // Inherit from `contextForNotes` (which itself inherits
+                // from the SillyTavern context via `Object.create`) so
+                // prototype-resolved methods like `updateChatState` —
+                // needed by Layer-2 tools that lazily open chat-scoped
+                // state, e.g. memory-graph's session — remain reachable.
+                // Spread would drop them; `Object.create` preserves the
+                // chain. The own-property overlays below carry the
+                // per-call notes adapter, chat slice, and custom-tool
+                // registry.
+                const toolCtx = Object.create(deps?.contextForNotes || null);
+                toolCtx.chat = deps.chat;
+                toolCtx.__customToolRegistry = customToolRegistry;
+                // Thread the per-run lorebookFilter onto every tool
+                // call. Director runs in the takeover handler that
+                // fires AFTER the WI payload is baked into the prompt,
+                // so we don't have the payload to attach — only the
+                // filter, which the 5 lorebook exec functions use to
+                // suppress filtered books/entries at source. Empty
+                // filter default keeps existing behavior for profiles
+                // that never set one.
+                toolCtx.__lukerRun = {
+                    lorebookFilter: director?.lorebookFilter || { bookPattern: '', entryPattern: '' },
+                    activatedEntryKeys: new Set(),
+                    wiFinalizedPayload: null,
+                };
+                // Custom tools in director mode often want to inspect the
+                // in-flight draft (e.g. a pre-finalize skeleton check). The
+                // built-in `get_draft` tool returns `handle.getText()`, so
+                // expose the same path here as `ctx.director.getDraft()` so
+                // Layer-3 tool bodies have a stable, sync, no-tool-roundtrip
+                // way to read the live message body. Sub-agents inherit a
+                // separate handle and get their own director.getDraft below.
+                toolCtx.director = {
+                    getDraft() {
+                        try {
+                            if (handle && typeof handle.getText === 'function') return handle.getText();
+                        } catch (_) { /* fall through */ }
+                        return '';
+                    },
+                };
+                // Thread the resolved visible-skills list onto the
+                // ctx so any skill_list / skill_read / skill_search
+                // calls dispatched through this loop see the agent's
+                // scoped visibility. The skill_* execs reject calls
+                // whose ctx omits this field — they never see the
+                // global skill inventory.
+                toolCtx.__visibleSkillsForAgent = visibleSkillsForMain;
+                // Race the tool against the signal so a hanging
+                // tool (network stalls, recursive sub-orchestration
+                // that ignores its own signal) can't pin the loop
+                // open after the user clicked stop.
+                const raw = yield toolIntent(name, args, toolCtx, () => raceAbortSignal(
+                    deps.executeLoopTool(name, args, toolCtx),
+                    eventData?.abortSignal,
+                ));
+                toolResult = { ok: true, result: raw };
+            } catch (err) {
+                // Don't swallow abort — let the outer wrapper handle
+                // it as a user-initiated cancel rather than reporting
+                // it as a per-tool failure in the messages stream.
+                if (isAbortError(err, eventData?.abortSignal)) throw err;
+                toolResult = { ok: false, error: String(err?.message || err) };
+            }
+        } else {
+            toolResult = { ok: false, error: `unknown tool: ${name}` };
+        }
+        return toolResult;
+    }
+
+    if (eventData?.agentRuntimeV2 !== false) return await runDirectorEngine({ profile: safeProfile, director, handle, eventData, deps, toolSchemas, messages,
+        requestRound, executeMainTool, dispatcher, limits, resolveToolSource, customToolRegistry });
+
+    for (let round = 0; round < limits.maxRounds; round++) {
+        if (eventData?.abortSignal?.aborted) {
+            // User clicked stop between rounds. Use handle.abort() to
+            // preserve whatever sub-agent reasoning + partial main-agent
+            // output the user has been watching, but signal the kernel
+            // to skip its natural-completion finalize pipeline (no
+            // emit / persist / autoContinue). Discarding here would
+            // wipe the entire reasoning fold, which is the opposite of
+            // what the user wants when they stop mid-orchestration.
+            if (!handle.complete._settled) {
+                try { await handle.abort(); } catch (_) { /* abort is idempotent / best-effort */ }
+            }
+            return;
+        }
+
+        // Snapshot the main-agent history visible to any sub-agent
+        // dispatched during this round. Captured BEFORE generate so the
+        // snapshot ends on a complete round boundary (last completed
+        // round's assistant + tool_results) and contains no in-flight
+        // tool-call pending state. Forwarded as __parentMessages to
+        // dispatch_subagent / dispatch_inline_subagent below.
+        const parentMessagesForRound = messages.slice();
+        // Drain sub-agent completion notifications since last round and
+        // inject them as system messages so the main agent learns about
+        // completed (or cancelled / failed) sub-agents without polling.
+        // Each handle is reported exactly once; the drainer clears the
+        // queue. The notification is independent of await — it only says
+        // "X is done, you can await it now"; the actual output still
+        // arrives via await_subagents.
+        const notifs = typeof dispatcher.drainCompletionNotifications === 'function'
+            ? dispatcher.drainCompletionNotifications()
+            : [];
+        for (const n of notifs) {
+            const tail = n.status === 'completed'
+                ? `completed (${n.summary || 'no summary'}). Call await_subagents(["${n.handleId}"]) to retrieve the output.`
+                : `${n.status} — ${n.summary || ''}`;
+            messages.push({
+                role: 'system',
+                content: `[Runtime] sub-agent ${n.handleId} (${n.subagentId}) ${tail}`,
+            });
+        }
+        // Anchor a named section for this round's main-agent output. Live
+        // chunks flow into the run-panel store (the run-panel renders
+        // them); the chat message reasoning fold is no longer touched
+        // by the director runtime, so chat persistence stays untouched
+        // until the final commit writes `mes`.
+        const { result, toolCalls, reasoningAccum, panelRoundId } = yield* requestRound(round);
         // Successful round — the assistant turn (with reasoning + _round)
         // and each tool_result will be pushed onto `messages` below; the
         // renderer reconstructs the per-round breakdown from there. No
@@ -789,116 +915,8 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                     appendToSection({ runId: panelRunId, roundId: panelRoundId, sectionId: panelToolCallSectionId, delta: stringifyForSection(args) });
                 } catch (_) { /* store may have been cleared */ }
             }
-            let toolResult;
-            if (name === 'dispatch_subagent') {
-                const h = yield toolIntent(name, args, {}, () => raceAbortSignal(
-                    dispatcher.dispatch({ ...(args || {}), __parentMessages: parentMessagesForRound }),
-                    eventData?.abortSignal,
-                ));
-                toolResult = { ok: true, handle: h };
-            } else if (name === 'dispatch_inline_subagent') {
-                const h = yield toolIntent(name, args, {}, () => raceAbortSignal(
-                    dispatcher.dispatchInline({ ...(args || {}), __parentMessages: parentMessagesForRound }),
-                    eventData?.abortSignal,
-                ));
-                toolResult = { ok: true, handle: h };
-            } else if (name === 'await_subagents') {
-                // Race the awaitAll against the user-side signal so a
-                // stop unblocks the main loop even when a sub-agent's
-                // transport is stuck ignoring its (chained) child
-                // signal. The sub-agent promise keeps running in the
-                // background; we just stop waiting on it.
-                const results = yield toolIntent(name, args, {}, () => raceAbortSignal(
-                    dispatcher.awaitAll(args?.handles || []),
-                    eventData?.abortSignal,
-                ));
-                toolResult = { ok: true, results };
-                // No reasoning-fold surfacing here on purpose: the
-                // dispatcher already streamed each sub-agent's chunks
-                // into its own named section as they arrived. Re-emitting
-                // the terminal text on await would duplicate everything
-                // the user has already been watching.
-            } else if (name === 'write_message') {
-                toolResult = yield toolIntent(name, args, {}, () => executeWriteMessageTool(handle, args));
-            } else if (name === 'apply_message_patches') {
-                toolResult = yield toolIntent(name, args, {}, () => executeApplyPatchesTool(handle, args));
-            } else if (name === 'get_draft') {
-                toolResult = yield toolIntent(name, args, {}, () => executeGetDraftTool(handle));
-            } else if (name === 'draft_search') {
-                toolResult = yield toolIntent(name, args, {}, () => executeDraftSearchTool(handle, args));
-            } else if (name === 'cancel_subagent') {
-                toolResult = yield toolIntent(name, args, {}, () => dispatcher.cancel(args?.handle));
-            } else if (name === 'finalize') {
-                toolResult = yield toolIntent(name, args, {}, () => executeFinalizeTool(handle));
-                finalized = !!toolResult.ok;
-            } else if (typeof deps?.executeLoopTool === 'function') {
-                try {
-                    // Inherit from `contextForNotes` (which itself inherits
-                    // from the SillyTavern context via `Object.create`) so
-                    // prototype-resolved methods like `updateChatState` —
-                    // needed by Layer-2 tools that lazily open chat-scoped
-                    // state, e.g. memory-graph's session — remain reachable.
-                    // Spread would drop them; `Object.create` preserves the
-                    // chain. The own-property overlays below carry the
-                    // per-call notes adapter, chat slice, and custom-tool
-                    // registry.
-                    const toolCtx = Object.create(deps?.contextForNotes || null);
-                    toolCtx.chat = deps.chat;
-                    toolCtx.__customToolRegistry = customToolRegistry;
-                    // Thread the per-run lorebookFilter onto every tool
-                    // call. Director runs in the takeover handler that
-                    // fires AFTER the WI payload is baked into the prompt,
-                    // so we don't have the payload to attach — only the
-                    // filter, which the 5 lorebook exec functions use to
-                    // suppress filtered books/entries at source. Empty
-                    // filter default keeps existing behavior for profiles
-                    // that never set one.
-                    toolCtx.__lukerRun = {
-                        lorebookFilter: director?.lorebookFilter || { bookPattern: '', entryPattern: '' },
-                        activatedEntryKeys: new Set(),
-                        wiFinalizedPayload: null,
-                    };
-                    // Custom tools in director mode often want to inspect the
-                    // in-flight draft (e.g. a pre-finalize skeleton check). The
-                    // built-in `get_draft` tool returns `handle.getText()`, so
-                    // expose the same path here as `ctx.director.getDraft()` so
-                    // Layer-3 tool bodies have a stable, sync, no-tool-roundtrip
-                    // way to read the live message body. Sub-agents inherit a
-                    // separate handle and get their own director.getDraft below.
-                    toolCtx.director = {
-                        getDraft() {
-                            try {
-                                if (handle && typeof handle.getText === 'function') return handle.getText();
-                            } catch (_) { /* fall through */ }
-                            return '';
-                        },
-                    };
-                    // Thread the resolved visible-skills list onto the
-                    // ctx so any skill_list / skill_read / skill_search
-                    // calls dispatched through this loop see the agent's
-                    // scoped visibility. The skill_* execs reject calls
-                    // whose ctx omits this field — they never see the
-                    // global skill inventory.
-                    toolCtx.__visibleSkillsForAgent = visibleSkillsForMain;
-                    // Race the tool against the signal so a hanging
-                    // tool (network stalls, recursive sub-orchestration
-                    // that ignores its own signal) can't pin the loop
-                    // open after the user clicked stop.
-                    const raw = yield toolIntent(name, args, toolCtx, () => raceAbortSignal(
-                        deps.executeLoopTool(name, args, toolCtx),
-                        eventData?.abortSignal,
-                    ));
-                    toolResult = { ok: true, result: raw };
-                } catch (err) {
-                    // Don't swallow abort — let the outer wrapper handle
-                    // it as a user-initiated cancel rather than reporting
-                    // it as a per-tool failure in the messages stream.
-                    if (isAbortError(err, eventData?.abortSignal)) throw err;
-                    toolResult = { ok: false, error: String(err?.message || err) };
-                }
-            } else {
-                toolResult = { ok: false, error: `unknown tool: ${name}` };
-            }
+            const toolResult = yield* executeMainTool(name, args, parentMessagesForRound);
+            if (name === 'finalize') finalized = !!toolResult.ok;
             messages.push({
                 role: 'tool',
                 tool_call_id: callId,
