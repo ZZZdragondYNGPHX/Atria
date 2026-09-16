@@ -22,7 +22,8 @@
 // open a fresh session per chat.
 
 const registerExtensionApi = Luker.getContext().registerExtensionApi;
-import { captureMemorySourceSession, assertMemorySourceSession, listMemoryFacts, writeMemoryFacts } from './source-lifecycle.js';
+import { captureMemorySourceSession, assertMemorySourceSession, listMemoryFacts, writeMemoryFacts,
+    listMemoryGraph, resolveMemoryEntity, writeMemoryBatch } from './source-lifecycle.js';
 import {
     getCurrentlyInjectedNodeIds,
     addInjectionChangedListener,
@@ -88,6 +89,9 @@ export async function openSession(context) {
         getFactSources: () => structuredClone(sourceTicket?.sources || []),
         listFacts: options => listMemoryFacts(context, options),
         applyFacts: operations => writeMemoryFacts(context, operations, sourceTicket),
+        applyMemoryBatch: batch => writeMemoryBatch(context, batch, sourceTicket),
+        listTemporalGraph: options => listMemoryGraph(context, options),
+        resolveEntity: (name, type) => resolveMemoryEntity(context, name, type),
         // Read
         listVisibleCandidates: (opts) => read.listVisibleCandidates(opts),
         getEdgeSummary: (id, opts) => read.getEdgeSummary(id, opts),
@@ -133,6 +137,7 @@ async function withReadApi(context) {
 registerExtensionApi('memory-graph', {
     openSession,
     listFacts: (context, options) => listMemoryFacts(context, options),
+    listTemporalGraph: (context, options) => listMemoryGraph(context, options),
     // Per-character override accessors (character-overrides.js).
     getSchemaScopeInfo,
     getAdvancedScopeInfo,

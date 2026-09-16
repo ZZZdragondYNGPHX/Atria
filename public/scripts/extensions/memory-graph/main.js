@@ -85,6 +85,7 @@ import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } fr
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
 import { FACT_TOOL_NAME, factExtractionTool, factExtractionContext, readFactToolCalls } from './fact-extraction.js';
+import { temporalExtractionContext, readTemporalToolCalls } from './temporal-extraction.js';
 import {
     getVectorConfigFromSettings,
     getRerankProfileFromSettings,
@@ -4617,6 +4618,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
         tools.push(factExtractionTool());
         allowedNames.add(FACT_TOOL_NAME);
         factContext = factExtractionContext(options.sourceTicket, await sourceLifecycle.listFacts(context));
+        factContext += '\n' + temporalExtractionContext(await sourceLifecycle.listGraph(context, { includeInactive: true }));
     }
     const semanticRetries = Math.max(0, Math.min(10, Math.floor(Number(settings?.toolCallRetryMax) || 0)));
     const editableNodes = new Map(
@@ -4641,7 +4643,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     let lastRetryableError = null;
     for (let attempt = 0; attempt <= semanticRetries; attempt++) {
         const reminderText = attempt > 0
-            ? `Previous response was incomplete. Return COMPLETE extraction tool calls in one response: exactly one final luker_rpg_extract_done as the last call (${options.sourceTicket ? 'SKIP-all still requires luker_memory_facts with operations: [] before done' : 'SKIP-all with done-only is valid'}).${retryReason ? ` Fix: ${retryReason}` : ''}`
+            ? `Previous response was incomplete. Return COMPLETE extraction tool calls in one response: exactly one final luker_rpg_extract_done as the last call (${options.sourceTicket ? 'SKIP-all still requires luker_memory_facts with operations: [] and graphOperations: [] before done' : 'SKIP-all with done-only is valid'}).${retryReason ? ` Fix: ${retryReason}` : ''}`
             : '';
         const tailParts = [extractInputTail];
         if (factContext) tailParts.push(factContext);
@@ -4806,8 +4808,9 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
         if (options.sourceTicket) {
             try {
                 const factOps = readFactToolCalls(calls);
-                sourceLifecycle.validateFacts(context, factOps, options.sourceTicket);
-                ops.push({ op: 'memory_facts', operations: factOps });
+                const graphOps = readTemporalToolCalls(calls, FACT_TOOL_NAME);
+                sourceLifecycle.validateFacts(context, factOps, options.sourceTicket, graphOps);
+                ops.push({ op: 'memory_facts', operations: factOps, graphOperations: graphOps });
             } catch (error) {
                 retryReason = `Invalid atomic facts: ${error.message}`;
                 continue;
@@ -6016,7 +6019,7 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
     });
     if (sourceTicket) await sourceLifecycle.bind(context, sourceBefore, store, sourceTicket);
     for (const op of operations.filter(op => op.op === 'memory_facts')) {
-        await sourceLifecycle.writeFacts(context, op.operations, sourceTicket);
+        await sourceLifecycle.writeBatch(context, op.operations, op.graphOperations, sourceTicket);
     }
 
     return { processed: true, changed: true };

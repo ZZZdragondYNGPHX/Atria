@@ -1385,6 +1385,8 @@ Context budget：可配置
 
 ## Phase 4 — Temporal Graph
 
+执行记录：[MEMORY_OS_PHASE4_TEMPORAL_GRAPH.md](MEMORY_OS_PHASE4_TEMPORAL_GRAPH.md)。用户已明确允许不兼容旧数据，后续不增加旧数据迁移前置条件。
+
 - Entity；
 - Alias；
 - Entity Resolution；

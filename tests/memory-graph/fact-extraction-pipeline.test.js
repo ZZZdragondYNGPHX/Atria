@@ -27,7 +27,7 @@ beforeEach(() => {
         disk.set(namespace, structuredClone(update(disk.get(namespace)))); return { ok: true };
     };
 });
-function answer(request, excerptOverride) {
+function answer(request, excerptOverride, withGraph = false) {
     const tail = request.taskMessages.at(-1).content;
     const marker = tail.indexOf('{"source_episodes"');
     // The fact context precedes optional per-type rules; consume the one JSON line.
@@ -35,7 +35,12 @@ function answer(request, excerptOverride) {
     const source = payload.source_episodes[0];
     return { toolCalls: [
         { name: 'luker_memory_facts', args: { operations: [{ action: 'create', type: 'explicit', text: 'Roland keeps the sword.',
-            evidence: [{ episodeId: source.episodeId, excerpt: excerptOverride || source.content }] }] } },
+            evidence: [{ episodeId: source.episodeId, excerpt: excerptOverride || source.content }] }],
+        ...(withGraph ? { graphOperations: [
+            { action: 'entity', ref: 'holder', name: 'Roland', type: 'Character', evidence: [{ episodeId: source.episodeId, excerpt: source.content }] },
+            { action: 'entity', ref: 'item', name: 'Sword', type: 'Item', evidence: [{ episodeId: source.episodeId, excerpt: source.content }] },
+            { action: 'relation', sourceId: 'holder', targetId: 'item', predicate: 'holds', factIndex: 0, evidence: [{ episodeId: source.episodeId, excerpt: source.content }] },
+        ] } : { graphOperations: [] }) } },
         { name: 'luker_rpg_extract_done', args: {} },
     ] };
 }
@@ -44,6 +49,27 @@ function run(settings = {}) {
         [{ ...context.chat[0], seq: 1, source_index: 0 }], 0, 0);
 }
 describe('production extraction dispatch with simulated model responses', () => {
+    test('persists same-response Facts, entities and semantic relations atomically', async () => {
+        context.generateTask = jest.fn(async request => answer(request, null, true));
+        await run();
+        const ledger = disk.get('memory_graph__provenance');
+        expect(Object.values(ledger.entities)).toHaveLength(2);
+        expect(Object.values(ledger.relations)).toHaveLength(1);
+        expect(Object.values(ledger.relations)[0].predicate).toBe('holds');
+        expect(Object.values(ledger.relations)[0].status).toBe('active');
+        await run();
+        expect(Object.values(disk.get('memory_graph__provenance').relations)).toHaveLength(1);
+    });
+    test('invalid graph reference rejects the accompanying valid Fact batch', async () => {
+        context.generateTask = jest.fn(async request => {
+            const response = answer(request, null, true);
+            response.toolCalls[0].args.graphOperations[2].targetId = 'unresolved';
+            return response;
+        });
+        await expect(run()).rejects.toThrow('endpoints');
+        expect(disk.get('memory_graph__provenance').facts).toBeUndefined();
+        expect(disk.get('memory_graph__provenance').relations).toBeUndefined();
+    });
     test('requests fact tools even without active legacy node types, then persists sourced facts', async () => {
         context.generateTask = jest.fn(async request => answer(request));
         await run();

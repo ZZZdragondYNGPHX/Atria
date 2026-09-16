@@ -65,14 +65,22 @@ try {
         const session = window.memorySourceSmokeSession;
         const [source] = session.getFactSources();
         const evidence = [{ episodeId: source.episodeId, excerpt: source.content }];
-        return session.applyFacts([
+        const result = await session.applyMemoryBatch({ facts: [
             { action: 'create', text: 'The archive key is blue.', type: 'explicit', evidence },
             { action: 'create', text: 'Blue may identify archive access.', type: 'inferred', confidence: 1, evidence },
-        ]);
+        ], graph: [
+            { action: 'entity', ref: 'key', name: 'Archive key', type: 'Item', evidence },
+            { action: 'entity', ref: 'color', name: 'Blue', type: 'Concept', evidence },
+            { action: 'relation', sourceId: 'key', targetId: 'color', predicate: 'has_color', factIndex: 0, evidence },
+        ] });
+        return result.facts;
     });
     const factsBefore = await page.evaluate(() => window.memorySourceSmokeSession.listFacts());
     assert.equal(factsBefore.length, 2);
     assert.equal(factsBefore.find(fact => fact.type === 'inferred').confidence, 0.65);
+    const graphBefore = await page.evaluate(() => window.memorySourceSmokeSession.listTemporalGraph());
+    assert.equal(graphBefore.entities.length, 2);
+    assert.equal(graphBefore.relations[0].predicate, 'has_color');
 
     await editMessageViaUI(page, 0, 'The archive key is red.');
     const after = await snapshot();
@@ -82,6 +90,7 @@ try {
     assert.equal(after.ledger.state.episodes[episodeId].content, 'The archive key is blue.');
     assert.equal(after.ledger.state.facts[factIds[0].id].status, 'stale');
     assert.deepEqual(await page.evaluate(() => window.memorySourceSmokeSession.listFacts()), []);
+    assert.equal((await page.evaluate(() => window.memorySourceSmokeSession.listTemporalGraph())).relations.length, 0);
     const late = await page.evaluate(async () => {
         try {
             await window.memorySourceSmokeSession.createNode({ type: 'event', fields: { summary: 'Late blue' } });
@@ -99,6 +108,7 @@ try {
     assert.equal(reloaded.ledger.state.episodes[episodeId].status, 'stale');
     assert.equal(reloaded.store.nodes[created.id].archived, true);
     assert.equal(reloaded.ledger.state.facts[factIds[0].id].status, 'stale');
+    assert.equal(reloaded.ledger.state.relations[graphBefore.relations[0].id].status, 'stale');
     const replacement = await page.evaluate(async () => {
         const ctx = window.Luker.getContext();
         const session = await ctx.getExtensionApi('memory-graph').openSession(ctx);
@@ -120,6 +130,7 @@ try {
         'reload preserves identity and stale exclusion', 'fresh session captures new revision',
         'disabling flag does not revive stale evidence', 'no pageerror',
         'atomic facts persisted with confidence separation', 'fact evidence invalidation survives reload',
+        'typed entities and semantic relation persisted atomically with Fact', 'temporal graph source invalidation survives reload',
     ] }, null, 2));
 } finally {
     await browser.close();

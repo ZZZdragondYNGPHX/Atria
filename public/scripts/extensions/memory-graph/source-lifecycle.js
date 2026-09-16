@@ -5,6 +5,7 @@ import {
     reconcileSources, captureEpisodes, episodesAreCurrent, bindDerivedChanges, projectCurrentSources,
 } from './source-provenance.js';
 import { applyFactOperations, projectFacts } from './atomic-facts.js';
+import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from './temporal-graph.js';
 
 export const PROVENANCE_NAMESPACE = 'memory_graph__provenance';
 
@@ -30,6 +31,15 @@ export function listMemoryFacts(context, options) {
 export function writeMemoryFacts(context, operations, ticket) {
     if (!configuredLifecycle) throw new Error('Memory source lifecycle is not initialized');
     return configuredLifecycle.writeFacts(context, operations, ticket);
+}
+export function listMemoryGraph(context, options) {
+    return configuredLifecycle.listGraph(context, options);
+}
+export function resolveMemoryEntity(context, name, type) {
+    return configuredLifecycle.resolveEntity(context, name, type);
+}
+export function writeMemoryBatch(context, batch, ticket) {
+    return configuredLifecycle.writeBatch(context, batch.facts || [], batch.graph || [], ticket);
 }
 
 /** Runtime I/O is injected so lifecycle/race tests use the same production path. */
@@ -97,6 +107,14 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             const output = await run(state, scope);
             if (state.facts) {
                 for (const fact of projectFacts(state, scope.chat, { includeInactive: true })) state.facts[fact.id] = fact;
+            }
+            if (state.entities) {
+                const graph = projectTemporalGraph(state, scope.chat, { includeInactive: true });
+                for (const entity of graph.entities) state.entities[entity.id].status = entity.status;
+                for (const relation of graph.relations) {
+                    state.relations[relation.id].status = relation.status;
+                    state.relations[relation.id].confidence = relation.confidence;
+                }
             }
             scope.assertLive();
             validate();
@@ -233,20 +251,39 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
     }
 
     async function writeFacts(context, operations, ticket) {
+        return (await writeBatch(context, operations, [], ticket)).facts;
+    }
+
+    function evaluateBatch(state, operations, graphOperations, ticket, chat) {
+        if (!Array.isArray(graphOperations)) throw new Error('Graph operations must be an array');
+        const facts = applyFactOperations(state, operations, ticket, chat, newId);
+        const graph = graphOperations.length ? applyTemporalOperations(facts.state, graphOperations, ticket, chat, facts.results, newId) : { state: facts.state, results: [] };
+        return { state: graph.state, facts: facts.results, graph: graph.results };
+    }
+
+    async function writeBatch(context, operations, graphOperations, ticket) {
         if (!enabled(context)) throw new Error('Memory OS is disabled');
         if (!ticket) throw new Error('Facts require a source ticket');
         assertTicket(ticket, context);
         return transaction(context, (state, scope) => {
-            const result = applyFactOperations(state, operations, ticket, scope.chat, newId);
+            const result = evaluateBatch(state, operations, graphOperations, ticket, scope.chat);
             Object.assign(state, result.state);
-            return result.results;
+            return { facts: result.facts, graph: result.graph };
         }, () => assertTicket(ticket, context));
     }
 
-    function validateFacts(context, operations, ticket) {
+    function validateFacts(context, operations, ticket, graphOperations = []) {
         assertTicket(ticket, context);
-        return applyFactOperations(cache.get(session(context).key), operations, ticket, context.chat, newId);
+        return evaluateBatch(cache.get(session(context).key), operations, graphOperations, ticket, context.chat);
     }
 
-    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts };
+    async function listGraph(context, options) {
+        return transaction(context, (state, scope) => projectTemporalGraph(state, scope.chat, options));
+    }
+    async function resolveEntityInContext(context, name, type) {
+        return transaction(context, (state, scope) => resolveEntity(state, scope.chat, name, type));
+    }
+
+    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts,
+        writeBatch, listGraph, resolveEntity: resolveEntityInContext };
 }

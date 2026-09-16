@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { temporalOperationsSchema } from './temporal-extraction.js';
 export const FACT_TOOL_NAME = 'luker_memory_facts';
 
 export function factExtractionTool() {
     return { type: 'function', function: {
         name: FACT_TOOL_NAME,
-        description: 'Record atomic facts grounded in source_episodes. Call exactly once before extract_done; operations: [] is valid when no durable facts exist. Never label an inference explicit. Use reinforce for equivalent facts, merge for equivalent same-type IDs, supersede for an evidenced change; retain history.',
-        parameters: { type: 'object', additionalProperties: false, required: ['operations'], properties: {
+        description: 'Record atomic facts and temporal graph grounded in source_episodes. Call exactly once before extract_done; operations: [] and graphOperations: [] are valid when there is nothing to add. Never label an inference explicit. Use reinforce for equivalent facts, merge for equivalent same-type IDs, supersede for an evidenced change; retain history.',
+        parameters: { type: 'object', additionalProperties: false, required: ['operations', 'graphOperations'], properties: {
+            graphOperations: temporalOperationsSchema(),
             operations: { type: 'array', maxItems: 64, items: { type: 'object', additionalProperties: false,
                 required: ['action'], properties: {
                     action: { type: 'string', enum: ['create', 'reinforce', 'merge', 'supersede'] },
