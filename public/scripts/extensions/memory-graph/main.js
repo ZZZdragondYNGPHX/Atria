@@ -81,7 +81,9 @@ import {
     buildSchemaEditorPopupHtml,
 } from './ui-templates.js';
 import { runRagRecall } from './retriever.js';
-import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED } from './memory-os.js';
+import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
+import { configureSourceLifecycle } from './source-lifecycle.js';
+import { sourceContent } from './source-provenance.js';
 import {
     getVectorConfigFromSettings,
     getRerankProfileFromSettings,
@@ -157,6 +159,15 @@ import {
 import { __recordInjectedNodeIds } from './external-api.js';
 
 const MODULE_NAME = 'memory_graph';
+const sourceLifecycle = configureSourceLifecycle({
+    getContext,
+    resolveScope: (context, target = null) => ({
+        key: getChatKey(context, target),
+        target: buildMemoryTargetFromContext(context, target),
+    }),
+    enabled: context => isMemoryOsEnabled(getEffectiveSettings(context, getSettings())),
+    onInvalidation: () => { latestRecallSnapshot = null; },
+});
 const CHAT_STATE_NAMESPACE = MODULE_NAME;
 const META_NAMESPACE = floorStateAdapterConstants.META_NAMESPACE;
 const META_SCHEMA_VERSION = floorStateAdapterConstants.SCHEMA_VERSION;
@@ -1477,7 +1488,7 @@ async function replaceGraphLogForTarget(context, store, seq, floor) {
     const patches = await buildObjectPatchOperationsAsync({}, finalPayload);
 
     if (Array.isArray(patches) && patches.length > 0 && floorResolved) {
-        const result = await fs.reset([{ floor, swipeId, patches }]);
+        const result = await fs.reset([{ floor, swipeId, patches }], { validate: sourceLifecycle.commitGuard(context, normalizedStore) });
         return {
             payload: finalPayload,
             hasCommit: result.ok,
@@ -1632,6 +1643,10 @@ async function commitMemoryStoreReplaceByChatKey(context, chatKey, store, seq, {
     if (!target) {
         throw new Error('Memory store target is unavailable.');
     }
+    if (Number.isInteger(floor)) {
+        const ticket = await sourceLifecycle.capture(context, [Math.max(0, floor - 1), floor]);
+        if (ticket) await sourceLifecycle.bind(context, { nodes: {}, edges: [] }, store, ticket);
+    }
     const normalizedStore = normalizeStoreForRuntime(store);
     const normalizedSeq = Math.max(0, Math.floor(Number(seq || getStoreCoveredSeqTo(normalizedStore) || 0)));
 
@@ -1694,6 +1709,10 @@ async function commitMemoryStoreDiffByChatKey(context, chatKey, beforeStore, aft
     if (!target) {
         throw new Error('Memory store target is unavailable.');
     }
+    if (Number.isInteger(floor)) {
+        const ticket = await sourceLifecycle.capture(context, [Math.max(0, floor - 1), floor]);
+        if (ticket) await sourceLifecycle.bind(context, beforeStore, afterStore, ticket);
+    }
     const fs = await getFloorStateInstance(context);
     const normalizedBefore = normalizeStoreForRuntime(beforeStore);
     const normalizedAfter = normalizeStoreForRuntime(afterStore);
@@ -1735,7 +1754,7 @@ async function commitMemoryStoreDiffByChatKey(context, chatKey, beforeStore, aft
         }
         let committed;
         try {
-            committed = await fs.update(() => afterPayload, { floor });
+            committed = await fs.update(() => afterPayload, { floor, validate: sourceLifecycle.commitGuard(context, normalizedAfter) });
         } catch (error) {
             // fs.update is envelope-typed now and shouldn't throw, but if a
             // dep injection bug or older build leaks through we still
@@ -1840,7 +1859,9 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
     memoryStoreTargets.set(chatKey, target);
 
     if (!force && memoryStoreCache.has(chatKey)) {
-        return memoryStoreCache.get(chatKey);
+        const cached = memoryStoreCache.get(chatKey);
+        await refreshMemorySources(context, cached);
+        return cached;
     }
     if (!force && memoryLoadTasks.has(chatKey)) {
         return await memoryLoadTasks.get(chatKey);
@@ -1875,7 +1896,9 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
                 { floor: seqToFloor(context, migrationSeq) },
             );
         }
-        return memoryStoreCache.get(chatKey) || loaded.store;
+        const current = memoryStoreCache.get(chatKey) || loaded.store;
+        await refreshMemorySources(context, current);
+        return current;
     })();
     memoryLoadTasks.set(chatKey, task);
 
@@ -1888,7 +1911,21 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
 
 export function getMemoryStore(context) {
     const chatKey = getChatKey(context);
-    return memoryStoreCache.get(chatKey) || null;
+    const store = memoryStoreCache.get(chatKey) || null;
+    if (store) sourceLifecycle.project(store, context);
+    return store;
+}
+
+async function refreshMemorySources(context, store) {
+    try {
+        const invalid = await sourceLifecycle.refresh(store, context);
+        if (invalid.size) {
+            latestRecallSnapshot = null;
+        }
+    } catch (error) {
+        latestRecallSnapshot = null;
+        console.warn(`[${MODULE_NAME}] Source validation failed; derived nodes excluded`, error);
+    }
 }
 
 /**
@@ -1946,7 +1983,7 @@ export async function commitSessionMutation(context, chatKey, beforeStore, after
     const key = String(chatKey || '').trim();
     const store = afterStore;
     if (!key || !store || typeof store !== 'object') return;
-    memoryStoreCache.set(key, store);
+    if (!isMemoryOsEnabled(getSettings())) memoryStoreCache.set(key, store);
     clearRollbackHistory(key);
 
     const anchor = resolveInFlightAnchor(context);
@@ -5936,6 +5973,8 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
     const startFrame = source[safeStart];
     const startFrameSeq = Number(startFrame?.seq || 0);
     const extractionMinSeq = Number.isFinite(startFrameSeq) ? Math.max(0, Math.floor(startFrameSeq)) : null;
+    const sourceTicket = await sourceLifecycle.capture(context, extractBatch.map(item => item.source_index), options.sourceSnapshot);
+    const sourceBefore = sourceTicket ? structuredClone(store) : null;
     const operations = await extractNodesWithLLM(context, store, settings, schema, extractBatch, {
         maxSeq: extractionMaxSeq,
         abortSignal: options?.abortSignal || null,
@@ -5944,6 +5983,7 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
             ? await buildExtractionCrawlGraph(context, store, settings, schema, extractBatch, { maxSeq: extractionMaxSeq, abortSignal: options?.abortSignal || null })
             : null,
     });
+    sourceLifecycle.assertTicket(sourceTicket, context);
     if (operations.length === 0) {
         return { processed: true, changed: false };
     }
@@ -5954,6 +5994,7 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
         context,
         settings,
     });
+    if (sourceTicket) await sourceLifecycle.bind(context, sourceBefore, store, sourceTicket);
 
     return { processed: true, changed: true };
 }
@@ -6200,6 +6241,7 @@ async function runExtractionForStore(context, store, {
     getEffectiveLatestSeq = null,
 } = {}) {
     const settings = getEffectiveSettings(context, getSettings());
+    const sourceSnapshot = isMemoryOsEnabled(settings) ? (context.chat || []).map(sourceContent) : null;
     const window = computeExtractionWindow(context, store, startSeq, settings);
     const frames = window.frames;
     const latestSeq = window.latestSeq;
@@ -6297,6 +6339,7 @@ async function runExtractionForStore(context, store, {
                         compressionStats,
                         abortSignal,
                         rebuildCreateOnly: Boolean(rebuildCreateOnly),
+                        sourceSnapshot,
                     },
                 );
                 success = Boolean(batchResult?.processed);
@@ -15748,6 +15791,7 @@ async function applyMutationInvalidationImpl(fromSeq = null, { scheduleReplay = 
         store = memoryStoreCache.get(chatKey) || null;
     }
     if (store) {
+        await refreshMemorySources(liveContext, store);
         updateStoreSourceState(store, liveContext);
         store.lastRecallTrace = [];
         store.lastRecallProjection = null;
@@ -16082,6 +16126,7 @@ jQuery(() => {
     if (context.eventTypes.CHAT_BRANCH_CREATED) {
         context.eventSource.on(context.eventTypes.CHAT_BRANCH_CREATED, async (payload) => {
             try {
+                await sourceLifecycle.inherit(getContext(), payload);
                 await inheritMemoryStoreForBranch(getContext(), payload);
             } catch (error) {
                 console.warn(`[${MODULE_NAME}] Failed to inherit memory graph for branch`, error);
@@ -16103,8 +16148,23 @@ jQuery(() => {
             : findAssistantSeqFromPlayableSeq(runtimeContext, playableFromSeq);
         scheduleMutationInvalidation(fromSeq, 'delete');
     });
+    if (context.eventTypes.MESSAGE_EDITED) {
+        context.eventSource.on(context.eventTypes.MESSAGE_EDITED, messageId => {
+            sourceLifecycle.observeMutation(getContext(), Number(messageId));
+            if (!isMemoryOsEnabled(getSettings())) return;
+            scheduleMutationInvalidation(findAffectedAssistantSeqFromMessageIndex(getContext(), messageId), 'refresh');
+        });
+    }
+    if (context.eventTypes.MESSAGE_SWIPE_DELETED) {
+        context.eventSource.on(context.eventTypes.MESSAGE_SWIPE_DELETED, payload => {
+            sourceLifecycle.observeMutation(getContext(), Number(payload?.messageId));
+            if (!isMemoryOsEnabled(getSettings())) return;
+            scheduleMutationInvalidation(null, 'refresh');
+        });
+    }
     if (context.eventTypes.MESSAGE_SWIPED) {
         context.eventSource.on(context.eventTypes.MESSAGE_SWIPED, (messageId, _meta) => {
+            sourceLifecycle.observeMutation(getContext(), Number(messageId));
             // chat[0] is first_mes; its swipe deck IS the character card's
             // alternate_greetings array, so a swipe here only swaps opening
             // greetings — not new conversation content. Mirrors the
@@ -16116,6 +16176,7 @@ jQuery(() => {
     }
     if (context.eventTypes.MESSAGE_RECEIVED) {
         context.eventSource.on(context.eventTypes.MESSAGE_RECEIVED, (messageId, generationType) => {
+            sourceLifecycle.observeMutation(getContext(), Number(messageId));
             const normalizedType = String(generationType || '').trim().toLowerCase();
             if (!['swipe', 'continue', 'append', 'appendfinal'].includes(normalizedType)) {
                 return;

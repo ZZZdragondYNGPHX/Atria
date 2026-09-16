@@ -60,6 +60,7 @@ import { compareNodesByTimeline } from './graph-ops.js';
 import { getEffectiveNodeTypeSchema, getEffectiveSettings } from './character-overrides.js';
 import { getVectorConfigFromSettings } from './vector-index.js';
 import { getMemoryVectorStore } from './memory-os.js';
+import { projectMemorySources } from './source-lifecycle.js';
 import {
     addInjectionChangedListener,
     getCurrentlyInjectedNodeIds,
@@ -332,6 +333,7 @@ function freezeNodeBriefView(brief) {
  */
 export function getMemoryGraphReadApi(store, context = null) {
     function resolveStore() {
+        if (store && typeof store === 'object') projectMemorySources(store, context);
         return (store && typeof store === 'object') ? store : null;
     }
 

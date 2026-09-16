@@ -22,6 +22,7 @@
 // open a fresh session per chat.
 
 const registerExtensionApi = Luker.getContext().registerExtensionApi;
+import { captureMemorySourceSession, assertMemorySourceSession } from './source-lifecycle.js';
 import {
     getCurrentlyInjectedNodeIds,
     addInjectionChangedListener,
@@ -58,12 +59,23 @@ export async function openSession(context) {
         return null;
     }
     if (!store) return null;
+    const sourceTicket = await captureMemorySourceSession(context);
     const read = getMemoryGraphReadApi(store, context);
-    let beforeStore = structuredClone(store);
-    const write = getMemoryGraphWriteApi(store, context, {
+    // Source-guarded writes stay private until persistence succeeds. A rejected
+    // late tool result must not leak an unbound node into the shared read cache.
+    const writeStore = sourceTicket ? structuredClone(store) : store;
+    let beforeStore = structuredClone(writeStore);
+    const write = getMemoryGraphWriteApi(writeStore, context, {
         onCommit: async (currentStore) => {
-            await commitSessionMutation(context, chatKey, beforeStore, currentStore);
-            beforeStore = structuredClone(currentStore);
+            try {
+                assertMemorySourceSession(sourceTicket, context);
+                await commitSessionMutation(context, chatKey, beforeStore, currentStore);
+                if (sourceTicket) Object.assign(store, structuredClone(currentStore));
+                beforeStore = structuredClone(currentStore);
+            } catch (error) {
+                if (sourceTicket) Object.assign(writeStore, structuredClone(beforeStore));
+                throw error;
+            }
         },
     });
     // Curated surface for the agent / third-party consumer. The 16 methods

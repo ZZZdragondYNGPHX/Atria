@@ -13,6 +13,7 @@
  */
 
 import { LEVEL, normalizeText } from './primitives.js';
+import { copyEvidence } from './source-provenance.js';
 
 /**
  * Deep-clone a single node down to a stable rollback-friendly shape.
@@ -48,6 +49,7 @@ export function cloneRollbackNodeSnapshot(rawNode) {
         // Node-local last-touched/visible-through index for sorting/filtering helpers; main replay uses opLog entry.seq.
         seqTo: Number.isFinite(Number(rawNode.seqTo)) ? Math.max(0, Math.floor(Number(rawNode.seqTo))) : undefined,
         archived: Boolean(rawNode.archived),
+        ...(copyEvidence(rawNode.memoryOsEvidence) ? { memoryOsEvidence: copyEvidence(rawNode.memoryOsEvidence) } : {}),
     };
 }
 

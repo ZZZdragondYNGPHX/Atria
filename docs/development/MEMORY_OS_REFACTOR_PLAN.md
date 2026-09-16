@@ -1365,6 +1365,8 @@ Context budget：可配置
 
 ## Phase 2 — Provenance / Episode
 
+执行记录：[MEMORY_OS_PHASE2_PROVENANCE.md](MEMORY_OS_PHASE2_PROVENANCE.md)。已实现来源/Episode/失效链；真机验收范围与剩余门槛见记录，完成后再进入 Phase 3。
+
 - Episode Store；
 - Source revision；
 - Dependency Tracker；
