@@ -41,19 +41,15 @@ fi
 
 cd "${REPO_ROOT}"
 log "Installing Luker production dependencies with Termux Node headers..."
-# Termux patches its local Node headers for Android. Point node-gyp at those
-# headers so native addons do not fall back to unpatched upstream headers.
-npm_config_nodedir="${PREFIX}" npm ci --omit=dev --no-audit --no-fund
+# Use node-gyp's npm>=11-compatible environment key. Termux ships patched local
+# Node headers; native addons should use those instead of downloaded desktop headers.
+npm_package_config_node_gyp_nodedir="${PREFIX}" npm ci --omit=dev --no-audit --no-fund
 
 log "Initializing Luker config..."
 npm run init
 
-log "Verifying native SQLite binding..."
-if ! node --input-type=module -e "const {default: Database}=await import('better-sqlite3'); const db=new Database(':memory:'); const row=db.prepare('select 1 as ok').get(); db.close(); if (row.ok !== 1) process.exit(1);"; then
-  log "better-sqlite3 did not load; rebuilding it from source..."
-  npm_config_nodedir="${PREFIX}" npm_config_build_from_source=true npm rebuild better-sqlite3
-  node --input-type=module -e "const {default: Database}=await import('better-sqlite3'); const db=new Database(':memory:'); db.prepare('select 1').get(); db.close();"
-fi
+log "Verifying/repairing native SQLite binding for Termux..."
+bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
 
 # Install an executable wrapper outside the Git worktree. Do not chmod tracked
 # scripts: changing their file mode would make future `git pull` updates dirty.
