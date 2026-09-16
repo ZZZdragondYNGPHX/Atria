@@ -4,7 +4,7 @@
 >
 > 基线：`custom-release@112baa3b5f2ad1109a0b143bcffa3d39ec8dc470`
 >
-> 目标：在保留现有 Luker 私有功能、现有记忆能力、多智能体编排与 LoreState 兼容性的前提下，将当前记忆系统升级为一套面向长期 RP 的本地优先混合记忆系统。
+> 目标：在保留现有 Luker 私有功能、现有记忆能力、多智能体编排，以及普通文字卡、MVU（MagicalAstrogy/MagVarUpdate）和 LoreState（ZZZdragondYNGPHX/LoreState）支持的前提下，将当前记忆系统升级为一套面向长期 RP 的本地优先混合记忆系统。
 
 ---
 
@@ -82,7 +82,7 @@ Top-K 相似记忆
              ▼                                   ▼
            正文模型                         多智能体 Agent
 
-                          LoreState
+                  可选状态源（MVU / LoreState）
                               │
                               └── 当前状态事实
 ```
@@ -95,7 +95,8 @@ Episode         = 当时具体发生过什么
 Semantic Fact   = 已确认/推断出的最小事实
 Memory Graph    = 世界对象之间如何连接、关系何时有效
 Vector/FTS      = 哪些历史内容与当前语义/关键词相关
-LoreState       = 当前状态是什么
+State Provider  = 可选的当前状态来源；MVU / LoreState 各自拥有状态写入权
+普通文字卡      = 不依赖状态 Provider，直接使用正文与记忆链路
 ```
 
 ---
@@ -111,7 +112,8 @@ LoreState       = 当前状态是什么
 - 当前是否已有 memory service/store/database；
 - 当前是否已有图谱/关系相关依赖；
 - 当前多智能体编排如何获取共享上下文；
-- LoreState 如何向正文或 Agent 注入状态；
+- 普通文字卡无状态脚本时的完整记忆路径；
+- MVU / LoreState 的实际运行上下文、状态提交与正文 / Agent 注入路径；
 - Web 与 Android 是否共用前端记忆实现；
 - 当前数据库/文件存储方案；
 - 当前 import/export、backup 是否包含记忆数据；
@@ -662,7 +664,7 @@ embed(query) → Top-K vectors
 优先：
 
 ```text
-LoreState + latest location relation
+Optional current-state provider + latest location relation
 ```
 
 用户：
@@ -774,40 +776,62 @@ Context Composer 必须接受 token budget，而不是无限填充。
 
 ---
 
-# 17. LoreState 集成
+# 17. 通用角色卡与可选状态源集成
 
-LoreState 继续负责“当前状态”。
+> 2026-09-16 用户方向修订：Memory OS 必须通用，支持普通文字卡、MVU 状态卡（MagicalAstrogy/MagVarUpdate）和 LoreState（ZZZdragondYNGPHX/LoreState）。本节修订原方案的状态适配范围，不重建 Memory OS，也不改变既有阶段顺序。下述适配尚待 Phase 6 实现，不能当作已完成功能。
 
-```text
-LoreState
-= 当前时间
-= 当前地点
-= 当前装备
-= 当前情绪/关系数值
-= 当前状态字段
-```
+## 17.1 三类输入，共享记忆核心
 
-Memory OS 负责：
+| 使用方式 | 当前状态权属 | Memory OS 行为 |
+| --- | --- | --- |
+| 普通文字卡，无状态框架 | 没有外部结构化状态权威；正文有来源证据 | 独立执行 Episode、Fact、关系演化、混合检索与注入，不要求安装 MVU 或 LoreState，不自动补造变量表 |
+| MVU 状态卡 | MagVarUpdate 及卡自身 schema / 更新规则管理已提交状态 | 通过可选适配读取有效状态及有来源的变化；保持原变量更新、校验、显示与持久化路径 |
+| LoreState 状态卡 | 指定 LoreState 运行版本管理已提交状态 | 通过可选适配读取有效状态及有来源的变化；保持其解析、回放、快照和展示路径 |
 
-```text
-历史
-事件
-关系演化
-证据
-语义召回
-```
+三者共用已实现的 provenance ledger、Fact、Temporal Graph、Hybrid Retrieval 和 Context Composer。核心不得 import、启动或要求安装特定状态框架。普通文字卡是完整的一等使用方式，不是故障降级模式。按运行能力探测，不按卡名、某个文本标签或是否有状态栏猜测框架；MVU / LoreState 都可缺席，也可能同时存在。
 
-统一在 Context Composer 汇合。
+Memory OS 管理历史、事件、关系演化、来源证据与召回；可选状态源管理其声明字段的当前值。Memory OS 不回写外部变量，不执行更新标签，不接管状态解析器，不另存一份可独立修改的实时状态真相。基于快照建立的历史记录属于派生记忆，必须可追溯和失效。
 
-禁止让 Memory OS 再复制一份独立“当前状态真相”与 LoreState 竞争。
+## 17.2 最小适配边界（内部设计约束，不是外部 API 声明）
 
-如果同一事实同时存在于两者：
+- 能力状态区分 absent、initializing、ready、error；缺席不阻止正文记忆，初始化中不得冒充空状态，错误不得继续把最后快照称为当前状态。
+- 读取返回带 Provider 身份与版本、当前角色 / 聊天 scope、消息及 swipe / 来源版本、状态 revision 或内容指纹的只读快照。映射保留外部字段路径、原值与外部实体身份；字段名由卡定义，不能硬编码“角色.好感度”“当前地点”等路径。
+- 按已验证语义配置或 schema 映射选择字段；未知字段可保留来源标签的状态文本，不强行生成 located_in、owns 等关系。不要把 display_data、HTML 或渲染结果当作状态存储真相。
+- 在实际提交 / 持久化完成后读取。框架的更新事件不自动等于提交完成；同一轮正文与额外状态模型完成顺序必须核验。没有可靠提交通知时使用经过验证的读取及指纹复核，不猜事件。
+- Provider 在脚本 iframe / EJS 上下文可用，不证明宿主扩展能直接调用。必要桥接必须验证来源、scope、版本、请求关联与清理；不读取私有 DOM，不依赖未经承诺的内部 runtime slot。
+- 正文不变而变量修改、手动修正、回档或状态重算时，Provider 依赖也必须失效。Phase 2 的正文 sourceContent 检查不能替代 Provider revision 检查。删除 / 编辑 / swipe / 切换聊天、关闭或卸载 Provider 后拒绝晚到结果并撤销旧投影。
+- 状态快照不是剧情 Episode 的伪造原文。不把“读取状态”伪装成聊天原文引用。长期记忆化需要独立、可验证的 Provider 证据引用，并与现有依赖失效体系连接。
+- 同 revision 不重复建 Fact；正文与状态描述同一事件时合并来源而非多算事件。数值小幅波动不默认永久记忆化；只记录有意义且可追溯的变化。
+- 各 Provider 的安装、更新、schema、初始化及数据持久化仍归原框架 / 卡作者负责，Memory OS 不自动安装或迁移它们。
 
-```text
-LoreState current fact > stale historical memory
-```
+## 17.3 当前状态、历史与冲突
 
-但历史变化仍由 Memory OS 保留。
+同一 scope、同一字段、已经确认提交且仍有效的 Provider 当前值，优先于 Memory OS 的旧历史推断；未覆盖字段继续由有来源的正文记忆提供。过去发生的地点 / 装备变化仍可作为历史召回，不能改写成“现在”。
+
+没有外部 Provider 时，使用 Phase 3–5 已有事实 / 时序关系及置信度规则。不能因为缺少结构化字段就宣称它为 false、空值或已删除。
+
+MVU 与 LoreState 同时存在时，按明确字段权属或用户选择确定当前来源；没有配置且双方冲突则标记冲突，不设固定 LoreState > MVU 顺序，也不拿两个不同时间坐标的时间戳猜胜者。后续 correction 仍写回其所属框架，Memory OS 只消费结果。
+
+在统一 Composer 汇合当前状态与历史，沿用总 token 预算；识别原框架已有注入，按字段 / 来源避免重复。不能全量再注入状态表，也不能为了去重关闭原框架的更新规则、schema 或提示词。Agent 和正文看到一致的共享世界状态，私有 scratch 不提升为事实。
+
+## 17.4 本次回源证据与实施前核验
+
+以下是设计参考的固定源码快照，不代表用户已安装的版本，也不代表已验证跨 iframe 调用或真实提交时机：
+
+- MVU：`MagicalAstrogy/MagVarUpdate` 的 beta HEAD `4a3645f19705e9e73bb4df3a8e731d5ff994ce80`。已核对 [README](https://github.com/MagicalAstrogy/MagVarUpdate/blob/4a3645f19705e9e73bb4df3a8e731d5ff994ce80/README.md)、[变量与事件定义](https://github.com/MagicalAstrogy/MagVarUpdate/blob/4a3645f19705e9e73bb4df3a8e731d5ff994ce80/src/variable_def.ts)、[外部事件处理](https://github.com/MagicalAstrogy/MagVarUpdate/blob/4a3645f19705e9e73bb4df3a8e731d5ff994ce80/src/function/exported_events.ts)。实现时按实际交付版本核验读取入口和提交边界，不将 beta 分支名当版本契约。
+- LoreState：main HEAD `97273a5476b81744b83e111cf5517fdbe92724e1`。已核对 [README](https://github.com/ZZZdragondYNGPHX/LoreState/blob/97273a5476b81744b83e111cf5517fdbe92724e1/README.md)、[当前 runtime](https://github.com/ZZZdragondYNGPHX/LoreState/blob/97273a5476b81744b83e111cf5517fdbe92724e1/prototype/runtime.js)、[EJS 桥接](https://github.com/ZZZdragondYNGPHX/LoreState/blob/97273a5476b81744b83e111cf5517fdbe92724e1/prototype/ejs-bridge.js)。README 指明维护线为 Tavern Helper 脚本、稳定版为 0.13.1；根目录旧原生扩展不作为适配入口。EJS 命名空间不自动构成宿主扩展公共 API。
+- 指南路由：tavern-card-builder，库快照 2026-08-18；本次实际读取 ST-A0 工程约束与 ST-B1 变量规则相关片段，外部精确能力仍以固定源码和实际运行时为准。未采用路由中的无关设计候选。
+
+## 17.5 Phase 6 验收矩阵
+
+1. 无任何状态脚本：普通文字卡正常提取、检索、注入；不尝试访问 Mvu / LoreState 全局。
+2. MVU-only 与 LoreState-only：各自初始化、状态提交、额外模型迟到、手工改值、回档及卸载均不泄漏旧当前值。
+3. 两者共存：非冲突字段可以组合；冲突字段可解释且不静默覆盖。
+4. 任意作者字段名 / 不同 schema：无固定角色名或变量路径依赖；缺失字段与显式空值有区别。
+5. 正文未改、状态改变：旧状态派生 Fact、关系、向量命中和缓存失效；晚到读写被 scope/revision guard 拒绝。
+6. 正文与 Provider 对同一变化重复描述：保留证据，避免重复事件；历史查询不被当前值覆盖。
+7. 预算与原状态注入：合计受预算控制，无重复状态正文，无丢失原更新规则；共享 Agent 上下文与私有 scratch 保持分离。
+8. 自动化优先，覆盖 Web / Android 共用模块；真实外部脚本、模型和 Android 未执行的检查如实记录，不要求用户补测才能继续开发。
 
 ---
 
@@ -827,7 +851,7 @@ LoreState current fact > stale historical memory
                     Agent Private Scratch
 ```
 
-世界事实、角色关系、事件、LoreState 应由统一 Memory Context Builder 提供。
+世界事实、角色关系、事件与可选状态源（MVU / LoreState）的只读投影应由统一 Memory Context Builder 提供；普通文字卡不依赖状态源。
 
 不要让每个 Agent 独立维护一套长期世界图谱。
 
@@ -1071,7 +1095,7 @@ memory/
 │   └── DependencyTracker
 │
 ├── integration/
-│   ├── LoreStateAdapter
+│   ├── OptionalStateAdapters（MVU / LoreState；无状态源也可运行）
 │   ├── OrchestratorAdapter
 │   └── ChatLifecycleAdapter
 │
@@ -1306,7 +1330,7 @@ Persist
 ```text
 Graph extraction failed
 → vector memory still works
-→ LoreState still works
+→ plain text / MVU / LoreState paths still work
 → chat generation still works
 ```
 
@@ -1408,11 +1432,15 @@ Context budget：可配置
 - Fusion/Rerank；
 - Context Budget。
 
-## Phase 6 — LoreState / Orchestrator Integration
+## Phase 6 — Generic State Providers / Orchestrator Integration
 
-- LoreStateAdapter；
-- 统一世界记忆；
-- agent 私有 scratch 与共享长期记忆分离。
+按第 17 节修订实施，保留 Phase 1–5 的通用核心：
+
+- 先验证普通文字卡无 Provider 的完整路径；
+- 核验 MVU 与当前 LoreState 脚本的真实能力，建立可选、只读、可清理的状态适配；
+- 接入 Provider 证据、revision 失效和当前状态 / 历史融合，而非只检查正文变化；
+- 覆盖第 17.5 节三类卡与共存、缺席、迟到、冲突验收；
+- 统一世界记忆；agent 私有 scratch 与共享长期记忆分离。
 
 ## Phase 7 — Graph UI
 
@@ -1518,9 +1546,9 @@ A 的所有派生记忆必须 stale/invalid，不得继续参与 active retrieva
 
 可以召回。
 
-## I. LoreState Priority
+## I. Optional State Provider Priority
 
-历史 memory 说角色在王都，LoreState 当前明确在黑森林。
+历史 memory 说角色在王都，当前有效且拥有该字段的 MVU 或 LoreState 快照明确在黑森林。
 
 最终 current context 不得仍声称角色当前在王都。
 
@@ -1639,7 +1667,7 @@ A 的所有派生记忆必须 stale/invalid，不得继续参与 active retrieva
 - [ ] Query planning 生效
 - [ ] Fusion/rerank 生效
 - [ ] Context budget 生效
-- [ ] LoreState current facts 优先级正确
+- [ ] 普通文字卡无 Provider 可完整运行；MVU / LoreState 当前字段权属、冲突与历史优先级正确
 
 ## 多智能体
 
