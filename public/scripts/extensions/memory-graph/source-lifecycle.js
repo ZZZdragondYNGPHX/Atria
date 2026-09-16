@@ -41,6 +41,9 @@ export function resolveMemoryEntity(context, name, type) {
 export function writeMemoryBatch(context, batch, ticket) {
     return configuredLifecycle.writeBatch(context, batch.facts || [], batch.graph || [], ticket);
 }
+export function getMemoryRetrievalSnapshot(context) {
+    return configuredLifecycle.retrievalSnapshot(context);
+}
 
 /** Runtime I/O is injected so lifecycle/race tests use the same production path. */
 export function createSourceLifecycle({ getContext, resolveScope, enabled, onInvalidation = () => {}, newId = () => crypto.randomUUID() }) {
@@ -284,6 +287,38 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         return transaction(context, (state, scope) => resolveEntity(state, scope.chat, name, type));
     }
 
+    async function retrievalSnapshot(context) {
+        if (!enabled(context)) throw new Error('Memory OS is disabled');
+        const scope = session(context);
+        const content = () => JSON.stringify(scope.chat.map(message => [message[SOURCE_ID_FIELD], sourceContent(message)]));
+        const original = content();
+        const epoch = epochs.get(scope.key) || 0;
+        const state = await transaction(context, state => state);
+        let version = JSON.stringify(state);
+        const assertCurrent = () => {
+            scope.assertLive();
+            if (!enabled(getContext()) || original !== content() || epoch !== (epochs.get(scope.key) || 0)
+                || version !== JSON.stringify(cache.get(scope.key))) throw abort();
+        };
+        assertCurrent();
+        const recordAccess = async ids => {
+            assertCurrent();
+            const updated = await transaction(context, ledger => {
+                for (const id of new Set(ids)) {
+                    const fact = ledger.facts?.[id];
+                    if (fact) {
+                        fact.accessCount = Math.max(0, Number(fact.accessCount) || 0) + 1;
+                        fact.lastAccessedAt = Date.now();
+                    }
+                }
+                return ledger;
+            }, assertCurrent);
+            version = JSON.stringify(updated);
+            assertCurrent();
+        };
+        return { key: scope.key, state: structuredClone(state), chat: structuredClone(scope.chat), assertCurrent, recordAccess };
+    }
+
     return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts,
-        writeBatch, listGraph, resolveEntity: resolveEntityInContext };
+        writeBatch, listGraph, retrievalSnapshot, resolveEntity: resolveEntityInContext };
 }

@@ -1397,6 +1397,8 @@ Context budget：可配置
 
 ## Phase 5 — Hybrid Retrieval
 
+执行记录：[MEMORY_OS_PHASE5_HYBRID_RETRIEVAL.md](MEMORY_OS_PHASE5_HYBRID_RETRIEVAL.md)。统一检索已接入实际记忆注入路径；精确数值时间通过 `at` 指定，后续自然语言解析与大图调优不作为本阶段的虚假完成项。
+
 - Query Analyzer；
 - Retrieval Planner；
 - Vector Retriever；

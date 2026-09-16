@@ -82,6 +82,28 @@ try {
     assert.equal(graphBefore.entities.length, 2);
     assert.equal(graphBefore.relations[0].predicate, 'has_color');
 
+    const recalled = await page.evaluate(async () => {
+        const ctx = window.Luker.getContext();
+        ctx.extensionSettings.memory_graph.memoryOsTokenBudget = 500;
+        const result = await window.memorySourceSmokeSession.recallMemory('What color is the archive key?');
+        return { text: result.text, tokenCount: result.tokenCount, selected: result.selected };
+    });
+    assert(recalled.text.includes('blue') || recalled.text.includes('Blue'));
+    assert(recalled.selected.length > 0);
+    assert(recalled.tokenCount <= 500);
+    const injected = await page.evaluate(async () => {
+        const ctx = window.Luker.getContext();
+        ctx.extensionSettings.memory_graph.enabled = true;
+        ctx.extensionSettings.memory_graph.recallEnabled = true;
+        const main = await import('/scripts/extensions/memory-graph/main.js');
+        const payload = { type: 'normal', coreChat: [...ctx.chat, { mes: 'What color is the archive key?', is_user: true }] };
+        await main._handleWiAfterScanForTest(payload);
+        const projection = await ctx.getExtensionApi('memory-graph').getLastRecallProjection(ctx);
+        return { projection, rescan: payload.requestRescan };
+    });
+    assert(injected.projection.blocks.focusPacket.includes('sources'));
+    assert.equal(injected.rescan, true);
+
     await editMessageViaUI(page, 0, 'The archive key is red.');
     const after = await snapshot();
     assert.equal(after.sourceId, before.sourceId);
@@ -91,6 +113,11 @@ try {
     assert.equal(after.ledger.state.facts[factIds[0].id].status, 'stale');
     assert.deepEqual(await page.evaluate(() => window.memorySourceSmokeSession.listFacts()), []);
     assert.equal((await page.evaluate(() => window.memorySourceSmokeSession.listTemporalGraph())).relations.length, 0);
+    const staleRecall = await page.evaluate(async () => {
+        const result = await window.memorySourceSmokeSession.recallMemory('archive key');
+        return result.text;
+    });
+    assert.equal(staleRecall, '');
     const late = await page.evaluate(async () => {
         try {
             await window.memorySourceSmokeSession.createNode({ type: 'event', fields: { summary: 'Late blue' } });
@@ -131,6 +158,8 @@ try {
         'disabling flag does not revive stale evidence', 'no pageerror',
         'atomic facts persisted with confidence separation', 'fact evidence invalidation survives reload',
         'typed entities and semantic relation persisted atomically with Fact', 'temporal graph source invalidation survives reload',
+        'hybrid retrieval uses real tokenizer within budget', 'main recall handler writes FOCUS_PACKET and requests rescan',
+        'source edit excludes hybrid recall results',
     ] }, null, 2));
 } finally {
     await browser.close();

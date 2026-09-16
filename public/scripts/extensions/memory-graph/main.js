@@ -81,6 +81,8 @@ import {
     buildSchemaEditorPopupHtml,
 } from './ui-templates.js';
 import { runRagRecall } from './retriever.js';
+import { recallHybridMemory } from './hybrid-runtime.js';
+import { memoryTokenBudget, memoryTokenCounter } from './hybrid-retrieval.js';
 import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
@@ -8000,12 +8002,20 @@ function areManagedLorebookEntriesEqual(
     return true;
 }
 
-async function upsertManagedLorebookProjection(context, settings, {
+let managedProjectionQueue = Promise.resolve();
+function upsertManagedLorebookProjection(context, settings, options = {}) {
+    const next = managedProjectionQueue.catch(() => {}).then(() => applyManagedLorebookProjection(context, settings, options));
+    managedProjectionQueue = next;
+    return next;
+}
+
+async function applyManagedLorebookProjection(context, settings, {
     commentPrefix,
     sections,
     orderBase,
     allowCreate = true,
     entryConfig = undefined,
+    assertCurrent = () => {},
 } = {}) {
     const prefix = String(commentPrefix || '').trim();
     if (!prefix) {
@@ -8020,8 +8030,9 @@ async function upsertManagedLorebookProjection(context, settings, {
     let bookName = SHARED_LOREBOOK_NAME;
     let data = null;
     const loaded = await context.loadWorldInfo(bookName);
+    assertCurrent();
     if (loaded && typeof loaded === 'object') {
-        data = loaded;
+        data = structuredClone(loaded);
     }
 
     if (!data) {
@@ -8030,7 +8041,8 @@ async function upsertManagedLorebookProjection(context, settings, {
         }
         bookName = await ensureSharedLorebook(context, true);
         const created = await context.loadWorldInfo(bookName);
-        data = created && typeof created === 'object' ? created : { entries: {} };
+        data = created && typeof created === 'object' ? structuredClone(created) : { entries: {} };
+        assertCurrent();
     }
 
     if (!data.entries || typeof data.entries !== 'object') {
@@ -8060,14 +8072,25 @@ async function upsertManagedLorebookProjection(context, settings, {
         nextUid += 1;
     }
 
+    assertCurrent();
     await context.saveWorldInfo(bookName, data, true, { refreshEditor: true });
-    if (bookName === SHARED_LOREBOOK_NAME) {
-        await refreshSharedLorebookVisibilityAndSelection(context, Boolean(settings?.enabled));
+    try {
+        assertCurrent();
+        if (bookName === SHARED_LOREBOOK_NAME) {
+            await refreshSharedLorebookVisibilityAndSelection(context, Boolean(settings?.enabled));
+        }
+        assertCurrent();
+    } catch (error) {
+        // A source can change during the save itself. Withdraw this packet.
+        for (const entry of getManagedLorebookEntries(data, prefix)) delete data.entries[entry.uid];
+        await context.saveWorldInfo(bookName, data, true, { refreshEditor: true });
+        throw error;
     }
     return { changed: true, bookName };
 }
 
-async function syncPersistentLorebookProjection(context, settings, store) {
+async function syncPersistentLorebookProjection(context, settings, store, assertCurrent = undefined) {
+    assertCurrent ||= () => {};
     const semanticNodes = listNodesByLevel(store, LEVEL.SEMANTIC)
         .filter(node => node && !node.archived);
     if (semanticNodes.length === 0) {
@@ -8095,14 +8118,25 @@ async function syncPersistentLorebookProjection(context, settings, store) {
         context,
         collectOptions,
     );
-    const corePacket = normalizeMultilineText(
+    let corePacket = normalizeMultilineText(
         buildFocusTablesText(alwaysInjectNodes, settings, { tablePrefix: 'Core' }, context),
     );
+    if (isMemoryOsEnabled(settings)) {
+        const count = memoryTokenCounter(context);
+        const budget = memoryTokenBudget(settings);
+        while (alwaysInjectNodes.length && await count(corePacket) > budget) {
+            assertCurrent();
+            alwaysInjectNodes.pop();
+            corePacket = normalizeMultilineText(buildFocusTablesText(alwaysInjectNodes, settings, { tablePrefix: 'Core' }, context));
+        }
+        if (!alwaysInjectNodes.length) corePacket = '';
+    }
     const result = await upsertManagedLorebookProjection(context, settings, {
         commentPrefix: PERSISTENT_LOREBOOK_COMMENT_PREFIX,
         sections: [['CORE_PACKET', corePacket]],
         orderBase: Math.max(100, Number(settings.lorebookEntryOrderBase || 9800)),
         allowCreate: true,
+        assertCurrent,
     });
     return {
         changed: Boolean(result?.changed),
@@ -8111,7 +8145,8 @@ async function syncPersistentLorebookProjection(context, settings, store) {
     };
 }
 
-async function syncRuntimeLorebookProjection(context, settings, store) {
+async function syncRuntimeLorebookProjection(context, settings, store, assertCurrent = undefined) {
+    assertCurrent ||= () => {};
     const projection = getLastRecallProjection(store);
     const focusPacket = normalizeMultilineText(projection?.blocks?.focusPacket || projection?.focusPacket || '');
     const result = await upsertManagedLorebookProjection(context, settings, {
@@ -8119,6 +8154,7 @@ async function syncRuntimeLorebookProjection(context, settings, store) {
         sections: focusPacket ? [['FOCUS_PACKET', focusPacket]] : [],
         orderBase: Math.max(100, Number(settings.lorebookEntryOrderBase || 9800)) + 50,
         allowCreate: Boolean(focusPacket),
+        assertCurrent,
     });
     return {
         changed: Boolean(result?.changed),
@@ -8644,9 +8680,14 @@ async function injectMemoryPrompts(context, payload) {
         return false;
     }
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const persistentSync = await syncPersistentLorebookProjection(context, settings, store);
+    const sourceSnapshot = isMemoryOsEnabled(settings) ? await sourceLifecycle.retrievalSnapshot(context) : null;
+    const persistentSync = await syncPersistentLorebookProjection(context, settings, store, () => {
+        throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
+        sourceSnapshot?.assertCurrent();
+    });
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
     const corePacket = normalizeMultilineText(persistentSync.corePacket || '');
+    const coreGuard = isMemoryOsEnabled(settings) ? sourceLifecycle.commitGuard(context, store) : null;
     if (isAbortSignalLike(payload?.signal) && payload.signal.aborted) {
         const chatKey = getChatKey(context);
         store.lastRecallProjection = { at: Date.now(), blocks: { corePacket, focusPacket: '' } };
@@ -8663,7 +8704,7 @@ async function injectMemoryPrompts(context, payload) {
     const chatKey = getChatKey(context);
     const anchor = buildLastUserAnchor(context, payload?.coreChat);
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const shouldReuseSnapshot = settings.recallEnabled
+    const shouldReuseSnapshot = !isMemoryOsEnabled(settings) && settings.recallEnabled
         && RECALL_REUSE_GENERATION_TYPES.has(generationType)
         && canReuseLatestRecallSnapshot(chatKey, anchor);
     if (shouldReuseSnapshot) {
@@ -8702,9 +8743,23 @@ async function injectMemoryPrompts(context, payload) {
     );
     let selectedNodes = [];
     let trace = [];
+    let hybrid = null;
+    let clearedHybridPacket = false;
 
     if (!settings.recallEnabled) {
         // Skip recall; fall through to clear runtime lorebook projection.
+    } else if (isMemoryOsEnabled(settings)) {
+        // Clear the previous packet before asynchronous retrieval can fail.
+        clearedHybridPacket = await clearRuntimeLorebookProjection(context, settings);
+        store.lastRecallProjection = { at: Date.now(), blocks: { corePacket, focusPacket: '' } };
+        await persistRecallMetadataByChatKey(context, chatKey, { trace: [], projection: store.lastRecallProjection });
+        const queryBundle = getRecallQueryBundle(payload, context, settings);
+        hybrid = await recallHybridMemory(context, queryBundle.last_user || queryBundle.fullText || '', {
+            corePacket, signal: payload?.signal, settings,
+        });
+        hybrid.assertCurrent();
+        trace = [{ tool: 'memory_os_hybrid', selected: hybrid.selected, tokens: hybrid.tokenCount,
+            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, diagnostics: hybrid.diagnostics }];
     } else if (recallMethod === 'rag') {
         const queryBundle = getRecallQueryBundle(payload, context, settings);
         const queryText = normalizeText(queryBundle.fullText || '');
@@ -8858,13 +8913,13 @@ async function injectMemoryPrompts(context, payload) {
     // what's already in the main model context. Read via
     // `getCurrentlyInjectedNodeIds(context)` from external-api.js.
     __recordInjectedNodeIds({
-        alwaysInjectIds: alwaysInjectNodes.map(node => String(node?.id || '')).filter(Boolean),
+        alwaysInjectIds: (isMemoryOsEnabled(settings) ? persistentSync.alwaysInjectNodes : alwaysInjectNodes).map(node => String(node?.id || '')).filter(Boolean),
         recallSelectedIds: selectedNodes.map(node => String(node?.id || '')).filter(Boolean),
     });
 
     const blocks = {
         corePacket,
-        focusPacket: normalizeMultilineText(buildFocusTablesText(selectedNodes, settings, { tablePrefix: 'Recall' }, context)),
+        focusPacket: hybrid ? hybrid.text : normalizeMultilineText(buildFocusTablesText(selectedNodes, settings, { tablePrefix: 'Recall' }, context)),
     };
     store.lastRecallProjection = {
         at: Date.now(),
@@ -8875,7 +8930,15 @@ async function injectMemoryPrompts(context, payload) {
         projection: store.lastRecallProjection,
     });
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
-    const runtimeSync = await syncRuntimeLorebookProjection(context, settings, store);
+    hybrid?.assertCurrent();
+    coreGuard?.();
+    const runtimeSync = await syncRuntimeLorebookProjection(context, settings, store, () => {
+        throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
+        hybrid?.assertCurrent();
+        coreGuard?.();
+    });
+    runtimeSync.changed ||= clearedHybridPacket;
+    hybrid?.assertCurrent();
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
     if (payload && typeof payload === 'object') {
         payload.__lukerRpgMemoryNeedRescan = Boolean(persistentSync.changed || runtimeSync.changed);
@@ -8889,10 +8952,10 @@ async function injectMemoryPrompts(context, payload) {
             anchorHash: anchor.hash,
             blocks: structuredClone(blocks),
             trace: structuredClone(trace),
-            selectedCount: selectedNodes.length,
+            selectedCount: hybrid ? hybrid.selected.length : selectedNodes.length,
         }
         : null;
-    updateUiStatus(i18nFormat('Recall ready. selected=${0}', selectedNodes.length));
+    updateUiStatus(i18nFormat('Recall ready. selected=${0}', hybrid ? hybrid.selected.length : selectedNodes.length));
     return Boolean(persistentSync.changed || runtimeSync.changed);
 }
 

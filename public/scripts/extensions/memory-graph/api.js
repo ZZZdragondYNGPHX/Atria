@@ -22,6 +22,7 @@
 // open a fresh session per chat.
 
 const registerExtensionApi = Luker.getContext().registerExtensionApi;
+import { recallHybridMemory } from './hybrid-runtime.js';
 import { captureMemorySourceSession, assertMemorySourceSession, listMemoryFacts, writeMemoryFacts,
     listMemoryGraph, resolveMemoryEntity, writeMemoryBatch } from './source-lifecycle.js';
 import {
@@ -91,6 +92,7 @@ export async function openSession(context) {
         applyFacts: operations => writeMemoryFacts(context, operations, sourceTicket),
         applyMemoryBatch: batch => writeMemoryBatch(context, batch, sourceTicket),
         listTemporalGraph: options => listMemoryGraph(context, options),
+        recallMemory: (query, options) => recallHybridMemory(context, query, options),
         resolveEntity: (name, type) => resolveMemoryEntity(context, name, type),
         // Read
         listVisibleCandidates: (opts) => read.listVisibleCandidates(opts),
@@ -138,6 +140,7 @@ registerExtensionApi('memory-graph', {
     openSession,
     listFacts: (context, options) => listMemoryFacts(context, options),
     listTemporalGraph: (context, options) => listMemoryGraph(context, options),
+    recallMemory: (context, query, options) => recallHybridMemory(context, query, options),
     // Per-character override accessors (character-overrides.js).
     getSchemaScopeInfo,
     getAdvancedScopeInfo,
