@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// memory-graph/orchestrator-tools.js — registers memory-graph's 15
+// memory-graph/orchestrator-tools.js — registers memory-graph's 16
 // read + write tools into the orchestrator's Layer-2 extension registry.
 //
 // memory-graph publishes these tools so any of the four orchestration
@@ -13,7 +13,7 @@
 //
 // Session lifecycle: each tool dispatch lazily opens a memory-graph
 // Layer-1 session via `openSession(context)` and caches it on a per-ctx
-// WeakMap. All 15 tools called against the same orchestration ctx share
+// WeakMap. All 16 tools called against the same orchestration ctx share
 // the same session so writes are visible to subsequent reads. The ctx
 // object provided by the orchestrator runtime is the per-tool-call
 // context (not the per-run context); since the orchestrator currently
@@ -659,6 +659,22 @@ async function simulateMemoryCompactNodes(args, context) {
 
 const SCHEMAS = [
     {
+        name: 'memory_recall', mode: 'read',
+        description: 'Read shared Memory OS context: source-cited history and optional MVU/LoreState current fields within the memory token budget. Use for plain text cards too. Provider conflicts remain unresolved. Do not store private scratch or promote agent conclusions as facts. Requires Memory OS enabled.',
+        parameters: { type: 'object', properties: { query: { type: 'string', maxLength: 4000 }, at: { type: 'number', description: 'Optional explicit story-time coordinate, not a message floor.' } }, required: ['query'], additionalProperties: false },
+        exec: async (args, context) => {
+            if (typeof args?.query !== 'string' || !args.query.trim() || args.query.length > 4000
+                || args.at !== undefined && !Number.isFinite(args.at)) throw new ToolError('Invalid memory query', 'INVALID_ARGS', 'Supply a query and optional numeric story time.');
+            const session = requireSession('memory_recall', context);
+            if (!session.recallMemory) throw new ToolError('Memory OS recall unavailable', 'MEMORY_DISABLED', MEMORY_DISABLED_HINT);
+            const result = await session.recallMemory(args.query, { at: args.at, signal: context.signal || context.abortSignal });
+            result.assertCurrent();
+            return { ok: true, context: result.text, sources: result.selected, tokens: result.tokenCount,
+                budget: result.budget, providers: result.providers, diagnostics: result.diagnostics };
+        },
+        simulate: async () => ({ ok: true, simulated: true, context: '', sources: [] }),
+    },
+    {
         name: 'memory_list_candidates',
         mode: 'read',
         exec: execMemoryListCandidates,
@@ -1013,7 +1029,7 @@ function loadOrchestratorRegistrar() {
 }
 
 /**
- * Publish memory-graph's 15 read + write tools into the orchestrator's
+ * Publish memory-graph's 16 read + write tools into the orchestrator's
  * Layer-2 extension registry. Each entry's exec / simulate is wrapped
  * so a memory-graph session is opened (and cached) on first call.
  *
@@ -1036,7 +1052,7 @@ export function registerMemoryGraphOrchestrationTools() {
 }
 
 /**
- * Remove memory-graph's 15 tools from the orchestrator's Layer-2
+ * Remove memory-graph's 16 tools from the orchestrator's Layer-2
  * registry. Silent no-op when orchestrator isn't loaded.
  */
 export function unregisterMemoryGraphOrchestrationTools() {

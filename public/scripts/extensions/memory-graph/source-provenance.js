@@ -10,7 +10,7 @@ export function normalizeProvenance(raw) {
     const state = emptyProvenance();
     if (!raw || raw.version !== 1) return state;
     state.scopeId = String(raw.scopeId || '');
-    for (const key of ['sources', 'episodes', 'facts', 'entities', 'relations', 'entityPending', 'predicates']) {
+    for (const key of ['sources', 'episodes', 'facts', 'entities', 'relations', 'entityPending', 'predicates', 'providerSources', 'providerSnapshots']) {
         if (raw[key] && typeof raw[key] === 'object' && !Array.isArray(raw[key])) {
             state[key] = structuredClone(raw[key]);
         }

@@ -778,7 +778,7 @@ Context Composer 必须接受 token budget，而不是无限填充。
 
 # 17. 通用角色卡与可选状态源集成
 
-> 2026-09-16 用户方向修订：Memory OS 必须通用，支持普通文字卡、MVU 状态卡（MagicalAstrogy/MagVarUpdate）和 LoreState（ZZZdragondYNGPHX/LoreState）。本节修订原方案的状态适配范围，不重建 Memory OS，也不改变既有阶段顺序。下述适配尚待 Phase 6 实现，不能当作已完成功能。
+> 2026-09-16 用户方向修订：Memory OS 必须通用，支持普通文字卡、MVU 状态卡（MagicalAstrogy/MagVarUpdate）和 LoreState（ZZZdragondYNGPHX/LoreState）。本节修订原方案的状态适配范围，不重建 Memory OS，也不改变既有阶段顺序。下述内容是适配约束；当前实现与验证范围见 Phase 6 执行记录。
 
 ## 17.1 三类输入，共享记忆核心
 
@@ -1433,6 +1433,8 @@ Context budget：可配置
 - Context Budget。
 
 ## Phase 6 — Generic State Providers / Orchestrator Integration
+
+执行记录：[MEMORY_OS_PHASE6_STATE_PROVIDERS.md](MEMORY_OS_PHASE6_STATE_PROVIDERS.md)。可选状态适配、版本证据、当前字段融合和 Orchestrator 共享召回已实现；外部框架完整运行、字段映射与注入去重的验证范围以执行记录为准。
 
 按第 17 节修订实施，保留 Phase 1–5 的通用核心：
 

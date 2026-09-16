@@ -29,7 +29,7 @@ describe('legacy memory namespace migration', () => {
         expect(out.custom).toEqual({});
     });
 
-    test('no memory in input + override mode → all 15 memory verbs explicit false (override narrowing)', () => {
+    test('no memory in input + override mode → all 16 memory verbs explicit false (override narrowing)', () => {
         // See the "override-mode: ALL memory verbs default off" test for
         // the full contract — this one pins the simpler "input is just
         // chat" case.
@@ -37,10 +37,10 @@ describe('legacy memory namespace migration', () => {
         expect(out.custom.memory_keyword_search).toBe(false);
         expect(out.custom.memory_node_create).toBe(false);
         expect(out.custom.memory_compact_nodes).toBe(false);
-        // exactly 15 memory verbs in custom; the only other entries are
+        // exactly 16 memory verbs in custom; the only other entries are
         // the 2 search verbs from the parallel search-namespace narrowing
         // (see 'no search in input + override mode' below).
-        expect(Object.keys(out.custom).filter(k => k.startsWith('memory_')).length).toBe(15);
+        expect(Object.keys(out.custom).filter(k => k.startsWith('memory_')).length).toBe(16);
         const nonMemory = Object.keys(out.custom).filter(k => !k.startsWith('memory_'));
         expect(nonMemory.sort()).toEqual(['search_search', 'search_visit']);
     });

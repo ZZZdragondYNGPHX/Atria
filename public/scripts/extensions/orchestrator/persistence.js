@@ -62,6 +62,7 @@ const SCHEMA_VERSION = 1;
  * drift on the memory-graph side.
  */
 const MEMORY_TOOL_NAMES = Object.freeze([
+    'memory_recall',
     'memory_list_candidates',
     'memory_edge_summary',
     'memory_node_brief',

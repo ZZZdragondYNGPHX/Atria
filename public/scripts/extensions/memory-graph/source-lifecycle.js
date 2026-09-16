@@ -6,6 +6,7 @@ import {
 } from './source-provenance.js';
 import { applyFactOperations, projectFacts } from './atomic-facts.js';
 import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from './temporal-graph.js';
+import { reconcileProviders } from './provider-provenance.js';
 
 export const PROVENANCE_NAMESPACE = 'memory_graph__provenance';
 
@@ -46,7 +47,7 @@ export function getMemoryRetrievalSnapshot(context) {
 }
 
 /** Runtime I/O is injected so lifecycle/race tests use the same production path. */
-export function createSourceLifecycle({ getContext, resolveScope, enabled, onInvalidation = () => {}, newId = () => crypto.randomUUID() }) {
+export function createSourceLifecycle({ getContext, resolveScope, enabled, onInvalidation = () => {}, newId = () => crypto.randomUUID(), readProviders = () => [] }) {
     const queues = new Map();
     const cache = new Map();
     const observed = new Map();
@@ -107,6 +108,12 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             const before = JSON.stringify(state);
             const dirty = new Map(pending.get(scope.key));
             reconcileSources(state, scope.chat, new Set(dirty.keys()));
+            const providers = enabled(context) ? readProviders(context) : [];
+            const providerVersion = JSON.stringify(providers);
+            const validateProviders = () => {
+                if (providerVersion !== JSON.stringify(enabled(context) ? readProviders(context) : [])) throw abort();
+            };
+            if (providers.length || state.providerSources) reconcileProviders(state, providers, scope.chat, newId);
             const output = await run(state, scope);
             if (state.facts) {
                 for (const fact of projectFacts(state, scope.chat, { includeInactive: true })) state.facts[fact.id] = fact;
@@ -121,15 +128,18 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             }
             scope.assertLive();
             validate();
+            validateProviders();
             if (before !== JSON.stringify(state)) {
                 const saved = await context.updateChatState(PROVENANCE_NAMESPACE, () => {
                     scope.assertLive();
                     validate();
+                    validateProviders();
                     return state;
                 }, { target: scope.target });
                 scope.assertLive();
                 if (!saved?.ok) throw new Error('Memory provenance write failed');
             }
+            validateProviders();
             cache.set(scope.key, state);
             for (const [id, epoch] of dirty) {
                 if (pending.get(scope.key)?.get(id) === epoch) pending.get(scope.key).delete(id);
@@ -239,9 +249,11 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         if (!enabled(context) && !evidence.length) return undefined;
         const scope = session(context);
         const epoch = epochs.get(scope.key) || 0;
+        const providerVersion = JSON.stringify(readProviders(context));
         const validate = () => {
             scope.assertLive();
             const state = cache.get(scope.key) || emptyProvenance();
+            if (providerVersion !== JSON.stringify(readProviders(context))) throw abort();
             if (epoch !== (epochs.get(scope.key) || 0) || evidence.some(ref => ref.scopeId !== state.scopeId
                 || !episodesAreCurrent(state, ref.episodeIds, scope.chat, state.scopeId))) throw abort();
         };
@@ -293,11 +305,13 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         const content = () => JSON.stringify(scope.chat.map(message => [message[SOURCE_ID_FIELD], sourceContent(message)]));
         const original = content();
         const epoch = epochs.get(scope.key) || 0;
+        const providerVersion = JSON.stringify(readProviders(context));
         const state = await transaction(context, state => state);
         let version = JSON.stringify(state);
         const assertCurrent = () => {
             scope.assertLive();
             if (!enabled(getContext()) || original !== content() || epoch !== (epochs.get(scope.key) || 0)
+                || providerVersion !== JSON.stringify(readProviders(context))
                 || version !== JSON.stringify(cache.get(scope.key))) throw abort();
         };
         assertCurrent();

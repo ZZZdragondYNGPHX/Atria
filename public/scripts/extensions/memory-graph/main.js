@@ -83,6 +83,8 @@ import {
 import { runRagRecall } from './retriever.js';
 import { recallHybridMemory } from './hybrid-runtime.js';
 import { memoryTokenBudget, memoryTokenCounter } from './hybrid-retrieval.js';
+import { readStateProviders } from './state-providers.js';
+import { existingStatePrompt } from './state-prompt.js';
 import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
@@ -170,6 +172,7 @@ const sourceLifecycle = configureSourceLifecycle({
         target: buildMemoryTargetFromContext(context, target),
     }),
     enabled: context => isMemoryOsEnabled(getEffectiveSettings(context, getSettings())),
+    readProviders: context => readStateProviders(context, getEffectiveSettings(context, getSettings())),
     onInvalidation: () => { latestRecallSnapshot = null; },
 });
 const CHAT_STATE_NAMESPACE = MODULE_NAME;
@@ -458,6 +461,9 @@ const EXTRACT_PROMPT_EDGE_TYPE_LINES = [
 
 const defaultSettings = {
     memoryOsEnabled: MEMORY_OS_DEFAULT_ENABLED,
+    memoryOsTokenBudget: 2400,
+    memoryOsStateMappings: [],
+    memoryOsStateOwners: {},
     enabled: false,
     autoExtractionEnabled: true,
     autoCompressionEnabled: true,
@@ -995,6 +1001,10 @@ function normalizeAdvancedSettings(source = null, fallbackSource = null) {
     const toolRetryRaw = Number(input.toolCallRetryMax);
     const rpmLimitRaw = Number(input.rpmLimit);
     return {
+        memoryOsTokenBudget: memoryTokenBudget(input.memoryOsTokenBudget === undefined ? base : input),
+        memoryOsStateMappings: structuredClone(Array.isArray(input.memoryOsStateMappings) ? input.memoryOsStateMappings : base.memoryOsStateMappings || []),
+        memoryOsStateOwners: structuredClone(input.memoryOsStateOwners && typeof input.memoryOsStateOwners === 'object'
+            && !Array.isArray(input.memoryOsStateOwners) ? input.memoryOsStateOwners : base.memoryOsStateOwners || {}),
         recentRawTurns: Math.max(
             0,
             Math.floor(Number.isFinite(recentRawTurnsRaw) ? recentRawTurnsRaw : Number(base.recentRawTurns ?? defaultSettings.recentRawTurns)),
@@ -8123,7 +8133,7 @@ async function syncPersistentLorebookProjection(context, settings, store, assert
     );
     if (isMemoryOsEnabled(settings)) {
         const count = memoryTokenCounter(context);
-        const budget = memoryTokenBudget(settings);
+        const budget = Math.max(0, memoryTokenBudget(settings) - await count(existingStatePrompt(context, settings)));
         while (alwaysInjectNodes.length && await count(corePacket) > budget) {
             assertCurrent();
             alwaysInjectNodes.pop();
@@ -8644,6 +8654,7 @@ async function ensureStoreSyncedWithChat(context) {
 async function injectMemoryPrompts(context, payload) {
     const settings = getEffectiveSettings(context, getSettings());
     const generationType = String(payload?.type || '').trim().toLowerCase();
+    context = Object.assign(Object.create(context), { memoryOsGenerationType: generationType });
     const isDryRun = payload?.dryRun === true;
     const generationAbortSignal = isAbortSignalLike(payload?.__lukerRpgMemoryGenerationSignal)
         ? payload.__lukerRpgMemoryGenerationSignal
@@ -8755,11 +8766,11 @@ async function injectMemoryPrompts(context, payload) {
         await persistRecallMetadataByChatKey(context, chatKey, { trace: [], projection: store.lastRecallProjection });
         const queryBundle = getRecallQueryBundle(payload, context, settings);
         hybrid = await recallHybridMemory(context, queryBundle.last_user || queryBundle.fullText || '', {
-            corePacket, signal: payload?.signal, settings,
+            corePacket, signal: payload?.signal, settings, accountExistingState: true,
         });
         hybrid.assertCurrent();
         trace = [{ tool: 'memory_os_hybrid', selected: hybrid.selected, tokens: hybrid.tokenCount,
-            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, diagnostics: hybrid.diagnostics }];
+            budget: hybrid.budget, tokenCounting: hybrid.tokenCounting, plan: hybrid.plan, providers: hybrid.providers, diagnostics: hybrid.diagnostics }];
     } else if (recallMethod === 'rag') {
         const queryBundle = getRecallQueryBundle(payload, context, settings);
         const queryText = normalizeText(queryBundle.fullText || '');

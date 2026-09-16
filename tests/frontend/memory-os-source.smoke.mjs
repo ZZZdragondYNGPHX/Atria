@@ -4,6 +4,7 @@
 // Creates a test character and changes settings in that disposable instance.
 /* global window, document */
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { createBlankCharacter } from '../e2e/_lib/ui-character.js';
 import { editMessageViaUI } from '../e2e/_lib/page.js';
@@ -13,6 +14,7 @@ assert(baseURL, 'Supply the URL of a disposable Luker instance');
 const browser = await chromium.launch({ headless: true, ...(process.argv[3] ? { channel: process.argv[3] } : {}) });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const pageErrors = [];
+const providerChecks = [];
 page.on('pageerror', error => pageErrors.push(error.message));
 const name = `Memory OS smoke ${Date.now()}`;
 
@@ -104,6 +106,52 @@ try {
     assert(injected.projection.blocks.focusPacket.includes('sources'));
     assert.equal(injected.rescan, true);
 
+    // Optional fixed-source LoreState bridge verification, supplied from a
+    // read-only research checkout. No external framework is installed in user data.
+    if (process.argv[4]) {
+        const bridge = await readFile(process.argv[4], 'utf8');
+        await page.route('**/__memory_os_ejs_fixture.js', route => route.fulfill({ contentType: 'text/javascript', body: bridge }));
+        const providers = await page.evaluate(async () => {
+            const ctx = window.Luker.getContext();
+            const api = ctx.getExtensionApi('memory-graph');
+            const { installEjsBridge } = await import('/__memory_os_ejs_fixture.js');
+            let loreState = { version: 3, shared: { place: 'Harbor' } };
+            const dispose = installEjsBridge({ eventOn: (event, cb) => ctx.eventSource.on(event, cb),
+                eventRemoveListener: (event, cb) => ctx.eventSource.removeListener(event, cb), read: () => ({ state: loreState }) });
+            ctx.chat[0].variables = [{ stat_data: { pilot: { place: 'Harbor' } }, schema: {} }];
+            window.Mvu = { getMvuData: ({ message_id }) => structuredClone(ctx.chat[message_id].variables[0]), isDuringExtraAnalysis: () => false };
+            ctx.extensionSettings.memory_graph.memoryOsTokenBudget = 1800;
+            ctx.extensionSettings.memory_graph.memoryOsStateOwners = {};
+            ctx.extensionSettings.memory_graph.memoryOsStateMappings = [
+                { providerId: 'mvu', path: ['pilot', 'place'], key: 'location', label: 'Pilot location' },
+                { providerId: 'lorestate', path: ['shared', 'place'], key: 'location', label: 'Pilot location' },
+            ];
+            const agreed = await api.recallMemory(ctx, 'Pilot location');
+            loreState = { version: 3, shared: { place: 'Castle' } };
+            let invalidated = false;
+            try { agreed.assertCurrent(); } catch (error) { invalidated = error.name === 'AbortError'; }
+            const conflict = await api.recallMemory(ctx, 'Pilot location');
+            ctx.extensionSettings.memory_graph.memoryOsStateOwners = { location: 'mvu' };
+            const owned = await api.recallMemory(ctx, 'Pilot location');
+            const sourceUnchanged = ctx.chat[0].variables[0].stat_data.pilot.place === 'Harbor';
+            dispose(); delete window.Mvu;
+            const absent = await api.recallMemory(ctx, 'Pilot location');
+            return { agreed: agreed.text, providers: agreed.providers, invalidated, conflict: conflict.text, owned: owned.text,
+                sourceUnchanged, absent: absent.providers, absentText: absent.text };
+        });
+        assert(providers.providers.every(provider => provider.status === 'ready'));
+        assert(providers.agreed.includes('Harbor'));
+        assert(providers.invalidated);
+        assert(providers.conflict.includes('Unresolved state conflict'));
+        assert(providers.owned.includes('Harbor') && !providers.owned.includes('Castle'));
+        assert(providers.sourceUnchanged);
+        assert(providers.absent.every(provider => provider.status === 'absent'));
+        assert(!providers.absentText.includes('Harbor'));
+        providerChecks.push('real LoreState EJS bridge on actual host event bus', 'MVU getter contract fixture',
+            'provider coexistence and explicit ownership', 'same-text state mutation invalidates held result',
+            'read-only source preservation', 'provider disposal withdraws current fields');
+    }
+
     await editMessageViaUI(page, 0, 'The archive key is red.');
     const after = await snapshot();
     assert.equal(after.sourceId, before.sourceId);
@@ -160,6 +208,7 @@ try {
         'typed entities and semantic relation persisted atomically with Fact', 'temporal graph source invalidation survives reload',
         'hybrid retrieval uses real tokenizer within budget', 'main recall handler writes FOCUS_PACKET and requests rescan',
         'source edit excludes hybrid recall results',
+        ...providerChecks,
     ] }, null, 2));
 } finally {
     await browser.close();
