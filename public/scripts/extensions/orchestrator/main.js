@@ -768,22 +768,44 @@ function clearRunInfoToast() {
 function ensureUi() {
     const host = document.querySelector('#extensions_settings2');
     if (!host || document.getElementById(UI_BLOCK_ID)) return;
-    const section = document.createElement('section'); section.id = UI_BLOCK_ID;
-    const title = document.createElement('h3'); title.textContent = 'Agent & Memory'; section.append(title);
+
+    const section = document.createElement('section');
+    section.id = UI_BLOCK_ID;
+    section.className = 'extension_container';
+
+    const drawer = document.createElement('div');
+    drawer.className = 'inline-drawer';
+    const toggle = document.createElement('div');
+    toggle.className = 'inline-drawer-toggle inline-drawer-header';
+    const title = document.createElement('b');
+    title.textContent = i18n('Agent & Memory');
+    const icon = document.createElement('div');
+    icon.className = 'inline-drawer-icon fa-solid fa-circle-chevron-down down';
+    toggle.append(title, icon);
+    drawer.append(toggle);
+
+    const content = document.createElement('div');
+    content.className = 'inline-drawer-content';
+    drawer.append(content);
+    section.append(drawer);
+
     const enabledLabel = document.createElement('label'); enabledLabel.textContent = i18n('Enabled');
     const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = getSettings().enabled;
     enabled.addEventListener('change', () => { getSettings().enabled = enabled.checked; saveSettingsDebounced(); });
-    enabledLabel.append(enabled); section.append(enabledLabel);
+    enabledLabel.append(enabled); content.append(enabledLabel);
+
     const workspace = document.createElement('button'); workspace.type = 'button'; workspace.className = 'menu_button';
-    workspace.textContent = 'Open Agent & Memory Workspace'; workspace.addEventListener('click', () => openWorkspace('Presets')); section.append(workspace);
-    for (const [key, label] of [['llmNodeApiPresetName', 'Default API profile'], ['llmNodePresetName', 'Default prompt preset']]) {
-        const wrapper = document.createElement('label'); wrapper.textContent = label;
+    workspace.textContent = i18n('Open Agent & Memory Workspace'); workspace.addEventListener('click', () => openWorkspace('Presets')); content.append(workspace);
+
+    for (const [key, labelKey] of [['llmNodeApiPresetName', 'Default API profile'], ['llmNodePresetName', 'Default prompt preset']]) {
+        const wrapper = document.createElement('label'); wrapper.textContent = i18n(labelKey);
         const input = document.createElement('input'); input.className = 'text_pole'; input.value = getSettings()[key] || '';
         input.addEventListener('change', () => { getSettings()[key] = input.value; saveSettingsDebounced(); });
-        wrapper.append(input); section.append(wrapper);
+        wrapper.append(input); content.append(wrapper);
     }
-    const status = document.createElement('p'); status.id = 'luker_orch_status'; status.setAttribute('role', 'status'); section.append(status);
-    const notes = document.createElement('div'); section.append(notes); host.append(section);
+
+    const status = document.createElement('p'); status.id = 'luker_orch_status'; status.setAttribute('role', 'status'); content.append(status);
+    const notes = document.createElement('div'); content.append(notes); host.append(section);
     void mountNotesPanel(notes, getContext());
 }
 
