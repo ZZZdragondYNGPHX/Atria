@@ -57,7 +57,8 @@ export function compilePreset(profile, { mode = profile.mode || profile.source |
         plan.scheduler.reviewMaxRounds = Math.max(0, Math.floor(Number(settings.reviewRerunMaxRounds) || 0));
         plan.scheduler.failurePolicy = 'fail_fast';
     } else if (mode === 'agenda') {
-        plan.budgets.maxTasks = Math.min(positive(settings.agendaMaxTotalRuns, 24), positive(source.limits?.maxTotalRuns, 24));
+        plan.scheduler.maxTotalRuns = Math.min(positive(settings.agendaMaxTotalRuns, 24), positive(source.limits?.maxTotalRuns, 24));
+        plan.budgets.maxTasks = plan.scheduler.maxTotalRuns * 8 + 1;
         plan.budgets.maxConcurrency = Math.min(positive(settings.agendaMaxConcurrentAgents, 3), positive(source.limits?.maxConcurrentAgents, 3));
         const planner = node('planner', source.planner, {}, 'planner');
         plan.entryNodeId = planner; plan.scheduler.plannerNodeId = planner;
@@ -70,7 +71,7 @@ export function compilePreset(profile, { mode = profile.mode || profile.source |
         }
         plan.output.ownerNodeId = `worker:${source.finalAgentId}`;
         plan.scheduler.maxPlannerRounds = Math.min(positive(settings.agendaPlannerMaxRounds, 6), positive(source.limits?.plannerMaxRounds, 6));
-        plan.budgets.maxSteps = plan.budgets.maxTasks + plan.scheduler.maxPlannerRounds + 1;
+        plan.budgets.maxSteps = plan.scheduler.maxTotalRuns + plan.scheduler.maxPlannerRounds + 1;
     } else {
         const config = mode === 'director' ? source.director || source : source;
         plan.entryNodeId = node('owner', mode === 'director' ? config.mainAgent : config, {}, 'owner');

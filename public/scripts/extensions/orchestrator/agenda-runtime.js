@@ -1,4 +1,7 @@
 import { runLegacyParallel } from './legacy-parallel-adapter.js';
+import { runLegacySingleRequest } from './legacy-runtime-adapter.js';
+import { runAgendaEngine } from './engine-v2/agenda-adapter.js';
+import { toolCapability } from '../../lib/orchestration-engine/capabilities.js';
 import { runRoutedLegacyWorkflow, createLegacyAgentGraph, agentKey, selectHandoffInputs } from './legacy-agent-routing.js';
 import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
@@ -582,6 +585,10 @@ function agendaAgentGraph(profile) {
 }
 
 export function runAgendaPlannerStep(...args) {
+    if (args[6]?.engineNode) return runAgendaPlannerStepPolicy(...args).next().then(result => {
+        if (!result.done) throw new Error('Agenda planner yielded a legacy continuation');
+        return result.value;
+    });
     return runRoutedLegacyWorkflow(() => runAgendaPlannerStepPolicy(...args), {
         graph: agendaAgentGraph(args[3]), toAgentId: agentKey('agenda', 'planner'),
         task: 'Plan the next agenda step', reason: 'agenda_plan',
@@ -590,7 +597,7 @@ export function runAgendaPlannerStep(...args) {
     });
 }
 
-async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, state, abortSignal = null) {
+async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, state, abortSignal = null, options = {}) {
     const settings = extension_settings[MODULE_NAME];
     const previousOrchestration = await getPreviousOrchestrationCapsuleText(context, payload);
     const planner = createAgendaPlannerDraft(profile?.planner);
@@ -645,7 +652,7 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
     const userTextWithNotes = openNotesBlock
         ? userText + '\n\n' + openNotesBlock
         : userText;
-    const plannerStep = yield modelIntent(request => requestToolCallWithRetry(context, settings, request), {
+    const plannerRequest = {
         taskMessages: [
             { role: 'system', content: systemText },
             { role: 'user', content: userTextWithNotes },
@@ -703,7 +710,11 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
             additionalProperties: false,
         },
         abortSignal,
-    }, context);
+    };
+    const plannerStep = options.engineNode ? await runLegacySingleRequest({ runId: options.runtimeRunId, parentRunId: options.parentRunId,
+        agentId: 'agenda/planner', resume: true, hostContext: context, request: plannerRequest,
+        send: request => requestToolCallWithRetry(context, settings, request), onEvent: options.onRuntimeEvent,
+    }) : yield modelIntent(request => requestToolCallWithRetry(context, settings, request), plannerRequest, context);
     const conversation = {
         messages: [
             { role: 'system', content: systemText },
@@ -722,6 +733,10 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
 export function runAgendaTextAgent(...args) {
     const selected = selectHandoffInputs((args[4]?.runs || []).map(run => [run.runId, run]), args[5]?.inputRunIds || []);
     args[4] = { ...args[4], runs: [...selected.values()] };
+    if (args[6]?.engineNode) return runAgendaTextAgentPolicy(...args).next().then(result => {
+        if (!result.done) throw new Error('Agenda worker yielded a legacy continuation');
+        return result.value;
+    });
     return runRoutedLegacyWorkflow(() => runAgendaTextAgentPolicy(...args), {
         graph: agendaAgentGraph(args[3]), fromAgentId: agentKey('agenda', 'planner'),
         toAgentId: agentKey('agenda', `worker:${args[5]?.agent}`), task: args[5]?.taskBrief,
@@ -737,6 +752,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
     panelRunId = null,
     activeOrchPresetName = '',
     onFirstChunk = null,
+    engineNode = false, runtimeRunId, engineParentRunId, onRuntimeEvent, engineCapabilities,
 }, abortSignal = null) {
     const settings = extension_settings[MODULE_NAME];
     const planner = createAgendaPlannerDraft(profile?.planner);
@@ -879,7 +895,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
         const userTextWithNotes = openNotesBlock
             ? userText + '\n\n' + openNotesBlock
             : userText;
-        const result = yield modelIntent(request => requestToolCallWithRetry(context, settings, request), {
+        const singleRequest = {
             taskMessages: [
                 { role: 'system', content: systemTextWithSkills },
                 { role: 'user', content: userTextWithNotes },
@@ -891,7 +907,11 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             functionDescription: resultToolSchema.function.description,
             parameters: resultToolSchema.function.parameters,
             abortSignal,
-        }, context);
+        };
+        const result = engineNode ? await runLegacySingleRequest({ runId: runtimeRunId, parentRunId: engineParentRunId,
+            agentId: `agenda/${dispatch.agent}`, resume: true, hostContext: context, request: singleRequest,
+            send: request => requestToolCallWithRetry(context, settings, request), onEvent: onRuntimeEvent,
+        }) : yield modelIntent(request => requestToolCallWithRetry(context, settings, request), singleRequest, context);
         const conversation = {
             messages: [
                 { role: 'system', content: systemTextWithSkills },
@@ -921,7 +941,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
     // notes adapter, activated lorebook keys) per attachToolContext.
     const loopToolSchemas = getEnabledToolSchemas({ tools: resolvedToolFlags }, customToolRegistry)
         .filter(s => String(s?.function?.name || '') !== 'finalize');
-    const tools = [...loopToolSchemas, resultToolSchema];
+    const tools = [...loopToolSchemas, resultToolSchema].filter(tool => !engineCapabilities || engineCapabilities[toolCapability(tool.function.name, 'agenda')]);
     const allowedNames = new Set(tools.map(t => String(t?.function?.name || '').trim()).filter(Boolean));
     const toolContext = await attachToolContext(context, payload);
     if (toolContext && customToolRegistry) {
@@ -974,7 +994,24 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
         ],
     };
 
-    for (let round = 1; round <= maxRounds; round += 1) {
+    if (engineNode) {
+        outputText = await runLegacySingleRequest({ runId: runtimeRunId, parentRunId: engineParentRunId, agentId: `agenda/${dispatch.agent}`,
+            resume: true, hostContext: context, request: { tools, abortSignal }, onEvent: onRuntimeEvent,
+            send: request => requestToolCallsWithRetry(context, settings, request), worker: {
+                nodeId: dispatch.agent, outputToolName: AGENDA_RESULT_TOOL, isFinalStage: true, enableLoopTools: true, maxRounds,
+                prepareRequest: async (round, history) => ({ taskMessages: [{ role: 'system', content: systemWithNotes }, ...history, { role: 'user', content: userText }],
+                    runtimeWorldInfo, apiPresetName, llmPresetName, tools, allowedNames, abortSignal, includeAssistantText: true, allowNoToolCalls: false,
+                    onFirstChunk: round === 1 ? onFirstChunk : null, onUsage: panelRunId ? usage => addTokenUsage({ runId: panelRunId, usage }) : null }),
+                onTurn: turn => conversation.messages.push(turn), getSource: name => resolveToolSource(name, toolContext),
+                isStructuredToolError, serialize: serializeToolResultContent,
+                execute: effect => {
+                    Object.assign(toolContext, { signal: effect.signal, abortSignal: effect.signal, runId: effect.runId, effectId: effect.effectId,
+                        __agentRuntimeMemoryGuard: effect.registerMemoryGuard });
+                    return executeLoopTool(effect.toolName, effect.args, toolContext);
+                },
+            } });
+        outputText = outputText.trim();
+    } else for (let round = 1; round <= maxRounds; round += 1) {
         throwIfAborted(abortSignal, 'Orchestration aborted.');
         const taskMessages = [
             { role: 'system', content: systemWithNotes },
@@ -1177,6 +1214,10 @@ export async function runAgendaOrchestration(context, payload, messages, profile
     const maxTotalRuns = Math.min(getAgendaMaxTotalRuns(settings), Math.max(1, Math.floor(Number(profile?.limits?.maxTotalRuns) || Infinity)));
     let finalizeReason = '';
     let budgetReason = '';
+
+    if (payload?.agentRuntimeV2 !== false) return runAgendaEngine({ context: contextForNotes, payload, messages, profile, settings, runId, trace, customToolRegistry,
+        activeOrchPresetName, onRuntimeEvent, runAgendaPlannerStep, runAgendaTextAgent, applyAgendaPlannerOps, normalizeAgendaDispatches,
+        syncTrace: next => syncAgendaTrace(trace, next), finalizeTrace: (status, details) => finalizeRuntimeTrace(trace, status, details) });
 
     try {
         for (let round = 1; round <= plannerMaxRounds; round++) {

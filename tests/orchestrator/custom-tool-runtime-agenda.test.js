@@ -214,20 +214,19 @@ test.each([['plannerMaxRounds', 1, 12], ['maxTotalRuns', 4, 1]])('budget ending 
     expect(result.stageOutputs[0].nodes[0].output).toBe('partial summary');
 });
 
-test('Agenda planner, selected worker and finalizer each pass a validated handoff', async () => {
+test('Agenda planner, selected worker and finalizer use parent-owned Runtime branches', async () => {
     const profile = { mode: 'agenda', planner: { systemPrompt: 'plan' },
         agents: { writer: { systemPrompt: 'write', tools: { chat: { read_range: true } } } }, finalAgentId: 'writer' };
     const before = JSON.stringify(profile), events = [];
     plannerResponses.push({ dispatches: [{ todo_id: 'main', agent: 'writer', task_brief: 'work', input_run_ids: [] }] }, { finalize: 'done' });
     for (const text of ['evidence', 'final']) agentResponses.push({ toolCalls: [{ name: 'luker_orch_submit_result', args: { text } }] });
     const result = await runAgendaOrchestration({}, {}, [], profile, { onRuntimeEvent: event => events.push(event) });
-    const handoffs = events.filter(e => e.type === 'agent.handoff.completed');
-    expect(handoffs.map(e => [e.fromAgentId, e.toAgentId])).toEqual([
-        ['agenda/controller', 'agenda/agent/planner'], ['agenda/agent/planner', 'agenda/agent/worker%3Awriter'],
-        ['agenda/controller', 'agenda/agent/planner'], ['agenda/agent/planner', 'agenda/agent/worker%3Awriter'],
-    ]);
+    const branches = events.filter(e => e.type === 'parallel.branch.started');
+    expect(branches.map(e => e.toAgentId)).toEqual(['agent:planner', 'agent:worker:writer', 'agent:planner', 'agent:worker:writer']);
+    expect(new Set(branches.map(e => e.childRunId)).size).toBe(4);
     expect(result.agendaState.runs).toHaveLength(2);
-    expect(getRuntimePanelState().runtime.runs.flatMap(run => run.handoffs)).toHaveLength(4);
+    expect(getRuntimePanelState().runtime.runs.flatMap(run => run.handoffs)).toHaveLength(0);
+    expect(result.status).toBe('partial');
     expect(getRuntimePanelState().runtime.runs.every(run => run.status === 'completed')).toBe(true);
     expect(JSON.stringify(profile)).toBe(before);
 });

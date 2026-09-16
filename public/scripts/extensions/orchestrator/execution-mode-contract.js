@@ -41,5 +41,5 @@ export async function digestExecutionConfig(text) {
 
 export function getOrchestrationOutcome(run) {
     const status = run?.status || run?.runtimeTrace?.status || 'completed';
-    return ['budget_exhausted', 'failed', 'cancelled'].includes(status) ? status : 'completed';
+    return ['partial', 'waiting_user', 'budget_exhausted', 'failed', 'cancelled'].includes(status) ? status : 'completed';
 }

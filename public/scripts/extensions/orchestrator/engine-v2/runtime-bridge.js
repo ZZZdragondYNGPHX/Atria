@@ -7,7 +7,7 @@ import { throwIfAborted } from '../abort-utils.js';
 
 /** Host supplies child Runtime factories. Engine owns no provider, pool, storage or long-term memory. */
 export async function runEnginePlan({ plan: input, runId, createChildRuntime, branchPort, context = {}, store, signal,
-    resume = false, panelRunId, onEvent, assertFresh = () => {} }) {
+    resume = false, panelRunId, onEvent, assertFresh = () => {}, policyController, initialState }) {
     const { plan, diagnostics } = validateGraph(input);
     throwIfAborted(signal);
     const ownedStore = store ? null : await openRuntimeCheckpointStore(runId);
@@ -17,7 +17,7 @@ export async function runEnginePlan({ plan: input, runId, createChildRuntime, br
     const registry = new AgentRegistry([{ id: parentId, handoffs: plan.agents.map(agent => agent.id),
         policies: { maxConcurrency: plan.budgets.maxConcurrency } }, ...plan.agents]);
     let runtime;
-    const controller = createPolicyController(plan);
+    const controller = policyController || createPolicyController(plan);
     const children = branchPort || createRuntimeBranchPort(createChildRuntime);
     const guardedChildren = Object.fromEntries(['execute', 'resume'].map(method => [method, async request => {
         assertFresh();
@@ -48,7 +48,7 @@ export async function runEnginePlan({ plan: input, runId, createChildRuntime, br
         const saved = runtime.getState(runId);
         if (saved && saved.policyState?.planFingerprint !== planIdentity(plan)) throw new Error('Plan fingerprint mismatch; cannot resume');
         const state = await (resume ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId: parentId,
-            controlMode: 'policy', policyState: initialPolicyState(plan), maxSteps: plan.budgets.maxSteps }));
+            controlMode: 'policy', policyState: initialState || initialPolicyState(plan), maxSteps: plan.budgets.maxSteps }));
         throwIfAborted(signal);
         assertFresh();
         return { state, plan, diagnostics };
