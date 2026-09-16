@@ -26,6 +26,8 @@ import {
 } from './anchors.js';
 import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
 import { ensureStyles } from './styles.js';
+import { createSingleAgentProfile, createQuickGuidanceProfile, getQuickGuidancePreset } from './quick-guidance.js';
+import { getExecutionModeInfo, modeForOutput, executionConfigText, digestExecutionConfig, getOrchestrationOutcome } from './execution-mode-contract.js';
 import { STATE_ERROR_REASONS } from '../../state-errors.js';
 import {
     CAPSULE_INJECT_POSITION_SCHEMA_VERSION,
@@ -75,6 +77,7 @@ import {
 } from './template-vars.js';
 import {
     cloneDefault,
+    cloneJsonCompatible,
     normalizeNodeSpec,
     normalizeNodeType,
     sanitizeSpec,
@@ -760,6 +763,10 @@ function shouldRunOrchestrationForPayload(payload) {
 }
 
 function abortActiveOrchestratorRun() {
+    const run = getCurrentRun();
+    if (run?.mode === 'director' && run.status === 'running') {
+        (run.stopFn || run.abortFn)?.();
+    }
     if (activeOrchRunAbortController && !activeOrchRunAbortController.signal.aborted) {
         activeOrchRunAbortController.abort();
     }
@@ -778,31 +785,9 @@ export function getEffectiveProfile(context) {
 
     // Single-agent mode does not participate in the preset library —
     // its profile is synthesized from the two settings fields and a
-    // fixed one-stage one-node spec. Keep the branch byte-identical
-    // to the pre-refactor body.
+    // fixed one-stage one-node spec. The shared builder also owns explicit copies.
     if (executionMode === ORCH_EXECUTION_MODE_SINGLE || settings.singleAgentModeEnabled) {
-        return {
-            source: 'single',
-            key: 'single_agent',
-            mode: ORCH_EXECUTION_MODE_SINGLE,
-            spec: sanitizeSpec({
-                stages: [{
-                    id: 'single',
-                    mode: 'serial',
-                    nodes: [{
-                        id: 'single_agent',
-                        preset: 'single_agent',
-                    }],
-                }],
-            }),
-            presets: sanitizePresetMap({
-                ...settings.presets,
-                single_agent: {
-                    systemPrompt: String(settings.singleAgentSystemPrompt || DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT),
-                    userPromptTemplate: String(settings.singleAgentUserPromptTemplate || DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE),
-                },
-            }),
-        };
+        return createSingleAgentProfile(settings);
     }
 
     const useCard = Boolean(avatar)
@@ -880,7 +865,16 @@ export function getEffectiveProfile(context) {
     };
 }
 
-async function runOrchestration(context, payload, messages, profile) {
+function currentExecutionConfig(context, profile = getEffectiveProfile(context)) {
+    const settings = getSettings();
+    const scope = profile.source === 'character' ? 'character' : 'global';
+    const presetId = ['single', 'chat'].includes(profile.source) ? '' : getActivePresetId(settings, profile.mode, {
+        scope, context, avatar: getCurrentAvatar(context),
+    });
+    return executionConfigText(profile, settings, presetId);
+}
+
+export async function runOrchestration(context, payload, messages, profile) {
     // Capture the active orch-preset name once per orchestration run so
     // the mode runtime can hand it to buildSkillRuntimeContext for
     // orch-preset scope filtering. The per-agent / per-node preset
@@ -933,6 +927,7 @@ async function runOrchestration(context, payload, messages, profile) {
             stageOutputs,
             previousNodeOutputs: new Map(),
             runtimeTrace: loopRun?.runtimeTrace || null,
+            status: loopRun?.status || 'completed',
             reviewRerunCount: 0,
         };
     }
@@ -1022,6 +1017,7 @@ function reapplyLatestCapsuleInjection(context) {
 
 async function onWorldInfoFinalized(payload) {
     const context = getContext();
+    const runChatKey = getChatKey(context);
     const settings = extension_settings[MODULE_NAME];
 
     if (!settings.enabled) {
@@ -1156,7 +1152,21 @@ async function onWorldInfoFinalized(payload) {
         }
         const chatKey = getChatKey(context);
         const anchor = buildLastUserAnchor(context, messages);
-        if (canReuseLatestOrchestrationSnapshot(chatKey, anchor)) {
+        const configText = currentExecutionConfig(context, profile);
+        const executionIdentity = await digestExecutionConfig(configText);
+        const isCurrent = () => getChatKey(getContext()) === chatKey
+            && getSettings().enabled
+            && !orchestrationPayload?.signal?.aborted
+            && currentExecutionConfig(getContext()) === configText;
+        const assertCurrent = () => {
+            if (!isCurrent()) {
+                const error = new Error('Orchestration target or configuration changed.');
+                error.name = 'AbortError';
+                throw error;
+            }
+        };
+        assertCurrent();
+        if (canReuseLatestOrchestrationSnapshot(chatKey, anchor, executionIdentity)) {
             const capsuleText = String(getActiveSnapshot()?.capsuleText || '').trim();
             if (capsuleText) {
                 const reuseTraceStages = String(profile?.mode || '') === ORCH_EXECUTION_MODE_AGENDA
@@ -1225,27 +1235,34 @@ async function onWorldInfoFinalized(payload) {
         const finalRun = raced?.finalRun;
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
 
+        assertCurrent();
+        const outcome = getOrchestrationOutcome(finalRun);
+        if (outcome === 'failed' || outcome === 'cancelled') {
+            throw new Error(`Orchestration ended with ${outcome}.`);
+        }
         const capsuleText = buildCapsule(finalRun.stageOutputs || [], profile?.capsule_inject?.customInstruction);
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
-        // Same director-mode skip: director owns the message body itself,
-        // not a capsule injected into the main LLM prompt.
-        if (profile?.mode !== ORCH_EXECUTION_MODE_DIRECTOR) {
-            injectCapsuleToPayload(payload, capsuleText, settings);
+        // Partial results retain the legacy injection behavior, but never become
+        // successful cache entries. A later attempt must be able to finish.
+        if (outcome === 'completed') {
+            await storeCompletedOrchestrationSnapshot(context, anchor, capsuleText, finalRun.stageOutputs || [], executionIdentity, isCurrent);
         }
-        await storeCompletedOrchestrationSnapshot(context, anchor, capsuleText, finalRun.stageOutputs || []);
+        assertCurrent();
+        injectCapsuleToPayload(payload, capsuleText, settings);
         ensureUi();
-        finalizeOrchestrationRuntimeTrace(finalRun?.runtimeTrace || getLatestOrchestrationRuntimeTrace(context), 'completed', {
+        finalizeOrchestrationRuntimeTrace(finalRun?.runtimeTrace || getLatestOrchestrationRuntimeTrace(context), outcome, {
             capsuleText,
             reviewRerunCount: Number(finalRun?.reviewRerunCount || 0),
         });
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
-        await emitOrchestratorResultEvent(context, payload, 'completed', {
-            includeSnapshot: true,
+        await emitOrchestratorResultEvent(context, payload, outcome, {
+            includeSnapshot: outcome === 'completed',
             reviewRerunCount: Number(finalRun?.reviewRerunCount || 0),
         });
-        updateUiStatus(i18n('Orchestrator completed.'));
+        updateUiStatus(i18n(outcome === 'budget_exhausted' ? 'Budget reached. Partial guidance was used; the task is not complete.' : 'Orchestrator completed.'));
         clearRunInfoToast();
     } catch (error) {
+        if (getChatKey(getContext()) !== runChatKey) return;
         if (isAbortError(error, orchestrationPayload?.signal)) {
             finalizeOrchestrationRuntimeTrace(getLatestOrchestrationRuntimeTrace(context), 'cancelled', {
                 note: isAbortSignalLike(payload?.signal) && payload.signal.aborted
@@ -1286,7 +1303,7 @@ async function onWorldInfoFinalized(payload) {
         if (activeOrchRunAbortController === pluginAbortController) {
             activeOrchRunAbortController = null;
         }
-        clearRunInfoToast();
+        if (getChatKey(getContext()) === runChatKey) clearRunInfoToast();
         orchInFlight = false;
     }
 }
@@ -1938,6 +1955,30 @@ function renderDynamicPanels(root, context) {
     // `refreshOrchestrationEditorPopup` so drawer + popup share the loop.
     applyOrchestratorModeVisibility(root, executionMode);
     root.find('#luker_orch_execution_mode').val(executionMode);
+    root.find('#luker_orch_output').val(executionMode === 'director' ? 'reply' : 'guidance');
+    root.find('#luker_orch_mode_description').text(i18n(getExecutionModeInfo(executionMode).description));
+    const effective = getEffectiveProfile(context);
+    const source = effective.source === 'single' ? 'global' : effective.source;
+    const editingScope = executionMode === 'single' ? 'global' : getDisplayedScopeForMode(context, settings, executionMode);
+    const presetName = (scope) => {
+        if (executionMode === 'single') return i18n('Quick guidance (legacy)');
+        if (scope === 'chat') return i18n('Chat override');
+        return getActivePreset(settings, executionMode, { scope, context, avatar: getCurrentAvatar(context) }).state?.name || '';
+    };
+    const sourceLabel = (scope) => i18n(scope === 'character' ? 'Character' : scope === 'chat' ? 'Chat override' : 'Global');
+    root.find('#luker_orch_mode_sources').text(
+        i18nFormat('Effective: ${0} · ${1} | Editing: ${2} · ${3}', sourceLabel(source), presetName(source), sourceLabel(editingScope), presetName(editingScope)),
+    );
+    root.find('#luker_orch_quick_template').toggle(executionMode !== 'director');
+    const editingProfile = executionMode === 'spec' ? getActivePreset(settings, 'spec', {
+        scope: editingScope, context, avatar: getCurrentAvatar(context),
+    }).state : null;
+    const quickPreset = getQuickGuidancePreset(editingProfile);
+    root.find('#luker_orch_quick_fields').prop('hidden', !quickPreset);
+    if (quickPreset) {
+        root.find('#luker_orch_quick_system').val(quickPreset.systemPrompt || '');
+        root.find('#luker_orch_quick_user').val(quickPreset.userPromptTemplate || '');
+    }
     // Re-inject the workspace HTML into the drawer's Agents / Tools &
     // Skills tab hosts for the new mode. Every state transition that
     // matters (mode change, chat switch, character switch, override
@@ -6686,6 +6727,86 @@ function updateCapsulePositionVisibility($root) {
     $root.find('[id$="luker_orch_capsule_role_block"]').toggle(isAtDepth);
 }
 
+async function createQuickWorkflow(root, copyLegacy) {
+    const context = getContext();
+    const settings = getSettings();
+    const avatar = getCurrentAvatar(context);
+    const profile = createQuickGuidanceProfile(settings, copyLegacy);
+    const content = document.createElement('div');
+    content.innerHTML = `
+        <h3>${escapeHtml(i18n(copyLegacy ? 'Copy to a fixed workflow' : 'New quick guidance workflow'))}</h3>
+        <p>${escapeHtml(i18n('Creates a separate preset. Existing presets and legacy prompts are preserved.'))}</p>
+        <label>${escapeHtml(i18n('Name'))}<input data-quick-name class="text_pole" /></label>
+        <label>${escapeHtml(i18n('Save to'))}<select data-quick-scope class="text_pole">
+            <option value="global">${escapeHtml(i18n('Global'))}</option>
+            ${avatar ? `<option value="character">${escapeHtml(i18n('Character'))}</option>` : ''}
+        </select></label>
+        <label class="checkbox_label"><input type="checkbox" data-quick-activate />${escapeHtml(i18n('Use this workflow after saving'))}</label>
+        <p>${escapeHtml(i18n(copyLegacy ? 'Copies the current prompts, model routing and inherited tools. Global injection settings remain shared.' : 'One fixed node with exploration tools off. Global injection settings remain shared.'))}</p>
+        <label>${escapeHtml(i18n('System prompt'))}<textarea data-quick-preview-system class="text_pole" rows="4" readonly></textarea></label>
+        <label>${escapeHtml(i18n('User prompt template'))}<textarea data-quick-preview-user class="text_pole" rows="4" readonly></textarea></label>`;
+    content.querySelector('[data-quick-name]').value = i18n('Quick guidance');
+    content.querySelector('[data-quick-preview-system]').value = profile.presets.single_agent.systemPrompt;
+    content.querySelector('[data-quick-preview-user]').value = profile.presets.single_agent.userPromptTemplate;
+    const confirmed = await context.callGenericPopup(content, context.POPUP_TYPE.CONFIRM, '', {
+        wide: true, okButton: i18n('Save'), cancelButton: i18n('Cancel'),
+    });
+    if (!confirmed) return;
+    if (avatar !== getCurrentAvatar(getContext())) {
+        notifyError(i18n('Character changed. Reopen the workflow preview.'));
+        return;
+    }
+    const name = content.querySelector('[data-quick-name]').value.trim();
+    if (!name) { notifyError(i18n('A preset name is required.')); return; }
+    const scope = content.querySelector('[data-quick-scope]').value;
+    const activate = content.querySelector('[data-quick-activate]').checked;
+    // Stage on detached data so a failed character save cannot mutate its live library.
+    const targetCharacter = context.characters?.find(c => c.avatar === avatar);
+    const stagedCharacter = scope === 'character' && targetCharacter ? {
+        avatar,
+        data: { extensions: { orchestrator: cloneJsonCompatible(targetCharacter.data?.extensions?.orchestrator || {}) } },
+    } : null;
+    if (stagedCharacter) {
+        stagedCharacter.data ||= {};
+        stagedCharacter.data.extensions ||= {};
+        stagedCharacter.data.extensions.orchestrator ||= {};
+    }
+    const stagedSettings = { presetLibraries: structuredClone(settings.presetLibraries), activePresetIds: { ...settings.activePresetIds } };
+    const stagedContext = stagedCharacter ? { characters: [stagedCharacter] } : context;
+    const id = createPreset(stagedSettings, 'spec', scope, { name, payload: profile }, { context: stagedContext, avatar });
+    if (!id) { notifyError(i18n('Could not create the workflow.')); return; }
+    if (activate) setActivePresetId(stagedSettings, 'spec', scope, id, { context: stagedContext, avatar });
+    if (stagedCharacter) {
+        const ext = stagedCharacter.data.extensions.orchestrator;
+        if (activate) {
+            ext.overrideEnabled = { ...ext.overrideEnabled, spec: true };
+            ext.override = { ...ext.override, mode: 'spec' };
+        }
+        const saved = await persistOrchestratorCharacterExtension(context, context.characters.indexOf(targetCharacter), ext);
+        if (!saved) { notifyError(i18n('Could not save the workflow.')); return; }
+    } else {
+        settings.presetLibraries = stagedSettings.presetLibraries;
+        settings.activePresetIds = stagedSettings.activePresetIds;
+        await saveSettings();
+    }
+    if (activate && avatar === getCurrentAvatar(getContext())) {
+        // Explicit activation of a global copy must also turn off this card's
+        // Spec override; editing global alone never changes the runtime source.
+        if (scope === 'global' && avatar && isCharacterPresetActiveOverrideEnabled(context, avatar, 'spec')) {
+            const changed = await setCharacterSpecOverrideEnabled(context, avatar, false);
+            if (changed === false) { notifyError(i18n('Saved the workflow, but could not change the active source.')); return; }
+        }
+        abortActiveOrchestratorRun();
+        settings.executionMode = 'spec';
+        settings.singleAgentModeEnabled = false;
+        saveSettingsDebounced();
+    }
+    if (avatar !== getCurrentAvatar(getContext())) return;
+    setDisplayedScopeForMode(context, settings, 'spec', scope);
+    reloadOrchestratorEditor(root, getContext());
+    notifySuccess(i18n('Workflow saved. Legacy prompts are unchanged.'));
+}
+
 function bindUi() {
     const context = getContext();
     const settings = getSettings();
@@ -6715,6 +6836,7 @@ function bindUi() {
 
     root.on('input.lukerOrch', '#luker_orch_enabled', function () {
         settings.enabled = Boolean(jQuery(this).prop('checked'));
+        if (!settings.enabled) abortActiveOrchestratorRun();
         saveSettingsDebounced();
     });
 
@@ -6888,7 +7010,30 @@ function bindUi() {
         reloadOrchestratorEditor(root, context);
     });
 
+    root.on('click.lukerOrch', '#luker_orch_quick_template, #luker_orch_copy_single', async function () {
+        try { await createQuickWorkflow(root, this.id === 'luker_orch_copy_single'); } catch (error) { notifyError(String(error?.message || error)); }
+    });
+    root.on('change.lukerOrch', '#luker_orch_quick_system, #luker_orch_quick_user', async function () {
+        const ctx = getContext();
+        const scope = getDisplayedScopeForMode(ctx, settings, 'spec');
+        const avatar = getCurrentAvatar(ctx);
+        const profile = cloneJsonCompatible(getActivePreset(settings, 'spec', { scope, context: ctx, avatar }).state);
+        const preset = getQuickGuidancePreset(profile);
+        if (!preset || getExecutionMode(settings) !== 'spec') return;
+        preset[this.id === 'luker_orch_quick_system' ? 'systemPrompt' : 'userPromptTemplate'] = String(jQuery(this).val());
+        const result = writeActivePreset(settings, 'spec', scope, profile, { context: ctx, avatar });
+        if (!result.ok) { notifyError(result.hint || result.reason); return; }
+        if (scope === 'character') {
+            const saved = await persistOrchestratorCharacterExtension(ctx, getCharacterIndexByAvatar(ctx, avatar), getCharacterExtensionDataByAvatar(ctx, avatar));
+            if (!saved) { notifyError(i18n('Could not save the workflow.')); return; }
+        } else { await saveSettings(); }
+        reloadOrchestratorEditor(root, getContext());
+    });
+    root.on('change.lukerOrch', '#luker_orch_output', function () {
+        root.find('#luker_orch_execution_mode').val(modeForOutput(jQuery(this).val(), getExecutionMode(settings))).trigger('change');
+    });
     root.on('change.lukerOrch', '#luker_orch_execution_mode', function () {
+        abortActiveOrchestratorRun();
         settings.executionMode = normalizeExecutionMode(jQuery(this).val());
         settings.singleAgentModeEnabled = settings.executionMode === ORCH_EXECUTION_MODE_SINGLE;
         // Skill inventory cache is mode-agnostic but the visibility profile

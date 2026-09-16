@@ -120,3 +120,14 @@ Only report upstream SHA, official Android Actions SHA, or upstream PR status wh
 ## Maintenance warning
 
 Do not treat old SHA/version snapshots in chats or documents as current. For normal work, verify `custom-release` live. For an upstream-related task, also verify the relevant upstream state live.
+
+
+## Execution mode redesign — integrated into custom-release
+
+Implemented on `feat/execution-mode-design`, based on custom-release `112baa3b5f2ad1109a0b143bcffa3d39ec8dc470`. Integrated into custom-release on 2026-09-16 at the owner's request, preserving the feature branch commits. See `EXECUTION_MODE_DESIGN.md` section 12 for implementation boundaries and checks.
+
+The four primary modes remain existing runtimes: Loop research, Spec fixed workflow, Agenda dynamic delegation, Director reply authoring. Output responsibility is a UI projection, not another persistent mode setting. Legacy Single stays readable/editable and supports explicit copies into fresh Spec preset IDs. Quick templates use the existing preset library and character save path; activation is optional. Preserve independent global editing while a character override remains effective.
+
+Snapshots optionally carry `executionIdentity`, a SHA-256 digest of effective profile/preset and selected runtime settings. Historical snapshots remain readable but do not qualify for reuse without identity. In environments without Web Crypto, reuse is disabled. Extend the configuration fingerprint when introducing relevant runtime dependencies. Budget-exhausted Loop/Agenda results may supply partial guidance but are not completed cache entries. Agenda exposes budget reason and unresolved task IDs.
+
+No version bump, dependency change or automatic user-data migration. Shared frontend checks do not substitute for Android device or live-model validation.

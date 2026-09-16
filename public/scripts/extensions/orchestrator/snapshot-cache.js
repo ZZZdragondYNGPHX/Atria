@@ -117,6 +117,7 @@ export function setLatestOrchestrationSnapshotFromPick(chatKey, pick) {
         anchorPlayableFloor: normalizeAnchorPlayableFloor(pick.playableFloor),
         anchorHash: String(pick.snapshot?.anchorHash || '').trim(),
         capsuleText: String(pick.snapshot?.capsuleText || '').trim(),
+        executionIdentity: String(pick.snapshot?.executionIdentity || ''),
         stageOutputs: Array.isArray(pick.snapshot?.stageOutputs)
             ? structuredClone(pick.snapshot.stageOutputs)
             : [],
@@ -193,7 +194,9 @@ export function getLatestOrchestrationEntry(context) {
     };
 }
 
-export function canReuseLatestOrchestrationSnapshot(chatKey, anchor) {
+export function canReuseLatestOrchestrationSnapshot(chatKey, anchor, executionIdentity) {
+    // Historical snapshots remain readable, but cannot satisfy a new run.
+    if (!executionIdentity || latestOrchestrationSnapshot?.executionIdentity !== executionIdentity) return false;
     if (!latestOrchestrationSnapshot || typeof latestOrchestrationSnapshot !== 'object') {
         return false;
     }
@@ -221,7 +224,8 @@ export function canReuseLatestOrchestrationSnapshot(chatKey, anchor) {
  * was incomplete. Callers that need a UI rebuild after the state
  * changes should run their own `ensureUi` step on the result.
  */
-export async function storeCompletedOrchestrationSnapshot(context, anchor, capsuleText, stageOutputs) {
+export async function storeCompletedOrchestrationSnapshot(context, anchor, capsuleText, stageOutputs, executionIdentity = '', isCurrent = () => true) {
+    if (!isCurrent()) return null;
     const chatKey = getChatKey(context);
     const anchorPlayableFloor = normalizeAnchorPlayableFloor(anchor?.playableFloor);
     const anchorHash = String(anchor?.hash || '').trim();
@@ -233,6 +237,7 @@ export async function storeCompletedOrchestrationSnapshot(context, anchor, capsu
     const nextSnapshot = {
         anchorHash,
         capsuleText: nextCapsuleText,
+        ...(executionIdentity ? { executionIdentity } : {}),
         stageOutputs: compactStageOutputs(stageOutputs || []),
     };
 
@@ -241,6 +246,7 @@ export async function storeCompletedOrchestrationSnapshot(context, anchor, capsu
         throw new Error(`Failed to persist orchestration snapshot (${result.reason}): ${result.hint}`);
     }
 
+    if (!isCurrent()) return null;
     const map = { ...getLoadedAnchorMap(context), [anchorPlayableFloor]: nextSnapshot };
     setLatestAnchorMap(chatKey, map);
     setLatestOrchestrationSnapshotFromPick(chatKey, {
@@ -335,6 +341,7 @@ export async function persistEditedSnapshotToFloorState(context, snapshot) {
     const dataSnapshot = {
         anchorHash: String(snapshot?.anchorHash || ''),
         capsuleText: String(snapshot?.capsuleText || ''),
+        ...(snapshot?.executionIdentity ? { executionIdentity: snapshot.executionIdentity } : {}),
         stageOutputs: Array.isArray(snapshot?.stageOutputs) ? snapshot.stageOutputs : [],
     };
     const result = await commitAnchorSnapshot(context, anchor, dataSnapshot);

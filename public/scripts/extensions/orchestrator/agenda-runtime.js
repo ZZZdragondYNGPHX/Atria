@@ -503,6 +503,8 @@ export function syncAgendaTrace(trace, state) {
         todos: Array.isArray(state.todos) ? structuredClone(state.todos) : [],
         runs: Array.isArray(state.runs) ? structuredClone(state.runs) : [],
         finalGuidance: String(state.finalGuidance || ''),
+        budgetReason: String(state.budgetReason || ''),
+        unfinishedTodoIds: [...(state.unfinishedTodoIds || [])],
     };
 }
 
@@ -565,8 +567,9 @@ export function normalizeAgendaDispatches(state, plannerStep = {}, profile = {},
             inputRunIds,
         });
     }
-    const maxConcurrent = getAgendaMaxConcurrentAgents(settings);
-    const remainingRunBudget = Math.max(0, getAgendaMaxTotalRuns(settings) - Number(state?.runs?.length || 0));
+    const maxConcurrent = Math.min(getAgendaMaxConcurrentAgents(settings), Math.max(1, Number(profile.limits?.maxConcurrentAgents) || Infinity));
+    const maxTotal = Math.min(getAgendaMaxTotalRuns(settings), Math.max(1, Number(profile.limits?.maxTotalRuns) || Infinity));
+    const remainingRunBudget = Math.max(0, maxTotal - Number(state?.runs?.length || 0));
     return dispatches.slice(0, Math.min(maxConcurrent, remainingRunBudget));
 }
 
@@ -1139,8 +1142,10 @@ export async function runAgendaOrchestration(context, payload, messages, profile
     // the registry holds).
     const customToolRegistry = buildPerRunCustomToolRegistry(profile, trace, recordRuntimeEvent);
     syncAgendaTrace(trace, state);
-    const plannerMaxRounds = Math.max(1, Math.floor(Number(profile?.limits?.plannerMaxRounds) || getAgendaPlannerMaxRounds(settings)));
+    const plannerMaxRounds = Math.min(getAgendaPlannerMaxRounds(settings), Math.max(1, Math.floor(Number(profile?.limits?.plannerMaxRounds) || Infinity)));
+    const maxTotalRuns = Math.min(getAgendaMaxTotalRuns(settings), Math.max(1, Math.floor(Number(profile?.limits?.maxTotalRuns) || Infinity)));
     let finalizeReason = '';
+    let budgetReason = '';
 
     try {
         for (let round = 1; round <= plannerMaxRounds; round++) {
@@ -1273,12 +1278,20 @@ export async function runAgendaOrchestration(context, payload, messages, profile
             }));
             state.runs.push(...newRuns);
             syncAgendaTrace(trace, state);
-            if (state.runs.length >= getAgendaMaxTotalRuns(settings)) {
+            if (state.runs.length >= maxTotalRuns) {
+                budgetReason = 'maxTotalRuns';
                 finalizeReason = 'Reached maxTotalRuns limit. Finalizing with collected work.';
                 break;
             }
         }
 
+        if (!finalizeReason) {
+            budgetReason = 'plannerMaxRounds';
+            finalizeReason = 'Reached plannerMaxRounds. Summarize collected work and disclose unresolved tasks.';
+        }
+        state.budgetReason = budgetReason;
+        state.unfinishedTodoIds = state.todos.filter(todo => !['done', 'dropped'].includes(todo.status)).map(todo => todo.id);
+        const outcome = budgetReason ? 'budget_exhausted' : 'completed';
         const finalAgentId = sanitizeIdentifierToken(profile?.finalAgentId, Object.keys(profile?.agents || {})[0] || 'finalizer');
         if (!profile?.agents?.[finalAgentId]) {
             throw new Error(`Agenda final agent '${finalAgentId}' is not configured.`);
@@ -1301,6 +1314,9 @@ export async function runAgendaOrchestration(context, payload, messages, profile
         });
         const finalRoundId = `node-${finalAgentId}-final`;
         appendRound({ runId, round: { id: finalRoundId, label: i18nFormat('Node: ${0} (attempt ${1})', finalAgentId, plannerMaxRounds + 1) } });
+        const completionSection = ensureSection({ runId, roundId: finalRoundId, section: { id: 'completion', kind: 'note', title: i18n('Unfinished tasks') } });
+        appendToSection({ runId, roundId: finalRoundId, sectionId: completionSection, delta: [finalizeReason, ...state.unfinishedTodoIds].join('\n') });
+        setSectionStatus({ runId, roundId: finalRoundId, sectionId: completionSection, status: 'done' });
         const finalRun = await runAgendaTextAgent(contextForNotes, payload, messages, profile, state, finalDispatch, {
             kind: 'final',
             finalReason: finalizeReason,
@@ -1333,12 +1349,13 @@ export async function runAgendaOrchestration(context, payload, messages, profile
         state.runs.push(finalRun);
         syncAgendaTrace(trace, state);
 
-        finalizeRuntimeTrace(trace, 'completed', { capsuleText: state.finalGuidance });
+        finalizeRuntimeTrace(trace, outcome, { capsuleText: state.finalGuidance, note: finalizeReason });
         try {
-            finishRun({ runId, status: 'committed', finalText: state.finalGuidance });
+            finishRun({ runId, status: budgetReason ? 'budget_exhausted' : 'committed', finalText: state.finalGuidance });
         } catch (_) { /* run may already be cleared */ }
 
         return {
+            status: outcome,
             stageOutputs: [{
                 id: 'finalize',
                 mode: 'serial',
