@@ -71,3 +71,22 @@ Memory OS guards survive tool return through run-local callbacks, including fina
 world-info owns automatic injection until a separately tested replacement exists; duplicate recall is forbidden.
 
 Phase 3 evidence and full-repository baseline failures are recorded in AGENT_RUNTIME_V2_PHASE3.md.
+
+## ADR-011 — Phase 4 routes are admitted by Runtime, with legacy context reference policies
+
+Compile the existing mode data into a run-local AgentRegistry in `legacy-agent-routing.js`. The legacy workflow
+adapter yields a typed agent.handoff intent before entering the target policy. AgentRuntime owns validation,
+receipt persistence, identity change and event publication; it is not a preflight-only validator or a second scheduler.
+Spec review replay passes the reviewer identity explicitly through stage options. Stage/node slot identities
+preserve reused names and string-node presets; the old ambiguous-target rejection remains authoritative.
+Agenda uses a planner-to-configured-agent graph; inline Director definitions are scoped to a single dispatch.
+
+Compatibility routes allow task_only with explicit input references resolved from copied current-run data.
+They do not implicitly inherit native scratch or persist Memory OS/model/tool text in handoff receipts.
+Native scratch transfer is controlled by definition policies. Runtime assigns handoff identity/time, bounds cycles,
+and consumes saved handoff receipts once. Parent orchestration IDs link child attempts and trace metadata.
+
+Mode coordinators and streaming/retry/replay bodies remain compatibility policies. Existing parallel batches stay
+in those policies until Phase 7; no new fan-out/join engine was introduced. Lost generator continuations still
+reject resume. UI projection and durable reconstruction remain separate Phase 5/6 gates.
+See AGENT_RUNTIME_V2_PHASE4.md for tests, coverage and standalone rollback.

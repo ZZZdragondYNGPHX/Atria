@@ -88,9 +88,11 @@ jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/pro
 // Everything else runs the real product modules.
 const plannerResponses = [];
 const agentResponses = [];
+const agentRequests = [];
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
-    requestToolCallsWithRetry: async () => {
+    requestToolCallsWithRetry: async (_context, _settings, request) => {
+        agentRequests.push(request);
         if (agentResponses.length === 0) {
             throw new Error('Agent LLM stub exhausted');
         }
@@ -106,7 +108,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-call
     makeRuntimeToolCallId: () => `tc_${Math.random().toString(36).slice(2, 10)}`,
 }));
 
-let runAgendaOrchestration;
+let runAgendaOrchestration, runAgendaTextAgent;
 
 // Sidecar the custom-tool body writes into so the test can assert
 // the registry actually dispatched my_tool. The real executeLoopTool
@@ -115,12 +117,13 @@ const customToolDispatches = [];
 globalThis.__customToolDispatchSink = customToolDispatches;
 
 beforeAll(async () => {
-    ({ runAgendaOrchestration } = await import('../../public/scripts/extensions/orchestrator/agenda-runtime.js'));
+    ({ runAgendaOrchestration, runAgendaTextAgent } = await import('../../public/scripts/extensions/orchestrator/agenda-runtime.js'));
 });
 
 beforeEach(() => {
     plannerResponses.length = 0;
     agentResponses.length = 0;
+    agentRequests.length = 0;
     customToolDispatches.length = 0;
 });
 
@@ -208,4 +211,35 @@ test.each([['plannerMaxRounds', 1, 12], ['maxTotalRuns', 4, 1]])('budget ending 
     expect(result.agendaState.budgetReason).toBe(reason);
     expect(result.agendaState.unfinishedTodoIds).toContain('main');
     expect(result.stageOutputs[0].nodes[0].output).toBe('partial summary');
+});
+
+test('Agenda planner, selected worker and finalizer each pass a validated handoff', async () => {
+    const profile = { mode: 'agenda', planner: { systemPrompt: 'plan' },
+        agents: { writer: { systemPrompt: 'write', tools: { chat: { read_range: true } } } }, finalAgentId: 'writer' };
+    const before = JSON.stringify(profile), events = [];
+    plannerResponses.push({ dispatches: [{ todo_id: 'main', agent: 'writer', task_brief: 'work', input_run_ids: [] }] }, { finalize: 'done' });
+    for (const text of ['evidence', 'final']) agentResponses.push({ toolCalls: [{ name: 'luker_orch_submit_result', args: { text } }] });
+    const result = await runAgendaOrchestration({}, {}, [], profile, { onRuntimeEvent: event => events.push(event) });
+    const handoffs = events.filter(e => e.type === 'agent.handoff.completed');
+    expect(handoffs.map(e => [e.fromAgentId, e.toAgentId])).toEqual([
+        ['agenda/controller', 'agenda/agent/planner'], ['agenda/agent/planner', 'agenda/agent/worker%3Awriter'],
+        ['agenda/controller', 'agenda/agent/planner'], ['agenda/agent/planner', 'agenda/agent/worker%3Awriter'],
+    ]);
+    expect(result.agendaState.runs).toHaveLength(2);
+    expect(JSON.stringify(profile)).toBe(before);
+});
+
+test('Agenda transfer excludes unselected run output and rejects unknown target/input before sending', async () => {
+    const profile = { planner: { systemPrompt: 'plan' }, agents: { writer: { tools: { chat: { read_range: true } } } } };
+    const state = { todos: [], runs: [{ runId: 'chosen', outputText: 'selected evidence' }, { runId: 'hidden', outputText: 'do-not-transfer' }] };
+    const dispatch = { agent: 'writer', taskBrief: 'work', inputRunIds: ['chosen'] };
+    agentResponses.push({ toolCalls: [{ name: 'luker_orch_submit_result', args: { text: 'done' } }] });
+    await runAgendaTextAgent({}, {}, [], profile, state, dispatch, {});
+    expect(JSON.stringify(agentRequests)).toContain('selected evidence');
+    expect(JSON.stringify(agentRequests)).not.toContain('do-not-transfer');
+    const count = agentRequests.length;
+    await expect(runAgendaTextAgent({}, {}, [], profile, state, { ...dispatch, agent: 'missing' }, {})).rejects.toThrow('Unknown agent');
+    expect(() => runAgendaTextAgent({}, {}, [], profile, state, { ...dispatch, inputRunIds: ['missing'] }, {})).toThrow('Unknown handoff input');
+    expect(agentRequests).toHaveLength(count);
+    expect(state.runs).toHaveLength(2);
 });

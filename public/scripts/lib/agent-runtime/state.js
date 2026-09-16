@@ -79,6 +79,7 @@ export function transition(previous, event) {
                 state.status = 'completed';
                 state.output = result.output;
             } else if (result.type === 'model') nextStep(state);
+            else if (result.type === 'handoff') schedule(state, 'agent.handoff', { handoff: result });
             else if (result.type === 'tool') schedule(state, 'tool.execute', { toolName: result.toolName });
             else throw new Error('Invalid legacy policy intent');
         } else if (state.legacyPolicy && ['model.request', 'tool.execute'].includes(effect.type)) {
@@ -96,7 +97,9 @@ export function transition(previous, event) {
             state.task = result.task;
             state.payload = result.payload ?? null;
             if (result.contextPolicy === 'task_only') state.scratch = [];
-            nextStep(state);
+            state.memoryRefs = [];
+            if (state.legacyPolicy) schedule(state, 'policy.advance', { receiptId: effect.effectId });
+            else nextStep(state);
         } else if (effect.type === 'model.request') {
             if (result.type === 'complete') {
                 state.status = 'completed';

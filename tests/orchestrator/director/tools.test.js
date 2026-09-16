@@ -917,3 +917,35 @@ describe('subagent dispatcher', () => {
         expect(seenSchemas[0]).not.toContain('chat_search');
     });
 });
+
+test('configured and inline Director children record distinct handoffs before model execution', async () => {
+    const events = [], specs = [{ id: 'critic', systemPrompt: 'original' }];
+    const dispatcher = createSubagentDispatcher({ subAgents: specs, limits: { maxTotalSubagentRuns: 3 }, runId: 'director-parent',
+        onRuntimeEvent: event => events.push(event),
+        generateTask: async () => {
+            expect(events.some(e => e.type === 'agent.handoff.completed')).toBe(true);
+            return { assistantText: 'done', toolCalls: [] };
+        }, abortSignal: new AbortController().signal,
+    });
+    specs[0].systemPrompt = 'external change';
+    const named = await dispatcher.dispatch({ subagentId: 'critic', task: 'review' });
+    const inline = await dispatcher.dispatchInline({ systemPrompt: 'one-off role', task: 'inspect' });
+    expect((await dispatcher.awaitAll([named, inline])).map(item => item.outputText)).toEqual(['done', 'done']);
+    const handoffs = events.filter(e => e.type === 'agent.handoff.completed');
+    expect(handoffs).toHaveLength(2);
+    expect(handoffs.every(e => e.fromAgentId === 'director/controller' && e.parentRunId === 'director-parent')).toBe(true);
+    expect(handoffs.map(e => e.toAgentId)).toEqual(expect.arrayContaining(['director/agent/named%3Acritic', expect.stringMatching(/^director\/agent\/inline%3A/)]));
+    expect(new Set(handoffs.map(e => e.handoffId)).size).toBe(2);
+});
+
+test('Director duplicate configured IDs preserve the existing last-definition lookup', async () => {
+    let messages;
+    const dispatcher = createSubagentDispatcher({ subAgents: [{ id: 'worker', systemPrompt: 'old role' }, { id: 'worker', systemPrompt: 'chosen role' }],
+        generateTask: async request => { messages = request.taskMessages; return { assistantText: 'done', toolCalls: [] }; },
+        limits: { maxTotalSubagentRuns: 1 }, abortSignal: new AbortController().signal,
+    });
+    const id = await dispatcher.dispatch({ subagentId: 'worker', task: 'work' });
+    expect((await dispatcher.awaitAll([id]))[0].outputText).toBe('done');
+    expect(JSON.stringify(messages)).toContain('chosen role');
+    expect(JSON.stringify(messages)).not.toContain('old role');
+});

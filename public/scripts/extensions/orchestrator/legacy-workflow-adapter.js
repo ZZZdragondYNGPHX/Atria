@@ -21,7 +21,7 @@ export function toolIntent(name, args, context, execute) {
  * Live functions/results never enter checkpoints. This transitional continuation cannot
  * be restored after process loss: Runtime rejects resume rather than replaying writes.
  */
-export async function runLegacyWorkflow(factory, { context = {}, signal, runId = createLegacyWorkflowRunId(), onEvent, store, maxSteps = 10000 } = {}) {
+export async function runLegacyWorkflow(factory, { context = {}, signal, runId = createLegacyWorkflowRunId(), onEvent, store, maxSteps = 10000, registry = new AgentRegistry([{ id: 'legacy-policy' }]), agentId = 'legacy-policy' } = {}) {
     throwIfAborted(signal, 'Orchestration aborted.');
     const iterator = factory();
     let pending, output, failure;
@@ -43,7 +43,7 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
         }
     };
     const runtime = new AgentRuntime({
-        store, registry: new AgentRegistry([{ id: 'legacy-policy' }]), countTokens: measure,
+        store, registry, countTokens: measure,
         contextBudget: Number.MAX_SAFE_INTEGER,
         contextInput: () => ({
             legacyMessages: pending.request.taskMessages ?? pending.request.messages ?? [],
@@ -57,7 +57,8 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
                 throwIfAborted(activeSignal, 'Orchestration aborted.');
                 let next;
                 try {
-                    if (receipt) {
+                    if (receipt?.type === 'handoff') next = await iterator.next(receipt);
+                    else if (receipt) {
                         const key = receipt.value?.transientResult;
                         if (!results.has(key)) throw new Error('Transient policy result unavailable');
                         const entry = results.get(key);
@@ -71,9 +72,10 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
                     return { type: 'complete', output: { transientOutput: runId } };
                 }
                 pending = next.value;
+                if (pending?.kind === 'handoff') return { ...pending.handoff, type: 'handoff' };
                 if (pending?.kind === 'model' && typeof pending.send === 'function') return { type: 'model' };
                 if (pending?.kind === 'tool' && typeof pending.execute === 'function') return { type: 'tool', toolName: pending.name };
-                throw new TypeError('Legacy policy must yield a model or tool intent');
+                throw new TypeError('Legacy policy must yield a model, tool or handoff intent');
             } },
             model: { request: effect => execute(effect, () => {
                 const key = Object.hasOwn(pending.request, 'messages') ? 'messages' : 'taskMessages';
@@ -91,7 +93,7 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
     const cancel = () => runtime.cancelRun(runId);
     signal?.addEventListener('abort', cancel, { once: true });
     try {
-        const result = await runtime.startRun({ runId, agentId: 'legacy-policy', task: '', legacyPolicy: true, maxSteps });
+        const result = await runtime.startRun({ runId, agentId, task: '', legacyPolicy: true, maxSteps });
         if (result.status === 'cancelled') {
             const error = createAbortError('Orchestration aborted.');
             // Let legacy catch/finally update traces, but never execute a yielded intent.

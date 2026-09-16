@@ -1,4 +1,5 @@
-import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
+import { runRoutedLegacyWorkflow, createSpecAgentRoute, selectHandoffInputs } from './legacy-agent-routing.js';
+import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Spec execution-mode runtime for the orchestrator.
  *
@@ -642,7 +643,15 @@ function buildRecentChatAndLastUser(messages, maxRecent) {
 }
 
 export function runWorkerNode(...args) {
-    return runLegacyWorkflow(() => runWorkerNodePolicy(...args), { context: args[0], signal: args[6] });
+    const inputs = args[5] instanceof Map ? args[5] : new Map();
+    args[5] = selectHandoffInputs(inputs, [...inputs.keys()]);
+    return runRoutedLegacyWorkflow(handoff => {
+        args[7] = { ...args[7], runtimeAgentId: handoff.toAgentId };
+        return runWorkerNodePolicy(...args);
+    }, {
+        ...createSpecAgentRoute(args[2], args[3], args[7], {}, normalizeNodeSpec), inputIds: [...inputs.keys()],
+        context: args[0], signal: args[6], onEvent: args[7]?.runtime?.onRuntimeEvent,
+    });
 }
 
 async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages, previousNodeOutputs, abortSignal = null, options = {}) {
@@ -831,6 +840,7 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
         if (options?.runtime?.useV2Single) {
             const output = await runLegacySingleRequest({
                 runId: `${options.runtime.runId}/single/${nodeSpec.id}`,
+                agentId: options.runtimeAgentId,
                 request: { tools, abortSignal },
                 hostContext: context,
                 send: request => requestToolCallsWithRetry(context, settings, request),
@@ -1020,6 +1030,8 @@ export async function replayStagesToReview(context, payload, messages, profile, 
     rerunReason = '',
 }, abortSignal = null) {
     const stages = Array.isArray(runtime?.stages) ? runtime.stages : [];
+    const reviewer = normalizeNodeSpec(stages[currentStageIndex]?.nodes?.[currentNodeIndex]);
+    const handoffFrom = `${currentStageIndex}:${currentNodeIndex}:${reviewer.id}`;
     const earliestStageIndex = Math.min(...targetEntries.map(entry => entry.stageIndex));
     const existingStageOutputs = Array.isArray(runtime?.stageOutputs) ? runtime.stageOutputs.slice() : [];
     recordRuntimeEvent(runtime?.trace, 'replay_started', {
@@ -1048,7 +1060,7 @@ export async function replayStagesToReview(context, payload, messages, profile, 
 
     for (let stageIndex = earliestStageIndex; stageIndex < currentStageIndex; stageIndex++) {
         const stageResult = await executeStage(context, payload, messages, profile, runtime, stageIndex, previousNodeOutputs, abortSignal, {
-            replay: true,
+            replay: true, handoffFrom,
             rerunNodeIds: stageIndex === earliestStageIndex
                 ? (rerunTargetsByStage.get(stageIndex) || null)
                 : null,
@@ -1064,7 +1076,7 @@ export async function replayStagesToReview(context, payload, messages, profile, 
     }
 
     const currentStagePrefix = await executeStage(context, payload, messages, profile, runtime, currentStageIndex, previousNodeOutputs, abortSignal, {
-        replay: true,
+        replay: true, handoffFrom,
         stopBeforeNodeIndex: currentNodeIndex,
         rerunNodeIds: earliestStageIndex === currentStageIndex
             ? (rerunTargetsByStage.get(currentStageIndex) || null)
@@ -1093,7 +1105,14 @@ export async function replayStagesToReview(context, payload, messages, profile, 
 }
 
 export function runReviewNode(...args) {
-    return runLegacyWorkflow(() => runReviewNodePolicy(...args), { context: args[0], signal: args[8] });
+    const previous = args[6] instanceof Map ? args[6] : new Map();
+    const current = args[7] instanceof Map ? args[7] : new Map();
+    args[6] = selectHandoffInputs(previous, [...previous.keys()]);
+    args[7] = selectHandoffInputs(current, [...current.keys()]);
+    return runRoutedLegacyWorkflow(() => runReviewNodePolicy(...args), {
+        ...createSpecAgentRoute(args[3], args[4], args[9], args[2], normalizeNodeSpec), inputIds: [...previous.keys(), ...current.keys()],
+        context: args[0], signal: args[8], onEvent: args[9]?.runtime?.onRuntimeEvent,
+    });
 }
 
 async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset, messages, previousNodeOutputs, currentStageWorkerOutputs, abortSignal = null, options = {}) {
@@ -1410,6 +1429,7 @@ export async function executeStage(context, payload, messages, profile, runtime,
                         }
                         const result = await runWorkerNode(context, payload, nodeSpec, nodePreset, messages, previousNodeOutputs, abortSignal, {
                             isFinalStage,
+                            handoffFrom: options.handoffFrom,
                             rerunReason: resolveRerunReasonForNode(nodeSpec.id),
                             stageIndex,
                             stageId,
@@ -1483,6 +1503,7 @@ export async function executeStage(context, payload, messages, profile, runtime,
                         abortSignal,
                         {
                             isFinalStage,
+                            handoffFrom: options.handoffFrom,
                             stageIndex,
                             stageId,
                             nodeIndex,
@@ -1517,6 +1538,7 @@ export async function executeStage(context, payload, messages, profile, runtime,
             try {
                 const output = await runWorkerNode(context, payload, nodeSpec, preset, messages, currentPreviousNodeOutputs, abortSignal, {
                     isFinalStage,
+                    handoffFrom: options.handoffFrom,
                     rerunReason: resolveRerunReasonForNode(nodeSpec.id),
                     stageIndex,
                     stageId,
@@ -1572,6 +1594,8 @@ export async function executeStage(context, payload, messages, profile, runtime,
 }
 
 export async function runSpecOrchestration(context, payload, messages, profile, deps = {}) {
+    // Skill/default resolution may fill fields; operate on a run-local preset snapshot.
+    profile = structuredClone(profile);
     const spec = sanitizeSpec(profile.spec);
     const stages = Array.isArray(spec?.stages) ? spec.stages : [];
     const trace = createRuntimeTrace(context, payload, stages);
@@ -1609,6 +1633,11 @@ export async function runSpecOrchestration(context, payload, messages, profile, 
     })();
     const runtime = {
         stages,
+        agentPresets: structuredClone(profile.presets || {}),
+        onRuntimeEvent: event => {
+            if (event.type === 'agent.handoff.completed') recordRuntimeEvent(trace, event.type, event);
+            deps?.onRuntimeEvent?.(event);
+        },
         // Explicit diagnostic opt-out; never mutates saved mode/preset settings.
         useV2Single: profile.source === 'single' && payload?.agentRuntimeV2 !== false,
         stageOutputs: [],

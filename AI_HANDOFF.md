@@ -17,7 +17,13 @@ compiler and existing preset/host budgets; Memory OS source guards survive into 
 See `docs/development/AGENT_RUNTIME_V2_PHASE3.md`: 212 suites / 2429 phase tests and offline Edge smoke passed.
 Full offline inventory has 7080 passes and 18 failures; all 18 reproduce on pre-change af5ee205b, documented there.
 Legacy policy receipts contain transient references; lost continuations reject resume. Durable reconstruction
-is still Phase 6. Next is Phase 4 typed graph/routing/handoff policy migration, not more Phase 3 port slicing.
+is still Phase 6. Phase 4 is now complete: runtime-admitted typed routes cover Spec/Single entry, review replay,
+Agenda planning/dispatch/finalization and Director configured/inline children. Stage/node slots preserve repeated
+Spec names; selected inputs and preset snapshots prevent unintended context/config mutation. Stable handoff IDs
+come from effect IDs, and trace metadata links child attempts to the parent orchestration.
+See `docs/development/AGENT_RUNTIME_V2_PHASE4.md`: 213 suites / 2447 expanded regressions passed, followed by
+117 suites / 1327 after final identity plumbing; Edge smoke passed. Next is Phase 5 event-driven UI projection.
+Legacy mode coordinators remain compatibility policies, and existing parallel behavior remains for Phase 7.
 The explicit request payload `agentRuntimeV2: false` selects Single's legacy protocol adapter without changing presets; both paths now use Runtime scheduling.
 The owner prefers autonomous offline/browser verification and will check real play later; missing Android/real-model checks
 are coverage gaps, not mandatory manual approval gates. No merge into custom-release or remote push has been performed.

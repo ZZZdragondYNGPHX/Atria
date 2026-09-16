@@ -113,3 +113,17 @@ existing sender -> backend dispatch. `runtimeContext` never goes to the provider
 Memory OS through its port and retain transient source guards. Native and compatibility paths preserve the
 existing registry/prototype tool context while receiving Runtime IDs and cancellation signals.
 See Phase 3's report for tests, deliberate cancellation behavior changes and non-durable policy boundaries.
+
+## Phase 4 update — typed agent transitions
+
+Spec worker/review exports, Agenda planner/text-agent exports and Director named/inline child execution now enter
+`runRoutedLegacyWorkflow` -> `runLegacyWorkflow` -> AgentRuntime `policy.advance` -> `agent.handoff` -> target policy.
+Registry validation and the persisted handoff receipt precede target execution. The old stage/replay/dispatch
+coordinators remain compatibility policies, while model/tool execution remains in the common ports.
+
+Spec review replay carries a source reviewer slot through executeStage; node IDs contain stage/node positions
+so old string nodes and repeated node names retain their behavior. Agenda copies only selected prior run results.
+Director keeps the existing story context/digest boundary and scopes inline definitions to the current dispatch.
+Handoff metadata (stable effect ID, source, target, context policy, parent run) enters the existing trace callbacks.
+Single's native execution inherits the admitted graph identity; standalone Loop/Single have no inter-agent hop.
+Phase 4's report describes tests and remaining Phase 5 UI / Phase 6 recovery / Phase 7 concurrency work.

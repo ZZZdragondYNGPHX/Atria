@@ -1,4 +1,5 @@
-import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
+import { runRoutedLegacyWorkflow, createLegacyAgentGraph, agentKey, selectHandoffInputs } from './legacy-agent-routing.js';
+import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Agenda execution-mode runtime for the orchestrator.
  *
@@ -574,8 +575,18 @@ export function normalizeAgendaDispatches(state, plannerStep = {}, profile = {},
     return dispatches.slice(0, Math.min(maxConcurrent, remainingRunBudget));
 }
 
+function agendaAgentGraph(profile) {
+    const agents = Object.entries(profile?.agents || {}).map(([id, preset]) => ({ id: `worker:${id}`, preset }));
+    return createLegacyAgentGraph('agenda', [{ id: 'planner', preset: profile?.planner, handoffs: agents.map(agent => agent.id) }, ...agents]);
+}
+
 export function runAgendaPlannerStep(...args) {
-    return runLegacyWorkflow(() => runAgendaPlannerStepPolicy(...args), { context: args[0], signal: args[5] });
+    return runRoutedLegacyWorkflow(() => runAgendaPlannerStepPolicy(...args), {
+        graph: agendaAgentGraph(args[3]), toAgentId: agentKey('agenda', 'planner'),
+        task: 'Plan the next agenda step', reason: 'agenda_plan',
+        inputIds: (args[4]?.runs || []).map(run => run.runId),
+        parentRunId: args[6]?.parentRunId, context: args[0], signal: args[5], onEvent: args[6]?.onRuntimeEvent,
+    });
 }
 
 async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, state, abortSignal = null) {
@@ -708,7 +719,14 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
 }
 
 export function runAgendaTextAgent(...args) {
-    return runLegacyWorkflow(() => runAgendaTextAgentPolicy(...args), { context: args[0], signal: args[7] });
+    const selected = selectHandoffInputs((args[4]?.runs || []).map(run => [run.runId, run]), args[5]?.inputRunIds || []);
+    args[4] = { ...args[4], runs: [...selected.values()] };
+    return runRoutedLegacyWorkflow(() => runAgendaTextAgentPolicy(...args), {
+        graph: agendaAgentGraph(args[3]), fromAgentId: agentKey('agenda', 'planner'),
+        toAgentId: agentKey('agenda', `worker:${args[5]?.agent}`), task: args[5]?.taskBrief,
+        reason: args[6]?.kind === 'final' ? 'agenda_finalize' : 'agenda_dispatch', inputIds: [...selected.keys()],
+        parentRunId: args[6]?.panelRunId, context: args[0], signal: args[7], onEvent: args[6]?.onRuntimeEvent,
+    });
 }
 
 async function* runAgendaTextAgentPolicy(context, payload, messages, profile, state, dispatch, {
@@ -1099,6 +1117,8 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
 }
 
 export async function runAgendaOrchestration(context, payload, messages, profile, deps = {}) {
+    // Skill/default resolution may fill fields; operate on a run-local preset snapshot.
+    profile = structuredClone(profile);
     const settings = extension_settings[MODULE_NAME];
     const activeOrchPresetName = String(deps?.activeOrchPresetName || '').trim();
     const abortSignal = isAbortSignalLike(payload?.signal) ? payload.signal : null;
@@ -1116,6 +1136,10 @@ export async function runAgendaOrchestration(context, payload, messages, profile
         return notesCtx;
     })();
     const trace = createRuntimeTrace(context, payload, { mode: ORCH_EXECUTION_MODE_AGENDA, note: 'Agenda mode runtime' });
+    const onRuntimeEvent = event => {
+        if (event.type === 'agent.handoff.completed') recordRuntimeEvent(trace, event.type, event);
+        deps?.onRuntimeEvent?.(event);
+    };
     const chatKey = String(trace.chatKey || '');
     const runId = startRun({
         mode: 'agenda',
@@ -1170,7 +1194,7 @@ export async function runAgendaOrchestration(context, payload, messages, profile
             });
             const plannerRoundId = `node-agenda_planner-${round}`;
             appendRound({ runId, round: { id: plannerRoundId, label: i18nFormat('Node: ${0} (attempt ${1})', 'agenda_planner', round) } });
-            const { plannerStep, conversation: plannerConversation } = await runAgendaPlannerStep(contextForNotes, payload, messages, profile, state, abortSignal);
+            const { plannerStep, conversation: plannerConversation } = await runAgendaPlannerStep(contextForNotes, payload, messages, profile, state, abortSignal, { onRuntimeEvent, parentRunId: runId });
             finishRuntimeNodeAttempt(trace, plannerAttempt, {
                 status: 'completed',
                 output: plannerStep,
@@ -1248,7 +1272,7 @@ export async function runAgendaOrchestration(context, payload, messages, profile
                         throwIfAborted(abortSignal, 'Orchestration aborted.');
                     }
                     const result = await runAgendaTextAgent(contextForNotes, payload, messages, profile, state, dispatch, {
-                        kind: 'agent',
+                        kind: 'agent', onRuntimeEvent,
                         customToolRegistry,
                         panelRunId: runId,
                         activeOrchPresetName,
@@ -1324,7 +1348,7 @@ export async function runAgendaOrchestration(context, payload, messages, profile
         appendToSection({ runId, roundId: finalRoundId, sectionId: completionSection, delta: [finalizeReason, ...state.unfinishedTodoIds].join('\n') });
         setSectionStatus({ runId, roundId: finalRoundId, sectionId: completionSection, status: 'done' });
         const finalRun = await runAgendaTextAgent(contextForNotes, payload, messages, profile, state, finalDispatch, {
-            kind: 'final',
+            kind: 'final', onRuntimeEvent,
             finalReason: finalizeReason,
             customToolRegistry,
             panelRunId: runId,

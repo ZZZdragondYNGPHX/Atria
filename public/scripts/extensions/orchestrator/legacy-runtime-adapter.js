@@ -5,7 +5,7 @@ import { throwIfAborted, createAbortError } from './abort-utils.js';
 import { workerHistory } from './legacy-worker-protocol.js';
 
 /** Single's serial rounds are driven by Runtime; host preparation and wire formatting stay compatible. */
-export async function runLegacySingleRequest({ runId, request, send, onEvent = null, worker = null, store = undefined, hostContext = {}, contextBudget = Number.MAX_SAFE_INTEGER }) {
+export async function runLegacySingleRequest({ runId, agentId = 'single_agent', request, send, onEvent = null, worker = null, store = undefined, hostContext = {}, contextBudget = Number.MAX_SAFE_INTEGER }) {
     throwIfAborted(request.abortSignal, 'Orchestration aborted.');
     let activeRequest = request;
     let portError = null;
@@ -17,7 +17,7 @@ export async function runLegacySingleRequest({ runId, request, send, onEvent = n
     const measurement = { tokenCounting: typeof hostContext.getTokenCountAsync === 'function' ? 'host-tokenizer' : 'utf8-bytes-estimate', budgetScope: 'task-messages-and-tools' };
     const runtime = new AgentRuntime({
         store,
-        registry: new AgentRegistry([{ id: 'single_agent', tools }]),
+        registry: new AgentRegistry([{ id: agentId, tools }]),
         // Final card/preset budget remains enforced by the existing host sender.
         countTokens: createHostTokenCounter(hostContext),
         contextBudget,
@@ -40,7 +40,7 @@ export async function runLegacySingleRequest({ runId, request, send, onEvent = n
     const cancel = () => runtime.cancelRun(runId);
     request.abortSignal?.addEventListener('abort', cancel, { once: true });
     try {
-        const result = await runtime.startRun({ runId, agentId: 'single_agent', task: 'Legacy Single final guidance', maxSteps: worker?.maxRounds || 1 });
+        const result = await runtime.startRun({ runId, agentId, task: 'Legacy Single final guidance', maxSteps: worker?.maxRounds || 1 });
         if (result.status === 'cancelled') throw createAbortError('Orchestration aborted.');
         if (result.status !== 'completed') {
             if (portError) throw portError;

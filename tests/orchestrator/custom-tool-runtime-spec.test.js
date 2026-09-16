@@ -17,7 +17,7 @@ import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globa
 // shim with the constants + the shared `extensionSettings` binding the
 // runtime captures at module-load time.
 const __sillyTavernSettings = {
-    orchestrator: { nodeIterationMaxRounds: 3 },
+    orchestrator: { nodeIterationMaxRounds: 3, reviewRerunMaxRounds: 2 },
 };
 globalThis.Luker = {
     getContext: () => ({
@@ -40,7 +40,7 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
 }));
 
 jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: { orchestrator: { nodeIterationMaxRounds: 3 } },
+    extension_settings: { orchestrator: { nodeIterationMaxRounds: 3, reviewRerunMaxRounds: 2 } },
     getContext: () => ({}),
     writeExtensionField: () => {},
     UNSET_VALUE: Symbol('unset'),
@@ -300,4 +300,38 @@ describe('spec runtime Layer-3 dispatch', () => {
         expect(myToolCall.args).toEqual({ x: 5 });
         expect(myToolCall.hasRegistry).toBe(true);
     });
+});
+
+test('Spec reviewer reruns an earlier worker through a typed handoff and preserves the preset', async () => {
+    const profile = { mode: 'spec', spec: { stages: [
+        { id: 'draft', mode: 'serial', nodes: [{ id: 'writer', preset: 'p' }, { id: 'reviewer', type: 'review', preset: 'p' }] },
+        { id: 'final', mode: 'serial', nodes: [{ id: 'finalizer', preset: 'p' }] },
+    ] }, presets: { p: { systemPrompt: 'role', userPromptTemplate: '{{previous_outputs}}' } } };
+    const before = JSON.stringify(profile), events = [];
+    const reply = (name, args) => ({ toolCalls: [{ name, args }], assistantText: '' });
+    llmResponses.push(reply('luker_orch_node_output', { output: 'draft' }),
+        reply('luker_orch_request_rerun', { target_node_ids: ['writer'], review_feedback: 'repair' }),
+        reply('luker_orch_node_output', { output: 'repaired' }),
+        reply('luker_orch_review_approve', { review_feedback: 'approved' }), guidance());
+    const result = await runSpecOrchestration({}, {}, [], profile, { onRuntimeEvent: event => events.push(event) });
+    expect(result.reviewRerunCount).toBe(1);
+    const handoffs = events.filter(e => e.type === 'agent.handoff.completed');
+    expect(handoffs.map(e => [e.fromAgentId, e.toAgentId])).toEqual([
+        ['spec/controller', 'spec/agent/0%3A0%3Awriter'], ['spec/controller', 'spec/agent/0%3A1%3Areviewer'],
+        ['spec/agent/0%3A1%3Areviewer', 'spec/agent/0%3A0%3Awriter'], ['spec/controller', 'spec/agent/1%3A0%3Afinalizer'],
+    ]);
+    expect(new Set(handoffs.map(e => e.handoffId)).size).toBe(4);
+    expect(handoffs.every(e => e.runId.startsWith(e.parentRunId + '/'))).toBe(true);
+    expect(JSON.stringify(profile)).toBe(before);
+});
+
+test('legacy Spec string nodes and repeated names in different stages keep distinct route identities', async () => {
+    const profile = { mode: 'spec', spec: { stages: [
+        { id: 'first', mode: 'serial', nodes: ['same'] }, { id: 'second', mode: 'serial', nodes: ['same'] },
+    ] }, presets: { same: { systemPrompt: 'role', userPromptTemplate: '{{previous_outputs}}' } } };
+    llmResponses.push({ toolCalls: [{ name: 'luker_orch_node_output', args: { value: 'first' } }] }, guidance());
+    const events = [];
+    await runSpecOrchestration({}, {}, [], profile, { onRuntimeEvent: e => events.push(e) });
+    expect(events.filter(e => e.type === 'agent.handoff.completed').map(e => e.toAgentId))
+        .toEqual(['spec/agent/0%3A0%3Asame', 'spec/agent/1%3A0%3Asame']);
 });

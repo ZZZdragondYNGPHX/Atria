@@ -1,3 +1,4 @@
+import { AgentRegistry } from '../../lib/agent-runtime/index.js';
 import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Director-mode runtime.
@@ -369,14 +370,18 @@ export function renderMainAgentSystemPromptWithOpenNotes(systemPrompt, openNotes
  * legitimate way to exit; `maxRounds` is just the upper bound.
  */
 export function runMainAgentLoop(...args) {
-    return runLegacyWorkflow(() => runMainAgentLoopPolicy(...args), { context: args[0]?.deps?.contextForNotes || {}, signal: args[0]?.eventData?.abortSignal, onEvent: args[0]?.deps?.onRuntimeEvent });
+    return runLegacyWorkflow(() => runMainAgentLoopPolicy(...args), {
+        registry: new AgentRegistry([{ id: 'director/controller' }]), agentId: 'director/controller',
+        runId: args[0]?.deps?.runId, context: args[0]?.deps?.contextForNotes || {},
+        signal: args[0]?.eventData?.abortSignal, onEvent: args[0]?.deps?.onRuntimeEvent,
+    });
 }
 
 async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     // Profile shape post-flatten: top-level mainAgent / subAgents / limits.
     // Legacy callers may still pass `{ mode, director: {...} }`; auto-detect
     // so both shapes round-trip cleanly during the migration window.
-    const safeProfile = profile && typeof profile === 'object' ? profile : {};
+    const safeProfile = profile && typeof profile === 'object' ? structuredClone(profile) : {};
     const director = safeProfile.director && typeof safeProfile.director === 'object'
         ? safeProfile.director
         : safeProfile;
@@ -429,6 +434,10 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
 
     const dispatcher = createSubagentDispatcher({
         subAgents: director.subAgents || [],
+        onRuntimeEvent: event => {
+            if (event.type === 'agent.handoff.completed') deps?.recordTraceEvent?.(deps?.trace, event.type, event);
+            deps?.onRuntimeEvent?.(event);
+        },
         // Mode profile carried for sub-agent skill resolution. The
         // dispatcher reads `directorProfile.skills` to seed the
         // mode-level visibility default; per-sub-agent overrides

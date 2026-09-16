@@ -1,4 +1,6 @@
-import { runLegacyWorkflow, modelIntent, toolIntent, createLegacyWorkflowRunId } from './legacy-workflow-adapter.js';
+import { runRoutedLegacyWorkflow, createLegacyAgentGraph, agentKey } from './legacy-agent-routing.js';
+import { copy } from '../../lib/agent-runtime/contracts.js';
+import { modelIntent, toolIntent, createLegacyWorkflowRunId } from './legacy-workflow-adapter.js';
 /**
  * Director mode tools — schemas + executors.
  *
@@ -528,9 +530,10 @@ export function createSubagentDispatcher({
     chat,
     contextForNotes,
     customToolRegistry = null,
+    onRuntimeEvent,
 }) {
     const runtimeParentId = runId || createLegacyWorkflowRunId();
-    const list = Array.isArray(subAgents) ? subAgents : [];
+    const list = copy(Array.isArray(subAgents) ? subAgents : []);
     const byId = new Map(list.map(a => [a.id, a]));
     const inflight = new Map();  // handleId -> Promise<{ outputText, error? }>
     // Per-sub-agent abort controller. Each dispatch creates a child
@@ -1031,7 +1034,12 @@ export function createSubagentDispatcher({
             abortSignal: childSignal,
         };
 
-        const promise = runLegacyWorkflow(async function* () {
+        const targetId = isInline ? `inline:${handleId}` : `named:${displayId}`;
+        const graph = createLegacyAgentGraph('director', [
+            ...Array.from(byId.values(), preset => ({ id: `named:${preset.id}`, preset })),
+            ...(isInline ? [{ id: targetId, preset: { systemPrompt, apiPresetName, promptPresetName } }] : []),
+        ]);
+        const promise = runRoutedLegacyWorkflow(async function* () {
             // Panel context for runOneRound — the dispatch round and
             // its reasoning + text sections were ensured at the top of
             // runDispatchInternal. We pass these ids per call so chunks
@@ -1318,7 +1326,9 @@ export function createSubagentDispatcher({
                 // Follower release is a no-op by contract.
                 try { barrierSlot.release(); } catch { /* barrier release must never throw */ }
             }
-        }, { context: contextForNotes || {}, signal: childSignal, runId: `${runtimeParentId}/${handleId}` }).catch(error => {
+        }, { graph, parentRunId: runtimeParentId, toAgentId: agentKey('director', targetId), task, reason: isInline ? 'director_inline_dispatch' : 'director_dispatch',
+            inputIds: mainRoundsDigest ? ['story_context', 'main_rounds_digest'] : ['story_context'],
+            context: contextForNotes || {}, signal: childSignal, runId: `${runtimeParentId}/${handleId}`, onEvent: onRuntimeEvent }).catch(error => {
             const msg = childSignal.aborted ? 'cancelled' : String(error?.message || error);
             if (!completionNotifications.some(item => item.handleId === handleId)) {
                 completionNotifications.push({ handleId, subagentId: displayId, status: childSignal.aborted ? 'cancelled' : 'failed', summary: msg });

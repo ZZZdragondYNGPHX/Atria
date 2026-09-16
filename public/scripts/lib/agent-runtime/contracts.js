@@ -36,10 +36,13 @@ export function validateDecision(decision, agent, registry) {
         requireId(decision.task, 'task');
         registry.get(decision.toAgentId);
         if (!agent.handoffs.includes(decision.toAgentId)) throw new Error('Handoff not allowed');
-        if (!['task_only', 'include_scratch'].includes(decision.contextPolicy)) {
+        const allowed = agent.policies?.handoffContextPolicies || ['task_only', 'include_scratch'];
+        if (!['task_only', 'include_scratch'].includes(decision.contextPolicy) || !allowed.includes(decision.contextPolicy)) {
             throw new Error('Invalid handoff context policy');
         }
     }
+    if (decision.type === 'handoff') return copy({ type: 'handoff', toAgentId: decision.toAgentId,
+        reason: decision.reason, task: decision.task, payload: decision.payload ?? null, contextPolicy: decision.contextPolicy });
     return copy(decision);
 }
 

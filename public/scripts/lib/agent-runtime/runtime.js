@@ -98,7 +98,11 @@ export class AgentRuntime {
                     state = this.save({ ...state, completedEffects: { ...state.completedEffects, [effect.effectId]: { result: stored, consumed: false } } });
                 }
                 state = this.save(transition(state, { type: 'effect.consumed', effectId: effect.effectId }));
-                this.publish(state, `${effect.type}.completed`, { effectId: effect.effectId });
+                if (effect.type === 'agent.handoff') memory = null;
+                const routing = effect.type === 'agent.handoff' ? state.handoffStack.at(-1) : null;
+                this.publish(state, `${effect.type}.completed`, { effectId: effect.effectId, ...(routing ? {
+                    handoffId: routing.handoffId, fromAgentId: routing.fromAgentId, toAgentId: routing.toAgentId, contextPolicy: routing.contextPolicy,
+                } : {}) });
             }
             if (isCurrent()) this.publish(state, `run.${state.status}`);
         } catch (error) {
@@ -117,9 +121,9 @@ export class AgentRuntime {
         const request = { ...copy(effect), agent, signal, step: state.step, generation: state.generation };
         if (effect.type === 'policy.advance') {
             const result = await this.ports.policy.advance({ ...request, receipt: effect.receiptId ? copy(state.completedEffects[effect.receiptId].result) : null });
-            if (!['complete', 'model', 'tool'].includes(result?.type)) throw new TypeError('Invalid policy intent');
+            if (!['complete', 'model', 'tool', 'handoff'].includes(result?.type)) throw new TypeError('Invalid policy intent');
             if (result.type === 'tool' && (typeof result.toolName !== 'string' || !result.toolName)) throw new TypeError('Invalid policy tool');
-            return copy(result);
+            return result.type === 'handoff' ? validateDecision(result, agent, this.registry) : copy(result);
         }
         if (effect.type === 'memory.recall') return this.ports.memory.recall({ ...request, query: state.task, agentId: agent.id });
         if (effect.type === 'tool.execute') {
@@ -127,6 +131,7 @@ export class AgentRuntime {
             if (typeof result?.ok !== 'boolean') throw new TypeError('Invalid tool result');
             return copy(result);
         }
+        if (effect.type === 'agent.handoff' && state.handoffStack.length >= state.budget.maxSteps) throw new Error('Handoff budget exhausted');
         if (effect.type === 'agent.handoff') return { ...validateDecision(effect.handoff, agent, this.registry), handoffId: effect.effectId, fromAgentId: agent.id, createdAt: Date.now() };
         if (effect.type !== 'model.request') throw new Error('Unknown effect');
         // Restored model boundary must recall again; checkpoints contain references only.
