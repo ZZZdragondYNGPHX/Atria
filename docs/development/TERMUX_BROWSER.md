@@ -28,9 +28,23 @@ cd Luker
 bash scripts/termux/setup.sh
 ```
 
-`setup.sh` installs the missing Node.js/npm pieces plus native-addon build tools, runs `npm ci --omit=dev`, initializes config, verifies `better-sqlite3`, and installs the `luker-termux` command into `$PREFIX/bin`. If Termux already has a suitable Node.js (>=20), the installer keeps it instead of forcing a conflicting Node package switch.
+`setup.sh` installs the missing Node.js/npm pieces plus native-addon build tools, runs `npm ci --omit=dev`, initializes config, repairs/verifies the Android `better-sqlite3` native binding when necessary, and installs the `luker-termux` command into `$PREFIX/bin`. If Termux already has a suitable Node.js (>=20), the installer keeps it instead of forcing a conflicting Node package switch.
 
-Luker currently requires Node.js 20 or newer. The installer points node-gyp at Termux's local patched Node headers so Android native addons are built against the Termux runtime rather than desktop Node headers.
+Luker currently requires Node.js 20 or newer. `better-sqlite3@12.10.0` itself supports Node 20/22/23/24/25/26, so Termux Node 25 is acceptable for this branch. The Android-specific failure is instead in the native gyp path: generic node-gyp headers can reference `android_ndk_path`, while Termux uses its own bionic/clang toolchain. The repair script applies the minimal compatibility variables/clang warning flag only to the installed `node_modules/better-sqlite3` copy and then explicitly builds it against Termux's local Node headers. `package.json` and `package-lock.json` remain unchanged.
+
+The repair is intentionally regenerated after every `npm ci`; it does not rely on a third-party prebuilt native binary.
+
+## Recovering an interrupted first setup
+
+If setup stopped at `better-sqlite3` before `luker-termux` was installed, update the feature branch and simply run setup again:
+
+```bash
+cd ~/Luker
+git pull --ff-only
+bash scripts/termux/setup.sh
+```
+
+`luker-termux: command not found` is expected after an interrupted setup because the wrapper is only written after dependency verification succeeds.
 
 ## Everyday use
 
@@ -58,7 +72,7 @@ luker-termux stop
 luker-termux update
 ```
 
-`luker-termux update` only performs a fast-forward update of the branch that is currently checked out. It refuses to update a dirty worktree, refreshes production dependencies, and restarts Luker only if it had been running.
+`luker-termux update` only performs a fast-forward update of the branch that is currently checked out. It refuses to update a dirty worktree, refreshes production dependencies, reapplies the Termux native SQLite repair, and restarts Luker only if it had been running.
 
 ## Port override
 
@@ -105,6 +119,14 @@ luker-termux logs
 
 The doctor checks Termux detection, Node >= 20, npm/git/curl, installed dependencies, and an in-memory `better-sqlite3` query.
 
+For native SQLite-only troubleshooting, run:
+
+```bash
+bash scripts/termux/fix-better-sqlite3.sh
+```
+
+That command prints the real node-gyp/clang build output instead of reporting a misleading successful `npm rebuild` with no `.node` binding.
+
 ## Security boundary
 
 This mode intentionally keeps Luker on `127.0.0.1` and keeps CSRF enabled. The phone browser can access the loopback server, but devices on the LAN cannot. LAN exposure should be designed separately with authentication and explicit network policy rather than piggybacking on this mobile path.
@@ -115,4 +137,4 @@ This mode uses Luker's normal standalone paths (`config.yaml`, `data/`, plugins/
 
 ## Validation boundary
 
-The scripts can be syntax-checked and their command/state logic can be tested off-device. The remaining environment-specific coverage gap is the first real Termux `npm ci`/native-addon compile on Android/ARM64 and long-session OEM background survival. Those are not prerequisites for committing this isolated feature, but failures should be diagnosed from `luker-termux doctor` and `luker-termux logs` rather than by changing the WebView APK.
+Shell syntax and repository-side command/state logic can be checked off-device. The first real Android/ARM64 test exposed the native `better-sqlite3` binding failure described above; the feature now contains an explicit source-build repair for that path. A successful build on at least one real device is still required before claiming Android native-addon acceptance. Long-session OEM background survival also remains device-specific.
