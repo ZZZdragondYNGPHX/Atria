@@ -112,7 +112,7 @@ function getSharedSlashCommandParser() {
 /**
  * @deprecated Use SlashCommandParser.addCommandObject() instead
  */
-const registerSlashCommand = SlashCommandParser.addCommand.bind(SlashCommandParser);
+const registerSlashCommand = (...args) => SlashCommandParser.addCommand(...args);
 const getSlashCommandsHelp = () => getSharedSlashCommandParser().getHelpString();
 
 /**
