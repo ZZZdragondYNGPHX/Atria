@@ -153,11 +153,9 @@ export function openRunPanel(_context) {
         empty.textContent = i18n('No active run yet. Start a conversation to see orchestration progress here.');
         body.appendChild(empty);
     }
-    // If a run is in the store but the panel never rendered it
-    // incrementally (quiet sim runs skip auto-open; manual open is
-    // the only entry), replay from the store snapshot so the user
-    // sees what's already been recorded.
-    if (run && renderer && body && body.querySelector('.rounds-list')?.children.length === 0) {
+    // Reopening always rebuilds from the read-only projection, including
+    // quiet runs and stream chunks that have not reached the next paint.
+    if (run && renderer && body) {
         renderer.replayFromStore();
     }
     openPanel();

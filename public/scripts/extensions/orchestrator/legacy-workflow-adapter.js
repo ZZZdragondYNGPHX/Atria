@@ -1,3 +1,4 @@
+import { createRuntimeObserver } from './run-state/runtime-observer.js';
 import { withRuntimeContext } from '../../lib/agent-runtime/prepared-context.js';
 import { AgentRuntime, AgentRegistry } from '../../lib/agent-runtime/index.js';
 import { createHostTokenCounter, createDelegatedMemoryPort, guardRequestCallbacks } from '../../lib/agent-runtime/host-ports.js';
@@ -21,7 +22,7 @@ export function toolIntent(name, args, context, execute) {
  * Live functions/results never enter checkpoints. This transitional continuation cannot
  * be restored after process loss: Runtime rejects resume rather than replaying writes.
  */
-export async function runLegacyWorkflow(factory, { context = {}, signal, runId = createLegacyWorkflowRunId(), onEvent, store, maxSteps = 10000, registry = new AgentRegistry([{ id: 'legacy-policy' }]), agentId = 'legacy-policy' } = {}) {
+export async function runLegacyWorkflow(factory, { context = {}, signal, runId = createLegacyWorkflowRunId(), onEvent, store, maxSteps = 10000, panelRunId, getPanelRunId, registry = new AgentRegistry([{ id: 'legacy-policy' }]), agentId = 'legacy-policy' } = {}) {
     throwIfAborted(signal, 'Orchestration aborted.');
     const iterator = factory();
     let pending, output, failure;
@@ -43,11 +44,13 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
         }
     };
     const runtime = new AgentRuntime({
+        eventSink: createRuntimeObserver({ panelRunId, getPanelRunId, onEvent }),
         store, registry, countTokens: measure,
         contextBudget: Number.MAX_SAFE_INTEGER,
         contextInput: () => ({
             legacyMessages: pending.request.taskMessages ?? pending.request.messages ?? [],
             tools: pending.request.tools || [],
+            modelProfile: { apiPresetName: pending.request.apiPresetName || '', promptPresetName: pending.request.llmPresetName || '' },
             tokenCounting: typeof context.getTokenCountAsync === 'function' ? 'host-tokenizer' : 'utf8-bytes-estimate',
             budgetScope: 'task-messages-and-tools',
         }),
@@ -89,7 +92,6 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
             }) },
         },
     });
-    const unsubscribe = onEvent ? runtime.events.subscribe(onEvent) : () => {};
     const cancel = () => runtime.cancelRun(runId);
     signal?.addEventListener('abort', cancel, { once: true });
     try {
@@ -105,7 +107,6 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
         return output;
     } finally {
         signal?.removeEventListener('abort', cancel);
-        unsubscribe();
         results.clear();
         memoryGuards.clear();
         // Do not wait on an uncooperative host await during cancellation.

@@ -856,7 +856,11 @@ export async function attachToolContext(context, payload) {
  * @returns {Promise<{status: string, capsule: string|null, total_rounds: number, runtimeTrace: object}>}
  */
 export function runLoopOrchestration(...args) {
-    return runLegacyWorkflow(() => runLoopOrchestrationPolicy(...args), { context: args[0], signal: args[1]?.signal, onEvent: args[3]?.onRuntimeEvent });
+    let panelRunId = null;
+    args[3] = { ...args[3], bindRuntimePanel: id => { panelRunId = id; } };
+    return runLegacyWorkflow(() => runLoopOrchestrationPolicy(...args), {
+        context: args[0], signal: args[1]?.signal, onEvent: args[3]?.onRuntimeEvent, getPanelRunId: () => panelRunId,
+    });
 }
 
 async function* runLoopOrchestrationPolicy(context, payload, profile, deps = {}) {
@@ -895,6 +899,7 @@ async function* runLoopOrchestrationPolicy(context, payload, profile, deps = {})
         quiet: Boolean(payload?.__lukerSimulate),
     });
 
+    deps.bindRuntimePanel?.(runId);
     const messages = buildInitialMessages(toolContext, payload, profile);
     const tools = getEnabledToolSchemas(profile, customToolRegistry);
     const maxRounds = Math.max(1, Math.floor(Number(profile?.max_rounds) || 1));

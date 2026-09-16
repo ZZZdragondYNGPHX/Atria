@@ -41,7 +41,7 @@ export function runRoutedLegacyWorkflow(factory, {
             payload: { inputIds: [...new Set(inputIds)] }, contextPolicy: 'task_only',
         } };
         return yield* factory(handoff);
-    }, { ...options,
+    }, { ...options, panelRunId: parentRunId,
         runId: options.runId || (parentRunId ? `${parentRunId}/${createLegacyWorkflowRunId()}` : createLegacyWorkflowRunId()),
         onEvent: options.onEvent ? event => options.onEvent({ ...event, parentRunId }) : undefined,
         registry: graph.registry, agentId: fromAgentId });

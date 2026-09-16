@@ -22,7 +22,12 @@ Agenda planning/dispatch/finalization and Director configured/inline children. S
 Spec names; selected inputs and preset snapshots prevent unintended context/config mutation. Stable handoff IDs
 come from effect IDs, and trace metadata links child attempts to the parent orchestration.
 See `docs/development/AGENT_RUNTIME_V2_PHASE4.md`: 213 suites / 2447 expanded regressions passed, followed by
-117 suites / 1327 after final identity plumbing; Edge smoke passed. Next is Phase 5 event-driven UI projection.
+117 suites / 1327 after final identity plumbing; Edge smoke passed. Phase 5 is now complete: the panel consumes an immutable Runtime execution projection,
+with deduplicated/replayable events, compiler/profile/effect/handoff metadata, late-result diagnostics and trace export.
+Panel reopen preserves Runtime state and cannot duplicate pending stream text; stop acknowledgement is separate
+from confirmed Runtime cancellation. See `docs/development/AGENT_RUNTIME_V2_PHASE5.md`: 214 suites / 2457 expanded
+regressions, 118 suites / 1335 final mode regressions, 9 suites / 75 final observer checks and both Edge smokes passed.
+The Runtime event journal remains in memory. Next is Phase 6 durable checkpoint/recovery/reconciliation.
 Legacy mode coordinators remain compatibility policies, and existing parallel behavior remains for Phase 7.
 The explicit request payload `agentRuntimeV2: false` selects Single's legacy protocol adapter without changing presets; both paths now use Runtime scheduling.
 The owner prefers autonomous offline/browser verification and will check real play later; missing Android/real-model checks

@@ -1,6 +1,6 @@
 # Luker Agent Runtime v2 — 智能体编排代码级重构方案
 
-> 状态：Phase 0–4 已完成；下一阶段 Phase 5（逐阶段证据见对应 PHASE 文档）
+> 状态：Phase 0–5 已完成；下一阶段 Phase 6（逐阶段证据见对应 PHASE 文档）
 > 工作分支：`feat/agent-runtime-v2`  
 > 开发基线：`custom-release@cfb95953071d6459c911e3e6a3bed0144e86ba72`  
 > 基线提交：`merge: integrate Memory OS into custom-release`  

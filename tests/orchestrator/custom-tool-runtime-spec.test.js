@@ -1,3 +1,4 @@
+import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-spec.test.js
 //
 // Verifies spec runtime constructs the per-run customToolRegistry at
@@ -315,6 +316,8 @@ test('Spec reviewer reruns an earlier worker through a typed handoff and preserv
         reply('luker_orch_review_approve', { review_feedback: 'approved' }), guidance());
     const result = await runSpecOrchestration({}, {}, [], profile, { onRuntimeEvent: event => events.push(event) });
     expect(result.reviewRerunCount).toBe(1);
+    expect(getRuntimePanelState().runtime.runs.flatMap(run => run.handoffs)).toHaveLength(4);
+    expect(getRuntimePanelState().runtime.runs.every(run => run.status === 'completed')).toBe(true);
     const handoffs = events.filter(e => e.type === 'agent.handoff.completed');
     expect(handoffs.map(e => [e.fromAgentId, e.toAgentId])).toEqual([
         ['spec/controller', 'spec/agent/0%3A0%3Awriter'], ['spec/controller', 'spec/agent/0%3A1%3Areviewer'],

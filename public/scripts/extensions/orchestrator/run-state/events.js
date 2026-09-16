@@ -12,9 +12,10 @@ export const SECTION_STATUS = 'section_status';
 export const ROUND_STATUS = 'round_status';
 export const RUN_META = 'run_meta';
 export const RUN_FINISHED = 'run_finished';
+export const RUNTIME_EVENT = 'runtime_event';
 export const RUN_CLEARED = 'run_cleared';
 
 export const ALL_EVENT_TYPES = Object.freeze([
     RUN_STARTED, ROUND_APPENDED, SECTION_ENSURED, SECTION_APPENDED,
-    SECTION_STATUS, ROUND_STATUS, RUN_META, RUN_FINISHED, RUN_CLEARED,
+    SECTION_STATUS, ROUND_STATUS, RUN_META, RUN_FINISHED, RUN_CLEARED, RUNTIME_EVENT,
 ]);

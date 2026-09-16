@@ -1,3 +1,4 @@
+import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-agenda.test.js
 //
 // Verifies agenda runtime constructs the per-run customToolRegistry at
@@ -226,6 +227,8 @@ test('Agenda planner, selected worker and finalizer each pass a validated handof
         ['agenda/controller', 'agenda/agent/planner'], ['agenda/agent/planner', 'agenda/agent/worker%3Awriter'],
     ]);
     expect(result.agendaState.runs).toHaveLength(2);
+    expect(getRuntimePanelState().runtime.runs.flatMap(run => run.handoffs)).toHaveLength(4);
+    expect(getRuntimePanelState().runtime.runs.every(run => run.status === 'completed')).toBe(true);
     expect(JSON.stringify(profile)).toBe(before);
 });
 

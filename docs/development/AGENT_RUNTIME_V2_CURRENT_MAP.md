@@ -127,3 +127,17 @@ Director keeps the existing story context/digest boundary and scopes inline defi
 Handoff metadata (stable effect ID, source, target, context policy, parent run) enters the existing trace callbacks.
 Single's native execution inherits the admitted graph identity; standalone Loop/Single have no inter-agent hop.
 Phase 4's report describes tests and remaining Phase 5 UI / Phase 6 recovery / Phase 7 concurrency work.
+
+## Phase 5 update — panel and trace consume Runtime events
+
+AgentRuntime.publish -> isolated event sink -> run-state/runtime-observer -> RunStateStore.recordRuntimeEvent ->
+pure RuntimeProjection -> existing run-panel/runtime-trace view and JSON export. Sinks bind to a parent run once;
+Loop binds after its policy creates the presentation run. No model/provider/Memory OS service is owned by the UI.
+
+getCurrentRun returns immutable cached presentation snapshots. Reopen/replay renders that snapshot and does not
+schedule Runtime effects. Stream paints use current section bodies so replay cannot duplicate queued deltas.
+The Stop button invokes requestRunStop, preserving existing callbacks; its acknowledgement survives UI rebuild.
+Actual execution state, identities, compiler metadata, tool outcomes, handoffs and stale results come from events.
+
+Existing legacy body/section writers remain presentation adapters. The Runtime log reconstructs the execution
+key path in memory; full browser/process restart and durable policy reconstruction remain Phase 6.

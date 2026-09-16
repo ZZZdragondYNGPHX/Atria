@@ -299,3 +299,6 @@
     text-overflow: ellipsis;
 }
 #luker-orch-run-pill[hidden] { display: none; }
+
+#luker-orch-run-panel .runtime-trace { margin: 8px; overflow-wrap: anywhere; }
+#luker-orch-run-panel .runtime-trace pre { white-space: pre-wrap; max-height: 45vh; overflow: auto; font-size: 11px; }

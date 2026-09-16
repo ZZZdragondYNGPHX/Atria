@@ -90,3 +90,21 @@ Mode coordinators and streaming/retry/replay bodies remain compatibility policie
 in those policies until Phase 7; no new fan-out/join engine was introduced. Lost generator continuations still
 reject resume. UI projection and durable reconstruction remain separate Phase 5/6 gates.
 See AGENT_RUNTIME_V2_PHASE4.md for tests, coverage and standalone rollback.
+
+## ADR-012 — Phase 5 UI is a replayable event projection, not checkpoint authority
+
+Runtime events carry stable identity/generation/checkpoint metadata and immutable observer copies. A pure
+RuntimeProjection journal deduplicates events and reconstructs execution state; terminal generations reject
+late state changes while still retaining stale-result diagnostics. Native restore events identify their source version.
+
+Run-scoped adapter sinks feed the existing RunStateStore, binding once to a parent orchestration and never to
+a later chat. Loop explicitly binds after opening its presentation run. Sinks remain with Runtime to observe
+late results after cancellation without a global subscription. UI observers cannot change checkpoint state.
+
+Preserve legacy rich output sections as presentation data while adding Runtime diagnostics to the current run
+panel/export. Rendering/reopening consumes immutable snapshots; pending stream paints read current section text.
+Stop acknowledgement is presentation state and a deduplicated command request, not a fabricated terminal state.
+Raw prompt/tool/Memory OS content is excluded from the Runtime journal; existing rich export behavior is preserved.
+
+The log is in-memory execution evidence, not long-term memory or a replacement checkpoint store. Durable page/
+process recovery is a Phase 6 storage/rehydration gate. Phase 5 evidence is in AGENT_RUNTIME_V2_PHASE5.md.

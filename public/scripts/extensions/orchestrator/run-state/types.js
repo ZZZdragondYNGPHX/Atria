@@ -41,6 +41,8 @@
  * @property {number} startedAt
  * @property {number|null} endedAt
  * @property {string|null} chatKey
+ * @property {boolean} stopRequested UI command acknowledgement, not an execution status
+ * @property {object} runtime Read-only Runtime event journal and replayable execution projection
  * @property {Round[]} rounds
  * @property {string|null} finalText
  * @property {string|null} error

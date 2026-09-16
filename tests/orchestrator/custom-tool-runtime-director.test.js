@@ -1,3 +1,4 @@
+import { getCurrentRun as getRuntimePanelState, startRun as startRuntimePanel, clearCurrentRun as clearRuntimePanel } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-director.test.js
 //
 // Verifies director runtime constructs the per-run customToolRegistry at
@@ -95,6 +96,8 @@ describe('director main agent Layer-3 dispatch', () => {
 
 describe('director sub-agent Layer-3 dispatch', () => {
     test('threads customToolRegistry into the sub-agent executeLoopTool ctx', async () => {
+        clearRuntimePanel();
+        const panelId = startRuntimePanel({ mode: 'director', quiet: true });
         // Build a customToolRegistry the same way runMainAgentLoop would.
         const customToolRegistry = buildPerRunCustomToolRegistry({
             customTools: [
@@ -138,6 +141,7 @@ describe('director sub-agent Layer-3 dispatch', () => {
         const executeLoopToolCalls = [];
         const dispatcher = createSubagentDispatcher({
             subAgents: [subAgentSpec],
+            runId: panelId,
             limits: { maxConcurrentSubagents: 1, maxTotalSubagentRuns: 4 },
             settings: {},
             generateTask,
@@ -163,5 +167,8 @@ describe('director sub-agent Layer-3 dispatch', () => {
         expect(subCall).toBeTruthy();
         expect(subCall.ctx.__customToolRegistry).toBeTruthy();
         expect(subCall.ctx.__customToolRegistry.has('my_sub_tool')).toBe(true);
+        expect(getRuntimePanelState().runtime.runs[0].handoffs).toHaveLength(1);
+        expect(getRuntimePanelState().runtime.runs[0].status).toBe('completed');
+        clearRuntimePanel();
     });
 });

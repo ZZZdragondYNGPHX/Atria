@@ -1,3 +1,4 @@
+import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-loop.test.js
 import { describe, test, expect, beforeEach } from '@jest/globals';
 import { runLoopOrchestration } from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
@@ -31,6 +32,7 @@ describe('loop runtime Layer-3 dispatch', () => {
             { name: 'my_weather', description: 'weather', parameters: {}, mode: 'read', body: 'return 1;', simulateBody: '' },
         ]);
         await runLoopOrchestration({}, {}, profile, { sendLlm });
+        expect(getRuntimePanelState().runtime.runs[0].status).toBe('completed');
         const names = sentTools[0].map(s => s.function?.name);
         expect(names).toContain('my_weather');
     });

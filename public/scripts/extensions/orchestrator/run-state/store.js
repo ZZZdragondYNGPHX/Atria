@@ -4,12 +4,22 @@
  */
 
 import * as EV from './events.js';
+import { RuntimeProjection } from '../../../lib/agent-runtime/projection.js';
+
+let runtimeProjection = new RuntimeProjection();
+let cachedSnapshot = null;
+let cachedRuntimeProjection = null;
+const freeze = value => {
+    if (value && typeof value === 'object' && !Object.isFrozen(value)) { Object.values(value).forEach(freeze); Object.freeze(value); }
+    return value;
+};
 
 let currentRun = null;
 let runCounter = 0;
 const listeners = new Set();
 
 function emit(event) {
+    cachedSnapshot = null;
     for (const fn of listeners) {
         try { fn(event); } catch (err) { console.error('RunStateStore listener threw:', err); }
     }
@@ -38,6 +48,8 @@ export function startRun({ mode, chatKey, abortFn = null, stopFn = null, quiet =
         throw new Error('A run is already in progress.');
     }
     if (currentRun) currentRun = null;
+    runtimeProjection = new RuntimeProjection();
+    cachedRuntimeProjection = null;
     runCounter += 1;
     const runId = `run_${runCounter}_${Date.now().toString(36)}`;
     currentRun = {
@@ -48,6 +60,7 @@ export function startRun({ mode, chatKey, abortFn = null, stopFn = null, quiet =
         endedAt: null,
         chatKey: chatKey == null ? null : String(chatKey),
         rounds: [],
+        stopRequested: false,
         finalText: null,
         error: null,
         tokensSpent: null,
@@ -71,10 +84,39 @@ export function startRun({ mode, chatKey, abortFn = null, stopFn = null, quiet =
     return runId;
 }
 
-export function getCurrentRun() { return currentRun; }
+export const matchesCurrentRun = runId => currentRun?.runId === runId;
+
+export function getCurrentRun() {
+    if (!currentRun) return null;
+    if (!cachedSnapshot) cachedSnapshot = freeze({
+        ...JSON.parse(JSON.stringify(currentRun)), abortFn: currentRun.abortFn, stopFn: currentRun.stopFn,
+        runtime: cachedRuntimeProjection ||= freeze(runtimeProjection.snapshot()),
+    });
+    return cachedSnapshot;
+}
+
+export function recordRuntimeEvent({ runId, event }) {
+    if (!currentRun || currentRun.runId !== runId) return false;
+    if (!runtimeProjection.append({ ...event, parentRunId: event.runId === runId ? null : runId })) return false;
+    cachedRuntimeProjection = null;
+    emit({ type: EV.RUNTIME_EVENT, runId });
+    return true;
+}
+
+/** UI issues a command request; only Runtime events describe execution completion. */
+export function requestRunStop(runId) {
+    if (!currentRun || currentRun.runId !== runId || currentRun.status !== 'running' || currentRun.stopRequested) return false;
+    const command = currentRun.stopFn || currentRun.abortFn;
+    currentRun.stopRequested = true;
+    emit({ type: EV.RUN_META, runId });
+    try { command?.(); } catch { /* Preserve request acknowledgement. */ }
+    return true;
+}
 export function clearCurrentRun() {
     if (currentRun !== null) {
         currentRun = null;
+        runtimeProjection = new RuntimeProjection();
+        cachedRuntimeProjection = null;
         emit({ type: EV.RUN_CLEARED });
     }
 }
@@ -168,6 +210,10 @@ export function finishRun({ runId, status, finalText = null, error = null }) {
     ensureRunningMatchesId(runId);
     currentRun.status = String(status);
     currentRun.endedAt = performance.now();
+    if (['aborted', 'error'].includes(currentRun.status)) for (const round of currentRun.rounds) {
+        if (round.status === 'running') { round.status = 'failed'; round.endedAt = currentRun.endedAt; }
+        for (const section of round.sections) if (section.status === 'running') section.status = 'failed';
+    }
     if (finalText != null) currentRun.finalText = String(finalText);
     if (error != null) currentRun.error = String(error);
     emit({ type: EV.RUN_FINISHED, runId, status: currentRun.status });

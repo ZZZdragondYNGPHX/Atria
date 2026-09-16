@@ -8,7 +8,7 @@ import { abortable } from './abort.js';
 /** Serial headless driver. Host services enter only through injected ports. */
 export class AgentRuntime {
     #runs = new Map();
-    constructor({ registry, ports, store = new MemoryCheckpointStore(), countTokens, contextBudget = 4096, contextInput = {} }) {
+    constructor({ registry, ports, store = new MemoryCheckpointStore(), countTokens, contextBudget = 4096, contextInput = {}, eventSink }) {
         validatePorts(ports);
         this.registry = registry;
         this.ports = ports;
@@ -16,13 +16,17 @@ export class AgentRuntime {
         this.countTokens = countTokens;
         this.contextBudget = contextBudget;
         this.contextInput = contextInput;
-        this.events = createEventBus();
+        this.events = createEventBus(eventSink);
     }
 
     getState(runId) { return this.store.load(runId); }
 
     publish(state, type, details = {}) {
-        this.events.emit({ type, runId: state.runId, stepId: state.stepId, version: state.checkpointVersion, ...details });
+        const effectId = details.effectId ?? state.pendingEffect?.effectId ?? null;
+        this.events.emit({ schemaVersion: 1, type, runId: state.runId, stepId: state.stepId,
+            eventId: `${state.runId}/${state.generation}/${state.checkpointVersion}/${type}/${effectId || '-'}`,
+            generation: state.generation, status: state.status, agentId: state.currentAgentId,
+            version: state.checkpointVersion, effectId, toolName: state.pendingEffect?.toolName, ...details });
     }
 
     save(state) {
@@ -58,6 +62,7 @@ export class AgentRuntime {
         let state = this.store.load(runId);
         if (!state) throw new Error('Unknown run');
         if (TERMINAL.includes(state.status) || state.status === 'waiting_user') return Promise.resolve(state);
+        const restoredVersion = state.checkpointVersion;
         this.#runs.get(runId)?.abort();
         state = this.save({ ...state, generation: state.generation + 1 });
         // An unacknowledged write might already have happened. Never blindly replay it.
@@ -72,7 +77,7 @@ export class AgentRuntime {
             this.publish(state, 'run.failed');
             return Promise.resolve(state);
         }
-        this.publish(state, 'run.resumed');
+        this.publish(state, 'run.resumed', { restoredVersion });
         return this.#drive(state);
     }
 
@@ -100,13 +105,15 @@ export class AgentRuntime {
                 state = this.save(transition(state, { type: 'effect.consumed', effectId: effect.effectId }));
                 if (effect.type === 'agent.handoff') memory = null;
                 const routing = effect.type === 'agent.handoff' ? state.handoffStack.at(-1) : null;
-                this.publish(state, `${effect.type}.completed`, { effectId: effect.effectId, ...(routing ? {
-                    handoffId: routing.handoffId, fromAgentId: routing.fromAgentId, toAgentId: routing.toAgentId, contextPolicy: routing.contextPolicy,
-                } : {}) });
+                this.publish(state, `${effect.type}.completed`, { effectId: effect.effectId, stepId: effect.stepId, ...(routing ? {
+                    reason: routing.reason, handoffId: routing.handoffId, fromAgentId: routing.fromAgentId, toAgentId: routing.toAgentId, contextPolicy: routing.contextPolicy,
+                } : {}), ...(effect.type === 'memory.recall' ? { references: state.memoryRefs } : {}),
+                ...(['tool.execute', 'model.request'].includes(effect.type) ? { toolName: effect.toolName, ok: state.completedEffects[effect.effectId].result?.ok } : {}) });
             }
             if (isCurrent()) this.publish(state, `run.${state.status}`);
         } catch (error) {
             if (isCurrent()) {
+                this.publish(state, 'effect.failed', { failureKind: error?.name || 'Error' });
                 state = this.save(transition(state, { type: 'run.fail', error: error instanceof Error ? error.message : 'Port failed' }));
                 this.publish(state, 'run.failed');
             }
@@ -148,7 +155,7 @@ export class AgentRuntime {
         };
         const compiled = await compileContextAsync({ ...contextInput, agent, state, memory: recalled, countTokens: this.countTokens, budget: this.contextBudget, assertCurrent });
         assertCurrent();
-        this.publish(state, 'context.compiled', { tokens: compiled.tokens, diagnostics: compiled.diagnostics, tokenCounting: contextInput?.tokenCounting || 'injected', budgetScope: contextInput?.budgetScope || 'compiled-context' });
+        this.publish(state, 'context.compiled', { tokens: compiled.tokens, diagnostics: compiled.diagnostics, tokenCounting: contextInput?.tokenCounting || 'injected', budgetScope: contextInput?.budgetScope || 'compiled-context', modelProfile: contextInput?.modelProfile || agent.modelProfile || {} });
         recalled.assertCurrent();
         if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
         const result = await this.ports.model.request({ ...request, messages: compiled.messages, tools: agent.tools });

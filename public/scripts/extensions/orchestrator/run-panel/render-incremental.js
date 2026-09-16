@@ -1,3 +1,4 @@
+import { renderRuntimeTrace } from './runtime-trace.js';
 // public/scripts/extensions/orchestrator/run-panel/render-incremental.js
 /**
  * Translates RunStateStore events into incremental DOM updates inside
@@ -8,7 +9,7 @@
  */
 
 import * as EV from '../run-state/events.js';
-import { getCurrentRun } from '../run-state/store.js';
+import { getCurrentRun, requestRunStop, matchesCurrentRun } from '../run-state/store.js';
 import { i18n, i18nFormat } from '../i18n.js';
 
 const KIND_ICON = {
@@ -35,6 +36,7 @@ export class PanelRenderer {
 
         this._pendingAppends = new Map();
         this._rafScheduled = false;
+        this._runtimeRafPending = false;
         this._scrollPinned = true;
         // Tracks round/section keys the user has clicked the <summary> on.
         // Auto-collapse on terminal status skips any entry in here so a
@@ -130,6 +132,7 @@ export class PanelRenderer {
     }
 
     handle(event) {
+        if (event.runId && !matchesCurrentRun(event.runId)) return;
         switch (event.type) {
             case EV.RUN_STARTED: return this._renderRunStart();
             case EV.ROUND_APPENDED: return this._renderRoundAppended(event.roundId);
@@ -137,16 +140,27 @@ export class PanelRenderer {
             case EV.SECTION_APPENDED: return this._scheduleAppend(event.roundId, event.sectionId, event.delta);
             case EV.SECTION_STATUS: return this._renderSectionStatus(event.roundId, event.sectionId, event.status);
             case EV.ROUND_STATUS: return this._renderRoundStatus(event.roundId, event.status);
+            case EV.RUNTIME_EVENT: return this._scheduleRuntimeProjection();
             case EV.RUN_META: return this._renderHeader();
             case EV.RUN_FINISHED: return this._renderRunFinished(event.status);
             case EV.RUN_CLEARED: return this._renderCleared();
         }
     }
 
+    _scheduleRuntimeProjection() {
+        if (this._runtimeRafPending) return;
+        this._runtimeRafPending = true;
+        requestAnimationFrame(() => {
+            this._runtimeRafPending = false;
+            renderRuntimeTrace(this.bodyEl, getCurrentRun()?.runtime);
+        });
+    }
+
     _renderRunStart() {
         const run = getCurrentRun();
         if (!run) return;
         this.root.dataset.state = 'open';
+        this._pendingAppends.clear();
         this.roundsListEl.innerHTML = '';
         this._manualToggles.clear();
         this._sweepRoundTimers();
@@ -186,6 +200,10 @@ export class PanelRenderer {
     _renderHeader() {
         const run = getCurrentRun();
         if (!run) return;
+        renderRuntimeTrace(this.bodyEl, run.runtime);
+        this.stopBtnEl.disabled = run.stopRequested === true;
+        this.stopBtnEl.hidden = run.status !== 'running';
+        this.headerStatusEl.dataset.status = run.status === 'running' && run.stopRequested ? 'stopping' : run.status;
         const numRounds = run.rounds.length;
         const numToolCalls = run.rounds.reduce(
             (n, r) => n + r.sections.filter(s => s.kind === 'tool_call').length, 0,
@@ -342,13 +360,14 @@ export class PanelRenderer {
     }
 
     _flushAppends() {
-        for (const [key, delta] of this._pendingAppends.entries()) {
+        for (const key of this._pendingAppends.keys()) {
             const sepIdx = key.indexOf('::');
             const roundId = key.slice(0, sepIdx);
             const sectionId = key.slice(sepIdx + 2);
             const sel = `[data-round-id="${CSS.escape(roundId)}"] [data-section-id="${CSS.escape(sectionId)}"] pre`;
             const pre = this.roundsListEl.querySelector(sel);
-            if (pre) pre.appendChild(document.createTextNode(delta));
+            const section = getCurrentRun()?.rounds.find(round => round.id === roundId)?.sections.find(item => item.id === sectionId);
+            if (pre && section) pre.textContent = section.body;
         }
         this._pendingAppends.clear();
         this._maybeScroll();
@@ -419,6 +438,8 @@ export class PanelRenderer {
         // approximation — matches how the header .elapsed reads).
         if (run) {
             for (const round of run.rounds) {
+                this._renderRoundStatus(round.id, round.status);
+                for (const section of round.sections) this._renderSectionStatus(round.id, section.id, section.status);
                 const li = this.roundsListEl.querySelector(`[data-round-id="${CSS.escape(round.id)}"]`);
                 const elapsedSpan = li?.querySelector(':scope > details > summary > .round-elapsed');
                 if (!elapsedSpan) continue;
@@ -456,9 +477,11 @@ export class PanelRenderer {
     _renderCleared() {
         if (this._elapsedTimer) { clearInterval(this._elapsedTimer); this._elapsedTimer = null; }
         this._sweepRoundTimers();
+        this._pendingAppends.clear();
         this.roundsListEl.innerHTML = '';
         this._manualToggles.clear();
         if (this.finalOutputEl) this.finalOutputEl.hidden = true;
+        this.bodyEl.querySelector('.runtime-trace')?.remove();
         this.root.dataset.state = 'closed';
     }
 
@@ -495,7 +518,7 @@ export class PanelRenderer {
     exportTrace() {
         const run = getCurrentRun();
         if (!run) return;
-        const snapshot = JSON.parse(JSON.stringify(run, (k, v) => (k === 'abortFn' ? undefined : v)));
+        const snapshot = JSON.parse(JSON.stringify(run, (k, v) => (['abortFn', 'stopFn'].includes(k) ? undefined : v)));
         const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -510,43 +533,7 @@ export class PanelRenderer {
 
     stop() {
         const run = getCurrentRun();
-        if (!run) return;
-        // Immediate UI acknowledgement so the user knows the click
-        // registered even when the actual abort is stuck waiting on an
-        // in-flight tool call / LLM stream. The button gets disabled
-        // (no double-fires), the elapsed timer is frozen client-side
-        // so it stops ticking, and the header dot swaps to a stopping
-        // pseudo-status. All of these are undone by `_renderRunFinished`
-        // when the runtime eventually reaches its terminal state, so
-        // the visual truth converges with the store even though the
-        // click-time freeze is speculative.
-        if (this.stopBtnEl) this.stopBtnEl.disabled = true;
-        if (this._elapsedTimer) { clearInterval(this._elapsedTimer); this._elapsedTimer = null; }
-        // Freeze per-round tickers too so their displayed seconds stop
-        // climbing while we wait for the runtime to actually reject.
-        // _renderRunFinished will overwrite these with endedAt-based
-        // final values once the store transitions.
-        this._sweepRoundTimers();
-        if (this.headerStatusEl) this.headerStatusEl.dataset.status = 'stopping';
-        // Prefer the fast-unwind `stopFn` over the raw `abortFn` when
-        // the run was registered with one: it resolves the main.js
-        // `Promise.race([orchestrationTask, stopRequestPromise])`
-        // immediately, taking the clean 'cancelled by user' branch
-        // that emits the cancelled event + tears down the toast without
-        // waiting for the LLM sender to reject. `stopFn` itself calls
-        // the same underlying abort internally (via `pluginAbortController`),
-        // so we do not need to also invoke `abortFn` — that would
-        // double-fire `stopGeneration()` and log a spurious "stopped
-        // by user" toast when nothing was streaming. For runtime-only
-        // runs (iter-studio simulation, standalone loop, etc.) `stopFn`
-        // is null and we fall back to the raw `abortFn`.
-        try {
-            if (run.stopFn) {
-                run.stopFn();
-            } else if (run.abortFn) {
-                run.abortFn();
-            }
-        } catch (_) { /* ignore */ }
+        if (run) requestRunStop(run.runId);
     }
 
     /**
