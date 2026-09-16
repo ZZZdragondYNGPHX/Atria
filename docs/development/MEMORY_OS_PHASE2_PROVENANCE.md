@@ -57,6 +57,14 @@ Phase 2 的来源精度是“抽取批次及其图上下文”，不是 Phase 3 
 
 测试覆盖来源幂等、revision、旧原文留存、多来源依赖、环、序列化、导入缺失证据、变更中的 await、快速 swipe 往返、并发 capture、分支、reload、FloorState 提交 guard，以及真实 vector-index 模块的迟到结果过滤和 hash 删除（HTTP 使用 mock）。
 
-仍需真机验收：开启开关后普通生成、swipe/regenerate、旧用户/assistant 楼层编辑、删楼、聊天切换、Agent 写入、断网恢复、Android。涉及真实 LLM 和网络的全链路未在本阶段单测中执行。完成这些 Phase 2 门槛后，再进入原方案 Phase 3 Atomic Facts；不要跳过来源验收直接做图 UI。
+### 2026-09-16 Web 运行验证补充
+
+在实现提交 `e0250e2d22a0e1a3e6aba0dd0d5df4635d0f8ad5` 上启动独立临时 dataRoot/config 的 Luker 2.7.0 实例，使用 Node 24.16.0、Playwright 和系统 Edge 153.0.4234.32（headless，1280×900）。未复制日常聊天或模型凭据，未修改日常配置。新增可重复脚本 `tests/frontend/memory-os-source.smoke.mjs`，显式传入隔离服务器 URL 和可选浏览器 channel；脚本会创建测试角色并修改该测试实例设置，不应针对日常实例运行。
+
+实际执行 `node tests/frontend/memory-os-source.smoke.mjs http://127.0.0.1:18742 msedge`，最终九项检查通过：公开 Memory API 写入、来源 ID 与 Episode 持久化、真实 UI 编辑后失效、旧原文留存、迟到会话拒绝且不泄漏节点、刷新后重新选择聊天保持来源身份与失效、新会话捕获新 revision、关闭开关不复活旧证据、无 pageerror。扩展通过正常启动注册，未替换服务端 state API；创建记忆使用公开 API，不能算作真实 LLM 抽取验收。早期探测显示刷新回到欢迎页，需要重新选择目标角色才能检验聊天持久化；脚本已明确等待目标聊天。
+
+控制台存在未配置 Stable Diffusion 服务导致的请求 500 / SD WebUI 错误，不属于本次来源链失败；“无 pageerror”不表示所有控制台与网络请求无错误。默认 Playwright Chromium 缺失，使用系统 Edge 验证；未下载浏览器或增加依赖。新脚本 `node --check` 与 `git diff --check` 通过。本轮仅增加 smoke 与记录，未重跑上文的 1843 项单元测试。
+
+仍需验收：真实模型普通生成与抽取、swipe/regenerate、历史用户/assistant 楼层编辑与删楼、跨聊天切换中的请求、Agent 编排全链路、断网恢复、Android。当前环境未发现可用 adb 命令，独立实例未配置真实模型；本次未覆盖这些项目。完成这些 Phase 2 门槛后，再进入原方案 Phase 3 Atomic Facts；不要跳过来源验收直接做图 UI。
 
 修改文件：`source-provenance.js`、`source-lifecycle.js`、`main.js`、`api.js`、`read-api.js`、`graph-ops.js`、`persistence.js`、`vector-index.js`（均在 memory-graph 扩展下），`public/scripts/floor-state.js`，三个 source 测试及 FloorState instance 测试，以及本记录、原方案进度链接和 `AI_HANDOFF.md`。
