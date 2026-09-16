@@ -827,6 +827,7 @@ export async function runWorkerNode(context, payload, nodeSpec, preset, messages
             const output = await runLegacySingleRequest({
                 runId: `${options.runtime.runId}/single/${nodeSpec.id}`,
                 request: { tools, abortSignal },
+                hostContext: context,
                 send: request => requestToolCallsWithRetry(context, settings, request),
                 onEvent: event => recordRuntimeEvent(trace, 'agent_runtime_v2', { runtimeEvent: event }),
                 worker: {

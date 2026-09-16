@@ -18,7 +18,8 @@ describe('memory-graph orchestrator tools', () => {
         expect((await tool.exec({ query: 'Where?' }, ctx)).context).toBe('Shared evidence');
         expect(recallMemory.mock.calls[0][0]).toBe('Where?');
         expect(JSON.stringify(recallMemory.mock.calls)).not.toContain('Private hypothesis');
-        expect(assertCurrent).toHaveBeenCalledTimes(1);
+        // Port completion and the legacy tool return each guard their async boundary.
+        expect(assertCurrent).toHaveBeenCalledTimes(2);
         assertCurrent.mockImplementation(() => { throw new Error('Source changed'); });
         await expect(tool.exec({ query: 'Where?' }, ctx)).rejects.toThrow('Source changed');
         const before = recallMemory.mock.calls.length;

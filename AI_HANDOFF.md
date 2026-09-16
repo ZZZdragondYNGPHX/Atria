@@ -11,7 +11,11 @@ Phase 2 now covers full Single serial tool rounds, including inherited Layer-2/c
 `docs/development/AGENT_RUNTIME_V2_PHASE2.md` for golden/race tests and scope. Ordered batches live in Runtime state;
 provider IDs, final-output priority, notes refresh and structured tool errors retain legacy semantics.
 Tool result content is transient run-local data, not checkpoint memory. Durable rehydration is not enabled.
-Next is Phase 3 production ports/tokenizer integration and further mode migration; other legacy modes remain active.
+Phase 3's first increment extracts Single execution ports, adds shared Memory OS recall adaptation and async host
+counting with cancellation/source guards. See `docs/development/AGENT_RUNTIME_V2_PHASE3.md`: 163 suites / 2000 tests
+and offline Edge smoke passed. Counts cover task messages/tools, not final host-assembled provider context.
+Phase 3 is still open: Spec/Agenda/Loop/Director scheduling, final budget/injection ownership and source rehydration
+remain to migrate. Do not advance to Phase 4 or claim all mode loops are unified yet.
 The explicit request payload `agentRuntimeV2: false` bypasses the Single adapter without changing presets.
 The owner prefers autonomous offline/browser verification and will check real play later; missing Android/real-model checks
 are coverage gaps, not mandatory manual approval gates. No merge into custom-release or remote push has been performed.

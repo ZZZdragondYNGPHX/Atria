@@ -2,7 +2,7 @@ import { copy, TERMINAL, validateDecision, validatePorts } from './contracts.js'
 import { initialState, transition } from './state.js';
 import { createEventBus } from './events.js';
 import { MemoryCheckpointStore } from './checkpoint-store.js';
-import { compileContext } from './context-compiler.js';
+import { compileContextAsync } from './context-compiler.js';
 import { abortable } from './abort.js';
 
 /** Serial headless driver. Host services enter only through injected ports. */
@@ -125,8 +125,13 @@ export class AgentRuntime {
         const contextInput = typeof this.contextInput === 'function'
             ? await this.contextInput({ state: copy(state), agent, signal }) : this.contextInput;
         if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
-        const compiled = compileContext({ ...contextInput, agent, state, memory: recalled, countTokens: this.countTokens, budget: this.contextBudget });
-        this.publish(state, 'context.compiled', { tokens: compiled.tokens });
+        const assertCurrent = () => {
+            if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
+            recalled.assertCurrent();
+        };
+        const compiled = await compileContextAsync({ ...contextInput, agent, state, memory: recalled, countTokens: this.countTokens, budget: this.contextBudget, assertCurrent });
+        assertCurrent();
+        this.publish(state, 'context.compiled', { tokens: compiled.tokens, diagnostics: compiled.diagnostics, tokenCounting: contextInput?.tokenCounting || 'injected', budgetScope: contextInput?.budgetScope || 'compiled-context' });
         recalled.assertCurrent();
         if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
         const result = await this.ports.model.request({ ...request, messages: compiled.messages, tools: agent.tools });

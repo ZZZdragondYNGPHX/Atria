@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { createMemoryOSPort } from '../../lib/agent-runtime/host-ports.js';
 //
 // memory-graph/orchestrator-tools.js — registers memory-graph's 16
 // read + write tools into the orchestrator's Layer-2 extension registry.
@@ -667,9 +668,10 @@ const SCHEMAS = [
                 || args.at !== undefined && !Number.isFinite(args.at)) throw new ToolError('Invalid memory query', 'INVALID_ARGS', 'Supply a query and optional numeric story time.');
             const session = requireSession('memory_recall', context);
             if (!session.recallMemory) throw new ToolError('Memory OS recall unavailable', 'MEMORY_DISABLED', MEMORY_DISABLED_HINT);
-            const result = await session.recallMemory(args.query, { at: args.at, signal: context.signal || context.abortSignal });
+            const port = createMemoryOSPort((query, options) => session.recallMemory(query, options));
+            const result = await port.recall({ query: args.query, at: args.at, signal: context.signal || context.abortSignal });
             result.assertCurrent();
-            return { ok: true, context: result.text, sources: result.selected, tokens: result.tokenCount,
+            return { ok: true, context: result.content, sources: result.references.map(ref => ref.id), tokens: result.tokens,
                 budget: result.budget, providers: result.providers, diagnostics: result.diagnostics };
         },
         simulate: async () => ({ ok: true, simulated: true, context: '', sources: [] }),

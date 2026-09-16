@@ -31,13 +31,14 @@ try {
     const evidence = await page.evaluate(async () => {
         const { AgentRuntime, AgentRegistry } = await import('/scripts/lib/agent-runtime/index.js');
         const { runLegacySingleRequest } = await import('/scripts/extensions/orchestrator/legacy-runtime-adapter.js');
+        const { createMemoryOSPort } = await import('/scripts/lib/agent-runtime/host-ports.js');
         let requests = 0, tools = 0;
         const runtime = new AgentRuntime({
-            registry: new AgentRegistry([{ id: 'a', tools: ['lookup'] }]), countTokens: m => m.content.length,
+            registry: new AgentRegistry([{ id: 'a', tools: ['lookup'] }]), countTokens: async m => m.content.length,
             ports: {
                 model: { async request() { return ++requests === 1 ? { type: 'tool', toolName: 'lookup' } : { type: 'complete', output: 'done' }; } },
                 tool: { async execute() { tools++; return { ok: true, value: 1 }; } },
-                memory: { async recall() { return { content: '', references: [], assertCurrent() {} }; } },
+                memory: createMemoryOSPort(async () => ({ text: 'shared memory', selected: ['fact-1'], tokenCount: 2, assertCurrent() {} })),
             },
         });
         const state = await runtime.startRun({ runId: 'browser', agentId: 'a', task: 'test' });
@@ -48,6 +49,7 @@ try {
         let workerRequests = 0;
         const workerTools = [], turns = [];
         const workerOutput = await runLegacySingleRequest({
+            hostContext: { async getTokenCountAsync(text) { return text.length; } },
             runId: 'single-tools', request: { tools: [{ function: { name: 'lookup' } }] },
             send: async request => {
                 if (++workerRequests === 1) return { toolCalls: [1, 2].map(n => ({ id: `vendor-${n}`, name: 'lookup', args: { n } })) };
