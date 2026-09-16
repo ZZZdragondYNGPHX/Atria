@@ -1,10 +1,10 @@
 # AI Handoff Context
 
-## Orchestration Engine v2 — feature branch implementation
+## Orchestration Engine v2 — authorized integration
 
-Work is on `feat/orchestration-engine-v2`, based on the completed Runtime integration at
-`custom-release@5cc185d9b`. The owner explicitly requires stopping on this branch: **do not merge or push
-to custom-release without a new instruction**. The ten-phase plan and phase-specific records are under
+Implementation completed at `feat/orchestration-engine-v2@64789f790`, based on the completed Runtime integration at
+`custom-release@5cc185d9b`. The owner subsequently explicitly authorized merging into `custom-release`
+and pushing both feature and integration branches. The ten-phase plan and phase-specific records are under
 `docs/development/ORCHESTRATION_ENGINE_V2_*.md`; Phase 9 is the current caller/acceptance record.
 
 Default Single/Spec, Loop, Agenda and Director now use Engine policies and existing Runtime execution.
