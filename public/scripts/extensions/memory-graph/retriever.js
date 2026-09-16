@@ -16,12 +16,12 @@
 // even though they carry latest-truth state recall depends on.
 
 import {
-    findSimilarNodes,
     buildNodeVectorText,
     rerankDocuments,
     getVectorConfigFromSettings,
     validateVectorConfig,
 } from './vector-index.js';
+import { getMemoryVectorStore } from './memory-os.js';
 
 const MODULE_NAME = 'memory_graph';
 
@@ -225,7 +225,7 @@ export async function runRagRecall(store, queryText, chatId, settings, options =
     const tVec = performance.now();
     let vectorHits = [];
     try {
-        vectorHits = await findSimilarNodes(effectiveQuery, store, embeddingProfile, chatId, {
+        vectorHits = await getMemoryVectorStore(settings).search(effectiveQuery, store, embeddingProfile, chatId, {
             topK: effectiveTopK,
             includeVectors: false,
             signal,

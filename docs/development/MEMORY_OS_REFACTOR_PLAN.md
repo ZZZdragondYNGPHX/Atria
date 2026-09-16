@@ -1355,6 +1355,8 @@ Context budget：可配置
 
 ## Phase 1 — Audit & Adapter
 
+执行记录（2026-09-16）：审计及适配实现见 [MEMORY_OS_PHASE1_AUDIT.md](MEMORY_OS_PHASE1_AUDIT.md)。实际系统已有 graph/FloorState/Agent API，后续按该映射接续，保留本方案的阶段顺序。
+
 - 审计当前记忆实现；
 - 找到唯一主调用链；
 - 为现有 vector memory 做 adapter；

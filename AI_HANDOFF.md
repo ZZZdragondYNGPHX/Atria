@@ -131,3 +131,9 @@ The four primary modes remain existing runtimes: Loop research, Spec fixed workf
 Snapshots optionally carry `executionIdentity`, a SHA-256 digest of effective profile/preset and selected runtime settings. Historical snapshots remain readable but do not qualify for reuse without identity. In environments without Web Crypto, reuse is disabled. Extend the configuration fingerprint when introducing relevant runtime dependencies. Budget-exhausted Loop/Agenda results may supply partial guidance but are not completed cache entries. Agenda exposes budget reason and unresolved task IDs.
 
 No version bump, dependency change or automatic user-data migration. Shared frontend checks do not substitute for Android device or live-model validation.
+
+## Memory OS — feature branch only
+
+`feat/memory-os` continues the existing `docs/development/MEMORY_OS_REFACTOR_PLAN.md`; Phase 1 architecture and validation are recorded in `docs/development/MEMORY_OS_PHASE1_AUDIT.md`. The feature branch includes the local execution-mode integration above. Memory OS is not merged into `custom-release`.
+
+The default-off user setting `extension_settings.memory_graph.memoryOsEnabled` selects a transparent vector adapter in Phase 1. Existing memory-graph / FloorState / vector backend remain the owners; no Episode or source-revision migration has run. Continue with Phase 2 provenance and invalidation before Atomic Facts. LoreState was not located in tracked code; verify the actual provider before Phase 6 integration.

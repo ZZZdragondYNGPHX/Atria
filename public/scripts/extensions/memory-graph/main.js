@@ -81,14 +81,13 @@ import {
     buildSchemaEditorPopupHtml,
 } from './ui-templates.js';
 import { runRagRecall } from './retriever.js';
+import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED } from './memory-os.js';
 import {
     getVectorConfigFromSettings,
     getRerankProfileFromSettings,
     validateVectorConfig,
-    syncVectorIndex,
     ensureVectorIndexState,
     buildCollectionId,
-    purgeVectorCollection,
 } from './vector-index.js';
 import {
     renderProfileSelect,
@@ -443,6 +442,7 @@ const EXTRACT_PROMPT_EDGE_TYPE_LINES = [
 
 
 const defaultSettings = {
+    memoryOsEnabled: MEMORY_OS_DEFAULT_ENABLED,
     enabled: false,
     autoExtractionEnabled: true,
     autoCompressionEnabled: true,
@@ -8645,7 +8645,7 @@ async function injectMemoryPrompts(context, payload) {
         if (!vs.hashToNodeId || Object.keys(vs.hashToNodeId).length === 0) {
             const syncVectorConfig = getVectorConfigFromSettings(settings);
             const effectiveSchema = getEffectiveNodeTypeSchema(context, settings);
-            await syncVectorIndex(store, syncVectorConfig, chatKey, {
+            await getMemoryVectorStore(settings).sync(store, syncVectorConfig, chatKey, {
                 schema: effectiveSchema,
                 signal: payload?.signal,
             });
@@ -9136,7 +9136,7 @@ async function runScheduledExtractionPass(chatKey) {
                 if (validateVectorConfig(vectorConfig).valid) {
                     const chatIdForVector = String(chatKey || '').trim();
                     const effectiveSchema = settings.nodeTypeSchema || defaultSettings.nodeTypeSchema;
-                    await syncVectorIndex(effectiveStore, vectorConfig, chatIdForVector, {
+                    await getMemoryVectorStore(settings).sync(effectiveStore, vectorConfig, chatIdForVector, {
                         signal: extractionAbortController.signal,
                         schema: effectiveSchema,
                     });
@@ -14657,7 +14657,7 @@ async function runVectorRecompute(context, settings, store, chatKey, { mode }) {
 
     notifyInfo(i18n('Starting vector recompute…'));
     try {
-        const result = await syncVectorIndex(store, vectorConfig, chatKey, {
+        const result = await getMemoryVectorStore(settings).sync(store, vectorConfig, chatKey, {
             schema,
             purge,
             tolerateErrors: true,
@@ -15459,7 +15459,7 @@ function bindUi() {
         try {
             const vectorConfig = getVectorConfigFromSettings(settings);
             if (vectorConfig) {
-                await purgeVectorCollection(buildCollectionId(chatKey));
+                await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey));
             }
         } catch (vectorError) {
             console.warn(`[${MODULE_NAME}] Failed to purge vector collection on reset`, vectorError);
