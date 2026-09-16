@@ -27,7 +27,15 @@ with deduplicated/replayable events, compiler/profile/effect/handoff metadata, l
 Panel reopen preserves Runtime state and cannot duplicate pending stream text; stop acknowledgement is separate
 from confirmed Runtime cancellation. See `docs/development/AGENT_RUNTIME_V2_PHASE5.md`: 214 suites / 2457 expanded
 regressions, 118 suites / 1335 final mode regressions, 9 suites / 75 final observer checks and both Edge smokes passed.
-The Runtime event journal remains in memory. Next is Phase 6 durable checkpoint/recovery/reconciliation.
+Phase 6 now connects account-scoped IndexedDB checkpoints to both production adapters. Atomic version checks
+and awaited persistence barriers protect port admission, separate receipts from consumption, and fence stale
+drivers. Native recovery revalidates Memory OS sources; unconfirmed tools reconcile by stable effect ID or fail.
+Legacy generator continuations/transient results are not reconstructed: loss fails closed without replaying writes.
+See AGENT_RUNTIME_V2_PHASE6.md: 215 suites / 2473 expanded checks and 119 suites / 1352 final mode checks pass;
+three offline Edge smokes pass, including real IndexedDB page destruction, strict durability, CAS and cancellation.
+That report records retention, recovery policies and browser-local boundaries.
+The Runtime event journal remains in memory. Next is Phase 7 explicit fan-out/join; this does not imply automatic
+refresh continuation of an entire legacy mode or a cross-device server runner.
 Legacy mode coordinators remain compatibility policies, and existing parallel behavior remains for Phase 7.
 The explicit request payload `agentRuntimeV2: false` selects Single's legacy protocol adapter without changing presets; both paths now use Runtime scheduling.
 The owner prefers autonomous offline/browser verification and will check real play later; missing Android/real-model checks

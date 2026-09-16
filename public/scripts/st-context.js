@@ -1,3 +1,4 @@
+import { getCurrentUserHandle } from './user.js';
 import {
     activateSendButtons,
     addOneMessage,
@@ -2410,6 +2411,7 @@ function buildGenerateTaskSenders() {
 export function getContext() {
     return {
         accountStorage,
+        getCurrentUserHandle,
         chat,
         characters: getCharacterArrayApiProxy(characters),
         get groups() { return groups; },

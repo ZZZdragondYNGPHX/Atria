@@ -141,3 +141,19 @@ Actual execution state, identities, compiler metadata, tool outcomes, handoffs a
 
 Existing legacy body/section writers remain presentation adapters. The Runtime log reconstructs the execution
 key path in memory; full browser/process restart and durable policy reconstruction remain Phase 6.
+
+## Phase 6 update — production checkpoint ownership and recovery
+
+Host getCurrentUserHandle -> orchestrator main.configureRuntimeCheckpoints -> both legacy adapters ->
+openRuntimeCheckpointStore -> DurableCheckpointStore -> account-scoped IndexedDB transaction CAS.
+AgentRuntime waits on persistence before executing the next port, consuming a receipt or delivering terminal output.
+Existing generateTask/stream -> luker-dispatch and Memory OS recall/source guard paths are unchanged.
+
+Explicit adapter resume:true -> AgentRuntime.resumeRun -> revalidate current Memory OS sources -> consume saved
+receipt or reconcile an unconfirmed tool by stable effect ID. Native model/handoff boundaries resume; lost
+legacy generators/transient tool results fail without replaying their writes. There is no automatic old-mode
+refresh restart or second memory/provider runtime. Runtime diagnostic events remain in memory.
+
+getExtensionApi('orchestrator').listRuntimeCheckpoints lists metadata; cancelRuntimeCheckpoint closes interrupted
+execution and routes same-page active cancellation through the live Runtime. The existing panel Stop path remains
+unchanged. Browser-local persistence and cross-device/server execution are distinct boundaries.

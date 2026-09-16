@@ -1,3 +1,4 @@
+import { openRuntimeCheckpointStore } from './runtime-checkpoints.js';
 import { createRuntimeObserver } from './run-state/runtime-observer.js';
 import { createLegacyExecutionPorts } from './legacy-runtime-ports.js';
 import { createHostTokenCounter, createDelegatedMemoryPort } from '../../lib/agent-runtime/host-ports.js';
@@ -6,8 +7,12 @@ import { throwIfAborted, createAbortError } from './abort-utils.js';
 import { workerHistory } from './legacy-worker-protocol.js';
 
 /** Single's serial rounds are driven by Runtime; host preparation and wire formatting stay compatible. */
-export async function runLegacySingleRequest({ runId, agentId = 'single_agent', request, send, onEvent = null, worker = null, store = undefined, hostContext = {}, contextBudget = Number.MAX_SAFE_INTEGER }) {
+export async function runLegacySingleRequest({ runId, agentId = 'single_agent', request, send, onEvent = null, worker = null, store = undefined, resume = false, hostContext = {}, contextBudget = Number.MAX_SAFE_INTEGER }) {
     throwIfAborted(request.abortSignal, 'Orchestration aborted.');
+    const opening = store ? null : openRuntimeCheckpointStore(runId);
+    const ownedStore = opening ? await opening : undefined;
+    store ||= ownedStore;
+    if (request.abortSignal?.aborted) { ownedStore?.close(); throwIfAborted(request.abortSignal); }
     let activeRequest = request;
     let portError = null;
     // Legacy tools can return Memory OS text. Keep that content out of execution checkpoints.
@@ -39,9 +44,10 @@ export async function runLegacySingleRequest({ runId, agentId = 'single_agent', 
         },
     });
     const cancel = () => runtime.cancelRun(runId);
+    ownedStore?.bindCancel(cancel);
     request.abortSignal?.addEventListener('abort', cancel, { once: true });
     try {
-        const result = await runtime.startRun({ runId, agentId, task: 'Legacy Single final guidance', maxSteps: worker?.maxRounds || 1 });
+        const result = await (resume ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId, task: 'Legacy Single final guidance', maxSteps: worker?.maxRounds || 1 }));
         if (result.status === 'cancelled') throw createAbortError('Orchestration aborted.');
         if (result.status !== 'completed') {
             if (portError) throw portError;
@@ -53,6 +59,7 @@ export async function runLegacySingleRequest({ runId, agentId = 'single_agent', 
         return result.output;
     } finally {
         request.abortSignal?.removeEventListener('abort', cancel);
+        ownedStore?.close();
         toolResults.clear();
         memoryGuards.clear();
     }

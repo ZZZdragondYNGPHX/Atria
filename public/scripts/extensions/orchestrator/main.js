@@ -341,6 +341,12 @@ import {
 } from './simulation-payload-adapter.js';
 import { promptEmbedUnembeddedPresetsForCharacterApply } from './prompt-embed-unembedded.js';
 
+import { configureRuntimeCheckpoints, listRuntimeCheckpoints, cancelRuntimeCheckpoint } from './runtime-checkpoints.js';
+
+if (typeof __ctx.getCurrentUserHandle === 'function') {
+    configureRuntimeCheckpoints({ getScope: () => getContext().getCurrentUserHandle() });
+}
+
 const MODULE_NAME = 'orchestrator';
 const ORCH_RESULT_EVENT = 'luker.orchestrator.result';
 const UI_BLOCK_ID = 'orchestrator_settings';
@@ -351,6 +357,8 @@ const UI_BLOCK_ID = 'orchestrator_settings';
 // (Layer 1), getExtensionApi (Layer 2), and ctx (Layer 3) all resolve to the
 // same function references.
 registerExtensionApi(MODULE_NAME, {
+    listRuntimeCheckpoints,
+    cancelRuntimeCheckpoint,
     registerOrchestrationTool,
     unregisterOrchestrationTool,
     listExtensionTools,

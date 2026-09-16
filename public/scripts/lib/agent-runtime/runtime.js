@@ -1,6 +1,7 @@
 import { copy, TERMINAL, validateDecision, validatePorts } from './contracts.js';
 import { initialState, transition } from './state.js';
 import { createEventBus } from './events.js';
+import { CheckpointPersistenceError } from './durable-checkpoint-store.js';
 import { MemoryCheckpointStore } from './checkpoint-store.js';
 import { compileContextAsync } from './context-compiler.js';
 import { abortable } from './abort.js';
@@ -61,36 +62,61 @@ export class AgentRuntime {
     resumeRun(runId) {
         let state = this.store.load(runId);
         if (!state) throw new Error('Unknown run');
-        if (TERMINAL.includes(state.status) || state.status === 'waiting_user') return Promise.resolve(state);
+        if (TERMINAL.includes(state.status) || state.status === 'waiting_user') return this.#finishRecovery(state);
         const restoredVersion = state.checkpointVersion;
         this.#runs.get(runId)?.abort();
         state = this.save({ ...state, generation: state.generation + 1 });
         // An unacknowledged write might already have happened. Never blindly replay it.
         const pending = state.pendingEffect;
+        if (state.status === 'cancelling') return Promise.resolve(this.cancelRun(runId)).then(async result => {
+            if (this.store.flush) await this.store.flush();
+            return result;
+        });
         if (state.legacyPolicy) {
             state = this.save(transition(state, { type: 'run.fail', error: 'Legacy policy continuation unavailable; cannot replay effects' }));
             this.publish(state, 'run.failed');
-            return Promise.resolve(state);
+            return this.#finishRecovery(state);
         }
         if (pending?.type === 'tool.execute' && !state.completedEffects[pending.effectId]) {
-            state = this.save(transition(state, { type: 'run.fail', error: 'Uncertain tool effect requires reconciliation' }));
-            this.publish(state, 'run.failed');
-            return Promise.resolve(state);
+            state = this.save({ ...state, recoveryEffectId: pending.effectId });
         }
         this.publish(state, 'run.resumed', { restoredVersion });
-        return this.#drive(state);
+        return this.#drive(state, true);
     }
 
-    async #drive(initial) {
+    async #finishRecovery(state) {
+        if (this.store.flush) await this.store.flush();
+        return this.store.load(state.runId);
+    }
+
+    async #drive(initial, restoring = false) {
         let state = initial;
         const controller = new AbortController();
         this.#runs.set(state.runId, controller);
         let memory = null;
+        let revalidate = restoring && state.memoryRefs.length > 0;
         const isCurrent = () => !controller.signal.aborted && this.store.load(state.runId)?.checkpointVersion === state.checkpointVersion;
         try {
             while (state.pendingEffect && isCurrent()) {
+                if (this.store.flush) await this.store.flush();
+                if (!isCurrent()) break;
                 const effect = state.pendingEffect;
                 const agent = this.registry.get(state.currentAgentId);
+                if (revalidate) {
+                    memory = await abortable(this.ports.memory.recall({ ...copy(effect), agent,
+                        signal: controller.signal, query: state.task, agentId: agent.id }), controller.signal);
+                    if (!isCurrent()) break;
+                    if (typeof memory?.assertCurrent !== 'function') throw new TypeError('Memory guard required');
+                    memory.assertCurrent();
+                    // An old decision cannot authorize a write using removed/revised sources.
+                    const references = new Set((memory.references || []).map(reference => JSON.stringify(reference)));
+                    const freshModel = effect.type === 'model.request' && !state.completedEffects[effect.effectId];
+                    if (!freshModel && state.memoryRefs.some(reference => !references.has(JSON.stringify(reference)))) {
+                        throw new Error('Restored memory references changed; replan required');
+                    }
+                    revalidate = false;
+                }
+                memory?.assertCurrent();
                 if (!state.completedEffects[effect.effectId]) {
                     this.publish(state, `${effect.type}.started`, { effectId: effect.effectId });
                     if (!isCurrent()) break;
@@ -102,6 +128,8 @@ export class AgentRuntime {
                     const stored = effect.type === 'memory.recall' ? { references: copy(result.references || []) } : result;
                     state = this.save({ ...state, completedEffects: { ...state.completedEffects, [effect.effectId]: { result: stored, consumed: false } } });
                 }
+                if (this.store.flush) await this.store.flush();
+                if (!isCurrent()) break;
                 state = this.save(transition(state, { type: 'effect.consumed', effectId: effect.effectId }));
                 if (effect.type === 'agent.handoff') memory = null;
                 const routing = effect.type === 'agent.handoff' ? state.handoffStack.at(-1) : null;
@@ -110,17 +138,21 @@ export class AgentRuntime {
                 } : {}), ...(effect.type === 'memory.recall' ? { references: state.memoryRefs } : {}),
                 ...(['tool.execute', 'model.request'].includes(effect.type) ? { toolName: effect.toolName, ok: state.completedEffects[effect.effectId].result?.ok } : {}) });
             }
+            if (this.store.flush) await this.store.flush();
             if (isCurrent()) this.publish(state, `run.${state.status}`);
         } catch (error) {
+            if (error instanceof CheckpointPersistenceError) throw error;
             if (isCurrent()) {
                 this.publish(state, 'effect.failed', { failureKind: error?.name || 'Error' });
                 state = this.save(transition(state, { type: 'run.fail', error: error instanceof Error ? error.message : 'Port failed' }));
+                if (this.store.flush) await this.store.flush();
                 this.publish(state, 'run.failed');
             }
         } finally {
             controller.abort();
             if (this.#runs.get(state.runId) === controller) this.#runs.delete(state.runId);
         }
+        if (this.store.flush) await this.store.flush();
         return this.store.load(state.runId);
     }
 
@@ -134,6 +166,17 @@ export class AgentRuntime {
         }
         if (effect.type === 'memory.recall') return this.ports.memory.recall({ ...request, query: state.task, agentId: agent.id });
         if (effect.type === 'tool.execute') {
+            if (state.recoveryEffectId === effect.effectId) {
+                const resolution = await this.ports.tool.reconcile?.({ ...request, toolCallId: effect.effectId });
+                if (signal.aborted) throw new Error('Cancelled during reconciliation');
+                memory?.assertCurrent();
+                if (resolution?.status === 'completed') {
+                    if (typeof resolution.result?.ok !== 'boolean') throw new TypeError('Invalid reconciled tool result');
+                    return copy(resolution.result);
+                }
+                if (resolution?.status !== 'retryable') throw new Error('Uncertain tool effect requires reconciliation');
+            }
+            memory?.assertCurrent();
             const result = await this.ports.tool.execute({ ...request, toolCallId: effect.effectId, context: { runId: state.runId, scratch: copy(state.scratch) } });
             if (typeof result?.ok !== 'boolean') throw new TypeError('Invalid tool result');
             return copy(result);

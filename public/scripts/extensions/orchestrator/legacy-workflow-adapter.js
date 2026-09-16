@@ -1,3 +1,4 @@
+import { openRuntimeCheckpointStore } from './runtime-checkpoints.js';
 import { createRuntimeObserver } from './run-state/runtime-observer.js';
 import { withRuntimeContext } from '../../lib/agent-runtime/prepared-context.js';
 import { AgentRuntime, AgentRegistry } from '../../lib/agent-runtime/index.js';
@@ -22,8 +23,12 @@ export function toolIntent(name, args, context, execute) {
  * Live functions/results never enter checkpoints. This transitional continuation cannot
  * be restored after process loss: Runtime rejects resume rather than replaying writes.
  */
-export async function runLegacyWorkflow(factory, { context = {}, signal, runId = createLegacyWorkflowRunId(), onEvent, store, maxSteps = 10000, panelRunId, getPanelRunId, registry = new AgentRegistry([{ id: 'legacy-policy' }]), agentId = 'legacy-policy' } = {}) {
+export async function runLegacyWorkflow(factory, { context = {}, signal, runId = createLegacyWorkflowRunId(), onEvent, store, resume = false, maxSteps = 10000, panelRunId, getPanelRunId, registry = new AgentRegistry([{ id: 'legacy-policy' }]), agentId = 'legacy-policy' } = {}) {
     throwIfAborted(signal, 'Orchestration aborted.');
+    const opening = store ? null : openRuntimeCheckpointStore(runId);
+    const ownedStore = opening ? await opening : undefined;
+    store ||= ownedStore;
+    if (signal?.aborted) { ownedStore?.close(); throwIfAborted(signal); }
     const iterator = factory();
     let pending, output, failure;
     const results = new Map();
@@ -93,9 +98,10 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
         },
     });
     const cancel = () => runtime.cancelRun(runId);
+    ownedStore?.bindCancel(cancel);
     signal?.addEventListener('abort', cancel, { once: true });
     try {
-        const result = await runtime.startRun({ runId, agentId, task: '', legacyPolicy: true, maxSteps });
+        const result = await (resume ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId, task: '', legacyPolicy: true, maxSteps }));
         if (result.status === 'cancelled') {
             const error = createAbortError('Orchestration aborted.');
             // Let legacy catch/finally update traces, but never execute a yielded intent.
@@ -107,6 +113,7 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
         return output;
     } finally {
         signal?.removeEventListener('abort', cancel);
+        ownedStore?.close();
         results.clear();
         memoryGuards.clear();
         // Do not wait on an uncooperative host await during cancellation.

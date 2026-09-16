@@ -108,3 +108,26 @@ Raw prompt/tool/Memory OS content is excluded from the Runtime journal; existing
 
 The log is in-memory execution evidence, not long-term memory or a replacement checkpoint store. Durable page/
 process recovery is a Phase 6 storage/rehydration gate. Phase 5 evidence is in AGENT_RUNTIME_V2_PHASE5.md.
+
+## ADR-013 — Phase 6 durable execution barriers and explicit recovery policy
+
+Reuse the host browser IndexedDB boundary for account-scoped execution checkpoints. AccountStorage and
+extension settings debounce saves and cannot provide the required durable atomic version check. IndexedDB
+strict-durability readwrite transactions serialize read/check/write across connections; no new unmanaged server files, provider
+store, remote runner or Memory OS corpus is introduced. Terminal snapshots expire after 24 hours on store open;
+interrupted executions remain inspectable until explicitly closed. Both production compatibility adapters use it.
+
+Keep synchronous command admission/cancellation while awaiting the store's flush barrier before port execution,
+receipt consumption and terminal delivery. Storage errors poison the cache and reject execution; reopen the
+durable state to recover. A queued optimistic receipt must never authorize the next effect before being committed.
+
+Resume uses existing identities with a new generation. Confirmed effects are consumed once. Unconfirmed tool
+effects require a ToolPort reconciliation result: completed, explicitly retryable, or fail. Retryable means the
+tool adapter guarantees safe replay with the same effect ID at the actual write boundary. The Runtime cannot
+undo a write already performed by an external tool. Source guards are revalidated before restored decisions can
+continue; removed/revised Memory OS references require replanning rather than reviving checkpoint content.
+
+Do not serialize or replay an async generator to imitate recovery. Lost legacy policy continuations and missing
+source-guarded transient tool results fail closed. Native execution and compatible Single requests can explicitly
+resume; automatic refresh continuation of entire legacy mode coordinators is not claimed. Diagnostic event logs
+remain a separate in-memory projection. See AGENT_RUNTIME_V2_PHASE6.md for tested boundaries and limitations.
