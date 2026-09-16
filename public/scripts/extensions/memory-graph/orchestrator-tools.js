@@ -671,6 +671,7 @@ const SCHEMAS = [
             const port = createMemoryOSPort((query, options) => session.recallMemory(query, options));
             const result = await port.recall({ query: args.query, at: args.at, signal: context.signal || context.abortSignal });
             result.assertCurrent();
+            context.__agentRuntimeMemoryGuard?.(result.assertCurrent);
             return { ok: true, context: result.content, sources: result.references.map(ref => ref.id), tokens: result.tokens,
                 budget: result.budget, providers: result.providers, diagnostics: result.diagnostics };
         },

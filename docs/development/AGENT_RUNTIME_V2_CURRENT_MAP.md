@@ -98,3 +98,18 @@ This is a production orchestration boundary scan, not a review of every UI handl
 - Browser coverage candidates: existing `tests/e2e/orchestrator/` and `tests/frontend/memory-os-source.smoke.mjs`; not executed by Phase 0 inventory.
 
 Next: see `AGENT_RUNTIME_V2_ADR.md` for kernel location and contracts. Migration remains deferred until the headless kernel passes its tests.
+
+## Phase 3 update — production scheduling migrated
+
+The line-number tables above are the immutable Phase 0 scan baseline, not current line references.
+Current production calls enter AgentRuntime through native Single's adapter or `runLegacyWorkflow`:
+Loop, Spec worker/review, Agenda planner/text-agent, Director main and Director subagent/inline policies all
+submit model/tool intents. Simulations reuse these exports. Remaining `for`/`while` statements in those files
+express compatibility policy; dispatch is performed by the common kernel ports, not a mode-owned executor.
+The preset/iteration authoring UI remains separate as scoped in the original inventory.
+
+ModelPort -> existing tool-calling/stream transport -> generateTask -> assembled ContextCompiler admission ->
+existing sender -> backend dispatch. `runtimeContext` never goes to the provider. Memory recall tools reuse
+Memory OS through its port and retain transient source guards. Native and compatibility paths preserve the
+existing registry/prototype tool context while receiving Runtime IDs and cancellation signals.
+See Phase 3's report for tests, deliberate cancellation behavior changes and non-durable policy boundaries.

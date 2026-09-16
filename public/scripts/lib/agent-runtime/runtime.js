@@ -62,6 +62,11 @@ export class AgentRuntime {
         state = this.save({ ...state, generation: state.generation + 1 });
         // An unacknowledged write might already have happened. Never blindly replay it.
         const pending = state.pendingEffect;
+        if (state.legacyPolicy) {
+            state = this.save(transition(state, { type: 'run.fail', error: 'Legacy policy continuation unavailable; cannot replay effects' }));
+            this.publish(state, 'run.failed');
+            return Promise.resolve(state);
+        }
         if (pending?.type === 'tool.execute' && !state.completedEffects[pending.effectId]) {
             state = this.save(transition(state, { type: 'run.fail', error: 'Uncertain tool effect requires reconciliation' }));
             this.publish(state, 'run.failed');
@@ -102,6 +107,7 @@ export class AgentRuntime {
                 this.publish(state, 'run.failed');
             }
         } finally {
+            controller.abort();
             if (this.#runs.get(state.runId) === controller) this.#runs.delete(state.runId);
         }
         return this.store.load(state.runId);
@@ -109,6 +115,12 @@ export class AgentRuntime {
 
     async #execute(effect, state, agent, signal, memory) {
         const request = { ...copy(effect), agent, signal, step: state.step, generation: state.generation };
+        if (effect.type === 'policy.advance') {
+            const result = await this.ports.policy.advance({ ...request, receipt: effect.receiptId ? copy(state.completedEffects[effect.receiptId].result) : null });
+            if (!['complete', 'model', 'tool'].includes(result?.type)) throw new TypeError('Invalid policy intent');
+            if (result.type === 'tool' && (typeof result.toolName !== 'string' || !result.toolName)) throw new TypeError('Invalid policy tool');
+            return copy(result);
+        }
         if (effect.type === 'memory.recall') return this.ports.memory.recall({ ...request, query: state.task, agentId: agent.id });
         if (effect.type === 'tool.execute') {
             const result = await this.ports.tool.execute({ ...request, toolCallId: effect.effectId, context: { runId: state.runId, scratch: copy(state.scratch) } });
@@ -136,6 +148,6 @@ export class AgentRuntime {
         if (signal.aborted || this.store.load(state.runId)?.checkpointVersion !== state.checkpointVersion) throw new Error('Cancelled or superseded');
         const result = await this.ports.model.request({ ...request, messages: compiled.messages, tools: agent.tools });
         recalled.assertCurrent();
-        return { ...validateDecision(result, agent, this.registry), memoryRefs: copy(recalled.references || []) };
+        return { ...(state.legacyPolicy ? copy(result) : validateDecision(result, agent, this.registry)), memoryRefs: copy(recalled.references || []) };
     }
 }

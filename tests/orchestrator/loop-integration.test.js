@@ -630,11 +630,11 @@ describe('loop mode end-to-end: abort path (Task 15e)', () => {
             }), { sendLlm }),
         ).rejects.toThrow(/aborted/i);
 
-        // Round 1's tool ran (and persisted), but round 2 never reached
-        // sendLlm and the post-loop finalize never executed.
+        // Cancellation arrives before the tool boundary: neither its write nor
+        // round 2 may execute, even if round 1's sender returns a late result.
         expect(sendLlm).toHaveBeenCalledTimes(1);
         const persisted = await notesAdapter.listAcrossFloors();
-        expect(persisted.map(n => n.text)).toEqual(['first']);
+        expect(persisted.map(n => n.text)).toEqual([]);
     });
 
     test('pre-aborted signal raises before the first sendLlm call', async () => {

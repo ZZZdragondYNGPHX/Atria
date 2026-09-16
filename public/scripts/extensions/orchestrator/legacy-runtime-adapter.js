@@ -12,6 +12,7 @@ export async function runLegacySingleRequest({ runId, request, send, onEvent = n
     // Legacy tools can return Memory OS text. Keep that content out of execution checkpoints.
     // A future durable adapter must rehydrate source-guarded references, not replay these strings.
     const toolResults = new Map();
+    const memoryGuards = new Set();
     const tools = (request.tools || []).map(tool => String(tool?.function?.name || '').replace(/\./g, '_')).filter(Boolean);
     const measurement = { tokenCounting: typeof hostContext.getTokenCountAsync === 'function' ? 'host-tokenizer' : 'utf8-bytes-estimate', budgetScope: 'task-messages-and-tools' };
     const runtime = new AgentRuntime({
@@ -30,9 +31,9 @@ export async function runLegacySingleRequest({ runId, request, send, onEvent = n
             return { ...measurement, legacyMessages: activeRequest.taskMessages, tools: activeRequest.tools || request.tools };
         } : { ...measurement, legacyMessages: request.taskMessages, tools: request.tools },
         ports: {
-            ...createLegacyExecutionPorts({ send, getRequest: () => activeRequest, worker, toolResults, onError: error => { portError = error; } }),
+            ...createLegacyExecutionPorts({ getMemoryGuard: () => memoryGuards.size ? () => { for (const guard of memoryGuards) guard(); } : null, registerMemoryGuard: guard => memoryGuards.add(guard), hostContext, send, getRequest: () => activeRequest, worker, toolResults, onError: error => { portError = error; } }),
             // No new retrieval: existing world-info assembly owns Memory OS injection here.
-            memory: createDelegatedMemoryPort(),
+            memory: createDelegatedMemoryPort(() => { for (const guard of memoryGuards) guard(); }),
         },
     });
     const unsubscribe = onEvent ? runtime.events.subscribe(onEvent) : () => {};
@@ -53,5 +54,6 @@ export async function runLegacySingleRequest({ runId, request, send, onEvent = n
         request.abortSignal?.removeEventListener('abort', cancel);
         unsubscribe();
         toolResults.clear();
+        memoryGuards.clear();
     }
 }

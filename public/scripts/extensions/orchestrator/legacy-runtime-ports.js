@@ -1,3 +1,5 @@
+import { guardRequestCallbacks } from '../../lib/agent-runtime/host-ports.js';
+import { withRuntimeContext } from '../../lib/agent-runtime/prepared-context.js';
 import { throwIfAborted, isAbortError } from './abort-utils.js';
 import { normalizeWorkerReply } from './legacy-worker-protocol.js';
 
@@ -5,11 +7,11 @@ import { normalizeWorkerReply } from './legacy-worker-protocol.js';
  * send uses requestToolCallsWithRetry -> generateTask -> existing dispatch transport.
  * execute uses the existing tool registry, simulation policy and scoped host context.
  */
-export function createLegacyExecutionPorts({ send, getRequest, worker, toolResults, onError }) {
+export function createLegacyExecutionPorts({ send, getRequest, worker, toolResults, onError, hostContext = {}, registerMemoryGuard, getMemoryGuard = () => null }) {
     return {
         model: { async request({ messages, signal, effectId, step }) {
             try {
-                const detailed = await send({ ...getRequest(), taskMessages: messages, abortSignal: signal });
+                const detailed = await send(withRuntimeContext(guardRequestCallbacks({ ...getRequest(), taskMessages: messages, abortSignal: signal }, signal), hostContext, getMemoryGuard()));
                 throwIfAborted(signal, 'Orchestration aborted.');
                 if (!worker) return { type: 'complete', output: detailed };
                 const { decision, traceTurn } = normalizeWorkerReply(detailed, { ...worker, effectId });
@@ -26,7 +28,7 @@ export function createLegacyExecutionPorts({ send, getRequest, worker, toolResul
             let result;
             try {
                 throwIfAborted(effect.signal, 'Orchestration aborted.');
-                const data = await worker.execute(effect);
+                const data = await worker.execute({ ...effect, registerMemoryGuard });
                 throwIfAborted(effect.signal, 'Orchestration aborted.');
                 result = { ok: true, data };
             } catch (error) {

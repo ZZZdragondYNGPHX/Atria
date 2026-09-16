@@ -1,3 +1,4 @@
+import { compilePreparedContext } from './lib/agent-runtime/prepared-context.js';
 /**
  * One-stop request API for Luker extensions. Encapsulates profile resolution,
  * prompt assembly, sender dispatch, and response normalization so extensions
@@ -878,6 +879,7 @@ export function normalizeResponse({ requestApi, mode, raw }) {
 }
 
 function _wrapSenderError(error, abortSignal) {
+    if (error?.code === 'context_budget') return new GenerateTaskError('context_budget', error.message, { cause: error });
     if (error instanceof GenerateTaskError) {
         return error;
     }
@@ -956,6 +958,7 @@ export async function generateTask({
     functionCallOptions = null,
     abortSignal = undefined,
     substituteMacros = true,
+    runtimeContext = false,
 } = {}, { _injected = null } = {}) {
     // ── 1. Input validation ──
     const hasTools = Array.isArray(tools) && tools.length > 0;
@@ -1015,6 +1018,10 @@ export async function generateTask({
         runtimeWorldInfo: wi,
     }, { builder });
 
+    const preparedContext = runtimeContext ? await compilePreparedContext({ messages, tools,
+        requestApi: profile.requestApi, senders, presetName: effectiveLlmPresetName, signal: abortSignal,
+        context: _injected?.runtimeContext || globalThis.Luker?.getContext?.() || {}, assertMemoryCurrent: runtimeContext?.assertMemoryCurrent }) : null;
+
     // ── 6. Render per-family ──
     const payload = renderForApi(profile.requestApi, messages, { rawPromptBuilder });
 
@@ -1070,7 +1077,8 @@ export async function generateTask({
     }
 
     // ── 8. Normalize response ──
-    return normalizeResponse({ requestApi: profile.requestApi, mode, raw });
+    const normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw });
+    return preparedContext ? { ...normalized, runtimeContext: preparedContext } : normalized;
 }
 
 /**
@@ -1098,6 +1106,7 @@ export function generateTaskStream({
     functionCallOptions = null,
     abortSignal = undefined,
     substituteMacros = true,
+    runtimeContext = false,
 } = {}, { _injected = null } = {}) {
     // ── 1. Input validation ──
     const hasTools = Array.isArray(tools) && tools.length > 0;
@@ -1165,6 +1174,10 @@ export function generateTaskStream({
                 runtimeWorldInfo: wi,
             }, { builder });
 
+            const preparedContext = runtimeContext ? await compilePreparedContext({ messages, tools,
+                requestApi: profile.requestApi, senders, presetName: effectiveLlmPresetName, signal: abortSignal,
+                context: _injected?.runtimeContext || globalThis.Luker?.getContext?.() || {}, assertMemoryCurrent: runtimeContext?.assertMemoryCurrent }) : null;
+
             // ── 6. Render per-family ──
             const payload = renderForApi(profile.requestApi, messages, { rawPromptBuilder });
 
@@ -1204,7 +1217,7 @@ export function generateTaskStream({
             // ── 8. Normalize ──
             try {
                 const normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw });
-                resolveResult(normalized);
+                resolveResult(preparedContext ? { ...normalized, runtimeContext: preparedContext } : normalized);
             } catch (e) {
                 rejectResult(e);
             }

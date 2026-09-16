@@ -36,9 +36,21 @@ export function createMemoryOSPort(recallMemory) {
 }
 
 /** Legacy world-info owns injection; never run a duplicate automatic memory query. */
-export function createDelegatedMemoryPort() {
+export function createDelegatedMemoryPort(guard = () => {}) {
     return { async recall({ signal } = {}) {
         assertActive(signal);
-        return { content: '', references: [], ownership: 'legacy-world-info', assertCurrent: () => assertActive(signal) };
+        guard();
+        return { content: '', references: [], ownership: 'legacy-world-info', assertCurrent: () => { assertActive(signal); guard(); } };
     } };
+}
+
+/** Streaming observers cannot publish late output after cancellation. */
+export function guardRequestCallbacks(request, signal) {
+    const guarded = { ...request };
+    for (const key of ['onChunk', 'onUsage', 'onFirstChunk']) {
+        if (typeof request[key] === 'function') guarded[key] = (...args) => {
+            if (!signal?.aborted) return request[key](...args);
+        };
+    }
+    return guarded;
 }

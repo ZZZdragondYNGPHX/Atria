@@ -1,3 +1,4 @@
+import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Director-mode runtime.
  *
@@ -367,7 +368,11 @@ export function renderMainAgentSystemPromptWithOpenNotes(systemPrompt, openNotes
  * consecutive failed attempts the loop throws. `finalize` is the only
  * legitimate way to exit; `maxRounds` is just the upper bound.
  */
-export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
+export function runMainAgentLoop(...args) {
+    return runLegacyWorkflow(() => runMainAgentLoopPolicy(...args), { context: args[0]?.deps?.contextForNotes || {}, signal: args[0]?.eventData?.abortSignal, onEvent: args[0]?.deps?.onRuntimeEvent });
+}
+
+async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
     // Profile shape post-flatten: top-level mainAgent / subAgents / limits.
     // Legacy callers may still pass `{ mode, director: {...} }`; auto-detect
     // so both shapes round-trip cleanly during the migration window.
@@ -617,7 +622,7 @@ export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
             let transportAttempt = 0;
             while (true) {
                 try {
-                    result = await deps.generateTaskStreamForMainAgent({
+                    result = yield modelIntent(request => deps.generateTaskStreamForMainAgent(request), {
                         taskMessages: messages,
                         tools: toolSchemas,
                         toolChoice: 'auto',
@@ -645,10 +650,10 @@ export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
                                 }
                             }
                         },
-                    });
+                    }, deps?.contextForNotes || {});
                     break;
                 } catch (transportErr) {
-                    if (isAbortError(transportErr, eventData?.abortSignal)) throw transportErr;
+                    if (transportErr?.code === 'context_budget' || isAbortError(transportErr, eventData?.abortSignal)) throw transportErr;
                     transportAttempt += 1;
                     if (transportAttempt > transportRetries) throw transportErr;
                     console.warn(`[orchestrator-director] main agent transport attempt ${transportAttempt}/${transportRetries + 1} failed; retrying:`, transportErr);
@@ -777,16 +782,16 @@ export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
             }
             let toolResult;
             if (name === 'dispatch_subagent') {
-                const h = await raceAbortSignal(
+                const h = yield toolIntent(name, args, {}, () => raceAbortSignal(
                     dispatcher.dispatch({ ...(args || {}), __parentMessages: parentMessagesForRound }),
                     eventData?.abortSignal,
-                );
+                ));
                 toolResult = { ok: true, handle: h };
             } else if (name === 'dispatch_inline_subagent') {
-                const h = await raceAbortSignal(
+                const h = yield toolIntent(name, args, {}, () => raceAbortSignal(
                     dispatcher.dispatchInline({ ...(args || {}), __parentMessages: parentMessagesForRound }),
                     eventData?.abortSignal,
-                );
+                ));
                 toolResult = { ok: true, handle: h };
             } else if (name === 'await_subagents') {
                 // Race the awaitAll against the user-side signal so a
@@ -794,10 +799,10 @@ export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
                 // transport is stuck ignoring its (chained) child
                 // signal. The sub-agent promise keeps running in the
                 // background; we just stop waiting on it.
-                const results = await raceAbortSignal(
+                const results = yield toolIntent(name, args, {}, () => raceAbortSignal(
                     dispatcher.awaitAll(args?.handles || []),
                     eventData?.abortSignal,
-                );
+                ));
                 toolResult = { ok: true, results };
                 // No reasoning-fold surfacing here on purpose: the
                 // dispatcher already streamed each sub-agent's chunks
@@ -805,17 +810,17 @@ export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
                 // the terminal text on await would duplicate everything
                 // the user has already been watching.
             } else if (name === 'write_message') {
-                toolResult = await executeWriteMessageTool(handle, args);
+                toolResult = yield toolIntent(name, args, {}, () => executeWriteMessageTool(handle, args));
             } else if (name === 'apply_message_patches') {
-                toolResult = await executeApplyPatchesTool(handle, args);
+                toolResult = yield toolIntent(name, args, {}, () => executeApplyPatchesTool(handle, args));
             } else if (name === 'get_draft') {
-                toolResult = await executeGetDraftTool(handle);
+                toolResult = yield toolIntent(name, args, {}, () => executeGetDraftTool(handle));
             } else if (name === 'draft_search') {
-                toolResult = await executeDraftSearchTool(handle, args);
+                toolResult = yield toolIntent(name, args, {}, () => executeDraftSearchTool(handle, args));
             } else if (name === 'cancel_subagent') {
-                toolResult = dispatcher.cancel(args?.handle);
+                toolResult = yield toolIntent(name, args, {}, () => dispatcher.cancel(args?.handle));
             } else if (name === 'finalize') {
-                toolResult = await executeFinalizeTool(handle);
+                toolResult = yield toolIntent(name, args, {}, () => executeFinalizeTool(handle));
                 finalized = !!toolResult.ok;
             } else if (typeof deps?.executeLoopTool === 'function') {
                 try {
@@ -870,10 +875,10 @@ export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
                     // tool (network stalls, recursive sub-orchestration
                     // that ignores its own signal) can't pin the loop
                     // open after the user clicked stop.
-                    const raw = await raceAbortSignal(
+                    const raw = yield toolIntent(name, args, toolCtx, () => raceAbortSignal(
                         deps.executeLoopTool(name, args, toolCtx),
                         eventData?.abortSignal,
-                    );
+                    ));
                     toolResult = { ok: true, result: raw };
                 } catch (err) {
                     // Don't swallow abort — let the outer wrapper handle
@@ -926,7 +931,7 @@ export async function runMainAgentLoop({ handle, profile, eventData, deps }) {
     }
     // Loop exhausted maxRounds without finalize — auto-commit current state.
     if (!handle.complete._settled) {
-        await handle.commit();
+        yield toolIntent('finalize', {}, {}, () => handle.commit());
     }
 }
 

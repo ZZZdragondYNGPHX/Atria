@@ -64,10 +64,24 @@ try {
                 execute: async effect => { workerTools.push(effect.args.n); return effect.args.n; },
             },
         });
-        return { status: state.status, requests, tools, cancellation: await cancelled, legacy,
+        const { runLegacyWorkflow, modelIntent, toolIntent } = await import('/scripts/extensions/orchestrator/legacy-workflow-adapter.js');
+        const workflowOutput = await runLegacyWorkflow(async function* () {
+            const first = yield modelIntent(async () => 'hello', { taskMessages: [] });
+            const second = yield toolIntent('read', {}, {}, async () => 'world');
+            return first + ' ' + second;
+        }, { runId: 'browser-policy' });
+        const { generateTask } = await import('/scripts/generate-task.js');
+        const finalBudget = await generateTask({ runtimeContext: true, taskMessages: [{ role: 'user', content: 'task' }] }, { _injected: {
+            profileResolver: () => ({ requestApi: 'openai' }),
+            worldInfoResolver: async () => ({}), builder: ({ messages }) => [{ role: 'system', content: 'card' }, ...messages],
+            runtimeContext: { getTokenCountAsync: async () => 10 },
+            senders: { getOpenAiRuntime: () => ({ oai_settings: { openai_max_context: 25, openai_max_tokens: 10 } }),
+                sendOpenAIRequest: async () => { throw new Error('Over-budget request reached sender'); } },
+        } }).catch(error => error.code);
+        return { workflowOutput, finalBudget, status: state.status, requests, tools, cancellation: await cancelled, legacy,
             worker: { workerOutput, workerRequests, workerTools, toolIds: turns.filter(t => t.role === 'tool').map(t => t.tool_call_id) } };
     });
-    assert.deepEqual(evidence, { status: 'completed', requests: 2, tools: 1, cancellation: 'AbortError', legacy: { text: 'unchanged' },
+    assert.deepEqual(evidence, { workflowOutput: 'hello world', finalBudget: 'context_budget', status: 'completed', requests: 2, tools: 1, cancellation: 'AbortError', legacy: { text: 'unchanged' },
         worker: { workerOutput: 'worker done', workerRequests: 2, workerTools: [1, 2], toolIds: ['vendor-1', 'vendor-2'] } });
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ browser: 'Edge headless', evidence, pageErrors: errors }));

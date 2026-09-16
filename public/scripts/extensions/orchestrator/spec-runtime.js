@@ -1,3 +1,4 @@
+import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Spec execution-mode runtime for the orchestrator.
  *
@@ -640,7 +641,11 @@ function buildRecentChatAndLastUser(messages, maxRecent) {
     return { recentChatText, lastUserText };
 }
 
-export async function runWorkerNode(context, payload, nodeSpec, preset, messages, previousNodeOutputs, abortSignal = null, options = {}) {
+export function runWorkerNode(...args) {
+    return runLegacyWorkflow(() => runWorkerNodePolicy(...args), { context: args[0], signal: args[6] });
+}
+
+async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages, previousNodeOutputs, abortSignal = null, options = {}) {
     throwIfAborted(abortSignal, 'Orchestration aborted.');
     const isFinalStage = Boolean(options?.isFinalStage);
     const trace = options?.runtime?.trace;
@@ -840,6 +845,7 @@ export async function runWorkerNode(context, payload, nodeSpec, preset, messages
                         Object.assign(toolContext, {
                             signal: effect.signal, abortSignal: effect.signal,
                             runId: effect.runId, stepId: effect.stepId, effectId: effect.effectId,
+                            __agentRuntimeMemoryGuard: effect.registerMemoryGuard,
                         });
                         return executeLoopTool(effect.toolName, effect.args, toolContext);
                     },
@@ -849,7 +855,7 @@ export async function runWorkerNode(context, payload, nodeSpec, preset, messages
             return output;
         }
         for (let round = 1; round <= maxRounds; round++) {
-            const detailed = await requestToolCallsWithRetry(context, settings, await prepareRequest(round, runtimeToolMessages));
+            const detailed = yield modelIntent(request => requestToolCallsWithRetry(context, settings, request), await prepareRequest(round, runtimeToolMessages), context);
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             const calls = Array.isArray(detailed?.toolCalls) ? detailed.toolCalls : [];
             if (calls.length === 0) {
@@ -949,16 +955,13 @@ export async function runWorkerNode(context, payload, nodeSpec, preset, messages
                     const callId = assistantToolCallEntries[i].id;
                     let toolResult;
                     try {
-                        toolResult = await executeLoopTool(
+                        toolResult = yield toolIntent(
                             String(tc?.name || ''),
                             tc?.args && typeof tc.args === 'object' ? tc.args : {},
-                            toolContext,
-                        );
+                            toolContext, executeLoopTool);
                         // Post-execute abort check: surface user abort
                         // immediately instead of waiting for the next
-                        // round boundary. Not gated pre-execute because
-                        // tool side-effects already committed in this
-                        // round belong to the completed round.
+                        // round boundary. Runtime also guards before dispatch.
                         throwIfAborted(abortSignal, 'Orchestration aborted.');
                         toolResult = {
                             ok: true,
@@ -1089,7 +1092,11 @@ export async function replayStagesToReview(context, payload, messages, profile, 
     };
 }
 
-export async function runReviewNode(context, payload, profile, nodeSpec, preset, messages, previousNodeOutputs, currentStageWorkerOutputs, abortSignal = null, options = {}) {
+export function runReviewNode(...args) {
+    return runLegacyWorkflow(() => runReviewNodePolicy(...args), { context: args[0], signal: args[8] });
+}
+
+async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset, messages, previousNodeOutputs, currentStageWorkerOutputs, abortSignal = null, options = {}) {
     // Review nodes intentionally skip the `<available_skills>` catalog block
     // and the `__visibleSkillsForAgent` dispatch hint: they audit the
     // preceding worker's output via specialized review tools
@@ -1194,7 +1201,7 @@ export async function runReviewNode(context, payload, profile, nodeSpec, preset,
                 conversation.messages.push({ ...carried });
             }
             conversation.messages.push({ role: 'user', content: iterationPromptWithNotes, _round: round });
-            const detailed = await requestToolCallsWithRetry(context, settings, {
+            const detailed = yield modelIntent(request => requestToolCallsWithRetry(context, settings, request), {
                 taskMessages,
                 runtimeWorldInfo,
                 apiPresetName,
@@ -1209,7 +1216,7 @@ export async function runReviewNode(context, payload, profile, nodeSpec, preset,
                         try { addTokenUsage({ runId: options.runtime.runId, usage }); } catch (_) { /* store may have been cleared */ }
                     }
                     : null,
-            });
+            }, context);
             const decision = extractReviewDecision(detailed?.toolCalls || [], nodeSpec.id);
             // Record the assistant turn with the review decision tool call.
             conversation.messages.push({

@@ -1,11 +1,11 @@
 import { copy, requireId, TERMINAL } from './contracts.js';
 
-export function initialState({ runId, agentId, task, maxSteps = 32 }) {
+export function initialState({ runId, agentId, task, maxSteps = 32, legacyPolicy = false }) {
     requireId(runId, 'runId');
     requireId(agentId, 'agentId');
     if (!Number.isInteger(maxSteps) || maxSteps < 1) throw new TypeError('Invalid step budget');
     return {
-        schemaVersion: 1, runId, currentAgentId: agentId, task: String(task || ''), payload: null,
+        schemaVersion: 1, legacyPolicy, runId, currentAgentId: agentId, task: String(task || ''), payload: null,
         status: 'idle', generation: 1, step: 0, stepId: null, effectSequence: 0,
         scratch: [], handoffStack: [], memoryRefs: [], budget: { maxSteps },
         checkpointVersion: 0, pendingEffect: null, pendingTools: [], completedEffects: {},
@@ -55,7 +55,10 @@ export function transition(previous, event) {
     } else if (terminal) {
         throw new Error(`Invalid transition from ${state.status}`);
     } else if (event.type === 'startRun' && state.status === 'idle') {
-        nextStep(state);
+        if (state.legacyPolicy) {
+            state.stepId = `${state.runId}/step/0`;
+            schedule(state, 'policy.advance');
+        } else nextStep(state);
     } else if (event.type === 'appendUserInput' && state.status === 'waiting_user') {
         state.scratch.push({ user: String(event.input) });
         nextStep(state);
@@ -71,7 +74,16 @@ export function transition(previous, event) {
         const result = receipt.result;
         receipt.consumed = true;
         state.pendingEffect = null;
-        if (effect.type === 'memory.recall') {
+        if (effect.type === 'policy.advance') {
+            if (result.type === 'complete') {
+                state.status = 'completed';
+                state.output = result.output;
+            } else if (result.type === 'model') nextStep(state);
+            else if (result.type === 'tool') schedule(state, 'tool.execute', { toolName: result.toolName });
+            else throw new Error('Invalid legacy policy intent');
+        } else if (state.legacyPolicy && ['model.request', 'tool.execute'].includes(effect.type)) {
+            schedule(state, 'policy.advance', { receiptId: effect.effectId });
+        } else if (effect.type === 'memory.recall') {
             state.memoryRefs = result.references;
             schedule(state, 'model.request');
         } else if (effect.type === 'tool.execute') {

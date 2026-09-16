@@ -1,10 +1,80 @@
 # Phase 3 — ContextCompiler and host ports
 
-## First implementation increment (2026-09-16)
+## Completed execution boundary (2026-09-16)
+
+Continuation base: `af5ee205bc4039b26d74fc181ff700d7e7b8957b`, branch `feat/agent-runtime-v2`.
+This section supersedes the historical increment below. Phase 3's production execution gate is now met;
+Phase 4 graph/routing migration, Phase 5 UI projection and Phase 6 durable recovery have not been claimed.
+
+| Path | Execution owner | Preserved compatibility policy |
+| --- | --- | --- |
+| Single | AgentRuntime serial batches + existing Single ports | Final-output priority, provider IDs, notes and structured errors |
+| Spec worker/review | AgentRuntime via legacy workflow adapter | Worker output schemas, review/rerun rules, preset resolution |
+| Agenda planner/text agents | Same Runtime and adapter | Planner schema, dispatch context, result terminator, per-dispatch notes |
+| Loop | Same Runtime and adapter | Round/time/streak budgets, finalize and natural-text fallback |
+| Director main | Same Runtime and adapter | Stream/retry policy, draft tools, takeover commit, await/cancel |
+| Director subagents/inline | Same Runtime and adapter | Child cancellation, stream/cache barrier, plugin regex and notifications |
+| Simulation entrypoints | Above exported routines | Existing synthetic payloads and write protections |
+
+Legacy mode code is now an async-generator **policy adapter**: it yields model/tool intents instead of executing
+those operations. `policy.advance` is an explicit effect in the existing pure state machine; it is not another
+executor. Only Runtime's ModelPort/ToolPort starts the yielded work. Original retry/termination policies remain
+reviewable in place. No parallel primitive was introduced; existing Director/Spec/Agenda concurrency is retained.
+The `agentRuntimeV2: false` request still selects Single's legacy protocol path, now also scheduled by Runtime;
+it no longer means bypassing Runtime execution entirely. Rollback of this phase is by commit revert.
+
+All requests keep the existing transport chain, including `generateTask`/stream, sender-specific conversion and
+`src/luker-dispatch`. Tool registry, simulation and custom-tool resolution remain the existing owners. Run/step/effect
+IDs are assigned by Runtime, including internal Director tools. HTTP/LAN hosts without `crypto.randomUUID` have a
+run-ID fallback. Provider tool-call IDs remain separate from effect IDs. Late chunks/usage cannot publish after cancel.
+
+`runtimeContext` is an internal, non-wire request hook, forwarded through the shared tool-calling transport.
+Both generateTask paths invoke ContextCompiler after card, world-info, macro and preset assembly, before sending.
+One shared budget resolver reads the named OpenAI preset's context minus response allowance; other supported
+families use the host's existing shared context/output settings. Missing host limits/tokenizer are reported explicitly.
+Known limits with a host tokenizer reject overflow before dispatch, preserving whole messages and tool pairs.
+Counts are labeled host-tokenizer estimates: provider framing and selected remote tokenizer may differ. Neither
+user presets nor messages are silently rewritten. Ordinary authoring/editor requests do not opt in and are unchanged.
+
+Memory OS remains the sole fact/retrieval owner. No second automatic recall is added beside legacy world-info
+injection. Its registered recall tool uses MemoryPort; a returned source guard is retained in a run-local set and
+checked before subsequent models, during asynchronous counting, and at final prepared-context admission.
+The guard set/result map is cleared at exit. No raw memory/tool result enters policy receipts: they hold transient
+references only. Lost legacy generator continuations fail closed on resume instead of replaying any effect.
+Durable continuation reconstruction/reconciliation is still explicitly Phase 6 work.
+
+Two intentional differences have regression tests: cancellation before the first tool prevents that write (the old
+Loop let it through), and later trace appends no longer mutate an already-sent subagent message array. The latter
+restores a previously `test.failing` fixture to an ordinary passing test.
+
+### Verification and remaining coverage
+
+- Final phase selection: **212 suites / 2429 tests passed**, including Runtime, all orchestration modes, Memory OS,
+  floor-state, generate-task and the existing backend dispatch/provider fixtures.
+- Real Edge headless/offline: ES-module loading, policy execution, async counters, MemoryPort, serial tool history,
+  cancellation and final assembled-budget rejection passed; zero page errors. Model/storage inputs are fixtures.
+- Full unit inventory was run in four shards after restoring the existing better-sqlite3 local binary. The first
+  monolithic attempt exceeded Node's heap; sharding removed that limitation without changing repository tests.
+- Offline full inventory: **552 suites passed, 7 failed, 7 skipped; 7080 tests passed, 18 failed, 92 skipped**.
+  External MySQL/PostgreSQL services are unavailable; the repository's `LUKER_DISABLE_MYSQL_TESTS=1` and
+  `LUKER_DISABLE_POSTGRES_TESTS=1` flags were used. Parameterized DB cases omitted by those flags are not all
+  included in Jest's skipped count. No Docker/database installation or production configuration was performed.
+- All 18 remaining failures reproduced on detached pre-change `af5ee205b`: snapshot-engine-dump (2),
+  sqlite-close-handle (1), auto-rollback-engine (1), chat-read-parity (2), sync/categories (1), CPA session-store (9),
+  ws-delivery-fetch-proxy (2). These source/test paths were not changed. Thus full-repository green is not claimed.
+- Changed modules pass ESLint except pre-existing findings in spec-runtime (no-extra-boolean-cast) and generate-task
+  (quotes, brace-style, unused `_`). Those statements remain unchanged; file-local checks suppress only those rules.
+- No real-provider, Android-device or live-play acceptance is claimed or required of the owner for this phase.
+
+Full-phase scope budget: up to 26 files / 1400 changed lines including adapter/state/transport, tests and docs.
+No version, dependency declaration, user preset/data, generated distribution file or remote entrypoint changes.
+No push, integration merge or release. Next permitted phase: Phase 4 typed graph/routing and handoff policies.
+
+## Historical first increment (af5ee205b, 2026-09-16)
 
 Continuation base: `439e8cfa052320ad48e978c40cba41d9facef961` on `feat/agent-runtime-v2`.
 Integration baseline remains `cfb95953071d6459c911e3e6a3bed0144e86ba72`.
-This increment is independently tested and committed; Phase 3's global acceptance is **not yet met**.
+At that first increment, Phase 3's global acceptance was **not yet met**.
 Do not start Phase 4 or describe every legacy mode as migrated based on this commit.
 
 ### Implemented paths

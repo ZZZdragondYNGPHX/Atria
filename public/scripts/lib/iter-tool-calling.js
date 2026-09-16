@@ -74,6 +74,7 @@ export async function waitForRpmSlot(settings, abortSignal = null) {
 }
 
 export async function requestToolCallWithRetry(context, settings, {
+    runtimeContext = false,
     taskMessages = [],
     runtimeWorldInfo = null,
     apiPresetName = '',
@@ -111,6 +112,7 @@ export async function requestToolCallWithRetry(context, settings, {
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             await waitForRpmSlot(settings, abortSignal);
             const generateTaskOpts = {
+                ...(runtimeContext ? { runtimeContext } : {}),
                 taskMessages,
                 includeCharacterCard: true,
                 worldInfoSource: 'none',
@@ -139,7 +141,7 @@ export async function requestToolCallWithRetry(context, settings, {
             }
             return matched.args && typeof matched.args === 'object' ? matched.args : {};
         } catch (error) {
-            if (isAbortError(error, abortSignal)) {
+            if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
                 throw error;
             }
             lastError = error;
@@ -168,6 +170,7 @@ export async function requestToolCallWithRetry(context, settings, {
 // `isControlCall` is omitted the runner treats every call as non-control,
 // so popups without control tools opt out by simply not passing it.
 export async function requestToolCallsWithRetry(context, settings, {
+    runtimeContext = false,
     taskMessages = [],
     runtimeWorldInfo = null,
     apiPresetName = '',
@@ -214,6 +217,7 @@ export async function requestToolCallsWithRetry(context, settings, {
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             await waitForRpmSlot(settings, abortSignal);
             const generateTaskOpts = {
+                ...(runtimeContext ? { runtimeContext } : {}),
                 taskMessages,
                 includeCharacterCard: true,
                 worldInfoSource: 'none',
@@ -370,7 +374,7 @@ export async function requestToolCallsWithRetry(context, settings, {
 
             return returnValue;
         } catch (error) {
-            if (isAbortError(error, abortSignal)) {
+            if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
                 throw error;
             }
             lastError = error;

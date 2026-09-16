@@ -1,3 +1,4 @@
+import { runLegacyWorkflow, modelIntent, toolIntent, createLegacyWorkflowRunId } from './legacy-workflow-adapter.js';
 /**
  * Director mode tools — schemas + executors.
  *
@@ -528,6 +529,7 @@ export function createSubagentDispatcher({
     contextForNotes,
     customToolRegistry = null,
 }) {
+    const runtimeParentId = runId || createLegacyWorkflowRunId();
     const list = Array.isArray(subAgents) ? subAgents : [];
     const byId = new Map(list.map(a => [a.id, a]));
     const inflight = new Map();  // handleId -> Promise<{ outputText, error? }>
@@ -641,7 +643,7 @@ export function createSubagentDispatcher({
         return ctrl;
     }
 
-    async function runOneRound(subMessages, panelCtx, baseOpts, subToolSchemas, onFirstChunk = null) {
+    async function* runOneRound(subMessages, panelCtx, baseOpts, subToolSchemas, onFirstChunk = null) {
         const callOpts = {
             ...baseOpts,
             taskMessages: subMessages,
@@ -676,44 +678,48 @@ export function createSubagentDispatcher({
                 }
             };
             try {
-                const streamChunks = typeof generateTaskStream === 'function'
-                    && typeof isStreamingPresetEnabled === 'function'
-                    && isStreamingPresetEnabled(callOpts?.llmPresetName || '');
-                if (streamChunks) {
-                    const { stream, result } = generateTaskStream(callOpts);
-                    for await (const chunk of stream) {
-                        // Bail the moment the takeover handle has settled
-                        // (user pressed stop, parent committed, etc.). The
-                        // upstream stream may keep yielding chunks for a
-                        // few hundred ms after — without this guard each
-                        // chunk would keep firing store writes after the
-                        // run has been finalized, which is wasted work
-                        // (the writes are best-effort no-ops at that
-                        // point anyway).
-                        if (handle && typeof handle.isSettled === 'function' && handle.isSettled()) {
-                            break;
+                roundResult = yield modelIntent(async callOpts => {
+                    const streamChunks = typeof generateTaskStream === 'function'
+                        && typeof isStreamingPresetEnabled === 'function'
+                        && isStreamingPresetEnabled(callOpts?.llmPresetName || '');
+                    if (streamChunks) {
+                        const { stream, result } = generateTaskStream(callOpts);
+                        for await (const chunk of stream) {
+                            throwIfAborted(callOpts.abortSignal);
+                            // Bail the moment the takeover handle has settled
+                            // (user pressed stop, parent committed, etc.). The
+                            // upstream stream may keep yielding chunks for a
+                            // few hundred ms after — without this guard each
+                            // chunk would keep firing store writes after the
+                            // run has been finalized, which is wasted work
+                            // (the writes are best-effort no-ops at that
+                            // point anyway).
+                            if (handle && typeof handle.isSettled === 'function' && handle.isSettled()) {
+                                break;
+                            }
+                            if (!chunk || typeof chunk !== 'object') continue;
+                            if (typeof chunk.delta !== 'string') continue;
+                            maybeFireFirstChunk();
+                            if (chunk.type === 'text') {
+                                roundText += chunk.delta;
+                                panelAppendToSection(roundId, textSectionId, chunk.delta);
+                            } else if (chunk.type === 'reasoning') {
+                                roundReasoning += chunk.delta;
+                                panelAppendToSection(roundId, reasoningSectionId, chunk.delta);
+                            }
                         }
-                        if (!chunk || typeof chunk !== 'object') continue;
-                        if (typeof chunk.delta !== 'string') continue;
-                        maybeFireFirstChunk();
-                        if (chunk.type === 'text') {
-                            roundText += chunk.delta;
-                            panelAppendToSection(roundId, textSectionId, chunk.delta);
-                        } else if (chunk.type === 'reasoning') {
-                            roundReasoning += chunk.delta;
-                            panelAppendToSection(roundId, reasoningSectionId, chunk.delta);
-                        }
+                        roundResult = await result;
+                    } else {
+                        roundResult = await generateTask(callOpts);
+                        roundText = String(roundResult?.assistantText ?? '');
+                        roundReasoning = String(roundResult?.reasoning ?? '');
+                        if (roundText) panelAppendToSection(roundId, textSectionId, roundText);
+                        if (roundReasoning) panelAppendToSection(roundId, reasoningSectionId, roundReasoning);
                     }
-                    roundResult = await result;
-                } else {
-                    roundResult = await generateTask(callOpts);
-                    roundText = String(roundResult?.assistantText ?? '');
-                    roundReasoning = String(roundResult?.reasoning ?? '');
-                    if (roundText) panelAppendToSection(roundId, textSectionId, roundText);
-                    if (roundReasoning) panelAppendToSection(roundId, reasoningSectionId, roundReasoning);
-                }
+                    return roundResult;
+                }, callOpts, contextForNotes || {});
             } catch (transportErr) {
-                if (isAbortError(transportErr, baseOpts?.abortSignal)) throw transportErr;
+                if (transportErr?.code === 'context_budget' || isAbortError(transportErr, baseOpts?.abortSignal)) throw transportErr;
                 transportAttempt += 1;
                 if (transportAttempt > transportRetries) throw transportErr;
                 console.warn(`[orchestrator-director] sub-agent transport attempt ${transportAttempt}/${transportRetries + 1} failed; retrying:`, transportErr);
@@ -1025,7 +1031,7 @@ export function createSubagentDispatcher({
             abortSignal: childSignal,
         };
 
-        const promise = (async () => {
+        const promise = runLegacyWorkflow(async function* () {
             // Panel context for runOneRound — the dispatch round and
             // its reasoning + text sections were ensured at the top of
             // runDispatchInternal. We pass these ids per call so chunks
@@ -1067,7 +1073,7 @@ export function createSubagentDispatcher({
                     const onFirstChunk = r === 0 && barrierSlot.role === 'lead'
                         ? barrierSlot.signalFirstChunk
                         : null;
-                    const { roundAssistantText, roundToolCalls, roundReasoningText, roundReasoningBlocks, roundReasoningDetails } = await runOneRound(subMessages, panelCtx, baseOpts, subToolSchemas, onFirstChunk);
+                    const { roundAssistantText, roundToolCalls, roundReasoningText, roundReasoningBlocks, roundReasoningDetails } = yield* runOneRound(subMessages, panelCtx, baseOpts, subToolSchemas, onFirstChunk);
                     if (roundToolCalls.length === 0) {
                         // Apply user-authored plugin-scoped AI_OUTPUT
                         // regex to the sub-agent's output before it
@@ -1227,10 +1233,10 @@ export function createSubagentDispatcher({
                                 // tool can't pin this sub-agent open
                                 // after stop. Same pattern + reasoning
                                 // as the main-agent loop.
-                                const raw = await raceAbortSignal(
+                                const raw = yield toolIntent(name, args, toolCtx, () => raceAbortSignal(
                                     executeLoopTool(name, args, toolCtx),
                                     childSignal,
-                                );
+                                ));
                                 toolResult = { ok: true, result: raw };
                             } catch (err) {
                                 // Let abort errors propagate to the
@@ -1312,7 +1318,13 @@ export function createSubagentDispatcher({
                 // Follower release is a no-op by contract.
                 try { barrierSlot.release(); } catch { /* barrier release must never throw */ }
             }
-        })();
+        }, { context: contextForNotes || {}, signal: childSignal, runId: `${runtimeParentId}/${handleId}` }).catch(error => {
+            const msg = childSignal.aborted ? 'cancelled' : String(error?.message || error);
+            if (!completionNotifications.some(item => item.handleId === handleId)) {
+                completionNotifications.push({ handleId, subagentId: displayId, status: childSignal.aborted ? 'cancelled' : 'failed', summary: msg });
+            }
+            return { handleId, subagentId: displayId, error: msg };
+        });
         inflight.set(handleId, promise);
         return handleId;
     }

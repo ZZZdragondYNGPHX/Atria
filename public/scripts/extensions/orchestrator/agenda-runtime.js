@@ -1,3 +1,4 @@
+import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Agenda execution-mode runtime for the orchestrator.
  *
@@ -573,7 +574,11 @@ export function normalizeAgendaDispatches(state, plannerStep = {}, profile = {},
     return dispatches.slice(0, Math.min(maxConcurrent, remainingRunBudget));
 }
 
-export async function runAgendaPlannerStep(context, payload, messages, profile, state, abortSignal = null) {
+export function runAgendaPlannerStep(...args) {
+    return runLegacyWorkflow(() => runAgendaPlannerStepPolicy(...args), { context: args[0], signal: args[5] });
+}
+
+async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, state, abortSignal = null) {
     const settings = extension_settings[MODULE_NAME];
     const previousOrchestration = await getPreviousOrchestrationCapsuleText(context, payload);
     const planner = createAgendaPlannerDraft(profile?.planner);
@@ -628,7 +633,7 @@ export async function runAgendaPlannerStep(context, payload, messages, profile, 
     const userTextWithNotes = openNotesBlock
         ? userText + '\n\n' + openNotesBlock
         : userText;
-    const plannerStep = await requestToolCallWithRetry(context, settings, {
+    const plannerStep = yield modelIntent(request => requestToolCallWithRetry(context, settings, request), {
         taskMessages: [
             { role: 'system', content: systemText },
             { role: 'user', content: userTextWithNotes },
@@ -686,7 +691,7 @@ export async function runAgendaPlannerStep(context, payload, messages, profile, 
             additionalProperties: false,
         },
         abortSignal,
-    });
+    }, context);
     const conversation = {
         messages: [
             { role: 'system', content: systemText },
@@ -702,7 +707,11 @@ export async function runAgendaPlannerStep(context, payload, messages, profile, 
     return { plannerStep, conversation };
 }
 
-export async function runAgendaTextAgent(context, payload, messages, profile, state, dispatch, {
+export function runAgendaTextAgent(...args) {
+    return runLegacyWorkflow(() => runAgendaTextAgentPolicy(...args), { context: args[0], signal: args[7] });
+}
+
+async function* runAgendaTextAgentPolicy(context, payload, messages, profile, state, dispatch, {
     kind = 'agent',
     finalReason = '',
     customToolRegistry = null,
@@ -851,7 +860,7 @@ export async function runAgendaTextAgent(context, payload, messages, profile, st
         const userTextWithNotes = openNotesBlock
             ? userText + '\n\n' + openNotesBlock
             : userText;
-        const result = await requestToolCallWithRetry(context, settings, {
+        const result = yield modelIntent(request => requestToolCallWithRetry(context, settings, request), {
             taskMessages: [
                 { role: 'system', content: systemTextWithSkills },
                 { role: 'user', content: userTextWithNotes },
@@ -863,7 +872,7 @@ export async function runAgendaTextAgent(context, payload, messages, profile, st
             functionDescription: resultToolSchema.function.description,
             parameters: resultToolSchema.function.parameters,
             abortSignal,
-        });
+        }, context);
         const conversation = {
             messages: [
                 { role: 'system', content: systemTextWithSkills },
@@ -953,7 +962,7 @@ export async function runAgendaTextAgent(context, payload, messages, profile, st
             ...runtimeToolMessages,
             { role: 'user', content: userText },
         ];
-        const detailed = await requestToolCallsWithRetry(context, settings, {
+        const detailed = yield modelIntent(request => requestToolCallsWithRetry(context, settings, request), {
             taskMessages,
             runtimeWorldInfo,
             apiPresetName,
@@ -977,7 +986,7 @@ export async function runAgendaTextAgent(context, payload, messages, profile, st
                     try { addTokenUsage({ runId: panelRunId, usage }); } catch (_) { /* store may have been cleared */ }
                 }
                 : null,
-        });
+        }, context);
         throwIfAborted(abortSignal, 'Orchestration aborted.');
         const calls = Array.isArray(detailed?.toolCalls) ? detailed.toolCalls : [];
         if (calls.length === 0) {
@@ -1036,16 +1045,13 @@ export async function runAgendaTextAgent(context, payload, messages, profile, st
             const callId = assistantToolCallEntries[i].id;
             let toolResult;
             try {
-                const raw = await executeLoopTool(
+                const raw = yield toolIntent(
                     String(tc?.name || ''),
                     tc?.args && typeof tc.args === 'object' ? tc.args : {},
-                    toolContext,
-                );
+                    toolContext, executeLoopTool);
                 // Post-execute abort check: surface user abort
                 // immediately instead of waiting for the next round
-                // boundary. Not gated pre-execute because tool side-
-                // effects already committed in this round belong to
-                // the completed round.
+                // boundary. Runtime also checks before starting the tool.
                 throwIfAborted(abortSignal, 'Orchestration aborted.');
                 toolResult = { ok: true, data: raw };
             } catch (toolError) {

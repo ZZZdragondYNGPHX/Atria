@@ -1,3 +1,4 @@
+import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
  * Loop execution-mode runtime for the orchestrator.
  *
@@ -170,7 +171,7 @@ const NO_TOOL_CALL_STREAK_LIMIT = 3;
  *
  * Returns `{ toolCalls: Array<{id, name, args}>, assistantText: string }`.
  */
-async function defaultSendLlm({ context, settings, messages, tools, runtimeWorldInfo, apiPresetName, llmPresetName, abortSignal, onUsage }) {
+async function defaultSendLlm({ context, settings, messages, tools, runtimeWorldInfo, apiPresetName, llmPresetName, abortSignal, onUsage, runtimeContext }) {
     const [toolCallingMod, agentResolutionMod] = await Promise.all([
         import('./tool-calling.js'),
         import('./agent-resolution.js'),
@@ -188,6 +189,7 @@ async function defaultSendLlm({ context, settings, messages, tools, runtimeWorld
     )?.name || '';
     const result = await toolCallingMod.requestToolCallsWithRetry(context, settings, {
         taskMessages: messages,
+        ...(runtimeContext ? { runtimeContext } : {}),
         runtimeWorldInfo: runtimeWorldInfo || {},
         apiPresetName: resolvedApiPresetName,
         llmPresetName: resolvedLlmPresetName,
@@ -853,7 +855,11 @@ export async function attachToolContext(context, payload) {
  * @param {{ sendLlm?: Function, executeTool?: Function, settings?: object, runtimeWorldInfo?: object }} [deps]
  * @returns {Promise<{status: string, capsule: string|null, total_rounds: number, runtimeTrace: object}>}
  */
-export async function runLoopOrchestration(context, payload, profile, deps = {}) {
+export function runLoopOrchestration(...args) {
+    return runLegacyWorkflow(() => runLoopOrchestrationPolicy(...args), { context: args[0], signal: args[1]?.signal, onEvent: args[3]?.onRuntimeEvent });
+}
+
+async function* runLoopOrchestrationPolicy(context, payload, profile, deps = {}) {
     const sendLlm = typeof deps?.sendLlm === 'function' ? deps.sendLlm : defaultSendLlm;
     const executeTool = typeof deps?.executeTool === 'function' ? deps.executeTool : defaultExecuteTool;
 
@@ -1011,7 +1017,7 @@ export async function runLoopOrchestration(context, payload, profile, deps = {})
             appendRound({ runId, round: { id: roundId, label: i18nFormat('Agent · round ${0}', round) } });
             const textSectionId = ensureSection({ runId, roundId, section: { id: 'text', kind: 'text', title: i18n('Text') } });
 
-            const response = await sendLlm({
+            const response = yield modelIntent(sendLlm, {
                 context,
                 settings: deps?.settings || null,
                 runtimeWorldInfo: deps?.runtimeWorldInfo || null,
@@ -1024,7 +1030,7 @@ export async function runLoopOrchestration(context, payload, profile, deps = {})
                 onUsage: (usage) => {
                     try { addTokenUsage({ runId, usage }); } catch (_) { /* store may have been cleared */ }
                 },
-            });
+            }, context);
 
             const assistantText = String(response?.assistantText || '').trim();
             if (assistantText) {
@@ -1156,17 +1162,14 @@ export async function runLoopOrchestration(context, payload, profile, deps = {})
                 }
 
                 try {
-                    const result = await executeTool(name, args, toolContext);
+                    const result = yield toolIntent(name, args, toolContext, executeTool);
                     // Post-execute abort check: if the user aborted
                     // during the tool body (a slow LLM sub-call, DOM
                     // work, disk I/O), surface it immediately instead
                     // of waiting for the next round boundary. Cheap:
                     // throwIfAborted is a single .aborted read + throw
-                    // on the common path. Not gated pre-execute because
-                    // tool results scheduled in this round (e.g. a
-                    // `note_open` that already wrote to disk) belong
-                    // to the completed round — cancelling them mid-
-                    // enumeration would silently drop side-effects.
+                    // on the common path. Runtime now also guards before dispatch,
+                    // so a cancelled model reply cannot start a new write.
                     throwIfAborted(abortSignal, 'Orchestration aborted.');
                     messages.push(makeOkToolMessage(persistedId, normalizeToolOk(result), round));
                     recordToTrace(trace, 'tool_result', { round, name, tool_call_id: persistedId });

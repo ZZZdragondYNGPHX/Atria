@@ -53,3 +53,21 @@ Rollback: revert the standalone Phase 1 commit; no production path imports the k
 Stop if correct production integration requires changing presets or bypassing existing dispatch/memory owners; leave that to its named later phase.
 
 Phase 0 verification: existing orchestrator / memory-graph / floor-state Jest selection passed: 158 suites, 1950 tests (2026-09-16). No executable files changed. Browser, model and Android checks were not run for this documentation-only phase.
+
+## ADR-010 — Phase 3 legacy policy adapters share the kernel executor
+
+Retain each mode's completion, retry, review and streaming policies in async generators while migrating its
+model/tool operations into yielded intents. AgentRuntime persists `policy.advance`, `memory.recall`, model and
+tool boundaries through the same state transition/receipt mechanism as native Single. The generator never
+executes a yielded operation itself; live closures and tool/model results stay outside checkpoints.
+This is a compatibility adapter, not a second runtime or a durable policy format. A lost continuation rejects
+resume before re-executing any effect. Phase 4 replaces graph/routing decisions with typed policies; Phase 6
+must provide source-safe durable reconstruction/reconciliation before claiming restart recovery.
+
+Final context admission belongs after the existing host's assembly, not before card/world-info/preset expansion.
+A non-wire runtimeContext hook in generateTask/stream calls the shared compiler, using existing named-preset
+or host context/output limits. Estimates are labeled; there is no provider-specific second client/token store.
+Memory OS guards survive tool return through run-local callbacks, including final tokenization. Existing
+world-info owns automatic injection until a separately tested replacement exists; duplicate recall is forbidden.
+
+Phase 3 evidence and full-repository baseline failures are recorded in AGENT_RUNTIME_V2_PHASE3.md.
