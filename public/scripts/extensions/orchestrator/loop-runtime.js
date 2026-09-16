@@ -1,4 +1,5 @@
 import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
+import { runLoopEngine } from './engine-v2/loop-adapter.js';
 /**
  * Loop execution-mode runtime for the orchestrator.
  *
@@ -856,6 +857,10 @@ export async function attachToolContext(context, payload) {
  * @returns {Promise<{status: string, capsule: string|null, total_rounds: number, runtimeTrace: object}>}
  */
 export function runLoopOrchestration(...args) {
+    if (args[1]?.agentRuntimeV2 !== false) return runLoopOrchestrationPolicy(...args).next().then(result => {
+        if (!result.done) throw new Error('Loop Engine yielded a legacy continuation');
+        return result.value;
+    });
     let panelRunId = null;
     args[3] = { ...args[3], bindRuntimePanel: id => { panelRunId = id; } };
     return runLegacyWorkflow(() => runLoopOrchestrationPolicy(...args), {
@@ -992,7 +997,15 @@ async function* runLoopOrchestrationPolicy(context, payload, profile, deps = {})
     let exhaustReason = '';
 
     try {
-        for (let round = 1; round <= maxRounds; round += 1) {
+        if (payload?.agentRuntimeV2 !== false) {
+            const result = await runLoopEngine({ context, payload, profile: { ...profile, max_rounds: maxRounds }, deps, toolContext, tools,
+                messages, refreshRuntimeStateMessage, sendLlm, executeTool, runId, deadline,
+                record: (type, details) => recordToTrace(trace, type, details), resolveToolSource, isStructuredToolError,
+                makeOkToolMessage, makeErrorToolMessage, normalizeToolOk });
+            totalRounds = result.total_rounds;
+            if (result.status === 'completed') capsule = result.capsule;
+            else { lastNaturalText = result.capsule; exhaustReason = result.reason; }
+        } else for (let round = 1; round <= maxRounds; round += 1) {
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             if (deadline !== null && Date.now() >= deadline) {
                 exhaustReason = 'wall_clock';
