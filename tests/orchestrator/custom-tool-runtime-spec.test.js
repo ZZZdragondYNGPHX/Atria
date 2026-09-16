@@ -303,7 +303,7 @@ describe('spec runtime Layer-3 dispatch', () => {
     });
 });
 
-test('Spec reviewer reruns an earlier worker through a typed handoff and preserves the preset', async () => {
+test('Spec reviewer reruns an earlier worker through Engine delegation and preserves the preset', async () => {
     const profile = { mode: 'spec', spec: { stages: [
         { id: 'draft', mode: 'serial', nodes: [{ id: 'writer', preset: 'p' }, { id: 'reviewer', type: 'review', preset: 'p' }] },
         { id: 'final', mode: 'serial', nodes: [{ id: 'finalizer', preset: 'p' }] },
@@ -316,15 +316,14 @@ test('Spec reviewer reruns an earlier worker through a typed handoff and preserv
         reply('luker_orch_review_approve', { review_feedback: 'approved' }), guidance());
     const result = await runSpecOrchestration({}, {}, [], profile, { onRuntimeEvent: event => events.push(event) });
     expect(result.reviewRerunCount).toBe(1);
-    expect(getRuntimePanelState().runtime.runs.flatMap(run => run.handoffs)).toHaveLength(4);
+    expect(getRuntimePanelState().runtime.runs.flatMap(run => run.handoffs)).toHaveLength(0);
     expect(getRuntimePanelState().runtime.runs.every(run => run.status === 'completed')).toBe(true);
-    const handoffs = events.filter(e => e.type === 'agent.handoff.completed');
-    expect(handoffs.map(e => [e.fromAgentId, e.toAgentId])).toEqual([
-        ['spec/controller', 'spec/agent/0%3A0%3Awriter'], ['spec/controller', 'spec/agent/0%3A1%3Areviewer'],
-        ['spec/agent/0%3A1%3Areviewer', 'spec/agent/0%3A0%3Awriter'], ['spec/controller', 'spec/agent/1%3A0%3Afinalizer'],
-    ]);
-    expect(new Set(handoffs.map(e => e.handoffId)).size).toBe(4);
-    expect(handoffs.every(e => e.runId.startsWith(e.parentRunId + '/'))).toBe(true);
+    const branches = events.filter(e => e.type === 'parallel.branch.started');
+    expect(branches.map(e => e.toAgentId)).toEqual(['agent:stage:0/node:0', 'agent:stage:0/node:1',
+        'agent:stage:0/node:0', 'agent:stage:0/node:1', 'agent:stage:1/node:0']);
+    expect(new Set(branches.map(e => e.childRunId)).size).toBe(5);
+    expect(result.stageOutputs[0].nodes[0].output).toEqual({ output: 'repaired' });
+    expect(llmRequests.at(-1).taskMessages.some(message => message.content.includes('approved'))).toBe(true);
     expect(JSON.stringify(profile)).toBe(before);
 });
 
@@ -335,6 +334,6 @@ test('legacy Spec string nodes and repeated names in different stages keep disti
     llmResponses.push({ toolCalls: [{ name: 'luker_orch_node_output', args: { value: 'first' } }] }, guidance());
     const events = [];
     await runSpecOrchestration({}, {}, [], profile, { onRuntimeEvent: e => events.push(e) });
-    expect(events.filter(e => e.type === 'agent.handoff.completed').map(e => e.toAgentId))
-        .toEqual(['spec/agent/0%3A0%3Asame', 'spec/agent/1%3A0%3Asame']);
+    expect(events.filter(e => e.type === 'parallel.branch.started').map(e => e.toAgentId))
+        .toEqual(['agent:stage:0/node:0', 'agent:stage:1/node:0']);
 });

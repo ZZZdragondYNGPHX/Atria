@@ -7,7 +7,7 @@ import { throwIfAborted, createAbortError } from './abort-utils.js';
 import { workerHistory } from './legacy-worker-protocol.js';
 
 /** Single's serial rounds are driven by Runtime; host preparation and wire formatting stay compatible. */
-export async function runLegacySingleRequest({ runId, agentId = 'single_agent', request, send, onEvent = null, worker = null, store = undefined, resume = false, hostContext = {}, contextBudget = Number.MAX_SAFE_INTEGER }) {
+export async function runLegacySingleRequest({ runId, agentId = 'single_agent', request, send, onEvent = null, worker = null, store = undefined, resume = false, parentRunId, hostContext = {}, contextBudget = Number.MAX_SAFE_INTEGER }) {
     throwIfAborted(request.abortSignal, 'Orchestration aborted.');
     const opening = store ? null : openRuntimeCheckpointStore(runId);
     const ownedStore = opening ? await opening : undefined;
@@ -47,7 +47,7 @@ export async function runLegacySingleRequest({ runId, agentId = 'single_agent', 
     ownedStore?.bindCancel(cancel);
     request.abortSignal?.addEventListener('abort', cancel, { once: true });
     try {
-        const result = await (resume ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId, task: 'Legacy Single final guidance', maxSteps: worker?.maxRounds || 1 }));
+        const result = await (resume && runtime.getState(runId) ? runtime.resumeRun(runId) : runtime.startRun({ runId, agentId, parentRunId, task: 'Legacy Single final guidance', maxSteps: worker?.maxRounds || 1 }));
         if (result.status === 'cancelled') throw createAbortError('Orchestration aborted.');
         if (result.status !== 'completed') {
             if (portError) throw portError;

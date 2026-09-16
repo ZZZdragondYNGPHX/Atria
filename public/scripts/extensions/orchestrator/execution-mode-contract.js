@@ -28,7 +28,7 @@ const RUNTIME_SETTING_KEYS = [
 
 export function executionConfigText(profile, settings, presetId = '') {
     const runtimeSettings = Object.fromEntries(RUNTIME_SETTING_KEYS.map(key => [key, settings?.[key]]));
-    return canonicalStringify({ version: 1, profile, runtimeSettings, presetId });
+    return canonicalStringify({ version: 2, engineCompilerVersion: 1, profile, runtimeSettings, presetId });
 }
 
 // Only a digest enters floor-state. In insecure WebViews without Web Crypto,

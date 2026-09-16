@@ -9,7 +9,7 @@ import { selectReadyNodes, routeEdges } from './scheduler.js';
 export function initialPolicyState(plan) {
     return { planId: plan.planId, planFingerprint: planIdentity(plan), activeNodeId: null, activeNodeIds: [],
         graphRevision: 0, taskGraph: [], completedNodeIds: [], results: [], resultRefs: [], attempts: {}, edgeVisits: {},
-        arbitrationState: null, outputState: null, budgets: { steps: 0, plannerRounds: 0, arbitrationCalls: 0 },
+        arbitrationState: null, outputState: null, reviewRerunCount: 0, reviewFeedback: [], rerunReasons: {}, budgets: { steps: 0, plannerRounds: 0, arbitrationCalls: 0 },
         pending: null, dispatch: [], requestFinalize: false, events: [] };
 }
 
@@ -54,6 +54,7 @@ export function createPolicyController(input) {
                         planId: plan.planId, nodeId: node.nodeId, attempt, parentRunId: runId,
                         inputs: copy(state.results.filter(result => !node.inputPolicy?.nodeIds || node.inputPolicy.nodeIds.includes(result.nodeId))),
                         taskGraph: copy(state.taskGraph), node: copy(node),
+                        reviewRerunCount: state.reviewRerunCount, reviewFeedback: copy(state.reviewFeedback), rerunReason: state.rerunReasons[node.nodeId] ?? null,
                     } };
             }) }, policyState: state };
     };
@@ -91,6 +92,26 @@ export function createPolicyController(input) {
                     state.completedNodeIds.push(node.nodeId);
                 } else {
                     if (!state.completedNodeIds.includes(node.nodeId)) state.completedNodeIds.push(node.nodeId);
+                    if (node.metadata?.nodeSpec?.type === 'review') {
+                        const decision = result.structured;
+                        if (decision?.action === 'approve') {
+                            state.reviewFeedback = state.reviewFeedback.filter(item => item.nodeId !== node.nodeId);
+                            state.reviewFeedback.push({ nodeId: node.nodeId, feedback: decision.reason, metadata: node.metadata });
+                        } else if (decision?.action === 'rerun') {
+                            if (state.reviewRerunCount >= plan.scheduler.reviewMaxRounds) return finish(state, 'failed', 'Review rerun limit reached');
+                            const targets = decision.targetSlotIds;
+                            if (!Array.isArray(targets) || !targets.length || targets.some(id => !state.completedNodeIds.includes(id) || id === node.nodeId)) throw new Error('Invalid review targets');
+                            const firstStage = Math.min(...targets.map(id => getNode(id).metadata.stageIndex));
+                            const reset = plan.nodes.filter(candidate => targets.includes(candidate.nodeId)
+                                || (candidate.metadata?.stageIndex > firstStage && (candidate.metadata.stageIndex < node.metadata.stageIndex
+                                    || (candidate.metadata.stageIndex === node.metadata.stageIndex && candidate.metadata.nodeIndex <= node.metadata.nodeIndex)))
+                                || candidate.nodeId === node.nodeId).map(candidate => candidate.nodeId);
+                            state.completedNodeIds = state.completedNodeIds.filter(id => !reset.includes(id));
+                            state.reviewFeedback = state.reviewFeedback.filter(item => !reset.includes(item.nodeId));
+                            targets.forEach(id => { state.rerunReasons[id] = decision.reason; });
+                            state.reviewRerunCount++;
+                        } else throw new Error('Invalid review decision');
+                    }
                     for (const edge of routeEdges(plan, node.nodeId, result, state.edgeVisits).filter(edge => edge.maxVisits)) {
                         state.edgeVisits[edge.edgeId] = (state.edgeVisits[edge.edgeId] || 0) + 1;
                         state.completedNodeIds = state.completedNodeIds.filter(id => id !== edge.to && id !== node.nodeId);
@@ -124,7 +145,7 @@ export function createPolicyController(input) {
         while ((deterministic = selectReadyNodes(plan, state).filter(node => ['router', 'join', 'terminal'].includes(node.kind))).length) {
             for (const node of deterministic) {
             const parents = state.results.filter(result => (node.inputs || plan.edges.filter(edge => edge.to === node.nodeId).map(edge => edge.from)).includes(result.nodeId));
-            const selection = arbitrate(parents, node.arbitration || plan.arbitration);
+            const selection = node.metadata?.entry ? { value: null, partial: false } : arbitrate(parents, node.arbitration || plan.arbitration);
             const result = createResult({ runId: runSnapshot.runId, nodeId: node.nodeId, agentId: node.agentId,
                 value: selection.value, status: selection.partial ? 'partial' : 'completed' });
             state.results.push(result); state.resultRefs.push(result.resultId); state.completedNodeIds.push(node.nodeId);

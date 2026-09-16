@@ -17,6 +17,14 @@ export async function runEnginePlan({ plan: input, runId, createChildRuntime, br
     const registry = new AgentRegistry([{ id: parentId, handoffs: plan.agents.map(agent => agent.id),
         policies: { maxConcurrency: plan.budgets.maxConcurrency } }, ...plan.agents]);
     let runtime;
+    const controller = createPolicyController(plan);
+    const children = branchPort || createRuntimeBranchPort(createChildRuntime);
+    const guardedChildren = Object.fromEntries(['execute', 'resume'].map(method => [method, async request => {
+        assertFresh();
+        const result = await children[method]({ ...request, assertCurrent: () => { request.assertCurrent?.(); assertFresh(); } });
+        assertFresh();
+        return result;
+    }]));
     const sink = event => {
         observer(event);
         if (event.type === 'policy.advance.completed') {
@@ -27,10 +35,10 @@ export async function runEnginePlan({ plan: input, runId, createChildRuntime, br
         }
     };
     runtime = new AgentRuntime({ registry, store, eventSink: sink, countTokens: createHostTokenCounter(context),
-        ports: { policy: createPolicyController(plan), memory: createDelegatedMemoryPort(assertFresh),
+        ports: { policy: { advance(request) { assertFresh(); return controller.advance(request); } }, memory: createDelegatedMemoryPort(assertFresh),
             model: { request() { throw new Error('Engine coordinator has no model port'); } },
             tool: { execute() { throw new Error('Engine coordinator has no tool port'); } },
-            parallel: new ParallelExecutor(branchPort || createRuntimeBranchPort(createChildRuntime)) } });
+            parallel: new ParallelExecutor(guardedChildren) } });
     const cancel = () => { if (runtime.getState(runId)) runtime.cancelRun(runId); };
     ownedStore?.bindCancel(cancel);
     signal?.addEventListener('abort', cancel, { once: true });

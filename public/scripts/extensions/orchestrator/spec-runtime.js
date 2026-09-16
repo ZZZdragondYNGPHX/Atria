@@ -1,4 +1,6 @@
 import { runLegacyParallel } from './legacy-parallel-adapter.js';
+import { runSpecEngine } from './engine-v2/spec-adapter.js';
+import { toolCapability } from '../../lib/orchestration-engine/capabilities.js';
 import { runRoutedLegacyWorkflow, createSpecAgentRoute, selectHandoffInputs } from './legacy-agent-routing.js';
 import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 /**
@@ -644,6 +646,10 @@ function buildRecentChatAndLastUser(messages, maxRecent) {
 }
 
 export function runWorkerNode(...args) {
+    if (args[7]?.engineNode) return runWorkerNodePolicy(...args).next().then(result => {
+        if (!result.done) throw new Error('Engine worker yielded a legacy continuation');
+        return result.value;
+    });
     const inputs = args[5] instanceof Map ? args[5] : new Map();
     args[5] = selectHandoffInputs(inputs, [...inputs.keys()]);
     return runRoutedLegacyWorkflow(handoff => {
@@ -712,9 +718,9 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
         ? getEnabledToolSchemas({ tools: resolvedToolFlags }, customToolRegistry)
             .filter(s => String(s?.function?.name || '') !== 'finalize')
         : [];
-    const tools = enableLoopTools
+    const tools = (enableLoopTools
         ? [...loopToolSchemas, ...outputToolSchemas]
-        : outputToolSchemas;
+        : outputToolSchemas).filter(tool => !options.engineCapabilities || options.engineCapabilities[toolCapability(tool.function.name, 'spec')]);
     const allowedNames = new Set(tools.map(tool => String(tool?.function?.name || '').trim()).filter(Boolean));
     const maxRounds = getNodeIterationMaxRounds(settings);
     const outputToolName = isFinalStage ? 'luker_orch_final_guidance' : 'luker_orch_node_output';
@@ -838,9 +844,10 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
     };
 
     try {
-        if (options?.runtime?.useV2Single) {
+        if (options?.runtime?.useV2Single || options?.engineNode) {
             const output = await runLegacySingleRequest({
-                runId: `${options.runtimeExecutionId || options.runtime.runId}/single/${nodeSpec.id}`,
+                runId: options.engineNode ? options.runtimeRunId : `${options.runtimeExecutionId || options.runtime.runId}/single/${nodeSpec.id}`,
+                resume: Boolean(options.engineNode), parentRunId: options.engineParentRunId,
                 agentId: options.runtimeAgentId,
                 request: { tools, abortSignal },
                 hostContext: context,
@@ -1106,6 +1113,10 @@ export async function replayStagesToReview(context, payload, messages, profile, 
 }
 
 export function runReviewNode(...args) {
+    if (args[9]?.engineNode) return runReviewNodePolicy(...args).next().then(result => {
+        if (!result.done) throw new Error('Engine review yielded a legacy continuation');
+        return result.value;
+    });
     const previous = args[6] instanceof Map ? args[6] : new Map();
     const current = args[7] instanceof Map ? args[7] : new Map();
     args[6] = selectHandoffInputs(previous, [...previous.keys()]);
@@ -1221,7 +1232,7 @@ async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset,
                 conversation.messages.push({ ...carried });
             }
             conversation.messages.push({ role: 'user', content: iterationPromptWithNotes, _round: round });
-            const detailed = yield modelIntent(request => requestToolCallsWithRetry(context, settings, request), {
+            const reviewRequest = {
                 taskMessages,
                 runtimeWorldInfo,
                 apiPresetName,
@@ -1236,8 +1247,17 @@ async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset,
                         try { addTokenUsage({ runId: options.runtime.runId, usage }); } catch (_) { /* store may have been cleared */ }
                     }
                     : null,
-            }, context);
+            };
+            const detailed = options.engineNode ? await runLegacySingleRequest({
+                runId: options.runtimeRunId, parentRunId: options.engineParentRunId, resume: true,
+                agentId: options.runtimeAgentId, request: reviewRequest, hostContext: context,
+                send: request => requestToolCallsWithRetry(context, settings, request), onEvent: options.runtime?.onRuntimeEvent,
+            }) : yield modelIntent(request => requestToolCallsWithRetry(context, settings, request), reviewRequest, context);
             const decision = extractReviewDecision(detailed?.toolCalls || [], nodeSpec.id);
+            if (options.engineNode) {
+                finishRuntimeNodeAttempt(trace, traceAttempt, { status: 'completed', action: decision.action, reason: decision.reason });
+                return decision;
+            }
             // Record the assistant turn with the review decision tool call.
             conversation.messages.push({
                 role: 'assistant',
@@ -1682,7 +1702,13 @@ export async function runSpecOrchestration(context, payload, messages, profile, 
     throwIfAborted(abortSignal, 'Orchestration aborted.');
 
     try {
-        for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
+        if (payload?.agentRuntimeV2 !== false) {
+            const engine = await runSpecEngine({ context, payload, messages, profile, runtime, settings: extension_settings[MODULE_NAME],
+                runWorkerNode, runReviewNode, normalizeNodeSpec, resolveReviewTargetEntries, createStageOutputSnapshot });
+            previousNodeOutputs = engine.previousNodeOutputs;
+            runtime.stageOutputs = engine.stageOutputs;
+            runtime.reviewRerunCount = engine.reviewRerunCount;
+        } else for (let stageIndex = 0; stageIndex < stages.length; stageIndex++) {
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             const stage = stages[stageIndex];
             const stageResult = await executeStage(context, payload, messages, profile, runtime, stageIndex, previousNodeOutputs, abortSignal);
