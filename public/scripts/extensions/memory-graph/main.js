@@ -4526,6 +4526,7 @@ export function getMemoryWorkspacePorts(context) {
         inspect: async snapshot => (await import('./inspector-compute.js')).computeInspector(snapshot),
         correct: (command, snapshot) => sourceLifecycle.correct(context, command, snapshot),
         openHistory: () => openHistoryBuildPopup(context, createMemoryHistoryBuilder()),
+        mountSettings: container => mountMemorySettingsUi(container),
         mountKnowledge: (container, signal, onInspect) => openMemoryOsInspector(context, {
             container, signal, onInspect,
             load: () => sourceLifecycle.retrievalSnapshot(context),
@@ -15738,29 +15739,37 @@ function bindUi() {
     });
 }
 
-function ensureUi() {
-    const host = jQuery('#extensions_settings2');
-    if (!host.length) {
-        return;
-    }
-
-    ensureStyles();
-
-    if (jQuery(`#${UI_BLOCK_ID}`).length) {
-        bindUi();
-        return;
-    }
-
-    const html = buildMemoryGraphSettingsHtml({
+function buildSettingsUiHtml() {
+    return buildMemoryGraphSettingsHtml({
         escapeHtml,
         extension_prompt_roles,
         i18n,
         UI_BLOCK_ID,
         world_info_position,
     });
+}
 
-    host.append(html);
+function mountMemorySettingsUi(container) {
+    if (!(container instanceof HTMLElement)) return () => {};
+    document.getElementById(UI_BLOCK_ID)?.remove();
+
+    const holder = document.createElement('div');
+    holder.innerHTML = buildSettingsUiHtml().trim();
+    const root = holder.firstElementChild;
+    if (!(root instanceof HTMLElement)) return () => {};
+
+    container.append(root);
     bindUi();
+    return () => {
+        if (root.isConnected) root.remove();
+    };
+}
+
+function ensureUi() {
+    // Agent & Memory Workspace is now the sole product UI for Memory OS.
+    // Keep the runtime and APIs active, but retire the duplicate legacy
+    // Extensions-page drawer. Existing settings/data are unchanged.
+    document.querySelector(`#extensions_settings2 #${UI_BLOCK_ID}`)?.remove();
 }
 
 /**

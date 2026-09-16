@@ -5,6 +5,7 @@ import { downloadRunTraceAsJsonl } from '../runtime-trace-export.js';
 import { RUN_STARTED } from '../run-state/events.js';
 import { renderGraph } from '../../../lib/agent-workspace/graph-view.js';
 import { replayRuntimeEvents } from '../../../lib/agent-runtime/projection.js';
+import { i18n } from '../i18n.js';
 
 const tabs = ['Presets', 'Live Run', 'Graph', 'Agents', 'Memory', 'Diagnostics'];
 let root, body, nav, title, stop, pill, unsubscribe, frame, previousFocus;
@@ -14,7 +15,7 @@ let timer;
 let replay = null, updateMemory;
 let renderIdentity = '', pageSequence = 0;
 const pageOffsets = new Map();
-const el = (tag, text, parent) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; parent?.append(node); return node; };
+const el = (tag, text, parent) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = typeof text === 'string' ? i18n(text) : text; parent?.append(node); return node; };
 const button = (parent, text, action) => { const node = el('button', text, parent); node.type = 'button'; node.addEventListener('click', action); return node; };
 const json = (parent, value) => el('pre', JSON.stringify(value, null, 2), parent);
 const detail = (parent, label, value) => { const node = el('details', undefined, parent); el('summary', label, node); node.addEventListener('toggle', () => { if (node.open && !node.querySelector('pre')) json(node, value); }); return node; };
@@ -62,10 +63,10 @@ function renderContent() {
     if (!root || !open) return;
     const run = selectedRun(), view = workspaceRunView(run, selection);
     if (selection.runId !== run?.runId) selection = {};
-    title.textContent = `Agent & Memory · ${run ? `${run.mode} · ${run.status}` : 'Workspace'}`;
+    title.textContent = `${i18n('Agent & Memory')} · ${run ? `${run.mode} · ${run.status}` : i18n('Workspace')}`;
     stop.hidden = !!replay || run?.status !== 'running'; stop.disabled = !!run?.stopRequested;
-    stop.textContent = run?.stopRequested ? 'Stopping…' : 'Stop Run';
-    for (const item of nav.children) { item.setAttribute('aria-selected', String(item.textContent === tab)); item.tabIndex = item.textContent === tab ? 0 : -1; }
+    stop.textContent = run?.stopRequested ? i18n('Stopping…') : i18n('Stop Run');
+    for (const item of nav.children) { item.setAttribute('aria-selected', String(item.dataset.tab === tab)); item.tabIndex = item.dataset.tab === tab ? 0 : -1; }
     body.setAttribute('aria-labelledby', `workspace-tab-${tabs.indexOf(tab)}`);
     disposeTab?.(); disposeTab = null; updateMemory = null; body.replaceChildren();
     if (replay) button(body, 'Viewing imported trace · Return to live run', () => { replay = null; selection = {}; render(); });
@@ -162,7 +163,7 @@ function renderContent() {
     } else {
         detail(body, 'Checkpoint / recovery', run?.runtime.runs.map(({ runId, version, generation, status, staleEffects }) => ({ runId, version, generation, status, staleEffects })) || []);
         detail(body, 'Context sources / token budgets', view.contexts);
-        const upload = el('input', undefined, body); upload.type = 'file'; upload.accept = '.jsonl,.ndjson'; upload.setAttribute('aria-label', 'Replay metadata trace');
+        const upload = el('input', undefined, body); upload.type = 'file'; upload.accept = '.jsonl,.ndjson'; upload.setAttribute('aria-label', i18n('Replay metadata trace'));
         upload.addEventListener('change', async () => {
             try {
                 const file = upload.files[0]; if (!file) return;
@@ -185,14 +186,14 @@ function mount() {
         const css = el('link', undefined, document.head); css.id = 'agent-memory-workspace-css'; css.rel = 'stylesheet'; css.href = new URL('./panel.css', import.meta.url).href;
     }
     root = el('aside', undefined, document.body); root.id = 'agent-memory-workspace'; root.hidden = true;
-    root.setAttribute('aria-label', 'Agent & Memory Workspace');
+    root.setAttribute('aria-label', i18n('Agent & Memory Workspace'));
     const header = el('header', undefined, root); title = el('h2', 'Agent & Memory', header);
     stop = button(header, 'Stop Run', () => requestRunStop(getCurrentRun()?.runId));
     button(header, 'Export Trace', () => downloadRunTraceAsJsonl(selectedRun()?.runtime.events));
     button(header, 'Close', closeWorkspace);
-    nav = el('nav', undefined, root); nav.setAttribute('role', 'tablist'); nav.setAttribute('aria-label', 'Workspace views');
+    nav = el('nav', undefined, root); nav.setAttribute('role', 'tablist'); nav.setAttribute('aria-label', i18n('Workspace views'));
     for (const name of tabs) {
-        const item = button(nav, name, () => { tab = name; render(); }); item.setAttribute('role', 'tab');
+        const item = button(nav, name, () => { tab = name; render(); }); item.dataset.tab = name; item.setAttribute('role', 'tab');
         item.id = `workspace-tab-${tabs.indexOf(name)}`; item.setAttribute('aria-controls', 'workspace-content');
         item.addEventListener('keydown', event => {
             if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -203,12 +204,12 @@ function mount() {
     }
     body = el('main', undefined, root); body.id = 'workspace-content'; body.setAttribute('role', 'tabpanel');
     root.addEventListener('keydown', event => { if (event.key === 'Escape') closeWorkspace(); });
-    pill = button(document.body, '● Running · Open Workspace', () => openWorkspace()); pill.id = 'agent-memory-pill'; pill.hidden = true;
+    pill = button(document.body, `● ${i18n('Running')} · ${i18n('Open Workspace')}`, () => openWorkspace()); pill.id = 'agent-memory-pill'; pill.hidden = true;
     timer = setInterval(() => {
         const run = selectedRun(); if (!run || run.status !== 'running') return;
         const seconds = Math.max(0, (performance.now() - run.startedAt) / 1000).toFixed(1);
-        if (open) title.textContent = `Agent & Memory · ${run.mode} · ${run.status} · ${seconds}s`;
-        else pill.textContent = `● Running · ${seconds}s · Open Workspace`;
+        if (open) title.textContent = `${i18n('Agent & Memory')} · ${run.mode} · ${run.status} · ${seconds}s`;
+        else pill.textContent = `● ${i18n('Running')} · ${seconds}s · ${i18n('Open Workspace')}`;
     }, 1000);
 }
 
