@@ -40,6 +40,13 @@ were removed at the owner's request. Their historical versions remain in Git.
 
 ## Verification boundaries
 
+- Agenda Planner catalogs expose only IDs and short purposes, never Worker execution prompts.
+  Agenda control requests use per-call non-streaming transport. Planner tool names may be
+  normalized only for a single call passing the complete Planner schema; one task-only
+  repair is allowed. The host's request-local generation gate blocks prose after Agenda
+  failure/cancellation and releases only after guidance or a valid completed cache hit.
+  Runtime trace cancellation maps to the existing run-panel `aborted` UI state.
+
 Browser fixtures and offline tests do not establish Android device or real-model acceptance.
 The owner accepts those as coverage gaps and prefers autonomous offline/browser verification.
 Do not copy stale test counts or historical startup failures as current facts; rerun relevant checks.

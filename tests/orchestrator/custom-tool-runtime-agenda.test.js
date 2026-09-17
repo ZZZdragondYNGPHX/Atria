@@ -90,6 +90,8 @@ jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/pro
 const plannerResponses = [];
 const agentResponses = [];
 const agentRequests = [];
+jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async () => { if (!plannerResponses.length) throw new Error('Planner LLM stub exhausted'); return plannerResponses.shift(); } }));
+
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
     requestToolCallsWithRetry: async (_context, _settings, request) => {

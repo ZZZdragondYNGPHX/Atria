@@ -6,7 +6,7 @@ import { guidanceOutput } from './output-adapter.js';
 import { createFirstChunkBarrier } from '../dispatch-barrier.js';
 import { resolveOrchestrationAgentApiPresetName, resolveOrchestrationAgentPromptPresetName } from '../agent-resolution.js';
 import { appendRound, appendToSection, ensureSection, setSectionStatus, setRoundStatus, finishRun } from '../run-state/store.js';
-import { throwIfAborted } from '../abort-utils.js';
+import { isAbortError, throwIfAborted } from '../abort-utils.js';
 import { hasRuntimeCheckpoints } from '../runtime-checkpoints.js';
 
 /** Legacy authoring vocabulary -> durable dynamic policy; no generator or private promise pool. */
@@ -140,7 +140,12 @@ export async function runAgendaEngine({ context, payload, messages, profile, set
                 if (!hasRuntimeCheckpoints()) throw new Error('Durable Agenda child checkpoints required for recovery');
                 return execute(request);
             } } });
-        if (state.status !== 'completed') throw new Error(state.error || `Engine ${state.status}`);
+        throwIfAborted(payload.signal);
+        if (state.status !== 'completed') {
+            const error = new Error(state.error || `Engine ${state.status}`);
+            if (state.status === 'cancelled') error.name = 'AbortError';
+            throw error;
+        }
         const output = guidanceOutput({ plan, state, generation: state.generation });
         syncTrace(state.policyState.agenda);
         finalizeTrace(state.output.status, { capsuleText: state.output.value, note: state.policyState.finalizeReason });
@@ -148,8 +153,9 @@ export async function runAgendaEngine({ context, payload, messages, profile, set
         return { ...output, stageOutputs: [{ id: 'finalize', mode: 'serial', nodes: [{ node: profile.finalAgentId, output: state.output.value }] }],
             previousNodeOutputs: new Map([[profile.finalAgentId, state.output.value]]), runtimeTrace: trace, reviewRerunCount: 0, agendaState: state.policyState.agenda };
     } catch (error) {
-        finalizeTrace('failed', { error: String(error.message) });
-        finishRun({ runId: panelRunId, status: 'error', error: String(error.message) });
+        const cancelled = isAbortError(error, payload.signal);
+        finalizeTrace(cancelled ? 'cancelled' : 'failed', { error: String(error.message) });
+        finishRun({ runId: panelRunId, status: cancelled ? 'aborted' : 'error', error: String(error.message) });
         throw error;
     }
 }
