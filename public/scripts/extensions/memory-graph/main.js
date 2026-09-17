@@ -14766,6 +14766,7 @@ function bindUi() {
         return;
     }
 
+    root.find('#luker_rpg_memory_os_enabled').prop('checked', isMemoryOsEnabled(settings));
     root.find('#luker_rpg_memory_enabled').prop('checked', Boolean(settings.enabled));
     root.find('#luker_rpg_memory_auto_extraction_enabled').prop('checked', settings.autoExtractionEnabled !== false);
     root.find('#luker_rpg_memory_auto_compression_enabled').prop('checked', settings.autoCompressionEnabled !== false);
@@ -14794,6 +14795,15 @@ function bindUi() {
     ensureMemoryStoreLoaded(context)
         .then(() => refreshUiStats())
         .catch(() => refreshUiStats());
+
+    root.find('#luker_rpg_memory_os_enabled').off('input').on('input', function () {
+        settings.memoryOsEnabled = Boolean(jQuery(this).prop('checked'));
+        latestRecallSnapshot = null;
+        // Cancel work admitted under the previous mode. Lifecycle reads the
+        // same saved flag per operation, so enabling needs no host restart.
+        void stopMemoryRuntimeWork();
+        saveSettingsDebounced();
+    });
 
     root.find('#luker_rpg_memory_enabled').off('input').on('input', function () {
         settings.enabled = Boolean(jQuery(this).prop('checked'));

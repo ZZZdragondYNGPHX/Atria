@@ -25,6 +25,8 @@ export function registerLocaleData() {
     addLocaleData('zh-cn', {
 
         'Memory overview': '记忆概览',
+        'Enable Memory OS': '启用 Memory OS',
+        'Enable source-backed facts and the world graph. Automatic extraction and reply injection use the memory controls below.': '启用可追溯来源的事实与世界图谱。自动提取和回复注入由下方的记忆开关控制。',
         'Choose what to remember and when to bring it into the conversation.': '决定记忆如何积累，以及何时参与对话。',
         'Enable memory': '启用长期记忆',
         'Keep and recall information across conversation turns.': '在多轮对话中保留信息，供后续检索。',
@@ -595,6 +597,8 @@ export function registerLocaleData() {
     addLocaleData('zh-tw', {
 
         'Memory overview': '記憶概覽',
+        'Enable Memory OS': '啟用 Memory OS',
+        'Enable source-backed facts and the world graph. Automatic extraction and reply injection use the memory controls below.': '啟用可追溯來源的事實與世界圖譜。自動擷取和回覆注入由下方的記憶開關控制。',
         'Choose what to remember and when to bring it into the conversation.': '決定記憶如何累積，以及何時參與對話。',
         'Enable memory': '啟用長期記憶',
         'Keep and recall information across conversation turns.': '在多輪對話中保留資訊，供後續檢索。',

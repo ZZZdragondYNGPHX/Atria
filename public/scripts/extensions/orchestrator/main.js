@@ -795,7 +795,7 @@ function ensureUi() {
     }
     const intro = document.createElement('p'); intro.className = 'agent-memory-intro';
     intro.textContent = i18n('Configure agents, presets and memory in one workspace.'); content.append(intro);
-    const enabledLabel = document.createElement('label'); enabledLabel.className = 'agent-memory-toggle'; enabledLabel.textContent = i18n('Enabled');
+    const enabledLabel = document.createElement('label'); enabledLabel.className = 'agent-memory-toggle'; enabledLabel.textContent = i18n('Enable agent orchestration');
     const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = getSettings().enabled;
     enabled.addEventListener('change', () => { getSettings().enabled = enabled.checked; saveSettingsDebounced(); });
     enabledLabel.append(enabled); content.append(enabledLabel);

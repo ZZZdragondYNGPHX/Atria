@@ -325,6 +325,7 @@ export function buildMemoryGraphSettingsHtml(deps) {
     <div class="memory-overview">
         <div class="memory-section-heading"><h3>${text('Memory overview')}</h3><p>${text('Choose what to remember and when to bring it into the conversation.')}</p></div>
         <div class="memory-control-grid">
+            ${toggle('luker_rpg_memory_os_enabled', 'Enable Memory OS', 'Enable source-backed facts and the world graph. Automatic extraction and reply injection use the memory controls below.')}
             ${toggle('luker_rpg_memory_enabled', 'Enable memory', 'Keep and recall information across conversation turns.')}
             ${toggle('luker_rpg_memory_recall_enabled', 'Recall into replies', 'Bring relevant memories into the reply context.')}
             ${toggle('luker_rpg_memory_auto_extraction_enabled', 'Auto extraction', 'Extract new memories as the conversation progresses.')}

@@ -2,8 +2,8 @@
 
 import * as legacyVectorIndex from './vector-index.js';
 
-// Development opt-in, stored with the existing user-level memory_graph settings.
-// Phase 1 changes only the boundary: both paths retain legacy vector semantics.
+// User-level opt-in controlled by the Workspace Memory OS switch. Keep this
+// separate from orchestration and automatic legacy memory processing.
 export const MEMORY_OS_DEFAULT_ENABLED = false;
 
 export function isMemoryOsEnabled(settings) {

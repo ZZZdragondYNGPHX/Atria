@@ -32,7 +32,7 @@ try {
  await page.getByRole('tab',{name:/^(Memory|记忆|記憶)$/,exact:true}).click();
  const memory = page.locator('#memory_graph_settings');
  assert.equal(await memory.locator('.inline-drawer').count(),0);
- assert.equal(await memory.locator('.memory-control-card').count(),4);
+ assert.equal(await memory.locator('.memory-control-card').count(),5);
  const recall = memory.locator('#luker_rpg_memory_recall_enabled');
  const wasEnabled = await recall.isChecked(); await recall.setChecked(!wasEnabled);
  assert.equal(await page.evaluate(()=>window.Luker.getContext().extensionSettings.memory_graph.recallEnabled),!wasEnabled);
