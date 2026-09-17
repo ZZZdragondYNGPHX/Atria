@@ -19,50 +19,126 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply SillyTavern 1.18.0 -> 1.19.0 delta with three-way fallback
+      - name: Apply SillyTavern 1.18.0 -> 1.19.0 delta per file
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          git remote remove sillytavern 2>/dev/null || true
           git remote add sillytavern https://github.com/SillyTavern/SillyTavern.git
           git fetch --force sillytavern \
             refs/tags/1.18.0:refs/tags/st-upstream-1.18.0 \
             refs/tags/1.19.0:refs/tags/st-upstream-1.19.0
 
-          git diff --binary st-upstream-1.18.0 st-upstream-1.19.0 > /tmp/sillytavern-1.19.0.patch
+          report=.st-119-conflicts.txt
+          : > "$report"
+          printf 'SillyTavern 1.19.0 adaptation conflict report\n' >> "$report"
+          printf 'Generated from official 1.18.0 -> 1.19.0 delta.\n' >> "$report"
+          printf 'Conflict hunks are resolved in favor of Luker while retaining non-conflicting upstream hunks.\n\n' >> "$report"
 
-          set +e
-          git apply --3way --index /tmp/sillytavern-1.19.0.patch
-          apply_status=$?
-          set -e
+          mapfile -t paths < <(git diff --name-only st-upstream-1.18.0 st-upstream-1.19.0)
+          conflicts=()
+          failures=()
+          clean_count=0
 
-          conflict_report=.st-119-conflicts.txt
-          : > "$conflict_report"
-          printf 'SillyTavern 1.19.0 adaptation conflict report\n' >> "$conflict_report"
-          printf 'Generated from official 1.18.0 -> 1.19.0 delta.\n\n' >> "$conflict_report"
+          for path in "${paths[@]}"; do
+            patch="/tmp/st-119-${RANDOM}-${RANDOM}.patch"
+            git diff --binary st-upstream-1.18.0 st-upstream-1.19.0 -- "$path" > "$patch"
+            [ -s "$patch" ] || { rm -f "$patch"; continue; }
 
-          if [ "$apply_status" -ne 0 ]; then
-            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
-            printf 'conflict_count=%s\n' "${#conflicts[@]}" >> "$conflict_report"
-            printf '%s\n' "${conflicts[@]}" >> "$conflict_report"
-            printf '\nUnmerged index before resolving to Luker side:\n' >> "$conflict_report"
-            git ls-files -u >> "$conflict_report" || true
+            set +e
+            output=$(git apply --3way --index "$patch" 2>&1)
+            status=$?
+            set -e
 
-            for path in "${conflicts[@]}"; do
-              git checkout --ours -- "$path" 2>/dev/null || git rm -f --ignore-unmatch -- "$path" || true
-              git add -A -- "$path"
-            done
-          else
-            printf 'conflict_count=0\n' >> "$conflict_report"
-          fi
+            if [ "$status" -eq 0 ]; then
+              clean_count=$((clean_count + 1))
+              rm -f "$patch"
+              continue
+            fi
 
-          git add "$conflict_report"
+            if git diff --name-only --diff-filter=U -- "$path" | grep -Fxq "$path"; then
+              conflicts+=("$path")
+              printf '\n[conflict] %s\n%s\n' "$path" "$output" >> "$report"
+
+              if [ -f "$path" ]; then
+                TARGET_PATH="$path" python3 - <<'PY'
+import os
+from pathlib import Path
+
+path = Path(os.environ['TARGET_PATH'])
+raw = path.read_text(encoding='utf-8', errors='surrogateescape').splitlines(keepends=True)
+out = []
+i = 0
+while i < len(raw):
+    if raw[i].startswith('<<<<<<< '):
+        i += 1
+        ours = []
+        while i < len(raw) and not raw[i].startswith('======='):
+            ours.append(raw[i])
+            i += 1
+        if i >= len(raw):
+            raise SystemExit(f'Unterminated conflict in {path}')
+        i += 1
+        while i < len(raw) and not raw[i].startswith('>>>>>>> '):
+            i += 1
+        if i >= len(raw):
+            raise SystemExit(f'Unterminated conflict in {path}')
+        i += 1
+        out.extend(ours)
+    else:
+        out.append(raw[i])
+        i += 1
+path.write_text(''.join(out), encoding='utf-8', errors='surrogateescape')
+PY
+                git add -A -- "$path"
+              else
+                git reset HEAD -- "$path" >/dev/null 2>&1 || true
+                if git cat-file -e "HEAD:$path" 2>/dev/null; then
+                  git checkout HEAD -- "$path"
+                  git add -- "$path"
+                else
+                  git rm -f --cached --ignore-unmatch -- "$path" >/dev/null 2>&1 || true
+                fi
+              fi
+              rm -f "$patch"
+              continue
+            fi
+
+            set +e
+            direct_output=$(git apply --index "$patch" 2>&1)
+            direct_status=$?
+            set -e
+            if [ "$direct_status" -eq 0 ]; then
+              clean_count=$((clean_count + 1))
+            else
+              failures+=("$path")
+              printf '\n[failed] %s\n3way: %s\ndirect: %s\n' "$path" "$output" "$direct_output" >> "$report"
+              git reset HEAD -- "$path" >/dev/null 2>&1 || true
+              if git cat-file -e "HEAD:$path" 2>/dev/null; then
+                git checkout HEAD -- "$path"
+              else
+                rm -f -- "$path"
+                git rm -f --cached --ignore-unmatch -- "$path" >/dev/null 2>&1 || true
+              fi
+            fi
+            rm -f "$patch"
+          done
+
+          printf '\nsummary\nclean_count=%s\nconflict_count=%s\nfailed_count=%s\n' \
+            "$clean_count" "${#conflicts[@]}" "${#failures[@]}" >> "$report"
+          printf '\nconflicts:\n' >> "$report"
+          printf '%s\n' "${conflicts[@]}" >> "$report"
+          printf '\nfailures:\n' >> "$report"
+          printf '%s\n' "${failures[@]}" >> "$report"
+
+          git add "$report"
           if git diff --cached --quiet; then
             echo "No upstream changes were staged."
             exit 0
           fi
 
-          git commit -m "chore(upstream): stage SillyTavern 1.19.0 adaptation"
+          git commit -m "chore(upstream): apply SillyTavern 1.19.0 delta"
           git push origin HEAD:chore/sillytavern-1.19.0-adapt
