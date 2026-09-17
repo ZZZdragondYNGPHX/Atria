@@ -23,6 +23,7 @@ export function i18nFormat(key, ...values) {
 
 export function registerLocaleData() {
     addLocaleData('zh-cn', {
+        'This memory extraction batch failed; no new memory was written. It can be retried.': '本轮记忆提取失败，未写入新记忆，可以重试。',
 
         'Memory overview': '记忆概览',
         'Enable Memory OS': '启用 Memory OS',
@@ -595,6 +596,7 @@ export function registerLocaleData() {
         'Query rewrite system prompt help body': 'RAG query rewrite 用的 system prompt——教模型把"最近对话上下文"改写成一个向量检索友好的单句 query。',
     });
     addLocaleData('zh-tw', {
+        'This memory extraction batch failed; no new memory was written. It can be retried.': '本輪記憶提取失敗，未寫入新記憶，可以重試。',
 
         'Memory overview': '記憶概覽',
         'Enable Memory OS': '啟用 Memory OS',

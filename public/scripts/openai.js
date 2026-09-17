@@ -4449,6 +4449,7 @@ async function sendOpenAIRequest(type, messages, signal, {
     functionCallMode = 'auto',
     functionCallOptions = null,
     allowStreamingForQuiet = false,
+    temperature = null,
 } = {}) {
     // Provide default abort signal
     if (!signal) {
@@ -4488,6 +4489,7 @@ async function sendOpenAIRequest(type, messages, signal, {
     }
 
     const requestSettings = getSettingsForRequest({ llmPresetName, apiPresetName, apiSettingsOverride });
+    if (typeof temperature === 'number' && Number.isFinite(temperature)) requestSettings.temp_openai = temperature;
     const resolvedFunctionCallMode = resolveFunctionCallMode({
         requestedMode: functionCallMode,
         plainTextEnabled: Boolean(requestSettings?.function_calling_plain_text),

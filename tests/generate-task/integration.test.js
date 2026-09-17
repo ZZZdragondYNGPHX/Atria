@@ -391,3 +391,28 @@ describe('generateTaskStream — error propagation', () => {
         expect(resultErr).toBe(streamErr);  // same instance
     });
 });
+
+// Internal structured-control requests must not inherit prose transport/envelopes.
+test('task envelope and non-stream override are local to one request', async () => {
+    const requests = [];
+    const injected = baseInjected({
+        builder: ({ messages }) => [{ role: 'system', content: 'PROSE RULES' }, ...messages],
+        senders: {
+            getOpenAiRuntime: () => ({ oai_settings: { stream_openai: true } }),
+            sendOpenAIRequest: async (_type, messages, _signal, options) => {
+                requests.push({ messages, options });
+                if (options.allowStreamingForQuiet) return async function* () { yield { text: 'chat streaming', toolCalls: [], state: {} }; };
+                return { model: 'fixture-model', choices: [{ message: { content: 'internal' }, finish_reason: 'stop' }] };
+            },
+        },
+    });
+    const internal = await generateTask({ taskMessages: [{ role: 'user', content: 'extract' }], stream: false, promptMode: 'task', temperature: 0 }, { _injected: injected });
+    expect(internal.requestInfo.stream).toBe(false);
+    expect(requests[0].messages).toEqual([{ role: 'user', content: 'extract' }]);
+    expect(requests[0].options.temperature).toBe(0);
+    expect(requests[0].options.allowStreamingForQuiet).not.toBe(true);
+    const chat = await generateTask({ taskMessages: [{ role: 'user', content: 'chat' }] }, { _injected: injected });
+    expect(chat.assistantText).toBe('chat streaming');
+    expect(requests[1].options.allowStreamingForQuiet).toBe(true);
+    expect(requests[1].messages[0].content).toBe('PROSE RULES');
+});

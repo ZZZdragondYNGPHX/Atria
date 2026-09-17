@@ -296,6 +296,27 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         return evaluateBatch(cache.get(session(context).key), operations, graphOperations, ticket, context.chat);
     }
 
+    async function commitExtraction(context, before, after, operations, graphOperations, ticket, signal) {
+        const validate = () => {
+            if (signal?.aborted) throw abort();
+            assertTicket(ticket, context);
+        };
+        validate();
+        await transaction(context, (state, scope) => {
+            const assertDerivedSources = () => {
+                for (const node of Object.values(after.nodes || {})) {
+                    if (!node.archived && node.memoryOsEvidence
+                        && !episodesAreCurrent(state, node.memoryOsEvidence.episodeIds, scope.chat, state.scopeId)) throw abort();
+                }
+            };
+            assertDerivedSources();
+            const result = evaluateBatch(state, operations, graphOperations, ticket, scope.chat);
+            Object.assign(state, result.state);
+            bindDerivedChanges(state, before, after, ticket.episodeIds, state.scopeId, newId);
+            assertDerivedSources();
+        }, validate);
+    }
+
     async function listGraph(context, options) {
         return transaction(context, (state, scope) => projectTemporalGraph(state, scope.chat, options));
     }
@@ -362,5 +383,5 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
     }
 
     return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts, correct, publishHistory,
-        writeBatch, listGraph, retrievalSnapshot, resolveEntity: resolveEntityInContext };
+        writeBatch, commitExtraction, listGraph, retrievalSnapshot, resolveEntity: resolveEntityInContext };
 }
