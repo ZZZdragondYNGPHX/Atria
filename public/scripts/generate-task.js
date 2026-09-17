@@ -418,6 +418,7 @@ export async function dispatchToSender({
     apiSettingsOverride = null,
     functionCallMode = 'auto',
     functionCallOptions = null,
+    temperature = null,
     abortSignal = undefined,
 } = {}, { senders = null } = {}) {
     if (!SUPPORTED_APIS.has(requestApi)) {
@@ -450,6 +451,7 @@ export async function dispatchToSender({
             requestScope: 'extension_internal',
             functionCallMode: String(functionCallMode || 'auto'),
             functionCallOptions: functionCallOptions || null,
+            temperature,
         });
     }
 
@@ -913,6 +915,9 @@ const RESPONSE_MODES = { TEXT: 'text', TOOL: 'tool', JSON: 'json' };
  *
  * @param {object} params
  * @param {Array}   [params.taskMessages]
+ * @param {false|null} [params.stream=null] Set false to force non-streaming transport for this call.
+ * @param {'preset'|'task'} [params.promptMode='preset'] Task-only mode skips preset/card/world-info envelopes.
+ * @param {number|null} [params.temperature=null] One-shot OpenAI-family sampling override.
  * @param {boolean} [params.includeCharacterCard=true]
  * @param {'task'|'chat'|'custom'|'none'} [params.worldInfoSource='none']
  * @param {Array|null} [params.customWorldInfoMessages]
@@ -958,6 +963,9 @@ export async function generateTask({
     abortSignal = undefined,
     substituteMacros = true,
     runtimeContext = false,
+    stream = null,
+    temperature = null,
+    promptMode = 'preset',
 } = {}, { _injected = null } = {}) {
     // ── 1. Input validation ──
     const hasTools = Array.isArray(tools) && tools.length > 0;
@@ -1009,7 +1017,7 @@ export async function generateTask({
         : taskMessages;
 
     // ── 5. Assemble messages (envelope-aware, chat-completion shape) ──
-    const messages = assembleMessages({
+    const messages = promptMode === 'task' ? effectiveTaskMessages : assembleMessages({
         taskMessages: effectiveTaskMessages,
         includeCharacterCard,
         llmPresetName: effectiveLlmPresetName,
@@ -1032,7 +1040,7 @@ export async function generateTask({
     // — `Promise<terminal>` — unchanged. `generateTaskStream` remains the
     // entry point for callers that want chunk-by-chunk delivery.
     const mode = hasJsonSchema ? RESPONSE_MODES.JSON : (hasTools ? RESPONSE_MODES.TOOL : RESPONSE_MODES.TEXT);
-    const useStreamingTransport = profile.requestApi === 'openai'
+    const useStreamingTransport = stream !== false && profile.requestApi === 'openai'
         && resolveOpenAiStreamFlag(senders?.getOpenAiRuntime?.(), effectiveLlmPresetName);
     let raw;
     try {
@@ -1068,6 +1076,7 @@ export async function generateTask({
                 apiSettingsOverride: profile.apiSettingsOverride,
                 functionCallMode,
                 functionCallOptions,
+                temperature,
                 abortSignal,
             }, { senders });
         }
@@ -1076,7 +1085,18 @@ export async function generateTask({
     }
 
     // ── 8. Normalize response ──
-    const normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw });
+    const requestInfo = { model: raw?.model || null, api: profile.requestApi,
+        provider: profile.apiSettingsOverride?.chat_completion_source || senders?.getOpenAiRuntime?.()?.oai_settings?.chat_completion_source || null,
+        stream: useStreamingTransport };
+    let normalized;
+    try {
+        normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw });
+    } catch (error) {
+        error.details = { ...error.details, requestInfo, rawToolCalls: raw?.choices?.[0]?.message?.tool_calls,
+            finishReason: raw?.choices?.[0]?.finish_reason, contentPresent: Boolean(raw?.choices?.[0]?.message?.content) };
+        throw error;
+    }
+    normalized.requestInfo = requestInfo;
     return preparedContext ? { ...normalized, runtimeContext: preparedContext } : normalized;
 }
 

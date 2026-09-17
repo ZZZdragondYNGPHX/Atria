@@ -7926,6 +7926,14 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         rescanned: worldInfoRescanned,
     };
     await eventSource.emit(event_types.GENERATION_WORLD_INFO_FINALIZED, wiFinalizedPayload);
+    if (wiFinalizedPayload.generationBlocked) {
+        // A late cancelled listener must not abort a newer generation.
+        if (wiFinalizedPayload.signal === abortController?.signal) {
+            stopGeneration();
+            exitAbortedGenerationIfNeeded();
+        }
+        return Promise.resolve();
+    }
     if (exitAbortedGenerationIfNeeded()) {
         return Promise.resolve();
     }

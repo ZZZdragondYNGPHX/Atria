@@ -48,7 +48,8 @@ import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
  */
 
 const extension_settings = Luker.getContext().extensionSettings;
-import { isAbortSignalLike, throwIfAborted } from './abort-utils.js';
+import { isAbortError, isAbortSignalLike, throwIfAborted } from './abort-utils.js';
+import { requestAgendaPlannerStep } from './agenda-planner-tool.js';
 import { canonicalStringifyArgs } from './canonical-stringify.js';
 import { extractLastUserMessage, getRecentMessages } from './anchors.js';
 import { readPluginFloors } from '../../lib/plugin-floors.js';
@@ -619,6 +620,7 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
             '## planner_contract',
             '- Maintain the todo board explicitly through todo_ops.',
             '- Dispatch only agent ids listed in available_agents.',
+            '- Never dispatch final_agent_id; the host invokes it after finalize.',
             '- Dispatch only the next useful agent calls. Parallelize only truly independent work.',
             '- Read complete prior run outputs before adding new work.',
             '- Normal planner steps should include dispatches. todo_ops is optional.',
@@ -653,6 +655,11 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
         ? userText + '\n\n' + openNotesBlock
         : userText;
     const plannerRequest = {
+        plannerRound: state?.plannerRounds || 1,
+        repairMessages: [
+            { role: 'system', content: `You are Luker Agenda Planner. Call only ${AGENDA_PLANNER_TOOL}. Do not output ordinary text or call other tools. Never dispatch final_agent_id; the host invokes it after finalize. Choose the next necessary dispatches OR finalize.` },
+            { role: 'user', content: [buildAgendaAvailableAgentsText(profile), buildAgendaTodosText(state?.todos), buildAgendaRunsText(state?.runs)].join('\n\n') },
+        ],
         taskMessages: [
             { role: 'system', content: systemText },
             { role: 'user', content: userTextWithNotes },
@@ -690,7 +697,7 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
                         type: 'object',
                         properties: {
                             todo_id: { type: 'string' },
-                            agent: { type: 'string' },
+                            agent: { type: 'string', enum: Object.keys(profile?.agents || {}).filter(id => id !== profile?.finalAgentId) },
                             task_brief: { type: 'string' },
                             input_run_ids: {
                                 type: 'array',
@@ -713,8 +720,8 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
     };
     const plannerStep = options.engineNode ? await runLegacySingleRequest({ runId: options.runtimeRunId, parentRunId: options.parentRunId,
         agentId: 'agenda/planner', resume: true, hostContext: context, request: plannerRequest,
-        send: request => requestToolCallWithRetry(context, settings, request), onEvent: options.onRuntimeEvent,
-    }) : yield modelIntent(request => requestToolCallWithRetry(context, settings, request), plannerRequest, context);
+        send: request => requestAgendaPlannerStep(context, settings, request), onEvent: options.onRuntimeEvent,
+    }) : yield modelIntent(request => requestAgendaPlannerStep(context, settings, request), plannerRequest, context);
     const conversation = {
         messages: [
             { role: 'system', content: systemText },
@@ -896,6 +903,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             ? userText + '\n\n' + openNotesBlock
             : userText;
         const singleRequest = {
+            stream: false,
             taskMessages: [
                 { role: 'system', content: systemTextWithSkills },
                 { role: 'user', content: userTextWithNotes },
@@ -1020,6 +1028,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             { role: 'user', content: userText },
         ];
         const detailed = yield modelIntent(request => requestToolCallsWithRetry(context, settings, request), {
+            stream: false,
             taskMessages,
             runtimeWorldInfo,
             apiPresetName,
@@ -1358,6 +1367,7 @@ export async function runAgendaOrchestration(context, payload, messages, profile
             }
         }
 
+        throwIfAborted(abortSignal, 'Orchestration aborted.');
         if (!finalizeReason) {
             budgetReason = 'plannerMaxRounds';
             finalizeReason = 'Reached plannerMaxRounds. Summarize collected work and disclose unresolved tasks.';
@@ -1397,6 +1407,7 @@ export async function runAgendaOrchestration(context, payload, messages, profile
             panelRunId: runId,
             activeOrchPresetName,
         }, abortSignal);
+        throwIfAborted(abortSignal, 'Orchestration aborted.');
         if (!String(finalRun?.outputText || '').trim()) {
             finishRuntimeNodeAttempt(trace, finalAttempt, {
                 status: 'failed',
@@ -1443,9 +1454,10 @@ export async function runAgendaOrchestration(context, payload, messages, profile
             agendaState: structuredClone(state),
         };
     } catch (error) {
-        finalizeRuntimeTrace(trace, 'failed', { error: String(error?.message || error) });
+        const cancelled = isAbortError(error, abortSignal);
+        finalizeRuntimeTrace(trace, cancelled ? 'cancelled' : 'failed', { error: String(error?.message || error) });
         try {
-            finishRun({ runId, status: 'error', error: String(error?.message || error) });
+            finishRun({ runId, status: cancelled ? 'aborted' : 'error', error: String(error?.message || error) });
         } catch (_) { /* run may already be cleared */ }
         throw error;
     }

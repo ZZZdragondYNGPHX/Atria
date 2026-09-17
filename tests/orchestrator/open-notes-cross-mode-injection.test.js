@@ -86,6 +86,8 @@ jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/pro
 //     prompt carries the Open Notes block ────────────────────────────────
 const capturedCalls = [];
 
+jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async (_ctx, _settings, opts) => { capturedCalls.push({ path: 'single', taskMessages: opts.taskMessages }); if (!llmResponses.length) throw new Error('Planner LLM stub exhausted'); return llmResponses.shift(); } }));
+
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
     requestToolCallsWithRetry: async (_ctx, _settings, opts) => {

@@ -82,6 +82,7 @@ export async function requestToolCallWithRetry(context, settings, {
     functionName = '',
     functionDescription = '',
     parameters = {},
+    stream = null,
     abortSignal = null,
 } = {}) {
     const fnName = String(functionName || '').trim();
@@ -114,6 +115,7 @@ export async function requestToolCallWithRetry(context, settings, {
             const generateTaskOpts = {
                 ...(runtimeContext ? { runtimeContext } : {}),
                 taskMessages,
+                stream,
                 includeCharacterCard: true,
                 worldInfoSource: 'none',
                 runtimeWorldInfo: runtimeWorldInfo || {},
@@ -171,6 +173,7 @@ export async function requestToolCallWithRetry(context, settings, {
 // so popups without control tools opt out by simply not passing it.
 export async function requestToolCallsWithRetry(context, settings, {
     runtimeContext = false,
+    stream = null,
     taskMessages = [],
     runtimeWorldInfo = null,
     apiPresetName = '',
@@ -252,7 +255,8 @@ export async function requestToolCallsWithRetry(context, settings, {
             // timing, and taking the stream path uniformly for both
             // keeps the wire behavior consistent (see director-tools.js
             // runOneRound for the same pattern on the main-agent path).
-            const streamEnabled = typeof context.isStreamingPresetEnabled === 'function'
+            generateTaskOpts.stream = stream;
+            const streamEnabled = stream !== false && typeof context.isStreamingPresetEnabled === 'function'
                 && typeof context.generateTaskStream === 'function'
                 && context.isStreamingPresetEnabled(generateTaskOpts.llmPresetName || '');
             let result;

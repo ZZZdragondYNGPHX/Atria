@@ -34,6 +34,9 @@ console.log(result.assistantText);
 ```ts
 context.generateTask({
     taskMessages: Array<{role, content, ...}>,   // required: system / user / assistant / tool turns
+    stream?: false | null = null,                // false forces one-shot transport for this generateTask call
+    promptMode?: 'preset' | 'task' = 'preset',    // task sends taskMessages only; no preset/card/WI envelope
+    temperature?: number | null = null,          // one-shot OpenAI-family sampling override; no saved-setting mutation
     includeCharacterCard?: boolean = true,        // include character card in the envelope
     worldInfoSource?: 'none' | 'task' | 'chat' | 'custom' = 'none',
     customWorldInfoMessages?: Array | null = null, // required when worldInfoSource is 'custom'

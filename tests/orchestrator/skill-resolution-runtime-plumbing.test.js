@@ -93,6 +93,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/pro
 const plannerResponses = [];
 const agentResponses = [];
 const specLlmResponses = [];
+jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async () => { if (!plannerResponses.length) throw new Error('Planner fixture exhausted'); return plannerResponses.shift(); } }));
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
     requestToolCallsWithRetry: async () => {
@@ -103,8 +104,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-call
         throw new Error('requestToolCallsWithRetry stub exhausted');
     },
     requestToolCallWithRetry: async () => {
-        // Agenda planner + agenda text-agent single-shot path both route here.
-        if (plannerResponses.length > 0) return plannerResponses.shift();
+        // Planner has a separate driver; only Worker single-shot replies here.
         if (agentResponses.length > 0) return agentResponses.shift();
         throw new Error('requestToolCallWithRetry stub exhausted');
     },

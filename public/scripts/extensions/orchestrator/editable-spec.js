@@ -79,6 +79,8 @@ export function createPresetDraft(seed = {}) {
         // this opt-in path; loop mode does its own all-on layering).
         tools: sanitizeOptionalAgentToolFlags(seed.tools),
     };
+    const purpose = seed.purpose || seed.name;
+    if (typeof purpose === 'string') out.purpose = purpose.trim().slice(0, 240);
     // Per-preset skills (opt-in). Mirrors normalizeNodeSpec — left undefined
     // when absent so the resolver inherits the mode default. Carries an
     // explicit value through unchanged otherwise.

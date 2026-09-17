@@ -61,15 +61,26 @@ export function getAgendaMaxTotalRuns(source = extension_settings[MODULE_NAME]) 
     return Math.max(1, Math.floor(Number(source?.agendaMaxTotalRuns) || 24));
 }
 
+export function toPlannerAgentDescriptor(id, agent = {}) {
+    // Never infer purpose from execution prompts: they contain Worker protocols.
+    const purposes = {
+        distiller: 'Extract current user intent, established facts and open questions.',
+        lorebook_reader: 'Extract relevant hard constraints from the injected lorebook.',
+        character_analyst: 'Analyze character motives, knowledge boundaries and relationship continuity.',
+        progression: 'Propose short-term progression grounded in facts and constraints.',
+        critic: 'Audit the latest plan for consistency, agency and logic.',
+        finalizer: 'Summarize completed results into guidance for the main chat model.',
+    };
+    const purpose = String(agent.purpose || purposes[id] || agent.name || id)
+        .replace(/luker_orch_[a-z_]+/gi, '').replace(/\s+/g, ' ').trim().slice(0, 240);
+    return { id: String(id), purpose };
+}
+
 export function buildAgendaAvailableAgentsText(profile = {}) {
     const agents = profile?.agents && typeof profile.agents === 'object' ? profile.agents : {};
     const catalog = Object.entries(agents)
         .sort((left, right) => left[0].localeCompare(right[0]))
-        .map(([agentId, preset]) => ({
-            agent: String(agentId || ''),
-            system_prompt: String(preset?.systemPrompt || ''),
-            user_prompt_template: String(preset?.userPromptTemplate || ''),
-        }));
+        .map(([agentId, preset]) => toPlannerAgentDescriptor(agentId, preset));
     return [
         '## available_agents',
         '```yaml',

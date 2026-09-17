@@ -441,6 +441,11 @@ async function onWorldInfoFinalized(payload) {
     } catch (err) {
         console.warn('[orchestrator] applyProfileWorldInfoFilter failed', err);
     }
+    // The host checks this request-local gate after all WI listeners settle.
+    // Only successful guidance releases it; cancellation/errors/early exits
+    // must not silently fall through to an unplanned prose request.
+    let agendaGate = preFilterProfile?.mode === ORCH_EXECUTION_MODE_AGENDA
+        ? (payload.generationBlocked = { source: MODULE_NAME, status: 'pending' }) : null;
     if (orchInFlight) {
         return;
     }
@@ -525,6 +530,9 @@ async function onWorldInfoFinalized(payload) {
         await loadOrchestratorChatState(context);
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
         const profile = getEffectiveProfile(context);
+        if (!agendaGate && profile?.mode === ORCH_EXECUTION_MODE_AGENDA) {
+            agendaGate = payload.generationBlocked = { source: MODULE_NAME, status: 'pending' };
+        }
         // Director mode produces the assistant message body itself via
         // the GENERATE_TAKEOVER_DISPATCH hook — it does not run on the
         // capsule-injection pipeline. Exit early so we don't try to
@@ -580,6 +588,7 @@ async function onWorldInfoFinalized(payload) {
                 });
                 updateUiStatus(i18n('Orchestrator completed.'));
                 clearRunInfoToast();
+                if (agendaGate) delete payload.generationBlocked;
                 return;
             }
         }
@@ -605,6 +614,7 @@ async function onWorldInfoFinalized(payload) {
             stopRequestPromise,
         ]);
         if (raced?.stopped) {
+            if (agendaGate) agendaGate.status = 'cancelled';
             clearCapsulePrompt(context);
             await emitOrchestratorResultEvent(context, payload, 'cancelled', {
                 reason: 'user_stopped',
@@ -620,9 +630,12 @@ async function onWorldInfoFinalized(payload) {
         assertCurrent();
         const outcome = getOrchestrationOutcome(finalRun);
         if (outcome === 'failed' || outcome === 'cancelled') {
-            throw new Error(`Orchestration ended with ${outcome}.`);
+            const error = new Error(`Orchestration ended with ${outcome}.`);
+            if (outcome === 'cancelled') error.name = 'AbortError';
+            throw error;
         }
         const capsuleText = buildCapsule(finalRun.stageOutputs || [], profile?.capsule_inject?.customInstruction);
+        if (agendaGate && !String(capsuleText || '').trim()) throw new Error('Agenda finalizer produced no guidance.');
         throwIfAborted(orchestrationPayload?.signal, 'Orchestration aborted.');
         // Partial results retain the legacy injection behavior, but never become
         // successful cache entries. A later attempt must be able to finish.
@@ -639,7 +652,9 @@ async function onWorldInfoFinalized(payload) {
         });
         updateUiStatus(i18n(outcome === 'budget_exhausted' ? 'Budget reached. Partial guidance was used; the task is not complete.' : 'Orchestrator completed.'));
         clearRunInfoToast();
+        if (agendaGate) delete payload.generationBlocked;
     } catch (error) {
+        if (agendaGate) agendaGate.status = isAbortError(error, orchestrationPayload?.signal) ? 'cancelled' : 'failed';
         if (getChatKey(getContext()) !== runChatKey) return;
         if (isAbortError(error, orchestrationPayload?.signal)) {
             clearCapsulePrompt(context);
@@ -659,7 +674,7 @@ async function onWorldInfoFinalized(payload) {
         }
         clearCapsulePrompt(context);
         console.warn(`[${MODULE_NAME}] Orchestration failed`, error);
-        const failText = i18nFormat('Orchestrator failed: ${0}', String(error?.message || error));
+        const failText = i18nFormat('Orchestrator failed: ${0}', agendaGate ? 'Agenda could not complete. See debug logs.' : String(error?.message || error));
         updateUiStatus(failText);
         clearRunInfoToast();
         await emitOrchestratorResultEvent(context, payload, 'failed', {
