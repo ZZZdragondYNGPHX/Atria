@@ -65,7 +65,6 @@ import {
 import {
     resolveOrchestrationAgentApiPresetName,
     resolveOrchestrationAgentPromptPresetName,
-    resolveOrchestrationRuntimeWorldInfo,
 } from './agent-resolution.js';
 import {
     buildAgendaAvailableAgentsText,
@@ -101,7 +100,7 @@ import {
     serializeToolResultContent,
     makeRuntimeToolCallId,
 } from './tool-calling.js';
-import { buildRuntimeWorldInfoFromPayload } from './world-info.js';
+import { resolveAgendaWorldInfo } from './agenda-world-info.js';
 import {
     hasAnyToolEnabled,
     resolveAgentToolFlags,
@@ -629,13 +628,7 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
             '- Do not include dispatches in the same step that includes finalize.',
         ].join('\n'),
     ].filter(Boolean).join('\n\n');
-    const runtimeWorldInfo = await resolveOrchestrationRuntimeWorldInfo(context, settings, {
-        worldInfoMessages: messages,
-        worldInfoType: String(payload?.type || 'quiet'),
-        runtimeWorldInfo: buildRuntimeWorldInfoFromPayload(payload),
-        forceWorldInfoResimulate: Boolean(payload?.forceWorldInfoResimulate),
-        abortSignal,
-    });
+    const runtimeWorldInfo = await resolveAgendaWorldInfo(context, settings, messages, String(payload?.type || 'quiet'), abortSignal);
     const systemText = String(planner?.systemPrompt || DEFAULT_AGENDA_PLANNER_SYSTEM_PROMPT).trim()
         || 'Return concise guidance through function-call fields.';
     const userText = promptText.trim()
@@ -822,13 +815,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             '- The text should contain complete useful content, not a summary placeholder.',
         ].join('\n'),
     ].filter(Boolean).join('\n\n');
-    const runtimeWorldInfo = await resolveOrchestrationRuntimeWorldInfo(context, settings, {
-        worldInfoMessages: messages,
-        worldInfoType: String(payload?.type || 'quiet'),
-        runtimeWorldInfo: buildRuntimeWorldInfoFromPayload(payload),
-        forceWorldInfoResimulate: Boolean(payload?.forceWorldInfoResimulate),
-        abortSignal,
-    });
+    const runtimeWorldInfo = await resolveAgendaWorldInfo(context, settings, messages, String(payload?.type || 'quiet'), abortSignal);
     const systemText = systemPrompt.trim()
         || 'Return concise guidance through function-call fields.';
     const userText = promptText.trim()

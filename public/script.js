@@ -7228,6 +7228,7 @@ export async function simulateWorldInfoActivation({
     chatForWI = undefined,
     includeNames = world_info_include_names,
     globalScanData = undefined,
+    entryFilter = null,
 } = {}) {
     const resolvedCoreChat = Array.isArray(coreChat) ? coreChat : [];
     const resolvedMaxContext = Number.isFinite(maxContextOverride) && Number(maxContextOverride) > 0
@@ -7240,7 +7241,7 @@ export async function simulateWorldInfoActivation({
         ? { ...globalScanData, trigger: normalizeGenerationTrigger(globalScanData.trigger || type) }
         : buildWorldInfoGlobalScanData(type);
 
-    const worldInfoResolution = await getWorldInfoPrompt(resolvedChatForWI, resolvedMaxContext, dryRun, resolvedGlobalScanData);
+    const worldInfoResolution = await getWorldInfoPrompt(resolvedChatForWI, resolvedMaxContext, dryRun, resolvedGlobalScanData, entryFilter);
     return {
         ...worldInfoResolution,
         chatForWI: resolvedChatForWI,

@@ -1792,10 +1792,10 @@ function invalidateWorldInfoRequestCache(names = []) {
  * @param {WIGlobalScanData} globalScanData Chat independent context to be scanned
  * @returns {Promise<WIPromptResult>} The world info string and depth.
  */
-export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanData) {
+export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanData, entryFilter = null) {
     let worldInfoBeforeEntries = [], worldInfoAfterEntries = [];
 
-    const activatedWorldInfo = await checkWorldInfo(chat, maxContext, isDryRun, globalScanData);
+    const activatedWorldInfo = await checkWorldInfo(chat, maxContext, isDryRun, globalScanData, entryFilter);
     worldInfoBeforeEntries = Array.isArray(activatedWorldInfo.worldInfoBeforeEntries) ? activatedWorldInfo.worldInfoBeforeEntries : [];
     worldInfoAfterEntries = Array.isArray(activatedWorldInfo.worldInfoAfterEntries) ? activatedWorldInfo.worldInfoAfterEntries : [];
     const worldInfoString = [...worldInfoBeforeEntries, ...worldInfoAfterEntries].join('\n');
@@ -8895,7 +8895,7 @@ function parseDecorators(content) {
  * @returns {Promise<WIActivated>} The world info activated.
  */
 //MARK: checkWorldInfo
-export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData = defaultGlobalScanData) {
+export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData = defaultGlobalScanData, entryFilter = null) {
     const context = getContext();
     const buffer = new WorldInfoBuffer(chat, globalScanData);
     const activationTraceScopeKey = getActivationTraceScopeKey();
@@ -8934,7 +8934,8 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     }
 
     console.debug(`[WI] Context size: ${maxContext}; WI budget: ${budget} (max% = ${world_info_budget}%, cap = ${world_info_budget_cap})`);
-    const sortedEntries = await getSortedEntries();
+    const loadedEntries = await getSortedEntries();
+    const sortedEntries = typeof entryFilter === 'function' ? loadedEntries.filter(entryFilter) : loadedEntries;
     const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries, isDryRun);
 
     timedEffects.checkTimedEffects();

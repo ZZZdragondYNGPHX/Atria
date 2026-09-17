@@ -2172,6 +2172,7 @@ async function resolveWorldInfoForMessages(messages = [], {
     globalScanData = undefined,
     fallbackToCurrentChat = true,
     postActivationHook = null,
+    entryFilter = null,
 } = {}) {
     const sourceMessages = Array.isArray(messages) && messages.length > 0
         ? messages
@@ -2196,7 +2197,7 @@ async function resolveWorldInfoForMessages(messages = [], {
     }
 
     try {
-        const resolution = await simulateWorldInfoActivation(request);
+        const resolution = await simulateWorldInfoActivation({ ...request, entryFilter });
         return applyWorldInfoPostActivationHook({
             worldInfoBeforeEntries: Array.isArray(resolution?.worldInfoBeforeEntries) ? resolution.worldInfoBeforeEntries : [],
             worldInfoAfterEntries: Array.isArray(resolution?.worldInfoAfterEntries) ? resolution.worldInfoAfterEntries : [],

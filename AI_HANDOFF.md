@@ -46,6 +46,10 @@ were removed at the owner's request. Their historical versions remain in Git.
   repair is allowed. The host's request-local generation gate blocks prose after Agenda
   failure/cancellation and releases only after guidance or a valid completed cache hit.
   Runtime trace cancellation maps to the existing run-panel `aborted` UI state.
+  Agenda resolves world info from character main/additional bindings, filtering before
+  activation instead of reusing the combined main-chat snapshot. Chat/global-only books
+  are excluded; books also bound to the character remain eligible. Debug counts describe
+  book bindings, not entry counts. Main-chat world-info behavior is unchanged.
 - Memory extraction uses task-only, non-streaming, required-tool requests and stages partial
   calls across bounded EXTRACTING / MEMORY_FACTS_PENDING / DONE_PENDING phases. Only complete,
   schema-valid batches reach graph application. Facts, temporal operations and source bindings
