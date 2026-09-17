@@ -21,6 +21,8 @@ were removed at the owner's request. Their historical versions remain in Git.
 - Memory OS shares the existing memory-graph, FloorState and vector backends. Provenance guards
   bind facts and graph evidence to source revisions. Generic memory supports plain text cards;
   MVU and LoreState are optional read-only state providers. They own their current state.
+  Workspace's Enable Memory OS switch persists `memory_graph.memoryOsEnabled`, read at call time.
+  It is independent of agent orchestration and the legacy memory automation switches.
 - Memory settings and knowledge inspection mount inside Workspace with teardown on view changes.
   Preserve source/scope guards, Worker cancellation and stale-result rejection.
 - Execution cache reuse depends on the configuration identity. Partial budget-exhausted results
