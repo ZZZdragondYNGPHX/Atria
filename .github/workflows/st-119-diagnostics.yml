@@ -1,0 +1,72 @@
+name: Diagnose SillyTavern 1.19 adaptation failures
+
+on:
+  push:
+    branches:
+      - chore/sillytavern-1.19.0-adapt
+    paths:
+      - .github/workflows/st-119-diagnostics.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout adaptation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --ignore-scripts --prefix tests
+
+      - name: Capture lint and unit-test failures
+        shell: bash
+        run: |
+          set +e
+          npm run lint > /tmp/app-lint.log 2>&1
+          app_lint=$?
+          npm run lint --prefix tests > /tmp/tests-lint.log 2>&1
+          tests_lint=$?
+          npm run test:unit:serial --prefix tests > /tmp/unit.log 2>&1
+          unit=$?
+
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "APP_LINT_EXIT=$app_lint"
+            echo "TESTS_LINT_EXIT=$tests_lint"
+            echo "UNIT_EXIT=$unit"
+            echo
+            echo "===== APPLICATION ESLINT ====="
+            tail -n 2000 /tmp/app-lint.log
+            echo
+            echo "===== TEST ESLINT ====="
+            tail -n 1000 /tmp/tests-lint.log
+            echo
+            echo "===== UNIT TESTS ====="
+            tail -n 2500 /tmp/unit.log
+          } > .st-119-diagnostics.txt
+
+          exit 0
+
+      - name: Commit diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .st-119-diagnostics.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(upstream): capture 1.19 adaptation diagnostics"
+            git push origin HEAD:chore/sillytavern-1.19.0-adapt
+          fi
