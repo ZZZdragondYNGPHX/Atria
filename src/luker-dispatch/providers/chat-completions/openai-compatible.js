@@ -252,6 +252,10 @@ async function resolveOpenRouter(ctx) {
         plugins: getOpenRouterPlugins(body),
         reasoning: { exclude: !includeReasoning },
     };
+    if (body.logprobs > 0) {
+        bodyParams.top_logprobs = body.logprobs;
+        bodyParams.logprobs = true;
+    }
     if (body.min_p !== undefined) bodyParams.min_p = body.min_p;
     if (body.top_a !== undefined) bodyParams.top_a = body.top_a;
     if (body.repetition_penalty !== undefined) bodyParams.repetition_penalty = body.repetition_penalty;

@@ -149,13 +149,17 @@ export async function dispatchClaude(ctx) {
             useTools,
             getPromptNames({ body }),
         );
-        const useThinking = /^claude-(3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
-        const useWebSearch = /^claude-(3-5|3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) && Boolean(body.enable_web_search);
+        // Proxy-qualified IDs must retain the upstream model capabilities.
+        const isFableModel = /claude-fable/.test(body.model);
+        const isFable51Model = /claude-fable-5-1/.test(body.model);
+        const isClaude5Model = /claude-(opus-5|sonnet-5)/.test(body.model);
+        const useThinking = /^claude-(3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
+        const useWebSearch = (/^claude-(3-5|3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model) && Boolean(body.enable_web_search);
         const isLimitedSampling = /^claude-(opus-4-1|sonnet-4-5|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6)/.test(body.model);
-        const useVerbosity = /^claude-(opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
-        const noPrefillModel = /^claude-(opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
-        const isAdaptiveModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || (enableAdaptiveThinking && /^claude-(opus-4-6|sonnet-4-6)/.test(body.model));
-        const noSamplingModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
+        const useVerbosity = /^claude-(opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
+        const noPrefillModel = /^claude-(opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
+        const isAdaptiveModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model || (enableAdaptiveThinking && /^claude-(opus-4-6|sonnet-4-6)/.test(body.model));
+        const noSamplingModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
         let fixThinkingPrefill = false;
 
         const stopSequences = [];
@@ -218,7 +222,11 @@ export async function dispatchClaude(ctx) {
             }
         }
 
-        if (body.json_schema) {
+        if (body.json_schema && isFable51Model) {
+            requestBody.output_config = {
+                format: { type: 'json_schema', schema: body.json_schema.value },
+            };
+        } else if (body.json_schema) {
             const jsonTool = buildClaudeTool({
                 name: body.json_schema.name,
                 description: body.json_schema.description || 'Well-formed JSON object',
@@ -254,18 +262,21 @@ export async function dispatchClaude(ctx) {
         }
 
         const reasoningEffort = body.reasoning_effort;
+        const includeReasoning = Boolean(body.include_reasoning);
         const budgetTokens = calculateClaudeBudgetTokens(requestBody.max_tokens, reasoningEffort, requestBody.stream, isAdaptiveModel);
 
         if (useThinking && typeof budgetTokens === 'string') {
             fixThinkingPrefill = true;
             requestBody.thinking = { type: 'adaptive' };
-            const includeReasoning = Boolean(body.include_reasoning);
             if (noSamplingModel && includeReasoning) {
                 requestBody.thinking.display = 'summarized';
             }
             requestBody.output_config ??= {};
             requestBody.output_config.effort = budgetTokens;
             delete requestBody.top_k;
+        } else if (useThinking && (isFableModel || isClaude5Model) && reasoningEffort === 'auto' && includeReasoning) {
+            fixThinkingPrefill = true;
+            requestBody.thinking = { type: 'adaptive', display: 'summarized' };
         } else if (useThinking && Number.isInteger(budgetTokens)) {
             fixThinkingPrefill = true;
             const minThinkTokens = 1024;
