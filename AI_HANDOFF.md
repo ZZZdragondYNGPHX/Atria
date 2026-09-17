@@ -46,6 +46,14 @@ were removed at the owner's request. Their historical versions remain in Git.
   repair is allowed. The host's request-local generation gate blocks prose after Agenda
   failure/cancellation and releases only after guidance or a valid completed cache hit.
   Runtime trace cancellation maps to the existing run-panel `aborted` UI state.
+- Memory extraction uses task-only, non-streaming, required-tool requests and stages partial
+  calls across bounded EXTRACTING / MEMORY_FACTS_PENDING / DONE_PENDING phases. Only complete,
+  schema-valid batches reach graph application. Facts, temporal operations and source bindings
+  share one provenance transaction; legacy graph changes are prepared on a clone first.
+  Extraction does not inherit the main prose preset/card/worldbook prompt envelope. Selected
+  connection/sampling presets still apply. Failed protocol batches remain retryable without
+  advancing extraction coverage or blocking ordinary chat. Do not restore whole-batch replay
+  merely because the provider split a transaction over several responses.
 
 Browser fixtures and offline tests do not establish Android device or real-model acceptance.
 The owner accepts those as coverage gaps and prefers autonomous offline/browser verification.

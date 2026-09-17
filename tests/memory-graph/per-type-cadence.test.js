@@ -94,9 +94,9 @@ describe('assembleExtractionSystemPrompt (now a trivial passthrough)', () => {
         const schema = [
             { id: 'event', extractionInstructions: 'EVENT_RULES', extractEveryN: 1 },
         ];
-        expect(assembleExtractionSystemPrompt('BASE_PROMPT', schema, new Set(['event']))).toBe('BASE_PROMPT');
-        expect(assembleExtractionSystemPrompt('BASE_PROMPT', schema, new Set())).toBe('BASE_PROMPT');
-        expect(assembleExtractionSystemPrompt('BASE_PROMPT', [], new Set())).toBe('BASE_PROMPT');
+        expect(assembleExtractionSystemPrompt('BASE_PROMPT', schema, new Set(['event']))).toContain('BASE_PROMPT');
+        expect(assembleExtractionSystemPrompt('BASE_PROMPT', schema, new Set())).toContain('BASE_PROMPT');
+        expect(assembleExtractionSystemPrompt('BASE_PROMPT', [], new Set())).toContain('BASE_PROMPT');
     });
 });
 

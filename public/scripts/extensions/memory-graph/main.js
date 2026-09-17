@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
+import { collectExtractTransaction, logExtractResponse } from './extract-transaction.js';
 
 const __ctx = Luker.getContext();
 const event_types = __ctx.eventTypes;
@@ -3414,6 +3415,8 @@ async function requestToolCallsWithRetry(context, settings, {
     retriesOverride = null,
     abortSignal = null,
     recallRunToken = 0,
+    extractionControl = false,
+    repair = false,
 } = {}) {
     if (!Array.isArray(tools) || tools.length === 0) {
         throw new Error('Tools are required.');
@@ -3438,36 +3441,51 @@ async function requestToolCallsWithRetry(context, settings, {
             await waitForRpmSlot(settings, abortSignal);
             const generateTaskOpts = {
                 taskMessages,
-                includeCharacterCard: true,
+                includeCharacterCard: !extractionControl,
+                ...(extractionControl ? { stream: false, promptMode: 'task', ...(repair ? { temperature: 0 } : {}) } : {}),
                 worldInfoSource: 'none',
                 runtimeWorldInfo,
                 apiPresetName: String(apiPresetName || '').trim(),
                 llmPresetName: String(llmPresetName || '').trim(),
                 tools,
-                toolChoice: 'auto',
+                toolChoice: extractionControl ? 'required' : 'auto',
                 functionCallMode: 'auto',
                 functionCallOptions: {
                     protocolStyle: TOOL_PROTOCOL_STYLE.JSON_SCHEMA,
                 },
                 abortSignal: requestController.signal,
             };
-            const result = await context.generateTask(generateTaskOpts);
+            let result;
+            try {
+                result = await context.generateTask(generateTaskOpts);
+            } catch (error) {
+                const unsupported = /tool[_ ]choice/i.test(error?.message || '') && /unsupported|not supported|does not support/i.test(error?.message || '');
+                if (!extractionControl || !unsupported || isAbortError(error, abortSignal)) throw error;
+                // Explicit capability rejection only: use the existing tool
+                // protocol adapter, still requiring schema-validated calls.
+                console.warn('[Memory Extract Capability] Native required tool_choice unsupported; using prompt_xml.');
+                result = await context.generateTask({ ...generateTaskOpts, functionCallMode: 'prompt_xml' });
+            }
             throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
+            if (extractionControl) logExtractResponse(result, generateTaskOpts);
             const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
             const normalizedCalls = rawCalls.map(call => ({
                 name: String(call?.name || ''),
                 args: call?.args && typeof call.args === 'object' ? call.args : {},
                 raw: call?.raw || null,
             }));
-            const filteredCalls = allowedSet && allowedSet.size > 0
+            const filteredCalls = !extractionControl && allowedSet && allowedSet.size > 0
                 ? normalizedCalls.filter(call => allowedSet.has(call.name))
                 : normalizedCalls;
             const validationError = validateParsedToolCalls(filteredCalls, tools);
             if (validationError) {
-                throw new Error(validationError);
+                const error = new Error(validationError);
+                if (extractionControl) { error.code = 'memory_extract_protocol'; error.details = { malformed: [validationError] }; }
+                throw error;
             }
             return filteredCalls;
         } catch (error) {
+            if (extractionControl) console.debug('[Memory Extract Response Error]', { code: error?.code, details: error?.details });
             if (isAbortError(error, abortSignal)) {
                 throw error;
             }
@@ -4570,15 +4588,6 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     // lives in extractInputHead/extractInputTail.
     const roleSplitChatMessages = buildRoleSplitChatMessages(messageBatch, context, { wrapWithSeq: true });
     const perTypeRulesBlock = buildPerTypeRulesBlock(schema, activeTypes);
-    const resolvedExtractWorldInfo = await resolveMemoryGraphWorldInfo(context, settings, {
-        worldInfoMessages: messages.map(item => ({
-            role: item.role,
-            content: item.text,
-            name: item.name,
-        })),
-        worldInfoType: 'quiet',
-        abortSignal: options?.abortSignal || null,
-    });
     const { tools, specByToolName } = buildDynamicExtractTools(schema, {
         allowEditDelete: !rebuildCreateOnly,
         activeTypes,
@@ -4612,58 +4621,32 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
     );
     let validatedOps = [];
     let retryReason = '';
-    let lastRetryableError = null;
+    let stagedCalls = [];
     for (let attempt = 0; attempt <= semanticRetries; attempt++) {
-        const reminderText = attempt > 0
-            ? `Previous response was incomplete. Return COMPLETE extraction tool calls in one response: exactly one final luker_rpg_extract_done as the last call (${options.sourceTicket ? 'SKIP-all still requires luker_memory_facts with operations: [] and graphOperations: [] before done' : 'SKIP-all with done-only is valid'}).${retryReason ? ` Fix: ${retryReason}` : ''}`
-            : '';
-        const tailParts = [extractInputTail];
-        if (factContext) tailParts.push(factContext);
-        if (perTypeRulesBlock) tailParts.push(perTypeRulesBlock);
-        if (reminderText) tailParts.push(reminderText);
         const taskMessages = [
             { role: 'system', content: extractSystemPrompt },
             { role: 'system', content: extractInputHead },
             ...roleSplitChatMessages,
-            { role: 'user', content: tailParts.join('\n\n') },
+            { role: 'user', content: [extractInputTail, factContext, perTypeRulesBlock,
+                retryReason ? 'Correct the rejected transaction: ' + retryReason : ''].filter(Boolean).join('\n\n') },
         ];
-        let calls = [];
-        try {
-            calls = await requestToolCallsWithRetry(context, settings, {
-                taskMessages,
-                runtimeWorldInfo: resolvedExtractWorldInfo,
-                apiPresetName,
-                llmPresetName: promptPresetName,
-                tools,
-                allowedNames,
-                retriesOverride: 0,
-                abortSignal: options?.abortSignal || null,
-            });
-        } catch (error) {
-            if (isAbortError(error, options?.abortSignal || null)) {
-                throw error;
-            }
-            if (attempt >= semanticRetries) {
-                throw error;
-            }
-            lastRetryableError = error;
-            retryReason = `request_error: ${String(error?.message || error)}`;
-            console.warn(`[${MODULE_NAME}] Extract request failed. Retrying semantic pass (${attempt + 1}/${semanticRetries})...`, error);
-            continue;
-        }
-        if (!Array.isArray(calls) || calls.length < 1) {
-            retryReason = 'Tool calls are missing or incomplete.';
-            continue;
-        }
-        const names = calls.map(call => String(call?.name || '').trim()).filter(Boolean);
-        const doneCount = names.filter(name => name === 'luker_rpg_extract_done').length;
-        if (doneCount < 1) {
-            continue;
-        }
-        if (names[names.length - 1] !== 'luker_rpg_extract_done') {
-            retryReason = 'luker_rpg_extract_done must be the last call.';
-            continue;
-        }
+        const calls = await collectExtractTransaction({
+            initialCalls: stagedCalls,
+            toolTypes: Object.fromEntries([...specByToolName].map(([name, spec]) => [name, { type: spec.id, op: spec.op }])),
+            tools, requiredTypes: [...forceUpdateTypes], memoryOsEnabled: Boolean(options.sourceTicket),
+            nodeIds: [...graphNodeIds], taskMessages,
+            repairContext: {
+                EXTRACTING: [extractInputTail, ...roleSplitChatMessages.map(message => message.content)].join('\n'),
+                MEMORY_FACTS_PENDING: factContext,
+                DONE_PENDING: '',
+            },
+            maxRepairs: Math.max(1, semanticRetries), signal: options.abortSignal,
+            send: request => requestToolCallsWithRetry(context, settings, {
+                ...request, extractionControl: true, runtimeWorldInfo: {},
+                apiPresetName, llmPresetName: promptPresetName,
+                allowedNames, retriesOverride: 0, abortSignal: options.abortSignal,
+            }),
+        });
         const typeCalls = calls.filter(call => specByToolName.has(String(call?.name || '')));
         const ops = [];
         const calledTypes = new Set();
@@ -4786,13 +4769,14 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
                 ops.push({ op: 'memory_facts', operations: factOps, graphOperations: graphOps });
             } catch (error) {
                 retryReason = `Invalid atomic facts: ${error.message}`;
+                stagedCalls = calls.filter(call => call.name !== FACT_TOOL_NAME && call.name !== 'luker_rpg_extract_done');
                 continue;
             }
         }
         validatedOps = ops;
         return validatedOps;
     }
-    const failureReason = normalizeText(retryReason || String(lastRetryableError?.message || '')) || 'No valid extraction tool calls after retries.';
+    const failureReason = normalizeText(retryReason) || 'No valid extraction tool calls after retries.';
     throw new Error(failureReason);
 }
 
@@ -5984,16 +5968,21 @@ async function processPendingMessageBatchWithLLM(context, store, settings, schem
     }
 
     const graphOperations = operations.filter(op => op.op !== 'memory_facts');
-    applyExtractionOpsImpl(store, graphOperations, {
+    const stagedStore = structuredClone(store);
+    const applied = applyExtractionOpsImpl(stagedStore, graphOperations, {
         maxSeq: extractionMaxSeq,
         minSeq: extractionMinSeq,
         context,
         settings,
     });
-    if (sourceTicket) await sourceLifecycle.bind(context, sourceBefore, store, sourceTicket);
-    for (const op of operations.filter(op => op.op === 'memory_facts')) {
-        await sourceLifecycle.writeBatch(context, op.operations, op.graphOperations, sourceTicket);
+    if (applied.rejected.length) throw new Error('Extraction operations rejected. No new memory was written.');
+    throwIfAborted(options.abortSignal, 'Memory extraction aborted.');
+    if (sourceTicket) {
+        const facts = operations.find(op => op.op === 'memory_facts');
+        await sourceLifecycle.commitExtraction(context, sourceBefore, stagedStore,
+            facts.operations, facts.graphOperations, sourceTicket, options.abortSignal);
     }
+    Object.assign(store, stagedStore);
 
     return { processed: true, changed: true };
 }
@@ -6360,9 +6349,12 @@ async function runExtractionForStore(context, store, {
                 break;
             } catch (error) {
                 restoreStoreFromRollbackSnapshot(store, attemptSnapshot);
+                store.lastExtractionDebug = { ...(store.lastExtractionDebug || {}), extracted: false, reason: 'failed',
+                    beginSeq: Number(startFrame?.seq || 0), latestSeq: Number(endFrame?.seq || 0), at: Date.now() };
                 if (isAbortError(error, abortSignal)) {
                     throw error;
                 }
+                if (error?.code === 'memory_extract_protocol') throw error;
                 lastFrameError = error;
                 if (attempt >= frameErrorRetries) {
                     throw error;
@@ -9263,7 +9255,7 @@ async function runScheduledExtractionPass(chatKey) {
             return;
         }
         console.warn(`[${MODULE_NAME}] Extraction failed`, error);
-        const failureText = i18nFormat('Recall injection failed (${0}): ${1}', 'extract', String(error?.message || error));
+        const failureText = i18n('This memory extraction batch failed; no new memory was written. It can be retried.');
         updateUiStatus(failureText);
         showPersistentRuntimeNotice(failureText);
     } finally {
