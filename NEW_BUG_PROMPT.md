@@ -30,11 +30,11 @@ For every new bug, follow this workflow:
 1. Fetch the live HEAD of `ZZZdragondYNGPHX/Luker:custom-release` and use that as the normal source baseline.
 2. Inspect the relevant current code, recent commits, existing tests, and any private fix/feature behavior in the same subsystem.
 3. Create a fresh `fix/<short-bug-name>` branch from the latest `custom-release` HEAD. Do not continue unrelated work from an old `fix/*` or `feat/*` branch.
-4. Reproduce or establish the exact failure path and identify the root cause before editing. Pay special attention to async initialization, stale state, scope switching, persistence, lifecycle ordering, race conditions, and Android/Web differences when relevant.
+4. Reproduce or establish the exact failure path and identify the root cause before editing. Pay special attention to async initialization, stale state, scope switching, persistence, lifecycle ordering, race conditions, and desktop Web/mobile Termux differences when relevant.
 5. Make the smallest compatible fix while preserving unrelated behavior already present in `custom-release`.
 6. Avoid unrelated refactors and preserve existing data/config formats unless a migration is truly required.
 7. Inspect the complete diff before committing and keep one independent bug per branch.
-8. Run the most relevant available checks for the touched code: targeted tests first, then syntax/lint/build checks as appropriate.
+8. Run the most relevant available checks for the touched code: targeted tests first, then syntax/lint and desktop/mobile browser checks as appropriate. Do not build APKs unless explicitly requested.
 9. If you have write access to my GitHub fork, commit the fix to the new `fix/*` branch. Do not develop directly on `release`.
 10. After the fix is understood and sufficiently checked, merge it into `custom-release` when I ask for integration or when the task explicitly includes integration.
 11. Update `AI_HANDOFF.md` only if the fix creates durable architectural, behavioral, migration, dependency, or maintenance context that future sessions should know.
@@ -68,7 +68,7 @@ At the end of the task, always report:
 - whether the fix has been merged into `custom-release`;
 - whether it depends on or changes existing private fork behavior;
 - persistent data/config or migration impact, if any;
-- Web/Android differences, if relevant;
+- desktop Web/mobile Termux differences, if relevant;
 - upstream comparison or PR status only if upstream work was actually requested or performed.
 
 Do not rely on version numbers, timestamps, or old chat memory alone when deciding what is current. Verify `custom-release` live.

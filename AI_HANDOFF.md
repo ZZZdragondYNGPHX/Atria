@@ -59,7 +59,10 @@ were removed at the owner's request. Their historical versions remain in Git.
   advancing extraction coverage or blocking ordinary chat. Do not restore whole-batch replay
   merely because the provider split a transaction over several responses.
 
-Browser fixtures and offline tests do not establish Android device or real-model acceptance.
+Daily use targets desktop browsers and phone browsers served by Termux. Do not build APKs
+unless explicitly requested; the fork APK workflow is manual-only. Preserve existing Termux
+launchers and shared storage. Browser fixtures and offline tests do not establish phone/Termux
+device or real-model acceptance.
 The owner accepts those as coverage gaps and prefers autonomous offline/browser verification.
 Do not copy stale test counts or historical startup failures as current facts; rerun relevant checks.
 UI layout/localization changes do not require a data migration or version bump.

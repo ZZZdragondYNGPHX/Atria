@@ -776,10 +776,17 @@ function coerceFinishReason(value, fallback = 'stop') {
  * @param {string} args.requestApi
  * @param {'text'|'tool'|'json'} args.mode
  * @param {*} args.raw
+ * @param {string|object} [args.toolChoice='auto'] Required choice rejects a response without tool calls.
  * @returns {object} { assistantText, toolCalls, jsonData, reasoning, reasoningBlocks, reasoningDetails, finishReason, usage, raw }
  */
-export function normalizeResponse({ requestApi, mode, raw }) {
+export function normalizeResponse({ requestApi, mode, raw, toolChoice = 'auto' }) {
     const result = emptyResultShape(raw);
+    // Missing usage is unknown, not a measured zero. Tool-only replies may
+    // legitimately omit content, but an explicit zero output count is failure.
+    const completion = raw?.usage?.completion_tokens;
+    if ((typeof completion === 'number' || typeof completion === 'string' && completion.trim()) && Number(completion) === 0) {
+        throw new GenerateTaskError('zero_completion_tokens', 'Model returned 0 completion tokens.');
+    }
 
     if (mode === 'json') {
         let jsonString;
@@ -840,18 +847,19 @@ export function normalizeResponse({ requestApi, mode, raw }) {
         if (mode === 'tool' && Array.isArray(message.tool_calls)) {
             result.toolCalls = message.tool_calls.map(call => {
                 const fn = call?.function;
-                let parsedArgs = {};
+                let parsedArgs;
                 const rawArgs = String(fn?.arguments ?? '');
-                if (rawArgs) {
-                    try {
-                        parsedArgs = JSON.parse(rawArgs);
-                    } catch (e) {
-                        throw new GenerateTaskError(
-                            'tool_call_parse',
-                            `Tool call '${fn?.name}' arguments failed JSON.parse: ${e.message}`,
-                            { cause: e, details: { rawArgs } },
-                        );
-                    }
+                try {
+                    parsedArgs = JSON.parse(rawArgs);
+                } catch (e) {
+                    throw new GenerateTaskError(
+                        'tool_call_parse',
+                        `Tool call '${fn?.name}' arguments failed JSON.parse: ${e.message}`,
+                        { cause: e, details: { rawArgs } },
+                    );
+                }
+                if (!parsedArgs || typeof parsedArgs !== 'object' || Array.isArray(parsedArgs)) {
+                    throw new GenerateTaskError('tool_call_parse', `Tool call '${fn?.name}' arguments must be a JSON object.`);
                 }
                 return {
                     name: String(fn?.name || ''),
@@ -859,6 +867,14 @@ export function normalizeResponse({ requestApi, mode, raw }) {
                     raw: call,
                 };
             });
+        }
+        // Callers own schema/name validation (Agenda permits a schema-checked
+        // single-call alias). Required choice still needs an actual tool call.
+        if (mode === 'tool' && (toolChoice === 'required' || toolChoice?.function?.name) && !result.toolCalls.length) {
+            throw new GenerateTaskError('tool_call_missing', 'Model response did not contain the required tool call.');
+        }
+        if (!result.assistantText.trim() && !result.toolCalls.length) {
+            throw new GenerateTaskError('no_response', 'Model returned empty content and no tool calls.');
         }
         return result;
     }
@@ -872,7 +888,7 @@ export function normalizeResponse({ requestApi, mode, raw }) {
     } else if (typeof raw === 'string') {
         text = raw;
     }
-    if (!text) {
+    if (!text.trim()) {
         throw new GenerateTaskError('no_response', `${requestApi} sender returned no text`);
     }
     result.assistantText = text;
@@ -885,6 +901,9 @@ function _wrapSenderError(error, abortSignal) {
         return error;
     }
     const msg = error?.message ? String(error.message) : String(error);
+    if (!abortSignal?.aborted && (error?.name === 'TimeoutError' || ['ETIMEDOUT', 'ESOCKETTIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT'].includes(error?.code))) {
+        return new GenerateTaskError('timeout', 'Model request timed out.', { cause: error });
+    }
     const isAbort = error?.name === 'AbortError'
         || msg === 'Cancelled by stop event'
         || (abortSignal && abortSignal.aborted);
@@ -897,8 +916,11 @@ function _wrapSenderError(error, abortSignal) {
     if (/api[ _-]?key|unauthorized|401/i.test(msg)) {
         return new GenerateTaskError('auth_missing', `auth error: ${msg}`, { cause: error });
     }
-    if (/429|rate[ _-]?limit/i.test(msg)) {
+    if (Number(error?.status) === 429 || /429|rate[ _-]?limit/i.test(msg)) {
         return new GenerateTaskError('rate_limit', `rate limited: ${msg}`, { cause: error });
+    }
+    if (Number(error?.status) >= 500 && Number(error?.status) < 600) {
+        return new GenerateTaskError('network', `HTTP ${error.status}: ${msg}`, { cause: error });
     }
     return new GenerateTaskError('unknown', `generateTask sender failed: ${msg}`, { cause: error });
 }
@@ -1090,7 +1112,7 @@ export async function generateTask({
         stream: useStreamingTransport };
     let normalized;
     try {
-        normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw });
+        normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw, toolChoice });
     } catch (error) {
         error.details = { ...error.details, requestInfo, rawToolCalls: raw?.choices?.[0]?.message?.tool_calls,
             finishReason: raw?.choices?.[0]?.finish_reason, contentPresent: Boolean(raw?.choices?.[0]?.message?.content) };
@@ -1235,7 +1257,7 @@ export function generateTaskStream({
 
             // ── 8. Normalize ──
             try {
-                const normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw });
+                const normalized = normalizeResponse({ requestApi: profile.requestApi, mode, raw, toolChoice });
                 resolveResult(preparedContext ? { ...normalized, runtimeContext: preparedContext } : normalized);
             } catch (e) {
                 rejectResult(e);

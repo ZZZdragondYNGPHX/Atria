@@ -1,13 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Fork-only workflow for ZZZdragondYNGPHX/Luker custom-release builds.
+# Optional manual APK build; daily development uses desktop Web and Termux.
 
 name: Fork Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - custom-release
 
 permissions:
   contents: read

@@ -1,6 +1,20 @@
 export { projectEngine, sanitizeEngineProjection } from '../orchestration-engine/projection.js';
 const fields = (value, keys) => Object.fromEntries(keys.filter(key => value?.[key] !== undefined).map(key => [key, structuredClone(value[key])]));
 
+/** Count logical host/tool effects, not model tokens or provider retry attempts. */
+function callCounts(events) {
+    const internal = new Set(), external = new Set();
+    for (const [index, event] of events.entries()) {
+        const match = /^(model\.request|memory\.recall|tool\.execute)\.(started|completed)$/.exec(event.type);
+        if (!match) continue;
+        // Completed-only legacy records may lack an effect identity.
+        if (!event.effectId && match[2] !== 'completed') continue;
+        const key = JSON.stringify([event.runId, event.effectId || event.eventId || index]);
+        (match[1] === 'tool.execute' ? external : internal).add(key);
+    }
+    return { internal: internal.size, external: external.size };
+}
+
 /** Project a single selected run; identities never depend on rendered list positions. */
 export function workspaceRunView(run, selection = {}) {
     const events = run?.runtime?.events || [];
@@ -19,7 +33,7 @@ export function workspaceRunView(run, selection = {}) {
         && (!stepId || event.stepId === stepId);
     const recalls = events.filter(event => event.type === 'memory.recall.completed' && visible(event));
     return { runId: run?.runId || null, mode: run?.mode || '', status: run?.status || 'idle', engine,
-        nodeId, stepId, recalls, contexts: events.filter(event => event.type === 'context.compiled' && visible(event)),
+        nodeId, stepId, recalls, calls: callCounts(events.filter(visible)), contexts: events.filter(event => event.type === 'context.compiled' && visible(event)),
         timeline: events.filter(event => visible(event) && /^(graph\.|agent\.handoff|parallel\.|result\.|arbitration\.|output\.)/.test(event.type)),
         diagnostics: events.filter(visible),
         memoryUsers: referenceId => events.filter(event => event.type === 'memory.recall.completed'

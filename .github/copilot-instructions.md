@@ -13,6 +13,7 @@ Core rules:
 - `custom-release` is the authoritative personal development and integration branch.
 - New unrelated bugs start from the latest `custom-release` on a fresh `fix/<bug-name>` branch.
 - New unrelated features start from the latest `custom-release` on a fresh `feat/<feature-name>` branch.
+- Daily delivery targets desktop browsers and phone browsers served by Termux. Do not build APKs unless explicitly requested; the fork APK workflow is manual-only.
 - Preserve existing private behavior already integrated into `custom-release` unless the task intentionally changes it.
 - One independent bug/feature per branch.
 - `release` is only an optional upstream-reference/mirror branch; do not use it as the normal development base.

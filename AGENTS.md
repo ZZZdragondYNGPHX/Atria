@@ -61,7 +61,7 @@ For all code work:
 1. Prefer the smallest compatible change that preserves the fork's current behavior unless the task intentionally changes it.
 2. Avoid unrelated refactors.
 3. Preserve existing data/config formats unless a migration is explicitly required.
-4. Consider Web and Android behavior when shared frontend/runtime code is touched.
+4. Verify shared frontend/runtime changes for desktop Web and mobile browsers served by Termux. APK builds are not part of normal delivery; build an APK only when explicitly requested.
 5. Pay attention to async initialization, lifecycle order, hydration, stale state, scope switching, persistence, and race conditions when relevant.
 6. Do not change the app version merely to land a normal bug fix or feature.
 7. Do not add generated artifacts, downloaded binaries, credentials, tokens, keystores, local paths, caches, APKs, or user data to commits.

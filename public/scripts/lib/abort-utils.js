@@ -24,6 +24,7 @@ export function isAbortError(error, abortSignal = null) {
         return true;
     }
     const name = String(error?.name || '').toLowerCase();
+    if (name === 'timeouterror') return false;
     if (name === 'aborterror') {
         return true;
     }

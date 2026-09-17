@@ -292,7 +292,7 @@ export async function requestToolCallsWithRetry(context, settings, {
             const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
             const normalizedCalls = rawCalls.map(call => ({
                 name: String(call?.name || ''),
-                args: call?.args && typeof call.args === 'object' ? call.args : {},
+                args: call?.args,
                 // generate-task surfaces the provider-issued id on `call.raw.id`
                 // (Anthropic tool_use.id / OpenAI tool_calls[].id / Gemini
                 // synthesized). Propagate it so iter-studio popups round-trip
@@ -317,7 +317,7 @@ export async function requestToolCallsWithRetry(context, settings, {
                 : null;
             let returnValue;
             if (filteredCalls.length === 0) {
-                if (allowNoToolCalls && assistantText) {
+                if (allowNoToolCalls && assistantText.trim()) {
                     returnValue = includeAssistantText
                         ? { toolCalls: [], assistantText, rawAssistantText: assistantText, reasoning, reasoningBlocks, reasoningDetails }
                         : [];
