@@ -1,0 +1,176 @@
+name: Fix SillyTavern 1.19 backend compatibility
+
+on:
+  push:
+    branches:
+      - chore/sillytavern-1.19.0-adapt
+    paths:
+      - .github/workflows/st-119-backend-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore 1.19 behavior in Luker dispatch and search layers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # 1) OpenRouter logprobs: upstream #5804 lives in Luker's extracted
+          # openai-compatible dispatch instead of legacy chat-completions.js.
+          p = Path('src/luker-dispatch/providers/chat-completions/openai-compatible.js')
+          s = p.read_text(encoding='utf-8')
+          if "bodyParams['top_logprobs'] = body.logprobs" not in s:
+              anchor = """    const bodyParams = {
+        transforms: getOpenRouterTransforms(body),
+        plugins: getOpenRouterPlugins(body),
+        reasoning: { exclude: !includeReasoning },
+    };
+"""
+              replacement = anchor + """    if (body.logprobs > 0) {
+        bodyParams['top_logprobs'] = body.logprobs;
+        bodyParams['logprobs'] = true;
+    }
+"""
+              if anchor not in s:
+                  raise SystemExit('OpenRouter bodyParams anchor not found')
+              s = s.replace(anchor, replacement, 1)
+              p.write_text(s, encoding='utf-8')
+
+          # 2) /api/search/visit SSRF hardening: preserve Luker's reader/fallback
+          # flow while restoring upstream #5749 literal-host and connection-time checks.
+          p = Path('src/endpoints/search.js')
+          s = p.read_text(encoding='utf-8')
+          old = """    if (ipRegex.v4({ exact: true }).test(urlObj.hostname) || ipRegex.v6({ exact: true }).test(urlObj.hostname)) {
+        throw new Error('Invalid hostname');
+    }
+
+    return urlObj;
+"""
+          new = """    // A bracketed IPv6 literal keeps its brackets in URL.hostname.
+    const bareHostname = urlObj.hostname.replace(/^\\[|\\]$/g, '');
+    if (ipRegex.v4({ exact: true }).test(bareHostname) || ipRegex.v6({ exact: true }).test(bareHostname)) {
+        throw new Error('Invalid hostname');
+    }
+
+    // Reject localhost and .localhost aliases before any network request.
+    if (urlObj.hostname === 'localhost' || urlObj.hostname.endsWith('.localhost')) {
+        throw new Error('Invalid hostname');
+    }
+
+    return urlObj;
+"""
+          if "urlObj.hostname.endsWith('.localhost')" not in s:
+              if old not in s:
+                  raise SystemExit('validateVisitUrl anchor not found')
+              s = s.replace(old, new, 1)
+
+          old_fetch = "const result = await fetch(url, { headers: visitHeaders });"
+          new_fetch = "const result = await fetch(url, { headers: visitHeaders, agent: getUntrustedRequestAgent() });"
+          if new_fetch not in s:
+              if old_fetch not in s:
+                  raise SystemExit('direct visit fetch anchor not found')
+              s = s.replace(old_fetch, new_fetch, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # 3) Claude Fable 5: adapt upstream #5757 to Luker's provider dispatch.
+          p = Path('src/luker-dispatch/providers/chat-completions/claude.js')
+          s = p.read_text(encoding='utf-8')
+          if "const isFableModel = /claude-fable/.test(body.model);" not in s:
+              anchor = """        const useThinking = /^claude-(3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
+        const useWebSearch = /^claude-(3-5|3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) && Boolean(body.enable_web_search);
+        const isLimitedSampling = /^claude-(opus-4-1|sonnet-4-5|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6)/.test(body.model);
+        const useVerbosity = /^claude-(opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
+        const noPrefillModel = /^claude-(opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
+        const isAdaptiveModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || (enableAdaptiveThinking && /^claude-(opus-4-6|sonnet-4-6)/.test(body.model));
+        const noSamplingModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model);
+"""
+              replacement = """        // Unanchored Fable detection also supports prefixed proxy model IDs.
+        const isFableModel = /claude-fable/.test(body.model);
+        const useThinking = /^claude-(3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel;
+        const useWebSearch = (/^claude-(3-5|3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel) && Boolean(body.enable_web_search);
+        const isLimitedSampling = /^claude-(opus-4-1|sonnet-4-5|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6)/.test(body.model);
+        const useVerbosity = /^claude-(opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel;
+        const noPrefillModel = /^claude-(opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel;
+        const isAdaptiveModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || (enableAdaptiveThinking && /^claude-(opus-4-6|sonnet-4-6)/.test(body.model));
+        const noSamplingModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel;
+"""
+              if anchor not in s:
+                  raise SystemExit('Claude model capability anchor not found')
+              s = s.replace(anchor, replacement, 1)
+
+          if "isFableModel && reasoningEffort === 'auto' && includeReasoning" not in s:
+              old = """        const reasoningEffort = body.reasoning_effort;
+        const budgetTokens = calculateClaudeBudgetTokens(requestBody.max_tokens, reasoningEffort, requestBody.stream, isAdaptiveModel);
+
+        if (useThinking && typeof budgetTokens === 'string') {
+            fixThinkingPrefill = true;
+            requestBody.thinking = { type: 'adaptive' };
+            const includeReasoning = Boolean(body.include_reasoning);
+            if (noSamplingModel && includeReasoning) {
+                requestBody.thinking.display = 'summarized';
+            }
+            requestBody.output_config ??= {};
+            requestBody.output_config.effort = budgetTokens;
+            delete requestBody.top_k;
+        } else if (useThinking && Number.isInteger(budgetTokens)) {
+"""
+              new = """        const reasoningEffort = body.reasoning_effort;
+        const includeReasoning = Boolean(body.include_reasoning);
+        const budgetTokens = calculateClaudeBudgetTokens(requestBody.max_tokens, reasoningEffort, requestBody.stream, isAdaptiveModel);
+
+        if (useThinking && typeof budgetTokens === 'string') {
+            fixThinkingPrefill = true;
+            requestBody.thinking = { type: 'adaptive' };
+            if (noSamplingModel && includeReasoning) {
+                requestBody.thinking.display = 'summarized';
+            }
+            requestBody.output_config ??= {};
+            requestBody.output_config.effort = budgetTokens;
+            delete requestBody.top_k;
+        } else if (useThinking && isFableModel && reasoningEffort === 'auto' && includeReasoning) {
+            // Fable auto thinking is enabled by default; request readable summaries explicitly.
+            fixThinkingPrefill = true;
+            requestBody.thinking = { type: 'adaptive', display: 'summarized' };
+        } else if (useThinking && Number.isInteger(budgetTokens)) {
+"""
+              if old not in s:
+                  raise SystemExit('Claude reasoning anchor not found')
+              s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          node --check src/endpoints/search.js
+          node --check src/luker-dispatch/providers/chat-completions/openai-compatible.js
+          node --check src/luker-dispatch/providers/chat-completions/claude.js
+
+      - name: Run targeted upstream security tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          npm ci --ignore-scripts --prefix tests
+          npm run test:unit --prefix tests -- search-visit.test.js private-request-filter.test.js --runInBand
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/endpoints/search.js \
+            src/luker-dispatch/providers/chat-completions/openai-compatible.js \
+            src/luker-dispatch/providers/chat-completions/claude.js
+          if ! git diff --cached --quiet; then
+            git commit -m "fix(upstream): complete 1.19 provider and SSRF adaptation"
+            git push origin HEAD:chore/sillytavern-1.19.0-adapt
+          fi
