@@ -824,14 +824,21 @@ class PresetManager {
 
     /**
      * Selects a preset by option value.
+     * The returned promise resolves when the preset is fully applied. Chat Completion presets
+     * apply asynchronously after the change event, so callers that run follow-up commands
+     * (e.g. /preset followed by /api) must await it to avoid overriding their own changes.
      * @param {string} value Preset option value
+     * @returns {Promise<void>}
      */
-    selectPreset(value) {
+    async selectPreset(value) {
         const option = $(this.select).filter(function () {
             return $(this).val() === value;
         });
         option.prop('selected', true);
         $(this.select).val(value).trigger('change');
+        if (this.apiId === 'openai') {
+            await getPresetApplicationPromise();
+        }
     }
 
     /**
@@ -1868,7 +1875,7 @@ async function presetCommandCallback(_, name) {
             const presetValue = presetManager.findPreset(exactMatch);
 
             if (presetValue) {
-                presetManager.selectPreset(presetValue);
+                await presetManager.selectPreset(presetValue);
                 shouldReconnect && await waitForConnection();
             }
         }
@@ -1891,7 +1898,7 @@ async function presetCommandCallback(_, name) {
             console.log('Found fuzzy preset match', fuzzyPresetName);
 
             if (currentPreset !== fuzzyPresetName) {
-                presetManager.selectPreset(fuzzyPresetValue);
+                await presetManager.selectPreset(fuzzyPresetValue);
                 shouldReconnect && await waitForConnection();
             }
         }

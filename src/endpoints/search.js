@@ -7,6 +7,7 @@ import { decode } from 'html-entities';
 import { readSecret, SECRET_KEYS } from './secrets.js';
 import { trimV1 } from '../util.js';
 import { setAdditionalHeaders } from '../additional-headers.js';
+import { getUntrustedRequestAgent } from '../private-request-filter.js';
 
 export const router = express.Router();
 

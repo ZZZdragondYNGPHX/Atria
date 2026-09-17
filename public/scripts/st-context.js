@@ -2687,6 +2687,7 @@ export function getContext() {
         scrollChatToBottom,
         scrollOnMediaLoad,
         macros,
+        messageFormatter: MessageFormatter,
         loader,
         swipe: {
             left: swipe_left,

@@ -1,7 +1,41 @@
-SillyTavern 1.19.0 adaptation conflict report
-Generated from official 1.18.0 -> 1.19.0 delta.
+SillyTavern 1.19.0 adaptation report
+Base: official 1.18.0; target: official 1.19.0
+Policy: preserve Luker only inside overlapping hunks; absorb non-overlapping upstream changes.
 
-conflict_count=0
+[text-overlap] package-lock.json
+[text-overlap] package.json
+[text-overlap] public/index.html
+[text-overlap] public/script.js
+[text-overlap] public/scripts/RossAscends-mods.js
+[text-overlap] public/scripts/autocomplete/AutoComplete.js
+[text-overlap] public/scripts/bookmarks.js
+[text-overlap] public/scripts/extensions.js
+[text-overlap] public/scripts/extensions/shared.js
+[text-overlap] public/scripts/openai.js
+[text-overlap] public/scripts/preset-manager.js
+[text-overlap] public/scripts/reasoning.js
+[text-overlap] public/scripts/st-context.js
+[text-overlap] public/scripts/textgen-models.js
+[text-overlap] public/scripts/tokenizers.js
+[text-overlap] public/scripts/tool-calling.js
+[text-overlap] public/scripts/world-info.js
+[text-overlap] src/endpoints/backends/chat-completions.js
+[text-overlap] src/endpoints/characters.js
+[text-overlap] src/endpoints/chats.js
+[text-overlap] src/endpoints/openai.js
+[text-overlap] src/endpoints/search.js
+[text-overlap] src/endpoints/stable-diffusion.js
+[text-overlap] src/endpoints/users-private.js
+[luker-delete] tests/frontend/MacroEngine.e2e.js
+[luker-delete] tests/frontend/MacroLexer.e2e.js
+[text-overlap] tests/playwright.config.js
 
-
-Unmerged index before resolving to Luker side:
+summary
+changed_paths=102
+clean_or_direct=36
+text_three_way=64
+text_conflicts_resolved_for_luker=25
+binary_overlaps_kept_luker=0
+add_overlaps_kept_luker=0
+delete_overlaps_kept_luker=0
+luker_deletions_preserved=2

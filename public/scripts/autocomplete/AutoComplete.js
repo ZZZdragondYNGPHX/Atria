@@ -705,7 +705,9 @@ export class AutoComplete {
                     this._cursorLocator = null;
                 }
             });
-            mo.observe(this.textarea.parentElement, { childList: true });
+            if (this.textarea.parentElement) {
+                mo.observe(this.textarea.parentElement, { childList: true });
+            }
         }
         this._cursorClone.style.height = `${inputRect.height}px`;
         this._cursorClone.style.left = `${inputRect.left}px`;
