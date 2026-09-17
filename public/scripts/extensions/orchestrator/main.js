@@ -789,7 +789,13 @@ function ensureUi() {
     drawer.append(content);
     section.append(drawer);
 
-    const enabledLabel = document.createElement('label'); enabledLabel.textContent = i18n('Enabled');
+    if (!document.getElementById('agent-memory-workspace-css')) {
+        const css = document.createElement('link'); css.id = 'agent-memory-workspace-css'; css.rel = 'stylesheet';
+        css.href = new URL('./workspace/panel.css', import.meta.url).href; document.head.append(css);
+    }
+    const intro = document.createElement('p'); intro.className = 'agent-memory-intro';
+    intro.textContent = i18n('Configure agents, presets and memory in one workspace.'); content.append(intro);
+    const enabledLabel = document.createElement('label'); enabledLabel.className = 'agent-memory-toggle'; enabledLabel.textContent = i18n('Enabled');
     const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = getSettings().enabled;
     enabled.addEventListener('change', () => { getSettings().enabled = enabled.checked; saveSettingsDebounced(); });
     enabledLabel.append(enabled); content.append(enabledLabel);
@@ -797,11 +803,13 @@ function ensureUi() {
     const workspace = document.createElement('button'); workspace.type = 'button'; workspace.className = 'menu_button';
     workspace.textContent = i18n('Open Agent & Memory Workspace'); workspace.addEventListener('click', () => openWorkspace('Presets')); content.append(workspace);
 
+    const connections = document.createElement('fieldset'); connections.className = 'agent-memory-connections';
+    const legend = document.createElement('legend'); legend.textContent = i18n('Connection defaults'); connections.append(legend); content.append(connections);
     for (const [key, labelKey] of [['llmNodeApiPresetName', 'Default API profile'], ['llmNodePresetName', 'Default prompt preset']]) {
         const wrapper = document.createElement('label'); wrapper.textContent = i18n(labelKey);
         const input = document.createElement('input'); input.className = 'text_pole'; input.value = getSettings()[key] || '';
         input.addEventListener('change', () => { getSettings()[key] = input.value; saveSettingsDebounced(); });
-        wrapper.append(input); content.append(wrapper);
+        wrapper.append(input); connections.append(wrapper);
     }
 
     const status = document.createElement('p'); status.id = 'luker_orch_status'; status.setAttribute('role', 'status'); content.append(status);

@@ -5,7 +5,7 @@ import { downloadRunTraceAsJsonl } from '../runtime-trace-export.js';
 import { RUN_STARTED } from '../run-state/events.js';
 import { renderGraph } from '../../../lib/agent-workspace/graph-view.js';
 import { replayRuntimeEvents } from '../../../lib/agent-runtime/projection.js';
-import { i18n } from '../i18n.js';
+import { i18n, i18nFormat } from '../i18n.js';
 
 const tabs = ['Presets', 'Live Run', 'Graph', 'Agents', 'Memory', 'Diagnostics'];
 let root, body, nav, title, stop, pill, unsubscribe, frame, previousFocus;
@@ -28,7 +28,7 @@ function paged(parent, items, draw, size = 50) {
         host.replaceChildren();
         const start = page * size;
         if (items.length > size) {
-            el('p', `${start + 1}–${Math.min(start + size, items.length)} of ${items.length}`, host);
+            el('p', i18nFormat('${0}–${1} of ${2}', start + 1, Math.min(start + size, items.length), items.length), host);
             button(host, 'Previous page', () => { page--; paint(); }).disabled = page === 0;
             button(host, 'Next page', () => { page++; paint(); }).disabled = start + size >= items.length;
         }
@@ -71,14 +71,14 @@ function renderContent() {
     disposeTab?.(); disposeTab = null; updateMemory = null; body.replaceChildren();
     if (replay) button(body, 'Viewing imported trace · Return to live run', () => { replay = null; selection = {}; render(); });
     if (tab === 'Presets') { ports.renderPresets?.(body, { el, button, json, detail }); return; }
-    if (view.nodeId) button(body, `Node: ${view.nodeId} · Clear filter`, () => { selection = {}; render(); });
-    if (view.stepId) button(body, `Step: ${view.stepId} · Clear step filter`, () => { delete selection.stepId; render(); });
+    if (view.nodeId) button(body, i18nFormat('Node: ${0} · Clear filter', view.nodeId), () => { selection = {}; render(); });
+    if (view.stepId) button(body, i18nFormat('Step: ${0} · Clear step filter', view.stepId), () => { delete selection.stepId; render(); });
     if (tab === 'Live Run') {
         if (!run) { el('p', 'No active run. Start a conversation to see progress.', body); return; }
         el('p', `${run.runId} · ${view.recalls.length} recalls · ${run.runtime.events.filter(event => event.type === 'tool.execute.completed').length} tool calls`, body);
         if (run.tokensSpent) el('p', `Tokens: ${run.tokensSpent.total} · prompt ${run.tokensSpent.prompt} · completion ${run.tokensSpent.completion}`, body);
         if (view.engine) {
-            el('p', `Preset: ${view.engine.presetName || view.engine.presetId || 'unbound'}`, body);
+            el('p', i18nFormat('Preset: ${0}', view.engine.presetName || view.engine.presetId || i18n('unbound')), body);
             const output = view.engine.output;
             el('p', `Output: ${output.kind} · Owner: ${output.ownerNodeId} · ${output.status || 'pending'}`, body);
             el('p', `Arbitration: ${view.engine.arbitration.kind} · Graph revision ${view.engine.graphRevision}`, body);
@@ -101,7 +101,7 @@ function renderContent() {
     } else if (tab === 'Graph') {
         el('h3', 'Run Graph', body);
         if (!view.engine) { el('p', 'No Engine graph has been projected yet.', body); return; }
-        el('p', `Revision ${view.engine.graphRevision} · ${view.engine.nodes.length} nodes`, body);
+        el('p', i18nFormat('Revision ${0} · ${1} nodes', view.engine.graphRevision, view.engine.nodes.length), body);
         const visual = el('details', undefined, body); el('summary', 'Visual graph', visual);
         visual.open = matchMedia('(min-width: 701px)').matches;
         const draw = () => { if (visual.open && !visual.querySelector('svg')) renderGraph(visual, view.engine, chooseNode); };
@@ -124,6 +124,7 @@ function renderContent() {
         detail(body, 'Results and provenance', view.engine.results);
         detail(body, 'Arbitration', { policy: view.engine.arbitration, state: view.engine.arbitrationState });
     } else if (tab === 'Agents') {
+        if (!view.engine?.nodes.length && !run?.runtime.runs.length) el('p', 'No agents to inspect. Start a run to see their state.', body);
         paged(body, (view.engine?.nodes || []).filter(node => !view.nodeId || node.nodeId === view.nodeId), (parent, node) => {
             const card = el('article', undefined, parent);
             el('h3', node.agentId, card);
@@ -148,8 +149,8 @@ function renderContent() {
             paged(body, dynamic, (parent, execution) => detail(parent, `${execution.agentId} · ${execution.status}`, execution));
         }
     } else if (tab === 'Memory') {
-        el('h3', 'This Run', body);
-        const recalls = el('section', undefined, body);
+        const recallSection = el('details', undefined, body); el('summary', 'This Run', recallSection); recallSection.open = !!view.recalls.length;
+        const recalls = el('section', undefined, recallSection);
         const getView = () => workspaceRunView(selectedRun(), selection);
         const memoryPageIndex = pageSequence;
         updateMemory = () => {
@@ -167,15 +168,15 @@ function renderContent() {
         upload.addEventListener('change', async () => {
             try {
                 const file = upload.files[0]; if (!file) return;
-                if (file.size > 20 * 1024 * 1024) throw new Error('Trace import is limited to 20 MiB.');
+                if (file.size > 20 * 1024 * 1024) throw new Error(i18n('Trace import is limited to 20 MiB.'));
                 const runtime = replayRuntimeEvents((await file.text()).split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line)));
                 if (!upload.isConnected) return;
-                if (!runtime.runs.length) throw new Error('No valid Runtime events in this trace.');
+                if (!runtime.runs.length) throw new Error(i18n('No valid Runtime events in this trace.'));
                 replay = { runId: `replay:${runtime.runs[0].runId}`, mode: 'trace', status: 'replay', runtime };
                 selection = {}; render();
             } catch (error) { if (upload.isConnected) el('p', error.message, body); }
         });
-        el('p', `${view.diagnostics.length} events. Export contains the metadata journal.`, body);
+        el('p', i18nFormat('${0} events. Export contains the metadata journal.', view.diagnostics.length), body);
         paged(body, [...view.diagnostics].reverse(), (parent, event) => detail(parent, `${event.type} · ${event.stepId || event.runId}`, event));
     }
 }
@@ -190,7 +191,7 @@ function mount() {
     const header = el('header', undefined, root); title = el('h2', 'Agent & Memory', header);
     stop = button(header, 'Stop Run', () => requestRunStop(getCurrentRun()?.runId));
     button(header, 'Export Trace', () => downloadRunTraceAsJsonl(selectedRun()?.runtime.events));
-    button(header, 'Close', closeWorkspace);
+    button(header, 'Close', closeWorkspace).className = 'workspace-close';
     nav = el('nav', undefined, root); nav.setAttribute('role', 'tablist'); nav.setAttribute('aria-label', i18n('Workspace views'));
     for (const name of tabs) {
         const item = button(nav, name, () => { tab = name; render(); }); item.dataset.tab = name; item.setAttribute('role', 'tab');
