@@ -16,6 +16,8 @@
  * now and will move into more specific modules in later refactors.
  */
 
+import { defaultAgendaProfile } from './agenda-defaults.js';
+
 const __ctx = Luker.getContext();
 const extension_prompt_roles = __ctx.constants.promptRoles;
 const world_info_position = __ctx.constants.wiPosition;
@@ -75,41 +77,8 @@ export const PORTABLE_PROFILE_FORMAT_V3 = 'luker_orchestrator_profile_v3';
 export const PORTABLE_PROFILE_FORMAT_V4 = 'luker_orchestrator_profile_v4';
 export const AGENDA_PLANNER_TOOL = 'luker_orch_planner_step';
 export const AGENDA_RESULT_TOOL = 'luker_orch_submit_result';
-export const DEFAULT_AGENDA_PLANNER_SYSTEM_PROMPT = 'You are an orchestration planner. Maintain a todo list, dispatch the minimum useful set of agents, read every returned result carefully, and stop when the final orchestration guidance is ready. Before the function call, provide one concise <thought>...</thought> that reflects current planning.';
-export const DEFAULT_AGENDA_PLANNER_PROMPT = [
-    '# Planner Prompt',
-    '',
-    '## Mission',
-    'Maintain a compact todo list for this turn and produce high-quality orchestration guidance with the minimum necessary work.',
-    '',
-    '## Strong Requirements',
-    '- Preserve continuity, character consistency, active world-info constraints, and anti-OOC discipline.',
-    '- Prefer compact, actionable orchestration guidance over long analysis.',
-    '- Treat every agent run as evidence for planning; read complete outputs before deciding next steps.',
-    '',
-    '## Execution Loop',
-    '- Maintain todo list state explicitly.',
-    '- You may dispatch multiple independent agents in parallel when that clearly improves speed.',
-    '- Every dispatch must include a concrete task brief and explicit input_run_ids.',
-    '- Only add new todos when a returned result makes them justified.',
-    '- When more analysis is unlikely to materially improve the final guidance, finalize.',
-    '',
-    '## Sequencing Guidance',
-    '- Usually inspect current state and constraints before deeper branching.',
-    '- Use world/lore checks before high-freedom reasoning when possible.',
-    '- Use critics only when a meaningful audit is needed; do not add critique loops mechanically.',
-    '- Final guidance should be written only after the todo list is effectively resolved.',
-    '',
-    '## Branching Guidance',
-    '- Parallelize truly independent work such as per-character analysis.',
-    '- Do not branch for its own sake; if one good analysis is enough, keep the plan simple.',
-    '- Reuse prior agent runs whenever they already cover the need.',
-    '',
-    '## Output Contract',
-    '- Normal planner steps should return dispatches for the next useful agent runs. Include todo_ops only when the board needs updating.',
-    '- Finalization should happen only once, at the end. When you are done, return finalize with a concise reason/summary.',
-    '- Do not include dispatches in the same step that includes finalize.',
-].join('\n');
+export const DEFAULT_AGENDA_PLANNER_SYSTEM_PROMPT = defaultAgendaProfile.planner.systemPrompt;
+export const DEFAULT_AGENDA_PLANNER_PROMPT = defaultAgendaProfile.planner.userPromptTemplate;
 export const TEMPLATE_PLACEHOLDER_VARS = ['recent_chat', 'last_user', 'previous_outputs', 'distiller'];
 export const AUTO_INJECTED_CONTEXT_VARS = ['previous_orchestration'];
 export const LEGACY_REMOVED_CONTEXT_VARS = ['previous_snapshot'];
@@ -507,35 +476,8 @@ export const defaultPresets = {
     },
 };
 
-export const defaultAgendaAgents = {
-    distiller: {
-        systemPrompt: 'You are an agenda-mode state distiller. Read the current turn carefully, preserve visible facts, and return one complete useful result text through the required tool. Before the function call, provide one concise <thought>...</thought>.',
-        userPromptTemplate: 'Task:\n- Distill the current turn into a compact but complete state read.\n- Focus on user intent, active scene state, immediate tensions, and likely near-term direction.\n- Stay grounded in visible dialogue/actions and avoid unsupported interpretation.\n- Write for the planner and downstream agents, not for the final player-facing reply.',
-    },
-    lorebook_reader: {
-        systemPrompt: 'You are an agenda-mode lore and constraint reader. Extract only the world-info constraints that materially matter for this turn and return them as one complete useful result text through the required tool. Before the function call, provide one concise <thought>...</thought>.',
-        userPromptTemplate: 'Task:\n- Read active world-info/lore context and identify the constraints that should affect this turn.\n- Prioritize hard boundaries, role restrictions, taboo rules, narration bans, and continuity anchors.\n- Keep only high-impact constraints that the planner or final writer must actually obey.\n- Phrase the result as practical writing or behavior constraints, not as lorebook summary.',
-    },
-    planner: {
-        systemPrompt: 'You are an agenda-mode scene progression analyst. Think about believable next-step progression and return one complete useful result text through the required tool. Before the function call, provide one concise <thought>...</thought>.',
-        userPromptTemplate: 'Task:\n- Analyze what progression beats or decision points matter next.\n- Preserve causality, character independence, and world autonomy.\n- Avoid making the world revolve around the user by default.\n- Prefer practical next-step orchestration guidance over broad theory.',
-    },
-    critic: {
-        systemPrompt: 'You are an agenda-mode critic. Audit the assigned material for important problems and return one complete useful result text through the required tool. Before the function call, provide one concise <thought>...</thought>.',
-        userPromptTemplate: 'Task:\n- Audit the assigned material for continuity breaks, OOC drift, missing hard constraints, anti-data or report-tone issues, and implausible causality.\n- Be concrete about what is wrong and why it matters.\n- If the material is acceptable, say so plainly.\n- Do not rewrite the final orchestration guidance yourself; return audit conclusions and corrections only.',
-    },
-    finalizer: {
-        systemPrompt: 'You are the final orchestration writer. Read the completed agenda work and write one compact orchestration guidance text for the next reply. Before your function call, provide one concise <thought>...</thought> that reflects the final merge.',
-        userPromptTemplate: 'Read the planner prompt, current todo state, and all selected prior runs. Merge the resolved work into one concise orchestration guidance text that is directly usable for drafting the next reply. Preserve active constraints and keep unresolved risks implicit unless they matter for the guidance.',
-    },
-};
-
-export const defaultAgendaPlanner = {
-    systemPrompt: DEFAULT_AGENDA_PLANNER_SYSTEM_PROMPT,
-    userPromptTemplate: DEFAULT_AGENDA_PLANNER_PROMPT,
-    apiPresetName: '',
-    promptPresetName: '',
-};
+export const defaultAgendaAgents = defaultAgendaProfile.agents;
+export const defaultAgendaPlanner = defaultAgendaProfile.planner;
 
 // Default loop profile system prompt — shipped as a starting point for
 // users who switch to loop mode. The runtime sanitizer in
@@ -621,13 +563,7 @@ export function createFactoryPresetForMode(mode) {
         ];
     }
     if (mode === ORCH_EXECUTION_MODE_AGENDA) {
-        return {
-            name: 'Default',
-            planner: defaultAgendaPlanner,
-            agents: defaultAgendaAgents,
-            finalAgentId: 'finalizer',
-            limits: { plannerMaxRounds: 6, maxConcurrentAgents: 3, maxTotalRuns: 24 },
-        };
+        return structuredClone(defaultAgendaProfile);
     }
     return { name: 'Default', spec: defaultSpec, presets: defaultPresets };
 }

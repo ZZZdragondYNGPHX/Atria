@@ -9,6 +9,15 @@ were removed at the owner's request. Their historical versions remain in Git.
 
 - Agent & Memory uses one Unified Preset Library and default/character/conversation ID bindings.
   Do not restore the retired dual preset stores or override writers.
+- The shipped Agenda is Atri-agenda (`agenda-defaults.js`). API/prompt profile fields remain
+  empty; do not auto-select a prose or internal prompt preset. Existing libraries replace
+  the retired `builtin-agenda` in place once, retaining bindings and other preset IDs.
+  `planTemplate.metadata.builtinAgendaRevision`
+  prevents overwriting subsequent edits. Deleted built-ins are not resurrected. Agenda uses
+  injected context only, no extra business tools, and produces guidance rather than RP prose.
+  The shared `?` help imports offer Atri-plugin-only and Atri-agenda-agent under the stable
+  public URLs `/presets/plugin-only.json` and `/presets/agent-non-director.json`. These are
+  opt-in imports, not startup content seeds. Director's separate help preset is unchanged.
 - Workspace presentation lives in `public/scripts/extensions/orchestrator/workspace/`.
   Its six views use existing Runtime/Engine/Memory services. Preset edits affect future runs;
   admitted runs retain their own snapshots. Metadata trace exports omit private result bodies.

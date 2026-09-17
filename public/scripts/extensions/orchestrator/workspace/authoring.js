@@ -6,7 +6,7 @@ import { renderGraph } from '../../../lib/agent-workspace/graph-view.js';
 import { effectiveCapabilities } from '../../../lib/orchestration-engine/capabilities.js';
 import { removeWorkspaceAgent } from './agent-editing.js';
 
-export function createPresetAuthoring({ getSettings, save, getScope, renderProfileOptions, getTools = () => [] }) {
+export function createPresetAuthoring({ getSettings, save, getScope, renderProfileOptions, renderPresetHelp = () => '', getTools = () => [] }) {
     let selectedId = null, searchText = '';
     let notice = '', focusAgentId = null;
     const modeLabel = mode => i18n({ spec: 'Fixed workflow · Spec', loop: 'Research · Loop', agenda: 'Dynamic delegation · Agenda', director: 'Direct writing · Director' }[mode] || mode);
@@ -17,9 +17,15 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         selectedId = selected?.id;
         const refresh = () => { parent.replaceChildren(); renderPresets(parent, ui); };
         const status = el('p', notice, parent); status.setAttribute('role', 'status');
-        const profileSelect = (host, label, kind, value, change, inherited = false) => {
+        const profileSelect = (host, label, kind, value, change, inherited = false, helpKind = 'iteration') => {
             const wrap = el('label', label, host), input = el('select', undefined, wrap);
             input.setAttribute('aria-label', i18n(label));
+            if (kind === 'prompt') {
+                input.id = `workspace-prompt-${crypto.randomUUID()}`;
+                wrap.insertAdjacentHTML('beforeend', renderPresetHelp({
+                    kind: helpKind, agentMode: selected?.mode === 'director' ? 'director' : 'non-director', targetSelectId: input.id,
+                }));
+            }
             const populate = () => {
                 const current = input.value || value;
                 if (renderProfileOptions) input.innerHTML = renderProfileOptions(kind, current, inherited);
@@ -224,7 +230,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             });
             field('Instructions', agent.instructions || '', value => { agent.instructions = value; }, 'textarea');
             profileSelect(agentCard, 'API profile', 'api', agent.modelProfile?.apiPresetName || '', value => { (agent.modelProfile ||= {}).apiPresetName = value; }, true);
-            profileSelect(agentCard, 'Prompt profile', 'prompt', agent.modelProfile?.promptPresetName || '', value => { (agent.modelProfile ||= {}).promptPresetName = value; }, true);
+            const isAgendaPlanner = selected.mode === 'agenda' && plan.nodes.some(node => node.nodeId === 'planner' && node.agentId === agent.id);
+            profileSelect(agentCard, 'Prompt profile', 'prompt', agent.modelProfile?.promptPresetName || '', value => { (agent.modelProfile ||= {}).promptPresetName = value; }, true, isAgendaPlanner ? 'iteration' : 'agent');
             const tools = el('details', undefined, agentCard); tools.open = true; el('summary', 'Available tools', tools);
             el('p', 'Tools are limited by mode settings and effective capabilities. Empty selection disables tools.', tools).className = 'workspace-hint';
             const catalog = new Map(getTools(draft, agent).map(tool => [tool.name, tool]));

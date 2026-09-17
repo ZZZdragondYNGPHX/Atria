@@ -32,7 +32,7 @@ test('editing a library definition affects the next resolution, never the admitt
     const settings = {};
     const admitted = resolveWorkspaceProfile(settings, {});
     const fingerprint = executionConfigText(admitted, settings, admitted.presetId);
-    const edited = structuredClone(getWorkspaceLibrary(settings).presets[0]);
+    const edited = structuredClone(getWorkspaceLibrary(settings).presets.find(preset => preset.id === admitted.presetId));
     edited.planTemplate.agents[0].instructions = 'Changed for next run';
     settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, { type:'save',preset:edited });
     expect(executionConfigText(admitted, settings, admitted.presetId)).toBe(fingerprint);

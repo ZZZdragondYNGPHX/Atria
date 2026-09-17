@@ -6289,4 +6289,8 @@
     ,"Sets OpenRouter Gemini stable history caching on/off. Gets current value if no argument is provided.": "设置 OpenRouter Gemini 稳定历史缓存的开启/关闭。如未提供参数，则获取当前值。"
     ,"Number of recent turns excluded from Gemini history caching": "Gemini 历史缓存不覆盖的最近回合数"
     ,"Keeps this many completed turns plus the current input outside the cache. Default: 2.": "将最近这么多完整回合连同当前输入留在缓存之外。默认：2。"
+    ,"Import {name} preset": "导入 {name} 预设"
+    ,"Import {name} below to use the bundled plugin-task preset. It keeps reference material separate from the runtime task.": "点击下方按钮导入 {name}，使用内置插件任务预设；参考资料与运行时任务会分别放置。"
+    ,"The bundled Atri analysis preset supports plot planning, character reasoning, pacing and continuity checks. Runtime instructions and available tools determine the assigned task; the preset does not write RP prose.": "内置 Atri 分析预设支持剧情规划、角色推演、节奏和一致性检查。具体职责由运行时任务和可用工具决定，不负责撰写 RP 正文。"
+    ,"Import {name} below to use the bundled analysis preset. For the Agenda planner, select Atri-plugin-only instead.": "点击下方按钮导入 {name}，使用内置分析预设。Agenda 的调度节点应选择 Atri-plugin-only。"
 }
