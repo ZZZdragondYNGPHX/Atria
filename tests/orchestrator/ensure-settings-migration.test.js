@@ -54,6 +54,13 @@ jest.unstable_mockModule('../../public/lib.js', async () => {
     return { lodash, yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) } };
 });
 
+// Preset help registers browser UI handlers and imports st-context -> lib.js.
+// Keep that host-only chain out of settings/profile tests; their partial vendor
+// mock intentionally supplies only the libraries used by the real data modules.
+jest.unstable_mockModule('../../public/scripts/extensions/preset-help.js', () => ({
+    renderPresetHelpButton: () => '',
+}));
+
 // agenda-profile → editable-spec → agent-resolution → connection-manager →
 // openai → group-chats → bookmarks → request-compression → '/lib.js'.
 // Sever the chain at agent-resolution to avoid pulling the entire ST
@@ -204,10 +211,16 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-ru
 }));
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/spec-runtime.js', () => ({
     runSpecOrchestration: async () => ({}),
+    buildNodeToolSet: () => [],
 }));
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/loop-runtime.js', () => ({
     runLoopOrchestration: async () => ({}),
     attachNotesFloorState: () => {},
+}));
+// Director tool construction is a runtime boundary, not preset/settings logic.
+jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-tools.js', () => ({
+    buildMainAgentToolSchemas: () => [],
+    buildSubAgentToolSchemas: () => [],
 }));
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-runtime.js', () => ({
     handleDirectorDispatch: async () => null,
@@ -225,6 +238,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-
 }));
 jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/loop-tools.js', () => ({
     executeLoopTool: async () => null,
+    getEnabledToolSchemas: () => [],
     beginSimulation: () => {},
     endSimulation: () => {},
     getBuiltinToolRegistry: () => ({}),
