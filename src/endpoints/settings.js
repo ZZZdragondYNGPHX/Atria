@@ -15,11 +15,11 @@ import { NotFoundError, PatchTestFailedError, PatchMissingParentError, Unsupport
 const ENABLE_EXTENSIONS = !!getConfigValue('extensions.enabled', true, 'boolean');
 const ENABLE_EXTENSIONS_AUTO_UPDATE = !!getConfigValue('extensions.autoUpdate', true, 'boolean');
 const ENABLE_ACCOUNTS = !!getConfigValue('enableUserAccounts', false, 'boolean');
-const PRESET_STATE_FILE_MARKER = '.luker-state.';
-const ENABLE_REQUEST_COMPRESSION = !!getConfigValue('performance.requestCompression.enabled', false, 'boolean');
-const REQUEST_COMPRESSION_MIN = bytes.parse(getConfigValue('performance.requestCompression.minPayloadSize', '256kb'));
-const REQUEST_COMPRESSION_MAX = bytes.parse(getConfigValue('performance.requestCompression.maxPayloadSize', '8mb'));
-const REQUEST_COMPRESSION_TIMEOUT = Number(getConfigValue('performance.requestCompression.timeout', 3000, 'number'));
+
+void (!!getConfigValue('performance.requestCompression.enabled', false, 'boolean'));
+void (bytes.parse(getConfigValue('performance.requestCompression.minPayloadSize', '256kb')));
+void (bytes.parse(getConfigValue('performance.requestCompression.maxPayloadSize', '8mb')));
+void (Number(getConfigValue('performance.requestCompression.timeout', 3000, 'number')));
 
 // 10 minutes
 const AUTOSAVE_INTERVAL = 10 * 60 * 1000;
@@ -59,62 +59,14 @@ function triggerAutoSave(handle, userDirectories) {
  * @param {boolean} [options.excludePresetStateSidecars=false] Exclude preset state sidecar files
  * @returns {Array} Parsed files
  */
-function readAndParseFromDirectory(directoryPath, options = {}) {
-    const {
-        fileExtension = '.json',
-        excludePresetStateSidecars = false,
-    } = options;
-    const files = fs
-        .readdirSync(directoryPath)
-        .filter((fileName) => {
-            if (path.parse(fileName).ext !== fileExtension) {
-                return false;
-            }
-            if (!excludePresetStateSidecars) {
-                return true;
-            }
-            return !isPresetStateSidecarFile(fileName, fileExtension);
-        })
-        .sort();
 
-    const parsedFiles = [];
-
-    files.forEach(item => {
-        try {
-            const file = fs.readFileSync(path.join(directoryPath, item), 'utf-8');
-            parsedFiles.push(fileExtension == '.json' ? JSON.parse(file) : file);
-        } catch {
-            // skip
-        }
-    });
-
-    return parsedFiles;
-}
 
 /**
  * Gets a sort function for sorting strings.
  * @param {*} _
  * @returns {(a: string, b: string) => number} Sort function
  */
-function sortByName(_) {
-    return (a, b) => a.localeCompare(b);
-}
 
-function isPresetStateSidecarFile(fileName, fileExtension = '.json') {
-    if (path.parse(fileName).ext !== fileExtension) {
-        return false;
-    }
-
-    const basename = path.parse(fileName).name;
-    const normalizedBasename = basename.toLowerCase();
-    const markerIndex = normalizedBasename.lastIndexOf(PRESET_STATE_FILE_MARKER);
-    if (markerIndex === -1) {
-        return false;
-    }
-
-    const namespace = basename.slice(markerIndex + PRESET_STATE_FILE_MARKER.length);
-    return Boolean(namespace) && /^[a-z0-9._-]+$/i.test(namespace);
-}
 
 /**
  * Gets backup file prefix for user settings.
@@ -125,50 +77,6 @@ export function getSettingsBackupFilePrefix(handle) {
     return `settings_${handle}_`;
 }
 
-function readPresetsFromDirectory(directoryPath, options = {}) {
-    const {
-        sortFunction,
-        removeFileExtension = false,
-        fileExtension = '.json',
-        excludePresetStateSidecars = false,
-    } = options;
-
-    const files = fs.readdirSync(directoryPath)
-        .sort(sortFunction)
-        .filter((fileName) => {
-            if (path.parse(fileName).ext !== fileExtension) {
-                return false;
-            }
-            if (!excludePresetStateSidecars) {
-                return true;
-            }
-            return !isPresetStateSidecarFile(fileName, fileExtension);
-        });
-    const fileContents = [];
-    const fileNames = [];
-
-    files.forEach(item => {
-        try {
-            const file = fs.readFileSync(path.join(directoryPath, item), 'utf8');
-            JSON.parse(file);
-            fileContents.push(file);
-            fileNames.push(removeFileExtension ? item.replace(/\.[^/.]+$/, '') : item);
-        } catch {
-            // skip
-            console.warn(`${item} is not a valid JSON`);
-        }
-    });
-
-    return { fileContents, fileNames };
-}
-
-function readWorldNames(directoryPath) {
-    return fs
-        .readdirSync(directoryPath)
-        .filter(file => path.extname(file).toLowerCase() === '.json')
-        .sort((a, b) => a.localeCompare(b))
-        .map(item => path.parse(item).name);
-}
 
 function retainSelectedPresetContents(fileContents, fileNames, selectedName) {
     if (!Array.isArray(fileContents) || !Array.isArray(fileNames)) {

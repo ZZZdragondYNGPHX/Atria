@@ -123,27 +123,6 @@ function normalizeStringArray(value) {
 // Internal helpers — view freezing
 // ---------------------------------------------------------------------------
 
-function deepFreezeObject(obj, seen = new WeakSet()) {
-    if (!obj || typeof obj !== 'object') return obj;
-    if (Object.isFrozen(obj)) return obj;
-    if (seen.has(obj)) return obj;
-    seen.add(obj);
-    if (Array.isArray(obj)) {
-        for (const item of obj) {
-            if (item && typeof item === 'object') deepFreezeObject(item, seen);
-        }
-        return Object.freeze(obj);
-    }
-    if (obj instanceof Set || obj instanceof Map) {
-        // Freeze the wrapper only; consumers are documented as read-only.
-        return Object.freeze(obj);
-    }
-    for (const key of Object.keys(obj)) {
-        const value = obj[key];
-        if (value && typeof value === 'object') deepFreezeObject(value, seen);
-    }
-    return Object.freeze(obj);
-}
 
 function freezeFieldsRecord(fields) {
     const out = {};
@@ -629,7 +608,7 @@ export function getMemoryGraphReadApi(store, context = null) {
         // projectEdges defaults `excludeInternal: true` (unlike expandFromSeeds,
         // which defaults false to mirror expandRouteCandidates) so callers don't
         // see contains/semantic_contains noise.
-        const excludeInternal = options.excludeInternal === false ? false : true;
+        const excludeInternal = options.excludeInternal !== false;
         const projected = buildProjectedEdges(store, {
             visibleNodeIds: visibleSet,
             relationTypes,
@@ -1111,8 +1090,7 @@ export function getMemoryGraphReadApi(store, context = null) {
                     visibleIds: snapshot?.visibleIds || new Set(),
                 }));
             } catch (err) {
-                try { console.warn('[memory-graph/read-api] onInjectionChanged listener threw:', err); }
-                catch (_) { /* ignore logger failure */ }
+                try { console.warn('[memory-graph/read-api] onInjectionChanged listener threw:', err); } catch (_) { /* ignore logger failure */ }
             }
         });
         return typeof unsubscribe === 'function' ? unsubscribe : () => {};

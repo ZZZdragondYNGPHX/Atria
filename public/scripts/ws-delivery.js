@@ -182,14 +182,14 @@ export function createLukerDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BAC
                     entry.resolveHead({ status: 200, headers: {} });
                 }
                 const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
-                try { entry.controller.enqueue(bytes); } catch {}
+                try { entry.controller.enqueue(bytes); } catch { /* Preserve the existing best-effort error handling. */ }
             } else if (msg.type === 'end') {
                 if (typeof msg.seq === 'number') entry.lastSeq = msg.seq;
                 if (!entry.headResolved) {
                     entry.headResolved = true;
                     entry.resolveHead({ status: 200, headers: {} });
                 }
-                try { entry.controller.close(); } catch {}
+                try { entry.controller.close(); } catch { /* Preserve the existing best-effort error handling. */ }
                 pending.delete(msg.request_id);
             } else if (msg.type === 'error') {
                 // Structured error frame from dispatch (thrown Error path).
@@ -202,10 +202,10 @@ export function createLukerDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BAC
                     entry.headResolved = true;
                     const errMsg = msg.message || msg.code || 'ws delivery error';
                     entry.resolveHead({ status: 502, headers: { 'content-type': 'text/plain' } });
-                    try { entry.controller.enqueue(new TextEncoder().encode(errMsg)); } catch {}
-                    try { entry.controller.close(); } catch {}
+                    try { entry.controller.enqueue(new TextEncoder().encode(errMsg)); } catch { /* Preserve the existing best-effort error handling. */ }
+                    try { entry.controller.close(); } catch { /* Preserve the existing best-effort error handling. */ }
                 } else {
-                    try { entry.controller.error(new Error(msg.message || msg.code || 'ws delivery error')); } catch {}
+                    try { entry.controller.error(new Error(msg.message || msg.code || 'ws delivery error')); } catch { /* Preserve the existing best-effort error handling. */ }
                 }
                 pending.delete(msg.request_id);
             }
@@ -316,7 +316,7 @@ export function createLukerDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BAC
     function unsubscribe(requestId, reason = null) {
         const entry = pending.get(requestId);
         if (ws && ws.readyState === WebSocket.OPEN) {
-            try { ws.send(JSON.stringify({ type: 'unsubscribe', request_id: requestId })); } catch {}
+            try { ws.send(JSON.stringify({ type: 'unsubscribe', request_id: requestId })); } catch { /* Preserve the existing best-effort error handling. */ }
         }
         if (entry) {
             // Reject headPromise if it never resolved, so a caller doing
@@ -389,7 +389,7 @@ export function createLukerDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BAC
                     entry.rejectHead(new Error('ws-delivery: closed'));
                 }
                 if (entry.controller) {
-                    try { entry.controller.error(new Error('ws-delivery: closed')); } catch {}
+                    try { entry.controller.error(new Error('ws-delivery: closed')); } catch { /* Preserve the existing best-effort error handling. */ }
                 }
             }
             pending.clear();

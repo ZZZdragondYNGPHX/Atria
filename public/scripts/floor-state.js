@@ -766,8 +766,7 @@ export function createFloorStateWithDeps(options, deps) {
         for (let i = 0; i < log.commits.length; i++) {
             const commit = log.commits[i];
             if (!shouldKeepCommit(commit, swipeMap)) continue;
-            try { applyPatch(probe, commit.patches, false, true); }
-            catch (_) { brokenIndex = i; break; }
+            try { applyPatch(probe, commit.patches, false, true); } catch (_) { brokenIndex = i; break; }
         }
         if (brokenIndex < 0) {
             return { ok: false, state: null,
@@ -845,8 +844,7 @@ export function createFloorStateWithDeps(options, deps) {
                 const log = await readLog();
                 let replay = {};
                 if (log.commits.length > 0) {
-                    try { replay = computeTargetState(log.commits, buildSwipeMapFromChat(runtime.getChat())); }
-                    catch (_) { /* leave replay as {} */ }
+                    try { replay = computeTargetState(log.commits, buildSwipeMapFromChat(runtime.getChat())); } catch (_) { /* leave replay as {} */ }
                 }
                 await captureOrphansAndDeleteData(data, replay);
                 migrationDone = true;

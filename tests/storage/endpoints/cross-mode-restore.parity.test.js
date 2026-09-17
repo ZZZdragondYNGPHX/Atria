@@ -26,16 +26,7 @@ import request from 'supertest';
 
 import { makeEndpointHarness } from '../harness/endpoint-harness.js';
 import { router as usersPrivateRouter } from '../../../src/endpoints/users-private.js';
-import {
-    getChatRepo,
-    getSettingsRepo,
-    getWorldInfoRepo,
-    getNamedDocRepo,
-    getPresetRepo,
-    getGroupRepo,
-    getStatsRepo,
-    getStorageEngine,
-} from '../../../src/storage/index.js';
+import { getChatRepo, getSettingsRepo, getWorldInfoRepo, getNamedDocRepo, getPresetRepo, getGroupRepo, getStatsRepo } from '../../../src/storage/index.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY } from '../../../src/storage/engine-backup-entries.js';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { SqliteEngine } from '../../../src/storage/engines/sqlite-engine.js';
@@ -204,7 +195,7 @@ async function buildSourceArtifact(srcKind, handle) {
         await root.end();
         srcEngine = new MysqlEngine({ url: `${rootUrl}/${dbName}` });
         dbCleanup = async () => {
-            try { await srcEngine.close(); } catch {}
+            try { await srcEngine.close(); } catch { /* Preserve the existing best-effort error handling. */ }
             const c = await mysql.default.createConnection(rootUrl);
             try { await c.query(`DROP DATABASE IF EXISTS \`${dbName}\``); } finally { await c.end(); }
         };
@@ -219,7 +210,7 @@ async function buildSourceArtifact(srcKind, handle) {
         const url = `${baseUrl}?options=-csearch_path%3D${encodeURIComponent(schemaName)}`;
         srcEngine = new PgEngine({ url });
         dbCleanup = async () => {
-            try { await srcEngine.close(); } catch {}
+            try { await srcEngine.close(); } catch { /* Preserve the existing best-effort error handling. */ }
             const c = new pg.default.Client({ connectionString: baseUrl });
             await c.connect();
             try { await c.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`); } finally { await c.end(); }
@@ -231,7 +222,7 @@ async function buildSourceArtifact(srcKind, handle) {
     await buildSourceZip({ srcKind, srcEngine, srcDir, handle, zipPath });
 
     if (srcKind === 'sqlite') {
-        try { srcEngine.close(); } catch {}
+        try { srcEngine.close(); } catch { /* Preserve the existing best-effort error handling. */ }
     } else if (srcKind === 'mysql' || srcKind === 'postgres') {
         await dbCleanup();
     }
@@ -245,17 +236,7 @@ async function buildSourceArtifact(srcKind, handle) {
 // Resolve a scratch URL for the active mysql/pg harness so the cross-mode
 // restore can ingest a mysql/pg-source ZIP. We point at the same DB instance
 // the harness is using (different handle namespace inside the same DB).
-function scratchUrlForHarness(harness, srcKind) {
-    if (srcKind === 'mysql') {
-        const rootUrl = process.env.LUKER_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
-        return `${rootUrl}/${harness.dbName || 'luker_test'}`;
-    }
-    if (srcKind === 'postgres') {
-        const baseUrl = process.env.LUKER_TEST_POSTGRES_URL || 'postgresql://luker:postgres@127.0.0.1:55432/luker_test';
-        return `${baseUrl}?options=-csearch_path%3D${encodeURIComponent(harness.schemaName || 'public')}`;
-    }
-    return null;
-}
+
 
 // ---------------------------------------------------------------------------
 // Probe helpers used by the destination side.
@@ -363,14 +344,9 @@ describe.each(pairs())('cross-mode restore: $src → $dst', ({ src, dst, sameMod
 
             if (res.status !== 200) console.log(`PARITY ${src}→${dst} FAILED:`, res.status, res.body);
             expect(res.status).toBe(200);
-            if (sameMode) {
-                // Same-mode path returned by the original restore code does NOT
-                // produce a `crossMode` block.
-                expect(res.body.crossMode).toBeUndefined();
-            } else {
-                expect(res.body.crossMode?.sourceKind).toBe(src);
-                expect(res.body.crossMode?.destKind).toBe(dst);
-            }
+            const expectedCrossMode = { sourceKind: src, destKind: dst };
+            expect(res.body.crossMode?.sourceKind).toBe(sameMode ? undefined : expectedCrossMode.sourceKind);
+            expect(res.body.crossMode?.destKind).toBe(sameMode ? undefined : expectedCrossMode.destKind);
 
             const probe = await probeAllRepos(harness.handle);
             expect(probe.settings?.user_name).toBe('parity-source');
@@ -380,14 +356,8 @@ describe.each(pairs())('cross-mode restore: $src → $dst', ({ src, dst, sameMod
             expect(probe.preset?.temperature).toBe(0.7);
             expect(probe.theme?.accent).toBe('#abc');
             expect(probe.group?.id).toBe('g1');
-            if (!sameMode) {
-                // stats is migrated by MigrationRunner in cross-mode flows. The
-                // same-mode restore handler doesn't include stats.json in any
-                // selection category (it's derived from chats and intentionally
-                // omitted from the backup ZIP target list), so stats won't land
-                // back on the live engine through the same-mode path.
-                expect(probe.stats?.totalChats).toBe(5);
-            }
+            if (sameMode) return;
+            expect(probe.stats?.totalChats).toBe(5);
         } finally {
             try { await scratchTeardown(); } catch { /* best-effort */ }
         }

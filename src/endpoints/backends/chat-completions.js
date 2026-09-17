@@ -7,6 +7,7 @@ import {
     AIMLAPI_HEADERS,
     CHAT_COMPLETION_SOURCES,
     OPENROUTER_HEADERS,
+    POLLINATIONS_ENDPOINT,
     SILICONFLOW_ENDPOINT,
 } from '../../constants.js';
 import {
@@ -34,6 +35,7 @@ import {
     getWebTokenizer,
 } from '../tokenizers.js';
 import { getVertexAIAuth, getProjectIdFromServiceAccount } from '../google.js';
+import { fetchGoogleModels, GoogleModelsHttpError } from './google-models.js';
 import {
     cancelGenerationJobForRequest,
     getActiveGenerationJobsForRequest,

@@ -9,6 +9,8 @@ import { pipeline } from 'node:stream/promises';
 
 import storage from 'node-persist';
 import express from 'express';
+import { RateLimiterMemory, RateLimiterRes } from 'rate-limiter-flexible';
+import { getIpAddress, retryAfter } from '../express-common.js';
 import ipaddr from 'ipaddr.js';
 import yauzl from 'yauzl';
 
@@ -905,7 +907,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
 
 function wantsRestoreProgressStream(request) {
-    const accept = String(request.headers['accept'] || '');
+    const accept = String(request.headers.accept || '');
     return accept.includes(RESTORE_STREAM_MIME);
 }
 
@@ -1155,7 +1157,7 @@ function readEngineMetaFromZip(zipPath) {
                     if (settled) return;
                     if (streamErr) {
                         settled = true;
-                        try { zipfile.close(); } catch {}
+                        try { zipfile.close(); } catch { /* Preserve the existing best-effort error handling. */ }
                         return reject(streamErr);
                     }
                     const chunks = [];
@@ -1163,13 +1165,13 @@ function readEngineMetaFromZip(zipPath) {
                     readStream.on('error', (e) => {
                         if (settled) return;
                         settled = true;
-                        try { zipfile.close(); } catch {}
+                        try { zipfile.close(); } catch { /* Preserve the existing best-effort error handling. */ }
                         reject(e);
                     });
                     readStream.on('end', () => {
                         if (settled) return;
                         settled = true;
-                        try { zipfile.close(); } catch {}
+                        try { zipfile.close(); } catch { /* Preserve the existing best-effort error handling. */ }
                         try {
                             resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
                         } catch (parseErr) {

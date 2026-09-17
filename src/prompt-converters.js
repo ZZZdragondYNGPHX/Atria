@@ -526,6 +526,7 @@ export function convertGooglePrompt(messages, model, useSysPrompt, names) {
 
     const contents = [];
     messages.forEach((message, index) => {
+        const isTrailingPrefill = noPrefillModel && message.role === 'assistant' && index === messages.length - 1;
         // fix the roles
         if (message.role === 'system' || message.role === 'tool') {
             message.role = 'user';
@@ -678,10 +679,12 @@ export function convertGooglePrompt(messages, model, useSysPrompt, names) {
         // users only, which was the historical behavior (introduced by
         // upstream ST PR #1973, 2024-03-27, motivated by an unverified
         // "gemini-1.5-pro was incoherent without merging" claim).
-        contents.push({
-            role: message.role,
-            parts: parts,
-        });
+        const previous = contents.at(-1);
+        if (isTrailingPrefill && previous?.role === 'user' && parts.every(part => typeof part.text === 'string') && previous.parts.every(part => typeof part.text === 'string')) {
+            previous.parts = [{ text: [...previous.parts, ...parts].map(part => part.text).join('\n\n') }];
+        } else {
+            contents.push({ role: message.role, parts });
+        }
     });
 
     return { contents: contents, system_instruction: system_instruction };

@@ -286,7 +286,7 @@ export function registerLocaleData() {
         'Stage': '阶段',
         'Node': '节点',
         'Summary': '摘要',
-        'Status': '状态',
+
         'Directives': '执行指令',
         'Risks': '风险',
         'Tags': '标签',
@@ -355,13 +355,11 @@ export function registerLocaleData() {
         'No runtime orchestration trace available for this chat yet.': '当前聊天暂无可查看的运行态编排轨迹。',
         'Flow Graph': '流程图',
         'Execution Timeline': '执行时间线',
-        'Flow Events': '流程事件',
-        'Latest capsule text': '最新编排指导文本',
-        'Node Attempts': '节点执行次数',
-        'Review Reruns': 'Review 重跑次数',
+
+
         'Review feedback': '审查反馈',
-        'Generation Type': '生成类型',
-        'Target Layer': '目标层',
+
+
         'Finished At': '结束时间',
         'Attempt ${0}': '第 ${0} 次执行',
         'Rerun reason': '重跑原因',
@@ -385,11 +383,11 @@ export function registerLocaleData() {
         'Reused': '复用',
         'Idle': '空闲',
         'Created At': '创建时间',
-        'Updated At': '更新时间',
+
         'AI Iteration Studio': 'AI 迭代工作台',
         'Iteration source: ${0}': '当前迭代来源：${0}',
         'Conversation': '对话',
-        'Pending approval': '待审批',
+
         'Approve changes': '批准执行',
         'Reject changes': '拒绝执行',
         'Pending changes diff': '待审批变更详情',
@@ -433,7 +431,7 @@ export function registerLocaleData() {
         'Changes rejected.': '已拒绝本次变更。',
         'Working profile': '当前编排',
         'Send to AI': '发送给 AI',
-        'Stop': '终止',
+
         'Clear Session': '清空会话',
         'Apply to Global': '应用到全局',
         'Apply to Character': '应用到角色卡',
@@ -450,7 +448,7 @@ export function registerLocaleData() {
         'Iteration session applied to character override: ${0}. Embedded ${1} referenced preset(s).': '迭代会话已应用到角色卡覆写：${0}。已一并内嵌 ${1} 个引用的预设。',
         'Regenerate aborted': '重新生成已中止',
         'Regenerate aborted — could not roll back commit on ${0}: ${1}': '重新生成已中止——无法回退 ${0} 上的提交：${1}',
-        'Edit': '编辑',
+
         'Edit and regenerate from here': '编辑并从此处重新生成',
         'Edit message — saving will regenerate from this turn:': '编辑消息——保存将从此轮开始重新生成：',
         'AI iteration is running...': 'AI 迭代处理中...',
@@ -490,7 +488,7 @@ export function registerLocaleData() {
         'Down': '下移',
         'Delete': '删除',
         'Node ID': '节点 ID',
-        'Preset': '预设',
+
         'Node Type': '节点类型',
         'Worker': '工作节点',
         'Review': '审查节点',
@@ -1258,7 +1256,7 @@ export function registerLocaleData() {
         'Tags': '標籤',
         'Patch Last User': '使用者訊息修訂建議',
         'Structured Notes': '結構化補充',
-        'Status': '狀態',
+
         'Current card:': '目前角色卡：',
         '(No character card)': '（無角色卡）',
         '(No character selected)': '（未選擇角色卡）',
@@ -1321,13 +1319,11 @@ export function registerLocaleData() {
         'No runtime orchestration trace available for this chat yet.': '目前聊天尚無可檢視的執行態編排軌跡。',
         'Flow Graph': '流程圖',
         'Execution Timeline': '執行時間線',
-        'Flow Events': '流程事件',
-        'Latest capsule text': '最新編排指導文本',
-        'Node Attempts': '節點執行次數',
-        'Review Reruns': 'Review 重跑次數',
+
+
         'Review feedback': '審查回饋',
-        'Generation Type': '生成類型',
-        'Target Layer': '目標層',
+
+
         'Finished At': '結束時間',
         'Attempt ${0}': '第 ${0} 次執行',
         'Rerun reason': '重跑原因',
@@ -1351,11 +1347,11 @@ export function registerLocaleData() {
         'Reused': '沿用',
         'Idle': '閒置',
         'Created At': '建立時間',
-        'Updated At': '更新時間',
+
         'AI Iteration Studio': 'AI 迭代工作台',
         'Iteration source: ${0}': '目前迭代來源：${0}',
         'Conversation': '對話',
-        'Pending approval': '待審批',
+
         'Approve changes': '批准執行',
         'Reject changes': '拒絕執行',
         'Pending changes diff': '待審批變更詳情',
@@ -1399,7 +1395,7 @@ export function registerLocaleData() {
         'Changes rejected.': '已拒絕本次變更。',
         'Working profile': '目前編排',
         'Send to AI': '傳送給 AI',
-        'Stop': '終止',
+
         'Clear Session': '清空會話',
         'Apply to Global': '套用到全域',
         'Apply to Character': '套用到角色卡',
@@ -1416,7 +1412,7 @@ export function registerLocaleData() {
         'Iteration session applied to character override: ${0}. Embedded ${1} referenced preset(s).': '迭代會話已套用到角色卡覆寫：${0}。已一併內嵌 ${1} 個引用的預設。',
         'Regenerate aborted': '重新產生已中止',
         'Regenerate aborted — could not roll back commit on ${0}: ${1}': '重新產生已中止——無法回退 ${0} 上的提交：${1}',
-        'Edit': '編輯',
+
         'Edit and regenerate from here': '編輯並從此處重新產生',
         'Edit message — saving will regenerate from this turn:': '編輯訊息——儲存將從此輪開始重新產生：',
         'AI iteration is running...': 'AI 迭代處理中...',
@@ -1456,7 +1452,7 @@ export function registerLocaleData() {
         'Down': '下移',
         'Delete': '刪除',
         'Node ID': '節點 ID',
-        'Preset': '預設',
+
         'Node Type': '節點類型',
         'Worker': '工作節點',
         'Review': '審查節點',

@@ -455,8 +455,7 @@ export async function dispatchMakerSuite(ctx) {
                     const errBody = JSON.stringify(errPayload);
                     ctx.emit.chunk(new TextEncoder().encode(errBody));
                     ctx.emit.end();
-                    try { ctx.inspection.complete(errPayload, generateResponseJson); }
-                    catch { /* inspection best-effort */ }
+                    try { ctx.inspection.complete(errPayload, generateResponseJson); } catch { /* inspection best-effort */ }
                     return;
                 }
 
@@ -468,8 +467,7 @@ export async function dispatchMakerSuite(ctx) {
                 const reply = normalizeGeminiResponseToOAI(generateResponseJson);
                 ctx.emit.chunk(new TextEncoder().encode(JSON.stringify(reply)));
                 ctx.emit.end();
-                try { ctx.inspection.complete(reply, generateResponseJson); }
-                catch { /* inspection best-effort */ }
+                try { ctx.inspection.complete(reply, generateResponseJson); } catch { /* inspection best-effort */ }
                 return;
             }
 
@@ -493,8 +491,7 @@ export async function dispatchMakerSuite(ctx) {
                     const errBody = JSON.stringify(errPayload);
                     ctx.emit.chunk(new TextEncoder().encode(errBody));
                     ctx.emit.end();
-                    try { ctx.inspection.complete(errPayload, generateResponseJson); }
-                    catch { /* inspection best-effort */ }
+                    try { ctx.inspection.complete(errPayload, generateResponseJson); } catch { /* inspection best-effort */ }
                     return;
                 }
 
@@ -502,8 +499,7 @@ export async function dispatchMakerSuite(ctx) {
                 const reply = normalizeGeminiResponseToOAI(generateResponseJson);
                 ctx.emit.chunk(new TextEncoder().encode(JSON.stringify(reply)));
                 ctx.emit.end();
-                try { ctx.inspection.complete(reply, generateResponseJson); }
-                catch { /* inspection best-effort */ }
+                try { ctx.inspection.complete(reply, generateResponseJson); } catch { /* inspection best-effort */ }
                 return;
             }
 
@@ -520,8 +516,7 @@ export async function dispatchMakerSuite(ctx) {
             // completeInspection(reply, reply) which loses those fields.
             // See runner.js:290 for the status-guard that skips the
             // fallback once ctx.inspection.complete has already run.
-            try { ctx.inspection.complete(reply, generateResponseJson); }
-            catch { /* inspection best-effort */ }
+            try { ctx.inspection.complete(reply, generateResponseJson); } catch { /* inspection best-effort */ }
         }
     } catch (error) {
         console.error(`Error communicating with ${apiName} API:`, error);

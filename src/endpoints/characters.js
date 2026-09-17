@@ -13,6 +13,7 @@ import { Jimp, JimpMime } from '../jimp.js';
 import storage from 'node-persist';
 
 import { AVATAR_WIDTH, AVATAR_HEIGHT, DEFAULT_AVATAR_PATH } from '../constants.js';
+import { getArrayBufferSlice } from '../util.js';
 import { default as validateAvatarUrlMiddleware, getFileNameValidationFunction, forbiddenRegExp } from '../middleware/validateFileName.js';
 import { deepMerge, humanizedDateTime, tryParse, tryReadFileSync, MemoryLimitedMap, getConfigValue, clientRelativePath, getUniqueName, sanitizeSafeCharacterReplacements, formatBytes } from '../util.js';
 import { TavernCardValidator } from '../validator/TavernCardValidator.js';

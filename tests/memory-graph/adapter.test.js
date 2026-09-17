@@ -223,10 +223,7 @@ function assistantMsg({ swipe_id = 0, mes = 'hello', is_user = false } = {}) {
     return { swipe_id, mes, is_user, is_system: false };
 }
 
-async function flush() {
-    await new Promise((r) => setTimeout(r, 0));
-    await new Promise((r) => setTimeout(r, 0));
-}
+
 
 /**
  * Test fixture: write a memory-graph "log entry" as a single floor-state
@@ -409,7 +406,7 @@ describe('floor-state events on adapter commits', () => {
 
     test('MESSAGE_SWIPED hides commits whose swipeId no longer matches', async () => {
         const chatRef = { value: [assistantMsg(), assistantMsg({ swipe_id: 0 })] };
-        const { store, eventSource, context, getInstance } = makeContext(chatRef);
+        const { eventSource, context, getInstance } = makeContext(chatRef);
 
         // Commit on swipe 0 of floor 1.
         await commitGraphEntryFixture(
@@ -708,7 +705,7 @@ describe('regenerate bug repro', () => {
         // empty and a follow-up commit lands without any "already up to
         // date" short-circuit.
         const chatRef = { value: [assistantMsg(), assistantMsg({ swipe_id: 0 })] };
-        const { store, eventSource, context, getInstance } = makeContext(chatRef);
+        const { eventSource, context, getInstance } = makeContext(chatRef);
 
         // Initial extraction commits a node on swipe 0 of the tail.
         await commitGraphEntryFixture(

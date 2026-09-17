@@ -12,10 +12,10 @@ const event_types = __ctx.eventTypes;
 const getRequestHeaders = __ctx.getRequestHeaders;
 const getContext = Luker.getContext;
 const registerExtensionApi = __ctx.registerExtensionApi;
-const getCharacterState = __ctx.getCharacterState;
+void (__ctx.getCharacterState);
 const updateCharacterState = __ctx.updateCharacterState;
 const addLocaleData = __ctx.addLocaleData;
-const translate = __ctx.translate;
+void (__ctx.translate);
 
 const MODULE_NAME = 'card-app';
 
@@ -24,9 +24,6 @@ const MODULE_NAME = 'card-app';
 // without the user having to read DevTools or paste stack traces.
 const STUDIO_SESSION_NAMESPACE = 'cardapp_studio_sessions';
 
-function t(text) {
-    return translate(String(text || ''));
-}
 
 // Register i18n locale data (core runtime only; Studio i18n lives in the editor plugin)
 addLocaleData('zh-cn', {
@@ -40,7 +37,7 @@ addLocaleData('zh-tw', {
 
 // State
 let isCardAppActive = false;
-let currentCardApp = null;
+
 let currentCtx = null;
 
 /**
@@ -103,7 +100,7 @@ async function activateCardApp() {
         const module = await loadEntryModule(charId, entry);
 
         if (typeof module.init !== 'function') {
-            throw new Error(`CardApp entry module does not export an init() function`);
+            throw new Error('CardApp entry module does not export an init() function');
         }
 
         await module.init(ctx);
@@ -147,7 +144,7 @@ async function activateCardApp() {
     activateRendererBridge(ctx);
 
     isCardAppActive = true;
-    currentCardApp = { charId, config };
+    void ({ charId, config });
 }
 
 /**
@@ -354,7 +351,7 @@ async function deactivateCardApp() {
     destroyContainer();
 
     isCardAppActive = false;
-    currentCardApp = null;
+    void (null);
 }
 
 /**

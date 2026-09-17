@@ -241,10 +241,10 @@ describe.each(ENDPOINT_HARNESSES)('settings.js fresh-storage handling on $name',
             // (In fs mode this is a no-op assertion because settings.json IS
             // the engine storage.)
             fs.unlinkSync(path.join(harness.dirs.root, 'settings.json'));
-            const res2 = await request(harness.app).post('/api/settings/get').send({}).expect(200);
-            const parsed2 = typeof res2.body.settings === 'string' ? JSON.parse(res2.body.settings) : res2.body.settings;
-            expect(parsed2.user_name).toBe('legacy-fs-user');
         }
+        const res2 = await request(harness.app).post('/api/settings/get').send({}).expect(200);
+        const parsed2 = typeof res2.body.settings === 'string' ? JSON.parse(res2.body.settings) : res2.body.settings;
+        expect(parsed2.user_name).toBe('legacy-fs-user');
     });
 });
 

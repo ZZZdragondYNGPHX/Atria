@@ -1104,7 +1104,6 @@ async function migrateProxyToBaseUrl() {
         return;
     }
 
-    let changed = false;
 
     if (Array.isArray(settings.profiles)) {
         for (const profile of settings.profiles) {
@@ -1123,7 +1122,6 @@ async function migrateProxyToBaseUrl() {
 
                 if (proxyUrl && !profile['base-url']) {
                     profile['base-url'] = proxyUrl;
-                    changed = true;
                 }
 
                 if (proxyPassword) {
@@ -1139,9 +1137,8 @@ async function migrateProxyToBaseUrl() {
                                 if (!profile['secret-id']) {
                                     profile['secret-id'] = newSecretId;
                                 } else {
-                                    profile['_luker_migration_conflict'] = true;
+                                    profile._luker_migration_conflict = true;
                                 }
-                                changed = true;
                             }
                         } catch (err) {
                             console.warn('[base-url migration] failed to write secret for profile', profile?.name, err);
@@ -1153,7 +1150,6 @@ async function migrateProxyToBaseUrl() {
                 delete profile.proxy;
                 delete profile['proxy-url'];
                 delete profile['proxy-password'];
-                changed = true;
             } catch (err) {
                 console.warn('[base-url migration] profile migration failed', profile?.name, err);
             }
@@ -1182,7 +1178,6 @@ async function migrateProxyToBaseUrl() {
             }
             oai_settings.reverse_proxy = '';
             oai_settings.proxy_password = '';
-            changed = true;
         }
     } catch (err) {
         console.warn('[base-url migration] global oai_settings migration failed', err);

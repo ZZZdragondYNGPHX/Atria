@@ -4,7 +4,7 @@ import { pipeFrom } from '../../../public/scripts/extensions/orchestrator/editor
 
 function setup({ initialText = '', generationType = 'normal' } = {}) {
     const chat = [{ mes: initialText, extra: { reasoning: '' }, is_user: false }];
-    const emit = jest.fn(async () => {});
+    void (jest.fn(async () => {}));
     const handle = createMessageEditorHandle({
         generationType,
         originalText: initialText,

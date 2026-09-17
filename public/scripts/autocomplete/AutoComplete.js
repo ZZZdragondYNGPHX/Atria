@@ -435,7 +435,6 @@ export class AutoComplete {
             });
 
 
-
         if (this.isForceHidden) {
             // hidden with escape
             return this.hide();
@@ -537,7 +536,7 @@ export class AutoComplete {
     /**
      * Update position of DOM.
      */
-     updatePosition() {
+    updatePosition() {
         if (!this.visible) return;
         if (this.isFloating) {
             this.updateFloatingPosition();

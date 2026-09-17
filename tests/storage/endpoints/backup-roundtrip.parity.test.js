@@ -207,25 +207,21 @@ describe.each(ENDPOINT_HARNESSES)('backup/restore roundtrip on $name', ({ mode }
         const names = await listZipEntries(zipPath);
         expect(names).toContain('manifest.json');
 
-        if (mode === 'fs') {
-            expect(names).not.toContain('_engine_dump.bin');
-            expect(names).not.toContain('_engine_meta.json');
-        } else {
-            expect(names).toContain('_engine_meta.json');
-            expect(names).toContain('_engine_dump.bin');
+        expect(names.includes('_engine_dump.bin')).toBe(mode !== 'fs');
+        expect(names.includes('_engine_meta.json')).toBe(mode !== 'fs');
+        if (mode === 'fs') return;
 
-            const metaBuf = await readZipFile(zipPath, '_engine_meta.json');
-            expect(metaBuf).not.toBeNull();
-            const meta = JSON.parse(metaBuf.toString('utf8'));
-            expect(meta.engineKind).toBe(mode);
-            expect(meta.schemaVersion).toBe(1);
-            expect(meta.handle).toBe(harness.handle);
-            expect(typeof meta.createdAt).toBe('string');
+        const metaBuf = await readZipFile(zipPath, '_engine_meta.json');
+        expect(metaBuf).not.toBeNull();
+        const meta = JSON.parse(metaBuf.toString('utf8'));
+        expect(meta.engineKind).toBe(mode);
+        expect(meta.schemaVersion).toBe(1);
+        expect(meta.handle).toBe(harness.handle);
+        expect(typeof meta.createdAt).toBe('string');
 
-            const dumpBuf = await readZipFile(zipPath, '_engine_dump.bin');
-            expect(dumpBuf).not.toBeNull();
-            expect(dumpBuf.length).toBeGreaterThan(0);
-        }
+        const dumpBuf = await readZipFile(zipPath, '_engine_dump.bin');
+        expect(dumpBuf).not.toBeNull();
+        expect(dumpBuf.length).toBeGreaterThan(0);
     });
 
     test('REGRESSION: backup → wipe → restore round-trips every Repo', async () => {

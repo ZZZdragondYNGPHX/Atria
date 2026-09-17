@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import '@jest/globals';
 import {
     encodeInverse,
     decodeBackward,
@@ -57,11 +57,13 @@ describe('decodeBackward', () => {
         const current = { a: 1 };
         const inverse = [{ op: 'replace', path: '/missing', value: 0 }];
         expect(() => decodeBackward(current, inverse)).toThrow(PatchConflictError);
-        try { decodeBackward(current, inverse); } catch (err) {
+        { let err; try { decodeBackward(current, inverse); } catch (caughtError) { err = caughtError; }
+
             expect(err.jsonPath).toBe('/missing');
             expect(err.opIndex).toBe(0);
             expect(err.reason).toBe('CONFLICT');
             expect(err.hint).toMatch(/missing|not found|cannot/i);
+
         }
     });
 
@@ -71,9 +73,11 @@ describe('decodeBackward', () => {
             { op: 'replace', path: '/a', value: 0 },
             { op: 'remove', path: '/nope' },
         ];
-        try { decodeBackward(current, inverse); } catch (err) {
+        { let err; try { decodeBackward(current, inverse); } catch (caughtError) { err = caughtError; }
+
             expect(err.opIndex).toBe(1);
             expect(err.jsonPath).toBe('/nope');
+
         }
     });
 });

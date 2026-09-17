@@ -252,16 +252,13 @@ describe('SqliteEngine chat handler', () => {
         // Syntactically-malformed JSON: try to insert; either the schema
         // guard rejects OR the row lands. Either way, get() must return
         // null. This is the actual invariant callers rely on.
-        let inserted = true;
         try {
             await insertRaw('corrupt-json', '{not json');
         } catch {
-            inserted = false;
+            // The schema can reject malformed JSON before it reaches storage.
         }
-        if (inserted) {
-            const got = await engine.withTransaction(handle, async (tx) =>
-                tx.getResource(chatKey({ name: 'corrupt-json' })));
-            expect(got).toBeNull();
-        }
+        const got = await engine.withTransaction(handle, async (tx) =>
+            tx.getResource(chatKey({ name: 'corrupt-json' })));
+        expect(got).toBeNull();
     });
 });

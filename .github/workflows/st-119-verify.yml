@@ -8,6 +8,27 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 53306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: luker
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: luker_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd="pg_isready -U luker -d luker_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
     timeout-minutes: 30
     steps:
       - name: Checkout adaptation branch
@@ -44,6 +65,9 @@ jobs:
       - name: Install root dependencies
         run: npm ci --ignore-scripts
 
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+
       - name: Lint application
         run: npm run lint
 
@@ -55,6 +79,9 @@ jobs:
         working-directory: tests
         run: npm run lint
 
-      - name: Run unit tests serially
+      - name: Run unit tests
         working-directory: tests
-        run: npm run test:unit:serial
+        run: npm run test:unit -- --maxWorkers=2
+
+      - name: Build frontend libraries
+        run: node docker/build-lib.js

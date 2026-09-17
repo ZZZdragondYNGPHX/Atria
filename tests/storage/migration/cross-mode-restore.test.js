@@ -18,9 +18,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import 'node:crypto';
 import archiver from 'archiver';
-import { pipeline } from 'node:stream/promises';
+import 'node:stream/promises';
 
 import {
     crossModeRestore,
@@ -31,10 +31,8 @@ import {
     CrossModeScratchCredsRequiredError,
     CrossModeConversionFailedError,
 } from '../../../src/storage/migration/cross-mode-errors.js';
-import {
-    ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX,
-} from '../../../src/storage/engine-backup-entries.js';
-import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
+import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY } from '../../../src/storage/engine-backup-entries.js';
+import '../../../src/storage/engines/fs-engine.js';
 import { SqliteEngine } from '../../../src/storage/engines/sqlite-engine.js';
 import { ChatRepo } from '../../../src/storage/repositories/chat-repo.js';
 import { SettingsRepo } from '../../../src/storage/repositories/settings-repo.js';
@@ -93,7 +91,7 @@ describe('crossModeRestore — happy path sqlite→fs', () => {
     });
     afterEach(async () => {
         setReadOnly(false);
-        try { await dstEngine.close(); } catch {}
+        try { await dstEngine.close(); } catch { /* Preserve the existing best-effort error handling. */ }
         fs.rmSync(dataRoot, { recursive: true, force: true });
     });
 
@@ -204,7 +202,7 @@ describe('crossModeRestore — error paths', () => {
     });
     afterEach(async () => {
         setReadOnly(false);
-        try { await dstEngine.close(); } catch {}
+        try { await dstEngine.close(); } catch { /* Preserve the existing best-effort error handling. */ }
         fs.rmSync(dataRoot, { recursive: true, force: true });
     });
 

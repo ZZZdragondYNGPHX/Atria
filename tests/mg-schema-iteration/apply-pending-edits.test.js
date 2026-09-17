@@ -256,8 +256,9 @@ describe('MG schema — startNewSession autoApply preservation (MG-10) [structur
     let body;
     beforeAll(() => {
         body = extractAsyncFnBody(STUDIO_JS, 'startNewSession');
-        expect(body).not.toBeNull();
     });
+
+    test('session function is present', () => { expect(body).not.toBeNull(); });
 
     test('captures priorAutoApply from state.session?.surfaceState?.autoApply', () => {
         // The Boolean() coercion is load-bearing: a missing surfaceState would
@@ -316,7 +317,7 @@ describe('MG schema — startNewSession autoApply preservation (MG-10) [structur
         const explicit = objText
             .replace(/\.\.\.\([^)]*\)\s*,?/g, '')   // drop the spread
             .replace(/\([^()]*\)/g, '')             // strip nested parens
-            .replace(/\[[^\[\]]*\]/g, '');          // strip nested brackets
+            .replace(/\[[^[\]]*\]/g, '');          // strip nested brackets
         const keyMatches = [...explicit.matchAll(/(?:^|,)\s*(\w+)\s*:/g)].map(m => m[1]);
         expect(keyMatches).toEqual(['autoApply']);
     });
@@ -330,8 +331,9 @@ describe('MG schema — clearAllHistory abort-then-delete ordering [structural]'
     let body;
     beforeAll(() => {
         body = extractAsyncFnBody(STUDIO_JS, 'clearAllHistory');
-        expect(body).not.toBeNull();
     });
+
+    test('session function is present', () => { expect(body).not.toBeNull(); });
 
     test('calls state.abortController?.abort() in the body', () => {
         expect(body).toMatch(/state\.abortController\?\.abort\(\)/);

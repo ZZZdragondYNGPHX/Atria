@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { jest } from '@jest/globals';
+import '@jest/globals';
 import { renderMessageCard, bindChainBrokenBanner } from '../../public/scripts/iteration-library/ui/message.js';
 import { renderApplyControls } from '../../public/scripts/iteration-library/ui/apply.js';
 

@@ -129,9 +129,9 @@ describe('unified CEA editor tools.js', () => {
             { context: {}, live: {} },
         );
         expect(Array.isArray(edits)).toBe(true);
-        if (edits.length > 0) {
-            expect(edits[0].target?.kind).toBe('lorebook');
-            expect(edits[0].target?.bookName).toBeFalsy();
+        for (const edit of edits) {
+            expect(edit.target?.kind).toBe('lorebook');
+            expect(edit.target?.bookName).toBeFalsy();
         }
     });
 

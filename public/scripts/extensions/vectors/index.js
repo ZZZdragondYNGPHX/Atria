@@ -12,13 +12,7 @@ import {
     generateRaw,
     substituteParamsExtended,
 } from '../../../script.js';
-import {
-    ModuleWorkerWrapper,
-    extension_settings,
-    getContext,
-    renderExtensionTemplateAsync,
-    openThirdPartyExtensionMenu,
-} from '../../extensions.js';
+import { ModuleWorkerWrapper, extension_settings, getContext, renderExtensionTemplateAsync } from '../../extensions.js';
 import { collapseNewlines, registerDebugFunction } from '../../power-user.js';
 import { getDataBankAttachments, getDataBankAttachmentsForSource, getFileAttachment } from '../../chats.js';
 import { debounce, getStringHash as calculateHash, waitUntilCondition, onlyUnique, splitRecursive, trimToStartSentence, trimToEndSentence, escapeHtml, isTrueBoolean, uuidv4 } from '../../utils.js';

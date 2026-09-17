@@ -71,7 +71,7 @@ test('character copy stays active while the user explicitly edits a global prese
     await globalDialog.locator('[data-quick-name]').fill(globalName);
     await globalDialog.locator('[data-quick-scope]').selectOption('global');
     await globalDialog.locator('.popup-button-ok').click();
-    await expect(globalDialog).not.toBeVisible();
+    await expect(globalDialog).toBeHidden();
     await page.locator('#luker_orch_quick_template').click();
     const dialog = page.locator('dialog:visible').last();
     await dialog.locator('[data-quick-name]').fill(`Character workflow ${Date.now()}`);

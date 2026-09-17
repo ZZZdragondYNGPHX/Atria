@@ -98,7 +98,8 @@ test.each(['completed', 'cancelled', 'failed'])('Director terminal %s recovery n
     terminal.policyState.history.push({ transientRef: 'lost-after-close' });
     const restored = await disk(terminal), calls = { model: 0, tool: 0, restore: 0 };
     const result = execute('director', restored.store, true, calls);
-    if (status === 'completed') await expect(result).resolves.toMatchObject({ kind: 'reply' });
-    else await expect(result).rejects.toThrow();
+    const outcome = await result.then(value => ({ value }), error => ({ error }));
+    const expectedError = expect.objectContaining({ name: status === 'cancelled' ? 'AbortError' : 'Error' });
+    expect(outcome).toMatchObject(status === 'completed' ? { value: { kind: 'reply' } } : { error: expectedError });
     expect(calls).toEqual({ model: 0, tool: 0, restore: 0 });
 });

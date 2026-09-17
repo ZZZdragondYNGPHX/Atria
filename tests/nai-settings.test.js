@@ -16,6 +16,7 @@ global.$ = jest.fn(() => jqueryElement);
 
 jest.unstable_mockModule('../public/script.js', () => ({
     abortStatusCheck: { signal: undefined },
+    ensureFullSettingsLoaded: jest.fn(),
     event_types: {},
     eventSource: { emit: jest.fn() },
     getRequestHeaders: jest.fn(),
@@ -30,6 +31,7 @@ jest.unstable_mockModule('../public/scripts/power-user.js', () => ({
     MAX_CONTEXT_DEFAULT: 8192,
     MAX_RESPONSE_DEFAULT: 150,
     power_user: {},
+    registerDebugFunction: jest.fn(),
 }));
 jest.unstable_mockModule('../public/scripts/tokenizers.js', () => ({
     getTextTokens: jest.fn(),
@@ -38,6 +40,8 @@ jest.unstable_mockModule('../public/scripts/tokenizers.js', () => ({
 jest.unstable_mockModule('../public/scripts/sse-stream.js', () => ({ getEventSourceStream: jest.fn() }));
 jest.unstable_mockModule('../public/scripts/utils.js', () => ({
     getSortableDelay: jest.fn(),
+    buildPresetNameIndexMap: names => Object.fromEntries(names.map((name, index) => [name, index])),
+    getOrderedPresetNames: values => Object.keys(values),
     getStringHash: jest.fn(),
     onlyUnique: jest.fn(),
 }));
@@ -52,6 +56,12 @@ jest.unstable_mockModule('../public/scripts/secrets.js', () => ({
     secret_state: {},
     writeSecret: jest.fn(),
 }));
+
+jest.unstable_mockModule('../public/scripts/extensions/connection-manager/profile-retry.js', () => ({
+    withProfileRetry: async (operation) => operation(),
+}));
+
+jest.unstable_mockModule('../public/scripts/i18n.js', () => ({ t: strings => String(strings) }));
 
 let loadNovelPreset;
 let loadNovelSettings;

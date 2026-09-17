@@ -1,24 +1,6 @@
 import { Fuse } from '../lib.js';
 
-import {
-    shuffle,
-    onlyUnique,
-    debounce,
-    delay,
-    isDataURL,
-    createThumbnail,
-    extractAllWords,
-    saveBase64AsFile,
-    PAGINATION_TEMPLATE,
-    getBase64Async,
-    resetScrollHeight,
-    initScrollHeight,
-    localizePagination,
-    renderPaginationDropdown,
-    paginationDropdownChangeHandler,
-    waitUntilCondition,
-    uuidv4,
-} from './utils.js';
+import { shuffle, onlyUnique, debounce, delay, isDataURL, createThumbnail, extractAllWords, saveBase64AsFile, PAGINATION_TEMPLATE, getBase64Async, resetScrollHeight, initScrollHeight, localizePagination, renderPaginationDropdown, paginationDropdownChangeHandler, uuidv4 } from './utils.js';
 import { RA_CountCharTokens, humanizedDateTime, dragElement, favsToHotswap, getMessageTimeStamp } from './RossAscends-mods.js';
 import { power_user, loadMovingUIState, sortEntitiesList } from './power-user.js';
 import { debounce_timeout } from './constants.js';
@@ -637,13 +619,13 @@ async function getFirstCharacterMessage(character) {
     }
 
     const mes = {};
-    mes['is_user'] = false;
-    mes['is_system'] = false;
-    mes['name'] = getCharacterName(character);
-    mes['send_date'] = getMessageTimeStamp();
-    mes['original_avatar'] = character.avatar;
-    mes['extra'] = { 'gen_id': Date.now() * Math.random() * 1000000 };
-    mes['mes'] = messageText
+    mes.is_user = false;
+    mes.is_system = false;
+    mes.name = getCharacterName(character);
+    mes.send_date = getMessageTimeStamp();
+    mes.original_avatar = character.avatar;
+    mes.extra = { 'gen_id': Date.now() * Math.random() * 1000000 };
+    mes.mes = messageText
         ? substituteParams(messageText.trim(), { name2Override: getCharacterName(character) })
         : '';
     mes.force_avatar =
@@ -694,7 +676,7 @@ async function saveGroupChatInternal(groupId, shouldSaveGroup, force = false, re
         console.warn('Group chat id is empty', resolvedGroupId);
         return;
     }
-    group['date_last_chat'] = Date.now();
+    group.date_last_chat = Date.now();
     const metadataSnapshot = saveContext?.metadataSnapshot && typeof saveContext.metadataSnapshot === 'object'
         ? saveContext.metadataSnapshot
         : { ...chat_metadata };
@@ -932,7 +914,6 @@ export async function renameGroupMember(oldAvatar, newAvatar, newName) {
                                 integrity: messages?.[0]?.chat_metadata?.integrity,
                             }),
                         });
-                        const saveChatResponse = await fetch('/api/chats/group/save', saveChatRequest);
 
                         if (!patchResponse.ok) {
                             throw new Error('Group member could not be renamed');

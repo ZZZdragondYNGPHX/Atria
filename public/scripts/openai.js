@@ -565,7 +565,7 @@ export const MINIMAX_ENDPOINT = {
     CN: 'cn',
 };
 
-const sensitiveFields = [
+void ([
     'reverse_proxy',
     'proxy_password',
     'base_url',
@@ -579,7 +579,7 @@ const sensitiveFields = [
     'azure_base_url',
     'azure_deployment_name',
     'workers_ai_account_id',
-];
+]);
 
 /**
  * preset_name -> [selector, setting_name, is_checkbox, is_connection]
@@ -1521,7 +1521,7 @@ async function populateChatHistory(messages, prompts, chatCompletion, type = nul
     const batchedMessages = await Message.createManyAsync(batchedMessageDefinitions);
     for (const entry of chatEntries) {
         const chatMessage = batchedMessages[entry.chatMessageIndex];
-        const toolResultMessages = batchedMessages.slice(entry.toolResultStartIndex, entry.toolResultStartIndex + entry.toolResultCount);
+        void (batchedMessages.slice(entry.toolResultStartIndex, entry.toolResultStartIndex + entry.toolResultCount));
 
         if (entry.postCountSignature) {
             chatMessage.signature = entry.postCountSignature;
@@ -9336,7 +9336,7 @@ function ensureProxyPresetOption(name) {
 
 function persistCurrentProxyPresetSelection() {
     const currentUrl = String(oai_settings.reverse_proxy || $('#openai_reverse_proxy').val() || '');
-    const currentPassword = String(oai_settings.proxy_password || $('#openai_proxy_password').val() || '');
+    const currentPassword = String(oai_settings.proxy_password || $('#openai_proxy_access_key').val() || '');
 
     if (!currentUrl && !currentPassword) {
         syncProxyPresetSelectionByConnection();
@@ -9378,7 +9378,7 @@ export function getCurrentProxyProfileEntry({ persist = false } = {}) {
     }
 
     const currentUrl = String(oai_settings.reverse_proxy || $('#openai_reverse_proxy').val() || '');
-    const currentPassword = String(oai_settings.proxy_password || $('#openai_proxy_password').val() || '');
+    const currentPassword = String(oai_settings.proxy_password || $('#openai_proxy_access_key').val() || '');
     const matched = proxies.find((preset) => String(preset?.url || '') === currentUrl && String(preset?.password || '') === currentPassword);
     const selectedName = String($('#openai_proxy_preset').val() || '').trim();
     const typedName = String($('#openai_reverse_proxy_name').val() || '').trim();
@@ -9426,7 +9426,7 @@ export function applyProxyProfileEntry({
     oai_settings.reverse_proxy = normalizedUrl;
     $('#openai_reverse_proxy').val(normalizedUrl);
     oai_settings.proxy_password = normalizedPassword;
-    $('#openai_proxy_password').val(normalizedPassword);
+    $('#openai_proxy_access_key').val(normalizedPassword);
     syncProxyPresetSelectionByConnection();
     reconnectOpenAi();
     return selected_proxy?.name || '';
@@ -10810,6 +10810,11 @@ export function initOpenAI() {
     $('#openai_logit_bias_delete_preset').on('click', onLogitBiasPresetDeleteClick);
     $('#import_oai_preset').on('click', onImportPresetClick);
     $('#openai_proxy_access_key_show').on('click', onProxyAccessKeyShowClick);
+    $('#openai_proxy_access_key').on('copy cut', function (event) {
+        if ($(this).hasClass('masked-secret')) {
+            event.preventDefault();
+        }
+    });
     $('#customize_additional_parameters').on('click', onCustomizeParametersClick);
     $('#openai_proxy_preset').on('change', onProxyPresetChange);
 

@@ -82,9 +82,7 @@ describe('director profile round-trip through Studio sanitizer', () => {
         expect(after.tools.custom.memory_node_brief).toBe(true);
         expect(after.tools.lorebook.search).toBe(true);
         // tools.finalize is forced to false (no leakage between modes).
-        if (after.tools.finalize !== undefined) {
-            expect(after.tools.finalize).toBe(false);
-        }
+        expect([undefined, false]).toContain(after.tools.finalize);
     });
 
     test('sanitizer is idempotent (sanitize twice yields equivalent result)', () => {

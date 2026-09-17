@@ -27,12 +27,7 @@ import request from 'supertest';
 
 import { ENDPOINT_HARNESSES, makeEndpointHarness } from '../harness/endpoint-harness.js';
 import { router as usersPrivateRouter } from '../../../src/endpoints/users-private.js';
-import {
-    getChatRepo,
-    getSettingsRepo,
-    getWorldInfoRepo,
-    getStorageEngine,
-} from '../../../src/storage/index.js';
+import { getChatRepo, getSettingsRepo, getWorldInfoRepo } from '../../../src/storage/index.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY } from '../../../src/storage/engine-backup-entries.js';
 import { SqliteEngine } from '../../../src/storage/engines/sqlite-engine.js';
 import { ChatRepo } from '../../../src/storage/repositories/chat-repo.js';
@@ -148,8 +143,7 @@ describe.each(ENDPOINT_HARNESSES)('cross-mode endpoint wiring on $name', ({ mode
         expect(res.status).toBe(200);
         expect(res.body.crossModeRequired).toBe(false);
         expect(res.body.scratchCredsNeeded).toBeNull();
-        if (mode !== 'fs') expect(res.body.engineKind).toBe(mode);
-        else expect(res.body.engineKind).toBe('fs');
+        expect(res.body.engineKind).toBe(mode);
     });
 
     test('probe: foreign-db ZIP → crossModeRequired:true with scratchCredsNeeded', async () => {

@@ -230,25 +230,9 @@ describe.each(ENDPOINT_HARNESSES)('users-admin /delete on $name', ({ mode }) => 
 
         // BC guarantee #3: per-mode row-sweep contract.
         const probes = await probeAllRepos(targetHandle);
-        if (mode === 'fs' || mode === 'sqlite') {
-            // fs/sqlite: engine.deleteUser is a no-op, so EVERY seeded
-            // row must still be readable. This is the BC half — a user
-            // accidentally deleted with purge=false can be re-created
-            // and their data reattached (matching pre-Stage-2 behaviour).
-            expect(probes.chat).not.toBeNull();
-            expect(probes.preset).not.toBeNull();
-            expect(probes.world).not.toBeNull();
-            expect(probes.namedDoc).not.toBeNull();
-            expect(probes.group).not.toBeNull();
-            expect(probes.settings).not.toBeNull();
-            expect(probes.stats).not.toBeNull();
-        } else {
-            // mysql/postgres: engine.deleteUser runs unconditionally and
-            // wipes every Repo-backed table for the handle. This is the
-            // orphan-row fix.
-            for (const [k, v] of Object.entries(probes)) {
-                expect({ [k]: v }).toEqual({ [k]: null });
-            }
+        const preservesRows = mode === 'fs' || mode === 'sqlite';
+        for (const [key, value] of Object.entries(probes)) {
+            expect({ [key]: value === null }).toEqual({ [key]: !preservesRows });
         }
     });
 

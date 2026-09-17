@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import '@jest/globals';
 import { renderToolCallChip } from '../../public/scripts/iteration-library/ui/toolcall.js';
 
 const ident = (s, ...args) => args.reduce((acc, v, i) => acc.replace(new RegExp('\\$\\{' + i + '\\}', 'g'), v), s);

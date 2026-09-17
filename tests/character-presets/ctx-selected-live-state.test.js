@@ -259,6 +259,7 @@ jest.unstable_mockModule('../../public/scripts/group-chats.js', () => ({
     groups: [], openGroupChat: () => Promise.resolve(), selected_group: null, unshallowGroupMembers: () => Promise.resolve(),
 }));
 jest.unstable_mockModule('../../public/scripts/i18n.js', () => ({
+    applyLocale: () => {},
     addLocaleData: () => {}, getCurrentLocale: () => 'en-US', t: (k) => k, translate: (k) => k,
 }));
 jest.unstable_mockModule('../../public/scripts/loader.js', () => ({
@@ -316,6 +317,8 @@ jest.unstable_mockModule('../../public/scripts/util/AccountStorage.js', () => ({
     accountStorage: {},
 }));
 jest.unstable_mockModule('../../public/scripts/utils.js', () => ({
+    copyText: () => {},
+    humanFileSize: () => '',
     areLookupNamesEqual: (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase(),
     findCanonicalNameInList: (list, name) => {
         const cleaned = String(name ?? '').trim().toLowerCase();
@@ -409,11 +412,13 @@ jest.unstable_mockModule('../../public/scripts/skills/api.js', () => ({
     skillsApi: {},
 }));
 jest.unstable_mockModule('../../public/scripts/secrets.js', () => ({
-    SECRET_KEYS: {}, secret_state: {},
+    SECRET_KEYS: {}, secret_state: {}, canViewSecrets: () => false, updateSecretDisplay: () => {},
 }));
 jest.unstable_mockModule('../../public/scripts/embedding-service.js', () => ({
     EmbeddingService: class {},
 }));
+
+jest.unstable_mockModule('../../public/scripts/user.js', () => ({ getCurrentUserHandle: () => 'test-user' }));
 
 const { getContext } = await import('../../public/scripts/st-context.js');
 const characterPresets = await import('../../public/scripts/character/presets.js');

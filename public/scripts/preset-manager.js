@@ -26,6 +26,7 @@ import { t } from './i18n.js';
 import { instruct_presets } from './instruct-mode.js';
 import { kai_settings } from './kai-settings.js';
 import { convertNovelPreset } from './nai-settings.js';
+import { getPresetApplicationPromise } from './openai.js';
 import { getActiveCardBoundGhostSnapshot, getChatCompletionPreset, maybeApplyCharacterBoundPreset, oai_settings, openai_setting_names, openai_settings } from './openai.js';
 import { decodeCardBoundOptionValue } from './character/preset-ref-codec.js';
 import { renameCharacterBoundPreset } from './character/presets.js';

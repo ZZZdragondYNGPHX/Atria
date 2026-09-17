@@ -146,6 +146,6 @@ test.describe('#23 — Delete character via UI — embedded skill cascade + WI b
         // WI book is preserved on disk — only the binding is gone.
         expect(existsSync(bookPath), 'bound WI book is preserved after delete').toBe(true);
         const bookAfter = JSON.parse(readFileSync(bookPath, 'utf8'));
-        expect(Object.keys(bookAfter.entries).length).toBe(Object.keys(bookBefore.entries).length);
+        expect(Object.keys(bookAfter.entries)).toHaveLength(Object.keys(bookBefore.entries).length);
     });
 });

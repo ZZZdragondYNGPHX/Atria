@@ -6,8 +6,8 @@
 // no direct ctx.characters mutation. Tests that bypass these helpers are
 // going against the audit's intent.
 
-import { expect } from '@playwright/test';
-import { acceptTopmostPopup, fillTopmostPopupAndAccept } from './page.js';
+import '@playwright/test';
+import './page.js';
 
 /**
  * Open the right nav (character list) drawer if it's closed.

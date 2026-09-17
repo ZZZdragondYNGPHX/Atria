@@ -19,7 +19,7 @@
 // called emit.end, and (b) `persisted`/`status` reflect state AFTER
 // completeGenerationJobFromText fired.
 
-import { jest } from '@jest/globals';
+import '@jest/globals';
 
 function fakeRequest({ requestId, body = {}, handle = 'trailer-alice' } = {}) {
     return {

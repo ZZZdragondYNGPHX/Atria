@@ -23,7 +23,7 @@ export function i18nFormat(key, ...values) {
 
 export function registerLocaleData() {
     addLocaleData('zh-cn', {
-        'nodes=${0}, edges=${1}, messages=${2}, source=${3}, semantic=${4}': '节点 ${0} · 关系 ${1} · 消息 ${2} · 来源 ${3} · 语义 ${4}',
+
         'Memory overview': '记忆概览',
         'Choose what to remember and when to bring it into the conversation.': '决定记忆如何积累，以及何时参与对话。',
         'Enable memory': '启用长期记忆',
@@ -44,7 +44,7 @@ export function registerLocaleData() {
         'Memory': '记忆',
         'Regenerate aborted': '重新生成已中止',
         'Regenerate aborted — could not roll back commit on ${0}: ${1}': '重新生成已中止——无法回退 ${0} 上的提交：${1}',
-        'Edit': '编辑',
+
         'Edit and regenerate from here': '编辑并从此处重新生成',
         'Edit message — saving will regenerate from this turn:': '编辑消息——保存将从此轮开始重新生成：',
         'Enabled': '启用',
@@ -72,8 +72,8 @@ export function registerLocaleData() {
         'Injection position': '注入位置',
         'Before Character Definitions': '角色定义前',
         'After Character Definitions': '角色定义后',
-        "Before Author's Note": '作者注释前',
-        "After Author's Note": '作者注释后',
+        'Before Author\'s Note': '作者注释前',
+        'After Author\'s Note': '作者注释后',
         'Before Example Messages': '示例消息前',
         'After Example Messages': '示例消息后',
         'At Chat Depth': '聊天深度',
@@ -593,7 +593,7 @@ export function registerLocaleData() {
         'Query rewrite system prompt help body': 'RAG query rewrite 用的 system prompt——教模型把"最近对话上下文"改写成一个向量检索友好的单句 query。',
     });
     addLocaleData('zh-tw', {
-        'nodes=${0}, edges=${1}, messages=${2}, source=${3}, semantic=${4}': '節點 ${0} · 關係 ${1} · 訊息 ${2} · 來源 ${3} · 語義 ${4}',
+
         'Memory overview': '記憶概覽',
         'Choose what to remember and when to bring it into the conversation.': '決定記憶如何累積，以及何時參與對話。',
         'Enable memory': '啟用長期記憶',
@@ -614,7 +614,7 @@ export function registerLocaleData() {
         'Memory': '記憶',
         'Regenerate aborted': '重新產生已中止',
         'Regenerate aborted — could not roll back commit on ${0}: ${1}': '重新產生已中止——無法回退 ${0} 上的提交：${1}',
-        'Edit': '編輯',
+
         'Edit and regenerate from here': '編輯並從此處重新產生',
         'Edit message — saving will regenerate from this turn:': '編輯訊息——儲存將從此輪開始重新產生：',
         'Enabled': '啟用',
@@ -642,8 +642,8 @@ export function registerLocaleData() {
         'Injection position': '注入位置',
         'Before Character Definitions': '角色定義前',
         'After Character Definitions': '角色定義後',
-        "Before Author's Note": '作者註釋前',
-        "After Author's Note": '作者註釋後',
+        'Before Author\'s Note': '作者註釋前',
+        'After Author\'s Note': '作者註釋後',
         'Before Example Messages': '示例訊息前',
         'After Example Messages': '示例訊息後',
         'At Chat Depth': '聊天深度',

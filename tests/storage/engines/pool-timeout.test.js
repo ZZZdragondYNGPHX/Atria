@@ -123,7 +123,7 @@ describePg('PgEngine pool acquire timeout', () => {
         }
     }, 15000);
 
-    test('respects acquireTimeoutMs when pool is exhausted', async () => {
+    test('PostgreSQL: respects acquireTimeoutMs when pool is exhausted', async () => {
         const engine = new PgEngine({
             url: dbUrl,
             poolSize: 1,

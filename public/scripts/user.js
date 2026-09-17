@@ -3077,7 +3077,7 @@ async function openAdminPanel() {
         const inspectorMount = container.querySelector('.storageInspectorAdminInspectorContainer');
 
         // 加载用户列表:复用 /api/users/overview(admin only · 已返回 storageBytes)
-        picker.innerHTML = `<div class="storageInspectorLoadingRow"></div>`.repeat(3);
+        picker.innerHTML = '<div class="storageInspectorLoadingRow"></div>'.repeat(3);
         let overview;
         try {
             const res = await fetch('/api/users/overview', {
@@ -3114,7 +3114,7 @@ async function openAdminPanel() {
             const aggregateRow = document.createElement('div');
             aggregateRow.className = 'storageInspectorAdminUserRow storageInspectorAdminUserAggregate';
             aggregateRow.dataset.target = '__all__';
-            aggregateRow.innerHTML = `<i class="fa-fw fa-solid fa-star"></i> <span data-i18n="* All Users *">* All Users *</span>`;
+            aggregateRow.innerHTML = '<i class="fa-fw fa-solid fa-star"></i> <span data-i18n="* All Users *">* All Users *</span>';
             aggregateRow.addEventListener('click', () => selectTarget('__all__', '* All Users *'));
             picker.appendChild(aggregateRow);
 
@@ -3393,7 +3393,6 @@ async function openAdminPanel() {
     callGenericPopup(template, POPUP_TYPE.TEXT, '', { okButton: t`Close`, wide: false, large: false, allowVerticalScrolling: true, allowHorizontalScrolling: false });
     renderUsers();
 }
-
 
 
 /**

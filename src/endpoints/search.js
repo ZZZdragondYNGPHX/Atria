@@ -348,7 +348,9 @@ function validateVisitUrl(url) {
         throw new Error('Invalid port');
     }
 
-    if (ipRegex.v4({ exact: true }).test(urlObj.hostname) || ipRegex.v6({ exact: true }).test(urlObj.hostname)) {
+    const bareHostname = urlObj.hostname.replace(/^\[|\]$/g, '');
+    if (ipRegex.v4({ exact: true }).test(bareHostname) || ipRegex.v6({ exact: true }).test(bareHostname)
+        || bareHostname === 'localhost' || bareHostname.endsWith('.localhost')) {
         throw new Error('Invalid hostname');
     }
 
@@ -1024,7 +1026,7 @@ router.post('/visit', async (request, response) => {
             }
         }
 
-        const result = await fetch(url, { headers: visitHeaders });
+        const result = await fetch(url, { headers: visitHeaders, agent: getUntrustedRequestAgent() });
 
         if (!result.ok) {
             const bodyText = await result.text().catch(() => '');

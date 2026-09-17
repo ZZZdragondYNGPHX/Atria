@@ -60,17 +60,7 @@ const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 const POPUP_RESULT = __ctx.POPUP_RESULT;
 const stripOpenAIConnectionFieldsFromPreset = __ctx.openai.stripPresetConnectionFields;
-import {
-    applyEdits,
-    inverseEdit,
-    bindIterWorkspaceResizer,
-    createRenderScheduler,
-    render as ITER_RENDER,
-    runner as ITER_RUNNER,
-    zoomOverlay as ITER_ZOOM_OVERLAY,
-    ui as ITER_UI,
-    proposalBus as ITER_PROPOSAL_BUS,
-} from '../../../iteration-library/index.js';
+import { applyEdits, bindIterWorkspaceResizer, createRenderScheduler, render as ITER_RENDER, runner as ITER_RUNNER, zoomOverlay as ITER_ZOOM_OVERLAY, ui as ITER_UI, proposalBus as ITER_PROPOSAL_BUS } from '../../../iteration-library/index.js';
 import { profileEdit } from '../../../iteration-library/proposal-bus/kinds/profile-edit.js';
 import { skillAuthor } from '../../../iteration-library/proposal-bus/kinds/skill-author.js';
 import { presetClone } from '../../../iteration-library/proposal-bus/kinds/preset-clone.js';
@@ -83,24 +73,8 @@ import {
     skillTarget as skillBodyTarget,
 } from '../../../iteration-library/proposal-bus/diff-bodies/skill.js';
 import { renderPresetCloneBody } from '../../../iteration-library/proposal-bus/diff-bodies/preset-clone.js';
-import {
-    buildToolCatalog,
-    normalizeToolCallToEdit,
-    runCpaReadTool,
-    runCpaSkillTool,
-    commitApprovedSkillProposal,
-    EDITABLE_TOOL_NAMES,
-    CONTROL_TOOL_NAMES,
-    isCpaControlCall,
-    isCpaReadTool,
-    isCpaSkillTool,
-} from './tools.js';
-import {
-    buildModelSystemPrompt,
-    sanitizeSessionMode,
-    SESSION_MODES,
-    SESSION_MODE_DEFAULT,
-} from './system-prompts.js';
+import { buildToolCatalog, normalizeToolCallToEdit, runCpaReadTool, runCpaSkillTool, commitApprovedSkillProposal, EDITABLE_TOOL_NAMES, isCpaControlCall, isCpaReadTool, isCpaSkillTool } from './tools.js';
+import { sanitizeSessionMode, SESSION_MODES, SESSION_MODE_DEFAULT } from './system-prompts.js';
 import {
     isReplayableIterationMessage,
 } from '../../../iteration-library/iter-message-filter.js';
@@ -1246,113 +1220,15 @@ export async function openCpaIterationStudio(deps) {
     // edited the same file between proposal and apply surfaces as a fresh
     // error.
     // ──────────────────────────────────────────────────────────────────
-    const SKILL_KIND_META = Object.freeze({
+    void (Object.freeze({
         content: { icon: '✏️', label: () => t('Update skill file') },
         frontmatter: { icon: '🏷️', label: () => t('Update skill frontmatter') },
         create: { icon: '✨', label: () => t('Create skill') },
         rename: { icon: '🔤', label: () => t('Rename skill') },
         change_scope: { icon: '📦', label: () => t('Move skill scope') },
         delete: { icon: '🗑️', label: () => t('Delete skill') },
-    });
+    }));
 
-    function scopeDisplay(scope) {
-        if (!scope || typeof scope !== 'object') return t('(unknown scope)');
-        if (scope.kind === 'global') return t('global');
-        if (scope.kind === 'preset' && scope.name) return tf('preset:${0}', String(scope.name));
-        if (scope.kind === 'orch-preset' && scope.mode && scope.name) {
-            return tf('orch-preset:${0}/${1}', String(scope.mode), String(scope.name));
-        }
-        if (scope.kind === 'character' && scope.characterFile) {
-            return tf('character:${0}', String(scope.characterFile));
-        }
-        return String(scope.kind || '?');
-    }
-
-    function renderSkillStructuralBody(edit) {
-        if (edit.kind === 'rename') {
-            return `<div class="cpa_it_skl_meta_row">
-                <span class="cpa_it_skl_meta_label">${escapeHtmlLocal(t('Name'))}:</span>
-                <span class="cpa_it_skl_meta_was">${escapeHtmlLocal(String(edit.before?.name || edit.skillName || ''))}</span>
-                <span class="cpa_it_skl_meta_arrow">→</span>
-                <span class="cpa_it_skl_meta_now">${escapeHtmlLocal(String(edit.after?.name || ''))}</span>
-            </div>`;
-        }
-        if (edit.kind === 'change_scope') {
-            return `<div class="cpa_it_skl_meta_row">
-                <span class="cpa_it_skl_meta_label">${escapeHtmlLocal(t('Scope'))}:</span>
-                <span class="cpa_it_skl_meta_was">${escapeHtmlLocal(scopeDisplay(edit.before?.scope))}</span>
-                <span class="cpa_it_skl_meta_arrow">→</span>
-                <span class="cpa_it_skl_meta_now">${escapeHtmlLocal(scopeDisplay(edit.after?.scope))}</span>
-            </div>`;
-        }
-        if (edit.kind === 'delete') {
-            return `<div class="cpa_it_skl_meta_row cpa_it_skl_meta_destructive">
-                ${escapeHtmlLocal(tf('Skill "${0}" (${1}) will be deleted on Apply. All files removed; this cannot be undone.',
-        String(edit.skillName || ''), scopeDisplay(edit.scope)))}
-            </div>`;
-        }
-        return '';
-    }
-
-    function renderSkillDiffBody(edit) {
-        const path = String(edit.path || 'SKILL.md');
-        const diffEdit = {
-            op: 'set',
-            path,
-            oldValue: typeof edit.before === 'string' ? edit.before : '',
-            newValue: typeof edit.after === 'string' ? edit.after : '',
-        };
-        const html = ITER_UI.diff.renderDiffCard([diffEdit], { i18n: tf });
-        if (!html) {
-            return `<div class="cpa_it_skl_nochange">${escapeHtmlLocal(t('No content change'))}</div>`;
-        }
-        const extrasList = edit.kind === 'create' && Array.isArray(edit.extras?.extraFiles) && edit.extras.extraFiles.length > 0
-            ? `<div class="cpa_it_skl_extras">${escapeHtmlLocal(tf('Plus ${0} additional file(s): ${1}',
-                String(edit.extras.extraFiles.length), edit.extras.extraFiles.join(', ')))}</div>`
-            : '';
-        return `${html}${extrasList}`;
-    }
-
-    function renderSkillPendingCard(edit) {
-        const status = String(edit?.status || 'pending');
-        const kind = String(edit?.kind || '');
-        const meta = SKILL_KIND_META[kind] || { icon: '🔧', label: () => kind };
-        const statusLabel = status === 'approved'
-            ? `<span class="cpa_it_skl_status approved">✓ ${escapeHtmlLocal(t('Approved'))}</span>`
-            : status === 'rejected'
-                ? `<span class="cpa_it_skl_status rejected">✗ ${escapeHtmlLocal(t('Rejected'))}</span>`
-                : `<span class="cpa_it_skl_status pending">${escapeHtmlLocal(t('Pending approval'))}</span>`;
-        const body = (kind === 'rename' || kind === 'change_scope' || kind === 'delete')
-            ? renderSkillStructuralBody(edit)
-            : renderSkillDiffBody(edit);
-        const idAttr = escapeHtmlLocal(String(edit?.id || ''));
-        const controls = (status === 'approved' || status === 'rejected')
-            ? `<button class="menu_button cpa_it_skl_btn" data-cpa-it-action="reset-skill-decision" data-cpa-it-pending-id="${idAttr}">${escapeHtmlLocal(t('Undo decision'))}</button>`
-            : `<button class="menu_button cpa_it_skl_btn cpa_it_skl_btn_approve" data-cpa-it-action="approve-skill" data-cpa-it-pending-id="${idAttr}">${escapeHtmlLocal(t('Approve'))}</button>
-               <button class="menu_button cpa_it_skl_btn cpa_it_skl_btn_reject" data-cpa-it-action="reject-skill" data-cpa-it-pending-id="${idAttr}">${escapeHtmlLocal(t('Reject'))}</button>`;
-        const target = `${escapeHtmlLocal(String(edit?.skillName || ''))} <span class="cpa_it_skl_scope">(${escapeHtmlLocal(scopeDisplay(edit?.scope))})</span>${edit?.path ? ` <span class="cpa_it_skl_path">${escapeHtmlLocal(String(edit.path))}</span>` : ''}`;
-        return `<div class="cpa_it_skl_card cpa_it_skl_card_${escapeHtmlLocal(status)}" data-cpa-it-pending-id="${idAttr}">
-            <div class="cpa_it_skl_header">
-                <span class="cpa_it_skl_icon">${meta.icon}</span>
-                <span class="cpa_it_skl_label">${escapeHtmlLocal(meta.label())}</span>
-                <span class="cpa_it_skl_target">${target}</span>
-                ${statusLabel}
-            </div>
-            <div class="cpa_it_skl_body">${body}</div>
-            <div class="cpa_it_skl_controls">${controls}</div>
-        </div>`;
-    }
-
-    function renderSkillPendingForMessage(message) {
-        if (!message || message.role !== 'assistant') return '';
-        const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : [];
-        if (toolCalls.length === 0) return '';
-        const callIds = new Set(toolCalls.map(tc => String(tc?.id || '')).filter(Boolean));
-        const pending = Array.isArray(state.pendingSkillEdits) ? state.pendingSkillEdits : [];
-        const matched = pending.filter(p => callIds.has(String(p?.sourceCallId || '')));
-        if (matched.length === 0) return '';
-        return `<div class="cpa_it_skl_list">${matched.map(renderSkillPendingCard).join('')}</div>`;
-    }
 
     // ──────────────────────────────────────────────────────────────────
     // Chat-message rendering. CPA delegates to
@@ -2969,42 +2845,7 @@ export async function openCpaIterationStudio(deps) {
         await startNewSession();
     });
 
-    // Per-proposal approve/reject/undo for pending skill authoring edits.
-    // Flips the local status flag; commit happens at apply-batch time
-    // (after the preset commit) via commitApprovedSkillProposal.
-    $root.on('click.cpaIt', '[data-cpa-it-action="approve-skill"]', async (e) => {
-        e.preventDefault(); e.stopPropagation();
-        const id = String($(e.currentTarget).attr('data-cpa-it-pending-id') || '');
-        const entry = (state.pendingSkillEdits || []).find(p => p?.id === id);
-        if (!entry) return;
-        entry.status = 'approved';
-        await render();
-    });
-
-    $root.on('click.cpaIt', '[data-cpa-it-action="reject-skill"]', async (e) => {
-        e.preventDefault(); e.stopPropagation();
-        const id = String($(e.currentTarget).attr('data-cpa-it-pending-id') || '');
-        const entry = (state.pendingSkillEdits || []).find(p => p?.id === id);
-        if (!entry) return;
-        entry.status = 'rejected';
-        await render();
-    });
-
-    $root.on('click.cpaIt', '[data-cpa-it-action="reset-skill-decision"]', async (e) => {
-        e.preventDefault(); e.stopPropagation();
-        const id = String($(e.currentTarget).attr('data-cpa-it-pending-id') || '');
-        const entry = (state.pendingSkillEdits || []).find(p => p?.id === id);
-        if (!entry) return;
-        entry.status = 'pending';
-        await render();
-    });
-
-    // Commit approved skill proposals when there's no preset commit in
-    // flight. Goes through applyPendingEdits' skill-only path.
-    $root.on('click.cpaIt', '[data-cpa-it-action="commit-skill-only"]', async (e) => {
-        e.preventDefault(); e.stopPropagation();
-        await applyPendingEdits();
-    });
+    // Skill review and commit are handled by proposal-bus turn actions.
     $root.on('click.cpaIt', '[data-cpa-it-action="help-reference"]', async (e) => {
         // Sits inside the reference `<label>`; without preventDefault the label
         // delegation also opens the `<select>` dropdown behind the help popup.

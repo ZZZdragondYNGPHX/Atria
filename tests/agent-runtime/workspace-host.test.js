@@ -11,10 +11,13 @@ test.each(['spec', 'loop', 'agenda', 'director'])('native %s factory compiles an
     expect(compilePreset(profile).source).toMatchObject({ mode, presetId: `test-${mode}` });
     expect(preset.planTemplate.source.profile).toBeUndefined();
     expect(preset.planTemplate.compatibility).toBeUndefined();
-    if (mode === 'spec') expect(profile.spec.stages.flatMap(stage => stage.nodes).length).toBeGreaterThan(0);
-    if (mode === 'agenda') expect(profile.agents[profile.finalAgentId]).toBeDefined();
-    if (mode === 'director') expect(profile.mainAgent.systemPrompt).toBeTruthy();
-    if (mode === 'loop') expect(profile.systemPrompt).toBeTruthy();
+    const nativeContent = {
+        spec: () => profile.spec.stages.flatMap(stage => stage.nodes).length,
+        agenda: () => profile.agents[profile.finalAgentId],
+        director: () => profile.mainAgent.systemPrompt,
+        loop: () => profile.systemPrompt,
+    };
+    expect(nativeContent[mode]()).toBeTruthy();
 });
 
 test('native effective resolver ignores old libraries and retains one default binding', () => {
@@ -31,7 +34,7 @@ test('editing a library definition affects the next resolution, never the admitt
     const fingerprint = executionConfigText(admitted, settings, admitted.presetId);
     const edited = structuredClone(getWorkspaceLibrary(settings).presets[0]);
     edited.planTemplate.agents[0].instructions = 'Changed for next run';
-    settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, {type:'save',preset:edited});
+    settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, { type:'save',preset:edited });
     expect(executionConfigText(admitted, settings, admitted.presetId)).toBe(fingerprint);
     expect(executionConfigText(resolveWorkspaceProfile(settings, {}), settings, admitted.presetId)).not.toBe(fingerprint);
 });

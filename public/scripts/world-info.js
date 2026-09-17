@@ -1,7 +1,8 @@
 import { Fuse } from '../lib.js';
+import { setInfoBlock, clearInfoBlock } from './utils.js';
 
 import { saveSettings, substituteParams, getRequestHeaders, chat_metadata, this_chid, characters, saveCharacterDebounced, menu_type, eventSource, event_types, getExtensionPromptByName, saveMetadata, getCurrentChatId, extension_prompt_roles, create_save, name1, buildObjectPatchOperationsAsync, requestAsyncDiffForNextSettingsSave, getOneCharacter, select_selected_character } from '../script.js';
-import { areLookupNamesEqual, download, debounce, findCanonicalIndexInList, findCanonicalNameInList, initScrollHeight, resetScrollHeight, parseJsonFile, extractDataFromPng, getFileBuffer, getCharaFilename, getSortableDelay, escapeRegex, PAGINATION_TEMPLATE, navigation_option, waitUntilCondition, isTrueBoolean, setValueByPath, flashHighlight, select2ModifyOptions, getSelect2OptionId, dynamicSelect2DataViaAjax, highlightRegex, select2ChoiceClickSubscribe, isFalseBoolean, getSanitizedFilename, checkOverwriteExistingData, getStringHash, parseStringArray, cancelDebounce, findChar, onlyUnique, equalsIgnoreCaseAndAccents, uuidv4, normalizeArray, getUniqueName, logSlashCommandWarn, addLongPressEvent, escapeHtml } from './utils.js';
+import { areLookupNamesEqual, download, debounce, findCanonicalIndexInList, findCanonicalNameInList, initScrollHeight, resetScrollHeight, parseJsonFile, extractDataFromPng, getFileBuffer, getCharaFilename, escapeRegex, PAGINATION_TEMPLATE, navigation_option, waitUntilCondition, isTrueBoolean, setValueByPath, flashHighlight, select2ModifyOptions, getSelect2OptionId, dynamicSelect2DataViaAjax, highlightRegex, select2ChoiceClickSubscribe, isFalseBoolean, getSanitizedFilename, checkOverwriteExistingData, getStringHash, parseStringArray, cancelDebounce, findChar, onlyUnique, equalsIgnoreCaseAndAccents, uuidv4, normalizeArray, getUniqueName, logSlashCommandWarn, addLongPressEvent, escapeHtml } from './utils.js';
 import { extension_settings, getContext, writeExtensionField } from './extensions.js';
 import { NOTE_MODULE_NAME, metadata_keys, shouldWIAddPrompt } from './authors-note.js';
 import { isMobile } from './RossAscends-mods.js';
@@ -63,22 +64,6 @@ function buildWorldInfoDragHelper(item) {
     return $(helper);
 }
 
-function styleWorldInfoDragPlaceholder(ui) {
-    const placeholder = ui?.placeholder;
-    const item = ui?.item;
-    if (!placeholder?.length || !item?.length) {
-        return;
-    }
-
-    placeholder.css({
-        height: `${Math.round(item.outerHeight() || 0)}px`,
-        visibility: 'visible',
-        border: '1px dashed var(--SmartThemeBorderColor)',
-        'border-radius': '10px',
-        background: 'color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent)',
-        opacity: '0.8',
-    });
-}
 
 const WORLD_INFO_INDICATOR_DRAG_Z_INDEX = 2147483647;
 const WORLD_INFO_INDICATOR_SCROLL_EDGE_PX = 72;
@@ -3522,9 +3507,9 @@ async function persistWorldInfoEntryOrder(worldEntriesList, name, data) {
 }
 
 function stopWorldInfoDragEvent(event) {
-    try { event.preventDefault?.(); } catch { }
-    try { event.stopImmediatePropagation?.(); } catch { }
-    try { event.stopPropagation?.(); } catch { }
+    try { event.preventDefault?.(); } catch { /* Preserve the existing best-effort error handling. */ }
+    try { event.stopImmediatePropagation?.(); } catch { /* Preserve the existing best-effort error handling. */ }
+    try { event.stopPropagation?.(); } catch { /* Preserve the existing best-effort error handling. */ }
 }
 
 function isScrollableYAxis(element) {
@@ -3825,11 +3810,11 @@ async function endWorldInfoIndicatorDrag({ commit }) {
     drag.active = false;
 
     if (drag.rafId !== null) {
-        try { cancelAnimationFrame(drag.rafId); } catch { }
+        try { cancelAnimationFrame(drag.rafId); } catch { /* Preserve the existing best-effort error handling. */ }
     }
 
-    try { drag.ghostEl.remove(); } catch { }
-    try { drag.indicatorEl.remove(); } catch { }
+    try { drag.ghostEl.remove(); } catch { /* Preserve the existing best-effort error handling. */ }
+    try { drag.indicatorEl.remove(); } catch { /* Preserve the existing best-effort error handling. */ }
 
     drag.draggedEl.style.opacity = drag.originalOpacity;
 
@@ -3887,7 +3872,7 @@ function startWorldInfoIndicatorDrag(startEvent, listEl, draggedEl, name, data) 
         }
 
         if (String(event?.type || '').startsWith('touch')) {
-            try { event.preventDefault?.(); } catch { }
+            try { event.preventDefault?.(); } catch { /* Preserve the existing best-effort error handling. */ }
         }
 
         const nextPointer = getWorldInfoPointerXY(event);

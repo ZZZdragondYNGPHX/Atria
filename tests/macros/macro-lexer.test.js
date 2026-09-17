@@ -4,6 +4,15 @@ import { describe, test, expect } from '@jest/globals';
 /** @typedef {{type: string, text: string}} TestableToken */
 
 describe('MacroLexer', () => {
+    test.each([
+        ['{{getvar::a|b}}', 0],
+        ['{{>getvar::a|trim}}', 1],
+        ['{{outer::{{inner value|trim}}|literal}}', 1],
+    ])('preserves argument and filter pipe boundaries: %s', async (input, expectedPipes) => {
+        const tokens = await runLexerGetTokens(input);
+        expect(tokens.filter(token => token.type === 'Filter.Pipe')).toHaveLength(expectedPipes);
+    });
+
     // Currently this test suits runs without ST context. Enable, if ever needed
     describe('General Macro', () => {
         // {{user}}

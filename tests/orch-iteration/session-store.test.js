@@ -152,9 +152,7 @@ describe('Orchestrator — session store (character scope, sidecar-backed)', () 
         await store.delete('a');
         expect(await store.list()).toEqual([]);
         const stored = ctx._sidecars['alice.png::orchestrator_iter_studio_history'];
-        if (stored && stored.sessions) {
-            expect(stored.sessions.a).toBeUndefined();
-        }
+        expect(stored?.sessions?.a).toBeUndefined();
     });
 
     test('save round-trips structured-clone isolated payload via the sidecar', async () => {

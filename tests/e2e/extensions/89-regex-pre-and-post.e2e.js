@@ -18,13 +18,7 @@ import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded } from '../_lib/fixtures.js';
-import {
-    awaitMainUI,
-    selectCharacterByName,
-    sendMessageAndAwaitReply,
-    openExtensionsDrawer,
-    openInlineDrawer,
-} from '../_lib/page.js';
+import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply, openExtensionsDrawer } from '../_lib/page.js';
 
 let server, mock;
 

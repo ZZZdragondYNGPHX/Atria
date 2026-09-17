@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import path from 'node:path';
+import 'node:path';
 import crypto from 'node:crypto';
 
 import express from 'express';
@@ -10,7 +10,7 @@ const readdir = fs.promises.readdir;
 import { getAllUserHandles, getUserDirectories } from '../users.js';
 import { getStatsRepo, getChatRepo } from '../storage/index.js';
 
-const monthNames = [
+void ([
     'January',
     'February',
     'March',
@@ -23,7 +23,7 @@ const monthNames = [
     'October',
     'November',
     'December',
-];
+]);
 
 /**
  * @type {Map<string, Object>} The stats object for each user.
@@ -57,62 +57,7 @@ const TIMESTAMPS = new Map();
  * // Date string
  * parseTimestamp("January 1, 2021 12:00am");
  */
-function parseTimestamp(timestamp) {
-    if (!timestamp) {
-        return 0;
-    }
 
-    // Date object
-    if (timestamp instanceof Date) {
-        return timestamp.getTime();
-    }
-
-    // Unix time
-    if (typeof timestamp === 'number' || /^\d+$/.test(timestamp)) {
-        const unixTime = Number(timestamp);
-        const isValid = Number.isFinite(unixTime) && !Number.isNaN(unixTime) && unixTime >= 0;
-        if (!isValid) return 0;
-        return new Date(unixTime).getTime();
-    }
-
-    // ISO 8601 format
-    const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
-    if (isoPattern.test(timestamp)) {
-        return new Date(timestamp).getTime();
-    }
-
-    let dateFormats = [];
-
-    // meridiem-based format
-    const convertFromMeridiemBased = (_, month, day, year, hour, minute, meridiem) => {
-        const monthNum = monthNames.indexOf(month) + 1;
-        const hour24 = meridiem.toLowerCase() === 'pm' ? (parseInt(hour, 10) % 12) + 12 : parseInt(hour, 10) % 12;
-        return `${year}-${monthNum}-${day.padStart(2, '0')}T${hour24.toString().padStart(2, '0')}:${minute.padStart(2, '0')}:00`;
-    };
-    // June 19, 2023 2:20pm
-    dateFormats.push({ callback: convertFromMeridiemBased, pattern: /(\w+)\s(\d{1,2}),\s(\d{4})\s(\d{1,2}):(\d{1,2})(am|pm)/i });
-
-    // ST "humanized" format patterns
-    const convertFromHumanized = (_, year, month, day, hour, min, sec, ms) => {
-        ms = typeof ms !== 'undefined' ? `.${ms.padStart(3, '0')}` : '';
-        return `${year.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${min.padStart(2, '0')}:${sec.padStart(2, '0')}${ms}Z`;
-    };
-    // 2024-07-12@01h31m37s123ms
-    dateFormats.push({ callback: convertFromHumanized, pattern: /(\d{4})-(\d{1,2})-(\d{1,2})@(\d{1,2})h(\d{1,2})m(\d{1,2})s(\d{1,3})ms/ });
-    // 2024-7-12@01h31m37s
-    dateFormats.push({ callback: convertFromHumanized, pattern: /(\d{4})-(\d{1,2})-(\d{1,2})@(\d{1,2})h(\d{1,2})m(\d{1,2})s/ });
-    // 2024-6-5 @14h 56m 50s 682ms
-    dateFormats.push({ callback: convertFromHumanized, pattern: /(\d{4})-(\d{1,2})-(\d{1,2}) @(\d{1,2})h (\d{1,2})m (\d{1,2})s (\d{1,3})ms/ });
-
-    for (const x of dateFormats) {
-        const rgxMatch = timestamp.match(x.pattern);
-        if (!rgxMatch) continue;
-        const isoTimestamp = x.callback(...rgxMatch);
-        return new Date(isoTimestamp).getTime();
-    }
-
-    return 0;
-}
 
 /**
  * Collects and aggregates stats for all characters under a handle.
@@ -230,16 +175,7 @@ export async function onExit() {
  * @returns {Array<string>} - The lines in the file.
  * @throws Will throw an error if the file cannot be read.
  */
-function readAndParseFile(filepath) {
-    try {
-        let file = fs.readFileSync(filepath, 'utf8');
-        let lines = file.split('\n');
-        return lines;
-    } catch (error) {
-        console.error(`Error reading file at ${filepath}: ${error}`);
-        return [];
-    }
-}
+
 
 /**
  * Calculates the time difference between two dates.
@@ -407,107 +343,7 @@ function setCharStats(handle, stats) {
  * @returns {Object} - An object containing the total generation time, user word count, and non-user word count.
  * @throws Will throw an error if the file cannot be read or parsed.
  */
-function calculateTotalGenTimeAndWordCount(
-    chatDir,
-    chat,
-    uniqueGenStartTimes,
-) {
-    let filepath = path.join(chatDir, chat);
-    let lines = readAndParseFile(filepath);
 
-    let totalGenTime = 0;
-    let userWordCount = 0;
-    let nonUserWordCount = 0;
-    let nonUserMsgCount = 0;
-    let userMsgCount = 0;
-    let totalSwipeCount = 0;
-    let firstChatTime = new Date('9999-12-31T23:59:59.999Z').getTime();
-
-    for (let line of lines) {
-        if (line.length) {
-            try {
-                let json = JSON.parse(line);
-                if (json.mes) {
-                    let hash = crypto
-                        .createHash('sha256')
-                        .update(json.mes)
-                        .digest('hex');
-                    if (uniqueGenStartTimes.has(hash)) {
-                        continue;
-                    }
-                    if (hash) {
-                        uniqueGenStartTimes.add(hash);
-                    }
-                }
-
-                if (json.gen_started && json.gen_finished) {
-                    let genTime = calculateGenTime(
-                        json.gen_started,
-                        json.gen_finished,
-                    );
-                    totalGenTime += genTime;
-
-                    if (json.swipes && !json.swipe_info) {
-                        // If there are swipes but no swipe_info, estimate the genTime
-                        totalGenTime += genTime * json.swipes.length;
-                    }
-                }
-
-                if (json.mes) {
-                    let wordCount = countWordsInString(json.mes);
-                    json.is_user
-                        ? (userWordCount += wordCount)
-                        : (nonUserWordCount += wordCount);
-                    json.is_user ? userMsgCount++ : nonUserMsgCount++;
-                }
-
-                if (json.swipes && json.swipes.length > 1) {
-                    totalSwipeCount += json.swipes.length - 1; // Subtract 1 to not count the first swipe
-                    for (let i = 1; i < json.swipes.length; i++) {
-                        // Start from the second swipe
-                        let swipeText = json.swipes[i];
-
-                        let wordCount = countWordsInString(swipeText);
-                        json.is_user
-                            ? (userWordCount += wordCount)
-                            : (nonUserWordCount += wordCount);
-                        json.is_user ? userMsgCount++ : nonUserMsgCount++;
-                    }
-                }
-
-                if (json.swipe_info && json.swipe_info.length > 1) {
-                    for (let i = 1; i < json.swipe_info.length; i++) {
-                        // Start from the second swipe
-                        let swipe = json.swipe_info[i];
-                        if (swipe.gen_started && swipe.gen_finished) {
-                            totalGenTime += calculateGenTime(
-                                swipe.gen_started,
-                                swipe.gen_finished,
-                            );
-                        }
-                    }
-                }
-
-                // If this is the first user message, set the first chat time
-                if (json.is_user) {
-                    //get min between firstChatTime and timestampToMoment(json.send_date)
-                    firstChatTime = Math.min(parseTimestamp(json.send_date), firstChatTime);
-                }
-            } catch (error) {
-                console.error(`Error parsing line ${line}: ${error}`);
-            }
-        }
-    }
-    return {
-        totalGenTime,
-        userWordCount,
-        nonUserWordCount,
-        userMsgCount,
-        nonUserMsgCount,
-        totalSwipeCount,
-        firstChatTime,
-    };
-}
 
 export const router = express.Router();
 

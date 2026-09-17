@@ -68,6 +68,7 @@ describe('SYNC_CATEGORIES registry', () => {
             vectors: '/tmp/fake-user/vectors',
             extensions: '/tmp/fake-user/extensions',
         };
+        for (const [key, value] of Object.entries(fakeDirs)) fakeDirs[key] = path.resolve(value);
         const chats = getCategoryById('chats');
         const resolved = resolveCategoryPaths(chats, fakeDirs);
         for (const p of resolved) {

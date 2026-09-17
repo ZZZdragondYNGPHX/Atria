@@ -26,7 +26,7 @@ test('group checkpoint emits with group chat targets', async () => {
 
     expect(saveGroupSpy).toHaveBeenCalledTimes(1);
     expect(saveGroupSpy.mock.calls[0][0]).toBe(7);
-    expect(saveGroupSpy.mock.calls[0][2]).toEqual({ main_chat: 'group-chat' });
+    expect(saveGroupSpy.mock.calls[0][2]).toEqual({ main_chat: 'group-chat', integrity: expect.any(String) });
     expect(saveChatSpy).not.toHaveBeenCalled();
 
     const expectedPayload = {

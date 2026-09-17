@@ -15,7 +15,7 @@
  *     hasChanges=false so the studio topbar button can suppress itself
  */
 
-import { jest } from '@jest/globals';
+import '@jest/globals';
 
 // Under test — pure ESM module, no ST context deps
 const { buildReplaceDiffModel, renderReplaceDiffOverview } = await import(

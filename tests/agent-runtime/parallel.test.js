@@ -22,9 +22,10 @@ test('dynamic groups share executor concurrency and cancelled queued groups neve
     await until(() => entered.length === 1);
     const abort = new AbortController();
     const second = executor.run({ ...plan, effectId: 'two', branches: [branch('two')], signal: abort.signal });
-    const rejected = expect(second).rejects.toMatchObject({ name: 'AbortError' });
+    const rejected = second.catch(error => error);
     abort.abort(); gate.resolve();
-    await first; await rejected;
+    await first;
+    await expect(rejected).resolves.toMatchObject({ name: 'AbortError' });
     await executor.run({ ...plan, effectId: 'three', branches: [branch('three')], signal: new AbortController().signal });
     expect(entered).toEqual(['one', 'three']);
 });
