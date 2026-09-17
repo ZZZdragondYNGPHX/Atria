@@ -88,7 +88,23 @@ const Tokens = Object.freeze({
 
     Filter: {
         EscapedPipe: createToken({ name: 'Filter.EscapedPipe', pattern: /\\\|/ }),
-        Pipe: createToken({ name: 'Filter.Pipe', pattern: /\|/ }),
+        Pipe: createToken({ name: 'Filter.Pipe', line_breaks: false, pattern: (text, offset, tokens) => {
+            if (text[offset] !== '|') return null;
+            let depth = 0;
+            let colonArgs = false;
+            for (let i = tokens.length - 1; i >= 0; i--) {
+                const name = tokens[i].tokenType.name;
+                if (name === 'Macro.End') depth++;
+                if (name === 'Macro.Start') {
+                    if (depth === 0) break;
+                    depth--;
+                }
+                if (depth !== 0) continue;
+                if (name === 'Args.DoubleColon' || name === 'Args.Colon') colonArgs = true;
+                if (name === 'Macro.FilterFlag') return ['|'];
+            }
+            return colonArgs ? null : ['|'];
+        } }),
         Identifier: createToken({ name: 'Filter.Identifier', pattern: IDENTIFIER_LEXER_PATTERN }),
         /** At the end of an identifier, there has to be whitspace, or must be directly followed by colon/double-colon separator, output modifier or closing braces */
         EndOfIdentifier: createToken({ name: 'Filter.EndOfIdentifier', pattern: /(?:\s+|(?=:{1,2})|(?=[|}]))/, group: Lexer.SKIPPED }),
@@ -214,10 +230,8 @@ const Def = {
             // Macro args allow nested macros
             enter(Tokens.Macro.Start, modes.macro_def),
 
-            // We allow escaped pipes to not start output modifiers. We need to capture this first, before the pipe
+            // Preserve Luker's whitespace filter syntax; colon-delimited argument values keep literal pipes.
             using(Tokens.Filter.EscapedPipe),
-
-            // If at any place during args writing there is a pipe, we lex it as an output identifier, and then continue with lex its args
             enter(Tokens.Filter.Pipe, modes.macro_filter_modifer),
 
             using(Tokens.Args.DoubleColon),

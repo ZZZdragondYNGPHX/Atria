@@ -29,12 +29,7 @@ import {
     appendConnectionProfile,
     markOnboarded,
 } from '../_lib/fixtures.js';
-import {
-    awaitMainUI,
-    selectCharacterByName,
-    sendMessageAndAwaitReply,
-    closeRightNavDrawer,
-} from '../_lib/page.js';
+import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply } from '../_lib/page.js';
 import { writeEmbeddedCharacter } from '../character/_helpers.js';
 
 /**

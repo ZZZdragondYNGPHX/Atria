@@ -324,3 +324,33 @@ describe('dispatchClaude', () => {
         }
     });
 });
+
+
+describe('SillyTavern 1.19 Claude dispatch compatibility', () => {
+    test.each(['claude-fable-5', 'anthropic/claude-fable-5', 'anthropic/claude-opus-5', 'claude-sonnet-5'])(
+        '%s requests readable auto thinking and retains web search without sampling parameters', async model => {
+            const ctx = fakeCtx({ body: { model, reasoning_effort: 'auto', include_reasoning: true, enable_web_search: true } });
+            await dispatchClaude(ctx);
+            const sent = JSON.parse(ctx.fetch.mock.calls[0][1].body);
+            expect(sent.thinking).toEqual({ type: 'adaptive', display: 'summarized' });
+            expect(sent.tools).toContainEqual({ type: 'web_search_20250305', name: 'web_search' });
+            expect(sent.temperature).toBeUndefined();
+            expect(sent.top_p).toBeUndefined();
+            expect(sent.top_k).toBeUndefined();
+        },
+    );
+
+    test('Fable 5.1 native JSON schema coexists with adaptive effort and function tools', async () => {
+        const schema = { type: 'object', properties: { answer: { type: 'string' } } };
+        const ctx = fakeCtx({ body: {
+            model: 'anthropic/claude-fable-5-1', reasoning_effort: 'high', include_reasoning: true,
+            json_schema: { name: 'reply', value: schema },
+            tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object', properties: {} } } }],
+        } });
+        await dispatchClaude(ctx);
+        const sent = JSON.parse(ctx.fetch.mock.calls[0][1].body);
+        expect(sent.output_config).toEqual({ format: { type: 'json_schema', schema }, effort: 'high' });
+        expect(sent.tools.map(tool => tool.name)).toEqual(['lookup']);
+        expect(sent.tool_choice).not.toEqual({ type: 'tool', name: 'reply' });
+    });
+});

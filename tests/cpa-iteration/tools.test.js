@@ -209,9 +209,8 @@ describe('CPA — tools', () => {
         expect(classifyToolCall(call('preset_set_field', {}))).toBe('editable');
         const allTools = buildToolCatalog({ hasReference: true }).map(d => d.function.name);
         const nonEditable = allTools.find(n => !EDITABLE_TOOL_NAMES.has(n));
-        if (nonEditable) {
-            expect(classifyToolCall(call(nonEditable, {}))).toBe('control');
-        }
+        expect(nonEditable).toBeDefined();
+        expect(classifyToolCall(call(nonEditable, {}))).toBe('control');
     });
 
     test('malformed JSON args → returns null', async () => {

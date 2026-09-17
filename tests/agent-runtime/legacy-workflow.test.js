@@ -31,8 +31,9 @@ test('legacy policy uses one state machine for ordered effects and retains only 
 test('transport errors reenter legacy retry policy with original identity', async () => {
     const original = new Error('retry me'); let calls = 0;
     const result = await runLegacyWorkflow(async function* () {
-        try { yield modelIntent(async () => { calls++; throw original; }, request); }
-        catch (error) { expect(error).toBe(original); }
+        { let error; try { yield modelIntent(async () => { calls++; throw original; }, request); } catch (caughtError) { error = caughtError; }
+            expect(error).toBe(original);
+        }
         return yield modelIntent(async () => { calls++; return 'retried'; }, request);
     });
     expect(result).toBe('retried'); expect(calls).toBe(2);

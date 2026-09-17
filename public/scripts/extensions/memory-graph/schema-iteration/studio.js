@@ -57,30 +57,13 @@
 const __ctx = Luker.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
-import {
-    applyEdits,
-    inverseEdit,
-    bindIterWorkspaceResizer,
-    createRenderScheduler,
-    render as ITER_RENDER,
-    runner as ITER_RUNNER,
-    tools as ITER_TOOLS,
-    zoomOverlay as ITER_ZOOM_OVERLAY,
-    ui as ITER_UI,
-    proposalBus as ITER_PROPOSAL_BUS,
-} from '../../../iteration-library/index.js';
+import { applyEdits, bindIterWorkspaceResizer, createRenderScheduler, render as ITER_RENDER, runner as ITER_RUNNER, tools as ITER_TOOLS, zoomOverlay as ITER_ZOOM_OVERLAY, ui as ITER_UI, proposalBus as ITER_PROPOSAL_BUS } from '../../../iteration-library/index.js';
 import { profileEdit } from '../../../iteration-library/proposal-bus/kinds/profile-edit.js';
 import { registerTarget } from '../../../iteration-library/storage/target-registry.js';
 import { mdLiteral } from '../../../iteration-library/markdown-escape.js';
-import {
-    TOOL_DEFS,
-    buildToolCatalog,
-    normalizeToolCallToEdit,
-    CONTROL_TOOL_NAMES,
-    isMgSchemaControlCall,
-} from './tools.js';
+import { buildToolCatalog, normalizeToolCallToEdit, CONTROL_TOOL_NAMES, isMgSchemaControlCall } from './tools.js';
 import { MG_SCHEMA_TOOL_DISPLAY } from './tool-display.js';
-import { buildSystemPrompt, DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT } from './system-prompt.js';
+import { DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT } from './system-prompt.js';
 import { createMgSchemaSessionStore, makeMessageId, normalizeMessageShape } from './session-store.js';
 import { migrateMgSchemaSessionsV2ToSidecar } from './session-migration-v2-to-sidecar.js';
 import { dispatchMgSchemaReadFields } from './read-fields-dispatcher.js';
@@ -1206,10 +1189,7 @@ export async function openSchemaIterationStudio(deps) {
     // runs it through the normalizer so the working profile has the same
     // shape it would have if the user had no override at all.
     // ──────────────────────────────────────────────────────────────────
-    function loadGlobalSchemaForReset() {
-        const raw = Array.isArray(settings?.nodeTypeSchema) ? settings.nodeTypeSchema : [];
-        return normalizeNodeTypeSchema(structuredClone(raw));
-    }
+
 
     // ──────────────────────────────────────────────────────────────────
     // System-prompt scope hint. Mirrors the Orch popup's 2-path / 3-path

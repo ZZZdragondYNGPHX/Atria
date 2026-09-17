@@ -132,17 +132,19 @@ describe('generateTask end-to-end', () => {
         const fakeOpenAI = async () => {
             throw new GenerateTaskError('rate_limit', 'too fast');
         };
-        try {
+        { let e; try {
             await generateTask({
                 taskMessages: [{ role: 'user', content: 'hi' }],
             }, { _injected: baseInjected({ senders: { sendOpenAIRequest: fakeOpenAI } }) });
             throw new Error('should have thrown');
-        } catch (e) {
-            expect(e).toBeInstanceOf(GenerateTaskError);
-            expect(e.code).toBe('rate_limit');
-            expect(e.message).toBe('too fast');
-            // No cause from wrapping — passed through
-            expect(e.cause).toBeNull();
+        } catch (caughtError) { e = caughtError; }
+
+        expect(e).toBeInstanceOf(GenerateTaskError);
+        expect(e.code).toBe('rate_limit');
+        expect(e.message).toBe('too fast');
+        // No cause from wrapping — passed through
+        expect(e.cause).toBeNull();
+
         }
     });
 

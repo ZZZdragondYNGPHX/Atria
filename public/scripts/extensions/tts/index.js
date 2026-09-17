@@ -371,8 +371,7 @@ globalThis.tts_preview = function (id) {
 
     if (audio instanceof HTMLAudioElement && !$(audio).data('disabled')) {
         audio.play();
-    }
-    else {
+    } else {
         void ttsProvider.previewTtsVoice(id).catch(error => {
             toastr.error(error.toString(), 'TTS Preview Failed');
             console.error(error);

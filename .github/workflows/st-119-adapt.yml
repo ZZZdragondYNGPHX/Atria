@@ -1,0 +1,150 @@
+name: Stage SillyTavern 1.19.0 adaptation
+
+on:
+  push:
+    branches:
+      - chore/sillytavern-1.19.0-adapt
+    paths:
+      - .github/workflows/st-119-adapt.yml
+
+permissions:
+  contents: write
+
+jobs:
+  stage-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Luker adaptation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge official 1.19.0 delta with Luker priority on overlaps
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote remove sillytavern 2>/dev/null || true
+          git remote add sillytavern https://github.com/SillyTavern/SillyTavern.git
+          git fetch --force sillytavern refs/tags/1.18.0:refs/tags/st-upstream-1.18.0 refs/tags/1.19.0:refs/tags/st-upstream-1.19.0
+
+          report=.st-119-conflicts.txt
+          printf '%s\n' "SillyTavern 1.19.0 adaptation report" > "$report"
+          printf '%s\n' "Base: official 1.18.0; target: official 1.19.0" >> "$report"
+          printf '%s\n\n' "Policy: preserve Luker only inside overlapping hunks; absorb non-overlapping upstream changes." >> "$report"
+
+          clean_count=0
+          merged_count=0
+          conflict_count=0
+          binary_overlap_count=0
+          added_overlap_count=0
+          delete_overlap_count=0
+          kept_delete_count=0
+
+          mapfile -t paths < <(git diff --name-only st-upstream-1.18.0 st-upstream-1.19.0)
+
+          for path in "${paths[@]}"; do
+            base_exists=0
+            theirs_exists=0
+            ours_exists=0
+            git cat-file -e "st-upstream-1.18.0:$path" 2>/dev/null && base_exists=1 || true
+            git cat-file -e "st-upstream-1.19.0:$path" 2>/dev/null && theirs_exists=1 || true
+            test -e "$path" && ours_exists=1 || true
+
+            tmp_id="${RANDOM}-${RANDOM}"
+            base_file="/tmp/st119-base-$tmp_id"
+            theirs_file="/tmp/st119-theirs-$tmp_id"
+            ours_file="/tmp/st119-ours-$tmp_id"
+            merged_file="/tmp/st119-merged-$tmp_id"
+
+            if [ "$base_exists" -eq 1 ] && [ "$theirs_exists" -eq 1 ]; then
+              if [ "$ours_exists" -eq 0 ]; then
+                kept_delete_count=$((kept_delete_count + 1))
+                printf '[luker-delete] %s\n' "$path" >> "$report"
+                continue
+              fi
+
+              git show "st-upstream-1.18.0:$path" > "$base_file"
+              git show "st-upstream-1.19.0:$path" > "$theirs_file"
+
+              if cmp -s "$path" "$base_file"; then
+                git checkout st-upstream-1.19.0 -- "$path"
+                clean_count=$((clean_count + 1))
+              elif cmp -s "$path" "$theirs_file"; then
+                clean_count=$((clean_count + 1))
+              elif grep -Iq . "$path" && grep -Iq . "$base_file" && grep -Iq . "$theirs_file"; then
+                cp "$path" "$ours_file"
+                set +e
+                git merge-file -p "$ours_file" "$base_file" "$theirs_file" >/dev/null 2>&1
+                probe_status=$?
+                set -e
+                if [ "$probe_status" -gt 0 ]; then
+                  conflict_count=$((conflict_count + 1))
+                  printf '[text-overlap] %s\n' "$path" >> "$report"
+                fi
+                set +e
+                git merge-file --ours -p "$ours_file" "$base_file" "$theirs_file" > "$merged_file"
+                merge_status=$?
+                set -e
+                if [ "$merge_status" -gt 127 ]; then
+                  printf '[merge-error:%s] %s\n' "$merge_status" "$path" >> "$report"
+                  exit "$merge_status"
+                fi
+                mv "$merged_file" "$path"
+                git add -- "$path"
+                merged_count=$((merged_count + 1))
+              else
+                binary_overlap_count=$((binary_overlap_count + 1))
+                printf '[binary-overlap-kept-luker] %s\n' "$path" >> "$report"
+              fi
+
+              rm -f "$base_file" "$theirs_file" "$ours_file" "$merged_file"
+              continue
+            fi
+
+            if [ "$base_exists" -eq 0 ] && [ "$theirs_exists" -eq 1 ]; then
+              if [ "$ours_exists" -eq 0 ]; then
+                git checkout st-upstream-1.19.0 -- "$path"
+                clean_count=$((clean_count + 1))
+              else
+                added_overlap_count=$((added_overlap_count + 1))
+                printf '[add-overlap-kept-luker] %s\n' "$path" >> "$report"
+              fi
+              continue
+            fi
+
+            if [ "$base_exists" -eq 1 ] && [ "$theirs_exists" -eq 0 ]; then
+              if [ "$ours_exists" -eq 1 ]; then
+                git show "st-upstream-1.18.0:$path" > "$base_file"
+                if cmp -s "$path" "$base_file"; then
+                  git rm -f -- "$path"
+                  clean_count=$((clean_count + 1))
+                else
+                  delete_overlap_count=$((delete_overlap_count + 1))
+                  printf '[delete-overlap-kept-luker] %s\n' "$path" >> "$report"
+                fi
+                rm -f "$base_file"
+              fi
+            fi
+          done
+
+          printf '\nsummary\n' >> "$report"
+          printf 'changed_paths=%s\n' "${#paths[@]}" >> "$report"
+          printf 'clean_or_direct=%s\n' "$clean_count" >> "$report"
+          printf 'text_three_way=%s\n' "$merged_count" >> "$report"
+          printf 'text_conflicts_resolved_for_luker=%s\n' "$conflict_count" >> "$report"
+          printf 'binary_overlaps_kept_luker=%s\n' "$binary_overlap_count" >> "$report"
+          printf 'add_overlaps_kept_luker=%s\n' "$added_overlap_count" >> "$report"
+          printf 'delete_overlaps_kept_luker=%s\n' "$delete_overlap_count" >> "$report"
+          printf 'luker_deletions_preserved=%s\n' "$kept_delete_count" >> "$report"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No SillyTavern 1.19.0 changes required."
+            exit 0
+          fi
+
+          git commit -m "chore(upstream): adapt SillyTavern 1.19.0"
+          git push origin HEAD:chore/sillytavern-1.19.0-adapt

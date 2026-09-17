@@ -56,12 +56,8 @@ describe.each(ENDPOINT_HARNESSES)('group chat endpoints on $name', ({ mode }) =>
         // Endpoint returns the same shape as /chats/get: an array starting
         // with the header followed by messages, OR an object with chat/...
         // Verify either the body messages survive or the array form does.
-        if (Array.isArray(res.body)) {
-            expect(res.body.length).toBeGreaterThanOrEqual(SAMPLE_MESSAGES.length);
-        } else {
-            const chat = res.body.chat ?? res.body.body ?? [];
-            expect(chat).toHaveLength(SAMPLE_MESSAGES.length);
-        }
+        const messages = Array.isArray(res.body) ? res.body.slice(-SAMPLE_MESSAGES.length) : res.body.chat ?? res.body.body ?? [];
+        expect(messages).toHaveLength(SAMPLE_MESSAGES.length);
     });
 
     test('REGRESSION: /api/chats/group/get-delta paginates Repo-saved group chat body', async () => {

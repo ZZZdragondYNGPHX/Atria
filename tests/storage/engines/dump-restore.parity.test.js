@@ -51,12 +51,9 @@ describe.each(CONTRACT_HARNESSES)('engine.dumpUser/restoreUser on $name', ({ mak
                 { header: HEADER, body: MESSAGES });
         });
         const dump = await h.engine.dumpUser(h.handle);
-        if (h.kind === 'fs') {
-            expect(dump).toBeNull();
-        } else {
-            expect(dump).not.toBeNull();
-            expect(typeof dump.pipe).toBe('function'); // is a Readable
-        }
+        expect(dump === null).toBe(h.kind === 'fs');
+        if (h.kind === 'fs') return;
+        expect(typeof dump.pipe).toBe('function');
     });
 
     test('restoreUser is a no-op for fs', async () => {

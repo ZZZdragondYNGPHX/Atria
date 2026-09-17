@@ -103,7 +103,7 @@ test.describe('Storage Inspector · self drill-down', () => {
         await expect(inspector.locator('.storageInspectorBreadcrumbCurrent')).toHaveText(/Extensions|扩展/);
         const extensionRow = inspector.locator('.storageInspectorEntry[data-key="fixture-extension"]');
         await expect(extensionRow).toBeVisible();
-        expect(await extensionRow.locator('.storageInspectorEntryChevron').count()).toBe(0);
+        await expect(extensionRow.locator('.storageInspectorEntryChevron')).toHaveCount(0);
         expect(await extensionRow.evaluate(el => el.classList.contains('storageInspectorEntryDrillable'))).toBe(false);
         await extensionRow.click();
         await expect(inspector.locator('.storageInspectorError')).toHaveClass(/displayNone/);

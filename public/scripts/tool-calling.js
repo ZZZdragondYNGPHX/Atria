@@ -566,8 +566,7 @@ export class ToolManager {
                     // append on top.
                     const seed = parsed.content_block.input;
                     if (seed && typeof seed === 'object' && Object.keys(seed).length > 0) {
-                        try { targetToolCall.function.arguments = JSON.stringify(seed); }
-                        catch (_) { targetToolCall.function.arguments = ''; }
+                        try { targetToolCall.function.arguments = JSON.stringify(seed); } catch (_) { targetToolCall.function.arguments = ''; }
                     } else {
                         targetToolCall.function.arguments = '';
                     }
@@ -667,7 +666,13 @@ export class ToolManager {
             }
 
             if (typeof deltaValue === 'string') {
-                if (typeof targetValue === 'string') {
+                // `id`, `name`, `type` are sent in full by some providers on every
+                // streaming chunk; concatenating them would duplicate the value.
+                if (key === 'id' || key === 'name' || key === 'type') {
+                    if (!targetValue) {
+                        target[key] = deltaValue;
+                    }
+                } else if (typeof targetValue === 'string') {
                     // Concatenate strings
                     target[key] = targetValue + deltaValue;
                 } else {

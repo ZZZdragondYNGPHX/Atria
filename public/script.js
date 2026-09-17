@@ -206,7 +206,7 @@ import {
 import { debounce_timeout, GENERATION_TYPE_TRIGGERS, IGNORE_SYMBOL, inject_ids, MEDIA_DISPLAY, MEDIA_SOURCE, MEDIA_TYPE, OVERSWIPE_BEHAVIOR, SCROLL_BEHAVIOR, SWIPE_DIRECTION, SWIPE_SOURCE, SWIPE_STATE } from './scripts/constants.js';
 import { downloadFromServer } from './scripts/luker-download.js';
 
-import { bootstrapExtensions, cancelDebouncedMetadataSave, doDailyExtensionUpdatesCheck, extension_settings, initExtensions, loadExtensionSettings, primeExtensionSettings, runGenerationInterceptors, saveMetadataDebounced } from './scripts/extensions.js';
+import { bootstrapExtensions, cancelDebouncedMetadataSave, doDailyExtensionUpdatesCheck, extension_settings, initExtensions, primeExtensionSettings, runGenerationInterceptors, saveMetadataDebounced } from './scripts/extensions.js';
 import { STATE_ERROR_REASONS, makeStateError, makeStateOk } from './scripts/state-errors.js';
 import {
     formatHttpErrorHint,
@@ -216,7 +216,7 @@ import {
     formatValidationTargetHint,
 } from './scripts/state-errors/format.js';
 import { COMMENT_NAME_DEFAULT, CONNECT_API_MAP, consumeEphemeralScriptInjectsForMainGeneration, executeSlashCommandsOnChatInput, initDefaultSlashCommands, initSlashCommandAutoComplete, isExecutingCommandsFromChatInput, pauseScriptExecution, processChatSlashCommands, stopScriptExecution, UNIQUE_APIS } from './scripts/slash-commands.js';
-import { initMacroAutoComplete } from './scripts/autocomplete/MacroAutoComplete.js';
+import './scripts/autocomplete/MacroAutoComplete.js';
 import {
     tag_map,
     tags,
@@ -274,7 +274,7 @@ import {
     updatePersonaConnectionsAvatarList,
     isPersonaPanelOpen,
 } from './scripts/personas.js';
-import { getBackgrounds, initBackgrounds, loadBackgroundSettings, background_settings } from './scripts/backgrounds.js';
+import { initBackgrounds, loadBackgroundSettings, background_settings } from './scripts/backgrounds.js';
 import { hideLoader, isLoaderVisible, showLoader } from './scripts/loader.js';
 import { loader } from './scripts/action-loader.js';
 import { BulkEditOverlay } from './scripts/BulkEditOverlay.js';
@@ -322,13 +322,7 @@ import { clearItemizedPrompts, deleteItemizedPromptForMessage, deleteItemizedPro
 import { getSystemMessageByType, initSystemMessages, SAFETY_CHAT, sendSystemMessage, system_message_types, system_messages } from './scripts/system-messages.js';
 import { initAnnouncements } from './scripts/announcements.js';
 import { event_types, eventSource } from './scripts/events.js';
-import {
-    settleBranchCreated,
-    settleChatChanged,
-    settleMessageDeleted,
-    settleMessageSwipeDeleted,
-    settleMessageSwiped,
-} from './scripts/floor-state.js';
+import { settleChatChanged, settleMessageDeleted, settleMessageSwipeDeleted, settleMessageSwiped } from './scripts/floor-state.js';
 import { initAccessibility } from './scripts/a11y.js';
 import { applyStreamFadeIn } from './scripts/util/stream-fadein.js';
 import { initDomHandlers } from './scripts/dom-handlers.js';
@@ -337,11 +331,12 @@ import { applyPatch as applyJsonPatch, compare as compareJsonPatch } from './scr
 import { shouldUseSettingsPatch } from './scripts/util/settings-patch-threshold.js';
 import { AudioPlayer } from './scripts/audio-player.js';
 import { MacroEnvBuilder } from './scripts/macros/engine/MacroEnvBuilder.js';
+import { MessageFormatter } from './scripts/message-formatter.js';
 import { MacroEngine } from './scripts/macros/engine/MacroEngine.js';
 import { addChatBackupsBrowser } from './scripts/chat-backups.js';
 import { onboardingExperimentalMacroEngine } from './scripts/macros/engine/MacroDiagnostics.js';
 import { showUndoToast } from './scripts/undo-toast.js';
-import { compressRequest, setRequestCompressionConfig } from './scripts/request-compression.js';
+import { setRequestCompressionConfig } from './scripts/request-compression.js';
 import { canJumpToSwipeForMessage, canOpenSwipePickerForMessage, initSwipePicker } from './scripts/swipe-picker.js';
 import { bootSelfProfilerFromStorage } from './scripts/self-profiler.js';
 import { createLukerDelivery, installFetchProxy, installFetchProxyForAllIframes, installLifecycleHooks } from './scripts/ws-delivery.js';
@@ -695,7 +690,7 @@ function renderLukerRecoveryPreview(text, status = 'running') {
             ? getThumbnailUrl('avatar', characters[this_chid].avatar)
             : 'img/ai4.png';
         const escapeAttr = (s) => String(s).replace(/[<>&"']/g, c => ({
-            '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;',
+            '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', '\'': '&#39;',
         })[c] || c);
         preview = $(`
             <div id="${LUKER_RECOVERY_PREVIEW_ID}" class="mes luker-recovery-mes" is_user="false" is_system="false" style="opacity: 0.85;">
@@ -1324,6 +1319,7 @@ const chatMessageSnapshotCache = new Map();
 export let streamingProcessor = null;
 let crop_data = undefined;
 let is_delete_mode = false;
+let deleteToolCallsInDeleteMode = true;
 let fav_ch_checked = false;
 let scrollLock = false;
 export let abortStatusCheck = new AbortController();
@@ -1398,7 +1394,7 @@ async function doLukerUpdateCheck(versionData) {
     }
 
     try {
-        const response = await fetch('/api/system/update-check', { 
+        const response = await fetch('/api/system/update-check', {
             method: 'POST',
             headers: getRequestHeaders(),
         });
@@ -2265,6 +2261,24 @@ export function stopStatusLoading() {
 export function resultCheckStatus() {
     displayOnlineStatus();
     stopStatusLoading();
+}
+
+function getMessageDeletionStartId(id, deleteToolCalls = true) {
+    const message = chat[id];
+    if (!deleteToolCalls || message?.is_user || message?.is_system) {
+        return id;
+    }
+
+    let startId = id;
+    while (startId > 0) {
+        const previousMessage = chat[startId - 1];
+        if (!previousMessage?.is_system || !Array.isArray(previousMessage.extra?.tool_invocations)) {
+            break;
+        }
+        startId--;
+    }
+
+    return startId;
 }
 
 /**
@@ -3641,8 +3655,9 @@ async function maybeDeleteCharacterBoundImportedLorebook(character, { alreadyPro
  * @param {number} id The ID of the message to delete.
  * @param {number} [swipeDeletionIndex] Deletes the swipe with that index.
  * @param {boolean} [askConfirmation=false] Whether to ask for confirmation before deleting.
+ * @param {boolean} [deleteToolCalls=true] Include preceding tool calls belonging to the reply.
  */
-export async function deleteMessage(id, swipeDeletionIndex = undefined, askConfirmation = false) {
+export async function deleteMessage(id, swipeDeletionIndex = undefined, askConfirmation = false, deleteToolCalls = true) {
     const canDeleteSwipe = swipeDeletionIndex !== undefined && swipeDeletionIndex !== null;
     if (canDeleteSwipe) {
         if (swipeDeletionIndex < 0) {
@@ -3688,15 +3703,19 @@ export async function deleteMessage(id, swipeDeletionIndex = undefined, askConfi
         ? chat.slice(0, id + 1).reduce((count, message) => count + (message && !message.is_system && !message.is_user ? 1 : 0), 0)
         : null;
 
-    chat.splice(id, 1);
-    messageElement.remove();
+    const firstMessageId = getMessageDeletionStartId(id, deleteToolCalls);
+    const messageIds = Array.from({ length: id - firstMessageId + 1 }, (_, index) => id - index);
+    for (const messageId of messageIds) {
+        chat.splice(messageId, 1);
+        chatElement.find(`.mes[mesid="${messageId}"]`).remove();
+        deleteItemizedPromptForMessage(messageId);
+    }
 
     chat_metadata.tainted = true;
 
-    const startIndex = [0, minId].includes(id) ? id : null;
-    deleteItemizedPromptForMessage(id);
+    const startIndex = firstMessageId <= minId ? firstMessageId : null;
     updateViewMessageIds(startIndex);
-    const patched = await patchChatMessages([{ op: 'remove', path: `/${id}` }]);
+    const patched = await patchChatMessages(messageIds.map(messageId => ({ op: 'remove', path: `/${messageId}` })));
     if (!patched) {
         // Delete already mutated chat[] synchronously above; if the patch fetch
         // failed, the snapshot was invalidated and chat[] now disagrees with BE.
@@ -3791,6 +3810,7 @@ export async function sendTextareaMessage() {
         return;
     }
     const textareaText = textareaState.text;
+    const lastMessage = chat.at(-1);
     if (power_user.continue_on_send &&
         !hasPendingFileAttachment() &&
         !textareaText &&
@@ -3882,12 +3902,20 @@ export function messageFormatting(mes, ch_name, isSystem, isUser, messageId, san
         const indexOf = usableMessages.findIndex(x => x.index === Number(messageId));
         const depth = messageId >= 0 && indexOf !== -1 ? (usableMessages.length - indexOf - 1) : undefined;
 
+        mes = MessageFormatter.runStage(MessageFormatter.stage.BEFORE_REGEX, mes,
+            { ch_name, isSystem, isUser, messageId, isReasoning },
+        );
+
         // Always override the character name
         mes = getRegexedString(mes, regexPlacement, {
             characterOverride: ch_name,
             isMarkdown: true,
             depth: depth,
         });
+
+        mes = MessageFormatter.runStage(MessageFormatter.stage.AFTER_REGEX, mes,
+            { ch_name, isSystem, isUser, messageId, isReasoning },
+        );
     }
 
     if (power_user.auto_fix_generated_markdown) {
@@ -3966,6 +3994,10 @@ export function messageFormatting(mes, ch_name, isSystem, isUser, messageId, san
         mes = mes.replace(/<code(.*)>[\s\S]*?<\/code>/g, function (match) {
             return match.replace(/&amp;/g, '&');
         });
+
+        mes = MessageFormatter.runStage(MessageFormatter.stage.AFTER_MARKDOWN, mes,
+            { ch_name, isSystem, isUser, messageId, isReasoning },
+        );
     }
 
     if (!power_user.allow_name2_display && ch_name && !isUser && !isSystem) {
@@ -13269,12 +13301,6 @@ export function invalidateChatWriteSnapshot(target = resolveChatStateTarget()) {
     chatMetadataSnapshotCache.delete(snapshotKey);
 }
 
-function invalidateCurrentChatWriteSnapshot() {
-    invalidateChatWriteSnapshot(resolveChatStateTarget());
-    if (chat_metadata && typeof chat_metadata === 'object') {
-        delete chat_metadata.integrity;
-    }
-}
 
 async function readChatWriteConflictPayload(response) {
     if (!response || typeof response.clone !== 'function') {
@@ -13492,7 +13518,7 @@ function notifyChatWriteConflict({ kind, errorType, target, retryCount, currentI
                 ? t`Chat sync: integrity drift detected, auto-recovering.`
                 : t`Chat sync: snapshot conflict detected, auto-recovering.`;
             const escape = (s) => String(s).replace(/[<>&"']/g, ch => ({
-                '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;',
+                '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', '\'': '&#39;',
             })[ch] || ch);
             const detailParts = [];
             if (endpoint) detailParts.push(escape(endpoint));
@@ -13665,9 +13691,6 @@ export async function resolveChatWriteConflictForTarget(response, target = null,
     return 'snapshot';
 }
 
-async function shouldRetryChatWriteOnConflict(response, retryCount = 0) {
-    return (await resolveChatWriteConflict(response, retryCount)) !== 'none';
-}
 
 /**
  * Appends new chat messages to server-side chat storage.
@@ -15756,7 +15779,8 @@ function renderEditedMessage(messageId, { messageElement = null, bias = undefine
     return resolvedMessageElement;
 }
 
-function openMessageDelete(fromSlashCommand) {
+function openMessageDelete(fromSlashCommand, deleteToolCalls = true) {
+    deleteToolCallsInDeleteMode = deleteToolCalls;
     closeMessageEditor();
     hideSwipeButtons();
     if (fromSlashCommand || (!is_send_press) || (selected_group && !is_group_generating)) {
@@ -15962,7 +15986,7 @@ async function messageEditDone(div) {
     }
     const editedMessageId = Number(this_edit_mes_id);
 
-    let { mesBlock, text, mes, bias } = updateMessage(div);
+    let { mesBlock, bias } = updateMessage(div);
 
     const messageElement = chatElement.children('.mes').filter(`[mesid="${editedMessageId}"]`);
     messageElement.find('.mes_edit_buttons').css('display', 'none');
@@ -17581,8 +17605,8 @@ export async function updateCharacterData(charId, patch, { persist = true, immed
         if (key === 'extensions' || key.startsWith('extensions.')) {
             throw new Error(
                 `updateCharacterData: refuses to write '${key}' — use ` +
-                `writeExtensionField/writeExtensionFieldBulk for extension data ` +
-                `(per-extension replace semantics).`,
+                'writeExtensionField/writeExtensionFieldBulk for extension data ' +
+                '(per-extension replace semantics).',
             );
         }
     }
@@ -19412,6 +19436,7 @@ jQuery(async function () {
         });
         $(this).addClass('selected'); //sets the bg of the mes selected for deletion
         var i = Number($(this).attr('mesid')); //checks the message ID in the chat
+        i = getMessageDeletionStartId(i, deleteToolCallsInDeleteMode);
         this_del_mes = i;
         //as long as the current message ID is less than the total chat length
         while (i < chat.length) {
@@ -20633,6 +20658,7 @@ jQuery(async function () {
     ///////////// OPTIMIZED LISTENERS FOR LEFT SIDE OPTIONS POPUP MENU //////////////////////
     $('#options [id]').on('click', async function (event, customData) {
         const fromSlashCommand = customData?.fromSlashCommand || false;
+        const deleteToolCalls = customData?.deleteToolCalls ?? true;
         var id = $(this).attr('id');
 
         // Check whether a custom prompt was provided via custom data (for example through a slash command)
@@ -20711,7 +20737,7 @@ jQuery(async function () {
                 Generate('continue', buildOrFillAdditionalArgs());
             }
         } else if (id == 'option_delete_mes') {
-            setTimeout(() => openMessageDelete(fromSlashCommand), animation_duration);
+            setTimeout(() => openMessageDelete(fromSlashCommand, deleteToolCalls), animation_duration);
         } else if (id == 'option_search_chat') {
             await toggleCurrentChatToolsPanel();
         } else if (id == 'option_close_chat') {

@@ -20,7 +20,7 @@
 // sanity-check that still uses the same module import.
 
 import { test, expect } from '@playwright/test';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
@@ -30,9 +30,7 @@ import { normalizeIterStudioSettings, selectPresetByName, setCounterInput } from
 
 let server, mock;
 
-function normalizeSettings(dataRoot) {
-    normalizeIterStudioSettings(dataRoot);
-}
+
 
 test.beforeAll(async () => {
     mock = await startMockLLM({});
@@ -66,7 +64,7 @@ test.describe('#38 — settings patch-threshold persistence (real UI)', () => {
                 const u = String(url);
                 if (u.includes('/api/settings/patch')) {
                     window.__patchProbe.patchCalls++;
-                    try { window.__patchProbe.capturedOps = JSON.parse(String(init?.body || '{}'))?.operations; } catch {}
+                    try { window.__patchProbe.capturedOps = JSON.parse(String(init?.body || '{}'))?.operations; } catch { /* Preserve the existing best-effort error handling. */ }
                 } else if (u.includes('/api/settings/save')) {
                     window.__patchProbe.saveCalls++;
                 }

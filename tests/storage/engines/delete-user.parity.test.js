@@ -59,20 +59,11 @@ describe.each(CONTRACT_HARNESSES)('engine.deleteUser on $name', ({ make }) => {
         // would also no-op (fs/sqlite) or DELETE-zero-rows (mysql/pg).
         await h.engine.deleteUser(h.handle);
 
-        if (h.kind === 'fs' || h.kind === 'sqlite') {
-            // No-op contract: the user dir (and sqlite db) still exist,
-            // and the chat the test wrote above is still readable.
-            expect(fs.existsSync(h.dirs.root)).toBe(true);
-            const got = await h.engine.withTransaction(h.handle, (tx) =>
-                tx.getResource({ kind: 'chat', handle: h.handle, charDir: 'Alice', name: 'c1' }));
-            expect(got).not.toBeNull();
-        } else {
-            // mysql/postgres: the chat row was transactionally DELETEd; a
-            // subsequent read returns null.
-            const got = await h.engine.withTransaction(h.handle, (tx) =>
-                tx.getResource({ kind: 'chat', handle: h.handle, charDir: 'Alice', name: 'c1' }));
-            expect(got).toBeNull();
-        }
+        const got = await h.engine.withTransaction(h.handle, (tx) =>
+            tx.getResource({ kind: 'chat', handle: h.handle, charDir: 'Alice', name: 'c1' }));
+        expect(got === null).toBe(h.kind !== 'fs' && h.kind !== 'sqlite');
+        if (h.kind !== 'fs' && h.kind !== 'sqlite') return;
+        expect(fs.existsSync(h.dirs.root)).toBe(true);
     });
 
     test('all-tables probe: db engines wipe every Repo-backed table, fs/sqlite leave them intact', async () => {
@@ -161,26 +152,9 @@ describe.each(CONTRACT_HARNESSES)('engine.deleteUser on $name', ({ make }) => {
             return out;
         });
 
-        if (h.kind === 'fs' || h.kind === 'sqlite') {
-            // No-op contract: every row we wrote above is still readable.
-            // The endpoint-level test at users-admin-delete.parity.test.js
-            // exercises the dir-rm path that actually wipes this data
-            // when the admin issues `purge=true`.
-            expect(probes.chat).not.toBeNull();
-            expect(probes.preset).not.toBeNull();
-            expect(probes.world).not.toBeNull();
-            expect(probes.namedDoc).not.toBeNull();
-            expect(probes.group).not.toBeNull();
-            expect(probes.settings).not.toBeNull();
-            expect(probes.stats).not.toBeNull();
-        } else {
-            // mysql/postgres: every row is wiped. The wrapped-object
-            // expectation (`{ [k]: v }` toEqual `{ [k]: null }`) names
-            // the failing resource in the Jest diff instead of dumping
-            // an unlabelled v.
-            for (const [k, v] of Object.entries(probes)) {
-                expect({ [k]: v }).toEqual({ [k]: null });
-            }
+        const preservesRows = h.kind === 'fs' || h.kind === 'sqlite';
+        for (const [key, value] of Object.entries(probes)) {
+            expect({ [key]: value === null }).toEqual({ [key]: !preservesRows });
         }
     });
 });

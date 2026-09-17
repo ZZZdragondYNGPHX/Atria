@@ -18,7 +18,7 @@
 // invariant (rate-limit, queueing, persistence under load) rather than the
 // UI. They are NOT the default and must be named explicitly.
 
-import { expect } from '@playwright/test';
+import '@playwright/test';
 
 /**
  * Navigate to baseURL and wait for ST to leave the preloader. Clicks the
@@ -265,7 +265,7 @@ export async function sendMessageAndAwaitReply(page, text, { timeoutMs = 120_000
         // return chat.length-1 as the new assistant message id.
         const off = ctx.eventSource.on(ctx.eventTypes.GENERATION_ENDED, (chatLength) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.GENERATION_ENDED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.GENERATION_ENDED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(Math.max(0, Number(chatLength) - 1));
         });
     }), timeoutMs);
@@ -311,7 +311,7 @@ export async function sendMessageProgrammatic(page, text, { timeoutMs = 120_000 
         const t = setTimeout(() => reject(new Error('reply timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.MESSAGE_RECEIVED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_RECEIVED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_RECEIVED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }), timeoutMs);
@@ -343,7 +343,7 @@ export async function swipeRightOnLatest(page, { timeoutMs = 120_000 } = {}) {
         const t = setTimeout(() => reject(new Error('swipe timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.MESSAGE_SWIPED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_SWIPED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_SWIPED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }), timeoutMs);
@@ -367,7 +367,7 @@ export async function swipeLeftOnLatest(page, { timeoutMs = 120_000 } = {}) {
         const t = setTimeout(() => reject(new Error('swipe timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.MESSAGE_SWIPED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_SWIPED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_SWIPED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }), timeoutMs);
@@ -415,7 +415,7 @@ export async function editMessageViaUI(page, mesid, newText) {
         const t = setTimeout(() => reject(new Error('edit timeout')), 15_000);
         const off = ctx.eventSource.on(ctx.eventTypes.MESSAGE_EDITED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_EDITED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_EDITED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }));
@@ -462,7 +462,7 @@ export async function deleteMessageViaUI(page, mesid) {
         const ctx = window.Luker.getContext();
         window.__deleteSignal = { resolved: false, id: null };
         const off = (id) => {
-            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_DELETED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_DELETED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             window.__deleteSignal.resolved = true;
             window.__deleteSignal.id = id;
         };
@@ -521,7 +521,7 @@ export async function continueViaUI(page, { timeoutMs = 120_000 } = {}) {
         const t = setTimeout(() => reject(new Error('continue timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.MESSAGE_RECEIVED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_RECEIVED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_RECEIVED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }), timeoutMs);
@@ -541,7 +541,7 @@ export async function regenerateViaUI(page, { timeoutMs = 120_000 } = {}) {
         const t = setTimeout(() => reject(new Error('regenerate timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.MESSAGE_RECEIVED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_RECEIVED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.MESSAGE_RECEIVED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }), timeoutMs);
@@ -585,7 +585,7 @@ export async function branchFromMessageViaUI(page, mesid, { timeoutMs = 30_000 }
         const t = setTimeout(() => reject(new Error('branch timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.CHAT_CHANGED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.CHAT_CHANGED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.CHAT_CHANGED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }), timeoutMs);
@@ -608,7 +608,7 @@ export async function createNewChatViaUI(page, { timeoutMs = 30_000 } = {}) {
         const t = setTimeout(() => reject(new Error('new-chat timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.CHAT_CHANGED, (id) => {
             clearTimeout(t);
-            try { ctx.eventSource.removeListener(ctx.eventTypes.CHAT_CHANGED, off); } catch {}
+            try { ctx.eventSource.removeListener(ctx.eventTypes.CHAT_CHANGED, off); } catch { /* Preserve the existing best-effort error handling. */ }
             resolve(id);
         });
     }), timeoutMs);
@@ -824,17 +824,17 @@ export async function installMinimalDirectorProfile(page, {
         const sanitized = dirDefaults.sanitizeDirectorProfile(minimalProfile);
         // Convert this test's transport fixture into the native authoring format.
         // Production never imports legacy libraries.
-        const id = 'e2e-director', plan = structuredClone(compilePreset(sanitized, {mode:'director', presetId:id}));
+        const id = 'e2e-director', plan = structuredClone(compilePreset(sanitized, { mode:'director', presetId:id }));
         delete plan.compatibility; plan.source = { mode:'director', presetId:id };
         const options = structuredClone(sanitized); delete options.mainAgent; delete options.subAgents;
-        plan.metadata = {hostAdapters:{luker:options}};
+        plan.metadata = { hostAdapters:{ luker:options } };
         for (const agent of plan.agents) {
             const config = structuredClone(agent.metadata.config);
             delete config.systemPrompt; delete config.apiPresetName; delete config.promptPresetName;
-            agent.metadata = {hostAdapters:{luker:config}}; agent.tools = ['*'];
+            agent.metadata = { hostAdapters:{ luker:config } }; agent.tools = ['*'];
         }
-        settings.agentWorkspace = updatePresetLibrary(emptyPresetLibrary(), {type:'save', preset:{schemaVersion:1,id,name:'E2E Director',mode:'director',planTemplate:plan}});
-        settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'bind',scope:'default',presetId:id});
+        settings.agentWorkspace = updatePresetLibrary(emptyPresetLibrary(), { type:'save', preset:{ schemaVersion:1,id,name:'E2E Director',mode:'director',planTemplate:plan } });
+        settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{ type:'bind',scope:'default',presetId:id });
         try { await ctx.saveSettings?.(0, { directSave: true }); } catch (_) { /* best-effort */ }
         ctx.saveSettingsDebounced?.();
     }, { mainSystemPrompt, subAgents, tools });

@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import '@jest/globals';
 import { runLukerDispatch } from '../../src/luker-dispatch/runner.js';
 
 function fakeRequest({ requestId, body = {}, handle = 'alice' } = {}) {

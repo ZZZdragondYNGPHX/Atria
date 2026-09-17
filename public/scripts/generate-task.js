@@ -274,7 +274,7 @@ export async function resolveWorldInfo({
     if (worldInfoSource === 'custom' && !Array.isArray(customWorldInfoMessages)) {
         throw new GenerateTaskError(
             'invalid_input',
-            "worldInfoSource='custom' requires customWorldInfoMessages to be an array",
+            'worldInfoSource=\'custom\' requires customWorldInfoMessages to be an array',
         );
     }
     if (typeof worldInfoResolver !== 'function') {
@@ -714,8 +714,7 @@ function _normalizeToolCallToOpenAiShape(tc) {
     if (typeof argsCandidate === 'string') {
         argsStr = argsCandidate;
     } else if (argsCandidate && typeof argsCandidate === 'object') {
-        try { argsStr = JSON.stringify(argsCandidate); }
-        catch { argsStr = ''; }
+        try { argsStr = JSON.stringify(argsCandidate); } catch { argsStr = ''; }
     } else {
         argsStr = '';
     }

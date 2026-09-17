@@ -263,8 +263,7 @@ export function accumulateChunkTextIntoJob(job, chunkBytes) {
     if (typeof chunkBytes === 'string') {
         text = chunkBytes;
     } else if (chunkBytes instanceof Uint8Array || Buffer.isBuffer(chunkBytes)) {
-        try { text = Buffer.from(chunkBytes).toString('utf8'); }
-        catch { return; }
+        try { text = Buffer.from(chunkBytes).toString('utf8'); } catch { return; }
     } else {
         return;
     }
@@ -567,8 +566,7 @@ export function subscribeToJob(jobId, callback, options = {}) {
         if (job && Array.isArray(job.events)) {
             for (const entry of job.events) {
                 if (entry.seq >= fromSeq) {
-                    try { callback({ type: 'event', entry }); }
-                    catch (error) { console.warn('[LukerGeneration] subscriber threw during replay', error); }
+                    try { callback({ type: 'event', entry }); } catch (error) { console.warn('[LukerGeneration] subscriber threw during replay', error); }
                 }
             }
         }

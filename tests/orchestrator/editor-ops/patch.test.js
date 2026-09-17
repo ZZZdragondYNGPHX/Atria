@@ -4,7 +4,7 @@ import { applyPatch, EditorOpsError } from '../../../public/scripts/extensions/o
 
 function setup(initialText = '') {
     const chat = [{ mes: initialText, extra: { reasoning: '' }, is_user: false }];
-    const emit = jest.fn(async () => {});
+    void (jest.fn(async () => {}));
     const handle = createMessageEditorHandle({
         generationType: 'normal',
         originalText: initialText,

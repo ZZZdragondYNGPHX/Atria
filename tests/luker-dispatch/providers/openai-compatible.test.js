@@ -765,3 +765,15 @@ describe('dispatchOpenAICompatible', () => {
         });
     });
 });
+
+
+test('OpenRouter forwards logprobs using the upstream boolean/count contract', async () => {
+    const ctx = fakeCtx({
+        body: { chat_completion_source: CHAT_COMPLETION_SOURCES.OPENROUTER, model: 'openai/gpt-4o', logprobs: 5 },
+        secretMap: { api_key_openrouter: 'test-key' },
+    });
+    await dispatchOpenAICompatible(ctx);
+    const sent = JSON.parse(ctx.fetch.mock.calls[0][1].body);
+    expect(sent.logprobs).toBe(true);
+    expect(sent.top_logprobs).toBe(5);
+});

@@ -4,7 +4,7 @@ import { applyPatch, patchBySemantic } from '../../../public/scripts/extensions/
 
 function setup(initialText = '') {
     const chat = [{ mes: initialText, extra: { reasoning: '' }, is_user: false }];
-    const emit = jest.fn(async () => {});
+    void (jest.fn(async () => {}));
     const handle = createMessageEditorHandle({
         generationType: 'normal',
         originalText: initialText,
@@ -40,12 +40,14 @@ describe('context_replace patch (via applyPatch)', () => {
 
     test('patch_ambiguous message directs caller to expand context', () => {
         const { handle } = setup('cat cat cat');
-        try {
+        { let err; try {
             applyPatch(handle, { kind: 'context_replace', oldString: 'cat', newString: 'dog' });
             throw new Error('expected throw');
-        } catch (err) {
-            expect(err.code).toBe('patch_ambiguous');
-            expect(err.message).toMatch(/(extend|expand).*context/i);
+        } catch (caughtError) { err = caughtError; }
+
+        expect(err.code).toBe('patch_ambiguous');
+        expect(err.message).toMatch(/(extend|expand).*context/i);
+
         }
     });
 

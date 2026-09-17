@@ -1,4 +1,3 @@
-/* global globalThis */
 import { describe, test, expect, jest } from '@jest/globals';
 import { webcrypto } from 'node:crypto';
 import { emptyProvenance, captureEpisodes } from '../../public/scripts/extensions/memory-graph/source-provenance.js';

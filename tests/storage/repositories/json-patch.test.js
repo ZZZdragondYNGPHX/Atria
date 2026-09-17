@@ -24,13 +24,13 @@ describe('applyJsonPatch', () => {
         expect(applyJsonPatch({ xs: [10, 20, 30] }, [{ op: 'remove', path: '/xs/1' }]))
             .toEqual({ xs: [10, 30] });
     });
-    test('test op succeeds when value matches', () => {
+    test('op succeeds when value matches', () => {
         expect(applyJsonPatch({ a: 1 }, [
             { op: 'test', path: '/a', value: 1 },
             { op: 'replace', path: '/a', value: 2 },
         ])).toEqual({ a: 2 });
     });
-    test('test op throws when value mismatches', () => {
+    test('op throws when value mismatches', () => {
         expect(() => applyJsonPatch({ a: 1 }, [{ op: 'test', path: '/a', value: 99 }]))
             .toThrow(/json patch test failed/);
     });
@@ -70,40 +70,46 @@ describe('applyJsonPatch', () => {
         expect(input).toEqual({ a: { b: 1 } });
     });
 
-    test('test failure throws PatchTestFailedError', () => {
+    test('failure throws PatchTestFailedError', () => {
         expect(() => applyJsonPatch({ a: 1 }, [{ op: 'test', path: '/a', value: 99 }]))
             .toThrow(PatchTestFailedError);
     });
 
     test('replace on missing parent throws PatchMissingParentError', () => {
-        try {
+        { let err; try {
             applyJsonPatch({ a: 1 }, [{ op: 'replace', path: '/b/c', value: 9 }]);
             throw new Error('should have thrown');
-        } catch (err) {
-            expect(err).toBeInstanceOf(PatchMissingParentError);
-            expect(err.op).toBe('replace');
-            expect(err.path).toBe('/b/c');
+        } catch (caughtError) { err = caughtError; }
+
+        expect(err).toBeInstanceOf(PatchMissingParentError);
+        expect(err.op).toBe('replace');
+        expect(err.path).toBe('/b/c');
+
         }
     });
 
     test('remove on missing parent throws PatchMissingParentError', () => {
-        try {
+        { let err; try {
             applyJsonPatch({ a: { b: 1 } }, [{ op: 'remove', path: '/x/y' }]);
             throw new Error('should have thrown');
-        } catch (err) {
-            expect(err).toBeInstanceOf(PatchMissingParentError);
-            expect(err.op).toBe('remove');
-            expect(err.path).toBe('/x/y');
+        } catch (caughtError) { err = caughtError; }
+
+        expect(err).toBeInstanceOf(PatchMissingParentError);
+        expect(err.op).toBe('remove');
+        expect(err.path).toBe('/x/y');
+
         }
     });
 
     test('unsupported op throws UnsupportedPatchOpError', () => {
-        try {
+        { let err; try {
             applyJsonPatch({}, [{ op: 'move', path: '/a', from: '/b' }]);
             throw new Error('should have thrown');
-        } catch (err) {
-            expect(err).toBeInstanceOf(UnsupportedPatchOpError);
-            expect(err.op).toBe('move');
+        } catch (caughtError) { err = caughtError; }
+
+        expect(err).toBeInstanceOf(UnsupportedPatchOpError);
+        expect(err.op).toBe('move');
+
         }
     });
 });

@@ -9,7 +9,7 @@ import {
 
 function setup(initialReasoning = '') {
     const chat = [{ mes: '', extra: { reasoning: initialReasoning }, is_user: false }];
-    const emit = jest.fn(async () => {});
+    void (jest.fn(async () => {}));
     const handle = createMessageEditorHandle({
         generationType: 'normal',
         originalReasoning: initialReasoning,

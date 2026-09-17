@@ -164,8 +164,8 @@ test.describe('#80 — Director mode lorebookFilter blocks context injection and
             const settings = ctx.extensionSettings.orchestrator;
             const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
-            preset.planTemplate.metadata.hostAdapters.luker.lorebookFilter = {bookPattern:`^${privateBook}$`,entryPattern:'^secret_'};
-            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'save',preset});
+            preset.planTemplate.metadata.hostAdapters.luker.lorebookFilter = { bookPattern:`^${privateBook}$`,entryPattern:'^secret_' };
+            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{ type:'save',preset });
             try { await ctx.saveSettings?.(0, { directSave: true }); } catch { /* best-effort */ }
             ctx.saveSettingsDebounced?.();
 

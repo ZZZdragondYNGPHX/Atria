@@ -1,10 +1,6 @@
 import { describe, expect, test, jest } from '@jest/globals';
 import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
-import {
-    appendText, appendReasoning,
-    insertAt, replaceRange, deleteRange,
-    EditorOpsError,
-} from '../../../public/scripts/extensions/orchestrator/editor-ops.js';
+import { appendText, appendReasoning, insertAt, replaceRange, deleteRange } from '../../../public/scripts/extensions/orchestrator/editor-ops.js';
 
 function setup(initialText = '', initialReasoning = '') {
     const chat = [{ mes: initialText, extra: { reasoning: initialReasoning }, is_user: false }];

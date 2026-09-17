@@ -66,23 +66,16 @@ describe.each(CONTRACT_HARNESSES)('snapshotUser engine dump on $name', ({ make }
             engine: h.engine,
         });
         expect(fs.existsSync(backupPath)).toBe(true);
-        if (h.kind === 'fs') {
-            // FS engine: dumpUser returns null, so no _engine_dump.bin should
-            // be written. The fs tree alone IS the snapshot — same shape as
-            // pre-Task-3 behaviour, just routed through the async signature.
-            expect(fs.existsSync(path.join(backupPath, '_engine_dump.bin'))).toBe(false);
-            expect(fs.existsSync(path.join(backupPath, '_engine_meta.json'))).toBe(false);
-        } else {
-            expect(fs.existsSync(path.join(backupPath, '_engine_dump.bin'))).toBe(true);
-            expect(fs.existsSync(path.join(backupPath, '_engine_meta.json'))).toBe(true);
-            const dumpSize = fs.statSync(path.join(backupPath, '_engine_dump.bin')).size;
-            expect(dumpSize).toBeGreaterThan(0);
-            const meta = JSON.parse(fs.readFileSync(path.join(backupPath, '_engine_meta.json'), 'utf8'));
-            expect(meta.engineKind).toBe(h.kind);
-            expect(meta.handle).toBe(h.handle);
-            expect(meta.schemaVersion).toBe(1);
-            expect(typeof meta.createdAt).toBe('string');
-        }
+        expect(fs.existsSync(path.join(backupPath, '_engine_dump.bin'))).toBe(h.kind !== 'fs');
+        expect(fs.existsSync(path.join(backupPath, '_engine_meta.json'))).toBe(h.kind !== 'fs');
+        if (h.kind === 'fs') return;
+        const dumpSize = fs.statSync(path.join(backupPath, '_engine_dump.bin')).size;
+        expect(dumpSize).toBeGreaterThan(0);
+        const meta = JSON.parse(fs.readFileSync(path.join(backupPath, '_engine_meta.json'), 'utf8'));
+        expect(meta.engineKind).toBe(h.kind);
+        expect(meta.handle).toBe(h.handle);
+        expect(meta.schemaVersion).toBe(1);
+        expect(typeof meta.createdAt).toBe('string');
     });
 
     test('snapshot works when engine arg is omitted (back-compat: fs-tree only)', async () => {

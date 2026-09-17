@@ -74,9 +74,9 @@ test.describe('#78 — Multi-skill visible: live director dispatch', () => {
             const settings = ctx.extensionSettings.orchestrator;
             const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
-            preset.planTemplate.metadata.hostAdapters.luker.skills = {visible:[...names],deny:[]};
-            for (const agent of preset.planTemplate.agents) agent.metadata.hostAdapters.luker.skills = {visible:['+'],deny:[]};
-            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'save',preset});
+            preset.planTemplate.metadata.hostAdapters.luker.skills = { visible:[...names],deny:[] };
+            for (const agent of preset.planTemplate.agents) agent.metadata.hostAdapters.luker.skills = { visible:['+'],deny:[] };
+            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{ type:'save',preset });
             // No saveSettings flush needed — this spec does not restart the
             // server; the in-memory preset write is all the director-runtime
             // reads from on the very next turn.

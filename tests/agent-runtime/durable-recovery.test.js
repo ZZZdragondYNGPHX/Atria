@@ -51,8 +51,7 @@ test('all persisted model and memory boundaries resume with original effect IDs'
         const { runtime, fake } = await setup(backend(snapshot), [{ type: 'complete', output: 'recovered' }]);
         const result = await runtime.resumeRun(command.runId);
         expect(result.status).toBe('completed');
-        if (fake.calls.model.length) expect(fake.calls.model[0].effectId).toBe('durable/effect/2');
-        if (snapshot.completedEffects['durable/effect/2']) expect(fake.calls.model).toHaveLength(0);
+        expect(fake.calls.model.map(call => call.effectId)).toEqual(snapshot.completedEffects['durable/effect/2'] ? [] : ['durable/effect/2']);
     }
 });
 
@@ -85,7 +84,7 @@ test.each(['unknown', 'completed', 'retryable'])('uncertain tool requires explic
     expect(identity).toBe(snapshot.pendingEffect.effectId);
     expect(result.status).toBe(resolution === 'unknown' ? 'failed' : 'completed');
     expect(fake.calls.tool).toHaveLength(resolution === 'retryable' ? 1 : 0);
-    if (fake.calls.tool.length) expect(fake.calls.tool[0].toolCallId).toBe(identity);
+    expect(fake.calls.tool.map(call => call.toolCallId)).toEqual(resolution === 'retryable' ? [identity] : []);
 });
 
 test('handoff crash windows preserve one handoff and discard source scratch', async () => {

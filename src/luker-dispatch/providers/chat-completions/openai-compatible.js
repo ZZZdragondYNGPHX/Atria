@@ -200,7 +200,7 @@ async function isOpenRouterModelCacheable(ctx, modelId) {
  * @param {object} jsonSchema
  */
 function setJsonObjectFormat(bodyParams, messages, jsonSchema) {
-    bodyParams['response_format'] = { type: 'json_object' };
+    bodyParams.response_format = { type: 'json_object' };
     const message = {
         role: 'user',
         content: `JSON schema for the response:\n${JSON.stringify(jsonSchema.value, null, 4)}`,
@@ -231,7 +231,7 @@ async function resolveOpenAI(ctx) {
         bodyParams.logprobs = true;
     }
     if (getConfigValue('openai.randomizeUserId', false, 'boolean')) {
-        bodyParams['user'] = uuidv4();
+        bodyParams.user = uuidv4();
     }
     embedOpenRouterMedia(body.messages, { audio: true, video: false });
     return { apiUrl, apiKey, headers, bodyParams };
@@ -252,24 +252,28 @@ async function resolveOpenRouter(ctx) {
         plugins: getOpenRouterPlugins(body),
         reasoning: { exclude: !includeReasoning },
     };
-    if (body.min_p !== undefined) bodyParams['min_p'] = body.min_p;
-    if (body.top_a !== undefined) bodyParams['top_a'] = body.top_a;
-    if (body.repetition_penalty !== undefined) bodyParams['repetition_penalty'] = body.repetition_penalty;
+    if (body.logprobs > 0) {
+        bodyParams.top_logprobs = body.logprobs;
+        bodyParams.logprobs = true;
+    }
+    if (body.min_p !== undefined) bodyParams.min_p = body.min_p;
+    if (body.top_a !== undefined) bodyParams.top_a = body.top_a;
+    if (body.repetition_penalty !== undefined) bodyParams.repetition_penalty = body.repetition_penalty;
     if (Array.isArray(body.provider) && body.provider.length > 0) {
-        bodyParams['provider'] = {
+        bodyParams.provider = {
             allow_fallbacks: body.allow_fallbacks ?? true,
             order: body.provider ?? [],
         };
     }
     if (Array.isArray(body.quantizations) && body.quantizations.length > 0) {
-        bodyParams['provider'] ??= {};
-        bodyParams['provider']['quantizations'] = body.quantizations;
+        bodyParams.provider ??= {};
+        bodyParams.provider.quantizations = body.quantizations;
     }
-    if (body.use_fallback) bodyParams['route'] = 'fallback';
-    if (body.reasoning_effort) bodyParams['reasoning']['effort'] = body.reasoning_effort;
-    if (body.verbosity) bodyParams['verbosity'] = body.verbosity;
+    if (body.use_fallback) bodyParams.route = 'fallback';
+    if (body.reasoning_effort) bodyParams.reasoning.effort = body.reasoning_effort;
+    if (body.verbosity) bodyParams.verbosity = body.verbosity;
     if (body.json_schema) {
-        bodyParams['response_format'] = {
+        bodyParams.response_format = {
             type: 'json_schema',
             json_schema: {
                 name: body.json_schema.name,
@@ -310,7 +314,7 @@ async function resolveOpenRouter(ctx) {
             cachingSystemPromptForOpenRouter(body.messages);
         }
     }
-    if (isGemini) bodyParams['safety_settings'] = GEMINI_SAFETY;
+    if (isGemini) bodyParams.safety_settings = GEMINI_SAFETY;
     const geminiCacheOptions = isCacheableGemini && enableGeminiHistoryCache ? {
         scope: JSON.stringify([ctx.user?.handle, apiKey]),
         session: body.gemini_cache_session,
@@ -341,7 +345,7 @@ async function resolveCustom(ctx) {
     mergeObjectWithYaml(headers, body.custom_include_headers);
     embedOpenRouterMedia(body.messages, { audio: true, video: false });
     if (body.json_schema) {
-        bodyParams['response_format'] = {
+        bodyParams.response_format = {
             type: 'json_schema',
             json_schema: {
                 name: body.json_schema.name,
@@ -363,7 +367,7 @@ async function resolvePerplexity(ctx) {
     const bodyParams = { reasoning_effort: body.reasoning_effort };
     body.messages = postProcessPrompt(body.messages, PROMPT_PROCESSING_TYPE.STRICT, getPromptNames(shim(ctx)));
     if (body.json_schema) {
-        bodyParams['response_format'] = {
+        bodyParams.response_format = {
             type: 'json_schema',
             json_schema: { schema: body.json_schema.value },
         };
@@ -380,7 +384,7 @@ async function resolveGroq(ctx) {
     /** @type {any} */
     const bodyParams = {};
     if (body.json_schema) {
-        bodyParams['response_format'] = {
+        bodyParams.response_format = {
             type: 'json_schema',
             json_schema: {
                 name: body.json_schema.name,
@@ -402,7 +406,7 @@ async function resolveFireworks(ctx) {
     /** @type {any} */
     const bodyParams = {};
     if (body.json_schema) {
-        bodyParams['response_format'] = {
+        bodyParams.response_format = {
             type: 'json_schema',
             json_schema: {
                 name: body.json_schema.name,
@@ -428,21 +432,21 @@ async function resolveNanogpt(ctx) {
     if (body.nanogpt_provider) headers['X-Provider'] = body.nanogpt_provider;
     if (body.nanogpt_payg_override) {
         headers['X-Billing-Mode'] = 'paygo';
-        bodyParams['billing_mode'] = 'paygo';
+        bodyParams.billing_mode = 'paygo';
     }
     if (body.enable_web_search && !/:online$/.test(body.model)) {
         body.model = `${body.model}:online`;
     }
-    if (body.min_p !== undefined) bodyParams['min_p'] = body.min_p;
-    if (body.top_a !== undefined) bodyParams['top_a'] = body.top_a;
-    if (body.repetition_penalty !== undefined) bodyParams['repetition_penalty'] = body.repetition_penalty;
+    if (body.min_p !== undefined) bodyParams.min_p = body.min_p;
+    if (body.top_a !== undefined) bodyParams.top_a = body.top_a;
+    if (body.repetition_penalty !== undefined) bodyParams.repetition_penalty = body.repetition_penalty;
     if (body.reasoning_effort) {
         const effort = NANOGPT_REASONING_EFFORT_MAP[body.reasoning_effort] ?? body.reasoning_effort;
-        bodyParams['reasoning'] = { effort: effort };
+        bodyParams.reasoning = { effort: effort };
     }
     const isClaude = /(?:^|\/)claude[-_]/.test(body.model);
     if (enableSystemPromptCache && isClaude) {
-        bodyParams['cache_control'] = { 'enabled': true, 'ttl': cacheTTL };
+        bodyParams.cache_control = { 'enabled': true, 'ttl': cacheTTL };
     }
     return { apiUrl, apiKey, headers, bodyParams };
 }
@@ -460,7 +464,7 @@ async function resolvePollinations(ctx) {
         seed: body.seed ?? Math.floor(Math.random() * 99999999),
     };
     if (body.json_schema) {
-        bodyParams['response_format'] = {
+        bodyParams.response_format = {
             type: 'json_schema',
             json_schema: { schema: body.json_schema.value },
         };
@@ -578,7 +582,7 @@ async function resolveWorkersai(ctx) {
     /** @type {any} */
     const bodyParams = { repetition_penalty: body.repetition_penalty };
     if (body.json_schema) {
-        bodyParams['response_format'] = {
+        bodyParams.response_format = {
             type: 'json_schema',
             json_schema: body.json_schema.value,
         };
@@ -637,19 +641,19 @@ export async function dispatchOpenAICompatible(ctx) {
         // Reasoning effort — OPENAI/CUSTOM only, gated by model list.
         if (body.reasoning_effort && [CHAT_COMPLETION_SOURCES.CUSTOM, CHAT_COMPLETION_SOURCES.OPENAI].includes(source)) {
             if (OPENAI_REASONING_EFFORT_MODELS.includes(body.model)) {
-                bodyParams['reasoning_effort'] = OPENAI_FIXED_REASONING_EFFORT[body.model]
+                bodyParams.reasoning_effort = OPENAI_FIXED_REASONING_EFFORT[body.model]
                     ?? OPENAI_REASONING_EFFORT_MAP[body.reasoning_effort]
                     ?? body.reasoning_effort;
             }
             if (source === CHAT_COMPLETION_SOURCES.CUSTOM && /^koboldcpp\/(.+)$/.test(body.model)) {
-                bodyParams['reasoning_effort'] = body.reasoning_effort;
+                bodyParams.reasoning_effort = body.reasoning_effort;
             }
         }
 
         // Verbosity — OPENAI/CUSTOM only, gated by model regex.
         if (body.verbosity && [CHAT_COMPLETION_SOURCES.CUSTOM, CHAT_COMPLETION_SOURCES.OPENAI].includes(source)) {
             if (OPENAI_VERBOSITY_MODELS.test(body.model)) {
-                bodyParams['verbosity'] = body.verbosity;
+                bodyParams.verbosity = body.verbosity;
             }
         }
 
@@ -664,7 +668,7 @@ export async function dispatchOpenAICompatible(ctx) {
 
         // Custom stop sequences.
         if (Array.isArray(body.stop) && body.stop.length > 0) {
-            bodyParams['stop'] = body.stop;
+            bodyParams.stop = body.stop;
         }
 
         const textPrompt = isTextCompletion ? convertTextCompletionPrompt(body.messages) : '';
@@ -674,15 +678,15 @@ export async function dispatchOpenAICompatible(ctx) {
 
         // Tools/tool_choice (chat-completion only).
         if (!isTextCompletion && Array.isArray(body.tools) && body.tools.length > 0) {
-            bodyParams['tools'] = body.tools;
-            bodyParams['tool_choice'] = body.tool_choice;
+            bodyParams.tools = body.tools;
+            bodyParams.tool_choice = body.tool_choice;
         }
 
         // Fallback json_schema translation when the resolver did not already
         // set response_format (e.g. GROQ/FIREWORKS/OPENROUTER/CUSTOM handle
         // this themselves; OPENAI does not).
-        if (body.json_schema && !bodyParams['response_format']) {
-            bodyParams['response_format'] = {
+        if (body.json_schema && !bodyParams.response_format) {
+            bodyParams.response_format = {
                 type: 'json_schema',
                 json_schema: {
                     name: body.json_schema.name,

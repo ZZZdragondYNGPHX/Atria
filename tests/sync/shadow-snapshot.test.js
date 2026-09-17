@@ -316,7 +316,6 @@ describe('snapshotLiveToShadow', () => {
             // symlink creation with EPERM/EACCES — the rest of the assertion
             // would be vacuous there, so degrade gracefully.
             if (err && (err.code === 'EPERM' || err.code === 'EACCES')) {
-                expect(true).toBe(true);
                 return;
             }
             throw err;

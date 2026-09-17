@@ -435,7 +435,6 @@ export class AutoComplete {
             });
 
 
-
         if (this.isForceHidden) {
             // hidden with escape
             return this.hide();
@@ -537,7 +536,7 @@ export class AutoComplete {
     /**
      * Update position of DOM.
      */
-     updatePosition() {
+    updatePosition() {
         if (!this.visible) return;
         if (this.isFloating) {
             this.updateFloatingPosition();
@@ -705,7 +704,9 @@ export class AutoComplete {
                     this._cursorLocator = null;
                 }
             });
-            mo.observe(this.textarea.parentElement, { childList: true });
+            if (this.textarea.parentElement) {
+                mo.observe(this.textarea.parentElement, { childList: true });
+            }
         }
         this._cursorClone.style.height = `${inputRect.height}px`;
         this._cursorClone.style.left = `${inputRect.left}px`;

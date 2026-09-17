@@ -87,6 +87,8 @@ module.exports = {
         '**/dist/**',
         '**/.git/**',
         'public/lib/**',
+        'public/scripts/vendor/**',
+        'public/scripts/extensions/third-party/**',
         'backups/**',
         'data/**',
         'cache/**',
@@ -99,7 +101,7 @@ module.exports = {
     ],
     rules: {
         'jsdoc/no-undefined-types': ['warn', { disableReporting: true, markVariablesAsUsed: true }],
-        'no-unused-vars': ['error', { args: 'none' }],
+        'no-unused-vars': ['error', { args: 'none', ignoreRestSiblings: true, varsIgnorePattern: '^_'  }],
         'no-control-regex': 'off',
         'no-constant-condition': ['error', { checkLoops: false }],
         'require-yield': 'off',

@@ -65,7 +65,7 @@ test.describe('#98 — function-call runtime tool round-trip via real send', () 
         // test-only hook.
         await page.evaluate((toolResult) => {
             const ctx = window.Luker.getContext();
-            try { ctx.unregisterFunctionTool('get_weather'); } catch {}
+            try { ctx.unregisterFunctionTool('get_weather'); } catch { /* Preserve the existing best-effort error handling. */ }
             ctx.registerFunctionTool({
                 name: 'get_weather',
                 displayName: 'Get Weather',

@@ -294,12 +294,12 @@ async function sendStudioPromptAndWait(page, prompt, { expect: expectKind, timeo
     }
 }
 
-let cardAPngPath, cardBPngPath, tmpDir;
+let _cardAPngPath, cardBPngPath, tmpDir;
 
 test.describe('#28 — real-LLM post-replace world-book sweep', () => {
     test.beforeAll(async () => {
         tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-replace-real-llm-'));
-        cardAPngPath = writeCardPng(CARD_A_NAME, CARD_A_DESCRIPTION, CARD_A_FIRST_MES, CARD_A_BOOK, resolve(tmpDir, 'sable.png'));
+        _cardAPngPath = writeCardPng(CARD_A_NAME, CARD_A_DESCRIPTION, CARD_A_FIRST_MES, CARD_A_BOOK, resolve(tmpDir, 'sable.png'));
         cardBPngPath = writeCardPng(CARD_B_NAME, CARD_B_DESCRIPTION, CARD_B_FIRST_MES, CARD_B_BOOK, resolve(tmpDir, 'nireth.png'));
     });
 
@@ -499,7 +499,7 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
             //      the verbatim entry content the seed used to dump.
             const messagesRoot = studio.locator('[data-cea-editor-messages]');
             const systemBubbles = messagesRoot.locator('.luker_lib_message_system');
-            expect(await systemBubbles.count()).toBe(0);
+            await expect(systemBubbles).toHaveCount(0);
 
             const openDiffBtn = studio.locator('[data-cea-editor-action="open-replace-diff"]').first();
             await expect(openDiffBtn).toBeVisible();

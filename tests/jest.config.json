@@ -22,5 +22,6 @@
         "^/lib\\.js$": "<rootDir>/util/lib-stub.js",
         "^/scripts/(.*)$": "<rootDir>/../public/scripts/$1",
         "^(.*/)?dialog-polyfill\\.esm\\.js$": "<rootDir>/util/dialog-polyfill-stub.js"
-    }
+    },
+    "workerIdleMemoryLimit": "512MB"
 }

@@ -313,7 +313,7 @@ export function sanitizeAgentToolFlags(input, { defaultAllOn = false, forceFinal
     const customIn = tools.custom && typeof tools.custom === 'object' ? tools.custom : {};
     const customOut = {};
     for (const [k, v] of Object.entries(customIn)) {
-        customOut[String(k)] = v === false ? false : true;
+        customOut[String(k)] = v !== false;
     }
     // Legacy → custom translator. memory + search tools used to live in
     // their own top-level namespaces; they are now Layer-2 extension tools
@@ -341,7 +341,7 @@ export function sanitizeAgentToolFlags(input, { defaultAllOn = false, forceFinal
         if (customOut[fullName] !== undefined) continue; // explicit custom.<name> wins
         const explicit = legacyMemory ? legacyMemory[verb] : undefined;
         if (explicit !== undefined) {
-            customOut[fullName] = explicit === false ? false : true;
+            customOut[fullName] = explicit !== false;
         } else if (!def) {
             // Override mode: omitted verbs are explicitly off, matching
             // the pre-Layer-2 namespace contract.
@@ -356,7 +356,7 @@ export function sanitizeAgentToolFlags(input, { defaultAllOn = false, forceFinal
         if (customOut[fullName] !== undefined) continue; // explicit custom.<name> wins
         const explicit = legacySearch ? legacySearch[verb] : undefined;
         if (explicit !== undefined) {
-            customOut[fullName] = explicit === false ? false : true;
+            customOut[fullName] = explicit !== false;
         } else if (!def) {
             // Override mode: omitted verbs are explicitly off, matching
             // the pre-Layer-2 namespace contract.

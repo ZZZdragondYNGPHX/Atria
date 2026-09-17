@@ -7,11 +7,12 @@ module.exports = {
     extends: [
         'eslint:recommended',
         'plugin:jest/recommended',
-        'plugin:playwright/recommended',
     ],
     env: {
         es6: true,
         node: true,
+        browser: true,
+        jquery: true,
         'jest/globals': true,
     },
     parserOptions: {
@@ -20,6 +21,7 @@ module.exports = {
     },
     overrides: [
         {
+            extends: ['plugin:playwright/recommended'],
             // Playwright-driven e2e specs run inside a real browser context
             // and routinely call `page.evaluate(() => window.X)` — so they
             // need the `browser` env globals to lint cleanly. Matches both
@@ -43,11 +45,12 @@ module.exports = {
         'node_modules/**/*',
     ],
     globals: {
+        globalThis: 'readonly',
         Luker: 'readonly',
         SillyTavern: 'readonly',
     },
     rules: {
-        'no-unused-vars': ['error', { args: 'none' }],
+        'no-unused-vars': ['error', { args: 'none', ignoreRestSiblings: true, varsIgnorePattern: '^_' }],
         'no-control-regex': 'off',
         'no-constant-condition': ['error', { checkLoops: false }],
         'require-yield': 'off',
@@ -61,6 +64,7 @@ module.exports = {
         'space-infix-ops': 'error',
         'no-unused-expressions': ['error', { allowShortCircuit: true, allowTernary: true }],
         'no-cond-assign': 'error',
+        'jest/no-standalone-expect': ['error', { additionalTestBlockFunctions: ['platformSpecific', 'posixTest'] }],
 
         // These rules should eventually be enabled.
         'no-async-promise-executor': 'off',

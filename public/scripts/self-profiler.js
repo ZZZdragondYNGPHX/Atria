@@ -43,7 +43,7 @@ export function setSelfProfilerPreference(enabled) {
 function createProfiler() {
     const state = getGlobalState();
 
-    const profiler = new Profiler({
+    const profiler = new globalThis.Profiler({
         sampleInterval: state.sampleInterval,
         maxBufferSize: state.maxBufferSize,
     });

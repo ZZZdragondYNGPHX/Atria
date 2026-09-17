@@ -1,11 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import {
-    DRAFT_SEARCH_TOOL,
-    executeDraftSearchTool,
-    buildSubAgentToolSchemas,
-    buildMainAgentToolSchemas,
-    GET_DRAFT_TOOL,
-} from '../../public/scripts/extensions/orchestrator/director-tools.js';
+import { DRAFT_SEARCH_TOOL, executeDraftSearchTool, buildSubAgentToolSchemas, buildMainAgentToolSchemas } from '../../public/scripts/extensions/orchestrator/director-tools.js';
 
 function makeHandle(text) {
     return { getText: () => String(text ?? '') };

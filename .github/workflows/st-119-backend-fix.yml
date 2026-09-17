@@ -1,0 +1,31 @@
+name: Verify SillyTavern 1.19 backend compatibility
+
+on:
+  push:
+    branches:
+      - chore/sillytavern-1.19.0-adapt
+    paths:
+      - .github/workflows/st-119-backend-fix.yml
+      - src/luker-dispatch/providers/chat-completions/**
+      - src/endpoints/search.js
+      - tests/luker-dispatch/providers/**
+
+permissions:
+  contents: read
+
+jobs:
+  verify-backends:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --prefix tests
+      - name: Verify provider and search compatibility
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          luker-dispatch/providers/claude.test.js
+          luker-dispatch/providers/openai-compatible.test.js
+          search-visit.test.js private-request-filter.test.js

@@ -372,8 +372,8 @@ describe('read-api type freeze (spec §8.1)', () => {
         expect(Object.isFrozen(summary)).toBe(true);
         expect(Object.isFrozen(summary.relations)).toBe(true);
         expect(Object.isFrozen(summary.sample_neighbors)).toBe(true);
-        if (summary.relations.length > 0) expect(Object.isFrozen(summary.relations[0])).toBe(true);
-        if (summary.sample_neighbors.length > 0) expect(Object.isFrozen(summary.sample_neighbors[0])).toBe(true);
+        expect(summary.relations.every(Object.isFrozen)).toBe(true);
+        expect(summary.sample_neighbors.every(Object.isFrozen)).toBe(true);
     });
 
     test('InjectionState from getInjectionState is frozen', () => {

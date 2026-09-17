@@ -182,7 +182,7 @@ test.describe('#79 — Loop mode lorebookFilter blocks context injection and lor
         // either binding didn't land, fail fast with a specific message
         // so downstream WI assertions aren't debugged as filter regressions.
         const worldInfoSanity = await page.evaluate(async ({ privateBook, publicBook }) => {
-            const worldInfoMod = await import('/scripts/world-info.js');
+            void (await import('/scripts/world-info.js'));
             const ctx = Luker.getContext();
             const character = ctx.characters?.[ctx.characterId];
             const primary = character?.data?.extensions?.world || '';
@@ -234,11 +234,11 @@ test.describe('#79 — Loop mode lorebookFilter blocks context injection and lor
             const { updatePresetLibrary, emptyPresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = createWorkspaceFactoryPreset('loop','e2e-loop');
             preset.planTemplate.agents[0].instructions = 'You are the test loop agent. Call finalize with a short capsule when you have enough context.';
-            preset.planTemplate.metadata.hostAdapters.luker.lorebookFilter = {bookPattern:`^${privateBook}$`,entryPattern:'^secret_'};
+            preset.planTemplate.metadata.hostAdapters.luker.lorebookFilter = { bookPattern:`^${privateBook}$`,entryPattern:'^secret_' };
             preset.planTemplate.budgets.maxSteps = 6;
             preset.planTemplate.metadata.hostAdapters.luker.wall_clock_budget_ms = 60000;
-            settings.agentWorkspace = updatePresetLibrary(emptyPresetLibrary(),{type:'save',preset});
-            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{type:'bind',scope:'default',presetId:preset.id});
+            settings.agentWorkspace = updatePresetLibrary(emptyPresetLibrary(),{ type:'save',preset });
+            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{ type:'bind',scope:'default',presetId:preset.id });
 
             try { await ctx.saveSettings?.(0, { directSave: true }); } catch { /* best-effort */ }
             ctx.saveSettingsDebounced?.();
@@ -257,7 +257,7 @@ test.describe('#79 — Loop mode lorebookFilter blocks context injection and lor
         const observed = {
             mainAgentBodies: [],       // loop-agent request bodies
             toolMessageContents: [],   // string content of every tool msg
-                                        // the loop agent saw in a subsequent turn
+            // the loop agent saw in a subsequent turn
         };
         // Snapshot the pre-turn request cursor so the post-turn scan
         // only walks THIS turn's traffic — the beforeAll bootstrap may
