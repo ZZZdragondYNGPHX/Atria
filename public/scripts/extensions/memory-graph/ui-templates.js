@@ -1,5 +1,4 @@
 import { renderPresetHelpButton } from '../preset-help.js';
-import { renderLukerTabs } from '../luker-tabs.js';
 import { renderFieldHelpButton } from '../field-help.js';
 
 export function buildSchemaEditorPopupHtml(deps, popupId, scopeInfo) {
@@ -155,8 +154,8 @@ function buildRecallTabHtml(deps) {
             <label for="luker_rpg_memory_debug_query">${escapeHtml(i18n('Recall debug query'))}${fh('About Recall debug query', 'Recall debug query help body')}</label>
             <input id="luker_rpg_memory_debug_query" class="text_pole" type="text" placeholder="${escapeHtml(i18n('e.g. what happened at the ruins with Mira?'))}" />
             <div class="flex-container">
-                <div id="luker_rpg_memory_recall_debug" class="menu_button">${escapeHtml(i18n('Run Recall Debug'))}</div>
-                <div id="luker_rpg_memory_view_last_injection" class="menu_button">${escapeHtml(i18n('View Last Injection'))}</div>
+                <button type="button" id="luker_rpg_memory_recall_debug" class="menu_button">${escapeHtml(i18n('Run Recall Debug'))}</button>
+                <button type="button" id="luker_rpg_memory_view_last_injection" class="menu_button">${escapeHtml(i18n('View Last Injection'))}</button>
             </div>`;
 }
 
@@ -184,20 +183,22 @@ function buildGraphTabHtml(deps) {
         bodyHtml: escapeHtml(i18n(bodyKey)),
     });
     const btnRow = (id, labelKey, titleKey, bodyKey) => `
-                <div class="flex-container alignItemsCenter" style="gap:6px">
-                    <div id="${id}" class="menu_button">${escapeHtml(i18n(labelKey))}</div>
+                <div class="memory-maintenance-action">
+                    <button type="button" id="${id}" class="menu_button">${escapeHtml(i18n(labelKey))}</button>
                     ${helpBtn(titleKey, bodyKey)}
                 </div>`;
     return `
+            <div class="memory-maintenance-grid">
             ${btnRow('luker_rpg_memory_view_graph', 'View Graph', 'About View Graph', 'View Graph help body')}
             ${btnRow('luker_rpg_memory_fill', 'Fill Graph', 'About Fill Graph', 'Fill Graph help body')}
             ${btnRow('luker_rpg_memory_rebuild', 'Rebuild Graph', 'About Rebuild Graph', 'Rebuild Graph help body')}
             ${btnRow('luker_rpg_memory_rebuild_recent', 'Rebuild Recent', 'About Rebuild Recent', 'Rebuild Recent help body')}
             ${btnRow('luker_rpg_memory_manual_compress', 'Manual Compress', 'About Manual Compress', 'Manual Compress help body')}
-            ${btnRow('luker_rpg_memory_reset', 'Reset Chat', 'About Reset Chat', 'Reset Chat help body')}
             ${btnRow('luker_rpg_memory_recompute_vectors', 'Rebuild Vectors', 'About Rebuild Vectors', 'Rebuild Vectors help body')}
             ${btnRow('luker_rpg_memory_export', 'Export Graph', 'About Export Graph', 'Export Graph help body')}
             ${btnRow('luker_rpg_memory_import', 'Import Graph', 'About Import Graph', 'Import Graph help body')}
+            </div>
+            <div class="memory-danger-zone">${btnRow('luker_rpg_memory_reset', 'Reset Chat', 'About Reset Chat', 'Reset Chat help body')}</div>
             <input id="luker_rpg_memory_import_file" type="file" accept=".json,application/json" hidden />`;
 }
 
@@ -214,8 +215,8 @@ function buildAdvancedTabHtml(deps) {
             <small id="luker_rpg_memory_schema_scope" style="opacity:0.85"></small>
             <small id="luker_rpg_memory_schema_summary" style="opacity:0.85"></small>
             <div class="flex-container">
-                <div id="luker_rpg_memory_open_schema_editor" class="menu_button">${escapeHtml(i18n('Open Schema Editor'))}</div>
-                <div id="luker_rpg_memory_open_schema_studio" class="menu_button">${escapeHtml(i18n('AI Iterate Schema'))}</div>
+                <button type="button" id="luker_rpg_memory_open_schema_editor" class="menu_button">${escapeHtml(i18n('Open Schema Editor'))}</button>
+                <button type="button" id="luker_rpg_memory_open_schema_studio" class="menu_button">${escapeHtml(i18n('AI Iterate Schema'))}</button>
             </div>
             <label for="luker_rpg_memory_request_api_preset">${escapeHtml(i18n('Iteration AI API preset (Connection profile)'))}${fh('About Iteration AI API preset', 'Iteration AI API preset help body')}</label>
             <select id="luker_rpg_memory_request_api_preset" class="text_pole"></select>
@@ -279,6 +280,7 @@ function buildAdvancedTabHtml(deps) {
                 <input id="luker_rpg_memory_advanced_extract_crawl_reads" class="text_pole" type="number" min="1" max="30" step="1" />
             </label>
             <small style="display:block; opacity:0.8">${escapeHtml(i18n('Crawl mode shows a compact graph index and reads relevant nodes on demand before extraction.'))}</small>
+            <details class="memory-prompt-editor"><summary>${escapeHtml(i18n('Prompt templates'))}</summary>
             <label>${escapeHtml(i18n('Extraction Crawl Prompt'))}${fh('About Extraction Crawl Prompt', 'Extraction Crawl Prompt help body')}
                 <textarea id="luker_rpg_memory_advanced_extract_crawl_system_prompt" class="text_pole textarea_compact" rows="8"></textarea>
             </label>
@@ -296,55 +298,43 @@ function buildAdvancedTabHtml(deps) {
                     <textarea id="luker_rpg_memory_advanced_rag_rewrite_prompt" class="text_pole textarea_compact" rows="8"></textarea>
                 </label>
             </div>
+            </details>
             <small id="luker_rpg_memory_advanced_scope" style="opacity:0.85"></small>
             <div class="flex-container">
-                <div id="luker_rpg_memory_advanced_reset" class="menu_button">${escapeHtml(i18n('Reset Advanced Settings'))}</div>
-                <div id="luker_rpg_memory_advanced_save_global" class="menu_button">${escapeHtml(i18n('Save Advanced to Global'))}</div>
-                <div id="luker_rpg_memory_advanced_save_character" class="menu_button">${escapeHtml(i18n('Save Advanced to Character'))}</div>
-                <div id="luker_rpg_memory_advanced_clear_character_override" class="menu_button">${escapeHtml(i18n('Clear Character Advanced Override'))}</div>
+                <button type="button" id="luker_rpg_memory_advanced_reset" class="menu_button">${escapeHtml(i18n('Reset Advanced Settings'))}</button>
+                <button type="button" id="luker_rpg_memory_advanced_save_global" class="menu_button">${escapeHtml(i18n('Save Advanced to Global'))}</button>
+                <button type="button" id="luker_rpg_memory_advanced_save_character" class="menu_button">${escapeHtml(i18n('Save Advanced to Character'))}</button>
+                <button type="button" id="luker_rpg_memory_advanced_clear_character_override" class="menu_button">${escapeHtml(i18n('Clear Character Advanced Override'))}</button>
             </div>
         </fieldset>`;
 }
 
 export function buildMemoryGraphSettingsHtml(deps) {
     const { escapeHtml, i18n, UI_BLOCK_ID } = deps;
-    const enableSectionHtml = `
-            <label class="checkbox_label"><input id="luker_rpg_memory_enabled" type="checkbox" /><span>${escapeHtml(i18n('Enabled'))}</span></label>
-            <label class="checkbox_label"><input id="luker_rpg_memory_auto_extraction_enabled" type="checkbox" /><span>${escapeHtml(i18n('Auto extraction'))}</span></label>
-            <small style="opacity:0.8">${escapeHtml(i18n('Auto extraction help'))}</small>
-            <label class="checkbox_label"><input id="luker_rpg_memory_auto_compression_enabled" type="checkbox" /><span>${escapeHtml(i18n('Auto compression'))}</span></label>
-            <small style="opacity:0.8">${escapeHtml(i18n('Auto compression help'))}</small>
-            <label class="checkbox_label"><input id="luker_rpg_memory_recall_enabled" type="checkbox" /><span>${escapeHtml(i18n('Enable recall injection'))}</span></label>`;
-
-    const tabsHtml = renderLukerTabs({
-        id: 'luker_rpg_memory_tabs',
-        scope: 'memory-graph-drawer',
-        moduleName: 'memory_graph',
-        defaultTab: 'recall',
-        tabs: [
-            { key: 'recall',   label: i18n('Recall'),   contentHtml: buildRecallTabHtml(deps) },
-            { key: 'extract',  label: i18n('Extract'),  contentHtml: buildExtractTabHtml(deps) },
-            { key: 'graph',    label: i18n('Graph'),    contentHtml: buildGraphTabHtml(deps) },
-            { key: 'advanced', label: i18n('Advanced'), contentHtml: buildAdvancedTabHtml(deps) },
-        ],
-    });
-
-    const footerHtml = `
-            <small id="luker_rpg_memory_stats" style="opacity:0.8"></small>
-            <small id="luker_rpg_memory_status" style="opacity:0.8"></small>`;
-
+    const text = key => escapeHtml(i18n(key));
+    const toggle = (id, title, description) => `<label class="memory-control-card" for="${id}">
+        <span><strong>${text(title)}</strong><small>${text(description)}</small></span>
+        <input id="${id}" type="checkbox" />
+    </label>`;
+    const group = (title, description, content, open = false) => `<details class="memory-settings-group"${open ? ' open' : ''}>
+        <summary>${text(title)}</summary><p class="memory-section-description">${text(description)}</p>
+        <div class="memory-settings-fields">${content}</div>
+    </details>`;
     return `
-<div id="${UI_BLOCK_ID}" class="extension_container">
-    <div class="inline-drawer">
-        <div class="inline-drawer-toggle inline-drawer-header">
-            <b>${escapeHtml(i18n('Memory'))}</b>
-            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+<section id="${UI_BLOCK_ID}" class="memory-workspace-settings">
+    <div class="memory-overview">
+        <div class="memory-section-heading"><h3>${text('Memory overview')}</h3><p>${text('Choose what to remember and when to bring it into the conversation.')}</p></div>
+        <div class="memory-control-grid">
+            ${toggle('luker_rpg_memory_enabled', 'Enable memory', 'Keep and recall information across conversation turns.')}
+            ${toggle('luker_rpg_memory_recall_enabled', 'Recall into replies', 'Bring relevant memories into the reply context.')}
+            ${toggle('luker_rpg_memory_auto_extraction_enabled', 'Auto extraction', 'Extract new memories as the conversation progresses.')}
+            ${toggle('luker_rpg_memory_auto_compression_enabled', 'Auto compression', 'Organize older memories using the configured schema.')}
         </div>
-        <div class="inline-drawer-content">
-${enableSectionHtml}
-${tabsHtml}
-${footerHtml}
-        </div>
+        <div class="memory-status-line" aria-live="polite"><span id="luker_rpg_memory_stats"></span><span id="luker_rpg_memory_status"></span></div>
     </div>
-</div>`;
+    ${group('Retrieval and injection', 'Choose how memories are found and where they enter the reply context.', buildRecallTabHtml(deps))}
+    ${group('Extraction and organization', 'Choose the extraction model and how often new memories are recorded.', buildExtractTabHtml(deps))}
+    ${group('Schema and advanced rules', 'Manage memory types, context budgets and prompts. Advanced changes have separate save controls.', buildAdvancedTabHtml(deps))}
+    ${group('Data maintenance', 'Inspect, rebuild, import or export the current conversation memory.', buildGraphTabHtml(deps))}
+</section>`;
 }

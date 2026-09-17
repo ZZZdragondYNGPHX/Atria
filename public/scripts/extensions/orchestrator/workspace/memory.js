@@ -1,3 +1,4 @@
+import { i18n } from '../i18n.js';
 /** Mount existing Memory services with a Workspace-owned view lifetime. */
 export function createMemoryWorkspace({ getContext }) {
     return function renderMemory(parent, { el, button, detail, getView }) {
@@ -9,15 +10,13 @@ export function createMemoryWorkspace({ getContext }) {
         let disposeSettings = () => {};
 
         if (!service) {
-            status.textContent = 'Memory OS is not available in this host.';
+            status.textContent = i18n('Memory OS is not available in this host.');
             return () => controller.abort();
         }
 
-        if (typeof service.mountSettings === 'function') {
-            disposeSettings = service.mountSettings(container) || (() => {});
-        }
-
-        const knowledge = el('section', undefined, container);
+        const knowledge = el('section', undefined, container); knowledge.className = 'workspace-memory-section';
+        el('h3', 'Knowledge and sources', knowledge);
+        el('p', 'Explore remembered facts, relationships and their original sources.', knowledge).className = 'workspace-hint';
         const load = button(knowledge, 'Knowledge · Sources · Build & Maintenance', async () => {
             load.disabled = true;
             try {
@@ -30,6 +29,8 @@ export function createMemoryWorkspace({ getContext }) {
                 load.disabled = false;
             }
         });
+
+        if (typeof service.mountSettings === 'function') disposeSettings = service.mountSettings(container) || (() => {});
 
         return () => {
             controller.abort();

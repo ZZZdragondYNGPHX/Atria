@@ -1,3 +1,4 @@
+import { i18n, i18nFormat } from '../i18n.js';
 import { createWorkspaceFactoryPreset, getWorkspaceLibrary, workspaceHostProfile } from './host-presets.js';
 import { compileWorkspacePreset, updatePresetLibrary, importWorkspacePreset, exportWorkspacePreset, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
 import { CAPABILITIES } from '../../../lib/orchestration-engine/capabilities.js';
@@ -5,7 +6,8 @@ import { renderGraph } from '../../../lib/agent-workspace/graph-view.js';
 import { effectiveCapabilities } from '../../../lib/orchestration-engine/capabilities.js';
 
 export function createPresetAuthoring({ getSettings, save, getScope }) {
-    let selectedId = null;
+    let selectedId = null, searchText = '';
+    const modeLabel = mode => i18n({ spec: 'Fixed workflow · Spec', loop: 'Research · Loop', agenda: 'Dynamic delegation · Agenda', director: 'Direct writing · Director' }[mode] || mode);
     return function renderPresets(parent, ui) {
         const { el, button, detail } = ui;
         const settings = getSettings(), library = getWorkspaceLibrary(settings), scope = getScope();
@@ -15,25 +17,38 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
         const status = el('p', '', parent); status.setAttribute('role', 'status');
         const transact = action => {
             try {
-                if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) throw new Error('Workspace scope changed. Reopen the preset editor.');
+                if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) throw new Error(i18n('Workspace scope changed. Reopen the preset editor.'));
                 if (action.type === 'save') workspaceHostProfile(action.preset);
                 settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), action); save(); refresh();
             } catch (error) { status.textContent = error.message; }
         };
-        el('h3', 'Unified Preset Library', parent);
+        status.className = 'workspace-status';
+        const layout = el('div', undefined, parent); layout.className = 'workspace-presets';
+        const sidebar = el('section', undefined, layout); sidebar.className = 'workspace-library';
+        el('h3', 'Unified Preset Library', sidebar);
+        const editorPane = el('section', undefined, layout); editorPane.className = 'workspace-editor';
+        const section = (host, title, className = '') => {
+            const node = el('section', undefined, host); node.className = `workspace-section ${className}`;
+            el('h4', title, node); return node;
+        };
         const binding = resolvePresetBinding(library, scope);
-        el('p', `Effective: ${library.presets.find(item => item.id === binding.presetId)?.name || 'None'} · Selected by: ${binding.selectionSource}`, parent);
-        const search = el('input', undefined, parent); search.type = 'search'; search.placeholder = 'Search presets'; search.setAttribute('aria-label', 'Search presets');
-        const list = el('div', undefined, parent);
+        el('p', i18nFormat('Effective: ${0} · Selected by: ${1}', library.presets.find(item => item.id === binding.presetId)?.name || i18n('None'), i18n(binding.selectionSource)), sidebar).className = 'workspace-hint';
+        const search = el('input', undefined, sidebar); search.type = 'search'; search.placeholder = i18n('Search presets'); search.setAttribute('aria-label', i18n('Search presets')); search.value = searchText;
+        const list = el('div', undefined, sidebar); list.className = 'workspace-preset-list';
         for (const preset of library.presets) {
-            const item = button(list, `${preset.name} · ${preset.mode}`, () => { selectedId = preset.id; refresh(); }); item.dataset.name = preset.name.toLowerCase();
+            const item = button(list, `${preset.name} · ${modeLabel(preset.mode)}`, () => { selectedId = preset.id; refresh(); }); item.dataset.name = `${preset.name} ${modeLabel(preset.mode)}`.toLowerCase();
+            item.setAttribute('aria-pressed', String(preset.id === selectedId));
+            item.hidden = !item.dataset.name.includes(searchText.toLowerCase());
         }
-        search.addEventListener('input', () => { for (const item of list.children) item.hidden = !item.dataset.name.includes(search.value.toLowerCase()); });
-        const mode = el('select', undefined, parent); mode.setAttribute('aria-label', 'New preset mode');
-        for (const value of ['loop', 'spec', 'agenda', 'director']) { const option = el('option', value, mode); option.value = value; }
-        button(parent, 'New', () => { const preset = createWorkspaceFactoryPreset(mode.value); selectedId = preset.id; transact({ type: 'save', preset }); });
-        button(parent, 'Single Agent template', () => { const preset = createWorkspaceFactoryPreset('single'); selectedId = preset.id; transact({ type: 'save', preset }); });
-        const file = el('input', undefined, parent); file.type = 'file'; file.accept = '.json'; file.setAttribute('aria-label', 'Import native preset');
+        search.addEventListener('input', () => { searchText = search.value; for (const item of list.children) item.hidden = !item.dataset.name.includes(search.value.toLowerCase()); });
+        const creation = el('details', undefined, sidebar); el('summary', 'Create or import', creation);
+        creation.open = matchMedia('(min-width: 761px)').matches;
+        const mode = el('select', undefined, creation); mode.setAttribute('aria-label', i18n('New preset mode'));
+        for (const value of ['loop', 'spec', 'agenda', 'director']) { const option = el('option', modeLabel(value), mode); option.value = value; }
+        button(creation, 'New', () => { const preset = createWorkspaceFactoryPreset(mode.value); selectedId = preset.id; transact({ type: 'save', preset }); });
+        button(creation, 'Single Agent template', () => { const preset = createWorkspaceFactoryPreset('single'); selectedId = preset.id; transact({ type: 'save', preset }); });
+        const importLabel = el('label', 'Import native preset', creation);
+        const file = el('input', undefined, importLabel); file.type = 'file'; file.accept = '.json'; file.setAttribute('aria-label', i18n('Import native preset'));
         file.addEventListener('change', async () => {
             try {
                 if (!file.files[0]) return;
@@ -43,21 +58,29 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
             } catch (error) { status.textContent = error.message; }
         });
         if (!selected) return;
-        button(parent, 'Duplicate', () => { const newId = crypto.randomUUID(); selectedId = newId; transact({ type: 'duplicate', id: selected.id, newId }); });
-        button(parent, 'Export', () => {
+        const heading = el('div', undefined, editorPane); heading.className = 'workspace-editor-heading';
+        el('h3', selected.name, heading); el('span', modeLabel(selected.mode), heading);
+        const actions = el('div', undefined, editorPane); actions.className = 'workspace-actions';
+        button(actions, 'Duplicate', () => { const newId = crypto.randomUUID(); selectedId = newId; transact({ type: 'duplicate', id: selected.id, newId }); });
+        button(actions, 'Export', () => {
             const url = URL.createObjectURL(new Blob([exportWorkspacePreset(selected)], { type: 'application/json' }));
             const anchor = el('a'); anchor.href = url; anchor.download = `${selected.id}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
         });
-        button(parent, 'Delete and clear its bindings', () => {
-            if (confirm(`Delete “${selected.name}” and clear all its bindings?`)) transact({ type: 'delete', id: selected.id, replacementId: null });
+        button(actions, 'Delete and clear its bindings', () => {
+            if (confirm(i18nFormat('Delete “${0}” and clear all its bindings?', selected.name))) transact({ type: 'delete', id: selected.id, replacementId: null });
         });
+        actions.lastElementChild.className = 'workspace-danger';
+        const bindings = section(editorPane, 'Use this preset');
+        const bindingActions = el('div', undefined, bindings); bindingActions.className = 'workspace-actions';
         for (const [kind, subjectId] of [['default', ''], ['character', scope.character], ['conversation', scope.conversation]]) {
-            const action = button(parent, `Bind as ${kind}`, () => transact({ type: 'bind', scope: kind, subjectId, presetId: selected.id }));
+            const action = button(bindingActions, i18n({ default: 'Bind as default', character: 'Bind as character', conversation: 'Bind as conversation' }[kind]), () => transact({ type: 'bind', scope: kind, subjectId, presetId: selected.id }));
             action.disabled = kind !== 'default' && !subjectId;
-            if (kind !== 'default' && subjectId) button(parent, `Clear ${kind} binding`, () => transact({ type: 'bind', scope: kind, subjectId, presetId: null }));
+            if (kind !== 'default' && subjectId) button(bindingActions, i18n(kind === 'character' ? 'Clear character binding' : 'Clear conversation binding'), () => transact({ type: 'bind', scope: kind, subjectId, presetId: null }));
         }
         const draft = structuredClone(selected);
-        if (selected.mode !== 'loop') button(parent, selected.mode === 'spec' ? 'Append worker stage' : 'Add specialist', () => {
+        const basic = section(editorPane, 'Definition and limits', 'workspace-field-grid');
+        let fieldHost = basic;
+        if (selected.mode !== 'loop') button(actions, selected.mode === 'spec' ? 'Append worker stage' : 'Add specialist', () => {
             const plan = structuredClone(selected.planTemplate), suffix = crypto.randomUUID();
             const nodeId = `worker:${suffix}`, agentId = `agent:${suffix}`;
             const seedNode = plan.nodes.find(node => node.nodeId !== plan.entryNodeId && node.kind === 'agent') || plan.nodes.find(node => node.nodeId === plan.entryNodeId);
@@ -77,23 +100,23 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
             transact({ type: 'save', preset: { ...selected, planTemplate: plan } });
         });
         const field = (label, value, change, type = 'text') => {
-            const wrap = el('label', label, parent); const input = el(type === 'textarea' ? 'textarea' : 'input', undefined, wrap);
+            const wrap = el('label', label, fieldHost); const input = el(type === 'textarea' ? 'textarea' : 'input', undefined, wrap);
             if (type !== 'textarea') input.type = type;
             input.value = value; input.addEventListener('input', () => change(input.value)); return input;
         };
         field('Name', draft.name, value => { draft.name = value; });
-        for (const key of ['maxSteps', 'maxTasks', 'maxConcurrency']) field(key, draft.planTemplate.budgets[key], value => { draft.planTemplate.budgets[key] = Number(value); }, 'number');
+        for (const key of ['maxSteps', 'maxTasks', 'maxConcurrency']) field(i18n(key), draft.planTemplate.budgets[key], value => { draft.planTemplate.budgets[key] = Number(value); }, 'number');
         const plan = draft.planTemplate;
         const select = (host, label, values, value, change) => {
             const wrap = el('label', label, host), input = el('select', undefined, wrap);
-            for (const key of values) { const option = el('option', key, input); option.value = key; }
+            for (const key of values) { const option = el('option', i18n(key), input); option.value = key; }
             input.value = value; input.addEventListener('change', () => change(input.value)); return input;
         };
         if (selected.mode === 'agenda') for (const key of ['maxPlannerRounds', 'maxTotalRuns']) {
-            field(key, plan.scheduler[key], value => { plan.scheduler[key] = Number(value); }, 'number');
+            field(i18n(key), plan.scheduler[key], value => { plan.scheduler[key] = Number(value); }, 'number');
         }
-        const structure = el('details', undefined, parent); el('summary', 'Graph, arbitration and output ownership', structure);
-        el('p', `Output contract: ${plan.output.kind} · required capability: ${plan.output.submitCapability}`, structure);
+        const structure = el('details', undefined, editorPane); el('summary', 'Graph, arbitration and output ownership', structure);
+        el('p', i18nFormat('Output contract: ${0} · required capability: ${1}', i18n(plan.output.kind), i18n(plan.output.submitCapability)), structure);
         if (selected.mode === 'spec') {
             select(structure, 'Entry node', plan.nodes.map(node => node.nodeId), plan.entryNodeId, value => { plan.entryNodeId = value; });
         }
@@ -133,35 +156,39 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
         }
         el('p', selected.mode === 'agenda' ? 'Edit planner, worker pool and limits. Runtime task graphs are never saved here.'
             : selected.mode === 'director' ? 'Owner controls reply submission. Specialists return delegated results.'
-                : selected.mode === 'loop' ? 'One owner, bounded steps, tools and memory.' : 'Static graph with bounded edges, parallel stages and review.', parent);
+                : selected.mode === 'loop' ? 'One owner, bounded steps, tools and memory.' : 'Static graph with bounded edges, parallel stages and review.', editorPane);
         for (const agent of draft.planTemplate.agents) {
-            el('h4', agent.id, parent);
+            const agentCard = el('details', undefined, editorPane); agentCard.className = 'workspace-agent';
+            agentCard.open = draft.planTemplate.agents.length === 1;
+            el('summary', i18nFormat('Agent · ${0}', agent.id), agentCard);
+            fieldHost = agentCard;
             field('Instructions', agent.instructions || '', value => { agent.instructions = value; }, 'textarea');
             field('API profile', agent.modelProfile?.apiPresetName || '', value => { (agent.modelProfile ||= {}).apiPresetName = value; });
             field('Prompt profile', agent.modelProfile?.promptPresetName || '', value => { (agent.modelProfile ||= {}).promptPresetName = value; });
             field('Tools (comma separated; * = available host tools)', (agent.tools || []).join(', '), value => { agent.tools = value.split(',').map(item => item.trim()).filter(Boolean); });
-            const permissions = el('details', undefined, parent); el('summary', 'Capabilities', permissions);
+            const permissions = el('details', undefined, agentCard); el('summary', 'Capabilities', permissions);
             for (const capability of CAPABILITIES) {
                 const label = el('label', capability, permissions), input = el('input', undefined, label);
                 input.type = 'checkbox'; input.checked = agent.capabilities?.[capability] === true;
                 input.addEventListener('change', () => { agent.capabilities[capability] = input.checked; });
             }
             for (const node of plan.nodes.filter(node => node.agentId === agent.id)) {
-                const nodeCaps = el('details', undefined, permissions); el('summary', `Node ceiling · ${node.nodeId}`, nodeCaps);
+                const nodeCaps = el('details', undefined, permissions); el('summary', i18nFormat('Node ceiling · ${0}', node.nodeId), nodeCaps);
                 const effective = effectiveCapabilities(plan, node);
                 for (const capability of CAPABILITIES) {
-                    const label = el('label', `${capability} · currently ${effective[capability] ? 'allowed' : 'denied'}`, nodeCaps), input = el('input', undefined, label);
+                    const label = el('label', i18nFormat('${0} · currently ${1}', i18n(capability), i18n(effective[capability] ? 'Allowed' : 'Denied')), nodeCaps), input = el('input', undefined, label);
                     input.type = 'checkbox'; input.checked = node.capabilities?.[capability] === true;
                     input.addEventListener('change', () => { (node.capabilities ||= {})[capability] = input.checked; });
                 }
             }
         }
-        button(parent, 'Save definition for future runs', () => transact({ type: 'save', preset: draft }));
-        detail(parent, 'Preset Graph · compiled preview', compileWorkspacePreset(selected));
-        const graph = el('details', undefined, parent); el('summary', 'Preset Graph · visual', graph);
+        const saveBar = el('div', undefined, editorPane); saveBar.className = 'workspace-save-bar';
+        button(saveBar, 'Save definition for future runs', () => transact({ type: 'save', preset: draft }));
+        detail(editorPane, 'Preset Graph · compiled preview', compileWorkspacePreset(selected));
+        const graph = el('details', undefined, editorPane); el('summary', 'Preset Graph · visual', graph);
         graph.addEventListener('toggle', () => { if (graph.open && !graph.querySelector('svg')) renderGraph(graph, selected.planTemplate); });
-        const advanced = el('details', undefined, parent); el('summary', 'Advanced Plan structure editor', advanced);
-        const editor = el('textarea', undefined, advanced); editor.rows = 18; editor.value = JSON.stringify(selected.planTemplate, null, 2); editor.setAttribute('aria-label', 'Native Plan JSON');
+        const advanced = el('details', undefined, editorPane); el('summary', 'Advanced Plan structure editor', advanced);
+        const editor = el('textarea', undefined, advanced); editor.rows = 18; editor.value = JSON.stringify(selected.planTemplate, null, 2); editor.setAttribute('aria-label', i18n('Native Plan JSON'));
         button(advanced, 'Validate and save Plan', () => {
             try { transact({ type: 'save', preset: { ...draft, planTemplate: JSON.parse(editor.value) } }); } catch (error) { status.textContent = error.message; }
         });

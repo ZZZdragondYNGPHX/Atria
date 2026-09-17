@@ -63,9 +63,11 @@ try {
     await workspace.getByRole('button', { name: 'Export', exact: true }).click();
     const download = await downloaded;
     const saved = resolve(root, `../.git/workspace-native-${channel}.json`); await download.saveAs(saved);
+    await workspace.getByText('Create or import', { exact: true }).click();
     await workspace.getByLabel('Import native preset', { exact: true }).setInputFiles(saved);
     await page.waitForFunction(() => window.settings.agentWorkspace.presets.length === 6);
     assert.notEqual(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).id), library.bindings.entries[0].presetId);
+    await workspace.getByText('Create or import', { exact: true }).click();
     await workspace.getByRole('button', { name: 'Single Agent template', exact: true }).click();
     await page.waitForFunction(() => window.settings.agentWorkspace.presets.length === 7);
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 1);
@@ -150,6 +152,44 @@ try {
     await workspace.getByRole('status').filter({hasText:'fixture scope changed'}).waitFor();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
     await page.waitForFunction(() => window.memoryGraph.destroyed());
+    // Exercise the actual locale table: dynamic labels, attributes and responsive grids.
+    await page.evaluate(async () => {
+        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+        panel.destroyWorkspace();
+    });
+    await page.reload();
+    await page.evaluate(async () => {
+        const locales = {};
+        window.Luker = { getContext: () => ({
+            constants: { promptRoles: { SYSTEM: 0, USER: 1 }, wiPosition: {} },
+            addLocaleData: (locale, data) => { locales[locale] = { ...locales[locale], ...data }; },
+            translate: text => locales['zh-cn']?.[text] || ({ Name: '名称', Duplicate: '复制', Close: '关闭' }[text]) || text,
+        }) };
+        const { registerLocaleData } = await import('/scripts/extensions/orchestrator/i18n.js'); registerLocaleData();
+        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+        const { createPresetAuthoring } = await import('/scripts/extensions/orchestrator/workspace/authoring.js');
+        window.settings = {};
+        panel.configureWorkspace({ renderPresets: createPresetAuthoring({ getSettings: () => window.settings, save: () => {}, getScope: () => ({}) }) });
+        panel.openWorkspace('Presets');
+    });
+    await workspace.getByPlaceholder('搜索预设').fill('固定流程');
+    assert.equal(await workspace.locator('.workspace-preset-list button:visible').count(), 1);
+    await workspace.getByPlaceholder('搜索预设').fill('');
+    assert.equal(await workspace.getByRole('button', { name: '绑定当前角色', exact: true }).isDisabled(), true);
+    await workspace.getByLabel('最大执行步数', { exact: true }).fill('12');
+    await workspace.getByRole('button', { name: '保存定义供后续运行', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets[0].planTemplate.budgets.maxSteps), 12);
+    const text = await workspace.innerText();
+    for (const leaked of ['Effective:', 'Selected by:', 'Bind as', 'maxSteps', 'Append worker', 'Search presets']) assert(!text.includes(leaked), leaked);
+    for (const width of [320, 390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate(() => { document.querySelector('#workspace-content').scrollTop = 0; });
+        const dimensions = await workspace.evaluate(node => ({ width: node.clientWidth, scroll: node.scrollWidth,
+            content: node.querySelector('main').clientWidth, contentScroll: node.querySelector('main').scrollWidth }));
+        assert(dimensions.scroll <= dimensions.width + 1, JSON.stringify({width, dimensions}));
+        assert(dimensions.contentScroll <= dimensions.content + 1, JSON.stringify({width, dimensions}));
+        await page.screenshot({path:resolve(root, `../.git/workspace-zh-${width}.png`)});
+    }
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({browser:channel,authoring:true,importExport:true,bindings:true,recallRefresh:true,memoryTeardown:true,realMemoryWorker:true,memoryGuard:true,cancelOnce:true,replay:true,pageErrors:errors}));
 } finally {
