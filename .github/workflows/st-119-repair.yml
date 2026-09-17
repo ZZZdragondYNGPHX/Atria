@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
+          cat > /tmp/repair-chat-info.py <<'PY'
           from pathlib import Path
 
           path = Path('src/endpoints/chats.js')
@@ -151,10 +151,27 @@ jobs:
           path.write_text(new_text, encoding='utf-8')
           PY
 
-          node --check src/endpoints/chats.js
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/endpoints/chats.js
-          git commit -m "fix(upstream): reconcile 1.19 chat info scanning"
-          git push origin HEAD:chore/sillytavern-1.19.0-adapt
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin chore/sillytavern-1.19.0-adapt
+            git reset --hard origin/chore/sillytavern-1.19.0-adapt
+            python3 /tmp/repair-chat-info.py
+            node --check src/endpoints/chats.js
+
+            if git diff --quiet -- src/endpoints/chats.js; then
+              echo "getChatInfo is already repaired."
+              exit 0
+            fi
+
+            git add src/endpoints/chats.js
+            git commit -m "fix(upstream): reconcile 1.19 chat info scanning"
+            if git push origin HEAD:chore/sillytavern-1.19.0-adapt; then
+              exit 0
+            fi
+            echo "Branch advanced during repair; retrying from latest remote head (attempt $attempt)."
+          done
+
+          echo "Could not publish repair after concurrent updates."
+          exit 1
