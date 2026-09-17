@@ -104,5 +104,8 @@ jobs:
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
 
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+
       - name: Run unit tests
         run: npm run test:unit --prefix tests -- --maxWorkers=2

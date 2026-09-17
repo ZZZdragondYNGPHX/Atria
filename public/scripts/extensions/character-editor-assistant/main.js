@@ -1140,54 +1140,6 @@ async function clearHistoryRecords(context, { avatar = '' } = {}) {
     return true;
 }
 
-function makeCharacterEditorSessionId(prefix = 'cea_session') {
-    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function normalizeCharacterEditorSessionMessage(rawMessage) {
-    const role = String(rawMessage?.role || 'assistant').trim().toLowerCase();
-    const message = {
-        id: String(rawMessage?.id || '').trim() || makeConversationMessageId(),
-        role: role === 'user' ? 'user' : 'assistant',
-        content: String(rawMessage?.content || ''),
-        auto: Boolean(rawMessage?.auto),
-        at: Number(rawMessage?.at || Date.now()),
-    };
-    if (message.role !== 'assistant') {
-        return message;
-    }
-
-    const toolCalls = normalizePersistentToolCalls(rawMessage);
-    const toolResults = normalizePersistentToolResults(rawMessage, toolCalls);
-    if (toolCalls.length > 0) {
-        message.tool_calls = toolCalls;
-    }
-    if (toolResults.length > 0) {
-        message.tool_results = toolResults;
-    }
-    if (rawMessage?.toolSummary) {
-        message.toolSummary = String(rawMessage.toolSummary || '');
-    }
-    if (rawMessage?.toolState) {
-        message.toolState = String(rawMessage.toolState || '');
-    }
-    if (Array.isArray(rawMessage?.operations)) {
-        message.operations = rawMessage.operations
-            .filter(item => item && typeof item === 'object')
-            .map(item => ({
-                kind: String(item?.kind || '').trim(),
-                args: item?.args && typeof item.args === 'object' ? clone(item.args) : {},
-            }));
-    }
-    if (Array.isArray(rawMessage?.diffPreviews)) {
-        message.diffPreviews = clone(rawMessage.diffPreviews);
-    }
-    if (Array.isArray(rawMessage?.executionResults)) {
-        message.executionResults = clone(rawMessage.executionResults);
-    }
-    return message;
-}
-
 
 /**
  * Read the raw legacy CEA editor session bundle for an avatar. Returns the
@@ -3138,92 +3090,11 @@ export async function buildUnifiedCharacterEditorLiveSnapshot(context, avatar = 
     return { character, lorebooks };
 }
 
-function makeRuntimeToolCallId() {
-    return `call_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function makeConversationMessageId(prefix = 'cea_msg') {
-    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function createPersistentToolCallPayload(name, args = {}, id = '') {
-    const toolName = String(name || '').trim();
-    if (!toolName) {
-        return null;
-    }
-    const safeArgs = args && typeof args === 'object' ? clone(args) : {};
-    return {
-        id: String(id || '').trim() || makeRuntimeToolCallId(),
-        type: 'function',
-        function: {
-            name: toolName,
-            arguments: JSON.stringify(safeArgs),
-        },
-    };
-}
-
-function normalizePersistentToolCalls(message) {
-    const output = [];
-    for (const call of Array.isArray(message?.tool_calls) ? message.tool_calls : []) {
-        const payload = createPersistentToolCallPayload(
-            call?.function?.name,
-            (() => {
-                if (call?.function?.arguments && typeof call.function.arguments === 'string') {
-                    try {
-                        const parsed = JSON.parse(call.function.arguments);
-                        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-                    } catch {
-                        return {};
-                    }
-                }
-                if (call?.function?.arguments && typeof call.function.arguments === 'object') {
-                    return call.function.arguments;
-                }
-                return {};
-            })(),
-            call?.id,
-        );
-        if (payload) {
-            output.push(payload);
-        }
-    }
-    return output;
-}
-
-function normalizePersistentToolResults(message, toolCalls = []) {
-    const toolCallIds = new Set(toolCalls.map(call => String(call?.id || '').trim()).filter(Boolean));
-    return (Array.isArray(message?.tool_results) ? message.tool_results : [])
-        .map((item) => ({
-            tool_call_id: String(item?.tool_call_id || '').trim(),
-            content: String(item?.content ?? ''),
-        }))
-        .filter(item => item.tool_call_id && toolCallIds.has(item.tool_call_id));
-}
 
 const CHARACTER_EDITOR_ROOT_TEXT_FIELDS = ['name', 'description', 'personality', 'scenario', 'first_mes', 'mes_example'];
 const CHARACTER_EDITOR_DATA_TEXT_FIELDS = ['system_prompt', 'post_history_instructions', 'creator_notes'];
 const CHARACTER_EDITOR_DATA_ARRAY_FIELDS = ['alternate_greetings'];
 
-
-function buildCharacterEditorOperationKey(operation) {
-    const kind = String(operation?.kind || '').trim();
-    if (!kind) {
-        return '';
-    }
-    if (kind === 'lorebook_upsert_entry' || kind === 'lorebook_delete_entry') {
-        const uid = asFiniteInteger(operation?.args?.entry_uid, null);
-        const bookName = String(operation?.args?.book_name || '').trim();
-        return `${kind}:${bookName}:${Number.isInteger(uid) ? uid : '?'}`;
-    }
-    if (kind === 'set_primary_lorebook') {
-        return `${kind}:${String(operation?.args?.book_name || '').trim()}`;
-    }
-    if (kind === 'character_fields') {
-        const keys = Object.keys(operation?.args || {}).sort().join(',');
-        return `${kind}:${keys}`;
-    }
-    return `${kind}:${JSON.stringify(operation?.args || {})}`;
-}
 
 const CHARACTER_DIFF_TOP_FIELDS = Object.freeze(['name', 'description', 'personality', 'scenario', 'first_mes', 'mes_example', 'creator_notes', 'system_prompt', 'post_history_instructions']);
 const CHARACTER_DIFF_DATA_FIELDS = Object.freeze(['name', 'description', 'personality', 'scenario', 'first_mes', 'mes_example', 'creator_notes', 'system_prompt', 'post_history_instructions']);
@@ -4136,27 +4007,6 @@ async function rollbackJournalEntry(context, journalEntry, { avatar = '' } = {})
     }
 
     throw new Error(`Rollback is not supported for kind: ${kind}`);
-}
-
-
-function rebuildCharacterEditorRejectedOperationKeys(messages, targetSet) {
-    const set = targetSet instanceof Set ? targetSet : new Set();
-    set.clear();
-    for (const item of Array.isArray(messages) ? messages : []) {
-        if (String(item?.role || '').trim().toLowerCase() !== 'assistant') {
-            continue;
-        }
-        if (String(item?.toolState || '').trim().toLowerCase() !== 'rejected') {
-            continue;
-        }
-        for (const operation of Array.isArray(item?.operations) ? item.operations : []) {
-            const key = buildCharacterEditorOperationKey(operation);
-            if (key) {
-                set.add(key);
-            }
-        }
-    }
-    return set;
 }
 
 

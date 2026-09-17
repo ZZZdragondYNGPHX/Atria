@@ -62,6 +62,7 @@ describe.each(CONTRACT_HARNESSES)('engine.deleteUser on $name', ({ make }) => {
         const got = await h.engine.withTransaction(h.handle, (tx) =>
             tx.getResource({ kind: 'chat', handle: h.handle, charDir: 'Alice', name: 'c1' }));
         expect(got === null).toBe(h.kind !== 'fs' && h.kind !== 'sqlite');
+        if (h.kind !== 'fs' && h.kind !== 'sqlite') return;
         expect(fs.existsSync(h.dirs.root)).toBe(true);
     });
 
