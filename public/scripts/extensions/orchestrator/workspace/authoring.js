@@ -4,9 +4,11 @@ import { compileWorkspacePreset, updatePresetLibrary, importWorkspacePreset, exp
 import { CAPABILITIES } from '../../../lib/orchestration-engine/capabilities.js';
 import { renderGraph } from '../../../lib/agent-workspace/graph-view.js';
 import { effectiveCapabilities } from '../../../lib/orchestration-engine/capabilities.js';
+import { removeWorkspaceAgent } from './agent-editing.js';
 
 export function createPresetAuthoring({ getSettings, save, getScope }) {
     let selectedId = null, searchText = '';
+    let notice = '', focusAgentId = null;
     const modeLabel = mode => i18n({ spec: 'Fixed workflow · Spec', loop: 'Research · Loop', agenda: 'Dynamic delegation · Agenda', director: 'Direct writing · Director' }[mode] || mode);
     return function renderPresets(parent, ui) {
         const { el, button, detail } = ui;
@@ -14,13 +16,23 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
         const selected = library.presets.find(item => item.id === selectedId) || library.presets[0];
         selectedId = selected?.id;
         const refresh = () => { parent.replaceChildren(); renderPresets(parent, ui); };
-        const status = el('p', '', parent); status.setAttribute('role', 'status');
-        const transact = action => {
+        const status = el('p', notice, parent); status.setAttribute('role', 'status');
+        const showError = error => { status.textContent = i18n(error.message); status.scrollIntoView({ block: 'nearest' }); };
+        const askName = (label, initial = '') => {
+            const value = prompt(i18n(label), initial);
+            if (value === null) return null;
+            if (!value.trim()) { showError(new Error('Enter a non-empty name.')); return null; }
+            return value.trim();
+        };
+        const transact = (action, message = 'Changes saved.') => {
             try {
                 if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) throw new Error(i18n('Workspace scope changed. Reopen the preset editor.'));
-                if (action.type === 'save') workspaceHostProfile(action.preset);
-                settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), action); save(); refresh();
-            } catch (error) { status.textContent = error.message; }
+                if (action.type === 'save') {
+                    if (action.preset.planTemplate.agents.some(agent => agent.name !== undefined && !String(agent.name).trim())) throw new Error('Enter a non-empty name.');
+                    workspaceHostProfile(action.preset);
+                }
+                settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), action); save(); notice = i18n(message); refresh();
+            } catch (error) { showError(error); }
         };
         status.className = 'workspace-status';
         const layout = el('div', undefined, parent); layout.className = 'workspace-presets';
@@ -45,8 +57,14 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
         creation.open = matchMedia('(min-width: 761px)').matches;
         const mode = el('select', undefined, creation); mode.setAttribute('aria-label', i18n('New preset mode'));
         for (const value of ['loop', 'spec', 'agenda', 'director']) { const option = el('option', modeLabel(value), mode); option.value = value; }
-        button(creation, 'New', () => { const preset = createWorkspaceFactoryPreset(mode.value); selectedId = preset.id; transact({ type: 'save', preset }); });
-        button(creation, 'Single Agent template', () => { const preset = createWorkspaceFactoryPreset('single'); selectedId = preset.id; transact({ type: 'save', preset }); });
+        const createPreset = mode => {
+            const name = askName('New preset name'); if (!name) return;
+            const preset = createWorkspaceFactoryPreset(mode); preset.name = name; selectedId = preset.id; searchText = '';
+            focusAgentId = preset.planTemplate.agents[0]?.id;
+            transact({ type: 'save', preset }, i18nFormat('Created: ${0}', name));
+        };
+        button(creation, 'New', () => createPreset(mode.value));
+        button(creation, 'Single Agent template', () => createPreset('single'));
         const importLabel = el('label', 'Import native preset', creation);
         const file = el('input', undefined, importLabel); file.type = 'file'; file.accept = '.json'; file.setAttribute('aria-label', i18n('Import native preset'));
         file.addEventListener('change', async () => {
@@ -81,10 +99,12 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
         const basic = section(editorPane, 'Definition and limits', 'workspace-field-grid');
         let fieldHost = basic;
         if (selected.mode !== 'loop') button(actions, selected.mode === 'spec' ? 'Append worker stage' : 'Add specialist', () => {
-            const plan = structuredClone(selected.planTemplate), suffix = crypto.randomUUID();
+            const name = askName('New agent name'); if (!name) return;
+            const plan = structuredClone(draft.planTemplate), suffix = crypto.randomUUID();
             const nodeId = `worker:${suffix}`, agentId = `agent:${suffix}`;
             const seedNode = plan.nodes.find(node => node.nodeId !== plan.entryNodeId && node.kind === 'agent') || plan.nodes.find(node => node.nodeId === plan.entryNodeId);
             const agent = structuredClone(plan.agents.find(agent => agent.id === seedNode.agentId)); agent.id = agentId;
+            agent.name = name;
             agent.instructions = 'Analyze the assigned task and return a concise, source-grounded result.';
             agent.capabilities['reply.submit'] = false;
             const metadata = { legacyAgentId: suffix };
@@ -94,10 +114,14 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
             plan.agents.push(agent); plan.nodes.push(node);
             const from = selected.mode === 'spec' ? plan.output.ownerNodeId : plan.entryNodeId;
             plan.edges.push({ edgeId: `${from}->${nodeId}`, from, to: nodeId, condition: 'always' });
-            if (selected.mode === 'spec') plan.output.ownerNodeId = nodeId;
+            if (selected.mode === 'spec') {
+                plan.output.ownerNodeId = nodeId;
+                for (const item of plan.nodes) if (item.metadata) item.metadata.isFinalStage = item.nodeId === nodeId;
+            }
             if (selected.mode === 'director') node.required = false;
             if (selected.mode === 'agenda') { plan.scheduler.workerAgentIds.push(agentId); plan.scheduler.workerNodeIds[agentId] = nodeId; }
-            transact({ type: 'save', preset: { ...selected, planTemplate: plan } });
+            focusAgentId = agentId;
+            transact({ type: 'save', preset: { ...draft, planTemplate: plan } }, i18nFormat('Created: ${0}', name));
         });
         const field = (label, value, change, type = 'text') => {
             const wrap = el('label', label, fieldHost); const input = el(type === 'textarea' ? 'textarea' : 'input', undefined, wrap);
@@ -159,9 +183,20 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
                 : selected.mode === 'loop' ? 'One owner, bounded steps, tools and memory.' : 'Static graph with bounded edges, parallel stages and review.', editorPane);
         for (const agent of draft.planTemplate.agents) {
             const agentCard = el('details', undefined, editorPane); agentCard.className = 'workspace-agent';
-            agentCard.open = draft.planTemplate.agents.length === 1;
-            el('summary', i18nFormat('Agent · ${0}', agent.id), agentCard);
+            agentCard.open = draft.planTemplate.agents.length === 1 || focusAgentId === agent.id;
+            const summary = el('summary', i18nFormat('Agent · ${0}', agent.name || agent.id), agentCard);
+            if (focusAgentId === agent.id) {
+                focusAgentId = null;
+                requestAnimationFrame(() => { if (agentCard.isConnected) { summary.focus(); agentCard.scrollIntoView({ block: 'start' }); } });
+            }
             fieldHost = agentCard;
+            field('Agent name', agent.name || agent.id, value => {
+                agent.name = value.trim(); summary.textContent = i18nFormat('Agent · ${0}', agent.name || agent.id);
+            });
+            button(agentCard, 'Delete agent', () => {
+                if (!confirm(i18nFormat('Delete agent “${0}” and its execution node?', agent.name || agent.id))) return;
+                try { transact({ type: 'save', preset: removeWorkspaceAgent(draft, agent.id) }, i18nFormat('Deleted: ${0}', agent.name || agent.id)); } catch (error) { showError(error); }
+            });
             field('Instructions', agent.instructions || '', value => { agent.instructions = value; }, 'textarea');
             field('API profile', agent.modelProfile?.apiPresetName || '', value => { (agent.modelProfile ||= {}).apiPresetName = value; });
             field('Prompt profile', agent.modelProfile?.promptPresetName || '', value => { (agent.modelProfile ||= {}).promptPresetName = value; });
