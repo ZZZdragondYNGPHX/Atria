@@ -118,6 +118,7 @@
 #agent-memory-workspace .memory-danger-zone { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--workspace-border); }
 #agent-memory-workspace .memory-danger-zone > div { max-width: 320px; color: var(--SmartThemeEmColor, #e9a2a2); }
 @media (max-width: 500px) {
+    #agent-memory-workspace .workspace-defaults { grid-template-columns: minmax(0, 1fr); }
     #agent-memory-workspace .memory-control-grid { grid-template-columns: minmax(0, 1fr); }
     #agent-memory-workspace .memory-settings-group, #agent-memory-workspace .workspace-memory-section { padding: 14px; }
     #agent-memory-workspace .memory-settings-fields fieldset { padding: 10px; }

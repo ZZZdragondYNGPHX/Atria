@@ -15,7 +15,7 @@ import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
 
 import { executionConfigText, digestExecutionConfig, getOrchestrationOutcome } from './execution-mode-contract.js';
 
-import { CAPSULE_INJECT_POSITION_SCHEMA_VERSION, ORCH_ALLOWED_GENERATION_TYPES, ORCH_EXECUTION_MODE_AGENDA, ORCH_EXECUTION_MODE_DIRECTOR, ORCH_EXECUTION_MODE_LOOP, defaultSettings } from './defaults.js';
+import { AGENDA_PLANNER_TOOL, AGENDA_RESULT_TOOL, CAPSULE_INJECT_POSITION_SCHEMA_VERSION, ORCH_ALLOWED_GENERATION_TYPES, ORCH_EXECUTION_MODE_AGENDA, ORCH_EXECUTION_MODE_DIRECTOR, ORCH_EXECUTION_MODE_LOOP, defaultSettings } from './defaults.js';
 import {
     isAbortError,
     isAbortSignalLike,
@@ -51,15 +51,16 @@ import { createMemoryWorkspace } from './workspace/memory.js';
 import { updatePresetLibrary } from '../../lib/agent-workspace/presets.js';
 
 import { canReuseLatestOrchestrationSnapshot, clearCacheForChatChange, getActiveSnapshot, getChatKey, getCurrentAvatar, getLatestOrchestrationEntry, loadOrchestratorChatState, refreshActiveSnapshotFromCache, refreshOrchestratorStateAfterStructuralEvent, storeCompletedOrchestrationSnapshot } from './snapshot-cache.js';
-import { sanitizeConnectionProfileName } from './agent-resolution.js';
+import { sanitizeConnectionProfileName, renderConnectionProfileOptions, renderOpenAIPresetOptions } from './agent-resolution.js';
 
 import { runAgendaOrchestration } from './agenda-runtime.js';
-import { runSpecOrchestration } from './spec-runtime.js';
+import { runSpecOrchestration, buildNodeToolSet } from './spec-runtime.js';
 import { runLoopOrchestration, attachNotesFloorState } from './loop-runtime.js';
 import { handleDirectorDispatch } from './director-runtime.js';
 
 import { createContentPayloadCache } from './director-content-payload.js';
-import { executeLoopTool } from './loop-tools.js';
+import { executeLoopTool, getEnabledToolSchemas } from './loop-tools.js';
+import { buildMainAgentToolSchemas, buildSubAgentToolSchemas } from './director-tools.js';
 import {
     registerOrchestrationTool,
     unregisterOrchestrationTool,
@@ -79,8 +80,8 @@ import { maybeAttachSkillsToOrchPresetExport, maybeAttachSkillsToPresetExport } 
 // (alongside the other mode literals) and re-exported by persistence.js
 // for callers that want it bundled with `sanitizeLoopProfile`. We import
 // from defaults.js so character-overrides.js / editor-state.js share one
-// import path; the persistence import here only pulls the sanitizer.
-import { sanitizeLoopProfile } from './persistence.js';
+// import path; persistence also supplies the shared tool flag resolution.
+import { sanitizeLoopProfile, resolveAgentToolFlags, hasAnyToolEnabled } from './persistence.js';
 
 import { collectResolvedSkillsForOrchPreset } from './collect-active-skills.js';
 
@@ -795,22 +796,9 @@ function ensureUi() {
     }
     const intro = document.createElement('p'); intro.className = 'agent-memory-intro';
     intro.textContent = i18n('Configure agents, presets and memory in one workspace.'); content.append(intro);
-    const enabledLabel = document.createElement('label'); enabledLabel.className = 'agent-memory-toggle'; enabledLabel.textContent = i18n('Enable agent orchestration');
-    const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = getSettings().enabled;
-    enabled.addEventListener('change', () => { getSettings().enabled = enabled.checked; saveSettingsDebounced(); });
-    enabledLabel.append(enabled); content.append(enabledLabel);
 
     const workspace = document.createElement('button'); workspace.type = 'button'; workspace.className = 'menu_button';
     workspace.textContent = i18n('Open Agent & Memory Workspace'); workspace.addEventListener('click', () => openWorkspace('Presets')); content.append(workspace);
-
-    const connections = document.createElement('fieldset'); connections.className = 'agent-memory-connections';
-    const legend = document.createElement('legend'); legend.textContent = i18n('Connection defaults'); connections.append(legend); content.append(connections);
-    for (const [key, labelKey] of [['llmNodeApiPresetName', 'Default API profile'], ['llmNodePresetName', 'Default prompt preset']]) {
-        const wrapper = document.createElement('label'); wrapper.textContent = i18n(labelKey);
-        const input = document.createElement('input'); input.className = 'text_pole'; input.value = getSettings()[key] || '';
-        input.addEventListener('change', () => { getSettings()[key] = input.value; saveSettingsDebounced(); });
-        wrapper.append(input); connections.append(wrapper);
-    }
 
     const status = document.createElement('p'); status.id = 'luker_orch_status'; status.setAttribute('role', 'status'); content.append(status);
     const notes = document.createElement('div'); content.append(notes); host.append(section);
@@ -822,6 +810,32 @@ jQuery(() => {
     registerLocaleData();
     configureWorkspace({
         renderPresets: createPresetAuthoring({ getSettings, save: saveSettingsDebounced,
+            renderProfileOptions: (kind, value, inherited) => kind === 'api'
+                ? renderConnectionProfileOptions(value, i18n(inherited ? 'Use workspace default' : '(Current API config)'))
+                : renderOpenAIPresetOptions(getContext(), value, i18n(inherited ? 'Use workspace default' : '(Current preset)')),
+            getTools: (preset, agent) => {
+                const plan = preset.planTemplate;
+                const options = plan.metadata?.hostAdapters?.luker || {};
+                // Read schemas only: opening the editor must never compile custom tool bodies.
+                const customToolRegistry = new Map((options.customTools || []).map(tool => [tool.name, { schema: { type: 'function', function: { name: tool.name, description: tool.description } } }]));
+                const config = agent.metadata?.hostAdapters?.luker || {};
+                const tools = [];
+                for (const node of plan.nodes.filter(node => node.agentId === agent.id)) {
+                    if (preset.mode === 'loop') tools.push(...getEnabledToolSchemas({ ...options, ...config }, customToolRegistry).map(schema => schema.function));
+                    if (preset.mode === 'spec' || preset.mode === 'agenda') {
+                        const flags = resolveAgentToolFlags(preset.mode === 'spec' ? node.metadata?.nodeSpec?.tools : config.tools, options.defaultTools || null, null);
+                        if (hasAnyToolEnabled(flags)) tools.push(...getEnabledToolSchemas({ tools: flags }, customToolRegistry).filter(schema => schema.function.name !== 'finalize').map(schema => schema.function));
+                        if (preset.mode === 'spec') tools.push(...buildNodeToolSet(node.metadata?.nodeSpec || {}, { isFinalStage: node.metadata?.isFinalStage }).map(schema => schema.function));
+                        else tools.push({ name: node.nodeId === 'planner' ? AGENDA_PLANNER_TOOL : AGENDA_RESULT_TOOL });
+                    }
+                    if (preset.mode === 'director') {
+                        const build = node.nodeId === plan.output.ownerNodeId ? buildMainAgentToolSchemas : buildSubAgentToolSchemas;
+                        tools.push(...build({ subAgents: plan.nodes.filter(item => item.nodeId !== plan.output.ownerNodeId),
+                            tools: resolveAgentToolFlags(config.tools, options.tools) || {}, customToolRegistry }).map(schema => schema.function));
+                    }
+                }
+                return tools;
+            },
             getScope: () => ({ character: getCurrentAvatar(getContext()), conversation: getChatKey(getContext()) }) }),
         renderMemory: createMemoryWorkspace({ getContext }),
     });

@@ -43,12 +43,27 @@ try {
             },
         }) }) });
         panel.configureWorkspace({ renderPresets: createPresetAuthoring({ getSettings: () => window.settings,
+            renderProfileOptions: (kind, value, inherited) => {
+                const select = document.createElement('select');
+                for (const name of ['', `${kind}-one`, `${kind}-two`, value].filter((name, index, names) => names.indexOf(name) === index)) {
+                    const option = document.createElement('option'); option.value = name; option.textContent = name || (inherited ? 'Use workspace default' : 'Current'); select.append(option);
+                }
+                return select.innerHTML;
+            },
+            getTools: () => [{ name: 'chat_search' }, { name: 'memory_recall' }],
             getScope: () => window.scope, save: () => localStorage.setItem('settings', JSON.stringify(window.settings)) }),
         renderMemory: createMemoryWorkspace({ getContext }) });
         panel.initWorkspace(); panel.initWorkspace(); panel.openWorkspace('Presets');
     });
     const workspace = page.locator('#agent-memory-workspace');
     assert.equal(await workspace.getByText('Unified Preset Library', { exact: true }).count(), 1);
+    await workspace.getByLabel('Enable agent orchestration', { exact: true }).check();
+    await workspace.getByLabel('Default API profile', { exact: true }).selectOption('api-one');
+    await workspace.getByLabel('Default prompt preset', { exact: true }).selectOption('prompt-one');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('settings')).enabled), true);
+    assert.equal(await page.evaluate(() => window.settings.llmNodeApiPresetName), 'api-one');
+    // Every shipped preset retains nonempty, role-specific capability defaults.
+    assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.every(p => p.planTemplate.agents.every(a => a.tools.includes('*') && a.capabilities['tool.call']))), true);
     await workspace.getByRole('button', { name: 'Duplicate', exact: true }).click();
     await workspace.getByLabel('Name', {exact:true}).fill('Browser preset <script>');
     await workspace.getByRole('button', { name: 'Save definition for future runs', exact: true }).click();
@@ -71,6 +86,21 @@ try {
     await workspace.getByRole('button', { name: 'Single Agent template', exact: true }).click();
     await page.waitForFunction(() => window.settings.agentWorkspace.presets.length === 7);
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 1);
+    await workspace.getByLabel('API profile', { exact: true }).selectOption('api-two');
+    await workspace.getByLabel('Prompt profile', { exact: true }).selectOption('prompt-two');
+    assert.equal(await workspace.getByLabel('Use all available host tools', { exact: true }).isChecked(), true);
+    assert.equal(await workspace.getByLabel('chat_search', { exact: true }).isChecked(), true);
+    await workspace.getByLabel('Use all available host tools', { exact: true }).uncheck();
+    await workspace.getByLabel('chat_search', { exact: true }).check();
+    await workspace.getByRole('button', { name: 'Save definition for future runs', exact: true }).click();
+    const agent = await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.agents[0]);
+    assert.deepEqual(agent.tools, ['chat_search']);
+    assert.deepEqual(agent.modelProfile, { apiPresetName: 'api-two', promptPresetName: 'prompt-two' });
+    await workspace.getByLabel('chat_search', { exact: true }).uncheck();
+    await workspace.getByLabel('API profile', { exact: true }).selectOption('');
+    await workspace.getByRole('button', { name: 'Save definition for future runs', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.agents[0].tools), []);
+    assert.equal(await workspace.getByLabel('API profile', { exact: true }).inputValue(), '');
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 2);
     // Keyboard navigation and explicit Node capability controls use native labels.

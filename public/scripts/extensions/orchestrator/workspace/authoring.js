@@ -5,7 +5,7 @@ import { CAPABILITIES } from '../../../lib/orchestration-engine/capabilities.js'
 import { renderGraph } from '../../../lib/agent-workspace/graph-view.js';
 import { effectiveCapabilities } from '../../../lib/orchestration-engine/capabilities.js';
 
-export function createPresetAuthoring({ getSettings, save, getScope }) {
+export function createPresetAuthoring({ getSettings, save, getScope, renderProfileOptions, getTools = () => [] }) {
     let selectedId = null, searchText = '';
     const modeLabel = mode => i18n({ spec: 'Fixed workflow · Spec', loop: 'Research · Loop', agenda: 'Dynamic delegation · Agenda', director: 'Direct writing · Director' }[mode] || mode);
     return function renderPresets(parent, ui) {
@@ -15,6 +15,31 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
         selectedId = selected?.id;
         const refresh = () => { parent.replaceChildren(); renderPresets(parent, ui); };
         const status = el('p', '', parent); status.setAttribute('role', 'status');
+        const profileSelect = (host, label, kind, value, change, inherited = false) => {
+            const wrap = el('label', label, host), input = el('select', undefined, wrap);
+            input.setAttribute('aria-label', i18n(label));
+            const populate = () => {
+                const current = input.value || value;
+                if (renderProfileOptions) input.innerHTML = renderProfileOptions(kind, current, inherited);
+                else {
+                    input.replaceChildren();
+                    const empty = el('option', inherited ? 'Use workspace default' : 'Use current connection / preset', input); empty.value = '';
+                    if (current) { const option = el('option', current, input); option.value = current; }
+                }
+                input.value = current;
+            };
+            populate();
+            input.addEventListener('focus', populate);
+            input.addEventListener('change', () => { value = input.value; change(value); });
+            return input;
+        };
+        const defaults = el('section', undefined, parent); defaults.className = 'workspace-section workspace-field-grid workspace-defaults';
+        const enabledLabel = el('label', 'Enable agent orchestration', defaults), enabled = el('input', undefined, enabledLabel);
+        enabled.type = 'checkbox'; enabled.checked = settings.enabled === true;
+        enabled.addEventListener('change', () => { getSettings().enabled = enabled.checked; save(); });
+        for (const [key, label, kind] of [['llmNodeApiPresetName', 'Default API profile', 'api'], ['llmNodePresetName', 'Default prompt preset', 'prompt']]) {
+            profileSelect(defaults, label, kind, settings[key] || '', value => { getSettings()[key] = value; save(); });
+        }
         const transact = action => {
             try {
                 if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) throw new Error(i18n('Workspace scope changed. Reopen the preset editor.'));
@@ -163,9 +188,28 @@ export function createPresetAuthoring({ getSettings, save, getScope }) {
             el('summary', i18nFormat('Agent · ${0}', agent.id), agentCard);
             fieldHost = agentCard;
             field('Instructions', agent.instructions || '', value => { agent.instructions = value; }, 'textarea');
-            field('API profile', agent.modelProfile?.apiPresetName || '', value => { (agent.modelProfile ||= {}).apiPresetName = value; });
-            field('Prompt profile', agent.modelProfile?.promptPresetName || '', value => { (agent.modelProfile ||= {}).promptPresetName = value; });
-            field('Tools (comma separated; * = available host tools)', (agent.tools || []).join(', '), value => { agent.tools = value.split(',').map(item => item.trim()).filter(Boolean); });
+            profileSelect(agentCard, 'API profile', 'api', agent.modelProfile?.apiPresetName || '', value => { (agent.modelProfile ||= {}).apiPresetName = value; }, true);
+            profileSelect(agentCard, 'Prompt profile', 'prompt', agent.modelProfile?.promptPresetName || '', value => { (agent.modelProfile ||= {}).promptPresetName = value; }, true);
+            const tools = el('details', undefined, agentCard); tools.open = true; el('summary', 'Available tools', tools);
+            el('p', 'Tools are limited by mode settings and effective capabilities. Empty selection disables tools.', tools).className = 'workspace-hint';
+            const catalog = new Map(getTools(draft, agent).map(tool => [tool.name, tool]));
+            for (const name of agent.tools || []) if (name !== '*' && !catalog.has(name)) catalog.set(name, { name, missing: true });
+            const allLabel = el('label', 'Use all available host tools', tools), all = el('input', undefined, allLabel);
+            all.type = 'checkbox'; all.checked = agent.tools?.includes('*') === true;
+            const choices = [];
+            for (const tool of catalog.values()) {
+                const label = el('label', `${tool.displayName || tool.name}${tool.missing ? ` ${i18n('(missing)')}` : ''}`, tools);
+                label.title = tool.description || tool.name;
+                const input = el('input', undefined, label); input.type = 'checkbox';
+                input.checked = all.checked || agent.tools?.includes(tool.name) === true;
+                input.disabled = all.checked;
+                choices.push({ name: tool.name, input });
+                input.addEventListener('change', () => { agent.tools = choices.filter(item => item.input.checked).map(item => item.name); });
+            }
+            all.addEventListener('change', () => {
+                for (const item of choices) { item.input.disabled = all.checked; item.input.checked = all.checked; }
+                agent.tools = all.checked ? ['*'] : [];
+            });
             const permissions = el('details', undefined, agentCard); el('summary', 'Capabilities', permissions);
             for (const capability of CAPABILITIES) {
                 const label = el('label', capability, permissions), input = el('input', undefined, label);
