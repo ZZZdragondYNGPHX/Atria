@@ -52,8 +52,8 @@ Before implementation, inspect the current fork and determine:
 - which state/store/service/event/hook/API/UI/persistence layers are involved;
 - whether configuration is global, character-scoped, chat-scoped, or another scope;
 - whether import/export or migration behavior is affected;
-- whether Web and Android share the same code path;
-- whether Android shell, WebView, native bridge, storage permissions, keyboard/viewport, or filesystem behavior matters;
+- whether desktop Web and mobile browsers served by Termux share the same code path;
+- whether Termux startup/storage, mobile keyboard/viewport, or filesystem behavior matters (native Android shell/WebView checks only for an explicitly requested APK task);
 - whether the feature depends on private behavior already present in `custom-release`;
 - whether the requested design should intentionally differ from upstream.
 
@@ -84,7 +84,7 @@ Before committing:
 1. Inspect the complete diff and remove unrelated/debug changes.
 2. Add or update the most relevant tests when practical.
 3. Run targeted tests first.
-4. Run syntax, lint, unit, regression/e2e, build, or Android checks appropriate to the touched code.
+4. Run syntax, lint, unit, regression/e2e and desktop/mobile browser checks appropriate to the touched code. Do not build APKs unless explicitly requested.
 5. Report exactly which checks were actually run and which were not. Never call an unexecuted check "passed."
 
 If write access is available, commit the feature to the isolated `feat/*` branch.
@@ -135,7 +135,7 @@ At the end of every feature task, report:
 - design summary;
 - changed files;
 - new persistent fields/configuration and migration status, if any;
-- Web/Android differences;
+- desktop Web/mobile Termux differences;
 - tests/checks actually run and results;
 - resulting commit SHA;
 - whether the feature has been merged into `custom-release`;
@@ -157,7 +157,7 @@ Expected result:
 
 Constraints:
 
-[Compatibility, Android/Web, persistence, scope, UI, etc.]
+[Compatibility, desktop Web/mobile Termux, persistence, scope, UI, etc.]
 
 References / screenshots / files:
 

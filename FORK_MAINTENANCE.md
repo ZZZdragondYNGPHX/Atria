@@ -2,6 +2,15 @@
 
 This fork is maintained as an independent personal fork. The normal development baseline is `custom-release`.
 
+## Daily delivery and verification
+
+- Desktop: run Luker locally and open it in a browser.
+- Phone: run Luker through the existing Termux launcher and open it in the phone browser.
+- Do not build or upload APKs for normal fixes/features. The fork APK workflow is manual-only;
+  use it only for an explicit APK request. Keep the existing Android code, not an automatic build gate.
+- Run targeted tests and desktop/mobile-width browser checks. Distinguish those checks from
+  a real Termux-device or real-model run; never report unexecuted acceptance as passed.
+
 ## AI / automation entry point
 
 Any AI assistant, coding agent, or automation working on this fork should first read from `custom-release`:
@@ -58,7 +67,7 @@ Full bug instructions live in `NEW_BUG_PROMPT.md`.
 3. Create a fresh `feat/<short-feature-name>` from `custom-release`.
 4. Identify the correct module, state, service, UI, API, and persistence paths before coding.
 5. Reuse existing infrastructure and prefer a minimal coherent implementation over duplicate subsystems.
-6. Test the feature, including Web/Android and persistence/migration implications when relevant.
+6. Test the feature, including desktop Web/mobile Termux and persistence/migration implications when relevant.
 7. Keep the feature isolated and traceable.
 8. Merge it back into `custom-release` after it is sufficiently understood and checked for the user's use case.
 9. Update long-term handoff notes when needed.
