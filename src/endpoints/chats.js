@@ -968,22 +968,8 @@ function createIntegrityMismatchError(filePath, expectedIntegrity) {
  * @typedef {(textArray: string[]) => boolean} ChatMatchFunction
  */
 export async function getChatInfo(pathToFile, additionalData = {}, withMetadata = false, matcher = null) {
-    return new Promise(async (res) => {
-        const parsedPath = path.parse(pathToFile);
-        const stats = await fs.promises.stat(pathToFile);
-        const hasMatcher = (typeof matcher === 'function');
-
-        const chatData = {
-            match: false,
-            file_id: parsedPath.name,
-            file_name: parsedPath.base,
-            file_size: formatBytes(stats.size),
-            chat_items: 0,
-            mes: '[The chat is empty]',
-            last_mes: stats.mtimeMs,
-            sort_time: stats.mtimeMs,
-            ...additionalData,
-        };
+    const parsedPath = path.parse(pathToFile);
+    const hasMatcher = (typeof matcher === 'function');
 
     // A chat that is deleted while a scan is running is not an error: treat it like a corrupted chat and move on.
     const chatVanished = () => {
@@ -1009,6 +995,7 @@ export async function getChatInfo(pathToFile, additionalData = {}, withMetadata 
         chat_items: 0,
         mes: '[The chat is empty]',
         last_mes: stats.mtimeMs,
+        sort_time: stats.mtimeMs,
         ...additionalData,
     };
 
@@ -1019,7 +1006,7 @@ export async function getChatInfo(pathToFile, additionalData = {}, withMetadata 
     return new Promise((res, rej) => {
         const fileStream = fs.createReadStream(pathToFile);
 
-        // The file can still disappear between the stat above and the stream opening
+        // The file can still disappear between the stat above and the stream opening.
         fileStream.on('error', (error) => {
             if (error.code === 'ENOENT') {
                 res(chatVanished());
@@ -1033,7 +1020,7 @@ export async function getChatInfo(pathToFile, additionalData = {}, withMetadata 
             crlfDelay: Infinity,
         });
 
-        // readline re-emits input stream errors; without a listener the emit throws
+        // readline re-emits input stream errors; without a listener the emit throws.
         rl.on('error', (error) => {
             if (error.code === 'ENOENT') {
                 res(chatVanished());
@@ -1053,7 +1040,7 @@ export async function getChatInfo(pathToFile, additionalData = {}, withMetadata 
                     chatData.chat_metadata = jsonData.chat_metadata;
                 }
             }
-            // Skip matching if any match was already found
+            // Skip matching if any match was already found.
             if (hasMatcher && !hasAnyMatch && itemCounter > 0) {
                 const jsonData = tryParse(line);
                 if (jsonData) {
@@ -1067,6 +1054,7 @@ export async function getChatInfo(pathToFile, additionalData = {}, withMetadata 
             itemCounter++;
             lastLine = line;
         });
+
         rl.on('close', () => {
             if (lastLine) {
                 const jsonData = tryParse(lastLine);
@@ -1076,21 +1064,17 @@ export async function getChatInfo(pathToFile, additionalData = {}, withMetadata 
                     chatData.last_mes = jsonData.send_date || new Date(Math.round(stats.mtimeMs)).toISOString();
                     chatData.sort_time = normalizeRecentChatSortTime(chatData.last_mes, stats.mtimeMs);
                     chatData.match = hasMatcher ? hasAnyMatch : true;
-
                     res(chatData);
                 } else {
-                    // The last line is unparseable or lacks known fields (e.g. a truncated write or an external edit).
-                    // Resolve a degraded preview from the stat data instead of hiding an otherwise intact chat
-                    // from the chat list, search and recents.
+                    // A truncated write or external edit should not hide an otherwise intact chat.
                     console.warn('Found an invalid or corrupted last line in a chat file:', pathToFile);
-                    // Exclude both the metadata line and the unreadable trailing line.
                     chatData.chat_items = Math.max(itemCounter - 2, 0);
                     chatData.mes = '[The message is empty]';
                     chatData.match = hasMatcher ? hasAnyMatch : true;
                     res(chatData);
                 }
             } else {
-                // The file was truncated after the stat reported a non-zero size; treat it like an empty chat
+                // The file was truncated after stat reported a non-zero size; treat it like an empty chat.
                 res(chatData);
             }
         });
