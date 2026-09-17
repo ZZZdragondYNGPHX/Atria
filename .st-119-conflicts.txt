@@ -1,0 +1,7 @@
+SillyTavern 1.19.0 adaptation conflict report
+Generated from official 1.18.0 -> 1.19.0 delta.
+
+conflict_count=0
+
+
+Unmerged index before resolving to Luker side:
