@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply SillyTavern 1.18.0 -> 1.19.0 delta per file
+      - name: Merge official 1.19.0 delta with Luker priority on overlaps
         shell: bash
         run: |
           set -euo pipefail
@@ -28,117 +28,123 @@ jobs:
 
           git remote remove sillytavern 2>/dev/null || true
           git remote add sillytavern https://github.com/SillyTavern/SillyTavern.git
-          git fetch --force sillytavern \
-            refs/tags/1.18.0:refs/tags/st-upstream-1.18.0 \
-            refs/tags/1.19.0:refs/tags/st-upstream-1.19.0
+          git fetch --force sillytavern refs/tags/1.18.0:refs/tags/st-upstream-1.18.0 refs/tags/1.19.0:refs/tags/st-upstream-1.19.0
 
           report=.st-119-conflicts.txt
-          : > "$report"
-          printf 'SillyTavern 1.19.0 adaptation conflict report\n' >> "$report"
-          printf 'Generated from official 1.18.0 -> 1.19.0 delta.\n' >> "$report"
-          printf 'Conflict hunks are resolved in favor of Luker while retaining non-conflicting upstream hunks.\n\n' >> "$report"
+          printf '%s\n' "SillyTavern 1.19.0 adaptation report" > "$report"
+          printf '%s\n' "Base: official 1.18.0; target: official 1.19.0" >> "$report"
+          printf '%s\n\n' "Policy: preserve Luker only inside overlapping hunks; absorb non-overlapping upstream changes." >> "$report"
+
+          clean_count=0
+          merged_count=0
+          conflict_count=0
+          binary_overlap_count=0
+          added_overlap_count=0
+          delete_overlap_count=0
+          kept_delete_count=0
 
           mapfile -t paths < <(git diff --name-only st-upstream-1.18.0 st-upstream-1.19.0)
-          conflicts=()
-          failures=()
-          clean_count=0
 
           for path in "${paths[@]}"; do
-            patch="/tmp/st-119-${RANDOM}-${RANDOM}.patch"
-            git diff --binary st-upstream-1.18.0 st-upstream-1.19.0 -- "$path" > "$patch"
-            [ -s "$patch" ] || { rm -f "$patch"; continue; }
+            base_exists=0
+            theirs_exists=0
+            ours_exists=0
+            git cat-file -e "st-upstream-1.18.0:$path" 2>/dev/null && base_exists=1 || true
+            git cat-file -e "st-upstream-1.19.0:$path" 2>/dev/null && theirs_exists=1 || true
+            test -e "$path" && ours_exists=1 || true
 
-            set +e
-            output=$(git apply --3way --index "$patch" 2>&1)
-            status=$?
-            set -e
+            tmp_id="${RANDOM}-${RANDOM}"
+            base_file="/tmp/st119-base-$tmp_id"
+            theirs_file="/tmp/st119-theirs-$tmp_id"
+            ours_file="/tmp/st119-ours-$tmp_id"
+            merged_file="/tmp/st119-merged-$tmp_id"
 
-            if [ "$status" -eq 0 ]; then
-              clean_count=$((clean_count + 1))
-              rm -f "$patch"
-              continue
-            fi
+            if [ "$base_exists" -eq 1 ] && [ "$theirs_exists" -eq 1 ]; then
+              if [ "$ours_exists" -eq 0 ]; then
+                kept_delete_count=$((kept_delete_count + 1))
+                printf '[luker-delete] %s\n' "$path" >> "$report"
+                continue
+              fi
 
-            if git diff --name-only --diff-filter=U -- "$path" | grep -Fxq "$path"; then
-              conflicts+=("$path")
-              printf '\n[conflict] %s\n%s\n' "$path" "$output" >> "$report"
+              git show "st-upstream-1.18.0:$path" > "$base_file"
+              git show "st-upstream-1.19.0:$path" > "$theirs_file"
 
-              if [ -f "$path" ]; then
-                TARGET_PATH="$path" python3 - <<'PY'
-import os
-from pathlib import Path
-
-path = Path(os.environ['TARGET_PATH'])
-raw = path.read_text(encoding='utf-8', errors='surrogateescape').splitlines(keepends=True)
-out = []
-i = 0
-while i < len(raw):
-    if raw[i].startswith('<<<<<<< '):
-        i += 1
-        ours = []
-        while i < len(raw) and not raw[i].startswith('======='):
-            ours.append(raw[i])
-            i += 1
-        if i >= len(raw):
-            raise SystemExit(f'Unterminated conflict in {path}')
-        i += 1
-        while i < len(raw) and not raw[i].startswith('>>>>>>> '):
-            i += 1
-        if i >= len(raw):
-            raise SystemExit(f'Unterminated conflict in {path}')
-        i += 1
-        out.extend(ours)
-    else:
-        out.append(raw[i])
-        i += 1
-path.write_text(''.join(out), encoding='utf-8', errors='surrogateescape')
-PY
-                git add -A -- "$path"
-              else
-                git reset HEAD -- "$path" >/dev/null 2>&1 || true
-                if git cat-file -e "HEAD:$path" 2>/dev/null; then
-                  git checkout HEAD -- "$path"
-                  git add -- "$path"
-                else
-                  git rm -f --cached --ignore-unmatch -- "$path" >/dev/null 2>&1 || true
+              if cmp -s "$path" "$base_file"; then
+                git checkout st-upstream-1.19.0 -- "$path"
+                clean_count=$((clean_count + 1))
+              elif cmp -s "$path" "$theirs_file"; then
+                clean_count=$((clean_count + 1))
+              elif grep -Iq . "$path" && grep -Iq . "$base_file" && grep -Iq . "$theirs_file"; then
+                cp "$path" "$ours_file"
+                set +e
+                git merge-file -p "$ours_file" "$base_file" "$theirs_file" >/dev/null 2>&1
+                probe_status=$?
+                set -e
+                if [ "$probe_status" -gt 0 ]; then
+                  conflict_count=$((conflict_count + 1))
+                  printf '[text-overlap] %s\n' "$path" >> "$report"
                 fi
+                set +e
+                git merge-file --ours -p "$ours_file" "$base_file" "$theirs_file" > "$merged_file"
+                merge_status=$?
+                set -e
+                if [ "$merge_status" -gt 127 ]; then
+                  printf '[merge-error:%s] %s\n' "$merge_status" "$path" >> "$report"
+                  exit "$merge_status"
+                fi
+                mv "$merged_file" "$path"
+                git add -- "$path"
+                merged_count=$((merged_count + 1))
+              else
+                binary_overlap_count=$((binary_overlap_count + 1))
+                printf '[binary-overlap-kept-luker] %s\n' "$path" >> "$report"
               fi
-              rm -f "$patch"
+
+              rm -f "$base_file" "$theirs_file" "$ours_file" "$merged_file"
               continue
             fi
 
-            set +e
-            direct_output=$(git apply --index "$patch" 2>&1)
-            direct_status=$?
-            set -e
-            if [ "$direct_status" -eq 0 ]; then
-              clean_count=$((clean_count + 1))
-            else
-              failures+=("$path")
-              printf '\n[failed] %s\n3way: %s\ndirect: %s\n' "$path" "$output" "$direct_output" >> "$report"
-              git reset HEAD -- "$path" >/dev/null 2>&1 || true
-              if git cat-file -e "HEAD:$path" 2>/dev/null; then
-                git checkout HEAD -- "$path"
+            if [ "$base_exists" -eq 0 ] && [ "$theirs_exists" -eq 1 ]; then
+              if [ "$ours_exists" -eq 0 ]; then
+                git checkout st-upstream-1.19.0 -- "$path"
+                clean_count=$((clean_count + 1))
               else
-                rm -f -- "$path"
-                git rm -f --cached --ignore-unmatch -- "$path" >/dev/null 2>&1 || true
+                added_overlap_count=$((added_overlap_count + 1))
+                printf '[add-overlap-kept-luker] %s\n' "$path" >> "$report"
+              fi
+              continue
+            fi
+
+            if [ "$base_exists" -eq 1 ] && [ "$theirs_exists" -eq 0 ]; then
+              if [ "$ours_exists" -eq 1 ]; then
+                git show "st-upstream-1.18.0:$path" > "$base_file"
+                if cmp -s "$path" "$base_file"; then
+                  git rm -f -- "$path"
+                  clean_count=$((clean_count + 1))
+                else
+                  delete_overlap_count=$((delete_overlap_count + 1))
+                  printf '[delete-overlap-kept-luker] %s\n' "$path" >> "$report"
+                fi
+                rm -f "$base_file"
               fi
             fi
-            rm -f "$patch"
           done
 
-          printf '\nsummary\nclean_count=%s\nconflict_count=%s\nfailed_count=%s\n' \
-            "$clean_count" "${#conflicts[@]}" "${#failures[@]}" >> "$report"
-          printf '\nconflicts:\n' >> "$report"
-          printf '%s\n' "${conflicts[@]}" >> "$report"
-          printf '\nfailures:\n' >> "$report"
-          printf '%s\n' "${failures[@]}" >> "$report"
+          printf '\nsummary\n' >> "$report"
+          printf 'changed_paths=%s\n' "${#paths[@]}" >> "$report"
+          printf 'clean_or_direct=%s\n' "$clean_count" >> "$report"
+          printf 'text_three_way=%s\n' "$merged_count" >> "$report"
+          printf 'text_conflicts_resolved_for_luker=%s\n' "$conflict_count" >> "$report"
+          printf 'binary_overlaps_kept_luker=%s\n' "$binary_overlap_count" >> "$report"
+          printf 'add_overlaps_kept_luker=%s\n' "$added_overlap_count" >> "$report"
+          printf 'delete_overlaps_kept_luker=%s\n' "$delete_overlap_count" >> "$report"
+          printf 'luker_deletions_preserved=%s\n' "$kept_delete_count" >> "$report"
 
-          git add "$report"
+          git add -A
           if git diff --cached --quiet; then
-            echo "No upstream changes were staged."
+            echo "No SillyTavern 1.19.0 changes required."
             exit 0
           fi
 
-          git commit -m "chore(upstream): apply SillyTavern 1.19.0 delta"
+          git commit -m "chore(upstream): adapt SillyTavern 1.19.0"
           git push origin HEAD:chore/sillytavern-1.19.0-adapt
