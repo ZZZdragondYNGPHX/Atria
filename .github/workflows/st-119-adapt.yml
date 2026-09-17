@@ -1,0 +1,68 @@
+name: Stage SillyTavern 1.19.0 adaptation
+
+on:
+  push:
+    branches:
+      - chore/sillytavern-1.19.0-adapt
+    paths:
+      - .github/workflows/st-119-adapt.yml
+
+permissions:
+  contents: write
+
+jobs:
+  stage-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Luker adaptation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply SillyTavern 1.18.0 -> 1.19.0 delta with three-way fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add sillytavern https://github.com/SillyTavern/SillyTavern.git
+          git fetch --force sillytavern \
+            refs/tags/1.18.0:refs/tags/st-upstream-1.18.0 \
+            refs/tags/1.19.0:refs/tags/st-upstream-1.19.0
+
+          git diff --binary st-upstream-1.18.0 st-upstream-1.19.0 > /tmp/sillytavern-1.19.0.patch
+
+          set +e
+          git apply --3way --index /tmp/sillytavern-1.19.0.patch
+          apply_status=$?
+          set -e
+
+          conflict_report=.st-119-conflicts.txt
+          : > "$conflict_report"
+          printf 'SillyTavern 1.19.0 adaptation conflict report\n' >> "$conflict_report"
+          printf 'Generated from official 1.18.0 -> 1.19.0 delta.\n\n' >> "$conflict_report"
+
+          if [ "$apply_status" -ne 0 ]; then
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            printf 'conflict_count=%s\n' "${#conflicts[@]}" >> "$conflict_report"
+            printf '%s\n' "${conflicts[@]}" >> "$conflict_report"
+            printf '\nUnmerged index before resolving to Luker side:\n' >> "$conflict_report"
+            git ls-files -u >> "$conflict_report" || true
+
+            for path in "${conflicts[@]}"; do
+              git checkout --ours -- "$path" 2>/dev/null || git rm -f --ignore-unmatch -- "$path" || true
+              git add -A -- "$path"
+            done
+          else
+            printf 'conflict_count=0\n' >> "$conflict_report"
+          fi
+
+          git add "$conflict_report"
+          if git diff --cached --quiet; then
+            echo "No upstream changes were staged."
+            exit 0
+          fi
+
+          git commit -m "chore(upstream): stage SillyTavern 1.19.0 adaptation"
+          git push origin HEAD:chore/sillytavern-1.19.0-adapt
