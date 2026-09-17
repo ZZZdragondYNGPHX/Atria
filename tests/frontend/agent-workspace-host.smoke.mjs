@@ -2,7 +2,7 @@ import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 const browser = await chromium.launch({channel: process.env.WORKSPACE_BROWSER || 'msedge', headless:true});
 try {
- const page=await browser.newPage({viewport:{width:1440,height:900}}); const errors=[]; page.on('pageerror',e=>{ errors.push(e.message); console.log('PAGE ERROR:',e.message); }); page.on('console',m=>{if(m.type()==='error') console.log('CONSOLE:',m.text().slice(0,300));});
+ const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true}); const errors=[]; page.on('pageerror',e=>{ errors.push(e.message); console.log('PAGE ERROR:',e.message); }); page.on('console',m=>{if(m.type()==='error') console.log('CONSOLE:',m.text().slice(0,300));});
  await page.goto(process.env.WORKSPACE_BASE_URL || 'http://127.0.0.1:8127/');
  await page.waitForFunction(()=>window.Luker?.getContext && !document.getElementById('preloader'));
  if(await page.locator('dialog textarea').isVisible()){await page.locator('dialog textarea').fill('Workspace Test');await page.locator('dialog .menu_button').filter({hasText:/^(好的|OK)$/}).click();}
@@ -17,6 +17,20 @@ try {
  console.log(JSON.stringify(await page.evaluate(()=>({presets:window.Luker.getContext().getExtensionApi('orchestrator').listWorkspacePresets(),workspaceSettings:document.querySelector('#orchestrator_settings')?.textContent,errors:[]}))));
  const state=await page.evaluate(async()=>{const panel=await import('/scripts/extensions/orchestrator/workspace/panel.js');panel.openWorkspace('Presets');return document.querySelector('#agent-memory-workspace').textContent;});
  assert(/Unified Preset Library|统一预设库|統一預設庫/.test(state)); assert(state.includes('Spec'));
+ const workspace = page.locator('#agent-memory-workspace');
+ for (const mode of ['spec','agenda','director']) {
+   await workspace.locator('.workspace-preset-list button').filter({hasText:new RegExp(`^${mode}`, 'i')}).tap();
+   const count=await page.evaluate(mode=>window.Luker.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode);
+   page.once('dialog',dialog=>dialog.accept(`Mobile ${mode}`));
+   await workspace.getByRole('button',{name:mode==='spec'?/^(Append worker stage|添加执行阶段)$/:/^(Add specialist|添加协作智能体)$/}).tap();
+   const card=workspace.locator('.workspace-agent').filter({has:page.locator('summary').filter({hasText:`Mobile ${mode}`})});
+   assert.equal(await card.getAttribute('open'),'');
+   assert.equal(await page.evaluate(mode=>window.Luker.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode),count+1);
+   page.once('dialog',dialog=>dialog.accept());
+   await card.getByRole('button',{name:/^(Delete agent|删除智能体)$/}).tap();
+   assert.equal(await page.evaluate(mode=>window.Luker.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode),count);
+ }
+ await workspace.locator('.workspace-preset-list button').filter({hasText:/^Spec/}).tap();
  await page.locator('#agent-memory-workspace').getByRole('button',{name:/^(Duplicate|复制|複製)$/,exact:true}).click();
  await page.locator('#agent-memory-workspace').getByRole('button',{name:/^(Bind as default|设为全局默认)$/,exact:true}).click();
  const id=await page.evaluate(()=>window.Luker.getContext().extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId);

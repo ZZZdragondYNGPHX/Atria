@@ -64,6 +64,35 @@ try {
     assert.equal(await page.evaluate(() => window.settings.llmNodeApiPresetName), 'api-one');
     // Every shipped preset retains nonempty, role-specific capability defaults.
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.every(p => p.planTemplate.agents.every(a => a.tools.includes('*') && a.capabilities['tool.call']))), true);
+    for (const mode of ['spec', 'agenda', 'director']) {
+        await workspace.locator('.workspace-preset-list button').filter({ hasText: new RegExp(`^${mode}`, 'i') }).click();
+        const before = await page.evaluate(mode => structuredClone(window.settings.agentWorkspace.presets.find(p => p.mode === mode)), mode);
+        const add = workspace.getByRole('button', { name: mode === 'spec' ? 'Append worker stage' : 'Add specialist', exact: true });
+        page.once('dialog', dialog => dialog.dismiss()); await add.click();
+        assert.equal(await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode).planTemplate.nodes.length, mode), before.planTemplate.nodes.length);
+        page.once('dialog', dialog => dialog.accept('   ')); await add.click();
+        assert.equal(await workspace.getByRole('status').innerText(), 'Enter a non-empty name.');
+        assert.equal(await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode).planTemplate.nodes.length, mode), before.planTemplate.nodes.length);
+        page.once('dialog', dialog => dialog.accept(`${mode} specialist`)); await add.click();
+        const card = workspace.locator('.workspace-agent').filter({ has: page.getByText(`Agent · ${mode} specialist`, { exact: true }) });
+        assert.equal(await card.getAttribute('open'), '');
+        await card.getByLabel('Agent name', { exact: true }).focus();
+        const box = await card.locator('summary').first().boundingBox();
+        assert(box.y >= 0 && box.y < 844, 'The created agent is brought into view');
+        await card.getByLabel('Agent name', { exact: true }).fill(`${mode} renamed`);
+        await workspace.getByRole('button', { name: 'Save definition for future runs', exact: true }).click();
+        const saved = await page.evaluate(mode => JSON.parse(localStorage.getItem('settings')).agentWorkspace.presets.find(p => p.mode === mode), mode);
+        assert.equal(saved.planTemplate.agents.at(-1).name, `${mode} renamed`);
+        assert.equal(saved.planTemplate.nodes.length, before.planTemplate.nodes.length + 1);
+        const renamed = workspace.locator('.workspace-agent').filter({ has: page.getByText(`Agent · ${mode} renamed`, { exact: true }) });
+        await renamed.locator('summary').first().click();
+        page.once('dialog', dialog => dialog.accept()); await renamed.getByRole('button', { name: 'Delete agent', exact: true }).click();
+        const removed = await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode), mode);
+        assert.equal(removed.planTemplate.agents.length, before.planTemplate.agents.length);
+        assert.equal(removed.planTemplate.nodes.length, before.planTemplate.nodes.length);
+        assert(!JSON.stringify(removed).includes(saved.planTemplate.agents.at(-1).id));
+    }
+    await workspace.locator('.workspace-preset-list button').filter({ hasText: /^Spec/ }).click();
     await workspace.getByRole('button', { name: 'Duplicate', exact: true }).click();
     await workspace.getByLabel('Name', {exact:true}).fill('Browser preset <script>');
     await workspace.getByRole('button', { name: 'Save definition for future runs', exact: true }).click();
@@ -83,8 +112,10 @@ try {
     await page.waitForFunction(() => window.settings.agentWorkspace.presets.length === 6);
     assert.notEqual(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).id), library.bindings.entries[0].presetId);
     await workspace.getByText('Create or import', { exact: true }).click();
+    page.once('dialog', dialog => dialog.accept('Named single agent preset'));
     await workspace.getByRole('button', { name: 'Single Agent template', exact: true }).click();
     await page.waitForFunction(() => window.settings.agentWorkspace.presets.length === 7);
+    assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).name), 'Named single agent preset');
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 1);
     await workspace.getByLabel('API profile', { exact: true }).selectOption('api-two');
     await workspace.getByLabel('Prompt profile', { exact: true }).selectOption('prompt-two');
@@ -101,6 +132,7 @@ try {
     await workspace.getByRole('button', { name: 'Save definition for future runs', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.agents[0].tools), []);
     assert.equal(await workspace.getByLabel('API profile', { exact: true }).inputValue(), '');
+    page.once('dialog', dialog => dialog.accept('Named stage'));
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 2);
     // Keyboard navigation and explicit Node capability controls use native labels.
