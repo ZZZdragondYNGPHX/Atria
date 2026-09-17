@@ -19,7 +19,7 @@ try {
  assert(/Unified Preset Library|统一预设库|統一預設庫/.test(state)); assert(state.includes('Spec'));
  const workspace = page.locator('#agent-memory-workspace');
  for (const mode of ['spec','agenda','director']) {
-   await workspace.locator('.workspace-preset-list button').filter({hasText:new RegExp(`^${mode}`, 'i')}).tap();
+   await workspace.locator('.workspace-preset-list button').filter({hasText:new RegExp(mode === 'agenda' ? '^Atri-agenda' : `^${mode}`, 'i')}).tap();
    const count=await page.evaluate(mode=>window.Luker.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode);
    page.once('dialog',dialog=>dialog.accept(`Mobile ${mode}`));
    await workspace.getByRole('button',{name:mode==='spec'?/^(Append worker stage|添加执行阶段)$/:/^(Add specialist|添加协作智能体)$/}).tap();

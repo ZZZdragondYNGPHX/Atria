@@ -40,11 +40,11 @@ import { translate, getCurrentLocale } from '../i18n.js';
 import { getContext } from '../st-context.js';
 
 const PRESET_HELP_BUTTON_CLASS = 'luker-preset-help';
-const PLUGIN_ONLY_PRESET_NAME = 'plugin-only';
+const PLUGIN_ONLY_PRESET_NAME = 'Atri-plugin-only';
 const PLUGIN_ONLY_PRESET_URL = '/presets/plugin-only.json';
 const AGENT_DIRECTOR_PRESET_NAME = 'agent-director';
 const AGENT_DIRECTOR_PRESET_URL = '/presets/agent-director.json';
-const AGENT_NON_DIRECTOR_PRESET_NAME = 'agent-non-director';
+const AGENT_NON_DIRECTOR_PRESET_NAME = 'Atri-agenda-agent';
 const AGENT_NON_DIRECTOR_PRESET_URL = '/presets/agent-non-director.json';
 const DOCS_BASE = 'https://luker.cups.moe';
 
@@ -107,7 +107,7 @@ function buildIterationHelpHtml() {
             <p>${escapeAttr(t('Why? RP presets often force an output format (mandatory schema blocks, forced thinking chains) that conflicts with the structured tool calls these plugins use. Style instructions can also leak into config edits and produce odd results.'))}</p>
             <p><strong>${escapeAttr(t('Two ways to get a clean preset:'))}</strong></p>
             <ul>
-                <li>${escapeAttr(t('Click "Import plugin-only preset" below — imports a pre-built clean preset bundled with Luker, then selects it here.'))}</li>
+                <li>${escapeAttr(t('Import {name} below to use the bundled plugin-task preset. It keeps reference material separate from the runtime task.').replace('{name}', PLUGIN_ONLY_PRESET_NAME))}</li>
                 <li>${escapeAttr(t('Open the Completion Preset Assistant and start a new session in "Jailbreak-only" mode — it will derive a clean version from your existing RP preset. Your original preset stays untouched.'))}</li>
             </ul>
         </div>`;
@@ -133,10 +133,10 @@ function buildAgentNonDirectorHelpHtml() {
     return `
         <div class="luker-preset-help-body">
             <p>${escapeAttr(t('This selector is for the preset a non-Director Agent uses (Single / Spec / Agenda planner / Loop). Unlike Director, these modes do NOT inject the RP context for the agent — so the agent\'s preset is the only path through which character card, persona, and world info reach the model. Markers (charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory) must stay enabled, and the RP material should be visibly separated from the runtime task instructions so the agent does not mistake them for narrative continuation.'))}</p>
-            <p>${escapeAttr(t('This is the same shape iteration-AI plugins (CPA iter / Memory Graph / CardApp Studio iter) need, just placed in an Agent slot. The bundled preset offered below is identical in structure to the iter-AI plugin-only preset.'))}</p>
+            <p>${escapeAttr(t('The bundled Atri analysis preset supports plot planning, character reasoning, pacing and continuity checks. Runtime instructions and available tools determine the assigned task; the preset does not write RP prose.'))}</p>
             <p><strong>${escapeAttr(t('Two ways to get a non-Director-friendly preset:'))}</strong></p>
             <ul>
-                <li>${escapeAttr(t('Click "Import agent-non-director preset" below — imports a Luker-bundled preset (markers enabled, story / user-request envelopes wrap the context) and selects it here. Good as a quick start.'))}</li>
+                <li>${escapeAttr(t('Import {name} below to use the bundled analysis preset. For the Agenda planner, select Atri-plugin-only instead.').replace('{name}', AGENT_NON_DIRECTOR_PRESET_NAME))}</li>
                 <li>${escapeAttr(t('Open the Completion Preset Assistant and start a new session in "Adapt for orchestrator" mode — it will derive a version from your existing RP preset that preserves your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts. Your original preset stays untouched.'))}</li>
             </ul>
             <p><a href="${escapeAttr(recipeUrl)}" target="_blank" rel="noopener noreferrer">${escapeAttr(t('For the full multi-Agent setup walkthrough, see the multi-Agent onboarding recipe in the documentation.'))}</a></p>
@@ -229,7 +229,10 @@ async function importBundledPreset(presetName, presetUrl, target) {
             if (data && typeof data === 'object') {
                 data.name = presetName;
             }
-            await manager.savePreset(presetName, data);
+            // Import into the library and the requesting plugin slot only.
+            // savePreset normally also selects the main RP preset.
+            await manager.savePreset(presetName, data, { skipUpdate: true });
+            manager.updateList(presetName, data, { select: false });
             toastr.success((existing
                 ? t('Overwrote preset: {name}')
                 : t('Imported preset: {name}')).replace('{name}', presetName));
@@ -258,7 +261,9 @@ async function importBundledPreset(presetName, presetUrl, target) {
         if ($select.find(`option[value="${escapedValue}"]`).length === 0) {
             $select.append(`<option value="${escapedValue}">${escapedValue}</option>`);
         }
-        $select.val(presetName).trigger('change');
+        $select.val(presetName);
+        // Workspace uses native listeners; dispatch also reaches legacy jQuery handlers.
+        $select[0].dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     return true;
@@ -270,7 +275,7 @@ async function showIterationPopup(target) {
         cancelButton: false,
         wider: true,
         customButtons: [{
-            text: t('Import plugin-only preset'),
+            text: t('Import {name} preset').replace('{name}', PLUGIN_ONLY_PRESET_NAME),
             icon: 'fa-download',
             result: 2,
             action: async () => {
@@ -306,7 +311,7 @@ async function showAgentNonDirectorPopup(target) {
         cancelButton: false,
         wider: true,
         customButtons: [{
-            text: t('Import agent-non-director preset'),
+            text: t('Import {name} preset').replace('{name}', AGENT_NON_DIRECTOR_PRESET_NAME),
             icon: 'fa-download',
             result: 2,
             action: async () => {

@@ -1,6 +1,7 @@
 import { compilePreset } from '../engine-v2/preset-compiler.js';
 import { createFactoryPresetForMode, DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT, DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE } from '../defaults.js';
 import { compileWorkspacePreset, emptyPresetLibrary, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
+import { AGENDA_BUILTIN_REVISION } from '../agenda-defaults.js';
 
 /** One-time factory construction, not an importer of old user libraries. */
 export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
@@ -19,14 +20,16 @@ export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
         'max_rounds', 'maxRounds', 'maxConcurrentSubagents', 'limits', 'finalAgentId']) delete hostOptions[key];
     if (profile.spec) { hostOptions.specOptions = structuredClone(profile.spec); delete hostOptions.specOptions.stages; }
     plan.metadata = { hostAdapters: { luker: hostOptions } };
+    if (mode === 'agenda') plan.metadata.builtinAgendaRevision = AGENDA_BUILTIN_REVISION;
     for (const agent of plan.agents) {
         const settings = structuredClone(agent.metadata.config);
+        if (settings.name) agent.name = settings.name;
         if (mode === 'loop') agent.instructions = settings.system_prompt || '';
-        for (const key of ['systemPrompt', 'system_prompt', 'apiPresetName', 'promptPresetName']) delete settings[key];
+        for (const key of ['name', 'systemPrompt', 'system_prompt', 'apiPresetName', 'promptPresetName']) delete settings[key];
         agent.metadata = { hostAdapters: { luker: settings } };
-        agent.tools = ['*'];
+        agent.tools = mode === 'agenda' ? [] : ['*'];
     }
-    return { schemaVersion: 1, id, name: single ? 'Single Agent' : `${mode[0].toUpperCase()}${mode.slice(1)}`, mode, planTemplate: plan, editorMetadata: {} };
+    return { schemaVersion: 1, id, name: single ? 'Single Agent' : mode === 'agenda' ? profile.name : `${mode[0].toUpperCase()}${mode.slice(1)}`, mode, planTemplate: plan, editorMetadata: {} };
 }
 
 export function getWorkspaceLibrary(settings) {
@@ -36,6 +39,16 @@ export function getWorkspaceLibrary(settings) {
             library = updatePresetLibrary(library, { type: 'save', preset: createWorkspaceFactoryPreset(mode, `builtin-${mode}`) });
         }
         settings.agentWorkspace = updatePresetLibrary(library, { type: 'bind', scope: 'default', presetId: 'builtin-spec' });
+    } else {
+        // Replace the retired shipped Agenda in place once. Keep every binding,
+        // user-owned preset ID and already-admitted run snapshot intact. Do not
+        // resurrect a built-in the user deleted, or reapply over later edits.
+        const agenda = settings.agentWorkspace.presets.find(preset => preset.id === 'builtin-agenda' && preset.mode === 'agenda');
+        if (agenda && !agenda.planTemplate.metadata?.builtinAgendaRevision) {
+            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, {
+                type: 'save', preset: createWorkspaceFactoryPreset('agenda', 'builtin-agenda'),
+            });
+        }
     }
     return settings.agentWorkspace;
 }

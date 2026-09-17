@@ -46,6 +46,7 @@ import {
 } from './run-state/store.js';
 import { openWorkspace, configureWorkspace, destroyWorkspace, initWorkspace as initRunPanel } from './workspace/panel.js';
 import { resolveWorkspaceProfile, getWorkspaceLibrary } from './workspace/host-presets.js';
+import { renderPresetHelpButton } from '../preset-help.js';
 import { createPresetAuthoring } from './workspace/authoring.js';
 import { createMemoryWorkspace } from './workspace/memory.js';
 import { updatePresetLibrary } from '../../lib/agent-workspace/presets.js';
@@ -809,7 +810,7 @@ jQuery(() => {
     const context = getContext();
     registerLocaleData();
     configureWorkspace({
-        renderPresets: createPresetAuthoring({ getSettings, save: saveSettingsDebounced,
+        renderPresets: createPresetAuthoring({ getSettings, save: saveSettingsDebounced, renderPresetHelp: renderPresetHelpButton,
             renderProfileOptions: (kind, value, inherited) => kind === 'api'
                 ? renderConnectionProfileOptions(value, i18n(inherited ? 'Use workspace default' : '(Current API config)'))
                 : renderOpenAIPresetOptions(getContext(), value, i18n(inherited ? 'Use workspace default' : '(Current preset)')),

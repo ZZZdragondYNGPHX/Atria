@@ -63,9 +63,9 @@ try {
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('settings')).enabled), true);
     assert.equal(await page.evaluate(() => window.settings.llmNodeApiPresetName), 'api-one');
     // Every shipped preset retains nonempty, role-specific capability defaults.
-    assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.every(p => p.planTemplate.agents.every(a => a.tools.includes('*') && a.capabilities['tool.call']))), true);
+    assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.every(p => p.planTemplate.agents.every(a => (p.mode === 'agenda' ? a.tools.length === 0 : a.tools.includes('*')) && a.capabilities['tool.call']))), true);
     for (const mode of ['spec', 'agenda', 'director']) {
-        await workspace.locator('.workspace-preset-list button').filter({ hasText: new RegExp(`^${mode}`, 'i') }).click();
+        await workspace.locator('.workspace-preset-list button').filter({ hasText: new RegExp(mode === 'agenda' ? '^Atri-agenda' : `^${mode}`, 'i') }).click();
         const before = await page.evaluate(mode => structuredClone(window.settings.agentWorkspace.presets.find(p => p.mode === mode)), mode);
         const add = workspace.getByRole('button', { name: mode === 'spec' ? 'Append worker stage' : 'Add specialist', exact: true });
         page.once('dialog', dialog => dialog.dismiss()); await add.click();
