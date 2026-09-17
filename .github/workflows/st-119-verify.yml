@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - chore/sillytavern-1.19.0-adapt
-    paths:
-      - .github/workflows/st-119-verify.yml
 
 jobs:
   verify:
