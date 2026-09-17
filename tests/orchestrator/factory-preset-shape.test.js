@@ -49,10 +49,10 @@ describe('createFactoryPresetForMode', () => {
         expect(result.name).toBe('Default');
     });
 
-    test('agenda mode still returns a single object with name "Default"', () => {
+    test('agenda mode returns a single object with name "Atri-agenda"', () => {
         const result = createFactoryPresetForMode(ORCH_EXECUTION_MODE_AGENDA);
         expect(Array.isArray(result)).toBe(false);
-        expect(result.name).toBe('Default');
+        expect(result.name).toBe('Atri-agenda');
     });
 
     test('spec mode still returns a single object with name "Default"', () => {
