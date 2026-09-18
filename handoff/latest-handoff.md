@@ -19,7 +19,7 @@ Atria bootstrap migration is complete and PR #1 has passed final validation. The
 3. For new Atria-owned modules, prefer concise `atri_*` naming where practical.
 4. Preserve SillyTavern upstream structure when that helps future upstream synchronization.
 5. Preserve compatibility-sensitive legacy Luker storage/protocol identifiers until a deliberate migration exists.
-6. At task completion, write the implementation record to `docs`, merge the task branch into `main`, verify integration, then delete the temporary branch.
+6. At task completion, write the implementation record to `docs`, merge the task branch into `main`, verify integration, then delete the temporary branch. The repository cleanup workflow supports both ancestry-preserving merges and squash merges.
 
 ## Current inherited architecture
 
