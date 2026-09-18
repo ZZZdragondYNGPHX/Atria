@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation completed on the task branch and validated through the normal Atria web/Node gates. PR #6 is the integration pull request into `main`.
+Implementation completed, validated, and squash-merged into `main`. The temporary task branch has been removed.
 
 ## Task identity
 
@@ -13,6 +13,8 @@ Implementation completed on the task branch and validated through the normal Atr
 - Final task-branch head before merge: `af157c8dd79c358c8e56921d5d0a81e82fc3da5d`
 - Formal implementation plan: `docs/plans/agent-web-access-api-fallback.md`
 - Pull request: #6 — `feat: make Web Access agent-native with API fallback`
+- Squash merge / resulting `main`: `12038702ebc6ce9d9b2f2bbf60f6a0996b7c6ef3`
+- Temporary branch cleanup: complete
 
 ## Goal
 
