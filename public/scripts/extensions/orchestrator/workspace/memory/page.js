@@ -447,10 +447,56 @@ export function createMemoryWorkspace({ getContext }) {
 
             const actions = el('div', undefined, content);
             actions.className = 'workspace-memory-maintenance-actions';
-            button(actions, 'History build / rollback', () => {
-                Promise.resolve(service.openHistory?.()).then(() => loadData()).catch(error => { status.textContent = error.message; });
-            });
+
+            const runAction = (name, action, { refresh = true } = {}) => {
+                button(actions, name, () => {
+                    status.textContent = i18n('Working…');
+                    Promise.resolve(action?.())
+                        .then(() => refresh ? loadData() : (status.textContent = i18n('Done.')))
+                        .catch(error => { status.textContent = error?.message || String(error); });
+                });
+            };
+
+            runAction('History build / rollback', service.openHistory);
+            runAction('Manual compression', service.manualCompress);
+            runAction('Rebuild vectors', service.rebuildVectors);
+            runAction('Export memory', service.exportGraph, { refresh: false });
             button(actions, 'Refresh memory', () => void loadData());
+
+            const importLabel = el('label', 'Import memory', actions);
+            importLabel.className = 'workspace-file-action';
+            const importInput = el('input', undefined, importLabel);
+            importInput.type = 'file';
+            importInput.accept = '.json,application/json';
+            importInput.setAttribute('aria-label', i18n('Import memory'));
+            importInput.addEventListener('change', async () => {
+                const file = importInput.files?.[0];
+                importInput.value = '';
+                if (!file) return;
+                try {
+                    status.textContent = i18n('Importing memory…');
+                    await service.importGraph?.(file);
+                    await loadData();
+                } catch (error) {
+                    status.textContent = error?.message || String(error);
+                }
+            });
+
+            const danger = el('section', undefined, content);
+            danger.className = 'workspace-memory-danger-zone';
+            el('h3', 'Danger zone', danger);
+            el('p', 'Reset removes the current chat memory graph and its vector index. This cannot be undone.', danger).className = 'workspace-hint';
+            const reset = button(danger, 'Reset current chat memory', async () => {
+                try {
+                    status.textContent = i18n('Working…');
+                    const result = await service.resetGraph?.();
+                    if (!result?.cancelled) await loadData();
+                    else status.textContent = '';
+                } catch (error) {
+                    status.textContent = error?.message || String(error);
+                }
+            });
+            reset.className = 'workspace-danger';
 
             const advanced = el('details', undefined, content);
             advanced.className = 'workspace-memory-advanced';
