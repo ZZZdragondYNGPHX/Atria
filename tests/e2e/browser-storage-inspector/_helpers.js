@@ -94,11 +94,10 @@ export async function openBrowserStorageInspector(page) {
     const management = page.locator('.storageManagementCenter').last();
     await management.waitFor({ state: 'visible', timeout: 10_000 });
     await management.locator('.storageManagementTab[data-tab="browser"]').click();
-    // Scope by container class so a later confirm popup on top of the
-    // inspector doesn't shift `.last()` off the inspector. Use `.first()`
-    // — there is only ever one inspector container mounted per test but
-    // being explicit makes the locator stable across popup stacking.
-    const inspector = page.locator('dialog.popup[open] .storageInspectorContainer').first();
+    // The unified manager mounts both inspectors at once; after switching
+    // tabs, target the browser mount explicitly rather than the first
+    // storageInspectorContainer (which belongs to the hidden server tab).
+    const inspector = management.locator('.storageManagementBrowserMount .storageInspectorContainer');
     await inspector.waitFor({ state: 'visible', timeout: 10_000 });
     await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached', timeout: 15_000 });
     return inspector;
