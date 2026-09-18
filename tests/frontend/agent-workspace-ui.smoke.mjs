@@ -151,7 +151,7 @@ try {
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 1);
     await workspace.locator('.workspace-agent-card').first().click();
     const agentInspector = workspace.locator('.atria-workspace-inspector');
-    await agentInspector.getByLabel('API profile', { exact: true }).selectOption('api-two');
+    await agentInspector.getByLabel('Primary API profile', { exact: true }).selectOption('api-two');
     await agentInspector.getByLabel('Prompt profile', { exact: true }).selectOption('prompt-two');
     assert.equal(await agentInspector.getByLabel('chat_search', { exact: true }).isChecked(), true);
     await agentInspector.getByRole('button', { name: 'Deny all', exact: true }).click();
