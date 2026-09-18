@@ -23,50 +23,6 @@ import { sanitizeLorebookFilter } from './lorebook-filter.js';
 const STATE_NAMESPACE = 'atri_orchestrator_anchors';
 
 /**
- * Canonical Layer-2 memory tool names. Mirrors the `MEMORY_TOOL_NAMES`
- * frozen export in `memory-graph/orchestrator-tools.js`. Inlined here
- * (rather than imported) to avoid coupling orchestrator persistence to
- * the memory-graph extension's internal module — orchestrator already
- * treats Layer-2 names as an external contract for the legacy-flag
- * translator path. If a memory tool is added / removed, update BOTH
- * lists; the registration test in
- * `tests/memory-graph/orchestrator-tools-register.test.js` will catch
- * drift on the memory-graph side.
- */
-const MEMORY_TOOL_NAMES = Object.freeze([
-    'memory_recall',
-    'memory_list_candidates',
-    'memory_edge_summary',
-    'memory_node_brief',
-    'memory_expand_seeds',
-    'memory_schema',
-    'memory_keyword_search',
-    'memory_vector_search',
-    'memory_find_by_name',
-    'memory_compaction_candidates',
-    'memory_node_create',
-    'memory_node_edit',
-    'memory_node_delete',
-    'memory_link_upsert',
-    'memory_link_delete',
-    'memory_compact_nodes',
-]);
-
-/**
- * Canonical Layer-2 search tool names. Mirrors the `SEARCH_TOOL_NAMES`
- * frozen export in `search-tools/orchestrator-tools.js`. Inlined here
- * (rather than imported) to keep the legacy-flag translator path
- * loosely coupled — same rationale as MEMORY_TOOL_NAMES above. If a
- * search tool is added / removed, update BOTH lists; the registration
- * test in `tests/search-tools/orchestrator-tools-register.test.js`
- * will catch drift on the search-tools side.
- */
-const SEARCH_TOOL_NAMES = Object.freeze([
-    'search_search',
-    'search_visit',
-]);
-
-/**
  * Loop execution mode marker (V3 profile schema). Lives next to
  * `ORCH_EXECUTION_MODE_SPEC` / `ORCH_EXECUTION_MODE_AGENDA` defined in
  * `defaults.js`; we keep the loop literal here because the loop profile's
@@ -103,12 +59,8 @@ export const ORCH_EXECUTION_MODE_LOOP = 'loop';
  *                            memory-graph and search-tools verbs default
  *                            ON via LOOP_PROFILE_DEFAULTS so first-run
  *                            users keep their out-of-box tool pipeline.
- *                            Legacy `tools.memory.<verb>` /
- *                            `tools.search.<verb>` inputs are translated
- *                            into `tools.custom.memory_<verb>` /
- *                            `tools.custom.search_<verb>` by
- *                            `sanitizeAgentToolFlags` so upgraded
- *                            profiles keep their enabled set.
+ *                            Extension tools use the current
+ *                            `tools.custom.<toolName>` namespace.
  *   - tools.finalize        FORCED true; the loop has no other terminator
  *   - max_rounds            tool-call round budget; floored at 1
  *   - wall_clock_budget_ms  loop deadline; floored at 10000ms (10s)
@@ -147,46 +99,22 @@ export const DEFAULT_LAYER2_CUSTOMS = Object.freeze({
 });
 
 /**
- * Merge a tools-shaped input with the default Layer-2 customs seed using
- * the priority chain:
- *
- *   1. caller's explicit `tools.custom.<name>` (always wins)
- *   2. caller's legacy `tools.memory.<verb>` / `tools.search.<verb>`
- *      (auto-translated; respected so an explicit user `false` overrides
- *      the default-on seed)
- *   3. DEFAULT_LAYER2_CUSTOMS (memory_* / search_* default enabled)
- *
- * Returns a NEW input object with merged `custom` and the legacy memory /
- * search namespaces dropped (already translated). Caller hands the
- * result to `sanitizeAgentToolFlags` for the final shape.
- *
- * Used by loop (seeded directly), agenda, and spec sanitizers to ship
- * first-run profiles with the dogfood tools enabled.
+ * Seed the current Layer-2 custom-tool namespace. Only
+ * `tools.custom.<toolName>` participates in Atria profile sanitization;
+ * predecessor top-level tool bags are ignored by the hard cutover.
  */
 export function seedDefaultLayer2Customs(input) {
     const tools = input && typeof input === 'object' ? input : {};
     const callerCustom = tools.custom && typeof tools.custom === 'object'
         ? tools.custom
         : {};
-    const translatedFromLegacy = {};
-    const legacyMemory = tools.memory && typeof tools.memory === 'object'
-        ? tools.memory
-        : {};
-    for (const [verb, on] of Object.entries(legacyMemory)) {
-        translatedFromLegacy[`memory_${verb}`] = on !== false;
-    }
-    const legacySearch = tools.search && typeof tools.search === 'object'
-        ? tools.search
-        : {};
-    for (const [verb, on] of Object.entries(legacySearch)) {
-        translatedFromLegacy[`search_${verb}`] = on !== false;
-    }
-    const mergedCustom = {
-        ...DEFAULT_LAYER2_CUSTOMS,
-        ...translatedFromLegacy,
-        ...callerCustom,
+    return {
+        ...tools,
+        custom: {
+            ...DEFAULT_LAYER2_CUSTOMS,
+            ...callerCustom,
+        },
     };
-    return { ...tools, memory: undefined, search: undefined, custom: mergedCustom };
 }
 
 const LOOP_PROFILE_DEFAULTS = Object.freeze({
@@ -245,12 +173,9 @@ function sanitizeLoopToolFlags(input) {
     // stays the standalone outlier because loop has no "inherit"
     // semantics — its profile root *is* the tools spec.
     //
-    // memory + search live in Layer-2 (`tools.custom.<name>`) now;
-    // `seedDefaultLayer2Customs` resolves the priority chain (caller's
-    // explicit customs > caller's legacy memory/search verbs > the
-    // default-on seed) before the shared sanitizer sees the result, so
-    // a bare loop profile keeps the same enabled tool set it had before
-    // the namespace drop.
+    // Memory and search extension tools live in the current Layer-2
+    // `tools.custom.<name>` namespace. Seed current defaults before the
+    // shared sanitizer applies explicit caller overrides.
     const seeded = seedDefaultLayer2Customs(input);
     return sanitizeAgentToolFlags(seeded, { defaultAllOn: true, forceFinalize: true });
 }
@@ -287,66 +212,20 @@ export function sanitizeAgentToolFlags(input, { defaultAllOn = false, forceFinal
     for (const [k, v] of Object.entries(customIn)) {
         customOut[String(k)] = v !== false;
     }
-    // Legacy → custom translator. memory + search tools used to live in
-    // their own top-level namespaces; they are now Layer-2 extension tools
-    // registered by memory-graph / search-tools. Translate any legacy
-    // `tools.memory.<verb>` / `tools.search.<verb>` flags to
-    // `tools.custom.memory_<verb>` / `tools.custom.search_<verb>` so an
-    // upgraded profile keeps the same enabled tool set after the namespace
-    // drop. User's explicit `custom.<name>` setting wins over the
-    // translated legacy flag.
-    //
-    // Override-mode discipline (defaultAllOn === false): the pre-Layer-2
-    // namespace contract was "unspecified verbs default off" regardless of
-    // whether the caller mentioned the namespace at all. To preserve that
-    // we emit an explicit `false` for every memory_* / search_* verb the
-    // caller did NOT explicitly enable — otherwise Layer-2's default-on
-    // policy (`customFlags[name] !== false`) would expose every memory /
-    // search tool to override-mode callers (sub-agents) that never asked
-    // for them.
-    //
-    // In default-all-on mode (loop) we leave unspecified verbs undefined
-    // so the default-on policy applies as before.
-    const legacyMemory = tools.memory && typeof tools.memory === 'object' ? tools.memory : null;
-    for (const fullName of MEMORY_TOOL_NAMES) {
-        const verb = fullName.slice('memory_'.length);
-        if (customOut[fullName] !== undefined) continue; // explicit custom.<name> wins
-        const explicit = legacyMemory ? legacyMemory[verb] : undefined;
-        if (explicit !== undefined) {
-            customOut[fullName] = explicit !== false;
-        } else if (!def) {
-            // Override mode: omitted verbs are explicitly off, matching
-            // the pre-Layer-2 namespace contract.
-            customOut[fullName] = false;
+    // Override profiles replace the inherited tool bag. Layer-2 built-ins
+    // therefore need explicit false defaults in override mode; otherwise the
+    // registry's "undefined means enabled" rule would widen the override.
+    if (!def) {
+        for (const name of Object.keys(DEFAULT_LAYER2_CUSTOMS)) {
+            if (customOut[name] === undefined) {
+                customOut[name] = false;
+            }
         }
-        // else (defaultAllOn=true, omitted verb): leave undefined →
-        // Layer-2 default-on policy applies in getEnabledToolSchemas.
-    }
-    const legacySearch = tools.search && typeof tools.search === 'object' ? tools.search : null;
-    for (const fullName of SEARCH_TOOL_NAMES) {
-        const verb = fullName.slice('search_'.length);
-        if (customOut[fullName] !== undefined) continue; // explicit custom.<name> wins
-        const explicit = legacySearch ? legacySearch[verb] : undefined;
-        if (explicit !== undefined) {
-            customOut[fullName] = explicit !== false;
-        } else if (!def) {
-            // Override mode: omitted verbs are explicitly off, matching
-            // the pre-Layer-2 namespace contract.
-            customOut[fullName] = false;
-        }
-        // else (defaultAllOn=true, omitted verb): leave undefined →
-        // Layer-2 default-on policy applies in getEnabledToolSchemas.
     }
     return {
         note: {
-            // New keys (open/close) win over legacy keys (add/delete). When the
-            // new key is missing we read the legacy key as a one-shot migration
-            // so persisted profiles authored before the rename keep working;
-            // when both are missing we fall back to the namespace default.
-            // After this layer no caller should ever observe `add` / `delete` —
-            // the canonical shape is always { open, close }.
-            open: readBooleanFlag(noteIn.open, readBooleanFlag(noteIn.add, def)),
-            close: readBooleanFlag(noteIn.close, readBooleanFlag(noteIn.delete, def)),
+            open: readBooleanFlag(noteIn.open, def),
+            close: readBooleanFlag(noteIn.close, def),
         },
         chat: {
             read_range: readBooleanFlag(chatIn.read_range, def),
@@ -389,20 +268,9 @@ export function sanitizeAgentToolFlags(input, { defaultAllOn = false, forceFinal
         // on the profile default panel act uniformly across every
         // visible toggle.
         //
-        // The "default new profile ships with sub-agent message editing
-        // OFF" contract is enforced ONE level up, in
-        // `buildFullDirectorTools` / `buildMinimalDirectorTools`, which
-        // pass `message: { write_message: false, apply_message_patches: false }`
-        // explicitly in their input — the only two callers that mint a
-        // brand-new profile with `defaultAllOn: true`. Legacy profile
-        // upgrades run through `sanitizeDirectorProfile`, which uses
-        // `defaultAllOn: !hasToolsBlock` — old profiles have a tools
-        // block, so upgrade uses `defaultAllOn: false` and the missing
-        // message namespace lands as false without any special-casing
-        // here. A separate legacy-message-migration in
-        // `sanitizeDirectorProfile` synthesizes a mainAgent.tools
-        // override on pre-message-feature profiles so the main agent
-        // does not silently lose its pre-flag write/patch power.
+        // New director profiles explicitly keep sub-agent draft editing off
+        // at the profile default while the main agent receives its own
+        // explicit write/patch override.
         //
         // Finalize is not represented — sub-agents cannot commit / end
         // the turn regardless of flag; main agent finalize is
