@@ -85,7 +85,12 @@ try {
         const metadataAfterEvaluation = structuredClone(core.chat_metadata);
         const payload = { ...resolution, worldInfoResolution: resolution };
         const before = [...payload.worldInfoBeforeEntries];
-        applyProfileWorldInfoFilter(payload, { bookPattern: '^atri-private-fixture
+        applyProfileWorldInfoFilter(payload, { bookPattern: '^atri-private-fixture$' });
+        const firstCommit = await wi.commitWorldInfoEvaluation(resolution);
+        const metadataAfterCommit = structuredClone(core.chat_metadata);
+        const secondCommit = await wi.commitWorldInfoEvaluation(resolution);
+        core.eventSource.removeListener(core.event_types.WORLD_INFO_ACTIVATED, onActivated);
+        const sources = payload.worldInfoResolution.worldInfoProvenance.worldInfoBeforeEntries;
         const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
         markWorldInfoDispatch(attribution, {
             boundary: 'browser_smoke_handoff',
