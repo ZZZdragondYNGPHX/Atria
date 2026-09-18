@@ -16,6 +16,7 @@ import {
     getWorldInfoBudgetTierScore,
     getWorldInfoEntryKey,
     hasWorldInfoSelectionMetadata,
+    normalizeWorldInfoEntryRef,
     normalizeWorldInfoSelectionMetadata,
     resolveWorldInfoDependencyBundle,
 } from './atri-world-info-selection.js';
@@ -8473,6 +8474,102 @@ export async function getWorldEntry(name, data, entry) {
         stateEventStatus.text(stateEventsDirty
             ? t`Unsaved state event changes`
             : t`State events saved`);
+
+        // W-04 explicit selection/dependency authoring. These fields are
+        // opt-in; leaving them at defaults keeps the legacy selection/budget
+        // branch for this entry.
+        const selectionRoot = editTemplate.find('.wi-entry-selection-strategy');
+        const requiredEntriesInput = selectionRoot.find('textarea[name="requiredEntriesText"]');
+        const relatedEntriesInput = selectionRoot.find('textarea[name="relatedEntriesText"]');
+        const mutualExclusionGroupInput = selectionRoot.find('input[name="mutualExclusionGroup"]');
+        const budgetTierInput = selectionRoot.find('select[name="budgetTier"]');
+        const compactContentInput = selectionRoot.find('textarea[name="compactContent"]');
+        const selectionSave = selectionRoot.find('.wi-selection-strategy-save');
+        const selectionStatus = selectionRoot.find('.wi-selection-strategy-status');
+        let selectionDirty = false;
+
+        const parseEntryRefs = value => String(value ?? '')
+            .split(/\r?\n/)
+            .map(item => item.trim())
+            .filter(Boolean)
+            .slice(0, 64);
+
+        const markSelectionDirty = () => {
+            selectionDirty = true;
+            selectionStatus.text(t`Unsaved selection rule changes`);
+        };
+
+        requiredEntriesInput.val((Array.isArray(entry.requiredEntries) ? entry.requiredEntries : []).join('\n'));
+        relatedEntriesInput.val((Array.isArray(entry.relatedEntries) ? entry.relatedEntries : []).join('\n'));
+        mutualExclusionGroupInput.val(String(entry.mutualExclusionGroup ?? ''));
+        budgetTierInput.val(['critical', 'scene', 'normal', 'optional'].includes(entry.budgetTier)
+            ? entry.budgetTier
+            : 'normal');
+        compactContentInput.val(typeof entry.compactContent === 'string' ? entry.compactContent : '');
+
+        selectionRoot.find('textarea, input, select').on('input', markSelectionDirty);
+        selectionSave.on('click', async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const uid = entry.uid;
+            const liveEntry = data.entries[uid];
+            if (!liveEntry) return;
+
+            const requiredEntries = parseEntryRefs(requiredEntriesInput.val());
+            const relatedEntries = parseEntryRefs(relatedEntriesInput.val());
+            const currentWorld = String(liveEntry.world || entry.world || name || '').trim();
+            const currentKey = getWorldInfoEntryKey({ world: currentWorld, uid });
+            const validateRefs = (refs, label) => {
+                for (const value of refs) {
+                    const normalized = normalizeWorldInfoEntryRef(value, currentWorld);
+                    if (!normalized) {
+                        throw new TypeError(`${label}: invalid entry reference "${value}"`);
+                    }
+                    if (normalized.key === currentKey) {
+                        throw new TypeError(`${label}: an entry cannot depend on or relate to itself`);
+                    }
+                }
+            };
+
+            try {
+                validateRefs(requiredEntries, 'Required entries');
+                validateRefs(relatedEntries, 'Related entries');
+                const mutualExclusionGroup = String(mutualExclusionGroupInput.val() ?? '').trim().slice(0, 160);
+                const budgetTier = ['critical', 'scene', 'normal', 'optional'].includes(String(budgetTierInput.val()))
+                    ? String(budgetTierInput.val())
+                    : 'normal';
+                const compactContent = String(compactContentInput.val() ?? '');
+
+                Object.assign(liveEntry, {
+                    requiredEntries,
+                    relatedEntries,
+                    mutualExclusionGroup,
+                    budgetTier,
+                    compactContent,
+                });
+                Object.assign(entry, {
+                    requiredEntries: structuredClone(requiredEntries),
+                    relatedEntries: structuredClone(relatedEntries),
+                    mutualExclusionGroup,
+                    budgetTier,
+                    compactContent,
+                });
+                setWIOriginalDataValue(data, uid, 'extensions.atria_required_entries', structuredClone(requiredEntries));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_related_entries', structuredClone(relatedEntries));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_mutual_exclusion_group', mutualExclusionGroup);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_budget_tier', budgetTier);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_compact_content', compactContent);
+                await saveWorldInfo(name, data);
+                selectionDirty = false;
+                selectionStatus.text(t`Selection rules saved`);
+            } catch (error) {
+                console.warn('[WI] Failed to save selection rules', error);
+                toastr.warning(String(error?.message || error), t`World Info selection rules`);
+            }
+        });
+        selectionStatus.text(selectionDirty
+            ? t`Unsaved selection rule changes`
+            : t`Selection rules saved`);
 
         // Content
         const counter = editTemplate.find('.world_entry_form_token_counter');
