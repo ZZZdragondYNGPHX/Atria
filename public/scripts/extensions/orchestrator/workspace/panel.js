@@ -268,30 +268,22 @@ function renderRun(run, view) {
 
 function renderMemoryPage(run, view) {
     shell.inspector.hidden = true;
-    const heading = el('div', undefined, shell.main, 'workspace-page-heading');
-    const title = el('div', undefined, heading);
-    el('span', 'Memory OS', title, 'workspace-eyebrow');
-    el('h3', 'Long-term memory', title);
-    el('p', 'Browse recalled evidence and manage the knowledge system for the current conversation.', title, 'workspace-hint');
-
-    if (run && view.recalls.length) {
-        const evidence = el('details', undefined, shell.main, 'workspace-run-memory-evidence');
-        el('summary', i18nFormat('Used this run · ${0} recalls', view.recalls.length), evidence);
-        const host = el('section', undefined, evidence);
-        const getView = () => workspaceRunView(selectedRun(), selection);
-        const memoryPageIndex = pageSequence;
-        updateMemory = () => {
-            pageSequence = memoryPageIndex;
-            host.replaceChildren();
-            const current = getView();
-            paged(host, [...current.recalls].reverse(), (parent, recall) => {
-                detail(parent, `${recall.agentId || recall.runId} · ${recall.references?.length || 0} refs · ${recall.stepId || ''}`, recall);
-            });
-        };
-        updateMemory();
+    if (replay) {
+        const empty = el('section', undefined, shell.main, 'workspace-empty-state');
+        el('h3', 'Memory management is unavailable while viewing an imported trace.', empty);
+        el('p', 'Return to the live run to browse and maintain the current conversation memory.', empty);
+        return;
     }
-
-    if (!replay) disposePage = ports.renderMemory?.(shell.main, { el, button, json, detail, view, getView: () => workspaceRunView(selectedRun(), selection) });
+    disposePage = ports.renderMemory?.(shell.main, {
+        el,
+        button,
+        json,
+        detail,
+        inspector: shell.inspector,
+        view,
+        getView: () => workspaceRunView(selectedRun(), selection),
+    }) || null;
+    updateMemory = () => render();
 }
 
 function renderDiagnostics(run, view) {
