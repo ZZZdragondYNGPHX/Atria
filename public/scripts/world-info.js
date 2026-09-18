@@ -2617,6 +2617,23 @@ function registerWorldInfoSlashCommands() {
                 entry.stateConditionLogic = String(value || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
                 setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', entry.stateConditionLogic);
                 break;
+            case 'stateEvents': {
+                try {
+                    const parsed = JSON.parse(value);
+                    if (!Array.isArray(parsed)) throw new TypeError('stateEvents must be a JSON array');
+                    entry.stateEvents = parsed.slice(0, 32).filter(item => item && typeof item === 'object' && !Array.isArray(item));
+                    setWIOriginalDataValue(data, uid, 'extensions.atria_state_events', structuredClone(entry.stateEvents));
+                } catch (error) {
+                    toastr.warning(t`State events must be a JSON array of event objects`);
+                    logSlashCommandWarn('setEntryFieldCallback: Invalid stateEvents JSON', args, { value, error: String(error?.message || error) });
+                    return '';
+                }
+                break;
+            }
+            case 'stateEventLogic':
+                entry.stateEventLogic = String(value || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_event_logic', entry.stateEventLogic);
+                break;
             default:
                 if (Array.isArray(entry[field])) {
                     entry[field] = parseStringArray(value).filter(arrayFilter);
@@ -6757,6 +6774,8 @@ export const originalWIDataKeyMap = {
     'triggers': 'extensions.triggers',
     'stateConditions': 'extensions.atria_state_conditions',
     'stateConditionLogic': 'extensions.atria_state_condition_logic',
+    'stateEvents': 'extensions.atria_state_events',
+    'stateEventLogic': 'extensions.atria_state_event_logic',
     'ignoreBudget': 'extensions.ignore_budget',
 };
 
@@ -10771,6 +10790,10 @@ export function convertCharacterBook(characterBook) {
                 ? structuredClone(entry.extensions.atria_state_conditions)
                 : [],
             stateConditionLogic: entry.extensions?.atria_state_condition_logic === 'any' ? 'any' : 'all',
+            stateEvents: Array.isArray(entry.extensions?.atria_state_events)
+                ? structuredClone(entry.extensions.atria_state_events)
+                : [],
+            stateEventLogic: entry.extensions?.atria_state_event_logic === 'any' ? 'any' : 'all',
             ignoreBudget: entry.extensions?.ignore_budget ?? false,
         };
     });
