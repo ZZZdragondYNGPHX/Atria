@@ -10,7 +10,7 @@ import { POPUP_RESULT, POPUP_TYPE, callGenericPopup } from './popup.js';
 import { renderTemplateAsync } from './templates.js';
 import { openBackupSyncCenter } from './backup-sync-center.js';
 import { openStorageManagement } from './storage-management.js';
-import { copyText, debounce, ensureImageFormatSupported, getBase64Async, humanFileSize } from './utils.js';
+import { debounce, ensureImageFormatSupported, getBase64Async, humanFileSize } from './utils.js';
 
 /**
  * @type {import('../../src/users.js').UserViewModel} Logged in user
@@ -20,30 +20,6 @@ export let accountsEnabled = false;
 
 // Extend the session every 10 minutes
 const SESSION_EXTEND_INTERVAL = 10 * 60 * 1000;
-const BACKUP_CATEGORY_KEYS = Object.freeze([
-    'settings',
-    'secrets',
-    'characters',
-    'chats',
-    'lorebooks',
-    'presets',
-    'assets',
-    'extensions',
-    'globalExtensions',
-    'vectors',
-]);
-const BACKUP_DEFAULT_SELECTION = Object.freeze({
-    settings: true,
-    secrets: true,
-    characters: true,
-    chats: true,
-    lorebooks: true,
-    presets: true,
-    assets: true,
-    extensions: true,
-    globalExtensions: false,
-    vectors: false,
-});
 const DEFAULT_LOG_VIEW_LIMIT = 300;
 const MAX_LOG_VIEW_LIMIT = 5000;
 const MAX_LOG_VIEW_CHARS = 250000;
@@ -179,6 +155,25 @@ export function isAdmin() {
  */
 export function getCurrentUserHandle() {
     return currentUser?.handle || 'default-user';
+}
+
+/**
+ * Refresh the current account view model.
+ * @returns {Promise<void>}
+ */
+async function getCurrentUser() {
+    try {
+        const response = await fetch('/api/users/me', {
+            headers: getRequestHeaders(),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to get current user');
+        }
+        currentUser = await response.json();
+        $('#server_logs_button').show();
+    } catch (error) {
+        console.error('Error getting current user:', error);
+    }
 }
 
 async function fetchServerLogs(options = {}) {
