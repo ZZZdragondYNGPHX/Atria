@@ -15624,7 +15624,7 @@ function bindUi() {
             notifyError(i18nFormat('Import failed: ${0}', error?.message || error));
             updateUiStatus(i18n('Memory graph import failed.'));
         }
-    }););
+    });
 }
 
 function buildSettingsUiHtml() {
