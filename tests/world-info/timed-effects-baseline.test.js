@@ -10,6 +10,18 @@ const start = source.indexOf('class WorldInfoTimedEffects {');
 const end = source.indexOf('export function getWorldInfoSettings()', start);
 if (start < 0 || end < 0) throw new Error('Timed effect class boundary changed');
 
+const bufferStart = source.indexOf('class WorldInfoBuffer {');
+const bufferEnd = source.indexOf('/**\n * Represents a timed effects manager for World Info.', bufferStart);
+if (bufferStart < 0 || bufferEnd < 0) throw new Error('World info buffer class boundary changed');
+
+function createBufferClass() {
+    const context = {
+        MAX_SCAN_DEPTH: 1000,
+        console: { log() {}, debug() {}, warn() {}, error() {} },
+    };
+    return runInNewContext(source.slice(bufferStart, bufferEnd) + '; WorldInfoBuffer', context);
+}
+
 function createEffects(metadata, {
     chat = ['a', 'b', 'c'],
     entry = { world: 'test', uid: 1, hash: 123, sticky: 6, cooldown: 4 },
@@ -93,5 +105,57 @@ describe('W-02 timed effects evaluation / commit split', () => {
 
         effects.commit();
         expect(context.chat_metadata.timedWorldInfo).toEqual(effects.getPendingState());
+    });
+});
+
+
+describe('W-02 external force activation evaluation / commit split', () => {
+    test('preview snapshots do not consume a pending force activation', () => {
+        const Buffer = createBufferClass();
+        const entry = { world: 'test', uid: 1, content: 'first' };
+        Buffer.stageExternalActivation(entry);
+
+        const previewA = new Buffer(['hello'], {});
+        const previewB = new Buffer(['hello'], {});
+
+        expect(previewA.getExternallyActivated(entry)).toEqual(entry);
+        expect(previewB.getExternallyActivated(entry)).toEqual(entry);
+        expect(previewA.getExternalActivationCommitToken()).toEqual([
+            { key: 'test.1', revision: 1 },
+        ]);
+        expect(previewB.getExternalActivationCommitToken()).toEqual([
+            { key: 'test.1', revision: 1 },
+        ]);
+    });
+
+    test('stale commit token cannot consume a newer activation for the same entry', () => {
+        const Buffer = createBufferClass();
+        const first = { world: 'test', uid: 1, content: 'first' };
+        const second = { world: 'test', uid: 1, content: 'second' };
+
+        Buffer.stageExternalActivation(first);
+        const stalePreview = new Buffer(['hello'], {});
+        const staleToken = stalePreview.getExternalActivationCommitToken();
+
+        Buffer.stageExternalActivation(second);
+        expect(Buffer.consumeExternalActivations(staleToken)).toBe(0);
+
+        const currentPreview = new Buffer(['hello'], {});
+        expect(currentPreview.getExternallyActivated(second)).toEqual(second);
+        expect(currentPreview.getExternalActivationCommitToken()).toEqual([
+            { key: 'test.1', revision: 2 },
+        ]);
+    });
+
+    test('current commit token consumes the force activation exactly once', () => {
+        const Buffer = createBufferClass();
+        const entry = { world: 'test', uid: 1, content: 'first' };
+        Buffer.stageExternalActivation(entry);
+        const evaluation = new Buffer(['hello'], {});
+        const token = evaluation.getExternalActivationCommitToken();
+
+        expect(Buffer.consumeExternalActivations(token)).toBe(1);
+        expect(Buffer.consumeExternalActivations(token)).toBe(0);
+        expect(new Buffer(['hello'], {}).getExternallyActivated(entry)).toBeUndefined();
     });
 });
