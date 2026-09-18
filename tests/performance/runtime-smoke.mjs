@@ -103,6 +103,20 @@ try {
             constant: true,
         }],
     });
+    writeWorldBook({
+        dataRoot,
+        name: 'atri-event-no-baseline-fixture',
+        entries: [{
+            content: 'EVENT_NO_BASELINE_BODY',
+            constant: true,
+            stateEvents: [{
+                providerId: 'mvu',
+                path: ['scene', 'place'],
+                from: 'tavern',
+                to: 'clocktower',
+            }],
+        }],
+    });
     child = spawn(process.execPath, ['server.js', '--configPath=' + configPath, '--dataRoot=' + dataRoot, '--port=' + port, '--browserLaunchEnabled=false', '--listen=false'], {
         cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -289,6 +303,39 @@ try {
         });
         const readyConditionTrueBody = readyConditionResolution.worldInfoString.includes('READY_CONDITION_TRUE_BODY');
         const readyConditionFalseBody = readyConditionResolution.worldInfoString.includes('READY_CONDITION_FALSE_BODY');
+        const metadataBeforeStateGuardCommit = structuredClone(core.chat_metadata);
+        const stateGuardResolution = await core.simulateWorldInfoActivation({
+            chatForWI: ['fixture'],
+            maxContext: 8192,
+            dryRun: false,
+        });
+        globalThis.Mvu = {
+            isDuringExtraAnalysis: () => false,
+            getMvuData: () => ({
+                stat_data: { scene: { place: 'castle' } },
+                schema: { scene: { place: 'string' } },
+            }),
+        };
+        const stateGuardCommit = await wi.commitWorldInfoEvaluation(stateGuardResolution);
+        const metadataAfterStateGuardCommit = structuredClone(core.chat_metadata);
+
+        globalThis.Mvu = {
+            isDuringExtraAnalysis: () => false,
+            getMvuData: () => ({
+                stat_data: { scene: { place: 'clocktower' } },
+                schema: { scene: { place: 'string' } },
+            }),
+        };
+        wi.updateWorldInfoSettings(
+            { world_info_budget: 100, world_info_recursive: false },
+            ['atri-event-no-baseline-fixture'],
+        );
+        const noBaselineEventResolution = await core.simulateWorldInfoActivation({
+            chatForWI: ['fixture'],
+            maxContext: 8192,
+            dryRun: true,
+        });
+        const eventNoBaselineBody = noBaselineEventResolution.worldInfoString.includes('EVENT_NO_BASELINE_BODY');
         core.chat.splice(originalChatLength);
         if (previousMvu === undefined) delete globalThis.Mvu;
         else globalThis.Mvu = previousMvu;
@@ -333,7 +380,9 @@ try {
             metadataBeforeStaleCommit, metadataAfterStaleCommit,
             containedUnknownConditionBody: resolution.worldInfoString.includes('UNKNOWN_CONDITION_BODY'),
             containedMalformedConditionBody: resolution.worldInfoString.includes('MALFORMED_CONDITION_BODY'),
-            readyConditionTrueBody, readyConditionFalseBody, stateConditionAuthorUi };
+            readyConditionTrueBody, readyConditionFalseBody, stateConditionAuthorUi,
+            stateGuardCommit, metadataBeforeStateGuardCommit, metadataAfterStateGuardCommit,
+            eventNoBaselineBody };
     });
     assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
     assert.deepEqual(result.after, ['RENDERED_FIXTURE_BODY']);
@@ -356,6 +405,10 @@ try {
     assert.equal(result.containedMalformedConditionBody, false);
     assert.equal(result.readyConditionTrueBody, true);
     assert.equal(result.readyConditionFalseBody, false);
+    assert.equal(result.stateGuardCommit.committed, false);
+    assert.equal(result.stateGuardCommit.reason, 'state_changed');
+    assert.deepEqual(result.metadataAfterStateGuardCommit, result.metadataBeforeStateGuardCommit);
+    assert.equal(result.eventNoBaselineBody, false);
     assert.deepEqual(result.stateConditionAuthorUi, {
         drawers: 1,
         addButtons: 1,
