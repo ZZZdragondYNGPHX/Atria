@@ -32,11 +32,6 @@ function topContentTextareaPopup(page) {
     }).last();
 }
 
-async function confirmTopPopup(page) {
-    const popup = topActivePopup(page);
-    await popup.locator('.popup-button-ok').click();
-}
-
 test.describe('Browser Storage Management · CRUD', () => {
     test('edits and creates localStorage entries', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
