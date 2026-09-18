@@ -400,6 +400,68 @@ export function buildWorldInfoBundleVariant(entries = [], mode = 'full') {
     });
 }
 
+export async function chooseWorldInfoBundleVariant(entries = [], {
+    budget = Infinity,
+    priorTokens = 0,
+    prefixText = '',
+    tokenCount,
+    renderContent = value => String(value ?? ''),
+} = {}) {
+    if (typeof tokenCount !== 'function') {
+        throw new TypeError('tokenCount callback is required');
+    }
+
+    const materialize = mode => buildWorldInfoBundleVariant(entries, mode).map(item => ({
+        ...item,
+        content: String(renderContent(item.content, item.entry) ?? ''),
+    }));
+    const full = materialize('full');
+    const requiresBudget = (Array.isArray(entries) ? entries : []).some(entry => !entry?.ignoreBudget);
+    const textOf = items => {
+        const body = items.map(item => item.content).filter(Boolean).join('\n');
+        return body ? body + '\n' : '';
+    };
+
+    if (!requiresBudget) {
+        return { ok: true, variant: 'full', items: full, text: textOf(full), tokens: 0 };
+    }
+
+    const fullText = textOf(full);
+    const fullTokens = await tokenCount(String(prefixText ?? '') + fullText);
+    if ((Number(priorTokens) || 0) + fullTokens < budget) {
+        return { ok: true, variant: 'full', items: full, text: fullText, tokens: fullTokens };
+    }
+
+    const compact = materialize('compact');
+    const compactDiffers = compact.some((item, index) => item.compact && item.content !== full[index]?.content);
+    if (compactDiffers) {
+        const compactText = textOf(compact);
+        const compactTokens = await tokenCount(String(prefixText ?? '') + compactText);
+        if ((Number(priorTokens) || 0) + compactTokens < budget) {
+            return { ok: true, variant: 'compact', items: compact, text: compactText, tokens: compactTokens };
+        }
+        return {
+            ok: false,
+            reason: 'budget_overflow',
+            variant: 'none',
+            items: [],
+            text: '',
+            fullTokens,
+            compactTokens,
+        };
+    }
+
+    return {
+        ok: false,
+        reason: 'budget_overflow',
+        variant: 'none',
+        items: [],
+        text: '',
+        fullTokens,
+        compactTokens: null,
+    };
+}
+
 export function getRelatedWorldInfoEntryKeys(entry) {
     const meta = normalizeWorldInfoSelectionMetadata(entry);
     return meta.relatedEntries
