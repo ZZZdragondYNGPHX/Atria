@@ -423,7 +423,7 @@ class StorageInspector {
             this.provider.canMutate
             && typeof this.provider.canCreateAtPath === 'function'
             && this.provider.canCreateAtPath(this.pathStack)
-            && typeof this.mutator.createAtPath === 'function'
+            && typeof this.mutator.createAtPath === 'function',
         );
         button.classList.toggle('displayNone', !canCreate);
     }
