@@ -88,7 +88,7 @@ try {
     assert.equal(await workspace.getByText('Preset Library', { exact: true }).count(), 1);
     await workspace.getByText('Workspace defaults', { exact: true }).click();
     await workspace.getByLabel('Enable agent orchestration', { exact: true }).check();
-    await workspace.getByLabel('Default API profile', { exact: true }).selectOption('api-one');
+    await workspace.getByLabel('Default API profile · runtime fallback', { exact: true }).selectOption('api-one');
     await workspace.getByLabel('Default prompt preset', { exact: true }).selectOption('prompt-one');
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('settings')).enabled), true);
     assert.equal(await page.evaluate(() => window.settings.llmNodeApiPresetName), 'api-one');
