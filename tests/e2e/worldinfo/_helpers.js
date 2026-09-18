@@ -133,6 +133,13 @@ function cloneDataDirLocal(targetDir) {
         'default-user/characters',
         '_storage',
     ];
+    const missingSeedEssentials = essentials.filter(rel => !existsSync(resolve(SEED_DATA_ABS, rel)));
+    if (missingSeedEssentials.length > 0) {
+        console.warn(`[worldinfo cloneDataDirLocal] seed missing ${missingSeedEssentials.join(', ')}; using empty isolated data root`);
+        mkdirSync(targetDir, { recursive: true });
+        return;
+    }
+
     for (let attempt = 0; attempt < 8; attempt++) {
         try {
             if (existsSync(targetDir)) rmSync(targetDir, { recursive: true, force: true });
