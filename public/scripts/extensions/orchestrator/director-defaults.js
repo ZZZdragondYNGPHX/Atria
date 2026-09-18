@@ -228,16 +228,16 @@ function buildDefaultDirectorSubAgents() {
             apiPresetName: '',
             promptPresetName: '',
             tools: {
-                memory: {
-                    recall: true,
-                    schema: true,
-                    list_candidates: true,
-                    edge_summary: true,
-                    node_brief: true,
-                    expand_seeds: true,
-                    keyword_search: true,
-                    vector_search: true,
-                    find_by_name: true,
+                custom: {
+                    memory_recall: true,
+                    memory_schema: true,
+                    memory_list_candidates: true,
+                    memory_edge_summary: true,
+                    memory_node_brief: true,
+                    memory_expand_seeds: true,
+                    memory_keyword_search: true,
+                    memory_vector_search: true,
+                    memory_find_by_name: true,
                 },
             },
         },
@@ -286,7 +286,7 @@ function buildDefaultDirectorSubAgents() {
             apiPresetName: '',
             promptPresetName: '',
             tools: {
-                search: { search: true, visit: true },
+                custom: { search_search: true, search_visit: true },
             },
         },
         {
@@ -306,10 +306,10 @@ function buildDefaultDirectorSubAgents() {
             tools: {
                 chat: { read_range: true },
                 lorebook: { world_book_list: true, list: true, search: true, get: true },
-                memory: {
-                    keyword_search: true,
-                    find_by_name: true,
-                    node_brief: true,
+                custom: {
+                    memory_keyword_search: true,
+                    memory_find_by_name: true,
+                    memory_node_brief: true,
                 },
             },
         },
@@ -358,9 +358,9 @@ function buildDefaultDirectorSubAgents() {
             tools: {
                 chat: { read_range: true, search: true },
                 lorebook: { world_book_list: true, list: true, search: true },
-                memory: {
-                    keyword_search: true,
-                    node_brief: true,
+                custom: {
+                    memory_keyword_search: true,
+                    memory_node_brief: true,
                 },
             },
         },
@@ -399,21 +399,21 @@ function buildDefaultDirectorSubAgents() {
             apiPresetName: '',
             promptPresetName: '',
             tools: {
-                memory: {
-                    schema: true,
-                    list_candidates: true,
-                    edge_summary: true,
-                    node_brief: true,
-                    expand_seeds: true,
-                    keyword_search: true,
-                    find_by_name: true,
-                    compaction_candidates: true,
-                    node_create: true,
-                    node_edit: true,
-                    node_delete: true,
-                    link_upsert: true,
-                    link_delete: true,
-                    compact_nodes: true,
+                custom: {
+                    memory_schema: true,
+                    memory_list_candidates: true,
+                    memory_edge_summary: true,
+                    memory_node_brief: true,
+                    memory_expand_seeds: true,
+                    memory_keyword_search: true,
+                    memory_find_by_name: true,
+                    memory_compaction_candidates: true,
+                    memory_node_create: true,
+                    memory_node_edit: true,
+                    memory_node_delete: true,
+                    memory_link_upsert: true,
+                    memory_link_delete: true,
+                    memory_compact_nodes: true,
                 },
             },
         },
@@ -483,7 +483,7 @@ function buildFullDirectorSubAgents() {
  *   - drops the three sub-agents that hard-require the memory-graph or
  *     search plugins to do their job (`memory_scout`, `memory_curator`,
  *     `canon_scout`)
- *   - strips the `memory.*` per-agent tool override from `epistemic_scout`
+ *   - strips the `memory_*` Layer-2 custom flags from `epistemic_scout`
  *     and `continuity_critic` so those critics gracefully degrade to
  *     chat + lorebook only (which is exactly what their method skills'
  *     "if memory tools are not enabled" graceful-degrade clauses already
@@ -495,11 +495,10 @@ function buildMinimalDirectorSubAgents() {
         .filter(a => !removedIds.has(a.id))
         .map(a => {
             if (a.id !== 'epistemic_scout' && a.id !== 'continuity_critic') return a;
-            // `delete` on a fresh shallow copy — matches the `delete next.x`
-            // idiom used elsewhere in this file (see line ~495,
-            // `delete passthrough.director`).
             const nextTools = { ...(a.tools || {}) };
-            delete nextTools.memory;
+            nextTools.custom = Object.fromEntries(
+                Object.entries(nextTools.custom || {}).filter(([name]) => !name.startsWith('memory_')),
+            );
             return { ...a, tools: nextTools };
         });
 }
