@@ -122,6 +122,12 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
                 userRoot: dirs.root,
                 backupRoot,
                 engine: currentEngine,
+                metadata: {
+                    purpose: 'backup-restore',
+                    restoreMode: mode,
+                    engineKind: currentEngine.kind,
+                    sourceEngineKind: engineMeta.engineKind,
+                },
             });
             if (onProgress) {
                 try { onProgress({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
