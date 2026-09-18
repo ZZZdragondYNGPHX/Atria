@@ -70,7 +70,7 @@ Create a `docker-compose.yml` in the directory where you want to store data:
 ```yaml
 services:
   atria:
-    image: ghcr.io/funnycups/atria:latest
+    image: ghcr.io/zzzdragondyngphx/atria:dev
     container_name: atria
     ports:
       - 127.0.0.1:8000:8000
