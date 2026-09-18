@@ -91,7 +91,7 @@ const SYMMETRIC_RELATIONS = new Set([
     'family_of',
     'partner_of',
 ]);
-import { getFloorStateInstance, resetFloorStateInstance, loadMetaFields, persistMetaFields, constants as floorStateAdapterConstants, createEmptyStore, normalizeStoreForRuntime, normalizePersistedMemoryState, applyMemoryLogEntryToStore, buildRuntimeStoreFromPersistedState, graphPayloadFromStore, metaFieldsFromStore, buildRuntimeStoreFromGraphPayloadAndMeta, normalizeVectorIndexState, synthesizePersistedStateFromStoreAndMeta, hasPersistedStoreMetadataChanges, getStoreCoveredSeqTo, getCachedMeta, setCachedMeta, clearCachedMeta, activeSwipeIdAtFloor, resolveInFlightAnchor, seqToFloor } from './persistence.js';
+import { getFloorStateInstance, resetFloorStateInstance, loadMetaFields, persistMetaFields, constants as floorStateAdapterConstants, createEmptyStore, normalizeStoreForRuntime, graphPayloadFromStore, metaFieldsFromStore, buildRuntimeStoreFromGraphPayloadAndMeta, normalizeVectorIndexState, synthesizePersistedStateFromStoreAndMeta, hasPersistedStoreMetadataChanges, getStoreCoveredSeqTo, getCachedMeta, setCachedMeta, clearCachedMeta, activeSwipeIdAtFloor, resolveInFlightAnchor, seqToFloor } from './persistence.js';
 import { STATE_ERROR_REASONS } from '../../state-errors.js';
 import {
     LEVEL,
