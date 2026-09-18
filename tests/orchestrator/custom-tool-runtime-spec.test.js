@@ -249,8 +249,8 @@ describe('spec runtime Layer-3 dispatch', () => {
     });
 
     test('threads customToolRegistry into the per-call executeLoopTool ctx', async () => {
-        // Profile: one stage, one worker node with memory.search enabled
-        // and a single custom tool the LLM is told to call. The body
+        // Profile: one stage, one worker node with the current custom-tool
+        // flag enabled and a single custom tool the LLM is told to call. The body
         // records evidence the registry dispatch worked: it pushes the
         // received args plus a registry-presence probe onto the sidecar.
         const profile = {
@@ -261,7 +261,7 @@ describe('spec runtime Layer-3 dispatch', () => {
                         id: 's1',
                         mode: 'serial',
                         nodes: [
-                            { id: 'n1', preset: 'p1', type: 'worker', tools: { memory: { keyword_search: true } } },
+                            { id: 'n1', preset: 'p1', type: 'worker', tools: { custom: { my_tool: true } } },
                         ],
                     },
                 ],
