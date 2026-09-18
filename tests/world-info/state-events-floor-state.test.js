@@ -1,4 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
+import { readFileSync } from 'node:fs';
 import { createFloorStateWithDeps } from '../../public/scripts/floor-state.js';
 import {
     buildWorldInfoEventRuntimeState,
@@ -137,5 +138,21 @@ describe('W-03b transition baseline FloorState lifecycle', () => {
             .toBe(fingerprintWorldInfoStateSnapshot(tavern));
         expect(branchState.transition).toBeNull();
         expect(f.store.rawFor(f.targetTarget).has('atri_world_info_events__floor_log')).toBe(true);
+    });
+});
+
+
+describe('W-03b startup registration contract', () => {
+    test('World Info startup registers the event FloorState before any event scan', () => {
+        const source = readFileSync(
+            new URL('../../public/scripts/world-info.js', import.meta.url),
+            'utf8',
+        );
+        const start = source.indexOf('export function initWorldInfo() {');
+        expect(start).toBeGreaterThanOrEqual(0);
+        const nextExport = source.indexOf('\nexport ', start + 1);
+        const body = source.slice(start, nextExport > start ? nextExport : start + 6000);
+        expect(body).toContain('getWorldInfoEventFloorState()');
+        expect(body).toContain('Failed to register event FloorState during init');
     });
 });
