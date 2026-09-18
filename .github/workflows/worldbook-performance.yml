@@ -59,6 +59,7 @@ jobs:
           world-info/timed-effects-baseline.test.js
           world-info/state-conditions.test.js
           world-info/state-events.test.js
+          world-info/state-events-floor-state.test.js
           --runInBand
 
       - name: Capture synthetic offline baseline
