@@ -78,6 +78,14 @@ try {
             }],
         }],
     });
+    writeWorldBook({
+        dataRoot,
+        name: 'atri-condition-author-ui-fixture',
+        entries: [{
+            content: 'AUTHOR_UI_CONDITION_BODY',
+            constant: true,
+        }],
+    });
     child = spawn(process.execPath, ['server.js', '--configPath=' + configPath, '--dataRoot=' + dataRoot, '--port=' + port, '--browserLaunchEnabled=false', '--listen=false'], {
         cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -102,6 +110,41 @@ try {
     });
     await page.goto(baseURL);
     await page.waitForFunction(() => window.Atria?.getContext && !document.getElementById('preloader'), null, { timeout: 60000 });
+
+    const authorUiWorldIndex = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        return wi.world_names.indexOf('atri-condition-author-ui-fixture');
+    });
+    assert.ok(authorUiWorldIndex >= 0);
+    await page.selectOption('#world_editor_select', String(authorUiWorldIndex));
+    const authorUiEntry = page.locator('#world_popup_entries_list > .world_entry[uid="0"]');
+    await authorUiEntry.waitFor({ state: 'visible', timeout: 15000 });
+    await authorUiEntry.locator('.wi-entry-toggle').click();
+    const conditionEditor = authorUiEntry.locator('.wi-entry-state-conditions');
+    await conditionEditor.waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(await conditionEditor.count(), 1);
+    assert.equal(await authorUiEntry.locator('textarea[name="stateConditionsJson"]').count(), 0);
+    await conditionEditor.locator('> .inline-drawer-toggle').click();
+    await conditionEditor.locator('.wi-state-condition-add').waitFor({ state: 'visible', timeout: 5000 });
+    await conditionEditor.locator('.wi-state-condition-add').click();
+    const authorConditionRow = conditionEditor.locator('.wi-state-condition-row').first();
+    await authorConditionRow.waitFor({ state: 'visible', timeout: 5000 });
+    await authorConditionRow.locator('.wi-state-condition-path input').fill('scene.place');
+    await authorConditionRow.locator('.wi-state-condition-value-control').fill('clocktower');
+    await page.waitForTimeout(100);
+    const authoredConditions = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
+        return structuredClone(data?.entries?.['0']?.stateConditions || []);
+    });
+    assert.deepEqual(authoredConditions, [{
+        providerId: 'mvu',
+        path: ['scene', 'place'],
+        operator: 'eq',
+        value: 'clocktower',
+    }]);
+    assert.equal(await conditionEditor.locator('.wi-state-condition-count').textContent(), '1');
+
     const result = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
         const core = await import('/script.js');
