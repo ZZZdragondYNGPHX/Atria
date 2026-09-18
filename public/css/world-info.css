@@ -1361,6 +1361,14 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     white-space: nowrap;
 }
 
+#WorldInfo .wi-state-condition-toolbar-controls {
+    justify-content: flex-end;
+}
+
+#WorldInfo .wi-state-activation-toggle {
+    margin: 0;
+}
+
 #WorldInfo .wi-state-condition-list {
     width: 100%;
 }
@@ -1441,6 +1449,11 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     #WorldInfo .wi-state-condition-toolbar {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    #WorldInfo .wi-state-condition-toolbar-controls {
+        justify-content: space-between;
+        width: 100%;
     }
 }
 
