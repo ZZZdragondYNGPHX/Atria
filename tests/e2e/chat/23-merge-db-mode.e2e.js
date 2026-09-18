@@ -31,7 +31,7 @@ import {
     sendMessageAndAwaitReply,
     createNewChatViaUI,
 } from '../_lib/page.js';
-import { migrateViaAdminUI, closeAdminPanel, fetchStorageStatus } from '../_lib/storage-ui.js';
+import { migrateStorageBackend, fetchStorageStatus } from '../_lib/storage-ui.js';
 import {
     openMergeDialogViaUI,
     addSourceToMerge,
@@ -67,11 +67,9 @@ test.describe('#23 — merge two chats after migrating storage to sqlite', () =>
         expect(preStatus.currentMode, 'server should start in fs mode').toBe('fs');
 
         // Drive the real admin UI migration to sqlite.
-        await migrateViaAdminUI(page, 'sqlite');
+        await migrateStorageBackend(page, 'sqlite');
         const postStatus = await fetchStorageStatus(page);
         expect(postStatus.currentMode, 'after migration the backend should be sqlite').toBe('sqlite');
-        await closeAdminPanel(page);
-
         // From here on, EVERY chat write/read flows through SqliteEngine.
         // The merge endpoint and ChatRepo are backend-agnostic — this
         // test exists to prove that.
