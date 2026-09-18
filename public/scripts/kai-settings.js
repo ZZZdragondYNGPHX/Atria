@@ -230,8 +230,15 @@ function tryParseStreamingError(response, decoded) {
     }
 }
 
-export async function generateKoboldWithStreaming(generate_data, signal, { onAtriaMeta = null } = {}) {
+export async function generateKoboldWithStreaming(generate_data, signal, { onAtriaMeta = null, onRequestReady = null } = {}) {
     const response = await withProfileRetry(async () => {
+        if (typeof onRequestReady === 'function') {
+            try {
+                onRequestReady();
+            } catch (error) {
+                console.warn('[world-info] request attribution observer failed', error);
+            }
+        }
         return await fetch('/api/backends/kobold/generate', {
             headers: getRequestHeaders(),
             body: JSON.stringify(unescapeMacroBracesInRequestData(generate_data)),

@@ -1,3 +1,4 @@
+import { worldInfoSource } from '../../../atri-world-info-provenance.js';
 /**
  * loop-tools/lorebook-force-activate.js — Layer-1 builtin that injects
  * a normally-dormant World Info entry into the in-flight wiFinalizedPayload
@@ -193,18 +194,27 @@ export async function execLorebookForceActivate(args, context) {
         }
         const position = Number(entry.position);
         let route;
+        const provenance = payload.worldInfoProvenance ?? payload.worldInfoResolution?.worldInfoProvenance;
+        const source = worldInfoSource({ ...entry, world: bookName, uid }, content);
         switch (position) {
             case POSITION_BEFORE:
                 payload.worldInfoBeforeEntries.push(content);
+                provenance?.worldInfoBeforeEntries.push(source);
                 route = 'before-char';
                 break;
             case POSITION_AFTER:
                 payload.worldInfoAfterEntries.push(content);
+                provenance?.worldInfoAfterEntries.push(source);
                 route = 'after-char';
                 break;
             case POSITION_AT_DEPTH: {
                 const bucket = findOrCreateDepthBucket(payload, entry.depth, entry.role);
                 bucket.entries.push(content);
+                if (provenance) {
+                    const index = payload.worldInfoDepth.indexOf(bucket);
+                    provenance.worldInfoDepth[index] ??= { depth: bucket.depth, role: bucket.role, entries: [] };
+                    provenance.worldInfoDepth[index].entries.push(source);
+                }
                 route = `at-depth(d=${bucket.depth},r=${bucket.role})`;
                 break;
             }

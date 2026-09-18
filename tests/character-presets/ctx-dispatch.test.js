@@ -368,6 +368,7 @@ jest.unstable_mockModule('../../public/scripts/variables.js', () => ({
 }));
 jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
     convertCharacterBook: () => ({}), getWorldInfoPrompt: () => Promise.resolve(''),
+    commitWorldInfoEvaluation: () => Promise.resolve({ committed: true, activatedEntries: 0 }),
     loadWorldInfo: () => Promise.resolve({}), loadWorldInfoBatch: () => Promise.resolve({}),
     reloadEditor: () => {}, saveWorldInfo: () => Promise.resolve(),
     updateWorldInfoList: () => Promise.resolve(),

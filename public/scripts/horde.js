@@ -200,7 +200,7 @@ function setContextSizePreview() {
  * @returns {Promise<{text: *, workerName: string}>}
  * @throws {Error}
  */
-export async function generateHorde(prompt, params, signal, reportProgress) {
+export async function generateHorde(prompt, params, signal, reportProgress, { onRequestReady = null } = {}) {
     validateHordeModel();
     delete params.prompt;
 
@@ -220,6 +220,13 @@ export async function generateHorde(prompt, params, signal, reportProgress) {
     };
 
     const response = await withProfileRetry(async () => {
+        if (typeof onRequestReady === 'function') {
+            try {
+                onRequestReady();
+            } catch (error) {
+                console.warn('[world-info] request attribution observer failed', error);
+            }
+        }
         return await fetch('/api/horde/generate-text', {
             method: 'POST',
             headers: getRequestHeaders(),

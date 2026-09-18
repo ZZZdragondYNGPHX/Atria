@@ -1079,6 +1079,15 @@ function convertWorldInfoToCharacterBook(name, entries) {
                 match_scenario: entry.matchScenario ?? false,
                 match_creator_notes: entry.matchCreatorNotes ?? false,
                 triggers: entry.triggers ?? [],
+                atria_state_conditions: Array.isArray(entry.stateConditions)
+                    ? structuredClone(entry.stateConditions)
+                    : [],
+                atria_state_condition_logic: entry.stateConditionLogic === 'any' ? 'any' : 'all',
+                atria_state_activation: entry.stateActivation === true,
+                atria_state_events: Array.isArray(entry.stateEvents)
+                    ? structuredClone(entry.stateEvents)
+                    : [],
+                atria_state_event_logic: entry.stateEventLogic === 'any' ? 'any' : 'all',
                 ignore_budget: entry.ignoreBudget ?? false,
             },
         };

@@ -1317,3 +1317,267 @@ select.keyselect+span.select2-container .select2-selection--multiple {
 .world_bulk_matched_label {
     margin-left: 10px;
 }
+
+
+/* Atria native World Info state conditions. Reuses the entry drawer palette
+   and keeps condition authoring compact enough for desktop and mobile. */
+#WorldInfo .wi-entry-state-conditions {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 78%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 55%, transparent);
+    overflow: hidden;
+}
+
+#WorldInfo .wi-entry-state-conditions > .inline-drawer-header {
+    min-height: 38px;
+    padding: 6px 10px;
+}
+
+#WorldInfo .wi-state-condition-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.7em;
+    min-height: 1.7em;
+    padding: 0 0.45em;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 18%, transparent);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.78em;
+    font-weight: 700;
+}
+
+#WorldInfo .wi-state-condition-toolbar {
+    width: 100%;
+}
+
+#WorldInfo .wi-state-condition-toolbar > small {
+    max-width: 70ch;
+    opacity: 0.78;
+}
+
+#WorldInfo .wi-state-condition-toolbar label {
+    gap: 6px;
+    white-space: nowrap;
+}
+
+#WorldInfo .wi-state-condition-toolbar-controls {
+    justify-content: flex-end;
+}
+
+#WorldInfo .wi-state-activation-toggle {
+    margin: 0;
+}
+
+#WorldInfo .wi-state-condition-list {
+    width: 100%;
+}
+
+#WorldInfo .wi-state-condition-row {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 0.8fr) minmax(10rem, 1.6fr) minmax(7rem, 0.8fr) minmax(6.5rem, 0.75fr) minmax(9rem, 1.4fr) auto;
+    gap: 7px;
+    align-items: end;
+    width: 100%;
+    padding: 9px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 72%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 3%, transparent);
+}
+
+#WorldInfo .wi-state-condition-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+#WorldInfo .wi-state-condition-field > small {
+    opacity: 0.72;
+    font-size: 0.75em;
+}
+
+#WorldInfo .wi-state-condition-row :is(input, select) {
+    min-width: 0;
+    width: 100%;
+}
+
+#WorldInfo .wi-state-condition-row.is-incomplete {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 58%, var(--SmartThemeBorderColor));
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 7%, transparent);
+}
+
+#WorldInfo .wi-state-condition-row.is-incomplete .wi-state-condition-path input {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 72%, var(--SmartThemeBorderColor));
+}
+
+#WorldInfo .wi-state-condition-remove {
+    align-self: end;
+    min-width: 2.4em;
+    min-height: 2.4em;
+}
+
+#WorldInfo .wi-state-condition-add {
+    align-self: flex-start;
+    gap: 6px;
+}
+
+#WorldInfo .wi-state-condition-hint {
+    opacity: 0.7;
+}
+
+@media screen and (min-width: 1001px) {
+    #WorldInfo .world_entry .wi-entry-state-conditions { order: 6; }
+    #WorldInfo .world_entry .wi-entry-bottom-controls { order: 7; }
+    #WorldInfo .world_entry .wi-entry-extra-sources { order: 8; }
+}
+
+@media screen and (max-width: 1000px) {
+    #WorldInfo .wi-state-condition-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #WorldInfo .wi-state-condition-row .wi-state-condition-path,
+    #WorldInfo .wi-state-condition-row .wi-state-condition-value {
+        grid-column: 1 / -1;
+    }
+
+    #WorldInfo .wi-state-condition-remove {
+        justify-self: end;
+    }
+
+    #WorldInfo .wi-state-condition-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    #WorldInfo .wi-state-condition-toolbar-controls {
+        justify-content: space-between;
+        width: 100%;
+    }
+}
+
+
+/* Atria native World Info state-transition events. */
+#WorldInfo .wi-entry-state-events {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 78%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 55%, transparent);
+    overflow: hidden;
+}
+
+#WorldInfo .wi-entry-state-events > .inline-drawer-header {
+    min-height: 38px;
+    padding: 6px 10px;
+}
+
+#WorldInfo .wi-state-event-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.7em;
+    min-height: 1.7em;
+    padding: 0 0.45em;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 18%, transparent);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.78em;
+    font-weight: 700;
+}
+
+#WorldInfo .wi-state-event-toolbar,
+#WorldInfo .wi-state-event-list {
+    width: 100%;
+}
+
+#WorldInfo .wi-state-event-toolbar > small {
+    max-width: 70ch;
+    opacity: 0.78;
+}
+
+#WorldInfo .wi-state-event-toolbar label {
+    gap: 6px;
+    white-space: nowrap;
+}
+
+#WorldInfo .wi-state-event-row {
+    display: grid;
+    grid-template-columns:
+        minmax(7.5rem, 0.8fr)
+        minmax(10rem, 1.5fr)
+        minmax(6rem, 0.65fr)
+        minmax(8rem, 1fr)
+        minmax(6rem, 0.65fr)
+        minmax(8rem, 1fr)
+        auto;
+    gap: 7px;
+    align-items: end;
+    width: 100%;
+    padding: 9px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 72%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 3%, transparent);
+}
+
+#WorldInfo .wi-state-event-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+#WorldInfo .wi-state-event-field > small {
+    opacity: 0.72;
+    font-size: 0.75em;
+}
+
+#WorldInfo .wi-state-event-row :is(input, select) {
+    min-width: 0;
+    width: 100%;
+}
+
+#WorldInfo .wi-state-event-row.is-incomplete {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 58%, var(--SmartThemeBorderColor));
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 7%, transparent);
+}
+
+#WorldInfo .wi-state-event-row.is-incomplete .wi-state-event-path input {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 72%, var(--SmartThemeBorderColor));
+}
+
+#WorldInfo .wi-state-event-remove {
+    align-self: end;
+    min-width: 2.4em;
+    min-height: 2.4em;
+}
+
+#WorldInfo .wi-state-event-hint {
+    opacity: 0.7;
+}
+
+@media screen and (min-width: 1001px) {
+    #WorldInfo .world_entry .wi-entry-state-events { order: 7; }
+    #WorldInfo .world_entry .wi-entry-bottom-controls { order: 8; }
+    #WorldInfo .world_entry .wi-entry-extra-sources { order: 9; }
+}
+
+@media screen and (max-width: 1000px) {
+    #WorldInfo .wi-state-event-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #WorldInfo .wi-state-event-row .wi-state-event-path,
+    #WorldInfo .wi-state-event-row .wi-state-event-from-value,
+    #WorldInfo .wi-state-event-row .wi-state-event-to-value {
+        grid-column: 1 / -1;
+    }
+
+    #WorldInfo .wi-state-event-remove {
+        justify-self: end;
+    }
+
+    #WorldInfo .wi-state-event-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

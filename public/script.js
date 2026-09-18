@@ -1,3 +1,5 @@
+import { ChatSnapshotCache } from './scripts/atri-chat-snapshot-cache.js';
+import { createWorldInfoDispatchAttribution, markWorldInfoDispatch } from './scripts/atri-world-info-provenance.js';
 import {
     showdown,
     moment,
@@ -40,6 +42,7 @@ import {
 import {
     world_info,
     getWorldInfoPrompt,
+    commitWorldInfoEvaluation,
     getWorldInfoSettings,
     setWorldInfoSettings,
     world_names,
@@ -1313,8 +1316,7 @@ let dialogueResolve = null;
 let dialogueCloseStop = false;
 /** @type {ChatMetadata} */
 export let chat_metadata = {};
-const chatMetadataSnapshotCache = new Map();
-const chatMessageSnapshotCache = new Map();
+const chatSnapshotCache = new ChatSnapshotCache({ activeKey: () => getChatMessageSnapshotKey() });
 /** @type {StreamingProcessor} */
 export let streamingProcessor = null;
 let crop_data = undefined;
@@ -3489,6 +3491,7 @@ export async function clearChat({ clearData = false } = {}) {
     itemizedPrompts.length = 0;
 
     if (clearData) chat.length = 0;
+    chatSnapshotCache.prune();
 }
 
 export async function deleteLastMessage() {
@@ -7213,7 +7216,7 @@ export function buildWorldInfoGlobalScanData(type, overrides = {}) {
  * @param {object} params Parameters.
  * @param {ChatMessage[]} [params.coreChat=[]] Chat snapshot to scan.
  * @param {number} [params.maxContext] Max context for WI scan.
- * @param {boolean} [params.dryRun=false] Dry run flag.
+ * @param {boolean} [params.dryRun=true] Preview/evaluation flag.
  * @param {string} [params.type='normal'] Generation type.
  * @param {string[]} [params.chatForWI] Optional prebuilt WI chat array.
  * @param {boolean} [params.includeNames=world_info_include_names] Include speaker names when building WI chat.
@@ -7223,7 +7226,7 @@ export function buildWorldInfoGlobalScanData(type, overrides = {}) {
 export async function simulateWorldInfoActivation({
     coreChat = [],
     maxContext: maxContextOverride = undefined,
-    dryRun = false,
+    dryRun = true,
     type = 'normal',
     chatForWI = undefined,
     includeNames = world_info_include_names,
@@ -7974,6 +7977,36 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         worldInfoAfterEntries,
     });
 
+    // W-02: scans above are evaluations only. Commit the accepted final
+    // resolution once, after all rescan/finalization hooks have settled.
+    if (!dryRun) {
+        const commitResult = await commitWorldInfoEvaluation(worldInfoResolution);
+        if (['scope_changed', 'state_changed', 'state_commit_failed'].includes(commitResult.reason)) {
+            console.warn(
+                `[WI] Final evaluation could not commit (${commitResult.reason}); dropping stale generation.`,
+            );
+            if (type !== 'quiet') {
+                unblockGeneration(type);
+            }
+            return Promise.resolve();
+        }
+        if (exitAbortedGenerationIfNeeded()) {
+            return Promise.resolve();
+        }
+    }
+
+    // W-01: bind the final filtered identity/source snapshot to this
+    // generation. Rendered bodies are omitted from this attribution because
+    // Prompt Itemization already retains the assembled prompt.
+    const worldInfoAttribution = createWorldInfoDispatchAttribution(
+        wiFinalizedPayload.worldInfoProvenance ?? worldInfoResolution?.worldInfoProvenance,
+        {
+            includeAuthorsNote: Boolean(shouldWIAddPrompt),
+            includeDepth: skipWIAN !== true,
+            includeOutlets: skipWIAN !== true,
+        },
+    );
+
     applyFinalizedAuthorsNoteInjections(anBefore, anAfter);
     setExtensionPrompt(inject_ids.QUIET_PROMPT, '', extension_prompt_types.IN_PROMPT, 0, true);
     const worldInfoBefore = joinWorldInfoEntries(worldInfoBeforeEntries);
@@ -8692,6 +8725,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             chatVectorsString: (extension_prompts['3_vectors']?.value || ''),
             dataBankVectorsString: (extension_prompts['4_vectors_data_bank']?.value || ''),
             worldInfoString: worldInfoString,
+            worldInfoAttribution,
             storyString: storyString,
             beforeScenarioAnchor: beforeScenarioAnchor,
             afterScenarioAnchor: afterScenarioAnchor,
@@ -8745,6 +8779,17 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             await eventSource.emit(event_types.GENERATE_TAKEOVER_DISPATCH, dispatchEvent);
 
             if (dispatchEvent.takeoverHandle) {
+                // The core can prove handoff to the takeover plugin, but it
+                // cannot assert that the plugin subsequently reached a model
+                // provider transport.
+                markWorldInfoDispatch(worldInfoAttribution, {
+                    boundary: 'plugin_takeover',
+                    providerConfirmed: false,
+                    mainApi: main_api,
+                    type,
+                    stream: isStreamingEnabled(),
+                });
+
                 // Takeover plugins replace the sendOpenAIRequest step, which
                 // is where CHAT_COMPLETION_SETTINGS_READY normally fires for
                 // chat-completion prompt processors (e.g. ST-Prompt-Template's
@@ -9023,7 +9068,10 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
                 streamingProcessor.firstMessageText = '';
             }
 
-            streamingProcessor.generator = await sendStreamingRequest(type, generate_data, { jsonSchema });
+            streamingProcessor.generator = await sendStreamingRequest(type, generate_data, {
+                jsonSchema,
+                onRequestReady: meta => markWorldInfoDispatch(worldInfoAttribution, meta),
+            });
 
             hideSwipeButtons();
             let getMessage = await streamingProcessor.generate();
@@ -9117,7 +9165,10 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
                 });
             }
         } else {
-            return await sendGenerationRequest(type, generate_data, { jsonSchema });
+            return await sendGenerationRequest(type, generate_data, {
+                jsonSchema,
+                onRequestReady: meta => markWorldInfoDispatch(worldInfoAttribution, meta),
+            });
         }
     }
 
@@ -10030,7 +10081,17 @@ function setInContextMessages(msgInContextCount, type) {
  * @property {string} [llmPresetName]
  * @property {string} [apiPresetName] Connection profile name; resolved internally to the corresponding connection settings override.
  * @property {object} [apiSettingsOverride]
+ * @property {(meta: object) => void} [onRequestReady] Internal lightweight request-boundary observer.
  */
+
+function notifyGenerationRequestReady(options, meta) {
+    if (typeof options?.onRequestReady !== 'function') return;
+    try {
+        options.onRequestReady(meta);
+    } catch (error) {
+        console.warn('[world-info] request attribution observer failed', error);
+    }
+}
 
 /**
  * Sends a non-streaming request to the API.
@@ -10051,7 +10112,15 @@ export async function sendGenerationRequest(type, data, options = {}) {
     }
 
     if (main_api === 'koboldhorde') {
-        return await generateHorde(data.prompt, data, abortController.signal, true);
+        return await generateHorde(data.prompt, data, abortController.signal, true, {
+            onRequestReady: () => notifyGenerationRequestReady(options, {
+                boundary: 'provider_request',
+                providerConfirmed: true,
+                mainApi: main_api,
+                type,
+                stream: false,
+            }),
+        });
     }
 
     const shouldTrackAtriaGenerationState = shouldUseAtriaServerPersistenceForType(type) && supportsAtriaServerPersistence(main_api);
@@ -10071,6 +10140,13 @@ export async function sendGenerationRequest(type, data, options = {}) {
     // funnels through this fetch, so it must respect the same per-profile
     // retry policy (max-request-retries + retry-status-whitelist) as the rest.
     const response = await withProfileRetry(async () => {
+        notifyGenerationRequestReady(options, {
+            boundary: 'provider_request',
+            providerConfirmed: true,
+            mainApi: main_api,
+            type,
+            stream: false,
+        });
         return await fetch(getGenerateUrl(main_api), {
             method: 'POST',
             headers: getRequestHeaders(),
@@ -10146,11 +10222,38 @@ export async function sendStreamingRequest(type, data, options = {}) {
         case 'openai':
             return await sendOpenAIRequest(type, data.prompt, streamingProcessor.abortController.signal, options);
         case 'textgenerationwebui':
-            return await generateTextGenWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
+            return await generateTextGenWithStreaming(data, streamingProcessor.abortController.signal, {
+                onAtriaMeta,
+                onRequestReady: () => notifyGenerationRequestReady(options, {
+                    boundary: 'provider_request',
+                    providerConfirmed: true,
+                    mainApi: main_api,
+                    type,
+                    stream: true,
+                }),
+            });
         case 'novel':
-            return await generateNovelWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
+            return await generateNovelWithStreaming(data, streamingProcessor.abortController.signal, {
+                onAtriaMeta,
+                onRequestReady: () => notifyGenerationRequestReady(options, {
+                    boundary: 'provider_request',
+                    providerConfirmed: true,
+                    mainApi: main_api,
+                    type,
+                    stream: true,
+                }),
+            });
         case 'kobold':
-            return await generateKoboldWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
+            return await generateKoboldWithStreaming(data, streamingProcessor.abortController.signal, {
+                onAtriaMeta,
+                onRequestReady: () => notifyGenerationRequestReady(options, {
+                    boundary: 'provider_request',
+                    providerConfirmed: true,
+                    mainApi: main_api,
+                    type,
+                    stream: true,
+                }),
+            });
         default:
             throw new Error('Streaming is enabled, but the current API does not support streaming.');
     }
@@ -12207,7 +12310,7 @@ function rememberChatMetadataSnapshot(target = resolveChatStateTarget(), metadat
     if (!key) {
         return;
     }
-    chatMetadataSnapshotCache.set(key, cloneJsonValue(isPlainObject(metadata) ? metadata : {}));
+    chatSnapshotCache.set(key, 'metadata', cloneJsonValue(isPlainObject(metadata) ? metadata : {}));
 }
 
 export function seedChatMetadataSnapshot(target = null, metadata = chat_metadata) {
@@ -12221,7 +12324,7 @@ export function getChatMetadataSnapshot(target = null) {
     if (!key) {
         return null;
     }
-    const snapshot = chatMetadataSnapshotCache.get(key);
+    const snapshot = chatSnapshotCache.get(key, 'metadata');
     return isPlainObject(snapshot) ? cloneJsonValue(snapshot) : null;
 }
 
@@ -12231,7 +12334,7 @@ function rememberChatMessageSnapshot(target = resolveChatStateTarget(), messages
         return;
     }
     if (!Array.isArray(messages)) {
-        chatMessageSnapshotCache.delete(key);
+        chatSnapshotCache.delete(key, 'messages');
         return;
     }
     // Wire-format clone (not structured clone): snapshot mirrors what server
@@ -12241,7 +12344,7 @@ function rememberChatMessageSnapshot(target = resolveChatStateTarget(), messages
     // JSON.stringify on the network path collapses them to null. Diffing a
     // structured-form snapshot against a wire-form server state then ships
     // phantom replace ops or fires false test failures (the conflict toast).
-    chatMessageSnapshotCache.set(key, cloneAsJsonWire(messages));
+    chatSnapshotCache.set(key, 'messages', cloneAsJsonWire(messages));
 }
 
 export function seedChatMessageSnapshot(target = null, messages = chat) {
@@ -12255,7 +12358,7 @@ export function getChatMessageSnapshot(target = null) {
     if (!key) {
         return null;
     }
-    const snapshot = chatMessageSnapshotCache.get(key);
+    const snapshot = chatSnapshotCache.get(key, 'messages');
     return Array.isArray(snapshot) ? cloneJsonValue(snapshot) : null;
 }
 
@@ -12301,9 +12404,11 @@ export function runSerializedChatWrite(task) {
         return Promise.resolve(undefined);
     }
 
+    const releaseSnapshots = chatSnapshotCache.holdWrites();
     const run = chatWriteQueue
         .catch(() => undefined)
-        .then(() => task());
+        .then(() => task())
+        .finally(releaseSnapshots);
 
     chatWriteQueue = run.catch(() => undefined);
     return run;
@@ -13306,8 +13411,7 @@ export function invalidateChatWriteSnapshot(target = resolveChatStateTarget()) {
         return;
     }
 
-    chatMessageSnapshotCache.delete(snapshotKey);
-    chatMetadataSnapshotCache.delete(snapshotKey);
+    chatSnapshotCache.delete(snapshotKey);
 }
 
 
@@ -13615,7 +13719,7 @@ export async function resolveChatWriteConflictForTarget(response, target = null,
     // skipping the diff in that branch loses real signal about which message
     // a concurrent writer touched.
     const snapshotKey = target ? getChatMessageSnapshotKey(target) : null;
-    const clientSnapshot = snapshotKey ? chatMessageSnapshotCache.get(snapshotKey) : null;
+    const clientSnapshot = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'messages') : null;
     let divergenceSummary = null;
     let divergenceDetails = null;
     if (Array.isArray(clientSnapshot)) {
@@ -13739,7 +13843,7 @@ async function appendChatMessagesInternal(messages, retryCount = 0) {
         // happening on `chat[i]` during the await window and silently smuggled
         // those changes into snapshot without ever sending them to BE → drift.
         const snapshotKey = target ? getChatMessageSnapshotKey(target) : null;
-        const previousMessages = snapshotKey ? chatMessageSnapshotCache.get(snapshotKey) : null;
+        const previousMessages = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'messages') : null;
         if (Array.isArray(previousMessages) && snapshotKey) {
             // rememberChatMessageSnapshot deep-clones internally, so spreading
             // raw references is safe here — they get frozen on `.set`.
@@ -13914,7 +14018,7 @@ async function patchChatMessagesInternal(operations, retryCount = 0) {
     try {
         target = resolveChatStateTarget();
         const snapshotKey = target ? getChatMessageSnapshotKey(target) : null;
-        const previousMessages = snapshotKey ? chatMessageSnapshotCache.get(snapshotKey) : null;
+        const previousMessages = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'messages') : null;
         const guardedOperations = attachChatMessagePatchTests(previousMessages, normalizedOperations);
 
         // Optimistic snapshot commit: compute what snapshot will be after BE
@@ -14166,7 +14270,7 @@ async function saveChatMetadataInternal(withMetadata = undefined, retryCount = 0
         const effectiveForce = Boolean(forceRecovery);
 
         const snapshotKey = getChatMetadataSnapshotKey(target);
-        const previousMetadata = snapshotKey ? chatMetadataSnapshotCache.get(snapshotKey) : null;
+        const previousMetadata = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'metadata') : null;
         const operations = await buildChatMetadataPatchOperationsAsync(previousMetadata, metadata);
 
         // Nothing changed.
@@ -14370,7 +14474,7 @@ async function saveChatInternal({ chatName, withMetadata, mesId, force = false, 
         // force (typically false) if not.
         const forceRecovery = consumePendingForceOverwrite(writeTarget);
         const effectiveForce = force || Boolean(forceRecovery);
-        const previousMessages = chatMessageSnapshotCache.get(getChatMessageSnapshotKey(writeTarget));
+        const previousMessages = chatSnapshotCache.get(getChatMessageSnapshotKey(writeTarget), 'messages');
 
         if (!effectiveForce && Array.isArray(previousMessages)) {
             const operations = await buildChatMessagePatchOperations(previousMessages, trimmedChat);

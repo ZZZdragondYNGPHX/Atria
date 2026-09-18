@@ -7441,6 +7441,88 @@
                         </div>
                     </div>
                 </div>
+                <div class="inline-drawer wide100p flexFlowColumn wi-entry-state-conditions">
+                    <div class="inline-drawer-toggle inline-drawer-header inline-drawer-header-pointer userSettingsInnerExpandable">
+                        <div class="flex-container alignitemscenter flexGap10">
+                            <strong data-i18n="Native State Conditions">Native State Conditions</strong>
+                            <span class="wi-state-condition-count">0</span>
+                        </div>
+                        <div class="fa-solid fa-circle-chevron-down inline-drawer-icon down"></div>
+                    </div>
+                    <div class="inline-drawer-content flex-container flexFlowColumn flexGap10 paddingBottom5px">
+                        <div class="wi-state-condition-toolbar flex-container alignitemscenter justifySpaceBetween flexGap10">
+                            <small data-i18n="Require committed state from supported providers before this entry can activate.">
+                                Require committed state from supported providers before this entry can activate.
+                            </small>
+                            <div class="wi-state-condition-toolbar-controls flex-container alignitemscenter flexGap10 flexWrap">
+                                <label class="checkbox_label wi-state-activation-toggle" title="Activate this entry directly while the conditions match">
+                                    <input type="checkbox" name="stateActivation">
+                                    <span data-i18n="Activate while matched">Activate while matched</span>
+                                </label>
+                                <label class="flex-container alignitemscenter flexNoGap">
+                                    <span class="wi-state-condition-logic-label" data-i18n="Match">Match</span>
+                                    <select name="stateConditionLogic" class="text_pole widthFitContent margin0">
+                                        <option value="all" data-i18n="All conditions">All conditions</option>
+                                        <option value="any" data-i18n="Any condition">Any condition</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="wi-state-condition-list flex-container flexFlowColumn flexGap8"></div>
+                        <div class="flex-container alignitemscenter flexGap8 flexWrap">
+                            <button type="button" class="menu_button wi-state-condition-add">
+                                <i class="fa-solid fa-plus"></i>
+                                <span data-i18n="Add state condition">Add state condition</span>
+                            </button>
+                            <button type="button" class="menu_button wi-state-condition-save">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span data-i18n="Save conditions">Save conditions</span>
+                            </button>
+                            <small class="wi-state-condition-status opacity50p" aria-live="polite"></small>
+                        </div>
+                        <small class="wi-state-condition-hint" data-i18n="Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.">
+                            Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.
+                        </small>
+                    </div>
+                </div>
+                <div class="inline-drawer wide100p flexFlowColumn wi-entry-state-events">
+                    <div class="inline-drawer-toggle inline-drawer-header inline-drawer-header-pointer userSettingsInnerExpandable">
+                        <div class="flex-container alignitemscenter flexGap10">
+                            <strong data-i18n="State Change Events">State Change Events</strong>
+                            <span class="wi-state-event-count">0</span>
+                        </div>
+                        <div class="fa-solid fa-circle-chevron-down inline-drawer-icon down"></div>
+                    </div>
+                    <div class="inline-drawer-content flex-container flexFlowColumn flexGap10 paddingBottom5px">
+                        <div class="wi-state-event-toolbar flex-container alignitemscenter justifySpaceBetween flexGap10">
+                            <small data-i18n="Activate this entry only when committed provider state changes from one value to another.">
+                                Activate this entry only when committed provider state changes from one value to another.
+                            </small>
+                            <label class="flex-container alignitemscenter flexNoGap">
+                                <span data-i18n="Match">Match</span>
+                                <select name="stateEventLogic" class="text_pole widthFitContent margin0">
+                                    <option value="all" data-i18n="All events">All events</option>
+                                    <option value="any" data-i18n="Any event">Any event</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="wi-state-event-list flex-container flexFlowColumn flexGap8"></div>
+                        <div class="flex-container alignitemscenter flexGap8 flexWrap">
+                            <button type="button" class="menu_button wi-state-event-add">
+                                <i class="fa-solid fa-plus"></i>
+                                <span data-i18n="Add state event">Add state event</span>
+                            </button>
+                            <button type="button" class="menu_button wi-state-event-save">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span data-i18n="Save events">Save events</span>
+                            </button>
+                            <small class="wi-state-event-status opacity50p" aria-live="polite"></small>
+                        </div>
+                        <small class="wi-state-event-hint" data-i18n="From and To are exact scalar values. At least one is required. The first committed observation only seeds the baseline and does not fire an event.">
+                            From and To are exact scalar values. At least one is required. The first committed observation only seeds the baseline and does not fire an event.
+                        </small>
+                    </div>
+                </div>
                     <div name="WIEntryBottomControls" class="flex-container flex1 justifySpaceBetween world_entry_form_horizontal wi-entry-bottom-controls">
                         <div class="flex-container flexFlowColumn flexNoGap wi-enter-footer-text">
                             <label class="checkbox flex-container">

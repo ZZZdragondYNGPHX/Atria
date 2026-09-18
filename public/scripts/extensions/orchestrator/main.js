@@ -440,6 +440,10 @@ async function onWorldInfoFinalized(payload) {
         }
     } catch (err) {
         console.warn('[orchestrator] applyProfileWorldInfoFilter failed', err);
+        // Never continue with an unfiltered prompt after an attribution failure.
+        payload.generationBlocked = { source: MODULE_NAME, status: 'world_info_filter_failed' };
+        toastr.error('World info source validation failed. Generation was stopped to avoid sending unfiltered content.', 'Atria');
+        return;
     }
     // The host checks this request-local gate after all WI listeners settle.
     // Only successful guidance releases it; cancellation/errors/early exits

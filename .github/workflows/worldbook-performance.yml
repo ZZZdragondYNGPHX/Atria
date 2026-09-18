@@ -1,0 +1,81 @@
+name: Worldbook Performance Foundation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "public/index.html"
+      - "public/css/world-info.css"
+      - "public/script.js"
+      - "public/scripts/world-info.js"
+      - "public/scripts/atri-chat-snapshot-cache.js"
+      - "public/scripts/atri-world-info-prompt.js"
+      - "public/scripts/atri-world-info-provenance.js"
+      - "public/scripts/atri-world-info-state-conditions.js"
+      - "public/scripts/atri-world-info-state-events.js"
+      - "public/scripts/openai.js"
+      - "public/scripts/textgen-settings.js"
+      - "public/scripts/nai-settings.js"
+      - "public/scripts/kai-settings.js"
+      - "public/scripts/horde.js"
+      - "public/scripts/extensions/orchestrator/lorebook-filter.js"
+      - "public/scripts/extensions/orchestrator/main.js"
+      - "tests/performance/**"
+      - "tests/world-info/**"
+      - ".github/workflows/worldbook-performance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    name: Worldbook / Performance Foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+
+      - name: Run focused regression tests
+        run: >-
+          npm run test:unit --prefix tests --
+          performance/chat-snapshot-cache.test.js
+          world-info/provenance.test.js
+          world-info/timed-effects-baseline.test.js
+          world-info/state-conditions.test.js
+          world-info/state-events.test.js
+          world-info/state-events-floor-state.test.js
+          --runInBand
+
+      - name: Capture synthetic offline baseline
+        run: node --expose-gc tests/performance/worldbook-performance-bench.mjs > worldbook-performance-benchmark.json
+
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run isolated real-host Chromium smoke
+        run: node tests/performance/runtime-smoke.mjs
+
+      - name: Upload synthetic baseline
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldbook-performance-benchmark
+          path: worldbook-performance-benchmark.json
+          if-no-files-found: warn
