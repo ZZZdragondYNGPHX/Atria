@@ -80,8 +80,8 @@ function stableCacheKey(kind, args, adapter) {
             kind,
             provider,
             query: String(args?.query || '').trim().toLowerCase(),
-            max_results: args?.max_results ?? null,
-            safe_search: String(args?.safe_search || '').trim().toLowerCase(),
+            max_results: Number(args?.max_results ?? settings?.defaultMaxResults ?? 0),
+            safe_search: String(args?.safe_search || settings?.safeSearch || '').trim().toLowerCase(),
             time_range: String(args?.time_range || '').trim().toLowerCase(),
             region: String(args?.region || '').trim().toLowerCase(),
         });
@@ -90,7 +90,7 @@ function stableCacheKey(kind, args, adapter) {
         kind,
         provider,
         url: String(args?.url || '').trim(),
-        max_chars: args?.max_chars ?? null,
+        max_chars: Number(args?.max_chars ?? settings?.defaultVisitMaxChars ?? 0),
     });
 }
 
