@@ -33,3 +33,16 @@ PR #2 validation:
 - Android JVM unit tests — passed.
 
 The fix is intended to support normal merge, rebase-compatible ancestry, and squash-merge workflows.
+
+
+## Integration result
+
+- Pull request: `#2`
+- Merge method: squash
+- Resulting `main` commit: `06fe61ac344f9240141489608b73b4072a3b6b99`
+- Post-merge cleanup workflow: passed
+- Verified deleted branches:
+  - `feat/atria-bootstrap`
+  - `fix/task-branch-cleanup-squash`
+
+After validation, the repository returned to the intended four long-lived branches: `main`, `docs`, `luker`, and `vanilla`.
