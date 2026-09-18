@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, and the Agent & Memory Workspace redesign are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, and Termux main-branch pinning are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `b84d411431e72be39099cba1a0a42cde9052c778`
+- `a32a2c4e815cb9e9590f303b36423f6e959d8076`
 
-This commit is the squash merge of PR #4 and has the exact same tree as the final validated Workspace redesign head.
+This commit is the squash merge of PR #5. Atria Termux normal installation and update flows now follow the authoritative `main` branch.
 
 ## Branch roles
 
@@ -86,6 +86,18 @@ Final validation for PR #4 passed:
 - full Workspace UI Chromium smoke
 - Run call-count Chromium smoke
 - real-host Preset binding persistence E2E
+
+
+### Termux main-branch pinning
+
+- PR #5
+- Baseline: `main@b84d411431e72be39099cba1a0a42cde9052c778`
+- Final validated head: `417815c36d5928663bcf5116e706f7230c4856e4`
+- Squash merge / current `main`: `a32a2c4e815cb9e9590f303b36423f6e959d8076`
+- Record: `fixes/termux-main-branch.md`
+- Normal Termux install/update is pinned to `main`; Tag/Commit checkout remains available for explicit debugging or rollback.
+- PR Checks run #136 passed Atria Migration Guard, ESLint, full Node unit tests, and Android JVM tests.
+
 
 ## Long-lived references
 
