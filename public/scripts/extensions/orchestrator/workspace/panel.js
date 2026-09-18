@@ -371,9 +371,7 @@ function render() {
     renderContent();
     shell.main.scrollTop = scroll;
     if (!shell.inspector.hidden && !shell.root.contains(document.activeElement)) {
-        requestAnimationFrame(() => {
-            if (open && shell && !shell.inspector.hidden) shell.inspector.focus({ preventScroll: true });
-        });
+        shell.inspector.focus({ preventScroll: true });
     }
 }
 
