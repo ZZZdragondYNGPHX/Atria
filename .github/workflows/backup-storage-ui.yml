@@ -31,10 +31,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: backup-storage-ui-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   chromium:
     name: Backup Storage Chromium
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
