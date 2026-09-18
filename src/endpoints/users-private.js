@@ -1744,7 +1744,8 @@ function storageResourceErrorResponse(response, err) {
 }
 
 function publicStorageResource(resource) {
-    const { absolutePath, ...safe } = resource;
+    const safe = { ...resource };
+    delete safe.absolutePath;
     return safe;
 }
 
