@@ -33,6 +33,7 @@ import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-ad
 
 import { ORCH_EXECUTION_MODE_DIRECTOR } from './director-defaults.js';
 import { isAbortError, raceAbortSignal, throwIfAborted } from './abort-utils.js';
+import { getOrchestrationFallbackApiPresetName, isOrchestrationApiFallbackEligible } from './api-fallback.js';
 import { resolveAgentToolFlags } from './persistence.js';
 // Resolved lazily inside `handleDirectorDispatch` so test environments
 // can import this module without first installing a SillyTavern global —
@@ -589,6 +590,10 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
             // the retry semantics inline. User-initiated aborts re-throw
             // without retry.
             const transportRetries = Math.max(0, Math.floor(Number(deps?.settings?.toolCallRetryMax) || 0));
+            const primaryApiPresetName = resolveAgentApiPresetName(deps?.settings, director.mainAgent);
+            const fallbackApiPresetName = getOrchestrationFallbackApiPresetName(deps?.settings, primaryApiPresetName);
+            let activeApiPresetName = primaryApiPresetName;
+            let fallbackUsed = false;
             let transportAttempt = 0;
             while (true) {
                 try {
@@ -596,7 +601,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                         taskMessages: messages,
                         tools: toolSchemas,
                         toolChoice: 'auto',
-                        apiPresetName: resolveAgentApiPresetName(deps?.settings, director.mainAgent),
+                        apiPresetName: activeApiPresetName,
                         llmPresetName: resolveAgentPromptPresetName(deps?.settings, director.mainAgent),
                         includeCharacterCard: false,
                         worldInfoSource: 'none',
@@ -625,7 +630,20 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                 } catch (transportErr) {
                     if (transportErr?.code === 'context_budget' || isAbortError(transportErr, eventData?.abortSignal)) throw transportErr;
                     transportAttempt += 1;
-                    if (transportAttempt > transportRetries) throw transportErr;
+                    if (transportAttempt > transportRetries) {
+                        if (!fallbackUsed && fallbackApiPresetName && isOrchestrationApiFallbackEligible(transportErr, { abortSignal: eventData?.abortSignal })) {
+                            console.warn('[orchestrator-director] main agent primary API failed; switching to Workspace Default API.', {
+                                primaryApiPresetName,
+                                fallbackApiPresetName,
+                                error: String(transportErr?.message || transportErr),
+                            });
+                            activeApiPresetName = fallbackApiPresetName;
+                            fallbackUsed = true;
+                            transportAttempt = 0;
+                            continue;
+                        }
+                        throw transportErr;
+                    }
                     console.warn(`[orchestrator-director] main agent transport attempt ${transportAttempt}/${transportRetries + 1} failed; retrying:`, transportErr);
                 }
             }
