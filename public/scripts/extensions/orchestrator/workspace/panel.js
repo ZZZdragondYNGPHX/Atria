@@ -409,7 +409,19 @@ function mount() {
     bindNavigationKeyboard(shell.nav, true);
     bindNavigationKeyboard(shell.mobileNav, false);
     shell.root.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closeWorkspace();
+        if (event.key !== 'Escape') return;
+        if (!shell.inspector.hidden) {
+            event.preventDefault();
+            const close = shell.inspector.querySelector('.workspace-inspector-close');
+            if (close) {
+                close.click();
+            } else {
+                selection = {};
+                render();
+            }
+            return;
+        }
+        closeWorkspace();
     });
 
     const pill = button(document.body, `● ${i18n('Running')} · ${i18n('Open Workspace')}`, () => openWorkspace('Run'));
