@@ -9446,18 +9446,47 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             || entry.stateConditions.length > 0
         )
     );
+    const hasConfiguredStateEvents = entry => (
+        Object.hasOwn(entry || {}, 'stateEvents')
+        && (
+            !Array.isArray(entry.stateEvents)
+            || entry.stateEvents.length > 0
+        )
+    );
     const hasStateConditions = sortedEntries.some(hasConfiguredStateConditions);
+    const hasStateEvents = sortedEntries.some(hasConfiguredStateEvents);
+    const usesStateProviders = hasStateConditions || hasStateEvents;
     let worldInfoStateProviders = [];
-    if (hasStateConditions) {
-        const stateContext = {
-            chat: Array.isArray(context.chat) ? context.chat : [],
-            eventSource: context.eventSource,
-            getCurrentChatId: typeof context.getCurrentChatId === 'function'
-                ? context.getCurrentChatId.bind(context)
-                : getCurrentChatId,
-            memoryOsGenerationType: String(globalScanData.trigger || 'normal'),
-        };
+    let worldInfoStateProviderSnapshot = null;
+    let worldInfoStateProviderFingerprint = '';
+    let worldInfoEventScope = null;
+    let worldInfoEventComparisonBaseline = null;
+    let worldInfoEventPendingState = null;
+    let worldInfoEventReplay = false;
+
+    if (usesStateProviders) {
+        const stateContext = buildWorldInfoStateProviderContext(context, globalScanData.trigger);
         worldInfoStateProviders = readStateProviders(stateContext, {}, globalThis);
+        worldInfoStateProviderSnapshot = snapshotWorldInfoStateProviders(worldInfoStateProviders);
+        worldInfoStateProviderFingerprint = fingerprintWorldInfoStateSnapshot(worldInfoStateProviderSnapshot);
+    }
+
+    if (hasStateEvents) {
+        const runtimeState = await getWorldInfoEventRuntimeState();
+        worldInfoEventScope = getWorldInfoEventScope(context);
+        const comparison = resolveWorldInfoEventComparisonBaseline(
+            runtimeState,
+            worldInfoStateProviderSnapshot,
+            worldInfoEventScope,
+        );
+        worldInfoEventComparisonBaseline = comparison.baseline;
+        worldInfoEventReplay = comparison.replay;
+        worldInfoEventPendingState = buildWorldInfoEventRuntimeState(
+            runtimeState,
+            worldInfoEventComparisonBaseline,
+            worldInfoStateProviderSnapshot,
+            worldInfoEventScope,
+        );
     }
 
     timedEffects.checkTimedEffects();
@@ -9638,6 +9667,51 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                                 status: result.status,
                                 reason: result.reason,
                                 ...(result.providerStatus ? { providerStatus: result.providerStatus } : {}),
+                            })),
+                        }),
+                    );
+                    continue;
+                }
+            }
+
+            if (hasConfiguredStateEvents(entry)) {
+                const stateEventResult = Array.isArray(entry.stateEvents)
+                    ? evaluateWorldInfoStateEvents(
+                        entry.stateEvents,
+                        worldInfoEventComparisonBaseline,
+                        worldInfoStateProviderSnapshot,
+                        entry.stateEventLogic,
+                    )
+                    : {
+                        status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                        logic: entry.stateEventLogic === 'any' ? 'any' : 'all',
+                        results: [{
+                            providerId: '',
+                            path: [],
+                            status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                            reason: 'invalid_event',
+                        }],
+                        reason: 'unknown',
+                    };
+
+                if (stateEventResult.status !== WORLD_INFO_CONDITION_RESULT.TRUE) {
+                    const reason = stateEventResult.status === WORLD_INFO_CONDITION_RESULT.UNKNOWN
+                        ? 'state_event_unknown'
+                        : 'state_event_false';
+                    log(`suppressed by native state event (${stateEventResult.status})`);
+                    recordActivationAttempt(
+                        entry,
+                        reason,
+                        withRecursionTraceSources({
+                            stateEventLogic: stateEventResult.logic,
+                            stateEventReplay: worldInfoEventReplay,
+                            stateEvents: stateEventResult.results.map(result => ({
+                                providerId: result.providerId,
+                                path: result.path,
+                                status: result.status,
+                                reason: result.reason,
+                                ...(result.previousReason ? { previousReason: result.previousReason } : {}),
+                                ...(result.currentReason ? { currentReason: result.currentReason } : {}),
                             })),
                         }),
                     );
@@ -10234,6 +10308,12 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         allActivatedEntries: new Set(allActivatedEntries.values()),
         timedWorldInfoState,
         externalActivationCommitToken,
+        worldInfoStateProviderSnapshot,
+        worldInfoStateProviderFingerprint,
+        worldInfoStateGenerationType: String(globalScanData.trigger || 'normal'),
+        worldInfoEventScope,
+        worldInfoEventPendingState,
+        worldInfoEventReplay,
     };
 }
 
