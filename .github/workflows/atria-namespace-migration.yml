@@ -1,0 +1,125 @@
+name: Atria Namespace Migration Executor
+
+on:
+  push:
+    branches:
+      - refactor/atria-namespace-migration
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-and-verify:
+    if: ${{ !contains(github.event.head_commit.message, '[namespace-migration-generated]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 53306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atria
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atria_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd="pg_isready -U atria -d atria_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+
+    steps:
+      - name: Checkout task branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply namespace migration
+        run: python3 .github/scripts/atria_namespace_migrate.py
+
+      - name: Validate Termux scripts
+        run: |
+          bash -n scripts/termux/atria.sh
+          bash -n scripts/termux/setup.sh
+          bash -n scripts/termux/atria_toolbox.sh
+          bash -n scripts/termux/fix-better-sqlite3.sh
+
+      - name: Run namespace residual guard
+        run: bash scripts/check-atria-namespace.sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Dispatch and generation tests
+        working-directory: tests
+        run: npm run test:unit -- --runInBand atria-dispatch atria-generation
+
+      - name: Orchestrator tests
+        working-directory: tests
+        run: npm run test:unit -- --runInBand orchestrator
+
+      - name: Memory, graph, search, context and docs tests
+        working-directory: tests
+        run: npm run test:unit -- --runInBand memory-graph search-tools iteration-library
+
+      - name: Full Node unit suite
+        run: npm run test:unit --prefix tests -- --maxWorkers=2
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Android JVM tests
+        working-directory: android-app
+        run: ./gradlew testDebugUnitTest
+
+      - name: Android debug APK build
+        run: bash android-app/scripts/build-android-apk.sh debug
+
+      - name: Final residual and diff checks
+        run: |
+          bash scripts/check-atria-namespace.sh
+          git diff --cached --check
+
+      - name: Commit generated migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --cached --quiet; then
+            echo "Migration produced no changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "refactor: complete Atria namespace migration [namespace-migration-generated]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
