@@ -48,6 +48,7 @@ import {
 } from './editor-ops.js';
 import { gatherGrepMatches } from './grep-tool.js';
 import { isAbortError, raceAbortSignal, throwIfAborted } from './abort-utils.js';
+import { getOrchestrationFallbackApiPresetName, isOrchestrationApiFallbackEligible } from './api-fallback.js';
 import { canonicalStringifyArgs } from './canonical-stringify.js';
 import {
     appendRound, appendToSection, ensureSection, setRoundStatus, setSectionStatus, addTokenUsage,
@@ -668,6 +669,9 @@ export function createSubagentDispatcher({
         // same convention as `requestToolCallsWithRetry` (loop / agenda /
         // spec). User-initiated aborts re-throw without retry.
         const transportRetries = Math.max(0, Math.floor(Number(settings?.toolCallRetryMax) || 0));
+        const primaryApiPresetName = String(callOpts.apiPresetName || '').trim();
+        const fallbackApiPresetName = getOrchestrationFallbackApiPresetName(settings, primaryApiPresetName);
+        let fallbackUsed = false;
         let transportAttempt = 0;
         while (true) {
             let roundText = '';
@@ -734,7 +738,20 @@ export function createSubagentDispatcher({
             } catch (transportErr) {
                 if (transportErr?.code === 'context_budget' || isAbortError(transportErr, baseOpts?.abortSignal)) throw transportErr;
                 transportAttempt += 1;
-                if (transportAttempt > transportRetries) throw transportErr;
+                if (transportAttempt > transportRetries) {
+                    if (!fallbackUsed && fallbackApiPresetName && isOrchestrationApiFallbackEligible(transportErr, { abortSignal: baseOpts?.abortSignal })) {
+                        console.warn('[orchestrator-director] sub-agent primary API failed; switching to Workspace Default API.', {
+                            primaryApiPresetName,
+                            fallbackApiPresetName,
+                            error: String(transportErr?.message || transportErr),
+                        });
+                        callOpts.apiPresetName = fallbackApiPresetName;
+                        fallbackUsed = true;
+                        transportAttempt = 0;
+                        continue;
+                    }
+                    throw transportErr;
+                }
                 console.warn(`[orchestrator-director] sub-agent transport attempt ${transportAttempt}/${transportRetries + 1} failed; retrying:`, transportErr);
                 continue;
             }
