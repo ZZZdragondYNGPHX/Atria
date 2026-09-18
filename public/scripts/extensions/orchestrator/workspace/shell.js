@@ -26,7 +26,7 @@ function icon(name, parent) {
  * The shell owns layout, focusable global navigation and the contextual
  * inspector column. Feature pages own only their page contents.
  */
-export function createWorkspaceShell({ onNavigate, onClose, onStop }) {
+export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrchestration }) {
     const root = el('section', 'atria-workspace', document.body);
     root.id = 'agent-memory-workspace';
     root.hidden = true;
@@ -38,6 +38,17 @@ export function createWorkspaceShell({ onNavigate, onClose, onStop }) {
     title.textContent = i18n('Atria Workspace');
     const context = el('p', 'atria-workspace-context', brand);
     context.textContent = i18n('Agent orchestration and long-term memory');
+
+    const headerMeta = el('div', 'atria-workspace-header-meta', header);
+    const presetChip = el('span', 'atria-workspace-preset-chip', headerMeta);
+    presetChip.textContent = i18n('No preset');
+    const orchestrationLabel = el('label', 'atria-workspace-orchestration-toggle', headerMeta);
+    const orchestrationText = el('span', '', orchestrationLabel);
+    orchestrationText.textContent = i18n('Orchestration');
+    const orchestrationToggle = el('input', '', orchestrationLabel);
+    orchestrationToggle.type = 'checkbox';
+    orchestrationToggle.setAttribute('aria-label', i18n('Enable agent orchestration'));
+    orchestrationToggle.addEventListener('change', () => onToggleOrchestration?.(orchestrationToggle.checked));
 
     const headerStatus = el('div', 'atria-workspace-header-status', header);
     headerStatus.setAttribute('role', 'status');
@@ -97,6 +108,9 @@ export function createWorkspaceShell({ onNavigate, onClose, onStop }) {
         header,
         title,
         context,
+        headerMeta,
+        presetChip,
+        orchestrationToggle,
         headerStatus,
         stop,
         stopText,
