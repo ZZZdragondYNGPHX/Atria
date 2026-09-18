@@ -37,4 +37,6 @@ jobs:
           scan 'Legacy migration source.{0,100}ZZZdragondYNGPHX/Atria' 'wrong-legacy-source'
           scan 'ghcr\.io/funnycups/atria' 'stale-container-image'
           scan '`atria`.{0,100}(legacy|reference)|(legacy|reference).{0,100}`atria`' 'wrong-reference-branch'
+          scan 'LEGACY_[A-Z0-9_]+[^\\n]*["'"']atria[_-]' 'legacy-atria-namespace-constant'
+          scan '(legacy|fallback|alias).{0,120}atria_[a-z0-9_]+|atria_[a-z0-9_]+.{0,120}(legacy|fallback|alias)' 'legacy-atria-runtime-name'
           exit "$found"
