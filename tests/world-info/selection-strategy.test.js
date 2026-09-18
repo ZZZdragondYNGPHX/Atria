@@ -2,6 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 import {
     WorldInfoSelectionIndex,
     buildWorldInfoBundleVariant,
+    chooseWorldInfoBundleVariant,
     buildWorldInfoEntryLookup,
     buildWorldInfoSelectionMigrationReport,
     classifyWorldInfoSelectionCompatibility,
@@ -129,6 +130,41 @@ describe('explicit dependencies and selection metadata', () => {
         expect(compact.map(item => item.compact)).toEqual([true, false]);
         expect(a.content).toBe('content-1');
         expect(getWorldInfoBudgetTierScore(a)).toBeGreaterThan(getWorldInfoBudgetTierScore(b));
+    });
+
+    test('selects dependency bundles atomically across full, compact, and overflow budgets', async () => {
+        const root = entry(1, {
+            content: '1234567890',
+            compactContent: 'x',
+            budgetTier: 'critical',
+        });
+        const dependency = entry(2, { content: 'abcdefghij' });
+        const tokenCount = async text => text.length;
+
+        const compact = await chooseWorldInfoBundleVariant([dependency, root], {
+            budget: 20,
+            tokenCount,
+        });
+        expect(compact.ok).toBe(true);
+        expect(compact.variant).toBe('compact');
+        expect(compact.items.map(item => item.entry.uid)).toEqual([2, 1]);
+        expect(compact.items.map(item => item.content)).toEqual(['abcdefghij', 'x']);
+
+        const rejected = await chooseWorldInfoBundleVariant([dependency, root], {
+            budget: 5,
+            tokenCount,
+        });
+        expect(rejected).toMatchObject({ ok: false, reason: 'budget_overflow', items: [] });
+
+        const bypass = await chooseWorldInfoBundleVariant([
+            { ...dependency, ignoreBudget: true },
+            { ...root, ignoreBudget: true },
+        ], {
+            budget: 1,
+            tokenCount,
+        });
+        expect(bypass).toMatchObject({ ok: true, variant: 'full' });
+        expect(bypass.items).toHaveLength(2);
     });
 });
 
