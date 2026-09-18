@@ -14,23 +14,26 @@ function setWebAccessFlags(tools, enabled) {
 
 function applyFactoryWebAccessPolicy(profile, mode) {
     const source = profile && typeof profile === 'object' ? profile : {};
+    const target = mode === 'director' && source.director && typeof source.director === 'object'
+        ? source.director
+        : source;
 
     // New Atria factory presets use least-privilege web access. Existing
     // user presets are not rewritten by this helper: it runs only while a
     // factory preset is being constructed.
-    if (source.tools || mode === 'loop' || mode === 'director') {
-        source.tools = setWebAccessFlags(source.tools, false);
+    if (target.tools || mode === 'loop' || mode === 'director') {
+        target.tools = setWebAccessFlags(target.tools, false);
     }
-    if (source.defaultTools) source.defaultTools = setWebAccessFlags(source.defaultTools, false);
-    if (source.planner?.tools) source.planner.tools = setWebAccessFlags(source.planner.tools, false);
-    for (const preset of Object.values(source.presets || {})) {
+    if (target.defaultTools) target.defaultTools = setWebAccessFlags(target.defaultTools, false);
+    if (target.planner?.tools) target.planner.tools = setWebAccessFlags(target.planner.tools, false);
+    for (const preset of Object.values(target.presets || {})) {
         preset.tools = setWebAccessFlags(preset.tools, false);
     }
-    for (const agent of Object.values(source.agents || {})) {
+    for (const agent of Object.values(target.agents || {})) {
         agent.tools = setWebAccessFlags(agent.tools, false);
     }
-    if (source.mainAgent) source.mainAgent.tools = setWebAccessFlags(source.mainAgent.tools, false);
-    for (const agent of source.subAgents || []) {
+    if (target.mainAgent) target.mainAgent.tools = setWebAccessFlags(target.mainAgent.tools, false);
+    for (const agent of target.subAgents || []) {
         agent.tools = setWebAccessFlags(agent.tools, agent?.id === 'canon_scout');
     }
     return source;
