@@ -95,8 +95,7 @@ export async function expectHandleMismatchToast(page, { expectedHandle, gotHandl
  * dialog body.
  *
  * Drawer toggle is idempotent across runs: if a previous step left the
- * User Settings drawer open (e.g. closeAdminPanel only dismisses the
- * popup, not the drawer behind it), a click would TOGGLE it shut. We
+ * User Settings drawer open, a click would TOGGLE it shut. We
  * check the drawer's `closedDrawer` class first and only click when it's
  * actually closed.
  */
