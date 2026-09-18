@@ -940,9 +940,20 @@ const defaultGlobalScanData = Object.freeze({
  */
 class WorldInfoBuffer {
     /**
-     * @type {Map<string, object>} Map of entries that need to be activated no matter what
+     * One-shot externally forced activations waiting for an accepted WI
+     * evaluation. Values are revisioned so a stale commit cannot consume a
+     * newer force-activation for the same entry.
+     * @type {Map<string, {entry: object, revision: number}>}
      */
     static externalActivations = new Map();
+
+    static externalActivationRevision = 0;
+
+    /**
+     * Snapshot of force-activation records visible to this evaluation.
+     * @type {Map<string, {entry: object, revision: number}>}
+     */
+    #externalActivations = new Map();
 
     /**
      * @type {WIGlobalScanData} Chat independent data to be scanned, such as persona and character descriptions
@@ -982,6 +993,7 @@ class WorldInfoBuffer {
     constructor(messages, globalScanData) {
         this.#initDepthBuffer(messages);
         this.#globalScanData = globalScanData;
+        this.#externalActivations = new Map(WorldInfoBuffer.externalActivations);
     }
 
     /**
@@ -1230,19 +1242,56 @@ class WorldInfoBuffer {
     }
 
     /**
-     * Get the externally activated version of the entry, if there is one.
+     * Get the externally activated version of the entry from this evaluation's
+     * snapshot, if there is one.
      * @param {object} entry WI entry to check
-     * @returns {object|undefined} the external version if the entry is forcefully activated, undefined otherwise
+     * @returns {object|undefined} force-activated entry override
      */
     getExternallyActivated(entry) {
-        return WorldInfoBuffer.externalActivations.get(`${entry.world}.${entry.uid}`);
+        return this.#externalActivations.get(`${entry.world}.${entry.uid}`)?.entry;
     }
 
     /**
-     * Clean-up the external effects for entries.
+     * Return a serializable commit token for the external activations observed
+     * by this evaluation.
+     * @returns {Array<{key:string,revision:number}>}
      */
-    resetExternalEffects() {
-        WorldInfoBuffer.externalActivations = new Map();
+    getExternalActivationCommitToken() {
+        return [...this.#externalActivations.entries()].map(([key, record]) => ({
+            key,
+            revision: Number(record?.revision || 0),
+        }));
+    }
+
+    /**
+     * Stage a one-shot external activation.
+     * @param {object} entry Entry carrying world and uid.
+     */
+    static stageExternalActivation(entry) {
+        const key = `${entry.world}.${entry.uid}`;
+        const revision = ++WorldInfoBuffer.externalActivationRevision;
+        WorldInfoBuffer.externalActivations.set(key, { entry, revision });
+    }
+
+    /**
+     * Consume only the exact force-activation revisions seen by a committed
+     * evaluation. Newer activations with the same key are preserved.
+     * @param {Array<{key:string,revision:number}>} token Evaluation token.
+     * @returns {number} Number of consumed entries.
+     */
+    static consumeExternalActivations(token) {
+        if (!Array.isArray(token)) return 0;
+        let consumed = 0;
+        for (const item of token) {
+            const key = String(item?.key || '');
+            const revision = Number(item?.revision || 0);
+            if (!key || !revision) continue;
+            const current = WorldInfoBuffer.externalActivations.get(key);
+            if (Number(current?.revision || 0) !== revision) continue;
+            WorldInfoBuffer.externalActivations.delete(key);
+            consumed++;
+        }
+        return consumed;
     }
 
     /**
@@ -1831,6 +1880,9 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         activatedEntries: activatedEntriesList,
         worldInfoProvenance: activatedWorldInfo.worldInfoProvenance,
         timedWorldInfoState: activatedWorldInfo.timedWorldInfoState ?? { sticky: {}, cooldown: {} },
+        externalActivationCommitToken: Array.isArray(activatedWorldInfo.externalActivationCommitToken)
+            ? activatedWorldInfo.externalActivationCommitToken
+            : [],
         worldInfoCommitScope: {
             chatId: String(getCurrentChatId() || ''),
         },
@@ -1860,6 +1912,10 @@ export async function commitWorldInfoEvaluation(evaluation) {
         return { committed: false, reason: 'scope_changed' };
     }
 
+    const consumedExternalActivations = WorldInfoBuffer.consumeExternalActivations(
+        evaluation.externalActivationCommitToken,
+    );
+
     const timed = evaluation.timedWorldInfoState;
     if (timed && typeof timed === 'object') {
         const cloneBucket = bucket => Object.fromEntries(
@@ -1884,7 +1940,11 @@ export async function commitWorldInfoEvaluation(evaluation) {
         await eventSource.emit(event_types.WORLD_INFO_ACTIVATED, activatedEntries);
     }
 
-    return { committed: true, activatedEntries: activatedEntries.length };
+    return {
+        committed: true,
+        activatedEntries: activatedEntries.length,
+        consumedExternalActivations,
+    };
 }
 
 export function setWorldInfoSettings(settings, data) {
@@ -2034,7 +2094,7 @@ export function setWorldInfoSettings(settings, data) {
             if (!Object.hasOwn(entry, 'world') || !Object.hasOwn(entry, 'uid')) {
                 console.error('[WI] WORLDINFO_FORCE_ACTIVATE requires all entries to have both world and uid fields, entry IGNORED', entry);
             } else {
-                WorldInfoBuffer.externalActivations.set(`${entry.world}.${entry.uid}`, entry);
+                WorldInfoBuffer.stageExternalActivation(entry);
                 console.log('[WI] WORLDINFO_FORCE_ACTIVATE added entry', entry);
             }
         }
@@ -9014,6 +9074,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             outletEntries: {},
             allActivatedEntries: new Set(),
             timedWorldInfoState: timedEffects.getPendingState(),
+            externalActivationCommitToken: buffer.getExternalActivationCommitToken(),
         };
     }
 
@@ -9717,7 +9778,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     // this snapshot once the finalized selection has been accepted.
     timedEffects.setTimedEffects(Array.from(allActivatedEntries.values()));
     const timedWorldInfoState = timedEffects.getPendingState();
-    buffer.resetExternalEffects();
+    const externalActivationCommitToken = buffer.getExternalActivationCommitToken();
     timedEffects.cleanUp();
 
     console.debug(`[WI] --- DONE${isDryRun ? ' (DRY RUN)' : ''} ---`);
@@ -9728,6 +9789,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         worldInfoAfter: WIAfterEntries.length ? WIAfterEntries.join('\n') : '',
         allActivatedEntries: new Set(allActivatedEntries.values()),
         timedWorldInfoState,
+        externalActivationCommitToken,
     };
 }
 
