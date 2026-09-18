@@ -16,3 +16,14 @@ Atria is a SillyTavern-based modified product. It is independent from the former
 - `chore/*`: temporary engineering/CI/maintenance branches.
 
 Completed temporary branches are documented here, merged into `main`, verified, and then deleted.
+
+## Completed feature records
+
+- `features/bootstrap-migration.md` — established the standalone Atria product line.
+- `features/atria-namespace-migration.md` — completed the hard-cutover Atria namespace migration.
+- `features/atria-workspace-redesign.md` — rebuilt the Agent & Memory Workspace into the four-section Atria product workspace.
+
+## Current integration point
+
+- Current `main`: `b84d411431e72be39099cba1a0a42cde9052c778`
+- Latest completed product task: PR #4 — Atria Agent & Memory Workspace redesign.
