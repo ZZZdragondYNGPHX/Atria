@@ -161,10 +161,10 @@ try {
     assert.deepEqual(agent.tools, ['chat_search']);
     assert.deepEqual(agent.modelProfile, { apiPresetName: 'api-two', promptPresetName: 'prompt-two' });
     await agentInspector.getByLabel('chat_search', { exact: true }).uncheck();
-    await agentInspector.getByLabel('API profile', { exact: true }).selectOption('');
+    await agentInspector.getByLabel('Primary API profile', { exact: true }).selectOption('');
     await agentInspector.getByRole('button', { name: 'Save', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.agents[0].tools), []);
-    assert.equal(await agentInspector.getByLabel('API profile', { exact: true }).inputValue(), '');
+    assert.equal(await agentInspector.getByLabel('Primary API profile', { exact: true }).inputValue(), '');
     await agentInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     page.once('dialog', dialog => dialog.accept('Named stage'));
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();
