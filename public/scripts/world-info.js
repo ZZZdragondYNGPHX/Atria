@@ -1878,6 +1878,7 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         anAfter: activatedWorldInfo.ANAfterEntries ?? [],
         outletEntries: activatedWorldInfo.outletEntries ?? {},
         activatedEntries: activatedEntriesList,
+        worldInfoEvaluationId: uuidv4(),
         worldInfoProvenance: activatedWorldInfo.worldInfoProvenance,
         timedWorldInfoState: activatedWorldInfo.timedWorldInfoState ?? { sticky: {}, cooldown: {} },
         externalActivationCommitToken: Array.isArray(activatedWorldInfo.externalActivationCommitToken)
@@ -1890,6 +1891,17 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
 }
 
 const committedWorldInfoEvaluations = new WeakSet();
+const committedWorldInfoEvaluationIds = new Map();
+const COMMITTED_WORLD_INFO_EVALUATION_LIMIT = 256;
+
+function rememberCommittedWorldInfoEvaluationId(id) {
+    const key = String(id || '').trim();
+    if (!key) return;
+    committedWorldInfoEvaluationIds.set(key, true);
+    while (committedWorldInfoEvaluationIds.size > COMMITTED_WORLD_INFO_EVALUATION_LIMIT) {
+        committedWorldInfoEvaluationIds.delete(committedWorldInfoEvaluationIds.keys().next().value);
+    }
+}
 
 /**
  * Commit one accepted world-info evaluation. Reusing the same evaluation
@@ -1902,7 +1914,11 @@ export async function commitWorldInfoEvaluation(evaluation) {
     if (!evaluation || typeof evaluation !== 'object') {
         return { committed: false, reason: 'invalid_evaluation' };
     }
-    if (committedWorldInfoEvaluations.has(evaluation)) {
+    const evaluationId = String(evaluation.worldInfoEvaluationId || '').trim();
+    if (
+        committedWorldInfoEvaluations.has(evaluation)
+        || (evaluationId && committedWorldInfoEvaluationIds.has(evaluationId))
+    ) {
         return { committed: false, reason: 'already_committed' };
     }
 
@@ -1930,8 +1946,10 @@ export async function commitWorldInfoEvaluation(evaluation) {
     }
 
     // Mark before dispatching actions so an observer failure cannot make a
-    // retry replay the same activation side effect.
+    // retry replay the same activation side effect. Stable IDs keep the
+    // operation idempotent even if an extension clones/wraps the evaluation.
     committedWorldInfoEvaluations.add(evaluation);
+    rememberCommittedWorldInfoEvaluationId(evaluationId);
 
     const activatedEntries = Array.isArray(evaluation.activatedEntries)
         ? evaluation.activatedEntries
