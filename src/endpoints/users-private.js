@@ -1687,6 +1687,30 @@ router.post('/storage/inspect', async (request, response) => {
             user,
             adminSettings,
         });
+        // Add mutation capabilities only for concrete resources that the
+        // safe storage-management resolver can map back to this user's root.
+        for (const entry of result.entries ?? []) {
+            try {
+                const resource = resolveStorageResource(
+                    dirs.root,
+                    [...pathArr, entry.key],
+                    String(entry.kind || ''),
+                );
+                entry.capabilities = resource.capabilities;
+                entry.canDelete = Boolean(resource.capabilities.delete);
+            } catch {
+                entry.capabilities = {
+                    view: false,
+                    viewContent: false,
+                    edit: false,
+                    delete: false,
+                    download: false,
+                    restore: false,
+                };
+                entry.canDelete = false;
+            }
+        }
+
         // pure lib 默认 target.handle:null · 这里补齐当前用户 handle
         result.target = { type: 'self', handle: user.handle };
         return response.json(result);
