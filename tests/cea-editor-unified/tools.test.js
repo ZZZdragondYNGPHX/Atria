@@ -224,13 +224,13 @@ describe('unified CEA editor tools.js', () => {
         )).rejects.toThrow(/invalid_args/);
     });
 
-    it('runCeaEditorReadTool delegates to the legacy helper runner', async () => {
+    it('runCeaEditorReadTool delegates the canonical helper name unchanged', async () => {
         const out = await tools.runCeaEditorReadTool(
             { id: 'r1', name: 'lorebook_query', args: { book_name: 'BookA', query: 'x' } },
             { context: {}, settings: {}, helperApis: [] },
         );
         expect(out.ok).toBe(true);
-        expect(out.result?.stub).toBe(true);
+        expect(out.result).toMatchObject({ stub: true, name: 'lorebook_query' });
     });
 
     it('runCeaEditorReadTool surfaces errors via { ok: false, error }', async () => {

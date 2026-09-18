@@ -1938,7 +1938,7 @@ async function queryCharacterEditorLorebookEntries(context, args = {}) {
     const hasConstantFilter = typeof args?.constant === 'boolean';
     const hasEnabledFilter = typeof args?.enabled === 'boolean';
     if (!queryText && !hasConstantFilter && !hasEnabledFilter) {
-        throw new Error(`${TOOL_NAMES.QUERY_ENTRIES} requires text, constant, or enabled.`);
+        throw new Error('lorebook_query requires text, constant, or enabled.');
     }
     const limit = normalizeCharacterEditorQueryLimit(args?.limit);
     const state = await loadCharacterEditorLorebookByName(context, args?.book_name);
@@ -2022,7 +2022,7 @@ async function listCharacterEditorLorebookEntries(context, args = {}) {
 async function getCharacterEditorLorebookEntries(context, args = {}) {
     const uids = normalizeCharacterEditorDetailUids(args?.uids);
     if (uids.length === 0) {
-        throw new Error(`${TOOL_NAMES.GET_ENTRIES} requires one or more valid uids.`);
+        throw new Error('lorebook_get requires one or more valid uids.');
     }
     const state = await loadCharacterEditorLorebookByName(context, args?.book_name);
     const entries = state?.lorebookData?.entries && typeof state.lorebookData.entries === 'object'
@@ -2063,19 +2063,19 @@ async function getCharacterEditorLorebookEntries(context, args = {}) {
 async function computeCharacterEditorLorebookUpdate(context, args = {}) {
     const bookName = String(args?.book_name || '').trim();
     if (!bookName) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} requires book_name.`);
+        throw new Error('lorebook_update_entry requires book_name.');
     }
     const uid = asFiniteInteger(args?.uid, null);
     if (!Number.isInteger(uid) || uid < 0) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} requires a non-negative integer uid.`);
+        throw new Error('lorebook_update_entry requires a non-negative integer uid.');
     }
     const patch = args?.patch;
     if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} requires a patch object.`);
+        throw new Error('lorebook_update_entry requires a patch object.');
     }
     const patchKeys = Object.keys(patch);
     if (patchKeys.length === 0) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} patch must contain at least one field.`);
+        throw new Error('lorebook_update_entry patch must contain at least one field.');
     }
     const data = await context.loadWorldInfo(bookName);
     if (!data) {
@@ -2117,17 +2117,17 @@ async function computeCharacterEditorLorebookUpdate(context, args = {}) {
 async function computeCharacterEditorLorebookStrReplace(context, args = {}) {
     const bookName = String(args?.book_name || '').trim();
     if (!bookName) {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires book_name.`);
+        throw new Error('lorebook_str_replace_in_entry requires book_name.');
     }
     const uid = asFiniteInteger(args?.uid, null);
     if (!Number.isInteger(uid) || uid < 0) {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires a non-negative integer uid.`);
+        throw new Error('lorebook_str_replace_in_entry requires a non-negative integer uid.');
     }
     if (typeof args?.oldString !== 'string' || args.oldString.length === 0) {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires a non-empty oldString.`);
+        throw new Error('lorebook_str_replace_in_entry requires a non-empty oldString.');
     }
     if (typeof args?.newString !== 'string') {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires newString (use an empty string to delete).`);
+        throw new Error('lorebook_str_replace_in_entry requires newString (use an empty string to delete).');
     }
     const replaceAll = Boolean(args?.replaceAll);
     const data = await context.loadWorldInfo(bookName);
@@ -2251,9 +2251,9 @@ export async function applyCharacterEditorLorebookProposal(context, { kind, args
 
 function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
     const toolNames = Object.freeze({
-        LIST: TOOL_NAMES.LIST_ENTRIES,
-        QUERY: TOOL_NAMES.QUERY_ENTRIES,
-        GET: TOOL_NAMES.GET_ENTRIES,
+        LIST: 'lorebook_list',
+        QUERY: 'lorebook_query',
+        GET: 'lorebook_get',
     });
     return {
         toolNames,
@@ -2262,7 +2262,7 @@ function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
                 type: 'function',
                 function: {
                     name: toolNames.LIST,
-                    description: `List compact lorebook entry index rows for a world book. Returns only uid, name, and enabled. Call ${TOOL_NAMES.LIST_WORLD_BOOKS} first to know which book names exist. Optional range narrows the inclusive UID window, for example 0~100.`,
+                    description: `List compact lorebook entry index rows for a world book. Returns only uid, name, and enabled. Call world_book_list first to know which book names exist. Optional range narrows the inclusive UID window, for example 0~100.`,
                     parameters: {
                         type: 'object',
                         properties: {
@@ -2284,7 +2284,7 @@ function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
                 type: 'function',
                 function: {
                     name: toolNames.QUERY,
-                    description: `Search a world book and return lightweight matching entries. Call ${TOOL_NAMES.LIST_WORLD_BOOKS} first to know which book names exist. Use this before ${toolNames.GET} to narrow candidates.`,
+                    description: `Search a world book and return lightweight matching entries. Call world_book_list first to know which book names exist. Use this before ${toolNames.GET} to narrow candidates.`,
                     parameters: {
                         type: 'object',
                         properties: {
@@ -2359,13 +2359,13 @@ function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
  * envelope that the popup captures as a pending diff card; commits happen
  * only when the user clicks Apply, via {@link applyCharacterEditorLorebookCommit}.
  *
- * The tool schemas are owned by `iteration-library/tools/lorebook-writes.js`
- * — this api only owns the legacy wire-name dispatch.
+ * The tool schemas are owned by `iteration-library/tools/lorebook-writes.js`;
+ * this API dispatches those same canonical tool names.
  */
 function createCharacterEditorLorebookWriteToolApi(context, { avatar = '' } = {}) {
     const toolNames = Object.freeze({
-        UPDATE: TOOL_NAMES.UPDATE_ENTRY,
-        STR_REPLACE: TOOL_NAMES.STR_REPLACE_IN_ENTRY,
+        UPDATE: 'lorebook_update_entry',
+        STR_REPLACE: 'lorebook_str_replace_in_entry',
     });
     return {
         toolNames,
@@ -2432,7 +2432,7 @@ export function buildCharacterEditorSimulationSourceMessages(context, {
 
 function createCharacterEditorSimulateToolApi(context) {
     const toolNames = Object.freeze({
-        SIMULATE: TOOL_NAMES.SIMULATE_PROMPT,
+        SIMULATE: 'simulate_prompt',
     });
     return {
         toolNames,
@@ -2665,7 +2665,7 @@ function buildCharacterEditorSimulationErrorResult(err) {
 
 function createCharacterEditorWorldBookListToolApi(context, { avatar = '' } = {}) {
     const toolNames = Object.freeze({
-        LIST_WORLD_BOOKS: TOOL_NAMES.LIST_WORLD_BOOKS,
+        LIST_WORLD_BOOKS: 'world_book_list',
     });
     return {
         toolNames,
@@ -2728,7 +2728,7 @@ function createCharacterEditorWorldBookListToolApi(context, { avatar = '' } = {}
  * this module: `{ toolNames, getToolDefs, isToolName, invoke }`.
  *
  * The shared executor returns `{ ok, result }` / `{ ok, error }` envelopes;
- * this API unwraps `result` on ok and throws on failure so the legacy
+ * this API unwraps `result` on ok and throws on failure so the shared
  * helper-tool runner's exception path surfaces the error, matching the
  * contract sibling APIs use.
  *
@@ -3009,9 +3009,9 @@ function getCharacterEditorSearchApi() {
     return api;
 }
 
-// Exported so editor-iteration/tools.js (unified CEA editor) can dispatch
-// short-name read tool calls (`lorebook_query`, `simulate_prompt`, etc.) to
-// the existing legacy helper-tool APIs without reimplementing them.
+// Exported so editor-iteration/tools.js can dispatch the canonical read-tool
+// names (`lorebook_query`, `simulate_prompt`, etc.) through shared helper
+// APIs without duplicating read-side logic.
 export async function runCharacterEditorHelperToolCall(call, helperToolApis = []) {
     const name = String(call?.name || '').trim();
     const api = (Array.isArray(helperToolApis) ? helperToolApis : [])
@@ -3026,8 +3026,8 @@ export async function runCharacterEditorHelperToolCall(call, helperToolApis = []
  * Build the helper-tool API array the unified CEA editor's read tools
  * (`lorebook_query`, `lorebook_list`, `lorebook_get`, `world_book_list`,
  * `simulate_prompt`, `web_search`) dispatch through. Assembles the same
- * helper-tool surface the legacy editor used so the unified popup keeps
- * tool parity without re-exporting each individual factory.
+ * helper-tool surface used by the unified popup without re-exporting each
+ * individual factory.
  *
  * Returned shape is an Array so it's drop-in compatible with
  * `runCharacterEditorHelperToolCall(call, helperToolApis)` and with the

@@ -1,30 +1,9 @@
-// #48 — CEA editor iter-studio: `inspect_bound_preset` end-to-end,
-//        exercising the READ_TOOL_LEGACY_NAMES self-map.
+// #48 — CEA editor iter-studio: `inspect_bound_preset` end-to-end.
 //
-// `inspect_bound_preset` is wired into the CEA editor tool catalog
-// via a self-map (`READ_TOOL_LEGACY_NAMES.inspect_bound_preset =
-// 'inspect_bound_preset'`) so runCeaEditorReadTool dispatches to the
-// short name unchanged. The full chain per turn:
-//
-//   mock LLM tool_call → editor-iteration/studio.js executes
-//     → runCeaEditorReadTool(call, {helperApis})
-//     → READ_TOOL_LEGACY_NAMES lookup → 'inspect_bound_preset'
-//     → runCharacterEditorHelperToolCall(legacyCall, helperApis)
-//     → createCharacterEditorBoundPresetToolApi.invoke(call)
-//     → runCharacterPresetReadTool(call, {context, avatar})
-//     → context.character.presets.list / get → tool_result → back to LLM.
-//
-// The self-map is the load-bearing hook this test pins: a future mistyped
-// entry like `'inspect_bound_preset': 'wrong_name'` would surface here as
-// runCharacterEditorHelperToolCall throwing "Unsupported helper tool:
-// wrong_name" (none of the helper APIs' `isToolName` would match), and
-// the DOM result-pre would carry `{ error: 'Unsupported helper tool:
-// wrong_name' }`. Structural assertions on the happy-path payload shape
-// (list array + get object) verify the legacy map is intact.
-//
-// Real UI/gestures: open Extensions drawer → CEA inline-drawer → click
-// "Open Editor" (real gesture opens the unified CEA editor iter-studio
-// popup). mockLLM scripts tool_calls; assertions run on the popup DOM.
+// The unified CEA catalog and helper APIs use the same canonical tool name
+// end-to-end: mock LLM tool_call → runCeaEditorReadTool →
+// runCharacterEditorHelperToolCall → createCharacterEditorBoundPresetToolApi
+// → runCharacterPresetReadTool → tool_result.
 
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -146,7 +125,7 @@ async function sendReadOnlyPrompt(page, prompt, { expectedToolLabel = 'inspect_b
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('#48 — CEA editor iter-studio inspect_bound_preset (legacy-map coverage)', () => {
+test.describe('#48 — CEA editor iter-studio inspect_bound_preset', () => {
     test('list + get(existing) + get(nonexistent): tool_results flow through the CEA dispatch chain', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, CHAR_NAME);
@@ -154,13 +133,8 @@ test.describe('#48 — CEA editor iter-studio inspect_bound_preset (legacy-map c
         await openIterStudio(page, 'cea');
 
         // ---- Turn 1: list ----
-        // If READ_TOOL_LEGACY_NAMES['inspect_bound_preset'] is mistyped
-        // (e.g. to 'wrong_name'), the dispatch chain lands on
-        // runCharacterEditorHelperToolCall's throw path — no helper API
-        // matches 'wrong_name' → thrown error → runCeaEditorReadTool
-        // returns `{ok:false, error:'Unsupported helper tool: wrong_name'}`
-        // → the studio renders `{error: ...}` in the result-pre and the
-        // Array.isArray + length===2 assertion below fails.
+        // The canonical name must route directly to the matching helper API;
+        // any dispatch drift surfaces as an error envelope below.
         mock.scriptToolCall({
             name: 'inspect_bound_preset',
             arguments: { action: 'list' },
