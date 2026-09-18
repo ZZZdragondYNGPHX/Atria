@@ -739,7 +739,6 @@ async function loadSearchToolsChatState(context, { force = false } = {}) {
         const meta = await loadMetaSidecar(context);
         latestManagedEntries = normalizeStoredManagedEntries(meta.fallbackManagedEntries);
     }
-
 }
 
 function getOpenAIPresetNames(context) {
