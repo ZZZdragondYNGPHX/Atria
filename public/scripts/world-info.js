@@ -1900,6 +1900,12 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         externalActivationCommitToken: Array.isArray(activatedWorldInfo.externalActivationCommitToken)
             ? activatedWorldInfo.externalActivationCommitToken
             : [],
+        worldInfoStateProviderSnapshot: activatedWorldInfo.worldInfoStateProviderSnapshot ?? null,
+        worldInfoStateProviderFingerprint: String(activatedWorldInfo.worldInfoStateProviderFingerprint || ''),
+        worldInfoStateGenerationType: String(activatedWorldInfo.worldInfoStateGenerationType || globalScanData?.trigger || 'normal'),
+        worldInfoEventScope: activatedWorldInfo.worldInfoEventScope ?? null,
+        worldInfoEventPendingState: activatedWorldInfo.worldInfoEventPendingState ?? null,
+        worldInfoEventReplay: activatedWorldInfo.worldInfoEventReplay === true,
         worldInfoCommitScope: {
             chatId: String(getCurrentChatId() || ''),
         },
@@ -1944,6 +1950,42 @@ export async function commitWorldInfoEvaluation(evaluation) {
         return { committed: false, reason: 'scope_changed' };
     }
 
+    const expectedStateFingerprint = String(evaluation.worldInfoStateProviderFingerprint || '');
+    if (expectedStateFingerprint) {
+        const currentState = captureCurrentWorldInfoStateSnapshot(
+            evaluation.worldInfoStateGenerationType || 'normal',
+        );
+        if (currentState.fingerprint !== expectedStateFingerprint) {
+            return { committed: false, reason: 'state_changed' };
+        }
+    }
+
+    let stateEventBaselineUpdated = false;
+    if (evaluation.worldInfoEventPendingState && typeof evaluation.worldInfoEventPendingState === 'object') {
+        try {
+            const floorState = await getWorldInfoEventFloorState();
+            const scope = evaluation.worldInfoEventScope;
+            const options = Number.isInteger(scope?.floor) && scope.floor >= 0
+                ? {
+                    floor: scope.floor,
+                    swipeId: Number.isInteger(scope?.swipeId) ? scope.swipeId : 0,
+                }
+                : undefined;
+            const result = await floorState.update(
+                () => structuredClone(evaluation.worldInfoEventPendingState),
+                options,
+            );
+            if (!result?.ok) {
+                console.warn('[WI] Failed to commit event FloorState baseline', result);
+                return { committed: false, reason: 'state_commit_failed' };
+            }
+            stateEventBaselineUpdated = result.updated === true;
+        } catch (error) {
+            console.warn('[WI] Failed to commit event FloorState baseline', error);
+            return { committed: false, reason: 'state_commit_failed' };
+        }
+    }
+
     const consumedExternalActivations = WorldInfoBuffer.consumeExternalActivations(
         evaluation.externalActivationCommitToken,
     );
@@ -1978,6 +2020,7 @@ export async function commitWorldInfoEvaluation(evaluation) {
         committed: true,
         activatedEntries: activatedEntries.length,
         consumedExternalActivations,
+        stateEventBaselineUpdated,
     };
 }
 
@@ -9394,6 +9437,20 @@ async function getWorldInfoEventRuntimeState() {
     return result.state && typeof result.state === 'object' && !Array.isArray(result.state)
         ? result.state
         : {};
+}
+
+function captureCurrentWorldInfoStateSnapshot(trigger = 'normal') {
+    const context = getContext();
+    const providers = readStateProviders(
+        buildWorldInfoStateProviderContext(context, trigger),
+        {},
+        globalThis,
+    );
+    const snapshot = snapshotWorldInfoStateProviders(providers);
+    return {
+        snapshot,
+        fingerprint: fingerprintWorldInfoStateSnapshot(snapshot),
+    };
 }
 
 export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData = defaultGlobalScanData, entryFilter = null) {
