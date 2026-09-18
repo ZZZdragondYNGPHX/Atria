@@ -131,7 +131,7 @@ test.describe('Browser Storage Management · CRUD', () => {
         const row = inspector.locator('.storageInspectorEntry', { hasText: '/one.txt' }).first();
         await row.locator('.storageInspectorEntryViewButton').click();
         const viewPopup = page.locator('dialog.popup[open]').last();
-        await expect(viewPopup.locator('textarea').first()).toContainText('fake body');
+        await expect(viewPopup.locator('textarea').first()).toHaveValue(/fake body/);
         await viewPopup.locator('.popup-button-ok').click();
 
         await row.locator('.storageInspectorEntryDeleteButton').click();
