@@ -19,7 +19,7 @@
  * the popup open so the user can fix the field without retyping.
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 const POPUP_RESULT = __ctx.POPUP_RESULT;
@@ -35,49 +35,49 @@ function buildPopupHtml(initial, t) {
         ? v.parameters
         : JSON.stringify(v.parameters || { type: 'object' }, null, 2);
     return `
-<div class="luker_orch_ct_editor">
-    <h3 class="luker_orch_ct_title">${esc(title)}</h3>
-    <div class="luker_orch_ct_warning">
+<div class="atri_orch_ct_editor">
+    <h3 class="atri_orch_ct_title">${esc(title)}</h3>
+    <div class="atri_orch_ct_warning">
         ${esc(t('Custom tool code runs with full access to your SillyTavern session. Only paste code from trusted sources.'))}
     </div>
 
-    <label class="luker_orch_ct_field">
-        <div class="luker_orch_ct_label">${esc(t('Tool name (a-z, A-Z, 0-9, _; max 64)'))}</div>
+    <label class="atri_orch_ct_field">
+        <div class="atri_orch_ct_label">${esc(t('Tool name (a-z, A-Z, 0-9, _; max 64)'))}</div>
         <input type="text" class="text_pole" data-orch-ct-name value="${esc(v.name || '')}">
     </label>
 
-    <label class="luker_orch_ct_field">
-        <div class="luker_orch_ct_label">${esc(t('Display name'))}</div>
+    <label class="atri_orch_ct_field">
+        <div class="atri_orch_ct_label">${esc(t('Display name'))}</div>
         <input type="text" class="text_pole" data-orch-ct-displayname value="${esc(v.displayName || '')}">
     </label>
 
-    <label class="luker_orch_ct_field">
-        <div class="luker_orch_ct_label">${esc(t('Description'))}</div>
+    <label class="atri_orch_ct_field">
+        <div class="atri_orch_ct_label">${esc(t('Description'))}</div>
         <textarea class="text_pole" rows="2" data-orch-ct-description>${esc(v.description || '')}</textarea>
     </label>
 
-    <div class="luker_orch_ct_field">
-        <div class="luker_orch_ct_label">${esc(t('Mode'))}</div>
+    <div class="atri_orch_ct_field">
+        <div class="atri_orch_ct_label">${esc(t('Mode'))}</div>
         <label class="checkbox_label"><input type="radio" name="orch_ct_mode" value="read" ${v.mode === 'read' ? 'checked' : ''}> ${esc(t('read (no side effects)'))}</label>
         <label class="checkbox_label"><input type="radio" name="orch_ct_mode" value="write" ${v.mode !== 'read' ? 'checked' : ''}> ${esc(t('write (mutates state)'))}</label>
     </div>
 
-    <label class="luker_orch_ct_field">
-        <div class="luker_orch_ct_label">${esc(t('Parameters (OpenAI JSON Schema)'))}</div>
+    <label class="atri_orch_ct_field">
+        <div class="atri_orch_ct_label">${esc(t('Parameters (OpenAI JSON Schema)'))}</div>
         <textarea class="text_pole monospace" rows="8" data-orch-ct-parameters>${esc(parametersRendered)}</textarea>
     </label>
 
-    <label class="luker_orch_ct_field">
-        <div class="luker_orch_ct_label">${esc(t('Function body (async, args + ctx available)'))}</div>
+    <label class="atri_orch_ct_field">
+        <div class="atri_orch_ct_label">${esc(t('Function body (async, args + ctx available)'))}</div>
         <textarea class="text_pole monospace" rows="10" data-orch-ct-body>${esc(v.body || '')}</textarea>
     </label>
 
-    <label class="luker_orch_ct_field">
-        <div class="luker_orch_ct_label">${esc(t('Simulate body (optional, used in simulation review)'))}</div>
+    <label class="atri_orch_ct_field">
+        <div class="atri_orch_ct_label">${esc(t('Simulate body (optional, used in simulation review)'))}</div>
         <textarea class="text_pole monospace" rows="6" data-orch-ct-simulatebody>${esc(v.simulateBody || '')}</textarea>
     </label>
 
-    <div class="luker_orch_ct_validation_msg" data-orch-ct-validation hidden></div>
+    <div class="atri_orch_ct_validation_msg" data-orch-ct-validation hidden></div>
 </div>
     `;
 }

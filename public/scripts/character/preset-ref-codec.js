@@ -5,7 +5,7 @@
  * Encoding used by the ghost `<option value>` in #settings_preset_openai,
  * and reused by st-context.js getSelected() to reverse the decode.
  *
- * The prefix `__luker_card__::` is a DOM-visible sentinel that flags the
+ * The prefix `__atria_card__::` is a DOM-visible sentinel that flags the
  * option as pointing to a character-bound preset rather than the global
  * preset library. The tail encodes `<avatar>::<name>` with
  * encodeURIComponent so that `::` occurring inside a preset name (or an
@@ -16,7 +16,7 @@
  * live at different layers with different escaping needs.
  */
 
-export const CARD_BOUND_OPTION_PREFIX = '__luker_card__::';
+export const CARD_BOUND_OPTION_PREFIX = '__atria_card__::';
 
 export function encodeCardBoundOptionValue(avatar, name) {
     return CARD_BOUND_OPTION_PREFIX + encodeURIComponent(avatar) + '::' + encodeURIComponent(name);

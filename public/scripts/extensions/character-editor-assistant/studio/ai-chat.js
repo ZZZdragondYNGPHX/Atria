@@ -1,7 +1,7 @@
 /**
  * CardApp Studio AI Chat - Function-calling based AI assistant for CardApp development.
  *
- * Routes requests through Luker.context.generateTask with tool definitions to let AI
+ * Routes requests through Atria.context.generateTask with tool definitions to let AI
  * read/write CardApp files. Studio is a dev/authoring tool — it never injects character
  * card or world info into the prompt; the system prompt and conversation messages flow
  * through verbatim.
@@ -17,11 +17,11 @@ import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../../regex/e
 import {
     listCtxKeys,
     describeCtxPath,
-    listLukerDocs,
-    readLukerDoc,
+    listAtriaDocs,
+    readAtriaDoc,
 } from '../../../iteration-library/tools/ctx-and-docs-discovery.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const characters = __ctx.characters;
 void (__ctx.saveMetadata);
 void (__ctx.getRequestHeaders);
@@ -37,7 +37,7 @@ const importEmbeddedWorldInfo = __ctx.importEmbeddedWorldInfo;
 const getCharacterEmbeddedWorld = __ctx.getCharacterEmbeddedWorld;
 const getCharaFilename = __ctx.getCharaFilename;
 const SlashCommandParser = __ctx.SlashCommandParser;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const extension_settings = __ctx.extensionSettings;
 const writeExtensionField = __ctx.writeExtensionField;
 const uuidv4 = __ctx.uuidv4;
@@ -77,10 +77,10 @@ const TOOL_NAMES = Object.freeze({
     MEMORY_GRAPH_SET_ADVANCED: 'character_update_memory_graph_advanced',
     SLASHCMD_LIST: 'slashcmd_list',
     SLASHCMD_HELP: 'slashcmd_help',
-    LUKER_CTX_LIST_KEYS: 'luker_context_list_keys',
-    LUKER_CTX_DESCRIBE: 'luker_context_describe',
-    DOCS_LIST: 'list_luker_docs',
-    DOCS_READ: 'read_luker_doc',
+    ATRIA_CTX_LIST_KEYS: 'atria_context_list_keys',
+    ATRIA_CTX_DESCRIBE: 'atria_context_describe',
+    DOCS_LIST: 'list_atria_docs',
+    DOCS_READ: 'read_atria_doc',
     CARDAPP_SET_ENABLED: 'cardapp_set_enabled',
 });
 
@@ -206,7 +206,7 @@ function buildTools() {
             type: 'function',
             function: {
                 name: TOOL_NAMES.WORLDINFO_LIST_BOOKS,
-                description: 'List world book names visible to the current character: character primary (from character.data.extensions.world — the card\'s primary book), character auxiliary (from world_info.charLore[].extraBooks — extra books bound via Luker\'s lorebook editor), chat-bound (from chat metadata — per-save state, resets on new chat), and globally activated (every chat). Returns { books: string[], sources: { [name]: \'character\'|\'character_aux\'|\'chat\'|\'global\' } } so you can tell which book lives at which scope. Chat-bound mutation is a CardApp runtime concern (use ctx.setChatWorldBooks in card code) — Studio reads via this tool but never mutates chat-bound bindings.',
+                description: 'List world book names visible to the current character: character primary (from character.data.extensions.world — the card\'s primary book), character auxiliary (from world_info.charLore[].extraBooks — extra books bound via Atria\'s lorebook editor), chat-bound (from chat metadata — per-save state, resets on new chat), and globally activated (every chat). Returns { books: string[], sources: { [name]: \'character\'|\'character_aux\'|\'chat\'|\'global\' } } so you can tell which book lives at which scope. Chat-bound mutation is a CardApp runtime concern (use ctx.setChatWorldBooks in card code) — Studio reads via this tool but never mutates chat-bound bindings.',
                 parameters: { type: 'object', properties: {}, additionalProperties: false },
             },
         },
@@ -537,8 +537,8 @@ function buildTools() {
         {
             type: 'function',
             function: {
-                name: TOOL_NAMES.LUKER_CTX_LIST_KEYS,
-                description: 'List top-level properties of ctx.lukerContext (the full Luker extension API, ~200+ keys). Each entry is {key, type}. Use luker_context_describe for details on a specific key. Useful when you need a Luker capability not exposed on ctx directly.',
+                name: TOOL_NAMES.ATRIA_CTX_LIST_KEYS,
+                description: 'List top-level properties of ctx.atriaContext (the full Atria extension API, ~200+ keys). Each entry is {key, type}. Use atria_context_describe for details on a specific key. Useful when you need a Atria capability not exposed on ctx directly.',
                 parameters: {
                     type: 'object',
                     properties: {
@@ -551,8 +551,8 @@ function buildTools() {
         {
             type: 'function',
             function: {
-                name: TOOL_NAMES.LUKER_CTX_DESCRIBE,
-                description: 'Describe a property or nested path of ctx.lukerContext. Returns its type, function arity (parameter count hint), short source preview for functions, or sub-keys for objects. Supports dot paths like "presets.state.patch" or "swipe.right".',
+                name: TOOL_NAMES.ATRIA_CTX_DESCRIBE,
+                description: 'Describe a property or nested path of ctx.atriaContext. Returns its type, function arity (parameter count hint), short source preview for functions, or sub-keys for objects. Supports dot paths like "presets.state.patch" or "swipe.right".',
                 parameters: {
                     type: 'object',
                     properties: {
@@ -567,7 +567,7 @@ function buildTools() {
             type: 'function',
             function: {
                 name: TOOL_NAMES.DOCS_LIST,
-                description: 'List Luker documentation files (markdown) available locally. By default returns only English docs (zh-CN/zh-TW translations are hidden because their content matches English). Returns each file as {path, size}. Useful starting points: development/card-developers.md (CardApp creator guide), features/cardapp.md (CardApp concepts), features/state-system.md (state overview), development/extension-api/chat-and-state.md (Floor State, chat state, character state), development/extension-api/generation.md, development/extension-api/presets-and-prompts.md.',
+                description: 'List Atria documentation files (markdown) available locally. By default returns only English docs (zh-CN/zh-TW translations are hidden because their content matches English). Returns each file as {path, size}. Useful starting points: development/card-developers.md (CardApp creator guide), features/cardapp.md (CardApp concepts), features/state-system.md (state overview), development/extension-api/chat-and-state.md (Floor State, chat state, character state), development/extension-api/generation.md, development/extension-api/presets-and-prompts.md.',
                 parameters: {
                     type: 'object',
                     properties: {
@@ -582,7 +582,7 @@ function buildTools() {
             type: 'function',
             function: {
                 name: TOOL_NAMES.DOCS_READ,
-                description: 'Read a Luker documentation markdown file. Use this to look up authoritative guidance on Floor State, state-system, CardApp lifecycle, extension API conventions, etc., before generating code that touches those areas.',
+                description: 'Read a Atria documentation markdown file. Use this to look up authoritative guidance on Floor State, state-system, CardApp lifecycle, extension API conventions, etc., before generating code that touches those areas.',
                 parameters: {
                     type: 'object',
                     properties: {
@@ -1243,9 +1243,9 @@ async function executeTool(charId, toolName, args, options = {}) {
             case TOOL_NAMES.MEMORY_GRAPH_GET: {
                 const mg = __ctx.getExtensionApi('memory-graph');
                 if (!mg) return { ok: false, error: 'memory-graph extension is not loaded' };
-                const lukerCtx = getContext();
-                const schemaInfo = mg.getSchemaScopeInfo(lukerCtx);
-                const advancedInfo = mg.getAdvancedScopeInfo(lukerCtx);
+                const atriaCtx = getContext();
+                const schemaInfo = mg.getSchemaScopeInfo(atriaCtx);
+                const advancedInfo = mg.getAdvancedScopeInfo(atriaCtx);
                 return {
                     ok: true,
                     schema: { scope: schemaInfo.scope, hasOverride: !!schemaInfo.hasOverride, schema: schemaInfo.schema },
@@ -1258,15 +1258,15 @@ async function executeTool(charId, toolName, args, options = {}) {
                 }
                 const mg = __ctx.getExtensionApi('memory-graph');
                 if (!mg) return { ok: false, error: 'memory-graph extension is not loaded' };
-                const lukerCtx = getContext();
+                const atriaCtx = getContext();
                 const charData = characters[__ctx.characterId];
                 const avatar = String(charData?.avatar || '').trim();
                 if (!avatar) return { ok: false, error: 'Character has no avatar' };
                 const schema = args?.schema;
                 const isClear = schema === null || schema === undefined;
                 const ok = isClear
-                    ? await mg.removeCharacterSchemaOverride(lukerCtx, avatar)
-                    : await mg.persistCharacterSchemaOverride(lukerCtx, avatar, schema);
+                    ? await mg.removeCharacterSchemaOverride(atriaCtx, avatar)
+                    : await mg.persistCharacterSchemaOverride(atriaCtx, avatar, schema);
                 return ok
                     ? { ok: true, message: isClear ? 'Memory-graph schema override cleared (falling back to global).' : 'Memory-graph schema override updated.' }
                     : { ok: false, error: 'Failed to update memory-graph schema override' };
@@ -1277,15 +1277,15 @@ async function executeTool(charId, toolName, args, options = {}) {
                 }
                 const mg = __ctx.getExtensionApi('memory-graph');
                 if (!mg) return { ok: false, error: 'memory-graph extension is not loaded' };
-                const lukerCtx = getContext();
+                const atriaCtx = getContext();
                 const charData = characters[__ctx.characterId];
                 const avatar = String(charData?.avatar || '').trim();
                 if (!avatar) return { ok: false, error: 'Character has no avatar' };
                 const advanced = args?.advanced;
                 const isClear = advanced === null || advanced === undefined;
                 const ok = isClear
-                    ? await mg.removeCharacterAdvancedOverride(lukerCtx, avatar)
-                    : await mg.persistCharacterAdvancedOverride(lukerCtx, avatar, advanced);
+                    ? await mg.removeCharacterAdvancedOverride(atriaCtx, avatar)
+                    : await mg.persistCharacterAdvancedOverride(atriaCtx, avatar, advanced);
                 return ok
                     ? { ok: true, message: isClear ? 'Memory-graph advanced override cleared (falling back to global).' : 'Memory-graph advanced override updated.' }
                     : { ok: false, error: 'Failed to update memory-graph advanced override' };
@@ -1347,20 +1347,20 @@ async function executeTool(charId, toolName, args, options = {}) {
                     unnamedArguments: Array.isArray(cmd.unnamedArgumentList) ? cmd.unnamedArgumentList.map(a => summarizeArg(a, false)) : [],
                 };
             }
-            case TOOL_NAMES.LUKER_CTX_LIST_KEYS: {
+            case TOOL_NAMES.ATRIA_CTX_LIST_KEYS: {
                 return await listCtxKeys({ filter: String(args?.filter || '') });
             }
-            case TOOL_NAMES.LUKER_CTX_DESCRIBE: {
+            case TOOL_NAMES.ATRIA_CTX_DESCRIBE: {
                 return await describeCtxPath({ path: String(args?.path || '') });
             }
             case TOOL_NAMES.DOCS_LIST: {
-                return await listLukerDocs({
+                return await listAtriaDocs({
                     filter: String(args?.filter || ''),
                     includeTranslations: !!args?.includeTranslations,
                 });
             }
             case TOOL_NAMES.DOCS_READ: {
-                return await readLukerDoc({ path: String(args?.path || '') });
+                return await readAtriaDoc({ path: String(args?.path || '') });
             }
             case TOOL_NAMES.CARDAPP_SET_ENABLED: {
                 if (__ctx.characterId === undefined || __ctx.characterId === null) {
@@ -1403,7 +1403,7 @@ const DEFAULT_SYSTEM_PROMPT = `You are a CardApp development assistant. Help the
 
 ## What CardApp is
 
-A CardApp is a per-character custom frontend. When \`data.extensions.card_app.enabled\` is true, Luker mounts your code inside \`#card-app-container\` and **hides the entire default chat UI** — \`#chat\` (message log), \`#form_sheld\` (input bar, send button, wand menu, regenerate, continue, stop button), and \`#qr--bar\` (quick replies). While CardApp is active the user has **no fallback UI**: if your code doesn't expose a feature, they cannot reach it without going back to the editor and disabling CardApp.
+A CardApp is a per-character custom frontend. When \`data.extensions.card_app.enabled\` is true, Atria mounts your code inside \`#card-app-container\` and **hides the entire default chat UI** — \`#chat\` (message log), \`#form_sheld\` (input bar, send button, wand menu, regenerate, continue, stop button), and \`#qr--bar\` (quick replies). While CardApp is active the user has **no fallback UI**: if your code doesn't expose a feature, they cannot reach it without going back to the editor and disabling CardApp.
 
 CardApp is not a skin. It is a full UI replacement. \`init(ctx)\` runs once when the chat opens; from there your code drives every interaction the user needs during the chat, until the dispose hook fires.
 
@@ -1424,7 +1424,7 @@ CardApp is plain JS. It reads variables, iterates arrays, renders UI from static
 
 For "pick which world-book entries become abilities", "summarize this character from their description", or any other prose-semantics judgment:
 - **Default:** decide now (Studio author time, by you). Read the prose, bake the conclusion as a static array in the CardApp file.
-- **Escape hatch:** \`ctx.lukerContext.generate()\` runs the user's main LLM at CardApp runtime. Use only when the content being reasoned over is itself unknowable at author time — a character composing an in-fiction message to another character, a free-text user query routed to an ability. Adds latency, tokens, and API-auth surface; pick it for real need, not for "looks smarter".
+- **Escape hatch:** \`ctx.atriaContext.generate()\` runs the user's main LLM at CardApp runtime. Use only when the content being reasoned over is itself unknowable at author time — a character composing an in-fiction message to another character, a free-text user query routed to an ability. Adds latency, tokens, and API-auth surface; pick it for real need, not for "looks smarter".
 
 Never have CardApp runtime parse world-book entries to discover abilities — that always needs an LLM, and the LLM should be you, now.
 
@@ -1546,12 +1546,12 @@ Same operations as the Studio tools (\`regex_*\`, \`character_*_orchestrator\`, 
 ### Utilities
 - ctx.container — The CardApp DOM container element
 - ctx.charId — Character ID string
-- ctx.eventSource — Luker event bus
+- ctx.eventSource — Atria event bus
 - ctx.setInterval(fn, ms) — Auto-cleaned interval
 - ctx.setTimeout(fn, ms) — Auto-cleaned timeout
 - ctx.addEventListener(target, event, handler, options?) — Auto-cleaned event listener
 - ctx.onDispose(fn) — Register cleanup callback
-- ctx.renderText(rawText, messageId?) — Render text through Luker's formatting pipeline
+- ctx.renderText(rawText, messageId?) — Render text through Atria's formatting pipeline
 - ctx.executeSlashCommand(command) — Execute a slash command
 
 ## Required UX (don't strand the user)
@@ -1572,13 +1572,13 @@ Because the default chat UI is hidden while CardApp is active, your CardApp must
 
 When **editing an existing CardApp**, scan its source for the four required items before layering on the user's new feature. If any are missing, mention it to the user — the original author may not have realized their card was stranding visitors, and shipping more features on top of a strand-trap doubles the problem.
 
-## Escape Hatch — Full Luker API
+## Escape Hatch — Full Atria API
 
 ctx above is a curated, lifecycle-managed subset. For anything not on ctx,
 two routes are available:
 
-- **ctx.lukerContext** — The full Luker/SillyTavern extension API (200+ properties,
-  the same object every Luker extension gets via getContext()). Useful for:
+- **ctx.atriaContext** — The full Atria/SillyTavern extension API (200+ properties,
+  the same object every Atria extension gets via getContext()). Useful for:
   prompt generation (generate, generateRaw, generateQuietPrompt), world info
   (loadWorldInfo, saveWorldInfo), preset management (presets.*), tokenizers
   (getTokenCountAsync), popups (callGenericPopup, Popup), group chats, character
@@ -1595,26 +1595,26 @@ two routes are available:
   - '/run <Quick Reply>' — Execute a Quick Reply by name
 
 Prefer ctx.* when a method exists — it handles lifecycle/cleanup correctly.
-Fall through to lukerContext or executeSlashCommand for the long tail.
+Fall through to atriaContext or executeSlashCommand for the long tail.
 
 ### Discovery tools (use these before guessing)
 
 When the user asks for a feature that probably exists but you're unsure of the
-exact slash command name, argument shape, or lukerContext property:
+exact slash command name, argument shape, or atriaContext property:
 
 - **slashcmd_list({filter?})** — Browse all registered slash commands. Pass a
   filter substring (e.g. "image", "var", "tts") to narrow the list.
 - **slashcmd_help({name})** — Get full schema for one command: named/unnamed
   args, accepted types, enum values, defaults, help text. Aliases resolve too.
-- **luker_context_list_keys({filter?})** — List top-level lukerContext keys
+- **atria_context_list_keys({filter?})** — List top-level atriaContext keys
   with their types. Use a filter when looking for a known concept.
-- **luker_context_describe({path})** — Inspect a specific path: function arity
+- **atria_context_describe({path})** — Inspect a specific path: function arity
   + source preview, or sub-keys for objects. Supports dot paths like
   "presets.state.patch" or "swipe.right".
-- **list_luker_docs({filter?})** — List Luker's local markdown docs (the same
-  source as luker.cups.moe). Useful when you need design rationale, not just
+- **list_atria_docs({filter?})** — List Atria's local markdown docs (the same
+  source as atria.cups.moe). Useful when you need design rationale, not just
   signatures.
-- **read_luker_doc({path})** — Read a doc by path, e.g.
+- **read_atria_doc({path})** — Read a doc by path, e.g.
   "development/extension-api/chat-and-state.md" for Floor State,
   "features/state-system.md" for the state system overview, or
   "development/card-developers.md" for the CardApp creator guide.
@@ -1661,7 +1661,7 @@ exact slash command name, argument shape, or lukerContext property:
 
 ### Regex tools
 
-Regex scripts are find/replace rules Luker applies at specific lifecycle points (user input, AI output, world-info injection, …). They are how you reshape text *between* layers — what the user types vs. what the AI sees, what the AI writes vs. what the chat stores vs. what the user reads. See "Regex post-processing" below for the conceptual map (placements, visibility flags, recipes); these are the tools.
+Regex scripts are find/replace rules Atria applies at specific lifecycle points (user input, AI output, world-info injection, …). They are how you reshape text *between* layers — what the user types vs. what the AI sees, what the AI writes vs. what the chat stores vs. what the user reads. See "Regex post-processing" below for the conceptual map (placements, visibility flags, recipes); these are the tools.
 
 - **regex_list_scripts({scope?})** — List scripts at \`'character'\` (card-level, lives in \`character.data.extensions.regex_scripts\`), \`'global'\` (user-level, \`extension_settings.regex\`), or \`'all'\` (default — returns both). Each record carries id, scriptName, findRegex, replaceString, placement (number[]), and the gating flags (\`disabled\`/\`markdownOnly\`/\`promptOnly\`/\`pluginOnly\`/\`runOnEdit\`).
 - **regex_create_script({scope, ...})** — Create a script. id is auto-assigned. Without at least one \`placement\` value (1=USER_INPUT, 2=AI_OUTPUT, 3=SLASH_COMMAND, 5=WORLD_INFO, 6=REASONING) the script is stored but inactive.
@@ -1671,7 +1671,7 @@ Regex scripts are find/replace rules Luker applies at specific lifecycle points 
 Always \`regex_list_scripts\` before creating "another one" — duplicate scripts on the same input chain in order, so the second one operates on the first one's output. Patch the existing script via \`regex_update_script\` instead of stacking siblings.
 
 Always discover exact names and signatures with these tools before writing
-ctx.lukerContext.X(...) or ctx.executeSlashCommand('/X ...') calls. Don't guess
+ctx.atriaContext.X(...) or ctx.executeSlashCommand('/X ...') calls. Don't guess
 slash command syntax — the help tool tells you whether arguments are named
 (key=value) or unnamed, and which enums are valid.
 
@@ -1681,7 +1681,7 @@ Per-chat state in CardApps lives in one of two places, picked by **what kind of 
 
 - **Scalars the AI mutates** (HP, gold, affinity, inventory text, quest flags) → \`ctx.setVariable\` / \`ctx.getVariable\`. Driven by op-log macros (\`{{setvar::...}}\`, \`{{addvar::...}}\`) the AI emits inside replies; world books and the CardApp UI read them via \`{{getvar::name}}\` and \`ctx.getVariable\`. Survives swipes / deletes through the op-log replay. **This is the default** — reach for chat-state below only when chat variables genuinely don't fit.
 
-- **Structured namespaces only the CardApp owns** (UI panel state objects, settled tracker payloads, anything you'd otherwise reach for "a JSON store" for) → \`ctx.getChatState\` / \`ctx.updateChatState\` / \`ctx.patchChatState\`. These hit the chat state store (server-backed at \`/api/chats/state/\`) — the same store the rest of Luker (memory-graph, orchestrator, search-tools) uses via \`getContext().getChatState\`. Per-chat scope; the data is durable across reloads but resets on a new chat. Don't put AI-mutable scalars here — they belong in chat variables where macros can reach them.
+- **Structured namespaces only the CardApp owns** (UI panel state objects, settled tracker payloads, anything you'd otherwise reach for "a JSON store" for) → \`ctx.getChatState\` / \`ctx.updateChatState\` / \`ctx.patchChatState\`. These hit the chat state store (server-backed at \`/api/chats/state/\`) — the same store the rest of Atria (memory-graph, orchestrator, search-tools) uses via \`getContext().getChatState\`. Per-chat scope; the data is durable across reloads but resets on a new chat. Don't put AI-mutable scalars here — they belong in chat variables where macros can reach them.
 
 When any of these state writes fails, the call returns \`{ ok: false, reason, hint }\` instead of throwing. Always check \`result.ok\` before treating the write as successful, and surface \`hint\` to the user via toastr only when the write was user-initiated (not for background autosaves). The \`reason\` enum has 9 values — branch on it to retry CONFLICT or to give up on HTTP_ERROR.
 
@@ -1691,7 +1691,7 @@ When any of these state writes fails, the call returns \`{ ok: false, reason, hi
 
 \`\`\`js
 // During init (it's async; create once and reuse the instance):
-const fs = await ctx.lukerContext.createFloorState({ namespace: 'my-cardapp' });
+const fs = await ctx.atriaContext.createFloorState({ namespace: 'my-cardapp' });
 
 // Reducer-style writes: receive current state, return next. Diff is computed
 // and committed for you.
@@ -1730,7 +1730,7 @@ if (!result.ok) {
 
 For full API (advanced patch mode, attaching to a non-tail floor with
 \`{floor, swipeId}\`, conventions), call
-\`read_luker_doc({path: "development/extension-api/chat-and-state.md"})\` and
+\`read_atria_doc({path: "development/extension-api/chat-and-state.md"})\` and
 read the "Floor State" section.
 
 ## Editing the character card
@@ -1831,11 +1831,11 @@ When a card has both a memory-graph schema *and* a CardApp panel, those are **tw
 - The schema is what the LLM accumulates and recalls. Studio designs it via \`character_update_memory_graph_schema\`.
 - The CardApp panel is what the user sees. It reads chat variables.
 
-\`ctx\` (the CardApp API surface) deliberately exposes **no** memory-graph read function. There is no \`ctx.getMemoryGraphNodes(type)\`, no \`ctx.queryMemoryGraph(...)\`. **Do not** reach for \`ctx.lukerContext.chatMetadata['luker_rpg_memory']\` / \`['memory_graph']\` / any other internal key to pull graph state into the UI — that's reverse-engineering an internal storage layout with zero stability contract, and it bypasses a deliberate boundary.
+\`ctx\` (the CardApp API surface) deliberately exposes **no** memory-graph read function. There is no \`ctx.getMemoryGraphNodes(type)\`, no \`ctx.queryMemoryGraph(...)\`. **Do not** reach for \`ctx.atriaContext.chatMetadata['atria_rpg_memory']\` / \`['memory_graph']\` / any other internal key to pull graph state into the UI — that's reverse-engineering an internal storage layout with zero stability contract, and it bypasses a deliberate boundary.
 
 For an investigation card with a 嫌疑人 / 线索 / 取证地点 / 证人 column panel, the columns read **chat variables**, not graph nodes. Typical shape: one variable per column holding a JSON-serialized array (\`{{setvar::case_suspects::[{"name":"...","alibi":"...","suspicion":"重点"}]}}\`), and the CardApp reads via \`ctx.getVariable('case_suspects')\` + \`JSON.parse\`. The AI maintains the variable through \`setvar\` macros emitted in replies — instructed by a state-injection world book entry. The same entities can also be extracted into memory-graph nodes for LLM recall over many turns; that's a parallel layer, not a UI feed.
 
-If a user prompt explicitly asks the CardApp to render memory-graph nodes ("把 suspect 节点画到 UI 上"), push back: **explain that CardApps consume chat variables; the memory graph is the LLM's internal recall surface, not a UI feed.** Offer the variable-driven equivalent — a chat variable maintained by the AI, a state-injection entry that teaches the AI when to update it, a CardApp that reads the variable. If the user still wants the graph as the data source despite this, that's a \`ctx\` API gap to flag back to the user, not something to work around with \`lukerContext\`.
+If a user prompt explicitly asks the CardApp to render memory-graph nodes ("把 suspect 节点画到 UI 上"), push back: **explain that CardApps consume chat variables; the memory graph is the LLM's internal recall surface, not a UI feed.** Offer the variable-driven equivalent — a chat variable maintained by the AI, a state-injection entry that teaches the AI when to update it, a CardApp that reads the variable. If the user still wants the graph as the data source despite this, that's a \`ctx\` API gap to flag back to the user, not something to work around with \`atriaContext\`.
 
 ## World book design — stability is the spine
 
@@ -1941,7 +1941,7 @@ Reach for variable-driven dynamic entries only when keyword activation matters *
 
 ## Stateful CardApps — let the op-log do the work
 
-For state that both the UI and the LLM care about (HP, gold, floor, flags, relationships, …), Luker's **variable op-log** is the path. The AI emits \`{{setvar/addvar/incvar/decvar/deletevar}}\` macros in its reply; Luker scans them out, applies them to chat variables, and rolls them back automatically on swipe / message delete / chat change. Your CardApp reads via \`ctx.getVariable\` and repaints on render events. Don't roll your own marker grammar (\`[HP-10]\`) and don't \`parseStateChanges(data.raw)\` — homegrown parsers double-apply on swipe.
+For state that both the UI and the LLM care about (HP, gold, floor, flags, relationships, …), Atria's **variable op-log** is the path. The AI emits \`{{setvar/addvar/incvar/decvar/deletevar}}\` macros in its reply; Atria scans them out, applies them to chat variables, and rolls them back automatically on swipe / message delete / chat change. Your CardApp reads via \`ctx.getVariable\` and repaints on render events. Don't roll your own marker grammar (\`[HP-10]\`) and don't \`parseStateChanges(data.raw)\` — homegrown parsers double-apply on swipe.
 
 ### Plan in this order: data → UI → AI instructions
 
@@ -1977,7 +1977,7 @@ Each scanned op is recorded in \`message.extra.var_ops\` (per-swipe), forward-ap
        ctx.setVariable('aw_maxHp', 100);
    }
    \`\`\`
-   \`ctx.setVariable\` writes directly to \`__ctx.chatMetadata.variables\` (no var_op recorded) — appropriate for one-time init. Alternatively, embed \`{{setvar::aw_hp::100}}\` etc. in the character's \`first_mes\`; Luker scans first_mes the same way it scans replies, so the bootstrap rides in chat history and resets if the user deletes the first message.
+   \`ctx.setVariable\` writes directly to \`__ctx.chatMetadata.variables\` (no var_op recorded) — appropriate for one-time init. Alternatively, embed \`{{setvar::aw_hp::100}}\` etc. in the character's \`first_mes\`; Atria scans first_mes the same way it scans replies, so the bootstrap rides in chat history and resets if the user deletes the first message.
 3. **Render UI from variables.** Read with sync \`ctx.getVariable('aw_hp')\` and paint.
 4. **Refresh on render events.** In your renderer's \`renderMessage(messageId, data)\`, call \`updateUI()\` whenever \`!data.isStreaming\` — covers new replies (op-log already applied), swipe switches (rebuild already happened), and edited messages. Do not parse \`data.raw\` for state; macros are already gone.
 
@@ -2126,7 +2126,7 @@ If the user is asking for a UI tweak, a status bar, "make her remember my name" 
 
 ## Regex post-processing — sculpting prompt and display
 
-Regex scripts are find/replace rules Luker applies at specific lifecycle points. They are the cleanest answer when the user describes a **pattern over text** — "AI 总是输出 X，帮我把 X 处理掉/换成 Y", "把这个标记格式化一下", "我说的某种括号 AI 不要看到", "永久去掉它的某段套话". Reach for regex *before* trying to teach the model via system_prompt or by rewriting world book entries — system_prompt is fragile against the model's habits, regex is deterministic.
+Regex scripts are find/replace rules Atria applies at specific lifecycle points. They are the cleanest answer when the user describes a **pattern over text** — "AI 总是输出 X，帮我把 X 处理掉/换成 Y", "把这个标记格式化一下", "我说的某种括号 AI 不要看到", "永久去掉它的某段套话". Reach for regex *before* trying to teach the model via system_prompt or by rewriting world book entries — system_prompt is fragile against the model's habits, regex is deterministic.
 
 ### When to act vs hold off (read this first)
 
@@ -2192,7 +2192,7 @@ Pick by intent:
 
 ### Card-level vs global — default to character
 
-**Default to \`scope: 'character'\` for any regex you create through the Studio.** Card-level writes go to \`character.data.extensions.regex_scripts\` — the script travels with the card file, so export/import/sharing all carry it, and a future user opening the card gets the intended experience without re-creating rules from documentation. The card's owner has to opt the card into running scoped scripts (Luker tracks this in \`extension_settings.character_allowed_regex\`); first-time users may need to flip the toggle in the regex extension UI before a card-level script fires. Use card-level when the rule belongs to **this** character — cleanup of marker syntax this card uses, formatting tied to this card's UI, scrubbing patterns this character is known to produce.
+**Default to \`scope: 'character'\` for any regex you create through the Studio.** Card-level writes go to \`character.data.extensions.regex_scripts\` — the script travels with the card file, so export/import/sharing all carry it, and a future user opening the card gets the intended experience without re-creating rules from documentation. The card's owner has to opt the card into running scoped scripts (Atria tracks this in \`extension_settings.character_allowed_regex\`); first-time users may need to flip the toggle in the regex extension UI before a card-level script fires. Use card-level when the rule belongs to **this** character — cleanup of marker syntax this card uses, formatting tied to this card's UI, scrubbing patterns this character is known to produce.
 
 \`scope: 'global'\` writes to \`extension_settings.regex\` — active in every chat for every character, no per-card opt-in needed. **Only choose global when the user has explicitly framed the request as universal** ("我所有卡都要这样", "for every character I have", "always strip this regardless of which card", "add this to my global setup"). A request phrased about a single card — even one the user uses heavily — is *not* a global request; treat it as card-level.
 
@@ -2276,7 +2276,7 @@ The CardApp loader writes diagnostics into this Studio session for you automatic
 - **\`console.error(...)\` from CardApp code** — anything called from a file under \`/api/card-app/<charId>/\` is mirrored. Other extensions' \`console.error\` calls are filtered out.
 - **unhandled promise rejections originating in CardApp** — same filter.
 
-When you suspect a failure path but can't see the state directly (the value of a graph node, whether a \`ctx.setVariable\` settled, what \`luker.eventSource\` looks like at runtime, etc.), insert \`console.error('debug: ...', value)\` calls in the CardApp file. They are non-fatal, leave a trace, and you will see them as system messages the next time the user reopens Studio. Do **not** use \`console.log\` or \`console.warn\` — those are not mirrored.
+When you suspect a failure path but can't see the state directly (the value of a graph node, whether a \`ctx.setVariable\` settled, what \`atria.eventSource\` looks like at runtime, etc.), insert \`console.error('debug: ...', value)\` calls in the CardApp file. They are non-fatal, leave a trace, and you will see them as system messages the next time the user reopens Studio. Do **not** use \`console.log\` or \`console.warn\` — those are not mirrored.
 
 When a user reports a CardApp problem informally ("the card isn't working", "it shows an error box"), the diagnostic for that failure is most likely already in this session above your turn — read it before asking the user for more detail. If the diagnostic is missing or insufficient, you can ask the user to reproduce the issue and reopen Studio so the loader records it for you, or to paste any visible error text.
 

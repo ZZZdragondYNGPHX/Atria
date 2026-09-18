@@ -1,30 +1,9 @@
-// #48 — CEA editor iter-studio: `inspect_bound_preset` end-to-end,
-//        exercising the READ_TOOL_LEGACY_NAMES self-map.
+// #48 — CEA editor iter-studio: `inspect_bound_preset` end-to-end.
 //
-// `inspect_bound_preset` is wired into the CEA editor tool catalog
-// via a self-map (`READ_TOOL_LEGACY_NAMES.inspect_bound_preset =
-// 'inspect_bound_preset'`) so runCeaEditorReadTool dispatches to the
-// short name unchanged. The full chain per turn:
-//
-//   mock LLM tool_call → editor-iteration/studio.js executes
-//     → runCeaEditorReadTool(call, {helperApis})
-//     → READ_TOOL_LEGACY_NAMES lookup → 'inspect_bound_preset'
-//     → runCharacterEditorHelperToolCall(legacyCall, helperApis)
-//     → createCharacterEditorBoundPresetToolApi.invoke(call)
-//     → runCharacterPresetReadTool(call, {context, avatar})
-//     → context.character.presets.list / get → tool_result → back to LLM.
-//
-// The self-map is the load-bearing hook this test pins: a future mistyped
-// entry like `'inspect_bound_preset': 'wrong_name'` would surface here as
-// runCharacterEditorHelperToolCall throwing "Unsupported helper tool:
-// wrong_name" (none of the helper APIs' `isToolName` would match), and
-// the DOM result-pre would carry `{ error: 'Unsupported helper tool:
-// wrong_name' }`. Structural assertions on the happy-path payload shape
-// (list array + get object) verify the legacy map is intact.
-//
-// Real UI/gestures: open Extensions drawer → CEA inline-drawer → click
-// "Open Editor" (real gesture opens the unified CEA editor iter-studio
-// popup). mockLLM scripts tool_calls; assertions run on the popup DOM.
+// The unified CEA catalog and helper APIs use the same canonical tool name
+// end-to-end: mock LLM tool_call → runCeaEditorReadTool →
+// runCharacterEditorHelperToolCall → createCharacterEditorBoundPresetToolApi
+// → runCharacterPresetReadTool → tool_result.
 
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -61,7 +40,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT_A_NAME, preset: { temperature: SLOT_A_TEMP, chat_completion_source: 'openai' } },
@@ -85,27 +64,27 @@ test.afterAll(async () => {
  * Read the last `inspect_bound_preset` tool-result payload out of the
  * visible iter popup. Same shape as #47 — the shared iteration-library
  * message renderer emits the tool_result as JSON via
- * `<pre class="luker_lib_toolcall_result_pre">`.
+ * `<pre class="atria_lib_toolcall_result_pre">`.
  */
 async function readLastToolResultPayload(page, toolLabel) {
     return page.evaluate((name) => {
         const popups = Array.from(document.querySelectorAll('dialog.popup[open]'));
         let root = null;
         for (let i = popups.length - 1; i >= 0; i--) {
-            if (popups[i].querySelector('.luker_lib_message_assistant')) {
+            if (popups[i].querySelector('.atria_lib_message_assistant')) {
                 root = popups[i];
                 break;
             }
         }
         if (!root) return null;
-        const chips = Array.from(root.querySelectorAll('.luker_lib_toolcall'));
+        const chips = Array.from(root.querySelectorAll('.atria_lib_toolcall'));
         const matching = chips.filter((chip) => {
-            const label = chip.querySelector('.luker_lib_toolcall_label');
+            const label = chip.querySelector('.atria_lib_toolcall_label');
             return label && label.textContent.trim() === name;
         });
         if (matching.length === 0) return null;
         const last = matching[matching.length - 1];
-        const pre = last.querySelector('.luker_lib_toolcall_result_pre');
+        const pre = last.querySelector('.atria_lib_toolcall_result_pre');
         if (!pre) return null;
         const text = pre.textContent || '';
         const trimmed = text.trim();
@@ -124,7 +103,7 @@ async function sendReadOnlyPrompt(page, prompt, { expectedToolLabel = 'inspect_b
     const popup = page.locator('.popup:visible').last();
     const input = popup.locator('[data-cea-editor-input], .cea_editor_composer_input textarea, .cea_editor_composer_input [contenteditable="true"]').first();
     await input.waitFor({ state: 'visible', timeout: 10_000 });
-    const priorChipCount = await popup.locator('.luker_lib_toolcall .luker_lib_toolcall_label', { hasText: expectedToolLabel }).count().catch(() => 0);
+    const priorChipCount = await popup.locator('.atria_lib_toolcall .atria_lib_toolcall_label', { hasText: expectedToolLabel }).count().catch(() => 0);
     const tag = await input.evaluate(el => el.tagName.toLowerCase());
     if (tag === 'textarea' || tag === 'input') {
         await input.fill(prompt);
@@ -137,7 +116,7 @@ async function sendReadOnlyPrompt(page, prompt, { expectedToolLabel = 'inspect_b
     const sendBtn = popup.locator('[data-cea-editor-action="send"]').first();
     await sendBtn.click();
     await expect.poll(async () => {
-        return popup.locator('.luker_lib_toolcall .luker_lib_toolcall_label', { hasText: expectedToolLabel }).count();
+        return popup.locator('.atria_lib_toolcall .atria_lib_toolcall_label', { hasText: expectedToolLabel }).count();
     }, { timeout: timeoutMs }).toBeGreaterThan(priorChipCount);
     await expect.poll(async () => {
         return (await sendBtn.textContent().catch(() => ''))?.trim() || '';
@@ -146,7 +125,7 @@ async function sendReadOnlyPrompt(page, prompt, { expectedToolLabel = 'inspect_b
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('#48 — CEA editor iter-studio inspect_bound_preset (legacy-map coverage)', () => {
+test.describe('#48 — CEA editor iter-studio inspect_bound_preset', () => {
     test('list + get(existing) + get(nonexistent): tool_results flow through the CEA dispatch chain', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, CHAR_NAME);
@@ -154,13 +133,8 @@ test.describe('#48 — CEA editor iter-studio inspect_bound_preset (legacy-map c
         await openIterStudio(page, 'cea');
 
         // ---- Turn 1: list ----
-        // If READ_TOOL_LEGACY_NAMES['inspect_bound_preset'] is mistyped
-        // (e.g. to 'wrong_name'), the dispatch chain lands on
-        // runCharacterEditorHelperToolCall's throw path — no helper API
-        // matches 'wrong_name' → thrown error → runCeaEditorReadTool
-        // returns `{ok:false, error:'Unsupported helper tool: wrong_name'}`
-        // → the studio renders `{error: ...}` in the result-pre and the
-        // Array.isArray + length===2 assertion below fails.
+        // The canonical name must route directly to the matching helper API;
+        // any dispatch drift surfaces as an error envelope below.
         mock.scriptToolCall({
             name: 'inspect_bound_preset',
             arguments: { action: 'list' },

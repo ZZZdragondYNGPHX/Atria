@@ -15,7 +15,7 @@ Two paths take you into Studio:
 
 ## Interface Layout
 
-Studio uses a three-panel layout that overlays Luker's main UI:
+Studio uses a three-panel layout that overlays Atria's main UI:
 
 ![Studio overview: AI chat on the left, live preview in the middle, code editor on the right](/images/cardapp-studio/studio-overview.png)
 
@@ -79,10 +79,10 @@ The AI in Studio has a richer toolset than the popup. Tools fall into seven grou
 
 **Per-character memory-graph override** — read the effective memory-graph config (schema + advanced settings, with scope tags), replace the node-type schema, or patch advanced settings. Always character-scoped.
 
-**Discovery / docs** — `slashcmd_list` + `slashcmd_help` for slash commands, `luker_context_list_keys` + `luker_context_describe` for the runtime API surface, and `list_luker_docs` + `read_luker_doc` to read the same Markdown docs as this site. The Studio AI uses these to verify exact names and signatures before generating code, instead of guessing.
+**Discovery / docs** — `slashcmd_list` + `slashcmd_help` for slash commands, `atria_context_list_keys` + `atria_context_describe` for the runtime API surface, and `list_atria_docs` + `read_atria_doc` to read the same Markdown docs as this site. The Studio AI uses these to verify exact names and signatures before generating code, instead of guessing.
 
 ::: tip CardApp authoring convention
-By Luker's CardApp authoring convention, all AI-visible content should live in World Info books bound via `extensions.world`, not in the character card's `system_prompt` / `post_history_instructions` fields. Studio AI follows this convention by default. See the [Card Developer Guide](/development/card-developers) for details.
+By Atria's CardApp authoring convention, all AI-visible content should live in World Info books bound via `extensions.world`, not in the character card's `system_prompt` / `post_history_instructions` fields. Studio AI follows this convention by default. See the [Card Developer Guide](/development/card-developers) for details.
 :::
 
 ## Code Editor Details
@@ -114,7 +114,7 @@ Studio uses Git to record file version history automatically:
 - The Git history is exported with the character card data, so the recipient sees the full development history
 
 ::: info SillyTavern data compatibility
-The Studio Git repository is stored in Luker's extension data area; it doesn't pollute the V2 character card standard fields. When importing back into SillyTavern, only the version history is lost — the CardApp itself still runs.
+The Studio Git repository is stored in Atria's extension data area; it doesn't pollute the V2 character card standard fields. When importing back into SillyTavern, only the version history is lost — the CardApp itself still runs.
 :::
 
 ## Search Tools Integration

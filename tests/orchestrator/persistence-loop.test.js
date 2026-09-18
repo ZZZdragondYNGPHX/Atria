@@ -37,20 +37,15 @@ describe('sanitizeLoopProfile defaults', () => {
         // Missing system_prompt falls back to the shipped default prompt so
         // fresh installs ship with a usable RP director system message.
         expect(out.system_prompt).toBe(DEFAULT_LOOP_SYSTEM_PROMPT);
-        // Canonical post-migration shape: tools.note.{open, close}. Legacy
-        // tools.note.{add, delete} inputs are remapped to this shape by the
-        // sanitizer; no caller should ever observe the legacy keys.
+        // Current note schema uses tools.note.{open, close}.
         expect(out.tools.note.open).toBe(true);
         expect(out.tools.note.close).toBe(true);
         expect(out.tools.chat.read_range).toBe(true);
         expect(out.tools.chat.search).toBe(true);
         expect(out.tools.lorebook.search).toBe(true);
         expect(out.tools.lorebook.get).toBe(true);
-        // memory + search tools live in Layer-2 now; the loop profile
-        // defaults pre-populate tools.custom with each verb's flag so
-        // first-run users get the same enabled set as before.
-        expect(out.tools.memory).toBeUndefined();
-        expect(out.tools.search).toBeUndefined();
+        // Memory + search extension tools live directly in Layer-2
+        // tools.custom and are enabled by current loop defaults.
         expect(out.tools.custom.memory_list_candidates).toBe(true);
         expect(out.tools.custom.memory_edge_summary).toBe(true);
         expect(out.tools.custom.memory_node_brief).toBe(true);
@@ -193,13 +188,23 @@ describe('sanitizeLoopProfile tools handling', () => {
                 note: { open: false, close: false },
                 chat: { read_range: false, search: false },
                 lorebook: { search: false, get: false },
-                memory: {
-                    list_candidates: false, edge_summary: false, node_brief: false,
-                    expand_seeds: false, schema: false,
-                    keyword_search: false, vector_search: false, find_by_name: false,
-                    compaction_candidates: false,
-                    node_create: false, node_edit: false, node_delete: false,
-                    link_upsert: false, link_delete: false, compact_nodes: false,
+                custom: {
+                    memory_recall: false,
+                    memory_schema: false,
+                    memory_list_candidates: false,
+                    memory_edge_summary: false,
+                    memory_node_brief: false,
+                    memory_expand_seeds: false,
+                    memory_keyword_search: false,
+                    memory_vector_search: false,
+                    memory_find_by_name: false,
+                    memory_compaction_candidates: false,
+                    memory_node_create: false,
+                    memory_node_edit: false,
+                    memory_node_delete: false,
+                    memory_link_upsert: false,
+                    memory_link_delete: false,
+                    memory_compact_nodes: false,
                 },
                 finalize: false,
             },
@@ -210,8 +215,6 @@ describe('sanitizeLoopProfile tools handling', () => {
         expect(out.tools.chat.search).toBe(false);
         expect(out.tools.lorebook.search).toBe(false);
         expect(out.tools.lorebook.get).toBe(false);
-        // memory.* legacy flags translate into custom.memory_<verb>.
-        expect(out.tools.memory).toBeUndefined();
         expect(out.tools.custom.memory_list_candidates).toBe(false);
         expect(out.tools.custom.memory_edge_summary).toBe(false);
         expect(out.tools.custom.memory_node_brief).toBe(false);
@@ -259,8 +262,7 @@ describe('sanitizeLoopProfile tools handling', () => {
         expect(out.tools.custom.memory_compact_nodes).toBe(true);
         expect(out.tools.custom.memory_schema).toBe(true);
         // search-tools also live in tools.custom; LOOP_PROFILE_DEFAULTS
-        // pre-populates both verbs on, neither lives under tools.search.
-        expect(out.tools.search).toBeUndefined();
+        // pre-populates both current search verbs.
         expect(out.tools.custom.search_search).toBe(true);
         expect(out.tools.custom.search_visit).toBe(true);
     });

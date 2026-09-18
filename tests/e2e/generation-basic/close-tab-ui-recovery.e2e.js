@@ -4,9 +4,9 @@
 // resume inside page.evaluate. That proves the transport layer works but
 // never exercises what an actual user sees after reopening the page:
 //
-//   public/script.js CHAT_CHANGED → startLukerGenerationRecovery()
+//   public/script.js CHAT_CHANGED → startAtriaGenerationRecovery()
 //     → POST /api/backends/chat-completions/jobs/active
-//     → #luker_generation_recovery_preview bubble
+//     → #atri_generation_recovery_preview bubble
 //     → SSE /jobs/events-stream live text
 //     → completed → reloadCurrentChat() swaps the bubble for the persisted
 //       message.
@@ -41,11 +41,11 @@ const CHUNK_DELAY_MS = 500;
 
 async function resolveChatPath(page, dataRoot) {
     const avatarFolder = await page.evaluate(() => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const c = ctx.characters[ctx.characterId];
         return (c?.avatar || '').replace(/\.png$/, '');
     });
-    const chatId = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+    const chatId = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
     return resolve(dataRoot, 'default-user', 'chats', avatarFolder, `${chatId}.jsonl`);
 }
 
@@ -109,7 +109,7 @@ test.describe('generation-basic: close-tab real-user-path recovery', () => {
             const { chatPath } = await startStreamAndCloseTab(browser, server);
             expect(existsSync(chatPath), `chat file expected at ${chatPath}`).toBe(true);
 
-            // Stream tail (~8s left) + LUKER_GENERATION_ACK_GRACE_MS (15s)
+            // Stream tail (~8s left) + ATRIA_GENERATION_ACK_GRACE_MS (15s)
             // + persistence write. Poll rather than sleep so slow CI passes
             // and fast machines don't stall the suite.
             let asstLine = null;
@@ -127,7 +127,7 @@ test.describe('generation-basic: close-tab real-user-path recovery', () => {
             expect(asstLine, `server-side auto-persist must write the assistant turn; lines=${JSON.stringify(lastLines.map(l => ({ is_user: l.is_user, mes: String(l.mes || '').slice(0, 60) })))}`).toBeTruthy();
             // Complete content — every one of the 20 chunks, in order.
             expect(asstLine.mes, 'persisted mes must equal the full streamed reply verbatim').toBe(SCRIPTED_REPLY);
-            expect(asstLine.extra?.luker_server_persisted, 'assistant turn must carry the server-persisted marker').toBe(true);
+            expect(asstLine.extra?.atria_server_persisted, 'assistant turn must carry the server-persisted marker').toBe(true);
             expect(asstLine.is_user).toBe(false);
         });
     });
@@ -165,7 +165,7 @@ test.describe('generation-basic: close-tab real-user-path recovery', () => {
             await selectCharacterByName(pageB, 'Seraphina');
 
             // The recovery preview bubble must show up with the buffered text.
-            await pageB.waitForFunction(() => Boolean(document.querySelector('#luker_generation_recovery_preview')), { timeout: 20_000 });
+            await pageB.waitForFunction(() => Boolean(document.querySelector('#atri_generation_recovery_preview')), { timeout: 20_000 });
 
             // Live growth: the preview must accumulate text while the job is
             // still streaming (throttled status frames), not jump straight to
@@ -175,7 +175,7 @@ test.describe('generation-basic: close-tab real-user-path recovery', () => {
             const growthDeadline = Date.now() + 20_000;
             while (Date.now() < growthDeadline) {
                 const len = await pageB.evaluate(() =>
-                    (document.querySelector('#luker_generation_recovery_preview .luker_preview_text')?.innerText || '').length,
+                    (document.querySelector('#atri_generation_recovery_preview .atria_preview_text')?.innerText || '').length,
                 ).catch(() => -1);
                 if (len < 0) break;   // preview gone (job completed early)
                 if (prevLen >= 0 && len > prevLen) { grew = true; break; }
@@ -187,13 +187,13 @@ test.describe('generation-basic: close-tab real-user-path recovery', () => {
             // It must reach the tail of the upstream stream (the awaiting_ack
             // status frame carries the authoritative full job.text).
             await pageB.waitForFunction(() => {
-                const t = document.querySelector('#luker_generation_recovery_preview .luker_preview_text')?.innerText || '';
+                const t = document.querySelector('#atri_generation_recovery_preview .atria_preview_text')?.innerText || '';
                 return t.includes('chunk20');
             }, { timeout: 30_000 });
 
             // On terminal status the preview is removed and reloadCurrentChat
             // paints the real persisted message in its place.
-            await pageB.waitForFunction(() => !document.querySelector('#luker_generation_recovery_preview'), { timeout: 45_000 });
+            await pageB.waitForFunction(() => !document.querySelector('#atri_generation_recovery_preview'), { timeout: 45_000 });
             await pageB.waitForFunction(() => {
                 const bubbles = document.querySelectorAll('#chat .mes:not([is_user="true"])');
                 for (const b of bubbles) {

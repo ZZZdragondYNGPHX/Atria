@@ -1,11 +1,11 @@
 // Kimi partial prefill — full-chain e2e over the Moonshot source.
 //
-// Two scenarios sharing one mockLLM + one Luker server instance, both
+// Two scenarios sharing one mockLLM + one Atria server instance, both
 // bootstrapped with `bootstrapMoonshotBackend` (chat_completion_source =
 // 'moonshot', base_url → mock). The partial prefill is a Moonshot-only
 // feature: `kimi_partial_mode` gates a set of settings UI controls
 // (#kimi_partial_config) and the client injects an assistant-partial
-// message at the wire level (src/luker-dispatch/.../openai-compatible.js
+// message at the wire level (src/atria-dispatch/.../openai-compatible.js
 // applyKimiPartial) when the request carries kimi_partial=true.
 //
 //   Test A (injection + display consistency): enable the mode through the
@@ -84,7 +84,7 @@ test.describe.serial('Kimi partial prefill', () => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, 'Seraphina');
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -112,7 +112,7 @@ test.describe.serial('Kimi partial prefill', () => {
         await page.locator('#kimi_partial_content').fill(PREFIX);
         // Flush the debounced settings save synchronously before sending.
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             await ctx.saveSettings?.(0, { directSave: true });
         });
 
@@ -144,7 +144,7 @@ test.describe.serial('Kimi partial prefill', () => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, 'Seraphina');
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -155,7 +155,7 @@ test.describe.serial('Kimi partial prefill', () => {
         await page.locator('#kimi_partial_name').fill('Mira');
         await page.locator('#kimi_partial_content').fill(PREFIX);
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             await ctx.saveSettings?.(0, { directSave: true });
         });
 
@@ -191,7 +191,7 @@ test.describe.serial('Kimi partial prefill', () => {
         await page.locator('#kimi_partial_name_source').selectOption('manual');
         await page.locator('#kimi_partial_name').fill('Mira');
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             await ctx.saveSettings?.(0, { directSave: true });
         });
 

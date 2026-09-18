@@ -1,11 +1,11 @@
 // Real-UI helpers for Memory-Graph and Variable-Op-Log flows.
 //
 // MG:
-//   - openMgGraphView: click #luker_rpg_memory_view_graph, assert cytoscape canvas
-//   - openMgSchemaEditor: click #luker_rpg_memory_open_schema_editor
-//   - importMgGraph: click #luker_rpg_memory_import → setInputFiles
-//   - exportMgGraph: click #luker_rpg_memory_export → waitForEvent('download')
-//   - rebuildMgIndex: click #luker_rpg_memory_rebuild + accept confirm
+//   - openMgGraphView: click #atria_rpg_memory_view_graph, assert cytoscape canvas
+//   - openMgSchemaEditor: click #atria_rpg_memory_open_schema_editor
+//   - importMgGraph: click #atria_rpg_memory_import → setInputFiles
+//   - exportMgGraph: click #atria_rpg_memory_export → waitForEvent('download')
+//   - rebuildMgIndex: click #atria_rpg_memory_rebuild + accept confirm
 //
 // var-ops:
 //   - openVarOpsPanel(page, mesid): click the flask icon
@@ -22,12 +22,12 @@ async function openMgSettingsPanel(page) {
 
 /**
  * Open the View Graph popup via the real button and assert the cytoscape
- * canvas (`.luker-rpg-memory-graph-cy`) renders.
+ * canvas (`.atria-rpg-memory-graph-cy`) renders.
  */
 export async function openMgGraphView(page, { timeoutMs = 15_000 } = {}) {
     await openMgSettingsPanel(page);
-    await page.locator('#luker_rpg_memory_view_graph').click();
-    const cy = page.locator('.luker-rpg-memory-graph-cy').first();
+    await page.locator('#atria_rpg_memory_view_graph').click();
+    const cy = page.locator('.atria-rpg-memory-graph-cy').first();
     await cy.waitFor({ state: 'visible', timeout: timeoutMs });
     return cy;
 }
@@ -37,8 +37,8 @@ export async function openMgGraphView(page, { timeoutMs = 15_000 } = {}) {
  */
 export async function openMgSchemaEditor(page, { timeoutMs = 15_000 } = {}) {
     await openMgSettingsPanel(page);
-    await page.locator('#luker_rpg_memory_open_schema_editor').click();
-    // Schema editor mounts inside a Luker popup; wait for at least one
+    await page.locator('#atria_rpg_memory_open_schema_editor').click();
+    // Schema editor mounts inside a Atria popup; wait for at least one
     // schema field row to render or the popup to be visible.
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: timeoutMs });
@@ -46,7 +46,7 @@ export async function openMgSchemaEditor(page, { timeoutMs = 15_000 } = {}) {
 }
 
 /**
- * Import a graph store JSON via the real #luker_rpg_memory_import button +
+ * Import a graph store JSON via the real #atria_rpg_memory_import button +
  * its hidden file input. The import flow prompts the user with a custom
  * 3-button popup: "Restore Exported Floor" / "Bind Latest Floor" /
  * "Bind Specific Floor" — `mode` selects which to click (default
@@ -58,8 +58,8 @@ export async function openMgSchemaEditor(page, { timeoutMs = 15_000 } = {}) {
  */
 export async function importMgGraph(page, filePath, { mode = 'bind-latest' } = {}) {
     await openMgSettingsPanel(page);
-    await page.locator('#luker_rpg_memory_import').click().catch(() => { /* visible icon */ });
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click().catch(() => { /* visible icon */ });
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     // Wait for the custom-button popup to render, then click the chosen
     // button by its visible text (i18n stable text).
     const popup = page.locator('.popup:visible').last();
@@ -75,23 +75,23 @@ export async function importMgGraph(page, filePath, { mode = 'bind-latest' } = {
 }
 
 /**
- * Trigger a graph export via the real #luker_rpg_memory_export button and
+ * Trigger a graph export via the real #atria_rpg_memory_export button and
  * await the download.
  */
 export async function exportMgGraph(page, { timeoutMs = 15_000 } = {}) {
     await openMgSettingsPanel(page);
     const dl = page.waitForEvent('download', { timeout: timeoutMs });
-    await page.locator('#luker_rpg_memory_export').click();
+    await page.locator('#atria_rpg_memory_export').click();
     return dl;
 }
 
 /**
- * Trigger a full rebuild via the real #luker_rpg_memory_rebuild button.
+ * Trigger a full rebuild via the real #atria_rpg_memory_rebuild button.
  * Accepts the confirm popup.
  */
 export async function rebuildMgIndex(page, { timeoutMs = 60_000 } = {}) {
     await openMgSettingsPanel(page);
-    await page.locator('#luker_rpg_memory_rebuild').click();
+    await page.locator('#atria_rpg_memory_rebuild').click();
     const popup = page.locator('.popup:visible').last();
     if (await popup.isVisible({ timeout: 2000 }).catch(() => false)) {
         await popup.locator('.popup-button-ok').first().click();

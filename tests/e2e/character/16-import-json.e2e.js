@@ -34,7 +34,7 @@ const V2_DATA = {
     post_history_instructions: '',
     alternate_greetings: ['*Mira is already counting planks under her breath when you arrive.*'],
     tags: ['rp', 'fixture'],
-    creator: 'luker-e2e',
+    creator: 'atria-e2e',
     character_version: '1.0',
     extensions: { depth_prompt: { prompt: '', depth: 4, role: 'system' } },
 };
@@ -54,7 +54,7 @@ test.beforeAll(async () => {
     bootstrapCustomBackend({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
     appendConnectionProfile({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
 
-    tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-json-'));
+    tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-json-'));
     jsonPath = resolve(tmpDir, 'mira.json');
     writeFileSync(jsonPath, JSON.stringify(V2_PAYLOAD, null, 2));
 });

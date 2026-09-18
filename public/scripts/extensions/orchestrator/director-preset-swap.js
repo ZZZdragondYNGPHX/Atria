@@ -111,7 +111,7 @@ export async function applyDirectorPresetSwap(ctx) {
 
     const activeName = oaiSettings.preset_settings_openai;
 
-    // 捕获当前 <select> 的 raw value(可能是 ghost sentinel `__luker_card__::…`,
+    // 捕获当前 <select> 的 raw value(可能是 ghost sentinel `__atria_card__::…`,
     // 也可能是数字 index / 全局 preset 名映射)。origin 由 decodeCardBoundOptionValue
     // 判定 —— 命中即 character origin,restore 时需回到同一 ghost <option>;否则
     // 走全局 fallback,与旧行为等价。

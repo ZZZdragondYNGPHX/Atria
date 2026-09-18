@@ -15,12 +15,11 @@
 //     (`live.character` and `live.lorebooks[name]`) get the same set of
 //     ops, distinguished only by the `target` annotation attached after
 //     normalization.
-//   - Read-tool schemas use short canonical names (lorebook_query, …)
-//     and are defined here. Execution dispatches to main.js's legacy
-//     helper-tool runner (renaming the call to the legacy `luker_card_*`
-//     name) so we don't duplicate the read-side logic.
+//   - Read-tool schemas use canonical short names (lorebook_query, …).
+//     Execution dispatches those same names through main.js's shared helper
+//     APIs so the model-facing and internal wire surfaces stay identical.
 //   - The two control tools (continue / finalize) are defined here and
-//     namespaced with `luker_cea_editor_*`.
+//     namespaced with `atria_cea_editor_*`.
 
 import { runCharacterEditorHelperToolCall } from '../main.js';
 import { CHARACTER_PRESET_READ_TOOL_DEFS } from '/scripts/iteration-library/tools/character-presets-reads.js';
@@ -496,41 +495,23 @@ export const CONTROL_TOOL_DEFS = [];
 // Read tools (short canonical names)
 // ---------------------------------------------------------------------------
 
-// Short-name → legacy on-the-wire name map. The legacy helper-tool runner
-// in main.js dispatches on the legacy names (`luker_card_query_lorebook_entries`
-// etc.), so we translate when invoking. The model only ever sees the short
-// names so the wire surface stays consistent across the iter popups.
-const READ_TOOL_LEGACY_NAMES = Object.freeze({
-    // `cea_read_card_fields` is native to the CEA card iter-studio — no
-    // legacy `luker_card_*` alias. `runCeaEditorReadTool` short-circuits
-    // this name and calls `dispatchCeaReadCardFields` directly against
-    // the live snapshot; the `null` value keeps the classification set
-    // aligned with tool-def registration.
-    cea_read_card_fields: null,
-    lorebook_query: 'luker_card_query_lorebook_entries',
-    lorebook_list: 'luker_card_list_lorebook_entries',
-    lorebook_get: 'luker_card_get_lorebook_entries',
-    world_book_list: 'luker_card_list_world_books',
-    simulate_prompt: 'luker_card_simulate_prompt',
-    // `inspect_bound_preset` is native to the shared iteration-library
-    // helper API (no legacy `luker_card_*` alias exists); the runner
-    // dispatches on the short name itself.
-    inspect_bound_preset: 'inspect_bound_preset',
-    // web_search has no fixed legacy name — `Luker.searchTools.toolNames.SEARCH`
-    // resolves it at runtime. We handle it specially in runCeaEditorReadTool.
-    web_search: null,
-});
-
-const READ_TOOL_NAME_SET = new Set(Object.keys(READ_TOOL_LEGACY_NAMES));
+const READ_TOOL_NAME_SET = new Set([
+    'cea_read_card_fields',
+    'lorebook_query',
+    'lorebook_list',
+    'lorebook_get',
+    'world_book_list',
+    'simulate_prompt',
+    'inspect_bound_preset',
+    'web_search',
+]);
 
 export function isCeaEditorReadTool(name) {
     return READ_TOOL_NAME_SET.has(String(name || ''));
 }
 
-// Short-name read-tool schemas. Mirrors the legacy `getToolDefs()` output
-// from createCharacterEditorLorebookToolApi / SimulateToolApi /
-// WorldBookListToolApi in main.js, but with the short canonical names so
-// the model sees a clean surface. Web-search is gated on `hasSearchTools`.
+// Canonical read-tool schemas shared by the unified CEA editor. Web-search
+// is gated on `hasSearchTools`.
 const READ_TOOL_DEFS = [
     {
         type: 'function',
@@ -675,7 +656,7 @@ const WEB_SEARCH_TOOL_DEF = Object.freeze({
  *   - 6 edit tools (cea_*) defined above
  *   - 6 read tools defined above (short canonical names)
  *     (web_search included iff `opts.hasSearchTools` is true)
- *   - 2 control tools (luker_cea_editor_*)
+ *   - 2 control tools (atria_cea_editor_*)
  *
  * The function signature accepts `context` and `settings` for parity with
  * the other adapter `build…ToolSet` helpers in this codebase, even though
@@ -687,7 +668,7 @@ const WEB_SEARCH_TOOL_DEF = Object.freeze({
  * @param {Object} _settings       CEA settings (reserved).
  * @param {Object} [opts]
  * @param {Object} [opts.live]     Current state.live { character, lorebooks }.
- * @param {boolean} [opts.hasSearchTools] Whether Luker.searchTools is wired.
+ * @param {boolean} [opts.hasSearchTools] Whether Atria.searchTools is wired.
  * @returns {Array<Object>} Tool defs.
  */
 export function buildCeaEditorToolSet(_context, _settings, opts = {}) {
@@ -807,11 +788,9 @@ function annotateTarget(edit, call, live = null) {
  * Execute a read tool synchronously and return its result for the next
  * round's tool_result message.
  *
- * Translates the short canonical tool name (lorebook_query, …) to the
- * legacy on-the-wire name (luker_card_query_lorebook_entries, …) and
- * dispatches to main.js's `runCharacterEditorHelperToolCall`. For
- * web_search, resolves the live tool name from `Luker.searchTools` at
- * call time (the legacy name isn't a constant).
+ * Dispatches canonical tool names (lorebook_query, …) through main.js's
+ * `runCharacterEditorHelperToolCall`. For web_search, resolves the live
+ * search-tools registry name from `Atria.searchTools` at call time.
  *
  * Returns `{ ok: true, result }` on success and `{ ok: false, error }`
  * on failure so the studio.js loop can append a tool_result regardless.
@@ -829,12 +808,9 @@ export async function runCeaEditorReadTool(call, opts = {}) {
     if (!isCeaEditorReadTool(shortName)) {
         return { ok: false, error: `Not a read tool: ${shortName || '(empty)'}` };
     }
-    // `cea_read_card_fields` is native to this iter-studio — dispatched
-    // inline against `state.live.character` with whitelist enforcement,
-    // never through the legacy `luker_card_*` helper runner. The helper
-    // runner has no matching handler and would return "unknown tool";
-    // this branch keeps the pure `dispatchCeaReadCardFields` executor
-    // reachable to the multi-round loop.
+    // `cea_read_card_fields` is native to this iter-studio and is
+    // dispatched inline against `state.live.character` with whitelist
+    // enforcement.
     if (shortName === 'cea_read_card_fields') {
         try {
             const result = await dispatchCeaReadCardFields({
@@ -847,23 +823,20 @@ export async function runCeaEditorReadTool(call, opts = {}) {
         }
     }
     const helperApis = Array.isArray(opts?.helperApis) ? opts.helperApis : [];
-    let legacyName = READ_TOOL_LEGACY_NAMES[shortName];
+    let helperName = shortName;
     if (shortName === 'web_search') {
-        legacyName = resolveWebSearchLegacyName(helperApis);
-        if (!legacyName) {
-            return { ok: false, error: 'web_search is not wired (Luker.searchTools missing).' };
+        helperName = resolveWebSearchToolName(helperApis);
+        if (!helperName) {
+            return { ok: false, error: 'web_search is not wired (Atria.searchTools missing).' };
         }
     }
-    if (!legacyName) {
-        return { ok: false, error: `Unknown legacy mapping for ${shortName}.` };
-    }
-    const legacyCall = {
+    const helperCall = {
         id: call?.id,
-        name: legacyName,
+        name: helperName,
         args: call?.args && typeof call.args === 'object' ? call.args : {},
     };
     try {
-        const raw = await runCharacterEditorHelperToolCall(legacyCall, helperApis);
+        const raw = await runCharacterEditorHelperToolCall(helperCall, helperApis);
         const result = raw && typeof raw === 'object' && Object.hasOwn(raw, 'result')
             ? raw.result
             : raw;
@@ -873,7 +846,7 @@ export async function runCeaEditorReadTool(call, opts = {}) {
     }
 }
 
-function resolveWebSearchLegacyName(helperApis) {
+function resolveWebSearchToolName(helperApis) {
     for (const api of Array.isArray(helperApis) ? helperApis : []) {
         const name = String(api?.toolNames?.SEARCH || '').trim();
         if (name) {

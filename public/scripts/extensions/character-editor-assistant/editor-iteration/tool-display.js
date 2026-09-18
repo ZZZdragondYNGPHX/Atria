@@ -2,7 +2,7 @@
  * Unified CEA editor tool-display map — feeds `renderToolCallChip`'s
  * `opts.toolDisplay`. Keys are the tool names the model produces in this
  * adapter (the 6 `cea_*` edit verbs, the 6 short-name read tools, and
- * the 2 `luker_cea_editor_*` control tools); values are
+ * the 2 `atria_cea_editor_*` control tools); values are
  * `{ icon, label, type, summarize?(args, result, i18n) }`.
  *
  * Three `type`s drive the shared chip renderer:

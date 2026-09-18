@@ -31,8 +31,8 @@ const SKILL_NAMES = ['reef-rotation', 'lantern-protocol', 'salt-mark-history'];
 let currentSkillsList = async () => [];
 
 // Install BEFORE import — the production module captures
-// `Luker.getContext().skills` at module-load time.
-globalThis.Luker = {
+// `Atria.getContext().skills` at module-load time.
+globalThis.Atria = {
     getContext: () => ({
         skills: {
             list: async (...args) => currentSkillsList(...args),

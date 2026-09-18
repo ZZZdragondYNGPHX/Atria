@@ -4,11 +4,11 @@
  * The inline text diff (rendered by `text-diff.js`) carries three UI
  * affordances driven by delegated DOM events:
  *
- *   1. `data-luker-lib-action="expand-line-diff"` — open a fullscreen
+ *   1. `data-atria-lib-action="expand-line-diff"` — open a fullscreen
  *      overlay containing the diff body, layered over the calling popup.
- *   2. `data-luker-lib-action="close-line-diff-zoom"` (+ backdrop click +
+ *   2. `data-atria-lib-action="close-line-diff-zoom"` (+ backdrop click +
  *      Esc key) — close that overlay.
- *   3. `.luker_lib_diff_splitter` pointerdown — drag the central splitter
+ *   3. `.atria_lib_diff_splitter` pointerdown — drag the central splitter
  *      to resize the before/after columns proportionally.
  *
  * Plugin popups call `attachZoomOverlay(popupRoot, options?)` once after
@@ -17,7 +17,7 @@
  *
  * Lifted from the deleted `iteration-studio/zoom-overlay.js`, with the
  * shell `i18n.js` import dropped (callers pass `i18n` via options) and
- * all `luker_iter_*` selectors / data attrs renamed to `luker_lib_*`.
+ * all `atria_iter_*` selectors / data attrs renamed to `atria_lib_*`.
  */
 
 function escapeHtml(value) {
@@ -38,14 +38,14 @@ export function closeExpandedDiff(rootElement) {
     if (!(root instanceof HTMLElement)) {
         return;
     }
-    root.querySelectorAll('.luker_lib_diff_zoom_overlay').forEach((overlay) => overlay.remove());
+    root.querySelectorAll('.atria_lib_diff_zoom_overlay').forEach((overlay) => overlay.remove());
 }
 
 export function openExpandedDiff(rootElement, triggerElement, options = {}) {
     const root = rootElement instanceof Element ? rootElement : null;
     const trigger = triggerElement instanceof Element ? triggerElement : null;
-    const diffRoot = trigger?.closest?.('.luker_lib_diff');
-    const diffBody = diffRoot?.querySelector?.('.luker_lib_diff_pre');
+    const diffRoot = trigger?.closest?.('.atria_lib_diff');
+    const diffBody = diffRoot?.querySelector?.('.atria_lib_diff_pre');
     if (!(root instanceof HTMLElement) || !(diffBody instanceof HTMLElement)) {
         return;
     }
@@ -53,39 +53,39 @@ export function openExpandedDiff(rootElement, triggerElement, options = {}) {
     const i18n = typeof options.i18n === 'function' ? options.i18n : defaultI18n;
     closeExpandedDiff(root);
 
-    const diffLabel = String(diffBody.getAttribute('data-luker-lib-diff-label') || i18n('Line diff'));
+    const diffLabel = String(diffBody.getAttribute('data-atria-lib-diff-label') || i18n('Line diff'));
     const closeLabel = escapeHtml(i18n('Close expanded diff'));
     const overlay = document.createElement('div');
-    overlay.className = 'luker_lib_diff_zoom_overlay';
+    overlay.className = 'atria_lib_diff_zoom_overlay';
     overlay.innerHTML = `
-<div class="luker_lib_diff_zoom_backdrop" data-luker-lib-action="close-line-diff-zoom"></div>
-<div class="luker_lib_diff_zoom_dialog" role="dialog" aria-modal="true">
-    <div class="luker_lib_diff_zoom_header">
-        <div class="luker_lib_diff_zoom_title">${escapeHtml(diffLabel)}</div>
-        <button type="button" class="menu_button menu_button_small luker_lib_diff_zoom_close" data-luker-lib-action="close-line-diff-zoom" title="${closeLabel}" aria-label="${closeLabel}">
+<div class="atria_lib_diff_zoom_backdrop" data-atria-lib-action="close-line-diff-zoom"></div>
+<div class="atria_lib_diff_zoom_dialog" role="dialog" aria-modal="true">
+    <div class="atria_lib_diff_zoom_header">
+        <div class="atria_lib_diff_zoom_title">${escapeHtml(diffLabel)}</div>
+        <button type="button" class="menu_button menu_button_small atria_lib_diff_zoom_close" data-atria-lib-action="close-line-diff-zoom" title="${closeLabel}" aria-label="${closeLabel}">
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
     </div>
-    <div class="luker_lib_diff_zoom_body"></div>
+    <div class="atria_lib_diff_zoom_body"></div>
 </div>`;
 
-    const zoomBody = overlay.querySelector('.luker_lib_diff_zoom_body');
+    const zoomBody = overlay.querySelector('.atria_lib_diff_zoom_body');
     if (zoomBody instanceof HTMLElement) {
         zoomBody.append(diffBody.cloneNode(true));
     }
 
     // Narrow-viewport class: below the 720px breakpoint the dialog stacks
     // into a single column with each panel capped at 45vh (see
-    // `.luker_lib_diff_zoom_narrow` rules in `text-diff.css`). Sampled at
+    // `.atria_lib_diff_zoom_narrow` rules in `text-diff.css`). Sampled at
     // open-time only — if the user resizes after opening, they can close
     // and reopen to re-evaluate (intentional; cheaper than wiring a
     // resize observer).
-    const dialog = overlay.querySelector('.luker_lib_diff_zoom_dialog');
+    const dialog = overlay.querySelector('.atria_lib_diff_zoom_dialog');
     if (dialog instanceof HTMLElement
         && typeof window !== 'undefined'
         && Number.isFinite(window.innerWidth)
         && window.innerWidth < 720) {
-        dialog.classList.add('luker_lib_diff_zoom_narrow');
+        dialog.classList.add('atria_lib_diff_zoom_narrow');
     }
 
     root.append(overlay);
@@ -94,7 +94,7 @@ export function openExpandedDiff(rootElement, triggerElement, options = {}) {
 export function beginLineDiffResize(splitterElement, pointerEvent) {
     const splitter = splitterElement instanceof HTMLElement ? splitterElement : null;
     const pointer = pointerEvent instanceof PointerEvent ? pointerEvent : null;
-    const dual = splitter?.closest?.('.luker_lib_diff_dual');
+    const dual = splitter?.closest?.('.atria_lib_diff_dual');
     if (!(splitter instanceof HTMLElement) || !(pointer instanceof PointerEvent) || !(dual instanceof HTMLElement)) {
         return;
     }
@@ -114,7 +114,7 @@ export function beginLineDiffResize(splitterElement, pointerEvent) {
     const applySplitAt = (clientX) => {
         const nextPercent = ((clientX - bounds.left) / bounds.width) * 100;
         const clampedPercent = Math.max(minPercent, Math.min(maxPercent, nextPercent));
-        dual.style.setProperty('--luker-lib-split-left', `${clampedPercent}%`);
+        dual.style.setProperty('--atria-lib-split-left', `${clampedPercent}%`);
     };
 
     const cleanup = () => {
@@ -166,10 +166,10 @@ export function beginLineDiffResize(splitterElement, pointerEvent) {
  *   The popup root element. Accepts either an element, a jQuery wrapper,
  *   or a CSS selector string. Selector strings are used unchanged for
  *   delegation; element / jQuery inputs are resolved to a unique
- *   `#<id>` selector when possible, otherwise to `.luker_lib_diff` scope
+ *   `#<id>` selector when possible, otherwise to `.atria_lib_diff` scope
  *   on the surrounding document.
  * @param {Object} [options]
- *   `namespace` (default `.luker_lib_diff`) — jQuery event namespace
+ *   `namespace` (default `.atria_lib_diff`) — jQuery event namespace
  *   used for delegation. Each popup should pass a distinct namespace
  *   when multiple popups can coexist.
  *   `i18n` (default identity) — overlay header labels.
@@ -181,7 +181,7 @@ export function attachZoomOverlay(popupRoot, options = {}) {
         // only the expand/splitter affordances need delegation.
         return () => {};
     }
-    const namespace = String(options.namespace || '.luker_lib_diff').trim();
+    const namespace = String(options.namespace || '.atria_lib_diff').trim();
     const i18n = typeof options.i18n === 'function' ? options.i18n : defaultI18n;
 
     let popupSelector;
@@ -195,7 +195,7 @@ export function attachZoomOverlay(popupRoot, options = {}) {
         if (el.id) {
             popupSelector = `#${el.id}`;
         } else {
-            const fallbackId = `luker_lib_diff_scope_${Math.random().toString(36).slice(2, 10)}`;
+            const fallbackId = `atria_lib_diff_scope_${Math.random().toString(36).slice(2, 10)}`;
             el.id = fallbackId;
             popupSelector = `#${fallbackId}`;
         }
@@ -203,13 +203,13 @@ export function attachZoomOverlay(popupRoot, options = {}) {
 
     const ns = namespace.startsWith('.') ? namespace : `.${namespace}`;
     jQuery(document).off(ns);
-    jQuery(document).on(`click${ns}`, `${popupSelector} [data-luker-lib-action="expand-line-diff"]`, function (event) {
+    jQuery(document).on(`click${ns}`, `${popupSelector} [data-atria-lib-action="expand-line-diff"]`, function (event) {
         event.preventDefault();
         event.stopPropagation();
         const rootElement = jQuery(this).closest(popupSelector)[0];
         openExpandedDiff(rootElement, this, { i18n });
     });
-    jQuery(document).on(`click${ns}`, `${popupSelector} [data-luker-lib-action="close-line-diff-zoom"], ${popupSelector} .luker_lib_diff_zoom_backdrop`, function (event) {
+    jQuery(document).on(`click${ns}`, `${popupSelector} [data-atria-lib-action="close-line-diff-zoom"], ${popupSelector} .atria_lib_diff_zoom_backdrop`, function (event) {
         event.preventDefault();
         event.stopPropagation();
         const rootElement = jQuery(this).closest(popupSelector)[0];
@@ -217,13 +217,13 @@ export function attachZoomOverlay(popupRoot, options = {}) {
     });
     jQuery(document).on(`keydown${ns}`, function (event) {
         if (event.key !== 'Escape') return;
-        const overlay = document.querySelector(`${popupSelector} .luker_lib_diff_zoom_overlay`);
+        const overlay = document.querySelector(`${popupSelector} .atria_lib_diff_zoom_overlay`);
         if (!(overlay instanceof HTMLElement)) return;
         event.preventDefault();
         event.stopPropagation();
         closeExpandedDiff(overlay.closest(popupSelector));
     });
-    jQuery(document).on(`pointerdown${ns}`, `${popupSelector} .luker_lib_diff_splitter`, function (event) {
+    jQuery(document).on(`pointerdown${ns}`, `${popupSelector} .atria_lib_diff_splitter`, function (event) {
         beginLineDiffResize(this, event.originalEvent || event);
     });
     return () => jQuery(document).off(ns);

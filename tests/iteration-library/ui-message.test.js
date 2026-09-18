@@ -15,7 +15,7 @@ describe('renderMessageCard', () => {
             { id: 'm1', role: 'user', content: 'hello\nworld <script>' },
             { toolDisplay: {}, renderEditCard: noopEdit, isLast: false, i18n: ident },
         );
-        expect(html).toContain('luker_lib_message_user');
+        expect(html).toContain('atria_lib_message_user');
         expect(html).toContain('&lt;script&gt;');
         expect(html).toContain('<br>');
     });
@@ -25,7 +25,7 @@ describe('renderMessageCard', () => {
             { id: 'm2', role: 'system', content: 'profile reset' },
             { toolDisplay: {}, renderEditCard: noopEdit, isLast: false, i18n: ident },
         );
-        expect(html).toContain('luker_lib_message_system');
+        expect(html).toContain('atria_lib_message_system');
     });
 
     it('renders assistant with markdown body via renderMarkdown opt', () => {
@@ -65,7 +65,7 @@ describe('renderMessageCard', () => {
             },
         );
         expect(html).toMatch(/read|读/i);
-        expect(html).toContain('luker_lib_message_readonly_hint');
+        expect(html).toContain('atria_lib_message_readonly_hint');
     });
 
     it('passes tool result into tool-call chip via tool_call_id lookup', () => {

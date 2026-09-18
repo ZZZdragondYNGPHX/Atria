@@ -334,7 +334,7 @@ function buildInitialMessages(context, _payload, profile) {
  */
 export const __testBuildInitialMessages = buildInitialMessages;
 
-const NOTES_NAMESPACE = 'luker_orch_loop_notes';
+const NOTES_NAMESPACE = 'atri_orch_loop_notes';
 let notesFloorStatePromise = null;
 
 /**
@@ -393,7 +393,7 @@ export function __resetNotesChangeListenersForTesting() {
 }
 
 /**
- * Singleton lookup for the `luker_orch_loop_notes` floor-state instance.
+ * Singleton lookup for the `atri_orch_loop_notes` floor-state instance.
  * Mirrors `memory-graph/persistence.js::getFloorStateInstance` — once
  * created, the instance lives for the page session; structural events
  * (chat-changed, swipe, branch) are replayed automatically.
@@ -705,7 +705,7 @@ function makeNotesAdapter(fs) {
 /**
  * Production wiring for `note_open` / `note_close` (Task 11+).
  *
- * Mounts the `luker_orch_loop_notes` floor-state namespace, exposes the
+ * Mounts the `atri_orch_loop_notes` floor-state namespace, exposes the
  * adapter on `context.__floorStateForNotes` (with `appendForFloor` /
  * `listAcrossFloors` / `updateStatusById` / `updateTextById` /
  * `deleteByIds`), and pre-populates `context.__openNotes` with the
@@ -756,7 +756,7 @@ export async function attachNotesFloorState(context) {
  * Build a per-run tool dispatch context bundling the run-scoped metadata
  * every loop-tool family depends on:
  *
- *   - `__lukerRun.activatedEntryKeys` — World Info entries already
+ *   - `__atriaRun.activatedEntryKeys` — World Info entries already
  *     injected for this turn, populated by the orchestrator's
  *     `onWorldInfoFinalized` hook and forwarded by `main.js` on the
  *     generation payload. `lorebook_search` reads this to dedup.
@@ -783,33 +783,33 @@ export async function attachNotesFloorState(context) {
  * opt into loop tools through the `tools` cascade.
  *
  * @param {object} context — extension context (chat lives here)
- * @param {object} payload — generation payload (carries `__lukerRun`)
+ * @param {object} payload — generation payload (carries `__atriaRun`)
  * @returns {Promise<object>} the tool dispatch context (mutated copy)
  */
 export async function attachToolContext(context, payload) {
     const toolContext = context && typeof context === 'object'
         ? Object.create(context)
         : {};
-    if (payload && typeof payload === 'object' && payload.__lukerRun && typeof payload.__lukerRun === 'object') {
-        toolContext.__lukerRun = payload.__lukerRun;
-    } else if (!toolContext.__lukerRun) {
-        toolContext.__lukerRun = { activatedEntryKeys: new Set() };
+    if (payload && typeof payload === 'object' && payload.__atriaRun && typeof payload.__atriaRun === 'object') {
+        toolContext.__atriaRun = payload.__atriaRun;
+    } else if (!toolContext.__atriaRun) {
+        toolContext.__atriaRun = { activatedEntryKeys: new Set() };
     }
-    // Expose the abort signal through __lukerRun so custom tools (Layer-2
+    // Expose the abort signal through __atriaRun so custom tools (Layer-2
     // extension-registered or Layer-3 handwritten) can implement
     // cooperative cancellation without rummaging through payload. Set
     // only when the runtime actually has one — null means "no abort
     // policy bound to this run", which custom tools should treat as
     // "never aborted".
     const sig = isAbortSignalLike(payload?.signal) ? payload.signal : null;
-    if (sig && !toolContext.__lukerRun.abortSignal) {
-        toolContext.__lukerRun.abortSignal = sig;
+    if (sig && !toolContext.__atriaRun.abortSignal) {
+        toolContext.__atriaRun.abortSignal = sig;
     }
 
     // Expose a tool-invocation seam for Layer-3 customTools that need to
     // compose Layer-1 builtins (e.g. a customTool wrapper around
     // `lorebook_force_activate`). Bound to this toolContext so the
-    // composed tool sees the same __lukerRun (activatedEntryKeys, etc.)
+    // composed tool sees the same __atriaRun (activatedEntryKeys, etc.)
     // and __customToolRegistry. Returns whatever the underlying tool
     // returns; throws the same ToolError shape on failure.
     toolContext.__invokeLoopTool = async (toolName, toolArgs) => {
@@ -885,7 +885,7 @@ async function* runLoopOrchestrationPolicy(context, payload, profile, deps = {})
     // Open a new run on the panel store. `startRun` throws if a previous
     // run is still flagged running — under normal flow main.js clears the
     // store between turns; tests preload `clearCurrentRun` in beforeEach.
-    // `payload.__lukerSimulate` marks iter-studio dry-runs; the panel
+    // `payload.__atriaSimulate` marks iter-studio dry-runs; the panel
     // skips auto-open + pill for those so the iter-studio popup + the
     // simulation review popup are the only surfaces the user sees.
     const chatKey = String(context?.chatId || context?.chat_id || '');
@@ -898,10 +898,10 @@ async function* runLoopOrchestrationPolicy(context, payload, profile, deps = {})
         // for the LLM sender to reject. Undefined for iter-studio
         // simulations and direct-runtime invocations — those fall
         // back to raw abortFn semantics.
-        stopFn: typeof payload?.__lukerResolveStopRequest === 'function'
-            ? payload.__lukerResolveStopRequest
+        stopFn: typeof payload?.__atriaResolveStopRequest === 'function'
+            ? payload.__atriaResolveStopRequest
             : null,
-        quiet: Boolean(payload?.__lukerSimulate),
+        quiet: Boolean(payload?.__atriaSimulate),
     });
 
     deps.bindRuntimePanel?.(runId);

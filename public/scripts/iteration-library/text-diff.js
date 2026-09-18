@@ -15,10 +15,10 @@
  * sibling `i18n.js` dependency. Pairs with `zoom-overlay.js`, which
  * popups call once via `attachZoomOverlay(popupRoot)`.
  *
- * CSS class prefix `luker_lib_diff_*` (renamed from `luker_iter_diff_*`
+ * CSS class prefix `atria_lib_diff_*` (renamed from `atria_iter_diff_*`
  * to make clear this is library-owned, not shell-owned). Class names and
- * data attributes were s/luker_iter_diff/luker_lib_diff/g across the
- * board; the CSS var `--luker-iter-split-left` became `--luker-lib-split-left`.
+ * data attributes were s/atria_iter_diff/atria_lib_diff/g across the
+ * board; the CSS var `--atria-iter-split-left` became `--atria-lib-split-left`.
  */
 
 const LINE_DIFF_LONG_CHAR_THRESHOLD = 900;
@@ -105,7 +105,7 @@ export function _testOnly_refreshNarrowViewport() {
     refreshNarrowViewportCache();
 }
 
-export const STYLESHEET_ID = 'luker_lib_diff_stylesheet';
+export const STYLESHEET_ID = 'atria_lib_diff_stylesheet';
 export const STYLESHEET_HREF = '/scripts/iteration-library/text-diff.css';
 
 /**
@@ -296,13 +296,13 @@ function renderInlineDiffHtml(beforeText, afterText, mode = 'old') {
         }
         if (type === 'delete') {
             if (mode === 'old') {
-                chunks.push(`<span class="luker_lib_diff_word_del">${tokenText}</span>`);
+                chunks.push(`<span class="atria_lib_diff_word_del">${tokenText}</span>`);
             }
             continue;
         }
         if (type === 'insert') {
             if (mode === 'new') {
-                chunks.push(`<span class="luker_lib_diff_word_add">${tokenText}</span>`);
+                chunks.push(`<span class="atria_lib_diff_word_add">${tokenText}</span>`);
             }
         }
     }
@@ -338,7 +338,7 @@ function buildLineDiffVisualRows(operations) {
                 const beforeLine = String(lines[i] ?? '');
                 const afterLine = String(insertLines[i] ?? '');
                 appendRow(
-                    'luker_lib_diff_row_mod',
+                    'atria_lib_diff_row_mod',
                     String(beforeLineNo),
                     renderInlineDiffHtml(beforeLine, afterLine, 'old'),
                     String(afterLineNo),
@@ -349,12 +349,12 @@ function buildLineDiffVisualRows(operations) {
             }
             for (let i = pairCount; i < lines.length; i++) {
                 const text = escapeHtml(String(lines[i] ?? '')) || '&nbsp;';
-                appendRow('luker_lib_diff_row_del', String(beforeLineNo), text, '', '&nbsp;');
+                appendRow('atria_lib_diff_row_del', String(beforeLineNo), text, '', '&nbsp;');
                 beforeLineNo += 1;
             }
             for (let i = pairCount; i < insertLines.length; i++) {
                 const text = escapeHtml(String(insertLines[i] ?? '')) || '&nbsp;';
-                appendRow('luker_lib_diff_row_add', '', '&nbsp;', String(afterLineNo), text);
+                appendRow('atria_lib_diff_row_add', '', '&nbsp;', String(afterLineNo), text);
                 afterLineNo += 1;
             }
             index += 1;
@@ -364,22 +364,22 @@ function buildLineDiffVisualRows(operations) {
             const text = String(rawLine ?? '');
             const escapedText = text.length > 0 ? escapeHtml(text) : '&nbsp;';
             if (type === 'insert') {
-                appendRow('luker_lib_diff_row_add', '', '&nbsp;', String(afterLineNo), escapedText);
+                appendRow('atria_lib_diff_row_add', '', '&nbsp;', String(afterLineNo), escapedText);
                 afterLineNo += 1;
                 continue;
             }
             if (type === 'delete') {
-                appendRow('luker_lib_diff_row_del', String(beforeLineNo), escapedText, '', '&nbsp;');
+                appendRow('atria_lib_diff_row_del', String(beforeLineNo), escapedText, '', '&nbsp;');
                 beforeLineNo += 1;
                 continue;
             }
-            appendRow('luker_lib_diff_row_eq', String(beforeLineNo), escapedText, String(afterLineNo), escapedText);
+            appendRow('atria_lib_diff_row_eq', String(beforeLineNo), escapedText, String(afterLineNo), escapedText);
             beforeLineNo += 1;
             afterLineNo += 1;
         }
     }
     if (rows.length === 0) {
-        appendRow('luker_lib_diff_row_eq', '', '&nbsp;', '', '&nbsp;');
+        appendRow('atria_lib_diff_row_eq', '', '&nbsp;', '', '&nbsp;');
     }
     return rows;
 }
@@ -388,9 +388,9 @@ function renderLineDiffSideRowsHtml(rows, side = 'old') {
     const safeRows = Array.isArray(rows) ? rows : [];
     const isOldSide = side !== 'new';
     return safeRows.map((row) => `
-<tr class="luker_lib_diff_row ${escapeHtml(String(row?.rowType || ''))}">
-    <td class="luker_lib_diff_ln ${isOldSide ? 'old' : 'new'}">${isOldSide ? escapeHtml(String(row?.oldLine || '')) : escapeHtml(String(row?.newLine || ''))}</td>
-    <td class="luker_lib_diff_text ${isOldSide ? 'old' : 'new'}"><div class="luker_lib_diff_text_inner">${isOldSide ? String(row?.oldHtml || '&nbsp;') : String(row?.newHtml || '&nbsp;')}</div></td>
+<tr class="atria_lib_diff_row ${escapeHtml(String(row?.rowType || ''))}">
+    <td class="atria_lib_diff_ln ${isOldSide ? 'old' : 'new'}">${isOldSide ? escapeHtml(String(row?.oldLine || '')) : escapeHtml(String(row?.newLine || ''))}</td>
+    <td class="atria_lib_diff_text ${isOldSide ? 'old' : 'new'}"><div class="atria_lib_diff_text_inner">${isOldSide ? String(row?.oldHtml || '&nbsp;') : String(row?.newHtml || '&nbsp;')}</div></td>
 </tr>`).join('');
 }
 
@@ -408,7 +408,7 @@ function defaultI18n(s) {
  * @param {Object|string} [optionsOrLabel]
  *   When an object: `{ fileLabel, i18n, expandAffordance }`.
  *   - `fileLabel` (default `'field'`) — surfaces in the zoom-overlay title
- *     and lands in `data-luker-lib-diff-label` for downstream tooling.
+ *     and lands in `data-atria-lib-diff-label` for downstream tooling.
  *   - `i18n` (default identity) — `(s) => translated` lookup.
  *   - `expandAffordance` (default true) — when false, the summary's
  *     Expand button is omitted (still wires through zoom-overlay when
@@ -455,36 +455,36 @@ export function renderInlineTextDiffHtml(beforeValue, afterValue, optionsOrLabel
     const expandLabel = escapeHtml(i18n('Expand diff'));
     const resizeLabel = escapeHtml(i18n('Resize diff columns'));
     const expandBtnHtml = expandAffordance
-        ? `<button type="button" class="menu_button menu_button_small luker_lib_diff_expand_btn" data-luker-lib-action="expand-line-diff" title="${expandLabel}" aria-label="${expandLabel}">
+        ? `<button type="button" class="menu_button menu_button_small atria_lib_diff_expand_btn" data-atria-lib-action="expand-line-diff" title="${expandLabel}" aria-label="${expandLabel}">
             <i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i>
         </button>`
         : '';
     return `
-<details class="luker_lib_diff"${(forceOpen || (payload.openByDefault && !isNarrowViewport())) ? ' open' : ''}>
+<details class="atria_lib_diff"${(forceOpen || (payload.openByDefault && !isNarrowViewport())) ? ' open' : ''}>
     <summary>
-        <span class="luker_lib_diff_summary_main">
+        <span class="atria_lib_diff_summary_main">
             <span>${escapeHtml(summaryLabel)}</span>
-            <span class="luker_lib_diff_meta">
-                <span class="luker_lib_diff_meta_add">+${escapeHtml(String(payload.added))}</span>
-                <span class="luker_lib_diff_meta_del">-${escapeHtml(String(payload.removed))}</span>
+            <span class="atria_lib_diff_meta">
+                <span class="atria_lib_diff_meta_add">+${escapeHtml(String(payload.added))}</span>
+                <span class="atria_lib_diff_meta_del">-${escapeHtml(String(payload.removed))}</span>
                 <span>=${escapeHtml(String(payload.unchanged))}</span>
             </span>
         </span>
         ${expandBtnHtml}
     </summary>
-    <div class="luker_lib_diff_pre" data-luker-lib-diff-label="${safeLabel}">
-        <div class="luker_lib_diff_dual" role="group">
-            <div class="luker_lib_diff_side old">
-                <div class="luker_lib_diff_side_scroll">
-                    <table class="luker_lib_diff_table old" role="grid">
+    <div class="atria_lib_diff_pre" data-atria-lib-diff-label="${safeLabel}">
+        <div class="atria_lib_diff_dual" role="group">
+            <div class="atria_lib_diff_side old">
+                <div class="atria_lib_diff_side_scroll">
+                    <table class="atria_lib_diff_table old" role="grid">
                         <tbody>${renderLineDiffSideRowsHtml(renderedRows, 'old')}</tbody>
                     </table>
                 </div>
             </div>
-            <div class="luker_lib_diff_splitter" role="separator" aria-orientation="vertical" aria-label="${resizeLabel}" title="${resizeLabel}"></div>
-            <div class="luker_lib_diff_side new">
-                <div class="luker_lib_diff_side_scroll">
-                    <table class="luker_lib_diff_table new" role="grid">
+            <div class="atria_lib_diff_splitter" role="separator" aria-orientation="vertical" aria-label="${resizeLabel}" title="${resizeLabel}"></div>
+            <div class="atria_lib_diff_side new">
+                <div class="atria_lib_diff_side_scroll">
+                    <table class="atria_lib_diff_table new" role="grid">
                         <tbody>${renderLineDiffSideRowsHtml(renderedRows, 'new')}</tbody>
                     </table>
                 </div>

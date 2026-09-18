@@ -39,7 +39,7 @@ async function ensureGitRepo(charDir) {
     if (!fs.existsSync(gitDir)) {
         await gitClient.init(charDir);
         await gitClient.setConfig(charDir, 'user.name', 'CardApp Studio');
-        await gitClient.setConfig(charDir, 'user.email', 'studio@luker.local');
+        await gitClient.setConfig(charDir, 'user.email', 'studio@atria.local');
         // Initial commit if files exist
         const files = fs.readdirSync(charDir).filter(f => f !== '.git');
         if (files.length > 0) {

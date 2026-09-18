@@ -3,9 +3,9 @@
  *
  * Memory Graph Schema — AI iteration popup styles.
  *
- * Design language mirrors luker-studio.css (the shared shell stylesheet)
+ * Design language mirrors atria-studio.css (the shared shell stylesheet)
  * via local tokens — kept namespaced (`mg_schema_it_*`) so the popup remains
- * self-contained without depending on luker-studio class wrappers.
+ * self-contained without depending on atria-studio class wrappers.
  *
  * Theme-aware: all colors flow through color-mix() of --SmartTheme*
  * variables with sensible fallbacks for testbed environments.
@@ -472,19 +472,19 @@
    When the popup is mounted in the new split workspace, the composer
    needs to stack textarea on top of the actions row (auto-apply + Send),
    instead of the old single-row textarea + button layout. The shared
-   `_composer_actions` rule in luker-studio.css §24 styles the inner row
+   `_composer_actions` rule in atria-studio.css §24 styles the inner row
    itself; this stanza only flips the outer composer to column flow.
    --------------------------------------------------------------------- */
 
-.mg_schema_it_popup.luker-iter-workspace .mg_schema_it_composer {
+.mg_schema_it_popup.atria-iter-workspace .mg_schema_it_composer {
     flex-direction: column;
     align-items: stretch;
 }
 
-.mg_schema_it_popup.luker-iter-workspace .mg_schema_it_composer textarea {
+.mg_schema_it_popup.atria-iter-workspace .mg_schema_it_composer textarea {
     width: 100%;
 }
 
-.mg_schema_it_popup.luker-iter-workspace .mg_schema_it_composer button {
+.mg_schema_it_popup.atria-iter-workspace .mg_schema_it_composer button {
     align-self: auto;
 }

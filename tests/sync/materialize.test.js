@@ -46,7 +46,7 @@ const SQL_OWNED_CATEGORIES = [
     'settings', 'stats',
 ];
 
-function mkTmpWorkdir(prefix = 'luker-materialize-test-') {
+function mkTmpWorkdir(prefix = 'atria-materialize-test-') {
     return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
@@ -778,7 +778,7 @@ describe('dematerialize path-traversal defense', () => {
 });
 
 describe('dematerialize preserves unknown fields (schema drift)', () => {
-    // A peer running a newer Luker may push records that include fields
+    // A peer running a newer Atria may push records that include fields
     // this side does not know about. The pipeline (workdir JSON →
     // tx.putResource) must round-trip those fields byte-equal so the
     // mismatched-version sync direction does not silently drop user data.

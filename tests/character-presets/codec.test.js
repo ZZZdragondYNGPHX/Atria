@@ -25,5 +25,5 @@ test('decode returns null for non-card values', () => {
     expect(decodeCardBoundOptionValue('GlobalA')).toBeNull();
     expect(decodeCardBoundOptionValue('')).toBeNull();
     expect(decodeCardBoundOptionValue(null)).toBeNull();
-    expect(decodeCardBoundOptionValue('__luker_card__::onlyone')).toBeNull();
+    expect(decodeCardBoundOptionValue('__atria_card__::onlyone')).toBeNull();
 });

@@ -4,7 +4,7 @@
 
 本分支随附 **Atri-agenda**，替换旧的内置 Agenda。已有库会原位更新 `builtin-agenda`，保留默认、角色和会话绑定，不自动切换当前选择。此次替换包含对旧内置项的编辑；需要保留旧方案时，请更新前导出或另存。其他预设 ID 不受影响，删除过的内置项不会重新添加，迁移完成后的编辑不会再次被覆盖。
 
-API 连接、提示词预设字段默认留空，不自动设置正文预设。空字段沿用 Luker 现有的默认/当前配置解析规则，需要使用配套内部预设时自行导入并选择。
+API 连接、提示词预设字段默认留空，不自动设置正文预设。空字段沿用 Atria 现有的默认/当前配置解析规则，需要使用配套内部预设时自行导入并选择。
 
 提示词选择框旁的问号弹窗已更换：原“导入 plugin-only 预设”现为“导入 Atri-plugin-only 预设”，原非 Director 导入按钮现提供“Atri-agenda-agent”。它们只在点击导入时保存并选入对应插件槽位，不在启动时自动导入。已有同名预设时仍沿用原来的覆盖确认流程。此前手动导入、以旧名称保存的个人副本不会自动删除。Planner 可选择 Atri-plugin-only，其余分析节点可选择 Atri-agenda-agent；主聊天正文预设由用户自行决定。
 
@@ -135,7 +135,7 @@ finalizer -> out
 
 ## Function Call Runtime 依赖
 
-Agenda 模式的 Planner 调度通过 OpenAI 工具调用实现，依赖 Luker 的 [Function Call Runtime](/zh-CN/improvements/function-call-runtime)框架。这意味着：
+Agenda 模式的 Planner 调度通过 OpenAI 工具调用实现，依赖 Atria 的 [Function Call Runtime](/zh-CN/improvements/function-call-runtime)框架。这意味着：
 
 - Planner 用的连接配置必须支持 function calling（OpenAI / Claude / Gemini 都支持）
 - 工具调用失败时的重试由 Function Call Runtime 处理（详见对应文档）

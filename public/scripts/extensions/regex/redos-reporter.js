@@ -49,7 +49,7 @@ let popupQueueProcessing = false;
  * The regex extension's `index.js` listens for this on `window` and navigates
  * to the regex editor for the given script id.
  */
-export const REGEX_OPEN_SCRIPT_EVENT = 'luker:regex:open-script';
+export const REGEX_OPEN_SCRIPT_EVENT = 'atria:regex:open-script';
 
 /**
  * @param {string|null|undefined} scriptId

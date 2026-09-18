@@ -359,7 +359,7 @@ input[type='checkbox']:focus-visible {
     opacity: 0.7;
 }
 
-.mes[is_system="true"][ch_name="Luker System"] .mes_text br,
+.mes[is_system="true"][ch_name="Atria System"] .mes_text br,
 .mes[is_system="true"][ch_name="SillyTavern System"] .mes_text br {
     display: none;
 }
@@ -3281,7 +3281,7 @@ select option[disabled]:not(:checked) {
     display: none !important;
 }
 
-.luker-char-bound-preset-badge {
+.atria-char-bound-preset-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -4172,7 +4172,7 @@ body #toast-container>div {
     width: 300px;
 }
 
-body #toast-container>div.luker-persistent-toast {
+body #toast-container>div.atria-persistent-toast {
     cursor: pointer;
 }
 
@@ -4210,7 +4210,7 @@ button.toast-close-button {
 }
 
 .menu_button.prompt-manager-toggle-undo-button,
-.menu_button.luker-toast-stop-button {
+.menu_button.atria-toast-stop-button {
     width: auto;
     min-width: max-content;
     max-width: 100%;
@@ -4220,7 +4220,7 @@ button.toast-close-button {
     text-orientation: mixed;
 }
 
-.menu_button.luker-toast-stop-button {
+.menu_button.atria-toast-stop-button {
     margin-top: 8px;
 }
 
@@ -5668,23 +5668,23 @@ body:not(.caption) .mes_img_caption {
 
 }
 
-body.luker-immersive-mode:not(.luker-immersive-keep-top-bar) #top-bar,
-body.luker-immersive-mode:not(.luker-immersive-keep-top-bar) #top-settings-holder {
+body.atria-immersive-mode:not(.atria-immersive-keep-top-bar) #top-bar,
+body.atria-immersive-mode:not(.atria-immersive-keep-top-bar) #top-settings-holder {
     display: none !important;
 }
 
-body.luker-immersive-mode:not(.luker-immersive-keep-top-bar) #sheld {
+body.atria-immersive-mode:not(.atria-immersive-keep-top-bar) #sheld {
     top: 0;
     height: calc(var(--doc-height) - 1px);
     max-height: calc(var(--doc-height) - 1px);
 }
 
-body.luker-immersive-mode.luker-immersive-keep-top-bar #sheld {
+body.atria-immersive-mode.atria-immersive-keep-top-bar #sheld {
     height: calc(var(--doc-height) - var(--topBarBlockSize) - 1px);
     max-height: calc(var(--doc-height) - var(--topBarBlockSize) - 1px);
 }
 
-body.luker-immersive-mode #chat {
+body.atria-immersive-mode #chat {
     max-height: calc(var(--doc-height) - var(--bottomFormBlockSize));
 }
 
@@ -5713,7 +5713,7 @@ body.luker-immersive-mode #chat {
     outline: none;
 }
 
-body.luker-immersive-mode:not(.luker-immersive-keep-top-bar) #immersiveExitButton {
+body.atria-immersive-mode:not(.atria-immersive-keep-top-bar) #immersiveExitButton {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -6099,7 +6099,7 @@ body:not(.movingUI) .drawer-content.maximized {
     width: auto !important;
 }
 
-#openai_api-presets .preset_manager_select_row > .luker-char-bound-preset-badge,
+#openai_api-presets .preset_manager_select_row > .atria-char-bound-preset-badge,
 #openai_api-presets .preset_manager_select_actions {
     flex: 0 0 auto;
 }
@@ -6128,7 +6128,7 @@ body:not(.movingUI) .drawer-content.maximized {
         width: 100% !important;
     }
 
-    #openai_api-presets .preset_manager_select_row > .luker-char-bound-preset-badge {
+    #openai_api-presets .preset_manager_select_row > .atria-char-bound-preset-badge {
         margin-left: 0;
         max-width: 100%;
     }
@@ -6979,4 +6979,4 @@ body:not(.movingUI) .drawer-content.maximized {
 .cms-dialog-split .cms-split-segments-list { display: flex; flex-direction: column; gap: 4px; max-height: 30vh; overflow-y: auto; padding: 4px; border: 1px solid var(--SmartThemeBorderColor); border-radius: 6px; }
 .cms-dialog-split .cms-split-segment-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 6px; padding: 4px 6px; background-color: var(--SmartThemeBlurTintColor); border-radius: 4px; }
 .cms-dialog-split .cms-split-segment-name { width: 100%; }
-.luker-no-android .luker-android-only { display: none !important; }
+.atria-no-android .atria-android-only { display: none !important; }

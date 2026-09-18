@@ -427,7 +427,7 @@ export class BrowserMutator {
             const timer = setTimeout(() => {
                 if (done) return;
                 done = true;
-                reject(makeErr('E_DB_LOCKED', `Database "${dbName}" is locked by another connection. Try closing other Luker tabs and retry.`));
+                reject(makeErr('E_DB_LOCKED', `Database "${dbName}" is locked by another connection. Try closing other Atria tabs and retry.`));
             }, 5000);
             req.onsuccess = () => {
                 if (done) return;

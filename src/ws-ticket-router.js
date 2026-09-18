@@ -12,7 +12,7 @@
  * mangle.
  *
  * Tickets: 32-byte random hex (256-bit), 30-second TTL, single-use.
- * Storage is in-process — Luker is single-process, so no shared store
+ * Storage is in-process — Atria is single-process, so no shared store
  * needed.
  */
 
@@ -21,7 +21,7 @@ import express from 'express';
 
 const TICKET_TTL_MS = 30_000;
 const TICKET_CLEANUP_INTERVAL_MS = 60_000;
-export const TICKET_PROTOCOL_PREFIX = 'luker-ws-ticket.';
+export const TICKET_PROTOCOL_PREFIX = 'atria-ws-ticket.';
 
 /** @type {Map<string, { createdAt: number, userHandle: string }>} */
 const tickets = new Map();

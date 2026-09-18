@@ -272,10 +272,10 @@ function autoSelectPreset() {
     }
 
     if (main_api === 'openai' && !selected_group) {
-        const lukerExtensions = characters?.[this_chid]?.data?.extensions?.luker;
-        const hasExplicitCharacterPresetConfig = lukerExtensions && typeof lukerExtensions === 'object'
-            && Object.prototype.hasOwnProperty.call(lukerExtensions, 'chat_completion_preset');
-        const rawBoundPreset = hasExplicitCharacterPresetConfig ? lukerExtensions.chat_completion_preset : undefined;
+        const atriaExtensions = characters?.[this_chid]?.data?.extensions?.atria;
+        const hasExplicitCharacterPresetConfig = atriaExtensions && typeof atriaExtensions === 'object'
+            && Object.prototype.hasOwnProperty.call(atriaExtensions, 'chat_completion_preset');
+        const rawBoundPreset = hasExplicitCharacterPresetConfig ? atriaExtensions.chat_completion_preset : undefined;
         const boundPresetName = typeof rawBoundPreset === 'string'
             ? rawBoundPreset.trim()
             : String(rawBoundPreset?.name || '').trim();
@@ -353,8 +353,8 @@ async function syncCharacterBoundOpenAIPresetExtensionField({ presetName, path, 
     }
 
     const nextExtensions = structuredClone(character?.data?.extensions ?? {});
-    const lukerExtensions = ensurePlainObject(nextExtensions.luker);
-    const boundPreset = ensurePlainObject(lukerExtensions.chat_completion_preset);
+    const atriaExtensions = ensurePlainObject(nextExtensions.atria);
+    const boundPreset = ensurePlainObject(atriaExtensions.chat_completion_preset);
     const boundName = String(boundPreset.name || '').trim();
     const resolvedPresetName = String(presetName || '').trim();
 
@@ -369,8 +369,8 @@ async function syncCharacterBoundOpenAIPresetExtensionField({ presetName, path, 
     }
     boundPresetBody.extensions = path ? boundPresetExtensions : value;
     boundPreset.preset = boundPresetBody;
-    lukerExtensions.chat_completion_preset = boundPreset;
-    nextExtensions.luker = lukerExtensions;
+    atriaExtensions.chat_completion_preset = boundPreset;
+    nextExtensions.atria = atriaExtensions;
 
     character.data = character.data || {};
     character.data.extensions = nextExtensions;
@@ -408,8 +408,8 @@ async function syncCharacterBoundOpenAIPresetExtensionField({ presetName, path, 
  */
 function registerPresetManagers() {
     $('select[data-preset-manager-for]').each((_, e) => {
-        if (e instanceof HTMLSelectElement && !e.dataset.lukerAsyncDiffBound) {
-            e.dataset.lukerAsyncDiffBound = '1';
+        if (e instanceof HTMLSelectElement && !e.dataset.atriaAsyncDiffBound) {
+            e.dataset.atriaAsyncDiffBound = '1';
             e.addEventListener('change', () => {
                 requestAsyncDiffForNextSettingsSave();
             }, { capture: true });
@@ -427,8 +427,8 @@ function registerPresetManagers() {
             primaryManager ??= presetManagers[apiId];
         }
 
-        if (primaryManager && e instanceof HTMLSelectElement && !e.dataset.lukerActionableSingleSelectBound) {
-            e.dataset.lukerActionableSingleSelectBound = '1';
+        if (primaryManager && e instanceof HTMLSelectElement && !e.dataset.atriaActionableSingleSelectBound) {
+            e.dataset.atriaActionableSingleSelectBound = '1';
             initActionableSingleSelect($(e), {
                 searchInputPlaceholder: t`Search...`,
                 deleteButtonTitle: primaryManager.isAdvancedFormatting() ? t`Delete template` : t`Delete preset`,
@@ -763,7 +763,7 @@ class PresetManager {
      * Gets the selected preset value.
      *
      * For card-bound ghost `<option>`s the raw `.val()` is an opaque
-     * encoded sentinel (`__luker_card__::<enc(avatar)>::<enc(name)>`)
+     * encoded sentinel (`__atria_card__::<enc(avatar)>::<enc(name)>`)
      * that upstream third-party consumers cannot dereference —
      * `presets[Number(sentinel)]` is `presets[NaN]`. To preserve the
      * upstream contract ("selected value is an index into
@@ -775,7 +775,7 @@ class PresetManager {
     getSelectedPreset() {
         const $sel = $(this.select);
         const selectedOpt = $sel.find('option:selected');
-        if (this.apiId === 'openai' && selectedOpt.attr?.('data-luker-char-bound') === '1') {
+        if (this.apiId === 'openai' && selectedOpt.attr?.('data-atria-char-bound') === '1') {
             const ghost = getActiveCardBoundGhostSnapshot();
             if (ghost) {
                 const { preset_names } = this.getPresetList();
@@ -812,7 +812,7 @@ class PresetManager {
                 return $(this).text() === resolvedName;
             }).get(0);
 
-        if (this.apiId === 'openai' && resolvedOptionElement instanceof HTMLOptionElement && resolvedOptionElement.getAttribute('data-luker-char-bound') === '1') {
+        if (this.apiId === 'openai' && resolvedOptionElement instanceof HTMLOptionElement && resolvedOptionElement.getAttribute('data-atria-char-bound') === '1') {
             return false;
         }
 
@@ -1479,7 +1479,7 @@ class PresetManager {
         const presetName = this.resolvePresetName(name || selectedName);
         const selectedOption = $(this.select).find('option:selected');
         const isCharacterBoundOpenAIPreset = this.apiId === 'openai'
-            && selectedOption.attr('data-luker-char-bound') === '1'
+            && selectedOption.attr('data-atria-char-bound') === '1'
             && areLookupNamesEqual(selectedName, presetName);
 
         // Write to settings if the selected preset is the same as the provided name
@@ -1716,9 +1716,9 @@ class PresetManager {
                     selected: el.selected,
                     attrs: {},
                 });
-                // Preserve data-luker-char-bound if present
-                if (el.getAttribute('data-luker-char-bound')) {
-                    allOptions[allOptions.length - 1].attrs['data-luker-char-bound'] = el.getAttribute('data-luker-char-bound');
+                // Preserve data-atria-char-bound if present
+                if (el.getAttribute('data-atria-char-bound')) {
+                    allOptions[allOptions.length - 1].attrs['data-atria-char-bound'] = el.getAttribute('data-atria-char-bound');
                 }
             }
         });
@@ -1979,7 +1979,7 @@ export async function initPresetManager() {
     $(document).on('click', '[data-preset-manager-rename]', async function () {
         const apiId = $(this).data('preset-manager-rename');
 
-        // Luker: card-bound dispatch MUST run before the global rename path.
+        // Atria: card-bound dispatch MUST run before the global rename path.
         // When the openai preset selector currently shows a card-bound ghost
         // option (value encoded via preset-ref-codec), route rename through
         // the Layer 1 API `renameCharacterBoundPreset` which mutates only the

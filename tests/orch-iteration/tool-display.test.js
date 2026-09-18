@@ -37,12 +37,12 @@ beforeAll(async () => {
 
 describe('Orch tool-display map', () => {
     it('excludes legacy continue / finalize from iter popup catalog (program-driven auto-continue)', () => {
-        expect(ORCH_TOOL_DISPLAY.luker_orch_continue_iteration).toBeUndefined();
-        expect(ORCH_TOOL_DISPLAY.luker_orch_finalize_iteration).toBeUndefined();
+        expect(ORCH_TOOL_DISPLAY.atri_orch_continue_iteration).toBeUndefined();
+        expect(ORCH_TOOL_DISPLAY.atri_orch_finalize_iteration).toBeUndefined();
     });
 
     it('classifies reset_to_blank as control', () => {
-        expect(ORCH_TOOL_DISPLAY.luker_orch_reset_live_to_blank?.type).toBe('control');
+        expect(ORCH_TOOL_DISPLAY.atri_orch_reset_live_to_blank?.type).toBe('control');
     });
 
     it('has at least one edit-type entry', () => {

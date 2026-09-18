@@ -6,11 +6,11 @@ import { PgEngine } from '../../../src/storage/engines/postgres-engine.js';
 
 // Match the harness's DB/connection-string defaults; the controller's docker
 // containers expose mysql on 53306 and postgres on 55432 against these roles.
-const MYSQL_ROOT_URL = process.env.LUKER_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
-const PG_ROOT_URL = process.env.LUKER_TEST_POSTGRES_URL || 'postgresql://luker:postgres@127.0.0.1:55432/luker_test';
+const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
+const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
 
-const describeMysql = process.env.LUKER_DISABLE_MYSQL_TESTS ? describe.skip : describe;
-const describePg = process.env.LUKER_DISABLE_POSTGRES_TESTS ? describe.skip : describe;
+const describeMysql = process.env.ATRIA_DISABLE_MYSQL_TESTS ? describe.skip : describe;
+const describePg = process.env.ATRIA_DISABLE_POSTGRES_TESTS ? describe.skip : describe;
 
 // MysqlEngine bootstraps schema on first withTransaction/ping. The pool-timeout
 // test deliberately holds the only pool slot with a controllable promise, so
@@ -20,7 +20,7 @@ const describePg = process.env.LUKER_DISABLE_POSTGRES_TESTS ? describe.skip : de
 // engine pointed at the same database.
 
 describeMysql('MysqlEngine pool acquire timeout', () => {
-    const dbName = `luker_test_pool_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const dbName = `atria_test_pool_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const dbUrl = `${MYSQL_ROOT_URL}/${dbName}`;
 
     beforeAll(async () => {
@@ -92,7 +92,7 @@ describeMysql('MysqlEngine pool acquire timeout', () => {
 });
 
 describePg('PgEngine pool acquire timeout', () => {
-    const schemaName = `luker_test_pool_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const schemaName = `atria_test_pool_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     // Bake search_path into the URL the same way the pg harness does so the
     // schema bootstrap targets the per-test namespace instead of public.
     const dbUrl = `${PG_ROOT_URL}?options=-csearch_path%3D${encodeURIComponent(schemaName)}`;

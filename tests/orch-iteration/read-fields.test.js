@@ -2,7 +2,7 @@
 // Copyright (C) 2026 FunnyCups
 
 // Pins the contract of `dispatchReadFields`, the per-mode
-// `luker_orch_read_<mode>_fields` executor helper used by orchestrator
+// `atri_orch_read_<mode>_fields` executor helper used by orchestrator
 // iter-studio to satisfy read-first anchor-patch flows. The dispatcher
 // is pure (no ST context, no side effects) so we test it directly
 // without dragging main.js's ST-globals import graph into jest — the

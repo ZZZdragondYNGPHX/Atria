@@ -18,7 +18,7 @@
 
 import { defaultAgendaProfile } from './agenda-defaults.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const extension_prompt_roles = __ctx.constants.promptRoles;
 const world_info_position = __ctx.constants.wiPosition;
 
@@ -71,29 +71,24 @@ export const ORCH_EXECUTION_MODES = Object.freeze([
     ORCH_EXECUTION_MODE_LOOP,
     _ORCH_EXECUTION_MODE_DIRECTOR,
 ]);
-export const PORTABLE_PROFILE_FORMAT_V1 = 'luker_orchestrator_profile_v1';
-export const PORTABLE_PROFILE_FORMAT_V2 = 'luker_orchestrator_profile_v2';
-export const PORTABLE_PROFILE_FORMAT_V3 = 'luker_orchestrator_profile_v3';
-export const PORTABLE_PROFILE_FORMAT_V4 = 'luker_orchestrator_profile_v4';
-export const AGENDA_PLANNER_TOOL = 'luker_orch_planner_step';
-export const AGENDA_RESULT_TOOL = 'luker_orch_submit_result';
+export const PORTABLE_PROFILE_FORMAT_V4 = 'atri_orchestrator_profile_v4';
+export const AGENDA_PLANNER_TOOL = 'atri_orch_planner_step';
+export const AGENDA_RESULT_TOOL = 'atri_orch_submit_result';
 export const DEFAULT_AGENDA_PLANNER_SYSTEM_PROMPT = defaultAgendaProfile.planner.systemPrompt;
 export const DEFAULT_AGENDA_PLANNER_PROMPT = defaultAgendaProfile.planner.userPromptTemplate;
 export const TEMPLATE_PLACEHOLDER_VARS = ['recent_chat', 'last_user', 'previous_outputs', 'distiller'];
 export const AUTO_INJECTED_CONTEXT_VARS = ['previous_orchestration'];
-export const LEGACY_REMOVED_CONTEXT_VARS = ['previous_snapshot'];
-export const ALLOWED_TEMPLATE_VARS = [...TEMPLATE_PLACEHOLDER_VARS, ...AUTO_INJECTED_CONTEXT_VARS, ...LEGACY_REMOVED_CONTEXT_VARS];
+export const ALLOWED_TEMPLATE_VARS = [...TEMPLATE_PLACEHOLDER_VARS, ...AUTO_INJECTED_CONTEXT_VARS];
 export const AI_VISIBLE_TEMPLATE_VARS = [...TEMPLATE_PLACEHOLDER_VARS];
 export const AUTO_INJECTED_PLACEHOLDER_RUNTIME_NOTE = '(auto-injected above)';
 export const AUTO_INJECTED_PLACEHOLDER_AI_NOTE = '(auto-injected by runtime before this template)';
 export const AUTO_INJECTED_PLACEHOLDER_REGEX = new RegExp(`{{\\s*(${AUTO_INJECTED_CONTEXT_VARS.join('|')})\\s*}}`, 'gi');
-export const LEGACY_REMOVED_PLACEHOLDER_REGEX = new RegExp(`{{\\s*(${LEGACY_REMOVED_CONTEXT_VARS.join('|')})\\s*}}`, 'gi');
 export const ORCH_ALLOWED_GENERATION_TYPES = new Set(['normal', 'continue', 'regenerate', 'swipe', 'impersonate']);
 export const CAPSULE_INJECT_POSITION_SCHEMA_VERSION = 2;
 export const ORCH_NODE_TYPE_WORKER = 'worker';
 export const ORCH_NODE_TYPE_REVIEW = 'review';
-export const ORCH_REVIEW_TOOL_APPROVE = 'luker_orch_review_approve';
-export const ORCH_REVIEW_TOOL_RERUN = 'luker_orch_request_rerun';
+export const ORCH_REVIEW_TOOL_APPROVE = 'atri_orch_review_approve';
+export const ORCH_REVIEW_TOOL_RERUN = 'atri_orch_request_rerun';
 export const ORCH_REVIEW_FEEDBACK_FIELD = 'review_feedback';
 export const SUPPORTED_WORLD_INFO_POSITIONS = Object.freeze([
     world_info_position.before,
@@ -242,13 +237,13 @@ export const RUNTIME_AGENT_CONTEXT_MENTAL_MODEL = Object.freeze([
 export const CUSTOM_TOOL_AUTHORING_DOCTRINE_LINES = Object.freeze([
     '# Custom-tool authoring doctrine',
     '',
-    'You can author and edit Layer-3 tools directly on this profile via the `luker_orch_*_custom_tool` family. Custom tools are async JavaScript bodies the runtime agent calls during a real turn; the body receives `(args, ctx)` and runs in the page context with the same session permissions the rest of Luker has.',
+    'You can author and edit Layer-3 tools directly on this profile via the `atri_orch_*_custom_tool` family. Custom tools are async JavaScript bodies the runtime agent calls during a real turn; the body receives `(args, ctx)` and runs in the page context with the same session permissions the rest of Atria has.',
     '',
     '**When a custom tool is the right call.** Reach for one when the task is genuinely codifiable — a check / extraction / transformation that a small function can do exactly, where asking the model to "try harder in the systemPrompt" would be unreliable. Examples: validating that the reply ends with a required tag, extracting a structured field from the draft for a downstream node, looking up a stable JSON map the user maintains in chat state. If the task is fundamentally a judgment call (style, tone, in-character consistency), it does NOT belong in a custom tool — that\'s what the model is for.',
     '',
-    '**The wiring rule.** Authoring a tool only delivers value if the calling agent actually calls it. Whenever you `luker_orch_set_custom_tool` a new tool for an agent, you MUST in the same iteration also patch that agent\'s systemPrompt to (1) name the tool, (2) explain when it should be called, (3) explain what to do with the result. Use `luker_orch_patch_*_system_prompt` (director / loop / agenda / sub-agent variants) for the patch. A tool no agent calls is a half-finished change and should never be staged as an Apply candidate.',
+    '**The wiring rule.** Authoring a tool only delivers value if the calling agent actually calls it. Whenever you `atri_orch_set_custom_tool` a new tool for an agent, you MUST in the same iteration also patch that agent\'s systemPrompt to (1) name the tool, (2) explain when it should be called, (3) explain what to do with the result. Use `atri_orch_patch_*_system_prompt` (director / loop / agenda / sub-agent variants) for the patch. A tool no agent calls is a half-finished change and should never be staged as an Apply candidate.',
     '',
-    '**Workflow.** 1) `luker_orch_list_custom_tools` to see what exists. 2) `luker_docs_list` / `luker_docs_read` for the relevant ctx / extension-API surface (especially `features/orchestrator/custom-tools.md` for the ctx surface available inside a tool body). 3) `luker_ctx_list_keys` / `luker_ctx_describe` to confirm the exact runtime ctx shape for the calls you intend to make — never guess `ctx.foo.bar`. 4) Draft the body. 5) `luker_orch_dry_run_custom_tool` with realistic args — relays the real exception + console output back so you catch runtime errors against the live ctx. 6) Only once dry-run passes, `luker_orch_set_custom_tool` to stage the proposal. 7) In the same iteration, patch the calling agent\'s systemPrompt to actually call it.',
+    '**Workflow.** 1) `atri_orch_list_custom_tools` to see what exists. 2) `atri_docs_list` / `atri_docs_read` for the relevant ctx / extension-API surface (especially `features/orchestrator/custom-tools.md` for the ctx surface available inside a tool body). 3) `atri_ctx_list_keys` / `atri_ctx_describe` to confirm the exact runtime ctx shape for the calls you intend to make — never guess `ctx.foo.bar`. 4) Draft the body. 5) `atri_orch_dry_run_custom_tool` with realistic args — relays the real exception + console output back so you catch runtime errors against the live ctx. 6) Only once dry-run passes, `atri_orch_set_custom_tool` to stage the proposal. 7) In the same iteration, patch the calling agent\'s systemPrompt to actually call it.',
     '',
     '**Safety.** Every authored body is presented to the user with a safety banner before it lands on the profile. Write `mode: "read"` for any tool with no side effects (the simulation pipeline can then dispatch it for real during review); write `mode: "write"` when the tool mutates state. Never write a tool that exfiltrates session data (chat history, character cards, secrets) to an external URL the user did not ask for.',
 ]);
@@ -343,11 +338,11 @@ export const SPEC_DEFAULT_GUIDANCE_LINES = Object.freeze([
     'Read global_orchestration_spec and global_presets as primary reference before creating card-specific overrides.',
     'Do not output thin prompts. Each node preset must contain concrete process steps, hard constraints, and output contract details.',
     'Minimum richness target per node preset: systemPrompt >= 3 concrete rule lines; userPromptTemplate includes Task block with multiple actionable bullets.',
-    'Call luker_orch_set_stage one stage per call.',
-    'luker_orch_set_stage arguments must be flat: stage_id, mode.',
-    'Call luker_orch_set_preset one preset per call.',
+    'Call atri_orch_set_stage one stage per call.',
+    'atri_orch_set_stage arguments must be flat: stage_id, mode.',
+    'Call atri_orch_set_preset one preset per call.',
     'Hard rule: one response must contain COMPLETE tool calls for this task. Do not stop after a single tool call.',
-    'Hard rule: minimum 2 tool calls in one response, including at least one luker_orch_set_stage.',
+    'Hard rule: minimum 2 tool calls in one response, including at least one atri_orch_set_stage.',
 ]);
 
 /**
@@ -421,15 +416,15 @@ export function getLegacyDefaultRequestSystemPromptForMigration() {
         'Read global_orchestration_spec and global_presets as primary reference before creating card-specific overrides.',
         'Do not output thin prompts. Each node preset must contain concrete process steps, hard constraints, and output contract details.',
         'Minimum richness target per node preset: systemPrompt >= 3 concrete rule lines; userPromptTemplate includes Task block with multiple actionable bullets.',
-        'Call luker_orch_set_stage one stage per call.',
-        'luker_orch_set_stage arguments must be flat: stage_id, mode.',
-        'Call luker_orch_set_preset one preset per call.',
+        'Call atri_orch_set_stage one stage per call.',
+        'atri_orch_set_stage arguments must be flat: stage_id, mode.',
+        'Call atri_orch_set_preset one preset per call.',
         'Edit scope:',
         '- Match the user\'s edit scope. If they ask for a small adjustment ("punchier", "tighten", "5% shorter", "fix this one node"), change only what that asks for; leave everything else byte-identical.',
         '- Do not delete, restructure, or rewrite stages, nodes, or presets the user did not name. When existing content already covers a topic the user just refined, keep its surrounding structure and edit in place.',
         '- Only rewrite broadly when the user explicitly asks for a rewrite / overhaul / redesign.',
         'Hard rule: one response must contain COMPLETE tool calls for this task. Do not stop after a single tool call.',
-        'Hard rule: minimum 2 tool calls in one response, including at least one luker_orch_set_stage.',
+        'Hard rule: minimum 2 tool calls in one response, including at least one atri_orch_set_stage.',
         'Multi-round iteration control: the popup runs another round whenever the previous round emitted ANY tool call (read or edit); tool results become context for the next round. To end the iteration, respond with plain text and emit no tool calls.',
     ].join('\n');
 }

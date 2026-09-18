@@ -17,7 +17,7 @@
  *                           oldString with surrounding context
  *
  * Used by the orchestrator's per-agent system-prompt patch tools
- * (`luker_orch_patch_*_system_prompt`) so director / loop / agenda agents
+ * (`atri_orch_patch_*_system_prompt`) so director / loop / agenda agents
  * share a single semantics: incremental edits instead of full rewrites,
  * with the same drift-detection guarantees the message-takeover patches
  * already give the director.

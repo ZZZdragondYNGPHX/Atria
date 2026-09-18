@@ -58,7 +58,7 @@ const CARD_NAME = 'Promoter Aria';
 const CARD_AVATAR = 'promoter-aria.png';
 const SLOT_NAME = 'BoundEditedSlot';
 const MARKER_TEMP = 0.37;
-const MARKER_IDENTIFIER = 'luker-e2e-62-marker-prompt';
+const MARKER_IDENTIFIER = 'atria-e2e-62-marker-prompt';
 const MARKER_CONTENT = 'This entry exists ONLY in the card snapshot.';
 
 function makeSnapshotBody() {
@@ -86,13 +86,13 @@ function seedCardSlot(dataRoot, avatarFile, slotName, body) {
     const card = JSON.parse(readPngCard(png));
     card.data = card.data || {};
     card.data.extensions = card.data.extensions || {};
-    card.data.extensions.luker = card.data.extensions.luker || {};
-    card.data.extensions.luker.chat_completion_preset = {
+    card.data.extensions.atria = card.data.extensions.atria || {};
+    card.data.extensions.atria.chat_completion_preset = {
         presets: [{ name: slotName, preset: body }],
         defaultPresetName: slotName,
     };
-    if (card.extensions?.luker) {
-        card.extensions.luker.chat_completion_preset = card.data.extensions.luker.chat_completion_preset;
+    if (card.extensions?.atria) {
+        card.extensions.atria.chat_completion_preset = card.data.extensions.atria.chat_completion_preset;
     }
     fs.writeFileSync(p, writePngCard(png, JSON.stringify(card)));
 }
@@ -177,18 +177,18 @@ async function reseed(page, body = makeSnapshotBody()) {
     await selectCharacterByName(page, CARD_NAME);
     // Wait for the card-bound state to activate (ghost optgroup wired).
     await page.waitForFunction(() => {
-        const opt = document.querySelector('#settings_preset_openai option[data-luker-char-bound="1"]');
+        const opt = document.querySelector('#settings_preset_openai option[data-atria-char-bound="1"]');
         return Boolean(opt);
     }, { timeout: 15_000 });
 }
 
 async function openManageAndClickRemove(page) {
     await fireDropdownAction(page, 'manage_character_bound_presets');
-    const dialog = page.locator('#luker_manage_bound_presets_dialog');
+    const dialog = page.locator('#atria_manage_bound_presets_dialog');
     await dialog.waitFor({ state: 'visible', timeout: 5000 });
-    const row = dialog.locator(`.luker-mbp-row[data-preset-name="${SLOT_NAME}"]`);
+    const row = dialog.locator(`.atria-mbp-row[data-preset-name="${SLOT_NAME}"]`);
     await row.waitFor({ state: 'visible', timeout: 5000 });
-    await row.locator('.luker-mbp-remove').click();
+    await row.locator('.atria-mbp-remove').click();
     return waitTopPopup(page);
 }
 
@@ -243,7 +243,7 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
             const state = await page.evaluate((n) => {
                 const ctx = window.SillyTavern?.getContext();
                 const c = ctx?.characters?.find(ch => ch?.name === n);
-                const raw = c?.data?.extensions?.luker?.chat_completion_preset;
+                const raw = c?.data?.extensions?.atria?.chat_completion_preset;
                 if (!raw) return { presets: [], isNull: true };
                 if (Array.isArray(raw.presets)) return { presets: raw.presets.map(p => p.name), isNull: false };
                 return { presets: [], isNull: false };
@@ -270,7 +270,7 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
         // active).
         await selectCharacterByName(page, CARD_NAME);
         await page.waitForFunction(() => {
-            const opt = document.querySelector('#settings_preset_openai option[data-luker-char-bound="1"]');
+            const opt = document.querySelector('#settings_preset_openai option[data-atria-char-bound="1"]');
             return Boolean(opt);
         }, { timeout: 10_000 });
 
@@ -312,7 +312,7 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
         // Card slot removed.
         await expect.poll(async () => page.evaluate((n) => {
             const c = window.SillyTavern?.getContext()?.characters?.find(ch => ch?.name === n);
-            const raw = c?.data?.extensions?.luker?.chat_completion_preset;
+            const raw = c?.data?.extensions?.atria?.chat_completion_preset;
             return Array.isArray(raw?.presets) ? raw.presets.length : 0;
         }, CARD_NAME), { timeout: 5000 }).toBe(0);
     });
@@ -325,7 +325,7 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
         await savePresetAsViaButton(page, SLOT_NAME);
         await selectCharacterByName(page, CARD_NAME);
         await page.waitForFunction(() => {
-            const opt = document.querySelector('#settings_preset_openai option[data-luker-char-bound="1"]');
+            const opt = document.querySelector('#settings_preset_openai option[data-atria-char-bound="1"]');
             return Boolean(opt);
         }, { timeout: 10_000 });
 
@@ -364,8 +364,8 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
         // Slot removed.
         await expect.poll(async () => page.evaluate((n) => {
             const c = window.SillyTavern?.getContext()?.characters?.find(ch => ch?.name === n);
-            return Array.isArray(c?.data?.extensions?.luker?.chat_completion_preset?.presets)
-                ? c.data.extensions.luker.chat_completion_preset.presets.length
+            return Array.isArray(c?.data?.extensions?.atria?.chat_completion_preset?.presets)
+                ? c.data.extensions.atria.chat_completion_preset.presets.length
                 : 0;
         }, CARD_NAME), { timeout: 5000 }).toBe(0);
     });
@@ -383,7 +383,7 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
         // Slot gone.
         await expect.poll(async () => page.evaluate((n) => {
             const c = window.SillyTavern?.getContext()?.characters?.find(ch => ch?.name === n);
-            const raw = c?.data?.extensions?.luker?.chat_completion_preset;
+            const raw = c?.data?.extensions?.atria?.chat_completion_preset;
             return Array.isArray(raw?.presets) ? raw.presets.length : (raw ? -1 : 0);
         }, CARD_NAME), { timeout: 5000 }).toBe(0);
 
@@ -407,9 +407,9 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
         // Slot still intact with marker content.
         const slot = await page.evaluate((n) => {
             const c = window.SillyTavern?.getContext()?.characters?.find(ch => ch?.name === n);
-            const raw = c?.data?.extensions?.luker?.chat_completion_preset;
+            const raw = c?.data?.extensions?.atria?.chat_completion_preset;
             const hit = raw?.presets?.[0];
-            return hit ? { name: hit.name, temperature: hit.preset?.temperature, markerContent: hit.preset?.prompts?.find(p => p?.identifier === 'luker-e2e-62-marker-prompt')?.content } : null;
+            return hit ? { name: hit.name, temperature: hit.preset?.temperature, markerContent: hit.preset?.prompts?.find(p => p?.identifier === 'atria-e2e-62-marker-prompt')?.content } : null;
         }, CARD_NAME);
         expect(slot?.name).toBe(SLOT_NAME);
         expect(slot?.temperature).toBeCloseTo(MARKER_TEMP, 5);
@@ -436,7 +436,7 @@ test.describe('#62 — remove card-bound preset offers promote to global with co
         // Slot still there.
         const state = await page.evaluate((n) => {
             const c = window.SillyTavern?.getContext()?.characters?.find(ch => ch?.name === n);
-            const raw = c?.data?.extensions?.luker?.chat_completion_preset;
+            const raw = c?.data?.extensions?.atria?.chat_completion_preset;
             return Array.isArray(raw?.presets) ? raw.presets.map(p => p.name) : [];
         }, CARD_NAME);
         expect(state).toEqual([SLOT_NAME]);

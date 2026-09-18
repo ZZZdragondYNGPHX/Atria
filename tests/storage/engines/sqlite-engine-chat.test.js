@@ -8,7 +8,7 @@ describe('SqliteEngine chat handler', () => {
     let tmpDir, engine;
     const handle = 'u';
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sqlite-chat-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sqlite-chat-'));
         engine = new SqliteEngine({
             directoriesByHandle: () => ({ root: path.join(tmpDir, handle) }),
         });

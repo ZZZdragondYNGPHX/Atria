@@ -15,7 +15,7 @@
  *   2. If none, return null (no payload to attach).
  *   3. Otherwise call `context.skills.packForEmbed(...)` with the names.
  *   4. Return the payload object — the caller is responsible for merging
- *      it into the export JSON at `extensions.luker.embedded_skills_source`.
+ *      it into the export JSON at `extensions.atria.embedded_skills_source`.
  *
  * Convention chosen to mirror the regex/world-info embedded-script pattern:
  * the asset author opts in via a checkbox; an empty scope yields a null
@@ -52,11 +52,11 @@ export async function packSkillsForExport({ context, targetScope, mode = 'auto' 
 
 /**
  * Attach an embed payload to a parsed character/preset object at the
- * canonical path `extensions.luker.embedded_skills_source`. Mutates the
+ * canonical path `extensions.atria.embedded_skills_source`. Mutates the
  * target in place and returns it for chaining. A null payload is a no-op
  * (used when the user opts out or the scope has no skills).
  *
- * For character cards, the payload lives at `character.data.extensions.luker`
+ * For character cards, the payload lives at `character.data.extensions.atria`
  * (the inner `.data` wrapper is the v2/v3 card-spec envelope). Caller must
  * pass the object that contains `.extensions` (i.e. `character.data` for
  * characters, or the preset object directly for presets).
@@ -72,10 +72,10 @@ export function attachEmbeddedSkillsSource(target, payload) {
     if (!target.extensions || typeof target.extensions !== 'object') {
         target.extensions = {};
     }
-    if (!target.extensions.luker || typeof target.extensions.luker !== 'object') {
-        target.extensions.luker = {};
+    if (!target.extensions.atria || typeof target.extensions.atria !== 'object') {
+        target.extensions.atria = {};
     }
-    target.extensions.luker.embedded_skills_source = payload;
+    target.extensions.atria.embedded_skills_source = payload;
     return target;
 }
 
@@ -87,7 +87,7 @@ export function attachEmbeddedSkillsSource(target, payload) {
  * @param {object} opts
  * @param {object} opts.context
  * @param {object} opts.targetScope
- * @param {object} opts.attachTo - the object whose `extensions.luker.embedded_skills_source`
+ * @param {object} opts.attachTo - the object whose `extensions.atria.embedded_skills_source`
  *   will be populated (e.g. `character.data` or the preset body)
  * @param {'inline-files-v1'|'archive-base64-v1'|'auto'} [opts.mode='auto']
  * @returns {Promise<object|null>} the payload that was attached, or null if none

@@ -85,7 +85,7 @@ async function enableMgViaCheckbox(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        const el = document.getElementById('luker_rpg_memory_enabled');
+        const el = document.getElementById('atria_rpg_memory_enabled');
         if (el && !el.checked) {
             el.checked = true;
             el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -97,8 +97,8 @@ async function enableMgViaCheckbox(page) {
 async function importBindLatest(page, filePath) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
-    await page.locator('#luker_rpg_memory_import').click();
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click();
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 10_000 });
     await popup.locator('.popup-button-custom', { hasText: /Bind Latest|绑定最新/ }).first().click();
@@ -115,7 +115,7 @@ test.describe('#60 — MG + var_ops co-operation via macro expansion', () => {
         await enableMgViaCheckbox(page);
 
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -123,7 +123,7 @@ test.describe('#60 — MG + var_ops co-operation via macro expansion', () => {
         // the var-op-log extractor will record on the assistant message.
         const { replyId } = await sendMessageAndAwaitReply(page, 'Read me the threshold for tonight.');
         await page.waitForFunction((id) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const m = ctx.chat?.[id];
             return Boolean(m && Array.isArray(m?.extra?.var_ops) && m.extra.var_ops.length > 0);
         }, replyId, { timeout: 15_000 });
@@ -139,7 +139,7 @@ test.describe('#60 — MG + var_ops co-operation via macro expansion', () => {
 
         // Confirm the chat variable was actually set (apply ran).
         const varSeen = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.chatMetadata?.variables?.current_omen_threshold ?? null;
         });
         expect(varSeen).toBe('7.5');
@@ -150,7 +150,7 @@ test.describe('#60 — MG + var_ops co-operation via macro expansion', () => {
         // Open the real View Graph popup — confirms the node renders.
         await openMgGraphView(page);
         await page.waitForFunction(() => {
-            const cy = document.querySelector('.luker-rpg-memory-graph-cy');
+            const cy = document.querySelector('.atria-rpg-memory-graph-cy');
             if (!cy) return false;
             const inst = window.cy || cy.__cytoscape__ || null;
             if (inst && typeof inst.nodes === 'function') return inst.nodes().length > 0;
@@ -164,7 +164,7 @@ test.describe('#60 — MG + var_ops co-operation via macro expansion', () => {
         // go through during prompt assembly) — that result must contain
         // the expanded value.
         const expansion = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const cands = session ? session.listVisibleCandidates({}) : [];

@@ -18,8 +18,8 @@ function dirsAt(root) {
 describe('reconcileShadowToLive', () => {
     let userRoot, liveRoot;
     beforeEach(() => {
-        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-rec-shadow-'));
-        liveRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-rec-live-'));
+        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-rec-shadow-'));
+        liveRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-rec-live-'));
         for (const sub of ['characters', 'chats', 'worlds', 'groups', 'group chats']) {
             fs.mkdirSync(path.join(liveRoot, sub), { recursive: true });
         }

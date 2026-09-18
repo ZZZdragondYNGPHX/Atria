@@ -5,9 +5,9 @@ import path from 'node:path';
 import mysql from 'mysql2/promise';
 import { MysqlEngine } from '../../../src/storage/engines/mysql-engine.js';
 
-// Local dev container default. Override with LUKER_TEST_MYSQL_ROOT_URL if the
+// Local dev container default. Override with ATRIA_TEST_MYSQL_ROOT_URL if the
 // docker-compose port mapping changes.
-const ROOT_URL = process.env.LUKER_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
+const ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
 
 // Stub directory map. MysqlEngine stores nothing on disk, but the Repo contract
 // tests share their beforeEach with FsEngine, which means they call
@@ -34,7 +34,7 @@ function buildStubDirs(rootDir) {
 // Each call creates a unique database so parallel tests don't collide and a
 // crashed test doesn't leak state into the next run. Cleanup drops the DB.
 export async function makeTempMysqlEngineHarness() {
-    const dbName = `luker_test_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const dbName = `atria_test_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const rootConn = await mysql.createConnection(ROOT_URL);
     try {
         await rootConn.query(
@@ -45,7 +45,7 @@ export async function makeTempMysqlEngineHarness() {
     }
     const url = `${ROOT_URL}/${dbName}`;
     const engine = new MysqlEngine({ url });
-    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-contract-mysql-'));
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-contract-mysql-'));
     const dirs = buildStubDirs(stubRoot);
     const backupRoot = path.join(stubRoot, '_storage-migrations');
     return {

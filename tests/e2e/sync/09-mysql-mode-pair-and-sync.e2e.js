@@ -28,8 +28,8 @@ import {
     resolveAllConflictsAs,
 } from '../_lib/sync.js';
 
-const A_DB = 'luker_test_sync_a';
-const B_DB = 'luker_test_sync_b';
+const A_DB = 'atria_test_sync_a';
+const B_DB = 'atria_test_sync_b';
 const SEED_WORLD = 'mysql-mode-seeded';
 const SEED_WORLD_DATA = {
     entries: {

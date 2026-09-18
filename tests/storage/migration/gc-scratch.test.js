@@ -6,7 +6,7 @@ import { gcScratch } from '../../../src/storage/migration/gc-scratch.js';
 import { SCRATCH_HANDLE_PREFIX } from '../../../src/storage/engine-backup-entries.js';
 
 function makeRoot() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'luker-gc-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'atria-gc-'));
 }
 
 function makeScratch(root, name, ageMs) {

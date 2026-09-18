@@ -102,7 +102,7 @@ export function bindImportedStoreToAssistantFloor(store, bindSeq) {
     return normalized;
 }
 
-const SCHEMA_EXPORT_TYPE = 'luker-memory-graph-schema';
+const SCHEMA_EXPORT_TYPE = 'atria-memory-graph-schema';
 const SCHEMA_EXPORT_VERSION = 1;
 
 /**

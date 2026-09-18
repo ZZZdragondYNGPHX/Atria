@@ -1,16 +1,16 @@
 # Contributing Guide
 
-Thank you for your interest in the Luker project! This document explains how to contribute code, documentation, and other improvements to Luker.
+Thank you for your interest in the Atria project! This document explains how to contribute code, documentation, and other improvements to Atria.
 
 ## Setting Up the Development Environment
 
-1. **Fork the repository**: Fork the Luker repository to your own GitHub account.
+1. **Fork the repository**: Fork the Atria repository to your own GitHub account.
 
 2. **Clone locally**:
 
 ```bash
-git clone https://github.com/<your-username>/Luker.git
-cd Luker
+git clone https://github.com/<your-username>/Atria.git
+cd Atria
 ```
 
 3. **Install dependencies**:
@@ -37,7 +37,7 @@ git checkout -b feat/my-new-feature release
 ```
 
 > [!IMPORTANT]
-> Luker's stable branch is `release`.
+> Atria's stable branch is `release`.
 
 Recommended branch naming conventions:
 
@@ -51,7 +51,7 @@ Recommended branch naming conventions:
 
 ## Commit Convention
 
-Luker follows the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+Atria follows the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
 ```
 <type>(<scope>): <description>
@@ -142,7 +142,7 @@ git push origin feat/my-new-feature
 ## Project Structure Overview
 
 ```
-Luker/
+Atria/
 ├── server.js              # Server entry point
 ├── src/                   # Backend source code
 │   ├── endpoints/         # API routes

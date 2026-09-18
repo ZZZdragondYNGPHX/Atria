@@ -137,7 +137,7 @@ export const CATEGORIES = Object.freeze([
             { kind: 'file', rel: 'image-metadata.json' },
             { kind: 'file', rel: 'stats.json' },
             { kind: 'file', rel: 'content.log' },
-            { kind: 'glob', rel: 'luker-storage.sqlite*' },
+            { kind: 'glob', rel: 'atria-storage.sqlite*' },
             { kind: 'file', rel: 'secrets.json', sensitive: true },
         ],
     },
@@ -671,7 +671,7 @@ export async function enumerateSubDir(userRoot, categoryKey, subKey) {
 /**
  * chat sidecar 命名 infix(与 src/storage/engines/sidecar-naming.js:1 保持一致).
  */
-const CHAT_SIDECAR_INFIX = '.luker-state.';
+const CHAT_SIDECAR_INFIX = '.atria-state.';
 
 /**
  * 群组聊天虚拟条目的 key(在 chats category 下,表示 group chats/ 目录的聚合).
@@ -760,7 +760,7 @@ export async function enumerateChatsCharacter(userRoot, charKey) {
         throw new StorageInspectorError('E_INVALID_PATH', `character not found: ${charKey}`);
     }
 
-    // chat 主体 = *.jsonl(排除 sidecar;sidecar 是 *.luker-state.<ns>.json)
+    // chat 主体 = *.jsonl(排除 sidecar;sidecar 是 *.atria-state.<ns>.json)
     const chatFiles = raw.filter(e => e.isFile() && e.name.endsWith('.jsonl'));
     const entries = await Promise.all(chatFiles.map(async (e) => {
         const abs = path.join(dirAbs, e.name);
@@ -956,7 +956,7 @@ export async function enumerateChatFile(chatAbsPath, chatFileName, categoryPath)
 
 /**
  * character sidecar 命名 infix(与 src/endpoints/characters.js:40 保持一致).
- * 注意与 chat sidecar `.luker-state.` 不同 · 别混.
+ * 注意与 chat sidecar `.atria-state.` 不同 · 别混.
  */
 const CHARACTER_SIDECAR_INFIX = '.state.';
 

@@ -29,13 +29,13 @@
     }
 
     function installMobileFocusPrototypeGuard() {
-        if (!isMobileUA || !HTMLElement || HTMLElement.prototype.__lukerMobileFocusGuardInstalled) {
+        if (!isMobileUA || !HTMLElement || HTMLElement.prototype.__atriaMobileFocusGuardInstalled) {
             return;
         }
 
         var nativeFocus = HTMLElement.prototype.focus;
 
-        Object.defineProperty(HTMLElement.prototype, '__lukerMobileFocusGuardInstalled', {
+        Object.defineProperty(HTMLElement.prototype, '__atriaMobileFocusGuardInstalled', {
             value: true,
             writable: false,
             configurable: true,

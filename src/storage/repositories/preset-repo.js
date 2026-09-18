@@ -36,7 +36,7 @@ export class PresetRepo {
     // Deleting the preset doc atomically also purges every namespaced sidecar
     // written by plugins against this preset. Doing both in one withTransaction
     // means SQL engines run one connection/one commit, and FS mode fails as a
-    // unit rather than leaving orphan `<preset>.luker-state.<ns>.json` files
+    // unit rather than leaving orphan `<preset>.atria-state.<ns>.json` files
     // if a caller only invoked /delete (skipping the old two-step handshake
     // where the client had to POST /state/delete-all separately).
     async delete(handle, apiId, name) {

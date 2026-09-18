@@ -49,7 +49,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SHARED_NAME, preset: { temperature: CARD_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -94,7 +94,7 @@ test.describe('#55 — card-bound rename 跨 origin 同名', () => {
 
         // 等 ghost option textContent 变 NEW_NAME。
         await page.waitForFunction(([expected]) => {
-            const opt = document.querySelector('#settings_preset_openai option[data-luker-char-bound="1"]');
+            const opt = document.querySelector('#settings_preset_openai option[data-atria-char-bound="1"]');
             return opt && opt.textContent.trim() === expected;
         }, [NEW_NAME], { timeout: 5000 });
 
@@ -102,7 +102,7 @@ test.describe('#55 — card-bound rename 跨 origin 同名', () => {
         const cardPresets = await page.evaluate(([cardName]) => {
             const ctx = window.SillyTavern?.getContext();
             const char = ctx?.characters?.find(c => c && c.name === cardName);
-            return char?.data?.extensions?.luker?.chat_completion_preset?.presets?.map(p => p.name);
+            return char?.data?.extensions?.atria?.chat_completion_preset?.presets?.map(p => p.name);
         }, [CARD_NAME]);
         expect(cardPresets).toEqual([NEW_NAME]);
 

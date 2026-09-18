@@ -8,7 +8,7 @@
 //   The sandbox runner used to throw away the executor's return value and
 //   only diff the before/after working profile. Any tool call that the
 //   executor rejected without mutating workingProfile (e.g.
-//   `luker_orch_patch_loop_system_prompt` with an oldString anchor that
+//   `atri_orch_patch_loop_system_prompt` with an oldString anchor that
 //   isn't present in the current system prompt) was indistinguishable
 //   from a genuine "already matches" outcome. The iter-studio then
 //   reported a misleading "likely already matches" noop instead of the

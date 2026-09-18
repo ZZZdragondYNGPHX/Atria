@@ -47,7 +47,7 @@ let initUserStorage;
 let toKey;
 let getUserDirectories;
 
-const TEST_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-multi-user-'));
+const TEST_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-multi-user-'));
 const PREV_DATA_ROOT = globalThis.DATA_ROOT;
 
 const HANDLE = 'alice';

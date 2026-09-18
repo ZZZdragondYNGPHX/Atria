@@ -10,20 +10,20 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = []; page.on('pageerror', error => errors.push(error.message));
 const name = `Memory history ${Date.now()}`; const checks = [];
 const root = page.locator('.memory-os-history');
-const ledger = () => page.evaluate(async () => (await window.Luker.getContext().getChatState('memory_graph__provenance')).state);
-async function ready() { await page.waitForFunction(() => !!window.Luker?.getContext && !document.getElementById('preloader')); }
+const ledger = () => page.evaluate(async () => (await window.Atria.getContext().getChatState('memory_graph__provenance')).state);
+async function ready() { await page.waitForFunction(() => !!window.Atria?.getContext && !document.getElementById('preloader')); }
 async function selectCharacter() {
     const toggle = page.locator('#rightNavDrawerIcon');
     if (await toggle.evaluate(el => el.classList.contains('closedIcon'))) await toggle.click();
     await page.locator('#rm_print_characters_block .character_select').filter({ hasText: name }).click();
-    await page.waitForFunction(expected => window.Luker.getContext().characters[window.Luker.getContext().characterId]?.name === expected, name);
-    await page.waitForFunction(() => !!window.Luker.getContext().getExtensionApi('memory-graph'));
+    await page.waitForFunction(expected => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === expected, name);
+    await page.waitForFunction(() => !!window.Atria.getContext().getExtensionApi('memory-graph'));
 }
 async function openFixture() {
     await page.evaluate(async () => {
         const { createMemoryHistoryBuilder } = await import('/scripts/extensions/memory-graph/main.js');
         const { openHistoryBuildPopup } = await import('/scripts/extensions/memory-graph/history-build-ui.js');
-        const context = Object.create(window.Luker.getContext());
+        const context = Object.create(window.Atria.getContext());
         context.generateTask = async request => {
             window.historyFixtureCalls++;
             if (window.historyFixtureMode === 'hold') await new Promise(resolve => { window.releaseHistoryFixture = resolve; });
@@ -32,11 +32,11 @@ async function openFixture() {
             const source = payload.source_episodes[0];
             const evidence = [{ episodeId: source.episodeId, excerpt: window.historyFixtureMode === 'invalid' ? 'Invented quote' : source.content }];
             return { toolCalls: [
-                { name: 'luker_memory_facts', args: { operations: [{ action: 'create', type: 'explicit', text: source.content, evidence }], graphOperations: [
+                { name: 'atri_memory_facts', args: { operations: [{ action: 'create', type: 'explicit', text: source.content, evidence }], graphOperations: [
                     { action: 'entity', ref: 'a', name: 'Alice', type: 'Character', evidence },
                     { action: 'entity', ref: 'b', name: 'Castle', type: 'Location', evidence },
                     { action: 'relation', sourceId: 'a', targetId: 'b', predicate: 'visited', factIndex: 0, evidence },
-                ] } }, { name: 'luker_rpg_extract_done', args: {} },
+                ] } }, { name: 'atria_rpg_extract_done', args: {} },
             ] };
         };
         window.historyFixtureCalls = 0; window.historyFixtureMode = 'valid';
@@ -53,12 +53,12 @@ try {
     if (await page.locator('#firstRunDisclaimer').count()) await page.locator('dialog .menu_button').filter({ hasText: /^(好的|OK)$/ }).click();
     await createBlankCharacter(page, { name, firstmes: 'Alice visited Castle 0.' }); await selectCharacter();
     await page.evaluate(async () => {
-        const ctx = window.Luker.getContext(); Object.assign(ctx.extensionSettings.memory_graph, { memoryOsEnabled: true, includeWorldInfoWithPreset: false, toolCallRetryMax: 0 });
+        const ctx = window.Atria.getContext(); Object.assign(ctx.extensionSettings.memory_graph, { memoryOsEnabled: true, includeWorldInfoWithPreset: false, toolCallRetryMax: 0 });
         ctx.saveSettingsDebounced();
         for (let i = 1; i < 7; i++) ctx.chat.push({ mes: `Alice visited Castle ${i}.`, is_user: false, name: 'History fixture' });
         await ctx.saveChat();
     });
-    await page.locator('#luker_rpg_memory_view_graph').dispatchEvent('click');
+    await page.locator('#atria_rpg_memory_view_graph').dispatchEvent('click');
     await page.locator('.memory-os-inspector').getByRole('button', { name: '历史构建 / 回滚', exact: true }).click();
     await root.getByRole('status').filter({ hasText: '尚未开始' }).waitFor();
     checks.push('graph opens history controls without automatic extraction');

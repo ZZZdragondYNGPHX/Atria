@@ -7,7 +7,7 @@
 //   - fs:       scratch dir under _storage-migrations/_xrestore_<id>/
 //               populated with the full on-disk tree from the ZIP.
 //   - sqlite:   same scratch dir + the dump bytes written as
-//               luker-storage.sqlite at scratch root.
+//               atria-storage.sqlite at scratch root.
 //   - mysql/pg: scratch DB connection (operator-provided) ingests the NDJSON
 //               dump under a scratch handle on the operator's DB. Local
 //               scratch dir is still created for the directoriesByHandle
@@ -143,7 +143,7 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
 }
 
 // --------------------------------------------------------------------------
-// sqlite source: write _engine_dump.bin to scratchRoot/luker-storage.sqlite,
+// sqlite source: write _engine_dump.bin to scratchRoot/atria-storage.sqlite,
 // plus extract any fs-tree entries (secrets, characters, assets, etc.).
 // --------------------------------------------------------------------------
 
@@ -152,8 +152,8 @@ async function buildSqliteTransient({ scratchRoot, scratchHandle, zipPath }) {
     ensureScratchDirs(scratchDirs);
     await extractZipTreeToScratch(zipPath, scratchRoot);
     // The .sqlite file is the engine's home — write it AT scratchRoot
-    // (sqlite-engine looks for luker-storage.sqlite under dirs.root).
-    const dumpDest = path.join(scratchRoot, 'luker-storage.sqlite');
+    // (sqlite-engine looks for atria-storage.sqlite under dirs.root).
+    const dumpDest = path.join(scratchRoot, 'atria-storage.sqlite');
     const dumpFound = await extractEngineDumpToFile(zipPath, dumpDest);
     if (!dumpFound) {
         throw new Error(`transient sqlite source: backup ZIP is missing ${ENGINE_DUMP_ENTRY}`);

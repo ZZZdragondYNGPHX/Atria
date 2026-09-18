@@ -1,7 +1,7 @@
 // #9 — Regenerate from the options dropdown
 //
 // Real user clicks the "Regenerate" item in the #options dropdown. Per
-// the original audit: Luker's Regenerate is "redo this message" — it
+// the original audit: Atria's Regenerate is "redo this message" — it
 // REPLACES the in-flight assistant turn's body with a new variant.
 //
 // We send turn 1 (variant A), swipe right once to land on variant B,

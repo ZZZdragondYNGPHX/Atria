@@ -114,7 +114,7 @@ test.describe('#80 — Director mode lorebookFilter blocks context injection and
         // roundtrip before any character is selected.
         await page.evaluate(async ({ publicBook }) => {
             const worldInfoMod = await import('/scripts/world-info.js');
-            const ctx = Luker.getContext();
+            const ctx = Atria.getContext();
             const avatarFile = ctx.characters?.[ctx.characterId]?.avatar || '';
             const fileNameNoExt = avatarFile.replace(/\.[^/.]+$/, '');
             const wi = worldInfoMod.world_info;
@@ -160,11 +160,11 @@ test.describe('#80 — Director mode lorebookFilter blocks context injection and
         });
 
         await page.evaluate(async ({ privateBook }) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const settings = ctx.extensionSettings.orchestrator;
             const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
-            preset.planTemplate.metadata.hostAdapters.luker.lorebookFilter = { bookPattern:`^${privateBook}$`,entryPattern:'^secret_' };
+            preset.planTemplate.metadata.hostAdapters.atria.lorebookFilter = { bookPattern:`^${privateBook}$`,entryPattern:'^secret_' };
             settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{ type:'save',preset });
             try { await ctx.saveSettings?.(0, { directSave: true }); } catch { /* best-effort */ }
             ctx.saveSettingsDebounced?.();

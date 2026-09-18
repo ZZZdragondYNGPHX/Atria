@@ -70,25 +70,25 @@ describe('skill-chips — pure helpers', () => {
     });
 
     test('chipClasses — visible name gets visible class', () => {
-        expect(mod.chipClasses({ name: 'foo', kind: 'visible', installed: true })).toContain('luker_skill_chip_visible');
+        expect(mod.chipClasses({ name: 'foo', kind: 'visible', installed: true })).toContain('atria_skill_chip_visible');
     });
 
     test('chipClasses — deny name gets deny class', () => {
-        expect(mod.chipClasses({ name: 'foo', kind: 'deny', installed: true })).toContain('luker_skill_chip_deny');
+        expect(mod.chipClasses({ name: 'foo', kind: 'deny', installed: true })).toContain('atria_skill_chip_deny');
     });
 
     test('chipClasses — inherit chip gets inherit class', () => {
-        expect(mod.chipClasses({ name: '+', kind: 'inherit', installed: true })).toContain('luker_skill_chip_inherit');
+        expect(mod.chipClasses({ name: '+', kind: 'inherit', installed: true })).toContain('atria_skill_chip_inherit');
     });
 
     test('chipClasses — missing (not installed) chip gets missing class', () => {
         const cls = mod.chipClasses({ name: 'missing', kind: 'visible', installed: false });
-        expect(cls).toContain('luker_skill_chip_missing');
+        expect(cls).toContain('atria_skill_chip_missing');
     });
 
     test('chipClasses — installed chips do NOT get the missing class', () => {
         const cls = mod.chipClasses({ name: 'foo', kind: 'visible', installed: true });
-        expect(cls).not.toContain('luker_skill_chip_missing');
+        expect(cls).not.toContain('atria_skill_chip_missing');
     });
 
     test('renderSkillChipsHtml — visible + deny chips render with names and toggle action attrs', () => {
@@ -98,8 +98,8 @@ describe('skill-chips — pure helpers', () => {
         });
         expect(html).toContain('alpha');
         expect(html).toContain('beta');
-        expect(html).toContain('luker_skill_chip_visible');
-        expect(html).toContain('luker_skill_chip_deny');
+        expect(html).toContain('atria_skill_chip_visible');
+        expect(html).toContain('atria_skill_chip_deny');
         expect(html).toContain('data-skill-chip-action="toggle"');
         expect(html).toContain('data-skill-chip-action="remove"');
     });
@@ -110,7 +110,7 @@ describe('skill-chips — pure helpers', () => {
             inheritFrom: { visible: ['shared-rule'], deny: [] },
             availableSkills: [{ name: 'shared-rule' }, { name: 'alpha' }],
         });
-        expect(html).toContain('luker_skill_chip_inherit');
+        expect(html).toContain('atria_skill_chip_inherit');
         // Inherit chip uses its own data attribute value so toggle/remove
         // bind to the sentinel name '+'.
         expect(html).toContain('data-skill-chip-name="+"');
@@ -123,7 +123,7 @@ describe('skill-chips — pure helpers', () => {
             value: { visible: ['ghost-skill'], deny: [] },
             availableSkills: [],
         });
-        expect(html).toContain('luker_skill_chip_missing');
+        expect(html).toContain('atria_skill_chip_missing');
         expect(html).toMatch(/title="[^"]*not installed/i);
     });
 
@@ -134,8 +134,8 @@ describe('skill-chips — pure helpers', () => {
         });
         expect(html).toContain('data-skill-chip-action="open-add"');
         // No visible/deny chips should be present.
-        expect(html).not.toContain('luker_skill_chip_visible');
-        expect(html).not.toContain('luker_skill_chip_deny');
+        expect(html).not.toContain('atria_skill_chip_visible');
+        expect(html).not.toContain('atria_skill_chip_deny');
     });
 
     test('renderSkillChipsHtml — agent context exposes inherit-add control', () => {

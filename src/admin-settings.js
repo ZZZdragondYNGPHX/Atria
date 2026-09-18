@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import storage from 'node-persist';
 
-const ADMIN_SETTINGS_KEY = 'luker:admin-settings:v1';
+const ADMIN_SETTINGS_KEY = 'atria:admin-settings:v1';
 
 const DEFAULT_ADMIN_SETTINGS = Object.freeze({
     storage: {

@@ -14,7 +14,7 @@ import {
     toKey,
 } from '../src/users.js';
 
-const TEST_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-users-test-'));
+const TEST_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-users-test-'));
 const PREV_DATA_ROOT = globalThis.DATA_ROOT;
 
 async function seedUser({ handle, password, enabled = true, admin = false }) {

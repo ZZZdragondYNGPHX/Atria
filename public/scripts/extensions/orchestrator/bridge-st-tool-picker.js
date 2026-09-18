@@ -12,7 +12,7 @@
  * and converges via `bridgeSillyTavernTool` / `unbridgeSillyTavernTool`.
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 const POPUP_RESULT = __ctx.POPUP_RESULT;
@@ -51,28 +51,28 @@ function buildHtml(available, bridged, t) {
 
     if (all.length === 0) {
         return `
-<div class="luker_orch_st_picker">
-    <div class="luker_orch_st_picker_empty">${esc(t('No SillyTavern tools available'))}</div>
+<div class="atri_orch_st_picker">
+    <div class="atri_orch_st_picker_empty">${esc(t('No SillyTavern tools available'))}</div>
 </div>
         `;
     }
 
     const renderRow = (item) => `
-        <div class="luker_orch_st_picker_row" data-orch-st-row="${esc(item.name)}">
-            <label class="checkbox_label luker_orch_st_picker_check">
+        <div class="atri_orch_st_picker_row" data-orch-st-row="${esc(item.name)}">
+            <label class="checkbox_label atri_orch_st_picker_check">
                 <input type="checkbox" data-orch-st-name="${esc(item.name)}" ${item.isBridged ? 'checked' : ''}>
-                <span class="luker_orch_st_picker_name">${esc(item.displayName)}</span>
+                <span class="atri_orch_st_picker_name">${esc(item.displayName)}</span>
             </label>
-            <div class="luker_orch_st_picker_mode">
+            <div class="atri_orch_st_picker_mode">
                 <label class="checkbox_label"><input type="radio" name="orch_st_mode_${esc(item.name)}" value="read" ${item.mode === 'read' ? 'checked' : ''}> read</label>
                 <label class="checkbox_label"><input type="radio" name="orch_st_mode_${esc(item.name)}" value="write" ${item.mode !== 'read' ? 'checked' : ''}> write</label>
             </div>
-            ${item.description ? `<div class="luker_orch_st_picker_desc">${esc(item.description)}</div>` : ''}
+            ${item.description ? `<div class="atri_orch_st_picker_desc">${esc(item.description)}</div>` : ''}
         </div>
     `;
     return `
-<div class="luker_orch_st_picker">
-    <div class="luker_orch_st_picker_title">${esc(t('Available SillyTavern tools'))}</div>
+<div class="atri_orch_st_picker">
+    <div class="atri_orch_st_picker_title">${esc(t('Available SillyTavern tools'))}</div>
     ${all.map(renderRow).join('')}
 </div>
     `;

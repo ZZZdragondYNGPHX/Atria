@@ -30,7 +30,7 @@ function runRaceContract(backendLabel, makeClient) {
         let dir;
 
         beforeEach(() => {
-            dir = fs.mkdtempSync(path.join(os.tmpdir(), `luker-git-race-${backendLabel}-`));
+            dir = fs.mkdtempSync(path.join(os.tmpdir(), `atria-git-race-${backendLabel}-`));
         });
 
         afterEach(() => {

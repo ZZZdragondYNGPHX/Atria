@@ -38,9 +38,9 @@ import { applyEdits, inverseEdit, registerOp, getRegisteredOp,
          listRegisteredOps, showConflictResolution,
          BUILT_IN_OPS } from '/scripts/lib/edits/index.js';
 
-// lukerContext
-lukerContext.edits.applyEdits(...);
-lukerContext.edits.showConflictResolution(...);
+// atriaContext
+atriaContext.edits.applyEdits(...);
+atriaContext.edits.showConflictResolution(...);
 
 // getContext
 SillyTavern.getContext().edits.applyEdits(...);
@@ -49,7 +49,7 @@ SillyTavern.getContext().edits.showConflictResolution(...);
 
 `showConflictResolution` is also re-exported from `/scripts/lib/edits/conflict-ui.js`
 for backward compatibility, but new code should import it from `index.js` (or use
-the `lukerContext` / `getContext()` layers) to stay consistent with the rest of
+the `atriaContext` / `getContext()` layers) to stay consistent with the rest of
 the API surface.
 
 ### `applyEdits(edits, live)`

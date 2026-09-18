@@ -16,14 +16,14 @@
  *   - disabled entry → skipped with reason
  *   - unknown uid → skipped with reason
  *   - empty content → skipped with reason
- *   - already-activated entry (per __lukerRun.activatedEntryKeys) → skipped
+ *   - already-activated entry (per __atriaRun.activatedEntryKeys) → skipped
  *   - activatedEntryKeys is updated post-push so subsequent dedups work
  *   - unsupported position (AN-top / AN-bottom / EM-top / EM-bottom) →
  *     skipped with unsupported_position reason (not crash)
  *   - missing book → ToolError LOREBOOK_FORCE_BOOK_NOT_FOUND
  *   - missing book_name arg → ToolError LOREBOOK_FORCE_BOOK_MISSING
  *   - missing uids arg → ToolError LOREBOOK_FORCE_UIDS_MISSING
- *   - missing wiFinalizedPayload on __lukerRun → ToolError LOREBOOK_FORCE_NO_PAYLOAD
+ *   - missing wiFinalizedPayload on __atriaRun → ToolError LOREBOOK_FORCE_NO_PAYLOAD
  *     (this is the loop-only guard: spec/agenda/director hit this)
  *   - registry: lorebook_force_activate is registered as a write tool and
  *     gated by tools.lorebook.force_activate (default off)
@@ -60,7 +60,7 @@ function makePayload(overrides = {}) {
 function makeContext({ book = null, payload = makePayload(), activated = [] } = {}) {
     return {
         __loadWorldInfoFn: async (_name) => book,
-        __lukerRun: {
+        __atriaRun: {
             wiFinalizedPayload: payload,
             activatedEntryKeys: new Set(activated),
         },
@@ -194,7 +194,7 @@ describe('lorebook_force_activate — activatedEntryKeys tracking', () => {
         const payload = makePayload();
         const ctx = makeContext({ book, payload });
         await execLorebookForceActivate({ book_name: 'mybook', uids: [1] }, ctx);
-        expect(ctx.__lukerRun.activatedEntryKeys.has('mybook.1')).toBe(true);
+        expect(ctx.__atriaRun.activatedEntryKeys.has('mybook.1')).toBe(true);
     });
 
     test('survives missing activatedEntryKeys set (still pushes)', async () => {
@@ -202,7 +202,7 @@ describe('lorebook_force_activate — activatedEntryKeys tracking', () => {
         const payload = makePayload();
         const ctx = {
             __loadWorldInfoFn: async () => book,
-            __lukerRun: { wiFinalizedPayload: payload },  // no activatedEntryKeys
+            __atriaRun: { wiFinalizedPayload: payload },  // no activatedEntryKeys
         };
         const result = await execLorebookForceActivate({ book_name: 'w', uids: [1] }, ctx);
         expect(result.ok).toBe(true);
@@ -233,7 +233,7 @@ describe('lorebook_force_activate — input errors', () => {
     });
 
     test('book not found → ToolError BOOK_NOT_FOUND', async () => {
-        const ctx = { __loadWorldInfoFn: async () => null, __lukerRun: { wiFinalizedPayload: makePayload() } };
+        const ctx = { __loadWorldInfoFn: async () => null, __atriaRun: { wiFinalizedPayload: makePayload() } };
         await expect(execLorebookForceActivate({ book_name: 'ghost', uids: [1] }, ctx)).rejects.toMatchObject({
             code: 'LOREBOOK_FORCE_BOOK_NOT_FOUND',
         });
@@ -246,10 +246,10 @@ describe('lorebook_force_activate — input errors', () => {
         });
     });
 
-    test('__lukerRun present but no wiFinalizedPayload → ToolError NO_PAYLOAD', async () => {
+    test('__atriaRun present but no wiFinalizedPayload → ToolError NO_PAYLOAD', async () => {
         const ctx = {
             __loadWorldInfoFn: async () => makeBook([{ uid: 1, content: 'x', position: POS_BEFORE }]),
-            __lukerRun: { activatedEntryKeys: new Set() },
+            __atriaRun: { activatedEntryKeys: new Set() },
         };
         await expect(execLorebookForceActivate({ book_name: 'w', uids: [1] }, ctx)).rejects.toMatchObject({
             code: 'LOREBOOK_FORCE_NO_PAYLOAD',

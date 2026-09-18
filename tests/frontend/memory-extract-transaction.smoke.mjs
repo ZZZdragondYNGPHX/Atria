@@ -7,7 +7,7 @@ const browser = await chromium.launch({ channel: 'msedge', headless: true });
 try {
     const page = await browser.newPage();
     await page.goto(process.argv[2]);
-    await page.waitForFunction(() => window.Luker?.getContext && !document.getElementById('preloader'));
+    await page.waitForFunction(() => window.Atria?.getContext && !document.getElementById('preloader'));
     const onboarding = page.locator('dialog[open]').filter({ has: page.locator('#onboarding_ui_language_select') });
     if (await onboarding.count()) {
         await onboarding.locator('textarea').fill('Extraction Test');
@@ -17,9 +17,9 @@ try {
     const name = `Extraction transaction ${Date.now()}`;
     await createBlankCharacter(page, { name, firstmes: 'Roland keeps the sword.' });
     await page.locator('#rm_print_characters_block .character_select').filter({ hasText: name }).click();
-    await page.waitForFunction(name => window.Luker.getContext().characters[window.Luker.getContext().characterId]?.name === name, name);
+    await page.waitForFunction(name => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === name, name);
     const result = await page.evaluate(async () => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const { _processPendingMessageBatchWithLLMForTest: processBatch, getDefaultNodeTypeSchema } = await import('/scripts/extensions/memory-graph/main.js');
         const { createEmptyStore } = await import('/scripts/extensions/memory-graph/persistence.js');
         Object.assign(ctx.extensionSettings.memory_graph, { memoryOsEnabled: true, autoExtractionEnabled: false });
@@ -27,9 +27,9 @@ try {
         await ctx.saveChat();
         const schema = getDefaultNodeTypeSchema().filter(type => type.id === 'event');
         const requests = [], store = createEmptyStore(), context = Object.create(ctx);
-        const event = { name: 'luker_rpg_extract_event_create', args: { ref: 'e1', summary: '时间: 未知\n地点: 未知\n\nRoland keeps the sword.', links: [], no_link_reason: 'No grounded relation' } };
-        const facts = { name: 'luker_memory_facts', args: { operations: [], graphOperations: [] } };
-        const done = { name: 'luker_rpg_extract_done', args: {} };
+        const event = { name: 'atria_rpg_extract_event_create', args: { ref: 'e1', summary: '时间: 未知\n地点: 未知\n\nRoland keeps the sword.', links: [], no_link_reason: 'No grounded relation' } };
+        const facts = { name: 'atri_memory_facts', args: { operations: [], graphOperations: [] } };
+        const done = { name: 'atria_rpg_extract_done', args: {} };
         const responses = [[event], [facts], [done]];
         context.generateTask = async request => {
             if (Object.keys(store.nodes || {}).length) throw new Error('Premature graph write');
@@ -49,7 +49,7 @@ try {
     });
     assert.equal(result.eventCount, 1); assert.equal(result.invalidCount, 0); assert.equal(result.rejected, true);
     assert(result.provenanceSaved);
-    assert.deepEqual(result.requests.slice(1).map(request => request.names), [['luker_memory_facts'], ['luker_rpg_extract_done']]);
+    assert.deepEqual(result.requests.slice(1).map(request => request.names), [['atri_memory_facts'], ['atria_rpg_extract_done']]);
     assert(result.requests.every(request => request.stream === false && request.choice === 'required' && request.mode === 'task'));
     console.log(JSON.stringify({ browser: browser.version(), ...result }, null, 2));
 } finally {

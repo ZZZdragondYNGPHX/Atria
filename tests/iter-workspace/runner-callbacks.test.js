@@ -18,8 +18,8 @@
  *
  * Control-call detection lives in the caller, not the runner, because the
  * production control tool names are namespaced per popup (orchestrator
- * uses `luker_orch_continue_iteration` / `_finalize_iteration`,
- * memory-graph schema iteration uses `luker_mg_schema_continue_iteration`
+ * uses `atri_orch_continue_iteration` / `_finalize_iteration`,
+ * memory-graph schema iteration uses `atri_mg_schema_continue_iteration`
  * / `_finalize_iteration`, CPA and CEA popups have none). Hardcoding a
  * single allowlist in the shared runner would silently misroute calls.
  *
@@ -129,23 +129,23 @@ describe('requestToolCallsWithRetry — per-round callbacks', () => {
         const onToolCall = jest.fn();
         const onControlCall = jest.fn();
         // Use stable namespaced names that match the real production tool
-        // names (orchestrator's `luker_orch_*_iteration`, memory-graph's
-        // `luker_mg_schema_*_iteration`). The predicate inspects the full
+        // names (orchestrator's `atri_orch_*_iteration`, memory-graph's
+        // `atri_mg_schema_*_iteration`). The predicate inspects the full
         // toolCall, not just the name, so callers can route on args if
         // they ever need to.
         const isControlCall = (tc) => (
-            tc.name === 'luker_orch_continue_iteration'
-            || tc.name === 'luker_orch_finalize_iteration'
-            || tc.name === 'luker_mg_schema_continue_iteration'
-            || tc.name === 'luker_mg_schema_finalize_iteration'
+            tc.name === 'atri_orch_continue_iteration'
+            || tc.name === 'atri_orch_finalize_iteration'
+            || tc.name === 'atri_mg_schema_continue_iteration'
+            || tc.name === 'atri_mg_schema_finalize_iteration'
         );
         const ctx = makeContext({
             toolCalls: [
                 { name: 'do_a', args: {} },
-                { name: 'luker_orch_continue_iteration', args: {} },
-                { name: 'luker_orch_finalize_iteration', args: {} },
-                { name: 'luker_mg_schema_continue_iteration', args: {} },
-                { name: 'luker_mg_schema_finalize_iteration', args: {} },
+                { name: 'atri_orch_continue_iteration', args: {} },
+                { name: 'atri_orch_finalize_iteration', args: {} },
+                { name: 'atri_mg_schema_continue_iteration', args: {} },
+                { name: 'atri_mg_schema_finalize_iteration', args: {} },
             ],
             assistantText: '',
         });
@@ -162,10 +162,10 @@ describe('requestToolCallsWithRetry — per-round callbacks', () => {
         expect(onControlCall).toHaveBeenCalledTimes(4);
         const controlNames = onControlCall.mock.calls.map(c => c[0].name);
         expect(controlNames).toEqual([
-            'luker_orch_continue_iteration',
-            'luker_orch_finalize_iteration',
-            'luker_mg_schema_continue_iteration',
-            'luker_mg_schema_finalize_iteration',
+            'atri_orch_continue_iteration',
+            'atri_orch_finalize_iteration',
+            'atri_mg_schema_continue_iteration',
+            'atri_mg_schema_finalize_iteration',
         ]);
     });
 

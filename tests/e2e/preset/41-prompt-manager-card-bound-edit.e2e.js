@@ -65,7 +65,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SHARED_NAME, preset: { temperature: CARD_TEMPERATURE_SEED, chat_completion_source: 'openai' } },
@@ -89,7 +89,7 @@ function readCardBoundPresetBody(dataRoot, avatarFile, name) {
     const path = resolve(dataRoot, 'default-user', 'characters', avatarFile);
     const png = readFileSync(path);
     const card = JSON.parse(readPngCard(png));
-    const state = card?.data?.extensions?.luker?.chat_completion_preset;
+    const state = card?.data?.extensions?.atria?.chat_completion_preset;
     if (!state || !Array.isArray(state.presets)) return null;
     return state.presets.find(p => p?.name === name)?.preset ?? null;
 }
@@ -111,7 +111,7 @@ test.describe('#41 — saveOpenAIPreset dispatch: card-bound selected + matching
         // Wait for the ghost optgroup to be populated and the default to apply.
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 15_000 });
         await expect
@@ -147,7 +147,7 @@ test.describe('#41 — saveOpenAIPreset dispatch: card-bound selected + matching
         // Read the runtime openai_settings state: the global with SHARED_NAME
         // should still hold GLOBAL_TEMPERATURE (0.55), NOT the edited value.
         const globalBodyTemperature = await page.evaluate((n) => {
-            const openai = window.Luker?.getContext?.()?.openai;
+            const openai = window.Atria?.getContext?.()?.openai;
             const settings = openai?.settings;
             const names = openai?.settingNames;
             if (!Array.isArray(settings) || !names) return null;
@@ -163,7 +163,7 @@ test.describe('#41 — saveOpenAIPreset dispatch: card-bound selected + matching
         // The card branch skips that trigger by design.
         const selectedValueStartsWithSentinel = await page.evaluate(() => {
             const v = document.querySelector('#settings_preset_openai')?.value ?? '';
-            return String(v).startsWith('__luker_card__::');
+            return String(v).startsWith('__atria_card__::');
         });
         expect(selectedValueStartsWithSentinel).toBe(true);
     });

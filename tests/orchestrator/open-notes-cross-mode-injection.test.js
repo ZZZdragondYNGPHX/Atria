@@ -33,7 +33,7 @@ const __sillyTavernSettings = {
         nodeIterationMaxRounds: 3,
     },
 };
-globalThis.Luker = {
+globalThis.Atria = {
     __settings: __sillyTavernSettings,
     getContext: () => ({
         constants: {
@@ -163,7 +163,7 @@ test.each([false, true])('Single re-reads open notes on every model round (v2=%s
     context.__floorStateForNotes.listAcrossFloors = async () => [{ id: 'n', text: `revision-${++reads}`, status: 'open' }];
     llmResponses.push(
         { toolCalls: [{ id: 'read', name: 'chat_read_range', args: { start: 0, end: 0 } }] },
-        { toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'done' } }] },
+        { toolCalls: [{ name: 'atri_orch_final_guidance', args: { text: 'done' } }] },
     );
     await runWorkerNode(context, {}, { id: 'single', tools: { chat: { read_range: true } } },
         { systemPrompt: 'same system', userPromptTemplate: 'same user' }, [], new Map(), null,
@@ -315,7 +315,7 @@ describe('spec mode: Open Notes reach every worker node', () => {
             contextForNotes: makeNotesContext(),
         };
         llmResponses.push({
-            toolCalls: [{ id: 'tc1', name: 'luker_orch_final_guidance', args: { text: 'done' } }],
+            toolCalls: [{ id: 'tc1', name: 'atri_orch_final_guidance', args: { text: 'done' } }],
             assistantText: '',
             reasoning: '',
         });
@@ -375,7 +375,7 @@ describe('spec mode: Open Notes reach every worker node', () => {
             },
         };
         llmResponses.push({
-            toolCalls: [{ id: 'tc1', name: 'luker_orch_final_guidance', args: { text: 'done' } }],
+            toolCalls: [{ id: 'tc1', name: 'atri_orch_final_guidance', args: { text: 'done' } }],
             assistantText: '',
             reasoning: '',
         });

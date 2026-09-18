@@ -7,9 +7,9 @@
 // Repro 场景(展示 old bug + 断言 new fix):
 //   1. Seed 一张卡携带 slot CardSlot(temperature=0.27,default)。
 //   2. 全局 preset 库预置 GlobalTarget(temperature=0.55)。
-//   3. Load Luker → 卡自动选中 → ghost 自动 apply → temp_counter 显示 0.27。
+//   3. Load Atria → 卡自动选中 → ghost 自动 apply → temp_counter 显示 0.27。
 //   4. 用户手切到 GlobalTarget global option(而非 ghost)。此时:
-//        - DOM: #settings_preset_openai 选中项 data-luker-char-bound 不为 "1"
+//        - DOM: #settings_preset_openai 选中项 data-atria-char-bound 不为 "1"
 //        - old code: characterBoundPresetState.active 可能仍为 true(未同步)
 //        - new code: isCharacterBoundPresetOptionSelected() 返 false → 走全局分支
 //   5. 编辑 temperature 到 EDITED_TEMPERATURE (0.71)。
@@ -88,7 +88,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             {
@@ -118,7 +118,7 @@ function readCardBoundPresetBody(dataRoot, avatarFile, name) {
     const p = resolve(dataRoot, 'default-user', 'characters', avatarFile);
     const png = readFileSync(p);
     const card = JSON.parse(readPngCard(png));
-    const state = card?.data?.extensions?.luker?.chat_completion_preset;
+    const state = card?.data?.extensions?.atria?.chat_completion_preset;
     if (!state || !Array.isArray(state.presets)) return null;
     return state.presets.find(p => p?.name === name)?.preset ?? null;
 }
@@ -135,7 +135,7 @@ test.describe('#50b — #update_oai_preset guard 用 DOM signal 消除 desync �
         await selectCharacterByName(page, CARD_NAME);
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 15_000 });
         await expect
@@ -152,7 +152,7 @@ test.describe('#50b — #update_oai_preset guard 用 DOM signal 消除 desync �
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
             const activeOpt = sel?.selectedOptions?.[0];
-            return activeOpt && activeOpt.getAttribute('data-luker-char-bound') !== '1';
+            return activeOpt && activeOpt.getAttribute('data-atria-char-bound') !== '1';
         }, { timeout: 5_000 });
 
         // 等 onSettingsPresetChange 的 async 应用完成到 oai_settings.temp_openai
@@ -172,7 +172,7 @@ test.describe('#50b — #update_oai_preset guard 用 DOM signal 消除 desync �
         await expect
             .poll(async () => {
                 return await page.evaluate(() => {
-                    const s = window.Luker?.getContext?.()?.chatCompletionSettings;
+                    const s = window.Atria?.getContext?.()?.chatCompletionSettings;
                     return Number(s?.temp_openai ?? NaN);
                 });
             }, { timeout: 5_000 })
@@ -209,7 +209,7 @@ test.describe('#50b — #update_oai_preset guard 用 DOM signal 消除 desync �
         await expect
             .poll(async () => {
                 return await page.evaluate((n) => {
-                    const openai = window.Luker?.getContext?.()?.openai;
+                    const openai = window.Atria?.getContext?.()?.openai;
                     const settings = openai?.settings;
                     const names = openai?.settingNames;
                     if (!Array.isArray(settings) || !names) return null;

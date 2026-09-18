@@ -95,9 +95,9 @@ describe('scope-picker — pure helpers', () => {
         // Preset dropdown selected option
         expect(html).toMatch(/<option value="fast" selected>/);
         // Character sub-row hidden when kind=preset
-        expect(html).toMatch(/luker_skill_scope_character_fields"\s+hidden/);
+        expect(html).toMatch(/atria_skill_scope_character_fields"\s+hidden/);
         // Preset sub-row visible
-        expect(html).toMatch(/luker_skill_scope_preset_fields"\s+data-skill-scope-row="preset"/);
+        expect(html).toMatch(/atria_skill_scope_preset_fields"\s+data-skill-scope-row="preset"/);
         // No connection profile select / row anywhere
         expect(html).not.toContain('data-skill-scope-api');
         expect(html).not.toContain('Connection profile');
@@ -113,8 +113,8 @@ describe('scope-picker — pure helpers', () => {
             presets: [],
             characters: [],
         });
-        expect(html).toMatch(/luker_skill_scope_preset_fields"\s+hidden/);
-        expect(html).toMatch(/luker_skill_scope_character_fields"\s+hidden/);
+        expect(html).toMatch(/atria_skill_scope_preset_fields"\s+hidden/);
+        expect(html).toMatch(/atria_skill_scope_character_fields"\s+hidden/);
     });
 
     test('buildScopePickerHtml shows the empty-state option when no preset managers contributed', () => {

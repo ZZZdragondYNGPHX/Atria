@@ -9,16 +9,16 @@
 //        body per origin — name shadowing across origins is forbidden.
 //
 // REAL USER-GESTURE flow:
-//   1. Seed a card with `data.extensions.luker.chat_completion_preset =
+//   1. Seed a card with `data.extensions.atria.chat_completion_preset =
 //      { presets: [{name:'ConflictFoo', preset:{temperature:0.13}}],
 //        defaultPresetName:'ConflictFoo' }` via writeEmbeddedCharacter.
-//   2. Boot Luker, select the card via the visible list so onCharacterChange
+//   2. Boot Atria, select the card via the visible list so onCharacterChange
 //      renders the Card-bound optgroup.
 //   3. Save a local global preset also named 'ConflictFoo' with a distinct
 //      temperature via the visible Save-preset-as icon (real click gesture).
 //   4. Verify #settings_preset_openai now contains BOTH a card-bound option
-//      (data-luker-char-bound="1", inside optgroup[data-luker-card-bound="1"])
-//      and a local option (no data-luker-char-bound, outside that optgroup)
+//      (data-atria-char-bound="1", inside optgroup[data-atria-card-bound="1"])
+//      and a local option (no data-atria-char-bound, outside that optgroup)
 //      with identical labels.
 //   5. Verify the default card-bound entry auto-applied (temp counter = card
 //      value). Then switch to the local same-name preset via selectPresetByName
@@ -64,7 +64,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: CONFLICT_NAME, preset: { temperature: CARD_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -91,9 +91,9 @@ test.describe('#45 — card-bound preset and same-named local global preset coex
 
         // Wait for the card-bound optgroup to render with the conflict name.
         const optState = await page.waitForFunction((name) => {
-            const optgroup = document.querySelector('#settings_preset_openai optgroup[data-luker-card-bound="1"]');
+            const optgroup = document.querySelector('#settings_preset_openai optgroup[data-atria-card-bound="1"]');
             if (!optgroup) return false;
-            const opts = Array.from(optgroup.querySelectorAll('option[data-luker-char-bound="1"]'));
+            const opts = Array.from(optgroup.querySelectorAll('option[data-atria-char-bound="1"]'));
             return opts.some(o => o.textContent === name);
         }, CONFLICT_NAME, { timeout: 15_000 });
         expect(await optState.jsonValue()).toBeTruthy();
@@ -125,11 +125,11 @@ test.describe('#45 — card-bound preset and same-named local global preset coex
         // labels but distinct values.
         const bothPresent = await page.evaluate((name) => {
             const cardOpt = document.querySelector(
-                '#settings_preset_openai optgroup[data-luker-card-bound="1"] option[data-luker-char-bound="1"]',
+                '#settings_preset_openai optgroup[data-atria-card-bound="1"] option[data-atria-char-bound="1"]',
             );
             const cardMatches = cardOpt && cardOpt.textContent === name;
             const localOpts = Array.from(document.querySelectorAll('#settings_preset_openai > option'))
-                .filter(o => o.textContent === name && !o.hasAttribute('data-luker-char-bound'));
+                .filter(o => o.textContent === name && !o.hasAttribute('data-atria-char-bound'));
             return {
                 card: cardMatches ? cardOpt.value : null,
                 localCount: localOpts.length,
@@ -137,10 +137,10 @@ test.describe('#45 — card-bound preset and same-named local global preset coex
             };
         }, CONFLICT_NAME);
         expect(bothPresent.card).toBeTruthy();
-        expect(bothPresent.card.startsWith('__luker_card__::')).toBe(true);
+        expect(bothPresent.card.startsWith('__atria_card__::')).toBe(true);
         expect(bothPresent.localCount).toBe(1);
         expect(bothPresent.localValue).toBeTruthy();
-        expect(bothPresent.localValue.startsWith('__luker_card__::')).toBe(false);
+        expect(bothPresent.localValue.startsWith('__atria_card__::')).toBe(false);
 
         // Save-as landed on the local preset, so temperature counter should
         // already reflect the local value. Assert to lock the state.

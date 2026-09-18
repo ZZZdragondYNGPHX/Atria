@@ -89,7 +89,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [{
                             name: CARD_PRESET_NAME,
@@ -131,7 +131,7 @@ test.describe('#64b — JS-Slash-Runner live-integration reads card-bound preset
         // Wait for the ghost card-bound option to become selected.
         await page.waitForFunction(() => {
             const opt = document.querySelector('#settings_preset_openai option:checked');
-            return opt && opt.getAttribute('data-luker-char-bound') === '1';
+            return opt && opt.getAttribute('data-atria-char-bound') === '1';
         }, { timeout: 15_000 });
 
         // Give the ext a beat to react to PRESET_CHANGED / CHAT_CHANGED.

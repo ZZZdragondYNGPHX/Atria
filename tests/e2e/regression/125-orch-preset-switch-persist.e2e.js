@@ -22,12 +22,12 @@ test('native definition and default binding survive page reload', async ({ page 
     await root.getByRole('button',{ name:'Save definition for future runs' }).click();
     await root.getByRole('button',{ name:'Bind as default',exact:true }).click();
     const id = await page.evaluate(async () => {
-        const context = window.Luker.getContext();
+        const context = window.Atria.getContext();
         await context.saveSettings?.(0,{ directSave:true });
         return context.extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId;
     });
     await reloadAndAwait(page,server.baseURL);
-    expect(await page.evaluate(() => window.Luker.getContext().extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId)).toBe(id);
+    expect(await page.evaluate(() => window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId)).toBe(id);
     await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Presets'); });
     await expect(root.getByText('Effective: Persistent native preset · Selected by: default',{ exact:true })).toBeVisible();
 });

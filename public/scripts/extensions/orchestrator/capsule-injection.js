@@ -34,7 +34,7 @@
  * orchestrator owns at the main.js level.
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const extension_prompt_roles = __ctx.constants.promptRoles;
 const extension_prompt_types = __ctx.constants.promptTypes;
 const extension_settings = __ctx.extensionSettings;
@@ -48,7 +48,7 @@ import {
 } from './world-info.js';
 
 const MODULE_NAME = 'orchestrator';
-const CAPSULE_PROMPT_KEY = 'luker_orchestrator_capsule';
+const CAPSULE_PROMPT_KEY = 'atri_orchestrator_capsule';
 
 export function normalizeCapsuleInjectPosition(value) {
     const numeric = Number(value);

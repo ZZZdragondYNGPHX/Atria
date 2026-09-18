@@ -60,7 +60,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
         page.on('pageerror', err => console.warn(`[browser:error] ${err.message}`));
 
         await awaitMainUI(page);
-        // First-run user dirs surface a blocking "Welcome to Luker!"
+        // First-run user dirs surface a blocking "Welcome to Atria!"
         // dialog with a "Save" button that locks the persona name. Any
         // /profile slash command issued behind that dialog hangs because
         // the executor's parser is gated by the modal. Dismiss it once.
@@ -70,10 +70,10 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
         // PW_INCLUDE_INTEGRATION specs require a real LLM in the data
         // dir. Missing profile = setup bug, not a silent skip.
         const profile = await activateConnectionProfile(page);
-        expect(profile, 'no usable connection profile reachable as online (configure one in Connection Manager or set LUKER_PLAYWRIGHT_PROFILE)').toBeTruthy();
+        expect(profile, 'no usable connection profile reachable as online (configure one in Connection Manager or set ATRIA_PLAYWRIGHT_PROFILE)').toBeTruthy();
 
         const llmReady = await page.evaluate(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const v = ctx?.onlineStatus ?? null;
             return Boolean(v) && String(v).toLowerCase() !== 'no_connection';
         });
@@ -108,7 +108,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
         }, RP_PROMPT);
 
         // ── 6. Panel auto-opens on RUN_STARTED ─────────────────────────
-        const panel = page.locator('#luker-orch-run-panel');
+        const panel = page.locator('#atria-orch-run-panel');
         await expect(panel).toHaveAttribute('data-state', 'open', { timeout: 30_000 });
         await clearToasts(page);
         await page.screenshot({
@@ -247,7 +247,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
             const profile = await activateConnectionProfile(page);
             expect(profile, 'no usable connection profile (setup integration env first)').toBeTruthy();
             const llmReady = await page.evaluate(() => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const v = ctx?.onlineStatus ?? null;
                 return Boolean(v) && String(v).toLowerCase() !== 'no_connection';
             });
@@ -270,7 +270,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
                 btn.click();
             }, RP_PROMPT);
 
-            const panel = page.locator('#luker-orch-run-panel');
+            const panel = page.locator('#atria-orch-run-panel');
             await expect(panel).toHaveAttribute('data-state', 'open', { timeout: 30_000 });
             // On a 375-wide viewport (mobile-class), panel.js sets
             // data-layout="drawer" via matchMedia('(min-width: 1024px)').
@@ -304,7 +304,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
 
 /**
  * Dismiss any toastr notifications that may overlay the chat region.
- * Luker's chat-sync watchdog occasionally fires an "integrity drift,
+ * Atria's chat-sync watchdog occasionally fires an "integrity drift,
  * auto-recovering" toast when a test rapidly clobbers chat state across
  * runs — harmless but it occludes the panel in screenshots. Best-effort:
  * if toastr isn't loaded or the toasts already cleared, this is a no-op.
@@ -318,7 +318,7 @@ async function clearToasts(page) {
 
 
 /**
- * Dismiss the "Welcome to Luker!" first-run modal if it's present. The
+ * Dismiss the "Welcome to Atria!" first-run modal if it's present. The
  * modal blocks pointer events for everything behind it AND the slash-
  * command parser, so /profile activation hangs until the user clicks
  * the Save button (or the dialog is removed from the DOM).
@@ -326,7 +326,7 @@ async function clearToasts(page) {
  * Idempotent: returns immediately if the dialog isn't there.
  */
 async function dismissWelcomeDialogIfPresent(page) {
-    const welcomeSave = page.locator('dialog:has(h3:has-text("Welcome to Luker!")) button:has-text("Save"), dialog:has(h3:has-text("Welcome to SillyTavern!")) button:has-text("Save")');
+    const welcomeSave = page.locator('dialog:has(h3:has-text("Welcome to Atria!")) button:has-text("Save"), dialog:has(h3:has-text("Welcome to SillyTavern!")) button:has-text("Save")');
     try {
         await welcomeSave.first().waitFor({ state: 'visible', timeout: 2000 });
     } catch {
@@ -353,7 +353,7 @@ async function activateConnectionProfile(page) {
     // settings at all, the dropdown waitForFunction below will burn
     // 30s for nothing. Probe the settings shape first (no DOM access).
     const hasAnyProfile = await page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const profiles = ctx?.extensionSettings?.connectionManager?.profiles;
         return Array.isArray(profiles) && profiles.length > 0;
     }).catch(() => false);
@@ -372,12 +372,12 @@ async function activateConnectionProfile(page) {
         // returns '' which the caller treats as "skip".
     }
     return await page.evaluate(async () => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         if (!ctx) return '';
         const profiles = ctx.extensionSettings?.connectionManager?.profiles;
         if (!Array.isArray(profiles) || !profiles.length) return '';
         const pinned = (
-            (typeof process !== 'undefined' && process.env?.LUKER_PLAYWRIGHT_PROFILE)
+            (typeof process !== 'undefined' && process.env?.ATRIA_PLAYWRIGHT_PROFILE)
             || ''
         ).toLowerCase();
         const pick = profiles.find(p => pinned && String(p.name || '').toLowerCase() === pinned)
@@ -403,7 +403,7 @@ async function activateConnectionProfile(page) {
  */
 async function ensureCharacterLoaded(page) {
     return await page.evaluate(async () => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         if (!ctx) return '';
         const cur = ctx.characters?.[ctx.characterId];
         if (cur?.avatar) return String(cur.avatar);
@@ -431,14 +431,14 @@ async function ensureCharacterLoaded(page) {
  * Ensure the orchestrator extension is enabled AND its executionMode is
  * 'director'. The main settings live at
  * `extension_settings.orchestrator` (the iter-studio bucket at
- * `extension_settings.luker_orchestrator` is unrelated). Without
+ * `extension_settings.atria_orchestrator` is unrelated). Without
  * `enabled: true`, the dispatch hook at main.js's GENERATE_TAKEOVER_DISPATCH
  * early-returns; without executionMode === 'director', a different
  * runner branches off and the panel never mounts.
  */
 async function ensureOrchestratorEnabledDirectorMode(page) {
     await page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const settings = ctx?.extensionSettings?.orchestrator;
         if (!settings) throw new Error('orchestrator settings missing — extension not mounted (check that the extension is enabled in this build)');
         settings.enabled = true;

@@ -54,7 +54,7 @@
  * matches the pre-Apply state byte-for-byte.
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 import {
@@ -84,8 +84,6 @@ import {
     commitLorebookOperations,
     buildCharacterEditorHelperApis,
     buildUnifiedCharacterEditorLiveSnapshot,
-    readLegacyCeaEditorSessions,
-    readLegacyCharIterPopupSessions,
 } from '../main.js';
 import { renderCeaEditorPreviewPane } from '../editor-preview.js';
 import { buildReplaceDiffModel, renderReplaceDiffOverview } from '../replace-diff-overview.js';
@@ -102,8 +100,6 @@ import {
     makeMessageId,
     normalizeMessageShape,
 } from './session-store.js';
-import { migrateCeaSessionsV2ToSidecar } from './session-migration-v2-to-sidecar.js';
-import { migrateLegacyCeaEditorSession } from './session-migration.js';
 
 const MODULE = 'cea-editor-unified';
 const STYLESHEET_ID = 'cea_editor_studio_stylesheet';
@@ -229,141 +225,6 @@ function createNewSession(avatar) {
         // (see `_clearTransientIfEmpty`).
         _transient: true,
     };
-}
-
-/**
- * One-shot migration from the pre-unification CEA editor's per-character
- * session bundle (`character_editor_assistant_sessions` namespace on the
- * card) into the unified plugin-owned namespace
- * (`extension_settings.character_editor_assistant.unified_cea_editor_sessions[char_<avatar>]`).
- *
- * Runs on popup open only when the unified namespace is empty for this
- * avatar — the very first time a legacy user opens the new popup. Legacy
- * files are NEVER deleted: if migration is buggy the user can revert the
- * extension and recover everything. Per-session failures are logged and
- * skipped; one bad legacy session doesn't block the rest of the history
- * from showing up.
- *
- * Returns the number of sessions successfully written to the unified store
- * (0 when there was nothing to migrate or migration short-circuited).
- *
- * @param {object} context - SillyTavern context.
- * @param {string} avatar - Active character avatar.
- * @param {object} sessionStore - Unified `createUnifiedCeaEditorSessionStore` handle.
- * @returns {Promise<number>}
- */
-async function migrateLegacySessionsIfNeeded(context, avatar, sessionStore) {
-    if (!avatar) return 0;
-    // Skip if a prior migration already finished for this avatar — without
-    // this gate, a user who clears their unified sessions would have the
-    // legacy bundle silently re-imported on the next popup open.
-    if (isMigrationDone(context, avatar)) return 0;
-
-    let existing = [];
-    try {
-        existing = await sessionStore.list();
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn(`[${MODULE}] sessionStore.list failed during migration check`, err);
-        return 0;
-    }
-    if (Array.isArray(existing) && existing.length > 0) {
-        // The user already has unified sessions for this avatar — skip the
-        // legacy read AND mark done so a future clear-history doesn't
-        // re-trigger.
-        markMigrationDone(context, avatar);
-        return 0;
-    }
-
-    // Read BOTH legacy sources: the old editor popup's sidecar AND the
-    // character-iteration popup's plugin-owned popupSessionsV2 bucket. Both
-    // share the same conversationMessages / pendingApproval shape, so the
-    // same migrator handles them.
-    let legacy = [];
-    try {
-        const editorSidecar = await readLegacyCeaEditorSessions(context, avatar);
-        const charIterPopup = await readLegacyCharIterPopupSessions(context, avatar);
-        legacy = [
-            ...(Array.isArray(editorSidecar) ? editorSidecar : []),
-            ...(Array.isArray(charIterPopup) ? charIterPopup : []),
-        ];
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn(`[${MODULE}] legacy session read failed`, err);
-        return 0;
-    }
-    if (legacy.length === 0) {
-        // Nothing to migrate — still mark done so a future clear-history
-        // doesn't keep re-checking the legacy buckets.
-        markMigrationDone(context, avatar);
-        return 0;
-    }
-
-    let migrated = 0;
-    for (const legacySession of legacy) {
-        try {
-            const migratedSession = migrateLegacyCeaEditorSession(legacySession);
-            if (!migratedSession || !migratedSession.id) continue;
-            // Skip empty migrated sessions — they would otherwise persist
-            // as phantom history rows the user can't usefully reopen. A
-            // legacy session with zero messages + zero pending edits is
-            // either a stale draft the original popup never finished, or
-            // a corrupted entry; either way the user is better off without
-            // it.
-            const hasMessages = Array.isArray(migratedSession.messages) && migratedSession.messages.length > 0;
-            const hasPendingEdits = Array.isArray(migratedSession.pendingEdits) && migratedSession.pendingEdits.length > 0;
-            if (!hasMessages && !hasPendingEdits) continue;
-            await sessionStore.save(migratedSession);
-            migrated++;
-        } catch (err) {
-            // Leave the legacy bundle intact and continue with the rest —
-            // partial migration is better than zero migration.
-            // eslint-disable-next-line no-console
-            console.warn(`[${MODULE}] migrate failed for legacy session`, legacySession?.id, err);
-        }
-    }
-    markMigrationDone(context, avatar);
-    return migrated;
-}
-
-/**
- * Read the per-avatar migration-done bookkeeping marker. The marker lives on
- * `extension_settings.character_editor_assistant._unifiedCeaEditorMigrationDone[avatar]`.
- *
- * Naming convention: the leading underscore signals this is an internal
- * runtime flag — NOT a user-facing setting. It is intentionally co-located
- * with user settings because the migrator runs against the same per-character
- * scope, but consumers (export/import, settings UI) should treat any key with
- * a leading `_` as machine bookkeeping and skip it.
- */
-function isMigrationDone(context, avatar) {
-    const settings = context?.extensionSettings?.character_editor_assistant;
-    if (!settings || typeof settings !== 'object') return false;
-    const doneMap = settings._unifiedCeaEditorMigrationDone;
-    return Boolean(doneMap && typeof doneMap === 'object' && doneMap[avatar]);
-}
-
-/**
- * Write the per-avatar migration-done marker. See `isMigrationDone` for the
- * leading-underscore-as-internal naming convention.
- */
-function markMigrationDone(context, avatar) {
-    const settings = context?.extensionSettings?.character_editor_assistant;
-    if (!settings || typeof settings !== 'object') return;
-    if (!settings._unifiedCeaEditorMigrationDone || typeof settings._unifiedCeaEditorMigrationDone !== 'object') {
-        settings._unifiedCeaEditorMigrationDone = {};
-    }
-    settings._unifiedCeaEditorMigrationDone[avatar] = true;
-    try {
-        if (typeof context.saveSettingsDebounced === 'function') {
-            context.saveSettingsDebounced();
-        } else if (typeof context.saveSettings === 'function') {
-            context.saveSettings();
-        }
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn(`[${MODULE}] failed to persist migration-done marker`, err);
-    }
 }
 
 /**
@@ -1766,37 +1627,6 @@ async function _openUnifiedCharacterEditorPopupInner(context, opts, rollbackEnve
         context,
         avatar,
     });
-    try {
-        const settingsRoot = (context?.extensionSettings && typeof context.extensionSettings === 'object'
-            && context.extensionSettings.character_editor_assistant
-            && typeof context.extensionSettings.character_editor_assistant === 'object')
-            ? context.extensionSettings.character_editor_assistant
-            : null;
-        if (settingsRoot) {
-            await migrateCeaSessionsV2ToSidecar({
-                settingsRoot,
-                ctx: context,
-                persistSettings: typeof context.saveSettingsDebounced === 'function'
-                    ? context.saveSettingsDebounced
-                    : (typeof context.saveSettings === 'function' ? context.saveSettings : () => {}),
-            });
-        }
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn('[character-editor-assistant] V2-to-sidecar migration threw, continuing', err);
-    }
-
-    // One-shot legacy migration: if the unified namespace is empty for this
-    // avatar, attempt to import sessions from the pre-unification CEA editor
-    // bundle. Never blocks popup mount on failure — log + proceed with an
-    // empty list. Legacy sessions are NEVER deleted, only copied.
-    try {
-        await migrateLegacySessionsIfNeeded(context, avatar, sessionStore);
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn(`[${MODULE}] migrateLegacySessionsIfNeeded threw — continuing with unmigrated state`, err);
-    }
-
     // Prime markdown deps so the first paint has formatted messages.
     if (ITER_RENDER && typeof ITER_RENDER.ensureMarkdownDeps === 'function') {
         await ITER_RENDER.ensureMarkdownDeps();
@@ -2954,7 +2784,7 @@ async function _openUnifiedCharacterEditorPopupInner(context, opts, rollbackEnve
         $root.on('click.ceaEditor', '[data-cea-editor-action="regenerate"]', async (e) => {
             e.preventDefault();
             if (state.isBusy) return;
-            const id = String(e.currentTarget?.getAttribute('data-luker-lib-msg-id') || '');
+            const id = String(e.currentTarget?.getAttribute('data-atria-lib-msg-id') || '');
             if (!id) return;
             const messages = state.session.messages || [];
             const idx = messages.findIndex(m => m && m.id === id);
@@ -3045,7 +2875,7 @@ async function _openUnifiedCharacterEditorPopupInner(context, opts, rollbackEnve
         $root.on('click.ceaEditor', '[data-cea-editor-action="edit-user-message"]', async (e) => {
             e.preventDefault();
             if (state.isBusy) return;
-            const id = String(e.currentTarget?.getAttribute('data-luker-lib-msg-id') || '');
+            const id = String(e.currentTarget?.getAttribute('data-atria-lib-msg-id') || '');
             if (!id) return;
             await editUserMessage(id);
         });
@@ -3344,7 +3174,7 @@ function buildPopupHtml({
             </button>`
         : '';
     return `
-<div id="${popupId}" class="cea_editor_studio luker-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
+<div id="${popupId}" class="cea_editor_studio atria-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
     <div class="cea_editor_topbar">
         <div class="cea_editor_title">${esc(title)}</div>
         <div class="cea_editor_topbar_actions">${replaceDiffBtnHtml}</div>
@@ -3358,18 +3188,18 @@ function buildPopupHtml({
         </div>
     </details>
 
-    <div class="luker-iter-workspace-tabs" role="tablist">
-        <button type="button" class="luker-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
-            <span class="luker-iter-workspace-tab-label">${esc(chatTabLabel)}</span>
-            <span class="luker-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${esc(chatBadgeAriaLabel)}"></span>
+    <div class="atria-iter-workspace-tabs" role="tablist">
+        <button type="button" class="atria-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
+            <span class="atria-iter-workspace-tab-label">${esc(chatTabLabel)}</span>
+            <span class="atria-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${esc(chatBadgeAriaLabel)}"></span>
         </button>
-        <button type="button" class="luker-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
-            <span class="luker-iter-workspace-tab-label">${esc(previewTabLabel)}</span>
+        <button type="button" class="atria-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
+            <span class="atria-iter-workspace-tab-label">${esc(previewTabLabel)}</span>
         </button>
     </div>
 
-    <div class="luker-iter-workspace-grid">
-        <div class="luker-iter-workspace-chat" data-iter-pane="chat">
+    <div class="atria-iter-workspace-grid">
+        <div class="atria-iter-workspace-chat" data-iter-pane="chat">
             <div class="cea_editor_messages" data-cea-editor-messages></div>
             <div class="cea_editor_composer">
                 <textarea class="text_pole" rows="2" data-cea-editor-input data-iter-input placeholder="${esc(composerPlaceholder)}"></textarea>
@@ -3384,8 +3214,8 @@ function buildPopupHtml({
                 </div>
             </div>
         </div>
-        <div class="luker-iter-workspace-resizer" data-iter-resizer aria-label="${esc(resizerAriaLabel)}"></div>
-        <div class="luker-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
+        <div class="atria-iter-workspace-resizer" data-iter-resizer aria-label="${esc(resizerAriaLabel)}"></div>
+        <div class="atria-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
     </div>
 </div>`;
 }

@@ -120,7 +120,7 @@ describe('text-diff — narrow-viewport cache (no per-call innerWidth reads)', (
         // Wide → renders short content as open (matches the existing
         // contract from text-diff.test.js — short + wide = open).
         const wideHtml = renderInlineTextDiffHtml('a', 'b');
-        expect(wideHtml).toMatch(/<details class="luker_lib_diff" open>/);
+        expect(wideHtml).toMatch(/<details class="atria_lib_diff" open>/);
 
         // Simulate the user shrinking the window across the breakpoint.
         mqListeners.forEach(({ mql, fn }) => {
@@ -129,8 +129,8 @@ describe('text-diff — narrow-viewport cache (no per-call innerWidth reads)', (
         });
         const narrowHtml = renderInlineTextDiffHtml('a', 'b');
         // Same input + narrow viewport → details should ship collapsed.
-        expect(narrowHtml).not.toMatch(/<details class="luker_lib_diff" open>/);
-        expect(narrowHtml).toMatch(/<details class="luker_lib_diff">/);
+        expect(narrowHtml).not.toMatch(/<details class="atria_lib_diff" open>/);
+        expect(narrowHtml).toMatch(/<details class="atria_lib_diff">/);
 
         // And it STILL didn't read innerWidth — the listener is the only
         // refresh path, not a per-call poll.
@@ -144,7 +144,7 @@ describe('text-diff — narrow-viewport cache (no per-call innerWidth reads)', (
             fn({ matches: true, media: mql.media });
         });
         const html = renderInlineTextDiffHtml('a', 'b', { forceOpen: true });
-        expect(html).toMatch(/<details class="luker_lib_diff" open>/);
+        expect(html).toMatch(/<details class="atria_lib_diff" open>/);
     });
 });
 

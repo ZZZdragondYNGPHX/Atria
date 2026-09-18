@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-const TICKET_PROTOCOL_PREFIX = 'luker-ws-ticket.';
+const TICKET_PROTOCOL_PREFIX = 'atria-ws-ticket.';
 const DEFAULT_RECONNECT_BACKOFF_MS = 500;
 // Client-side stale-connection detector. The server pings on a fixed cadence
 // (see src/ws-delivery.js WS_SERVER_PING_INTERVAL_MS = 30_000). If we haven't
@@ -29,7 +29,7 @@ function uuidv4() {
     });
 }
 
-export function createLukerDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BACKOFF_MS } = {}) {
+export function createAtriaDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BACKOFF_MS } = {}) {
     let ws = null;
     let ticketProvider = null;
     let closed = false;
@@ -357,7 +357,7 @@ export function createLukerDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BAC
         },
         subscribe(requestId, initialHeaders) {
             // Always request replay from seq 1 to avoid a race: server-side
-            // runLukerDispatch uses setImmediate, so dispatch may begin (and
+            // runAtriaDispatch uses setImmediate, so dispatch may begin (and
             // events accumulate) before the client's WS subscribe arrives.
             // Bare `subscribe` is live-only and would drop those early events;
             // `resume {from_seq: 1}` replays from the start of the stream.
@@ -406,9 +406,9 @@ export function createLukerDelivery({ reconnectBackoffMs = DEFAULT_RECONNECT_BAC
  * us a deterministic reconnect trigger instead of waiting for the stale-check
  * timer window (see CLIENT_STALE_THRESHOLD_MS) to expire.
  *
- * Called from public/script.js after createLukerDelivery + connect.
+ * Called from public/script.js after createAtriaDelivery + connect.
  *
- * @param {ReturnType<createLukerDelivery>} delivery
+ * @param {ReturnType<createAtriaDelivery>} delivery
  * @returns {() => void} Disposer that removes both listeners.
  */
 export function installLifecycleHooks(delivery) {
@@ -478,7 +478,7 @@ export function installFetchProxy(delivery, options = {}) {
     // `iframe.load` (to survive navigate/reload resetting `contentWindow.fetch`)
     // and needs the second/third call to short-circuit instead of stacking
     // wrappers around our own proxiedFetch.
-    if (targetWindow.__lukerFetchProxyDisposer) return targetWindow.__lukerFetchProxyDisposer;
+    if (targetWindow.__atriaFetchProxyDisposer) return targetWindow.__atriaFetchProxyDisposer;
 
     // Rebind built-ins to the target realm. Without this, `new Response(...)`
     // constructs a parent-realm Response returned to iframe consumers, so
@@ -509,7 +509,7 @@ export function installFetchProxy(delivery, options = {}) {
                 method: 'POST',
                 headers: {
                     ...getExtraHeaders(),
-                    'x-luker-request-id': requestId,
+                    'x-atria-request-id': requestId,
                 },
             });
             if (p && typeof p.catch === 'function') p.catch(() => {});
@@ -520,16 +520,16 @@ export function installFetchProxy(delivery, options = {}) {
 
     async function proxiedFetch(url, init) {
         if (!shouldProxy(url)) return originalFetch(url, init);
-        // Client-provided request id: reuse body.luker_generation.job_id when
+        // Client-provided request id: reuse body.atri_generation.job_id when
         // caller pre-generated one (openai.js:4201 does this so it can poll
         // /jobs/status?id= with the same uuid). Otherwise mint a fresh one
-        // and let the server echo it via x-luker-generation-id.
+        // and let the server echo it via x-atria-generation-id.
         let requestId = uuidv4();
         try {
             const b = init?.body;
             if (typeof b === 'string') {
                 const parsed = JSON.parse(b);
-                const bodyId = String(parsed?.luker_generation?.job_id || '').trim();
+                const bodyId = String(parsed?.atri_generation?.job_id || '').trim();
                 if (bodyId) requestId = bodyId;
             }
         } catch { /* body not JSON or unparseable — keep the minted uuid */ }
@@ -540,19 +540,19 @@ export function installFetchProxy(delivery, options = {}) {
         const normalizedHeaders = callerHeaders instanceof Headers
             ? Object.fromEntries(callerHeaders.entries())
             : (callerHeaders || {});
-        const headers = { ...normalizedHeaders, 'x-luker-request-id': requestId };
+        const headers = { ...normalizedHeaders, 'x-atria-request-id': requestId };
         const httpResp = await originalFetch(url, { ...(init || {}), headers });
         if (!httpResp.ok) return httpResp;
         try { await httpResp.clone().json(); } catch { /* body may be empty */ }
         // Server echoes the actual job id via header — take it as source of
         // truth in case body id / header id / server-mint disagree.
-        const serverJobId = httpResp.headers.get('x-luker-generation-id');
+        const serverJobId = httpResp.headers.get('x-atria-generation-id');
         if (serverJobId && serverJobId !== requestId) {
             requestId = serverJobId;
         }
         const initialHeaders = {};
         httpResp.headers.forEach((v, k) => {
-            if (k.toLowerCase().startsWith('x-luker-')) initialHeaders[k] = v;
+            if (k.toLowerCase().startsWith('x-atria-')) initialHeaders[k] = v;
         });
         const { stream, headPromise, unsubscribe } = delivery.subscribe(requestId, initialHeaders);
         console.info(`[ws-delivery] proxiedFetch subscribe request_id=${requestId} url=${String(url).split('?')[0]}`);
@@ -600,9 +600,9 @@ export function installFetchProxy(delivery, options = {}) {
         // Only restore if nobody else has since re-monkey-patched fetch in
         // this window; blindly restoring would clobber a later override.
         if (targetWindow.fetch === proxiedFetch) targetWindow.fetch = originalFetch;
-        delete targetWindow.__lukerFetchProxyDisposer;
+        delete targetWindow.__atriaFetchProxyDisposer;
     };
-    targetWindow.__lukerFetchProxyDisposer = disposer;
+    targetWindow.__atriaFetchProxyDisposer = disposer;
     return disposer;
 }
 
@@ -615,7 +615,7 @@ export function installFetchProxy(delivery, options = {}) {
  * Motivation: TavernHelper's JS-Slash-Runner (and any script runtime that
  * sandboxes user scripts inside `<iframe>`) gives each script its own
  * `window.fetch` untouched by the top-window proxy. Under the runner-based
- * `/generate` architecture (src/luker-dispatch/runner.js) the HTTP body is
+ * `/generate` architecture (src/atria-dispatch/runner.js) the HTTP body is
  * always `{}` and the real payload lands over WebSocket delivery, so iframe
  * scripts calling `fetch('/api/backends/chat-completions/generate', ...)`
  * see `{}` and treat it as an "invalid response format" failure. Patching
@@ -632,7 +632,7 @@ export function installFetchProxy(delivery, options = {}) {
  *      on navigate / reload / srcdoc rewrite. `installFetchProxy` is
  *      idempotent per-window so redundant patch calls are harmless.
  *
- * @param {ReturnType<createLukerDelivery>} delivery Shared delivery instance
+ * @param {ReturnType<createAtriaDelivery>} delivery Shared delivery instance
  *     from the top window; all iframe subscriptions multiplex over the same
  *     WebSocket, no per-iframe WS.
  * @param {object} [options] Same shape as `installFetchProxy`'s options

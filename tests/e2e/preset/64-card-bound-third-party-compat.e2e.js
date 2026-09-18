@@ -14,8 +14,8 @@
 // `tavern_regex` module reads `preset.extensions.regex_scripts` after
 // resolving the preset by name.
 //
-// Luker's card-bound preset is rendered as a ghost `<option>` whose value
-// is an opaque encoded sentinel (`__luker_card__::<enc(avatar)>::<enc(name)>`)
+// Atria's card-bound preset is rendered as a ghost `<option>` whose value
+// is an opaque encoded sentinel (`__atria_card__::<enc(avatar)>::<enc(name)>`)
 // and whose textContent is the card-slot name (which is NOT a key in
 // `openai_setting_names`). Without the compatibility layer:
 //
@@ -72,7 +72,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [{
                             name: CARD_PRESET_NAME,
@@ -107,7 +107,7 @@ test.describe('#64 — card-bound preset resolves via upstream third-party idiom
         // becomes the currently-selected option on #settings_preset_openai).
         await page.waitForFunction(() => {
             const opt = document.querySelector('#settings_preset_openai option:checked');
-            return opt && opt.getAttribute('data-luker-char-bound') === '1';
+            return opt && opt.getAttribute('data-atria-char-bound') === '1';
         }, { timeout: 15_000 });
 
         // Snapshot the third-party consumer surface. This is READ-ONLY
@@ -178,7 +178,7 @@ test.describe('#64 — card-bound preset resolves via upstream third-party idiom
 
         await page.waitForFunction(() => {
             const opt = document.querySelector('#settings_preset_openai option:checked');
-            return opt && opt.getAttribute('data-luker-char-bound') === '1';
+            return opt && opt.getAttribute('data-atria-char-bound') === '1';
         }, { timeout: 15_000 });
 
         // Baseline: synth row present.
@@ -198,7 +198,7 @@ test.describe('#64 — card-bound preset resolves via upstream third-party idiom
             const $sel = jQuery('#settings_preset_openai');
             const opts = $sel.find('option').filter(function () {
                 const el = /** @type {HTMLOptionElement} */ (this);
-                return el.getAttribute('data-luker-char-bound') !== '1'
+                return el.getAttribute('data-atria-char-bound') !== '1'
                     && !isNaN(Number(el.value))
                     && el.value !== '';
             });
@@ -236,7 +236,7 @@ test.describe('#64 — card-bound preset resolves via upstream third-party idiom
 
         await page.waitForFunction(() => {
             const opt = document.querySelector('#settings_preset_openai option:checked');
-            return opt && opt.getAttribute('data-luker-char-bound') === '1';
+            return opt && opt.getAttribute('data-atria-char-bound') === '1';
         }, { timeout: 15_000 });
 
         // Create a global preset with the SAME name as the card slot,

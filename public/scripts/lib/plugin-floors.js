@@ -35,7 +35,7 @@
  *
  * Regex engine access:
  *   Same lazy-ctx pattern as `chat-regex.js` / `plugin-prompt-regex.js`:
- *   primitives are consumed via `Luker.getContext().regex` (three-layer
+ *   primitives are consumed via `Atria.getContext().regex` (three-layer
  *   API). Direct import from `../extensions/regex/engine.js` would
  *   transitively pull `public/script.js` and its DOM bootstrap chain —
  *   poison for the jest module graph. Ctx resolution is lazy +
@@ -50,7 +50,7 @@ let __regexApiCache = undefined;
 function getRegexApi() {
     if (__regexApiCache !== undefined) return __regexApiCache;
     try {
-        const ctx = globalThis.Luker?.getContext?.();
+        const ctx = globalThis.Atria?.getContext?.();
         const api = ctx?.regex;
         if (api && typeof api.applyRegex === 'function' && api.placement
             && typeof api.placement.USER_INPUT === 'number'
@@ -141,7 +141,7 @@ function roleForMessage(message) {
  * Read the current chat's floors as cooked records for plugin LLM
  * requests. Walks `context.chat` exactly once.
  *
- * @param {object} context — a Luker context object (must expose `chat`)
+ * @param {object} context — a Atria context object (must expose `chat`)
  * @param {object} [options]
  * @param {number} [options.fromSeq] — inclusive 1-based lower seq bound
  * @param {number} [options.toSeq] — inclusive 1-based upper seq bound

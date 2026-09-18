@@ -207,7 +207,7 @@ async function provisionRandomAdminPasswords(adminUsers) {
         user.salt = salt;
         await storage.setItem(toKey(user.handle), user);
         console.error(color.red(banner));
-        console.error(color.red(' Luker generated a random password for an admin account.'));
+        console.error(color.red(' Atria generated a random password for an admin account.'));
         console.error(color.red(' Save it now and change it after first login.'));
         console.error(color.red(sep));
         console.error(`   user: ${color.yellow(user.handle)}`);
@@ -229,7 +229,7 @@ export async function verifySecuritySettings() {
     }
 
     if (!ENABLE_ACCOUNTS) {
-        logSecurityAlert('Your current Luker configuration is insecure (listening to non-localhost). Enable whitelisting, basic authentication or user accounts.');
+        logSecurityAlert('Your current Atria configuration is insecure (listening to non-localhost). Enable whitelisting, basic authentication or user accounts.');
     }
 
     const users = await getAllEnabledUsers();

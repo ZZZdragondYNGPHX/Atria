@@ -2,7 +2,7 @@ import http from 'node:http';
 import express from 'express';
 import WebSocket from 'ws';
 import { createDeliveryServer } from '../src/ws-delivery.js';
-import { runLukerDispatch } from '../src/luker-dispatch/runner.js';
+import { runAtriaDispatch } from '../src/atria-dispatch/runner.js';
 
 global.WebSocket = WebSocket;
 
@@ -14,7 +14,7 @@ async function startServer() {
         next();
     });
     app.post('/api/backends/chat-completions/generate', (req, res) =>
-        runLukerDispatch(req, res, {
+        runAtriaDispatch(req, res, {
             endpoint: 'chat-completions',
             select: () => async (ctx) => {
                 ctx.emit.chunk(new Uint8Array([104, 105])); // 'hi'
@@ -33,14 +33,14 @@ test('end-to-end: HTTP POST → task created → WS subscribe → chunk delivere
         const requestId = 'e2e-1';
         const httpResp = await fetch(`http://127.0.0.1:${server.port}/api/backends/chat-completions/generate`, {
             method: 'POST',
-            headers: { 'content-type': 'application/json', 'x-luker-request-id': requestId },
+            headers: { 'content-type': 'application/json', 'x-atria-request-id': requestId },
             body: '{}',
         });
         expect(httpResp.status).toBe(200);
-        expect(httpResp.headers.get('x-luker-generation-id')).toBe(requestId);
+        expect(httpResp.headers.get('x-atria-generation-id')).toBe(requestId);
         await httpResp.json();
 
-        const ws = new WebSocket(`ws://127.0.0.1:${server.port}/api/ws-delivery`, ['luker-ws-ticket.dummy']);
+        const ws = new WebSocket(`ws://127.0.0.1:${server.port}/api/ws-delivery`, ['atria-ws-ticket.dummy']);
         await new Promise(r => ws.once('open', r));
         // Match production JS client (public/scripts/ws-delivery.js): always
         // resume from seq 1 to avoid the setImmediate race where the dispatch

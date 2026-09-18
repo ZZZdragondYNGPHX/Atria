@@ -39,7 +39,7 @@ const CARD = {
         post_history_instructions: '',
         alternate_greetings: [],
         tags: ['rp', 'fixture'],
-        creator: 'luker-e2e',
+        creator: 'atria-e2e',
         character_version: '1.0',
         extensions: {},
         assets: [
@@ -57,7 +57,7 @@ test.beforeAll(async () => {
     appendConnectionProfile({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
 
     // Build a tiny charx (zip) in /tmp.
-    tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-charx-'));
+    tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-charx-'));
     const iconPng = readFileSync(resolve(REPO_ROOT, 'default/content/default_Seraphina.png'));
     const zip = new AdmZip();
     zip.addFile('card.json', Buffer.from(JSON.stringify(CARD), 'utf8'));

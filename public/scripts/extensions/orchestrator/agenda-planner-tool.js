@@ -2,7 +2,7 @@ import { validateParsedToolCalls } from '../function-call-runtime.js';
 import { waitForRpmSlot } from '../../lib/iter-tool-calling.js';
 import { isAbortError, throwIfAborted } from './abort-utils.js';
 
-const EXPECTED = 'luker_orch_planner_step';
+const EXPECTED = 'atri_orch_planner_step';
 
 export function validatePlannerToolResult(result, tools) {
     const calls = result?.toolCalls;

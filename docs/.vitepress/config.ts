@@ -70,7 +70,7 @@ const zhCNSidebar = [
   {
   text: '入门指南',
   items: [
-  { text: 'Luker 是什么', link: '/zh-CN/guide/what-is-luker' },
+  { text: 'Atria 是什么', link: '/zh-CN/guide/what-is-atria' },
   { text: '快速开始', link: '/zh-CN/guide/getting-started' },
   { text: '从 SillyTavern 迁移', link: '/zh-CN/guide/migration' },
   { text: '从 Termux 迁移到 APK', link: '/zh-CN/guide/migration-from-termux' },
@@ -222,7 +222,7 @@ const zhTWSidebar = [
   {
     text: '入門指南',
     items: [
-      { text: 'Luker 是什麼', link: '/zh-TW/guide/what-is-luker' },
+      { text: 'Atria 是什麼', link: '/zh-TW/guide/what-is-atria' },
       { text: '快速開始', link: '/zh-TW/guide/getting-started' },
       { text: '從 SillyTavern 遷移', link: '/zh-TW/guide/migration' },
       { text: '從 Termux 遷移到 APK', link: '/zh-TW/guide/migration-from-termux' },
@@ -374,7 +374,7 @@ const enSidebar = [
   {
     text: 'Getting Started',
     items: [
-      { text: 'What is Luker', link: '/guide/what-is-luker' },
+      { text: 'What is Atria', link: '/guide/what-is-atria' },
       { text: 'Quick Start', link: '/guide/getting-started' },
       { text: 'Migrating from SillyTavern', link: '/guide/migration' },
       { text: 'Migrating from Termux to the APK', link: '/guide/migration-from-termux' },
@@ -523,7 +523,7 @@ const enSidebar = [
 ]
 
 export default defineConfig({
-  title: 'Luker',
+  title: 'Atria',
   description: 'Next-gen Roleplay Chat Platform',
   base: '/',
 
@@ -533,18 +533,18 @@ export default defineConfig({
   head: [
     ['meta', { name: 'theme-color', content: '#4F46E5' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:site_name', content: 'Luker' }],
+    ['meta', { property: 'og:site_name', content: 'Atria' }],
   ],
 
   transformPageData(pageData) {
     const locale = detectLocale(pageData.relativePath)
     const fb = localeMeta[locale]
     const isHome = pageData.frontmatter.layout === 'home'
-    const baseTitle = pageData.title || pageData.frontmatter.title || 'Luker'
+    const baseTitle = pageData.title || pageData.frontmatter.title || 'Atria'
 
-    const ogTitle = (isHome || baseTitle === 'Luker')
-      ? `Luker — ${fb.tagline}`
-      : `${baseTitle} | Luker`
+    const ogTitle = (isHome || baseTitle === 'Atria')
+      ? `Atria — ${fb.tagline}`
+      : `${baseTitle} | Atria`
 
     let description: string | undefined = pageData.frontmatter.description
     if (!description && isHome && pageData.frontmatter.hero?.tagline) {
@@ -576,7 +576,7 @@ export default defineConfig({
       lang: 'en',
       themeConfig: {
         nav: [
-          { text: 'Guide', link: '/guide/what-is-luker' },
+          { text: 'Guide', link: '/guide/what-is-atria' },
           { text: 'Features', link: '/features/memory-graph' },
           { text: 'Development', link: '/development/frontend-plugin' },
           { text: 'Changelog', link: '/changelog' },
@@ -601,7 +601,7 @@ export default defineConfig({
       link: '/zh-CN/',
       themeConfig: {
         nav: [
-          { text: '指南', link: '/zh-CN/guide/what-is-luker' },
+          { text: '指南', link: '/zh-CN/guide/what-is-atria' },
           { text: '功能', link: '/zh-CN/features/memory-graph' },
           { text: '开发', link: '/zh-CN/development/frontend-plugin' },
           { text: '更新日志', link: '/zh-CN/changelog' },
@@ -626,7 +626,7 @@ export default defineConfig({
       link: '/zh-TW/',
       themeConfig: {
         nav: [
-          { text: '指南', link: '/zh-TW/guide/what-is-luker' },
+          { text: '指南', link: '/zh-TW/guide/what-is-atria' },
           { text: '功能', link: '/zh-TW/features/memory-graph' },
           { text: '開發', link: '/zh-TW/development/frontend-plugin' },
           { text: '更新日誌', link: '/zh-TW/changelog' },
@@ -649,10 +649,10 @@ export default defineConfig({
 
   themeConfig: {
     logo: undefined,
-    siteTitle: 'Luker',
+    siteTitle: 'Atria',
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/funnycups/Luker' },
+      { icon: 'github', link: 'https://github.com/ZZZdragondYNGPHX/Atria' },
     ],
 
     search: {

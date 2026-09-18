@@ -25,7 +25,7 @@
 //   2. Seed a global preset with the SAME name and a DIFFERENT temperature
 //      (`0.9`) by writing to `default-user/OpenAI Settings/MyPreset.json`
 //      before server start.
-//   3. Load Luker → the card auto-applies its default slot → live
+//   3. Load Atria → the card auto-applies its default slot → live
 //      oai_settings.temperature = 0.5 (matches card, not global).
 //   4. Call `ctx.openai.hasUnsavedChanges('MyPreset')` through the real
 //      wiring (st-context.js:2851). Origin-aware helper must return
@@ -87,7 +87,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: COLLIDING_NAME, preset: { temperature: CARD_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -126,7 +126,7 @@ test.describe('#58 — hasUnsavedChanges under card / global name collision rout
         // in-memory library — this is the setup precondition for the
         // origin-awareness assertion below to be meaningful.
         const globalSideCheck = await page.evaluate((name) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const settingNames = ctx?.openai?.settingNames;
             const settings = ctx?.openai?.settings;
             const idx = settingNames?.[name];
@@ -143,7 +143,7 @@ test.describe('#58 — hasUnsavedChanges under card / global name collision rout
         // Origin-aware code sees ghost origin → compares live vs card
         // slot body (0.5 vs 0.5) → false.
         const unsavedUnderGhost = await page.evaluate((name) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return ctx?.openai?.hasUnsavedChanges?.(name);
         }, COLLIDING_NAME);
         expect(unsavedUnderGhost).toBe(false);
@@ -157,7 +157,7 @@ test.describe('#58 — hasUnsavedChanges under card / global name collision rout
             const opts = Array.from(document.querySelectorAll('#settings_preset_openai option'));
             const globalOpt = opts.find(o =>
                 o.textContent === name
-                && o.getAttribute('data-luker-char-bound') !== '1',
+                && o.getAttribute('data-atria-char-bound') !== '1',
             );
             if (!globalOpt) throw new Error(`global option not found for ${name}`);
             $('#settings_preset_openai').val(globalOpt.value).trigger('change');
@@ -172,7 +172,7 @@ test.describe('#58 — hasUnsavedChanges under card / global name collision rout
         await page.evaluate(() => {
             const $ = window.jQuery;
             const ghost = document.querySelector(
-                '#settings_preset_openai option[data-luker-char-bound="1"]',
+                '#settings_preset_openai option[data-atria-char-bound="1"]',
             );
             if (!ghost) throw new Error('ghost option not found after global switch');
             $('#settings_preset_openai').val(ghost.value).trigger('change');
@@ -182,7 +182,7 @@ test.describe('#58 — hasUnsavedChanges under card / global name collision rout
             .toBeCloseTo(CARD_TEMPERATURE, 5);
 
         const unsavedAfterFlipBack = await page.evaluate((name) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return ctx?.openai?.hasUnsavedChanges?.(name);
         }, COLLIDING_NAME);
         expect(unsavedAfterFlipBack).toBe(false);

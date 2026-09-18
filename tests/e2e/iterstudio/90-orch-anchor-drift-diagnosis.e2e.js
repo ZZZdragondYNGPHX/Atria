@@ -90,7 +90,7 @@ test.describe('#90 — Orchestrator iter-studio: anchor drift → whitespace_dri
                 // Turn 0 creates the sub-agent with the indented prompt.
                 return {
                     toolCalls: [{
-                        name: 'luker_orch_set_director_subagent',
+                        name: 'atri_orch_set_director_subagent',
                         arguments: {
                             id: SEED_SUBAGENT_ID,
                             description: 'Analyst with indented systemPrompt.',
@@ -102,7 +102,7 @@ test.describe('#90 — Orchestrator iter-studio: anchor drift → whitespace_dri
             if (req.turn === 1) {
                 return {
                     toolCalls: [{
-                        name: 'luker_orch_patch_director_subagent_system_prompt',
+                        name: 'atri_orch_patch_director_subagent_system_prompt',
                         arguments: {
                             id: SEED_SUBAGENT_ID,
                             oldString: DEDENTED_OLD,
@@ -118,7 +118,7 @@ test.describe('#90 — Orchestrator iter-studio: anchor drift → whitespace_dri
                 // just emits the corrected patch.
                 return {
                     toolCalls: [{
-                        name: 'luker_orch_patch_director_subagent_system_prompt',
+                        name: 'atri_orch_patch_director_subagent_system_prompt',
                         arguments: {
                             id: SEED_SUBAGENT_ID,
                             oldString: CORRECT_OLD,

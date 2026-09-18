@@ -359,7 +359,7 @@ const PURE_PRESET_JSON = String.raw`{
     "request_image_aspect_ratio": "",
     "request_image_resolution": "",
     "extensions": {
-        "luker": {
+        "atria": {
             "prompt_layout": [],
             "prompt_groups": []
         }

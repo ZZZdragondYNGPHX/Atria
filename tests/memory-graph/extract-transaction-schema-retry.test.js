@@ -5,7 +5,7 @@ import { factExtractionContext, factExtractionTool, FACT_TOOL_NAME } from '../..
 const EVENT_TOOL = {
     type: 'function',
     function: {
-        name: 'luker_rpg_extract_event_create',
+        name: 'atria_rpg_extract_event_create',
         parameters: {
             type: 'object',
             additionalProperties: false,
@@ -23,7 +23,7 @@ const EVENT_TOOL = {
 const CHARACTER_TOOL = {
     type: 'function',
     function: {
-        name: 'luker_rpg_extract_character_sheet_create',
+        name: 'atria_rpg_extract_character_sheet_create',
         parameters: {
             type: 'object',
             additionalProperties: false,
@@ -40,7 +40,7 @@ const CHARACTER_TOOL = {
 const LOCATION_TOOL = {
     type: 'function',
     function: {
-        name: 'luker_rpg_extract_location_state_create',
+        name: 'atria_rpg_extract_location_state_create',
         parameters: {
             type: 'object',
             additionalProperties: false,
@@ -58,7 +58,7 @@ const LOCATION_TOOL = {
 const THREAD_TOOL = {
     type: 'function',
     function: {
-        name: 'luker_rpg_extract_thread_create',
+        name: 'atria_rpg_extract_thread_create',
         parameters: {
             type: 'object',
             additionalProperties: false,

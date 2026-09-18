@@ -3,10 +3,10 @@
 // #56 — MG schema editor: add field → save → restart → field still there.
 //
 // Real-user flow (no Layer-1 API short-cuts):
-//   1. Enable MG via the real `#luker_rpg_memory_enabled` checkbox.
-//   2. Open the real Schema Editor popup (#luker_rpg_memory_open_schema_editor).
+//   1. Enable MG via the real `#atria_rpg_memory_enabled` checkbox.
+//   2. Open the real Schema Editor popup (#atria_rpg_memory_open_schema_editor).
 //   3. Locate the event card's Table Columns input
-//      (`[data-field="tableColumns"]` inside the event `.luker-schema-card`).
+//      (`[data-field="tableColumns"]` inside the event `.atria-schema-card`).
 //   4. Type a new field name into that input (real keyboard input), then
 //      click "Save Schema to Global" to persist.
 //   5. Restart the server, reload, re-open the schema editor, and assert
@@ -54,7 +54,7 @@ async function enableMgViaCheckbox(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        const el = document.getElementById('luker_rpg_memory_enabled');
+        const el = document.getElementById('atria_rpg_memory_enabled');
         if (el && !el.checked) {
             el.checked = true;
             el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -91,7 +91,7 @@ test.describe('#56 — MG schema editor: add field through real UI → persists 
         // Columns input. The editor reads from `[data-field="tableColumns"]`
         // when Save is clicked.
         await page.evaluate((fieldId) => {
-            const cards = Array.from(document.querySelectorAll('.luker-schema-card'));
+            const cards = Array.from(document.querySelectorAll('.atria-schema-card'));
             for (const card of cards) {
                 const idInput = card.querySelector('[data-field="id"]');
                 if (!idInput || idInput.value !== 'event') continue;
@@ -123,7 +123,7 @@ test.describe('#56 — MG schema editor: add field through real UI → persists 
         // event card's Table Columns input.
         await openMgSchemaEditor(page);
         const tableColumnsValue = await page.evaluate(() => {
-            const cards = Array.from(document.querySelectorAll('.luker-schema-card'));
+            const cards = Array.from(document.querySelectorAll('.atria-schema-card'));
             for (const card of cards) {
                 const idInput = card.querySelector('[data-field="id"]');
                 if (!idInput || idInput.value !== 'event') continue;

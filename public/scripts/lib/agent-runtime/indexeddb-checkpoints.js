@@ -8,7 +8,7 @@ export async function openIndexedDBCheckpoints({ scope, indexedDB = globalThis.i
     requireId(scope, 'checkpoint account scope');
     if (!indexedDB) throw new Error('IndexedDB checkpoint storage unavailable');
     const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open(`Luker_AgentRuntime_${encodeURIComponent(scope)}`, 1);
+        const request = indexedDB.open(`Atria_AgentRuntime_${encodeURIComponent(scope)}`, 1);
         request.onupgradeneeded = () => request.result.createObjectStore('runs', { keyPath: 'runId' });
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);

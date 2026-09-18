@@ -37,15 +37,15 @@ describe('MG schema control tools', () => {
     it('exposes only reset tools in CONTROL_TOOL_NAMES (no continue / finalize)', () => {
         expect(CONTROL_TOOL_NAMES.continue).toBeUndefined();
         expect(CONTROL_TOOL_NAMES.finalize).toBeUndefined();
-        expect(CONTROL_TOOL_NAMES.resetToBlank).toBe('luker_mg_schema_reset_live_to_blank');
-        expect(CONTROL_TOOL_NAMES.resetToGlobal).toBe('luker_mg_schema_reset_live_to_global');
+        expect(CONTROL_TOOL_NAMES.resetToBlank).toBe('atri_mg_schema_reset_live_to_blank');
+        expect(CONTROL_TOOL_NAMES.resetToGlobal).toBe('atri_mg_schema_reset_live_to_global');
     });
 
     it('classifies both reset tools as control type in tool-display (no continue / finalize)', () => {
-        expect(MG_SCHEMA_TOOL_DISPLAY.luker_mg_schema_continue_iteration).toBeUndefined();
-        expect(MG_SCHEMA_TOOL_DISPLAY.luker_mg_schema_finalize_iteration).toBeUndefined();
-        expect(MG_SCHEMA_TOOL_DISPLAY.luker_mg_schema_reset_live_to_blank?.type).toBe('control');
-        expect(MG_SCHEMA_TOOL_DISPLAY.luker_mg_schema_reset_live_to_global?.type).toBe('control');
+        expect(MG_SCHEMA_TOOL_DISPLAY.atri_mg_schema_continue_iteration).toBeUndefined();
+        expect(MG_SCHEMA_TOOL_DISPLAY.atri_mg_schema_finalize_iteration).toBeUndefined();
+        expect(MG_SCHEMA_TOOL_DISPLAY.atri_mg_schema_reset_live_to_blank?.type).toBe('control');
+        expect(MG_SCHEMA_TOOL_DISPLAY.atri_mg_schema_reset_live_to_global?.type).toBe('control');
     });
 
     it('exposes exactly these 2 control tools (drift guard)', () => {
@@ -54,15 +54,15 @@ describe('MG schema control tools', () => {
             .map(([k]) => k)
             .sort();
         expect(controlNames).toEqual([
-            'luker_mg_schema_reset_live_to_blank',
-            'luker_mg_schema_reset_live_to_global',
+            'atri_mg_schema_reset_live_to_blank',
+            'atri_mg_schema_reset_live_to_global',
         ]);
     });
 
     it('provides a non-empty icon + label for each control tool', () => {
         for (const name of [
-            'luker_mg_schema_reset_live_to_blank',
-            'luker_mg_schema_reset_live_to_global',
+            'atri_mg_schema_reset_live_to_blank',
+            'atri_mg_schema_reset_live_to_global',
         ]) {
             const entry = MG_SCHEMA_TOOL_DISPLAY[name];
             expect(entry?.icon).toBeTruthy();

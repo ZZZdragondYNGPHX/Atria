@@ -1,4 +1,4 @@
-export const SIDECAR_INFIX = '.luker-state.';
+export const SIDECAR_INFIX = '.atria-state.';
 export const SIDECAR_EXT = '.json';
 
 export function buildSidecarFilename(base, namespace) {

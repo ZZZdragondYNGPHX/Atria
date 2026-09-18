@@ -11,7 +11,7 @@
 //
 // Assertions cover the contract the four plugin popups rely on
 // (stylesheet lazy-injection works, rendered HTML carries the
-// luker_lib_diff_* classes, mod rows + word-level highlights surface
+// atria_lib_diff_* classes, mod rows + word-level highlights surface
 // for the long-string path, EQ rows preserve surrounding context).
 //
 // When DIFF_DEMO_SCREENSHOT_DIR is set, also drops a full-page
@@ -36,7 +36,7 @@ async function awaitMainUI(page) {
         await gate.click();
     } catch { /* auto-login path */ }
     await page.waitForFunction('document.getElementById("preloader") === null', { timeout: 0 });
-    await page.waitForFunction(() => Boolean(window.Luker?.getContext), { timeout: 30000 });
+    await page.waitForFunction(() => Boolean(window.Atria?.getContext), { timeout: 30000 });
 }
 
 test.describe('iteration-library text-diff renderer — real-browser smoke', () => {
@@ -49,7 +49,7 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
         // MG Schema / Orchestrator), in the real browser, with the real
         // stylesheet — but without spinning up a fake LLM round-trip.
         const result = await page.evaluate(async ({ description }) => {
-            const lib = window.Luker.getContext().iterationLibrary;
+            const lib = window.Atria.getContext().iterationLibrary;
             if (!lib?.textDiff?.renderInlineTextDiffHtml) {
                 return { error: 'textDiff namespace missing from iterationLibrary' };
             }
@@ -63,7 +63,7 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
             });
 
             const host = document.createElement('div');
-            host.id = 'luker_lib_diff_demo_host';
+            host.id = 'atria_lib_diff_demo_host';
             host.style.cssText = 'position:fixed; top:20px; left:20px; right:20px; bottom:20px; background:#1a1a1a; padding:32px; overflow:auto; z-index:99999;';
             host.innerHTML = html;
             const cover = document.createElement('div');
@@ -72,13 +72,13 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
             document.body.appendChild(host);
 
             return {
-                hasDetails: !!host.querySelector('details.luker_lib_diff'),
-                modRowCount: host.querySelectorAll('.luker_lib_diff_row_mod').length,
-                eqRowCount: host.querySelectorAll('.luker_lib_diff_row_eq').length,
-                wordAdds: host.querySelectorAll('.luker_lib_diff_word_add').length,
-                wordDels: host.querySelectorAll('.luker_lib_diff_word_del').length,
-                stylesheetInjected: !!document.getElementById('luker_lib_diff_stylesheet'),
-                stylesheetHref: document.getElementById('luker_lib_diff_stylesheet')?.getAttribute('href') || null,
+                hasDetails: !!host.querySelector('details.atria_lib_diff'),
+                modRowCount: host.querySelectorAll('.atria_lib_diff_row_mod').length,
+                eqRowCount: host.querySelectorAll('.atria_lib_diff_row_eq').length,
+                wordAdds: host.querySelectorAll('.atria_lib_diff_word_add').length,
+                wordDels: host.querySelectorAll('.atria_lib_diff_word_del').length,
+                stylesheetInjected: !!document.getElementById('atria_lib_diff_stylesheet'),
+                stylesheetHref: document.getElementById('atria_lib_diff_stylesheet')?.getAttribute('href') || null,
             };
         }, { description: SERAPHINA_DESCRIPTION });
 
@@ -98,7 +98,7 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
 
         if (SCREENSHOT_DIR) {
             await page.waitForFunction(() => {
-                const link = document.getElementById('luker_lib_diff_stylesheet');
+                const link = document.getElementById('atria_lib_diff_stylesheet');
                 return link && link.sheet;
             }, { timeout: 10000 });
             await page.waitForTimeout(200);
@@ -111,7 +111,7 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
         await awaitMainUI(page);
 
         const result = await page.evaluate(async () => {
-            const lib = window.Luker.getContext().iterationLibrary;
+            const lib = window.Atria.getContext().iterationLibrary;
             const before = {
                 modules: ['greet', 'memory', 'world'],
                 params: { temperature: 0.7, top_p: 0.95 },
@@ -128,7 +128,7 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
                 { fileLabel: 'working profile', i18n: (s) => s },
             );
             const host = document.createElement('div');
-            host.id = 'luker_lib_diff_demo_host';
+            host.id = 'atria_lib_diff_demo_host';
             host.style.cssText = 'position:fixed; top:20px; left:20px; right:20px; bottom:20px; background:#1a1a1a; padding:32px; overflow:auto; z-index:99999;';
             host.innerHTML = html;
             const cover = document.createElement('div');
@@ -136,10 +136,10 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
             document.body.appendChild(cover);
             document.body.appendChild(host);
             return {
-                modRowCount: host.querySelectorAll('.luker_lib_diff_row_mod').length,
-                addRowCount: host.querySelectorAll('.luker_lib_diff_row_add').length,
-                delRowCount: host.querySelectorAll('.luker_lib_diff_row_del').length,
-                eqRowCount: host.querySelectorAll('.luker_lib_diff_row_eq').length,
+                modRowCount: host.querySelectorAll('.atria_lib_diff_row_mod').length,
+                addRowCount: host.querySelectorAll('.atria_lib_diff_row_add').length,
+                delRowCount: host.querySelectorAll('.atria_lib_diff_row_del').length,
+                eqRowCount: host.querySelectorAll('.atria_lib_diff_row_eq').length,
             };
         });
 
@@ -152,7 +152,7 @@ test.describe('iteration-library text-diff renderer — real-browser smoke', () 
 
         if (SCREENSHOT_DIR) {
             await page.waitForFunction(() => {
-                const link = document.getElementById('luker_lib_diff_stylesheet');
+                const link = document.getElementById('atria_lib_diff_stylesheet');
                 return link && link.sheet;
             }, { timeout: 10000 });
             await page.waitForTimeout(200);

@@ -293,7 +293,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 id: 'a-1',
                 role: 'assistant',
                 content: '',
-                toolCalls: [{ id: 'call-1', name: 'luker_orch_set_director_subagent', args: {} }],
+                toolCalls: [{ id: 'call-1', name: 'atri_orch_set_director_subagent', args: {} }],
                 toolResults: [{
                     tool_call_id: 'call-1',
                     content: buildEditToolResultPayload('pending'),
@@ -319,7 +319,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 id: 'a-1',
                 role: 'assistant',
                 content: '',
-                toolCalls: [{ id: 'call-1', name: 'luker_orch_set_director_subagent', args: {} }],
+                toolCalls: [{ id: 'call-1', name: 'atri_orch_set_director_subagent', args: {} }],
                 toolResults: [{
                     tool_call_id: 'call-1',
                     content: buildEditToolResultPayload('pending'),
@@ -343,7 +343,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 id: 'a-1',
                 role: 'assistant',
                 content: '',
-                toolCalls: [{ id: 'call-1', name: 'luker_orch_set_director_subagent', args: {} }],
+                toolCalls: [{ id: 'call-1', name: 'atri_orch_set_director_subagent', args: {} }],
                 toolResults: [{
                     tool_call_id: 'call-1',
                     content: buildEditToolResultPayload('pending'),
@@ -376,8 +376,8 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 role: 'assistant',
                 content: '',
                 toolCalls: [
-                    { id: 'call-1', name: 'luker_orch_set_director_subagent', args: {} },
-                    { id: 'call-2', name: 'luker_orch_set_director_subagent_tools', args: {} },
+                    { id: 'call-1', name: 'atri_orch_set_director_subagent', args: {} },
+                    { id: 'call-2', name: 'atri_orch_set_director_subagent_tools', args: {} },
                 ],
                 toolResults: [
                     {
@@ -419,7 +419,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 content: '',
                 toolCalls: [
                     { id: 'read-1', name: 'lorebook_list', args: { book_name: 'main' } },
-                    { id: 'edit-1', name: 'luker_orch_set_director_subagent', args: {} },
+                    { id: 'edit-1', name: 'atri_orch_set_director_subagent', args: {} },
                 ],
                 toolResults: [
                     {
@@ -460,7 +460,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 content: '',
                 toolCalls: [
                     { id: 'call-1', name: 'lorebook_upsert_entry', args: {} },
-                    { id: 'call-2', name: 'luker_orch_set_director_subagent', args: {} },
+                    { id: 'call-2', name: 'atri_orch_set_director_subagent', args: {} },
                 ],
                 toolResults: [
                     {
@@ -494,7 +494,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 id: 'a-1',
                 role: 'assistant',
                 content: '',
-                toolCalls: [{ id: 'call-1', name: 'luker_orch_set_director_subagent', args: {} }],
+                toolCalls: [{ id: 'call-1', name: 'atri_orch_set_director_subagent', args: {} }],
                 toolResults: [{
                     tool_call_id: 'call-1',
                     content: buildEditToolResultPayload('pending'),
@@ -520,7 +520,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 id: 'a-1',
                 role: 'assistant',
                 content: '',
-                toolCalls: [{ id: 'call-1', name: 'luker_orch_set_director_subagent', args: {} }],
+                toolCalls: [{ id: 'call-1', name: 'atri_orch_set_director_subagent', args: {} }],
                 toolResults: [{
                     tool_call_id: 'call-1',
                     content: buildEditToolResultPayload('pending'),
@@ -543,7 +543,7 @@ describe('applyOutcomesToToolResults contract — in-place update semantics', ()
                 id: 'a-1',
                 role: 'assistant',
                 content: '',
-                toolCalls: [{ id: 'call-1', name: 'luker_orch_set_director_subagent', args: {} }],
+                toolCalls: [{ id: 'call-1', name: 'atri_orch_set_director_subagent', args: {} }],
                 toolResults: [{
                     tool_call_id: 'call-1',
                     // Rollback happens after commit — the tool_result was
@@ -577,7 +577,7 @@ describe('protocol contract — every tool_call needs a matching tool_result', (
         // edit is on disk if the user is resuming the session.
         const persisted = {
             id: 'call-legacy',
-            name: 'luker_orch_set_director_subagent',
+            name: 'atri_orch_set_director_subagent',
             args: {},
         };
         // Simulated buildTaskMessages fallback for a call without a

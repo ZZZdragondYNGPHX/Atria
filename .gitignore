@@ -66,9 +66,9 @@ gradle-*.zip
 *.jks
 *.keystore
 nodejs-mobile-android*.zip
-luker_bootstrap*.txt
-luker_*logcat*.txt
-luker_*crash*.txt
+atria_bootstrap*.txt
+atria_*logcat*.txt
+atria_*crash*.txt
 .gradle-local/
 android-app/app/.cxx/
 android-app/app/.externalNativeBuild/

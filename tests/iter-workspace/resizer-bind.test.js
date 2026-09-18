@@ -87,10 +87,10 @@ class StubPointerEvent {
 }
 
 function buildWorkspace() {
-    const root = new StubElement('luker-iter-workspace');
-    const grid = new StubElement('luker-iter-workspace-grid');
+    const root = new StubElement('atria-iter-workspace');
+    const grid = new StubElement('atria-iter-workspace-grid');
     grid.setBoundingClientRect({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 });
-    const splitter = new StubElement('luker-iter-workspace-resizer');
+    const splitter = new StubElement('atria-iter-workspace-resizer');
     root.appendChild(grid);
     root.appendChild(splitter);
     return { root, grid, splitter };
@@ -115,7 +115,7 @@ describe('bindIterWorkspaceResizer', () => {
         expect(() => unbind()).not.toThrow();
     });
 
-    test('pointerdown + pointermove updates --luker-iter-split clamped to [25, 80]', () => {
+    test('pointerdown + pointermove updates --atria-iter-split clamped to [25, 80]', () => {
         const { root, grid, splitter } = buildWorkspace();
         const unbind = bindIterWorkspaceResizer(root);
 
@@ -123,15 +123,15 @@ describe('bindIterWorkspaceResizer', () => {
 
         // 10% would be 100/1000 → clamped to 25%.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 1, clientX: 100 }));
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('25%');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('25%');
 
         // 90% → clamped to 80%.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 1, clientX: 900 }));
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('80%');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('80%');
 
         // 60% → unclamped.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 1, clientX: 600 }));
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('60%');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('60%');
 
         window.dispatchEvent(new StubPointerEvent('pointerup', { pointerId: 1, clientX: 600 }));
         unbind();
@@ -157,7 +157,7 @@ describe('bindIterWorkspaceResizer', () => {
         splitter.dispatchEvent(new StubPointerEvent('pointerdown', { pointerId: 7, clientX: 500 }));
         // Wrong pointerId → no-op; split should still be unset.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 99, clientX: 300 }));
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('');
         window.dispatchEvent(new StubPointerEvent('pointerup', { pointerId: 7, clientX: 500 }));
         unbind();
     });
@@ -171,7 +171,7 @@ describe('bindIterWorkspaceResizer', () => {
         expect(splitter.classList.contains('active')).toBe(false);
         // No pointermove should reach the resizer either.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 3, clientX: 300 }));
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('');
     });
 
     test('second pointerdown during an active drag is ignored', () => {
@@ -189,7 +189,7 @@ describe('bindIterWorkspaceResizer', () => {
         splitter.dispatchEvent(new StubPointerEvent('pointerdown', { pointerId: 11, clientX: 500 }));
         // Drag is in progress; original pointer drives the split.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 11, clientX: 600 }));
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('60%');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('60%');
 
         // Second pointerdown should be a no-op — original pointerId 11
         // stays in control.
@@ -198,11 +198,11 @@ describe('bindIterWorkspaceResizer', () => {
         // The second pointerdown must NOT switch tracking to pointerId 22.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 22, clientX: 200 }));
         // Move for pointer 22 is ignored because it isn't the tracked id.
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('60%');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('60%');
 
         // Original pointer can still move and end its drag normally.
         window.dispatchEvent(new StubPointerEvent('pointermove', { pointerId: 11, clientX: 700 }));
-        expect(grid.style.getPropertyValue('--luker-iter-split')).toBe('70%');
+        expect(grid.style.getPropertyValue('--atria-iter-split')).toBe('70%');
         window.dispatchEvent(new StubPointerEvent('pointerup', { pointerId: 11, clientX: 700 }));
         expect(splitter.classList.contains('active')).toBe(false);
 

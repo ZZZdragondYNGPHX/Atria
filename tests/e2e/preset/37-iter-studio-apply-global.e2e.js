@@ -5,7 +5,7 @@
 // REAL USER-GESTURE flow:
 //   1. Open the orchestrator iter-studio popup (extensions drawer →
 //      orchestrator panel → "Open AI Iteration Studio") via real clicks.
-//   2. Script a `luker_orch_set_director_main_agent` tool_call on the mock
+//   2. Script a `atri_orch_set_director_main_agent` tool_call on the mock
 //      so the studio receives a pending edit.
 //   3. Click Send via sendIterPrompt; wait for the Apply button to render.
 //   4. Click Apply via applyIterBatch.
@@ -67,7 +67,7 @@ test.describe('#37 — orchestrator iter-studio Apply → Global writes through 
 
         // Step 2: Script a director main-agent set tool call on the mock.
         mock.scriptToolCall({
-            name: 'luker_orch_set_director_main_agent',
+            name: 'atri_orch_set_director_main_agent',
             arguments: { systemPrompt: MARKER_PROMPT },
         });
 
@@ -83,7 +83,7 @@ test.describe('#37 — orchestrator iter-studio Apply → Global writes through 
         // Step 5: Verify the active preset slot carries the mutation, and
         // legacy flat fields were NOT written by Apply.
         const after = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.extensionSettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return {
@@ -102,7 +102,7 @@ test.describe('#37 — orchestrator iter-studio Apply → Global writes through 
         await server.restart();
         await reloadAndAwait(page, server.baseURL);
         const afterRestart = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.extensionSettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return s?.presetLibraries?.director?.[activeId]?.mainAgent?.systemPrompt || '';

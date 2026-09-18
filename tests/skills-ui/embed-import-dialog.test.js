@@ -135,7 +135,7 @@ describe('embed-import-dialog — pure helpers', () => {
     test('getEmbeddedSkillsSource pulls payload at the canonical path', () => {
         const ok = {
             extensions: {
-                luker: {
+                atria: {
                     embedded_skills_source: {
                         version: 1,
                         items: [{ name: 'a', bundleFormat: 'inline-files-v1', files: [] }],
@@ -148,11 +148,11 @@ describe('embed-import-dialog — pure helpers', () => {
         expect(mod.getEmbeddedSkillsSource({})).toBeNull();
         // Wrong version → reject
         expect(mod.getEmbeddedSkillsSource({
-            extensions: { luker: { embedded_skills_source: { version: 2, items: [] } } },
+            extensions: { atria: { embedded_skills_source: { version: 2, items: [] } } },
         })).toBeNull();
         // Missing items[] → reject
         expect(mod.getEmbeddedSkillsSource({
-            extensions: { luker: { embedded_skills_source: { version: 1 } } },
+            extensions: { atria: { embedded_skills_source: { version: 1 } } },
         })).toBeNull();
     });
 

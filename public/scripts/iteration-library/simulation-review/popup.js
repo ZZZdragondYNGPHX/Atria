@@ -64,7 +64,7 @@ export async function openSimulationReview({ kind, payload, i18n, abortSignal, o
     isOpen = true;
 
     const contentRoot = document.createElement('div');
-    contentRoot.className = 'luker-sim-review-host';
+    contentRoot.className = 'atria-sim-review-host';
 
     // Mutable state read by buildSubmitResult / buildCancelResult at popup
     // close and by mountContent() at each (re-)mount. Re-runs swap engine
@@ -160,7 +160,7 @@ function buildCancelResult(engine) {
 
 function createControlsBar({ onRerun, i18n, annotationHost, onSuccess, getHostNode }) {
     const bar = document.createElement('div');
-    bar.className = 'luker-sim-rerun-bar';
+    bar.className = 'atria-sim-rerun-bar';
 
     // Annotation-mode toggle. When ON, the host element flips
     // `data-annot-mode="on"` which the pointerup listener gates on:
@@ -196,7 +196,7 @@ function createControlsBar({ onRerun, i18n, annotationHost, onSuccess, getHostNo
     // it reads "Collapse all" and clicking re-collapses.
     const toggleBtn = document.createElement('button');
     toggleBtn.type = 'button';
-    toggleBtn.className = 'luker-sim-toggle-btn';
+    toggleBtn.className = 'atria-sim-toggle-btn';
     function updateToggleLabel() {
         const host = typeof getHostNode === 'function' ? getHostNode() : null;
         if (!host) {
@@ -204,7 +204,7 @@ function createControlsBar({ onRerun, i18n, annotationHost, onSuccess, getHostNo
             return;
         }
         const collapsibles = host.querySelectorAll('[data-collapsible="true"]');
-        const anyCollapsed = Array.from(collapsibles).some(s => s.classList.contains('luker-sim-section--collapsed'));
+        const anyCollapsed = Array.from(collapsibles).some(s => s.classList.contains('atria-sim-section--collapsed'));
         toggleBtn.textContent = anyCollapsed
             ? i18n('sim.action.expand_all', 'Expand all')
             : i18n('sim.action.collapse_all', 'Collapse all');
@@ -214,11 +214,11 @@ function createControlsBar({ onRerun, i18n, annotationHost, onSuccess, getHostNo
         const host = typeof getHostNode === 'function' ? getHostNode() : null;
         if (!host) return;
         const collapsibles = host.querySelectorAll('[data-collapsible="true"]');
-        const anyCollapsed = Array.from(collapsibles).some(s => s.classList.contains('luker-sim-section--collapsed'));
+        const anyCollapsed = Array.from(collapsibles).some(s => s.classList.contains('atria-sim-section--collapsed'));
         if (anyCollapsed) {
-            collapsibles.forEach(s => s.classList.remove('luker-sim-section--collapsed'));
+            collapsibles.forEach(s => s.classList.remove('atria-sim-section--collapsed'));
         } else {
-            collapsibles.forEach(s => s.classList.add('luker-sim-section--collapsed'));
+            collapsibles.forEach(s => s.classList.add('atria-sim-section--collapsed'));
         }
         updateToggleLabel();
     };
@@ -230,7 +230,7 @@ function createControlsBar({ onRerun, i18n, annotationHost, onSuccess, getHostNo
     if (typeof onRerun === 'function') {
         const rerunBtn = document.createElement('button');
         rerunBtn.type = 'button';
-        rerunBtn.className = 'luker-sim-rerun-btn';
+        rerunBtn.className = 'atria-sim-rerun-btn';
         const initialLabel = i18n('sim.action.rerun', '↻ Re-run simulation');
         rerunBtn.textContent = initialLabel;
         rerunBtn.onclick = async () => {
@@ -315,11 +315,11 @@ function attachCollapseToggles(host) {
         if (!header) return;
         const section = header.parentElement;
         if (!section) return;
-        if (!section.classList.contains('luker-sim-section')
-            && !section.classList.contains('luker-sim-subsection')
-            && !section.classList.contains('luker-sim-subsubsection')) {
+        if (!section.classList.contains('atria-sim-section')
+            && !section.classList.contains('atria-sim-subsection')
+            && !section.classList.contains('atria-sim-subsubsection')) {
             return;
         }
-        section.classList.toggle('luker-sim-section--collapsed');
+        section.classList.toggle('atria-sim-section--collapsed');
     });
 }

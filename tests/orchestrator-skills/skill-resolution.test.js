@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 
 /**
  * Unit tests for `skill-resolution.js`. The module resolves
- * `Luker.getContext().skills.list({ scope: 'all' })` at module load,
+ * `Atria.getContext().skills.list({ scope: 'all' })` at module load,
  * so we install a dedicated SillyTavern stub here whose `.skills.list` is
  * a jest spy we can rewire between tests. This replaces the jest.setup.js
  * default stub for this suite only.
@@ -14,9 +14,9 @@ const stub = {
         translate: (s) => String(s ?? ''),
     }),
 };
-globalThis.Luker = stub;
+globalThis.Atria = stub;
 globalThis.st = stub;
-globalThis.Luker = stub;
+globalThis.Atria = stub;
 
 const {
     ensureSkillsFieldShape,

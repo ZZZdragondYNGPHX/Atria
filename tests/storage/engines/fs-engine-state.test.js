@@ -72,8 +72,8 @@ describe('FsEngine — chat state (sidecar) operations', () => {
             await tx.putChatState(chatKey(), 'a', { v: 1 });
             await tx.putChatState(chatKey(), 'b', { v: 2 });
         });
-        const sidecarA = path.join(h.chatsDir, 'Alice', 'c1.luker-state.a.json');
-        const sidecarB = path.join(h.chatsDir, 'Alice', 'c1.luker-state.b.json');
+        const sidecarA = path.join(h.chatsDir, 'Alice', 'c1.atria-state.a.json');
+        const sidecarB = path.join(h.chatsDir, 'Alice', 'c1.atria-state.b.json');
         expect(fs.existsSync(sidecarA)).toBe(true);
         expect(fs.existsSync(sidecarB)).toBe(true);
 

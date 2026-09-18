@@ -10,14 +10,14 @@
  * The component is mounted via `mountSkillChips(host, opts)`. It writes
  * the entire `value` shape via `opts.onChange(nextValue)` on every
  * mutation; the caller is responsible for splicing that into its profile
- * editor and triggering the Luker save flow.
+ * editor and triggering the Atria save flow.
  *
  * Pure helpers (chipKindFor, computeAddOptions, applyChipToggle,
  * applyChipRemove, applyChipAdd, renderSkillChipsHtml) are exported for
  * unit testing without a DOM. The interactive `mountSkillChips` binds
  * delegated `click` handlers on the host element, addressing chips via
  * `data-skill-chip-action` / `data-skill-chip-name` attributes — matching
- * the convention used by other Luker UI panels.
+ * the convention used by other Atria UI panels.
  *
  * Inheritance semantics: agent-level chip rows accept an `inheritFrom`
  * (the mode-level value). When present, the component renders an
@@ -108,11 +108,11 @@ export function computeAddOptions(value, availableSkills) {
  * @returns {string[]}
  */
 export function chipClasses({ kind, installed }) {
-    const out = ['luker_skill_chip'];
-    if (kind === 'visible') out.push('luker_skill_chip_visible');
-    else if (kind === 'deny') out.push('luker_skill_chip_deny');
-    else if (kind === 'inherit') out.push('luker_skill_chip_inherit');
-    if (!installed) out.push('luker_skill_chip_missing');
+    const out = ['atria_skill_chip'];
+    if (kind === 'visible') out.push('atria_skill_chip_visible');
+    else if (kind === 'deny') out.push('atria_skill_chip_deny');
+    else if (kind === 'inherit') out.push('atria_skill_chip_inherit');
+    if (!installed) out.push('atria_skill_chip_missing');
     return out;
 }
 
@@ -235,9 +235,9 @@ function renderChipHtml(chip) {
     // Inherit chip is non-toggleable; render a static span and only the
     // remove button.
     if (kind === 'inherit') {
-        return `<span class="${classes}" data-skill-chip-name="${escName}" title="${escTitle}"><span class="luker_skill_chip_label">${escLabel} ${escapeHtml(t('(inherit mode default)'))}</span><span class="luker_skill_chip_x" data-skill-chip-action="remove" data-skill-chip-name="${escName}" title="${escapeHtml(t('Remove'))}">&times;</span></span>`;
+        return `<span class="${classes}" data-skill-chip-name="${escName}" title="${escTitle}"><span class="atria_skill_chip_label">${escLabel} ${escapeHtml(t('(inherit mode default)'))}</span><span class="atria_skill_chip_x" data-skill-chip-action="remove" data-skill-chip-name="${escName}" title="${escapeHtml(t('Remove'))}">&times;</span></span>`;
     }
-    return `<span class="${classes}" data-skill-chip-action="toggle" data-skill-chip-name="${escName}" title="${escTitle}"><span class="luker_skill_chip_label">${escLabel}</span><span class="luker_skill_chip_x" data-skill-chip-action="remove" data-skill-chip-name="${escName}" title="${escapeHtml(t('Remove'))}">&times;</span></span>`;
+    return `<span class="${classes}" data-skill-chip-action="toggle" data-skill-chip-name="${escName}" title="${escTitle}"><span class="atria_skill_chip_label">${escLabel}</span><span class="atria_skill_chip_x" data-skill-chip-action="remove" data-skill-chip-name="${escName}" title="${escapeHtml(t('Remove'))}">&times;</span></span>`;
 }
 
 /**
@@ -295,22 +295,22 @@ export function renderSkillChipsHtml({ value, inheritFrom, availableSkills, t = 
     }).join('');
 
     const inheritButton = showInheritAdd
-        ? `<button type="button" class="menu_button menu_button_small luker_skill_chip_add_inherit" data-skill-chip-action="add-inherit" title="${escapeHtml(t('Inherit mode default visible skills'))}">${escapeHtml(t('+ inherit mode default'))}</button>`
+        ? `<button type="button" class="menu_button menu_button_small atria_skill_chip_add_inherit" data-skill-chip-action="add-inherit" title="${escapeHtml(t('Inherit mode default visible skills'))}">${escapeHtml(t('+ inherit mode default'))}</button>`
         : '';
 
     const addControl = addOptions.length > 0
-        ? `<span class="luker_skill_chip_add">
-            <select class="text_pole luker_skill_chip_add_select" data-skill-chip-add-select>
+        ? `<span class="atria_skill_chip_add">
+            <select class="text_pole atria_skill_chip_add_select" data-skill-chip-add-select>
                 <option value="">${escapeHtml(t('Add...'))}</option>
                 ${addOptionsHtml}
             </select>
             <button type="button" class="menu_button menu_button_small" data-skill-chip-action="open-add" title="${escapeHtml(t('Add a skill'))}">${escapeHtml(t('Add'))}</button>
         </span>`
-        : `<span class="luker_skill_chip_add luker_skill_chip_add_empty" title="${escapeHtml(t('All available skills already chipped'))}">
+        : `<span class="atria_skill_chip_add atria_skill_chip_add_empty" title="${escapeHtml(t('All available skills already chipped'))}">
             <button type="button" class="menu_button menu_button_small" data-skill-chip-action="open-add" disabled>${escapeHtml(t('Add'))}</button>
         </span>`;
 
-    return `<div class="luker_skill_chips">${chipsHtml}${inheritButton}${addControl}</div>`;
+    return `<div class="atria_skill_chips">${chipsHtml}${inheritButton}${addControl}</div>`;
 }
 
 // ── Interactive mount ─────────────────────────────────────────────────────

@@ -57,12 +57,12 @@ async function dispatchViaServer(app, { method = 'POST', url = '/', headers = {}
 // ── Test Suite: TICKET_PROTOCOL_PREFIX ──────────────────────────────────────
 
 describe('TICKET_PROTOCOL_PREFIX', () => {
-    it('is the well-known "luker-ws-ticket." prefix consumed by ws-delivery', () => {
+    it('is the well-known "atria-ws-ticket." prefix consumed by ws-delivery', () => {
         // ws-delivery.js line 8 hard-codes the same literal because it must
         // not depend on this module transitively during the upgrade path. If
         // this value drifts here, ws-delivery will silently stop accepting
         // upgrades. Pin the constant.
-        assert.equal(TICKET_PROTOCOL_PREFIX, 'luker-ws-ticket.');
+        assert.equal(TICKET_PROTOCOL_PREFIX, 'atria-ws-ticket.');
     });
 });
 

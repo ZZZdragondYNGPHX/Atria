@@ -33,9 +33,9 @@ export const LOOP_ITERATION_CONTRACT_LINES = Object.freeze([
     'Iteration mode contract (loop profile):',
     '- You are editing an existing loop-mode orchestration profile.',
     '- The profile drives a single agent that calls tools in a loop and finalizes when ready; there are no stages, nodes, or presets to manage.',
-    '- Editable fields: system_prompt (string), apiPresetName (string), promptPresetName (string), max_rounds (1-50), wall_clock_budget_ms (>= 10000), tools.note.open, tools.note.close, tools.chat.read_range, tools.chat.search, tools.lorebook.world_book_list, tools.lorebook.list, tools.lorebook.search, tools.lorebook.get, tools.lorebook.force_activate, tools.memory.schema, tools.memory.list_candidates, tools.memory.edge_summary, tools.memory.node_brief, tools.memory.expand_seeds, tools.memory.keyword_search, tools.memory.vector_search, tools.memory.find_by_name, tools.memory.compaction_candidates, tools.memory.node_create, tools.memory.node_edit, tools.memory.node_delete, tools.memory.link_upsert, tools.memory.link_delete, tools.memory.compact_nodes, tools.search.search, tools.search.visit (all boolean).',
-    '- Use luker_orch_set_loop_profile to update one or more fields. Pass only the fields you intend to change; omitted fields are inherited from the current profile.',
-    '- For incremental edits to a long system_prompt, prefer `luker_orch_patch_loop_system_prompt` over resending the whole field. `oldString` must be unique unless `replaceAll: true`.',
+    '- Editable fields: system_prompt (string), apiPresetName (string), promptPresetName (string), max_rounds (1-50), wall_clock_budget_ms (>= 10000), tools.note.open, tools.note.close, tools.chat.read_range, tools.chat.search, tools.lorebook.world_book_list, tools.lorebook.list, tools.lorebook.search, tools.lorebook.get, tools.lorebook.force_activate, and Layer-2 flags under tools.custom (memory_recall, memory_schema, memory_list_candidates, memory_edge_summary, memory_node_brief, memory_expand_seeds, memory_keyword_search, memory_vector_search, memory_find_by_name, memory_compaction_candidates, memory_node_create, memory_node_edit, memory_node_delete, memory_link_upsert, memory_link_delete, memory_compact_nodes, search_search, search_visit; all boolean).',
+    '- Use atri_orch_set_loop_profile to update one or more fields. Pass only the fields you intend to change; omitted fields are inherited from the current profile.',
+    '- For incremental edits to a long system_prompt, prefer `atri_orch_patch_loop_system_prompt` over resending the whole field. `oldString` must be unique unless `replaceAll: true`.',
     '- The finalize tool is always enabled — it is the only loop terminator. Do not propose disabling tools.finalize; the schema will ignore that field.',
     '- If the user describes a workflow, infer which tool namespaces they need (note / chat / lorebook / memory / search) and propose enabling those while keeping the other tools default-on unless the user explicitly asks to disable them.',
     '- Leave apiPresetName and promptPresetName empty unless the user explicitly requests loop-specific routing. Empty means fallback to the global orchestration API / chat-completion preset.',
@@ -60,8 +60,8 @@ export const LOOP_ITERATION_CONTRACT_LINES = Object.freeze([
     '',
     'The loop agent reads what is in its context. Do NOT explain the runtime to it. NEVER write into the loop agent\'s system_prompt any of: "the world-info system injects activated entries...", "don\'t call lorebook_search because uid N is already in your context", "use `lorebook_get(uid=N)` to read entry X" (or any literal uid; uid is a runtime handle, not a profile-time identifier), "the runtime will provide X — so you don\'t need to...", "lorebook entries with constant=true are auto-injected...", or any "the agent sees / does not see / will be given" framing. If you want the agent to use a tool, name the tool and the purpose. If you want it NOT to chase something already in context, just don\'t mention it. The only legitimate "runtime info" in the loop agent\'s system_prompt is: which tools exist, what each does, what output shape to produce.',
     '- Prefer targeted edits — bumping max_rounds should not rewrite the entire system_prompt.',
-    '- If user asks to test, call luker_orch_simulate with suitable input.',
-    'The luker_orch_simulate tool now opens a popup so the user can review the actual orchestration run (per-round agent turns) produced under the current chat, world-info, and preset. The user may annotate parts they\'re unhappy with. The tool result you receive will be a tagged text envelope:',
+    '- If user asks to test, call atri_orch_simulate with suitable input.',
+    'The atri_orch_simulate tool now opens a popup so the user can review the actual orchestration run (per-round agent turns) produced under the current chat, world-info, and preset. The user may annotate parts they\'re unhappy with. The tool result you receive will be a tagged text envelope:',
     '- <simulation_chain> contains the full chain of rounds and tool calls. Spans wrapped in <<<ANNOTATION id=N>>>...<<</ANNOTATION>>> are flagged by the user.',
     '- <annotations> lists each [#N] with its location, snippet, and the user\'s comment.',
     '- <status submitted="false"/> means the user cancelled without annotating.',
@@ -71,8 +71,8 @@ export const LOOP_ITERATION_CONTRACT_LINES = Object.freeze([
     '3. Simulate again after the fix to verify the root cause was addressed.',
     'Symptom-level patches are explicitly off-limits when they target the annotated text. If the only viable fix really is local, explain to the user why a structural fix isn\'t possible before reaching for the patch.',
     '- Multi-round iteration control: the popup runs another round whenever the previous round emitted ANY tool call (read or edit); tool results become context for the next round. To end the iteration, respond with plain text and emit no tool calls.',
-    '- Reading live loop-profile state: call `luker_orch_read_loop_fields({paths: [...]})` before any anchor-based patch (`luker_orch_patch_loop_system_prompt`) to see the exact current text. Common paths: `system_prompt`, `max_rounds`, `wall_clock_budget_ms`, `tools.<ns>.<verb>`. Prefer specific paths over reading the whole profile so the response stays focused.',
-    '- Anchor patch failures: a `not_found` reply carries `match_diagnosis` with kind ∈ {whitespace_drift, similar_snippet, no_similar, too_long_to_diagnose}. Whitespace drift = your oldString has different indentation / trailing space; re-read the target field for exact text via `luker_orch_read_loop_fields`. `already matches` means the call was a no-op — not a failure; don\'t re-issue.',
+    '- Reading live loop-profile state: call `atri_orch_read_loop_fields({paths: [...]})` before any anchor-based patch (`atri_orch_patch_loop_system_prompt`) to see the exact current text. Common paths: `system_prompt`, `max_rounds`, `wall_clock_budget_ms`, `tools.<ns>.<verb>`. Prefer specific paths over reading the whole profile so the response stays focused.',
+    '- Anchor patch failures: a `not_found` reply carries `match_diagnosis` with kind ∈ {whitespace_drift, similar_snippet, no_similar, too_long_to_diagnose}. Whitespace drift = your oldString has different indentation / trailing space; re-read the target field for exact text via `atri_orch_read_loop_fields`. `already matches` means the call was a no-op — not a failure; don\'t re-issue.',
     '- Keep output practical and concise for real RP usage.',
 ]);
 
@@ -126,7 +126,7 @@ function patchNumberField(patch, key, current, toolName) {
 }
 
 /**
- * Apply a `luker_orch_set_loop_profile` tool-call patch on top of the
+ * Apply a `atri_orch_set_loop_profile` tool-call patch on top of the
  * caller's current profile. Returns the canonical V3 profile envelope
  * (sanitized — see `sanitizeLoopProfile`). Partial: keys absent from
  * `args` inherit from `currentProfile` unchanged. Keys present with the
@@ -144,10 +144,10 @@ function patchNumberField(patch, key, current, toolName) {
 export function applyLoopProfilePatchArgs(currentProfile, args) {
     const current = sanitizeLoopProfile(currentProfile);
     if (args !== undefined && args !== null && typeof args !== 'object') {
-        throw new Error('luker_orch_set_loop_profile: invalid_args — args must be an object.');
+        throw new Error('atri_orch_set_loop_profile: invalid_args — args must be an object.');
     }
     const patch = args && typeof args === 'object' ? args : {};
-    const TOOL = 'luker_orch_set_loop_profile';
+    const TOOL = 'atri_orch_set_loop_profile';
     const next = {
         apiPresetName: patchStringField(patch, 'apiPresetName', current.apiPresetName, TOOL),
         promptPresetName: patchStringField(patch, 'promptPresetName', current.promptPresetName, TOOL),
@@ -177,27 +177,6 @@ export function applyLoopProfilePatchArgs(currentProfile, args) {
                 next.tools[group][key] = value;
             }
         };
-        // Legacy memory + search namespaces translate into custom entries
-        // (see sanitizeAgentToolFlags). Route their verbs into
-        // `tools.custom.<ns>_<verb>` so a partial-merge patch flips the
-        // post-translation keys instead of trying to mutate the now-
-        // dropped legacy subtree.
-        const mergeLegacyAsCustom = (legacyGroup, prefix, verb) => {
-            const incoming = incomingTools[legacyGroup];
-            if (incoming === undefined) return;
-            if (incoming === null || typeof incoming !== 'object' || Array.isArray(incoming)) {
-                throw new Error(`${TOOL}: invalid_args — tools.${legacyGroup} must be an object.`);
-            }
-            if (!Object.prototype.hasOwnProperty.call(incoming, verb)) return;
-            const value = incoming[verb];
-            if (typeof value !== 'boolean') {
-                throw new Error(`${TOOL}: invalid_args — tools.${legacyGroup}.${verb} must be a boolean, got ${typeof value}.`);
-            }
-            if (!next.tools.custom || typeof next.tools.custom !== 'object') {
-                next.tools.custom = {};
-            }
-            next.tools.custom[`${prefix}${verb}`] = value;
-        };
         // Patches addressed directly at `tools.custom.<name>` merge wholesale.
         if (Object.prototype.hasOwnProperty.call(incomingTools, 'custom')) {
             const incomingCustom = incomingTools.custom;
@@ -219,23 +198,7 @@ export function applyLoopProfilePatchArgs(currentProfile, args) {
         merge('lorebook', 'list');
         merge('lorebook', 'search');
         merge('lorebook', 'get');
-        mergeLegacyAsCustom('memory', 'memory_', 'schema');
-        mergeLegacyAsCustom('memory', 'memory_', 'list_candidates');
-        mergeLegacyAsCustom('memory', 'memory_', 'edge_summary');
-        mergeLegacyAsCustom('memory', 'memory_', 'node_brief');
-        mergeLegacyAsCustom('memory', 'memory_', 'expand_seeds');
-        mergeLegacyAsCustom('memory', 'memory_', 'keyword_search');
-        mergeLegacyAsCustom('memory', 'memory_', 'vector_search');
-        mergeLegacyAsCustom('memory', 'memory_', 'find_by_name');
-        mergeLegacyAsCustom('memory', 'memory_', 'compaction_candidates');
-        mergeLegacyAsCustom('memory', 'memory_', 'node_create');
-        mergeLegacyAsCustom('memory', 'memory_', 'node_edit');
-        mergeLegacyAsCustom('memory', 'memory_', 'node_delete');
-        mergeLegacyAsCustom('memory', 'memory_', 'link_upsert');
-        mergeLegacyAsCustom('memory', 'memory_', 'link_delete');
-        mergeLegacyAsCustom('memory', 'memory_', 'compact_nodes');
-        mergeLegacyAsCustom('search', 'search_', 'search');
-        mergeLegacyAsCustom('search', 'search_', 'visit');
+        merge('lorebook', 'force_activate');
         // tools.finalize is ignored — sanitizer forces it back to true.
     }
     return sanitizeLoopProfile(next);

@@ -10,7 +10,7 @@ describe('SqliteEngine stats handler', () => {
     const key = { kind: 'stats', handle };
 
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sqlite-stats-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sqlite-stats-'));
         engine = new SqliteEngine({
             directoriesByHandle: () => ({ root: path.join(tmpDir, handle) }),
         });

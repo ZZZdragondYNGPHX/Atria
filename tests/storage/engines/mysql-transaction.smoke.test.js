@@ -7,7 +7,7 @@ import { NotFoundError } from '../../../src/storage/errors.js';
 // loud and fast on a missing handler or a per-kind regression while iterating
 // on the handler dispatch.
 
-const describeMysql = process.env.LUKER_DISABLE_MYSQL_TESTS ? describe.skip : describe;
+const describeMysql = process.env.ATRIA_DISABLE_MYSQL_TESTS ? describe.skip : describe;
 
 describeMysql('MysqlTransaction handlers (smoke)', () => {
     let harness;

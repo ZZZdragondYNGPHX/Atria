@@ -86,7 +86,7 @@ function buildBriallenPng(seedPng) {
         post_history_instructions: '',
         alternate_greetings: [],
         tags: ['rp', 'fixture'],
-        creator: 'luker-e2e',
+        creator: 'atria-e2e',
         character_version: '1.0',
         extensions: {
             depth_prompt: { prompt: '', depth: 4, role: 'system' },
@@ -143,7 +143,7 @@ let mock, tmpDir, briallenPngPath;
 test.describe('#25 — post-replace popup three-choice flow', () => {
     test.beforeAll(async () => {
         mock = await startMockLLM({});
-        tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-replace-popup-'));
+        tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-replace-popup-'));
         const seed = readFileSync(resolve(REPO_ROOT, 'default/content/default_Seraphina.png'));
         briallenPngPath = resolve(tmpDir, 'briallen.png');
         writeFileSync(briallenPngPath, buildBriallenPng(seed));
@@ -206,7 +206,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             // its own world file.
             const newBookPath = resolve(server.dataRoot, 'default-user', 'worlds', `${BRIALLEN_BOOK_NAME}.json`);
             await page.waitForFunction(async ({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return Array.isArray(names) && names.includes(name);
             }, { name: BRIALLEN_BOOK_NAME }, { timeout: 10_000 });
@@ -219,7 +219,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             // Read from the live character via getContext rather than the
             // visible select — the WI drawer overlay hides the panel.
             await page.waitForFunction(({ avatar, want }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const idx = ctx?.characters?.findIndex?.(c => c?.avatar === avatar) ?? -1;
                 const bound = idx >= 0 ? ctx.characters[idx]?.data?.extensions?.world : '';
                 return String(bound || '').trim() === want;
@@ -239,7 +239,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             await dismissAnyPopup(page);
             await openCharacterEditPanel(page);
             await page.waitForFunction(({ avatar, want }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const idx = ctx?.characters?.findIndex?.(c => c?.avatar === avatar) ?? -1;
                 const bound = idx >= 0 ? ctx.characters[idx]?.data?.extensions?.world : '';
                 return String(bound || '').trim() === want;
@@ -281,7 +281,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             // The character's bound world must STILL be the previous
             // book — not the new embedded book and not empty.
             await page.waitForFunction(({ avatar, want }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const idx = ctx?.characters?.findIndex?.(c => c?.avatar === avatar) ?? -1;
                 const bound = idx >= 0 ? ctx.characters[idx]?.data?.extensions?.world : '';
                 return String(bound || '').trim() === want;
@@ -302,7 +302,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             await dismissAnyPopup(page);
             await openCharacterEditPanel(page);
             await page.waitForFunction(({ avatar, want }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const idx = ctx?.characters?.findIndex?.(c => c?.avatar === avatar) ?? -1;
                 const bound = idx >= 0 ? ctx.characters[idx]?.data?.extensions?.world : '';
                 return String(bound || '').trim() === want;
@@ -358,7 +358,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             // session opens against a "the new world book is empty" diff —
             // which then makes the AI think every old entry was just deleted.
             await page.waitForFunction(({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return Array.isArray(names) && names.includes(name);
             }, { name: BRIALLEN_BOOK_NAME }, { timeout: 10_000 });
@@ -489,7 +489,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             await studioDialog.waitFor({ state: 'visible', timeout: 30_000 });
             // Wait for materialize to complete before we close.
             await page.waitForFunction(({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return Array.isArray(names) && names.includes(name);
             }, { name: BRIALLEN_BOOK_NAME }, { timeout: 10_000 });
@@ -504,7 +504,7 @@ test.describe('#25 — post-replace popup three-choice flow', () => {
             // Rollback: new book file must be deleted from disk AND the
             // character's binding restored to the previous book.
             await page.waitForFunction(({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return !(Array.isArray(names) && names.includes(name));
             }, { name: BRIALLEN_BOOK_NAME }, { timeout: 10_000 });

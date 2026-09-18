@@ -2,7 +2,7 @@ import { appendShared, appendToolStatusChip, appendToolSourceChip, jsonOrText } 
 
 export function render(payload, i18n) {
     const root = document.createElement('div');
-    root.className = 'luker-sim-review luker-sim-review--orch-spec';
+    root.className = 'atria-sim-review atria-sim-review--orch-spec';
 
     if (typeof payload?.finalCapsule === 'string' && payload.finalCapsule) {
         const sec = appendShared.section(root, i18n('sim.section.final_capsule', 'Final Capsule'), 'Final Capsule', { isFinalOutput: true });

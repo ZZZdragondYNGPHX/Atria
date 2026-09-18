@@ -420,7 +420,7 @@ const calculateDataSize = (data) => {
  * @returns {{shallow: true, [key: string]: any}} Shallow character
  */
 const toShallow = (character) => {
-    const dedicatedPersonas = _.get(character, 'data.extensions.luker.dedicated_personas', []);
+    const dedicatedPersonas = _.get(character, 'data.extensions.atria.dedicated_personas', []);
     const normalizedDedicatedPersonas = Array.isArray(dedicatedPersonas)
         ? dedicatedPersonas
             .filter(entry => entry && typeof entry === 'object')
@@ -457,7 +457,7 @@ const toShallow = (character) => {
             tags: _.get(character, 'data.tags', []),
             extensions: {
                 fav: _.get(character, 'data.extensions.fav', false),
-                luker: {
+                atria: {
                     dedicated_personas: normalizedDedicatedPersonas,
                 },
                 world: _.get(character, 'data.extensions.world', ''),
@@ -1509,7 +1509,7 @@ router.post('/edit', validateAvatarUrlMiddleware, async function (request, respo
     await healCharacterWorldBinding(char, request.user.profile.handle);
 
     try {
-        // Preserve unknown/extended fields (e.g. data.extensions.luker.dedicated_personas)
+        // Preserve unknown/extended fields (e.g. data.extensions.atria.dedicated_personas)
         // when editing a character through the legacy form endpoint.
         const existingRaw = await readCharacterData(avatarPath);
         if (typeof existingRaw === 'string' && existingRaw.length > 0) {
@@ -2583,8 +2583,8 @@ router.post('/export', validateAvatarUrlMiddleware, async function (request, res
                 name: syncResult.name,
                 ...(syncResult.error ? { error: syncResult.error } : {}),
             });
-            response.setHeader('X-Luker-Export-Warning', Buffer.from(payload, 'utf8').toString('base64'));
-            response.setHeader('Access-Control-Expose-Headers', 'X-Luker-Export-Warning');
+            response.setHeader('X-Atria-Export-Warning', Buffer.from(payload, 'utf8').toString('base64'));
+            response.setHeader('Access-Control-Expose-Headers', 'X-Atria-Export-Warning');
         };
 
         switch (request.body.format) {

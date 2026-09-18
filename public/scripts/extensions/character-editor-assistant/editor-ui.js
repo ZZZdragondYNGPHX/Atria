@@ -92,10 +92,10 @@ export function createCharacterEditorUi(deps) {
     justify-content: center;
 }
 /* CEA-specific: chat message scrollable container.
-   The shared .luker-studio-chat caps the list height; inside CEA we let
+   The shared .atria-studio-chat caps the list height; inside CEA we let
    the list grow and scroll each message body individually, because round
    diffs + tool summaries make individual messages tall. */
-.popup .cea_sync_popup .luker-studio-chat { max-height:none; padding:var(--ls-space-md, 14px); }
+.popup .cea_sync_popup .atria-studio-chat { max-height:none; padding:var(--ls-space-md, 14px); }
 .popup .cea_sync_chat_msg {
     border: 1px solid color-mix(in oklab, var(--SmartThemeBodyColor) 14%, transparent);
     border-left: 3px solid transparent;

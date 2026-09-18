@@ -230,14 +230,14 @@ If nothing needs migrating, omit the hook.
 
 ## Three-layer API exposure
 
-Per the Luker API convention, every shell capability is exposed at three layers — same as `edits-lib`:
+Per the Atria API convention, every shell capability is exposed at three layers — same as `edits-lib`:
 
 ```js
 // Layer 1 — direct ESM import (in-tree extensions)
 import { openIterationStudio, defineAdapter } from '/scripts/iteration-studio/index.js';
 
-// Layer 2 — lukerContext property (CardApp / extension code with a context handle)
-const { openIterationStudio, defineAdapter } = lukerContext.iterationStudio;
+// Layer 2 — atriaContext property (CardApp / extension code with a context handle)
+const { openIterationStudio, defineAdapter } = atriaContext.iterationStudio;
 
 // Layer 3 — getContext (third-party extensions)
 const { open, defineAdapter } = SillyTavern.getContext().iterationStudio;

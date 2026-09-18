@@ -80,7 +80,7 @@ callGenericPopup(
 `new Popup(...).show()` 的函数式快捷方式。当你不需要持有弹窗实例引用时使用。
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
 // 确认
 const result = await ctx.callGenericPopup(
@@ -138,7 +138,7 @@ loader.hide(handle?: ActionLoaderHandle): Promise<void>
 | `onHide` | `null` | 加载器隐藏时调用 |
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
 const handle = ctx.loader.show({
     message: 'Importing...',
@@ -187,7 +187,7 @@ renderExtensionTemplateAsync(
 对于位于 `scripts/extensions/third-party/MyExt/dialog.html` 的第三方扩展：
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 const html = await ctx.renderExtensionTemplateAsync('third-party/MyExt', 'dialog', {
     title: 'Settings',
     items: ['a', 'b', 'c'],
@@ -226,7 +226,7 @@ messageFormatting(
 当你在插件 UI（例如预览弹窗）中渲染类消息内容、并希望与聊天样式一致时使用。
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 const html = ctx.messageFormatting(
     rawText,
     'Preview',
@@ -242,10 +242,10 @@ const html = ctx.messageFormatting(
 context.markdownConverter: showdown.Converter
 ```
 
-Luker 全局 markdown 配置好的共享 `showdown.Converter` 实例（emoji、字中下划线、表格、GitHub-flavored 扩展等）。用 `.makeHtml(source)` 渲染 markdown 跟 Luker 聊天管道一致，无需自建 converter 再镜像它的 option 集。Live binding——每次访问取最新值（markdown 选项变更时底层 converter 会重建）。
+Atria 全局 markdown 配置好的共享 `showdown.Converter` 实例（emoji、字中下划线、表格、GitHub-flavored 扩展等）。用 `.makeHtml(source)` 渲染 markdown 跟 Atria 聊天管道一致，无需自建 converter 再镜像它的 option 集。Live binding——每次访问取最新值（markdown 选项变更时底层 converter 会重建）。
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 const html = ctx.markdownConverter.makeHtml('**hello**');
 ```
 
@@ -260,7 +260,7 @@ new ModuleWorkerWrapper(updateFn: () => Promise<void>): { update(): Promise<void
 用于周期性 worker 函数的互斥封装——前一次 tick 还没结束时，避免重叠执行。常见用法：
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
 const worker = new ctx.ModuleWorkerWrapper(async () => {
     await doExpensiveTick();
@@ -284,10 +284,10 @@ toastr.error('Import failed: ' + error.message);
 
 用于常见扩展抽屉 / 弹窗 UI 模式的可复用 HTML 字符串生成器。每个组件都在三层 API 上暴露。
 
-### renderLukerTabs
+### renderAtriaTabs
 
 ```ts
-renderLukerTabs(options: {
+renderAtriaTabs(options: {
     id: string,
     scope: string,
     tabs: Array<{ key: string, label: string, contentHtml: string }>,
@@ -302,13 +302,13 @@ renderLukerTabs(options: {
 
 ```js
 // Layer 1 — ESM
-import { renderLukerTabs } from '/scripts/extensions/luker-tabs.js';
+import { renderAtriaTabs } from '/scripts/extensions/atria-tabs.js';
 
-// Layer 2 — lukerContext
-const { renderLukerTabs } = lukerContext;
+// Layer 2 — atriaContext
+const { renderAtriaTabs } = atriaContext;
 
 // Layer 3 — getContext
-const { renderLukerTabs } = SillyTavern.getContext();
+const { renderAtriaTabs } = SillyTavern.getContext();
 ```
 
 | 字段 | 类型 | 说明 |
@@ -320,9 +320,9 @@ const { renderLukerTabs } = SillyTavern.getContext();
 | `moduleName` | `string` | `extension_settings` 的 bucket 键（如 `'memory_graph'`） |
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
-const html = ctx.renderLukerTabs({
+const html = ctx.renderAtriaTabs({
     id: 'my_ext_tabs',
     scope: 'my-ext-drawer',
     moduleName: 'my_extension',
@@ -352,8 +352,8 @@ renderFieldHelpButton(options: {
 // Layer 1 — ESM
 import { renderFieldHelpButton } from '/scripts/extensions/field-help.js';
 
-// Layer 2 — lukerContext
-const { renderFieldHelpButton } = lukerContext;
+// Layer 2 — atriaContext
+const { renderFieldHelpButton } = atriaContext;
 
 // Layer 3 — getContext
 const { renderFieldHelpButton } = SillyTavern.getContext();
@@ -366,7 +366,7 @@ const { renderFieldHelpButton } = SillyTavern.getContext();
 | `targetSelectId` | `string?` | 可选，附近 `<select>` 的 id，用于上下文相关的帮助 |
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
 const labelHtml = `<label>Query rewrite ${ctx.renderFieldHelpButton({
     title: 'About query rewrite',

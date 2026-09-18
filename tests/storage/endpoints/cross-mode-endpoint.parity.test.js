@@ -66,7 +66,7 @@ async function buildSqliteSourceZip(zipPath, srcDir, handle) {
     } finally {
         engine.close();
     }
-    const dumpBytes = fs.readFileSync(path.join(srcDir, 'luker-storage.sqlite'));
+    const dumpBytes = fs.readFileSync(path.join(srcDir, 'atria-storage.sqlite'));
     return new Promise((resolve, reject) => {
         const out = fs.createWriteStream(zipPath);
         const arc = archiver('zip');

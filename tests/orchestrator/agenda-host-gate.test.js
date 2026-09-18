@@ -28,7 +28,7 @@ async function run({ enabled = true, stop = false, outcome = 'completed', error 
         refreshActiveSnapshotFromCache() {}, clearCapsulePrompt() {}, updateUiStatus() {}, clearRunInfoToast() {}, ensureUi() {},
         showRunInfoToast() {}, emitOrchestratorResultEvent: async (_ctx, _payload, status) => statuses.push(status),
         runOrchestration: async (_ctx, request) => {
-            if (stop) { request.__lukerResolveStopRequest(); throwIfAborted(request.signal); }
+            if (stop) { request.__atriaResolveStopRequest(); throwIfAborted(request.signal); }
             if (error) throw error;
             return { status: outcome, stageOutputs: [] };
         },

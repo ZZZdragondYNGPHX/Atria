@@ -3,12 +3,12 @@
 // Copyright (C) 2026 FunnyCups
 
 /**
- * Boundary linter for Luker-new plugins.
+ * Boundary linter for Atria-new plugins.
  *
- * Contract: a Luker-new plugin in `public/scripts/extensions/<plugin>/**`
- * MUST consume core capabilities through `Luker.getContext()` / the
+ * Contract: a Atria-new plugin in `public/scripts/extensions/<plugin>/**`
+ * MUST consume core capabilities through `Atria.getContext()` / the
  * three-layer API, never via cross-boundary import. Cross-plugin coupling
- * (Luker-new plugin → another Luker-new plugin) is also disallowed —
+ * (Atria-new plugin → another Atria-new plugin) is also disallowed —
  * sibling plugins talk over the published `getExtensionApi(name)` registry
  * (see `docs/development/extension-api/*`). Reverse coupling (core
  * importing a plugin) is the third banned direction. Upstream-shipped
@@ -16,16 +16,16 @@
  *
  * Detection
  * ---------
- * For each Luker-new plugin path, scan every `.js` for `import ... from
+ * For each Atria-new plugin path, scan every `.js` for `import ... from
  * '<path>'` statements (static + dynamic). Any specifier resolving to:
- *   1. A core file (escapes `extensions/` and is not Luker platform), or
- *   2. A sibling Luker-new plugin directory
- * is a violation. Luker self-platform layer (`iteration-library/`,
+ *   1. A core file (escapes `extensions/` and is not Atria platform), or
+ *   2. A sibling Atria-new plugin directory
+ * is a violation. Atria self-platform layer (`iteration-library/`,
  * `skills/`, `lib/edits/`, `vendor/`) is the only whitelisted escape.
  *
  * For the reverse direction, scan `public/script.js` plus every
  * `public/scripts/*.js` (non-extensions) plus `src/**\/*.js`, and flag
- * any import whose specifier resolves into a Luker-new plugin directory.
+ * any import whose specifier resolves into a Atria-new plugin directory.
  *
  * Output is grouped by plugin; exit code is non-zero when any violation
  * is detected so CI can fail the run.
@@ -38,7 +38,7 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const EXT_DIR = resolve(REPO_ROOT, 'public/scripts/extensions');
 
-const LUKER_PLUGIN_DIRS = new Set([
+const ATRIA_PLUGIN_DIRS = new Set([
     'card-app',
     'character-editor-assistant',
     'completion-preset-assistant',
@@ -47,7 +47,7 @@ const LUKER_PLUGIN_DIRS = new Set([
     'search-tools',
 ]);
 
-const LUKER_PLATFORM_DIRS = new Set([
+const ATRIA_PLATFORM_DIRS = new Set([
     'iteration-library',
     'skills',
     'lib',
@@ -120,16 +120,16 @@ function classifyForPlugin(specifier, fromFile, pluginDir) {
     const relFromExt = relative(EXT_DIR, resolved).split(sep);
 
     if (relFromExt[0] === '..') {
-        // Escapes extensions/. Either core or Luker platform layer.
+        // Escapes extensions/. Either core or Atria platform layer.
         const rel = relative(resolve(EXT_DIR, '..'), resolved).split(sep);
         if (rel[0] === '..') return { kind: 'core', target: relative(REPO_ROOT, resolved) };
-        if (LUKER_PLATFORM_DIRS.has(rel[0])) return null;
+        if (ATRIA_PLATFORM_DIRS.has(rel[0])) return null;
         return { kind: 'core', target: relative(REPO_ROOT, resolved) };
     }
 
     if (relFromExt[0] === pluginDir) return null;
 
-    if (LUKER_PLUGIN_DIRS.has(relFromExt[0])) {
+    if (ATRIA_PLUGIN_DIRS.has(relFromExt[0])) {
         return { kind: 'plugin', target: relative(REPO_ROOT, resolved), peer: relFromExt[0] };
     }
 
@@ -139,7 +139,7 @@ function classifyForPlugin(specifier, fromFile, pluginDir) {
 function findPluginViolations() {
     const coreViolations = new Map();
     const pluginViolations = new Map();
-    for (const pluginDir of LUKER_PLUGIN_DIRS) {
+    for (const pluginDir of ATRIA_PLUGIN_DIRS) {
         const pluginRoot = join(EXT_DIR, pluginDir);
         try { statSync(pluginRoot); } catch { continue; }
         const files = listJsFilesRecursive(pluginRoot);
@@ -189,7 +189,7 @@ function findReverseViolations() {
             const resolved = resolve(file, '..', spec);
             const relFromExt = relative(EXT_DIR, resolved).split(sep);
             if (relFromExt[0] === '..' || relFromExt[0] === '') continue;
-            if (LUKER_PLUGIN_DIRS.has(relFromExt[0])) {
+            if (ATRIA_PLUGIN_DIRS.has(relFromExt[0])) {
                 hits.push({
                     file: relative(REPO_ROOT, file),
                     line: offsetToLine(source, offset),
@@ -244,9 +244,9 @@ function main() {
 
     console.error(`\n${total} violation(s) found.`);
     console.error('Fix:');
-    console.error('  - plugin → core:    consume via Luker.getContext().');
-    console.error('  - plugin → plugin:  consume via Luker.getContext().getExtensionApi(name); provider publishes via registerExtensionApi(name, api).');
-    console.error('  - core → plugin:    move the symbol the other way; core never imports from extensions/<luker-plugin>/.');
+    console.error('  - plugin → core:    consume via Atria.getContext().');
+    console.error('  - plugin → plugin:  consume via Atria.getContext().getExtensionApi(name); provider publishes via registerExtensionApi(name, api).');
+    console.error('  - core → plugin:    move the symbol the other way; core never imports from extensions/<atria-plugin>/.');
     process.exit(1);
 }
 

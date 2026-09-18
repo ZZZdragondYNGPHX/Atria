@@ -1,6 +1,6 @@
 # 状态系统
 
-Luker 引入了一套状态系统，允许角色卡、聊天和预设携带持久化的状态数据。扩展和 CardApp 可以利用这套系统存储和读取自定义数据，而无需修改角色卡或聊天记录本身。
+Atria 引入了一套状态系统，允许角色卡、聊天和预设携带持久化的状态数据。扩展和 CardApp 可以利用这套系统存储和读取自定义数据，而无需修改角色卡或聊天记录本身。
 
 ## 角色状态
 
@@ -18,7 +18,7 @@ Luker 引入了一套状态系统，允许角色卡、聊天和预设携带持�
 
 ## 聊天状态
 
-每个聊天有自己的状态，按命名空间隔离。Luker 将聊天状态按命名空间存储在聊天文件旁的独立文件中，命名模式为 `<聊天文件基名>.luker-state.<namespace>.json`。
+每个聊天有自己的状态，按命名空间隔离。Atria 将聊天状态按命名空间存储在聊天文件旁的独立文件中，命名模式为 `<聊天文件基名>.atria-state.<namespace>.json`。
 
 ### 状态文件的特点
 
@@ -36,12 +36,12 @@ Luker 引入了一套状态系统，允许角色卡、聊天和预设携带持�
 - 其他不适合直接写入聊天记录的元数据
 
 ::: tip
-聊天状态由 Luker 自动管理，通常不需要手动编辑。如果你从 SillyTavern 迁移数据，这些文件会在首次使用时自动创建。
+聊天状态由 Atria 自动管理，通常不需要手动编辑。如果你从 SillyTavern 迁移数据，这些文件会在首次使用时自动创建。
 :::
 
 ## 预设状态
 
-Luker 同样支持为预设附加状态数据。预设状态允许扩展在特定预设上存储配置或运行时信息，当用户切换预设时，相关的状态数据也会随之切换。
+Atria 同样支持为预设附加状态数据。预设状态允许扩展在特定预设上存储配置或运行时信息，当用户切换预设时，相关的状态数据也会随之切换。
 
 ## 状态的持久化和生命周期
 
@@ -50,8 +50,8 @@ Luker 同样支持为预设附加状态数据。预设状态允许扩展在特�
 | 状态类型 | 存储位置 | 生命周期 |
 | --- | --- | --- |
 | 角色状态 | 角色卡同目录的命名空间文件（`<角色名>.state.<namespace>.json`） | 首次命名空间写入时创建；随角色重命名/删除联动 |
-| 聊天状态 | 聊天同目录的命名空间文件（`<聊天名>.luker-state.<namespace>.json`） | 首次命名空间写入时创建；随聊天重命名/删除联动 |
-| 预设状态 | 预设同目录的命名空间文件（`<预设名>.luker-state.<namespace>.json`） | 首次命名空间写入时创建；随预设重命名/删除联动 |
+| 聊天状态 | 聊天同目录的命名空间文件（`<聊天名>.atria-state.<namespace>.json`） | 首次命名空间写入时创建；随聊天重命名/删除联动 |
+| 预设状态 | 预设同目录的命名空间文件（`<预设名>.atria-state.<namespace>.json`） | 首次命名空间写入时创建；随预设重命名/删除联动 |
 
 ```d2
 direction: right
@@ -68,16 +68,16 @@ CHAT: "聊天目录" {
   CHAT_MAIN: "Seraphina-2026.jsonl\n聊天主文件" {
     style.fill: "#e1f5ff"
   }
-  CHAT_S1: "Seraphina-2026.luker-state.chat_sync.json\nintegrity / updated_at"
-  CHAT_S2: "Seraphina-2026.luker-state.luker_orchestrator__schema.json\n编排状态"
-  CHAT_S3: "Seraphina-2026.luker-state.memory_graph__meta.json\n记忆图元数据"
+  CHAT_S1: "Seraphina-2026.atria-state.chat_sync.json\nintegrity / updated_at"
+  CHAT_S2: "Seraphina-2026.atria-state.atri_orchestrator__schema.json\n编排状态"
+  CHAT_S3: "Seraphina-2026.atria-state.memory_graph__meta.json\n记忆图元数据"
 }
 
 PRESET: "预设目录" {
   P_MAIN: "for_my_athena.json\n预设主文件" {
     style.fill: "#e1f5ff"
   }
-  P_S1: "for_my_athena.luker-state.preset_assistant.json\n预设助手会话"
+  P_S1: "for_my_athena.atria-state.preset_assistant.json\n预设助手会话"
 }
 ```
 

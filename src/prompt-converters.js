@@ -41,9 +41,9 @@ const enableThoughtSignatures = !!getConfigValue('gemini.thoughtSignatures', tru
 /**
  * Extracts the character name, user name, and group member names from the request.
  *
- * SHAPE WARNING (for luker-dispatch callers): this helper only reads
+ * SHAPE WARNING (for atria-dispatch callers): this helper only reads
  * `request.body.*`. Chat-completion providers that live under
- * `src/luker-dispatch/providers/chat-completions/` (COHERE, AI21, MINIMAX,
+ * `src/atria-dispatch/providers/chat-completions/` (COHERE, AI21, MINIMAX,
  * MISTRALAI, ...) call this as `getPromptNames({ body })` — passing a
  * bare `{ body }` object instead of the full Express `request`. If a future
  * change makes this helper depend on any other request field
@@ -1450,7 +1450,7 @@ export function embedOpenRouterMedia(messages, { audio = true, video = true } = 
  * Rule:
  *   - Only touch `role === 'assistant'` messages.
  *   - Never overwrite an existing string `reasoning_content` (empty or not).
- *   - If an ST/Luker-internal `reasoning` field is present (orchestrator
+ *   - If an ST/Atria-internal `reasoning` field is present (orchestrator
  *     agents, real chat replays, etc.), promote it to `reasoning_content`
  *     verbatim and delete `reasoning` (not part of the DeepSeek schema).
  *   - Otherwise seed with a single space — the minimum non-empty payload

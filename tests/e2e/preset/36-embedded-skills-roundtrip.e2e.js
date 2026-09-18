@@ -6,7 +6,7 @@
 //      skills UI (preset detail panel → Add Skill → fill name + body → Save).
 //   3. Trigger preset Export via the visible Export button; save the
 //      downloaded JSON to disk; assert that the downloaded JSON carries
-//      the skill payload in extensions.luker.embedded_skills_source.
+//      the skill payload in extensions.atria.embedded_skills_source.
 //   4. Switch to Default and import the saved file under a new name.
 //   5. After import, the skill must appear in the new preset's scope —
 //      verify via the visible skills list.
@@ -38,7 +38,7 @@ const FIXTURE_BODY_ANCHOR = '*Ash unfolds a worn chart and marks three points; t
  * embedded_skills_source payload.
  *
  * The popup is rendered as a <dialog class="popup" open>. Match it via
- * its body marker (.luker_skill_export_confirm) — that's the wrapper
+ * its body marker (.atria_skill_export_confirm) — that's the wrapper
  * class set by the embed-export-hook on the popup body, distinct from
  * any other popup that might be on screen.
  */
@@ -57,7 +57,7 @@ async function exportSelectedPreset(page) {
     // surfaces *before* the click returns, we still pick it up.
     const popupClicker = (async () => {
         try {
-            const popup = page.locator('.popup:visible', { has: page.locator('.luker_skill_export_confirm') }).last();
+            const popup = page.locator('.popup:visible', { has: page.locator('.atria_skill_export_confirm') }).last();
             await popup.locator('.popup-button-ok').first().click({ timeout: 25_000 });
         } catch (_err) { /* popup never showed — caller will surface download timeout */ }
     })();
@@ -73,13 +73,13 @@ async function importPresetFile(page, filePath) {
     const input = page.locator('#openai_preset_import_file');
     await input.setInputFiles(filePath);
     // The import path emits OAI_PRESET_IMPORT_READY. The embed-lifecycle
-    // listener sees `extensions.luker.embedded_skills_source` on the
+    // listener sees `extensions.atria.embedded_skills_source` on the
     // payload and surfaces a confirmation dialog that asks the user
     // which skills to install. The dialog body is wrapped by
-    // .luker_skill_import_dialog; click Install to materialize the
+    // .atria_skill_import_dialog; click Install to materialize the
     // skills into the preset scope.
     try {
-        const popup = page.locator('.popup:visible', { has: page.locator('.luker_skill_import_dialog') }).last();
+        const popup = page.locator('.popup:visible', { has: page.locator('.atria_skill_import_dialog') }).last();
         await popup.locator('.popup-button-ok').first().click({ timeout: 15_000 });
         await popup.waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
     } catch (_err) { /* no embed in preset — fine */ }
@@ -141,14 +141,14 @@ async function installSkillInPresetScope(page, presetName, skillName, bodyAnchor
         }],
     };
     await page.evaluate(async ({ scope, payload }) => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         await ctx.skills.executeExtractEmbed({ payload, targetScope: scope, conflictStrategies: {} });
     }, { scope: { kind: 'preset', name: presetName }, payload });
 }
 
 async function listSkillsInPresetScope(page, presetName) {
     return page.evaluate(async ({ scope }) => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const list = await ctx.skills.list({ scope });
         return (list || []).map(s => s.name);
     }, { scope: { kind: 'preset', name: presetName } });
@@ -163,7 +163,7 @@ test.describe('#36 — preset with embedded skills round-trips (real UI)', () =>
         // OAI_PRESET_EXPORT_READY listener — without it, the export click
         // skips the skill-bundling popup and writes a stripped preset.
         await page.waitForFunction(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             // The listener registration is guarded behind `eventTypes` and
             // mounted inside `jQuery(() => { ... })`. Once that block runs,
             // `extension_settings.orchestrator` is hydrated by `ensureSettings`.
@@ -185,9 +185,9 @@ test.describe('#36 — preset with embedded skills round-trips (real UI)', () =>
         await download.saveAs(downloadPath);
         const exportedJson = JSON.parse(readFileSync(downloadPath, 'utf8'));
         // The OAI_PRESET_EXPORT_READY hook attaches the embed payload at
-        // extensions.luker.embedded_skills_source.
-        expect(exportedJson?.extensions?.luker?.embedded_skills_source, 'exported preset must carry the skills embed').toBeTruthy();
-        const exportedItem = (exportedJson.extensions.luker.embedded_skills_source.items || []).find(it => it?.name === FIXTURE_SKILL_NAME);
+        // extensions.atria.embedded_skills_source.
+        expect(exportedJson?.extensions?.atria?.embedded_skills_source, 'exported preset must carry the skills embed').toBeTruthy();
+        const exportedItem = (exportedJson.extensions.atria.embedded_skills_source.items || []).find(it => it?.name === FIXTURE_SKILL_NAME);
         expect(exportedItem, 'exported embed contains the fixture skill').toBeTruthy();
 
         // Step 4: Import under a new name. The OpenAI preset import path

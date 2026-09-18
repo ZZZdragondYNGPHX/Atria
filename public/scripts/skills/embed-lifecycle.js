@@ -1,8 +1,8 @@
 /**
  * Skill embed lifecycle.
  *
- * Wires `extensions.luker.embedded_skills_source` import/export + scope-skill
- * cleanup to the existing Luker character + preset lifecycle events. Follows
+ * Wires `extensions.atria.embedded_skills_source` import/export + scope-skill
+ * cleanup to the existing Atria character + preset lifecycle events. Follows
  * the same pattern as the regex extension's embedded-script flow (see
  * public/scripts/extensions/regex/index.js — `checkCharEmbeddedRegexScripts`,
  * `checkPresetEmbeddedRegexScripts`, `purgeEmbeddedRegexScripts`).
@@ -26,7 +26,7 @@
  * with its own payload, both go into character scope (they share the
  * character's lifecycle). Implemented in `extractCharacterPayloads`.
  *
- * The "have we already prompted for this asset?" memory uses Luker's
+ * The "have we already prompted for this asset?" memory uses Atria's
  * `accountStorage` (the same store regex uses for `AlertRegex_*`). Keys:
  *   - `AlertSkills_<avatar>` — character-scope embedded skills prompt
  *   - `AlertSkills_preset_<presetName>` — preset-scope embedded skills prompt
@@ -44,12 +44,12 @@ const ORCH_PRESET_PROMPT_KEY = (mode, name) => `AlertSkills_orch_preset_${mode}_
 /**
  * Pluck the embedded_skills_source payloads from a character object. Returns
  * 0, 1, or 2 entries:
- *   - The character's own payload at `character.data.extensions.luker.embedded_skills_source`
- *   - The card-bound preset's payload at `character.data.extensions.luker.bound_preset?.extensions.luker.embedded_skills_source`
+ *   - The character's own payload at `character.data.extensions.atria.embedded_skills_source`
+ *   - The card-bound preset's payload at `character.data.extensions.atria.bound_preset?.extensions.atria.embedded_skills_source`
  *     (per spec §3.3 the bound-preset payload materializes to character scope
  *     because it shares the character's lifecycle)
  *
- * The bound-preset path is a best-effort read — Luker's card-bound preset
+ * The bound-preset path is a best-effort read — Atria's card-bound preset
  * shape isn't part of the v2/v3 card spec, so we accept either of two
  * plausible locations and skip silently if neither matches.
  *
@@ -61,11 +61,11 @@ export function extractCharacterPayloads(character) {
     const cardData = character?.data;
     const own = getEmbeddedSkillsSource(cardData);
     if (own) out.push(own);
-    // Card-bound preset (a Luker-specific concept) may live under a few
+    // Card-bound preset (a Atria-specific concept) may live under a few
     // plausible paths; we try the canonical one first then a fallback.
     const candidates = [
-        cardData?.extensions?.luker?.bound_preset,
-        cardData?.extensions?.luker?.preset,
+        cardData?.extensions?.atria?.bound_preset,
+        cardData?.extensions?.atria?.preset,
     ];
     for (const candidate of candidates) {
         const sub = getEmbeddedSkillsSource(candidate);
@@ -315,7 +315,7 @@ export async function checkOrchPresetEmbeddedSkills(event, { context, t = (s) =>
     }
 }
 
-const REGISTERED = Symbol.for('luker_skill_embed_lifecycle_registered');
+const REGISTERED = Symbol.for('atria_skill_embed_lifecycle_registered');
 
 /**
  * Install all four event handlers on the supplied context's eventSource.

@@ -471,7 +471,7 @@ describe('renderBundledBrowser — integration scenarios', () => {
         // Simulate the server failing.
         const ctx = makeStubContext({ bundled: [], installed: [] });
         ctx.__skillsApi.listBundledManifest.mockImplementation(async () => {
-            const err = new Error('lukerDefaultRoot not configured');
+            const err = new Error('atriaDefaultRoot not configured');
             err.status = 500;
             throw err;
         });

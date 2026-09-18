@@ -47,22 +47,22 @@ export async function runCrossModeRecoveryFlow({ page, sourceMode, destMode, spe
     let sourceDbConfig = null;
     let destDbConfig = null;
     if (sourceMode === 'mysql') {
-        const c = await startMysqlContainer({ databases: ['luker'] });
+        const c = await startMysqlContainer({ databases: ['atria'] });
         containers.push(c);
-        sourceDbConfig = { mysql: { url: c.urlFor('luker') } };
+        sourceDbConfig = { mysql: { url: c.urlFor('atria') } };
     } else if (sourceMode === 'postgres') {
-        const c = await startPostgresContainer({ databases: ['luker'] });
+        const c = await startPostgresContainer({ databases: ['atria'] });
         containers.push(c);
-        sourceDbConfig = { postgres: { url: c.urlFor('luker') } };
+        sourceDbConfig = { postgres: { url: c.urlFor('atria') } };
     }
     if (destMode === 'mysql') {
-        const c = await startMysqlContainer({ databases: ['luker'] });
+        const c = await startMysqlContainer({ databases: ['atria'] });
         containers.push(c);
-        destDbConfig = { mysql: { url: c.urlFor('luker') } };
+        destDbConfig = { mysql: { url: c.urlFor('atria') } };
     } else if (destMode === 'postgres') {
-        const c = await startPostgresContainer({ databases: ['luker'] });
+        const c = await startPostgresContainer({ databases: ['atria'] });
         containers.push(c);
-        destDbConfig = { postgres: { url: c.urlFor('luker') } };
+        destDbConfig = { postgres: { url: c.urlFor('atria') } };
     }
 
     // Step 2: start server in sourceMode, seed character data, send a chat.
@@ -122,7 +122,7 @@ export async function runCrossModeRecoveryFlow({ page, sourceMode, destMode, spe
                 await awaitMainUI(page, destServer.baseURL);
                 await selectCharacterByName(page, 'Seraphina');
                 const preChatSnapshot = await page.evaluate(() => {
-                    const ctx = window.Luker?.getContext?.();
+                    const ctx = window.Atria?.getContext?.();
                     return (ctx?.chat || []).map(m => String(m.mes || ''));
                 });
                 expect(preChatSnapshot.some(m => m.includes('跨模式恢复'))).toBe(false);
@@ -334,7 +334,7 @@ async function readChatFromEngine(dataRoot, destMode, destDbConfig) {
         return { hasSeed: false, bodyLen: 0 };
     }
     if (destMode === 'sqlite') {
-        const sqlitePath = path.join(dataRoot, 'default-user', 'luker-storage.sqlite');
+        const sqlitePath = path.join(dataRoot, 'default-user', 'atria-storage.sqlite');
         if (!fs.existsSync(sqlitePath)) return { hasSeed: false, bodyLen: 0 };
         const Database = (await import('better-sqlite3')).default;
         const db = new Database(sqlitePath, { readonly: true });
@@ -418,6 +418,6 @@ function mapSourceModeToScratchCreds(sourceMode, containers) {
     // it and we only need a writable target with the right shape.
     const c = containers.find(_c => true);
     if (!c) return null;
-    if (sourceMode === 'mysql') return { mysql: { url: c.urlFor('luker') } };
-    return { postgres: { url: c.urlFor('luker') } };
+    if (sourceMode === 'mysql') return { mysql: { url: c.urlFor('atria') } };
+    return { postgres: { url: c.urlFor('atria') } };
 }

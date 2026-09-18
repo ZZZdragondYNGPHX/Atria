@@ -158,7 +158,7 @@ jest.unstable_mockModule('../../public/script.js', () => ({
 
 // -------------------------------------------------------------------------
 // extensions.js — the only ext-side call we care about is writeExtensionField
-// mutating character.data.extensions.luker with REPLACE semantics.
+// mutating character.data.extensions.atria with REPLACE semantics.
 // -------------------------------------------------------------------------
 jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
     writeExtensionField: jest.fn(async (id, ns, value) => {
@@ -267,7 +267,7 @@ function nsStub(extra = {}) {
 // Namespace-import mocks (import * as X from ...) — Proxy is fine.
 jest.unstable_mockModule('../../public/scripts/lib/edits/index.js', () => nsStub());
 jest.unstable_mockModule('../../public/scripts/iteration-library/index.js', () => nsStub());
-jest.unstable_mockModule('../../public/scripts/extensions/luker-tabs.js', () => nsStub());
+jest.unstable_mockModule('../../public/scripts/extensions/atria-tabs.js', () => nsStub());
 jest.unstable_mockModule('../../public/scripts/extensions/field-help.js', () => nsStub());
 
 // Named-import mocks — declare every symbol st-context.js pulls from each.
@@ -536,7 +536,7 @@ test('save with global ref goes through persistPreset (unchanged)', async () => 
     const ctx = getContext();
     const boundChar = ctx.characters[0];
     await characterPresets.addCharacterBoundPreset(boundChar, 'CardOnly', { temperature: 0.7 });
-    const before = JSON.parse(JSON.stringify(character.data.extensions.luker.chat_completion_preset));
+    const before = JSON.parse(JSON.stringify(character.data.extensions.atria.chat_completion_preset));
     persistPresetFn.mockClear();
 
     await ctx.presets.save(
@@ -546,7 +546,7 @@ test('save with global ref goes through persistPreset (unchanged)', async () => 
 
     expect(persistPresetFn).toHaveBeenCalledTimes(1);
     // Card state unchanged
-    expect(character.data.extensions.luker.chat_completion_preset).toEqual(before);
+    expect(character.data.extensions.atria.chat_completion_preset).toEqual(before);
 });
 
 test('save with character ref, missing avatar returns {ok:false}', async () => {
@@ -618,15 +618,15 @@ test('ctx.character.presets.add really writes through Layer 1', async () => {
     const ctx = getContext();
     const boundChar = ctx.characters[0];
     await ctx.character.presets.add(boundChar, 'ViaCtx', { temperature: 0.42 });
-    expect(character.data.extensions.luker.chat_completion_preset.presets[0].name).toBe('ViaCtx');
+    expect(character.data.extensions.atria.chat_completion_preset.presets[0].name).toBe('ViaCtx');
 });
 
-// -------------------- lukerContext skeleton --------------------
+// -------------------- atriaContext skeleton --------------------
 
-test('lukerContext.js sets globalThis.lukerContext to the same object as getContext()', async () => {
-    await import('../../public/scripts/lukerContext.js');
-    expect(globalThis.lukerContext).toBeDefined();
-    expect(typeof globalThis.lukerContext.character.presets.add).toBe('function');
+test('atriaContext.js sets globalThis.atriaContext to the same object as getContext()', async () => {
+    await import('../../public/scripts/atriaContext.js');
+    expect(globalThis.atriaContext).toBeDefined();
+    expect(typeof globalThis.atriaContext.character.presets.add).toBe('function');
     // Sanity check: the two access paths reach the same Layer 1 fn.
-    expect(globalThis.lukerContext.character.presets.add).toBe(getContext().character.presets.add);
+    expect(globalThis.atriaContext.character.presets.add).toBe(getContext().character.presets.add);
 });

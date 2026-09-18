@@ -58,7 +58,7 @@ function hashFile(filePath) {
  */
 async function readSqliteEngine(dataRoot, handle) {
     const Database = (await import('better-sqlite3')).default;
-    const dbPath = resolve(dataRoot, handle, 'luker-storage.sqlite');
+    const dbPath = resolve(dataRoot, handle, 'atria-storage.sqlite');
     if (!existsSync(dbPath)) return emptyEngineSnapshot();
     const db = new Database(dbPath, { readonly: true });
     try {
@@ -136,7 +136,7 @@ function readFsEngine(dataRoot, handle) {
             const charDirPath = resolve(chatsDir, cd);
             if (!statSync(charDirPath).isDirectory()) continue;
             // First pass: real .jsonl chats. The sidecar pass below handles
-            // state files using the documented `<name>.luker-state.<ns>.json`
+            // state files using the documented `<name>.atria-state.<ns>.json`
             // pattern — they live in the same dir as the parent .jsonl.
             const allEntries = readdirSync(charDirPath);
             const jsonlEntries = allEntries.filter(f => f.endsWith('.jsonl'));
@@ -312,10 +312,10 @@ function parseJsonOrNull(raw) {
 }
 
 // Sidecar filename convention from src/storage/engines/sidecar-naming.js:
-//   <base>.luker-state.<namespace>.json
+//   <base>.atria-state.<namespace>.json
 // Chats live as `<name>.jsonl`; presets live as `<name>.json`. The state
 // sidecars are written next to the parent file with the infix above.
-const SIDECAR_INFIX = '.luker-state.';
+const SIDECAR_INFIX = '.atria-state.';
 const SIDECAR_EXT = '.json';
 
 function parseSidecarFilename(entry, base) {

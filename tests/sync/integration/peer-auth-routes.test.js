@@ -51,7 +51,7 @@ let initUserStorage;
 let toKey;
 let getUserDirectories;
 
-const TEST_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-peer-auth-routes-'));
+const TEST_DATA_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-peer-auth-routes-'));
 const PREV_DATA_ROOT = globalThis.DATA_ROOT;
 
 const HANDLE = 'alice';

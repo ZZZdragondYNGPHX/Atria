@@ -128,7 +128,7 @@ test('every renderer marks exactly one final-output section and collapses proces
     //   - `[data-sim-final-output="true"]` on the section the user
     //     came to see (Final Output / Final Capsule / Final Composed
     //     Output / Capsule / Final Message). Exactly one per popup.
-    //   - `[data-collapsible="true"]` + `.luker-sim-section--collapsed`
+    //   - `[data-collapsible="true"]` + `.atria-sim-section--collapsed`
     //     on every process wrapper so the popup opens compact and
     //     the toggle can re-collapse them after expanding.
     const ceaRoot = renderCeaCpa({
@@ -166,7 +166,7 @@ test('every renderer marks exactly one final-output section and collapses proces
         expect(collapsibles.length).toBeGreaterThan(0);
         // Every collapsible starts collapsed by default.
         collapsibles.forEach(s => {
-            expect(s.classList.contains('luker-sim-section--collapsed')).toBe(true);
+            expect(s.classList.contains('atria-sim-section--collapsed')).toBe(true);
         });
     });
 });

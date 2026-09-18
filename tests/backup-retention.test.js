@@ -13,7 +13,7 @@ import {
 } from '../src/backup-retention.js';
 
 function makeTempDirectory() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'luker-backup-retention-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'atria-backup-retention-'));
 }
 
 function writeBackup(directory, name, content, modifiedMs) {

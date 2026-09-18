@@ -18,9 +18,9 @@
 import { describe, test, expect, jest, beforeAll } from '@jest/globals';
 
 // defaults.js (transitively imported by agent-resolution's siblings)
-// reads `Luker.getContext().constants.{promptRoles,wiPosition}` at
+// reads `Atria.getContext().constants.{promptRoles,wiPosition}` at
 // module load. `agent-resolution.js` itself also grabs
-// `Luker.getContext().extensionSettings` at import time. Provide a
+// `Atria.getContext().extensionSettings` at import time. Provide a
 // mutable ctx so the test can install card presets by swapping the
 // characters array.
 const ctxState = {
@@ -30,7 +30,7 @@ const ctxState = {
     character: {
         presets: {
             list: (character) => {
-                const raw = character?.data?.extensions?.luker?.chat_completion_preset;
+                const raw = character?.data?.extensions?.atria?.chat_completion_preset;
                 if (!raw || !Array.isArray(raw.presets)) return [];
                 return raw.presets.map(p => ({
                     name: p.name,
@@ -59,7 +59,7 @@ const ctxState = {
     },
 };
 
-globalThis.Luker = {
+globalThis.Atria = {
     getContext: () => ctxState,
 };
 
@@ -92,7 +92,7 @@ function setCharacterWithPresets(names, defaultName = null) {
         name: 'Test',
         data: {
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: names.map(n => ({ name: n, preset: { temperature: 0.5 } })),
                         defaultPresetName: defaultName,

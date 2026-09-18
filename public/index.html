@@ -40,9 +40,9 @@
     <link rel="stylesheet" type="text/css" href="css/toggle-dependent.css">
     <link rel="stylesheet" type="text/css" href="css/world-info.css">
     <link rel="stylesheet" type="text/css" href="css/extensions-panel.css">
-    <link rel="stylesheet" type="text/css" href="css/luker-studio.css">
-    <link rel="stylesheet" type="text/css" href="css/luker-tabs.css">
-    <link rel="stylesheet" type="text/css" href="css/luker-manage-bound-presets.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-studio.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-tabs.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-manage-bound-presets.css">
     <link rel="stylesheet" type="text/css" href="css/select2-overrides.css">
     <link rel="stylesheet" type="text/css" href="css/mobile-styles.css">
     <link rel="stylesheet" type="text/css" href="css/macros.css">
@@ -204,7 +204,7 @@
                                         <select id="settings_preset_openai" class="flex1 text_pole" data-preset-manager-for="openai">
                                             <option value="gui" data-i18n="Default">Default</option>
                                         </select>
-                                        <div id="luker_char_bound_preset_badge" class="luker-char-bound-preset-badge displayNone" title="Preset from current character card" data-i18n="[title]Preset from current character card">
+                                        <div id="atria_char_bound_preset_badge" class="atria-char-bound-preset-badge displayNone" title="Preset from current character card" data-i18n="[title]Preset from current character card">
                                             <i class="fa-solid fa-link fa-fw"></i>
                                             <span data-i18n="Character Card Bound">Character Card Bound</span>
                                         </div>
@@ -5454,8 +5454,8 @@
                                     <input id="immersiveKeepTopBar" type="checkbox" />
                                     <small data-i18n="Keep top bar in immersive mode">Keep top bar in immersive mode</small>
                                 </label>
-                                <label for="luker_mobile_keep_alive" class="checkbox_label" title="Keep AI requests running when the app or browser is in the background on mobile devices." data-i18n="[title]Keep AI requests running when the app or browser is in the background on mobile devices.">
-                                    <input id="luker_mobile_keep_alive" type="checkbox" />
+                                <label for="atria_mobile_keep_alive" class="checkbox_label" title="Keep AI requests running when the app or browser is in the background on mobile devices." data-i18n="[title]Keep AI requests running when the app or browser is in the background on mobile devices.">
+                                    <input id="atria_mobile_keep_alive" type="checkbox" />
                                     <small data-i18n="Background keep-alive on mobile">Background keep-alive on mobile</small>
                                 </label>
                             </div>
@@ -5565,7 +5565,7 @@
                                 <input id="play_sound_unfocused" type="checkbox" />
                                 <small data-i18n="Background Sound Only">Background Sound Only</small>
                             </label>
-                            <label for="message_complete_notification" class="checkbox_label" title="Show a notification when message generation finishes while Luker is in the background." data-i18n="[title]Show a notification when message generation finishes while Luker is in the background.">
+                            <label for="message_complete_notification" class="checkbox_label" title="Show a notification when message generation finishes while Atria is in the background." data-i18n="[title]Show a notification when message generation finishes while Atria is in the background.">
                                 <input id="message_complete_notification" type="checkbox" />
                                 <small data-i18n="Generation Complete Notification">Generation Complete Notification</small>
                             </label>
@@ -5786,7 +5786,7 @@
                                     <input id="frontend_debug_logging" type="checkbox" />
                                     <small data-i18n="Frontend debug logs">Frontend debug logs</small>
                                 </label>
-                                <label class="checkbox_label luker-android-only" for="android_debug_recording" title="Record additional Android-side diagnostics for crash reports. Off by default. Turn on and reproduce to get more details." data-i18n="[title]Record additional Android-side diagnostics for crash reports. Off by default. Turn on and reproduce to get more details.">
+                                <label class="checkbox_label atria-android-only" for="android_debug_recording" title="Record additional Android-side diagnostics for crash reports. Off by default. Turn on and reproduce to get more details." data-i18n="[title]Record additional Android-side diagnostics for crash reports. Off by default. Turn on and reproduce to get more details.">
                                     <input id="android_debug_recording" type="checkbox" />
                                     <small data-i18n="Android debug recording">Android debug recording</small>
                                     <i class="fa-solid fa-circle-info opacity50p" title="Takes effect after the next app restart. Also enables in-app WebView CDP diagnostics collection while on." data-i18n="[title]Takes effect after the next app restart. Also enables in-app WebView CDP diagnostics collection while on."></i>
@@ -7899,15 +7899,15 @@
 
         <div id="onboarding_template" class="template_element">
             <div class="onboarding">
-                <h3 data-i18n="Welcome to Luker!">Welcome to Luker!</h3>
+                <h3 data-i18n="Welcome to Atria!">Welcome to Atria!</h3>
                 <div id="onboarding-UI-language-block" class="flex-container alignItemsBaseline">
                     <span data-i18n="UI Language">Language:</span>
                     <select id="onboarding_ui_language_select" class="flex1 margin0">
                         <option value="en">English</option>
                     </select>
                 </div>
-                <b data-i18n="Luker is aimed at advanced users.">
-                    Luker is aimed at advanced users.
+                <b data-i18n="Atria is aimed at advanced users.">
+                    Atria is aimed at advanced users.
                 </b>
                 <ul class="justifyLeft marginTopBot5">
                     <li><span data-i18n="welcome_message_part_1">Read the</span> <a href="https://docs.sillytavern.app/" target="_blank" data-i18n="welcome_message_part_2">Official Documentation</a><span data-i18n="welcome_message_part_3">.</span></li>

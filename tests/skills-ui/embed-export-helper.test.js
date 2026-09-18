@@ -93,7 +93,7 @@ describe('embed-export-helper — pure helpers', () => {
         const payload = { version: 1, items: [{ name: 'x' }] };
         const ret = mod.attachEmbeddedSkillsSource(target, payload);
         expect(ret).toBe(target);
-        expect(target.extensions.luker.embedded_skills_source).toBe(payload);
+        expect(target.extensions.atria.embedded_skills_source).toBe(payload);
     });
 
     test('attachEmbeddedSkillsSource preserves sibling extensions namespaces', async () => {
@@ -101,13 +101,13 @@ describe('embed-export-helper — pure helpers', () => {
         const target = {
             extensions: {
                 chub: { id: '123' },
-                luker: { other_field: 'preserved' },
+                atria: { other_field: 'preserved' },
             },
         };
         mod.attachEmbeddedSkillsSource(target, { version: 1, items: [] });
         expect(target.extensions.chub.id).toBe('123');
-        expect(target.extensions.luker.other_field).toBe('preserved');
-        expect(target.extensions.luker.embedded_skills_source).toBeTruthy();
+        expect(target.extensions.atria.other_field).toBe('preserved');
+        expect(target.extensions.atria.embedded_skills_source).toBeTruthy();
     });
 
     test('attachEmbeddedSkillsSource is a no-op on null payload', async () => {
@@ -147,6 +147,6 @@ describe('embed-export-helper — pure helpers', () => {
             attachTo: target,
         });
         expect(ret).toBe(payload);
-        expect(target.extensions.luker.embedded_skills_source).toBe(payload);
+        expect(target.extensions.atria.embedded_skills_source).toBe(payload);
     });
 });

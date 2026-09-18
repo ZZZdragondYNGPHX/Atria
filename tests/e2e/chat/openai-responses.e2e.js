@@ -1,6 +1,6 @@
 // OpenAI Responses connection type — full-chain e2e.
 //
-// Seven scenarios sharing one mockLLM (/v1/responses handler) + one Luker
+// Seven scenarios sharing one mockLLM (/v1/responses handler) + one Atria
 // server instance. Each scenario resets the mock's scripted queues and
 // drives the REAL user path: fill #send_textarea, click #send_but, assert
 // the rendered bubbles and the wire bodies the mock received.
@@ -111,7 +111,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, 'Seraphina');
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -127,7 +127,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
 
         // Persisted state agrees with the DOM.
         const persistedMes = await page.evaluate((id) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.chat[id]?.mes ?? null;
         }, replyId);
         expect(persistedMes).toBe(STREAMED_REPLY);
@@ -158,7 +158,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         expect(typeof body.instructions).toBe('string');
         expect(body.instructions.length).toBeGreaterThan(0);
         const cardDescription = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return String(ctx.characters?.[ctx.characterId]?.description || '');
         });
         expect(cardDescription.length).toBeGreaterThanOrEqual(20);
@@ -204,7 +204,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
 
         // Persisted message carries both halves.
         const persisted = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const m = ctx.chat[ctx.chat.length - 1];
             return { mes: m.mes, reasoning: m.extra?.reasoning ?? '' };
         });
@@ -217,7 +217,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, 'Seraphina');
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -234,12 +234,12 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
             return import('/scripts/openai.js').then(mod => {
                 mod.oai_settings.custom_prompt_post_processing = '';
                 mod.oai_settings.tool_call_recurse_limit = 5;
-                const ctx = window.Luker.getContext();
+                const ctx = window.Atria.getContext();
                 ctx.ToolManager.RECURSE_LIMIT = 5;
             });
         });
         await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             try { ctx.unregisterFunctionTool('get_tide'); } catch { /* not yet registered */ }
             ctx.registerFunctionTool({
                 name: 'get_tide',
@@ -260,7 +260,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
             });
         });
         const registeredNames = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.ToolManager.tools.map(t => t.toFunctionOpenAI?.().function?.name);
         });
         expect(registeredNames).toContain('get_tide');
@@ -270,19 +270,19 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         mock.scriptReply(FINAL);
 
         const s3UserText = 'Check the tide gauge before we commit to the crossing.';
-        const chatLenBefore = await page.evaluate(() => window.Luker.getContext().chat.length);
+        const chatLenBefore = await page.evaluate(() => window.Atria.getContext().chat.length);
         await sendMessageAndAwaitReply(page, s3UserText);
 
         // Final bubble is the SECOND scripted reply.
         await page.waitForFunction((targetLen) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.chat.some((m, i) => i > targetLen && !m.is_user && !m.is_system && String(m.mes).includes('slow swallow'));
         }, chatLenBefore, { timeout: 60_000 });
 
         // The tool really executed (its result string comes from the
         // registered action, not from anything the mock emitted).
         const invocations = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const msgs = [];
             for (const m of ctx.chat) {
                 if (Array.isArray(m.extra?.tool_invocations)) {
@@ -364,7 +364,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, 'Seraphina');
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -389,7 +389,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         // The attached media landed on the user message (proves the real
         // populateFileAttachment chain ran).
         const media = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const lastUser = [...ctx.chat].reverse().find(m => m.is_user);
             return lastUser?.extra?.media || null;
         });
@@ -435,7 +435,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         // message writer stamps completion_tokens into extra.token_count —
         // the only usage-derived value the chat surface exposes.
         const tokenCount = await page.evaluate((id) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.chat[id]?.extra?.token_count ?? null;
         }, replyId);
         expect(tokenCount).toBe(2);
@@ -462,7 +462,7 @@ test.describe.serial('OpenAI Responses end-to-end', () => {
         expect(reasoningText2).toContain('quiet chart work');
 
         const persisted2 = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const m = ctx.chat[ctx.chat.length - 1];
             return { mes: m.mes, reasoning: m.extra?.reasoning ?? '' };
         });

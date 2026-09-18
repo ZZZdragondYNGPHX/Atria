@@ -133,10 +133,10 @@ Spec 与 Agenda 配置以 JSON 导出。
 
 | 格式 | 标识 | 适用 |
 |---|---|---|
-| V1 | `luker_orchestrator_profile_v1` | Spec 模式 |
-| V2 | `luker_orchestrator_profile_v2` | Agenda 模式 |
+| V1 | `atri_orchestrator_profile_v1` | Spec 模式 |
+| V2 | `atri_orchestrator_profile_v2` | Agenda 模式 |
 
-文件名形如 `luker-orchestrator-[agenda-][global|character-{name}].json`。导出器同时支持全局和角色卡作用域。
+文件名形如 `atria-orchestrator-[agenda-][global|character-{name}].json`。导出器同时支持全局和角色卡作用域。
 
 导入时，文件的模式（Spec / Agenda）必须和你当前执行模式一致。你选择应用到全局或某张特定的卡。
 
@@ -184,7 +184,7 @@ Loop 模式当前还没接入文件级的 Profile 导入导出按钮，改用 [A
 
 编排器在每次运行结果后会派发一个前端事件，其他代码可以消费编排结果而不必读 UI 内部状态。
 
-- **事件名：** `luker.orchestrator.result`
+- **事件名：** `atria.orchestrator.result`
 - **通道：** `getContext().eventSource`
 - **触发时机：** `completed` / `reused` / `cancelled` / `failed` 时
 
@@ -193,7 +193,7 @@ Loop 模式当前还没接入文件级的 Profile 导入导出按钮，改用 [A
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `module` | string | 始终为 `orchestrator` |
-| `event` | string | 始终为 `luker.orchestrator.result` |
+| `event` | string | 始终为 `atria.orchestrator.result` |
 | `status` | string | `completed` / `reused` / `cancelled` / `failed` |
 | `generationType` | string | 触发的生成类型 |
 | `chatKey` | string | 当前聊天 key |
@@ -211,7 +211,7 @@ Loop 模式当前还没接入文件级的 Profile 导入导出按钮，改用 [A
 
 ```js
 const context = getContext();
-context.eventSource.on('luker.orchestrator.result', (evt) => {
+context.eventSource.on('atria.orchestrator.result', (evt) => {
     if (evt.status === 'completed' || evt.status === 'reused') {
         console.log('Orchestrator capsule:', evt.capsuleText);
     }

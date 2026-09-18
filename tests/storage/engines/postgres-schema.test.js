@@ -1,7 +1,7 @@
 import { makeTempPgEngineHarness } from '../harness/pg-harness.js';
 import { CURRENT_SCHEMA_VERSION, initSchema } from '../../../src/storage/engines/postgres-schema.js';
 
-const describePg = process.env.LUKER_DISABLE_POSTGRES_TESTS ? describe.skip : describe;
+const describePg = process.env.ATRIA_DISABLE_POSTGRES_TESTS ? describe.skip : describe;
 
 describePg('PgEngine schema bootstrap', () => {
     let harness;

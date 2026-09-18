@@ -4,8 +4,7 @@
  * Mirrors the test layout of `tests/memory-graph/adapter.test.js`:
  * a hand-rolled chat-state store + event source that wires through
  * `createFloorStateWithDeps`, plus a `context` shim that the binding
- * uses to obtain the floor-state instance and read / delete legacy
- * sidecars.
+ * uses to obtain the current Atria FloorState instance.
  */
 
 import { describe, test, expect, beforeEach } from '@jest/globals';
@@ -17,7 +16,6 @@ import {
     commitAnchorSnapshot,
     constants as bindingConstants,
     loadAnchorMap,
-    migrateLegacyAnchorsIfNeeded,
     pickLatestValidSnapshot,
     resetFloorStateInstanceForTesting,
 } from '../../public/scripts/extensions/orchestrator/persistence.js';
@@ -485,120 +483,26 @@ describe('pickLatestValidSnapshot', () => {
     });
 });
 
-// --- legacy migration ---
+// --- hard-cutover namespace behavior ---
 
-describe('migrateLegacyAnchorsIfNeeded', () => {
-    test('migrates an index + per-anchor sidecars into floor-state commits and deletes legacy data', async () => {
-        const chatRef = {
-            value: [
-                userMsg('u1'), asstMsg('a1'),
-                userMsg('u2'), asstMsg('a2'),
-            ],
+describe('Atria orchestrator namespace hard cutover', () => {
+    test('predecessor-style state is ignored and left untouched', async () => {
+        const chatRef = { value: [userMsg('u1')] };
+        const { store, context } = makeContext(chatRef);
+        const obsoleteNamespace = 'obsolete_orchestrator_state';
+        const obsoletePayload = {
+            anchors: [1],
+            snapshot: { capsuleText: 'old state' },
         };
-        const { store, context } = makeContext(chatRef);
+        store._raw.set(obsoleteNamespace, structuredClone(obsoletePayload));
 
-        // Hand-write the legacy state shape into the raw store.
-        const a1 = buildAnchorAt(chatRef.value, 0);
-        const a2 = buildAnchorAt(chatRef.value, 2);
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 2,
-            anchors: [a1.playableFloor, a2.playableFloor],
-        });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a1.playableFloor}`, {
-            anchorHash: a1.hash,
-            capsuleText: 'legacy cap 1',
-            stageOutputs: [],
-        });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a2.playableFloor}`, {
-            anchorHash: a2.hash,
-            capsuleText: 'legacy cap 2',
-            stageOutputs: [],
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result).toMatchObject({ migrated: true, committed: 2 });
-
-        // Legacy namespaces gone.
-        expect(store._raw.has(bindingConstants.LEGACY_INDEX_NAMESPACE)).toBe(false);
-        expect(store._raw.has(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a1.playableFloor}`)).toBe(false);
-        expect(store._raw.has(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a2.playableFloor}`)).toBe(false);
-
-        // Schema marker stamped.
-        expect(store._raw.get(bindingConstants.SCHEMA_NAMESPACE)).toEqual({ version: bindingConstants.SCHEMA_VERSION });
-
-        // Both snapshots reachable through the floor-state instance.
-        const map = await loadAnchorMap(context);
-        expect(map[a1.playableFloor]).toMatchObject({ capsuleText: 'legacy cap 1' });
-        expect(map[a2.playableFloor]).toMatchObject({ capsuleText: 'legacy cap 2' });
+        expect(await loadAnchorMap(context)).toEqual({});
+        expect(store._raw.get(obsoleteNamespace)).toEqual(obsoletePayload);
     });
 
-    test('a second call after migration is a no-op', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-        const a1 = buildAnchorAt(chatRef.value, 0);
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, { version: 2, anchors: [a1.playableFloor] });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a1.playableFloor}`, {
-            anchorHash: a1.hash,
-            capsuleText: 'cap',
-            stageOutputs: [],
+    test('exports only the current Atria anchor namespace', () => {
+        expect(bindingConstants).toEqual({
+            STATE_NAMESPACE: 'atri_orchestrator_anchors',
         });
-        const first = await migrateLegacyAnchorsIfNeeded(context);
-        expect(first.migrated).toBe(true);
-        const second = await migrateLegacyAnchorsIfNeeded(context);
-        expect(second.migrated).toBe(false);
-        expect(second.reason).toBe('already-migrated');
-    });
-
-    test('stamps the schema version on a fresh chat with no legacy data', async () => {
-        const chatRef = { value: [userMsg('hi')] };
-        const { store, context } = makeContext(chatRef);
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result.migrated).toBe(false);
-        expect(result.reason).toBe('no-legacy-data');
-        expect(store._raw.get(bindingConstants.SCHEMA_NAMESPACE)).toEqual({ version: bindingConstants.SCHEMA_VERSION });
-    });
-
-    test('drops legacy anchors whose user message no longer exists in the chat', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 2,
-            // playableFloor 99 has no corresponding message in the current chat.
-            anchors: [99],
-        });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}99`, {
-            anchorHash: 'stale',
-            capsuleText: 'stale cap',
-            stageOutputs: [],
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result.migrated).toBe(true);
-        expect(result.committed).toBe(0);
-        const map = await loadAnchorMap(context);
-        expect(map).toEqual({});
-    });
-
-    test('promotes a legacy `snapshot` field into a floor-state commit', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-
-        const a1 = buildAnchorAt(chatRef.value, 0);
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 1,
-            anchors: [],
-            snapshot: {
-                anchorPlayableFloor: a1.playableFloor,
-                anchorHash: a1.hash,
-                capsuleText: 'pre-anchor-list',
-                stageOutputs: [],
-            },
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result.migrated).toBe(true);
-        const map = await loadAnchorMap(context);
-        expect(map[a1.playableFloor]).toMatchObject({ capsuleText: 'pre-anchor-list' });
     });
 });

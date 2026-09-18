@@ -47,9 +47,9 @@ beforeAll(async () => {
     ));
 });
 
-describe('ORCH-1: luker_orch_simulate is classified as a read tool', () => {
+describe('ORCH-1: atri_orch_simulate is classified as a read tool', () => {
     test('tool-display map classifies simulate as read-type', () => {
-        expect(ORCH_TOOL_DISPLAY.luker_orch_simulate?.type).toBe('read');
+        expect(ORCH_TOOL_DISPLAY.atri_orch_simulate?.type).toBe('read');
     });
 
 
@@ -63,7 +63,7 @@ describe('ORCH-1: luker_orch_simulate is classified as a read tool', () => {
             role: 'assistant',
             content: 'Simulated.',
             at: 100,
-            toolCalls: [{ id: 'call-1', name: 'luker_orch_simulate', args: {} }],
+            toolCalls: [{ id: 'call-1', name: 'atri_orch_simulate', args: {} }],
             toolResults: [{
                 tool_call_id: 'call-1',
                 content: { simulated: true, message: 'simulation complete' },
@@ -128,43 +128,43 @@ describe('ORCH-2 / ORCH-3 / ORCH-4: system prompt references only real tool name
         mainSrc = await readOrch('main.js');
     });
 
-    test('defaults.js does not reference luker_orch_append_stage (fake name)', () => {
-        expect(defaultsSrc).not.toMatch(/luker_orch_append_stage/);
+    test('defaults.js does not reference atri_orch_append_stage (fake name)', () => {
+        expect(defaultsSrc).not.toMatch(/atri_orch_append_stage/);
     });
 
-    test('defaults.js does not reference luker_orch_upsert_preset (fake name)', () => {
-        expect(defaultsSrc).not.toMatch(/luker_orch_upsert_preset/);
+    test('defaults.js does not reference atri_orch_upsert_preset (fake name)', () => {
+        expect(defaultsSrc).not.toMatch(/atri_orch_upsert_preset/);
     });
 
-    test('defaults.js does not reference luker_orch_finalize_profile (fake name)', () => {
-        expect(defaultsSrc).not.toMatch(/luker_orch_finalize_profile/);
+    test('defaults.js does not reference atri_orch_finalize_profile (fake name)', () => {
+        expect(defaultsSrc).not.toMatch(/atri_orch_finalize_profile/);
     });
 
-    test('defaults.js does reference luker_orch_set_stage (real name)', () => {
-        expect(defaultsSrc).toMatch(/luker_orch_set_stage/);
+    test('defaults.js does reference atri_orch_set_stage (real name)', () => {
+        expect(defaultsSrc).toMatch(/atri_orch_set_stage/);
     });
 
-    test('defaults.js does reference luker_orch_set_preset (real name)', () => {
-        expect(defaultsSrc).toMatch(/luker_orch_set_preset/);
+    test('defaults.js does reference atri_orch_set_preset (real name)', () => {
+        expect(defaultsSrc).toMatch(/atri_orch_set_preset/);
     });
 
-    test('defaults.js no longer references luker_orch_finalize_iteration (legacy, removed)', () => {
+    test('defaults.js no longer references atri_orch_finalize_iteration (legacy, removed)', () => {
         // The iter popup catalog removed finalize; the autonomous orch
         // executor in main.js still handles it for its own loop, but
         // defaults.js (the director default prompt) was cleaned up to
         // describe the implicit-termination contract instead. This
         // regression guard catches a future revert.
-        expect(defaultsSrc).not.toMatch(/luker_orch_finalize_iteration/);
+        expect(defaultsSrc).not.toMatch(/atri_orch_finalize_iteration/);
     });
 
-    test('main.js macros contract drops luker_orch_str_replace_field (fake name) — ORCH-3', () => {
-        expect(mainSrc).not.toMatch(/luker_orch_str_replace_field/);
+    test('main.js macros contract drops atri_orch_str_replace_field (fake name) — ORCH-3', () => {
+        expect(mainSrc).not.toMatch(/atri_orch_str_replace_field/);
     });
 
-    test('main.js does not use luker_orch_set_node.type dotted syntax — ORCH-4', () => {
+    test('main.js does not use atri_orch_set_node.type dotted syntax — ORCH-4', () => {
         // Function names with dots are invalid in OpenAI tool catalogs;
-        // any `luker_orch_<word>.<word>` is a bug.
-        expect(mainSrc).not.toMatch(/luker_orch_\w+\.\w+/);
+        // any `atri_orch_<word>.<word>` is a bug.
+        expect(mainSrc).not.toMatch(/atri_orch_\w+\.\w+/);
     });
 });
 
@@ -179,7 +179,7 @@ describe('ORCH-5: reset rejection produces a system + tool error result', () => 
             role: 'assistant',
             content: '',
             at: 1,
-            toolCalls: [{ id: 'reset_call_1', name: 'luker_orch_reset_live_to_blank', args: {} }],
+            toolCalls: [{ id: 'reset_call_1', name: 'atri_orch_reset_live_to_blank', args: {} }],
             toolResults: [{
                 tool_call_id: 'reset_call_1',
                 content: { error: 'Reset rejected: this card already has an override.' },
@@ -203,7 +203,7 @@ describe('ORCH-16: lorebook guidance pulled into a separate exported constant', 
 
 });
 
-// ORCH-Post-Refactor: `luker_orch_read_<mode>_fields` tool calls must
+// ORCH-Post-Refactor: `atri_orch_read_<mode>_fields` tool calls must
 // reach `dispatchReadFields` in the popup executor. The tool schema
 // existed and the AI could see + call it, but the executor's
 // if/else-if dispatch chain missed the `isProfileReadTool` branch,

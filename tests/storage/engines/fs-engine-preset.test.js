@@ -68,8 +68,8 @@ describe('FsEngine — preset handler', () => {
             tx.putPresetState(presetKey(), 'ns_b', { v: 2 }));
 
         const presetFp = path.join(h.dirs.openAI_Settings, 'mypreset.json');
-        const sidecarA = path.join(h.dirs.openAI_Settings, 'mypreset.luker-state.ns_a.json');
-        const sidecarB = path.join(h.dirs.openAI_Settings, 'mypreset.luker-state.ns_b.json');
+        const sidecarA = path.join(h.dirs.openAI_Settings, 'mypreset.atria-state.ns_a.json');
+        const sidecarB = path.join(h.dirs.openAI_Settings, 'mypreset.atria-state.ns_b.json');
         expect(fs.existsSync(presetFp)).toBe(true);
         expect(fs.existsSync(sidecarA)).toBe(true);
         expect(fs.existsSync(sidecarB)).toBe(true);
@@ -117,7 +117,7 @@ describe('FsEngine — preset handler', () => {
     test('putPresetState + getPresetState round-trips with 4-space indent', async () => {
         await h.engine.withTransaction(h.handle, (tx) =>
             tx.putPresetState(presetKey(), 'agenda', { items: [1, 2], stamp: 'x' }));
-        const fp = path.join(h.dirs.openAI_Settings, 'mypreset.luker-state.agenda.json');
+        const fp = path.join(h.dirs.openAI_Settings, 'mypreset.atria-state.agenda.json');
         const raw = fs.readFileSync(fp, 'utf-8');
         expect(raw).toContain('\n    "items"');
 
@@ -136,7 +136,7 @@ describe('FsEngine — preset handler', () => {
         await h.engine.withTransaction(h.handle, (tx) =>
             tx.putPresetState(presetKey(), 'orphan', { v: 1 }));
         const fp = path.join(h.dirs.openAI_Settings, 'mypreset.json');
-        const sidecarFp = path.join(h.dirs.openAI_Settings, 'mypreset.luker-state.orphan.json');
+        const sidecarFp = path.join(h.dirs.openAI_Settings, 'mypreset.atria-state.orphan.json');
         expect(fs.existsSync(fp)).toBe(false);
         expect(fs.existsSync(sidecarFp)).toBe(true);
     });

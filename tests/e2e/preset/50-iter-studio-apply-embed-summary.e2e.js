@@ -23,7 +23,7 @@
 //      the on-disk card body assertion has something observable.
 //   2. Select the fresh character card.
 //   3. Open the orchestrator iter-studio in loop mode.
-//   4. Script a `luker_orch_set_loop_profile` tool_call setting
+//   4. Script a `atri_orch_set_loop_profile` tool_call setting
 //      promptPresetName to SlotA.
 //   5. Send iter prompt → studio renders the pending proposal card.
 //   6. Approve — proposal-bus commits `profile` target → studio calls
@@ -91,10 +91,10 @@ test.afterAll(async () => {
 
 async function readCardBoundState(page) {
     return page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const chid = ctx?.characterId ?? window.this_chid;
         const c = ctx?.characters?.[chid];
-        const raw = c?.data?.extensions?.luker?.chat_completion_preset ?? null;
+        const raw = c?.data?.extensions?.atria?.chat_completion_preset ?? null;
         if (!raw) return { presets: [], defaultPresetName: null, isNull: true };
         if (Array.isArray(raw?.presets)) {
             return {
@@ -109,7 +109,7 @@ async function readCardBoundState(page) {
 
 async function readCharacterOrchestratorOverride(page) {
     return page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const chid = ctx?.characterId ?? window.this_chid;
         const c = ctx?.characters?.[chid];
         return c?.data?.extensions?.orchestrator ?? null;
@@ -124,11 +124,11 @@ async function resetCharacterOnDisk({ dataRoot, avatarFile }) {
     const png = readFileSync(path);
     const card = JSON.parse(readPngCard(png));
     if (card.data) {
-        if (card.data.extensions?.luker) delete card.data.extensions.luker.chat_completion_preset;
+        if (card.data.extensions?.atria) delete card.data.extensions.atria.chat_completion_preset;
         if (card.data.extensions) delete card.data.extensions.orchestrator;
     }
     if (card.extensions) {
-        if (card.extensions.luker) delete card.extensions.luker.chat_completion_preset;
+        if (card.extensions.atria) delete card.extensions.atria.chat_completion_preset;
         delete card.extensions.orchestrator;
     }
     writeFileSync(path, writePngCard(png, JSON.stringify(card)));
@@ -191,7 +191,7 @@ test.describe('#50 — iter-studio Apply to Character embed-summary popup', () =
 
         // Script the loop-profile patch that references SlotA.
         mock.scriptToolCall({
-            name: 'luker_orch_set_loop_profile',
+            name: 'atri_orch_set_loop_profile',
             arguments: { promptPresetName: SLOT_A },
         });
 
@@ -231,7 +231,7 @@ test.describe('#50 — iter-studio Apply to Character embed-summary popup', () =
         await openIterStudio(page, 'orch');
 
         mock.scriptToolCall({
-            name: 'luker_orch_set_loop_profile',
+            name: 'atri_orch_set_loop_profile',
             arguments: { promptPresetName: SLOT_A },
         });
         await sendIterPrompt(page, 'orch', `Bind the loop prompt preset to ${SLOT_A}.`);
@@ -267,7 +267,7 @@ test.describe('#50 — iter-studio Apply to Character embed-summary popup', () =
         await openIterStudio(page, 'orch');
 
         mock.scriptToolCall({
-            name: 'luker_orch_set_loop_profile',
+            name: 'atri_orch_set_loop_profile',
             arguments: { promptPresetName: SLOT_A },
         });
         await sendIterPrompt(page, 'orch', `Bind the loop prompt preset to ${SLOT_A}.`);
@@ -304,7 +304,7 @@ test.describe('#50 — iter-studio Apply to Character embed-summary popup', () =
         // Embed-all button in the popup would drive, so this seeds the
         // card exactly as production would.
         await page.evaluate(async ({ name, temperature }) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const chid = ctx?.characterId ?? window.this_chid;
             const character = ctx?.characters?.[chid];
             const body = ctx.getPresetManager('openai').getStoredPreset(name)
@@ -320,7 +320,7 @@ test.describe('#50 — iter-studio Apply to Character embed-summary popup', () =
 
         await openIterStudio(page, 'orch');
         mock.scriptToolCall({
-            name: 'luker_orch_set_loop_profile',
+            name: 'atri_orch_set_loop_profile',
             arguments: { promptPresetName: SLOT_A },
         });
         await sendIterPrompt(page, 'orch', `Bind the loop prompt preset to ${SLOT_A}.`);

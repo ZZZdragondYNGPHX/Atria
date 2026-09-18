@@ -22,8 +22,8 @@
 // do at the file-system level. SQL engines route through the real
 // materialize/dematerialize calls.
 //
-// MySQL/Postgres harnesses are gated on LUKER_DISABLE_MYSQL_TESTS /
-// LUKER_DISABLE_POSTGRES_TESTS the same way CONTRACT_HARNESSES gates
+// MySQL/Postgres harnesses are gated on ATRIA_DISABLE_MYSQL_TESTS /
+// ATRIA_DISABLE_POSTGRES_TESTS the same way CONTRACT_HARNESSES gates
 // them — when the local dev container isn't running, the gated rows of
 // the matrix are absent rather than failing. The full matrix is exercised
 // in any environment with both DBs available (developer machine, CI).
@@ -100,7 +100,7 @@ const USER_DIR_DISPLAY = Object.freeze({
 });
 
 function mkTmpWorkdir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'luker-cross-engine-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'atria-cross-engine-'));
 }
 
 // The MySQL/Postgres contract harnesses flatten every USER_DIRS key as a
@@ -120,7 +120,7 @@ function withNestedDirs(harness) {
         key === 'root' || (typeof abs === 'string' && abs.startsWith(flatRoot + path.sep)));
     if (nested) return harness;
 
-    const newDataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-nested-dirs-'));
+    const newDataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-nested-dirs-'));
     const userDir = path.join(newDataRoot, harness.handle || 'u');
     const dirsOut = { root: userDir };
     for (const key of Object.keys(flat)) {

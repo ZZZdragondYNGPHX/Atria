@@ -174,7 +174,7 @@ export function resetBackupRetentionConfig(userDirectories) {
 }
 
 /**
- * Maps a Luker backup filename to the logical entity it belongs to.
+ * Maps a Atria backup filename to the logical entity it belongs to.
  * Both chat backups and settings snapshots end with `_YYYYMMDD-HHMMSS`.
  * Unknown files are deliberately ignored by the retention manager.
  *

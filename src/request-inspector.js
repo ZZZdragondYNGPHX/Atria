@@ -213,7 +213,7 @@ export function findEntry(request) {
 /**
  * SSE events come in two shapes depending on the caller:
  *   - inspector stream tap pushes plain strings (the SSE data line)
- *   - luker-generation jobs push { seq, data, ts } objects
+ *   - atria-generation jobs push { seq, data, ts } objects
  * Normalize to the string data line.
  */
 function normalizeEvent(e) {
@@ -227,7 +227,7 @@ function normalizeEvent(e) {
 // Some upstream providers return HTTP 200 with a body that carries an `error`
 // field instead of the usual choices/candidates payload — OpenAI-compatible
 // APIs sometimes surface rate-limit or context-length failures this way, and
-// SSE streams can inject `data: {"error":{...}}` frames mid-stream. Luker's
+// SSE streams can inject `data: {"error":{...}}` frames mid-stream. Atria's
 // makersuite dispatch also constructs `{error:{message}}` payloads on its own
 // for Gemini's blocked-prompt / blocked-output branches so the client's
 // `data.error` handler fires with a descriptive message.
@@ -264,7 +264,7 @@ function findErrorFrameInStreamEvents(events) {
         if (!raw || raw === '[DONE]') continue;
         let parsed;
         try { parsed = JSON.parse(raw); } catch { continue; }
-        if (parsed?.luker) continue;
+        if (parsed?.atria) continue;
         if (parsed?.error != null) return parsed.error;
     }
     return null;
@@ -448,7 +448,7 @@ export function extractFinishReasonFromStreamEvents(events, source) {
 
         let parsed;
         try { parsed = JSON.parse(raw); } catch { continue; }
-        if (parsed?.luker) continue;
+        if (parsed?.atria) continue;
 
         if (source === 'claude') {
             // Anthropic streaming emits message_delta with the terminal
@@ -508,7 +508,7 @@ export function extractUsageFromStreamEvents(events, source) {
             continue;
         }
 
-        if (parsed?.luker) continue;
+        if (parsed?.atria) continue;
 
         if (source === 'claude') {
             if (parsed?.type === 'message_delta' && parsed?.usage) {
@@ -548,7 +548,7 @@ function extractTextFromStreamEvents(events, source) {
         if (!raw || raw === '[DONE]') continue;
         let parsed;
         try { parsed = JSON.parse(raw); } catch { continue; }
-        if (parsed?.luker) continue;
+        if (parsed?.atria) continue;
 
         if (source === 'claude') {
             if (parsed?.type === 'content_block_delta' && parsed?.delta?.type === 'text_delta') {
@@ -609,7 +609,7 @@ function extractPartsFromStreamEvents(events, source) {
             if (!raw || raw === '[DONE]') continue;
             let parsed;
             try { parsed = JSON.parse(raw); } catch { continue; }
-            if (parsed?.luker) continue;
+            if (parsed?.atria) continue;
 
             if (parsed?.type === 'content_block_start') {
                 const idx = parsed.index ?? 0;
@@ -661,7 +661,7 @@ function extractPartsFromStreamEvents(events, source) {
             if (!raw || raw === '[DONE]') continue;
             let parsed;
             try { parsed = JSON.parse(raw); } catch { continue; }
-            if (parsed?.luker) continue;
+            if (parsed?.atria) continue;
             const geminiParts = parsed?.candidates?.[0]?.content?.parts;
             if (!Array.isArray(geminiParts)) continue;
             for (const p of geminiParts) {
@@ -723,7 +723,7 @@ function extractPartsFromStreamEvents(events, source) {
         if (!raw || raw === '[DONE]') continue;
         let parsed;
         try { parsed = JSON.parse(raw); } catch { continue; }
-        if (parsed?.luker) continue;
+        if (parsed?.atria) continue;
         const delta = parsed?.choices?.[0]?.delta;
         if (!delta) continue;
         const content = delta.content;

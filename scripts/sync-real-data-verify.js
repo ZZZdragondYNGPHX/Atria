@@ -2,7 +2,7 @@
 /**
  * Manual real-data verification.
  *
- * Drives two real Luker servers on loopback (real http.Server listeners,
+ * Drives two real Atria servers on loopback (real http.Server listeners,
  * real Express stack, real sync router) against a copy of the
  * developer's real `data/default-user` (219 MB / 1004 files) and a
  * fresh empty test data root. Validates every acceptance
@@ -179,7 +179,7 @@ function listFilesRel(root) {
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
             // Skip the sync shadow + thumbnails + backups + per-device runtime state — see SYNC_CATEGORIES `syncDefault: 'never'`
             if (entry.name === '.sync' || entry.name === 'thumbnails' || entry.name === 'backups' || entry.name === '_storage-migrations' || entry.name === '_uploads' || entry.name === '_errors' || entry.name === '_diagnostic-reports') continue;
-            if (entry.name === 'content.log' || entry.name === 'access.log' || entry.name === 'cookie-secret.txt' || entry.name === 'luker-storage.sqlite' || entry.name === 'luker-storage.sqlite-wal' || entry.name === 'luker-storage.sqlite-shm') continue;
+            if (entry.name === 'content.log' || entry.name === 'access.log' || entry.name === 'cookie-secret.txt' || entry.name === 'atria-storage.sqlite' || entry.name === 'atria-storage.sqlite-wal' || entry.name === 'atria-storage.sqlite-shm') continue;
             if (entry.name === 'extensions' || entry.name === 'secrets.json') continue; // opt-in, off by default
             if (/^settings\.json\.backup-/.test(entry.name)) continue;
             // card-apps/*/.git/ are independent per-CardApp git
@@ -232,7 +232,7 @@ async function main() {
         process.exit(1);
     }
 
-    const tempBase = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-verify-'));
+    const tempBase = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-verify-'));
     const A_ROOT = path.join(tempBase, 'A');
     const B_ROOT = path.join(tempBase, 'B');
 

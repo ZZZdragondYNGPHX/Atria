@@ -10,7 +10,7 @@ import { createBlankCharacter } from '../e2e/_lib/ui-character.js';
 import { editMessageViaUI } from '../e2e/_lib/page.js';
 
 const baseURL = process.argv[2];
-assert(baseURL, 'Supply the URL of a disposable Luker instance');
+assert(baseURL, 'Supply the URL of a disposable Atria instance');
 const browser = await chromium.launch({ headless: true, ...(process.argv[3] ? { channel: process.argv[3] } : {}) });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const pageErrors = [];
@@ -19,21 +19,21 @@ page.on('pageerror', error => pageErrors.push(error.message));
 const name = `Memory OS smoke ${Date.now()}`;
 
 async function ready() {
-    await page.waitForFunction(() => !!window.Luker?.getContext && !document.getElementById('preloader'));
+    await page.waitForFunction(() => !!window.Atria?.getContext && !document.getElementById('preloader'));
 }
 async function selectCharacter() {
     const toggle = page.locator('#rightNavDrawerIcon');
     if (await toggle.evaluate(el => el.classList.contains('closedIcon'))) await toggle.click();
     await page.locator('#rm_print_characters_block .character_select').filter({ hasText: name }).click();
     await page.waitForFunction(expected => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         return ctx.characters[ctx.characterId]?.name === expected && ctx.chat.length > 0;
     }, name);
-    await page.waitForFunction(() => !!window.Luker.getContext().getExtensionApi('memory-graph'));
+    await page.waitForFunction(() => !!window.Atria.getContext().getExtensionApi('memory-graph'));
 }
 async function snapshot() {
     return page.evaluate(async () => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const main = await import('/scripts/extensions/memory-graph/main.js');
         const store = await main.ensureMemoryStoreLoaded(ctx);
         const ledger = await ctx.getChatState('memory_graph__provenance');
@@ -51,7 +51,7 @@ try {
     await createBlankCharacter(page, { name, firstmes: 'The archive key is blue.' });
     await selectCharacter();
     const created = await page.evaluate(async () => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         ctx.extensionSettings.memory_graph.memoryOsEnabled = true;
         ctx.saveSettingsDebounced();
         window.memorySourceSmokeSession = await ctx.getExtensionApi('memory-graph').openSession(ctx);
@@ -85,7 +85,7 @@ try {
     assert.equal(graphBefore.relations[0].predicate, 'has_color');
 
     const recalled = await page.evaluate(async () => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         ctx.extensionSettings.memory_graph.memoryOsTokenBudget = 500;
         const result = await window.memorySourceSmokeSession.recallMemory('What color is the archive key?');
         return { text: result.text, tokenCount: result.tokenCount, selected: result.selected };
@@ -94,7 +94,7 @@ try {
     assert(recalled.selected.length > 0);
     assert(recalled.tokenCount <= 500);
     const injected = await page.evaluate(async () => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         ctx.extensionSettings.memory_graph.enabled = true;
         ctx.extensionSettings.memory_graph.recallEnabled = true;
         const main = await import('/scripts/extensions/memory-graph/main.js');
@@ -112,7 +112,7 @@ try {
         const bridge = await readFile(process.argv[4], 'utf8');
         await page.route('**/__memory_os_ejs_fixture.js', route => route.fulfill({ contentType: 'text/javascript', body: bridge }));
         const providers = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const api = ctx.getExtensionApi('memory-graph');
             const { installEjsBridge } = await import('/__memory_os_ejs_fixture.js');
             let loreState = { version: 3, shared: { place: 'Harbor' } };
@@ -185,7 +185,7 @@ try {
     assert.equal(reloaded.ledger.state.facts[factIds[0].id].status, 'stale');
     assert.equal(reloaded.ledger.state.relations[graphBefore.relations[0].id].status, 'stale');
     const replacement = await page.evaluate(async () => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const session = await ctx.getExtensionApi('memory-graph').openSession(ctx);
         return session.createNode({ type: 'event', fields: { summary: 'The archive key is red.' } });
     });
@@ -194,7 +194,7 @@ try {
     assert.notEqual(revisedId, episodeId);
     assert.equal(revised.store.nodes[replacement.id].archived, false);
     assert.equal(revised.ledger.state.episodes[revisedId].content, 'The archive key is red.');
-    await page.evaluate(() => { window.Luker.getContext().extensionSettings.memory_graph.memoryOsEnabled = false; });
+    await page.evaluate(() => { window.Atria.getContext().extensionSettings.memory_graph.memoryOsEnabled = false; });
     const disabled = await snapshot();
     assert.equal(disabled.store.nodes[created.id].archived, true);
     assert.equal(disabled.store.nodes[replacement.id].archived, false);

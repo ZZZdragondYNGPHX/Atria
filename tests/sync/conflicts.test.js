@@ -8,7 +8,7 @@ import { attemptMerge, applyResolutions } from '../../src/sync/conflicts.js';
 const AUTHOR = { name: 't', email: 't@t' };
 
 async function makeRepo() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-conf-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-conf-'));
     await git.init({ fs, dir, defaultBranch: 'main' });
     return dir;
 }

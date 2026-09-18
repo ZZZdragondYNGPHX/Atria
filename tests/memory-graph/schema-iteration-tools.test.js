@@ -31,28 +31,28 @@ describe('MG schema — buildToolCatalog', () => {
         }
     });
 
-    test('does NOT include luker_mg_schema_continue_iteration (legacy, removed)', () => {
+    test('does NOT include atri_mg_schema_continue_iteration (legacy, removed)', () => {
         const names = buildToolCatalog().map(d => d.function?.name);
-        expect(names).not.toContain('luker_mg_schema_continue_iteration');
+        expect(names).not.toContain('atri_mg_schema_continue_iteration');
         expect(CONTROL_TOOL_NAMES.continue).toBeUndefined();
     });
 
-    test('does NOT include luker_mg_schema_finalize_iteration (legacy, removed)', () => {
+    test('does NOT include atri_mg_schema_finalize_iteration (legacy, removed)', () => {
         const names = buildToolCatalog().map(d => d.function?.name);
-        expect(names).not.toContain('luker_mg_schema_finalize_iteration');
+        expect(names).not.toContain('atri_mg_schema_finalize_iteration');
         expect(CONTROL_TOOL_NAMES.finalize).toBeUndefined();
     });
 
-    test('includes luker_mg_schema_reset_live_to_blank', () => {
+    test('includes atri_mg_schema_reset_live_to_blank', () => {
         const names = buildToolCatalog().map(d => d.function?.name);
         expect(names).toContain(CONTROL_TOOL_NAMES.resetToBlank);
-        expect(CONTROL_TOOL_NAMES.resetToBlank).toBe('luker_mg_schema_reset_live_to_blank');
+        expect(CONTROL_TOOL_NAMES.resetToBlank).toBe('atri_mg_schema_reset_live_to_blank');
     });
 
-    test('includes luker_mg_schema_reset_live_to_global', () => {
+    test('includes atri_mg_schema_reset_live_to_global', () => {
         const names = buildToolCatalog().map(d => d.function?.name);
         expect(names).toContain(CONTROL_TOOL_NAMES.resetToGlobal);
-        expect(CONTROL_TOOL_NAMES.resetToGlobal).toBe('luker_mg_schema_reset_live_to_global');
+        expect(CONTROL_TOOL_NAMES.resetToGlobal).toBe('atri_mg_schema_reset_live_to_global');
     });
 
     test('every catalog entry has a TOOL_DISPLAY label', () => {
@@ -75,8 +75,8 @@ describe('MG schema — buildToolCatalog', () => {
 
 describe('MG schema — isMgSchemaControlCall', () => {
     test('returns true for both current reset control tool names', () => {
-        expect(isMgSchemaControlCall({ name: 'luker_mg_schema_reset_live_to_blank' })).toBe(true);
-        expect(isMgSchemaControlCall({ name: 'luker_mg_schema_reset_live_to_global' })).toBe(true);
+        expect(isMgSchemaControlCall({ name: 'atri_mg_schema_reset_live_to_blank' })).toBe(true);
+        expect(isMgSchemaControlCall({ name: 'atri_mg_schema_reset_live_to_global' })).toBe(true);
     });
 
     test('returns false for the legacy continue / finalize tools (regression guard)', () => {
@@ -86,8 +86,8 @@ describe('MG schema — isMgSchemaControlCall', () => {
         // onControlCall) so the absence of a popup-side handler doesn't
         // silently swallow it. The tools themselves are no longer in the
         // catalog.
-        expect(isMgSchemaControlCall({ name: 'luker_mg_schema_continue_iteration' })).toBe(false);
-        expect(isMgSchemaControlCall({ name: 'luker_mg_schema_finalize_iteration' })).toBe(false);
+        expect(isMgSchemaControlCall({ name: 'atri_mg_schema_continue_iteration' })).toBe(false);
+        expect(isMgSchemaControlCall({ name: 'atri_mg_schema_finalize_iteration' })).toBe(false);
     });
 
     test('returns false for edit tools', () => {
@@ -98,7 +98,7 @@ describe('MG schema — isMgSchemaControlCall', () => {
 
     test('returns false for empty / missing / wrong-namespace names', () => {
         expect(isMgSchemaControlCall({ name: '' })).toBe(false);
-        expect(isMgSchemaControlCall({ name: 'luker_cpa_continue_iteration' })).toBe(false);
+        expect(isMgSchemaControlCall({ name: 'atria_cpa_continue_iteration' })).toBe(false);
         expect(isMgSchemaControlCall({})).toBe(false);
         expect(isMgSchemaControlCall(null)).toBe(false);
         expect(isMgSchemaControlCall(undefined)).toBe(false);

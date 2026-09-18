@@ -28,8 +28,8 @@ describe('unified CEA editor tools.js', () => {
         // isCeaEditorControlCall returns false for everything.
         expect(tools.CONTROL_TOOL_NAMES.continue).toBeUndefined();
         expect(tools.CONTROL_TOOL_NAMES.finalize).toBeUndefined();
-        expect(tools.isCeaEditorControlCall({ name: 'luker_cea_editor_continue_iteration' })).toBe(false);
-        expect(tools.isCeaEditorControlCall({ name: 'luker_cea_editor_finalize_iteration' })).toBe(false);
+        expect(tools.isCeaEditorControlCall({ name: 'atria_cea_editor_continue_iteration' })).toBe(false);
+        expect(tools.isCeaEditorControlCall({ name: 'atria_cea_editor_finalize_iteration' })).toBe(false);
         expect(tools.isCeaEditorControlCall({ name: 'cea_set_card_field' })).toBe(false);
         expect(tools.isCeaEditorControlCall({})).toBe(false);
         expect(tools.isCeaEditorControlCall(null)).toBe(false);
@@ -44,7 +44,7 @@ describe('unified CEA editor tools.js', () => {
         expect(tools.isCeaEditorReadTool('simulate_prompt')).toBe(true);
         expect(tools.isCeaEditorReadTool('cea_set_card_field')).toBe(false);
         expect(tools.isCeaEditorReadTool('cea_update_lorebook_entry')).toBe(false);
-        expect(tools.isCeaEditorReadTool('luker_cea_editor_continue_iteration')).toBe(false);
+        expect(tools.isCeaEditorReadTool('atria_cea_editor_continue_iteration')).toBe(false);
         expect(tools.isCeaEditorReadTool('')).toBe(false);
         expect(tools.isCeaEditorReadTool(null)).toBe(false);
     });
@@ -224,13 +224,13 @@ describe('unified CEA editor tools.js', () => {
         )).rejects.toThrow(/invalid_args/);
     });
 
-    it('runCeaEditorReadTool delegates to the legacy helper runner', async () => {
+    it('runCeaEditorReadTool delegates the canonical helper name unchanged', async () => {
         const out = await tools.runCeaEditorReadTool(
             { id: 'r1', name: 'lorebook_query', args: { book_name: 'BookA', query: 'x' } },
             { context: {}, settings: {}, helperApis: [] },
         );
         expect(out.ok).toBe(true);
-        expect(out.result?.stub).toBe(true);
+        expect(out.result).toMatchObject({ stub: true, name: 'lorebook_query' });
     });
 
     it('runCeaEditorReadTool surfaces errors via { ok: false, error }', async () => {
@@ -247,8 +247,8 @@ describe('unified CEA editor tools.js', () => {
     it('CONTROL_TOOL_DEFS is empty (no popup-side control tools)', () => {
         expect(tools.CONTROL_TOOL_DEFS.length).toBe(0);
         const names = tools.CONTROL_TOOL_DEFS.map(d => d.function?.name);
-        expect(names).not.toContain('luker_cea_editor_continue_iteration');
-        expect(names).not.toContain('luker_cea_editor_finalize_iteration');
+        expect(names).not.toContain('atria_cea_editor_continue_iteration');
+        expect(names).not.toContain('atria_cea_editor_finalize_iteration');
     });
 
     it('buildCeaEditorToolSet returns edit + read tools (no control tools)', () => {
@@ -257,10 +257,10 @@ describe('unified CEA editor tools.js', () => {
         expect(set.length).toBeGreaterThanOrEqual(2);
         const names = set.map(t => t.function?.name);
         // No control tools anymore — multi-round loop is program-driven.
-        expect(names).not.toContain('luker_cea_editor_continue_iteration');
+        expect(names).not.toContain('atria_cea_editor_continue_iteration');
         // Finalize is gone — assert NOT present so a regression that
         // re-adds it would fail loud.
-        expect(names).not.toContain('luker_cea_editor_finalize_iteration');
+        expect(names).not.toContain('atria_cea_editor_finalize_iteration');
         // At least one of the edit tools should be in the set.
         const ceaEdits = ['cea_set_card_field', 'cea_str_replace_card_field', 'cea_add_lorebook_entry'];
         expect(ceaEdits.some(n => names.includes(n))).toBe(true);
@@ -325,8 +325,8 @@ describe('CEA editor tool-display map', () => {
     });
 
     it('excludes legacy continue / finalize control tools (program-driven auto-continue)', () => {
-        expect(map.luker_cea_editor_continue_iteration).toBeUndefined();
-        expect(map.luker_cea_editor_finalize_iteration).toBeUndefined();
+        expect(map.atria_cea_editor_continue_iteration).toBeUndefined();
+        expect(map.atria_cea_editor_finalize_iteration).toBeUndefined();
     });
 
     it('summarize functions handle missing args / results without throwing', () => {

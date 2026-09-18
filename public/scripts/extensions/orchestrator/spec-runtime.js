@@ -10,12 +10,12 @@ import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
  * stage. Each stage executes its nodes either in `serial` (default) or
  * `parallel`. Each node is one of:
  *
- *   - **worker** — issues the `luker_orch_node_output` tool call (or
- *     `luker_orch_final_guidance` for the final stage). Worker nodes
+ *   - **worker** — issues the `atri_orch_node_output` tool call (or
+ *     `atri_orch_final_guidance` for the final stage). Worker nodes
  *     iterate up to `getNodeIterationMaxRounds(settings)` rounds before
  *     erroring out.
- *   - **review** — issues either `luker_orch_review_approve` (with
- *     mandatory feedback) or `luker_orch_review_rerun` (with target node
+ *   - **review** — issues either `atri_orch_review_approve` (with
+ *     mandatory feedback) or `atri_orch_review_rerun` (with target node
  *     ids and feedback). On rerun the runtime replays from the earliest
  *     targeted stage forward up to `getReviewRerunMaxRounds(settings)`
  *     reruns total per orchestration.
@@ -44,7 +44,7 @@ import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
  *     envelope agenda mode produces.
  */
 
-const extension_settings = Luker.getContext().extensionSettings;
+const extension_settings = Atria.getContext().extensionSettings;
 import { isAbortSignalLike, throwIfAborted } from './abort-utils.js';
 import { runLegacySingleRequest } from './legacy-runtime-adapter.js';
 import { canonicalStringifyArgs } from './canonical-stringify.js';
@@ -415,7 +415,7 @@ export function buildNodeToolSet(nodeSpec, { isFinalStage = false } = {}) {
         ? {
             type: 'function',
             function: {
-                name: 'luker_orch_final_guidance',
+                name: 'atri_orch_final_guidance',
                 description: 'Final orchestration guidance to inject into generation context.',
                 parameters: {
                     type: 'object',
@@ -430,7 +430,7 @@ export function buildNodeToolSet(nodeSpec, { isFinalStage = false } = {}) {
         : {
             type: 'function',
             function: {
-                name: 'luker_orch_node_output',
+                name: 'atri_orch_node_output',
                 description: 'Orchestrator node output with concise structured guidance.',
                 parameters: {
                     type: 'object',
@@ -467,7 +467,7 @@ export function buildNodeIterationContractText(nodeSpec, { isFinalStage = false 
         ].join('\n');
     }
 
-    const outputName = isFinalStage ? 'luker_orch_final_guidance' : 'luker_orch_node_output';
+    const outputName = isFinalStage ? 'atri_orch_final_guidance' : 'atri_orch_node_output';
     return [
         '## node_iteration_contract',
         `- When the node result is ready, call ${outputName} exactly once.`,
@@ -724,7 +724,7 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
             && (!options.engineTools || options.engineTools.includes('*') || options.engineTools.includes(tool.function.name)));
     const allowedNames = new Set(tools.map(tool => String(tool?.function?.name || '').trim()).filter(Boolean));
     const maxRounds = getNodeIterationMaxRounds(settings);
-    const outputToolName = isFinalStage ? 'luker_orch_final_guidance' : 'luker_orch_node_output';
+    const outputToolName = isFinalStage ? 'atri_orch_final_guidance' : 'atri_orch_node_output';
     const runtimeToolMessages = [];
     let lastRound = 0;
 
@@ -1132,7 +1132,7 @@ async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset,
     // Review nodes intentionally skip the `<available_skills>` catalog block
     // and the `__visibleSkillsForAgent` dispatch hint: they audit the
     // preceding worker's output via specialized review tools
-    // (`luker_orch_review_approve`, `luker_orch_review_rerun`) and shouldn't
+    // (`atri_orch_review_approve`, `atri_orch_review_rerun`) and shouldn't
     // be distracted by general skill content. Workers consult skills; review
     // nodes consult workers' outputs.
     throwIfAborted(abortSignal, 'Orchestration aborted.');
@@ -1628,7 +1628,7 @@ export async function runSpecOrchestration(context, payload, messages, profile, 
     const runId = startRun({
         mode: 'spec',
         chatKey,
-        abortFn: () => { try { Luker.getContext().stopGeneration(); } catch (_) { /* best-effort */ } },
+        abortFn: () => { try { Atria.getContext().stopGeneration(); } catch (_) { /* best-effort */ } },
         // Fast-unwind hook installed by the top-level orchestration
         // dispatch in main.js. When present, the run panel's Stop
         // button prefers it over `abortFn` so the cancel takes the
@@ -1638,10 +1638,10 @@ export async function runSpecOrchestration(context, payload, messages, profile, 
         // `finishRun`. Undefined for iter-studio simulations and any
         // future direct-runtime invocations — those still get raw
         // `abortFn` semantics.
-        stopFn: typeof payload?.__lukerResolveStopRequest === 'function'
-            ? payload.__lukerResolveStopRequest
+        stopFn: typeof payload?.__atriaResolveStopRequest === 'function'
+            ? payload.__atriaResolveStopRequest
             : null,
-        quiet: Boolean(payload?.__lukerSimulate),
+        quiet: Boolean(payload?.__atriaSimulate),
     });
     // Notes adapter overlay — same shape loop-runtime / director mount.
     // Threaded into runtime.contextForNotes so every worker node injects

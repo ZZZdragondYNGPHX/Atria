@@ -49,7 +49,7 @@ function runScript(args, cwd) {
 }
 
 function makeTempCwd() {
-    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-cli-fromzip-'));
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-cli-fromzip-'));
     return cwd;
 }
 
@@ -85,7 +85,7 @@ async function buildSqliteSourceZip(zipPath, srcDir, handle) {
     } finally {
         engine.close();
     }
-    const dumpBytes = fs.readFileSync(path.join(srcDir, 'luker-storage.sqlite'));
+    const dumpBytes = fs.readFileSync(path.join(srcDir, 'atria-storage.sqlite'));
     return new Promise((resolve, reject) => {
         const out = fs.createWriteStream(zipPath);
         const arc = archiver('zip');

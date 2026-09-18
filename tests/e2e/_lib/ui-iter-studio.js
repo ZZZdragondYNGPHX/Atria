@@ -28,7 +28,7 @@ const VARIANT_MAP = {
         // "Open AI Iteration Studio" button. The orchestrator panel itself
         // must already be expanded (callers can call openOrchestratorPanel
         // before this; openIterStudio handles the common case automatically).
-        openTrigger: '[data-luker-action="ai-iterate-open"]',
+        openTrigger: '[data-atria-action="ai-iterate-open"]',
         actionAttr: 'data-orch-it-action',
         inputSelector: '[data-orch-it-input], .orch_it_composer_input textarea, .orch_it_composer_input [contenteditable="true"]',
     },
@@ -42,7 +42,7 @@ const VARIANT_MAP = {
     mg: {
         // MG schema iter-studio: opened via the MG settings panel's
         // "AI Iterate Schema" button.
-        openTrigger: '#luker_rpg_memory_open_schema_studio',
+        openTrigger: '#atria_rpg_memory_open_schema_studio',
         actionAttr: 'data-mg-schema-it-action',
         inputSelector: '[data-mg-schema-it-input], .mg_schema_it_composer_input textarea, .mg_schema_it_composer_input [contenteditable="true"]',
     },
@@ -79,7 +79,7 @@ export async function openIterStudio(page, variant, { timeoutMs = 20_000 } = {})
     const trigger = page.locator(`${v.openTrigger}:visible`).first();
     await trigger.waitFor({ state: 'visible', timeout: timeoutMs });
     await trigger.click();
-    // The iter-studio popup is a Luker popup with the iter shell mounted
+    // The iter-studio popup is a Atria popup with the iter shell mounted
     // inside. Wait for the variant-specific Send button to render.
     const sendBtn = page.locator(`[${v.actionAttr}="send"]`).last();
     await sendBtn.waitFor({ state: 'visible', timeout: timeoutMs });
@@ -202,7 +202,7 @@ export async function rollbackIterBatch(page, variant, { timeoutMs = 10_000, tur
 }
 
 /**
- * Close the currently-open iter-studio popup by clicking the Luker popup
+ * Close the currently-open iter-studio popup by clicking the Atria popup
  * close (or X) button. Falls back to Escape if none found.
  */
 export async function closeIterStudio(page) {

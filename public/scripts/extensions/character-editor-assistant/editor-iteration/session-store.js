@@ -18,7 +18,7 @@
 import { migrateToV3, MigrationFailedError } from '/scripts/iteration-library/storage/migrate-v3.js';
 import { notifyMigrationFailed } from '/scripts/iteration-library/storage/migration-toast.js';
 
-export const CEA_SIDECAR_NAMESPACE = 'character_editor_assistant_iter_sessions';
+export const CEA_SIDECAR_NAMESPACE = 'atri_cea_editor_iter_sessions';
 
 const SIDECAR_SCHEMA_VERSION = 1;
 

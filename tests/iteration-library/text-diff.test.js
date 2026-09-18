@@ -134,19 +134,19 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
         expect(html).toContain('+0');
         expect(html).toContain('-0');
         // No add / del / mod row classes when nothing changed.
-        expect(html).not.toContain('luker_lib_diff_row_add');
-        expect(html).not.toContain('luker_lib_diff_row_del');
-        expect(html).not.toContain('luker_lib_diff_row_mod');
+        expect(html).not.toContain('atria_lib_diff_row_add');
+        expect(html).not.toContain('atria_lib_diff_row_del');
+        expect(html).not.toContain('atria_lib_diff_row_mod');
         // Stays under the long threshold, so details default-open.
-        expect(html).toMatch(/<details class="luker_lib_diff" open>/);
+        expect(html).toMatch(/<details class="atria_lib_diff" open>/);
     });
 
     test('empty before paints every after line as an add (green) row', () => {
         const after = 'line A\nline B\nline C';
         const html = renderInlineTextDiffHtml('', after);
         // Three new lines → three add rows, zero del rows.
-        expect(countRows(html, 'luker_lib_diff_row_add')).toBe(3);
-        expect(countRows(html, 'luker_lib_diff_row_del')).toBe(0);
+        expect(countRows(html, 'atria_lib_diff_row_add')).toBe(3);
+        expect(countRows(html, 'atria_lib_diff_row_del')).toBe(0);
         // Summary reports +3 -0.
         expect(html).toContain('+3');
         expect(html).toContain('-0');
@@ -155,8 +155,8 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
     test('empty after paints every before line as a delete (red) row', () => {
         const before = 'line A\nline B';
         const html = renderInlineTextDiffHtml(before, '');
-        expect(countRows(html, 'luker_lib_diff_row_del')).toBe(2);
-        expect(countRows(html, 'luker_lib_diff_row_add')).toBe(0);
+        expect(countRows(html, 'atria_lib_diff_row_del')).toBe(2);
+        expect(countRows(html, 'atria_lib_diff_row_add')).toBe(0);
         expect(html).toContain('+0');
         expect(html).toContain('-2');
     });
@@ -164,10 +164,10 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
     test('single-line, single-word change emits a mod row with inline word spans', () => {
         const html = renderInlineTextDiffHtml('hello world', 'hello there');
         // One paired delete+insert → coalesced into a mod row.
-        expect(countRows(html, 'luker_lib_diff_row_mod')).toBe(1);
+        expect(countRows(html, 'atria_lib_diff_row_mod')).toBe(1);
         // Both word-level highlights show up.
-        expect(html).toContain('luker_lib_diff_word_del');
-        expect(html).toContain('luker_lib_diff_word_add');
+        expect(html).toContain('atria_lib_diff_word_del');
+        expect(html).toContain('atria_lib_diff_word_add');
         // Unchanged token ('hello ') survives in both columns.
         expect(html.includes('hello')).toBe(true);
     });
@@ -177,10 +177,10 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
         const after = 'alpha\nBETA\ngamma';
         const html = renderInlineTextDiffHtml(before, after);
         // alpha + gamma untouched → 2 eq rows. beta vs BETA → 1 mod row.
-        expect(countRows(html, 'luker_lib_diff_row_eq')).toBe(2);
-        expect(countRows(html, 'luker_lib_diff_row_mod')).toBe(1);
-        expect(countRows(html, 'luker_lib_diff_row_add')).toBe(0);
-        expect(countRows(html, 'luker_lib_diff_row_del')).toBe(0);
+        expect(countRows(html, 'atria_lib_diff_row_eq')).toBe(2);
+        expect(countRows(html, 'atria_lib_diff_row_mod')).toBe(1);
+        expect(countRows(html, 'atria_lib_diff_row_add')).toBe(0);
+        expect(countRows(html, 'atria_lib_diff_row_del')).toBe(0);
     });
 
     test('long input (over the line-count threshold) emits a collapsed <details>', () => {
@@ -190,8 +190,8 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
         const after = Array.from({ length: 25 }, (_, i) => `new line ${i}`).join('\n');
         const html = renderInlineTextDiffHtml(before, after);
         // No `open` attribute on the outer details.
-        expect(html).toMatch(/<details class="luker_lib_diff">/);
-        expect(html).not.toMatch(/<details class="luker_lib_diff" open>/);
+        expect(html).toMatch(/<details class="atria_lib_diff">/);
+        expect(html).not.toMatch(/<details class="atria_lib_diff" open>/);
     });
 
     test('long input (over the char threshold) also auto-collapses', () => {
@@ -199,8 +199,8 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
         const before = 'a'.repeat(1200);
         const after = 'b'.repeat(1200);
         const html = renderInlineTextDiffHtml(before, after);
-        expect(html).toMatch(/<details class="luker_lib_diff">/);
-        expect(html).not.toMatch(/<details class="luker_lib_diff" open>/);
+        expect(html).toMatch(/<details class="atria_lib_diff">/);
+        expect(html).not.toMatch(/<details class="atria_lib_diff" open>/);
     });
 
     test('i18n option translates the summary and Expand label', () => {
@@ -214,8 +214,8 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
         // The summary label is translated; +/- counts render as colored
         // chips beside it rather than inline placeholders.
         expect(decodeEntities(html)).toContain('行级 diff');
-        expect(html).toContain('luker_lib_diff_meta_add">+1');
-        expect(html).toContain('luker_lib_diff_meta_del">-1');
+        expect(html).toContain('atria_lib_diff_meta_add">+1');
+        expect(html).toContain('atria_lib_diff_meta_del">-1');
         // The Expand button title attribute should be translated too.
         expect(html).toContain('title="放大"');
     });
@@ -228,15 +228,15 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
         expect(html).toContain('title="Expand diff"');
     });
 
-    test('fileLabel is surfaced in data-luker-lib-diff-label and HTML-escaped', () => {
+    test('fileLabel is surfaced in data-atria-lib-diff-label and HTML-escaped', () => {
         const html = renderInlineTextDiffHtml('a', 'b', { fileLabel: 'description <unsafe>' });
         // Attribute carries an HTML-escaped copy of the label.
-        expect(html).toContain('data-luker-lib-diff-label="description &lt;unsafe&gt;"');
+        expect(html).toContain('data-atria-lib-diff-label="description &lt;unsafe&gt;"');
     });
 
     test('third positional arg falls back to fileLabel (backward-compat)', () => {
         const html = renderInlineTextDiffHtml('a', 'b', 'mySafeLabel');
-        expect(html).toContain('data-luker-lib-diff-label="mySafeLabel"');
+        expect(html).toContain('data-atria-lib-diff-label="mySafeLabel"');
     });
 
     test('handles \\r\\n input by normalizing to \\n before LCS', () => {
@@ -244,17 +244,17 @@ describe('iteration-library/text-diff — renderInlineTextDiffHtml', () => {
         const after = 'one\r\ntwo\r\nthree';
         const html = renderInlineTextDiffHtml(before, after);
         // Identical content after normalization → no add/del rows.
-        expect(html).not.toContain('luker_lib_diff_row_add');
-        expect(html).not.toContain('luker_lib_diff_row_del');
-        expect(html).not.toContain('luker_lib_diff_row_mod');
+        expect(html).not.toContain('atria_lib_diff_row_add');
+        expect(html).not.toContain('atria_lib_diff_row_del');
+        expect(html).not.toContain('atria_lib_diff_row_mod');
     });
 
     test('"Not set" placeholders are treated as empty by sanitize helper', () => {
         // Both "Not set" placeholders sanitize to '', so 'Not set' → 'value'
         // is identical to '' → 'value' (one add row, no del row).
         const html = renderInlineTextDiffHtml('Not set', 'value');
-        expect(countRows(html, 'luker_lib_diff_row_add')).toBe(1);
-        expect(countRows(html, 'luker_lib_diff_row_del')).toBe(0);
+        expect(countRows(html, 'atria_lib_diff_row_add')).toBe(1);
+        expect(countRows(html, 'atria_lib_diff_row_del')).toBe(0);
     });
 });
 
@@ -294,7 +294,7 @@ describe('iteration-library/text-diff — ensureStylesheetInjected', () => {
 
     test('first call injects a <link> with the expected id + href', () => {
         ensureStylesheetInjected();
-        const link = document.getElementById('luker_lib_diff_stylesheet');
+        const link = document.getElementById('atria_lib_diff_stylesheet');
         expect(link).toBeTruthy();
         expect(link.tagName).toBe('LINK');
         expect(link.getAttribute('rel')).toBe('stylesheet');
@@ -305,14 +305,14 @@ describe('iteration-library/text-diff — ensureStylesheetInjected', () => {
         ensureStylesheetInjected();
         ensureStylesheetInjected();
         ensureStylesheetInjected();
-        const all = document.querySelectorAll('#luker_lib_diff_stylesheet');
+        const all = document.querySelectorAll('#atria_lib_diff_stylesheet');
         expect(all.length).toBe(1);
     });
 
     test('renderInlineTextDiffHtml auto-injects the stylesheet on first call', () => {
         // Pre-condition: no link.
-        expect(document.getElementById('luker_lib_diff_stylesheet')).toBeNull();
+        expect(document.getElementById('atria_lib_diff_stylesheet')).toBeNull();
         renderInlineTextDiffHtml('a', 'b');
-        expect(document.getElementById('luker_lib_diff_stylesheet')).toBeTruthy();
+        expect(document.getElementById('atria_lib_diff_stylesheet')).toBeTruthy();
     });
 });

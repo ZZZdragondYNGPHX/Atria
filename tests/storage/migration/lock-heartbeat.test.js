@@ -32,7 +32,7 @@ describe('migration lock heartbeat', () => {
     let dataRoot;
 
     beforeEach(() => {
-        dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-lock-heartbeat-'));
+        dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-lock-heartbeat-'));
     });
 
     afterEach(() => {

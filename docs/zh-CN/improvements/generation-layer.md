@@ -1,6 +1,6 @@
 # 统一生成层
 
-统一生成层（Unified Generation Layer）是 Luker 引入的后端架构改进，将分散在各个 API 端点中的生成逻辑收敛到一个共享模块中，实现多后端的统一封装。
+统一生成层（Unified Generation Layer）是 Atria 引入的后端架构改进，将分散在各个 API 端点中的生成逻辑收敛到一个共享模块中，实现多后端的统一封装。
 
 ## 问题背景
 
@@ -13,7 +13,7 @@
 
 ## 解决方案
 
-Luker 新增了统一生成层端点（`/api/backends/luker-generation`），作为前端发起 AI 生成请求的主要路径。该端点接收前端的生成请求，根据当前的 Chat Completion Source 转发到对应的上游 API，并在统一的处理管线中完成流式响应、Token 计量、生成确认和持久化。
+Atria 新增了统一生成层端点（`/api/backends/atria-generation`），作为前端发起 AI 生成请求的主要路径。该端点接收前端的生成请求，根据当前的 Chat Completion Source 转发到对应的上游 API，并在统一的处理管线中完成流式响应、Token 计量、生成确认和持久化。
 
 ### 多后端统一封装
 
@@ -61,7 +61,7 @@ FE: "前端发起 AI 生成请求"
 EP: "各后端端点文件\nchat-completions.js / kobold.js / ..." {
   shape: diamond
 }
-UL: "统一生成层\n/api/backends/luker-generation" {
+UL: "统一生成层\n/api/backends/atria-generation" {
   style.fill: "#e1f5ff"
 }
 INSP: "请求检查器\nToken 计量" {

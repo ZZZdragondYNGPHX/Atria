@@ -12,7 +12,7 @@ import { createMemoryIndex } from '../../src/skills/memory-index.js';
 import { ensureFreshInstallPopulate } from '../../src/skills/bundled.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// REPO_DEFAULT_ROOT mirrors what server-main.js sets as `lukerDefaultRoot`:
+// REPO_DEFAULT_ROOT mirrors what server-main.js sets as `atriaDefaultRoot`:
 // the `default/` dir that ships bundled scaffolding (skills/global/, etc.).
 // tests/skills/integration-smoke.test.js → ../../default resolves to the
 // project's default/ tree containing skills/global/ with the bundled scaffolds.
@@ -44,7 +44,7 @@ describe('Skills integration smoke', () => {
 
         app = express();
         app.use(express.json({ limit: '20mb' }));
-        app.set('lukerDefaultRoot', REPO_DEFAULT_ROOT);
+        app.set('atriaDefaultRoot', REPO_DEFAULT_ROOT);
         app.use('/api/skills', createSkillsRouter({
             getRepository: () => repo,
             memoryIndex: idx,

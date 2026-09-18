@@ -41,18 +41,22 @@ describe('director profile round-trip through Studio sanitizer', () => {
         original.discardOnAbort = true;
         original.tools = {
             chat: { read_range: true, search: true },
-            memory: {
-                list_candidates: true, edge_summary: false, node_brief: true,
-                expand_seeds: false, rank: true, schema: true,
+            custom: {
+                memory_list_candidates: true,
+                memory_edge_summary: false,
+                memory_node_brief: true,
+                memory_expand_seeds: false,
+                memory_schema: true,
+                search_search: false,
+                search_visit: false,
             },
             lorebook: { search: true, get: false },
-            note: { add: false, delete: false },
-            search: { search: false, visit: false },
+            note: { open: false, close: false },
         };
 
         const after = sanitizeDirectorProfile(original);
 
-        // Flat shape — sanitizer drops the legacy `director:` wrapper.
+        // Current profile remains flat.
         expect(after).not.toHaveProperty('director');
         expect(after.mode).toBe(ORCH_EXECUTION_MODE_DIRECTOR);
         // Main agent fields preserved.
@@ -76,7 +80,7 @@ describe('director profile round-trip through Studio sanitizer', () => {
         // Tool flags preserved.
         expect(after.tools.chat.read_range).toBe(true);
         expect(after.tools.chat.search).toBe(true);
-        // memory.* legacy flags translate to custom.memory_<verb>.
+        // Layer-2 extension flags remain under tools.custom.
         expect(after.tools.custom.memory_list_candidates).toBe(true);
         expect(after.tools.custom.memory_edge_summary).toBe(false);
         expect(after.tools.custom.memory_node_brief).toBe(true);

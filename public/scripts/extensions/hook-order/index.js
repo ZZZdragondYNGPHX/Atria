@@ -243,30 +243,30 @@ function renderEventCard(context, eventDef) {
     const plugins = getOrderedPluginList(context, eventName);
     const rows = plugins.length > 0
         ? plugins.map((pluginId, index) => `
-<div class="luker_hook_order_row" data-event-name="${escapeHtml(eventName)}" data-plugin-id="${escapeHtml(pluginId)}">
-    <div class="luker_hook_order_plugin">${escapeHtml(pluginId)}</div>
-    <div class="luker_hook_order_controls">
-        <div class="menu_button" data-luker-action="move-up" ${index === 0 ? 'disabled' : ''}>${escapeHtml(i18n('Up'))}</div>
-        <div class="menu_button" data-luker-action="move-down" ${index === plugins.length - 1 ? 'disabled' : ''}>${escapeHtml(i18n('Down'))}</div>
+<div class="atria_hook_order_row" data-event-name="${escapeHtml(eventName)}" data-plugin-id="${escapeHtml(pluginId)}">
+    <div class="atria_hook_order_plugin">${escapeHtml(pluginId)}</div>
+    <div class="atria_hook_order_controls">
+        <div class="menu_button" data-atria-action="move-up" ${index === 0 ? 'disabled' : ''}>${escapeHtml(i18n('Up'))}</div>
+        <div class="menu_button" data-atria-action="move-down" ${index === plugins.length - 1 ? 'disabled' : ''}>${escapeHtml(i18n('Down'))}</div>
     </div>
 </div>`)
             .join('')
-        : `<div class="luker_hook_order_empty">${escapeHtml(i18n('No extension listeners detected for this hook.'))}</div>`;
+        : `<div class="atria_hook_order_empty">${escapeHtml(i18n('No extension listeners detected for this hook.'))}</div>`;
 
     return `
-<div class="luker_hook_order_card" data-event-name="${escapeHtml(eventName)}">
-    <div class="luker_hook_order_title">${escapeHtml(i18n(eventDef.label))}</div>
-    <small class="luker_hook_order_event">${escapeHtml(eventName)}</small>
-    <div class="luker_hook_order_list">${rows}</div>
+<div class="atria_hook_order_card" data-event-name="${escapeHtml(eventName)}">
+    <div class="atria_hook_order_title">${escapeHtml(i18n(eventDef.label))}</div>
+    <small class="atria_hook_order_event">${escapeHtml(eventName)}</small>
+    <div class="atria_hook_order_list">${rows}</div>
     <div class="flex-container">
-        <div class="menu_button" data-luker-action="reset-event" data-event-name="${escapeHtml(eventName)}">${escapeHtml(i18n('Reset To Detected Order'))}</div>
+        <div class="menu_button" data-atria-action="reset-event" data-event-name="${escapeHtml(eventName)}">${escapeHtml(i18n('Reset To Detected Order'))}</div>
     </div>
 </div>`;
 }
 
 function renderUi(root, context) {
     const cards = TARGET_EVENTS.map(eventDef => renderEventCard(context, eventDef)).join('');
-    root.find('#luker_hook_order_list').html(cards);
+    root.find('#atria_hook_order_list').html(cards);
 }
 
 function bindUi() {
@@ -277,11 +277,11 @@ function bindUi() {
     }
 
     renderUi(root, context);
-    root.off('.lukerHookOrder');
+    root.off('.atriaHookOrder');
 
-    root.on('click.lukerHookOrder', '[data-luker-action]', function () {
-        const action = String(jQuery(this).data('luker-action') || '');
-        const row = jQuery(this).closest('.luker_hook_order_row');
+    root.on('click.atriaHookOrder', '[data-atria-action]', function () {
+        const action = String(jQuery(this).data('atria-action') || '');
+        const row = jQuery(this).closest('.atria_hook_order_row');
         const eventName = String(row.data('event-name') || jQuery(this).data('event-name') || '');
         const pluginId = String(row.data('plugin-id') || '');
         if (!eventName) {
@@ -328,19 +328,19 @@ function ensureUi() {
     min-width: max-content;
     white-space: nowrap;
 }
-#${UI_BLOCK_ID} .luker_hook_order_card {
+#${UI_BLOCK_ID} .atria_hook_order_card {
     border: 1px solid var(--SmartThemeBorderColor, rgba(130,130,130,0.45));
     border-radius: 8px;
     padding: 8px;
     margin-bottom: 8px;
 }
-#${UI_BLOCK_ID} .luker_hook_order_title {
+#${UI_BLOCK_ID} .atria_hook_order_title {
     font-weight: 600;
 }
-#${UI_BLOCK_ID} .luker_hook_order_event {
+#${UI_BLOCK_ID} .atria_hook_order_event {
     opacity: 0.75;
 }
-#${UI_BLOCK_ID} .luker_hook_order_row {
+#${UI_BLOCK_ID} .atria_hook_order_row {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -350,15 +350,15 @@ function ensureUi() {
     padding: 6px;
     margin: 6px 0;
 }
-#${UI_BLOCK_ID} .luker_hook_order_plugin {
+#${UI_BLOCK_ID} .atria_hook_order_plugin {
     word-break: break-word;
     overflow-wrap: anywhere;
 }
-#${UI_BLOCK_ID} .luker_hook_order_controls {
+#${UI_BLOCK_ID} .atria_hook_order_controls {
     display: flex;
     gap: 6px;
 }
-#${UI_BLOCK_ID} .luker_hook_order_empty {
+#${UI_BLOCK_ID} .atria_hook_order_empty {
     opacity: 0.8;
     padding: 6px 0;
 }
@@ -375,9 +375,9 @@ function ensureUi() {
         </div>
         <div class="inline-drawer-content">
             <small style="opacity:0.85">${escapeHtml(i18n('Core event ordering for extension listeners. Reorder plugins per hook.'))}</small>
-            <div id="luker_hook_order_list" class="flex-container flexFlowColumn flexNoGap"></div>
+            <div id="atria_hook_order_list" class="flex-container flexFlowColumn flexNoGap"></div>
             <div class="flex-container">
-                <div class="menu_button" data-luker-action="refresh">${escapeHtml(i18n('Refresh Detected List'))}</div>
+                <div class="menu_button" data-atria-action="refresh">${escapeHtml(i18n('Refresh Detected List'))}</div>
             </div>
         </div>
     </div>

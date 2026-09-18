@@ -157,12 +157,12 @@ export function buildBundledTableHtml(rows, t, esc) {
     const items = Array.isArray(rows) ? rows : [];
     const stateBadge = (state) => {
         if (state === 'installed_match') {
-            return `<span class="luker_bundled_state luker_bundled_state_match">${esc(t('Installed'))}</span>`;
+            return `<span class="atria_bundled_state atria_bundled_state_match">${esc(t('Installed'))}</span>`;
         }
         if (state === 'installed_differ') {
-            return `<span class="luker_bundled_state luker_bundled_state_differ">${esc(t('Differs'))}</span>`;
+            return `<span class="atria_bundled_state atria_bundled_state_differ">${esc(t('Differs'))}</span>`;
         }
-        return `<span class="luker_bundled_state luker_bundled_state_new">${esc(t('Not installed'))}</span>`;
+        return `<span class="atria_bundled_state atria_bundled_state_new">${esc(t('Not installed'))}</span>`;
     };
     const renderRow = (row) => {
         const safeName = esc(row.name);
@@ -175,19 +175,19 @@ export function buildBundledTableHtml(rows, t, esc) {
             ? ''
             : `<div class="menu_button menu_button_small" data-bundled-action="install" data-bundled-name="${safeName}">${esc(t('Install this'))}</div>`;
         return `
-            <tr class="luker_bundled_row" data-bundled-row data-bundled-name="${safeName}" data-bundled-state="${esc(row.state)}">
-                <td class="luker_bundled_col_name">${safeName}</td>
-                <td class="luker_bundled_col_state">${stateBadge(row.state)}</td>
-                <td class="luker_bundled_col_desc">${esc(row.description || t('(no description)'))}</td>
-                <td class="luker_bundled_col_meta">${esc(t('${0} files, ${1} KB').replace('${0}', String(row.fileCount)).replace('${1}', sizeKb))}</td>
-                <td class="luker_bundled_col_action">${action}</td>
+            <tr class="atria_bundled_row" data-bundled-row data-bundled-name="${safeName}" data-bundled-state="${esc(row.state)}">
+                <td class="atria_bundled_col_name">${safeName}</td>
+                <td class="atria_bundled_col_state">${stateBadge(row.state)}</td>
+                <td class="atria_bundled_col_desc">${esc(row.description || t('(no description)'))}</td>
+                <td class="atria_bundled_col_meta">${esc(t('${0} files, ${1} KB').replace('${0}', String(row.fileCount)).replace('${1}', sizeKb))}</td>
+                <td class="atria_bundled_col_action">${action}</td>
             </tr>
         `;
     };
     const body = items.length === 0
-        ? `<div class="luker_bundled_empty">${esc(t('No bundled skills available.'))}</div>`
+        ? `<div class="atria_bundled_empty">${esc(t('No bundled skills available.'))}</div>`
         : `
-        <table class="luker_bundled_table">
+        <table class="atria_bundled_table">
             <thead>
                 <tr>
                     <th>${esc(t('Name'))}</th>
@@ -201,15 +201,15 @@ export function buildBundledTableHtml(rows, t, esc) {
         </table>
         `;
     return `
-<div class="luker_bundled_browser">
-    <div class="luker_bundled_browser_toolbar">
-        <div class="luker_bundled_browser_hint">${esc(t('Skills shipped with the server. Install any to add them under the Global scope.'))}</div>
-        <div class="luker_bundled_browser_actions">
+<div class="atria_bundled_browser">
+    <div class="atria_bundled_browser_toolbar">
+        <div class="atria_bundled_browser_hint">${esc(t('Skills shipped with the server. Install any to add them under the Global scope.'))}</div>
+        <div class="atria_bundled_browser_actions">
             <div class="menu_button menu_button_small" data-bundled-toolbar="install-all">${esc(t('Install all bundled'))}</div>
             <div class="menu_button menu_button_small" data-bundled-toolbar="refresh">${esc(t('Refresh'))}</div>
         </div>
     </div>
-    <div class="luker_bundled_browser_body">${body}</div>
+    <div class="atria_bundled_browser_body">${body}</div>
 </div>
     `;
 }

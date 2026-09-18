@@ -145,7 +145,7 @@ test.describe('#83 — All 4 iter-studio Apply paths route through canonical wri
         await openIterStudio(page, 'orch');
         const NEW_PROMPT = '*Ash narrates the night reef.* Stay in scene; one tactile beat per turn.';
         mock.scriptToolCall({
-            name: 'luker_orch_set_director_main_agent',
+            name: 'atri_orch_set_director_main_agent',
             arguments: { systemPrompt: NEW_PROMPT },
         });
         await sendIterPrompt(page, 'orch', 'Set the director main system prompt to the new tactile-beat framing.');
@@ -156,7 +156,7 @@ test.describe('#83 — All 4 iter-studio Apply paths route through canonical wri
         // Assert: active director slot carries the new prompt; legacy
         // settings.directorProfile is NOT a mirror of the new value.
         const after = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.extensionSettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return {

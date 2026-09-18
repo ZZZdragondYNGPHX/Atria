@@ -154,7 +154,7 @@ async function seedDataRoot() {
             discord: { enabled: false, clientId: '', clientSecret: '', allowAutoCreate: false, requireGuildMembership: false },
         },
     };
-    writeFileSync(resolve(dataRoot, '_storage', storageFile('luker:admin-settings:v1')), JSON.stringify({ key: 'luker:admin-settings:v1', value: adminSettings }));
+    writeFileSync(resolve(dataRoot, '_storage', storageFile('atria:admin-settings:v1')), JSON.stringify({ key: 'atria:admin-settings:v1', value: adminSettings }));
 
     return dataRoot;
 }

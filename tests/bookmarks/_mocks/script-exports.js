@@ -145,7 +145,7 @@ export const SCRIPT_EXPORT_NAMES = Object.freeze([
     'getGenerateUrl',
     'getGeneratingApi',
     'getGeneratingModel',
-    'getLastLukerGenerationIdForApi',
+    'getLastAtriaGenerationIdForApi',
     'getMaxContextSize',
     'getMaxContextTokens',
     'getMaxPromptTokens',

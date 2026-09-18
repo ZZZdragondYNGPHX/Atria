@@ -13,25 +13,25 @@ import { readSecret, SECRET_KEYS } from './secrets.js';
 import { getFileNameValidationFunction } from '../middleware/validateFileName.js';
 import '../constants.js';
 import '../request-inspector.js';
-import { runLukerDispatch } from '../luker-dispatch/runner.js';
-import { dispatchSdWebui } from '../luker-dispatch/providers/sd/webui.js';
-import { dispatchSdComfy } from '../luker-dispatch/providers/sd/comfy.js';
-import { dispatchSdTogether } from '../luker-dispatch/providers/sd/together.js';
-import { dispatchSdDrawthings } from '../luker-dispatch/providers/sd/drawthings.js';
-import { dispatchSdPollinations } from '../luker-dispatch/providers/sd/pollinations.js';
-import { dispatchSdStability } from '../luker-dispatch/providers/sd/stability.js';
-import { dispatchSdComfyRunPod } from '../luker-dispatch/providers/sd/comfyrunpod.js';
-import { dispatchSdCpp } from '../luker-dispatch/providers/sd/sdcpp.js';
-import { dispatchSdHuggingface } from '../luker-dispatch/providers/sd/huggingface.js';
-import { dispatchSdElectronHub } from '../luker-dispatch/providers/sd/electronhub.js';
-import { dispatchSdChutes } from '../luker-dispatch/providers/sd/chutes.js';
-import { dispatchSdNanoGpt } from '../luker-dispatch/providers/sd/nanogpt.js';
-import { dispatchSdBfl } from '../luker-dispatch/providers/sd/bfl.js';
-import { dispatchSdFalai } from '../luker-dispatch/providers/sd/falai.js';
-import { dispatchSdXai } from '../luker-dispatch/providers/sd/xai.js';
-import { dispatchSdAimlapi } from '../luker-dispatch/providers/sd/aimlapi.js';
-import { dispatchSdZai } from '../luker-dispatch/providers/sd/zai.js';
-import { dispatchSdWorkersai } from '../luker-dispatch/providers/sd/workersai.js';
+import { runAtriaDispatch } from '../atria-dispatch/runner.js';
+import { dispatchSdWebui } from '../atria-dispatch/providers/sd/webui.js';
+import { dispatchSdComfy } from '../atria-dispatch/providers/sd/comfy.js';
+import { dispatchSdTogether } from '../atria-dispatch/providers/sd/together.js';
+import { dispatchSdDrawthings } from '../atria-dispatch/providers/sd/drawthings.js';
+import { dispatchSdPollinations } from '../atria-dispatch/providers/sd/pollinations.js';
+import { dispatchSdStability } from '../atria-dispatch/providers/sd/stability.js';
+import { dispatchSdComfyRunPod } from '../atria-dispatch/providers/sd/comfyrunpod.js';
+import { dispatchSdCpp } from '../atria-dispatch/providers/sd/sdcpp.js';
+import { dispatchSdHuggingface } from '../atria-dispatch/providers/sd/huggingface.js';
+import { dispatchSdElectronHub } from '../atria-dispatch/providers/sd/electronhub.js';
+import { dispatchSdChutes } from '../atria-dispatch/providers/sd/chutes.js';
+import { dispatchSdNanoGpt } from '../atria-dispatch/providers/sd/nanogpt.js';
+import { dispatchSdBfl } from '../atria-dispatch/providers/sd/bfl.js';
+import { dispatchSdFalai } from '../atria-dispatch/providers/sd/falai.js';
+import { dispatchSdXai } from '../atria-dispatch/providers/sd/xai.js';
+import { dispatchSdAimlapi } from '../atria-dispatch/providers/sd/aimlapi.js';
+import { dispatchSdZai } from '../atria-dispatch/providers/sd/zai.js';
+import { dispatchSdWorkersai } from '../atria-dispatch/providers/sd/workersai.js';
 
 /**
  * Gets the comfy workflows.
@@ -313,7 +313,7 @@ router.post('/set-model', async (request, response) => {
     }
 });
 
-router.post('/generate', (req, res) => runLukerDispatch(req, res, {
+router.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/webui',
     select: () => dispatchSdWebui,
 }));
@@ -528,7 +528,7 @@ comfy.post('/rename-workflow', getFileNameValidationFunction('old_name'), getFil
     }
 });
 
-comfy.post('/generate', (req, res) => runLukerDispatch(req, res, {
+comfy.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/comfy',
     select: () => dispatchSdComfy,
 }));
@@ -566,7 +566,7 @@ comfyRunPod.post('/ping', async (request, response) => {
     }
 });
 
-comfyRunPod.post('/generate', (req, res) => runLukerDispatch(req, res, {
+comfyRunPod.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/comfyrunpod',
     select: () => dispatchSdComfyRunPod,
 }));
@@ -612,7 +612,7 @@ together.post('/models', async (request, response) => {
     }
 });
 
-together.post('/generate', (req, res) => runLukerDispatch(req, res, {
+together.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/together',
     select: () => dispatchSdTogether,
 }));
@@ -652,7 +652,7 @@ sdcpp.post('/models', async (request, response) => {
     }
 });
 
-sdcpp.post('/generate', (req, res) => runLukerDispatch(req, res, {
+sdcpp.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/sdcpp',
     select: () => dispatchSdCpp,
 }));
@@ -717,7 +717,7 @@ drawthings.post('/get-upscaler', async (request, response) => {
     }
 });
 
-drawthings.post('/generate', (req, res) => runLukerDispatch(req, res, {
+drawthings.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/drawthings',
     select: () => dispatchSdDrawthings,
 }));
@@ -749,21 +749,21 @@ pollinations.post('/models', async (_request, response) => {
     }
 });
 
-pollinations.post('/generate', (req, res) => runLukerDispatch(req, res, {
+pollinations.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/pollinations',
     select: () => dispatchSdPollinations,
 }));
 
 const stability = express.Router();
 
-stability.post('/generate', (req, res) => runLukerDispatch(req, res, {
+stability.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/stability',
     select: () => dispatchSdStability,
 }));
 
 const huggingface = express.Router();
 
-huggingface.post('/generate', (req, res) => runLukerDispatch(req, res, {
+huggingface.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/huggingface',
     select: () => dispatchSdHuggingface,
 }));
@@ -810,7 +810,7 @@ electronhub.post('/models', async (request, response) => {
     }
 });
 
-electronhub.post('/generate', (req, res) => runLukerDispatch(req, res, {
+electronhub.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/electronhub',
     select: () => dispatchSdElectronHub,
 }));
@@ -876,7 +876,7 @@ chutes.post('/models', async (request, response) => {
     }
 });
 
-chutes.post('/generate', (req, res) => runLukerDispatch(req, res, {
+chutes.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/chutes',
     select: () => dispatchSdChutes,
 }));
@@ -922,14 +922,14 @@ nanogpt.post('/models', async (request, response) => {
     }
 });
 
-nanogpt.post('/generate', (req, res) => runLukerDispatch(req, res, {
+nanogpt.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/nanogpt',
     select: () => dispatchSdNanoGpt,
 }));
 
 const bfl = express.Router();
 
-bfl.post('/generate', (req, res) => runLukerDispatch(req, res, {
+bfl.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/bfl',
     select: () => dispatchSdBfl,
 }));
@@ -984,14 +984,14 @@ falai.post('/models', async (_request, response) => {
     }
 });
 
-falai.post('/generate', (req, res) => runLukerDispatch(req, res, {
+falai.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/falai',
     select: () => dispatchSdFalai,
 }));
 
 const xai = express.Router();
 
-xai.post('/generate', (req, res) => runLukerDispatch(req, res, {
+xai.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/xai',
     select: () => dispatchSdXai,
 }));
@@ -1039,14 +1039,14 @@ aimlapi.post('/models', async (request, response) => {
     }
 });
 
-aimlapi.post('/generate-image', (req, res) => runLukerDispatch(req, res, {
+aimlapi.post('/generate-image', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/aimlapi',
     select: () => dispatchSdAimlapi,
 }));
 
 const zai = express.Router();
 
-zai.post('/generate', (req, res) => runLukerDispatch(req, res, {
+zai.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/zai',
     select: () => dispatchSdZai,
 }));
@@ -1202,7 +1202,7 @@ workersai.post('/models', async (request, response) => {
     }
 });
 
-workersai.post('/generate', (req, res) => runLukerDispatch(req, res, {
+workersai.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'sd/workersai',
     select: () => dispatchSdWorkersai,
 }));

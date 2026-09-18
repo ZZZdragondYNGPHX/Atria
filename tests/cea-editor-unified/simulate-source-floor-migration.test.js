@@ -8,7 +8,7 @@
 // (mesCooked) and the numeric `sourceFloorIndex` provenance marker.
 //
 // The module under test is NOT mocked — only the ctx boundary
-// (globalThis.Luker.getContext → { regex, chat }) is stubbed. Same
+// (globalThis.Atria.getContext → { regex, chat }) is stubbed. Same
 // mock-heavy boot scaffold as inspect-bound-preset-helper-api.test.js,
 // since main.js captures a wide ctx surface at module load.
 
@@ -114,11 +114,11 @@ jest.unstable_mockModule('../../public/scripts/iteration-library/markdown-escape
 const probeApplyRegex = (raw, placement, params) =>
     `[cooked|p:${placement}|d:${params?.depth ?? 'none'}]${raw}`;
 
-// Full boot surface — main.js captures `Luker.getContext()` at module load
+// Full boot surface — main.js captures `Atria.getContext()` at module load
 // (lib / extensionSettings / state hooks …), while the floor reader reads
 // `regex` and the builder walks `chat` off the same object we then pass as
 // the explicit `context` argument.
-const lukerCtx = {
+const atriaCtx = {
     lib: {
         DOMPurify: { sanitize: (s) => s },
         lodash: { get: () => undefined, set: () => {}, cloneDeep: (x) => JSON.parse(JSON.stringify(x)) },
@@ -151,7 +151,7 @@ const lukerCtx = {
         { mes: 'final user turn', is_user: true },  // idx 3
     ],
 };
-globalThis.Luker = { getContext: () => lukerCtx };
+globalThis.Atria = { getContext: () => atriaCtx };
 
 const pluginFloors = await import('../../public/scripts/lib/plugin-floors.js');
 pluginFloors.__resetPluginFloorsCacheForTests();
@@ -160,7 +160,7 @@ const CEA = await import('../../public/scripts/extensions/character-editor-assis
 
 describe('buildCharacterEditorSimulationSourceMessages — floor migration', () => {
     test('text mode carries cooked floors with numeric sourceFloorIndex before the appended turn', async () => {
-        const out = CEA.buildCharacterEditorSimulationSourceMessages(lukerCtx, { text: 'next user turn' });
+        const out = CEA.buildCharacterEditorSimulationSourceMessages(atriaCtx, { text: 'next user turn' });
 
         expect(out.mode).toBe('text');
         // system floor excluded by default roles; +1 for the appended user turn
@@ -183,7 +183,7 @@ describe('buildCharacterEditorSimulationSourceMessages — floor migration', () 
 
     test('explicit messages mode passes through untouched and skips the floor walk', () => {
         const explicit = [{ role: 'user', content: 'structured input' }];
-        const out = CEA.buildCharacterEditorSimulationSourceMessages(lukerCtx, { messages: explicit });
+        const out = CEA.buildCharacterEditorSimulationSourceMessages(atriaCtx, { messages: explicit });
 
         expect(out.mode).toBe('messages');
         expect(out.messages).toEqual(explicit);
@@ -191,7 +191,7 @@ describe('buildCharacterEditorSimulationSourceMessages — floor migration', () 
     });
 
     test('empty input yields empty mode with no messages', () => {
-        const out = CEA.buildCharacterEditorSimulationSourceMessages(lukerCtx, {});
+        const out = CEA.buildCharacterEditorSimulationSourceMessages(atriaCtx, {});
         expect(out).toEqual({ mode: '', messages: [] });
     });
 });

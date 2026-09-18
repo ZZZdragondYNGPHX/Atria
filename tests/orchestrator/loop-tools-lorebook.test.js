@@ -8,7 +8,7 @@
  *     (content only — grep-style line-oriented) and excludes entries
  *     already activated this turn so the agent does not waste rounds
  *     rediscovering what main-flow World Info already injected. The
- *     activated set lives at `context.__lukerRun.activatedEntryKeys`
+ *     activated set lives at `context.__atriaRun.activatedEntryKeys`
  *     as a `Set<${world}.${uid}>` populated by the orchestrator's
  *     `onWorldInfoFinalized` hook. Output is grep -n style:
  *     `[{book}] {entry_name}:{lineno}: {line_content}`.
@@ -40,7 +40,7 @@ import { ToolError } from '../../public/scripts/extensions/orchestrator/loop-run
 function makeFixture(entries, opts = {}) {
     return {
         __getSortedEntriesFn: async () => entries,
-        __lukerRun: opts.activated
+        __atriaRun: opts.activated
             ? { activatedEntryKeys: new Set(opts.activated) }
             : undefined,
     };
@@ -59,7 +59,7 @@ describe('execLorebookSearch (regex)', () => {
             { world: 'main', uid: 1, key: ['张明远'], content: '张明远站在窗边\n手里端着茶杯' },
             { world: 'side', uid: 2, key: ['李府'], content: '李府的庭院冷清' },
         ];
-        const ctx = { __getSortedEntriesFn: async () => entries, __lukerRun: { activatedEntryKeys: new Set() } };
+        const ctx = { __getSortedEntriesFn: async () => entries, __atriaRun: { activatedEntryKeys: new Set() } };
         const result = await execLorebookSearch({ pattern: '茶杯|庭院' }, ctx);
         expect(result.output).toContain('[main] 张明远:2: 手里端着茶杯');
         expect(result.output).toContain('[side] 李府:1: 李府的庭院冷清');
@@ -70,7 +70,7 @@ describe('execLorebookSearch (regex)', () => {
             { world: 'main', uid: 1, key: ['张'], content: '张三' },
             { world: 'side', uid: 2, key: ['李'], content: '李四' },
         ];
-        const ctx = { __getSortedEntriesFn: async () => entries, __lukerRun: { activatedEntryKeys: new Set() } };
+        const ctx = { __getSortedEntriesFn: async () => entries, __atriaRun: { activatedEntryKeys: new Set() } };
         const result = await execLorebookSearch({ pattern: '.', book: 'side' }, ctx);
         expect(result.output).toContain('[side]');
         expect(result.output).not.toContain('[main]');
@@ -81,7 +81,7 @@ describe('execLorebookSearch (regex)', () => {
             { world: 'main', uid: 1, key: ['张'], content: '张三' },
             { world: 'main', uid: 2, key: ['李'], content: '李四' },
         ];
-        const ctx = { __getSortedEntriesFn: async () => entries, __lukerRun: { activatedEntryKeys: new Set(['main.1']) } };
+        const ctx = { __getSortedEntriesFn: async () => entries, __atriaRun: { activatedEntryKeys: new Set(['main.1']) } };
         const result = await execLorebookSearch({ pattern: '.' }, ctx);
         expect(result.output).not.toContain('张');
         expect(result.output).toContain('李');
@@ -111,7 +111,7 @@ describe('execLorebookSearch (regex)', () => {
     });
 
     test('handles missing activatedEntryKeys gracefully', async () => {
-        const ctx = makeFixture(SAMPLE_ENTRIES); // no activated set in __lukerRun
+        const ctx = makeFixture(SAMPLE_ENTRIES); // no activated set in __atriaRun
         const result = await execLorebookSearch({ pattern: 'autumn', flags: 'gmi' }, ctx);
         // Both 'Autumn is cold and crisp.' and 'Autumn festival happens yearly.' should match.
         expect(result.output).toContain('[global] autumn:1: Autumn is cold and crisp.');
@@ -122,7 +122,7 @@ describe('execLorebookSearch (regex)', () => {
         const entries = [
             { world: 'main', uid: 1, key: ['张', '李'], content: 'twokeys' },
         ];
-        const ctx = { __getSortedEntriesFn: async () => entries, __lukerRun: { activatedEntryKeys: new Set() } };
+        const ctx = { __getSortedEntriesFn: async () => entries, __atriaRun: { activatedEntryKeys: new Set() } };
         const result = await execLorebookSearch({ pattern: 'twokeys' }, ctx);
         expect(result.output).toContain('[main] 张|李:1: twokeys');
     });
@@ -131,7 +131,7 @@ describe('execLorebookSearch (regex)', () => {
         const entries = [
             { world: 'main', uid: 7, key: [], content: 'no-keys-here' },
         ];
-        const ctx = { __getSortedEntriesFn: async () => entries, __lukerRun: { activatedEntryKeys: new Set() } };
+        const ctx = { __getSortedEntriesFn: async () => entries, __atriaRun: { activatedEntryKeys: new Set() } };
         const result = await execLorebookSearch({ pattern: 'no-keys-here' }, ctx);
         expect(result.output).toContain('[main] uid:7:1: no-keys-here');
     });
@@ -412,7 +412,7 @@ describe('execLorebookList', () => {
     test('activated entries are excluded silently', async () => {
         const ctx = {
             __getSortedEntriesFn: async () => FIXTURE,
-            __lukerRun: { activatedEntryKeys: new Set(['global.2']) },
+            __atriaRun: { activatedEntryKeys: new Set(['global.2']) },
         };
         const { execLorebookList } = await import(
             '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
@@ -546,7 +546,7 @@ describe('execLorebookList', () => {
     });
 });
 
-describe('runLoopOrchestration propagates payload.__lukerRun into tool context (Task 9)', () => {
+describe('runLoopOrchestration propagates payload.__atriaRun into tool context (Task 9)', () => {
     test('lorebook_search invoked through the runtime sees activatedEntryKeys from payload', async () => {
         const { runLoopOrchestration } = await import(
             '../../public/scripts/extensions/orchestrator/loop-runtime.js'
@@ -592,7 +592,7 @@ describe('runLoopOrchestration propagates payload.__lukerRun into tool context (
         };
 
         // Top-level context exposes the world-info loader fixture; payload
-        // carries `__lukerRun.activatedEntryKeys` exactly as main.js sets it.
+        // carries `__atriaRun.activatedEntryKeys` exactly as main.js sets it.
         const fakeEntries = SAMPLE_ENTRIES;
         const context = {
             chat: [],
@@ -601,7 +601,7 @@ describe('runLoopOrchestration propagates payload.__lukerRun into tool context (
         const payload = {
             signal: new AbortController().signal,
             coreChat: [],
-            __lukerRun: { activatedEntryKeys: new Set(['global.3']) },
+            __atriaRun: { activatedEntryKeys: new Set(['global.3']) },
         };
 
         const result = await runLoopOrchestration(context, payload, profile, { sendLlm });
@@ -767,7 +767,7 @@ describe('disabled entries (entry.disable === true) are invisible to all four di
     function ctx(extra = {}) {
         return {
             __getSortedEntriesFn: async () => ENTRIES,
-            __lukerRun: { activatedEntryKeys: new Set() },
+            __atriaRun: { activatedEntryKeys: new Set() },
             ...extra,
         };
     }

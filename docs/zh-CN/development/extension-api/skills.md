@@ -1,6 +1,6 @@
 # Skills
 
-`context.skills.*` 是用于安装、读取、编辑、打包 Skills 的 JavaScript 接口。扩展通过 `Luker.getContext()` 拿到它；CardApp 在自己的 `ctx.skills` 上拿到同样的形状。
+`context.skills.*` 是用于安装、读取、编辑、打包 Skills 的 JavaScript 接口。扩展通过 `Atria.getContext()` 拿到它；CardApp 在自己的 `ctx.skills` 上拿到同样的形状。
 
 Skill 是编排器使用的[知识包](/zh-CN/features/skills/)；这套 API 是支撑 Skill 管理子面板、内嵌编辑器、迭代工作台 17 个 Skill 工具的读写传输层。
 
@@ -11,7 +11,7 @@ Skill 是编排器使用的[知识包](/zh-CN/features/skills/)；这套 API 是
 ## 入口
 
 ```js
-const context = Luker.getContext();
+const context = Atria.getContext();
 const skills = context.skills;
 
 // 或者通过 CardApp ctx（同样形状）:
@@ -20,7 +20,7 @@ async function init(ctx) {
 }
 ```
 
-CardApp ctx 接口是底层同一组函数的薄包装 —— 调用签名与返回形状相同（遵循 Luker 的 [API 对等约定](https://github.com/funnycups/Luker/blob/release/CLAUDE.md)）。
+CardApp ctx 接口是底层同一组函数的薄包装 —— 调用签名与返回形状相同（遵循 Atria 的 [API 对等约定](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/development/extension-api/index.md)）。
 
 ## scope 形状
 
@@ -335,7 +335,7 @@ packForEmbed(opts: {
 
 `mode: 'auto'` 时打包器按每 Skill 自选：小且纯文本的用内联，更大或二进制的用存档。
 
-编排器的嵌入导出钩子会把载荷写入 `preset.extensions.luker.embedded_skills_source`（预设）或 `character.data.extensions.luker.embedded_skills_source`（角色卡），在保存时持久化。
+编排器的嵌入导出钩子会把载荷写入 `preset.extensions.atria.embedded_skills_source`（预设）或 `character.data.extensions.atria.embedded_skills_source`（角色卡），在保存时持久化。
 
 ### `previewExtractEmbed(opts)`
 

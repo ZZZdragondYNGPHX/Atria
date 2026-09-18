@@ -3,11 +3,11 @@
 //
 // Under the ws-delivery fetch proxy every POST to
 // `/api/backends/chat-completions/generate` returns HTTP 200 + a
-// `x-luker-generation-id` header immediately; the actual streaming
+// `x-atria-generation-id` header immediately; the actual streaming
 // payload arrives out-of-band on the `/api/ws-delivery` WebSocket.
 //
 // Asserts the full loop:
-//   1. HTTP POST returned 200 + carries `x-luker-generation-id`.
+//   1. HTTP POST returned 200 + carries `x-atria-generation-id`.
 //   2. A WebSocket was opened to `/api/ws-delivery`.
 //   3. The scripted mock reply is rendered into the assistant bubble.
 //   4. The chat.jsonl on disk contains the user + assistant turns.
@@ -42,7 +42,7 @@ test.afterAll(async () => {
     await mock?.stop();
 });
 
-test('generation-basic: HTTP 200 + x-luker-generation-id + ws-delivery stream + persisted chat.jsonl', async ({ page }) => {
+test('generation-basic: HTTP 200 + x-atria-generation-id + ws-delivery stream + persisted chat.jsonl', async ({ page }) => {
     // Capture every WS the page opens so we can prove ws-delivery is used.
     const wsOpens = [];
     page.on('websocket', (ws) => { wsOpens.push(ws.url()); });
@@ -54,7 +54,7 @@ test('generation-basic: HTTP 200 + x-luker-generation-id + ws-delivery stream + 
         if (url.includes('/api/backends/chat-completions/generate')) {
             generateResponses.push({
                 status: resp.status(),
-                generationId: resp.headers()['x-luker-generation-id'] || '',
+                generationId: resp.headers()['x-atria-generation-id'] || '',
                 url,
             });
         }
@@ -78,7 +78,7 @@ test('generation-basic: HTTP 200 + x-luker-generation-id + ws-delivery stream + 
     expect(generateResponses.length, 'a POST to /api/backends/chat-completions/generate should have fired').toBeGreaterThan(0);
     const genResp = generateResponses.at(-1);
     expect(genResp.status).toBe(200);
-    expect(genResp.generationId, 'x-luker-generation-id must be present on the /generate response').toMatch(/^[0-9a-f-]{8,}/i);
+    expect(genResp.generationId, 'x-atria-generation-id must be present on the /generate response').toMatch(/^[0-9a-f-]{8,}/i);
 
     // (2) A WebSocket to /api/ws-delivery was opened.
     const deliveryWs = wsOpens.find(u => u.includes('/api/ws-delivery'));
@@ -86,11 +86,11 @@ test('generation-basic: HTTP 200 + x-luker-generation-id + ws-delivery stream + 
 
     // (4) chat.jsonl on disk contains both the user and assistant turns.
     const avatarFolder = await page.evaluate(() => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const c = ctx.characters[ctx.characterId];
         return (c?.avatar || '').replace(/\.png$/, '');
     });
-    const chatId = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+    const chatId = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
     const jsonlPath = resolve(server.dataRoot, 'default-user', 'chats', avatarFolder, `${chatId}.jsonl`);
     expect(existsSync(jsonlPath), `expected chat file at ${jsonlPath}`).toBe(true);
     const lines = readFileSync(jsonlPath, 'utf8').trim().split('\n').map(l => JSON.parse(l));

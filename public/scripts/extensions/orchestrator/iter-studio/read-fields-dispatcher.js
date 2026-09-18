@@ -3,7 +3,7 @@
 
 /**
  * Thin dispatcher for the orchestrator iter-studio's per-mode
- * `luker_orch_read_<director|loop|agenda|spec>_fields` tools. Pure — no
+ * `atri_orch_read_<director|loop|agenda|spec>_fields` tools. Pure — no
  * ST context, no jQuery, no side effects. Wraps `readFieldsByPaths`
  * against a *pre-sanitized* per-mode working profile.
  *
