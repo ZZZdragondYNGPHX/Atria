@@ -126,6 +126,7 @@ try {
     const presetInspector = workspace.locator('.atria-workspace-inspector');
     await presetInspector.getByLabel('Name', {exact:true}).fill('Browser preset <script>');
     await presetInspector.getByRole('button', { name: 'Save', exact: true }).click();
+    await presetInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await workspace.getByRole('button', { name: 'Bind as conversation', exact: true }).click();
     const library = await page.evaluate(() => JSON.parse(localStorage.getItem('settings')).agentWorkspace);
     assert.equal(library.presets.length, 5);
