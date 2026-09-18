@@ -52,6 +52,23 @@ try {
     });
     writeWorldBook({
         dataRoot,
+        name: 'atri-malformed-condition-fixture',
+        entries: [{
+            content: 'MALFORMED_CONDITION_BODY',
+            constant: true,
+        }],
+    });
+    const malformedConditionPath = resolve(
+        dataRoot,
+        'default-user',
+        'worlds',
+        'atri-malformed-condition-fixture.json',
+    );
+    const malformedConditionBook = JSON.parse(await readFile(malformedConditionPath, 'utf8'));
+    malformedConditionBook.entries['0'].stateConditions = { invalid: true };
+    await writeFile(malformedConditionPath, JSON.stringify(malformedConditionBook, null, 4));
+    writeWorldBook({
+        dataRoot,
         name: 'atri-ready-condition-true-fixture',
         entries: [{
             content: 'READY_CONDITION_TRUE_BODY',
@@ -167,7 +184,7 @@ try {
         const { createWorldInfoDispatchAttribution, markWorldInfoDispatch } = await import('/scripts/atri-world-info-provenance.js');
         wi.updateWorldInfoSettings(
             { world_info_budget: 100, world_info_recursive: false },
-            ['atri-public-fixture', 'atri-private-fixture', 'atri-unknown-condition-fixture'],
+            ['atri-public-fixture', 'atri-private-fixture', 'atri-unknown-condition-fixture', 'atri-malformed-condition-fixture'],
         );
         extension_settings.regex = [{
             id: 'atri-smoke-regex', scriptName: 'fixture only', findRegex: '/SHARED_FIXTURE_BODY/g',
@@ -275,6 +292,7 @@ try {
             firstCommit, secondCommit, staleCommit, activationEvents, lastActivatedCount,
             metadataBeforeStaleCommit, metadataAfterStaleCommit,
             containedUnknownConditionBody: resolution.worldInfoString.includes('UNKNOWN_CONDITION_BODY'),
+            containedMalformedConditionBody: resolution.worldInfoString.includes('MALFORMED_CONDITION_BODY'),
             readyConditionTrueBody, readyConditionFalseBody, stateConditionAuthorUi };
     });
     assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
@@ -295,6 +313,7 @@ try {
     assert.equal(result.activationEvents, 1);
     assert.equal(result.lastActivatedCount, 2);
     assert.equal(result.containedUnknownConditionBody, false);
+    assert.equal(result.containedMalformedConditionBody, false);
     assert.equal(result.readyConditionTrueBody, true);
     assert.equal(result.readyConditionFalseBody, false);
     assert.deepEqual(result.stateConditionAuthorUi, {
