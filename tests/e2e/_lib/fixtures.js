@@ -88,6 +88,7 @@ export function writeWorldBook({ dataRoot, handle = 'default-user', name = 'e2e-
     const indexed = {};
     entries.forEach((e, i) => {
         indexed[String(i)] = {
+            ...structuredClone(e),
             uid: i,
             key: e.key || [],
             keysecondary: e.keysecondary || [],
@@ -111,6 +112,11 @@ export function writeWorldBook({ dataRoot, handle = 'default-user', name = 'e2e-
             stateActivation: e.stateActivation === true,
             stateEvents: Array.isArray(e.stateEvents) ? structuredClone(e.stateEvents) : [],
             stateEventLogic: e.stateEventLogic === 'any' ? 'any' : 'all',
+            requiredEntries: Array.isArray(e.requiredEntries) ? structuredClone(e.requiredEntries) : [],
+            relatedEntries: Array.isArray(e.relatedEntries) ? structuredClone(e.relatedEntries) : [],
+            mutualExclusionGroup: String(e.mutualExclusionGroup ?? ''),
+            budgetTier: ['critical', 'scene', 'normal', 'optional'].includes(e.budgetTier) ? e.budgetTier : 'normal',
+            compactContent: typeof e.compactContent === 'string' ? e.compactContent : '',
             probability: 100,
             depth: e.depth ?? 4,
             useProbability: true,

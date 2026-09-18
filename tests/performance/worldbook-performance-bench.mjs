@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { ChatSnapshotCache } from '../../public/scripts/atri-chat-snapshot-cache.js';
+import { WorldInfoSelectionIndex } from '../../public/scripts/atri-world-info-selection.js';
 import { applyProfileWorldInfoFilter } from '../../public/scripts/extensions/orchestrator/lorebook-filter.js';
 import { makeEntry, makePayload } from '../world-info/prompt-fixture.js';
 
@@ -47,12 +48,46 @@ const prompt = [100, 1000, 10000].map(count => {
         return { retained: payload.worldInfoBeforeEntries.length };
     }) };
 });
-const paths = ['public/scripts/atri-chat-snapshot-cache.js', 'public/scripts/atri-world-info-prompt.js', 'public/scripts/atri-world-info-provenance.js'];
+const candidateIndex = [1000, 10000].map(count => {
+    const entries = Array.from({ length: count }, (_, uid) => {
+        const prefix = uid.toString(36).padStart(3, '0');
+        return {
+            world: 'bench',
+            uid,
+            hash: 'v1:' + uid,
+            key: [prefix + '-world-key'],
+            content: 'content-' + uid,
+            decorators: [],
+        };
+    });
+    const target = entries[Math.floor(count * 0.73)];
+    const scanText = 'ordinary chat text ' + target.key[0] + ' ordinary tail';
+    const cold = measure(() => {
+        const index = new WorldInfoSelectionIndex();
+        return index.update(entries);
+    });
+    const warmIndex = new WorldInfoSelectionIndex();
+    warmIndex.update(entries);
+    const incremental = measure(() => warmIndex.update(entries));
+    const query = measure(() => {
+        const selected = warmIndex.select({ getScanText: () => scanText });
+        if (selected.entries.length !== 1 || selected.entries[0].uid !== target.uid) {
+            throw new Error('Candidate index regression');
+        }
+        return {
+            candidates: selected.entries.length,
+            degraded: selected.diagnostics.degraded,
+        };
+    });
+    return { entries: count, cold, incremental, query };
+});
+
+const paths = ['public/scripts/atri-chat-snapshot-cache.js', 'public/scripts/atri-world-info-prompt.js', 'public/scripts/atri-world-info-provenance.js', 'public/scripts/atri-world-info-selection.js'];
 console.log(JSON.stringify({
     kind: 'synthetic-offline-only', createdAt: new Date().toISOString(),
     revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     dirty: Boolean(execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()),
     sourceHashes: Object.fromEntries(paths.map(path => [path, createHash('sha256').update(readFileSync(new URL('../../' + path, import.meta.url))).digest('hex')])),
     environment: { node: process.version, platform: platform(), arch: arch(), cpu: cpus()[0]?.model, gcExposed: Boolean(globalThis.gc) },
-    warmupRuns: 1, samples, retention, prompt,
+    warmupRuns: 1, samples, retention, prompt, candidateIndex,
 }, null, 2));
