@@ -142,21 +142,25 @@ test.describe('Browser Storage Management · CRUD', () => {
         const viewPopup = topContentTextareaPopup(page);
         await expect(viewPopup.locator('.popup-content textarea').first()).toHaveValue(/fake body/);
         await viewPopup.locator('.popup-button-ok').click();
+        await viewPopup.waitFor({ state: 'hidden', timeout: 5_000 });
 
         await row.locator('.storageInspectorEntryDeleteButton').click();
-        await confirmTopPopup(page);
+        const deletePopup = page.locator('dialog.popup[open]:not([closing])').filter({ hasText: '/one.txt' }).last();
+        await deletePopup.waitFor({ state: 'visible', timeout: 5_000 });
+        await deletePopup.locator('.popup-button-ok').click();
 
-        const state = await page.evaluate(async () => {
+        await expect.poll(() => page.evaluate(async () => {
             const cache = await caches.open('atria-cache');
             return {
                 names: await caches.keys(),
                 one: Boolean(await cache.match('/one.txt')),
                 two: Boolean(await cache.match('/two.txt')),
             };
+        })).toEqual({
+            names: expect.arrayContaining(['atria-cache']),
+            one: false,
+            two: true,
         });
-        expect(state.names).toContain('atria-cache');
-        expect(state.one).toBe(false);
-        expect(state.two).toBe(true);
 
         await wipeBrowserFixture(page);
     });
