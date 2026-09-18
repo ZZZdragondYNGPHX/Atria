@@ -2392,7 +2392,7 @@ editor
 }
 .popup .atria_skill_editor_file_delete {
     color: color-mix(in oklab, var(--ls-accent-danger) 80%, var(--SmartThemeBodyColor));
-    /* Reset the legacy stand-alone .atria_skill_editor_file_delete rule
+    /* Reset the stand-alone .atria_skill_editor_file_delete rule
        below — when this glyph is wrapped in .atria_skill_editor_file_actions
        it inherits the .atria_skill_editor_file_action box, so no extra
        sizing needed here. */
