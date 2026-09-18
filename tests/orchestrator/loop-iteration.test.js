@@ -48,23 +48,16 @@ describe('LOOP_ITERATION_CONTRACT_LINES', () => {
         expect(text).toMatch(/tools\.chat\.search/);
         expect(text).toMatch(/tools\.lorebook\.search/);
         expect(text).toMatch(/tools\.lorebook\.get/);
-        expect(text).toMatch(/tools\.memory\.list_candidates/);
-        expect(text).toMatch(/tools\.memory\.edge_summary/);
-        expect(text).toMatch(/tools\.memory\.node_brief/);
-        expect(text).toMatch(/tools\.memory\.expand_seeds/);
-        expect(text).toMatch(/tools\.memory\.keyword_search/);
-        expect(text).toMatch(/tools\.memory\.vector_search/);
-        expect(text).toMatch(/tools\.memory\.find_by_name/);
-        expect(text).toMatch(/tools\.memory\.compaction_candidates/);
-        expect(text).toMatch(/tools\.memory\.node_create/);
-        expect(text).toMatch(/tools\.memory\.node_edit/);
-        expect(text).toMatch(/tools\.memory\.node_delete/);
-        expect(text).toMatch(/tools\.memory\.link_upsert/);
-        expect(text).toMatch(/tools\.memory\.link_delete/);
-        expect(text).toMatch(/tools\.memory\.compact_nodes/);
-        expect(text).toMatch(/tools\.memory\.schema/);
-        expect(text).toMatch(/tools\.search\.search/);
-        expect(text).toMatch(/tools\.search\.visit/);
+        expect(text).toMatch(/tools\.custom/);
+        for (const name of [
+            'memory_recall', 'memory_schema', 'memory_list_candidates', 'memory_edge_summary',
+            'memory_node_brief', 'memory_expand_seeds', 'memory_keyword_search', 'memory_vector_search',
+            'memory_find_by_name', 'memory_compaction_candidates', 'memory_node_create', 'memory_node_edit',
+            'memory_node_delete', 'memory_link_upsert', 'memory_link_delete', 'memory_compact_nodes',
+            'search_search', 'search_visit',
+        ]) {
+            expect(text).toContain(name);
+        }
     });
 
     test('forbids disabling the finalize terminator', () => {
@@ -114,13 +107,25 @@ describe('applyLoopProfilePatchArgs partial-merge contract', () => {
                 note: { open: true, close: true },
                 chat: { read_range: true, search: true },
                 lorebook: { search: true, get: true },
-                memory: {
-                    list_candidates: true, edge_summary: true, node_brief: true,
-                    expand_seeds: true, schema: true,
-                    keyword_search: true, vector_search: true, find_by_name: true,
-                    compaction_candidates: true,
-                    node_create: true, node_edit: true, node_delete: true,
-                    link_upsert: true, link_delete: true, compact_nodes: true,
+                custom: {
+                    memory_recall: true,
+                    memory_schema: true,
+                    memory_list_candidates: true,
+                    memory_edge_summary: true,
+                    memory_node_brief: true,
+                    memory_expand_seeds: true,
+                    memory_keyword_search: true,
+                    memory_vector_search: true,
+                    memory_find_by_name: true,
+                    memory_compaction_candidates: true,
+                    memory_node_create: true,
+                    memory_node_edit: true,
+                    memory_node_delete: true,
+                    memory_link_upsert: true,
+                    memory_link_delete: true,
+                    memory_compact_nodes: true,
+                    search_search: true,
+                    search_visit: true,
                 },
             },
             ...overrides,
@@ -153,13 +158,12 @@ describe('applyLoopProfilePatchArgs partial-merge contract', () => {
         const after = applyLoopProfilePatchArgs(before, {
             tools: {
                 lorebook: { search: false },
-                memory: { list_candidates: false, edge_summary: false, node_brief: false },
+                custom: { memory_list_candidates: false, memory_edge_summary: false, memory_node_brief: false },
             },
         });
         // Touched flags flip…
         expect(after.tools.lorebook.search).toBe(false);
-        // memory.* flags translate into custom.memory_<verb> after the
-        // namespace was moved to Layer-2 in Task 4.5.
+        // Layer-2 flags are patched directly under tools.custom.
         expect(after.tools.custom.memory_list_candidates).toBe(false);
         expect(after.tools.custom.memory_edge_summary).toBe(false);
         expect(after.tools.custom.memory_node_brief).toBe(false);
