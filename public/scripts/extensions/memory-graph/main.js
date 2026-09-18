@@ -4462,6 +4462,86 @@ async function setMemoryWorkspaceControl(name, value) {
     return getMemoryWorkspaceStatus();
 }
 
+async function exportMemoryGraphForWorkspace(context) {
+    await ensureMemoryStoreLoaded(context);
+    const store = getMemoryStore(context);
+    if (!store) throw new Error(i18n('No active chat selected.'));
+    const fileName = getMemoryGraphExportFileNameForContext(context);
+    download(JSON.stringify(store, null, 2), fileName, 'application/json');
+    notifySuccess(i18n('Memory graph exported for current chat.'));
+    updateUiStatus(i18nFormat('Downloaded memory graph file: ${0}', fileName));
+    return fileName;
+}
+
+async function importMemoryGraphForWorkspace(context, file) {
+    if (!file) throw new Error(i18n('Memory graph import failed.'));
+    await stopMemoryRuntimeWork();
+    await ensureMemoryStoreLoaded(context);
+    const store = getMemoryStore(context);
+    if (!store) throw new Error(i18n('No active chat selected.'));
+    const importToast = toastr.info(i18n('Importing memory graph…'), '', {
+        timeOut: 0,
+        extendedTimeOut: 0,
+        tapToDismiss: false,
+    });
+    try {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        const parsed = JSON.parse(await getFileText(file));
+        await new Promise(resolve => setTimeout(resolve, 0));
+        const imported = await importMemoryGraphStore(context, parsed);
+        if (!imported) throw new Error(i18n('Memory graph import failed.'));
+        notifySuccess(i18n('Memory graph imported for current chat.'));
+        if (imported.importMode === 'restore') {
+            updateUiStatus(i18nFormat('Imported memory graph and restored exported floor ${0}.', imported.bindFloor));
+        } else if (imported.importMode === 'bind_latest') {
+            updateUiStatus(i18nFormat('Imported memory graph and bound it to latest assistant floor ${0}.', imported.bindFloor));
+        } else {
+            updateUiStatus(i18nFormat('Imported memory graph and bound it to assistant floor ${0}.', imported.bindFloor));
+        }
+        return imported;
+    } finally {
+        if (importToast) toastr.clear(importToast);
+    }
+}
+
+async function resetMemoryGraphForWorkspace(context) {
+    const settings = getSettings();
+    const confirmed = await context.callGenericPopup(
+        i18n('Reset current chat memory graph? This cannot be undone.'),
+        context.POPUP_TYPE.CONFIRM,
+        '',
+        { okButton: i18n('Reset'), cancelButton: i18n('Cancel') },
+    );
+    if (confirmed !== context.POPUP_RESULT.AFFIRMATIVE) return { cancelled: true };
+
+    await stopMemoryRuntimeWork();
+    const chatKey = getChatKey(context);
+    const target = memoryStoreTargets.get(chatKey) || buildMemoryTargetFromContext(context);
+    if (target) memoryStoreTargets.set(chatKey, target);
+    memoryStoreCache.set(chatKey, createEmptyStore());
+    clearCachedMeta(chatKey);
+    clearRollbackHistory(chatKey);
+
+    let resetResult = { ok: true, partial: {} };
+    if (target) resetResult = await deleteMemoryStoreByTarget(context, target);
+    await clearAllMemoryLorebookProjection(context, settings);
+    try {
+        const vectorConfig = getVectorConfigFromSettings(settings);
+        if (vectorConfig) await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey));
+    } catch (vectorError) {
+        console.warn(`[${MODULE_NAME}] Failed to purge vector collection on reset`, vectorError);
+    }
+
+    refreshUiStats();
+    if (resetResult.ok) notifySuccess(i18n('Current chat memory graph reset.'));
+    else {
+        const stages = Object.entries(resetResult.partial).map(([k, v]) => `${k}=${v}`).join(', ');
+        notifyError(i18nFormat('Memory graph reset incomplete: ${0}', stages));
+    }
+    updateUiStatus(i18n('Reset memory graph for current chat.'));
+    return resetResult;
+}
+
 export function getMemoryWorkspacePorts(context) {
     return {
         getStatus: () => getMemoryWorkspaceStatus(),
@@ -4471,6 +4551,11 @@ export function getMemoryWorkspacePorts(context) {
         correct: (command, snapshot) => sourceLifecycle.correct(context, command, snapshot),
         loadGraphLibrary: () => ensureCytoscapeLoaded(),
         openHistory: () => openHistoryBuildPopup(context, createMemoryHistoryBuilder()),
+        manualCompress: () => openManualCompressionPopup(context, getEffectiveSettings(context, getSettings())),
+        rebuildVectors: () => openVectorRecomputePopup(context, getEffectiveSettings(context, getSettings())),
+        exportGraph: () => exportMemoryGraphForWorkspace(context),
+        importGraph: file => importMemoryGraphForWorkspace(context, file),
+        resetGraph: () => resetMemoryGraphForWorkspace(context),
         mountSettings: container => mountMemorySettingsUi(container),
         mountKnowledge: (container, signal, onInspect) => openMemoryOsInspector(context, {
             container, signal, onInspect,
@@ -15499,68 +15584,25 @@ function bindUi() {
     });
 
     root.find('#atria_rpg_memory_manual_compress').off('click').on('click', async function () {
-        await openManualCompressionPopup(context, getEffectiveSettings(context, settings));
+        await getMemoryWorkspacePorts(context).manualCompress();
     });
 
     root.find('#atria_rpg_memory_reset').off('click').on('click', async function () {
-        const confirm = await context.callGenericPopup(
-            i18n('Reset current chat memory graph? This cannot be undone.'),
-            context.POPUP_TYPE.CONFIRM,
-            '',
-            { okButton: i18n('Reset'), cancelButton: i18n('Cancel') },
-        );
-        if (confirm !== context.POPUP_RESULT.AFFIRMATIVE) {
-            return;
-        }
-        await stopMemoryRuntimeWork();
-        const chatKey = getChatKey(context);
-        const target = memoryStoreTargets.get(chatKey) || buildMemoryTargetFromContext(context);
-        if (target) {
-            memoryStoreTargets.set(chatKey, target);
-        }
-        memoryStoreCache.set(chatKey, createEmptyStore());
-        clearCachedMeta(chatKey);
-        clearRollbackHistory(chatKey);
-        let resetResult = { ok: true, partial: {} };
-        if (target) {
-            resetResult = await deleteMemoryStoreByTarget(context, target);
-        }
-        await clearAllMemoryLorebookProjection(context, settings);
-        try {
-            const vectorConfig = getVectorConfigFromSettings(settings);
-            if (vectorConfig) {
-                await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey));
-            }
-        } catch (vectorError) {
-            console.warn(`[${MODULE_NAME}] Failed to purge vector collection on reset`, vectorError);
-        }
-        refreshUiStats();
-        if (resetResult.ok) {
-            notifySuccess(i18n('Current chat memory graph reset.'));
-        } else {
-            const stages = Object.entries(resetResult.partial).map(([k, v]) => `${k}=${v}`).join(', ');
-            notifyError(i18nFormat('Memory graph reset incomplete: ${0}', stages));
-        }
-        updateUiStatus(i18n('Reset memory graph for current chat.'));
+        await getMemoryWorkspacePorts(context).resetGraph();
     });
 
     root.find('#atria_rpg_memory_recompute_vectors').off('click').on('click', async function () {
-        await openVectorRecomputePopup(context, getEffectiveSettings(context, settings));
+        await getMemoryWorkspacePorts(context).rebuildVectors();
     });
 
     const importFileInput = root.find('#atria_rpg_memory_import_file');
 
     root.find('#atria_rpg_memory_export').off('click').on('click', async function () {
-        await ensureMemoryStoreLoaded(context);
-        const store = getMemoryStore(context);
-        if (!store) {
-            notifyError(i18n('No active chat selected.'));
-            return;
+        try {
+            await getMemoryWorkspacePorts(context).exportGraph();
+        } catch (error) {
+            notifyError(error?.message || String(error));
         }
-        const fileName = getMemoryGraphExportFileNameForContext(context);
-        download(JSON.stringify(store, null, 2), fileName, 'application/json');
-        notifySuccess(i18n('Memory graph exported for current chat.'));
-        updateUiStatus(i18nFormat('Downloaded memory graph file: ${0}', fileName));
     });
 
     root.find('#atria_rpg_memory_import').off('click').on('click', function () {
@@ -15575,46 +15617,14 @@ function bindUi() {
     importFileInput.off('change').on('change', async function () {
         const file = this.files?.[0];
         this.value = '';
-        if (!file) {
-            return;
-        }
-        await stopMemoryRuntimeWork();
-        await ensureMemoryStoreLoaded(context);
-        const store = getMemoryStore(context);
-        if (!store) {
-            notifyError(i18n('No active chat selected.'));
-            return;
-        }
-        const importToast = toastr.info(i18n('Importing memory graph…'), '', {
-            timeOut: 0,
-            extendedTimeOut: 0,
-            tapToDismiss: false,
-        });
+        if (!file) return;
         try {
-            await new Promise(resolve => setTimeout(resolve, 0));
-            const parsed = JSON.parse(await getFileText(file));
-            await new Promise(resolve => setTimeout(resolve, 0));
-            const imported = await importMemoryGraphStore(context, parsed);
-            if (!imported) {
-                return;
-            }
-            notifySuccess(i18n('Memory graph imported for current chat.'));
-            if (imported.importMode === 'restore') {
-                updateUiStatus(i18nFormat('Imported memory graph and restored exported floor ${0}.', imported.bindFloor));
-            } else if (imported.importMode === 'bind_latest') {
-                updateUiStatus(i18nFormat('Imported memory graph and bound it to latest assistant floor ${0}.', imported.bindFloor));
-            } else {
-                updateUiStatus(i18nFormat('Imported memory graph and bound it to assistant floor ${0}.', imported.bindFloor));
-            }
+            await getMemoryWorkspacePorts(context).importGraph(file);
         } catch (error) {
             notifyError(i18nFormat('Import failed: ${0}', error?.message || error));
             updateUiStatus(i18n('Memory graph import failed.'));
-        } finally {
-            if (importToast) {
-                toastr.clear(importToast);
-            }
         }
-    });
+    }););
 }
 
 function buildSettingsUiHtml() {
