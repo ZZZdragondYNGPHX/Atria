@@ -274,7 +274,7 @@ function renderMemoryPage(run, view) {
         el('p', 'Return to the live run to browse and maintain the current conversation memory.', empty);
         return;
     }
-    disposePage = ports.renderMemory?.(shell.main, {
+    const lifecycle = ports.renderMemory?.(shell.main, {
         el,
         button,
         json,
@@ -282,8 +282,14 @@ function renderMemoryPage(run, view) {
         inspector: shell.inspector,
         view,
         getView: () => workspaceRunView(selectedRun(), selection),
-    }) || null;
-    updateMemory = () => render();
+    });
+    if (typeof lifecycle === 'function') {
+        disposePage = lifecycle;
+        updateMemory = null;
+    } else {
+        disposePage = lifecycle?.dispose || null;
+        updateMemory = lifecycle?.updateRun || null;
+    }
 }
 
 function renderDiagnostics(run, view) {
