@@ -60,17 +60,16 @@ test('an agent display name survives normalization without renaming its referenc
 
 
 test('factory Workspace presets use least-privilege Web Access defaults', () => {
+    // Workspace intentionally starts from the dependency-light Minimal
+    // Director factory, so canon_scout is absent until the user selects or
+    // authors a research-capable profile. Every shipped remaining specialist
+    // must therefore start without Web Access.
     const director = workspaceHostProfile(createWorkspaceFactoryPreset('director', 'web-director'));
-    const canon = director.subAgents.find(agent => agent.id === 'canon_scout');
-    const brainstormer = director.subAgents.find(agent => agent.id === 'plot_brainstormer');
-    const critic = director.subAgents.find(agent => agent.id === 'voice_critic');
-
-    expect(canon?.tools?.custom?.search_search).toBe(true);
-    expect(canon?.tools?.custom?.search_visit).toBe(true);
-    expect(brainstormer?.tools?.custom?.search_search).toBe(false);
-    expect(brainstormer?.tools?.custom?.search_visit).toBe(false);
-    expect(critic?.tools?.custom?.search_search).toBe(false);
-    expect(critic?.tools?.custom?.search_visit).toBe(false);
+    expect(director.subAgents.find(agent => agent.id === 'canon_scout')).toBeUndefined();
+    for (const agent of director.subAgents) {
+        expect(agent.tools?.custom?.search_search).toBe(false);
+        expect(agent.tools?.custom?.search_visit).toBe(false);
+    }
 
     const loop = workspaceHostProfile(createWorkspaceFactoryPreset('loop', 'web-loop'));
     expect(loop.tools?.custom?.search_search).toBe(false);
