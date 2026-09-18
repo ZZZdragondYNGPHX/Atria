@@ -54,6 +54,7 @@ import { CrossModeScratchConnectionError } from './cross-mode-errors.js';
  *   dataRoot: string,
  *   scratchHandle: string,
  *   scratchCreds: { mysqlUrl?: string, mysqlPoolSize?: number, postgresUrl?: string, postgresPoolSize?: number }|null,
+ *   reuseEngine?: object|null,
  * }} opts
  * @returns {Promise<TransientSource>}
  */
@@ -62,7 +63,7 @@ export async function materializeTransientSource(engineMeta, zipPath, opts) {
     if (!kind) {
         throw new Error('materializeTransientSource: engineMeta.engineKind is required');
     }
-    const { dataRoot, scratchHandle, scratchCreds } = opts;
+    const { dataRoot, scratchHandle, scratchCreds, reuseEngine = null } = opts;
     if (!scratchHandle || !scratchHandle.startsWith(SCRATCH_HANDLE_PREFIX)) {
         throw new Error(`materializeTransientSource: scratchHandle must start with ${SCRATCH_HANDLE_PREFIX}`);
     }
@@ -75,6 +76,12 @@ export async function materializeTransientSource(engineMeta, zipPath, opts) {
 
     if (kind === 'fs') return buildFsTransient({ scratchRoot, scratchHandle, zipPath });
     if (kind === 'sqlite') return buildSqliteTransient({ scratchRoot, scratchHandle, zipPath });
+    if (kind === 'mysql' && reuseEngine?.kind === 'mysql') {
+        return buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine: reuseEngine });
+    }
+    if (kind === 'postgres' && reuseEngine?.kind === 'postgres') {
+        return buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine: reuseEngine });
+    }
     if (kind === 'mysql') return buildMysqlTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds });
     if (kind === 'postgres') return buildPgTransient({ scratchRoot, scratchHandle, zipPath, scratchCreds });
     throw new Error(`materializeTransientSource: unsupported engineKind "${kind}"`);
@@ -217,6 +224,48 @@ function rewriteSqliteHandleInPlace(sqlitePath, scratchHandle) {
     } finally {
         db.close();
     }
+}
+
+// --------------------------------------------------------------------------
+// Same-engine shared DB source: reuse the live engine's connection pool, but
+// rewrite every imported row to an isolated scratch handle. This avoids
+// asking the operator for a second MySQL/PostgreSQL URL when source and
+// destination engine kinds already match.
+// --------------------------------------------------------------------------
+
+async function buildSharedDbTransient({ scratchRoot, scratchHandle, zipPath, engine }) {
+    const scratchDirs = buildScratchDirs(scratchRoot);
+    ensureScratchDirs(scratchDirs);
+    await extractZipTreeToScratch(zipPath, scratchRoot);
+
+    const dumpStream = await openEngineDumpStream(zipPath);
+    if (!dumpStream) {
+        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        throw new Error(`transient ${engine.kind} source: backup ZIP is missing ${ENGINE_DUMP_ENTRY}`);
+    }
+
+    const rewritten = rewriteHandleInDumpStream(dumpStream, scratchHandle);
+    try {
+        await engine.restoreUser(scratchHandle, rewritten);
+    } catch (err) {
+        try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
+        await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        throw err;
+    }
+
+    let cleanedUp = false;
+    return {
+        engine,
+        scratchHandle,
+        scratchDirs,
+        async cleanup() {
+            if (cleanedUp) return;
+            cleanedUp = true;
+            try { await engine.deleteUser(scratchHandle); } catch { /* best-effort */ }
+            // The engine belongs to the live server. Never close it here.
+            await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => {});
+        },
+    };
 }
 
 // --------------------------------------------------------------------------
