@@ -4276,10 +4276,15 @@ function isChatCompletionResponseEmpty(data) {
 /**
  * @param {object} requestBody
  * @param {AbortSignal?} signal
- * @param {{quietErrors?: boolean, apiPresetName?: string}} [options]
+ * @param {{quietErrors?: boolean, apiPresetName?: string, onRequestReady?: Function|null, requestMeta?: object|null}} [options]
  * @returns {Promise<PostChatCompletionResult>}
  */
-async function postChatCompletionGenerateRequest(requestBody, signal, { quietErrors = false, apiPresetName = '' } = {}) {
+async function postChatCompletionGenerateRequest(requestBody, signal, {
+    quietErrors = false,
+    apiPresetName = '',
+    onRequestReady = null,
+    requestMeta = null,
+} = {}) {
     const isStreamRequest = Boolean(requestBody?.stream);
     // Only peek body for empty-response detection when retries are enabled
     // and this is a non-stream request. Streaming responses have their own
@@ -4290,6 +4295,24 @@ async function postChatCompletionGenerateRequest(requestBody, signal, { quietErr
 
     const response = await withProfileRetry(async () => {
         cachedJson = null;
+        if (typeof onRequestReady === 'function') {
+            try {
+                onRequestReady({
+                    boundary: 'provider_request',
+                    providerConfirmed: true,
+                    mainApi: 'openai',
+                    type: String(requestMeta?.type || ''),
+                    stream: isStreamRequest,
+                    requestScope: String(requestMeta?.requestScope || 'chat'),
+                    model: String(requestBody?.model || requestMeta?.model || ''),
+                    messageCount: Array.isArray(requestBody?.messages)
+                        ? requestBody.messages.length
+                        : Number(requestMeta?.messageCount || 0),
+                });
+            } catch (error) {
+                console.warn('[openai] request attribution observer failed', error);
+            }
+        }
         const r = await fetch('/api/backends/chat-completions/generate', {
             method: 'POST',
             body: JSON.stringify(unescapeMacroBracesInRequestData(requestBody)),
@@ -4357,6 +4380,8 @@ async function attemptPlainTextFunctionCallRetry({
     responseLength = null,
     requestSecretId = '',
     apiPresetName = '',
+    onRequestReady = null,
+    requestScope = 'chat',
 } = {}) {
     let currentResponseData = initialResponseData;
     let currentInspection = inspectPlainTextFunctionCallResponse(initialResponseData, runtimeFunctionCallContext);
@@ -4401,7 +4426,17 @@ async function attemptPlainTextFunctionCallRetry({
                 requestBody.secret_id = requestSecretId;
             }
 
-            const { response: retryResponse, cachedJson: retryCachedJson } = await postChatCompletionGenerateRequest(requestBody, signal, { quietErrors: true, apiPresetName });
+            const { response: retryResponse, cachedJson: retryCachedJson } = await postChatCompletionGenerateRequest(requestBody, signal, {
+                quietErrors: true,
+                apiPresetName,
+                onRequestReady,
+                requestMeta: {
+                    type,
+                    requestScope,
+                    model,
+                    messageCount: retryMessages.length,
+                },
+            });
             const retryData = retryCachedJson ?? await retryResponse.json();
             checkQuotaError(retryData, { quiet: true });
             checkModerationError(retryData, { quiet: true });
@@ -4450,6 +4485,7 @@ async function sendOpenAIRequest(type, messages, signal, {
     functionCallOptions = null,
     allowStreamingForQuiet = false,
     temperature = null,
+    onRequestReady = null,
 } = {}) {
     // Provide default abort signal
     if (!signal) {
@@ -4595,7 +4631,16 @@ async function sendOpenAIRequest(type, messages, signal, {
             });
         }
     }
-    const { response, cachedJson } = await postChatCompletionGenerateRequest(requestBody, signal, { apiPresetName });
+    const { response, cachedJson } = await postChatCompletionGenerateRequest(requestBody, signal, {
+        apiPresetName,
+        onRequestReady,
+        requestMeta: {
+            type,
+            requestScope,
+            model,
+            messageCount: Array.isArray(requestMessages) ? requestMessages.length : 0,
+        },
+    });
     const generationIdHeader = response.headers.get('x-atria-generation-id');
     if (shouldTrackAtriaGenerationState && generationIdHeader) {
         lastOpenAIGenerationId = generationIdHeader;
@@ -4649,6 +4694,8 @@ async function sendOpenAIRequest(type, messages, signal, {
                             responseLength,
                             requestSecretId,
                             apiPresetName,
+                            onRequestReady,
+                            requestScope,
                         });
                         const inspection = retryOutcome.inspection;
                         if (inspection.error) {
@@ -4828,6 +4875,8 @@ async function sendOpenAIRequest(type, messages, signal, {
                 responseLength,
                 requestSecretId,
                 apiPresetName,
+                onRequestReady,
+                requestScope,
             });
             data = retryOutcome.responseData;
             const inspection = retryOutcome.inspection;
