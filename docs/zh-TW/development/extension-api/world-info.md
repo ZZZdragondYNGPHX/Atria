@@ -83,6 +83,26 @@ commitWorldInfoEvaluation(result): Promise<{
 
 提交會寫入本次評估計算出的 timed state，只消耗這次評估實際看到的 force-activation revision，並且只觸發一次 `WORLD_INFO_ACTIVATED`。即使結果物件被複製，同一個 `worldInfoEvaluationId` 重複提交也不會重複執行。
 
+## 原生狀態條件與場景持續
+
+Atria 世界書可以讀取已提交、唯讀的狀態 provider 快照，而不會把世界書變成第二套可寫狀態來源。
+
+目前條目欄位：
+
+| 欄位 | 類型 | 語意 |
+|------|------|------|
+| `stateConditions` | `Array<{providerId, path, operator, value}>` | 受限純量條件，結果為 `true` / `false` / `unknown` |
+| `stateConditionLogic` | `'all' | 'any'` | 狀態條件的三值聚合邏輯 |
+| `stateActivation` | `boolean` | 為 `true` 時，非空條件集只要評估為 `true`，即可不依賴關鍵字直接啟用條目 |
+| `stateEvents` | `Array<{providerId, path, from?, to?}>` | 比較「上次已提交 provider 基線」與「目前快照」的一次性純量變化事件 |
+| `stateEventLogic` | `'all' | 'any'` | 狀態變化事件的三值聚合邏輯 |
+
+`stateActivation` 預設為 `false`，因此舊條目的關鍵字／常駐行為不會改變。啟用後可用於場景持續：例如條件為 `scene.place == "clocktower"` 的條目，會在已提交狀態仍位於鐘樓時跨多次生成持續生效；provider 一旦回報其他地點，該條目立即退出。provider 缺失、欄位缺失、busy/error、條件格式錯誤或型別不相容都會得到 `unknown`，不會被當成成立。
+
+世界書不會寫入 MVU/LoreState。狀態變化事件的比較基線只有在接受並呼叫 `commitWorldInfoEvaluation()` 後才推進；預覽與重試不會推進基線。
+
+角色卡匯出時，這些欄位分別保存在 `extensions.atria_state_conditions`、`extensions.atria_state_condition_logic`、`extensions.atria_state_activation`、`extensions.atria_state_events` 與 `extensions.atria_state_event_logic`。
+
 ## 寫入世界書
 
 ### saveWorldInfo
