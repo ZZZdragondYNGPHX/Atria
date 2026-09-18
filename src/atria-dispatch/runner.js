@@ -268,17 +268,19 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
             // need the final flag still poll /jobs/status — the trailer just
             // carries whatever state we can observe *right now*.
             //
-            // Legacy handlers called this via `finalizePayloadWithJob` /
-            // `forwardStreamingWithGenerationJob`; the refactor initially
+            // The pre-dispatch-refactor handlers called this via
+            // `finalizePayloadWithJob` / `forwardStreamingWithGenerationJob`;
+            // the refactor initially
             // called it AFTER emitting the trailer, guaranteeing every
             // trailer reported `persisted: false` and `status: 'running'`.
             try {
                 await completeGenerationJobFromText(request, job, job.text || '', request.body?.model || '');
             } catch { /* generation-job best-effort; never crash background */ }
-            // Emit the legacy trailer SSE frame carrying atria.generation_id
-            // + persisted + status. Frontend openai.js:4316 reads this frame
-            // to learn the job id and persist flag. Legacy
-            // forwardStreamingWithGenerationJob appended this at stream tail;
+            // Emit the current Atria generation-metadata trailer carrying
+            // atria.generation_id + persisted + status. Frontend openai.js
+            // reads this frame to learn the job id and persist flag.
+            // forwardStreamingWithGenerationJob appended the equivalent frame
+            // before dispatch extraction;
             // the refactor dropped it. ONLY for streaming — non-stream body
             // is a single JSON blob that `await response.json()` would fail
             // to parse if an SSE-shaped frame were appended.
