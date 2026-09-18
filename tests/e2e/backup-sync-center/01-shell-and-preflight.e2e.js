@@ -11,7 +11,7 @@ let tempDir;
 
 test.beforeAll(async () => {
     tempDir = mkdtempSync(path.join(os.tmpdir(), 'atria-backup-sync-ui-'));
-    server = await startServer({ batchKey: 'backup-sync-center', scenarioId: 'shell' });
+    server = await startServer({ batchKey: 'storage', scenarioId: 'backup-sync-shell' });
 });
 
 test.afterAll(async () => {
