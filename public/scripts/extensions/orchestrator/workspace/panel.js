@@ -364,7 +364,7 @@ function renderContent() {
     shell.inspector.hidden = true;
 
     if (section === 'orchestration') {
-        ports.renderPresets?.(shell.main, { el, button, json, detail });
+        disposePage = ports.renderPresets?.(shell.main, { el, button, json, detail, inspector: shell.inspector }) || null;
         return;
     }
     if (section === 'run') {
