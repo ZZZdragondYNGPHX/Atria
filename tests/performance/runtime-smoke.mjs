@@ -229,6 +229,44 @@ try {
     assert.equal(await conditionEditor.locator('.wi-state-condition-count').textContent(), '1');
     assert.match(await conditionEditor.locator('.wi-state-condition-status').textContent(), /saved/i);
 
+    const eventEditor = authorUiEntry.locator('.wi-entry-state-events');
+    await eventEditor.waitFor({ state: 'visible', timeout: 10000 });
+    await eventEditor.locator('> .inline-drawer-toggle').click();
+    await eventEditor.locator('.wi-state-event-add').waitFor({ state: 'visible', timeout: 5000 });
+    await eventEditor.locator('.wi-state-event-add').click();
+    const authorEventRow = eventEditor.locator('.wi-state-event-row').first();
+    await authorEventRow.waitFor({ state: 'visible', timeout: 5000 });
+    await authorEventRow.locator('.wi-state-event-path input').fill('scene.place');
+    const eventValueControls = authorEventRow.locator('.wi-state-event-value-control');
+    await eventValueControls.nth(1).fill('clocktower');
+
+    const stagedEventsBeforeSave = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
+        return structuredClone(data?.entries?.['0']?.stateEvents || []);
+    });
+    assert.deepEqual(stagedEventsBeforeSave, []);
+
+    await eventEditor.locator('.wi-state-event-save').click();
+    await page.waitForFunction(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
+        return Array.isArray(data?.entries?.['0']?.stateEvents)
+            && data.entries['0'].stateEvents.length === 1;
+    });
+    const authoredEvents = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
+        return structuredClone(data?.entries?.['0']?.stateEvents || []);
+    });
+    assert.deepEqual(authoredEvents, [{
+        providerId: 'mvu',
+        path: ['scene', 'place'],
+        to: 'clocktower',
+    }]);
+    assert.equal(await eventEditor.locator('.wi-state-event-count').textContent(), '1');
+    assert.match(await eventEditor.locator('.wi-state-event-status').textContent(), /saved/i);
+
     const result = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
         const core = await import('/script.js');
@@ -372,6 +410,10 @@ try {
             addButtons: document.querySelectorAll('#entry_edit_template .wi-state-condition-add').length,
             saveButtons: document.querySelectorAll('#entry_edit_template .wi-state-condition-save').length,
             logicSelects: document.querySelectorAll('#entry_edit_template select[name="stateConditionLogic"]').length,
+            eventDrawers: document.querySelectorAll('#entry_edit_template .wi-entry-state-events').length,
+            eventAddButtons: document.querySelectorAll('#entry_edit_template .wi-state-event-add').length,
+            eventSaveButtons: document.querySelectorAll('#entry_edit_template .wi-state-event-save').length,
+            eventLogicSelects: document.querySelectorAll('#entry_edit_template select[name="stateEventLogic"]').length,
         };
         return { before, after: payload.worldInfoBeforeEntries, aggregate: payload.worldInfoString,
             sources, attribution, retainedDuringWrite, retainedAfterWrite, wireSnapshot, isolatedClone,
@@ -414,6 +456,10 @@ try {
         addButtons: 1,
         saveButtons: 1,
         logicSelects: 1,
+        eventDrawers: 1,
+        eventAddButtons: 1,
+        eventSaveButtons: 1,
+        eventLogicSelects: 1,
     });
     assert.equal(Object.keys(result.metadataAfterCommit.timedWorldInfo?.sticky || {}).length, 2);
     assert.equal(Object.hasOwn(result.attribution.sources[0], 'content'), false);
