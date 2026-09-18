@@ -22,10 +22,9 @@
 import { migrateToV3, MigrationFailedError } from '/scripts/iteration-library/storage/migrate-v3.js';
 import { notifyMigrationFailed } from '/scripts/iteration-library/storage/migration-toast.js';
 
-export const ORCH_SIDECAR_NAMESPACE = 'orchestrator_iter_studio_history';
-export const ORCH_GLOBAL_BUCKET_KEY = 'iter_studio_global_sessions';
+export const ORCH_SIDECAR_NAMESPACE = 'atri_orchestrator_iter_studio_history';
+export const ORCH_GLOBAL_BUCKET_KEY = 'atri_iter_studio_global_sessions';
 
-const LEGACY_GLOBAL_HISTORY_KEY = 'global_iteration_history';
 const SIDECAR_SCHEMA_VERSION = 1;
 
 export function makeMessageId() {
@@ -262,11 +261,7 @@ export function createOrchestratorIterationSessionStore({
     }
 
     async function clearObsolete() {
-        const root = getOrchestratorSettingsRoot();
-        if (root && Object.hasOwn(root, LEGACY_GLOBAL_HISTORY_KEY)) {
-            delete root[LEGACY_GLOBAL_HISTORY_KEY];
-            persistSettings();
-        }
+        // Hard cutover: predecessor settings buckets are intentionally ignored.
     }
 
     return {

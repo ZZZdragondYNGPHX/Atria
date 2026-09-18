@@ -120,7 +120,7 @@ export async function makeFixtureUser(opts = {}) {
         await write('characters/default_Seraphina/neutral.png', Buffer.alloc(20_000, 0xff));
         await write('characters/default_Seraphina.state.cardapp_studio_sessions_v2.json',
             JSON.stringify({ sessions: Array.from({ length: 5 }, (_, i) => ({ id: i })) }));
-        await write('characters/default_Seraphina.state.character_editor_assistant_iter_sessions.json',
+        await write('characters/default_Seraphina.state.atri_cea_editor_iter_sessions.json',
             JSON.stringify({ sessions: [] }));
         // Coding: 只有 PNG · 无 sprites · 无 sidecar
         await write('characters/default_Coding.png', Buffer.alloc(40_000, 0xff));

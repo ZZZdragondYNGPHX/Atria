@@ -109,7 +109,7 @@ describe('Orchestrator — session store (character scope, sidecar-backed)', () 
     test('save writes to the sidecar (real ctx.updateCharacterState contract)', async () => {
         await store.save({ id: 's1', title: 'sidecar one', messages: [], updatedAt: 10 });
         expect(ctx.updateCharacterState).toHaveBeenCalled();
-        const stored = ctx._sidecars['alice.png::orchestrator_iter_studio_history'];
+        const stored = ctx._sidecars['alice.png::atri_orchestrator_iter_studio_history'];
         expect(stored).toBeTruthy();
         expect(stored.sessions.s1.id).toBe('s1');
         expect(stored.sessions.s1.version).toBe(3);
@@ -151,7 +151,7 @@ describe('Orchestrator — session store (character scope, sidecar-backed)', () 
         await store.save({ id: 'a', title: 'one', messages: [], updatedAt: 1 });
         await store.delete('a');
         expect(await store.list()).toEqual([]);
-        const stored = ctx._sidecars['alice.png::orchestrator_iter_studio_history'];
+        const stored = ctx._sidecars['alice.png::atri_orchestrator_iter_studio_history'];
         expect(stored?.sessions?.a).toBeUndefined();
     });
 
