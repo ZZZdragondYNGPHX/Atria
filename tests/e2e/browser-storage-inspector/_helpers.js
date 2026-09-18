@@ -90,7 +90,10 @@ export async function openBrowserStorageInspector(page) {
     }
     await page.locator('#account_button').click();
     const profilePopup = page.locator('dialog.popup[open]').last();
-    await profilePopup.locator('.userBrowserStorageInspectorButton').click();
+    await profilePopup.locator('.userStorageManagementButton').click();
+    const management = page.locator('.storageManagementCenter').last();
+    await management.waitFor({ state: 'visible', timeout: 10_000 });
+    await management.locator('.storageManagementTab[data-tab="browser"]').click();
     // Scope by container class so a later confirm popup on top of the
     // inspector doesn't shift `.last()` off the inspector. Use `.first()`
     // — there is only ever one inspector container mounted per test but
