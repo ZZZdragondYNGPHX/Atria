@@ -253,6 +253,7 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({path:resolve(root,`../.git/workspace-memory-${channel}-mobile.png`)});
     await page.evaluate(() => { window.memoryValid = false; });
+    await workspace.locator('.atria-workspace-inspector').getByRole('button', {name:'Close inspector',exact:true}).click();
     await workspace.locator('.workspace-memory-record').filter({hasText:'Person 1'}).first().click();
     await workspace.getByRole('status').filter({hasText:'fixture scope changed'}).waitFor();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
