@@ -122,6 +122,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The Actions token cannot create/update workflow files. Leave those
+          # two generated workflow changes for the GitHub connector to write
+          # after the validated code migration is pushed.
+          git restore --staged .github/workflows/pr-checks.yml || true
+          git restore --staged .github/workflows/atria-namespace-guard.yml || true
           if git diff --cached --quiet; then
             echo "Migration produced no changes."
             exit 0
