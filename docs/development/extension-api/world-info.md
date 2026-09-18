@@ -83,6 +83,26 @@ commitWorldInfoEvaluation(result): Promise<{
 
 A committed evaluation writes its pending timed state, consumes only the force-activation revisions that exact evaluation observed, and emits `WORLD_INFO_ACTIVATED` once. Recommitting the same `worldInfoEvaluationId` is idempotent even if the result object was cloned.
 
+## Native State Conditions and Scene Persistence
+
+Atria World Info entries can use committed, read-only state-provider snapshots without turning World Info into a writable state source.
+
+Current entry fields:
+
+| Field | Type | Semantics |
+|------|------|------|
+| `stateConditions` | `Array<{providerId, path, operator, value}>` | Restricted scalar conditions evaluated as `true` / `false` / `unknown` |
+| `stateConditionLogic` | `'all' | 'any'` | Three-valued aggregation for state conditions |
+| `stateActivation` | `boolean` | When `true`, a non-empty condition set that evaluates `true` can activate the entry without a keyword match |
+| `stateEvents` | `Array<{providerId, path, from?, to?}>` | One-shot scalar transitions between the last committed provider baseline and the current snapshot |
+| `stateEventLogic` | `'all' | 'any'` | Three-valued aggregation for transition events |
+
+`stateActivation` defaults to `false`, so existing keyword/constant behavior is unchanged. When enabled it is suitable for scene persistence: for example, an entry with `scene.place == "clocktower"` remains active across repeated generations while that committed state still matches, and exits as soon as the provider reports a different value. Missing providers, missing fields, busy/error providers, malformed conditions, and incompatible values evaluate to `unknown` and never activate the entry.
+
+World Info never writes MVU/LoreState values. Transition-event baselines advance only through an accepted `commitWorldInfoEvaluation()`; previews and retries do not advance them.
+
+Character-book export stores these fields under `extensions.atria_state_conditions`, `extensions.atria_state_condition_logic`, `extensions.atria_state_activation`, `extensions.atria_state_events`, and `extensions.atria_state_event_logic`.
+
 ## Writing World Info
 
 ### saveWorldInfo
