@@ -66,6 +66,7 @@ import {
     resolveOrchestrationAgentApiPresetName,
     resolveOrchestrationAgentPromptPresetName,
 } from './agent-resolution.js';
+import { getOrchestrationFallbackApiPresetName } from './api-fallback.js';
 import {
     buildAgendaAvailableAgentsText,
     getAgendaMaxConcurrentAgents,
@@ -659,6 +660,7 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
         ],
         runtimeWorldInfo,
         apiPresetName,
+        fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
         llmPresetName,
         functionName: AGENDA_PLANNER_TOOL,
         functionDescription: 'Update agenda todos and dispatch the next agent calls. Use finalize only once on the last planner step, with a concise reason/summary.',
@@ -897,6 +899,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             ],
             runtimeWorldInfo,
             apiPresetName,
+            fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
             llmPresetName,
             functionName: AGENDA_RESULT_TOOL,
             functionDescription: resultToolSchema.function.description,
@@ -996,7 +999,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             send: request => requestToolCallsWithRetry(context, settings, request), worker: {
                 nodeId: dispatch.agent, outputToolName: AGENDA_RESULT_TOOL, isFinalStage: true, enableLoopTools: true, maxRounds,
                 prepareRequest: async (round, history) => ({ taskMessages: [{ role: 'system', content: systemWithNotes }, ...history, { role: 'user', content: userText }],
-                    runtimeWorldInfo, apiPresetName, llmPresetName, tools, allowedNames, abortSignal, includeAssistantText: true, allowNoToolCalls: false,
+                    runtimeWorldInfo, apiPresetName, fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName), llmPresetName, tools, allowedNames, abortSignal, includeAssistantText: true, allowNoToolCalls: false,
                     onFirstChunk: round === 1 ? onFirstChunk : null, onUsage: panelRunId ? usage => addTokenUsage({ runId: panelRunId, usage }) : null }),
                 onTurn: turn => conversation.messages.push(turn), getSource: name => resolveToolSource(name, toolContext),
                 isStructuredToolError, serialize: serializeToolResultContent,
@@ -1019,6 +1022,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             taskMessages,
             runtimeWorldInfo,
             apiPresetName,
+            fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
             llmPresetName,
             tools,
             allowedNames,
