@@ -123,7 +123,7 @@ function cloneDataDirLocal(targetDir) {
     // Keep the richer clone path for developer machines that do have seed
     // data, but do not turn a missing personal seed into a CI failure.
     if (!existsSync(SEED_DATA_ABS)) {
-        mkdirSync(targetDir, { recursive: true });
+        mkdirSync(resolve(targetDir, 'default-user'), { recursive: true });
         return;
     }
 
@@ -165,7 +165,7 @@ function cloneDataDirLocal(targetDir) {
     // user state.
     console.warn(`[worldinfo cloneDataDirLocal] seed unavailable/incomplete; using empty isolated data root: ${targetDir}`);
     if (existsSync(targetDir)) rmSync(targetDir, { recursive: true, force: true });
-    mkdirSync(targetDir, { recursive: true });
+    mkdirSync(resolve(targetDir, 'default-user'), { recursive: true });
 }
 
 async function probeReadyLocal(port, timeoutMs = 60_000) {
