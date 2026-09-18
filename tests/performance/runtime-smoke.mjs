@@ -128,6 +128,17 @@ try {
     await page.goto(baseURL);
     await page.waitForFunction(() => window.Atria?.getContext && !document.getElementById('preloader'), null, { timeout: 60000 });
 
+    // The isolated data root may surface first-run informational dialogs.
+    // Normalize to the ordinary post-onboarding workspace before exercising
+    // visible World Info controls; do not force-click through overlays.
+    for (let i = 0; i < 4; i++) {
+        const openDialog = page.locator('dialog[open]').last();
+        if (await openDialog.count() === 0) break;
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(100);
+    }
+    assert.equal(await page.locator('dialog[open]').count(), 0, 'startup dialog still blocks the workspace');
+
     const authorUiWorldIndex = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
         return wi.world_names.indexOf('atri-condition-author-ui-fixture');
