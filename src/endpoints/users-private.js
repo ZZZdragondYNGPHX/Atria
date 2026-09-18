@@ -21,15 +21,22 @@ import { invalidateRecentChatIndex } from './chats.js';
 import { color, Cache, getConfigValue, ensureDirectory, isValidUrl, normalizeZipEntryPath, trimTrailingSlash } from '../util.js';
 import { createLanMigrationOffer, LAN_MIGRATION_PATH_PREFIX } from '../lan-migration.js';
 import { listForUser, mergeReadIds } from '../announcements.js';
-import { getStorageEngine } from '../storage/index.js';
+import { getStorageEngine, setReadOnly } from '../storage/index.js';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../storage/engine-backup-entries.js';
 import { crossModeRestore } from '../storage/migration/cross-mode-restore.js';
-import { snapshotUser, restoreFromSnapshot } from '../storage/migration/backup.js';
+import { SNAPSHOT_META_ENTRY, snapshotUser, restoreFromSnapshot } from '../storage/migration/backup.js';
 import {
     CrossModeScratchCredsRequiredError,
     CrossModeScratchConnectionError,
     CrossModeConversionFailedError,
 } from '../storage/migration/cross-mode-errors.js';
+import {
+    acquireMigrationLock,
+    makeHolderId,
+    releaseMigrationLock,
+    startHeartbeat,
+    stopHeartbeat,
+} from '../storage/migration/lock.js';
 import { resolvePath, StorageInspectorError } from '../storage/inspector.js';
 import {
     deleteStorageResource,
@@ -564,7 +571,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
 
 const RESTORE_RECOVERY_DIR = '_restore-recovery';
 
-async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null) {
+async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null, metadata = {}) {
     const backupRoot = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
     ensureDirectory(backupRoot);
     try { onProgress?.({ phase: 'snapshot', current: 0, total: 1 }); } catch { /* observer */ }
@@ -573,6 +580,11 @@ async function createRestoreRecoveryPoint(handle, directories, engine, onProgres
         userRoot: directories.root,
         backupRoot,
         engine,
+        metadata: {
+            purpose: 'backup-restore',
+            engineKind: engine.kind,
+            ...metadata,
+        },
     });
     try { onProgress?.({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
     return backupPath;
@@ -677,7 +689,9 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     let snapshotMs = 0;
     const tSnap = Date.now();
     try {
-        recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress);
+        recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress, {
+            restoreMode: mode,
+        });
     } catch (snapshotError) {
         throw new Error(`Failed to create recovery point before restore: ${snapshotError?.message || snapshotError}`);
     }
@@ -923,6 +937,108 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     return result;
 }
 
+
+async function listRestoreRecoveryPoints(handle) {
+    const root = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
+    let entries = [];
+    try {
+        entries = await fsPromises.readdir(root, { withFileTypes: true });
+    } catch {
+        return [];
+    }
+
+    const points = [];
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const recoveryPath = path.join(root, entry.name);
+        const metaPath = path.join(recoveryPath, SNAPSHOT_META_ENTRY);
+        try {
+            const meta = JSON.parse(await fsPromises.readFile(metaPath, 'utf8'));
+            if (meta?.handle !== handle) continue;
+            const stat = await fsPromises.stat(recoveryPath);
+            points.push({
+                id: entry.name,
+                createdAt: meta.createdAt || stat.mtime.toISOString(),
+                purpose: meta.purpose || 'backup-restore',
+                restoreMode: meta.restoreMode || null,
+                engineKind: meta.engineKind || null,
+                sourceRecoveryPoint: meta.sourceRecoveryPoint || null,
+            });
+        } catch {
+            // Ignore non-restore snapshots or incomplete forensic directories.
+        }
+    }
+    points.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return points.slice(0, 50);
+}
+
+function resolveRestoreRecoveryPath(handle, id) {
+    const safeId = String(id || '').trim();
+    if (!safeId || safeId.includes('/') || safeId.includes('\\') || safeId.includes('..')) {
+        throw new Error('Invalid recovery point id.');
+    }
+    const root = path.resolve(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
+    const recoveryPath = path.resolve(root, safeId);
+    if (!recoveryPath.startsWith(root + path.sep)) {
+        throw new Error('Invalid recovery point path.');
+    }
+    const metaPath = path.join(recoveryPath, SNAPSHOT_META_ENTRY);
+    if (!fs.existsSync(metaPath)) throw new Error('Recovery point not found.');
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    if (meta?.handle !== handle) throw new Error('Recovery point does not belong to this account.');
+    return { recoveryPath, meta };
+}
+
+async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
+    const { recoveryPath } = resolveRestoreRecoveryPath(handle, recoveryId);
+    const engine = getStorageEngine();
+    const holderId = makeHolderId();
+    let heartbeat = null;
+    await acquireMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    heartbeat = startHeartbeat({ dataRoot: globalThis.DATA_ROOT, holderId });
+    setReadOnly(true);
+
+    let undoPath = null;
+    try {
+        undoPath = await createRestoreRecoveryPoint(handle, directories, engine, null, {
+            purpose: 'before-recovery-apply',
+            restoreMode: 'recovery',
+            sourceRecoveryPoint: recoveryId,
+        });
+        await restoreFromSnapshot({
+            handle,
+            userRoot: directories.root,
+            backupPath: recoveryPath,
+            engine,
+        });
+        return {
+            restored: recoveryId,
+            undoRecoveryPoint: path.basename(undoPath),
+        };
+    } catch (error) {
+        if (undoPath) {
+            try {
+                await restoreFromSnapshot({
+                    handle,
+                    userRoot: directories.root,
+                    backupPath: undoPath,
+                    engine,
+                });
+            } catch (rollbackError) {
+                throw new Error(
+                    `Recovery apply failed and rollback failed. Undo point: ${undoPath}. `
+                    + `Apply error: ${error?.message || error}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                );
+            }
+        }
+        throw error;
+    } finally {
+        try { setReadOnly(false); } catch { /* best effort */ }
+        try { stopHeartbeat(heartbeat); } catch { /* best effort */ }
+        try { await releaseMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId }); } catch { /* best effort */ }
+    }
+}
+
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
 
 function wantsRestoreProgressStream(request) {
@@ -1151,6 +1267,36 @@ router.post('/lan-migration/offer', async (request, response) => {
     } catch (error) {
         console.error('LAN migration offer failed', error);
         return response.sendStatus(500);
+    }
+});
+
+router.post('/restore-backup/recovery/list', async (request, response) => {
+    try {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.status(401).json({ error: 'Not logged in' });
+        return response.json({ recoveryPoints: await listRestoreRecoveryPoints(handle) });
+    } catch (error) {
+        console.error('Restore recovery list failed:', error);
+        return response.status(500).json({ error: error?.message || 'Failed to list recovery points' });
+    }
+});
+
+router.post('/restore-backup/recovery/apply', async (request, response) => {
+    try {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.status(401).json({ error: 'Not logged in' });
+        const directories = request.user.directories ?? getUserDirectories(handle);
+        const result = await applyRestoreRecoveryPoint({
+            handle,
+            directories,
+            recoveryId: request.body?.id,
+        });
+        await invalidateRecentChatIndex(request);
+        return response.json({ ok: true, ...result });
+    } catch (error) {
+        console.error('Restore recovery apply failed:', error);
+        const locked = String(error?.message || '').includes('another holder is migrating');
+        return response.status(locked ? 409 : 400).json({ error: error?.message || 'Failed to apply recovery point' });
     }
 });
 
