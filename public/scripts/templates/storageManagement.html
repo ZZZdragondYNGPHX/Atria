@@ -1,0 +1,18 @@
+<div class="storageManagementCenter flex-container flexFlowColumn flexNoGap">
+    <h3 class="marginBot5">存储管理</h3>
+    <div class="menu_button_note marginBot10">统一管理账户服务端数据与当前浏览器本地数据。可用操作由每项资源的安全能力决定。</div>
+    <div class="storageManagementTabs flex-container flexGap5">
+        <button type="button" class="menu_button storageManagementTab active" data-tab="server">
+            <i class="fa-fw fa-solid fa-server"></i><span>服务器数据</span>
+        </button>
+        <button type="button" class="menu_button storageManagementTab" data-tab="browser">
+            <i class="fa-fw fa-solid fa-hard-drive"></i><span>浏览器数据</span>
+        </button>
+    </div>
+    <section class="storageManagementSection" data-panel="server">
+        <div class="storageManagementServerMount storageManagementMount"></div>
+    </section>
+    <section class="storageManagementSection displayNone" data-panel="browser">
+        <div class="storageManagementBrowserMount storageManagementMount"></div>
+    </section>
+</div>
