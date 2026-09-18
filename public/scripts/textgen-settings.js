@@ -1312,10 +1312,17 @@ function setSettingByName(setting, value, trigger) {
  * @returns {Promise<(function(): AsyncGenerator<{swipes: [], text: string, toolCalls: [], logprobs: {token: string, topLogprobs: Candidate[]}|null}, void, *>)|*>}
  * @throws {Error} - If the response status is not OK, or from within the generator
  */
-export async function generateTextGenWithStreaming(generate_data, signal, { onAtriaMeta = null } = {}) {
+export async function generateTextGenWithStreaming(generate_data, signal, { onAtriaMeta = null, onRequestReady = null } = {}) {
     generate_data.stream = true;
 
     const response = await withProfileRetry(async () => {
+        if (typeof onRequestReady === 'function') {
+            try {
+                onRequestReady();
+            } catch (error) {
+                console.warn('[world-info] request attribution observer failed', error);
+            }
+        }
         return await fetch('/api/backends/text-completions/generate', {
             headers: {
                 ...getRequestHeaders(),
