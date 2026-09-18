@@ -100,8 +100,8 @@ describe('unified CEA editor — legacy continue / finalize fallthrough', () => 
         requestToolCallsWithRetryMock.mockImplementationOnce(async () => ({
             toolCalls: [
                 { id: 'e1', name: 'cea_set_card_field', args: { field: 'description', value: 'updated' } },
-                { id: 'k1', name: 'luker_cea_editor_continue_iteration', args: {} },
-                { id: 'f1', name: 'luker_cea_editor_finalize_iteration', args: { summary: 'done' } },
+                { id: 'k1', name: 'atria_cea_editor_continue_iteration', args: {} },
+                { id: 'f1', name: 'atria_cea_editor_finalize_iteration', args: { summary: 'done' } },
             ],
             assistantText: 'fallback path',
             rawAssistantText: 'fallback path',
@@ -146,7 +146,7 @@ describe('unified CEA editor — legacy continue / finalize fallthrough', () => 
         // Legacy continue / finalize calls flow through as regular tool
         // calls (no control filter to drop them) — they show up as chips
         // in the assistant message but the normalizer silently no-ops them.
-        expect(persistedNames).toContain('luker_cea_editor_continue_iteration');
-        expect(persistedNames).toContain('luker_cea_editor_finalize_iteration');
+        expect(persistedNames).toContain('atria_cea_editor_continue_iteration');
+        expect(persistedNames).toContain('atria_cea_editor_finalize_iteration');
     });
 });

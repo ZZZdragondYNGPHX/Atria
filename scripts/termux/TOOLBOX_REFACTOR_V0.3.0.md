@@ -1,4 +1,4 @@
-# Luker Termux 工具箱 v0.3.0
+# Atria Termux 工具箱 v0.3.0
 
 本版本对 Termux 工具箱进行结构级重构，目标是消除重复入口、统一状态管理并提高重装/升级安全性。
 
@@ -19,18 +19,18 @@
 
 主实例：
 
-- 程序：`$HOME/Luker`
-- 数据：`/storage/emulated/0/Luker/data`
-- 备份：`/storage/emulated/0/Luker/backups`
+- 程序：`$HOME/Atria`
+- 数据：`/storage/emulated/0/Atria/data`
+- 备份：`/storage/emulated/0/Atria/backups`
 
 分身实例：
 
-- 程序：`$HOME/Luker-2`
-- 数据：`/storage/emulated/0/Luker-2/data`
-- 备份：`/storage/emulated/0/Luker-2/backups`
+- 程序：`$HOME/Atria-2`
+- 数据：`/storage/emulated/0/Atria-2/data`
+- 备份：`/storage/emulated/0/Atria-2/backups`
 
 ## 保活模型
 
-“保活启动”统一执行：后台启动 Luker → 请求 Termux Wake Lock → 首次引导 Android 电池后台设置。
+“保活启动”统一执行：后台启动 Atria → 请求 Termux Wake Lock → 首次引导 Android 电池后台设置。
 
 Wake Lock 是 Termux 自带 `termux-tools` 能力，不依赖 Termux:API App。工具箱只记录自身的管理状态，不把状态标记冒充为 Android 内核实时 Wake Lock 状态。

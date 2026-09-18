@@ -8,7 +8,7 @@
 //      extractMode to 'crawl' via the real Advanced settings select, send
 //      RP turns through the composer.
 //   2. The mock LLM must see crawl tool requests whose tools array contains
-//      luker_rpg_extract_crawl_inspect / _neighbors / _search / _done and
+//      atria_rpg_extract_crawl_inspect / _neighbors / _search / _done and
 //      whose user prompt carries the candidate_nodes JSON-XML index.
 //   3. The scripted crawl flow inspects one candidate, then calls done.
 //   4. The subsequent one-shot extraction request must carry graph_scope
@@ -44,12 +44,12 @@ let server, mock;
 
 function isCrawlRequest(body) {
     const tools = Array.isArray(body?.tools) ? body.tools : [];
-    return tools.some(t => String(t?.function?.name || '') === 'luker_rpg_extract_crawl_inspect');
+    return tools.some(t => String(t?.function?.name || '') === 'atria_rpg_extract_crawl_inspect');
 }
 
 function isExtractionRequest(body) {
     const tools = Array.isArray(body?.tools) ? body.tools : [];
-    return tools.some(t => String(t?.function?.name || '') === 'luker_rpg_extract_event_create');
+    return tools.some(t => String(t?.function?.name || '') === 'atria_rpg_extract_event_create');
 }
 
 function userPromptOf(body) {
@@ -87,7 +87,7 @@ test.beforeAll(async () => {
     // event + done.
     mock.scriptCompletion((req) => {
         const names = req.toolNames || [];
-        if (names.includes('luker_rpg_extract_crawl_inspect')) {
+        if (names.includes('atria_rpg_extract_crawl_inspect')) {
             const userText = (req.userMessages || []).join('\n');
             const roundMatch = /Exploration round (\d+)\//.exec(userText);
             const round = roundMatch ? Number(roundMatch[1]) : 1;
@@ -95,23 +95,23 @@ test.beforeAll(async () => {
                 // First crawl round: inspect a bogus id → structured error
                 // observation must come back in round 2.
                 return { toolCalls: [
-                    { name: 'luker_rpg_extract_crawl_inspect', arguments: { node_id: 'n_nonexistent' } },
+                    { name: 'atria_rpg_extract_crawl_inspect', arguments: { node_id: 'n_nonexistent' } },
                 ] };
             }
             if (userText.includes('not_found')) {
                 // Round 2 (error observed): finish exploration.
                 return { toolCalls: [
-                    { name: 'luker_rpg_extract_crawl_done', arguments: { reason: 'enough context' } },
+                    { name: 'atria_rpg_extract_crawl_done', arguments: { reason: 'enough context' } },
                 ] };
             }
             return { toolCalls: [
-                { name: 'luker_rpg_extract_crawl_done', arguments: { reason: 'fallback' } },
+                { name: 'atria_rpg_extract_crawl_done', arguments: { reason: 'fallback' } },
             ] };
         }
-        if (names.includes('luker_rpg_extract_event_create')) {
+        if (names.includes('atria_rpg_extract_event_create')) {
             return { toolCalls: [
-                { name: 'luker_rpg_extract_event_create', arguments: { summary: '时间：测试；Crawl mode e2e event.', links: [], no_link_reason: 'mock' } },
-                { name: 'luker_rpg_extract_done', arguments: {} },
+                { name: 'atria_rpg_extract_event_create', arguments: { summary: '时间：测试；Crawl mode e2e event.', links: [], no_link_reason: 'mock' } },
+                { name: 'atria_rpg_extract_done', arguments: {} },
             ] };
         }
         return null;
@@ -127,7 +127,7 @@ async function enableMgAndCrawlMode(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        for (const id of ['luker_rpg_memory_enabled', 'luker_rpg_memory_auto_extraction_enabled']) {
+        for (const id of ['atria_rpg_memory_enabled', 'atria_rpg_memory_auto_extraction_enabled']) {
             const el = document.getElementById(id);
             if (!el) continue;
             if (!el.checked) {
@@ -139,16 +139,16 @@ async function enableMgAndCrawlMode(page) {
     });
     // The Advanced tab lives in the MG tab strip — open it, then flip
     // Extraction graph mode to crawl through the real select.
-    await page.locator('#luker_rpg_memory_tabs .luker-tabs-tab[data-luker-tab-key="advanced"]').click();
-    await page.locator('#luker_rpg_memory_advanced_extract_mode').selectOption('crawl');
+    await page.locator('#atria_rpg_memory_tabs .atria-tabs-tab[data-atria-tab-key="advanced"]').click();
+    await page.locator('#atria_rpg_memory_advanced_extract_mode').selectOption('crawl');
 }
 
 async function fillGraphViaUi(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings');
     // Fill Graph lives in the Graph tab pane of the MG tab strip.
-    await page.locator('#luker_rpg_memory_tabs .luker-tabs-tab[data-luker-tab-key="graph"]').click();
-    await page.locator('#luker_rpg_memory_fill').click();
+    await page.locator('#atria_rpg_memory_tabs .atria-tabs-tab[data-atria-tab-key="graph"]').click();
+    await page.locator('#atria_rpg_memory_fill').click();
 }
 
 test.describe('#67 — crawl extraction mode explores before extracting', () => {
@@ -185,10 +185,10 @@ test.describe('#67 — crawl extraction mode explores before extracting', () => 
         // All four crawl tools present in schema.
         const crawlToolNames = firstCrawl.tools.map(t => String(t?.function?.name || ''));
         for (const expected of [
-            'luker_rpg_extract_crawl_inspect',
-            'luker_rpg_extract_crawl_neighbors',
-            'luker_rpg_extract_crawl_search',
-            'luker_rpg_extract_crawl_done',
+            'atria_rpg_extract_crawl_inspect',
+            'atria_rpg_extract_crawl_neighbors',
+            'atria_rpg_extract_crawl_search',
+            'atria_rpg_extract_crawl_done',
         ]) {
             expect(crawlToolNames).toContain(expected);
         }

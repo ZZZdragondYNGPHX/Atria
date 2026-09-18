@@ -5444,10 +5444,10 @@ function applyWorldInfoEditorDisplaySettings(editTemplate) {
 
 function getWorldInfoTags(name) {
     const metadata = getWorldInfoManagerMetadata(name);
-    const lukerMetadata = isPlainObject(metadata?.luker) ? metadata.luker : {};
-    const rawTags = Array.isArray(lukerMetadata.tags)
-        ? lukerMetadata.tags
-        : parseStringArray(String(lukerMetadata.tags || ''));
+    const atriaMetadata = isPlainObject(metadata?.atria) ? metadata.atria : {};
+    const rawTags = Array.isArray(atriaMetadata.tags)
+        ? atriaMetadata.tags
+        : parseStringArray(String(atriaMetadata.tags || ''));
 
     return rawTags
         .map((tag) => String(tag || '').trim())
@@ -5471,9 +5471,9 @@ async function setWorldInfoTags(name, tags) {
         .filter(Boolean)
         .filter(onlyUnique);
     const extensions = isPlainObject(data.extensions) ? structuredClone(data.extensions) : {};
-    const lukerMetadata = isPlainObject(extensions.luker) ? structuredClone(extensions.luker) : {};
-    lukerMetadata.tags = nextTags;
-    extensions.luker = lukerMetadata;
+    const atriaMetadata = isPlainObject(extensions.atria) ? structuredClone(extensions.atria) : {};
+    atriaMetadata.tags = nextTags;
+    extensions.atria = atriaMetadata;
     data.extensions = extensions;
 
     await saveWorldInfo(resolvedName, data, true);
@@ -10365,7 +10365,7 @@ export function checkEmbeddedWorld(chid) {
  * Read-only view of the V2/V3 embedded character book on a character card.
  *
  * Cards distributed as PNGs may carry an embedded `data.character_book`
- * (per `chara_card_v2`/`v3` spec). Luker treats this field as IO-only:
+ * (per `chara_card_v2`/`v3` spec). Atria treats this field as IO-only:
  * it is consumed when importing third-party cards (offered to the user as a
  * world book to import via `importEmbeddedWorldInfo`) and produced when
  * exporting cards for distribution. Runtime code should never *read* the

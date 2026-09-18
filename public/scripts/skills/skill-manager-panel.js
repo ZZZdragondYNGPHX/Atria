@@ -12,7 +12,7 @@
  * uniformly via the REST layer.
  *
  * Inline-tested helpers are exported for use by the test suite without
- * needing a DOM (Luker's Jest config runs in node, not jsdom). The
+ * needing a DOM (Atria's Jest config runs in node, not jsdom). The
  * interactive `openSkillManagerPanel` entry point is exported for use by
  * orchestrator's main.js.
  *
@@ -295,7 +295,7 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
 
     const scopeBadge = (scope) => {
         const kind = scope?.kind || 'unknown';
-        const kindClass = `luker_skill_scope_badge_${esc(kind)}`;
+        const kindClass = `atria_skill_scope_badge_${esc(kind)}`;
         const kindName = esc(
             kind === 'global' ? t('Global')
                 : kind === 'preset' ? t('Preset')
@@ -316,10 +316,10 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
                     ? esc(scope.characterFile || '?')
                     : null;
         const tail = kindLabel
-            ? `<span class="luker_skill_scope_badge_sep">·</span><span class="luker_skill_scope_badge_id">${kindLabel}</span>`
+            ? `<span class="atria_skill_scope_badge_sep">·</span><span class="atria_skill_scope_badge_id">${kindLabel}</span>`
             : '';
-        return `<span class="luker_skill_scope_badge ${kindClass}" title="${esc(formatScopeLabel(scope, t))}">
-            <span class="luker_skill_scope_badge_kind">${kindName}</span>
+        return `<span class="atria_skill_scope_badge ${kindClass}" title="${esc(formatScopeLabel(scope, t))}">
+            <span class="atria_skill_scope_badge_kind">${kindName}</span>
             ${tail}
         </span>`;
     };
@@ -328,29 +328,29 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
         const scopeStr = JSON.stringify(skill.scope);
         const fileLabel = t('${0} files').replace('${0}', String(skill.fileCount ?? 0));
         return `
-            <div class="luker_skill_row" data-skill-name="${esc(skill.name)}" data-skill-scope="${esc(scopeStr)}">
-                <div class="luker_skill_row_main">
-                    <div class="luker_skill_row_head">
-                        <div class="luker_skill_row_name" title="${esc(skill.name)}">${esc(skill.name)}</div>
-                        <div class="luker_skill_row_meta">
-                            <span class="luker_skill_meta_chip">${esc(fileLabel)}</span>
-                            ${skill.hasScripts ? `<span class="luker_skill_meta_chip luker_skill_meta_chip_warn" title="${esc(t('has scripts'))}">${esc(t('has scripts'))}</span>` : ''}
-                            ${skill.hasBinary ? `<span class="luker_skill_meta_chip" title="${esc(t('binary'))}">${esc(t('binary'))}</span>` : ''}
+            <div class="atria_skill_row" data-skill-name="${esc(skill.name)}" data-skill-scope="${esc(scopeStr)}">
+                <div class="atria_skill_row_main">
+                    <div class="atria_skill_row_head">
+                        <div class="atria_skill_row_name" title="${esc(skill.name)}">${esc(skill.name)}</div>
+                        <div class="atria_skill_row_meta">
+                            <span class="atria_skill_meta_chip">${esc(fileLabel)}</span>
+                            ${skill.hasScripts ? `<span class="atria_skill_meta_chip atria_skill_meta_chip_warn" title="${esc(t('has scripts'))}">${esc(t('has scripts'))}</span>` : ''}
+                            ${skill.hasBinary ? `<span class="atria_skill_meta_chip" title="${esc(t('binary'))}">${esc(t('binary'))}</span>` : ''}
                         </div>
                     </div>
-                    <div class="luker_skill_row_desc">${esc(skill.description || t('(no description)'))}</div>
+                    <div class="atria_skill_row_desc">${esc(skill.description || t('(no description)'))}</div>
                 </div>
-                <div class="luker_skill_row_actions">
-                    <div class="luker_skill_row_actions_group">
-                        <div class="menu_button menu_button_small luker_skill_row_btn" data-skill-action="view" title="${esc(t('View'))}">${esc(t('View'))}</div>
-                        <div class="menu_button menu_button_small luker_skill_row_btn luker_skill_row_btn_primary" data-skill-action="edit" title="${esc(t('Edit'))}">${esc(t('Edit'))}</div>
+                <div class="atria_skill_row_actions">
+                    <div class="atria_skill_row_actions_group">
+                        <div class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="view" title="${esc(t('View'))}">${esc(t('View'))}</div>
+                        <div class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_primary" data-skill-action="edit" title="${esc(t('Edit'))}">${esc(t('Edit'))}</div>
                     </div>
-                    <div class="luker_skill_row_actions_group">
-                        <div class="menu_button menu_button_small luker_skill_row_btn" data-skill-action="move" title="${esc(t('Move to...'))}">${esc(t('Move to...'))}</div>
-                        <div class="menu_button menu_button_small luker_skill_row_btn" data-skill-action="rename" title="${esc(t('Rename'))}">${esc(t('Rename'))}</div>
+                    <div class="atria_skill_row_actions_group">
+                        <div class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="move" title="${esc(t('Move to...'))}">${esc(t('Move to...'))}</div>
+                        <div class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="rename" title="${esc(t('Rename'))}">${esc(t('Rename'))}</div>
                     </div>
-                    <div class="luker_skill_row_actions_group">
-                        <div class="menu_button menu_button_small luker_skill_row_btn luker_skill_row_btn_danger luker_skill_row_delete" data-skill-action="delete" title="${esc(t('Delete'))}">${esc(t('Delete'))}</div>
+                    <div class="atria_skill_row_actions_group">
+                        <div class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_danger atria_skill_row_delete" data-skill-action="delete" title="${esc(t('Delete'))}">${esc(t('Delete'))}</div>
                     </div>
                 </div>
             </div>
@@ -358,64 +358,64 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
     };
 
     const renderGroup = (g) => `
-        <section class="luker_skill_group" data-scope-key="${esc(scopeKey(g.scope))}">
-            <header class="luker_skill_group_header">
+        <section class="atria_skill_group" data-scope-key="${esc(scopeKey(g.scope))}">
+            <header class="atria_skill_group_header">
                 ${scopeBadge(g.scope)}
-                <span class="luker_skill_group_count">${esc(t('${0} skills').replace('${0}', String(g.skills.length)))}</span>
+                <span class="atria_skill_group_count">${esc(t('${0} skills').replace('${0}', String(g.skills.length)))}</span>
             </header>
-            <div class="luker_skill_group_rows">
+            <div class="atria_skill_group_rows">
                 ${g.skills.length === 0
-        ? `<div class="luker_skill_empty">${esc(t('(no skills in this scope)'))}</div>`
+        ? `<div class="atria_skill_empty">${esc(t('(no skills in this scope)'))}</div>`
         : g.skills.map(renderRow).join('')}
             </div>
         </section>
     `;
 
     const installedBody = groups.length === 0
-        ? `<div class="luker_skill_empty luker_skill_empty_root">
-              <div class="luker_skill_empty_title">${esc(t('No skills installed yet.'))}</div>
-              <div class="luker_skill_empty_hint">${esc(t('Use Import or Create to add some.'))}</div>
+        ? `<div class="atria_skill_empty atria_skill_empty_root">
+              <div class="atria_skill_empty_title">${esc(t('No skills installed yet.'))}</div>
+              <div class="atria_skill_empty_hint">${esc(t('Use Import or Create to add some.'))}</div>
            </div>`
         : groups.map(renderGroup).join('');
 
     const installedActive = activeTab !== 'bundled';
     const tabStrip = `
-        <div class="luker_skill_manager_tabs" role="tablist">
-            <div class="luker_skill_tab${installedActive ? ' luker_skill_tab_active' : ''}" data-skill-tab="installed" role="tab">${esc(t('Installed'))}</div>
-            <div class="luker_skill_tab${installedActive ? '' : ' luker_skill_tab_active'}" data-skill-tab="bundled" role="tab">${esc(t('Browse bundled'))}</div>
+        <div class="atria_skill_manager_tabs" role="tablist">
+            <div class="atria_skill_tab${installedActive ? ' atria_skill_tab_active' : ''}" data-skill-tab="installed" role="tab">${esc(t('Installed'))}</div>
+            <div class="atria_skill_tab${installedActive ? '' : ' atria_skill_tab_active'}" data-skill-tab="bundled" role="tab">${esc(t('Browse bundled'))}</div>
         </div>
     `;
 
     // For the bundled tab, leave an empty mount that renderBundledBrowser
     // paints into asynchronously — keeps buildPanelHtml synchronous and
     // unit-testable while still supporting the live tab.
-    const bundledMount = '<div class="luker_skill_manager_bundled_mount"></div>';
+    const bundledMount = '<div class="atria_skill_manager_bundled_mount"></div>';
 
     const tabBody = installedActive
         ? `
-    <div class="luker_skill_manager_toolbar">
-        <label class="luker_skill_filter_label">
-            <span class="luker_skill_filter_label_text">${esc(t('Filter by scope:'))}</span>
-            <select class="text_pole luker_skill_filter_select" data-skill-filter>${filterOptions}</select>
+    <div class="atria_skill_manager_toolbar">
+        <label class="atria_skill_filter_label">
+            <span class="atria_skill_filter_label_text">${esc(t('Filter by scope:'))}</span>
+            <select class="text_pole atria_skill_filter_select" data-skill-filter>${filterOptions}</select>
         </label>
-        <div class="luker_skill_manager_toolbar_actions">
-            <div class="luker_skill_toolbar_group">
-                <div class="menu_button menu_button_small luker_skill_toolbar_btn" data-skill-toolbar="import-bundled" title="${esc(t('Import bundled'))}">${esc(t('Import bundled'))}</div>
-                <div class="menu_button menu_button_small luker_skill_toolbar_btn" data-skill-toolbar="import-file" title="${esc(t('Import from file...'))}">${esc(t('Import from file...'))}</div>
-                <div class="menu_button menu_button_small luker_skill_toolbar_btn" data-skill-toolbar="import-url" title="${esc(t('Import from URL...'))}">${esc(t('Import from URL...'))}</div>
+        <div class="atria_skill_manager_toolbar_actions">
+            <div class="atria_skill_toolbar_group">
+                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-bundled" title="${esc(t('Import bundled'))}">${esc(t('Import bundled'))}</div>
+                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-file" title="${esc(t('Import from file...'))}">${esc(t('Import from file...'))}</div>
+                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-url" title="${esc(t('Import from URL...'))}">${esc(t('Import from URL...'))}</div>
             </div>
-            <div class="luker_skill_toolbar_group">
-                <div class="menu_button menu_button_small luker_skill_toolbar_btn luker_skill_toolbar_btn_primary" data-skill-toolbar="create" title="${esc(t('Create new'))}">${esc(t('Create new'))}</div>
-                <div class="menu_button menu_button_small luker_skill_toolbar_btn" data-skill-toolbar="refresh" title="${esc(t('Refresh'))}">${esc(t('Refresh'))}</div>
+            <div class="atria_skill_toolbar_group">
+                <div class="menu_button menu_button_small atria_skill_toolbar_btn atria_skill_toolbar_btn_primary" data-skill-toolbar="create" title="${esc(t('Create new'))}">${esc(t('Create new'))}</div>
+                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="refresh" title="${esc(t('Refresh'))}">${esc(t('Refresh'))}</div>
             </div>
         </div>
     </div>
-    <div class="luker_skill_manager_body">${installedBody}</div>
+    <div class="atria_skill_manager_body">${installedBody}</div>
         `
         : bundledMount;
 
     return `
-<div class="luker_skill_manager luker-studio">
+<div class="atria_skill_manager atria-studio">
     ${tabStrip}
     ${tabBody}
 </div>
@@ -460,7 +460,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         skills: [],
         filterKey: initialScope ? scopeKey(initialScope) : 'all',
         tab: initialTab === 'bundled' ? 'bundled' : 'installed',
-        mountId: `luker_skill_manager_${Date.now()}`,
+        mountId: `atria_skill_manager_${Date.now()}`,
     };
 
     // Defer DOM ops until after the popup mounts. The popup body uses a
@@ -507,7 +507,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         mount.innerHTML = buildPanelHtml(filtered, allScopes, state.filterKey, state.tab, t, esc);
         bindEvents(mount);
         if (state.tab === 'bundled') {
-            const bundledMount = mount.querySelector('.luker_skill_manager_bundled_mount');
+            const bundledMount = mount.querySelector('.atria_skill_manager_bundled_mount');
             if (bundledMount) {
                 try {
                     await renderBundledBrowser({ context, mount: bundledMount, t });
@@ -670,7 +670,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
     async function handleView(scope, name) {
         try {
             const result = await context.skills.readFile({ scope, name, path: 'SKILL.md' });
-            const body = `<h3>${esc(name)}</h3><pre class="luker_skill_view_pre">${esc(result?.content || '')}</pre>`;
+            const body = `<h3>${esc(name)}</h3><pre class="atria_skill_view_pre">${esc(result?.content || '')}</pre>`;
             await context.callGenericPopup(body, context.POPUP_TYPE.TEXT, formatScopeLabel(scope, t), {
                 okButton: t('Close'),
                 wide: true,
@@ -841,7 +841,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
 
     function toast(message, level) {
         // The popup is inside a dialog; toastr's container needs to be
-        // inside the dialog to be visible. Luker's popup.js already wires
+        // inside the dialog to be visible. Atria's popup.js already wires
         // this via `fixToastrForDialogs` on popup open, so we just call
         // toastr directly.
         if (typeof toastr === 'undefined') {

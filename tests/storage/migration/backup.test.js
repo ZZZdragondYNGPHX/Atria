@@ -5,7 +5,7 @@ import { snapshotUser } from '../../../src/storage/migration/backup.js';
 
 describe('snapshotUser', () => {
     let tmpRoot;
-    beforeEach(() => { tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-backup-')); });
+    beforeEach(() => { tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-backup-')); });
     afterEach(() => fs.rmSync(tmpRoot, { recursive: true, force: true }));
 
     test('creates a timestamped backup directory containing source contents', async () => {
@@ -65,13 +65,13 @@ describe('snapshotUser', () => {
         const userRoot = path.join(tmpRoot, 'u');
         fs.mkdirSync(userRoot, { recursive: true });
         const blob = Buffer.from([0x00, 0x01, 0xFF, 0xAB, 0xCD]);
-        fs.writeFileSync(path.join(userRoot, 'luker-storage.sqlite'), blob);
+        fs.writeFileSync(path.join(userRoot, 'atria-storage.sqlite'), blob);
         const dest = await snapshotUser({
             handle: 'u',
             userRoot,
             backupRoot: path.join(tmpRoot, 'backup'),
         });
-        const restored = fs.readFileSync(path.join(dest, 'luker-storage.sqlite'));
+        const restored = fs.readFileSync(path.join(dest, 'atria-storage.sqlite'));
         expect(restored.equals(blob)).toBe(true);
     });
 

@@ -1,6 +1,6 @@
 import { test, expect, beforeAll, jest } from '@jest/globals';
 
-globalThis.Luker = { getContext: () => ({ constants: { wiAnchor: { before: 0, after: 1 } } }) };
+globalThis.Atria = { getContext: () => ({ constants: { wiAnchor: { before: 0, after: 1 } } }) };
 let resolve;
 beforeAll(async () => { resolve = (await import('../../public/scripts/extensions/orchestrator/agenda-world-info.js')).resolveAgendaWorldInfo; });
 const messages = [{ role: 'user', content: 'test' }];

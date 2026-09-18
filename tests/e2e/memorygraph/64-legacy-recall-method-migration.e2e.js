@@ -12,7 +12,7 @@
 //   3. Read the dropdown <select>: must show value="rag".
 //   4. Read the Enable rerank checkbox: must be checked.
 //   5. Read the Enable query rewrite checkbox: must be unchecked.
-//   6. Read settings via window.Luker.getContext().extensionSettings — must
+//   6. Read settings via window.Atria.getContext().extensionSettings — must
 //      no longer contain diffusionSteps.
 
 import { test, expect } from '@playwright/test';
@@ -78,31 +78,31 @@ test.describe('#64 — legacy hybrid_rerank settings migrate to RAG with rerank 
         await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
 
         // Wait for the select to be populated.
-        await page.waitForSelector('#luker_rpg_memory_recall_method', { timeout: 10_000 });
+        await page.waitForSelector('#atria_rpg_memory_recall_method', { timeout: 10_000 });
 
         // 1. UI dropdown reflects the migration target.
         const methodValue = await page.evaluate(() => {
-            return document.getElementById('luker_rpg_memory_recall_method')?.value || '';
+            return document.getElementById('atria_rpg_memory_recall_method')?.value || '';
         });
         expect(methodValue, 'recall method dropdown should show rag after migrating hybrid_rerank').toBe('rag');
 
         // 2. The RAG sub-block is visible (visibility helper ran post-migration).
         const ragSettingsVisible = await page.evaluate(() => {
-            const el = document.getElementById('luker_rpg_memory_rag_settings');
+            const el = document.getElementById('atria_rpg_memory_rag_settings');
             if (!el) return false;
             return window.getComputedStyle(el).display !== 'none';
         });
-        expect(ragSettingsVisible, '#luker_rpg_memory_rag_settings should be visible when method=rag').toBe(true);
+        expect(ragSettingsVisible, '#atria_rpg_memory_rag_settings should be visible when method=rag').toBe(true);
 
         // 3. Rerank checkbox is checked (carried over from hybrid_rerank).
         const rerankChecked = await page.evaluate(() => {
-            return Boolean(document.getElementById('luker_rpg_memory_rag_use_rerank')?.checked);
+            return Boolean(document.getElementById('atria_rpg_memory_rag_use_rerank')?.checked);
         });
         expect(rerankChecked, 'rerank checkbox should be checked after migrating hybrid_rerank').toBe(true);
 
         // 4. The rerank-profile sub-block is visible because the checkbox is on.
         const rerankBlockVisible = await page.evaluate(() => {
-            const el = document.getElementById('luker_rpg_memory_rag_rerank_block');
+            const el = document.getElementById('atria_rpg_memory_rag_rerank_block');
             if (!el) return false;
             return window.getComputedStyle(el).display !== 'none';
         });
@@ -110,14 +110,14 @@ test.describe('#64 — legacy hybrid_rerank settings migrate to RAG with rerank 
 
         // 5. Query-rewrite checkbox is NOT checked (legacy hybrid_rerank did not imply rewrite).
         const rewriteChecked = await page.evaluate(() => {
-            return Boolean(document.getElementById('luker_rpg_memory_rag_use_query_rewrite')?.checked);
+            return Boolean(document.getElementById('atria_rpg_memory_rag_use_query_rewrite')?.checked);
         });
         expect(rewriteChecked, 'query rewrite checkbox must NOT be on after migration').toBe(false);
 
         // 6. In-memory settings reflect the normalized shape, and the legacy
         // diffusion / enableRerank fields are gone.
         const migrated = await page.evaluate(() => {
-            const s = window.Luker.getContext().extensionSettings?.memory_graph || {};
+            const s = window.Atria.getContext().extensionSettings?.memory_graph || {};
             return {
                 recallMethod: s.recallMethod,
                 ragUseRerank: s.ragUseRerank,

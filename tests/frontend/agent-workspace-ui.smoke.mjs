@@ -28,7 +28,7 @@ try {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.evaluate(async () => {
         // Host constants only; persistence and Memory ports below are explicit fixtures.
-        window.Luker = { getContext: () => ({ constants: { promptRoles: { SYSTEM: 0, USER: 1 }, wiPosition: {} } }) };
+        window.Atria = { getContext: () => ({ constants: { promptRoles: { SYSTEM: 0, USER: 1 }, wiPosition: {} } }) };
         const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
         const { createPresetAuthoring } = await import('/scripts/extensions/orchestrator/workspace/authoring.js');
         const { createMemoryWorkspace } = await import('/scripts/extensions/orchestrator/workspace/memory.js');
@@ -222,7 +222,7 @@ try {
     await page.reload();
     await page.evaluate(async () => {
         const locales = {};
-        window.Luker = { getContext: () => ({
+        window.Atria = { getContext: () => ({
             constants: { promptRoles: { SYSTEM: 0, USER: 1 }, wiPosition: {} },
             addLocaleData: (locale, data) => { locales[locale] = { ...locales[locale], ...data }; },
             translate: text => locales['zh-cn']?.[text] || ({ Name: '名称', Duplicate: '复制', Close: '关闭' }[text]) || text,

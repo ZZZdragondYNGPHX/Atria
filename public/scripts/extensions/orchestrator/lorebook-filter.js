@@ -167,8 +167,8 @@ export function applyLorebookFilterPatchArgs(currentFilter, args, opts) {
         throw e;
     }
     const toolName = dimension === 'book'
-        ? 'luker_orch_set_lorebook_book_filter'
-        : 'luker_orch_set_lorebook_entry_filter';
+        ? 'atri_orch_set_lorebook_book_filter'
+        : 'atri_orch_set_lorebook_entry_filter';
     const patch = args && typeof args === 'object' ? args : {};
     if (!Object.prototype.hasOwnProperty.call(patch, 'pattern')) {
         const e = new Error(`${toolName}: invalid_args — missing 'pattern' argument.`);

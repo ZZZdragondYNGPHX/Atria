@@ -1,6 +1,6 @@
 // Annotation engine for the simulation-review popup. Owns:
 //   - selection → path resolution (walks up to nearest [data-loc-path])
-//   - addAnnotationFromSelection: wrap range in <mark class="luker-sim-annotation">
+//   - addAnnotationFromSelection: wrap range in <mark class="atria-sim-annotation">
 //   - editAnnotation, deleteAnnotation
 //   - buildChainSegments: snapshot the host's text into segments with
 //     optional annotationId for the feedback-builder.
@@ -8,7 +8,7 @@
 // No popup chrome here; that lives in popup.js. This module is the
 // state owner so we can unit-test it under jsdom.
 
-const ANN_CLASS = 'luker-sim-annotation';
+const ANN_CLASS = 'atria-sim-annotation';
 const ANN_ATTR = 'data-ann-id';
 const ANN_REMOVE_CLASS = 'sim-review-annot-remove';
 const ANN_COMMENT_CLASS = 'sim-review-annot-comment';

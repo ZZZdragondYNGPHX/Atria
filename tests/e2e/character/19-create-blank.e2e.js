@@ -132,14 +132,14 @@ test.describe('#19 — Create blank character via UI form', () => {
             firstmes: FIRST_MES,
             system_prompt: SYSTEM_PROMPT,
             creator_notes: 'e2e — fresh-blank fixture via UI',
-            creator: 'luker-e2e',
+            creator: 'atria-e2e',
             character_version: '1.0',
         });
         await dismissAnyPopup(page);
 
         // Wait for the character to be added to ctx.characters.
         await page.waitForFunction((wantName) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return !!ctx?.characters?.find?.(c => c?.name === wantName);
         }, NAME, { timeout: 15_000 });
 
@@ -181,7 +181,7 @@ test.describe('#19 — Create blank character via UI form', () => {
         await reloadAndAwait(page, server.baseURL);
 
         await page.waitForFunction((wantName) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return !!ctx?.characters?.find?.(c => c?.name === wantName);
         }, NAME, { timeout: 15_000 });
 

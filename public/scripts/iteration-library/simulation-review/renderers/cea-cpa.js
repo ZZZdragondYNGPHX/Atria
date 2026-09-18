@@ -2,7 +2,7 @@ import { appendShared } from './shared.js';
 
 export function render(payload, i18n) {
     const root = document.createElement('div');
-    root.className = 'luker-sim-review luker-sim-review--singleshot';
+    root.className = 'atria-sim-review atria-sim-review--singleshot';
 
     const out = appendShared.section(root, i18n('sim.section.final_output', 'Final Output'), 'Final Output', { isFinalOutput: true });
     appendShared.pre(out, payload?.finalOutput || '');

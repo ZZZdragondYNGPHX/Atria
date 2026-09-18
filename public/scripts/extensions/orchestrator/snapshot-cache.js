@@ -359,13 +359,13 @@ export async function persistEditedSnapshotToFloorState(context, snapshot) {
  * valid for the current chat array. Used by runtime modules to inject
  * the previous orchestration into a node prompt prelude.
  *
- * Caches the result on `payload.__lukerOrchPreviousCapsuleText` so the
+ * Caches the result on `payload.__atriaOrchPreviousCapsuleText` so the
  * function can be called multiple times within a single orchestration
  * run without rescanning the anchor map.
  */
 export async function getPreviousOrchestrationCapsuleText(context, payload) {
-    if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, '__lukerOrchPreviousCapsuleText')) {
-        return String(payload.__lukerOrchPreviousCapsuleText || '');
+    if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, '__atriaOrchPreviousCapsuleText')) {
+        return String(payload.__atriaOrchPreviousCapsuleText || '');
     }
     const coreMessages = Array.isArray(payload?.coreChat) ? payload.coreChat : [];
     const chatKey = getChatKey(context);
@@ -390,13 +390,13 @@ export async function getPreviousOrchestrationCapsuleText(context, payload) {
         }
         const previousCapsuleText = String(snapshot.capsuleText || '').trim();
         if (payload && typeof payload === 'object') {
-            payload.__lukerOrchPreviousCapsuleText = previousCapsuleText;
+            payload.__atriaOrchPreviousCapsuleText = previousCapsuleText;
         }
         return previousCapsuleText;
     }
 
     if (payload && typeof payload === 'object') {
-        payload.__lukerOrchPreviousCapsuleText = '';
+        payload.__atriaOrchPreviousCapsuleText = '';
     }
     return '';
 }

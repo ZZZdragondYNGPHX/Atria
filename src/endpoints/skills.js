@@ -174,8 +174,8 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
     router.post('/import-bundled', async (req, res) => {
         try {
             const repo = getRepository(req);
-            const defaultRoot = req.app.get('lukerDefaultRoot');
-            if (!defaultRoot) throw new Error('lukerDefaultRoot not configured');
+            const defaultRoot = req.app.get('atriaDefaultRoot');
+            if (!defaultRoot) throw new Error('atriaDefaultRoot not configured');
             const result = await importBundledSkills({ defaultRoot, repository: repo });
             await invalidateIndex(req);
             res.json(result);
@@ -188,8 +188,8 @@ export function createSkillsRouter({ getRepository, getMemoryIndex }) {
     // not_installed by comparing against the live skill index.
     router.get('/bundled-manifest', async (req, res) => {
         try {
-            const defaultRoot = req.app.get('lukerDefaultRoot');
-            if (!defaultRoot) throw new Error('lukerDefaultRoot not configured');
+            const defaultRoot = req.app.get('atriaDefaultRoot');
+            if (!defaultRoot) throw new Error('atriaDefaultRoot not configured');
             const manifest = await buildBundledManifest({ defaultRoot });
             res.json(manifest);
         } catch (e) { handleError(e, res); }

@@ -14,13 +14,13 @@ import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/exte
 import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globals';
 
 // spec-runtime.js + defaults.js consume core symbols via
-// `Luker.getContext()` after upstream commit 571c529c2. Provide a
+// `Atria.getContext()` after upstream commit 571c529c2. Provide a
 // shim with the constants + the shared `extensionSettings` binding the
 // runtime captures at module-load time.
 const __sillyTavernSettings = {
     orchestrator: { nodeIterationMaxRounds: 3, reviewRerunMaxRounds: 2 },
 };
-globalThis.Luker = {
+globalThis.Atria = {
     getContext: () => ({
         constants: {
             promptRoles: { SYSTEM: 0, USER: 1, ASSISTANT: 2 },
@@ -121,7 +121,7 @@ function singleWithTools() {
     };
 }
 
-const guidance = () => ({ toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'done' } }], assistantText: '' });
+const guidance = () => ({ toolCalls: [{ name: 'atri_orch_final_guidance', args: { text: 'done' } }], assistantText: '' });
 
 describe('Single Runtime equivalence', () => {
     test('two calls preserve order, IDs, reasoning, results and unchanged settings', async () => {
@@ -209,7 +209,7 @@ describe('Single Runtime equivalence', () => {
 
     test('empty final output fails before any same-response tool writes', async () => {
         for (const agentRuntimeV2 of [true, false]) {
-            llmResponses.push({ toolCalls: [{ id: 'skip', name: 'my_tool', args: {} }, { name: 'luker_orch_final_guidance', args: { text: '' } }] });
+            llmResponses.push({ toolCalls: [{ id: 'skip', name: 'my_tool', args: {} }, { name: 'atri_orch_final_guidance', args: { text: '' } }] });
             await expect(runSpecOrchestration({}, { agentRuntimeV2 }, [], singleWithTools())).rejects.toThrow('empty final guidance');
         }
         expect(customToolDispatches).toHaveLength(0);
@@ -225,7 +225,7 @@ describe('spec runtime Layer-3 dispatch', () => {
         };
         const before = JSON.stringify(profile);
         const run = async agentRuntimeV2 => {
-            llmResponses.push({ toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'same guidance' } }], assistantText: '' });
+            llmResponses.push({ toolCalls: [{ name: 'atri_orch_final_guidance', args: { text: 'same guidance' } }], assistantText: '' });
             return runSpecOrchestration({}, { agentRuntimeV2 }, [], profile);
         };
         const modern = await run(true);
@@ -242,7 +242,7 @@ describe('spec runtime Layer-3 dispatch', () => {
             spec: { stages: [{ id: 'single', mode: 'serial', nodes: [{ id: 'single_agent', preset: 'single_agent' }] }] },
             presets: { single_agent: { systemPrompt: 'private system', userPromptTemplate: 'private task' } },
         };
-        llmResponses.push({ toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'done' } }], assistantText: '' });
+        llmResponses.push({ toolCalls: [{ name: 'atri_orch_final_guidance', args: { text: 'done' } }], assistantText: '' });
         const result = await runSpecOrchestration({}, {}, [], profile);
         expect(result.runtimeTrace.events.some(e => e.type === 'agent_runtime_v2')).toBe(true);
         expect(result.stageOutputs[0].nodes[0].output).toBe('done');
@@ -279,14 +279,14 @@ describe('spec runtime Layer-3 dispatch', () => {
             ],
         };
 
-        // LLM responses: round 1 calls my_tool, round 2 emits luker_orch_final_guidance.
+        // LLM responses: round 1 calls my_tool, round 2 emits atri_orch_final_guidance.
         llmResponses.push({
             toolCalls: [{ id: 'tc1', name: 'my_tool', args: { x: 5 } }],
             assistantText: '',
             reasoning: '',
         });
         llmResponses.push({
-            toolCalls: [{ id: 'tc2', name: 'luker_orch_final_guidance', args: { text: 'done' } }],
+            toolCalls: [{ id: 'tc2', name: 'atri_orch_final_guidance', args: { text: 'done' } }],
             assistantText: '',
             reasoning: '',
         });
@@ -310,10 +310,10 @@ test('Spec reviewer reruns an earlier worker through Engine delegation and prese
     ] }, presets: { p: { systemPrompt: 'role', userPromptTemplate: '{{previous_outputs}}' } } };
     const before = JSON.stringify(profile), events = [];
     const reply = (name, args) => ({ toolCalls: [{ name, args }], assistantText: '' });
-    llmResponses.push(reply('luker_orch_node_output', { output: 'draft' }),
-        reply('luker_orch_request_rerun', { target_node_ids: ['writer'], review_feedback: 'repair' }),
-        reply('luker_orch_node_output', { output: 'repaired' }),
-        reply('luker_orch_review_approve', { review_feedback: 'approved' }), guidance());
+    llmResponses.push(reply('atri_orch_node_output', { output: 'draft' }),
+        reply('atri_orch_request_rerun', { target_node_ids: ['writer'], review_feedback: 'repair' }),
+        reply('atri_orch_node_output', { output: 'repaired' }),
+        reply('atri_orch_review_approve', { review_feedback: 'approved' }), guidance());
     const result = await runSpecOrchestration({}, {}, [], profile, { onRuntimeEvent: event => events.push(event) });
     expect(result.reviewRerunCount).toBe(1);
     expect(getRuntimePanelState().runtime.runs.flatMap(run => run.handoffs)).toHaveLength(0);
@@ -331,7 +331,7 @@ test('legacy Spec string nodes and repeated names in different stages keep disti
     const profile = { mode: 'spec', spec: { stages: [
         { id: 'first', mode: 'serial', nodes: ['same'] }, { id: 'second', mode: 'serial', nodes: ['same'] },
     ] }, presets: { same: { systemPrompt: 'role', userPromptTemplate: '{{previous_outputs}}' } } };
-    llmResponses.push({ toolCalls: [{ name: 'luker_orch_node_output', args: { value: 'first' } }] }, guidance());
+    llmResponses.push({ toolCalls: [{ name: 'atri_orch_node_output', args: { value: 'first' } }] }, guidance());
     const events = [];
     await runSpecOrchestration({}, {}, [], profile, { onRuntimeEvent: e => events.push(e) });
     expect(events.filter(e => e.type === 'parallel.branch.started').map(e => e.toAgentId))

@@ -9,7 +9,7 @@
  *
  * Invariant I:  after this runs, `state.active` ≡ `usingCharacterBoundPreset`
  *               (which is itself the DOM ground-truth signal read from
- *               `#settings_preset_openai option[data-luker-char-bound="1"]:checked`).
+ *               `#settings_preset_openai option[data-atria-char-bound="1"]:checked`).
  * Invariant III: exiting ghost selection MUST NOT clear `previousPreset` —
  *                the restore path (`maybeApplyCharacterBoundPreset` in
  *                openai.js, both its `selected_group` branch and its empty-
@@ -26,7 +26,7 @@
  *   The shared `characterBoundPresetState` object; mutated in place.
  * @param {boolean} args.usingCharacterBoundPreset
  *   Whether the currently selected `<option>` in `#settings_preset_openai`
- *   is a ghost card-bound option (`data-luker-char-bound="1"`).
+ *   is a ghost card-bound option (`data-atria-char-bound="1"`).
  * @param {string} args.oaiSettingsPresetName
  *   The current `oai_settings.preset_settings_openai` value. When we first
  *   enter ghost selection, this is the stale global name we stash so that

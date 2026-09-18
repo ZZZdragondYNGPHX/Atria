@@ -33,9 +33,9 @@ test.describe('Browser Storage Inspector · enumerate and drill', () => {
         await wipeBrowserFixture(page);
         await seedBrowserFixture(page, {
             localStorage: {
-                'luker-last-chat': 'Chat with Seraphina',
-                'luker-theme': 'dark',
-                'luker-draft': 'x'.repeat(500),
+                'atria-last-chat': 'Chat with Seraphina',
+                'atria-theme': 'dark',
+                'atria-draft': 'x'.repeat(500),
             },
             sessionStorage: {
                 'session-nav-history': '/user-settings',
@@ -64,7 +64,7 @@ test.describe('Browser Storage Inspector · enumerate and drill', () => {
         // Drill localStorage → L2 lists the 3 seeded keys
         await inspector.locator('.storageInspectorEntry[data-key="localStorage"]').click();
         await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
-        for (const k of ['luker-last-chat', 'luker-theme', 'luker-draft']) {
+        for (const k of ['atria-last-chat', 'atria-theme', 'atria-draft']) {
             await expect(inspector.locator(`.storageInspectorEntry[data-key="${k}"]`)).toBeVisible();
         }
 

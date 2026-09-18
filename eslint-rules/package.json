@@ -1,5 +1,5 @@
 {
-    "name": "eslint-plugin-luker",
+    "name": "eslint-plugin-atria",
     "version": "0.0.0",
     "main": "index.cjs",
     "private": true

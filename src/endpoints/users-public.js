@@ -114,7 +114,7 @@ function getOAuthProfileAvatarUrl(provider, profile) {
 async function fetchAvatarAsDataUrl(url) {
     try {
         const response = await fetch(url, {
-            headers: { 'User-Agent': 'Luker OAuth' },
+            headers: { 'User-Agent': 'Atria OAuth' },
         });
         if (!response.ok) {
             return '';
@@ -196,7 +196,7 @@ async function fetchGitHubProfile(accessToken) {
         headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept': 'application/vnd.github+json',
-            'User-Agent': 'Luker OAuth',
+            'User-Agent': 'Atria OAuth',
         },
     });
     if (!userResponse.ok) {
@@ -209,7 +209,7 @@ async function fetchGitHubProfile(accessToken) {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Accept': 'application/vnd.github+json',
-                'User-Agent': 'Luker OAuth',
+                'User-Agent': 'Atria OAuth',
             },
         });
 

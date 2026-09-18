@@ -8,7 +8,7 @@
 //   1. Seed 卡 A 携带一个 slot X (default)。
 //   2. 打开 char-management-dropdown → 触发 manage_character_bound_presets
 //      option (与 43-bind-and-manage 同一入口)。
-//   3. 点击 luker-mbp-rename 行内按钮 → 弹出 Popup.show.input →
+//   3. 点击 atria-mbp-rename 行内按钮 → 弹出 Popup.show.input →
 //      Playwright fill NEW_NAME + click OK。
 //   4. 断言:
 //      (a) card slot 名 === NEW_NAME + default 联动;
@@ -51,7 +51,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: OLD_NAME, preset: { temperature: SLOT_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -106,12 +106,12 @@ test.describe('#61 — 从 dialog 触发 rename', () => {
 
         // 打开 manage-bound-presets dialog (与 43-bind-and-manage 同一入口)。
         await fireDropdownAction(page, 'manage_character_bound_presets');
-        const dialog = page.locator('#luker_manage_bound_presets_dialog');
+        const dialog = page.locator('#atria_manage_bound_presets_dialog');
         await dialog.waitFor({ state: 'visible', timeout: 5000 });
 
         // 点该 slot 行的 Rename 按钮。
-        const row = dialog.locator(`.luker-mbp-row[data-preset-name="${OLD_NAME}"]`);
-        await row.locator('.luker-mbp-rename').click();
+        const row = dialog.locator(`.atria-mbp-row[data-preset-name="${OLD_NAME}"]`);
+        await row.locator('.atria-mbp-rename').click();
 
         // rename popup 弹出: 填新名 + 确认。此时同时有 manage-bound dialog
         // (POPUP_TYPE.DISPLAY) + rename input popup (POPUP_TYPE.INPUT) 两层,
@@ -123,7 +123,7 @@ test.describe('#61 — 从 dialog 触发 rename', () => {
 
         // 等 dialog rerender: 新 name 出现在同一 dialog 内。
         await page.waitForSelector(
-            `#luker_manage_bound_presets_dialog .luker-mbp-row[data-preset-name="${NEW_NAME}"]`,
+            `#atria_manage_bound_presets_dialog .atria-mbp-row[data-preset-name="${NEW_NAME}"]`,
             { state: 'visible', timeout: 5000 },
         );
 
@@ -132,8 +132,8 @@ test.describe('#61 — 从 dialog 触发 rename', () => {
             const ctx = window.SillyTavern?.getContext();
             const char = ctx?.characters?.find(c => c && c.name === cardName);
             return {
-                names: char?.data?.extensions?.luker?.chat_completion_preset?.presets?.map(p => p.name),
-                defaultPresetName: char?.data?.extensions?.luker?.chat_completion_preset?.defaultPresetName,
+                names: char?.data?.extensions?.atria?.chat_completion_preset?.presets?.map(p => p.name),
+                defaultPresetName: char?.data?.extensions?.atria?.chat_completion_preset?.defaultPresetName,
             };
         }, [CARD_NAME]);
         expect(cardPresets.names).toEqual([NEW_NAME]);
@@ -141,13 +141,13 @@ test.describe('#61 — 从 dialog 触发 rename', () => {
 
         // (b) dialog 内旧名行已消失。
         const rowStillOld = page.locator(
-            `#luker_manage_bound_presets_dialog .luker-mbp-row[data-preset-name="${OLD_NAME}"]`,
+            `#atria_manage_bound_presets_dialog .atria-mbp-row[data-preset-name="${OLD_NAME}"]`,
         );
         await expect(rowStillOld).toHaveCount(0);
 
         // (c) ghost optgroup 重建后 option textContent === 新名。
         const ghostText = await page.evaluate(() => {
-            const opt = document.querySelector('#settings_preset_openai option[data-luker-char-bound="1"]');
+            const opt = document.querySelector('#settings_preset_openai option[data-atria-char-bound="1"]');
             return opt?.textContent?.trim();
         });
         expect(ghostText).toBe(NEW_NAME);

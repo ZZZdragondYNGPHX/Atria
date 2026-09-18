@@ -1,18 +1,18 @@
 /**
  * Skill embed export hook.
  *
- * Wires the export-side of the embed flow into Luker's existing preset
+ * Wires the export-side of the embed flow into Atria's existing preset
  * export event (OAI_PRESET_EXPORT_READY). The event fires from openai.js
  * with the preset body just before download; listeners can mutate the body
- * in place to attach extra fields (Luker's regex extension uses this same
+ * in place to attach extra fields (Atria's regex extension uses this same
  * pattern).
  *
  * UX: if the active preset has any preset-scope skills, surface a yes/no
  * confirm popup asking whether to include them. On yes, attach
- * `extensions.luker.embedded_skills_source`. If no skills exist for the
+ * `extensions.atria.embedded_skills_source`. If no skills exist for the
  * scope, this hook is a no-op (no spurious dialog).
  *
- * Character export goes through Luker's image-card serialization, which
+ * Character export goes through Atria's image-card serialization, which
  * doesn't currently emit a similar event. Until a CHARACTER_EXPORT_READY
  * hook lands, character-scope skills export piggybacks on the manual
  * "Pack to embed" path in the skill manager subpanel.
@@ -245,11 +245,11 @@ async function confirmIncludeOrchPresetSkills({ context, t, list, targetScope })
     const list_html = names.map(n => `<li>${escHtml(n)}</li>`).join('');
     const scope_label = `orchestrator preset (${escHtml(targetScope.mode)}): ${escHtml(targetScope.name)}`;
     const html = `
-<div class="luker_skill_export_confirm">
+<div class="atria_skill_export_confirm">
     <div>${escHtml(t('Include all skills active for this orchestrator preset in the export?'))}</div>
-    <div class="luker_skill_export_confirm_hint">${escHtml(t('Bundled skills will install into this preset\u2019s scope on import.'))}</div>
-    <div class="luker_skill_export_confirm_scope"><b>${scope_label}</b></div>
-    <ul class="luker_skill_export_confirm_list">${list_html}</ul>
+    <div class="atria_skill_export_confirm_hint">${escHtml(t('Bundled skills will install into this preset\u2019s scope on import.'))}</div>
+    <div class="atria_skill_export_confirm_scope"><b>${scope_label}</b></div>
+    <ul class="atria_skill_export_confirm_list">${list_html}</ul>
 </div>
     `;
     const result = await context.callGenericPopup(html, context.POPUP_TYPE.CONFIRM, '', {
@@ -268,10 +268,10 @@ async function confirmIncludeSkills({ context, t, list, targetScope }) {
     const list_html = names.map(n => `<li>${escHtml(n)}</li>`).join('');
     const scope_label = `preset: ${escHtml(targetScope.name)}`;
     const html = `
-<div class="luker_skill_export_confirm">
+<div class="atria_skill_export_confirm">
     <div>${escHtml(t('Include preset-scope skills in this export?'))}</div>
-    <div class="luker_skill_export_confirm_scope"><b>${scope_label}</b></div>
-    <ul class="luker_skill_export_confirm_list">${list_html}</ul>
+    <div class="atria_skill_export_confirm_scope"><b>${scope_label}</b></div>
+    <ul class="atria_skill_export_confirm_list">${list_html}</ul>
 </div>
     `;
     const result = await context.callGenericPopup(html, context.POPUP_TYPE.CONFIRM, '', {

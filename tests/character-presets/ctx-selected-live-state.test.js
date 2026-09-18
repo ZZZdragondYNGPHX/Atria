@@ -252,7 +252,7 @@ function nsStub(extra = {}) {
 
 jest.unstable_mockModule('../../public/scripts/lib/edits/index.js', () => nsStub());
 jest.unstable_mockModule('../../public/scripts/iteration-library/index.js', () => nsStub());
-jest.unstable_mockModule('../../public/scripts/extensions/luker-tabs.js', () => nsStub());
+jest.unstable_mockModule('../../public/scripts/extensions/atria-tabs.js', () => nsStub());
 jest.unstable_mockModule('../../public/scripts/extensions/field-help.js', () => nsStub());
 
 jest.unstable_mockModule('../../public/scripts/group-chats.js', () => ({
@@ -446,7 +446,7 @@ test('getSelected returns origin:global for normal option value', () => {
     expect(ref.name).toBe('GlobalA');
 });
 
-test('getSelected returns origin:character for __luker_card__ option value', async () => {
+test('getSelected returns origin:character for __atria_card__ option value', async () => {
     const boundChar = getContext().characters[0];
     await characterPresets.addCharacterBoundPreset(boundChar, 'CardOnly', { temperature: 0.7 });
     const select = document.querySelector('#settings_preset_openai');

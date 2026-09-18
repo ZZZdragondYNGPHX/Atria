@@ -95,7 +95,7 @@ function renderRawRecord(entry, opts) {
     const json = JSON.stringify(entry?.inverse ?? null, null, 2);
     const safeJson = escapeHtml(json);
     const label = escapeHtml(t('View raw record'));
-    return `<div class="iter-diff-raw luker_lib_diff_card">
+    return `<div class="iter-diff-raw atria_lib_diff_card">
         <pre>${safeJson}</pre>
         <button data-action="view-raw-record">${label}</button>
     </div>`;
@@ -173,9 +173,9 @@ function renderOneEdit(edit, opts) {
             return renderSubCard(path, before[k], patch[k], opts);
         }).join('');
     }
-    return `<div class="luker_lib_diff_card">
-        <span class="luker_lib_diff_op">${escapeHtml(String(edit.op || i18n('(unknown op)')))}</span>
-        ${edit.path ? `<span class="luker_lib_diff_path">${escapeHtml(String(edit.path))}</span>` : ''}
+    return `<div class="atria_lib_diff_card">
+        <span class="atria_lib_diff_op">${escapeHtml(String(edit.op || i18n('(unknown op)')))}</span>
+        ${edit.path ? `<span class="atria_lib_diff_path">${escapeHtml(String(edit.path))}</span>` : ''}
     </div>`;
 }
 
@@ -412,13 +412,13 @@ function renderSubCard(path, oldValue, newValue, opts) {
         fileLabel,
         i18n,
     });
-    // Header element uses `luker_lib_diff_header` (NOT `_card_header`) so that
-    // `(html.match(/luker_lib_diff_card/g) || []).length` counts one match per
+    // Header element uses `atria_lib_diff_header` (NOT `_card_header`) so that
+    // `(html.match(/atria_lib_diff_card/g) || []).length` counts one match per
     // card, not one match for the card + one for its header.
-    return `<div class="luker_lib_diff_card" data-luker-lib-diff-zoom="${escapeHtmlAttr(path)}">
-        <div class="luker_lib_diff_header">
-            <span class="luker_lib_diff_op">${escapeHtml(headerLabel)}</span>
-            <span class="luker_lib_diff_delta">${escapeHtml(fmt(i18n, '(${0}${1} bytes)', sign, bytesDelta))}</span>
+    return `<div class="atria_lib_diff_card" data-atria-lib-diff-zoom="${escapeHtmlAttr(path)}">
+        <div class="atria_lib_diff_header">
+            <span class="atria_lib_diff_op">${escapeHtml(headerLabel)}</span>
+            <span class="atria_lib_diff_delta">${escapeHtml(fmt(i18n, '(${0}${1} bytes)', sign, bytesDelta))}</span>
         </div>
         ${libDiffHtml}
     </div>`;
@@ -627,9 +627,9 @@ function renderListContextStrip(list, index, highlightCls, window = 2) {
         // shape of the list.
         const head = list.slice(0, Math.max(1, window * 2 + 1));
         const dots = list.length > head.length ? ' …' : '';
-        return `<div class="luker_lib_diff_list_strip">${head.map((it, i) =>
-            `<span class="luker_lib_diff_list_strip_item"><span class="luker_lib_diff_list_strip_idx">[${i}]</span> ${escapeHtml(summarizeListItem(it))}</span>`,
-        ).join('<span class="luker_lib_diff_list_strip_sep">·</span>')}${dots}</div>`;
+        return `<div class="atria_lib_diff_list_strip">${head.map((it, i) =>
+            `<span class="atria_lib_diff_list_strip_item"><span class="atria_lib_diff_list_strip_idx">[${i}]</span> ${escapeHtml(summarizeListItem(it))}</span>`,
+        ).join('<span class="atria_lib_diff_list_strip_sep">·</span>')}${dots}</div>`;
     }
     const start = Math.max(0, safeIdx - window);
     const end = Math.min(list.length, safeIdx + window + 1);
@@ -637,10 +637,10 @@ function renderListContextStrip(list, index, highlightCls, window = 2) {
     const trailDots = end < list.length ? ' …' : '';
     const chips = [];
     for (let i = start; i < end; i++) {
-        const cls = i === safeIdx ? `luker_lib_diff_list_strip_item ${highlightCls}` : 'luker_lib_diff_list_strip_item';
-        chips.push(`<span class="${cls}"><span class="luker_lib_diff_list_strip_idx">[${i}]</span> ${escapeHtml(summarizeListItem(list[i]))}</span>`);
+        const cls = i === safeIdx ? `atria_lib_diff_list_strip_item ${highlightCls}` : 'atria_lib_diff_list_strip_item';
+        chips.push(`<span class="${cls}"><span class="atria_lib_diff_list_strip_idx">[${i}]</span> ${escapeHtml(summarizeListItem(list[i]))}</span>`);
     }
-    return `<div class="luker_lib_diff_list_strip">${leadDots}${chips.join('<span class="luker_lib_diff_list_strip_sep">·</span>')}${trailDots}</div>`;
+    return `<div class="atria_lib_diff_list_strip">${leadDots}${chips.join('<span class="atria_lib_diff_list_strip_sep">·</span>')}${trailDots}</div>`;
 }
 
 /**
@@ -667,7 +667,7 @@ function renderListMoveCard(edit, opts) {
         : fmt(i18n, '[${0}] → [${1}]', String(fromIdx >= 0 ? fromIdx : '?'), String(toIdx >= 0 ? toIdx : '?'));
     const liveList = resolveLiveList(path, opts);
     const beforeStrip = liveList
-        ? `<div class="luker_lib_diff_list_strip_label">${escapeHtml(i18n('Before'))}</div>${renderListContextStrip(liveList, fromIdx, 'luker_lib_diff_list_strip_move_src')}`
+        ? `<div class="atria_lib_diff_list_strip_label">${escapeHtml(i18n('Before'))}</div>${renderListContextStrip(liveList, fromIdx, 'atria_lib_diff_list_strip_move_src')}`
         : '';
     // Simulate the move locally for the "after" preview so the user sees
     // the new neighbors. Pure on the snapshot — we never mutate live.
@@ -676,12 +676,12 @@ function renderListMoveCard(edit, opts) {
         const next = liveList.slice();
         const [moved] = next.splice(fromIdx, 1);
         next.splice(toIdx, 0, moved);
-        afterStrip = `<div class="luker_lib_diff_list_strip_label">${escapeHtml(i18n('After'))}</div>${renderListContextStrip(next, toIdx, 'luker_lib_diff_list_strip_move_dst')}`;
+        afterStrip = `<div class="atria_lib_diff_list_strip_label">${escapeHtml(i18n('After'))}</div>${renderListContextStrip(next, toIdx, 'atria_lib_diff_list_strip_move_dst')}`;
     }
-    return `<div class="luker_lib_diff_card luker_lib_diff_card_list_op" data-luker-lib-diff-zoom="${escapeHtmlAttr(path)}">
-        <div class="luker_lib_diff_header">
-            <span class="luker_lib_diff_op">${escapeHtml(headerMain)}</span>
-            <span class="luker_lib_diff_delta">${escapeHtml(headerDetail)}</span>
+    return `<div class="atria_lib_diff_card atria_lib_diff_card_list_op" data-atria-lib-diff-zoom="${escapeHtmlAttr(path)}">
+        <div class="atria_lib_diff_header">
+            <span class="atria_lib_diff_op">${escapeHtml(headerMain)}</span>
+            <span class="atria_lib_diff_delta">${escapeHtml(headerDetail)}</span>
         </div>
         ${beforeStrip}
         ${afterStrip}
@@ -718,19 +718,19 @@ function renderListInsertCard(edit, opts) {
             const anchorLabel = summarizeListItem(anchorKey);
             anchorIdx = liveList.findIndex((it) => summarizeListItem(it) === anchorLabel);
         }
-        beforeStrip = `<div class="luker_lib_diff_list_strip_label">${escapeHtml(i18n('Before'))}</div>${renderListContextStrip(liveList, anchorIdx, 'luker_lib_diff_list_strip_anchor')}`;
+        beforeStrip = `<div class="atria_lib_diff_list_strip_label">${escapeHtml(i18n('Before'))}</div>${renderListContextStrip(liveList, anchorIdx, 'atria_lib_diff_list_strip_anchor')}`;
         // Simulate the insert for the after strip.
         const insertAt = anchorIdx >= 0
             ? (anchor.after != null ? anchorIdx + 1 : anchorIdx)
             : liveList.length;
         const next = liveList.slice();
         next.splice(insertAt, 0, edit.value);
-        afterStrip = `<div class="luker_lib_diff_list_strip_label">${escapeHtml(i18n('After'))}</div>${renderListContextStrip(next, insertAt, 'luker_lib_diff_list_strip_add')}`;
+        afterStrip = `<div class="atria_lib_diff_list_strip_label">${escapeHtml(i18n('After'))}</div>${renderListContextStrip(next, insertAt, 'atria_lib_diff_list_strip_add')}`;
     }
-    return `<div class="luker_lib_diff_card luker_lib_diff_card_list_op" data-luker-lib-diff-zoom="${escapeHtmlAttr(path)}">
-        <div class="luker_lib_diff_header">
-            <span class="luker_lib_diff_op">${escapeHtml(headerMain)}</span>
-            <span class="luker_lib_diff_delta">${escapeHtml(headerDetail)}</span>
+    return `<div class="atria_lib_diff_card atria_lib_diff_card_list_op" data-atria-lib-diff-zoom="${escapeHtmlAttr(path)}">
+        <div class="atria_lib_diff_header">
+            <span class="atria_lib_diff_op">${escapeHtml(headerMain)}</span>
+            <span class="atria_lib_diff_delta">${escapeHtml(headerDetail)}</span>
         </div>
         ${beforeStrip}
         ${afterStrip}
@@ -750,20 +750,20 @@ function renderListRemoveCard(edit, opts) {
     let beforeStrip = '';
     let afterStrip = '';
     if (liveList) {
-        beforeStrip = `<div class="luker_lib_diff_list_strip_label">${escapeHtml(i18n('Before'))}</div>${renderListContextStrip(liveList, removedAt, 'luker_lib_diff_list_strip_del')}`;
+        beforeStrip = `<div class="atria_lib_diff_list_strip_label">${escapeHtml(i18n('Before'))}</div>${renderListContextStrip(liveList, removedAt, 'atria_lib_diff_list_strip_del')}`;
         if (removedAt >= 0 && removedAt < liveList.length) {
             const next = liveList.slice();
             next.splice(removedAt, 1);
             // Show the resulting neighborhood, highlighting the new occupant
             // of the removed slot (or the prior slot when removing the tail).
             const focusIdx = Math.min(removedAt, next.length - 1);
-            afterStrip = `<div class="luker_lib_diff_list_strip_label">${escapeHtml(i18n('After'))}</div>${renderListContextStrip(next, focusIdx, 'luker_lib_diff_list_strip_anchor')}`;
+            afterStrip = `<div class="atria_lib_diff_list_strip_label">${escapeHtml(i18n('After'))}</div>${renderListContextStrip(next, focusIdx, 'atria_lib_diff_list_strip_anchor')}`;
         }
     }
-    return `<div class="luker_lib_diff_card luker_lib_diff_card_list_op" data-luker-lib-diff-zoom="${escapeHtmlAttr(path)}">
-        <div class="luker_lib_diff_header">
-            <span class="luker_lib_diff_op">${escapeHtml(headerMain)}</span>
-            <span class="luker_lib_diff_delta">${escapeHtml(headerDetail)}</span>
+    return `<div class="atria_lib_diff_card atria_lib_diff_card_list_op" data-atria-lib-diff-zoom="${escapeHtmlAttr(path)}">
+        <div class="atria_lib_diff_header">
+            <span class="atria_lib_diff_op">${escapeHtml(headerMain)}</span>
+            <span class="atria_lib_diff_delta">${escapeHtml(headerDetail)}</span>
         </div>
         ${beforeStrip}
         ${afterStrip}
@@ -780,7 +780,7 @@ function escapeHtml(s) {
 function escapeHtmlAttr(s) {
     // Wider escape that also handles `"` and `'` so we can safely
     // interpolate user-controlled paths into attribute positions
-    // (e.g. data-luker-lib-diff-zoom="${path}").
+    // (e.g. data-atria-lib-diff-zoom="${path}").
     return String(s ?? '').replace(/[&<>"']/g, (c) => ({
         '&': '&amp;',
         '<': '&lt;',

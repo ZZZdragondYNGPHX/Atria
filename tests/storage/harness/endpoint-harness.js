@@ -17,8 +17,8 @@
 // Engines covered (matches CONTRACT_HARNESSES used by Repo-layer tests):
 //   - FsEngine            (always on)
 //   - SqliteEngine        (always on)
-//   - MysqlEngine         (skip with LUKER_DISABLE_MYSQL_TESTS=1)
-//   - PgEngine            (skip with LUKER_DISABLE_POSTGRES_TESTS=1)
+//   - MysqlEngine         (skip with ATRIA_DISABLE_MYSQL_TESTS=1)
+//   - PgEngine            (skip with ATRIA_DISABLE_POSTGRES_TESTS=1)
 //
 // To restart the engine mid-test (read-after-restart parity check), call
 // harness.reopenEngine(). FsEngine has nothing to close; the SQL engines tear
@@ -106,8 +106,8 @@ function precreateCommonDirs(dirs) {
 }
 
 // Local dev container defaults — keep in sync with mysql-harness.js / pg-harness.js.
-const MYSQL_ROOT_URL = process.env.LUKER_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
-const PG_ROOT_URL = process.env.LUKER_TEST_POSTGRES_URL || 'postgresql://luker:postgres@127.0.0.1:55432/luker_test';
+const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
+const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
 
 function makeEngineFactory({ mode, dataRoot, handle, extraHandles, dbName, pgSchemaUrl }) {
     const userDir = path.join(dataRoot, handle);
@@ -186,10 +186,10 @@ function pgSchemaConnUrl(schema) {
  * @returns {Promise<{app, dataRoot, handle, dirs, extraDirs, mode, engine, reopenEngine, cleanup}>}
  */
 export async function makeEndpointHarness({ mode, mount, profile, extraHandles }) {
-    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), `luker-ep-${mode}-`));
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), `atria-ep-${mode}-`));
     const handle = 'u';
     const dbName = (mode === 'mysql' || mode === 'postgres')
-        ? `luker_test_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`
+        ? `atria_test_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`
         : null;
     if (mode === 'mysql') await createMysqlDatabase(dbName);
     if (mode === 'postgres') await createPgSchema(dbName);
@@ -289,8 +289,8 @@ export async function makeEndpointHarness({ mode, mount, profile, extraHandles }
 const allEntries = [
     { name: 'fs',       mode: 'fs' },
     { name: 'sqlite',   mode: 'sqlite' },
-    { name: 'mysql',    mode: 'mysql',    disableEnv: 'LUKER_DISABLE_MYSQL_TESTS' },
-    { name: 'postgres', mode: 'postgres', disableEnv: 'LUKER_DISABLE_POSTGRES_TESTS' },
+    { name: 'mysql',    mode: 'mysql',    disableEnv: 'ATRIA_DISABLE_MYSQL_TESTS' },
+    { name: 'postgres', mode: 'postgres', disableEnv: 'ATRIA_DISABLE_POSTGRES_TESTS' },
 ];
 
 export const ENDPOINT_HARNESSES = allEntries.filter(

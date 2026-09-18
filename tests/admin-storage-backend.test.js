@@ -19,8 +19,8 @@ describe('buildStorageBackendCreds — admin Storage Backend cred builder', () =
 
     test('mysql URL only — payload has only url, not poolSize', () => {
         expect(buildStorageBackendCreds('mysql', {
-            mysqlUrl: 'mysql://op:pw@db:3306/luker',
-        })).toEqual({ mysql: { url: 'mysql://op:pw@db:3306/luker' } });
+            mysqlUrl: 'mysql://op:pw@db:3306/atria',
+        })).toEqual({ mysql: { url: 'mysql://op:pw@db:3306/atria' } });
     });
 
     test('mysql poolSize only — payload has only poolSize', () => {

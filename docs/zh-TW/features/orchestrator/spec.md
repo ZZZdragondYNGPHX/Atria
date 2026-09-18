@@ -133,8 +133,8 @@ s5 -> out
 
 | 工具 | 作用 |
 |---|---|
-| `luker_orch_review_approve` | 工作合格，推進到下一階段 |
-| `luker_orch_request_rerun` | 一個或多個節點需要重做，附帶修改建議 |
+| `atri_orch_review_approve` | 工作合格，推進到下一階段 |
+| `atri_orch_request_rerun` | 一個或多個節點需要重做，附帶修改建議 |
 
 約束：
 

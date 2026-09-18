@@ -14,7 +14,7 @@ const character = {
     avatar: 'Aqua.png',
     data: {
         extensions: {
-            luker: {
+            atria: {
                 chat_completion_preset: {
                     presets: [
                         { name: 'Shared', preset: { __from: 'card' } },
@@ -30,7 +30,7 @@ const character = {
 const resolveByName = jest.fn((c, name) => {
     const trimmed = String(name || '').trim();
     if (!trimmed) return null;
-    const state = c?.data?.extensions?.luker?.chat_completion_preset;
+    const state = c?.data?.extensions?.atria?.chat_completion_preset;
     const hit = state?.presets?.find(p => p.name === trimmed);
     if (hit) return { name: trimmed, preset: hit.preset, origin: 'card' };
     if (trimmed === 'GlobalOnly') return { name: trimmed, preset: { __from: 'global' }, origin: 'global' };

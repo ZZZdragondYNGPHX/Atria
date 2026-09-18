@@ -68,7 +68,7 @@ const V2_DATA = {
     post_history_instructions: '',
     alternate_greetings: [],
     tags: ['rp', 'fixture'],
-    creator: 'luker-e2e',
+    creator: 'atria-e2e',
     character_version: '1.0',
     extensions: {
         depth_prompt: { prompt: '', depth: 4, role: 'system' },
@@ -92,7 +92,7 @@ test.beforeAll(async () => {
     appendConnectionProfile({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
 
     // Build a PNG file on disk that the file picker can ingest.
-    tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-png-'));
+    tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-png-'));
     const seedPath = resolve(REPO_ROOT, 'default/content/default_Seraphina.png');
     const seed = readFileSync(seedPath);
     const png = writePngCard(seed, JSON.stringify(V2_PAYLOAD));

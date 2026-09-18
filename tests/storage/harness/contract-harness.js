@@ -52,7 +52,7 @@ function buildDirs(userDir) {
 }
 
 export async function makeTempFsEngineHarness() {
-    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-contract-fs-'));
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-contract-fs-'));
     const handle = 'u';
     const userDir = path.join(dataRoot, handle);
     const dirs = buildDirs(userDir);
@@ -86,7 +86,7 @@ export async function makeTempFsEngineHarness() {
 }
 
 export async function makeTempSqliteEngineHarness() {
-    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-contract-sqlite-'));
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-contract-sqlite-'));
     const handle = 'u';
     const userDir = path.join(dataRoot, handle);
     const dirs = buildDirs(userDir);
@@ -164,12 +164,12 @@ const harnesses = [
 ];
 // MysqlEngine: include unless explicitly disabled. The local dev container at
 // 127.0.0.1:53306 is the default; CI / non-DB envs set the disable flag.
-if (!process.env.LUKER_DISABLE_MYSQL_TESTS) {
+if (!process.env.ATRIA_DISABLE_MYSQL_TESTS) {
     harnesses.push({ name: 'MysqlEngine', make: makeTempMysqlEngineHarness });
 }
 // PgEngine: include unless explicitly disabled. The local dev container at
 // 127.0.0.1:55432 is the default; CI / non-DB envs set the disable flag.
-if (!process.env.LUKER_DISABLE_POSTGRES_TESTS) {
+if (!process.env.ATRIA_DISABLE_POSTGRES_TESTS) {
     harnesses.push({ name: 'PgEngine', make: makeTempPgEngineHarness });
 }
 export const CONTRACT_HARNESSES = harnesses;

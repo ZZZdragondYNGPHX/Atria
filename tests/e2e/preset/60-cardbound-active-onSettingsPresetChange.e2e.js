@@ -10,7 +10,7 @@
 // REAL USER-GESTURE flow:
 //   1. Seed a card with one embedded card-bound preset (default set → auto-
 //      applies on card selection, so the ghost option is DOM-selected).
-//   2. Load Luker; select the card via the visible list.
+//   2. Load Atria; select the card via the visible list.
 //   3. Assert (a): ghost option is selected AND
 //                  window.__characterBoundPresetState.active === true AND
 //                  previousPreset is non-empty (was stashed from the initial
@@ -56,7 +56,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT_NAME, preset: { temperature: SLOT_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -93,7 +93,7 @@ test.describe('#60 — characterBoundPresetState.active ≡ ghost DOM-selected (
             active: window.__characterBoundPresetState.active,
             previousPreset: window.__characterBoundPresetState.previousPreset,
             ghostSelected: !!document.querySelector(
-                '#settings_preset_openai option[data-luker-char-bound="1"]:checked',
+                '#settings_preset_openai option[data-atria-char-bound="1"]:checked',
             ),
         }));
         expect(afterAutoApply.active).toBe(true);
@@ -112,7 +112,7 @@ test.describe('#60 — characterBoundPresetState.active ≡ ghost DOM-selected (
             const opts = Array.from(document.querySelectorAll('#settings_preset_openai option'));
             const target = opts.find(o =>
                 o.textContent.trim() === 'Default'
-                && o.getAttribute('data-luker-char-bound') !== '1',
+                && o.getAttribute('data-atria-char-bound') !== '1',
             );
             if (!target) throw new Error('global Default option not found');
             $('#settings_preset_openai').val(target.value).trigger('change');
@@ -125,7 +125,7 @@ test.describe('#60 — characterBoundPresetState.active ≡ ghost DOM-selected (
             active: window.__characterBoundPresetState.active,
             previousPreset: window.__characterBoundPresetState.previousPreset,
             ghostSelected: !!document.querySelector(
-                '#settings_preset_openai option[data-luker-char-bound="1"]:checked',
+                '#settings_preset_openai option[data-atria-char-bound="1"]:checked',
             ),
         }));
         expect(afterSwitchToGlobal.active).toBe(false);
@@ -141,7 +141,7 @@ test.describe('#60 — characterBoundPresetState.active ≡ ghost DOM-selected (
         await page.evaluate(() => {
             const $ = window.jQuery;
             const ghost = document.querySelector(
-                '#settings_preset_openai option[data-luker-char-bound="1"]',
+                '#settings_preset_openai option[data-atria-char-bound="1"]',
             );
             if (!ghost) throw new Error('ghost option not found');
             $('#settings_preset_openai').val(ghost.value).trigger('change');
@@ -154,7 +154,7 @@ test.describe('#60 — characterBoundPresetState.active ≡ ghost DOM-selected (
             active: window.__characterBoundPresetState.active,
             previousPreset: window.__characterBoundPresetState.previousPreset,
             ghostSelected: !!document.querySelector(
-                '#settings_preset_openai option[data-luker-char-bound="1"]:checked',
+                '#settings_preset_openai option[data-atria-char-bound="1"]:checked',
             ),
         }));
         expect(afterSwitchBack.active).toBe(true);

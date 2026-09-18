@@ -3,7 +3,7 @@
 // REAL USER-GESTURE flow:
 //   1. Pin executionMode='spec' so the orchestrator panel shows the spec workflow board.
 //   2. Open the orch iter-studio popup via real clicks.
-//   3. Script `luker_orch_set_preset` with a new preset_id + systemPrompt.
+//   3. Script `atri_orch_set_preset` with a new preset_id + systemPrompt.
 //   4. Click Send → wait Approve → click Apply → close popup.
 //   5. Verify both in-memory and on-disk active spec preset payload contains
 //      the new preset under .presets[id].
@@ -74,7 +74,7 @@ test.describe('#88 — Orchestrator iter-studio SPEC mode Apply persists across 
         await openIterStudio(page, 'orch');
 
         mock.scriptToolCall({
-            name: 'luker_orch_set_preset',
+            name: 'atri_orch_set_preset',
             arguments: {
                 preset_id: PRESET_ID,
                 systemPrompt: NEW_PRESET_SYSTEM_PROMPT,
@@ -88,7 +88,7 @@ test.describe('#88 — Orchestrator iter-studio SPEC mode Apply persists across 
 
         await expect.poll(async () => {
             return await page.evaluate((presetId) => {
-                const ctx = window.Luker.getContext();
+                const ctx = window.Atria.getContext();
                 const s = ctx.extensionSettings.orchestrator;
                 const activeId = s?.activePresetIds?.spec || '';
                 return s?.presetLibraries?.spec?.[activeId]?.presets?.[presetId]?.systemPrompt || '';
@@ -105,7 +105,7 @@ test.describe('#88 — Orchestrator iter-studio SPEC mode Apply persists across 
         expect(afterRestart.presets?.[PRESET_ID]?.systemPrompt).toBe(NEW_PRESET_SYSTEM_PROMPT);
 
         const inMem = await page.evaluate((presetId) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.extensionSettings.orchestrator;
             const activeId = s?.activePresetIds?.spec || '';
             return s?.presetLibraries?.spec?.[activeId]?.presets?.[presetId]?.systemPrompt || '';

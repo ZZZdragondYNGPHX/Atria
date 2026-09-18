@@ -46,7 +46,7 @@ export function writeCharacterWithBinding({ dataRoot, handle = 'default-user', a
         post_history_instructions: '',
         alternate_greetings: extras.alternate_greetings ?? [],
         tags: ['rp', 'fixture'],
-        creator: 'luker-e2e-worldinfo-batch',
+        creator: 'atria-e2e-worldinfo-batch',
         character_version: '1.0',
         spec: 'chara_card_v2',
         spec_version: '2.0',
@@ -62,7 +62,7 @@ export function writeCharacterWithBinding({ dataRoot, handle = 'default-user', a
             post_history_instructions: '',
             alternate_greetings: extras.alternate_greetings ?? [],
             tags: ['rp', 'fixture'],
-            creator: 'luker-e2e-worldinfo-batch',
+            creator: 'atria-e2e-worldinfo-batch',
             character_version: '1.0',
             extensions: {
                 ...(worldBook ? { world: worldBook } : {}),
@@ -157,7 +157,7 @@ async function probeReadyLocal(port, timeoutMs = 60_000) {
 }
 
 /**
- * Spawn a Luker server bound to a deterministic port assigned by
+ * Spawn a Atria server bound to a deterministic port assigned by
  * pickStableWorldInfoPort. Mirrors the shared `startServer` API surface
  * (returns { port, dataRoot, baseURL, restart, stop }) but bypasses the
  * shared port reservation to avoid PW_WORKERS=2 collisions.

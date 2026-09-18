@@ -13,7 +13,7 @@
  * respectively. This spec is the contract test for the manual lever.
  *
  * Prerequisites:
- *   - Luker dev server running.
+ *   - Atria dev server running.
  *   - Active character (the dialog needs a real character scope to install into).
  *
  * Screenshots: docs/public/_screenshots/skills/skill-conflict-*.png.
@@ -63,7 +63,7 @@ test.describe('Skills: conflict dialog Skip / Replace branches', () => {
             bodyTail: INITIAL_BODY_ANCHOR,
         });
         await page.evaluate(async ({ payload, scope }) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             await ctx.skills.executeExtractEmbed({ payload, targetScope: scope, conflictStrategies: {} });
         }, { payload: initialPayload, scope: targetScope });
 
@@ -80,7 +80,7 @@ test.describe('Skills: conflict dialog Skip / Replace branches', () => {
 
         // ── 2. Preview against the existing install → expect 'different' ─
         const preview = await page.evaluate(async ({ payload, scope }) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return await ctx.skills.previewExtractEmbed({ payload, targetScope: scope });
         }, { payload: replacementPayload, scope: targetScope });
         const fixturePreview = (preview?.items || []).find(it => it && it.name === FIXTURE_SKILL_NAME);
@@ -143,8 +143,8 @@ async function driveConflictDialog({ page, payload, targetScope, radioChoice, sc
     // on window so we can await it from the harness after the dialog closes.
     await page.evaluate(async ({ payload, targetScope }) => {
         const mod = await import('/scripts/skills/embed-import-dialog.js');
-        const context = window.Luker.getContext();
-        window.__luker_smoke_conflict_result = mod.runEmbedImportFlow({
+        const context = window.Atria.getContext();
+        window.__atria_smoke_conflict_result = mod.runEmbedImportFlow({
             context,
             payload,
             targetScope,
@@ -153,7 +153,7 @@ async function driveConflictDialog({ page, payload, targetScope, radioChoice, sc
     }, { payload, targetScope });
 
     // Wait for the dialog to mount, screenshot it, click the radio, click Install.
-    const dialog = page.locator('.popup:has(.luker_skill_import_dialog)').last();
+    const dialog = page.locator('.popup:has(.atria_skill_import_dialog)').last();
     await dialog.waitFor({ state: 'visible', timeout: 10_000 });
 
     // The radio's name attribute is per-row (built off the row index); the
@@ -186,8 +186,8 @@ async function driveConflictDialog({ page, payload, targetScope, radioChoice, sc
     // it if needed; presently the body-content read is the load-bearing
     // verification, so we just consume the promise to keep the page clean.
     const result = await page.evaluate(async () => {
-        const r = await window.__luker_smoke_conflict_result;
-        delete window.__luker_smoke_conflict_result;
+        const r = await window.__atria_smoke_conflict_result;
+        delete window.__atria_smoke_conflict_result;
         return r;
     });
     return result;
@@ -204,7 +204,7 @@ async function driveConflictDialog({ page, payload, targetScope, radioChoice, sc
  */
 async function readFixtureBody(page, scope) {
     return await page.evaluate(async ({ scope, name }) => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         try {
             const file = await ctx.skills.readFile({ scope, name, path: 'SKILL.md' });
             return file?.content || '';

@@ -8,7 +8,7 @@ describe('FsEngine chat handler — corrupt-doc tolerance', () => {
     const handle = 'u';
     let chatsDir;
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-fs-chat-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-fs-chat-'));
         const userDir = path.join(tmpDir, handle);
         chatsDir = path.join(userDir, 'chats', 'TestChar');
         fs.mkdirSync(chatsDir, { recursive: true });
@@ -90,7 +90,7 @@ describe('FsEngine chat handler — legacy long name (>128 bytes) round-trip', (
     let tmpDir, engine;
     const handle = 'u';
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-fs-chat-long-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-fs-chat-long-'));
         const userDir = path.join(tmpDir, handle);
         fs.mkdirSync(path.join(userDir, 'chats'), { recursive: true });
         engine = new FsEngine({

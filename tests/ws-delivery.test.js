@@ -5,7 +5,7 @@ import { createDeliveryServer } from '../src/ws-delivery.js';
 import {
     createGenerationJob,
     appendGenerationEvent,
-} from '../src/endpoints/backends/luker-generation.js';
+} from '../src/endpoints/backends/atria-generation.js';
 
 async function startTestServer({ verifyTicket }) {
     const httpServer = http.createServer((req, res) => res.end('ok'));
@@ -16,7 +16,7 @@ async function startTestServer({ verifyTicket }) {
 }
 
 function connectWs(port, ticket) {
-    return new WebSocket(`ws://127.0.0.1:${port}/api/ws-delivery`, [`luker-ws-ticket.${ticket}`]);
+    return new WebSocket(`ws://127.0.0.1:${port}/api/ws-delivery`, [`atria-ws-ticket.${ticket}`]);
 }
 
 function waitOpen(ws) { return new Promise(r => ws.once('open', r)); }

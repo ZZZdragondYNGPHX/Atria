@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide will help you get Luker up and running in minutes.
+This guide will help you get Atria up and running in minutes.
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ Best for users who want to manage and update manually.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/funnycups/Luker.git
-cd Luker
+git clone https://github.com/funnycups/Atria.git
+cd Atria
 ```
 
 ### 2. Install Dependencies
@@ -42,7 +42,7 @@ bash start.sh
 ```
 
 ::: tip Alternative Runtimes
-Luker also supports launching via Deno or Bun:
+Atria also supports launching via Deno or Bun:
 ```bash
 # Deno
 npm run start:deno
@@ -61,7 +61,7 @@ npm install
 
 ## Method 2: Docker
 
-Best for server deployments or users who want an out-of-the-box experience. Luker provides pre-built Docker images.
+Best for server deployments or users who want an out-of-the-box experience. Atria provides pre-built Docker images.
 
 ### 1. Create `docker-compose.yml`
 
@@ -69,9 +69,9 @@ Create a `docker-compose.yml` in the directory where you want to store data:
 
 ```yaml
 services:
-  luker:
-    image: ghcr.io/funnycups/luker:latest
-    container_name: luker
+  atria:
+    image: ghcr.io/funnycups/atria:latest
+    container_name: atria
     ports:
       - 127.0.0.1:8000:8000
     volumes:
@@ -104,17 +104,17 @@ docker compose up -d
 
 ## Method 3: Android APK
 
-Luker provides an Android app that lets you run Luker directly on your phone without relying on a cloud server or Termux.
+Atria provides an Android app that lets you run Atria directly on your phone without relying on a cloud server or Termux.
 
 Download the latest APK from the GitHub Releases page:
 
-👉 [https://github.com/funnycups/Luker/releases/latest](https://github.com/funnycups/Luker/releases/latest)
+👉 [https://github.com/funnycups/Atria/releases/latest](https://github.com/funnycups/Atria/releases/latest)
 
 Download and install the APK, then open the app to start using it right away.
 
 ## Initial Setup
 
-### Access Luker
+### Access Atria
 
 Once the server is running, open your browser and navigate to:
 
@@ -128,7 +128,7 @@ The APK version is a standalone app — it displays the full interface when open
 
 ### Configure API Connection
 
-When you first enter Luker, you need to configure at least one LLM API to start chatting:
+When you first enter Atria, you need to configure at least one LLM API to start chatting:
 
 1. Click the **API Connection** icon at the top
 2. Select your API type (e.g., OpenAI, Claude, etc.)
@@ -148,10 +148,10 @@ Learn more at [Character Cards](/basics/character-cards).
 
 ## Migrating from SillyTavern
 
-Luker is fully compatible with SillyTavern data. If you're a SillyTavern user, you can simply copy the `data` directory into Luker. If you later decide to stop using Luker, you can downgrade back to SillyTavern at any time without data loss.
+Atria is fully compatible with SillyTavern data. If you're a SillyTavern user, you can simply copy the `data` directory into Atria. If you later decide to stop using Atria, you can downgrade back to SillyTavern at any time without data loss.
 
 ::: warning Backup Reminder
-Although Luker is compatible with SillyTavern data, it's still recommended to back up before migrating.
+Although Atria is compatible with SillyTavern data, it's still recommended to back up before migrating.
 :::
 
 For a detailed migration guide, see [Migrating from SillyTavern](/guide/migration).

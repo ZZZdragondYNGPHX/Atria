@@ -131,10 +131,10 @@ Spec and Agenda configurations export as JSON.
 
 | Format | Identifier | For |
 |---|---|---|
-| V1 | `luker_orchestrator_profile_v1` | Spec mode |
-| V2 | `luker_orchestrator_profile_v2` | Agenda mode |
+| V1 | `atri_orchestrator_profile_v1` | Spec mode |
+| V2 | `atri_orchestrator_profile_v2` | Agenda mode |
 
-Filenames look like `luker-orchestrator-[agenda-][global|character-{name}].json`. The exporter handles both global and per-card scope.
+Filenames look like `atria-orchestrator-[agenda-][global|character-{name}].json`. The exporter handles both global and per-card scope.
 
 On import, the file's mode (Spec/Agenda) must match your current execution mode. You choose whether to apply to the global config or to a specific card.
 
@@ -182,7 +182,7 @@ Mode-specific parameters (per-node, review, planner, loop tool toggles…) live 
 
 The Orchestrator dispatches a frontend event after each run, so other code can consume orchestration results without scraping the UI.
 
-- **Event:** `luker.orchestrator.result`
+- **Event:** `atria.orchestrator.result`
 - **Channel:** `getContext().eventSource`
 - **When:** on `completed`, `reused`, `cancelled`, `failed`
 
@@ -191,7 +191,7 @@ Payload:
 | Field | Type | Description |
 |---|---|---|
 | `module` | string | Always `orchestrator` |
-| `event` | string | Always `luker.orchestrator.result` |
+| `event` | string | Always `atria.orchestrator.result` |
 | `status` | string | `completed` / `reused` / `cancelled` / `failed` |
 | `generationType` | string | The triggering generation type |
 | `chatKey` | string | Current chat key |
@@ -209,7 +209,7 @@ Subscriber example:
 
 ```js
 const context = getContext();
-context.eventSource.on('luker.orchestrator.result', (evt) => {
+context.eventSource.on('atria.orchestrator.result', (evt) => {
     if (evt.status === 'completed' || evt.status === 'reused') {
         console.log('Orchestrator capsule:', evt.capsuleText);
     }

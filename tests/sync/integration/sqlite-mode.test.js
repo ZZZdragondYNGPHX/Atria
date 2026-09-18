@@ -2,7 +2,7 @@
  * SQLite-mode sync via the engine-agnostic record materializer.
  *
  * The orchestrator no longer ships a whole-DB blob in SQLite mode (the
- * previous design copied `luker-storage.sqlite` wholesale via VACUUM INTO
+ * previous design copied `atria-storage.sqlite` wholesale via VACUUM INTO
  * and atomically renamed it into place on the receiver, which destroyed
  * row-level granularity and silently replaced any data the receiver had).
  * Instead `runPullBody` projects per-user records into the shadow workdir
@@ -111,7 +111,7 @@ function startListener(app) {
 }
 
 function buildDualSqliteHarness() {
-    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-sqlite-mode-'));
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-sqlite-mode-'));
     const aDir = path.join(dataRoot, 'alice');
     const bDir = path.join(dataRoot, 'bob');
     const aDirs = buildDirs(aDir);
@@ -206,7 +206,7 @@ describe('SQLite-mode sync', () => {
         // it. The orchestrator's pull is what will create it (via the
         // dematerialize step writing the synced rows back through the
         // engine under handle='bob').
-        const bDbPath = path.join(H.bDirs.root, 'luker-storage.sqlite');
+        const bDbPath = path.join(H.bDirs.root, 'atria-storage.sqlite');
         expect(fs.existsSync(bDbPath)).toBe(false);
 
         // Step 2: A offers, B pulls. The offer route triggers the

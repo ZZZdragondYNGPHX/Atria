@@ -48,7 +48,7 @@
  * shared `html-utils.js` helper if/when more modules want it.
  */
 
-const extension_settings = Luker.getContext().extensionSettings;
+const extension_settings = Atria.getContext().extensionSettings;
 import { getChatCompletionConnectionProfiles } from '../connection-manager/profile-resolver.js';
 import { throwIfAborted } from './abort-utils.js';
 import { i18n } from './i18n.js';
@@ -61,7 +61,7 @@ import {
 } from './world-info.js';
 
 // Character-bound preset access is routed through the ctx layer
-// (`Luker.getContext().character.presets.*`, wired in st-context.js).
+// (`Atria.getContext().character.presets.*`, wired in st-context.js).
 // Direct imports from `/scripts/character/presets.js` cannot be used
 // here — that module pulls in `/scripts/st-context.js` →
 // `RossAscends-mods.js` → Bowser, which is absent from the Jest lib
@@ -70,16 +70,16 @@ import {
 // presets, …).  The ctx layer is the same three-layer surface used by
 // third-party extensions (per feedback_api_layered_exposure), so
 // consuming it here also proves the surface out.
-function getLukerContext() {
-    return (typeof Luker !== 'undefined') ? Luker.getContext() : null;
+function getAtriaContext() {
+    return (typeof Atria !== 'undefined') ? Atria.getContext() : null;
 }
 function getActiveCharacter(override = null) {
     if (override) return override;
-    const ctx = getLukerContext();
+    const ctx = getAtriaContext();
     return ctx?.characters?.[ctx?.characterId] ?? null;
 }
 function listCardBoundPresets(character) {
-    const list = getLukerContext()?.character?.presets?.list;
+    const list = getAtriaContext()?.character?.presets?.list;
     if (typeof list !== 'function' || !character) return [];
     const result = list(character);
     return Array.isArray(result) ? result : [];
@@ -223,7 +223,7 @@ export function sanitizeConnectionProfilesForAiPrompt(profiles = getConnectionPr
  * mirrors the split used by `renderOpenAIPresetOptions` and the
  * `getLocalPresetNames` helper in manage-bound-presets-dialog.js.
  *
- * @param {object} context Luker context
+ * @param {object} context Atria context
  * @returns {{local_global: string[], card_bound: string[]}}
  */
 export function sanitizeOpenAIPresetNamesForAiPrompt(context) {
@@ -291,7 +291,7 @@ export function buildAgentPromptPresetRoutingPromptData(context, settings = exte
  */
 export function resolveOrchestrationAgentApiPresetName(settings, preset = null, characterOverride = null) {
     const character = getActiveCharacter(characterOverride);
-    const resolveByName = getLukerContext()?.character?.presets?.resolveByName;
+    const resolveByName = getAtriaContext()?.character?.presets?.resolveByName;
     return resolveCardFirstPresetName({
         explicitName: getPresetApiPresetName(preset),
         fallbackName: sanitizeConnectionProfileName(settings?.llmNodeApiPresetName || ''),
@@ -312,7 +312,7 @@ export function resolveOrchestrationAgentApiPresetName(settings, preset = null, 
  */
 export function resolveOrchestrationAgentPromptPresetName(settings, preset = null, characterOverride = null) {
     const character = getActiveCharacter(characterOverride);
-    const resolveByName = getLukerContext()?.character?.presets?.resolveByName;
+    const resolveByName = getAtriaContext()?.character?.presets?.resolveByName;
     return resolveCardFirstPresetName({
         explicitName: getPresetPromptPresetName(preset),
         fallbackName: sanitizePromptPresetName(settings?.llmNodePresetName || ''),
@@ -336,10 +336,10 @@ export function renderConnectionProfileOptions(selectedName = '', emptyLabel = i
 
 export function refreshOpenAIPresetSelectors(root, context, settings, prefix = '') {
     const selectorValues = [
-        ['luker_orch_llm_api_preset', settings.llmNodeApiPresetName],
-        ['luker_orch_llm_preset', settings.llmNodePresetName],
-        ['luker_orch_request_api_preset', settings.requestApiPresetName],
-        ['luker_orch_request_llm_preset', settings.requestLlmPresetName],
+        ['atri_orch_llm_api_preset', settings.llmNodeApiPresetName],
+        ['atri_orch_llm_preset', settings.llmNodePresetName],
+        ['atri_orch_request_api_preset', settings.requestApiPresetName],
+        ['atri_orch_request_llm_preset', settings.requestLlmPresetName],
     ];
 
     for (const [baseId, value] of selectorValues) {

@@ -4,7 +4,7 @@
 //                       sweep across every Repo-backed table; any subsequent
 //                       read for the handle MUST return null.
 //   fs / sqlite       : engine.deleteUser is a NO-OP — all of a user's data
-//                       lives in dirs.root (and dirs.root/luker-storage.sqlite
+//                       lives in dirs.root (and dirs.root/atria-storage.sqlite
 //                       for sqlite), and the admin /delete handler's
 //                       `purge=true` branch is the single, explicit owner
 //                       of removing that directory. The endpoint-level

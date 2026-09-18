@@ -80,7 +80,7 @@ The same action as **Import all bundled** in the Browse bundled tab. Listed here
 
 ### Extract from character card / preset
 
-When you import a character card (PNG) or preset (JSON) that has an `embedded_skills_source` field, Luker shows a preview dialog automatically:
+When you import a character card (PNG) or preset (JSON) that has an `embedded_skills_source` field, Atria shows a preview dialog automatically:
 
 ![Embed import preview](/_screenshots/skills/embed-import-preview.png)
 
@@ -114,11 +114,11 @@ Skills are most useful when they ship with the artifact that depends on them. A 
 
 In the orchestrator panel, [Preset Assistant](/features/preset-assistant) derives an `-orchestrator` preset. Right after derivation, the assistant offers a **Bundle skills with this preset** link that opens the skill manager with multi-select mode pre-enabled. Pick the skills you want, click **Pack selected into preset…**, choose the target preset.
 
-The packer writes the skills into the preset's `extensions.luker.embedded_skills_source` field. On the next preset save the embed rides with the JSON. Other Luker users who import that preset see the embed extraction dialog described above.
+The packer writes the skills into the preset's `extensions.atria.embedded_skills_source` field. On the next preset save the embed rides with the JSON. Other Atria users who import that preset see the embed extraction dialog described above.
 
 ### Packing into a character card
 
-In the character editor, the **Bundled skills** section behaves the same way: select skills, pack, and they're written into `data.extensions.luker.embedded_skills_source`. On PNG export the embed serializes into the card's metadata, so distributing the card distributes the skills.
+In the character editor, the **Bundled skills** section behaves the same way: select skills, pack, and they're written into `data.extensions.atria.embedded_skills_source`. On PNG export the embed serializes into the card's metadata, so distributing the card distributes the skills.
 
 ::: tip Threshold for inline vs zip
 Small text-only skills use `inline-files-v1` format (Markdown content embedded directly). Larger or binary skills auto-upgrade to `archive-base64-v1` (zip + base64 + sha256). The packer picks per skill; you don't choose.

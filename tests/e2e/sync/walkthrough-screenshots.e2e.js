@@ -62,7 +62,7 @@ function screenshotPath(step) {
  * shouldn't rewrite in-tree docs images. The scroll/wait side effects
  * still run so the banner-text assertions below observe the same
  * post-scroll DOM state they did before. Opt-in to regenerate via
- * `LUKER_UPDATE_DOC_SCREENSHOTS=1`.
+ * `ATRIA_UPDATE_DOC_SCREENSHOTS=1`.
  */
 async function shootPanel(page, step) {
     const panel = page.locator('.userLanSync').first();
@@ -75,7 +75,7 @@ async function shootPanel(page, step) {
         // care about the tab strip (01, 02, 06, 08) frame cleanly.
         await panel.evaluate((el) => { el.scrollIntoView({ block: 'start' }); });
     }
-    if (!process.env.LUKER_UPDATE_DOC_SCREENSHOTS) return;
+    if (!process.env.ATRIA_UPDATE_DOC_SCREENSHOTS) return;
     await page.screenshot({ path: screenshotPath(step), fullPage: false });
 }
 
@@ -84,7 +84,7 @@ let A, B;
 test.beforeAll(async () => {
     // Only create the docs screenshots dir when a regen was requested.
     // Regression runs skip the screenshot writes entirely (see shootPanel).
-    if (process.env.LUKER_UPDATE_DOC_SCREENSHOTS) {
+    if (process.env.ATRIA_UPDATE_DOC_SCREENSHOTS) {
         fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
     }
 
@@ -157,7 +157,7 @@ test.describe('LAN Sync — walkthrough screenshots and banner UX', () => {
             label: 'Phone',
             categories: ['worlds', 'chats', 'characters'],
         });
-        expect(link).toMatch(/^luker-sync:/);
+        expect(link).toMatch(/^atria-sync:/);
         await shootPanel(pageA, '03-pair-link-generated');
 
         // --- Step 04: B opens the panel, switches to "Pair with existing

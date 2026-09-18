@@ -20,7 +20,7 @@
 //
 // The reply is asserted to have arrived via ws-delivery (a WebSocket to
 // /api/ws-delivery was opened during the call). We also assert the
-// x-luker-generation-id header rides on the initial HTTP response.
+// x-atria-generation-id header rides on the initial HTTP response.
 
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -64,14 +64,14 @@ test('generation-basic: plugin ChatCompletionService.sendRequest — non-stream 
     page.on('websocket', (ws) => { wsOpens.push(ws.url()); });
 
     // Observe every /generate HTTP response so we can assert status 200
-    // + x-luker-generation-id header on each plugin-issued call.
+    // + x-atria-generation-id header on each plugin-issued call.
     const generateResponses = [];
     page.on('response', (resp) => {
         const url = resp.url();
         if (url.includes('/api/backends/chat-completions/generate')) {
             generateResponses.push({
                 status: resp.status(),
-                generationId: resp.headers()['x-luker-generation-id'] || '',
+                generationId: resp.headers()['x-atria-generation-id'] || '',
             });
         }
     });
@@ -144,13 +144,13 @@ test('generation-basic: plugin ChatCompletionService.sendRequest — non-stream 
     }
 
     // Both plugin calls must have produced a POST to /generate that
-    // returned 200 + x-luker-generation-id. (The awaitMainUI call may
+    // returned 200 + x-atria-generation-id. (The awaitMainUI call may
     // fire a probe /generate too — we just require our two calls are in
     // there.)
     expect(generateResponses.length, `expected at least 2 /generate responses; observed ${generateResponses.length}`).toBeGreaterThanOrEqual(2);
     for (const resp of generateResponses) {
         expect(resp.status, `every /generate response must be 200; got ${resp.status}`).toBe(200);
-        expect(resp.generationId, 'every /generate response must carry x-luker-generation-id').toMatch(/^[0-9a-f-]{8,}/i);
+        expect(resp.generationId, 'every /generate response must carry x-atria-generation-id').toMatch(/^[0-9a-f-]{8,}/i);
     }
 
     // A WebSocket to /api/ws-delivery must have been opened. Without it

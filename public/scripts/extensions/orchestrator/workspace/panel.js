@@ -78,7 +78,7 @@ function renderContent() {
         el('p', `${run.runId} · ${i18nFormat('${0} memory recalls', view.recalls.length)}`, body);
         const counters = el('dl', undefined, body); counters.className = 'workspace-call-counts';
         for (const [label, value, hint] of [
-            ['Internal calls', view.calls.internal, 'Luker model requests and memory recalls; one count per logical call, including running or failed calls.'],
+            ['Internal calls', view.calls.internal, 'Atria model requests and memory recalls; one count per logical call, including running or failed calls.'],
             ['External calls', view.calls.external, 'Tool executions requested by agents; provider retries are not counted separately.'],
         ]) {
             const counter = el('div', undefined, counters);

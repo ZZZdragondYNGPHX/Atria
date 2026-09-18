@@ -747,7 +747,7 @@ function tryParseStreamingError(response, decoded) {
     }
 }
 
-export async function generateNovelWithStreaming(generate_data, signal, { onLukerMeta = null } = {}) {
+export async function generateNovelWithStreaming(generate_data, signal, { onAtriaMeta = null } = {}) {
     generate_data.streaming = nai_settings.streaming_novel;
 
     const response = await withProfileRetry(async () => {
@@ -769,13 +769,13 @@ export async function generateNovelWithStreaming(generate_data, signal, { onLuke
         },
     });
 
-    const generationId = response.headers.get('x-luker-generation-id');
-    if (generationId && typeof onLukerMeta === 'function') {
-        onLukerMeta({ generationId });
+    const generationId = response.headers.get('x-atria-generation-id');
+    if (generationId && typeof onAtriaMeta === 'function') {
+        onAtriaMeta({ generationId });
     }
-    const persistedHeader = response.headers.get('x-luker-server-persisted');
-    if ((persistedHeader === '0' || persistedHeader === '1') && typeof onLukerMeta === 'function') {
-        onLukerMeta({ persisted: persistedHeader === '1' });
+    const persistedHeader = response.headers.get('x-atria-server-persisted');
+    if ((persistedHeader === '0' || persistedHeader === '1') && typeof onAtriaMeta === 'function') {
+        onAtriaMeta({ persisted: persistedHeader === '1' });
     }
 
     if (!response.ok) {
@@ -794,13 +794,13 @@ export async function generateNovelWithStreaming(generate_data, signal, { onLuke
             if (value.data === '[DONE]') continue;
 
             const data = JSON.parse(value.data);
-            if (data?.luker && typeof data.luker === 'object') {
-                if (typeof onLukerMeta === 'function') {
-                    if (typeof data.luker.generation_id === 'string' && data.luker.generation_id) {
-                        onLukerMeta({ generationId: data.luker.generation_id });
+            if (data?.atria && typeof data.atria === 'object') {
+                if (typeof onAtriaMeta === 'function') {
+                    if (typeof data.atria.generation_id === 'string' && data.atria.generation_id) {
+                        onAtriaMeta({ generationId: data.atria.generation_id });
                     }
-                    if (typeof data.luker.persisted === 'boolean') {
-                        onLukerMeta({ persisted: data.luker.persisted });
+                    if (typeof data.atria.persisted === 'boolean') {
+                        onAtriaMeta({ persisted: data.atria.persisted });
                     }
                 }
                 continue;

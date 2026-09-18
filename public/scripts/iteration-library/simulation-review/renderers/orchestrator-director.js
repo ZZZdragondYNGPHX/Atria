@@ -2,7 +2,7 @@ import { appendShared, appendToolStatusChip, appendToolSourceChip, jsonOrText } 
 
 export function render(payload, i18n) {
     const root = document.createElement('div');
-    root.className = 'luker-sim-review luker-sim-review--orch-director';
+    root.className = 'atria-sim-review atria-sim-review--orch-director';
 
     // Final message first — that's what the user opened the popup for.
     const finSec = appendShared.section(root, i18n('sim.section.final_message', 'Final Message'), 'Final Message', { isFinalOutput: true });

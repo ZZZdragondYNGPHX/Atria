@@ -144,7 +144,7 @@ test.describe('#118 — iter-studio batch approval gate (orchestrator custom-too
             if (req.turn === 0) {
                 return {
                     toolCalls: CUSTOM_TOOLS.map((t) => ({
-                        name: 'luker_orch_set_custom_tool',
+                        name: 'atri_orch_set_custom_tool',
                         arguments: t,
                     })),
                 };
@@ -235,7 +235,7 @@ test.describe('#118 — iter-studio batch approval gate (orchestrator custom-too
         // active loop preset's customTools array (or the profile-scope
         // list — pick whichever the runtime commits to).
         const stagedNames = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const orch = ctx.extensionSettings?.orchestrator || {};
             const names = new Set();
             const collectFrom = (obj) => {
@@ -271,7 +271,7 @@ test.describe('#118 — iter-studio batch approval gate (orchestrator custom-too
             if (req.turn === 0) {
                 return {
                     toolCalls: BULK_TOOLS.map((t) => ({
-                        name: 'luker_orch_set_custom_tool',
+                        name: 'atri_orch_set_custom_tool',
                         arguments: t,
                     })),
                 };
@@ -367,7 +367,7 @@ test.describe('#118 — iter-studio batch approval gate (orchestrator custom-too
 
         // Also assert every bulk tool made it to disk.
         const stagedNames = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const orch = ctx.extensionSettings?.orchestrator || {};
             const names = new Set();
             const collectFrom = (obj) => {

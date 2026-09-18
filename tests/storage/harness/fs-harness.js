@@ -41,7 +41,7 @@ const USER_DIRS = Object.freeze({
 });
 
 export async function makeTempFsEngine() {
-    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-fs-engine-test-'));
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-fs-engine-test-'));
     const handle = 'u';
     const userDir = path.join(dataRoot, handle);
     const dirs = {};

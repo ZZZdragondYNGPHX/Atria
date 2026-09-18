@@ -9,7 +9,7 @@ describe('SqliteEngine named-doc handler', () => {
     const handle = 'u';
 
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sqlite-nd-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sqlite-nd-'));
         engine = new SqliteEngine({
             directoriesByHandle: () => ({ root: path.join(tmpDir, handle) }),
         });

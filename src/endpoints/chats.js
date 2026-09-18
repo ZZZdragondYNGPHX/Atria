@@ -11,7 +11,7 @@ import 'write-file-atomic';
 import _ from 'lodash';
 
 import validateAvatarUrlMiddleware from '../middleware/validateFileName.js';
-import { acknowledgeGenerationJobsForPersistTarget, acknowledgeGenerationJobsForRequest } from './backends/luker-generation.js';
+import { acknowledgeGenerationJobsForPersistTarget, acknowledgeGenerationJobsForRequest } from './backends/atria-generation.js';
 import { getConfigValue, humanizedDateTime, tryParse, generateTimestamp, removeOldBackups, formatBytes, tryWriteFileSync, tryReadFileSync, tryDeleteFile, isPathUnderParent } from '../util.js';
 import { applyPatch as applyJsonPatch } from '../../public/scripts/util/fast-json-patch.js';
 import { getChatRepo, getGroupRepo, getStorageEngine } from '../storage/index.js';
@@ -24,7 +24,7 @@ const throttleInterval = Number(getConfigValue('backups.chat.throttleInterval', 
 const checkIntegrity = !!getConfigValue('backups.chat.checkIntegrity', true, 'boolean');
 
 export const CHAT_BACKUPS_PREFIX = 'chat_';
-const CHAT_STATE_FILE_PREFIX = '.luker-state.';
+const CHAT_STATE_FILE_PREFIX = '.atria-state.';
 const CHAT_STATE_FILE_SUFFIX = '.json';
 const CHAT_SYNC_NAMESPACE = 'chat_sync';
 const monthNames = [
@@ -840,14 +840,14 @@ function writeLastChatGenerationId(chatFilePath, generationId) {
 }
 
 /**
- * Removes the protocol-layer luker_generation_id from a message's extra
+ * Removes the protocol-layer atri_generation_id from a message's extra
  * before persisting / returning it. The field is a one-shot ack/dedup
  * token; the data layer never needs to carry it. Mutates the message in
  * place (callers pass freshly parsed or deep-cloned values).
  */
-function stripLukerGenerationIdFromMessage(message) {
-    if (_.isObjectLike(message) && _.isObjectLike(message.extra) && 'luker_generation_id' in message.extra) {
-        delete message.extra.luker_generation_id;
+function stripAtriaGenerationIdFromMessage(message) {
+    if (_.isObjectLike(message) && _.isObjectLike(message.extra) && 'atri_generation_id' in message.extra) {
+        delete message.extra.atri_generation_id;
     }
     return message;
 }
@@ -1528,19 +1528,19 @@ function isChatMessageLike(value) {
         && typeof value.is_system === 'boolean';
 }
 
-function collectLukerGenerationIds(value, generationIds = new Set(), depth = 0) {
+function collectAtriaGenerationIds(value, generationIds = new Set(), depth = 0) {
     if (depth > 8 || value === null || value === undefined) {
         return generationIds;
     }
 
-    const generationId = String(value?.extra?.luker_generation_id || '').trim();
+    const generationId = String(value?.extra?.atri_generation_id || '').trim();
     if (generationId) {
         generationIds.add(generationId);
     }
 
     if (Array.isArray(value)) {
         for (const item of value) {
-            collectLukerGenerationIds(item, generationIds, depth + 1);
+            collectAtriaGenerationIds(item, generationIds, depth + 1);
         }
         return generationIds;
     }
@@ -1551,7 +1551,7 @@ function collectLukerGenerationIds(value, generationIds = new Set(), depth = 0) 
 
     for (const nestedValue of Object.values(value)) {
         if (nestedValue && typeof nestedValue === 'object') {
-            collectLukerGenerationIds(nestedValue, generationIds, depth + 1);
+            collectAtriaGenerationIds(nestedValue, generationIds, depth + 1);
         }
     }
 
@@ -1559,7 +1559,7 @@ function collectLukerGenerationIds(value, generationIds = new Set(), depth = 0) 
 }
 
 function acknowledgeGenerationIdsFromValue(request, value) {
-    const generationIds = Array.from(collectLukerGenerationIds(value));
+    const generationIds = Array.from(collectAtriaGenerationIds(value));
     if (generationIds.length === 0) {
         return [];
     }
@@ -1720,12 +1720,12 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
     //
     // The legacy fs branch below is preserved only for the two callsites
     // that haven't been migrated yet (notably the chats.js /append handler
-    // when it stays on the file-write path). luker-generation passes the
+    // when it stays on the file-write path). atria-generation passes the
     // routing tuple, so it flows through the Repo branch.
     if (typeof handle === 'string' && typeof name === 'string') {
         const repo = getChatRepo();
         const existing = await repo.get(handle, charDir ?? '', name, { isGroup: !!isGroup, groupId });
-        const cleanedMessages = messages.map(m => stripLukerGenerationIdFromMessage(_.cloneDeep(m)));
+        const cleanedMessages = messages.map(m => stripAtriaGenerationIdFromMessage(_.cloneDeep(m)));
         const incomingId = String(incomingGenerationId || '').trim();
 
         // Integrity gate: if provided, the slug must match the chat's current
@@ -1756,7 +1756,7 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
         let matchedExistingGenerationId = false;
         while (dedupedMessages.length > 0) {
             const lastStoredStripped = isChatMessageLike(lastStoredMessage)
-                ? stripLukerGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
+                ? stripAtriaGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
                 : null;
             if (lastStoredStripped && isChatMessageLike(dedupedMessages[0]) && _.isEqual(lastStoredStripped, dedupedMessages[0])) {
                 dedupedMessages.shift();
@@ -1803,7 +1803,7 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
 
     // Strip the protocol-layer field from every message before any further
     // processing — sidecar carries the gen id now, not the message data.
-    const cleanedMessages = messages.map(m => stripLukerGenerationIdFromMessage(_.cloneDeep(m)));
+    const cleanedMessages = messages.map(m => stripAtriaGenerationIdFromMessage(_.cloneDeep(m)));
     const incomingId = String(incomingGenerationId || '').trim();
 
     const serializedMessages = cleanedMessages.map(message => JSON.stringify(message)).join('\n');
@@ -1831,7 +1831,7 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
         // Content dedup: if the file's last message is byte-identical (post-strip)
         // to the first incoming message, the previous attempt already landed.
         const lastStoredStripped = isChatMessageLike(lastStoredMessage)
-            ? stripLukerGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
+            ? stripAtriaGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
             : null;
         if (lastStoredStripped && isChatMessageLike(dedupedMessages[0]) && _.isEqual(lastStoredStripped, dedupedMessages[0])) {
             dedupedMessages.shift();
@@ -1899,10 +1899,10 @@ export async function patchChatMessagesInFile({ filePath, operations, chatMetada
         throw createIntegrityMismatchError(filePath, integritySlug);
     }
 
-    // Drop any op that targets the protocol-layer luker_generation_id path,
+    // Drop any op that targets the protocol-layer atri_generation_id path,
     // and strip the field from message-shaped values inside add/replace ops.
     // Old clients embedding it shouldn't be able to put it back on disk.
-    const sanitizedOperations = sanitizeOperationsAgainstLukerGenerationId(normalizedOperations);
+    const sanitizedOperations = sanitizeOperationsAgainstAtriaGenerationId(normalizedOperations);
     if (sanitizedOperations.length === 0) {
         // All ops were lukgenid bookkeeping; nothing left to do. Still update
         // the sidecar so the ack tracking moves forward.
@@ -1958,13 +1958,13 @@ export async function patchChatMessagesInFile({ filePath, operations, chatMetada
 
 /**
  * Drops or sanitizes any patch op that touches the protocol-layer
- * luker_generation_id field. Specifically:
- * - Ops whose path ends in `/extra/luker_generation_id` are removed entirely
+ * atri_generation_id field. Specifically:
+ * - Ops whose path ends in `/extra/atri_generation_id` are removed entirely
  *   (no client should be writing this to disk).
  * - For add/replace ops whose value is a full message or an `extra` object,
  *   the lukgenid is stripped from value before the op gets applied.
  */
-function sanitizeOperationsAgainstLukerGenerationId(operations) {
+function sanitizeOperationsAgainstAtriaGenerationId(operations) {
     /** @type {object[]} */
     const result = [];
     for (const op of operations) {
@@ -1972,18 +1972,18 @@ function sanitizeOperationsAgainstLukerGenerationId(operations) {
             result.push(op);
             continue;
         }
-        if (op.path.endsWith('/extra/luker_generation_id')) {
+        if (op.path.endsWith('/extra/atri_generation_id')) {
             continue;
         }
         const opName = String(op.op || '').trim().toLowerCase();
         if ((opName === 'add' || opName === 'replace') && _.isObjectLike(op.value)) {
             const cloned = _.cloneDeep(op);
             // Either it's a whole message at /N, or it's an `extra` blob at /N/extra.
-            if (cloned.value && _.isObjectLike(cloned.value.extra) && 'luker_generation_id' in cloned.value.extra) {
-                delete cloned.value.extra.luker_generation_id;
+            if (cloned.value && _.isObjectLike(cloned.value.extra) && 'atri_generation_id' in cloned.value.extra) {
+                delete cloned.value.extra.atri_generation_id;
             }
-            if (op.path.endsWith('/extra') && _.isObjectLike(cloned.value) && 'luker_generation_id' in cloned.value) {
-                delete cloned.value.luker_generation_id;
+            if (op.path.endsWith('/extra') && _.isObjectLike(cloned.value) && 'atri_generation_id' in cloned.value) {
+                delete cloned.value.atri_generation_id;
             }
             result.push(cloned);
         } else {
@@ -2313,8 +2313,8 @@ router.post('/append', validateAvatarUrlMiddleware, async function (request, res
         const chatMetadata = _.isObjectLike(request.body.chat_metadata) ? request.body.chat_metadata : {};
         const force = Boolean(request.body.force);
         const slugRaw = typeof request.body.integrity === 'string' ? request.body.integrity.trim() : '';
-        const incomingId = typeof request.body.luker_generation_id === 'string'
-            ? request.body.luker_generation_id.trim()
+        const incomingId = typeof request.body.atri_generation_id === 'string'
+            ? request.body.atri_generation_id.trim()
             : '';
         const messages = Array.isArray(request.body.messages)
             ? request.body.messages
@@ -2331,7 +2331,7 @@ router.post('/append', validateAvatarUrlMiddleware, async function (request, res
             throw createIntegrityMismatchError(chatFilePath, slugRaw);
         }
 
-        const cleanedMessages = messages.map(m => stripLukerGenerationIdFromMessage(_.cloneDeep(m)));
+        const cleanedMessages = messages.map(m => stripAtriaGenerationIdFromMessage(_.cloneDeep(m)));
 
         if (!existing) {
             const header = createChatHeader(_.isObjectLike(chatMetadata) ? chatMetadata : {});
@@ -2361,7 +2361,7 @@ router.post('/append', validateAvatarUrlMiddleware, async function (request, res
         let matchedExistingGenerationId = false;
         while (dedupedMessages.length > 0) {
             const lastStoredStripped = isChatMessageLike(lastStoredMessage)
-                ? stripLukerGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
+                ? stripAtriaGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
                 : null;
             if (lastStoredStripped && isChatMessageLike(dedupedMessages[0]) && _.isEqual(lastStoredStripped, dedupedMessages[0])) {
                 dedupedMessages.shift();
@@ -2443,8 +2443,8 @@ router.post('/patch', validateAvatarUrlMiddleware, async function (request, resp
         const chatMetadata = _.isObjectLike(request.body.chat_metadata) ? request.body.chat_metadata : {};
         const slugRaw = typeof request.body.integrity === 'string' ? request.body.integrity.trim() : '';
         const force = Boolean(request.body.force);
-        const incomingId = typeof request.body.luker_generation_id === 'string'
-            ? request.body.luker_generation_id.trim()
+        const incomingId = typeof request.body.atri_generation_id === 'string'
+            ? request.body.atri_generation_id.trim()
             : '';
         const operations = Array.isArray(request.body.operations)
             ? request.body.operations
@@ -2463,7 +2463,7 @@ router.post('/patch', validateAvatarUrlMiddleware, async function (request, resp
             throw createIntegrityMismatchError(chatFilePath, slugRaw);
         }
 
-        const sanitizedOperations = sanitizeOperationsAgainstLukerGenerationId(operations);
+        const sanitizedOperations = sanitizeOperationsAgainstAtriaGenerationId(operations);
         if (sanitizedOperations.length === 0) {
             if (incomingId) writeLastChatGenerationId(chatFilePath, incomingId);
             const currentIntegrity = existing ? existing.integrity : '';
@@ -2745,12 +2745,12 @@ export function getChatData(chatFilePath) {
         return { corrupted: true };
     }
 
-    // Strip the protocol-layer luker_generation_id from each message before
+    // Strip the protocol-layer atri_generation_id from each message before
     // returning. Old chat files may have it baked into extra; new writes
     // never put it there. Stripping here means clients (and server-internal
     // callers) get a consistent, gen-id-free view regardless of file age.
     for (let i = 1; i < chatData.length; i++) {
-        stripLukerGenerationIdFromMessage(chatData[i]);
+        stripAtriaGenerationIdFromMessage(chatData[i]);
     }
 
     return attachCurrentIntegrityToChatData(chatData, chatFilePath);
@@ -3040,7 +3040,7 @@ router.post('/rename', validateAvatarUrlMiddleware, async function (request, res
         const newName = path.parse(safeRenamed).name;
 
         // Existence check via Repo (not fs.existsSync) so db modes work too.
-        // Group chats use name === groupId in luker convention; for character
+        // Group chats use name === groupId in atria convention; for character
         // chats only the (charDir, name) pair matters.
         const repo = getChatRepo();
         const groupId = isGroup ? oldName : undefined;
@@ -3680,7 +3680,7 @@ router.post('/group/append', async function (request, response) {
             chatMetadata,
             integritySlug,
             force,
-            incomingGenerationId: typeof request.body.luker_generation_id === 'string' ? request.body.luker_generation_id : '',
+            incomingGenerationId: typeof request.body.atri_generation_id === 'string' ? request.body.atri_generation_id : '',
             handle,
             charDir: '',
             name: id,

@@ -27,7 +27,7 @@
  * `latestOrchestrationSnapshot` / per-chat state.
  */
 
-const yaml = Luker.getContext().lib.yaml;
+const yaml = Atria.getContext().lib.yaml;
 
 export function toCompactJsonText(value, fallback = '{}') {
     try {

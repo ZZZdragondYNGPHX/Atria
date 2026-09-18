@@ -10,7 +10,7 @@
 
 ## API 入口
 
-編排器擴充透過 Luker 的擴充註冊表暴露 API。三種入口指向同一組函式參考——按你的程式碼情境挑一種：
+編排器擴充透過 Atria 的擴充註冊表暴露 API。三種入口指向同一組函式參考——按你的程式碼情境挑一種：
 
 ```js
 import { getExtensionApi } from '/scripts/extensions.js';
@@ -22,7 +22,7 @@ if (orch) orch.registerOrchestrationTool({ /* ... */ });
 // 2. 透過 SillyTavern context（擴充會收到這個物件）
 ctx.getExtensionApi('orchestrator')?.registerOrchestrationTool({ /* ... */ });
 
-// 3. 直接 ES module 匯入（只在 Luker 樹內合適）
+// 3. 直接 ES module 匯入（只在 Atria 樹內合適）
 import { registerOrchestrationTool } from
     '/scripts/extensions/orchestrator/register-custom-tool.js';
 ```
@@ -52,7 +52,7 @@ import { registerOrchestrationTool } from
 
 ### ctx 參數
 
-`ctx` 原型鏈上繼承 SillyTavern `getContext()` 的所有欄位，外加編排執行時掛的幾個內部欄位。用法跟你在 Luker 任何其他地方用 context 一樣。
+`ctx` 原型鏈上繼承 SillyTavern `getContext()` 的所有欄位，外加編排執行時掛的幾個內部欄位。用法跟你在 Atria 任何其他地方用 context 一樣。
 
 來自 SillyTavern:
 
@@ -65,7 +65,7 @@ import { registerOrchestrationTool } from
 
 | 欄位 | 用途 |
 |---|---|
-| `ctx.__lukerRun` | 本次 run 的執行時狀態。`ctx.__lukerRun.activatedEntryKeys` 是一個 `Set`，裡面是本輪已被注入的 World Info 條目 key（供 lorebook 風格的工具去重）。`ctx.__lukerRun.abortSignal` 是本 run 的 abort signal —— 可取消的工作要尊重它。 |
+| `ctx.__atriaRun` | 本次 run 的執行時狀態。`ctx.__atriaRun.activatedEntryKeys` 是一個 `Set`，裡面是本輪已被注入的 World Info 條目 key（供 lorebook 風格的工具去重）。`ctx.__atriaRun.abortSignal` 是本 run 的 abort signal —— 可取消的工作要尊重它。 |
 | `ctx.__floorStateForNotes` | `note_open` / `note_close` 工具底層的 floor-state 實例。想跟便箋系統協作就讀它。 |
 | `ctx.__customToolRegistry` | 本 run 的 Layer-3（手寫）工具註冊表。絕大多數工具用不到。 |
 | `ctx.__memoryGraphSession` | 由本 run 內第一次 `memory_*` 工具呼叫 lazy 開啟；在那之前不存在。 |

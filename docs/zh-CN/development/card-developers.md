@@ -1,10 +1,10 @@
 # 角色卡开发者指南
 
-本指南面向角色卡创作者，介绍如何利用 Luker 的扩展能力创建更丰富、更智能的角色卡。Luker 在保持与 SillyTavern 角色卡格式完全兼容的基础上，提供了多项增强功能。
+本指南面向角色卡创作者，介绍如何利用 Atria 的扩展能力创建更丰富、更智能的角色卡。Atria 在保持与 SillyTavern 角色卡格式完全兼容的基础上，提供了多项增强功能。
 
 ## 角色卡扩展字段
 
-Luker 使用角色卡 `data.extensions` 中的多个命名空间存储扩展数据。这些字段不会影响角色卡在 SillyTavern 中的正常使用——不识别的字段会被忽略。
+Atria 使用角色卡 `data.extensions` 中的多个命名空间存储扩展数据。这些字段不会影响角色卡在 SillyTavern 中的正常使用——不识别的字段会被忽略。
 
 ### data.extensions 扩展字段结构
 
@@ -12,7 +12,7 @@ Luker 使用角色卡 `data.extensions` 中的多个命名空间存储扩展数�
 {
   "data": {
     "extensions": {
-      "luker": {
+      "atria": {
         "memoryGraphSchema": {
           "nodeTypes": [
             { "name": "string", "label": "string", "color": "#hex" }
@@ -30,11 +30,11 @@ Luker 使用角色卡 `data.extensions` 中的多个命名空间存储扩展数�
 
 | 字段路径 | 类型 | 说明 |
 |---------|------|------|
-| `luker.memoryGraphSchema` | object | 记忆图的自定义节点类型 schema |
-| `luker.memoryGraphSchema.nodeTypes` | array | 节点类型定义列表 |
-| `luker.memoryGraphSchema.nodeTypes[].name` | string | 节点类型标识符（英文，用于内部引用） |
-| `luker.memoryGraphSchema.nodeTypes[].label` | string | 节点类型显示名称 |
-| `luker.memoryGraphSchema.nodeTypes[].color` | string | 节点颜色（十六进制色值） |
+| `atria.memoryGraphSchema` | object | 记忆图的自定义节点类型 schema |
+| `atria.memoryGraphSchema.nodeTypes` | array | 节点类型定义列表 |
+| `atria.memoryGraphSchema.nodeTypes[].name` | string | 节点类型标识符（英文，用于内部引用） |
+| `atria.memoryGraphSchema.nodeTypes[].label` | string | 节点类型显示名称 |
+| `atria.memoryGraphSchema.nodeTypes[].color` | string | 节点颜色（十六进制色值） |
 | `card_app.enabled` | boolean | 是否启用 CardApp |
 | `card_app.entry` | string | CardApp 文件夹下的入口模块文件名，默认 `index.js`。入口文件必须导出 `init(ctx)` 函数。同目录下的 `style.css` 会按约定自动加载。 |
 
@@ -43,7 +43,7 @@ Luker 使用角色卡 `data.extensions` 中的多个命名空间存储扩展数�
 
 ## 绑定预设和人设
 
-Luker 支持在角色卡中绑定推荐的生成预设和用户人设。当用户加载角色卡时，可以一键应用创作者推荐的配置，确保最佳的角色扮演体验。
+Atria 支持在角色卡中绑定推荐的生成预设和用户人设。当用户加载角色卡时，可以一键应用创作者推荐的配置，确保最佳的角色扮演体验。
 
 绑定信息存储在角色卡的状态文件中：
 
@@ -64,7 +64,7 @@ Luker 支持在角色卡中绑定推荐的生成预设和用户人设。当用�
 
 ## 自定义记忆图 Schema
 
-[记忆图](/zh-CN/features/memory-graph)支持角色卡级别的节点类型 schema 自定义。通过在角色卡的扩展数据中定义 `luker.memoryGraphSchema`，你可以为角色定制专属的记忆结构。
+[记忆图](/zh-CN/features/memory-graph)支持角色卡级别的节点类型 schema 自定义。通过在角色卡的扩展数据中定义 `atria.memoryGraphSchema`，你可以为角色定制专属的记忆结构。
 
 例如，一个奇幻世界的角色卡可以定义如下 schema：
 
@@ -72,7 +72,7 @@ Luker 支持在角色卡中绑定推荐的生成预设和用户人设。当用�
 {
   "data": {
     "extensions": {
-      "luker": {
+      "atria": {
         "memoryGraphSchema": {
           "nodeTypes": [
             { "name": "character", "label": "角色", "color": "#4A90D9" },
@@ -92,7 +92,7 @@ Luker 支持在角色卡中绑定推荐的生成预设和用户人设。当用�
 
 ## CardApp 开发
 
-[CardApp](/zh-CN/features/cardapp) 是 Luker 的角色卡内嵌应用系统，允许你在角色卡中嵌入交互式 JavaScript 应用。
+[CardApp](/zh-CN/features/cardapp) 是 Atria 的角色卡内嵌应用系统，允许你在角色卡中嵌入交互式 JavaScript 应用。
 
 ### 适用场景
 
@@ -181,7 +181,7 @@ CardApp 的上下文对象提供以下 API：
 | `ctx.getCharacterState(namespace)` | **异步** 读取角色绑定的状态（avatar 自动绑定），跨该角色的所有聊天保留。 |
 | `ctx.setCharacterState(namespace, data)` | **异步** 写入角色绑定的状态（avatar 自动绑定），传 `null` 表示删除。 |
 | `ctx.getVariable(key)` | 读取聊天变量（来自 `chat_metadata.variables`，即 <code v-pre>{{getvar::key}}</code> 读的同一个桶）。 |
-| `ctx.setVariable(key, value, options?)` | **异步** 设置聊天变量。默认写入 `chat_metadata.variables`（会话级，贯穿整个 chat）。传 `{ floor: <消息序号> }` 则改走变量 op-log，把这次写入绑定到该楼的**当前 swipe**——切 swipe / 切回 / 删楼 / 创建分支都会经过 rebuilder 重放，效果跟 AI 在消息里直接写 <code v-pre>{{setvar}}</code> 一致。绑定楼层的路径会把 value 强转成字符串（op-log 的存储格式只承载字符串）。如果需要"结构化的逐楼状态 + 独立命名空间 + 自己的 commit log"，改用 `ctx.lukerContext.createFloorState({ namespace })`。 |
+| `ctx.setVariable(key, value, options?)` | **异步** 设置聊天变量。默认写入 `chat_metadata.variables`（会话级，贯穿整个 chat）。传 `{ floor: <消息序号> }` 则改走变量 op-log，把这次写入绑定到该楼的**当前 swipe**——切 swipe / 切回 / 删楼 / 创建分支都会经过 rebuilder 重放，效果跟 AI 在消息里直接写 <code v-pre>{{setvar}}</code> 一致。绑定楼层的路径会把 value 强转成字符串（op-log 的存储格式只承载字符串）。如果需要"结构化的逐楼状态 + 独立命名空间 + 自己的 commit log"，改用 `ctx.atriaContext.createFloorState({ namespace })`。 |
 
 #### 聊天管理
 
@@ -197,7 +197,7 @@ CardApp 的上下文对象提供以下 API：
 | API | 说明 |
 |-----|------|
 | `ctx.getWorldBooks()` | 获取当前角色可见的世界书名称列表（角色主世界书 + 角色附加世界书 + 聊天绑定 + 全局激活，已去重）。传 `{ withSource: true }` 可拿到带 `source: 'character' \| 'character_aux' \| 'chat' \| 'global'` 的标注列表 |
-| `ctx.getCharacterAuxWorldBooks()` | 获取当前角色绑定的附加世界书（非主世界书）。这些与主世界书一同参与提示词组装，但通过 Luker 的世界书编辑器单独管理 |
+| `ctx.getCharacterAuxWorldBooks()` | 获取当前角色绑定的附加世界书（非主世界书）。这些与主世界书一同参与提示词组装，但通过 Atria 的世界书编辑器单独管理 |
 | `ctx.getWorldBookEntries(bookName)` | 获取指定世界书的所有条目 |
 | `ctx.createWorldBookEntry(bookName, fields?)` | 创建世界书条目，返回新条目对象（含 uid） |
 | `ctx.updateWorldBookEntry(bookName, uid, patch)` | 更新世界书条目（浅合并） |
@@ -207,7 +207,7 @@ CardApp 的上下文对象提供以下 API：
 
 | API | 说明 |
 |-----|------|
-| `ctx.eventSource` | Luker 的内部事件总线。订阅用 `ctx.eventSource.on(eventName, handler)`，取消订阅用 `ctx.eventSource.off(eventName, handler)`。事件名在 `ctx.lukerContext.eventTypes` 上（`CHAT_CHANGED`、`MESSAGE_DELETED`、`MESSAGE_SWIPED` 等）。每次 `.on()` 都搭配 `ctx.onDispose(() => ctx.eventSource.off(eventName, handler))`，CardApp 卸载时监听器才会被移除干净。 |
+| `ctx.eventSource` | Atria 的内部事件总线。订阅用 `ctx.eventSource.on(eventName, handler)`，取消订阅用 `ctx.eventSource.off(eventName, handler)`。事件名在 `ctx.atriaContext.eventTypes` 上（`CHAT_CHANGED`、`MESSAGE_DELETED`、`MESSAGE_SWIPED` 等）。每次 `.on()` 都搭配 `ctx.onDispose(() => ctx.eventSource.off(eventName, handler))`，CardApp 卸载时监听器才会被移除干净。 |
 | `ctx.addEventListener(target, event, handler, options?)` | 订阅 DOM 元素上的事件。`target` 通常是 `ctx.container` 或 `querySelector` 的返回值；用于容器内的 UI 事件如 click、keydown、scroll。CardApp 卸载时监听器会自动移除。 |
 | `ctx.setInterval(fn, ms)` | `setInterval` 的封装，卸载时句柄自动清理。 |
 | `ctx.setTimeout(fn, ms)` | `setTimeout` 的封装，卸载时句柄自动清理。 |
@@ -217,7 +217,7 @@ CardApp 的上下文对象提供以下 API：
 
 ```javascript
 export async function init(ctx) {
-    const { eventTypes } = ctx.lukerContext;
+    const { eventTypes } = ctx.atriaContext;
     const refresh = () => render(ctx);
 
     ctx.eventSource.on(eventTypes.CHAT_CHANGED, refresh);
@@ -248,7 +248,7 @@ CardApp 运行在受限环境中：
 
 ## 世界书最佳实践
 
-世界书（World Info / Lorebook）是角色卡的重要组成部分。以下是在 Luker 中使用世界书的最佳实践：
+世界书（World Info / Lorebook）是角色卡的重要组成部分。以下是在 Atria 中使用世界书的最佳实践：
 
 ### 1. 合理组织条目
 
@@ -258,7 +258,7 @@ CardApp 运行在受限环境中：
 
 ### 2. 利用预设绑定世界书
 
-Luker 支持将世界书绑定到预设。当用户切换预设时，关联的世界书会自动激活。这适用于需要不同世界观设定的场景。
+Atria 支持将世界书绑定到预设。当用户切换预设时，关联的世界书会自动激活。这适用于需要不同世界观设定的场景。
 
 ### 3. 搜索工具与世界书集成
 
@@ -266,7 +266,7 @@ Luker 支持将世界书绑定到预设。当用户切换预设时，关联的�
 
 ### 4. 控制注入深度和顺序
 
-合理设置世界书条目的注入深度（depth）和排序（order），确保关键设定在提示词中的位置合理。Luker 的搜索工具提供了 `lorebookDepth`、`lorebookRole`、`lorebookEntryOrder` 等配置项来精细控制。
+合理设置世界书条目的注入深度（depth）和排序（order），确保关键设定在提示词中的位置合理。Atria 的搜索工具提供了 `lorebookDepth`、`lorebookRole`、`lorebookEntryOrder` 等配置项来精细控制。
 
 ### 5. 与记忆图配合
 
@@ -279,15 +279,15 @@ Luker 支持将世界书绑定到预设。当用户切换预设时，关联的�
 
 ### 兼容性
 
-- `data.extensions.luker` 和 `data.extensions.card_app` 中的字段在 SillyTavern 中会被忽略，不影响角色卡的正常使用
+- `data.extensions.atria` 和 `data.extensions.card_app` 中的字段在 SillyTavern 中会被忽略，不影响角色卡的正常使用
 - 绑定预设和人设存储在状态文件中，不包含在角色卡文件内，分发时不会携带
 - 编排工作流需要用户手动导入或通过其他方式分发
 
 ### 建议
 
-- 在角色卡描述中注明推荐使用 Luker 以获得完整体验
-- 如果角色卡依赖 CardApp，说明所需的 Luker 版本
-- 提供不依赖 Luker 扩展功能的基础体验，将 Luker 特性作为增强
+- 在角色卡描述中注明推荐使用 Atria 以获得完整体验
+- 如果角色卡依赖 CardApp，说明所需的 Atria 版本
+- 提供不依赖 Atria 扩展功能的基础体验，将 Atria 特性作为增强
 
 ## 相关页面
 

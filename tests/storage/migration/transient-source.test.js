@@ -3,9 +3,9 @@
 // Coverage:
 //   - fs source: extracts on-disk tree, engine reads expected data, cleanup
 //     removes scratch dir.
-//   - sqlite source: writes engine_dump to luker-storage.sqlite, engine
+//   - sqlite source: writes engine_dump to atria-storage.sqlite, engine
 //     reads through it, cleanup closes + removes.
-//   - mysql/pg source (skipped without LUKER_*_TESTS env): connects to
+//   - mysql/pg source (skipped without ATRIA_*_TESTS env): connects to
 //     scratch DB, restores dump into scratch handle, cleanup deletes the
 //     handle and closes the pool.
 //   - Failure: missing _engine_dump.bin on non-fs sources throws.
@@ -34,7 +34,7 @@ function makeScratchHandle() {
 }
 
 function makeTempDataRoot() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'luker-trsource-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'atria-trsource-'));
 }
 
 // Build a fs-source ZIP that mirrors what createBackupArchive would emit
@@ -88,7 +88,7 @@ async function buildSqliteSourceZip(zipPath, { handle = 'alice', dataRoot }) {
     } finally {
         engine.close();
     }
-    const dumpPath = path.join(dataRoot, 'src', 'luker-storage.sqlite');
+    const dumpPath = path.join(dataRoot, 'src', 'atria-storage.sqlite');
     const dumpBytes = fs.readFileSync(dumpPath);
 
     return new Promise((resolve, reject) => {
@@ -109,7 +109,7 @@ async function buildSqliteSourceZip(zipPath, { handle = 'alice', dataRoot }) {
 // engine's own dumpUser to produce _engine_dump.bin.
 async function buildDbSourceZip(zipPath, { handle, engine, kind }) {
     const dumpStream = await engine.dumpUser(handle);
-    const tmpDump = path.join(os.tmpdir(), `luker-trsource-dump-${randomBytes(4).toString('hex')}.bin`);
+    const tmpDump = path.join(os.tmpdir(), `atria-trsource-dump-${randomBytes(4).toString('hex')}.bin`);
     await pipeline(dumpStream, fs.createWriteStream(tmpDump));
     const dumpBytes = fs.readFileSync(tmpDump);
     fs.rmSync(tmpDump, { force: true });
@@ -208,8 +208,8 @@ describe('materializeTransientSource — sqlite', () => {
             { dataRoot, scratchHandle, scratchCreds: null },
         );
         try {
-            // The .sqlite file lands at scratchRoot/luker-storage.sqlite.
-            expect(fs.existsSync(path.join(transient.scratchDirs.root, 'luker-storage.sqlite'))).toBe(true);
+            // The .sqlite file lands at scratchRoot/atria-storage.sqlite.
+            expect(fs.existsSync(path.join(transient.scratchDirs.root, 'atria-storage.sqlite'))).toBe(true);
             // fs-tree entries (secrets.json) are also extracted.
             expect(fs.existsSync(path.join(transient.scratchDirs.root, 'secrets.json'))).toBe(true);
             // The transient rewrites every `handle` column to scratchHandle so
@@ -251,7 +251,7 @@ describe('materializeTransientSource — sqlite', () => {
 // mysql / pg tests: skip without local test DB. Both follow the same shape:
 // seed a real engine with data, build a ZIP from its dumpUser, then
 // materialize and assert the scratch handle on the engine reads through it.
-const skipMysql = !!process.env.LUKER_DISABLE_MYSQL_TESTS;
+const skipMysql = !!process.env.ATRIA_DISABLE_MYSQL_TESTS;
 const describeMysql = skipMysql ? describe.skip : describe;
 describeMysql('materializeTransientSource — mysql', () => {
     let makeTempMysqlEngineHarness;
@@ -333,7 +333,7 @@ describeMysql('materializeTransientSource — mysql', () => {
     });
 });
 
-const skipPg = !!process.env.LUKER_DISABLE_POSTGRES_TESTS;
+const skipPg = !!process.env.ATRIA_DISABLE_POSTGRES_TESTS;
 const describePg = skipPg ? describe.skip : describe;
 describePg('materializeTransientSource — postgres', () => {
     let makeTempPgEngineHarness;
@@ -356,7 +356,7 @@ describePg('materializeTransientSource — postgres', () => {
             const scratchHandle = makeScratchHandle();
             // We need the same connection URL the harness used; reuse the harness's engine config.
             const scratchUrl = srcHarness.engine._pool?.options?.connectionString
-                || `postgresql://luker:postgres@127.0.0.1:55432/luker_test?options=-csearch_path%3D${encodeURIComponent(srcHarness.schemaName)}`;
+                || `postgresql://atria:postgres@127.0.0.1:55432/atria_test?options=-csearch_path%3D${encodeURIComponent(srcHarness.schemaName)}`;
             const transient = await materializeTransientSource(
                 { engineKind: 'postgres', handle: srcHarness.handle },
                 zipPath,

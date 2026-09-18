@@ -1094,7 +1094,7 @@ async function generateStreamCallback(args, value) {
 }
 
 /**
- * Luker one-shot migration: collapse legacy proxy fields onto the unified
+ * Atria one-shot migration: collapse legacy proxy fields onto the unified
  * base-url + secret-store path. Safe to call repeatedly — uses a marker on
  * `extension_settings.connectionManager` to skip after the first run.
  */
@@ -1137,7 +1137,7 @@ async function migrateProxyToBaseUrl() {
                                 if (!profile['secret-id']) {
                                     profile['secret-id'] = newSecretId;
                                 } else {
-                                    profile._luker_migration_conflict = true;
+                                    profile._atria_migration_conflict = true;
                                 }
                             }
                         } catch (err) {
@@ -1196,7 +1196,7 @@ export async function init() {
         }
     }
 
-    // Luker: fully decouple connection profiles from chat-completion presets and regex presets.
+    // Atria: fully decouple connection profiles from chat-completion presets and regex presets.
     // Legacy profiles might still carry stale fields or invalid mode metadata.
     let migrated = false;
     if (Array.isArray(extension_settings.connectionManager.profiles)) {

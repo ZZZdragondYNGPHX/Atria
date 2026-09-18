@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups
 //
-// #52 — Card-bound preset export → import roundtrip on the same Luker.
+// #52 — Card-bound preset export → import roundtrip on the same Atria.
 //
 // Semantics: a card-bound preset exported to disk and re-imported lands
 // as a plain global preset. The importer does NOT auto-rebind it to any
@@ -19,7 +19,7 @@
 //      (a) data/<user>/OpenAI Settings/ImportedFromCard.json exists
 //          (server /api/presets/save wrote it).
 //      (b) That file's body matches the exported JSON byte-for-byte
-//          (including extensions.luker.embedded_skills_source).
+//          (including extensions.atria.embedded_skills_source).
 //      (c) The card's PNG chat_completion_preset block is unchanged
 //          (import did NOT touch the card).
 //      (d) The colliding global CardBoundExportSlot.json is unchanged
@@ -61,7 +61,7 @@ async function exportSelectedPreset(page) {
     const popupClicker = (async () => {
         try {
             const popup = page
-                .locator('.popup:visible', { has: page.locator('.luker_skill_export_confirm') })
+                .locator('.popup:visible', { has: page.locator('.atria_skill_export_confirm') })
                 .last();
             await popup.locator('.popup-button-ok').first().click({ timeout: 25_000 });
         } catch (_) { /* no popup — ignore */ }
@@ -100,7 +100,7 @@ async function installFixtureSkillInPresetScope(page, presetName, skillName, bod
         }],
     };
     await page.evaluate(async ({ scope, payload }) => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         await ctx.skills.executeExtractEmbed({ payload, targetScope: scope, conflictStrategies: {} });
     }, { scope: { kind: 'preset', name: presetName }, payload });
 }
@@ -120,7 +120,7 @@ async function importPresetFile(page, filePath, { expectedName }) {
     await input.setInputFiles(filePath);
     await page.waitForFunction((name) => {
         try {
-            const ctx = window.SillyTavern?.getContext?.() || window.Luker?.getContext?.();
+            const ctx = window.SillyTavern?.getContext?.() || window.Atria?.getContext?.();
             return !!ctx?.openai?.settingNames && Number.isInteger(ctx.openai.settingNames[name]);
         } catch { return false; }
     }, expectedName, { timeout: 20_000 });
@@ -153,7 +153,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT_NAME, preset: { temperature: SLOT_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -178,14 +178,14 @@ test.describe('#52 — card-bound export → import roundtrip lands as new globa
         await awaitMainUI(page, server.baseURL);
 
         await page.waitForFunction(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return !!ctx?.extensionSettings?.orchestrator;
         }, { timeout: 20_000 });
 
         await selectCharacterByName(page, CARD_NAME);
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 15_000 });
 
@@ -207,7 +207,7 @@ test.describe('#52 — card-bound export → import roundtrip lands as new globa
         // Same guard for the skills bundle — proves the export hook
         // resolved the preset scope from the emitted name (slot name),
         // not from the stale `oai_settings.preset_settings_openai`.
-        const embeddedItems = exportedBody?.extensions?.luker?.embedded_skills_source?.items;
+        const embeddedItems = exportedBody?.extensions?.atria?.embedded_skills_source?.items;
         const bundledNames = Array.isArray(embeddedItems) ? embeddedItems.map(i => i?.name) : [];
         expect(bundledNames).toContain(FIXTURE_SKILL_NAME);
 
@@ -215,7 +215,7 @@ test.describe('#52 — card-bound export → import roundtrip lands as new globa
         const cardPath = path.join(server.dataRoot, 'default-user/characters', CARD_AVATAR);
         const cardBeforeJson = readPngCard(fs.readFileSync(cardPath));
         const cardBoundBefore = JSON.stringify(
-            JSON.parse(cardBeforeJson).data.extensions.luker.chat_completion_preset,
+            JSON.parse(cardBeforeJson).data.extensions.atria.chat_completion_preset,
         );
         const globalCollidingPath = path.join(
             server.dataRoot, 'default-user/OpenAI Settings', `${SLOT_NAME}.json`,
@@ -228,7 +228,7 @@ test.describe('#52 — card-bound export → import roundtrip lands as new globa
         await page.evaluate(() => {
             const sel = document.querySelector('#settings_preset_openai');
             const opt = Array.from(sel?.querySelectorAll('option') || [])
-                .find(o => o.getAttribute('data-luker-char-bound') !== '1'
+                .find(o => o.getAttribute('data-atria-char-bound') !== '1'
                     && o.textContent.trim() === 'Default');
             if (opt && window.jQuery) {
                 window.jQuery(sel).val(opt.value).trigger('change');
@@ -237,7 +237,7 @@ test.describe('#52 — card-bound export → import roundtrip lands as new globa
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
             const selected = sel?.selectedOptions?.[0];
-            return selected && selected.getAttribute('data-luker-char-bound') !== '1';
+            return selected && selected.getAttribute('data-atria-char-bound') !== '1';
         }, { timeout: 10_000 });
 
         // Import. Rename the download on disk so the importer uses
@@ -260,7 +260,7 @@ test.describe('#52 — card-bound export → import roundtrip lands as new globa
         // (c) card slot state unchanged.
         const cardAfterJson = readPngCard(fs.readFileSync(cardPath));
         const cardBoundAfter = JSON.stringify(
-            JSON.parse(cardAfterJson).data.extensions.luker.chat_completion_preset,
+            JSON.parse(cardAfterJson).data.extensions.atria.chat_completion_preset,
         );
         expect(cardBoundAfter).toBe(cardBoundBefore);
 

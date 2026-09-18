@@ -6,7 +6,7 @@
  * tools. Two variants live here:
  *
  *   - `readFieldsByPaths(root, paths)` — lodash-path variant. Consumed
- *     by orchestrator iter-studio's `luker_orch_read_<mode>_fields`
+ *     by orchestrator iter-studio's `atri_orch_read_<mode>_fields`
  *     handlers and by memory-graph's schema-mode equivalent. `paths`
  *     is a string[] of lodash-style path expressions (`agent.name`,
  *     `[0].tableColumns[1]`, `length`, …). Arbitrary nesting.

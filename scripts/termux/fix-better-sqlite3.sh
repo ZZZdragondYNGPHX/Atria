@@ -6,11 +6,11 @@ REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 MODULE_DIR="${REPO_ROOT}/node_modules/better-sqlite3"
 
 log() {
-  printf '[luker-termux] %s\n' "$*"
+  printf '[atria-termux] %s\n' "$*"
 }
 
 fail() {
-  printf '[luker-termux] ERROR: %s\n' "$*" >&2
+  printf '[atria-termux] ERROR: %s\n' "$*" >&2
   exit 1
 }
 

@@ -8,7 +8,7 @@
  * `registerLocaleData` is called once at module bootstrap; everything
  * else can call `i18n` synchronously after that.
  *
- * `Luker.getContext()` is resolved lazily on first call so the
+ * `Atria.getContext()` is resolved lazily on first call so the
  * runners (loop / agenda / spec / director) can import this module
  * under Jest where the SillyTavern global is not set up.
  */
@@ -17,7 +17,7 @@ let _addLocaleData = null;
 let _translate = null;
 function ctx() {
     if (_addLocaleData && _translate) return;
-    const c = (typeof Luker !== 'undefined') ? Luker.getContext() : null;
+    const c = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     _addLocaleData = c?.addLocaleData || (() => {});
     _translate = c?.translate || ((s) => String(s || ''));
 }
@@ -633,7 +633,7 @@ export function registerLocaleData() {
         'Internal calls': '内部调用',
         'External calls': '外部调用',
         '${0} memory recalls': '${0} 次记忆检索',
-        'Luker model requests and memory recalls; one count per logical call, including running or failed calls.': 'Luker 模型请求与记忆检索；按逻辑调用计数，包含运行中和失败的调用。',
+        'Atria model requests and memory recalls; one count per logical call, including running or failed calls.': 'Atria 模型请求与记忆检索；按逻辑调用计数，包含运行中和失败的调用。',
         'Tool executions requested by agents; provider retries are not counted separately.': '智能体请求的工具执行；模型接口的重试不单独计数。',
         'Tool calls': '工具调用',
         'Arguments': '参数',
@@ -745,10 +745,10 @@ export function registerLocaleData() {
         'Add': '添加',
         // Skill manager panel — top-level shell
         'Installed': '已安装',
-        'Browse bundled': '浏览 Luker 内置 Skills',
+        'Browse bundled': '浏览 Atria 内置 Skills',
         'Filter by scope:': '按作用域筛选：',
         'All scopes': '全部作用域',
-        'Import bundled': '导入 Luker 内置 Skills',
+        'Import bundled': '导入 Atria 内置 Skills',
         'Import from file...': '从文件导入……',
         'Import from URL...': '从链接导入……',
         'Create new': '新建',
@@ -766,10 +766,10 @@ export function registerLocaleData() {
         'Use Import or Create to add some.': '使用「导入」或「新建」添加。',
         '${0} skills': '${0} 个 Skill',
         'Failed to load skills: ${0}': '加载 Skills 失败：${0}',
-        'Failed to render bundled browser: ${0}': '渲染 Luker 内置列表失败：${0}',
+        'Failed to render bundled browser: ${0}': '渲染 Atria 内置列表失败：${0}',
         // Skill manager actions — toasts / confirms / prompts
-        'Bundled import: ${0} installed, ${1} skipped.': '从 Luker 内置列表导入：新装 ${0} 个，跳过 ${1} 个。',
-        'Bundled import failed: ${0}': '从 Luker 内置列表导入失败：${0}',
+        'Bundled import: ${0} installed, ${1} skipped.': '从 Atria 内置列表导入：新装 ${0} 个，跳过 ${1} 个。',
+        'Bundled import failed: ${0}': '从 Atria 内置列表导入失败：${0}',
         'Failed to read file: ${0}': '读取文件失败：${0}',
         'Unsupported file: ${0}': '不支持的文件：${0}',
         'Import into scope': '导入到作用域',
@@ -865,9 +865,9 @@ export function registerLocaleData() {
         'Name': '名称',
         'State': '状态',
         'Size': '大小',
-        'Skills shipped with the server. Install any to add them under the Global scope.': 'Luker 内置 Skills。安装后会加入 Global 作用域。',
+        'Skills shipped with the server. Install any to add them under the Global scope.': 'Atria 内置 Skills。安装后会加入 Global 作用域。',
         'Install all bundled': '安装全部内置 Skills',
-        'Failed to load bundled manifest: ${0}': '加载 Luker 内置清单失败：${0}',
+        'Failed to load bundled manifest: ${0}': '加载 Atria 内置清单失败：${0}',
         'Failed to list installed skills: ${0}': '列出已安装 Skills 失败：${0}',
         'Bundled install: ${0} installed, ${1} replaced.': '内置安装：新装 ${0} 个，替换 ${1} 个。',
         'Install all failed: ${0}': '一键安装失败：${0}',
@@ -1622,7 +1622,7 @@ export function registerLocaleData() {
         'Internal calls': '內部呼叫',
         'External calls': '外部呼叫',
         '${0} memory recalls': '${0} 次記憶檢索',
-        'Luker model requests and memory recalls; one count per logical call, including running or failed calls.': 'Luker 模型請求與記憶檢索；按邏輯呼叫計數，包含執行中和失敗的呼叫。',
+        'Atria model requests and memory recalls; one count per logical call, including running or failed calls.': 'Atria 模型請求與記憶檢索；按邏輯呼叫計數，包含執行中和失敗的呼叫。',
         'Tool executions requested by agents; provider retries are not counted separately.': '智能體請求的工具執行；模型介面的重試不單獨計數。',
         'Tool calls': '工具呼叫',
         'Arguments': '參數',
@@ -1730,10 +1730,10 @@ export function registerLocaleData() {
         'Add': '新增',
         // Skill manager panel — top-level shell
         'Installed': '已安裝',
-        'Browse bundled': '瀏覽 Luker 內建 Skills',
+        'Browse bundled': '瀏覽 Atria 內建 Skills',
         'Filter by scope:': '依作用域篩選：',
         'All scopes': '全部作用域',
-        'Import bundled': '匯入 Luker 內建 Skills',
+        'Import bundled': '匯入 Atria 內建 Skills',
         'Import from file...': '從檔案匯入……',
         'Import from URL...': '從連結匯入……',
         'Create new': '新建',
@@ -1751,10 +1751,10 @@ export function registerLocaleData() {
         'Use Import or Create to add some.': '使用「匯入」或「新建」新增。',
         '${0} skills': '${0} 個 Skill',
         'Failed to load skills: ${0}': '載入 Skills 失敗：${0}',
-        'Failed to render bundled browser: ${0}': '渲染 Luker 內建列表失敗：${0}',
+        'Failed to render bundled browser: ${0}': '渲染 Atria 內建列表失敗：${0}',
         // Skill manager actions — toasts / confirms / prompts
-        'Bundled import: ${0} installed, ${1} skipped.': '從 Luker 內建列表匯入：新裝 ${0} 個，略過 ${1} 個。',
-        'Bundled import failed: ${0}': '從 Luker 內建列表匯入失敗：${0}',
+        'Bundled import: ${0} installed, ${1} skipped.': '從 Atria 內建列表匯入：新裝 ${0} 個，略過 ${1} 個。',
+        'Bundled import failed: ${0}': '從 Atria 內建列表匯入失敗：${0}',
         'Failed to read file: ${0}': '讀取檔案失敗：${0}',
         'Unsupported file: ${0}': '不支援的檔案：${0}',
         'Import into scope': '匯入到作用域',
@@ -1850,9 +1850,9 @@ export function registerLocaleData() {
         'Name': '名稱',
         'State': '狀態',
         'Size': '大小',
-        'Skills shipped with the server. Install any to add them under the Global scope.': 'Luker 內建 Skills。安裝後會加入 Global 作用域。',
+        'Skills shipped with the server. Install any to add them under the Global scope.': 'Atria 內建 Skills。安裝後會加入 Global 作用域。',
         'Install all bundled': '安裝全部內建 Skills',
-        'Failed to load bundled manifest: ${0}': '載入 Luker 內建清單失敗：${0}',
+        'Failed to load bundled manifest: ${0}': '載入 Atria 內建清單失敗：${0}',
         'Failed to list installed skills: ${0}': '列出已安裝 Skills 失敗：${0}',
         'Bundled install: ${0} installed, ${1} replaced.': '內建安裝：新裝 ${0} 個，取代 ${1} 個。',
         'Install all failed: ${0}': '一鍵安裝失敗：${0}',

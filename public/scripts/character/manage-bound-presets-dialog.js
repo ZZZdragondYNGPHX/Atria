@@ -44,14 +44,14 @@ import {
 import { getCurrentPresetBodyForBinding, maybeApplyCharacterBoundPreset } from '/scripts/openai.js';
 import { decodeCardBoundOptionValue } from './preset-ref-codec.js';
 
-const DIALOG_ID = 'luker_manage_bound_presets_dialog';
-const CLEAR_DIALOG_ID = 'luker_clear_bound_presets_dialog';
+const DIALOG_ID = 'atria_manage_bound_presets_dialog';
+const CLEAR_DIALOG_ID = 'atria_clear_bound_presets_dialog';
 
 /**
  * Get all local (global) openai preset names. `getAllPresets()` reads
  * option.text off the `<select>` DOM which includes the ghost card-bound
  * optgroup — filter those out via the codec (option value starts with
- * the `__luker_card__::` sentinel).
+ * the `__atria_card__::` sentinel).
  * @returns {string[]}
  */
 function getLocalPresetNames() {
@@ -85,20 +85,20 @@ function renderRow(item, localPresetNames) {
     const name = escapeHtml(item.name);
     // Default marker: a badge when this slot is the default; a button when it isn't.
     const defaultCell = item.isDefault
-        ? `<span class="luker-mbp-default-badge">${escapeHtml(t`Default`)}</span>`
-        : `<button type="button" class="menu_button luker-mbp-set-default">${escapeHtml(t`Set as default`)}</button>`;
+        ? `<span class="atria-mbp-default-badge">${escapeHtml(t`Default`)}</span>`
+        : `<button type="button" class="menu_button atria-mbp-set-default">${escapeHtml(t`Set as default`)}</button>`;
     const updateFromLocalBtn = hasLocalSameName
-        ? `<button type="button" class="menu_button luker-mbp-update-from-local">${escapeHtml(t`Update from local`)}</button>`
-        : `<button type="button" class="menu_button luker-mbp-update-from-local" disabled title="${escapeHtml(t`No local preset with the same name.`)}">${escapeHtml(t`Update from local`)}</button>`;
+        ? `<button type="button" class="menu_button atria-mbp-update-from-local">${escapeHtml(t`Update from local`)}</button>`
+        : `<button type="button" class="menu_button atria-mbp-update-from-local" disabled title="${escapeHtml(t`No local preset with the same name.`)}">${escapeHtml(t`Update from local`)}</button>`;
     return `
-<div class="luker-mbp-row" data-preset-name="${name}">
-    <span class="luker-mbp-name" title="${name}">${name}</span>
-    <div class="luker-mbp-actions">
+<div class="atria-mbp-row" data-preset-name="${name}">
+    <span class="atria-mbp-name" title="${name}">${name}</span>
+    <div class="atria-mbp-actions">
         ${defaultCell}
-        <button type="button" class="menu_button luker-mbp-overwrite-current" title="${escapeHtml(t`Overwrite this card slot with the currently-selected preset's body.`)}">${escapeHtml(t`Overwrite from current`)}</button>
+        <button type="button" class="menu_button atria-mbp-overwrite-current" title="${escapeHtml(t`Overwrite this card slot with the currently-selected preset's body.`)}">${escapeHtml(t`Overwrite from current`)}</button>
         ${updateFromLocalBtn}
-        <button type="button" class="menu_button luker-mbp-rename">${escapeHtml(t`Rename`)}</button>
-        <button type="button" class="menu_button luker-mbp-remove">${escapeHtml(t`Delete`)}</button>
+        <button type="button" class="menu_button atria-mbp-rename">${escapeHtml(t`Rename`)}</button>
+        <button type="button" class="menu_button atria-mbp-remove">${escapeHtml(t`Delete`)}</button>
     </div>
 </div>`;
 }
@@ -108,7 +108,7 @@ function renderDialogHtml(character) {
     const localNames = getLocalPresetNames();
     const rows = items.length
         ? items.map(item => renderRow(item, localNames)).join('')
-        : `<div class="luker-mbp-empty">${escapeHtml(t`No card-bound presets yet.`)}</div>`;
+        : `<div class="atria-mbp-empty">${escapeHtml(t`No card-bound presets yet.`)}</div>`;
     const addOptions = localNames
         .filter(n => !items.some(it => it.name === n))
         .map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`)
@@ -116,15 +116,15 @@ function renderDialogHtml(character) {
     const characterName = escapeHtml(character?.name ?? '');
     return `
 <div id="${DIALOG_ID}">
-    <h3 class="luker-mbp-heading">${escapeHtml(t`Card-bound presets for '${character?.name ?? ''}'`)}</h3>
-    <div class="luker-mbp-rows">${rows}</div>
-    <div class="luker-mbp-add">
-        <label for="luker-mbp-add-select" class="luker-mbp-add-label">${escapeHtml(t`Add from local preset:`)}</label>
-        <select id="luker-mbp-add-select" class="luker-mbp-add-select">
+    <h3 class="atria-mbp-heading">${escapeHtml(t`Card-bound presets for '${character?.name ?? ''}'`)}</h3>
+    <div class="atria-mbp-rows">${rows}</div>
+    <div class="atria-mbp-add">
+        <label for="atria-mbp-add-select" class="atria-mbp-add-label">${escapeHtml(t`Add from local preset:`)}</label>
+        <select id="atria-mbp-add-select" class="atria-mbp-add-select">
             <option value="">${escapeHtml(t`— select —`)}</option>
             ${addOptions}
         </select>
-        <button type="button" class="menu_button luker-mbp-add-button">${escapeHtml(t`Add`)}</button>
+        <button type="button" class="menu_button atria-mbp-add-button">${escapeHtml(t`Add`)}</button>
     </div>
     <!-- data-character-name kept purely for debugging / e2e sanity check -->
     <input type="hidden" data-character-name="${characterName}">
@@ -385,15 +385,15 @@ async function runSalvageDialogOnce(character, slots, picks) {
     const $dlg = window.jQuery(popup.dlg);
 
     // Radio change → sync into picks + enable/disable the inline name input.
-    $dlg.on('change', `#${CLEAR_DIALOG_ID} .luker-cbp-action`, (ev) => {
-        const row = ev.currentTarget.closest('.luker-cbp-row');
+    $dlg.on('change', `#${CLEAR_DIALOG_ID} .atria-cbp-action`, (ev) => {
+        const row = ev.currentTarget.closest('.atria-cbp-row');
         const slotName = row?.dataset?.slotName;
         if (!slotName) return;
         const action = ev.currentTarget.value === 'save' ? 'save' : 'discard';
         const current = picks.get(slotName) || { action: 'save', globalName: slotName };
         current.action = action;
         picks.set(slotName, current);
-        const input = row.querySelector('.luker-cbp-global-name');
+        const input = row.querySelector('.atria-cbp-global-name');
         if (input) {
             input.disabled = action !== 'save';
         }
@@ -401,8 +401,8 @@ async function runSalvageDialogOnce(character, slots, picks) {
 
     // Inline name input → sync into picks on every keystroke so a Back
     // → re-open cycle preserves the edits.
-    $dlg.on('input', `#${CLEAR_DIALOG_ID} .luker-cbp-global-name`, (ev) => {
-        const row = ev.currentTarget.closest('.luker-cbp-row');
+    $dlg.on('input', `#${CLEAR_DIALOG_ID} .atria-cbp-global-name`, (ev) => {
+        const row = ev.currentTarget.closest('.atria-cbp-row');
         const slotName = row?.dataset?.slotName;
         if (!slotName) return;
         const current = picks.get(slotName) || { action: 'save', globalName: slotName };
@@ -411,7 +411,7 @@ async function runSalvageDialogOnce(character, slots, picks) {
     });
 
     // Bulk buttons: set all rows to save/discard in one click.
-    $dlg.on('click', `#${CLEAR_DIALOG_ID} .luker-cbp-bulk-save`, () => {
+    $dlg.on('click', `#${CLEAR_DIALOG_ID} .atria-cbp-bulk-save`, () => {
         for (const slot of slots) {
             const current = picks.get(slot.name) || { action: 'save', globalName: slot.name };
             current.action = 'save';
@@ -419,7 +419,7 @@ async function runSalvageDialogOnce(character, slots, picks) {
         }
         rerenderSalvageDialog(popup, character, slots, picks);
     });
-    $dlg.on('click', `#${CLEAR_DIALOG_ID} .luker-cbp-bulk-discard`, () => {
+    $dlg.on('click', `#${CLEAR_DIALOG_ID} .atria-cbp-bulk-discard`, () => {
         for (const slot of slots) {
             const current = picks.get(slot.name) || { action: 'save', globalName: slot.name };
             current.action = 'discard';
@@ -448,27 +448,27 @@ function renderSalvageDialogHtml(character, slots, picks) {
         const saveChecked = isSave ? 'checked' : '';
         const discardChecked = isSave ? '' : 'checked';
         const defaultBadge = slot.isDefault
-            ? `<span class="luker-cbp-default-badge" title="${escapeHtml(t`This slot is the auto-apply default on character load.`)}">${escapeHtml(t`Default`)}</span>`
+            ? `<span class="atria-cbp-default-badge" title="${escapeHtml(t`This slot is the auto-apply default on character load.`)}">${escapeHtml(t`Default`)}</span>`
             : '';
         // Radio group name uses row index rather than slot name so exotic
         // characters in the slot name (e.g. brackets, quotes) can't break
         // the HTML attribute grouping. Row-DOM has data-slot-name for
         // event handlers to look up the slot instead.
-        const radioName = `luker-cbp-action-row-${idx}`;
+        const radioName = `atria-cbp-action-row-${idx}`;
         return `
-<div class="luker-cbp-row" data-slot-name="${escName}">
-    <div class="luker-cbp-slot">
-        <span class="luker-cbp-slot-name" title="${escName}">${escName}</span>
+<div class="atria-cbp-row" data-slot-name="${escName}">
+    <div class="atria-cbp-slot">
+        <span class="atria-cbp-slot-name" title="${escName}">${escName}</span>
         ${defaultBadge}
     </div>
-    <div class="luker-cbp-choice">
-        <label class="luker-cbp-choice-label">
-            <input type="radio" class="luker-cbp-action" name="${radioName}" value="save" ${saveChecked}>
+    <div class="atria-cbp-choice">
+        <label class="atria-cbp-choice-label">
+            <input type="radio" class="atria-cbp-action" name="${radioName}" value="save" ${saveChecked}>
             ${escapeHtml(t`Save to global preset`)}
         </label>
-        <input type="text" class="luker-cbp-global-name text_pole" value="${escGlobal}" ${disabledAttr} placeholder="${escapeHtml(t`Global preset name`)}">
-        <label class="luker-cbp-choice-label">
-            <input type="radio" class="luker-cbp-action" name="${radioName}" value="discard" ${discardChecked}>
+        <input type="text" class="atria-cbp-global-name text_pole" value="${escGlobal}" ${disabledAttr} placeholder="${escapeHtml(t`Global preset name`)}">
+        <label class="atria-cbp-choice-label">
+            <input type="radio" class="atria-cbp-action" name="${radioName}" value="discard" ${discardChecked}>
             ${escapeHtml(t`Discard`)}
         </label>
     </div>
@@ -476,13 +476,13 @@ function renderSalvageDialogHtml(character, slots, picks) {
     }).join('');
     return `
 <div id="${CLEAR_DIALOG_ID}">
-    <h3 class="luker-cbp-heading">${escapeHtml(t`Clear card-bound presets for '${character?.name ?? ''}'`)}</h3>
-    <p class="luker-cbp-intro">${escapeHtml(t`Choose what to do with each slot. Saved slots become global presets you can reuse on any character. Discarded slots are permanently deleted.`)}</p>
-    <div class="luker-cbp-bulk">
-        <button type="button" class="menu_button luker-cbp-bulk-save">${escapeHtml(t`Save all to global`)}</button>
-        <button type="button" class="menu_button luker-cbp-bulk-discard">${escapeHtml(t`Discard all`)}</button>
+    <h3 class="atria-cbp-heading">${escapeHtml(t`Clear card-bound presets for '${character?.name ?? ''}'`)}</h3>
+    <p class="atria-cbp-intro">${escapeHtml(t`Choose what to do with each slot. Saved slots become global presets you can reuse on any character. Discarded slots are permanently deleted.`)}</p>
+    <div class="atria-cbp-bulk">
+        <button type="button" class="menu_button atria-cbp-bulk-save">${escapeHtml(t`Save all to global`)}</button>
+        <button type="button" class="menu_button atria-cbp-bulk-discard">${escapeHtml(t`Discard all`)}</button>
     </div>
-    <div class="luker-cbp-rows">${rows}</div>
+    <div class="atria-cbp-rows">${rows}</div>
 </div>`;
 }
 
@@ -514,13 +514,13 @@ export async function openManageBoundPresetsDialog(character) {
     };
 
     const withRowName = (ev, fn) => {
-        const row = ev.currentTarget.closest('.luker-mbp-row');
+        const row = ev.currentTarget.closest('.atria-mbp-row');
         const name = row?.dataset?.presetName;
         if (!name) return;
         return fn(name);
     };
 
-    $dlg.on('click', `#${DIALOG_ID} .luker-mbp-set-default`, async (ev) => {
+    $dlg.on('click', `#${DIALOG_ID} .atria-mbp-set-default`, async (ev) => {
         await withRowName(ev, async (name) => {
             try {
                 await setCharacterBoundDefault(character, name);
@@ -533,7 +533,7 @@ export async function openManageBoundPresetsDialog(character) {
         });
     });
 
-    $dlg.on('click', `#${DIALOG_ID} .luker-mbp-overwrite-current`, async (ev) => {
+    $dlg.on('click', `#${DIALOG_ID} .atria-mbp-overwrite-current`, async (ev) => {
         await withRowName(ev, async (name) => {
             const body = getCurrentPresetBodyForBinding();
             if (!body || typeof body !== 'object') {
@@ -557,7 +557,7 @@ export async function openManageBoundPresetsDialog(character) {
         });
     });
 
-    $dlg.on('click', `#${DIALOG_ID} .luker-mbp-update-from-local`, async (ev) => {
+    $dlg.on('click', `#${DIALOG_ID} .atria-mbp-update-from-local`, async (ev) => {
         await withRowName(ev, async (name) => {
             const body = getLocalPresetBody(name);
             if (!body || typeof body !== 'object') {
@@ -576,7 +576,7 @@ export async function openManageBoundPresetsDialog(character) {
         });
     });
 
-    $dlg.on('click', `#${DIALOG_ID} .luker-mbp-rename`, async (ev) => {
+    $dlg.on('click', `#${DIALOG_ID} .atria-mbp-rename`, async (ev) => {
         await withRowName(ev, async (oldName) => {
             const newNameRaw = await Popup.show.input(
                 t`Rename card-bound preset`,
@@ -603,7 +603,7 @@ export async function openManageBoundPresetsDialog(character) {
         });
     });
 
-    $dlg.on('click', `#${DIALOG_ID} .luker-mbp-remove`, async (ev) => {
+    $dlg.on('click', `#${DIALOG_ID} .atria-mbp-remove`, async (ev) => {
         await withRowName(ev, async (name) => {
             const snapshot = getCharacterBoundPreset(character, name);
             const snapshotBody = snapshot?.preset && typeof snapshot.preset === 'object' ? snapshot.preset : null;
@@ -668,8 +668,8 @@ export async function openManageBoundPresetsDialog(character) {
         });
     });
 
-    $dlg.on('click', `#${DIALOG_ID} .luker-mbp-add-button`, async () => {
-        const select = popup.dlg.querySelector('#' + DIALOG_ID + ' #luker-mbp-add-select');
+    $dlg.on('click', `#${DIALOG_ID} .atria-mbp-add-button`, async () => {
+        const select = popup.dlg.querySelector('#' + DIALOG_ID + ' #atria-mbp-add-select');
         const name = String(select?.value ?? '').trim();
         if (!name) {
             toastr.info(t`Select a local preset to add.`);

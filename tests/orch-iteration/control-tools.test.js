@@ -33,13 +33,13 @@ beforeAll(async () => {
 
 describe('Orch iter-popup control tools', () => {
     it('classifies reset_to_blank / reset_to_global as control type', () => {
-        expect(ORCH_TOOL_DISPLAY.luker_orch_reset_live_to_blank?.type).toBe('control');
-        expect(ORCH_TOOL_DISPLAY.luker_orch_reset_live_to_global?.type).toBe('control');
+        expect(ORCH_TOOL_DISPLAY.atri_orch_reset_live_to_blank?.type).toBe('control');
+        expect(ORCH_TOOL_DISPLAY.atri_orch_reset_live_to_global?.type).toBe('control');
     });
 
     it('does NOT include legacy continue / finalize tools in tool-display', () => {
-        expect(ORCH_TOOL_DISPLAY.luker_orch_continue_iteration).toBeUndefined();
-        expect(ORCH_TOOL_DISPLAY.luker_orch_finalize_iteration).toBeUndefined();
+        expect(ORCH_TOOL_DISPLAY.atri_orch_continue_iteration).toBeUndefined();
+        expect(ORCH_TOOL_DISPLAY.atri_orch_finalize_iteration).toBeUndefined();
     });
 
     it('exposes exactly these 2 control tools in the iter popup (drift guard)', () => {
@@ -48,15 +48,15 @@ describe('Orch iter-popup control tools', () => {
             .map(([k]) => k)
             .sort();
         expect(controlNames).toEqual([
-            'luker_orch_reset_live_to_blank',
-            'luker_orch_reset_live_to_global',
+            'atri_orch_reset_live_to_blank',
+            'atri_orch_reset_live_to_global',
         ]);
     });
 
     it('provides a non-empty icon + label for each control tool', () => {
         for (const name of [
-            'luker_orch_reset_live_to_blank',
-            'luker_orch_reset_live_to_global',
+            'atri_orch_reset_live_to_blank',
+            'atri_orch_reset_live_to_global',
         ]) {
             const entry = ORCH_TOOL_DISPLAY[name];
             expect(entry?.icon).toBeTruthy();

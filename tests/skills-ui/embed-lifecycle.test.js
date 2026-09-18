@@ -98,7 +98,7 @@ describe('embed-lifecycle — pure helpers', () => {
         const payload = makePayload(['a']);
         const character = {
             data: {
-                extensions: { luker: { embedded_skills_source: payload } },
+                extensions: { atria: { embedded_skills_source: payload } },
             },
         };
         const out = mod.extractCharacterPayloads(character);
@@ -112,10 +112,10 @@ describe('embed-lifecycle — pure helpers', () => {
         const character = {
             data: {
                 extensions: {
-                    luker: {
+                    atria: {
                         embedded_skills_source: ownPayload,
                         bound_preset: {
-                            extensions: { luker: { embedded_skills_source: boundPayload } },
+                            extensions: { atria: { embedded_skills_source: boundPayload } },
                         },
                     },
                 },
@@ -237,7 +237,7 @@ describe('embed-lifecycle — character handlers', () => {
             characters: [{
                 avatar: 'A.png',
                 data: {
-                    extensions: { luker: { embedded_skills_source: payload } },
+                    extensions: { atria: { embedded_skills_source: payload } },
                 },
             }],
             characterId: 0,
@@ -262,7 +262,7 @@ describe('embed-lifecycle — character handlers', () => {
         const ctx = makeContext({
             characters: [{
                 avatar: 'A.png',
-                data: { extensions: { luker: { embedded_skills_source: payload } } },
+                data: { extensions: { atria: { embedded_skills_source: payload } } },
             }],
             characterId: 0,
         });
@@ -333,7 +333,7 @@ describe('embed-lifecycle — preset handlers', () => {
             },
         });
         await mod.checkPresetEmbeddedSkills({
-            data: { extensions: { luker: { embedded_skills_source: payload } } },
+            data: { extensions: { atria: { embedded_skills_source: payload } } },
             presetName: 'pj-romance',
         }, { context: ctx });
         const args = ctx.skills.previewExtractEmbed.mock.calls[0][0];
@@ -361,7 +361,7 @@ describe('embed-lifecycle — preset handlers', () => {
             },
         });
         await mod.checkPresetEmbeddedSkills({
-            data: { extensions: { luker: { embedded_skills_source: payload } } },
+            data: { extensions: { atria: { embedded_skills_source: payload } } },
             presetName: 'foo',
         }, { context: ctx });
         const args = ctx.skills.previewExtractEmbed.mock.calls[0][0];
@@ -374,7 +374,7 @@ describe('embed-lifecycle — preset handlers', () => {
         const ctx = makeContext({});
         ctx.accountStorage.setItem('AlertSkills_preset_rp4', 'true');
         await mod.checkPresetEmbeddedSkills({
-            data: { extensions: { luker: { embedded_skills_source: payload } } },
+            data: { extensions: { atria: { embedded_skills_source: payload } } },
             presetName: 'rp4',
         }, { context: ctx });
         expect(ctx.skills.previewExtractEmbed).not.toHaveBeenCalled();

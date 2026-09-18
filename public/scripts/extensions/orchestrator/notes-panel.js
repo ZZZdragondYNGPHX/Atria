@@ -76,8 +76,8 @@ function toastReasonForUser(verb, result) {
 }
 
 export async function mountNotesPanel(host, context) {
-    if (!host || host.dataset.luker_notes_mounted === '1') return;
-    host.dataset.luker_notes_mounted = '1';
+    if (!host || host.dataset.atria_notes_mounted === '1') return;
+    host.dataset.atria_notes_mounted = '1';
     host.insertAdjacentHTML('beforeend', NOTES_PANEL_TEMPLATE);
 
     let fs = null;
@@ -103,8 +103,8 @@ export async function mountNotesPanel(host, context) {
 
     await reattachFloorState();
     if (!fs) {
-        const list = host.querySelector('#luker-notes-list');
-        if (list) list.innerHTML = '<li class="luker-notes-empty" data-i18n="No open notes yet">No open notes yet</li>';
+        const list = host.querySelector('#atria-notes-list');
+        if (list) list.innerHTML = '<li class="atria-notes-empty" data-i18n="No open notes yet">No open notes yet</li>';
         // Even without floor state on mount, still wire the CHAT_CHANGED
         // handler — when the user switches to a chat that DOES have a
         // floor state, the next event re-attaches and the panel comes
@@ -112,7 +112,7 @@ export async function mountNotesPanel(host, context) {
     }
 
     let currentTab = 'open';
-    const tabs = host.querySelectorAll('.luker-notes-tab');
+    const tabs = host.querySelectorAll('.atria-notes-tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('is-active'));
@@ -123,25 +123,25 @@ export async function mountNotesPanel(host, context) {
     });
 
     async function rerender() {
-        const list = host.querySelector('#luker-notes-list');
+        const list = host.querySelector('#atria-notes-list');
         if (!list) return;
         if (!fs) {
-            list.innerHTML = `<li class="luker-notes-empty" data-i18n="No ${currentTab} notes yet">No ${currentTab} notes yet</li>`;
+            list.innerHTML = `<li class="atria-notes-empty" data-i18n="No ${currentTab} notes yet">No ${currentTab} notes yet</li>`;
             return;
         }
         const all = await fs.listAcrossFloors();
         const filtered = (Array.isArray(all) ? all : []).filter(e => (e?.status ?? 'open') === currentTab);
         if (filtered.length === 0) {
-            list.innerHTML = `<li class="luker-notes-empty" data-i18n="No ${currentTab} notes yet">No ${currentTab} notes yet</li>`;
+            list.innerHTML = `<li class="atria-notes-empty" data-i18n="No ${currentTab} notes yet">No ${currentTab} notes yet</li>`;
             return;
         }
         list.innerHTML = '';
-        const tmpl = host.querySelector('#luker-notes-row-template');
+        const tmpl = host.querySelector('#atria-notes-row-template');
         for (const entry of filtered) {
             const node = tmpl.content.firstElementChild.cloneNode(true);
             node.dataset.id = entry.id;
-            node.querySelector('.luker-notes-row__text').textContent = entry.text;
-            const reasonEl = node.querySelector('.luker-notes-row__reason');
+            node.querySelector('.atria-notes-row__text').textContent = entry.text;
+            const reasonEl = node.querySelector('.atria-notes-row__reason');
             if (entry.status === 'closed' && entry.closure_reason) {
                 reasonEl.textContent = entry.closure_reason;
                 reasonEl.hidden = false;
@@ -176,8 +176,8 @@ export async function mountNotesPanel(host, context) {
             }
             await rerender();
         } else if (action === 'edit') {
-            const row = btn.closest('.luker-notes-row');
-            const textEl = row.querySelector('.luker-notes-row__text');
+            const row = btn.closest('.atria-notes-row');
+            const textEl = row.querySelector('.atria-notes-row__text');
             if (textEl.contentEditable === 'true') {
                 textEl.contentEditable = 'false';
                 const next = textEl.textContent.trim();

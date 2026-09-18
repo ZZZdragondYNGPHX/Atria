@@ -11,7 +11,7 @@
 
 import { getEmbeddingProfileById, getRerankProfileById } from '../connection-manager/embed-rerank.js';
 import { projectMemorySources } from './source-lifecycle.js';
-const EmbeddingService = Luker.getContext().embeddingService;
+const EmbeddingService = Atria.getContext().embeddingService;
 import {
     validateVectorConfig,
     buildCollectionId,
@@ -249,7 +249,7 @@ export async function syncVectorIndex(store, profile, chatId, options = {}) {
         console.warn('[memory-graph/vector-index] listHashes failed, treating remote as empty:', error);
     }
 
-    projectMemorySources(store, Luker.getContext());
+    projectMemorySources(store, Atria.getContext());
     const desiredByHash = buildDesiredIndexEntries(store, profile, schema);
     const plan = diffAgainstRemote(desiredByHash, remoteHashes);
     const failedNodeIds = [];
@@ -332,7 +332,7 @@ export async function findSimilarNodes(queryText, store, profile, chatId, option
     const collectionId = state.collectionId || buildCollectionId(chatId);
 
     const rawResults = await queryVectorCollection(collectionId, profile, queryText, topK, threshold, signal, includeVectors);
-    projectMemorySources(store, Luker.getContext());
+    projectMemorySources(store, Atria.getContext());
 
     const results = [];
     for (const hit of rawResults) {

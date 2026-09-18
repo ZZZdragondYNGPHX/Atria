@@ -230,7 +230,7 @@ const Def = {
             // Macro args allow nested macros
             enter(Tokens.Macro.Start, modes.macro_def),
 
-            // Preserve Luker's whitespace filter syntax; colon-delimited argument values keep literal pipes.
+            // Preserve Atria's whitespace filter syntax; colon-delimited argument values keep literal pipes.
             using(Tokens.Filter.EscapedPipe),
             enter(Tokens.Filter.Pipe, modes.macro_filter_modifer),
 

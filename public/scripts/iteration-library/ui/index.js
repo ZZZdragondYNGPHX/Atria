@@ -5,7 +5,7 @@
  * CEA character-iteration) and the unified CEA editor (M2) render their
  * conversation surface through these helpers. Plugins customize via the
  * `toolDisplay` and `fieldLabels` opts; visuals (CSS classes prefixed
- * `luker_lib_*`) live in `styles.css` and are loaded once via
+ * `atria_lib_*`) live in `styles.css` and are loaded once via
  * ensureUiStylesheetInjected().
  */
 export * as toolcall from './toolcall.js';

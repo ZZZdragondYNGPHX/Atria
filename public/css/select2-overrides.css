@@ -241,14 +241,14 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     background-color: var(--white30a);
 }
 
-.select2-container.luker-action-select2 {
+.select2-container.atria-action-select2 {
     flex: 1 1 auto;
     width: 100% !important;
     min-width: 0;
     overflow: hidden;
 }
 
-.select2-container.luker-action-select2 .select2-selection--single {
+.select2-container.atria-action-select2 .select2-selection--single {
     min-height: 38px;
     height: 38px;
     display: flex;
@@ -269,7 +269,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
         background-color var(--animation-duration-1x);
 }
 
-.select2-container.luker-action-select2 .select2-selection--single .select2-selection__rendered {
+.select2-container.atria-action-select2 .select2-selection--single .select2-selection__rendered {
     display: flex;
     align-items: center;
     min-width: 0;
@@ -284,12 +284,12 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     line-height: 1.15;
 }
 
-.select2-container.luker-action-select2 .select2-selection--single .select2-selection__placeholder {
+.select2-container.atria-action-select2 .select2-selection--single .select2-selection__placeholder {
     color: color-mix(in srgb, var(--SmartThemeEmColor) 82%, var(--SmartThemeBodyColor));
     font-weight: 400;
 }
 
-.select2-container.luker-action-select2 .select2-selection--single .select2-selection__arrow {
+.select2-container.atria-action-select2 .select2-selection--single .select2-selection__arrow {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -299,7 +299,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     right: 0.15rem;
 }
 
-.select2-container.luker-action-select2 .select2-selection--single .select2-selection__arrow b {
+.select2-container.atria-action-select2 .select2-selection--single .select2-selection__arrow b {
     position: static;
     width: 0.5rem;
     height: 0.5rem;
@@ -311,7 +311,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     transition: transform var(--animation-duration-1x), border-color var(--animation-duration-1x);
 }
 
-.select2-container.luker-action-select2 .select2-selection .select2-selection__clear {
+.select2-container.atria-action-select2 .select2-selection .select2-selection__clear {
     top: 50%;
     right: 1.9rem;
     display: flex;
@@ -329,28 +329,28 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     transition: color var(--animation-duration-1x), transform var(--animation-duration-1x);
 }
 
-.select2-container.luker-action-select2 .select2-selection.select2-selection--single.select2-selection--clearable .select2-selection__clear {
+.select2-container.atria-action-select2 .select2-selection.select2-selection--single.select2-selection--clearable .select2-selection__clear {
     top: 50%;
     right: 1.9rem;
 }
 
-.select2-container.luker-action-select2 .select2-selection .select2-selection__clear:hover {
+.select2-container.atria-action-select2 .select2-selection .select2-selection__clear:hover {
     color: var(--SmartThemeBodyColor);
     transform: translateY(-50%) scale(1.08);
 }
 
 /* Focus/open feedback is the themed border-color change only; the extra
    3px spread ring plus heavy drop shadow read as a redundant glow. */
-.select2-container.luker-action-select2.select2-container--focus .select2-selection--single,
-.select2-container.luker-action-select2.select2-container--open .select2-selection--single {
+.select2-container.atria-action-select2.select2-container--focus .select2-selection--single,
+.select2-container.atria-action-select2.select2-container--open .select2-selection--single {
     border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 42%, var(--SmartThemeBorderColor));
 }
 
-.select2-container.luker-action-select2.select2-container--open .select2-selection--single .select2-selection__arrow b {
+.select2-container.atria-action-select2.select2-container--open .select2-selection--single .select2-selection__arrow b {
     transform: rotate(225deg);
 }
 
-.select2-dropdown.luker-action-select2-dropdown {
+.select2-dropdown.atria-action-select2-dropdown {
     border-radius: 14px !important;
     border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 88%, transparent) !important;
     background:
@@ -361,11 +361,11 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     overflow: hidden;
 }
 
-.luker-action-select2-dropdown .select2-search--dropdown {
+.atria-action-select2-dropdown .select2-search--dropdown {
     padding: 0.55rem 0.55rem 0.35rem;
 }
 
-.luker-action-select2-dropdown .select2-search__field {
+.atria-action-select2-dropdown .select2-search__field {
     min-height: 2.35rem;
     padding: 0.55rem 0.75rem;
     border-radius: 10px;
@@ -374,12 +374,12 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--white30a) 24%, transparent);
 }
 
-.luker-action-select2-dropdown .select2-results > .select2-results__options {
+.atria-action-select2-dropdown .select2-results > .select2-results__options {
     max-height: min(20rem, 50vh);
     padding: 0.2rem 0.35rem 0.45rem;
 }
 
-.luker-action-select2-dropdown .select2-results__option {
+.atria-action-select2-dropdown .select2-results__option {
     margin: 0;
     padding: 0.7rem 0.85rem;
     border-radius: 10px;
@@ -388,11 +388,11 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     line-height: 1.35;
 }
 
-.luker-action-select2-dropdown .select2-results__option::before {
+.atria-action-select2-dropdown .select2-results__option::before {
     display: none;
 }
 
-.luker-action-select2-dropdown .select2-results__option--selectable {
+.atria-action-select2-dropdown .select2-results__option--selectable {
     padding-left: 0.85rem;
     opacity: 0.82;
     transition:
@@ -401,27 +401,27 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
         transform var(--animation-duration-1x);
 }
 
-.luker-action-select2-dropdown .select2-results__option--highlighted.select2-results__option--selectable {
+.atria-action-select2-dropdown .select2-results__option--highlighted.select2-results__option--selectable {
     opacity: 1;
     background: color-mix(in srgb, var(--SmartThemeQuoteColor) 16%, var(--SmartThemeBlurTintColor));
     transform: translateX(2px);
 }
 
-.luker-action-select2-dropdown .select2-results__option--selected {
+.atria-action-select2-dropdown .select2-results__option--selected {
     opacity: 1;
     font-weight: 600;
     background: color-mix(in srgb, var(--SmartThemeQuoteColor) 22%, var(--SmartThemeBlurTintColor));
     box-shadow: inset 3px 0 0 color-mix(in srgb, var(--SmartThemeQuoteColor) 72%, transparent);
 }
 
-.luker-action-select2-option {
+.atria-action-select2-option {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
 }
 
-.luker-action-select2-option__label {
+.atria-action-select2-option__label {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
@@ -429,7 +429,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     white-space: nowrap;
 }
 
-.luker-action-select2-option__delete {
+.atria-action-select2-option__delete {
     flex: 0 0 auto;
     width: 1.85rem;
     height: 1.85rem;
@@ -449,7 +449,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
         transform var(--animation-duration-1x);
 }
 
-.luker-action-select2-option__group {
+.atria-action-select2-option__group {
     flex: 0 0 auto;
     width: 1.85rem;
     height: 1.85rem;
@@ -469,27 +469,27 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
         transform var(--animation-duration-1x);
 }
 
-.luker-action-select2-dropdown .select2-results__option--highlighted .luker-action-select2-option__delete,
-.luker-action-select2-dropdown .select2-results__option--selected .luker-action-select2-option__delete,
-.luker-action-select2-dropdown .select2-results__option--highlighted .luker-action-select2-option__group,
-.luker-action-select2-dropdown .select2-results__option--selected .luker-action-select2-option__group,
-.luker-action-select2-option__group--selected,
-.luker-action-select2-option__group:focus-visible,
-.luker-action-select2-option__delete:focus-visible {
+.atria-action-select2-dropdown .select2-results__option--highlighted .atria-action-select2-option__delete,
+.atria-action-select2-dropdown .select2-results__option--selected .atria-action-select2-option__delete,
+.atria-action-select2-dropdown .select2-results__option--highlighted .atria-action-select2-option__group,
+.atria-action-select2-dropdown .select2-results__option--selected .atria-action-select2-option__group,
+.atria-action-select2-option__group--selected,
+.atria-action-select2-option__group:focus-visible,
+.atria-action-select2-option__delete:focus-visible {
     opacity: 1;
 }
 
-.luker-action-select2-option__group:hover,
-.luker-action-select2-option__group:focus-visible,
-.luker-action-select2-option__group--selected {
+.atria-action-select2-option__group:hover,
+.atria-action-select2-option__group:focus-visible,
+.atria-action-select2-option__group--selected {
     color: color-mix(in srgb, var(--SmartThemeQuoteColor) 85%, var(--SmartThemeBodyColor));
     background: color-mix(in srgb, var(--SmartThemeQuoteColor) 20%, transparent);
     transform: scale(1.06);
     outline: none;
 }
 
-.luker-action-select2-option__delete:hover,
-.luker-action-select2-option__delete:focus-visible {
+.atria-action-select2-option__delete:hover,
+.atria-action-select2-option__delete:focus-visible {
     color: #ffb3b3;
     background: color-mix(in srgb, #b3261e 22%, transparent);
     transform: scale(1.06);
@@ -498,7 +498,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
 
 /* ===== Preset Group: Header ===== */
 
-.luker-preset-group-header {
+.atria-preset-group-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -515,7 +515,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     padding-top: 0.55rem;
 }
 
-.luker-action-select2-dropdown .select2-results__option:has(.luker-preset-group-header) {
+.atria-action-select2-dropdown .select2-results__option:has(.atria-preset-group-header) {
     padding: 0.35rem 0.85rem 0.25rem;
     background: transparent !important;
     opacity: 1 !important;
@@ -523,32 +523,32 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     cursor: pointer;
 }
 
-.luker-action-select2-dropdown .select2-results__option:has(.luker-preset-group-header):first-child .luker-preset-group-header {
+.atria-action-select2-dropdown .select2-results__option:has(.atria-preset-group-header):first-child .atria-preset-group-header {
     border-top: none;
     margin-top: 0;
     padding-top: 0.15rem;
 }
 
-.luker-preset-group-header:hover {
+.atria-preset-group-header:hover {
     color: color-mix(in srgb, var(--SmartThemeBodyColor) 82%, transparent);
 }
 
 /* ===== Preset Group: Chevron ===== */
 
-.luker-preset-group-chevron {
+.atria-preset-group-chevron {
     flex: 0 0 auto;
     font-size: 0.6rem;
     transition: transform 0.2s ease;
     transform: rotate(0deg);
 }
 
-.luker-preset-group-chevron--expanded {
+.atria-preset-group-chevron--expanded {
     transform: rotate(90deg);
 }
 
 /* ===== Preset Group: Header Label & Count ===== */
 
-.luker-preset-group-header__label {
+.atria-preset-group-header__label {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
@@ -556,7 +556,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     white-space: nowrap;
 }
 
-.luker-preset-group-header__count {
+.atria-preset-group-header__count {
     flex: 0 0 auto;
     font-weight: 400;
     font-size: 0.72rem;
@@ -565,7 +565,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
 
 /* ===== Preset Group: Action Buttons ===== */
 
-.luker-preset-group-header__actions {
+.atria-preset-group-header__actions {
     flex: 0 0 auto;
     display: flex;
     gap: 0.15rem;
@@ -573,11 +573,11 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     transition: opacity 0.15s ease;
 }
 
-.luker-preset-group-header:hover .luker-preset-group-header__actions {
+.atria-preset-group-header:hover .atria-preset-group-header__actions {
     opacity: 1;
 }
 
-.luker-preset-group-action {
+.atria-preset-group-action {
     width: 1.4rem;
     height: 1.4rem;
     border: none;
@@ -592,31 +592,31 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     transition: color 0.15s, background-color 0.15s;
 }
 
-.luker-preset-group-action:hover {
+.atria-preset-group-action:hover {
     color: var(--SmartThemeBodyColor);
     background: color-mix(in srgb, var(--SmartThemeBodyColor) 12%, transparent);
 }
 
-.luker-preset-group-action[data-action="delete"]:hover {
+.atria-preset-group-action[data-action="delete"]:hover {
     color: #ffb3b3;
     background: color-mix(in srgb, #b3261e 18%, transparent);
 }
 
 /* ===== Preset Group: Member Indentation ===== */
 
-.luker-preset-group-member {
+.atria-preset-group-member {
     padding-left: 0.6rem;
 }
 
 /* ===== Preset Group: Collapsed Members ===== */
 
-.luker-preset-group-member--hidden {
+.atria-preset-group-member--hidden {
     display: none !important;
 }
 
 /* ===== Preset Group: Dropdown Toolbar ===== */
 
-.luker-preset-group-toolbar {
+.atria-preset-group-toolbar {
     display: flex;
     justify-content: flex-end;
     padding: 0.25rem 0.55rem 0.35rem;
@@ -624,7 +624,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     margin-bottom: 0.25rem;
 }
 
-.luker-preset-group-toolbar__new {
+.atria-preset-group-toolbar__new {
     border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 82%, transparent);
     border-radius: 999px;
     padding: 0.2rem 0.65rem;
@@ -636,8 +636,8 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     transition: background-color var(--animation-duration-1x), color var(--animation-duration-1x), transform var(--animation-duration-1x);
 }
 
-.luker-preset-group-toolbar__new:hover,
-.luker-preset-group-toolbar__new:focus-visible {
+.atria-preset-group-toolbar__new:hover,
+.atria-preset-group-toolbar__new:focus-visible {
     background: color-mix(in srgb, var(--SmartThemeQuoteColor) 16%, var(--SmartThemeBlurTintColor));
     color: var(--SmartThemeBodyColor);
     transform: translateY(-1px);
@@ -646,7 +646,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
 
 /* ===== Preset Context Menu ===== */
 
-.luker-preset-ctx-menu {
+.atria-preset-ctx-menu {
     min-width: 160px;
     max-width: 280px;
     padding: 0.35rem;
@@ -661,7 +661,7 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     -webkit-backdrop-filter: blur(16px);
 }
 
-.luker-preset-ctx-menu__item {
+.atria-preset-ctx-menu__item {
     padding: 0.5rem 0.75rem;
     border-radius: 7px;
     font-size: 0.85rem;
@@ -673,38 +673,38 @@ span.select2.select2-container .select2-selection__choice__remove:hover {
     transition: background-color 0.12s;
 }
 
-.luker-preset-ctx-menu__item:hover {
+.atria-preset-ctx-menu__item:hover {
     background: color-mix(in srgb, var(--SmartThemeQuoteColor) 16%, var(--SmartThemeBlurTintColor));
 }
 
-.luker-preset-ctx-menu__item--active {
+.atria-preset-ctx-menu__item--active {
     font-weight: 600;
     color: var(--SmartThemeQuoteColor);
 }
 
-.luker-preset-ctx-menu__item--label {
+.atria-preset-ctx-menu__item--label {
     font-size: 0.78rem;
     color: color-mix(in srgb, var(--SmartThemeBodyColor) 68%, transparent);
     cursor: default;
 }
 
-.luker-preset-ctx-menu__item--label:hover {
+.atria-preset-ctx-menu__item--label:hover {
     background: transparent;
 }
 
-.luker-preset-ctx-menu__item--new {
+.atria-preset-ctx-menu__item--new {
     color: color-mix(in srgb, var(--SmartThemeQuoteColor) 80%, var(--SmartThemeBodyColor));
 }
 
-.luker-preset-ctx-menu__item--remove {
+.atria-preset-ctx-menu__item--remove {
     color: color-mix(in srgb, #b3261e 70%, var(--SmartThemeBodyColor));
 }
 
-.luker-preset-ctx-menu__item--remove:hover {
+.atria-preset-ctx-menu__item--remove:hover {
     background: color-mix(in srgb, #b3261e 14%, var(--SmartThemeBlurTintColor));
 }
 
-.luker-preset-ctx-menu__divider {
+.atria-preset-ctx-menu__divider {
     height: 1px;
     margin: 0.25rem 0.5rem;
     background: color-mix(in srgb, var(--SmartThemeBorderColor) 50%, transparent);

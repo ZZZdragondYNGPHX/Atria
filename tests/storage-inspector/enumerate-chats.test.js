@@ -138,7 +138,7 @@ describe('enumerateChatFile · L4 leaf', () => {
                 ['chats', 'default_Seraphina', 'Chat 2024-01-15.jsonl']);
             const sidecars = res.entries.filter(e => e.kind === 'chat-sidecar');
             const labels = sidecars.map(s => s.label).sort();
-            expect(labels).toEqual(['luker_orchestrator_anchors__floor_log', 'memory_graph__floor_log']);
+            expect(labels).toEqual(['atri_orchestrator_anchors__floor_log', 'memory_graph__floor_log']);
         } finally {
             await cleanup();
         }

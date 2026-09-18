@@ -143,7 +143,7 @@ test.describe('LAN Sync — multi-user pair and sync', () => {
             label: 'B device',
             categories: ['worlds'],
         });
-        expect(link).toMatch(/^luker-sync:.*peer=alice%40/);
+        expect(link).toMatch(/^atria-sync:.*peer=alice%40/);
 
         // B accepts WITH basic-auth credentials. Without this, A's
         // /session/offer 401s in multi-user mode (the multi-user shim only allows

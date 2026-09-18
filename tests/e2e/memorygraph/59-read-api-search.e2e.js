@@ -126,7 +126,7 @@ async function enableMgViaCheckboxes(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        for (const id of ['luker_rpg_memory_enabled', 'luker_rpg_memory_auto_extraction_enabled']) {
+        for (const id of ['atria_rpg_memory_enabled', 'atria_rpg_memory_auto_extraction_enabled']) {
             const el = document.getElementById(id);
             if (el && !el.checked) {
                 el.checked = true;
@@ -140,8 +140,8 @@ async function enableMgViaCheckboxes(page) {
 async function importBindLatest(page, filePath) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
-    await page.locator('#luker_rpg_memory_import').click();
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click();
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 10_000 });
     await popup.locator('.popup-button-custom', { hasText: /Bind Latest|绑定最新/ }).first().click();
@@ -165,7 +165,7 @@ test.describe('#59 — MG seeded corpus surfaces in real recall flow (real send)
         // the recall path picks from. The 10 imported nodes should all
         // be visible.
         const visible = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return [];
@@ -188,7 +188,7 @@ test.describe('#59 — MG seeded corpus surfaces in real recall flow (real send)
 
         // Type filter — listVisibleCandidates({types}) should narrow.
         const characters = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const items = session ? session.listVisibleCandidates({ types: ['character_sheet'] }) : [];
@@ -198,7 +198,7 @@ test.describe('#59 — MG seeded corpus surfaces in real recall flow (real send)
 
         // Sanity check: keyword search hits an aliased character.
         const kwHits = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const results = session ? await session.keywordSearch({ query: 'drifter', k: 5 }) : [];

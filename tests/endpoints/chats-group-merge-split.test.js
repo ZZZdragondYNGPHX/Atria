@@ -100,7 +100,7 @@ beforeEach(async () => {
     // jest.setup.js only runs once at the jest process start. jest.resetModules()
     // in the previous afterEach wipes the util.js module cache, so the freshly-
     // imported util.js below has CONFIG_PATH = null. Re-pin it here so the
-    // module-eval-time getConfigValue() calls inside luker-generation.js and
+    // module-eval-time getConfigValue() calls inside atria-generation.js and
     // chats.js can find the bundled default config.
     const util = await import('../../src/util.js');
     if (!util.getConfigFilePath()) {

@@ -32,7 +32,7 @@ import { STR } from './strings.js';
  *                                               supplies a function that both translates and
  *                                               interpolates so word order can vary across locales.
  * @param {Function} [opts.renderMarkdown]       (text) => sanitized html. Falls back to escape + <br>.
- * @param {string} [opts.actionAttribute]        e.g. 'data-cpa-it-action'; defaults to 'data-luker-lib-action'
+ * @param {string} [opts.actionAttribute]        e.g. 'data-cpa-it-action'; defaults to 'data-atria-lib-action'
  * @returns {string} HTML
  */
 export function renderMessageCard(message, opts = {}) {
@@ -40,25 +40,25 @@ export function renderMessageCard(message, opts = {}) {
     const role = String(message.role || 'user');
     const i18n = typeof opts.i18n === 'function' ? opts.i18n : (s) => String(s ?? '');
     const renderMd = typeof opts.renderMarkdown === 'function' ? opts.renderMarkdown : null;
-    const actionAttr = opts.actionAttribute || 'data-luker-lib-action';
+    const actionAttr = opts.actionAttribute || 'data-atria-lib-action';
     const msgId = String(message.id || '');
 
     if (role === 'system') {
         const sysBody = renderMd
             ? renderMd(String(message.content || ''))
             : `<em>${escapeHtml(String(message.content || ''))}</em>`;
-        return `<div class="luker_lib_message luker_lib_message_system" data-luker-lib-msg-id="${escapeHtmlAttr(msgId)}">
+        return `<div class="atria_lib_message atria_lib_message_system" data-atria-lib-msg-id="${escapeHtmlAttr(msgId)}">
             ${sysBody}
         </div>`;
     }
     if (role === 'user') {
         // Auto-continue user messages are internal plumbing — they carry
         // an LLM-facing nudge ("Continue with the next iteration step.
-        // Call luker_*_finalize_iteration once …") that the user should
+        // Call atria_*_finalize_iteration once …") that the user should
         // never see in the chat. The loop's progression is already
         // visible as the next assistant turn.
         if (message.auto) return '';
-        const cls = 'luker_lib_message luker_lib_message_user';
+        const cls = 'atria_lib_message atria_lib_message_user';
         const body = escapeHtml(String(message.content || '')).replace(/\n/g, '<br>');
         // Edit affordance: clicking pulls the message text back into the
         // composer textarea, truncates the chat to just before this turn,
@@ -67,8 +67,8 @@ export function renderMessageCard(message, opts = {}) {
         // (sending then re-fires the normal send pipeline). Without the
         // rollback step, edit-and-resend would regenerate against a disk
         // state already polluted by the prior round's commits.
-        const editBtn = `<button class="luker_lib_message_user_edit menu_button menu_button_small" ${actionAttr}="edit-user-message" data-luker-lib-msg-id="${escapeHtmlAttr(msgId)}" title="${escapeHtmlAttr(i18n('Edit and regenerate from here'))}">${escapeHtml(i18n('Edit'))}</button>`;
-        return `<div class="${cls}" data-luker-lib-msg-id="${escapeHtmlAttr(msgId)}">${body}${editBtn}</div>`;
+        const editBtn = `<button class="atria_lib_message_user_edit menu_button menu_button_small" ${actionAttr}="edit-user-message" data-atria-lib-msg-id="${escapeHtmlAttr(msgId)}" title="${escapeHtmlAttr(i18n('Edit and regenerate from here'))}">${escapeHtml(i18n('Edit'))}</button>`;
+        return `<div class="${cls}" data-atria-lib-msg-id="${escapeHtmlAttr(msgId)}">${body}${editBtn}</div>`;
     }
 
     // assistant
@@ -82,9 +82,9 @@ export function renderMessageCard(message, opts = {}) {
         const reasoningBody = renderMd
             ? renderMd(reasoningText)
             : escapeHtml(reasoningText).replace(/\n/g, '<br>');
-        reasoningHtml = `<details class="luker_lib_reasoning_details">
-            <summary class="luker_lib_reasoning_summary">${escapeHtml(i18n('Thinking'))}</summary>
-            <div class="luker_lib_reasoning_body">${reasoningBody}</div>
+        reasoningHtml = `<details class="atria_lib_reasoning_details">
+            <summary class="atria_lib_reasoning_summary">${escapeHtml(i18n('Thinking'))}</summary>
+            <div class="atria_lib_reasoning_body">${reasoningBody}</div>
         </details>`;
     }
 
@@ -131,7 +131,7 @@ export function renderMessageCard(message, opts = {}) {
         && edits.length === 0
         && toolCalls.every(tc => toolDisplay[String(tc?.name || '')]?.type === 'read');
     const readOnlyHint = allRead
-        ? `<div class="luker_lib_message_readonly_hint">${escapeHtml(i18n('AI read the indicated data and is waiting to act on the result next round.'))}</div>`
+        ? `<div class="atria_lib_message_readonly_hint">${escapeHtml(i18n('AI read the indicated data and is waiting to act on the result next round.'))}</div>`
         : '';
 
     void (Boolean(message.appliedAt) && !message.rolledBackAt);
@@ -148,14 +148,14 @@ export function renderMessageCard(message, opts = {}) {
 
     const showRegen = !message.auto;
     const regenHtml = showRegen
-        ? `<div class="luker_lib_message_actions">
-            <button class="menu_button menu_button_small" ${actionAttr}="regenerate" data-luker-lib-msg-id="${escapeHtmlAttr(msgId)}">
+        ? `<div class="atria_lib_message_actions">
+            <button class="menu_button menu_button_small" ${actionAttr}="regenerate" data-atria-lib-msg-id="${escapeHtmlAttr(msgId)}">
                 ${escapeHtml(i18n('Regenerate'))}
             </button>
         </div>`
         : '';
 
-    return `<div class="luker_lib_message luker_lib_message_assistant" data-luker-lib-msg-id="${escapeHtmlAttr(msgId)}">
+    return `<div class="atria_lib_message atria_lib_message_assistant" data-atria-lib-msg-id="${escapeHtmlAttr(msgId)}">
         ${reasoningHtml}
         ${bodyHtml}
         ${readOnlyHint}

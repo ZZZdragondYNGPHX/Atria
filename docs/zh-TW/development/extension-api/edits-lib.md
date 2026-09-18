@@ -37,9 +37,9 @@ import { applyEdits, inverseEdit, registerOp, getRegisteredOp,
          listRegisteredOps, showConflictResolution,
          BUILT_IN_OPS } from '/scripts/lib/edits/index.js';
 
-// lukerContext
-lukerContext.edits.applyEdits(...);
-lukerContext.edits.showConflictResolution(...);
+// atriaContext
+atriaContext.edits.applyEdits(...);
+atriaContext.edits.showConflictResolution(...);
 
 // getContext
 SillyTavern.getContext().edits.applyEdits(...);
@@ -48,7 +48,7 @@ SillyTavern.getContext().edits.showConflictResolution(...);
 
 `showConflictResolution` 同時也從 `/scripts/lib/edits/conflict-ui.js`
 re-export 出來以保持向後相容，但新程式碼應從 `index.js` 匯入（或走
-`lukerContext` / `getContext()` 這兩層），以便與 API 的其餘部分保持一致。
+`atriaContext` / `getContext()` 這兩層），以便與 API 的其餘部分保持一致。
 
 ### `applyEdits(edits, live)`
 

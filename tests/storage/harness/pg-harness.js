@@ -5,10 +5,10 @@ import path from 'node:path';
 import pg from 'pg';
 import { PgEngine } from '../../../src/storage/engines/postgres-engine.js';
 
-// Local dev container default. The luker role (DB owner) can both create and
-// drop schemas inside the luker_test database, so we use it end-to-end rather
+// Local dev container default. The atria role (DB owner) can both create and
+// drop schemas inside the atria_test database, so we use it end-to-end rather
 // than splitting between a superuser-for-DDL and a least-privilege app role.
-const ROOT_URL = process.env.LUKER_TEST_POSTGRES_URL || 'postgresql://luker:postgres@127.0.0.1:55432/luker_test';
+const ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
 
 // Stub directory map. PgEngine stores nothing on disk, but the Repo contract
 // tests share their beforeEach with FsEngine, which means they call
@@ -32,7 +32,7 @@ function buildStubDirs(rootDir) {
     return dirs;
 }
 
-// Each call creates a unique schema inside the shared luker_test database so
+// Each call creates a unique schema inside the shared atria_test database so
 // parallel tests don't collide and a crashed test doesn't leak state into the
 // next run. Cleanup drops the schema CASCADE.
 //
@@ -42,7 +42,7 @@ function buildStubDirs(rootDir) {
 // equivalent is per-schema isolation: every harness call creates a fresh
 // schema namespace and the engine targets it via the connection's search_path.
 export async function makeTempPgEngineHarness() {
-    const schemaName = `luker_test_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const schemaName = `atria_test_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const rootClient = new pg.Client({ connectionString: ROOT_URL });
     await rootClient.connect();
     try {
@@ -57,7 +57,7 @@ export async function makeTempPgEngineHarness() {
     // against pg 8.x and Postgres 16.
     const urlWithSchema = `${ROOT_URL}?options=-csearch_path%3D${encodeURIComponent(schemaName)}`;
     const engine = new PgEngine({ url: urlWithSchema });
-    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-contract-pg-'));
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-contract-pg-'));
     const dirs = buildStubDirs(stubRoot);
     const backupRoot = path.join(stubRoot, '_storage-migrations');
     return {

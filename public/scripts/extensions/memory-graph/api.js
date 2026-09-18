@@ -6,7 +6,7 @@
 //
 // This is the surface third-party extensions and the orchestrator consume:
 //
-//   const memoryApi = Luker.getContext().getExtensionApi('memory-graph');
+//   const memoryApi = Atria.getContext().getExtensionApi('memory-graph');
 //   const session = await memoryApi?.openSession?.(context);
 //   if (session) {
 //       const candidates = session.listVisibleCandidates({ types: ['character_sheet'] });
@@ -21,7 +21,7 @@
 // (handled by memory-graph's own CHAT_CHANGED listener), so callers should
 // open a fresh session per chat.
 
-const registerExtensionApi = Luker.getContext().registerExtensionApi;
+const registerExtensionApi = Atria.getContext().registerExtensionApi;
 import { recallHybridMemory } from './hybrid-runtime.js';
 import { captureMemorySourceSession, assertMemorySourceSession, listMemoryFacts, writeMemoryFacts,
     listMemoryGraph, resolveMemoryEntity, writeMemoryBatch } from './source-lifecycle.js';

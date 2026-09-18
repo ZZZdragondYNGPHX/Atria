@@ -2,9 +2,9 @@
  * Floor-state adapter for the orchestrator extension.
  *
  * Replaces the legacy two-tier persistence scheme (an index namespace
- * `luker_orchestrator_state` listing anchor playable floors, plus one
- * sidecar namespace `luker_orchestrator_anchor_<N>` per anchor) with a
- * single floor-state-managed data namespace `luker_orchestrator_anchors`
+ * `atri_orchestrator_state` listing anchor playable floors, plus one
+ * sidecar namespace `atri_orchestrator_anchor_<N>` per anchor) with a
+ * single floor-state-managed data namespace `atri_orchestrator_anchors`
  * whose contents are `{ [playableFloor]: snapshot }`.
  *
  * Each commit tags itself at `(userMessageChatIndex, userMessageSwipeId)`
@@ -44,10 +44,10 @@ import { seedDefaultCustomToolsIfNeeded } from './seed-default-custom-tools.js';
 import { STATE_ERROR_REASONS } from '../../state-errors.js';
 import { sanitizeLorebookFilter } from './lorebook-filter.js';
 
-const STATE_NAMESPACE = 'luker_orchestrator_anchors';
+const STATE_NAMESPACE = 'atri_orchestrator_anchors';
 const SCHEMA_NAMESPACE = `${STATE_NAMESPACE}__schema`;
-const LEGACY_INDEX_NAMESPACE = 'luker_orchestrator_state';
-const LEGACY_ANCHOR_NAMESPACE_PREFIX = 'luker_orchestrator_anchor_';
+const LEGACY_INDEX_NAMESPACE = 'atri_orchestrator_state';
+const LEGACY_ANCHOR_NAMESPACE_PREFIX = 'atri_orchestrator_anchor_';
 const SCHEMA_VERSION = 1;
 
 /**

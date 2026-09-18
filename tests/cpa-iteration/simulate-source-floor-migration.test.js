@@ -21,10 +21,10 @@ const lodashDefault = (await import('lodash')).default;
 const probeApplyRegex = (raw, placement, params) =>
     `[cooked|p:${placement}|d:${params?.depth ?? 'none'}]${raw}`;
 
-// Full boot surface — cpa-iteration/tools.js captures `Luker.getContext()`
+// Full boot surface — cpa-iteration/tools.js captures `Atria.getContext()`
 // at module load (lib.lodash, skills, generateQuietPrompt …), while
 // lib/plugin-floors.js reaches the engine via the same getContext().regex.
-const lukerCtx = {
+const atriaCtx = {
     skills: {
         list: jest.fn(async () => []),
         get: jest.fn(),
@@ -48,7 +48,7 @@ const lukerCtx = {
         applyRegex: probeApplyRegex,
     },
 };
-globalThis.Luker = { getContext: () => lukerCtx };
+globalThis.Atria = { getContext: () => atriaCtx };
 
 jest.unstable_mockModule('../../public/lib.js', async () => {
     const { default: lodash } = await import('lodash');

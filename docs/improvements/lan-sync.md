@@ -1,10 +1,10 @@
 # LAN Sync
 
-LAN Sync keeps two Luker instances on the same network in sync — desktop and phone, two computers, anything reachable over LAN. Only changed data crosses the wire; full re-uploads aren't needed.
+LAN Sync keeps two Atria instances on the same network in sync — desktop and phone, two computers, anything reachable over LAN. Only changed data crosses the wire; full re-uploads aren't needed.
 
 ## When to use which
 
-Luker has two ways to move data between devices:
+Atria has two ways to move data between devices:
 
 - **[Migrate](/guide/migration)** — one-time, full-data transfer. Best for first install on a new device.
 - **LAN Sync** (this page) — repeated, two-way, incremental. Best when both devices are in regular use.
@@ -81,14 +81,14 @@ Never synced (each device keeps its own):
 
 If a sync overwrites something you wanted back, open the LAN Sync panel and click **Undo last sync**. It rewinds to the state immediately before that sync. The other device is not affected (the undo is local).
 
-For a stronger safety net before a risky sync, use Luker's full ZIP backup (Settings → Back up & Restore) and then sync.
+For a stronger safety net before a risky sync, use Atria's full ZIP backup (Settings → Back up & Restore) and then sync.
 
 ## Storage modes
 
 LAN Sync works the same way on every storage backend. Chats, presets, world books, and the other categories that live in the database are projected back to per-record items for the sync, so conflicts always land at file granularity (one chat, one preset, one world book) regardless of where the data is stored.
 
 - **File storage** (default): data already lives as files on disk and is reconciled directly.
-- **SQLite storage**: rows in `luker-storage.sqlite` are read out and written back per record. A chat edited on both devices surfaces as one conflict on that chat, not a conflict on the whole database.
+- **SQLite storage**: rows in `atria-storage.sqlite` are read out and written back per record. A chat edited on both devices surfaces as one conflict on that chat, not a conflict on the whole database.
 - **MySQL / Postgres storage**: same per-record flow as SQLite. Both devices must be on the same network so the LAN sync can reach each other; the database server itself does not need to be reachable from the peer.
 
 ## Performance

@@ -43,14 +43,14 @@ test('generation-basic: ws-delivery replays every chunk across a mid-stream offl
     // can force-close the ws-delivery socket mid-stream from the test
     // side. Playwright's `setOffline(true)` alone doesn't reliably close
     // already-open sockets on Chromium; explicit .close() from the page
-    // does. We keep the array in window.__lukerObservedSockets and reach
+    // does. We keep the array in window.__atriaObservedSockets and reach
     // into it from the offline block below.
     await context.addInitScript(() => {
-        window.__lukerObservedSockets = [];
+        window.__atriaObservedSockets = [];
         const OrigWS = window.WebSocket;
         window.WebSocket = function PatchedWebSocket(...args) {
             const s = new OrigWS(...args);
-            try { window.__lukerObservedSockets.push(s); } catch { /* Preserve the existing best-effort error handling. */ }
+            try { window.__atriaObservedSockets.push(s); } catch { /* Preserve the existing best-effort error handling. */ }
             return s;
         };
         Object.setPrototypeOf(window.WebSocket, OrigWS);
@@ -80,7 +80,7 @@ test('generation-basic: ws-delivery replays every chunk across a mid-stream offl
     // The event we care about (GENERATION_ENDED) is set up first as a
     // page-side promise so we can rendezvous after the offline blip.
     const doneP = page.evaluate((to) => new Promise((resolve, reject) => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const t = setTimeout(() => reject(new Error('generation timeout')), to);
         const off = ctx.eventSource.on(ctx.eventTypes.GENERATION_ENDED, (chatLength) => {
             clearTimeout(t);
@@ -121,7 +121,7 @@ test('generation-basic: ws-delivery replays every chunk across a mid-stream offl
         // shim: close whatever WebSocket handle is reachable via known
         // globals. In practice the hook is installed at test start (see
         // the `addInitScript` below) so this branch is a no-op.
-        (window.__lukerObservedSockets || []).forEach(s => {
+        (window.__atriaObservedSockets || []).forEach(s => {
             try { s.close(); } catch { /* Preserve the existing best-effort error handling. */ }
         });
     });

@@ -23,7 +23,7 @@ import {
 } from './persistence.js';
 import { registerSearchToolsOrchestrationTools } from './orchestrator-tools.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const eventSource = __ctx.eventSource;
 const event_types = __ctx.eventTypes;
 const extension_prompt_roles = __ctx.constants.promptRoles;
@@ -31,7 +31,7 @@ const getRequestHeaders = __ctx.getRequestHeaders;
 const saveSettings = __ctx.saveSettings;
 const saveSettingsDebounced = __ctx.saveSettingsDebounced;
 const extension_settings = __ctx.extensionSettings;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const addLocaleData = __ctx.addLocaleData;
 const translate = __ctx.translate;
 const SECRET_KEYS = __ctx.secrets.KEYS;
@@ -54,13 +54,13 @@ const MANAGED_COMMENT_PREFIX = 'SEARCH_TOOLS';
 const ALLOWED_GENERATION_TYPES = new Set(['normal', 'continue', 'regenerate', 'swipe', 'impersonate']);
 const REUSE_GENERATION_TYPES = new Set(['continue', 'regenerate', 'swipe']);
 const TOOL_NAMES = Object.freeze({
-    SEARCH: 'luker_web_search',
-    VISIT: 'luker_web_visit',
-    AGENT_SEARCH: 'luker_search_agent_search',
-    AGENT_VISIT: 'luker_search_agent_visit',
-    AGENT_UPSERT: 'luker_search_agent_upsert_lorebook_entry',
-    AGENT_DELETE: 'luker_search_agent_delete_lorebook_entry',
-    AGENT_FINALIZE: 'luker_search_agent_finalize',
+    SEARCH: 'atri_web_search',
+    VISIT: 'atri_web_visit',
+    AGENT_SEARCH: 'atri_search_agent_search',
+    AGENT_VISIT: 'atri_search_agent_visit',
+    AGENT_UPSERT: 'atri_search_agent_upsert_lorebook_entry',
+    AGENT_DELETE: 'atri_search_agent_delete_lorebook_entry',
+    AGENT_FINALIZE: 'atri_search_agent_finalize',
 });
 const EXPORTED_TOOL_NAMES = Object.freeze({
     SEARCH: TOOL_NAMES.SEARCH,
@@ -1109,10 +1109,10 @@ async function invokeSharedSearchToolCall(call, { abortSignal = null } = {}) {
 
 function installGlobalApi() {
     const root = globalThis;
-    if (!root.Luker || typeof root.Luker !== 'object') {
-        root.Luker = {};
+    if (!root.Atria || typeof root.Atria !== 'object') {
+        root.Atria = {};
     }
-    root.Luker.searchTools = {
+    root.Atria.searchTools = {
         toolNames: EXPORTED_TOOL_NAMES,
         getToolDefs: () => getSharedSearchToolDefs(),
         isToolName: (name) => isSharedSearchToolName(name),
@@ -2193,7 +2193,7 @@ function buildSearchAgentUserPrompt(payload, {
         ? [...payload.coreChat].reverse().find(message => message?.is_user)
         : null;
     const userText = normalizeMultilineText(lastUserMessage?.mes || '');
-    const allToolNames = Object.values(TOOL_NAMES).filter(name => name.startsWith('luker_search_agent_'));
+    const allToolNames = Object.values(TOOL_NAMES).filter(name => name.startsWith('atri_search_agent_'));
     const finalStageToolNames = [
         TOOL_NAMES.AGENT_UPSERT,
         TOOL_NAMES.AGENT_DELETE,

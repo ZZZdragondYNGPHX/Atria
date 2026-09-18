@@ -14,7 +14,7 @@
  *   precedence changes. This spec is the contract test for that property.
  *
  * Prerequisites:
- *   - Luker dev server is running (PLAYWRIGHT_BASE_URL or default 127.0.0.1:8000).
+ *   - Atria dev server is running (PLAYWRIGHT_BASE_URL or default 127.0.0.1:8000).
  *   - A character is loaded (any character — we use its avatar for the
  *     character-scope move). Without one, the test soft-skips.
  *
@@ -77,7 +77,7 @@ test.describe('Skills: scope migration (global -> preset -> character)', () => {
         });
 
         await page.evaluate(async ({ scope, payload }) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             await ctx.skills.executeExtractEmbed({
                 payload,
                 targetScope: scope,
@@ -114,7 +114,7 @@ test.describe('Skills: scope migration (global -> preset -> character)', () => {
 
         // ── 2. Move global -> preset ─────────────────────────────────────
         await page.evaluate(async ({ name, from, to }) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             await ctx.skills.moveScope(name, from, to);
         }, { name: FIXTURE_SKILL_NAME, from: scopes.global, to: scopes.preset });
 
@@ -130,7 +130,7 @@ test.describe('Skills: scope migration (global -> preset -> character)', () => {
 
         // ── 3. Move preset -> character ──────────────────────────────────
         await page.evaluate(async ({ name, from, to }) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             await ctx.skills.moveScope(name, from, to);
         }, { name: FIXTURE_SKILL_NAME, from: scopes.preset, to: scopes.character });
 
@@ -150,7 +150,7 @@ test.describe('Skills: scope migration (global -> preset -> character)', () => {
         // moves), but we verify the resolver still finds it after the
         // character move — proving the walk reached the character row.
         const resolved = await page.evaluate(async (name) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const all = await ctx.skills.list({ scope: 'all' });
             return (all || []).find(s => s.name === name) || null;
         }, FIXTURE_SKILL_NAME);
@@ -163,7 +163,7 @@ test.describe('Skills: scope migration (global -> preset -> character)', () => {
         // user's director profile doesn't carry a dead reference.
         await page.evaluate(async (name) => {
             try {
-                const settings = window.extension_settings?.luker_orchestrator;
+                const settings = window.extension_settings?.atria_orchestrator;
                 if (!settings) return;
                 const dir = settings.directorProfile;
                 if (dir?.skills?.visible && Array.isArray(dir.skills.visible)) {
@@ -192,7 +192,7 @@ test.describe('Skills: scope migration (global -> preset -> character)', () => {
  */
 async function assertSkillScope(page, name, expectedKind) {
     const entry = await page.evaluate(async (name) => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const all = await ctx.skills.list({ scope: 'all' });
         return (all || []).find(s => s.name === name) || null;
     }, name);
@@ -211,7 +211,7 @@ async function assertSkillScope(page, name, expectedKind) {
  */
 async function readDirectorVisibleList(page) {
     return await page.evaluate(() => {
-        const settings = window.extension_settings?.luker_orchestrator;
+        const settings = window.extension_settings?.atria_orchestrator;
         const visible = settings?.directorProfile?.skills?.visible;
         return Array.isArray(visible) ? [...visible] : [];
     });
@@ -227,7 +227,7 @@ async function readDirectorVisibleList(page) {
  */
 async function ensureSkillReferencedInDirectorProfile(page, name) {
     await page.evaluate((name) => {
-        const settings = window.extension_settings?.luker_orchestrator;
+        const settings = window.extension_settings?.atria_orchestrator;
         if (!settings) return;
         if (!settings.directorProfile) settings.directorProfile = {};
         if (!settings.directorProfile.skills) settings.directorProfile.skills = { visible: [], deny: [] };

@@ -1,6 +1,6 @@
 # Unified Generation Layer
 
-The Unified Generation Layer is a backend architecture improvement introduced by Luker that consolidates generation logic scattered across various API endpoints into a shared module, achieving unified wrapping for multiple backends.
+The Unified Generation Layer is a backend architecture improvement introduced by Atria that consolidates generation logic scattered across various API endpoints into a shared module, achieving unified wrapping for multiple backends.
 
 ## Problem Background
 
@@ -13,7 +13,7 @@ In SillyTavern, different AI backends (OpenAI, Anthropic, Google, Kobold, etc.) 
 
 ## Solution
 
-Luker introduces a Unified Generation Layer endpoint (`/api/backends/luker-generation`) as the primary path for the frontend to initiate AI generation requests. This endpoint receives generation requests from the frontend, forwards them to the corresponding upstream API based on the current Chat Completion Source, and completes streaming response handling, token metering, generation acknowledgment, and persistence within a unified processing pipeline.
+Atria introduces a Unified Generation Layer endpoint (`/api/backends/atria-generation`) as the primary path for the frontend to initiate AI generation requests. This endpoint receives generation requests from the frontend, forwards them to the corresponding upstream API based on the current Chat Completion Source, and completes streaming response handling, token metering, generation acknowledgment, and persistence within a unified processing pipeline.
 
 ### Multi-Backend Unified Wrapping
 
@@ -61,7 +61,7 @@ FE: "Frontend initiates AI generation request"
 EP: "Per-backend endpoint files\nchat-completions.js / kobold.js / ..." {
   shape: diamond
 }
-UL: "Unified Generation Layer\n/api/backends/luker-generation" {
+UL: "Unified Generation Layer\n/api/backends/atria-generation" {
   style.fill: "#e1f5ff"
 }
 INSP: "Request Inspector\nToken metering" {

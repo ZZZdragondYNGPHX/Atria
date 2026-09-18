@@ -62,7 +62,7 @@ export function readStateProviders(context, settings = {}, host = globalThis) {
     }
     let lore = { providerId: 'lorestate', status: 'absent', fields: [] };
     const bus = context.eventSource;
-    // Verified Luker synchronous dispatch -> Tavern Helper wrapper -> LoreState
+    // Verified Atria synchronous dispatch -> Tavern Helper wrapper -> LoreState
     // synchronous read-only prepare handler. No template execution or private slot.
     if (typeof bus?.emitAndWait === 'function' && bus.getListenersMeta?.(PREPARE_EVENT)?.length) {
         try {

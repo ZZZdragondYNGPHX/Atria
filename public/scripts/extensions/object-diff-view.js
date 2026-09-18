@@ -165,7 +165,7 @@ export function renderObjectDiffHtml({
     const safeMissingLabel = String(missingLabel || '(missing)');
 
     return `
-<div class="luker_object_diff">
+<div class="atria_object_diff">
     ${items.map((item) => {
         const formattedPathLabel = typeof pathLabelFormatter === 'function'
             ? pathLabelFormatter(String(item?.path || '(root)'), item)
@@ -190,8 +190,8 @@ export function renderObjectDiffHtml({
             });
             if (customBody) {
                 return `
-    <div class="luker_object_diff_item">
-        <div class="luker_object_diff_path">${pathLabel}</div>
+    <div class="atria_object_diff_item">
+        <div class="atria_object_diff_path">${pathLabel}</div>
         ${customBody}
     </div>`;
             }
@@ -203,24 +203,24 @@ export function renderObjectDiffHtml({
             ? renderTextDiff(beforeTextForDiff, afterTextForDiff, String(item?.path || '(root)'))
             : '';
         const beforeContent = beforePayload.missing
-            ? `<div class="luker_object_diff_missing">${escapeHtml(beforePayload.text)}</div>`
+            ? `<div class="atria_object_diff_missing">${escapeHtml(beforePayload.text)}</div>`
             : `<pre>${escapeHtml(beforePayload.text || safeEmptyLabel)}</pre>`;
         const afterContent = afterPayload.missing
-            ? `<div class="luker_object_diff_missing">${escapeHtml(afterPayload.text)}</div>`
+            ? `<div class="atria_object_diff_missing">${escapeHtml(afterPayload.text)}</div>`
             : `<pre>${escapeHtml(afterPayload.text || safeEmptyLabel)}</pre>`;
         return `
-    <div class="luker_object_diff_item">
-        <div class="luker_object_diff_path">${pathLabel}</div>
+    <div class="atria_object_diff_item">
+        <div class="atria_object_diff_path">${pathLabel}</div>
         ${textDiffHtml ? `
-        <div class="luker_object_diff_text">${textDiffHtml}</div>
+        <div class="atria_object_diff_text">${textDiffHtml}</div>
         ` : `
-        <div class="luker_object_diff_grid">
-            <div class="luker_object_diff_col before">
-                <div class="luker_object_diff_col_title">${safeBeforeLabel}</div>
+        <div class="atria_object_diff_grid">
+            <div class="atria_object_diff_col before">
+                <div class="atria_object_diff_col_title">${safeBeforeLabel}</div>
                 ${beforeContent}
             </div>
-            <div class="luker_object_diff_col after">
-                <div class="luker_object_diff_col_title">${safeAfterLabel}</div>
+            <div class="atria_object_diff_col after">
+                <div class="atria_object_diff_col_title">${safeAfterLabel}</div>
                 ${afterContent}
             </div>
         </div>

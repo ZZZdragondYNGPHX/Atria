@@ -1,7 +1,7 @@
 import { validateParsedToolCalls } from '../function-call-runtime.js';
 import { FACT_TOOL_NAME } from './fact-extraction.js';
 
-export const EXTRACT_DONE = 'luker_rpg_extract_done';
+export const EXTRACT_DONE = 'atria_rpg_extract_done';
 
 const RELATION_TARGET_SEMANTIC_TYPE = Object.freeze({
     occurred_at: 'location_state',
@@ -113,12 +113,12 @@ export function validateExtractTransaction({ calls = [], tools = [], requiredTyp
     const count = name => names.filter(value => value === name).length;
     const toolNames = (type, op) => {
         const mapped = Object.entries(toolTypes).filter(([, spec]) => spec.type === type && spec.op === op).map(([name]) => name);
-        return mapped.length ? mapped : [`luker_rpg_extract_${type.replace(/[^a-z0-9_]/g, '_')}_${op}`];
+        return mapped.length ? mapped : [`atria_rpg_extract_${type.replace(/[^a-z0-9_]/g, '_')}_${op}`];
     };
     const requiredWrites = requiredTypes.filter(type => !calls.some(call =>
         toolNames(type, 'create').includes(call.name) || (type !== 'event' && toolNames(type, 'edit').includes(call.name))));
     missing.push(...requiredWrites.flatMap(type => toolNames(type, 'create')));
-    if (count('luker_rpg_extract_event_create') > 1) duplicate.push('luker_rpg_extract_event_create');
+    if (count('atria_rpg_extract_event_create') > 1) duplicate.push('atria_rpg_extract_event_create');
     for (const name of [EXTRACT_DONE, ...(memoryOsEnabled ? [FACT_TOOL_NAME] : [])]) {
         if (!count(name)) missing.push(name);
         if (count(name) > 1) duplicate.push(name);
@@ -158,7 +158,7 @@ export function validateExtractTransaction({ calls = [], tools = [], requiredTyp
         : memoryOsEnabled && !count(FACT_TOOL_NAME) ? 'MEMORY_FACTS_PENDING'
             : !count(EXTRACT_DONE) ? 'DONE_PENDING' : 'COMPLETE';
     return { valid: !invalid && missing.length === 0, invalid, missing, requiredWrites, duplicate, orderingErrors, malformed, phase,
-        event_create: count('luker_rpg_extract_event_create'), memory_facts_count: count(FACT_TOOL_NAME),
+        event_create: count('atria_rpg_extract_event_create'), memory_facts_count: count(FACT_TOOL_NAME),
         done_count: count(EXTRACT_DONE), done_is_last: names.at(-1) === EXTRACT_DONE };
 }
 
@@ -185,7 +185,7 @@ export async function collectExtractTransaction({ send, tools, requiredTypes, me
             return state.missing.includes(name) || (spec?.op === 'edit' && spec.type !== 'event' && state.requiredWrites.includes(spec.type));
         });
         const messages = !repair ? taskMessages : [
-            { role: 'system', content: 'Complete only the missing extraction steps using the available tools. Completed calls are staged, not committed. Never recreate staged nodes. Calls rejected by schema or transaction validation are not staged: correct only those missing calls using the CURRENT exposed tool schema exactly. Semantic target_ref/source_ref values may reference any semantic ref created anywhere in the same staged transaction, including later calls, but refs declared inside luker_memory_facts.graphOperations are a separate namespace and must never be reused by luker_rpg_extract_* tools. If no semantic target exists, omit that link or use a known graph_data node_id. Do not reuse legacy argument keys or wrappers. Do not output analysis or ordinary text.' },
+            { role: 'system', content: 'Complete only the missing extraction steps using the available tools. Completed calls are staged, not committed. Never recreate staged nodes. Calls rejected by schema or transaction validation are not staged: correct only those missing calls using the CURRENT exposed tool schema exactly. Semantic target_ref/source_ref values may reference any semantic ref created anywhere in the same staged transaction, including later calls, but refs declared inside atri_memory_facts.graphOperations are a separate namespace and must never be reused by atria_rpg_extract_* tools. If no semantic target exists, omit that link or use a known graph_data node_id. Do not reuse legacy argument keys or wrappers. Do not output analysis or ordinary text.' },
             { role: 'user', content: JSON.stringify({ phase: state.phase,
                 completed: calls.map(call => ({ name: call.name, ref: call.args?.ref, node_id: call.args?.node_id })), missing: state.missing,
                 ...(validationErrors.length ? { validation_errors: validationErrors } : {}) })

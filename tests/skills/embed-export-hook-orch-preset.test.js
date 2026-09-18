@@ -8,7 +8,7 @@ import { jest } from '@jest/globals';
 //   source scope, calls context.skills.packForEmbed({scope, names}) per
 //   group, merges items[] with orch-preset > preset > global precedence,
 //   and attaches {version:1, items:[...]} to
-//   payload.extensions.luker.embedded_skills_source.
+//   payload.extensions.atria.embedded_skills_source.
 //
 // If the orchestrator API is unavailable (dev/test without plugin), the
 // hook falls back to the prior scope-local behavior (context.skills.list
@@ -77,7 +77,7 @@ describe('maybeAttachSkillsToOrchPresetExport', () => {
         });
         expect(result).toBe(true);
         expect(ctx.skills.packForEmbed).toHaveBeenCalledTimes(2);
-        const items = payload.extensions.luker.embedded_skills_source.items;
+        const items = payload.extensions.atria.embedded_skills_source.items;
         expect(items.map(i => i.name).sort()).toEqual(['skillG', 'skillO']);
     });
 
@@ -100,7 +100,7 @@ describe('maybeAttachSkillsToOrchPresetExport', () => {
             context: ctx, payload, t: (s) => s,
         });
         expect(result).toBe(true);
-        const items = payload.extensions.luker.embedded_skills_source.items;
+        const items = payload.extensions.atria.embedded_skills_source.items;
         expect(items).toHaveLength(1);
         expect(items[0].name).toBe('shared');
         expect(items[0].files[0].content).toBe('ORCH');
@@ -174,8 +174,8 @@ describe('maybeAttachSkillsToOrchPresetExport', () => {
             context: ctx, payload, t: (s) => s,
         });
         expect(result).toBe(true);
-        expect(payload.extensions?.luker?.embedded_skills_source).toBeDefined();
-        expect(payload.extensions.luker.embedded_skills_source.items).toHaveLength(1);
+        expect(payload.extensions?.atria?.embedded_skills_source).toBeDefined();
+        expect(payload.extensions.atria.embedded_skills_source.items).toHaveLength(1);
     });
 
     // Fallback path: when the orchestrator plugin isn't loaded (dev/test),

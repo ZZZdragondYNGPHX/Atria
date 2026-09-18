@@ -15,7 +15,7 @@ describe('preflightNameLengths', () => {
     let sourceRepos;
 
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-preflight-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-preflight-'));
         const userDir = path.join(tmpDir, handle);
         const dirs = {
             root: userDir,

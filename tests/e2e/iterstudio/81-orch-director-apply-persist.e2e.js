@@ -3,7 +3,7 @@
 // REAL USER-GESTURE flow:
 //   1. Open the orchestrator iter-studio popup via real clicks
 //      (extensions drawer → orchestrator panel → "Open AI Iteration Studio").
-//   2. Script a `luker_orch_set_director_main_agent` tool_call on the mock.
+//   2. Script a `atri_orch_set_director_main_agent` tool_call on the mock.
 //   3. Click Send via sendIterPrompt; wait for Apply button.
 //   4. Click Apply via applyIterBatch.
 //   5. Close popup. Verify:
@@ -79,7 +79,7 @@ test.describe('#81 — Orchestrator iter-studio Apply → director profile persi
 
         // Script the tool_call.
         mock.scriptToolCall({
-            name: 'luker_orch_set_director_main_agent',
+            name: 'atri_orch_set_director_main_agent',
             arguments: { systemPrompt: NEW_DIRECTOR_PROMPT },
         });
 
@@ -95,7 +95,7 @@ test.describe('#81 — Orchestrator iter-studio Apply → director profile persi
         // In-memory: active director preset slot carries the new prompt.
         await expect.poll(async () => {
             return await page.evaluate(() => {
-                const ctx = window.Luker.getContext();
+                const ctx = window.Atria.getContext();
                 const s = ctx.extensionSettings.orchestrator;
                 const activeId = s?.activePresetIds?.director || '';
                 return s?.presetLibraries?.director?.[activeId]?.mainAgent?.systemPrompt || '';
@@ -114,7 +114,7 @@ test.describe('#81 — Orchestrator iter-studio Apply → director profile persi
         expect(afterRestart.mainAgent?.systemPrompt).toBe(NEW_DIRECTOR_PROMPT);
 
         const inMem = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.extensionSettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return s?.presetLibraries?.director?.[activeId]?.mainAgent?.systemPrompt || '';

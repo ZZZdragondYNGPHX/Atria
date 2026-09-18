@@ -9,7 +9,7 @@
  *     activated this turn** (those have already been injected into the
  *     main model via main-flow World Info, so the agent rediscovering
  *     them wastes a round). The activated set rides on the run context
- *     at `context.__lukerRun.activatedEntryKeys`, populated by the
+ *     at `context.__atriaRun.activatedEntryKeys`, populated by the
  *     orchestrator's `onWorldInfoFinalized` hook. Emits grep -n style
  *     output: one matched line per result as
  *     `[{book}] {entry_name}:{lineno}: {line_content}`.
@@ -36,7 +36,7 @@ function entryActivationKey(entry) {
 
 /**
  * Source-side gatekeeper for every lorebook exec: reads the per-run
- * `lorebookFilter` off `context.__lukerRun`, compiles it, and returns
+ * `lorebookFilter` off `context.__atriaRun`, compiles it, and returns
  * a `{isEmpty, test(book, entry)}` handle. Callers filter inputs BEFORE
  * any user-visible output is shaped so that a filtered book/entry is
  * indistinguishable from a genuinely absent one — zero side channel to
@@ -44,7 +44,7 @@ function entryActivationKey(entry) {
  * skip the filter loop entirely (no perf cost).
  */
 function getCompiledFilter(context) {
-    const raw = context?.__lukerRun?.lorebookFilter;
+    const raw = context?.__atriaRun?.lorebookFilter;
     return compileLorebookFilter(raw || { bookPattern: '', entryPattern: '' });
 }
 
@@ -72,7 +72,7 @@ async function loadAllEnabledEntries(context) {
         const result = await context.__getSortedEntriesFn();
         entries = Array.isArray(result) ? result : [];
     } else {
-        const getSorted = Luker.getContext().worldInfoEntry?.getSorted;
+        const getSorted = Atria.getContext().worldInfoEntry?.getSorted;
         if (typeof getSorted !== 'function') return [];
         const raw = await getSorted();
         entries = Array.isArray(raw) ? raw : [];
@@ -92,7 +92,7 @@ function entryDisplayName(entry) {
  * activated this turn (those are already in the main model context).
  *
  * @param {{ pattern: string, flags?: string, book?: string }} args
- * @param {object} context — run context (carries `__lukerRun` + loader hook)
+ * @param {object} context — run context (carries `__atriaRun` + loader hook)
  * @returns {Promise<{ok: true, output: string} | {ok: false, error: string}>}
  */
 export async function execLorebookSearch(args, context) {
@@ -109,8 +109,8 @@ export async function execLorebookSearch(args, context) {
 
     const entries = await loadAllEnabledEntries(context);
     const compiled = getCompiledFilter(context);
-    const activated = context?.__lukerRun?.activatedEntryKeys instanceof Set
-        ? context.__lukerRun.activatedEntryKeys
+    const activated = context?.__atriaRun?.activatedEntryKeys instanceof Set
+        ? context.__atriaRun.activatedEntryKeys
         : new Set();
 
     function* corpus() {
@@ -201,10 +201,10 @@ export async function execLorebookGet(args, context) {
  * global — and the first writer wins so a book bound at multiple scopes
  * is tagged by its strongest binding.
  *
- * Production reads everything off `Luker.getContext()`. Tests inject
+ * Production reads everything off `Atria.getContext()`. Tests inject
  * `context.__getWorldScopesFn` to bypass the global, matching the
  * `__getSortedEntriesFn` seam used by `loadAllEnabledEntries`. When
- * Luker is unavailable (or fields throw), the map is returned as-is
+ * Atria is unavailable (or fields throw), the map is returned as-is
  * and per-book lookups gracefully fall back to `unknown`.
  */
 async function loadWorldBookScopes(context) {
@@ -215,8 +215,8 @@ async function loadWorldBookScopes(context) {
         return new Map();
     }
     const scopes = new Map();
-    if (typeof Luker === 'undefined' || typeof Luker.getContext !== 'function') return scopes;
-    const ctx = Luker.getContext();
+    if (typeof Atria === 'undefined' || typeof Atria.getContext !== 'function') return scopes;
+    const ctx = Atria.getContext();
     if (!ctx) return scopes;
 
     const push = (name, scope) => {
@@ -380,8 +380,8 @@ export async function execLorebookList(args, context) {
 
     const entries = await loadAllEnabledEntries(context);
     const compiled = getCompiledFilter(context);
-    const activated = context?.__lukerRun?.activatedEntryKeys instanceof Set
-        ? context.__lukerRun.activatedEntryKeys
+    const activated = context?.__atriaRun?.activatedEntryKeys instanceof Set
+        ? context.__atriaRun.activatedEntryKeys
         : new Set();
 
     const lines = [];

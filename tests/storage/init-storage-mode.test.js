@@ -12,15 +12,15 @@ import { PgEngine } from '../../src/storage/engines/postgres-engine.js';
 
 // Live-container settings mirror tests/storage/harness/{mysql,pg}-harness.js so
 // the smoke tests fail in the same conditions as the contract suite.
-const MYSQL_ROOT_URL = process.env.LUKER_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
-const PG_ROOT_URL = process.env.LUKER_TEST_POSTGRES_URL || 'postgresql://luker:postgres@127.0.0.1:55432/luker_test';
-const skipMysql = !!process.env.LUKER_DISABLE_MYSQL_TESTS;
-const skipPostgres = !!process.env.LUKER_DISABLE_POSTGRES_TESTS;
+const MYSQL_ROOT_URL = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
+const PG_ROOT_URL = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
+const skipMysql = !!process.env.ATRIA_DISABLE_MYSQL_TESTS;
+const skipPostgres = !!process.env.ATRIA_DISABLE_POSTGRES_TESTS;
 
 describe('initStorage mode switch', () => {
     let tmpDir;
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-init-mode-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-init-mode-'));
     });
     afterEach(() => {
         fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -90,7 +90,7 @@ describeMysql('initStorage mode: "mysql" against live container', () => {
     let url;
 
     beforeEach(async () => {
-        dbName = `luker_test_init_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+        dbName = `atria_test_init_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
         const rootConn = await mysql.createConnection(MYSQL_ROOT_URL);
         try {
             await rootConn.query(
@@ -132,7 +132,7 @@ describePostgres('initStorage mode: "postgres" against live container', () => {
     let url;
 
     beforeEach(async () => {
-        schemaName = `luker_test_init_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+        schemaName = `atria_test_init_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
         const rootClient = new pg.Client({ connectionString: PG_ROOT_URL });
         await rootClient.connect();
         try {

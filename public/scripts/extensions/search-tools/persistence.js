@@ -2,10 +2,10 @@
  * Floor-state adapter for the search-tools extension.
  *
  * Replaces the legacy two-tier persistence scheme — the index namespace
- * `luker_search_tools_state` (listing anchor playable floors plus a
+ * `atria_search_tools_state` (listing anchor playable floors plus a
  * fallback `managedEntries` array) with one per-anchor sidecar
- * `luker_search_tools_state_anchor_<N>` per anchor — with a single
- * floor-state-managed data namespace `luker_search_tools_anchors` whose
+ * `atria_search_tools_state_anchor_<N>` per anchor — with a single
+ * floor-state-managed data namespace `atria_search_tools_anchors` whose
  * contents are `{ [playableFloor]: snapshot }`.
  *
  * The new namespace is intentionally renamed: floor-state's CHAT_CHANGED
@@ -59,9 +59,9 @@ import {
 } from './anchors.js';
 import { STATE_ERROR_REASONS, makeStateError } from '../../state-errors.js';
 
-const STATE_NAMESPACE = 'luker_search_tools_anchors';
+const STATE_NAMESPACE = 'atria_search_tools_anchors';
 const META_NAMESPACE = `${STATE_NAMESPACE}__meta`;
-const LEGACY_INDEX_NAMESPACE = 'luker_search_tools_state';
+const LEGACY_INDEX_NAMESPACE = 'atria_search_tools_state';
 const LEGACY_ANCHOR_NAMESPACE_PREFIX = `${LEGACY_INDEX_NAMESPACE}_anchor_`;
 const SCHEMA_VERSION = 1;
 

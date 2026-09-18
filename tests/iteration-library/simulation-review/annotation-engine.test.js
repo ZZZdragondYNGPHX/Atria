@@ -55,8 +55,8 @@ test('addAnnotation wraps selection in <mark> and emits change with new id', () 
     expect(created.snippet).toBe('bar');
     expect(created.comment).toBe('feels weak');
     expect(created.path).toBe('A');
-    expect(host.querySelector('mark.luker-sim-annotation')).not.toBeNull();
-    expect(host.querySelector('mark.luker-sim-annotation').getAttribute('data-ann-id')).toBe('1');
+    expect(host.querySelector('mark.atria-sim-annotation')).not.toBeNull();
+    expect(host.querySelector('mark.atria-sim-annotation').getAttribute('data-ann-id')).toBe('1');
     expect(changes).toEqual([1]);
 });
 
@@ -77,7 +77,7 @@ test('deleteAnnotation unwraps the mark and reissues ids sequentially', () => {
     expect(engine.getAnnotations()).toHaveLength(1);
     engine.deleteAnnotation(ann.id);
     expect(engine.getAnnotations()).toHaveLength(0);
-    expect(host.querySelector('mark.luker-sim-annotation')).toBeNull();
+    expect(host.querySelector('mark.atria-sim-annotation')).toBeNull();
 });
 
 test('editAnnotation updates the comment without changing snippet', () => {
@@ -161,7 +161,7 @@ test('addAnnotation inserts an inline × control inside the <mark>', () => {
         i18n: (k, fb) => fb,
     });
     engine.addAnnotationFromSelection(window.getSelection(), '');
-    const mark = host.querySelector('mark.luker-sim-annotation');
+    const mark = host.querySelector('mark.atria-sim-annotation');
     expect(mark).not.toBeNull();
     const removeBtn = mark.querySelector('.sim-review-annot-remove');
     expect(removeBtn).not.toBeNull();
@@ -182,7 +182,7 @@ test('clicking the inline × deletes the annotation: state empties, mark unwraps
     const removeBtn = mark.querySelector('.sim-review-annot-remove');
     removeBtn.click();
     expect(engine.getAnnotations()).toHaveLength(0);
-    expect(host.querySelector('mark.luker-sim-annotation')).toBeNull();
+    expect(host.querySelector('mark.atria-sim-annotation')).toBeNull();
     // The chain rebuilt from the (now-unwrapped) DOM must NOT include
     // the literal "×" glyph — the engine strips the remove button
     // before unwrapping.
@@ -211,7 +211,7 @@ test('addAnnotation inserts an inline comment <input> next to the × control', (
     selectTextInNode(target, 4, 7); // "bar"
     const engine = createAnnotationEngine({ host, i18n: (k, fb) => fb });
     engine.addAnnotationFromSelection(window.getSelection(), '');
-    const mark = host.querySelector('mark.luker-sim-annotation');
+    const mark = host.querySelector('mark.atria-sim-annotation');
     expect(mark).not.toBeNull();
     const input = mark.querySelector('input.sim-review-annot-comment');
     expect(input).not.toBeNull();
@@ -227,7 +227,7 @@ test('addAnnotation pre-fills the inline input with the seed comment value', () 
     selectTextInNode(target, 4, 7); // "bar"
     const engine = createAnnotationEngine({ host, i18n: (k, fb) => fb });
     engine.addAnnotationFromSelection(window.getSelection(), 'seed comment');
-    const input = host.querySelector('mark.luker-sim-annotation input.sim-review-annot-comment');
+    const input = host.querySelector('mark.atria-sim-annotation input.sim-review-annot-comment');
     expect(input).not.toBeNull();
     expect(input.value).toBe('seed comment');
 });
@@ -238,7 +238,7 @@ test('typing into the inline input live-updates the annotation comment', () => {
     selectTextInNode(target, 4, 7); // "bar"
     const engine = createAnnotationEngine({ host, i18n: (k, fb) => fb });
     const ann = engine.addAnnotationFromSelection(window.getSelection(), '');
-    const input = host.querySelector('mark.luker-sim-annotation input.sim-review-annot-comment');
+    const input = host.querySelector('mark.atria-sim-annotation input.sim-review-annot-comment');
     expect(input).not.toBeNull();
     input.value = 'feels weak here';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -253,7 +253,7 @@ test('inline input text does NOT leak into buildChainSegments output', () => {
     selectTextInNode(target, 4, 7); // "bar"
     const engine = createAnnotationEngine({ host, i18n: (k, fb) => fb });
     engine.addAnnotationFromSelection(window.getSelection(), '');
-    const input = host.querySelector('mark.luker-sim-annotation input.sim-review-annot-comment');
+    const input = host.querySelector('mark.atria-sim-annotation input.sim-review-annot-comment');
     // Type something that would be unique and easy to spot if it leaked.
     input.value = 'XXXLEAKXXX';
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -320,7 +320,7 @@ describe('selectionOverlapsExistingAnnotation correctness after rewrite', () => 
         selectTextInNode(span.firstChild, 0, 5); // 'hello'
         engine.addAnnotationFromSelection(window.getSelection(), '');
         // Try to annotate the same range again.
-        selectTextInNode(host.querySelector('mark.luker-sim-annotation').firstChild, 0, 5);
+        selectTextInNode(host.querySelector('mark.atria-sim-annotation').firstChild, 0, 5);
         expect(() => engine.addAnnotationFromSelection(window.getSelection(), ''))
             .toThrow(/overlap/i);
     });
@@ -349,7 +349,7 @@ describe('selectionOverlapsExistingAnnotation correctness after rewrite', () => 
         selectTextInNode(text, 5, 9); // 'BBBB' annotated
         engine.addAnnotationFromSelection(window.getSelection(), '');
         // Select 'cccc' — strictly after the mark.
-        const afterMark = host.querySelector('mark.luker-sim-annotation').nextSibling;
+        const afterMark = host.querySelector('mark.atria-sim-annotation').nextSibling;
         selectTextInNode(afterMark, 1, 5);
         const ann = engine.addAnnotationFromSelection(window.getSelection(), '');
         expect(ann).toBeDefined();

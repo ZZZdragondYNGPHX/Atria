@@ -15,15 +15,15 @@ English | [German](readme-de_de.md) | [中文](readme-zh_cn.md) | [繁體中文]
 
 ---
 
-## Luker Fork Notes
+## Atria Fork Notes
 
-Luker is a fork of SillyTavern focused on cleaner API design and stronger extension capabilities.
+Atria is a fork of SillyTavern focused on cleaner API design and stronger extension capabilities.
 
 - Patch-first persistence (`chat append/patch`, metadata/state patch, and settings patch) to avoid repeated full-save payloads.
 - Backend-owned generation lifecycle (including reconnect-safe persistence and active-output recovery behavior).
 - Plugin-first helpers via `getContext()` and generation world-info hooks.
 - Built-in `Orchestrator` and `Memory` plugins.
-- Plugin/API migration guide: [docs/luker-api-migration.md](https://github.com/funnycups/Luker/blob/release/docs/luker-api-migration.md)
+- Plugin/API migration guide: [docs/atria-api-migration.md](https://github.com/funnycups/Atria/blob/release/docs/atria-api-migration.md)
 
 SillyTavern provides a single unified interface for many LLM APIs (KoboldAI/CPP, Horde, NovelAI, Ooba, Tabby, OpenAI, OpenRouter, Claude, Mistral and more), a mobile-friendly layout, Visual Novel Mode, Automatic1111 & ComfyUI API image generation integration, TTS, WorldInfo (lorebooks), customizable UI, auto-translate, more prompt options than you'd ever want or need, and endless growth potential via third-party extensions.
 

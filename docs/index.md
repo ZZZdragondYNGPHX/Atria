@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: Luker
+  name: Atria
   text: Next-gen Roleplay Chat Platform
   tagline: A deep rebuild of SillyTavern, featuring knowledge-graph memory, multi-agent orchestration, AI-assisted character creation, and more
   actions:
@@ -11,7 +11,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/funnycups/Luker
+      link: https://github.com/funnycups/Atria
 
 features:
   - icon: 🧠

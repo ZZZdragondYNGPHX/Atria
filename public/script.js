@@ -204,7 +204,7 @@ import {
     createTimeout,
 } from './scripts/utils.js';
 import { debounce_timeout, GENERATION_TYPE_TRIGGERS, IGNORE_SYMBOL, inject_ids, MEDIA_DISPLAY, MEDIA_SOURCE, MEDIA_TYPE, OVERSWIPE_BEHAVIOR, SCROLL_BEHAVIOR, SWIPE_DIRECTION, SWIPE_SOURCE, SWIPE_STATE } from './scripts/constants.js';
-import { downloadFromServer } from './scripts/luker-download.js';
+import { downloadFromServer } from './scripts/atria-download.js';
 
 import { bootstrapExtensions, cancelDebouncedMetadataSave, doDailyExtensionUpdatesCheck, extension_settings, initExtensions, primeExtensionSettings, runGenerationInterceptors, saveMetadataDebounced } from './scripts/extensions.js';
 import { STATE_ERROR_REASONS, makeStateError, makeStateOk } from './scripts/state-errors.js';
@@ -288,7 +288,7 @@ import { extractFromText as extractSideEffectMacrosFromText } from './scripts/va
 import { initVarOpsPanelHandler } from './scripts/variable-op-log/panel.js';
 import { installFrontendLogCapture, setFrontendConsoleDebugLoggingEnabled } from './scripts/frontend-log-manager.js';
 import { initDebugExportButton } from './scripts/debug-export.js';
-import { initAndroidDebugTrail } from './scripts/luker-android-debug-trail.js';
+import { initAndroidDebugTrail } from './scripts/atria-android-debug-trail.js';
 import { currentUser, getConfigValidationMessage, isAdmin, setUserControls } from './scripts/user.js';
 import { POPUP_RESULT, POPUP_TYPE, Popup, callGenericPopup, fixToastrForDialogs } from './scripts/popup.js';
 import { renderTemplate, renderTemplateAsync } from './scripts/templates.js';
@@ -310,10 +310,10 @@ import { initServerHistory } from './scripts/server-history.js';
 import { initSettingsSearch } from './scripts/setting-search.js';
 import { initBulkEdit } from './scripts/bulk-edit.js';
 import { getContext } from './scripts/st-context.js';
-// Publish `globalThis.lukerContext = getContext()` for third-party plugins
+// Publish `globalThis.atriaContext = getContext()` for third-party plugins
 // that consume ctx off the global.  Must import AFTER st-context.js so
 // getContext() returns a fully-populated object (character.presets et al).
-import './scripts/lukerContext.js';
+import './scripts/atriaContext.js';
 import { extractReasoningBlocksFromData, extractReasoningDetailsFromData, extractReasoningFromData, extractReasoningSignatureFromData, initReasoning, parseReasoningInSwipes, PromptReasoning, ReasoningHandler, ReasoningType, registerReasoningSlashCommands, removeReasoningFromString, updateReasoningUI } from './scripts/reasoning.js';
 import { accountStorage } from './scripts/util/AccountStorage.js';
 import { fetchRecentChatsSnapshot, initWelcomeScreen, openPermanentAssistantChat, openPermanentAssistantCard, getPermanentAssistantAvatar, openWelcomeScreen, primeRecentChatsSnapshotPromise } from './scripts/welcome-screen.js';
@@ -339,20 +339,20 @@ import { showUndoToast } from './scripts/undo-toast.js';
 import { setRequestCompressionConfig } from './scripts/request-compression.js';
 import { canJumpToSwipeForMessage, canOpenSwipePickerForMessage, initSwipePicker } from './scripts/swipe-picker.js';
 import { bootSelfProfilerFromStorage } from './scripts/self-profiler.js';
-import { createLukerDelivery, installFetchProxy, installFetchProxyForAllIframes, installLifecycleHooks } from './scripts/ws-delivery.js';
+import { createAtriaDelivery, installFetchProxy, installFetchProxyForAllIframes, installLifecycleHooks } from './scripts/ws-delivery.js';
 
 installFrontendLogCapture();
 initAndroidDebugTrail();
 bootSelfProfilerFromStorage();
 
 // API OBJECT FOR EXTERNAL WIRING
-const lukerApi = {
+const atriaApi = {
     libs,
     getContext,
 };
-globalThis.Luker = lukerApi;
-globalThis.st = lukerApi;
-globalThis.SillyTavern = lukerApi;
+globalThis.Atria = atriaApi;
+globalThis.st = atriaApi;
+globalThis.SillyTavern = atriaApi;
 
 
 export {
@@ -463,7 +463,7 @@ export let converter;
 
 // array for prompt token calculations
 
-export const systemUserName = 'Luker System';
+export const systemUserName = 'Atria System';
 export const neutralCharacterName = 'Assistant';
 let default_user_name = 'User';
 export let name1 = default_user_name;
@@ -475,30 +475,30 @@ const chatServerState = {
     totalMessages: 0,
     hasMore: false,
 };
-let lukerRecoveryPollTimer = null;
-let lukerRecoveryPollBusy = false;
-let lukerRecoveryJobId = '';
-let lukerRecoveryChatId = '';
-let lukerRecoveryEventSource = null;
-let lukerRecoveryLastSeq = 0;
-const LUKER_RECOVERY_PREVIEW_ID = 'luker_generation_recovery_preview';
-const LUKER_SERVER_PERSISTENCE_APIS = new Set(['openai', 'textgenerationwebui', 'kobold', 'novel']);
-let lastLukerGenerationId = '';
-let lastLukerReplyPersistedByServer = false;
+let atriaRecoveryPollTimer = null;
+let atriaRecoveryPollBusy = false;
+let atriaRecoveryJobId = '';
+let atriaRecoveryChatId = '';
+let atriaRecoveryEventSource = null;
+let atriaRecoveryLastSeq = 0;
+const ATRIA_RECOVERY_PREVIEW_ID = 'atri_generation_recovery_preview';
+const ATRIA_SERVER_PERSISTENCE_APIS = new Set(['openai', 'textgenerationwebui', 'kobold', 'novel']);
+let lastAtriaGenerationId = '';
+let lastAtriaReplyPersistedByServer = false;
 
-function supportsLukerServerPersistence(api = main_api) {
-    return LUKER_SERVER_PERSISTENCE_APIS.has(api);
+function supportsAtriaServerPersistence(api = main_api) {
+    return ATRIA_SERVER_PERSISTENCE_APIS.has(api);
 }
 
-function resetLukerGenerationState(api = main_api) {
+function resetAtriaGenerationState(api = main_api) {
     if (api === 'openai') {
         return;
     }
-    lastLukerGenerationId = '';
-    lastLukerReplyPersistedByServer = false;
+    lastAtriaGenerationId = '';
+    lastAtriaReplyPersistedByServer = false;
 }
 
-function summarizeLukerPersistTargetForDebug(persistTarget) {
+function summarizeAtriaPersistTargetForDebug(persistTarget) {
     if (!persistTarget || typeof persistTarget !== 'object') {
         return null;
     }
@@ -523,96 +523,96 @@ function summarizeLukerPersistTargetForDebug(persistTarget) {
     };
 }
 
-function summarizeLukerGenerationIdsForMessages(messages) {
+function summarizeAtriaGenerationIdsForMessages(messages) {
     if (!Array.isArray(messages) || messages.length === 0) {
         return [];
     }
 
     return [...new Set(messages
-        .map(message => String(message?.extra?.luker_generation_id || '').trim())
+        .map(message => String(message?.extra?.atri_generation_id || '').trim())
         .filter(Boolean))]
         .slice(0, 8);
 }
 
-function logLukerPersistenceDebug(api, phase, details = {}) {
-    console.debug('[LukerPersist]', {
+function logAtriaPersistenceDebug(api, phase, details = {}) {
+    console.debug('[AtriaPersist]', {
         api: String(api || main_api || ''),
         phase: String(phase || ''),
         ...details,
     });
 }
 
-function applyLukerGenerationMetaForApi(api = main_api, { generationId = '', persisted = undefined } = {}) {
+function applyAtriaGenerationMetaForApi(api = main_api, { generationId = '', persisted = undefined } = {}) {
     if (api === 'openai') {
         return;
     }
     if (typeof generationId === 'string' && generationId) {
-        lastLukerGenerationId = generationId;
+        lastAtriaGenerationId = generationId;
     }
     if (typeof persisted === 'boolean') {
-        lastLukerReplyPersistedByServer = persisted;
+        lastAtriaReplyPersistedByServer = persisted;
     }
 }
 
-function applyLukerGenerationMetaFromHeaders(api, response) {
+function applyAtriaGenerationMetaFromHeaders(api, response) {
     if (!response || api === 'openai') {
         return;
     }
-    const generationId = response.headers.get('x-luker-generation-id');
-    const persistedHeader = response.headers.get('x-luker-server-persisted');
+    const generationId = response.headers.get('x-atria-generation-id');
+    const persistedHeader = response.headers.get('x-atria-server-persisted');
     const persisted = persistedHeader === '1' ? true : persistedHeader === '0' ? false : undefined;
-    applyLukerGenerationMetaForApi(api, {
+    applyAtriaGenerationMetaForApi(api, {
         generationId,
         persisted,
     });
     if (generationId || typeof persisted === 'boolean') {
-        logLukerPersistenceDebug(api, 'response_header_meta', {
+        logAtriaPersistenceDebug(api, 'response_header_meta', {
             generation_id: generationId || '',
             ...(typeof persisted === 'boolean' ? { persisted } : {}),
         });
     }
 }
 
-export function getLastLukerGenerationIdForApi(api = main_api) {
+export function getLastAtriaGenerationIdForApi(api = main_api) {
     if (api === 'openai') {
         return getLastOpenAIGenerationId();
     }
-    if (!supportsLukerServerPersistence(api)) {
+    if (!supportsAtriaServerPersistence(api)) {
         return '';
     }
-    return lastLukerGenerationId;
+    return lastAtriaGenerationId;
 }
 
-function isLastLukerReplyPersistedByServerForApi(api = main_api) {
+function isLastAtriaReplyPersistedByServerForApi(api = main_api) {
     if (api === 'openai') {
         return isLastOpenAIReplyPersistedByServer();
     }
-    if (!supportsLukerServerPersistence(api)) {
+    if (!supportsAtriaServerPersistence(api)) {
         return false;
     }
-    return lastLukerReplyPersistedByServer;
+    return lastAtriaReplyPersistedByServer;
 }
 
-function shouldUseLukerServerPersistenceForType(type) {
+function shouldUseAtriaServerPersistenceForType(type) {
     return type === 'normal' || type === 'regenerate';
 }
 
-function buildLukerGenerationRequestOptions(type, api = main_api) {
-    if (!shouldUseLukerServerPersistenceForType(type) || !supportsLukerServerPersistence(api)) {
+function buildAtriaGenerationRequestOptions(type, api = main_api) {
+    if (!shouldUseAtriaServerPersistenceForType(type) || !supportsAtriaServerPersistence(api)) {
         return null;
     }
 
-    const persistTarget = getLukerPersistTargetForCurrentChat();
+    const persistTarget = getAtriaPersistTargetForCurrentChat();
     if (!persistTarget) {
         return null;
     }
 
     const generationId = uuidv4();
-    applyLukerGenerationMetaForApi(api, { generationId, persisted: false });
-    logLukerPersistenceDebug(api, 'request_init', {
+    applyAtriaGenerationMetaForApi(api, { generationId, persisted: false });
+    logAtriaPersistenceDebug(api, 'request_init', {
         type,
         generation_id: generationId,
-        persist_target: summarizeLukerPersistTargetForDebug(persistTarget),
+        persist_target: summarizeAtriaPersistTargetForDebug(persistTarget),
     });
     return {
         job_id: generationId,
@@ -626,7 +626,7 @@ export function setChatServerState({ nextOlderIndex = 0, totalMessages = 0, hasM
     chatServerState.hasMore = Boolean(hasMore);
 }
 
-function getLukerPersistTargetForCurrentChat() {
+function getAtriaPersistTargetForCurrentChat() {
     if (selected_group) {
         const group = groups.find(x => x.id == selected_group);
         if (!group?.chat_id) {
@@ -657,28 +657,28 @@ function getLukerPersistTargetForCurrentChat() {
     };
 }
 
-function removeLukerRecoveryPreview() {
-    chatElement.find(`#${LUKER_RECOVERY_PREVIEW_ID}`).remove();
+function removeAtriaRecoveryPreview() {
+    chatElement.find(`#${ATRIA_RECOVERY_PREVIEW_ID}`).remove();
 }
 
-function stopLukerGenerationRecovery() {
-    if (lukerRecoveryPollTimer) {
-        clearInterval(lukerRecoveryPollTimer);
-        lukerRecoveryPollTimer = null;
+function stopAtriaGenerationRecovery() {
+    if (atriaRecoveryPollTimer) {
+        clearInterval(atriaRecoveryPollTimer);
+        atriaRecoveryPollTimer = null;
     }
-    if (lukerRecoveryEventSource) {
-        try { lukerRecoveryEventSource.close(); } catch { /* already closed */ }
-        lukerRecoveryEventSource = null;
+    if (atriaRecoveryEventSource) {
+        try { atriaRecoveryEventSource.close(); } catch { /* already closed */ }
+        atriaRecoveryEventSource = null;
     }
-    lukerRecoveryPollBusy = false;
-    lukerRecoveryJobId = '';
-    lukerRecoveryChatId = '';
-    lukerRecoveryLastSeq = 0;
-    removeLukerRecoveryPreview();
+    atriaRecoveryPollBusy = false;
+    atriaRecoveryJobId = '';
+    atriaRecoveryChatId = '';
+    atriaRecoveryLastSeq = 0;
+    removeAtriaRecoveryPreview();
 }
 
-function renderLukerRecoveryPreview(text, status = 'running') {
-    let preview = chatElement.find(`#${LUKER_RECOVERY_PREVIEW_ID}`);
+function renderAtriaRecoveryPreview(text, status = 'running') {
+    let preview = chatElement.find(`#${ATRIA_RECOVERY_PREVIEW_ID}`);
 
     if (!preview.length) {
         // Render as an inline assistant-message-style bubble at the end of the
@@ -693,7 +693,7 @@ function renderLukerRecoveryPreview(text, status = 'running') {
             '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', '\'': '&#39;',
         })[c] || c);
         preview = $(`
-            <div id="${LUKER_RECOVERY_PREVIEW_ID}" class="mes luker-recovery-mes" is_user="false" is_system="false" style="opacity: 0.85;">
+            <div id="${ATRIA_RECOVERY_PREVIEW_ID}" class="mes atria-recovery-mes" is_user="false" is_system="false" style="opacity: 0.85;">
                 <div class="mesAvatarWrapper">
                     <div class="avatar" title="${escapeAttr(charName)}">
                         <img src="${escapeAttr(charAvatar)}" alt="${escapeAttr(charName)}"/>
@@ -703,10 +703,10 @@ function renderLukerRecoveryPreview(text, status = 'running') {
                     <div class="ch_name flex-container justifySpaceBetween">
                         <div class="flex-container alignitemscenter" style="gap: 6px;">
                             <span class="name_text">${escapeAttr(charName)}</span>
-                            <span class="luker_preview_status" style="font-size: 0.85em; opacity: 0.7; border: 1px dashed var(--SmartThemeBorderColor); border-radius: 4px; padding: 1px 6px;"></span>
+                            <span class="atria_preview_status" style="font-size: 0.85em; opacity: 0.7; border: 1px dashed var(--SmartThemeBorderColor); border-radius: 4px; padding: 1px 6px;"></span>
                         </div>
                     </div>
-                    <div class="mes_text luker_preview_text" style="white-space: pre-wrap;"></div>
+                    <div class="mes_text atria_preview_text" style="white-space: pre-wrap;"></div>
                 </div>
             </div>
         `);
@@ -728,14 +728,14 @@ function renderLukerRecoveryPreview(text, status = 'running') {
                 : status === 'persisting'
                     ? t`Persisting generation on server`
                     : t`Resuming server stream`;
-    preview.find('.luker_preview_status').text(statusText);
-    preview.find('.luker_preview_text').text(String(text || ''));
+    preview.find('.atria_preview_status').text(statusText);
+    preview.find('.atria_preview_text').text(String(text || ''));
 }
 
-async function startLukerGenerationRecovery() {
-    stopLukerGenerationRecovery();
+async function startAtriaGenerationRecovery() {
+    stopAtriaGenerationRecovery();
 
-    const persistTarget = getLukerPersistTargetForCurrentChat();
+    const persistTarget = getAtriaPersistTargetForCurrentChat();
     if (!persistTarget) {
         return;
     }
@@ -760,39 +760,39 @@ async function startLukerGenerationRecovery() {
             return;
         }
 
-        lukerRecoveryJobId = String(activeJob.id);
-        lukerRecoveryChatId = chatIdSnapshot;
-        lukerRecoveryLastSeq = Number(activeJob.last_seq || 0);
-        renderLukerRecoveryPreview(activeJob.text || '', activeJob.status || 'running');
+        atriaRecoveryJobId = String(activeJob.id);
+        atriaRecoveryChatId = chatIdSnapshot;
+        atriaRecoveryLastSeq = Number(activeJob.last_seq || 0);
+        renderAtriaRecoveryPreview(activeJob.text || '', activeJob.status || 'running');
 
         // Prefer SSE for live updates; fall back to 1Hz polling if EventSource
         // isn't available (older browsers, restrictive proxies, etc).
         if (typeof EventSource === 'function') {
-            startLukerRecoverySseStream(chatIdSnapshot);
+            startAtriaRecoverySseStream(chatIdSnapshot);
         } else {
-            startLukerRecoveryPollFallback(chatIdSnapshot);
+            startAtriaRecoveryPollFallback(chatIdSnapshot);
         }
     } catch (error) {
         console.warn('Failed to query active generation jobs', error);
     }
 }
 
-function startLukerRecoverySseStream(chatIdSnapshot) {
-    const url = `/api/backends/chat-completions/jobs/events-stream?id=${encodeURIComponent(lukerRecoveryJobId)}&after_seq=${lukerRecoveryLastSeq}`;
+function startAtriaRecoverySseStream(chatIdSnapshot) {
+    const url = `/api/backends/chat-completions/jobs/events-stream?id=${encodeURIComponent(atriaRecoveryJobId)}&after_seq=${atriaRecoveryLastSeq}`;
     let source;
     try {
         source = new EventSource(url, { withCredentials: true });
     } catch (error) {
         console.warn('Failed to open SSE for recovery; falling back to poll', error);
-        startLukerRecoveryPollFallback(chatIdSnapshot);
+        startAtriaRecoveryPollFallback(chatIdSnapshot);
         return;
     }
-    lukerRecoveryEventSource = source;
+    atriaRecoveryEventSource = source;
     let liveText = '';
 
     const handleStatus = (event) => {
-        if (lukerRecoveryChatId !== getCurrentChatId()) {
-            stopLukerGenerationRecovery();
+        if (atriaRecoveryChatId !== getCurrentChatId()) {
+            stopAtriaGenerationRecovery();
             return;
         }
         let payload;
@@ -800,11 +800,11 @@ function startLukerRecoverySseStream(chatIdSnapshot) {
         if (typeof payload?.text === 'string') {
             liveText = payload.text;
         }
-        renderLukerRecoveryPreview(liveText, payload?.status || 'running');
+        renderAtriaRecoveryPreview(liveText, payload?.status || 'running');
         if (payload?.status === 'failed') {
-            stopLukerGenerationRecovery();
+            stopAtriaGenerationRecovery();
         } else if (payload?.status === 'completed') {
-            stopLukerGenerationRecovery();
+            stopAtriaGenerationRecovery();
             void reloadCurrentChat();
         }
     };
@@ -815,69 +815,69 @@ function startLukerRecoverySseStream(chatIdSnapshot) {
         // reconnect with after_seq if the connection drops.
         let payload;
         try { payload = JSON.parse(event.data); } catch { return; }
-        if (typeof payload?.seq === 'number' && payload.seq > lukerRecoveryLastSeq) {
-            lukerRecoveryLastSeq = payload.seq;
+        if (typeof payload?.seq === 'number' && payload.seq > atriaRecoveryLastSeq) {
+            atriaRecoveryLastSeq = payload.seq;
         }
     };
 
     source.addEventListener('status', handleStatus);
     source.addEventListener('event', handleEvent);
     source.onerror = () => {
-        if (!lukerRecoveryEventSource) return;
+        if (!atriaRecoveryEventSource) return;
         // EventSource auto-reconnects on transient errors; only fall back to
         // polling if the connection truly closed (readyState === CLOSED).
         if (source.readyState === EventSource.CLOSED) {
-            lukerRecoveryEventSource = null;
+            atriaRecoveryEventSource = null;
             // Job may have completed and the server closed the stream cleanly —
             // refresh chat to pick up the persisted message either way.
-            const stillHere = lukerRecoveryChatId === getCurrentChatId();
-            stopLukerGenerationRecovery();
+            const stillHere = atriaRecoveryChatId === getCurrentChatId();
+            stopAtriaGenerationRecovery();
             if (stillHere) void reloadCurrentChat();
         }
     };
 }
 
-function startLukerRecoveryPollFallback(chatIdSnapshot) {
-    lukerRecoveryPollTimer = setInterval(async () => {
-        if (lukerRecoveryPollBusy) {
+function startAtriaRecoveryPollFallback(chatIdSnapshot) {
+    atriaRecoveryPollTimer = setInterval(async () => {
+        if (atriaRecoveryPollBusy) {
             return;
         }
 
-        if (lukerRecoveryChatId !== getCurrentChatId()) {
-            stopLukerGenerationRecovery();
+        if (atriaRecoveryChatId !== getCurrentChatId()) {
+            stopAtriaGenerationRecovery();
             return;
         }
 
-        lukerRecoveryPollBusy = true;
+        atriaRecoveryPollBusy = true;
         try {
             const statusResponse = await fetch('/api/backends/chat-completions/jobs/status', {
                 method: 'POST',
                 headers: getRequestHeaders(),
-                body: JSON.stringify({ id: lukerRecoveryJobId }),
+                body: JSON.stringify({ id: atriaRecoveryJobId }),
                 cache: 'no-cache',
             });
 
             if (!statusResponse.ok) {
-                stopLukerGenerationRecovery();
+                stopAtriaGenerationRecovery();
                 return;
             }
 
             const statusData = await statusResponse.json();
-            renderLukerRecoveryPreview(statusData?.text || '', statusData?.status || 'running');
+            renderAtriaRecoveryPreview(statusData?.text || '', statusData?.status || 'running');
 
             if (statusData?.status === 'failed') {
-                stopLukerGenerationRecovery();
+                stopAtriaGenerationRecovery();
                 return;
             }
 
             if (statusData?.status === 'completed') {
-                stopLukerGenerationRecovery();
+                stopAtriaGenerationRecovery();
                 await reloadCurrentChat();
             }
         } catch (error) {
             console.warn('Failed to poll recovered generation status', error);
         } finally {
-            lukerRecoveryPollBusy = false;
+            atriaRecoveryPollBusy = false;
         }
     }, 1000);
 }
@@ -892,7 +892,7 @@ export let isChatSaving = false;
 let firstRun = false;
 export let settingsReady = false;
 let currentVersion = '0.0.0';
-export let displayVersion = 'Luker';
+export let displayVersion = 'Atria';
 
 let generation_started = new Date();
 /** @type {Character[]} */
@@ -908,8 +908,8 @@ export const default_avatar = 'img/ai4.png';
 export const system_avatar = 'img/logo.png';
 export const comment_avatar = 'img/quill.png';
 export const default_user_avatar = 'img/user-default.png';
-export let CLIENT_VERSION = 'Luker:UNKNOWN:Cohee#1207'; // For Horde header
-export let EXTENSIONS_CLIENT_VERSION = 'Luker:1.18.0:Cohee#1207';
+export let CLIENT_VERSION = 'Atria:UNKNOWN:Cohee#1207'; // For Horde header
+export let EXTENSIONS_CLIENT_VERSION = 'Atria:1.18.0:Cohee#1207';
 let optionsPopper = Popper.createPopper(document.getElementById('options_button'), document.getElementById('options'), {
     placement: 'top-start',
 });
@@ -934,7 +934,7 @@ function setElementStylePriority(element, property, value, priority = '') {
 }
 
 function applyImmersiveLayoutOverrides(enabled) {
-    if (!isRunningInLukerAndroidApp()) {
+    if (!isRunningInAtriaAndroidApp()) {
         return;
     }
     const sheld = document.getElementById('sheld');
@@ -953,14 +953,14 @@ function applyImmersiveLayoutOverrides(enabled) {
     setElementStylePriority(chatContainer, 'max-height', '');
 }
 
-function isRunningInLukerAndroidApp() {
+function isRunningInAtriaAndroidApp() {
     return typeof window !== 'undefined'
-        && typeof window.LukerAndroid === 'object';
+        && typeof window.AtriaAndroid === 'object';
 }
 
 function canUseAndroidImmersiveBridge() {
-    return isRunningInLukerAndroidApp()
-        && typeof window.LukerAndroid.setImmersiveModeEnabled === 'function';
+    return isRunningInAtriaAndroidApp()
+        && typeof window.AtriaAndroid.setImmersiveModeEnabled === 'function';
 }
 
 function syncAndroidImmersiveMode(enabled, source = 'user') {
@@ -968,7 +968,7 @@ function syncAndroidImmersiveMode(enabled, source = 'user') {
         return;
     }
     try {
-        const bridge = window.LukerAndroid;
+        const bridge = window.AtriaAndroid;
         const resolvedSource = String(source || 'user');
         if (typeof bridge.setImmersiveModeEnabledWithSource === 'function') {
             bridge.setImmersiveModeEnabledWithSource(Boolean(enabled), resolvedSource);
@@ -981,7 +981,7 @@ function syncAndroidImmersiveMode(enabled, source = 'user') {
 }
 
 function getFullscreenElement() {
-    if (isRunningInLukerAndroidApp()) {
+    if (isRunningInAtriaAndroidApp()) {
         return androidFullscreenElement;
     }
     return document.fullscreenElement
@@ -1004,7 +1004,7 @@ function dispatchFullscreenChangeEvent() {
 }
 
 function setAndroidFullscreenState(enabled, element = null) {
-    if (!isRunningInLukerAndroidApp()) {
+    if (!isRunningInAtriaAndroidApp()) {
         return;
     }
     const nextElement = enabled ? (element || document.documentElement) : null;
@@ -1042,7 +1042,7 @@ function overrideMethodIfPossible(target, methodName, replacement) {
 }
 
 function installAndroidFullscreenApiShim() {
-    if (!isRunningInLukerAndroidApp() || androidFullscreenShimInstalled) {
+    if (!isRunningInAtriaAndroidApp() || androidFullscreenShimInstalled) {
         return;
     }
 
@@ -1108,7 +1108,7 @@ function installAndroidFullscreenApiShim() {
 }
 
 function canUseFullscreenApi() {
-    if (isRunningInLukerAndroidApp()) {
+    if (isRunningInAtriaAndroidApp()) {
         return false;
     }
 
@@ -1214,9 +1214,9 @@ async function setImmersiveMode(enabled, { useFullscreen = true, persist = true,
     immersiveModeUsesFullscreen = shouldEnable ? Boolean(useFullscreen && canUseFullscreenApi()) : false;
     isImmersiveModeEnabled = shouldEnable;
     setAndroidFullscreenState(shouldEnable, document.documentElement);
-    document.body.classList.toggle('luker-immersive-mode', shouldEnable);
+    document.body.classList.toggle('atria-immersive-mode', shouldEnable);
     document.body.classList.toggle(
-        'luker-immersive-keep-top-bar',
+        'atria-immersive-keep-top-bar',
         shouldEnable && Boolean(power_user.immersive_mode_keep_top_bar),
     );
     syncAndroidImmersiveMode(shouldEnable, source);
@@ -1246,10 +1246,10 @@ async function toggleImmersiveMode() {
 
 if (typeof window !== 'undefined') {
     installAndroidFullscreenApiShim();
-    window.__lukerSetImmersiveModeFromNative = (enabled) => {
+    window.__atriaSetImmersiveModeFromNative = (enabled) => {
         void setImmersiveMode(Boolean(enabled), { useFullscreen: false, persist: false });
     };
-    window.__lukerHandleBack = () => {
+    window.__atriaHandleBack = () => {
         try {
             const $ = window.jQuery;
             if (typeof $ !== 'function') {
@@ -1370,7 +1370,7 @@ async function getClientVersion() {
         const data = await response.json();
         CLIENT_VERSION = data.agent;
         EXTENSIONS_CLIENT_VERSION = data.compatAgent || data.agent || EXTENSIONS_CLIENT_VERSION;
-        displayVersion = `Luker ${data.pkgVersion}`;
+        displayVersion = `Atria ${data.pkgVersion}`;
         currentVersion = data.pkgVersion;
 
         if (data.gitRevision && data.gitBranch) {
@@ -1388,7 +1388,7 @@ async function getClientVersion() {
     }
 }
 
-async function doLukerUpdateCheck(versionData) {
+async function doAtriaUpdateCheck(versionData) {
     if (!versionData) {
         return;
     }
@@ -1408,12 +1408,12 @@ async function doLukerUpdateCheck(versionData) {
         const combinedData = { ...versionData, ...updateData };
 
         if (combinedData.isDocker === true) {
-            if (lukerUpdatePromptShown) {
+            if (atriaUpdatePromptShown) {
                 return;
             }
-            lukerUpdatePromptShown = true;
+            atriaUpdatePromptShown = true;
             toastr.info(
-                t`A Luker update is available for this Docker deployment. Pull the latest image and recreate the container to update.`,
+                t`A Atria update is available for this Docker deployment. Pull the latest image and recreate the container to update.`,
                 t`Update Available`,
                 {
                     timeOut: 0,
@@ -1425,21 +1425,21 @@ async function doLukerUpdateCheck(versionData) {
             return;
         }
 
-        void showLukerUpdatePrompt(combinedData);
+        void showAtriaUpdatePrompt(combinedData);
     } catch (err) {
-        console.error('Failed to check for Luker updates in background', err);
+        console.error('Failed to check for Atria updates in background', err);
     }
 }
 
-let lukerUpdatePromptShown = false;
+let atriaUpdatePromptShown = false;
 
 function hasAndroidUpdateBridge() {
     return typeof window !== 'undefined'
-        && typeof window.LukerAndroid === 'object'
-        && typeof window.LukerAndroid.installApkFromUrl === 'function';
+        && typeof window.AtriaAndroid === 'object'
+        && typeof window.AtriaAndroid.installApkFromUrl === 'function';
 }
 
-async function callLukerUpdateApi(path, payload = {}) {
+async function callAtriaUpdateApi(path, payload = {}) {
     const response = await fetch(`/api/users/update/${path}`, {
         method: 'POST',
         headers: getRequestHeaders(),
@@ -1473,13 +1473,13 @@ function formatUpdateLogLine(entry) {
 async function showUpdateProgressPopup(title, runner) {
     const template = $(`
         <div class="justifyLeft">
-            <div class="menu_button_note lukerUpdateStatus"></div>
-            <textarea class="text_pole lukerUpdateLogs" rows="16" readonly></textarea>
+            <div class="menu_button_note atriaUpdateStatus"></div>
+            <textarea class="text_pole atriaUpdateLogs" rows="16" readonly></textarea>
         </div>
     `);
 
-    const statusElement = template.find('.lukerUpdateStatus');
-    const logsElement = template.find('.lukerUpdateLogs');
+    const statusElement = template.find('.atriaUpdateStatus');
+    const logsElement = template.find('.atriaUpdateLogs');
     const pushLog = (line) => {
         const text = String(line ?? '').trim();
         if (!text) {
@@ -1546,10 +1546,10 @@ function getGitUpdateStatusLabel(status) {
 
 async function runServerGitUpdateFlow() {
     let finalState = null;
-    await showUpdateProgressPopup(t`Luker Update`, async ({ pushLog, setStatus }) => {
+    await showUpdateProgressPopup(t`Atria Update`, async ({ pushLog, setStatus }) => {
         setStatus(t`Submitting update request...`);
         try {
-            const startResult = await callLukerUpdateApi('start', {});
+            const startResult = await callAtriaUpdateApi('start', {});
             if (startResult?.started) {
                 pushLog(t`Update task started.`);
             }
@@ -1563,7 +1563,7 @@ async function runServerGitUpdateFlow() {
 
         let sinceId = 0;
         while (true) {
-            const payload = await callLukerUpdateApi('status', { sinceId, limit: 600 });
+            const payload = await callAtriaUpdateApi('status', { sinceId, limit: 600 });
             const gitState = payload?.git;
             if (!gitState) {
                 throw new Error(t`Update status payload is invalid.`);
@@ -1608,8 +1608,8 @@ async function runServerGitUpdateFlow() {
     if (finalState.status === 'succeeded') {
         const updated = finalState.updated === true;
         toastr.success(
-            updated ? t`Luker update completed.` : t`Luker is already up to date.`,
-            t`Luker Update`,
+            updated ? t`Atria update completed.` : t`Atria is already up to date.`,
+            t`Atria Update`,
         );
     }
 }
@@ -1619,9 +1619,9 @@ async function runAndroidApkUpdateFlow() {
         throw new Error(t`Android update bridge is unavailable.`);
     }
 
-    await showUpdateProgressPopup(t`Luker App Update`, async ({ pushLog, setStatus }) => {
+    await showUpdateProgressPopup(t`Atria App Update`, async ({ pushLog, setStatus }) => {
         setStatus(t`Fetching latest APK release...`);
-        const release = await callLukerUpdateApi('apk-latest', {});
+        const release = await callAtriaUpdateApi('apk-latest', {});
         const apkName = String(release?.apk?.name || '');
         const apkUrl = String(release?.apk?.url || '');
         const tagName = String(release?.tagName || '');
@@ -1633,17 +1633,17 @@ async function runAndroidApkUpdateFlow() {
         pushLog(tagName ? `${t`Release`}: ${tagName}` : t`Release metadata loaded.`);
         pushLog(`${t`APK`}: ${apkName}`);
         setStatus(t`Starting APK download...`);
-        window.LukerAndroid.installApkFromUrl(apkUrl, apkName);
+        window.AtriaAndroid.installApkFromUrl(apkUrl, apkName);
         pushLog(t`APK download started. Android will open the installer when the download finishes.`);
         setStatus(t`Installer handoff started.`);
     });
 }
 
-async function showLukerUpdatePrompt(versionData) {
-    if (lukerUpdatePromptShown) {
+async function showAtriaUpdatePrompt(versionData) {
+    if (atriaUpdatePromptShown) {
         return;
     }
-    lukerUpdatePromptShown = true;
+    atriaUpdatePromptShown = true;
 
     try {
         const branch = String(versionData.gitBranch || '').trim();
@@ -1654,7 +1654,7 @@ async function showLukerUpdatePrompt(versionData) {
         const branchText = branch ? `${branch}${revision ? ` @ ${revision}` : ''}` : t`unknown branch`;
         const promptBody = `
             <div class="justifyLeft">
-                <div>${t`A Luker update is available.`}</div>
+                <div>${t`A Atria update is available.`}</div>
                 <div class="menu_button_note">${environmentText}</div>
                 <div class="menu_button_note">${t`Current source`}: ${branchText}</div>
             </div>
@@ -1678,8 +1678,8 @@ async function showLukerUpdatePrompt(versionData) {
             await runServerGitUpdateFlow();
         }
     } catch (error) {
-        console.error('Luker update flow failed:', error);
-        toastr.error(String(error?.message || error), t`Luker Update`);
+        console.error('Atria update flow failed:', error);
+        toastr.error(String(error?.message || error), t`Atria Update`);
     }
 }
 
@@ -1971,10 +1971,10 @@ async function firstLoadInit() {
     // NOTE: install the fetch proxy FIRST (before connect resolves), so any
     // /generate request issued during connect / retry is queued through the
     // proxy. If connect fails outright we still surface a loud error — the
-    // server requires x-luker-request-id and /generate cannot fall back to
+    // server requires x-atria-request-id and /generate cannot fall back to
     // plain HTTP under the new architecture.
     try {
-        const delivery = createLukerDelivery();
+        const delivery = createAtriaDelivery();
         installFetchProxy(delivery, {
             getExtraHeaders: () => getRequestHeaders({ omitContentType: true }),
         });
@@ -1990,7 +1990,7 @@ async function firstLoadInit() {
         installFetchProxyForAllIframes(delivery, {
             getExtraHeaders: () => getRequestHeaders({ omitContentType: true }),
         });
-        window.__lukerDelivery = delivery;
+        window.__atriaDelivery = delivery;
         await delivery.connect(async () => {
             const resp = await fetch('/api/ws-ticket', {
                 method: 'POST',
@@ -2043,7 +2043,7 @@ async function firstLoadInit() {
     }
     await readSecretState();
     await initLocales();
-    setTimeout(() => doLukerUpdateCheck(clientVersionData), 1);
+    setTimeout(() => doAtriaUpdateCheck(clientVersionData), 1);
     initChatUtilities();
     initDefaultSlashCommands();
     registerReasoningSlashCommands();
@@ -3470,7 +3470,7 @@ export function cancelDebouncedChatSave() {
  * @param {boolean} [options.clearData=false] Optionally clear the chat array's contents.
  */
 export async function clearChat({ clearData = false } = {}) {
-    stopLukerGenerationRecovery();
+    stopAtriaGenerationRecovery();
     cancelDebouncedChatSave();
     cancelDebouncedMetadataSave();
     closeMessageEditor();
@@ -6617,10 +6617,10 @@ class StreamingProcessor {
         if (!isAborted && power_user.auto_swipe && generatedTextFiltered(text)) {
             return await swipe(null, SWIPE_DIRECTION.RIGHT, { source: SWIPE_SOURCE.AUTO_SWIPE, repeated: true, forceMesId: chat.length - 1 });
         }
-        // luker_generation_id is a protocol-layer ack/dedup token; it travels in
+        // atri_generation_id is a protocol-layer ack/dedup token; it travels in
         // the request body of append/patch, not embedded in chat[i].extra. Keeping
         // it off the message keeps it off disk and out of snapshot diffs.
-        const serverPersistedReply = isLastLukerReplyPersistedByServerForApi();
+        const serverPersistedReply = isLastAtriaReplyPersistedByServerForApi();
         const canUseIncrementalAppend = !isAborted
             && this.type === 'normal'
             && this.messageId >= 0
@@ -6628,11 +6628,11 @@ class StreamingProcessor {
             && !chat[this.messageId]?.is_user
             && !serverPersistedReply;
         const localSaveStrategy = serverPersistedReply ? 'skip_local_save' : canUseIncrementalAppend ? 'append' : 'save';
-        if (shouldUseLukerServerPersistenceForType(this.type)) {
-            logLukerPersistenceDebug(main_api, 'save_decision', {
+        if (shouldUseAtriaServerPersistenceForType(this.type)) {
+            logAtriaPersistenceDebug(main_api, 'save_decision', {
                 type: this.type,
                 strategy: localSaveStrategy,
-                generation_id: getLastLukerGenerationIdForApi(),
+                generation_id: getLastAtriaGenerationIdForApi(),
                 server_persisted: serverPersistedReply,
                 aborted: isAborted,
                 message_id: this.messageId,
@@ -8896,7 +8896,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
                     // emits first lets extension listeners race us into a
                     // double-write + BE dedup + snapshot phantom.
                     const isAborted = abortController && abortController.signal.aborted;
-                    const serverPersistedReply = isLastLukerReplyPersistedByServerForApi();
+                    const serverPersistedReply = isLastAtriaReplyPersistedByServerForApi();
                     const canUseIncrementalAppend = !isAborted
                         && type === 'normal'
                         && placeholderId === chat.length - 1
@@ -9293,20 +9293,20 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         }
 
         console.debug('/api/chats/save called by /Generate');
-        // luker_generation_id is a protocol-layer ack/dedup token now — passed
+        // atri_generation_id is a protocol-layer ack/dedup token now — passed
         // as a separate request body field, never glued to chat[i].extra.
-        const serverPersistedReply = isLastLukerReplyPersistedByServerForApi();
+        const serverPersistedReply = isLastAtriaReplyPersistedByServerForApi();
         const canUseIncrementalAppend = !isImpersonate
             && type === 'normal'
             && chat.length > 0
             && !chat[chat.length - 1]?.is_user
             && !serverPersistedReply;
         const localSaveStrategy = serverPersistedReply ? 'skip_local_save' : canUseIncrementalAppend ? 'append' : 'save';
-        if (shouldUseLukerServerPersistenceForType(type)) {
-            logLukerPersistenceDebug(main_api, 'save_decision', {
+        if (shouldUseAtriaServerPersistenceForType(type)) {
+            logAtriaPersistenceDebug(main_api, 'save_decision', {
                 type,
                 strategy: localSaveStrategy,
-                generation_id: getLastLukerGenerationIdForApi(),
+                generation_id: getLastAtriaGenerationIdForApi(),
                 server_persisted: serverPersistedReply,
                 aborted: Boolean(isAborted),
                 message_id: chat.length - 1,
@@ -9378,7 +9378,7 @@ export function stopGeneration() {
     clearMessageProgressNotification();
 
     let stopped = false;
-    const generationId = getLastLukerGenerationIdForApi();
+    const generationId = getLastAtriaGenerationIdForApi();
     if (generationId) {
         fetch('/api/backends/chat-completions/jobs/cancel', {
             method: 'POST',
@@ -10054,15 +10054,15 @@ export async function sendGenerationRequest(type, data, options = {}) {
         return await generateHorde(data.prompt, data, abortController.signal, true);
     }
 
-    const shouldTrackLukerGenerationState = shouldUseLukerServerPersistenceForType(type) && supportsLukerServerPersistence(main_api);
-    if (shouldTrackLukerGenerationState) {
-        resetLukerGenerationState(main_api);
+    const shouldTrackAtriaGenerationState = shouldUseAtriaServerPersistenceForType(type) && supportsAtriaServerPersistence(main_api);
+    if (shouldTrackAtriaGenerationState) {
+        resetAtriaGenerationState(main_api);
     }
-    const lukerGenerationOptions = shouldTrackLukerGenerationState
-        ? buildLukerGenerationRequestOptions(type, main_api)
+    const atriaGenerationOptions = shouldTrackAtriaGenerationState
+        ? buildAtriaGenerationRequestOptions(type, main_api)
         : null;
-    const requestData = lukerGenerationOptions
-        ? { ...data, luker_generation: lukerGenerationOptions }
+    const requestData = atriaGenerationOptions
+        ? { ...data, atri_generation: atriaGenerationOptions }
         : data;
 
     // Non-streaming fallback for text-completion backends (textgenerationwebui /
@@ -10090,8 +10090,8 @@ export async function sendGenerationRequest(type, data, options = {}) {
         },
     });
 
-    if (shouldTrackLukerGenerationState) {
-        applyLukerGenerationMetaFromHeaders(main_api, response);
+    if (shouldTrackAtriaGenerationState) {
+        applyAtriaGenerationMetaFromHeaders(main_api, response);
     }
 
     if (!response.ok) {
@@ -10118,12 +10118,12 @@ export async function sendStreamingRequest(type, data, options = {}) {
     data = requestPayload.data;
     options = requestPayload.options || options;
 
-    const shouldTrackLukerGenerationState = shouldUseLukerServerPersistenceForType(type) && supportsLukerServerPersistence(main_api);
-    const onLukerMeta = shouldTrackLukerGenerationState
+    const shouldTrackAtriaGenerationState = shouldUseAtriaServerPersistenceForType(type) && supportsAtriaServerPersistence(main_api);
+    const onAtriaMeta = shouldTrackAtriaGenerationState
         ? (meta) => {
-            applyLukerGenerationMetaForApi(main_api, meta);
+            applyAtriaGenerationMetaForApi(main_api, meta);
             if (meta?.generationId || typeof meta?.persisted === 'boolean') {
-                logLukerPersistenceDebug(main_api, 'stream_meta', {
+                logAtriaPersistenceDebug(main_api, 'stream_meta', {
                     ...(meta?.generationId ? { generation_id: meta.generationId } : {}),
                     ...(typeof meta?.persisted === 'boolean' ? { persisted: meta.persisted } : {}),
                 });
@@ -10131,14 +10131,14 @@ export async function sendStreamingRequest(type, data, options = {}) {
         }
         : null;
     if (main_api !== 'openai') {
-        if (shouldTrackLukerGenerationState) {
-            resetLukerGenerationState(main_api);
+        if (shouldTrackAtriaGenerationState) {
+            resetAtriaGenerationState(main_api);
         }
-        const lukerGenerationOptions = shouldTrackLukerGenerationState
-            ? buildLukerGenerationRequestOptions(type, main_api)
+        const atriaGenerationOptions = shouldTrackAtriaGenerationState
+            ? buildAtriaGenerationRequestOptions(type, main_api)
             : null;
-        if (lukerGenerationOptions) {
-            data = { ...data, luker_generation: lukerGenerationOptions };
+        if (atriaGenerationOptions) {
+            data = { ...data, atri_generation: atriaGenerationOptions };
         }
     }
 
@@ -10146,11 +10146,11 @@ export async function sendStreamingRequest(type, data, options = {}) {
         case 'openai':
             return await sendOpenAIRequest(type, data.prompt, streamingProcessor.abortController.signal, options);
         case 'textgenerationwebui':
-            return await generateTextGenWithStreaming(data, streamingProcessor.abortController.signal, { onLukerMeta });
+            return await generateTextGenWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         case 'novel':
-            return await generateNovelWithStreaming(data, streamingProcessor.abortController.signal, { onLukerMeta });
+            return await generateNovelWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         case 'kobold':
-            return await generateKoboldWithStreaming(data, streamingProcessor.abortController.signal, { onLukerMeta });
+            return await generateKoboldWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         default:
             throw new Error('Streaming is enabled, but the current API does not support streaming.');
     }
@@ -13407,7 +13407,7 @@ function summarizeChatStateDivergence(clientMessages, serverMessages, maxDiverge
         const sameFields = onlyInClient.length === 0 && onlyInServer.length === 0 && sharedDiffered.length === 0;
 
         // For each top-level mutated field, look one level deeper to identify
-        // which nested key actually differs. `mutated:[extra.luker_generation_id]`
+        // which nested key actually differs. `mutated:[extra.atri_generation_id]`
         // is dramatically more useful than `mutated:[extra]` when extra is a
         // big bag of optional metadata fields.
         const mutatedDetailed = sharedDiffered.map(k => {
@@ -13730,7 +13730,7 @@ async function appendChatMessagesInternal(messages, retryCount = 0) {
     let target = null;
     try {
         target = resolveChatStateTarget();
-        const generationIds = summarizeLukerGenerationIdsForMessages(messages);
+        const generationIds = summarizeAtriaGenerationIdsForMessages(messages);
 
         // Optimistic snapshot commit: set BEFORE the fetch to what BE state will
         // be once it applies our append. `chat[]` is irrelevant here — only the
@@ -13762,7 +13762,7 @@ async function appendChatMessagesInternal(messages, retryCount = 0) {
                     messages: messages,
                     chat_metadata: { ...chat_metadata },
                     integrity: chat_metadata?.integrity,
-                    luker_generation_id: getLastLukerGenerationIdForApi(),
+                    atri_generation_id: getLastAtriaGenerationIdForApi(),
                 }),
             });
 
@@ -13824,7 +13824,7 @@ async function appendChatMessagesInternal(messages, retryCount = 0) {
                 avatar_url: avatar,
                 chat_metadata: { ...chat_metadata },
                 integrity: chat_metadata?.integrity,
-                luker_generation_id: getLastLukerGenerationIdForApi(),
+                atri_generation_id: getLastAtriaGenerationIdForApi(),
             }),
         });
 
@@ -13955,7 +13955,7 @@ async function patchChatMessagesInternal(operations, retryCount = 0) {
                     operations: guardedOperations,
                     chat_metadata: { ...chat_metadata },
                     integrity: chat_metadata?.integrity,
-                    luker_generation_id: getLastLukerGenerationIdForApi(),
+                    atri_generation_id: getLastAtriaGenerationIdForApi(),
                 }),
             });
 
@@ -13996,7 +13996,7 @@ async function patchChatMessagesInternal(operations, retryCount = 0) {
                 avatar_url: avatar,
                 chat_metadata: { ...chat_metadata },
                 integrity: chat_metadata?.integrity,
-                luker_generation_id: getLastLukerGenerationIdForApi(),
+                atri_generation_id: getLastAtriaGenerationIdForApi(),
             }),
         });
 
@@ -14393,7 +14393,7 @@ async function saveChatInternal({ chatName, withMetadata, mesId, force = false, 
                         chat_metadata: metadata,
                         integrity: metadata?.integrity,
                         force: effectiveForce,
-                        luker_generation_id: getLastLukerGenerationIdForApi(),
+                        atri_generation_id: getLastAtriaGenerationIdForApi(),
                     }),
                 });
 
@@ -19322,7 +19322,7 @@ jQuery(async function () {
 
     initCharacterSearch();
     eventSource.on(event_types.CHAT_CHANGED, () => {
-        void startLukerGenerationRecovery();
+        void startAtriaGenerationRecovery();
     });
     eventSource.on(event_types.GENERATION_STARTED, (type, _params, isDryRun) => {
         // PromptManager's token-count dry run (openai.js tryGenerate →
@@ -19334,7 +19334,7 @@ jQuery(async function () {
         if (isDryRun) {
             return;
         }
-        stopLukerGenerationRecovery();
+        stopAtriaGenerationRecovery();
     });
 
     $('#mes_impersonate').on('click', function () {
@@ -21150,7 +21150,7 @@ jQuery(async function () {
         });
 
         if (response.ok) {
-            const warningHeader = response.headers.get('X-Luker-Export-Warning');
+            const warningHeader = response.headers.get('X-Atria-Export-Warning');
             if (warningHeader) {
                 try {
                     const decoded = JSON.parse(atob(warningHeader));
@@ -21203,7 +21203,7 @@ jQuery(async function () {
             }
 
             if (selected_group && format === 'json') {
-                toastr.warning(t`Only Luker's own format is supported for group chat imports. Sorry!`);
+                toastr.warning(t`Only Atria's own format is supported for group chat imports. Sorry!`);
                 continue;
             }
 

@@ -2,7 +2,7 @@
  * iteration-library/zoom-overlay — narrow-class breakpoint behavior.
  *
  * The zoom overlay dialog must:
- *   - render dual-column at viewports ≥ 720px (no `luker_lib_diff_zoom_narrow`
+ *   - render dual-column at viewports ≥ 720px (no `atria_lib_diff_zoom_narrow`
  *     class on the dialog)
  *   - stack into a single column with each panel capped at 45vh at
  *     viewports < 720px (class is added by `openExpandedDiff` so the CSS
@@ -156,28 +156,28 @@ class StubElement {
         for (const c of [...this.children]) this.removeChild(c);
 
         const knownClasses = [
-            'luker_lib_diff_zoom_backdrop',
-            'luker_lib_diff_zoom_dialog',
-            'luker_lib_diff_zoom_header',
-            'luker_lib_diff_zoom_title',
-            'luker_lib_diff_zoom_close',
-            'luker_lib_diff_zoom_body',
+            'atria_lib_diff_zoom_backdrop',
+            'atria_lib_diff_zoom_dialog',
+            'atria_lib_diff_zoom_header',
+            'atria_lib_diff_zoom_title',
+            'atria_lib_diff_zoom_close',
+            'atria_lib_diff_zoom_body',
         ];
         // We synthesize the nesting that `openExpandedDiff` emits:
         //   overlay → backdrop, dialog
         //     dialog → header, body
         //       header → title, close
-        const backdrop = this._maybeMake(html, 'luker_lib_diff_zoom_backdrop', knownClasses);
-        const dialog = this._maybeMake(html, 'luker_lib_diff_zoom_dialog', knownClasses);
+        const backdrop = this._maybeMake(html, 'atria_lib_diff_zoom_backdrop', knownClasses);
+        const dialog = this._maybeMake(html, 'atria_lib_diff_zoom_dialog', knownClasses);
         if (backdrop) this.appendChild(backdrop);
         if (dialog) {
             this.appendChild(dialog);
-            const header = this._maybeMake(html, 'luker_lib_diff_zoom_header', knownClasses);
-            const body = this._maybeMake(html, 'luker_lib_diff_zoom_body', knownClasses);
+            const header = this._maybeMake(html, 'atria_lib_diff_zoom_header', knownClasses);
+            const body = this._maybeMake(html, 'atria_lib_diff_zoom_body', knownClasses);
             if (header) {
                 dialog.appendChild(header);
-                const title = this._maybeMake(html, 'luker_lib_diff_zoom_title', knownClasses);
-                const closeBtn = this._maybeMake(html, 'luker_lib_diff_zoom_close', knownClasses);
+                const title = this._maybeMake(html, 'atria_lib_diff_zoom_title', knownClasses);
+                const closeBtn = this._maybeMake(html, 'atria_lib_diff_zoom_close', knownClasses);
                 if (title) header.appendChild(title);
                 if (closeBtn) header.appendChild(closeBtn);
             }
@@ -232,26 +232,26 @@ function setWindowSize(width, height = 900) {
 
 // Build the host DOM `openExpandedDiff` expects to find on the page:
 //   host
-//     .luker_lib_diff
-//       button.trigger[data-luker-lib-action=expand-line-diff]
-//       .luker_lib_diff_pre
-//         .luker_lib_diff_dual
-//           .luker_lib_diff_side > .luker_lib_diff_side_scroll
-//           .luker_lib_diff_splitter
-//           .luker_lib_diff_side > .luker_lib_diff_side_scroll
+//     .atria_lib_diff
+//       button.trigger[data-atria-lib-action=expand-line-diff]
+//       .atria_lib_diff_pre
+//         .atria_lib_diff_dual
+//           .atria_lib_diff_side > .atria_lib_diff_side_scroll
+//           .atria_lib_diff_splitter
+//           .atria_lib_diff_side > .atria_lib_diff_side_scroll
 function buildHostWithDiff() {
     const host = new StubElement('div', 'host');
     host.id = 'test-host';
-    const diff = new StubElement('div', 'luker_lib_diff');
+    const diff = new StubElement('div', 'atria_lib_diff');
     const trigger = new StubElement('button', 'trigger');
-    trigger.setAttribute('data-luker-lib-action', 'expand-line-diff');
-    const pre = new StubElement('div', 'luker_lib_diff_pre');
-    const dual = new StubElement('div', 'luker_lib_diff_dual');
-    const sideL = new StubElement('div', 'luker_lib_diff_side');
-    sideL.appendChild(new StubElement('div', 'luker_lib_diff_side_scroll'));
-    const sideR = new StubElement('div', 'luker_lib_diff_side');
-    sideR.appendChild(new StubElement('div', 'luker_lib_diff_side_scroll'));
-    const splitter = new StubElement('div', 'luker_lib_diff_splitter');
+    trigger.setAttribute('data-atria-lib-action', 'expand-line-diff');
+    const pre = new StubElement('div', 'atria_lib_diff_pre');
+    const dual = new StubElement('div', 'atria_lib_diff_dual');
+    const sideL = new StubElement('div', 'atria_lib_diff_side');
+    sideL.appendChild(new StubElement('div', 'atria_lib_diff_side_scroll'));
+    const sideR = new StubElement('div', 'atria_lib_diff_side');
+    sideR.appendChild(new StubElement('div', 'atria_lib_diff_side_scroll'));
+    const splitter = new StubElement('div', 'atria_lib_diff_splitter');
     dual.appendChild(sideL);
     dual.appendChild(splitter);
     dual.appendChild(sideR);
@@ -282,26 +282,26 @@ describe('iteration-library zoom-overlay — openExpandedDiff narrow-class break
         setWindowSize(1400);
         const { host, trigger } = buildHostWithDiff();
         openExpandedDiff(host, trigger);
-        const dialog = document.querySelector('.luker_lib_diff_zoom_dialog');
+        const dialog = document.querySelector('.atria_lib_diff_zoom_dialog');
         expect(dialog).not.toBeNull();
-        expect(dialog.classList.contains('luker_lib_diff_zoom_narrow')).toBe(false);
+        expect(dialog.classList.contains('atria_lib_diff_zoom_narrow')).toBe(false);
     });
 
-    test('adds luker_lib_diff_zoom_narrow class when innerWidth < 720', () => {
+    test('adds atria_lib_diff_zoom_narrow class when innerWidth < 720', () => {
         setWindowSize(480);
         const { host, trigger } = buildHostWithDiff();
         openExpandedDiff(host, trigger);
-        const dialog = document.querySelector('.luker_lib_diff_zoom_dialog');
+        const dialog = document.querySelector('.atria_lib_diff_zoom_dialog');
         expect(dialog).not.toBeNull();
-        expect(dialog.classList.contains('luker_lib_diff_zoom_narrow')).toBe(true);
+        expect(dialog.classList.contains('atria_lib_diff_zoom_narrow')).toBe(true);
     });
 
     test('keeps the dialog non-narrow at exactly the 720px breakpoint', () => {
         setWindowSize(720);
         const { host, trigger } = buildHostWithDiff();
         openExpandedDiff(host, trigger);
-        const dialog = document.querySelector('.luker_lib_diff_zoom_dialog');
+        const dialog = document.querySelector('.atria_lib_diff_zoom_dialog');
         expect(dialog).not.toBeNull();
-        expect(dialog.classList.contains('luker_lib_diff_zoom_narrow')).toBe(false);
+        expect(dialog.classList.contains('atria_lib_diff_zoom_narrow')).toBe(false);
     });
 });

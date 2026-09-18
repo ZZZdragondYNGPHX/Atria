@@ -3,8 +3,8 @@
  *
  * Three layers:
  *   Layer 1 (direct):       import { renderFieldHelpButton } from '/scripts/extensions/field-help.js';
- *   Layer 2 (lukerContext): const { renderFieldHelpButton } = lukerContext;
- *   Layer 3 (getContext):   const { renderFieldHelpButton } = Luker.getContext();
+ *   Layer 2 (atriaContext): const { renderFieldHelpButton } = atriaContext;
+ *   Layer 3 (getContext):   const { renderFieldHelpButton } = Atria.getContext();
  *
  * Similar visual to preset-help (fa-circle-question) but plain title+body popup;
  * no preset-import side action. Body must be HTML-safe (call site's responsibility).
@@ -23,20 +23,20 @@ import { translate } from '../i18n.js';
 export function renderFieldHelpButton({ title, bodyHtml, targetSelectId = '' }) {
     const t = String(title || '');
     const b = String(bodyHtml || '');
-    const target = targetSelectId ? ` data-luker-field-help-target="${escapeHtml(targetSelectId)}"` : '';
-    return `<button type="button" class="luker-field-help" title="${escapeHtml(t)}" data-luker-field-help-title="${escapeHtml(t)}" data-luker-field-help-body="${escapeHtml(b)}"${target}><i class="fa-solid fa-circle-question"></i></button>`;
+    const target = targetSelectId ? ` data-atria-field-help-target="${escapeHtml(targetSelectId)}"` : '';
+    return `<button type="button" class="atria-field-help" title="${escapeHtml(t)}" data-atria-field-help-title="${escapeHtml(t)}" data-atria-field-help-body="${escapeHtml(b)}"${target}><i class="fa-solid fa-circle-question"></i></button>`;
 }
 
 // One-shot delegated click handler
 if (typeof jQuery !== 'undefined') {
-    jQuery(document).off('click.lukerFieldHelp').on('click.lukerFieldHelp', '.luker-field-help', async function (event) {
+    jQuery(document).off('click.atriaFieldHelp').on('click.atriaFieldHelp', '.atria-field-help', async function (event) {
         event.preventDefault();
         event.stopPropagation();
         const $btn = jQuery(this);
-        const title = $btn.attr('data-luker-field-help-title') || '';
-        const body = $btn.attr('data-luker-field-help-body') || '';
+        const title = $btn.attr('data-atria-field-help-title') || '';
+        const body = $btn.attr('data-atria-field-help-body') || '';
         try {
-            const ctx = (typeof Luker !== 'undefined') ? Luker.getContext() : null;
+            const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
             if (!ctx || typeof ctx.callGenericPopup !== 'function') return;
             const POPUP_TYPE = ctx.POPUP_TYPE || { TEXT: 1 };
             const wrapper = `<h4>${escapeHtml(title)}</h4><div>${body}</div>`;
@@ -52,6 +52,6 @@ if (typeof jQuery !== 'undefined') {
 }
 
 // Layer 2 exposure
-if (typeof globalThis.lukerContext === 'object' && globalThis.lukerContext) {
-    globalThis.lukerContext.renderFieldHelpButton = renderFieldHelpButton;
+if (typeof globalThis.atriaContext === 'object' && globalThis.atriaContext) {
+    globalThis.atriaContext.renderFieldHelpButton = renderFieldHelpButton;
 }

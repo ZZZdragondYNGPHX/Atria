@@ -40,8 +40,8 @@ const TOOL_REMOVE_NODE_TYPE = 'mg_schema_remove_node_type';
 const TOOL_REORDER_NODE_TYPES = 'mg_schema_reorder_node_types';
 
 export const CONTROL_TOOL_NAMES = Object.freeze({
-    resetToBlank: 'luker_mg_schema_reset_live_to_blank',
-    resetToGlobal: 'luker_mg_schema_reset_live_to_global',
+    resetToBlank: 'atri_mg_schema_reset_live_to_blank',
+    resetToGlobal: 'atri_mg_schema_reset_live_to_global',
 });
 const CONTROL_TOOL_NAME_SET = new Set([
     CONTROL_TOOL_NAMES.resetToBlank,

@@ -3,7 +3,7 @@
 // REAL USER-GESTURE flow:
 //   1. Pin executionMode='agenda' so the orchestrator panel shows the agenda board.
 //   2. Open the orch iter-studio popup via real clicks.
-//   3. Script `luker_orch_set_agenda_planner` with a new systemPrompt.
+//   3. Script `atri_orch_set_agenda_planner` with a new systemPrompt.
 //   4. Click Send → wait Approve → click Apply → close popup.
 //   5. Verify both in-memory and on-disk active agenda preset reflect the new systemPrompt.
 //   6. Restart, reload, re-assert.
@@ -72,7 +72,7 @@ test.describe('#87 — Orchestrator iter-studio AGENDA mode Apply persists acros
         await openIterStudio(page, 'orch');
 
         mock.scriptToolCall({
-            name: 'luker_orch_set_agenda_planner',
+            name: 'atri_orch_set_agenda_planner',
             arguments: { systemPrompt: NEW_PLANNER_PROMPT },
         });
 
@@ -82,7 +82,7 @@ test.describe('#87 — Orchestrator iter-studio AGENDA mode Apply persists acros
 
         await expect.poll(async () => {
             return await page.evaluate(() => {
-                const ctx = window.Luker.getContext();
+                const ctx = window.Atria.getContext();
                 const s = ctx.extensionSettings.orchestrator;
                 const activeId = s?.activePresetIds?.agenda || '';
                 return s?.presetLibraries?.agenda?.[activeId]?.planner?.systemPrompt || '';
@@ -99,7 +99,7 @@ test.describe('#87 — Orchestrator iter-studio AGENDA mode Apply persists acros
         expect(afterRestart.planner?.systemPrompt).toBe(NEW_PLANNER_PROMPT);
 
         const inMem = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.extensionSettings.orchestrator;
             const activeId = s?.activePresetIds?.agenda || '';
             return s?.presetLibraries?.agenda?.[activeId]?.planner?.systemPrompt || '';

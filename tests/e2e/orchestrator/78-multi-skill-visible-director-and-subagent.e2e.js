@@ -70,12 +70,12 @@ test.describe('#78 — Multi-skill visible: live director dispatch', () => {
         // sets them to empty lists by default for a clean baseline; we
         // explicitly opt into the 3-skill catalog here.
         await page.evaluate(async (names) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const settings = ctx.extensionSettings.orchestrator;
             const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
-            preset.planTemplate.metadata.hostAdapters.luker.skills = { visible:[...names],deny:[] };
-            for (const agent of preset.planTemplate.agents) agent.metadata.hostAdapters.luker.skills = { visible:['+'],deny:[] };
+            preset.planTemplate.metadata.hostAdapters.atria.skills = { visible:[...names],deny:[] };
+            for (const agent of preset.planTemplate.agents) agent.metadata.hostAdapters.atria.skills = { visible:['+'],deny:[] };
             settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace,{ type:'save',preset });
             // No saveSettings flush needed — this spec does not restart the
             // server; the in-memory preset write is all the director-runtime
@@ -85,7 +85,7 @@ test.describe('#78 — Multi-skill visible: live director dispatch', () => {
         // Install the skill inventory stub + invalidate the cache so the
         // director's resolver picks up our test skills on this turn.
         await page.evaluate(async (names) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mod = await import('/scripts/extensions/orchestrator/skill-resolution.js');
             mod.invalidateSkillInventory();
             window.__test78OrigSkillsList = ctx.skills.list;
@@ -122,7 +122,7 @@ test.describe('#78 — Multi-skill visible: live director dispatch', () => {
 
         // Restore the skills.list stub so we don't pollute other tests.
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             if (window.__test78OrigSkillsList) {
                 ctx.skills.list = window.__test78OrigSkillsList;
                 window.__test78OrigSkillsList = null;

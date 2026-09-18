@@ -1,9 +1,9 @@
 // @ts-nocheck
 
-const SELF_PROFILING_STORAGE_KEY = 'luker.selfProfilingEnabled';
+const SELF_PROFILING_STORAGE_KEY = 'atria.selfProfilingEnabled';
 const SELF_PROFILING_SAMPLE_INTERVAL = 10;
 const SELF_PROFILING_MAX_BUFFER_SIZE = 50000;
-const SELF_PROFILING_STATE_KEY = '__lukerSelfProfilerState';
+const SELF_PROFILING_STATE_KEY = '__atriaSelfProfilerState';
 
 function startSelfProfilerAtEarliestPoint() {
     try {
@@ -54,7 +54,7 @@ const PERF_ENABLED = (() => {
         }
 
         const params = new URLSearchParams(search);
-        return params.get('lukerPerf') === '1' || params.get('luker_perf') === '1';
+        return params.get('atriaPerf') === '1' || params.get('atria_perf') === '1';
     } catch {
         return false;
     }
@@ -87,23 +87,23 @@ function safePerfMeasure(name, startMark, endMark) {
 }
 
 async function initializeApplication() {
-    safePerfMark('luker:init:start');
+    safePerfMark('atria:init:start');
 
     try {
-        safePerfMark('luker:init:import:lib:start');
+        safePerfMark('atria:init:import:lib:start');
         await import('./lib.js');
-        safePerfMark('luker:init:import:lib:end');
-        safePerfMeasure('luker:init:import:lib', 'luker:init:import:lib:start', 'luker:init:import:lib:end');
+        safePerfMark('atria:init:import:lib:end');
+        safePerfMeasure('atria:init:import:lib', 'atria:init:import:lib:start', 'atria:init:import:lib:end');
 
-        safePerfMark('luker:init:import:app:start');
+        safePerfMark('atria:init:import:app:start');
         await import('./script.js');
-        safePerfMark('luker:init:import:app:end');
-        safePerfMeasure('luker:init:import:app', 'luker:init:import:app:start', 'luker:init:import:app:end');
+        safePerfMark('atria:init:import:app:end');
+        safePerfMeasure('atria:init:import:app', 'atria:init:import:app:start', 'atria:init:import:app:end');
     } catch (error) {
-        console.error('Failed to initialize Luker application:', error);
+        console.error('Failed to initialize Atria application:', error);
     } finally {
-        safePerfMark('luker:init:end');
-        safePerfMeasure('luker:init:total', 'luker:init:start', 'luker:init:end');
+        safePerfMark('atria:init:end');
+        safePerfMeasure('atria:init:total', 'atria:init:start', 'atria:init:end');
     }
 }
 

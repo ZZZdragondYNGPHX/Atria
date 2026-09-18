@@ -26,13 +26,13 @@ export const SCREENSHOTS_DIR = path.resolve(__dirname, '../../../docs/public/scr
  *     doc references) can be overwritten by a partial / failing run.
  *
  * To rebuild the doc screenshots deliberately, opt-in:
- *   LUKER_UPDATE_DOC_SCREENSHOTS=1 npx playwright test e2e/chat/{15,16,18,19,20}*.e2e.js
+ *   ATRIA_UPDATE_DOC_SCREENSHOTS=1 npx playwright test e2e/chat/{15,16,18,19,20}*.e2e.js
  *
  * The current in-tree images under docs/public/screenshots/chat-merge-split/
  * remain the canonical set and are committed to git.
  */
 export async function takeStepScreenshot(page, slug) {
-    if (!process.env.LUKER_UPDATE_DOC_SCREENSHOTS) return null;
+    if (!process.env.ATRIA_UPDATE_DOC_SCREENSHOTS) return null;
     mkdirSync(SCREENSHOTS_DIR, { recursive: true });
     const file = path.join(SCREENSHOTS_DIR, `${slug}.png`);
     await page.screenshot({ path: file, fullPage: false });
@@ -109,7 +109,7 @@ export async function submitMergeDialog(page, dialog, targetName, { awaitNavigat
     const dialogElement = page.locator('dialog.popup[open]').last();
     if (awaitNavigation) {
         const navPromise = page.evaluate((to) => new Promise((resolve, reject) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const timer = setTimeout(() => reject(new Error('chat_changed timeout')), to);
             const off = ctx.eventSource.on(ctx.eventTypes.CHAT_CHANGED, (id) => {
                 clearTimeout(timer);

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { EventEmitter } from 'node:events';
-import { dispatchSdComfy, __setWebSocketForTest, __resetWebSocketForTest } from '../src/luker-dispatch/providers/sd/comfy.js';
+import { dispatchSdComfy, __setWebSocketForTest, __resetWebSocketForTest } from '../src/atria-dispatch/providers/sd/comfy.js';
 
 const fetchMock = jest.fn();
-// Luker runs generation through DispatchContext and WS delivery. Exercise the
+// Atria runs generation through DispatchContext and WS delivery. Exercise the
 // real migrated provider, keeping the upstream output-selection regressions.
 class CompletedSocket extends EventEmitter {
     constructor() {

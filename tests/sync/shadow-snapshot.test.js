@@ -21,8 +21,8 @@ describe('snapshotLiveToShadow', () => {
     let userRoot, liveRoot;
 
     beforeEach(() => {
-        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-snap-shadow-'));
-        liveRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-snap-live-'));
+        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-snap-shadow-'));
+        liveRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-snap-live-'));
         for (const sub of ['characters', 'chats', 'worlds', 'groups', 'group chats']) {
             fs.mkdirSync(path.join(liveRoot, sub), { recursive: true });
         }
@@ -193,7 +193,7 @@ describe('snapshotLiveToShadow', () => {
         // produce wrong-rooted rel paths (../staging/...) and corrupt the
         // workdir layout — passing liveRoot: staging is what makes the walker
         // anchor rel paths at staging so they land cleanly under workdir.
-        const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-snap-staging-'));
+        const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-snap-staging-'));
         try {
             for (const sub of ['characters', 'chats', 'worlds', 'groups', 'group chats']) {
                 fs.mkdirSync(path.join(staging, sub), { recursive: true });
@@ -282,7 +282,7 @@ describe('snapshotLiveToShadow', () => {
         // Place a file at the path the now-removed `database` category used
         // to resolve to. It must NOT be picked up — categories aren't
         // implicitly inferred from filenames.
-        fs.writeFileSync(path.join(liveRoot, 'luker-storage.sqlite'), 'live-db-bytes');
+        fs.writeFileSync(path.join(liveRoot, 'atria-storage.sqlite'), 'live-db-bytes');
 
         const result = await snapshotLiveToShadow({
             userRoot, peerId: 'p',
@@ -295,7 +295,7 @@ describe('snapshotLiveToShadow', () => {
         const headOid = await git.resolveRef({ fs, dir: paths.workdir, gitdir: paths.gitDir, ref: 'HEAD' });
         const tracked = await git.listFiles({ fs, dir: paths.workdir, gitdir: paths.gitDir, ref: headOid });
         expect(tracked).toEqual(['characters/char.png']);
-        expect(fs.existsSync(path.join(paths.workdir, 'luker-storage.sqlite'))).toBe(false);
+        expect(fs.existsSync(path.join(paths.workdir, 'atria-storage.sqlite'))).toBe(false);
     });
 
     test('skips symlinks in the live tree', async () => {

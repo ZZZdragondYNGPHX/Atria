@@ -55,11 +55,11 @@ test('generation-basic: plugin stream call replays every chunk across a mid-stre
     // setOffline(true) alone doesn't reliably tear down already-open
     // sockets on Chromium; an explicit .close() from the page does.
     await context.addInitScript(() => {
-        window.__lukerObservedSockets = [];
+        window.__atriaObservedSockets = [];
         const OrigWS = window.WebSocket;
         window.WebSocket = function PatchedWebSocket(...args) {
             const s = new OrigWS(...args);
-            try { window.__lukerObservedSockets.push(s); } catch { /* Preserve the existing best-effort error handling. */ }
+            try { window.__atriaObservedSockets.push(s); } catch { /* Preserve the existing best-effort error handling. */ }
             return s;
         };
         Object.setPrototypeOf(window.WebSocket, OrigWS);
@@ -140,7 +140,7 @@ test('generation-basic: plugin stream call replays every chunk across a mid-stre
     // before succeeding.
     await context.setOffline(true);
     await page.evaluate(() => {
-        (window.__lukerObservedSockets || []).forEach(s => {
+        (window.__atriaObservedSockets || []).forEach(s => {
             try { s.close(); } catch { /* Preserve the existing best-effort error handling. */ }
         });
     });

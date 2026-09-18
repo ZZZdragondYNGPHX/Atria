@@ -156,7 +156,7 @@ function buildCard(name, description, firstMes, bookName) {
         post_history_instructions: '',
         alternate_greetings: [],
         tags: ['e2e', 'real-llm'],
-        creator: 'luker-e2e',
+        creator: 'atria-e2e',
         character_version: '1.0',
         data: {
             name,
@@ -170,7 +170,7 @@ function buildCard(name, description, firstMes, bookName) {
             post_history_instructions: '',
             alternate_greetings: [],
             tags: ['e2e', 'real-llm'],
-            creator: 'luker-e2e',
+            creator: 'atria-e2e',
             character_version: '1.0',
             extensions: {
                 world: bookName,
@@ -260,14 +260,14 @@ async function sendStudioPromptAndWait(page, prompt, { expect: expectKind, timeo
             // wait for a NEW bubble (real-LLM output) rather than any
             // bubble (which is instantly true because of the seeded
             // system bubble).
-            const bubbleCountBefore = await studio.locator('[data-cea-editor-messages] .luker_lib_message_assistant, [data-cea-editor-messages] .luker_lib_message').count();
+            const bubbleCountBefore = await studio.locator('[data-cea-editor-messages] .atria_lib_message_assistant, [data-cea-editor-messages] .atria_lib_message').count();
             await studio.locator('[data-cea-editor-action="send"]').first().click();
             if (expectKind === 'assistant') {
                 // Wait for a new assistant bubble to appear.
                 await page.waitForFunction(({ before }) => {
                     const root = document.querySelector('[data-cea-editor-messages]');
                     if (!root) return false;
-                    const bubbles = root.querySelectorAll('.luker_lib_message_assistant, .luker_lib_message');
+                    const bubbles = root.querySelectorAll('.atria_lib_message_assistant, .atria_lib_message');
                     if (bubbles.length <= before) return false;
                     const last = bubbles[bubbles.length - 1];
                     return last && (last.textContent || '').trim().length > 20;
@@ -287,7 +287,7 @@ async function sendStudioPromptAndWait(page, prompt, { expect: expectKind, timeo
             // Best-effort: try to abort any in-flight round so the next
             // attempt can start clean.
             await page.evaluate(() => {
-                try { window.Luker?.__testAbortCurrentIterRound?.(); } catch { /* best effort */ }
+                try { window.Atria?.__testAbortCurrentIterRound?.(); } catch { /* best effort */ }
             }).catch(() => {});
             await page.waitForTimeout(delayMs);
         }
@@ -298,7 +298,7 @@ let _cardAPngPath, cardBPngPath, tmpDir;
 
 test.describe('#28 — real-LLM post-replace world-book sweep', () => {
     test.beforeAll(async () => {
-        tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-replace-real-llm-'));
+        tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-replace-real-llm-'));
         _cardAPngPath = writeCardPng(CARD_A_NAME, CARD_A_DESCRIPTION, CARD_A_FIRST_MES, CARD_A_BOOK, resolve(tmpDir, 'sable.png'));
         cardBPngPath = writeCardPng(CARD_B_NAME, CARD_B_DESCRIPTION, CARD_B_FIRST_MES, CARD_B_BOOK, resolve(tmpDir, 'nireth.png'));
     });
@@ -356,7 +356,7 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
             // Await the new book showing up in the world-info list (the
             // materialize path is async).
             await page.waitForFunction(({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return Array.isArray(names) && names.includes(name);
             }, { name: CARD_B_BOOK }, { timeout: 15_000 });
@@ -473,7 +473,7 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
 
             // --- Assertion A: pre-materialize wrote the new book -----
             await page.waitForFunction(({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return Array.isArray(names) && names.includes(name);
             }, { name: CARD_B_BOOK }, { timeout: 15_000 });
@@ -498,7 +498,7 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
             //      structured diff — book names, per-entry cards, and
             //      the verbatim entry content the seed used to dump.
             const messagesRoot = studio.locator('[data-cea-editor-messages]');
-            const systemBubbles = messagesRoot.locator('.luker_lib_message_system');
+            const systemBubbles = messagesRoot.locator('.atria_lib_message_system');
             await expect(systemBubbles).toHaveCount(0);
 
             const openDiffBtn = studio.locator('[data-cea-editor-action="open-replace-diff"]').first();
@@ -570,11 +570,11 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
                 // Find any assistant bubble whose text is non-trivially
                 // long. The system seed is a fixed body — a real reply
                 // has to add MORE content.
-                const bubbles = root.querySelectorAll('.luker_lib_message');
+                const bubbles = root.querySelectorAll('.atria_lib_message');
                 for (const b of bubbles) {
                     const cls = b.className || '';
-                    if (cls.includes('luker_lib_message_system')) continue;
-                    if (cls.includes('luker_lib_message_user')) continue;
+                    if (cls.includes('atria_lib_message_system')) continue;
+                    if (cls.includes('atria_lib_message_user')) continue;
                     const text = (b.textContent || '').trim();
                     if (text.length > 80) return true;
                 }
@@ -603,7 +603,7 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
             // --- Assertion F: edit actually landed on disk -----------
             // Poll the book file for the migrated entry.
             await page.waitForFunction(async ({ bookName }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 if (!ctx?.loadWorldInfo) return false;
                 try {
                     const book = await ctx.loadWorldInfo(bookName);
@@ -667,7 +667,7 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
             await studio.waitFor({ state: 'visible', timeout: 30_000 });
             // Pre-materialize completed.
             await page.waitForFunction(({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return Array.isArray(names) && names.includes(name);
             }, { name: CARD_B_BOOK }, { timeout: 15_000 });
@@ -710,7 +710,7 @@ test.describe('#28 — real-LLM post-replace world-book sweep', () => {
             // Rollback: new book file deleted, old book unchanged,
             // binding restored to card A book.
             await page.waitForFunction(({ name }) => {
-                const ctx = window.Luker?.getContext?.();
+                const ctx = window.Atria?.getContext?.();
                 const names = typeof ctx?.getWorldInfoNames === 'function' ? ctx.getWorldInfoNames() : [];
                 return !(Array.isArray(names) && names.includes(name));
             }, { name: CARD_B_BOOK }, { timeout: 15_000 });

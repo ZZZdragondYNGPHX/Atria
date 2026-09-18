@@ -35,7 +35,7 @@ const MANIFEST = {
     formatVersion: 1,
     characters: ['character/halden.json'],
     scenarios: ['scenario/library-stairwell.json'],
-    author: { name: 'luker-storage-parity', backyardURL: '' },
+    author: { name: 'atria-storage-parity', backyardURL: '' },
 };
 
 const CHARACTER = {

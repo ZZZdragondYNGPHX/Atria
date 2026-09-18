@@ -59,7 +59,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             {
@@ -99,7 +99,7 @@ test.describe('#49 — director run + card-bound preset roundtrip', () => {
         // 内部实现细节,插件层不该 peek)。
         await page.waitForFunction(() =>
             !!document.querySelector(
-                '#settings_preset_openai option[data-luker-char-bound="1"]:checked',
+                '#settings_preset_openai option[data-atria-char-bound="1"]:checked',
             ),
         );
 
@@ -116,7 +116,7 @@ test.describe('#49 — director run + card-bound preset roundtrip', () => {
                 el.dispatchEvent(new Event('input', { bubbles: true }));
                 el.dispatchEvent(new Event('change', { bubbles: true }));
             }
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.chatCompletionSettings;
             if (Array.isArray(s.prompts) && s.prompts[0]) {
                 s.prompts[0].content = 'User-edited main prompt (director roundtrip).';
@@ -139,10 +139,10 @@ test.describe('#49 — director run + card-bound preset roundtrip', () => {
 
         async function readCardSlotBody() {
             return await page.evaluate(async () => {
-                const ctx = window.Luker.getContext();
+                const ctx = window.Atria.getContext();
                 const chId = ctx.characterId;
                 const char = ctx.characters?.[chId];
-                const presets = char?.data?.extensions?.luker?.chat_completion_preset?.presets;
+                const presets = char?.data?.extensions?.atria?.chat_completion_preset?.presets;
                 if (!Array.isArray(presets)) return null;
                 return presets[0]?.preset ?? null;
             });
@@ -152,7 +152,7 @@ test.describe('#49 — director run + card-bound preset roundtrip', () => {
             .poll(async () => {
                 const [slot, live] = await Promise.all([
                     readCardSlotBody(),
-                    page.evaluate(() => window.Luker.getContext().chatCompletionSettings?.temp_openai),
+                    page.evaluate(() => window.Atria.getContext().chatCompletionSettings?.temp_openai),
                 ]);
                 return { slot: slot?.temperature, live };
             }, { timeout: 15_000 })
@@ -165,7 +165,7 @@ test.describe('#49 — director run + card-bound preset roundtrip', () => {
         // `temperature`); preset body <-> oai_settings 的键映射见
         // openai.js:484 settingsToUpdate。
         const beforeApply = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.chatCompletionSettings;
             return {
                 ghostSelectValue: String(document.getElementById('settings_preset_openai')?.value ?? ''),
@@ -178,7 +178,7 @@ test.describe('#49 — director run + card-bound preset roundtrip', () => {
             };
         });
         expect(beforeApply.ghostSelectValue, 'ghost value must start with card-bound sentinel')
-            .toMatch(/^__luker_card__::/);
+            .toMatch(/^__atria_card__::/);
         expect(beforeApply.staleGlobalName, 'stale global name captured (fallback baseline)').not.toBe('');
 
         const cardSlotBefore = await readCardSlotBody();
@@ -264,7 +264,7 @@ test.describe('#49 — director run + card-bound preset roundtrip', () => {
 
         // Assertion (c): restore 后 live oai_settings 与 apply 前逐字节相等。
         const afterRestoreLive = await page.evaluate(() => {
-            const s = window.Luker.getContext().chatCompletionSettings;
+            const s = window.Atria.getContext().chatCompletionSettings;
             return JSON.stringify({
                 temp_openai: s.temp_openai,
                 prompts: s.prompts,

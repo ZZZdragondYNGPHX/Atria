@@ -20,8 +20,8 @@
 import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globals';
 import { STATE_ERROR_REASONS } from '../../public/scripts/state-errors.js';
 
-// Minimal Luker shim for the discovery executors that import getContext.
-globalThis.Luker = {
+// Minimal Atria shim for the discovery executors that import getContext.
+globalThis.Atria = {
     getContext: () => ({
         chat: [],
         characters: [],
@@ -67,22 +67,22 @@ const TOOL = (overrides = {}) => ({
 describe('CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES + isCustomToolIterStudioTool', () => {
     test('all 11 tool names are present + recognized', () => {
         const expectedNames = [
-            'luker_orch_list_custom_tools',
-            'luker_orch_get_custom_tool',
-            'luker_orch_set_custom_tool',
-            'luker_orch_patch_custom_tool_body',
-            'luker_orch_patch_custom_tool_schema',
-            'luker_orch_remove_custom_tool',
-            'luker_orch_dry_run_custom_tool',
-            'luker_ctx_list_keys',
-            'luker_ctx_describe',
-            'luker_docs_list',
-            'luker_docs_read',
+            'atri_orch_list_custom_tools',
+            'atri_orch_get_custom_tool',
+            'atri_orch_set_custom_tool',
+            'atri_orch_patch_custom_tool_body',
+            'atri_orch_patch_custom_tool_schema',
+            'atri_orch_remove_custom_tool',
+            'atri_orch_dry_run_custom_tool',
+            'atri_ctx_list_keys',
+            'atri_ctx_describe',
+            'atri_docs_list',
+            'atri_docs_read',
         ];
         for (const name of expectedNames) {
             expect(mod.isCustomToolIterStudioTool(name)).toBe(true);
         }
-        expect(mod.isCustomToolIterStudioTool('luker_orch_set_director_main_agent')).toBe(false);
+        expect(mod.isCustomToolIterStudioTool('atri_orch_set_director_main_agent')).toBe(false);
         expect(mod.isCustomToolIterStudioTool('chat_search')).toBe(false);
         expect(mod.isCustomToolIterStudioTool('')).toBe(false);
     });
@@ -101,7 +101,7 @@ describe('CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES + isCustomToolIterStudioTool', () =
 describe('list / get', () => {
     test('list returns empty + count 0 for empty profile', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_list_custom_tools', args: {} },
+            { name: 'atri_orch_list_custom_tools', args: {} },
             { profile: { customTools: [] } },
         );
         expect(out.ok).toBe(true);
@@ -116,7 +116,7 @@ describe('list / get', () => {
                 parameters: { type: 'object', properties: { foo: { type: 'string' } }, required: ['foo'] } }),
         ] };
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_list_custom_tools', args: {} }, { profile });
+            { name: 'atri_orch_list_custom_tools', args: {} }, { profile });
         expect(out.result.tools).toHaveLength(2);
         const a = out.result.tools.find(t => t.name === 'a');
         const b = out.result.tools.find(t => t.name === 'b');
@@ -128,7 +128,7 @@ describe('list / get', () => {
     test('get returns full entry verbatim including body', async () => {
         const tool = TOOL({ name: 'x', body: 'return 1;' });
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_get_custom_tool', args: { name: 'x' } },
+            { name: 'atri_orch_get_custom_tool', args: { name: 'x' } },
             { profile: { customTools: [tool] } });
         expect(out.ok).toBe(true);
         expect(out.result.body).toBe('return 1;');
@@ -136,7 +136,7 @@ describe('list / get', () => {
 
     test('get returns error for missing tool', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_get_custom_tool', args: { name: 'nope' } },
+            { name: 'atri_orch_get_custom_tool', args: { name: 'nope' } },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_TARGET);
@@ -145,7 +145,7 @@ describe('list / get', () => {
 
     test('get rejects invalid name pattern', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_get_custom_tool', args: { name: 'has space' } },
+            { name: 'atri_orch_get_custom_tool', args: { name: 'has space' } },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -153,10 +153,10 @@ describe('list / get', () => {
     });
 });
 
-describe('set (luker_orch_set_custom_tool)', () => {
+describe('set (atri_orch_set_custom_tool)', () => {
     test('happy path returns pendingCustomToolEdit kind=upsert', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ name: 'new_tool' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ name: 'new_tool' }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(true);
         expect(out.pendingCustomToolEdit).toBeTruthy();
@@ -169,7 +169,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
     test('overwrites existing tool — before is the previous entry', async () => {
         const existing = TOOL({ name: 't', body: 'return "old";' });
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ name: 't', body: 'return "new";' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ name: 't', body: 'return "new";' }) },
             { profile: { customTools: [existing] } });
         expect(out.pendingCustomToolEdit.before.body).toBe('return "old";');
         expect(out.pendingCustomToolEdit.after.body).toBe('return "new";');
@@ -177,7 +177,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
 
     test('rejects invalid name', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ name: '0bad' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ name: '0bad' }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.pendingCustomToolEdit).toBeUndefined();
@@ -185,7 +185,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
 
     test('rejects name that shadows a Layer-1 builtin', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ name: 'chat_search' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ name: 'chat_search' }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -194,7 +194,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
 
     test('rejects body with a real syntax error', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ body: 'return {;' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ body: 'return {;' }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_COMMIT);
@@ -203,7 +203,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
 
     test('rejects simulateBody with a syntax error', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ simulateBody: 'return {;' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ simulateBody: 'return {;' }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_COMMIT);
@@ -212,7 +212,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
 
     test('requires description', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ description: '   ' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ description: '   ' }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -221,7 +221,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
 
     test('requires valid mode', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ mode: 'maybe' }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ mode: 'maybe' }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -230,7 +230,7 @@ describe('set (luker_orch_set_custom_tool)', () => {
 
     test('requires object parameters', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_set_custom_tool', args: TOOL({ parameters: null }) },
+            { name: 'atri_orch_set_custom_tool', args: TOOL({ parameters: null }) },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -238,12 +238,12 @@ describe('set (luker_orch_set_custom_tool)', () => {
     });
 });
 
-describe('patch_body (luker_orch_patch_custom_tool_body)', () => {
+describe('patch_body (atri_orch_patch_custom_tool_body)', () => {
     const baseProfile = () => ({ customTools: [TOOL({ name: 't', body: 'return 1 + 2;' })] });
 
     test('happy path returns pendingCustomToolEdit kind=patch_body', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_body', args: { name: 't', oldString: '1 + 2', newString: '3 + 4' } },
+            { name: 'atri_orch_patch_custom_tool_body', args: { name: 't', oldString: '1 + 2', newString: '3 + 4' } },
             { profile: baseProfile() });
         expect(out.ok).toBe(true);
         expect(out.pendingCustomToolEdit.kind).toBe('patch_body');
@@ -254,7 +254,7 @@ describe('patch_body (luker_orch_patch_custom_tool_body)', () => {
     test('rejects non-unique oldString without replaceAll', async () => {
         const profile = { customTools: [TOOL({ name: 't', body: 'foo; foo;' })] };
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_body', args: { name: 't', oldString: 'foo', newString: 'bar' } },
+            { name: 'atri_orch_patch_custom_tool_body', args: { name: 't', oldString: 'foo', newString: 'bar' } },
             { profile });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -264,7 +264,7 @@ describe('patch_body (luker_orch_patch_custom_tool_body)', () => {
     test('replaceAll: true replaces every occurrence', async () => {
         const profile = { customTools: [TOOL({ name: 't', body: 'foo; foo;' })] };
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_body', args: { name: 't', oldString: 'foo', newString: 'bar', replaceAll: true } },
+            { name: 'atri_orch_patch_custom_tool_body', args: { name: 't', oldString: 'foo', newString: 'bar', replaceAll: true } },
             { profile });
         expect(out.ok).toBe(true);
         expect(out.pendingCustomToolEdit.after.body).toBe('bar; bar;');
@@ -272,7 +272,7 @@ describe('patch_body (luker_orch_patch_custom_tool_body)', () => {
 
     test('rejects patch that produces a body with syntax error', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_body', args: { name: 't', oldString: '1 + 2;', newString: '1 + {;' } },
+            { name: 'atri_orch_patch_custom_tool_body', args: { name: 't', oldString: '1 + 2;', newString: '1 + {;' } },
             { profile: baseProfile() });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_COMMIT);
@@ -281,7 +281,7 @@ describe('patch_body (luker_orch_patch_custom_tool_body)', () => {
 
     test('rejects missing tool', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_body', args: { name: 'nope', oldString: 'a', newString: 'b' } },
+            { name: 'atri_orch_patch_custom_tool_body', args: { name: 'nope', oldString: 'a', newString: 'b' } },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_TARGET);
@@ -291,7 +291,7 @@ describe('patch_body (luker_orch_patch_custom_tool_body)', () => {
     test('target=simulateBody patches the simulate body', async () => {
         const profile = { customTools: [TOOL({ name: 't', body: 'x', simulateBody: 'return null;' })] };
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_body', args: { name: 't', target: 'simulateBody', oldString: 'null', newString: '"simulated"' } },
+            { name: 'atri_orch_patch_custom_tool_body', args: { name: 't', target: 'simulateBody', oldString: 'null', newString: '"simulated"' } },
             { profile });
         expect(out.ok).toBe(true);
         expect(out.pendingCustomToolEdit.after.simulateBody).toBe('return "simulated";');
@@ -299,12 +299,12 @@ describe('patch_body (luker_orch_patch_custom_tool_body)', () => {
     });
 });
 
-describe('patch_schema (luker_orch_patch_custom_tool_schema)', () => {
+describe('patch_schema (atri_orch_patch_custom_tool_schema)', () => {
     test('happy path replaces only parameters', async () => {
         const original = TOOL({ name: 't', parameters: { type: 'object', properties: {} } });
         const next = { type: 'object', properties: { foo: { type: 'string' } }, required: ['foo'] };
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_schema', args: { name: 't', parameters: next } },
+            { name: 'atri_orch_patch_custom_tool_schema', args: { name: 't', parameters: next } },
             { profile: { customTools: [original] } });
         expect(out.ok).toBe(true);
         expect(out.pendingCustomToolEdit.kind).toBe('patch_schema');
@@ -314,17 +314,17 @@ describe('patch_schema (luker_orch_patch_custom_tool_schema)', () => {
 
     test('rejects array as parameters', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_patch_custom_tool_schema', args: { name: 't', parameters: [] } },
+            { name: 'atri_orch_patch_custom_tool_schema', args: { name: 't', parameters: [] } },
             { profile: { customTools: [TOOL({ name: 't' })] } });
         expect(out.ok).toBe(false);
     });
 });
 
-describe('remove (luker_orch_remove_custom_tool)', () => {
+describe('remove (atri_orch_remove_custom_tool)', () => {
     test('happy path returns pendingCustomToolEdit kind=remove with before snapshot', async () => {
         const tool = TOOL({ name: 'to_drop', body: 'return "bye";' });
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_remove_custom_tool', args: { name: 'to_drop' } },
+            { name: 'atri_orch_remove_custom_tool', args: { name: 'to_drop' } },
             { profile: { customTools: [tool] } });
         expect(out.ok).toBe(true);
         expect(out.pendingCustomToolEdit.kind).toBe('remove');
@@ -334,16 +334,16 @@ describe('remove (luker_orch_remove_custom_tool)', () => {
 
     test('rejects missing tool', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_remove_custom_tool', args: { name: 'ghost' } },
+            { name: 'atri_orch_remove_custom_tool', args: { name: 'ghost' } },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
     });
 });
 
-describe('dry_run (luker_orch_dry_run_custom_tool)', () => {
+describe('dry_run (atri_orch_dry_run_custom_tool)', () => {
     test('happy path inline body returns result + logs + durationMs', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_dry_run_custom_tool', args: { body: 'console.log("hi", args.x); return { doubled: args.x * 2 };', args: { x: 21 } } },
+            { name: 'atri_orch_dry_run_custom_tool', args: { body: 'console.log("hi", args.x); return { doubled: args.x * 2 };', args: { x: 21 } } },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(true);
         expect(out.result.tool).toBe('(inline)');
@@ -357,7 +357,7 @@ describe('dry_run (luker_orch_dry_run_custom_tool)', () => {
     test('by-name dispatches the profile entry', async () => {
         const tool = TOOL({ name: 'mul', body: 'return args.a * args.b;', mode: 'read' });
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_dry_run_custom_tool', args: { name: 'mul', args: { a: 6, b: 7 } } },
+            { name: 'atri_orch_dry_run_custom_tool', args: { name: 'mul', args: { a: 6, b: 7 } } },
             { profile: { customTools: [tool] } });
         expect(out.result.tool).toBe('mul');
         expect(out.result.dryRun.ok).toBe(true);
@@ -366,7 +366,7 @@ describe('dry_run (luker_orch_dry_run_custom_tool)', () => {
 
     test('body that throws returns ok:false with the real exception message', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_dry_run_custom_tool', args: { body: 'throw new Error("kaboom");', args: {} } },
+            { name: 'atri_orch_dry_run_custom_tool', args: { body: 'throw new Error("kaboom");', args: {} } },
             { profile: { customTools: [] } });
         expect(out.result.dryRun.ok).toBe(false);
         expect(out.result.dryRun.error).toMatch(/kaboom/);
@@ -380,7 +380,7 @@ describe('dry_run (luker_orch_dry_run_custom_tool)', () => {
         // a 50ms setTimeout; ensure the timeout works for a longer one
         // via a one-off opt-in slow test below.
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_dry_run_custom_tool', args: { body: 'await new Promise(r => setTimeout(r, 50)); return "fast";', args: {} } },
+            { name: 'atri_orch_dry_run_custom_tool', args: { body: 'await new Promise(r => setTimeout(r, 50)); return "fast";', args: {} } },
             { profile: { customTools: [] } });
         expect(out.result.dryRun.ok).toBe(true);
         expect(out.result.dryRun.result).toBe('fast');
@@ -388,7 +388,7 @@ describe('dry_run (luker_orch_dry_run_custom_tool)', () => {
 
     test('compile error returns ok:false with syntax message and no run', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_dry_run_custom_tool', args: { body: 'return {;', args: {} } },
+            { name: 'atri_orch_dry_run_custom_tool', args: { body: 'return {;', args: {} } },
             { profile: { customTools: [] } });
         expect(out.result.dryRun.ok).toBe(false);
         expect(out.result.dryRun.error).toMatch(/syntax/);
@@ -396,7 +396,7 @@ describe('dry_run (luker_orch_dry_run_custom_tool)', () => {
 
     test('rejects when both name and body are supplied', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_dry_run_custom_tool', args: { name: 'x', body: 'return 1;', args: {} } },
+            { name: 'atri_orch_dry_run_custom_tool', args: { name: 'x', body: 'return 1;', args: {} } },
             { profile: { customTools: [TOOL({ name: 'x' })] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -405,7 +405,7 @@ describe('dry_run (luker_orch_dry_run_custom_tool)', () => {
 
     test('rejects when neither name nor body is supplied', async () => {
         const out = await mod.executeCustomToolIterStudioCall(
-            { name: 'luker_orch_dry_run_custom_tool', args: { args: {} } },
+            { name: 'atri_orch_dry_run_custom_tool', args: { args: {} } },
             { profile: { customTools: [] } });
         expect(out.ok).toBe(false);
         expect(out.reason).toBe(STATE_ERROR_REASONS.VALIDATION_ARGS);
@@ -420,7 +420,7 @@ describe('commitApprovedCustomToolProposal', () => {
     });
 
     test('upsert (create) appends + flips enable flag', () => {
-        const op = { name: 'luker_orch_set_custom_tool', args: TOOL({ name: 'fresh' }) };
+        const op = { name: 'atri_orch_set_custom_tool', args: TOOL({ name: 'fresh' }) };
         mod.commitApprovedCustomToolProposal(profile, flagBucket, op);
         expect(profile.customTools).toHaveLength(1);
         expect(profile.customTools[0].name).toBe('fresh');
@@ -429,7 +429,7 @@ describe('commitApprovedCustomToolProposal', () => {
 
     test('upsert (overwrite) replaces existing in-place', () => {
         profile.customTools = [TOOL({ name: 't', body: 'old' })];
-        const op = { name: 'luker_orch_set_custom_tool', args: TOOL({ name: 't', body: 'new' }) };
+        const op = { name: 'atri_orch_set_custom_tool', args: TOOL({ name: 't', body: 'new' }) };
         mod.commitApprovedCustomToolProposal(profile, flagBucket, op);
         expect(profile.customTools).toHaveLength(1);
         expect(profile.customTools[0].body).toBe('new');
@@ -437,13 +437,13 @@ describe('commitApprovedCustomToolProposal', () => {
 
     test('patch_body replays the patch and produces the same result', () => {
         profile.customTools = [TOOL({ name: 't', body: 'return 1;' })];
-        const op = { name: 'luker_orch_patch_custom_tool_body', args: { name: 't', oldString: '1', newString: '42' } };
+        const op = { name: 'atri_orch_patch_custom_tool_body', args: { name: 't', oldString: '1', newString: '42' } };
         mod.commitApprovedCustomToolProposal(profile, flagBucket, op);
         expect(profile.customTools[0].body).toBe('return 42;');
     });
 
     test('patch_body throws CustomToolCommitError on drift (tool removed since proposal)', () => {
-        const op = { name: 'luker_orch_patch_custom_tool_body', args: { name: 'gone', oldString: 'a', newString: 'b' } };
+        const op = { name: 'atri_orch_patch_custom_tool_body', args: { name: 'gone', oldString: 'a', newString: 'b' } };
         let caught = null;
         try { mod.commitApprovedCustomToolProposal(profile, flagBucket, op); } catch (err) { caught = err; }
         expect(caught).toBeInstanceOf(mod.CustomToolCommitError);
@@ -453,7 +453,7 @@ describe('commitApprovedCustomToolProposal', () => {
 
     test('patch_schema replays', () => {
         profile.customTools = [TOOL({ name: 't', parameters: { type: 'object' } })];
-        const op = { name: 'luker_orch_patch_custom_tool_schema', args: { name: 't', parameters: { type: 'object', properties: { z: { type: 'integer' } } } } };
+        const op = { name: 'atri_orch_patch_custom_tool_schema', args: { name: 't', parameters: { type: 'object', properties: { z: { type: 'integer' } } } } };
         mod.commitApprovedCustomToolProposal(profile, flagBucket, op);
         expect(profile.customTools[0].parameters.properties.z.type).toBe('integer');
     });
@@ -461,20 +461,20 @@ describe('commitApprovedCustomToolProposal', () => {
     test('remove deletes the entry + clears the enable flag', () => {
         profile.customTools = [TOOL({ name: 'to_drop' })];
         flagBucket.to_drop = true;
-        const op = { name: 'luker_orch_remove_custom_tool', args: { name: 'to_drop' } };
+        const op = { name: 'atri_orch_remove_custom_tool', args: { name: 'to_drop' } };
         mod.commitApprovedCustomToolProposal(profile, flagBucket, op);
         expect(profile.customTools).toHaveLength(0);
         expect(flagBucket.to_drop).toBeUndefined();
     });
 
     test('remove of already-gone tool is a noop (double-approve safe)', () => {
-        const op = { name: 'luker_orch_remove_custom_tool', args: { name: 'ghost' } };
+        const op = { name: 'atri_orch_remove_custom_tool', args: { name: 'ghost' } };
         const result = mod.commitApprovedCustomToolProposal(profile, flagBucket, op);
         expect(result.noop).toBe(true);
     });
 
     test('unknown op throws CustomToolCommitError with VALIDATION_ARGS', () => {
-        const op = { name: 'luker_orch_set_director_main_agent', args: {} };
+        const op = { name: 'atri_orch_set_director_main_agent', args: {} };
         let caught = null;
         try { mod.commitApprovedCustomToolProposal(profile, flagBucket, op); } catch (err) { caught = err; }
         expect(caught).toBeInstanceOf(mod.CustomToolCommitError);

@@ -9,17 +9,17 @@ import {
 
 const PASS_SAFETY = () => ({ codes: [], errors: [] });
 
-const SAMPLE = `# Luker config
+const SAMPLE = `# Atria config
 dataRoot: ./data
 
 # storage block
 storage:
   mode: fs          # 'fs' | 'sqlite' | 'mysql' | 'postgres'
   mysql:
-    url: mysql://user:pass@host:3306/luker
+    url: mysql://user:pass@host:3306/atria
     poolSize: 10
   postgres:
-    url: postgresql://user:pass@host:5432/luker
+    url: postgresql://user:pass@host:5432/atria
     poolSize: 10
 
 listen: false
@@ -37,8 +37,8 @@ describe('rewriteStorageBlock — pure transform', () => {
         // every other surrounding key is still there
         expect(out).toContain('dataRoot: ./data');
         expect(out).toContain('listen: false');
-        expect(out).toContain('mysql://user:pass@host:3306/luker');
-        expect(out).toContain('postgresql://user:pass@host:5432/luker');
+        expect(out).toContain('mysql://user:pass@host:3306/atria');
+        expect(out).toContain('postgresql://user:pass@host:5432/atria');
     });
 
     test('preserves top-level and storage block comments', () => {
@@ -47,7 +47,7 @@ describe('rewriteStorageBlock — pure transform', () => {
             mysqlInline: { url: 'mysql://a:b@db:3306/x' },
             postgresInline: null,
         });
-        expect(out).toContain('# Luker config');
+        expect(out).toContain('# Atria config');
         expect(out).toContain('# storage block');
         // Inline enum hint after `mode:` survives (yaml v2 keeps trailing comments).
         expect(out).toMatch(/mode: mysql[^\n]*'fs' \| 'sqlite' \| 'mysql' \| 'postgres'/);
@@ -60,7 +60,7 @@ describe('rewriteStorageBlock — pure transform', () => {
             postgresInline: null,
         });
         expect(out).toContain('mysql://new:pw@db:3306/foo');
-        expect(out).not.toContain('mysql://user:pass@host:3306/luker');
+        expect(out).not.toContain('mysql://user:pass@host:3306/atria');
         // poolSize untouched
         expect(out).toMatch(/mysql:[\s\S]*?poolSize: 10/);
     });
@@ -71,7 +71,7 @@ describe('rewriteStorageBlock — pure transform', () => {
             mysqlInline: { poolSize: 25 },
             postgresInline: null,
         });
-        expect(out).toContain('mysql://user:pass@host:3306/luker');
+        expect(out).toContain('mysql://user:pass@host:3306/atria');
         expect(out).toMatch(/mysql:[\s\S]*?poolSize: 25/);
     });
 
@@ -83,7 +83,7 @@ describe('rewriteStorageBlock — pure transform', () => {
         });
         expect(out).not.toContain('leaked');
         // original postgres block untouched
-        expect(out).toContain('postgresql://user:pass@host:5432/luker');
+        expect(out).toContain('postgresql://user:pass@host:5432/atria');
     });
 
     test('creates storage block when missing from input', () => {
@@ -105,7 +105,7 @@ describe('persistStorageBackendToConfig — file IO', () => {
     let configPath;
 
     beforeEach(async () => {
-        tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'luker-config-persist-'));
+        tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'atria-config-persist-'));
         configPath = path.join(tmpDir, 'config.yaml');
         await fsPromises.writeFile(configPath, SAMPLE, 'utf8');
     });
@@ -125,7 +125,7 @@ describe('persistStorageBackendToConfig — file IO', () => {
         expect(result).toEqual({ ok: true });
         const written = await fsPromises.readFile(configPath, 'utf8');
         expect(written).toMatch(/mode: sqlite/);
-        expect(written).toContain('# Luker config');
+        expect(written).toContain('# Atria config');
     });
 
     test('happy path: mysql inline url + poolSize lands in file', async () => {
@@ -133,12 +133,12 @@ describe('persistStorageBackendToConfig — file IO', () => {
             configPath,
             safetyCheck: PASS_SAFETY,
             targetMode: 'mysql',
-            mysqlInline: { url: 'mysql://op:pw@db:3306/luker', poolSize: 25 },
+            mysqlInline: { url: 'mysql://op:pw@db:3306/atria', poolSize: 25 },
             postgresInline: null,
         });
         expect(result.ok).toBe(true);
         const written = await fsPromises.readFile(configPath, 'utf8');
-        expect(written).toContain('mysql://op:pw@db:3306/luker');
+        expect(written).toContain('mysql://op:pw@db:3306/atria');
         expect(written).toMatch(/poolSize: 25/);
     });
 

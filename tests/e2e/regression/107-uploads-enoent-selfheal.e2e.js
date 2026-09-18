@@ -42,7 +42,7 @@ test.beforeAll(async () => {
     // Stage two copies of the seed PNG with distinct file names. Same
     // image bytes either way — the regression cares about the upload
     // path, not the contents.
-    tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-107-'));
+    tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-107-'));
     firstUploadPath = resolve(tmpDir, 'card-warmup.png');
     secondUploadPath = resolve(tmpDir, 'card-post-wipe.png');
     copyFileSync(SEED_PNG, firstUploadPath);

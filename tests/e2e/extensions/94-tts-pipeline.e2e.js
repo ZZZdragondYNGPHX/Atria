@@ -51,7 +51,7 @@ test.describe('#94 — TTS pipeline reaches playback via real .mes_narrate click
         await selectCharacterByName(page, 'Seraphina');
 
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -82,7 +82,7 @@ test.describe('#94 — TTS pipeline reaches playback via real .mes_narrate click
             if (typeof mod.registerTtsProvider === 'function') {
                 mod.registerTtsProvider('Stub', StubTts);
             }
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             ctx.eventSource.on(ctx.eventTypes.TTS_JOB_STARTED, () => { window.__ttsEvents.jobStarted++; });
             ctx.eventSource.on(ctx.eventTypes.TTS_AUDIO_READY, () => { window.__ttsEvents.audioReady++; });
         });
@@ -114,7 +114,7 @@ test.describe('#94 — TTS pipeline reaches playback via real .mes_narrate click
         // top-level tts.voiceMap). The important act under test is the
         // CLICK, not the voice mapping setup.
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             ctx.extensionSettings.tts = ctx.extensionSettings.tts || {};
             ctx.extensionSettings.tts.Stub = ctx.extensionSettings.tts.Stub || {};
             ctx.extensionSettings.tts.Stub.voiceMap = 'Seraphina:StubVoice';

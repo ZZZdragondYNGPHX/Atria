@@ -1,6 +1,6 @@
 # Copilot Instructions for ZZZdragondYNGPHX/Atria
 
-Atria is a SillyTavern-based modified product and the successor product line to Luker.
+Atria is a SillyTavern-based modified product and the successor product line to Atria.
 
 Before editing code:
 
@@ -13,7 +13,7 @@ Branch rules:
 - develop from `main`;
 - use `feat/*` for features, `fix/*` for bugs, `refactor/*` for refactors, and `chore/*` for maintenance;
 - `vanilla` is SillyTavern upstream reference only;
-- `luker` is legacy Luker reference only;
+- `atria` is legacy Atria reference only;
 - completed tasks are documented on `docs`, merged into `main`, verified, then their temporary branch is deleted.
 
 Engineering rules:
@@ -24,5 +24,5 @@ Engineering rules:
 - use upstream/reference branches only when materially relevant;
 - product identity is `Atria`;
 - prefer concise `atri_*` names for new Atria-owned code;
-- compatibility-sensitive legacy Luker identifiers may remain until a dedicated migration handles them;
+- compatibility-sensitive legacy Atria identifiers may remain until a dedicated migration handles them;
 - run and report only checks actually executed.

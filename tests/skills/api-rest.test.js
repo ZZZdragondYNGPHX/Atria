@@ -16,8 +16,8 @@ import { join } from 'node:path';
 function buildApp(repo, opts = {}) {
     const app = express();
     app.use(express.json({ limit: '20mb' }));
-    if (opts.lukerDefaultRoot) {
-        app.set('lukerDefaultRoot', opts.lukerDefaultRoot);
+    if (opts.atriaDefaultRoot) {
+        app.set('atriaDefaultRoot', opts.atriaDefaultRoot);
     }
     app.use('/api/skills', createSkillsRouter({
         getRepository: () => repo,
@@ -433,8 +433,8 @@ describe('REST /api/skills', () => {
             expect(res.status).toBe(400);
         });
 
-        test('import-bundled returns 500 when lukerDefaultRoot is not configured', async () => {
-            // buildApp was called without lukerDefaultRoot
+        test('import-bundled returns 500 when atriaDefaultRoot is not configured', async () => {
+            // buildApp was called without atriaDefaultRoot
             const res = await request(app).post('/api/skills/import-bundled');
             expect(res.status).toBe(500);
         });
@@ -454,7 +454,7 @@ describe('REST /api/skills', () => {
                     join(fakeDefault, 'skills/global/beta-skill/SKILL.md'),
                     '---\nname: beta-skill\ndescription: second bundled\n---\nbody B\n',
                 );
-                const app2 = buildApp(repo, { lukerDefaultRoot: fakeDefault });
+                const app2 = buildApp(repo, { atriaDefaultRoot: fakeDefault });
                 const res = await request(app2).get('/api/skills/bundled-manifest');
                 expect(res.status).toBe(200);
                 expect(Array.isArray(res.body)).toBe(true);
@@ -476,7 +476,7 @@ describe('REST /api/skills', () => {
 
         test('bundled-manifest returns empty array when defaultRoot missing skills dir', async () => {
             const missing = join(tmpdir(), 'bundled-manifest-missing-' + Date.now());
-            const app2 = buildApp(repo, { lukerDefaultRoot: missing });
+            const app2 = buildApp(repo, { atriaDefaultRoot: missing });
             const res = await request(app2).get('/api/skills/bundled-manifest');
             expect(res.status).toBe(200);
             expect(res.body).toEqual([]);
@@ -492,7 +492,7 @@ describe('REST /api/skills', () => {
                     join(fakeDefault, 'skills/global/check-hash/SKILL.md'),
                     '---\nname: check-hash\ndescription: x\n---\ncontent for hash\n',
                 );
-                const app2 = buildApp(repo, { lukerDefaultRoot: fakeDefault });
+                const app2 = buildApp(repo, { atriaDefaultRoot: fakeDefault });
                 const manifestRes = await request(app2).get('/api/skills/bundled-manifest');
                 const bundled = manifestRes.body.find(e => e.name === 'check-hash');
                 expect(bundled).toBeTruthy();
@@ -509,14 +509,14 @@ describe('REST /api/skills', () => {
             }
         });
 
-        test('bundled-manifest returns 500 when lukerDefaultRoot not configured', async () => {
+        test('bundled-manifest returns 500 when atriaDefaultRoot not configured', async () => {
             const res = await request(app).get('/api/skills/bundled-manifest');
             expect(res.status).toBe(500);
         });
 
         test('import-bundled returns 0/0/0 when defaultRoot points at missing dir', async () => {
             const missing = join(tmpdir(), 'skill-rest-default-missing-' + Date.now());
-            const app2 = buildApp(repo, { lukerDefaultRoot: missing });
+            const app2 = buildApp(repo, { atriaDefaultRoot: missing });
             const res = await request(app2).post('/api/skills/import-bundled');
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ installed: 0, replaced: 0, alreadyInstalled: 0 });

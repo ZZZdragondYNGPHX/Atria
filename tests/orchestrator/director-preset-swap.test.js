@@ -284,7 +284,7 @@ describe('applyDirectorPresetSwap / restoreDirectorPresetSwap — card-bound ori
         ctx.openai.settingNames['StaleGlobal'] = 0;
         ensureDirectorPureSyntheticPreset(ctx);
 
-        const ghostValue = '__luker_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
+        const ghostValue = '__atria_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
         installDomStubs({ selectValue: ghostValue, hasOption: true });
 
         await applyDirectorPresetSwap(ctx);
@@ -304,7 +304,7 @@ describe('applyDirectorPresetSwap / restoreDirectorPresetSwap — card-bound ori
         ctx.openai.settingNames['StaleGlobal'] = 0;
         ensureDirectorPureSyntheticPreset(ctx);
 
-        const ghostValue = '__luker_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
+        const ghostValue = '__atria_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
         const { jqSpy } = installDomStubs({ selectValue: ghostValue, hasOption: true });
 
         await applyDirectorPresetSwap(ctx);
@@ -325,7 +325,7 @@ describe('applyDirectorPresetSwap / restoreDirectorPresetSwap — card-bound ori
         ctx.openai.settingNames['StaleGlobal'] = 0;
         ensureDirectorPureSyntheticPreset(ctx);
 
-        const ghostValue = '__luker_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
+        const ghostValue = '__atria_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
         installDomStubs({ selectValue: ghostValue, hasOption: false });
 
         await applyDirectorPresetSwap(ctx);
@@ -368,7 +368,7 @@ describe('applyDirectorPresetSwap / restoreDirectorPresetSwap — card-bound ori
         ctx.openai.settingNames['StaleGlobal'] = 0;
         ensureDirectorPureSyntheticPreset(ctx);
 
-        const ghostValue = '__luker_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
+        const ghostValue = '__atria_card__::' + encodeURIComponent('Aria.png') + '::' + encodeURIComponent('CardBoundSlot');
         installDomStubs({ selectValue: ghostValue, hasOption: true });
 
         await applyDirectorPresetSwap(ctx);

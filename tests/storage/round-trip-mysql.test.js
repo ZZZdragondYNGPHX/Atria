@@ -9,7 +9,7 @@
 //   - MySQL  → FS
 //
 // We host this in a separate file so the whole suite silently no-ops when the
-// local MySQL container is unavailable (set LUKER_DISABLE_MYSQL_TESTS=1). The
+// local MySQL container is unavailable (set ATRIA_DISABLE_MYSQL_TESTS=1). The
 // original round-trip.test.js stays stable and engine-agnostic; future engines
 // add their own paired file rather than ballooning that one.
 //
@@ -36,7 +36,7 @@ const makeFs = makeTempFsEngineHarness;
 const makeSqlite = makeTempSqliteEngineHarness;
 const makeMysql = makeTempMysqlEngineHarness;
 
-const skipMysql = !!process.env.LUKER_DISABLE_MYSQL_TESTS;
+const skipMysql = !!process.env.ATRIA_DISABLE_MYSQL_TESTS;
 const describeMysql = skipMysql ? describe.skip : describe;
 
 // ---- Settings ---------------------------------------------------------------

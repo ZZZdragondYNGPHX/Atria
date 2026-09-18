@@ -75,20 +75,20 @@ describe('LOOP_ITERATION_CONTRACT_LINES', () => {
     });
 
     test('points at the dedicated patch tool name', () => {
-        expect(text).toMatch(/luker_orch_set_loop_profile/);
+        expect(text).toMatch(/atri_orch_set_loop_profile/);
     });
 
     test('does NOT reference legacy continue / finalize iteration tools (program-driven auto-continue)', () => {
-        expect(text).not.toMatch(/luker_orch_continue_iteration/);
-        expect(text).not.toMatch(/luker_orch_finalize_iteration/);
+        expect(text).not.toMatch(/atri_orch_continue_iteration/);
+        expect(text).not.toMatch(/atri_orch_finalize_iteration/);
     });
 
     test('avoids spec-mode-only language about stages, nodes, or presets', () => {
         // Negative coverage: the loop-mode prompt must not claim there
         // are stages / nodes / presets to manage. Loop is single-agent.
-        expect(text).not.toMatch(/luker_orch_set_stage/);
-        expect(text).not.toMatch(/luker_orch_set_node/);
-        expect(text).not.toMatch(/luker_orch_set_preset/);
+        expect(text).not.toMatch(/atri_orch_set_stage/);
+        expect(text).not.toMatch(/atri_orch_set_node/);
+        expect(text).not.toMatch(/atri_orch_set_preset/);
     });
 
     test('documents program-driven auto-continue (any tool call → next round, plain text → stop)', () => {

@@ -2,7 +2,7 @@
 name: draft-writer-style-zh
 description: Main-agent draft-writing rules — living-being prose, no meta-narration, three pre-finalize self-check passes.
 metadata:
-  author: Luker Team
+  author: Atria Team
   version: 1.0.0
 ---
 

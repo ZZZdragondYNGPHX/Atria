@@ -8,7 +8,7 @@
  * conflict, import bundled) that exercises the wired `openSkillManagerPanel`
  * via a stub context + stub DOM.
  *
- * Luker's Jest config runs in `testEnvironment: "node"` (see
+ * Atria's Jest config runs in `testEnvironment: "node"` (see
  * tests/jest.config.json), with no jsdom installed. We stub just enough
  * DOM surface (document.createElement, document.body, document.getElementById,
  * querySelector, addEventListener) on globalThis for the panel's render +
@@ -205,7 +205,7 @@ describe('skill-manager-panel — pure helpers', () => {
 
         // On the bundled tab the body is a mount point, not the rows.
         const bundledHtml = mod.buildPanelHtml(groups, [skills[0].scope], 'all', 'bundled', t, esc);
-        expect(bundledHtml).toContain('luker_skill_manager_bundled_mount');
+        expect(bundledHtml).toContain('atria_skill_manager_bundled_mount');
         expect(bundledHtml).not.toContain('Import bundled');
     });
 });
@@ -502,7 +502,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
         const ctx = makeStubContext(opts);
         // Pre-create the mount element so `getElementById(mountId)` resolves
         // when the panel's deferred refresh runs.
-        const mountId = `luker_skill_manager_${Date.now()}_test`;
+        const mountId = `atria_skill_manager_${Date.now()}_test`;
         const stub = new StubElement('div');
         global.document.register(mountId, stub);
 
@@ -514,7 +514,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
         global.document.getElementById = function (id) {
             const cached = origGetById(id);
             if (cached) return cached;
-            if (String(id).startsWith('luker_skill_manager_')) {
+            if (String(id).startsWith('atria_skill_manager_')) {
                 return stub;
             }
             return null;
@@ -641,7 +641,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
                     // and mark the corresponding <option> as selected so the
                     // stub <select>.value reads A.png.
                     const dlg = popup.dlg;
-                    const radios = dlg.querySelectorAll('[name="luker_skill_scope_kind"]');
+                    const radios = dlg.querySelectorAll('[name="atria_skill_scope_kind"]');
                     for (const r of radios) {
                         r.checked = (r._attrs.get('value') === 'character');
                     }
@@ -764,7 +764,7 @@ describe('openSkillManagerPanel — integration scenarios', () => {
         // The bundled-browser paints into the inner mount. The stub's
         // outer-element `.innerHTML` is a snapshot (set during the panel's
         // own render); we check the inner mount directly.
-        const bundledMount = mount.querySelector('.luker_skill_manager_bundled_mount');
+        const bundledMount = mount.querySelector('.atria_skill_manager_bundled_mount');
         expect(bundledMount).toBeTruthy();
         expect(bundledMount.innerHTML).toContain('bundle-one');
         expect(bundledMount.innerHTML).toContain('Not installed');

@@ -13,10 +13,10 @@ import { test, expect } from '@playwright/test';
  * Selector discovery notes (see iteration-studio/template.js + each
  * plugin's main.js / ui-templates.js):
  *
- * - All four adapters render into a `div.luker-studio` popup; the adapter-
- *   specific class (`luker_cpa_popup`, `luker_mg_schema_iter_popup`,
- *   `luker_orch_iter_popup`) is concatenated by the shell template, so a
- *   stable per-adapter root selector is `.luker-studio.<popupClassName>`.
+ * - All four adapters render into a `div.atria-studio` popup; the adapter-
+ *   specific class (`atria_cpa_popup`, `atri_mg_schema_iter_popup`,
+ *   `atri_orch_iter_popup`) is concatenated by the shell template, so a
+ *   stable per-adapter root selector is `.atria-studio.<popupClassName>`.
  * - `data-iter-action="new-session"` is rendered by renderHistoryList()
  *   unconditionally inside the history details panel (open by default).
  * - CPA / MG / Orchestrator open buttons all live in inline-drawers under
@@ -38,7 +38,7 @@ async function awaitMainUI(page) {
         await page.waitForURL('http://127.0.0.1:8000');
     } catch { /* auto-login path */ }
     await page.waitForFunction('document.getElementById("preloader") === null', { timeout: 0 });
-    // First-run on a fresh data dir surfaces a "Welcome to Luker!"
+    // First-run on a fresh data dir surfaces a "Welcome to Atria!"
     // persona-setup popup that intercepts pointer events on the
     // navbar's drawer toggles. The Save button is wired to persist a
     // default persona and close the dialog. Best-effort dismissal:
@@ -60,7 +60,7 @@ async function awaitMainUI(page) {
 // pageerrors from unrelated pre-existing issues (e.g. the known
 // `Duplicate export of 'applyPatch'` in character-editor-assistant/
 // studio/ai-chat.js on `release`) are out of scope for this smoke.
-const SHELL_ERROR_RX = /iter[-_]?(library|studio)|luker[-_]?studio|cloned|applyEdits|inverseEdit/i;
+const SHELL_ERROR_RX = /iter[-_]?(library|studio)|atria[-_]?studio|cloned|applyEdits|inverseEdit/i;
 
 async function captureShellErrors(page, sink) {
     page.on('console', (msg) => {
@@ -165,7 +165,7 @@ test.describe('UI-driven iter-studio adapter smoke', () => {
                 openButton: '#completion_preset_assistant_open',
                 // CPA migrated off the shared iter-studio shell to a
                 // plugin-owned popup (`cpa-iteration/studio.js`). The popup
-                // root no longer carries `.luker-studio` — it's a top-level
+                // root no longer carries `.atria-studio` — it's a top-level
                 // `.cpa_it_popup` div mounted inside ST's `Popup` wrapper,
                 // and the new-session button uses `data-cpa-it-action="…"`
                 // rather than the shell's `data-iter-action="…"`.
@@ -175,11 +175,11 @@ test.describe('UI-driven iter-studio adapter smoke', () => {
             {
                 name: 'memory-graph',
                 drawerHostId: 'memory_graph_settings',
-                openButton: '#luker_rpg_memory_open_schema_studio',
+                openButton: '#atria_rpg_memory_open_schema_studio',
                 // MG schema iteration migrated off the shared iter-
                 // studio shell to a plugin-owned popup
                 // (`schema-iteration/studio.js`). The popup root no longer
-                // carries `.luker-studio` — it's a top-level
+                // carries `.atria-studio` — it's a top-level
                 // `.mg_schema_it_popup` div mounted inside ST's `Popup`
                 // wrapper, and the new-session button uses
                 // `data-mg-schema-it-action="…"` rather than the shell's
@@ -197,11 +197,11 @@ test.describe('UI-driven iter-studio adapter smoke', () => {
             {
                 name: 'orchestrator',
                 drawerHostId: 'orchestrator_settings',
-                // The same data-luker-action button appears in 4 boards
+                // The same data-atria-action button appears in 4 boards
                 // (spec/agenda/loop/director) but only the active-mode board
                 // is visible. `:visible` resolves to the one rendered for
                 // the user's current executionMode setting.
-                openButton: '#orchestrator_settings [data-luker-action="ai-iterate-open"]:visible',
+                openButton: '#orchestrator_settings [data-atria-action="ai-iterate-open"]:visible',
                 // Post-Stage-5: plugin-owned popup root.
                 popupRoot: '.orch_it_popup',
                 newSessionSelector: '[data-orch-it-action="new-session"]',

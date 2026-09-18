@@ -47,7 +47,7 @@ import { modelIntent, toolIntent } from './legacy-workflow-adapter.js';
  *   - `maxTotalRuns` — caps total agent runs across all rounds.
  */
 
-const extension_settings = Luker.getContext().extensionSettings;
+const extension_settings = Atria.getContext().extensionSettings;
 import { isAbortError, isAbortSignalLike, throwIfAborted } from './abort-utils.js';
 import { requestAgendaPlannerStep } from './agenda-planner-tool.js';
 import { canonicalStringifyArgs } from './canonical-stringify.js';
@@ -650,7 +650,7 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
     const plannerRequest = {
         plannerRound: state?.plannerRounds || 1,
         repairMessages: [
-            { role: 'system', content: `You are Luker Agenda Planner. Call only ${AGENDA_PLANNER_TOOL}. Do not output ordinary text or call other tools. Never dispatch final_agent_id; the host invokes it after finalize. Choose the next necessary dispatches OR finalize.` },
+            { role: 'system', content: `You are Atria Agenda Planner. Call only ${AGENDA_PLANNER_TOOL}. Do not output ordinary text or call other tools. Never dispatch final_agent_id; the host invokes it after finalize. Choose the next necessary dispatches OR finalize.` },
             { role: 'user', content: [buildAgendaAvailableAgentsText(profile), buildAgendaTodosText(state?.todos), buildAgendaRunsText(state?.runs)].join('\n\n') },
         ],
         taskMessages: [
@@ -1179,16 +1179,16 @@ export async function runAgendaOrchestration(context, payload, messages, profile
     const runId = startRun({
         mode: 'agenda',
         chatKey,
-        abortFn: () => { try { Luker.getContext().stopGeneration(); } catch (_) { /* best-effort */ } },
+        abortFn: () => { try { Atria.getContext().stopGeneration(); } catch (_) { /* best-effort */ } },
         // Fast-unwind hook installed by the top-level orchestration
         // dispatch; renderer prefers it over abortFn to skip the wait
         // for the LLM sender to reject. Undefined for iter-studio
         // simulations and direct-runtime invocations — those fall
         // back to raw abortFn semantics.
-        stopFn: typeof payload?.__lukerResolveStopRequest === 'function'
-            ? payload.__lukerResolveStopRequest
+        stopFn: typeof payload?.__atriaResolveStopRequest === 'function'
+            ? payload.__atriaResolveStopRequest
             : null,
-        quiet: Boolean(payload?.__lukerSimulate),
+        quiet: Boolean(payload?.__atriaSimulate),
     });
     const state = {
         plannerRounds: 0,

@@ -654,7 +654,7 @@ class MacroCstWalker {
      * @returns {string} The result of the operation.
      */
     #executeVariableOperation(varName, isGlobal, operation, lazyValue) {
-        const ctx = Luker.getContext();
+        const ctx = Atria.getContext();
         const vars = isGlobal ? ctx.variables.global : ctx.variables.local;
 
         /**

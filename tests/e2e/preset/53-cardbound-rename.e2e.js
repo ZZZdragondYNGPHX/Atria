@@ -7,7 +7,7 @@
 //
 // REAL USER-GESTURE flow:
 //   1. Seed 卡 A 携带一个 slot X (default, temperature=0.42)。
-//   2. Load Luker → 卡自动选中 → ghost X 自动 apply。
+//   2. Load Atria → 卡自动选中 → ghost X 自动 apply。
 //   3. 通过真 DOM click 触发铅笔按钮 → Popup.show.input 打开 popup →
 //      Playwright fill input + click OK 按钮 (真用户手势)。
 //   4. 断言:
@@ -52,7 +52,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: OLD_NAME, preset: { temperature: SLOT_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -105,7 +105,7 @@ test.describe('#53 — card-bound rename 走铅笔按钮', () => {
 
         // 等 rename 完成: ghost option textContent 变 NEW_NAME。
         await page.waitForFunction(([expected]) => {
-            const opt = document.querySelector('#settings_preset_openai option[data-luker-char-bound="1"]');
+            const opt = document.querySelector('#settings_preset_openai option[data-atria-char-bound="1"]');
             return opt && opt.textContent.trim() === expected;
         }, [NEW_NAME], { timeout: 5000 });
 
@@ -113,7 +113,7 @@ test.describe('#53 — card-bound rename 走铅笔按钮', () => {
         const cardState = await page.evaluate(([cardName]) => {
             const ctx = window.SillyTavern?.getContext();
             const char = ctx?.characters?.find(c => c && c.name === cardName);
-            const cbp = char?.data?.extensions?.luker?.chat_completion_preset;
+            const cbp = char?.data?.extensions?.atria?.chat_completion_preset;
             return {
                 presets: cbp?.presets?.map(p => ({ name: p.name, temperature: p.preset?.temperature })),
                 defaultPresetName: cbp?.defaultPresetName,
@@ -129,7 +129,7 @@ test.describe('#53 — card-bound rename 走铅笔按钮', () => {
 
         // (d) ghost option textContent 已断言过 (waitForFunction); double-check。
         const ghostText = await page.evaluate(() => {
-            const opt = document.querySelector('#settings_preset_openai option[data-luker-char-bound="1"]');
+            const opt = document.querySelector('#settings_preset_openai option[data-atria-char-bound="1"]');
             return opt?.textContent?.trim();
         });
         expect(ghostText).toBe(NEW_NAME);

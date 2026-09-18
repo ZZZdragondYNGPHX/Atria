@@ -1,4 +1,4 @@
-// Real Luker browser runtime, worldbook storage and prompt builder; only model sender is simulated.
+// Real Atria browser runtime, worldbook storage and prompt builder; only model sender is simulated.
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
 import { createBlankCharacter } from '../e2e/_lib/ui-character.js';
@@ -7,7 +7,7 @@ const browser = await chromium.launch({ channel: 'msedge', headless: true });
 try {
     const page = await browser.newPage();
     await page.goto(process.argv[2]);
-    await page.waitForFunction(() => window.Luker?.getContext && !document.getElementById('preloader'));
+    await page.waitForFunction(() => window.Atria?.getContext && !document.getElementById('preloader'));
     const onboarding = page.locator('dialog[open]').filter({ has: page.locator('#onboarding_ui_language_select') });
     if (await onboarding.count()) {
         await onboarding.locator('textarea').fill('Agenda regression');
@@ -17,15 +17,15 @@ try {
     const name = `Agenda bindings ${Date.now()}`;
     await createBlankCharacter(page, { name, firstmes: 'A test scene.' });
     await page.locator('#rm_print_characters_block .character_select').filter({ hasText: name }).click();
-    await page.waitForFunction(name => window.Luker.getContext().characters[window.Luker.getContext().characterId]?.name === name, name);
+    await page.waitForFunction(name => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === name, name);
     const result = await page.evaluate(async () => {
-        const ctx = window.Luker.getContext(), context = Object.create(ctx);
+        const ctx = window.Atria.getContext(), context = Object.create(ctx);
         const wi = await import('/scripts/world-info.js');
         const { generateTask } = await import('/scripts/generate-task.js');
         const { runAgendaOrchestration } = await import('/scripts/extensions/orchestrator/agenda-runtime.js');
         const { createWorkspaceFactoryPreset, workspaceHostProfile } = await import('/scripts/extensions/orchestrator/workspace/host-presets.js');
 
-        const P = 'luker_orch_planner_step';
+        const P = 'atri_orch_planner_step';
         const books = ['agenda_main', '__MEMORY_GRAPH__', 'agenda_extra', 'agenda_chat', 'agenda_global'];
         for (const [index, book] of books.entries()) {
             await ctx.saveWorldInfo(book, { entries: { 0: { ...ctx.worldInfoEntry.template, uid: 0, key: [], constant: true,

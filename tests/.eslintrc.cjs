@@ -46,7 +46,7 @@ module.exports = {
     ],
     globals: {
         globalThis: 'readonly',
-        Luker: 'readonly',
+        Atria: 'readonly',
         SillyTavern: 'readonly',
     },
     rules: {

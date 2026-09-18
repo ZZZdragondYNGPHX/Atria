@@ -1,15 +1,15 @@
 /**
- * Luker Edits — public entry point.
+ * Atria Edits — public entry point.
  *
  * Wires lodash methods from `public/lib.js` into the engine and registers
  * the built-in op handlers. Re-exports the engine API for direct ESM use
- * and also installs a binding onto `lukerContext.edits` at load time.
+ * and also installs a binding onto `atriaContext.edits` at load time.
  * `getContext().edits` is wired statically by `st-context.js` (no runtime
  * patching), so the namespace import there sees these exports directly.
  *
  * Three-layer exposure (per `feedback_api_layered_exposure` convention):
  *   1. ESM import — `import { applyEdits, ... } from '/scripts/lib/edits/index.js'`
- *   2. lukerContext — `lukerContext.edits.applyEdits(...)`
+ *   2. atriaContext — `atriaContext.edits.applyEdits(...)`
  *   3. getContext()  — `getContext().edits.applyEdits(...)`
  *
  * Custom op registration via `registerOp(name, handler)` is per-process,
@@ -69,11 +69,11 @@ export { showConflictResolution };
 
 // Three-layer exposure:
 //   1. ESM import     — this file's named exports
-//   2. lukerContext   — installed below at load time
+//   2. atriaContext   — installed below at load time
 //   3. getContext()   — wired via st-context.js's `edits: EDITS_API` property
 //                       (no runtime patching needed)
-if (typeof globalThis.lukerContext === 'object' && globalThis.lukerContext) {
-    globalThis.lukerContext.edits = {
+if (typeof globalThis.atriaContext === 'object' && globalThis.atriaContext) {
+    globalThis.atriaContext.edits = {
         applyEdits, inverseEdit,
         registerOp, getRegisteredOp, listRegisteredOps,
         showConflictResolution,

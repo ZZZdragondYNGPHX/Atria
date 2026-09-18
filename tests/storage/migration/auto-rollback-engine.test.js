@@ -130,7 +130,7 @@ describe.each(DB_HARNESSES)(
             // hollow scaffold). snapshotUser does a real cpSync of userRoot so
             // it must exist on disk first — mirror the parity test's beforeEach.
             fs.mkdirSync(src.dirs.root, { recursive: true });
-            tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-engine-rollback-'));
+            tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-engine-rollback-'));
             dst = makeFsDest(tmpRoot, src.handle);
         });
 

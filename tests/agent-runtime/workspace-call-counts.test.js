@@ -4,7 +4,7 @@ import { workspaceRunView } from '../../public/scripts/lib/agent-workspace/proje
 const event = (type, effectId, extra = {}) => ({ type, effectId, runId: 'worker', nodeId: 'owner', stepId: 'one', ...extra });
 const run = events => ({ runId: 'panel', runtime: { runs: [], events } });
 
-test('Luker model and memory calls count as internal even without tool execution', () => {
+test('Atria model and memory calls count as internal even without tool execution', () => {
     expect(workspaceRunView(run([
         event('memory.recall.completed', 'memory'),
         event('model.request.completed', 'model'),

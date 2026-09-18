@@ -59,7 +59,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-    console.log(`storage-migrate — migrate Luker user data between storage backends
+    console.log(`storage-migrate — migrate Atria user data between storage backends
 
 Usage:
   node scripts/storage-migrate.js --from <mode> --to <mode> [options]
@@ -92,10 +92,10 @@ Options:
 Examples:
   node scripts/storage-migrate.js --from fs --to sqlite
   node scripts/storage-migrate.js --from sqlite --to fs --handle alice --dry-run
-  node scripts/storage-migrate.js --from fs --to mysql --mysql-url mysql://luker:pw@db:3306/luker
+  node scripts/storage-migrate.js --from fs --to mysql --mysql-url mysql://atria:pw@db:3306/atria
   node scripts/storage-migrate.js --from-zip ./backup.zip --handle alice
   node scripts/storage-migrate.js --from-zip ./mysql-backup.zip --handle alice \\
-      --mysql-url mysql://luker:pw@scratch:3306/luker_scratch
+      --mysql-url mysql://atria:pw@scratch:3306/atria_scratch
 
 Behavior:
   Backup of each user's source state is written to <dataRoot>/_storage-migrations/<timestamp>-<handle>/

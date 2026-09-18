@@ -19,14 +19,14 @@ export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
     for (const key of ['spec', 'presets', 'planner', 'agents', 'mainAgent', 'subAgents', 'systemPrompt', 'system_prompt', 'userPromptTemplate', 'apiPresetName', 'promptPresetName',
         'max_rounds', 'maxRounds', 'maxConcurrentSubagents', 'limits', 'finalAgentId']) delete hostOptions[key];
     if (profile.spec) { hostOptions.specOptions = structuredClone(profile.spec); delete hostOptions.specOptions.stages; }
-    plan.metadata = { hostAdapters: { luker: hostOptions } };
+    plan.metadata = { hostAdapters: { atria: hostOptions } };
     if (mode === 'agenda') plan.metadata.builtinAgendaRevision = AGENDA_BUILTIN_REVISION;
     for (const agent of plan.agents) {
         const settings = structuredClone(agent.metadata.config);
         if (settings.name) agent.name = settings.name;
         if (mode === 'loop') agent.instructions = settings.system_prompt || '';
         for (const key of ['name', 'systemPrompt', 'system_prompt', 'apiPresetName', 'promptPresetName']) delete settings[key];
-        agent.metadata = { hostAdapters: { luker: settings } };
+        agent.metadata = { hostAdapters: { atria: settings } };
         agent.tools = mode === 'agenda' ? [] : ['*'];
     }
     return { schemaVersion: 1, id, name: single ? 'Single Agent' : mode === 'agenda' ? profile.name : `${mode[0].toUpperCase()}${mode.slice(1)}`, mode, planTemplate: plan, editorMetadata: {} };
@@ -56,10 +56,10 @@ export function getWorkspaceLibrary(settings) {
 /** Transient host transport shape. Never persist this return value as a preset. */
 export function workspaceHostProfile(preset, selectionSource = 'default') {
     const plan = structuredClone(compileWorkspacePreset(preset));
-    const config = agent => ({ ...structuredClone(agent?.metadata?.hostAdapters?.luker || {}),
+    const config = agent => ({ ...structuredClone(agent?.metadata?.hostAdapters?.atria || {}),
         systemPrompt: agent?.instructions || '', ...agent?.modelProfile });
     const forNode = id => config(plan.agents.find(agent => agent.id === plan.nodes.find(node => node.nodeId === id)?.agentId));
-    const options = structuredClone(plan.metadata?.hostAdapters?.luker || {});
+    const options = structuredClone(plan.metadata?.hostAdapters?.atria || {});
     const common = { source: selectionSource, key: preset.id, presetId: preset.id, name: preset.name, mode: preset.mode, orchestrationPlan: plan };
     if (preset.mode !== 'spec' && plan.arbitration.kind !== 'pass-through') {
         throw new Error('This host supports multi-result arbitration in Spec graphs; other modes submit their owner result.');
@@ -81,7 +81,7 @@ export function workspaceHostProfile(preset, selectionSource = 'default') {
         finalAgentId: plan.nodes.find(node => node.nodeId === plan.output.ownerNodeId)?.metadata?.legacyAgentId,
         limits: { plannerMaxRounds: plan.scheduler.maxPlannerRounds, maxConcurrentAgents: plan.budgets.maxConcurrency, maxTotalRuns: plan.scheduler.maxTotalRuns }, ...common };
     const stages = [], presets = {};
-    // A native graph need not carry Luker's historical stage slots. Derive those
+    // A native graph need not carry Atria's historical stage slots. Derive those
     // transport-only slots from its bounded DAG without changing saved authoring data.
     if (plan.nodes.some(node => node.kind === 'agent' && !Number.isInteger(node.metadata?.stageIndex))) {
         const ranks = new Map(plan.nodes.map(node => [node.nodeId, 0]));

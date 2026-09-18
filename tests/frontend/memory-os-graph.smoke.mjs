@@ -17,12 +17,12 @@ async function selectCharacter() {
     const toggle = page.locator('#rightNavDrawerIcon');
     if (await toggle.evaluate(el => el.classList.contains('closedIcon'))) await toggle.click();
     await page.locator('#rm_print_characters_block .character_select').filter({ hasText: name }).click();
-    await page.waitForFunction(expected => window.Luker.getContext().characters[window.Luker.getContext().characterId]?.name === expected, name);
-    await page.waitForFunction(() => !!window.Luker.getContext().getExtensionApi('memory-graph'));
+    await page.waitForFunction(expected => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === expected, name);
+    await page.waitForFunction(() => !!window.Atria.getContext().getExtensionApi('memory-graph'));
 }
 async function open() {
     // Dispatch the existing extension settings entry; all edits below use visible form controls.
-    await page.locator('#luker_rpg_memory_view_graph').dispatchEvent('click');
+    await page.locator('#atria_rpg_memory_view_graph').dispatchEvent('click');
     await root.getByRole('status').filter({ hasText: '显示' }).waitFor();
 }
 async function edit(action, values) {
@@ -37,16 +37,16 @@ async function edit(action, values) {
     }
     await root.locator('[name="reason"]').fill('Browser automated user correction');
     await root.getByRole('button', { name: '保存修正', exact: true }).click();
-    await page.waitForFunction(async expected => Object.keys((await window.Luker.getContext().getChatState('memory_graph__provenance')).state.corrections || {}).length === expected, before + 1);
+    await page.waitForFunction(async expected => Object.keys((await window.Atria.getContext().getChatState('memory_graph__provenance')).state.corrections || {}).length === expected, before + 1);
     await root.getByRole('status').filter({ hasText: '修正已保存' }).waitFor();
 }
-const ledger = () => page.evaluate(async () => (await window.Luker.getContext().getChatState('memory_graph__provenance')).state);
+const ledger = () => page.evaluate(async () => (await window.Atria.getContext().getChatState('memory_graph__provenance')).state);
 try {
     await page.goto(baseURL);
-    await page.waitForFunction(() => !!window.Luker?.getContext && !document.getElementById('preloader'));
+    await page.waitForFunction(() => !!window.Atria?.getContext && !document.getElementById('preloader'));
     if (await page.locator('#firstRunDisclaimer').count()) await page.locator('dialog .menu_button').filter({ hasText: /^(好的|OK)$/ }).click();
     await createBlankCharacter(page, { name, firstmes: 'Alice is at Castle.' }); await selectCharacter();
-    await page.evaluate(() => { const ctx = window.Luker.getContext(); ctx.extensionSettings.memory_graph.memoryOsEnabled = true; ctx.saveSettingsDebounced(); });
+    await page.evaluate(() => { const ctx = window.Atria.getContext(); ctx.extensionSettings.memory_graph.memoryOsEnabled = true; ctx.saveSettingsDebounced(); });
     await open(); checks.push('existing graph entry opens Memory OS');
     await edit('entity', { name: 'Alice', type: 'Character' });
     await edit('entity', { name: 'Castle', type: 'Location' });
@@ -86,7 +86,7 @@ try {
     assert(overflow.scroll <= overflow.width + 2, JSON.stringify(overflow));
     checks.push('390px layout has no horizontal overflow');
     if (process.argv[4]) await page.screenshot({ path: process.argv[4], fullPage: false });
-    await page.reload(); await page.waitForFunction(() => !!window.Luker?.getContext && !document.getElementById('preloader'));
+    await page.reload(); await page.waitForFunction(() => !!window.Atria?.getContext && !document.getElementById('preloader'));
     await page.setViewportSize({ width: 1280, height: 900 }); await selectCharacter(); await open();
     state = await ledger(); assert(state.relations[edge].manualDisabled); assert.equal(Object.keys(state.corrections).length, 5);
     checks.push('reload preserves corrections and rejection');
@@ -95,7 +95,7 @@ try {
     await root.getByLabel('操作', { exact: true }).selectOption('entity');
     await root.locator('[name="name"]').fill('Must not persist');
     await root.locator('[name="reason"]').fill('Stale inspector test');
-    await page.evaluate(() => { window.Luker.getContext().chat[0].mes += ' Changed while reviewing.'; });
+    await page.evaluate(() => { window.Atria.getContext().chat[0].mes += ' Changed while reviewing.'; });
     await root.getByRole('button', { name: '保存修正', exact: true }).click();
     await root.getByRole('status').filter({ hasText: '未完成' }).waitFor();
     assert.equal(Object.keys((await ledger()).corrections).length, 5);

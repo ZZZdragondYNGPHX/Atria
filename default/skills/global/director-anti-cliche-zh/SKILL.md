@@ -2,7 +2,7 @@
 name: director-anti-cliche-zh
 description: Anti-cliche patterns for narrative writing — banned phrasings, AI-自造 labels, contract-vocab, sublimation cliches.
 metadata:
-  author: Luker Team
+  author: Atria Team
   version: 1.0.0
 ---
 

@@ -10,8 +10,8 @@
 // then character (if characterFile). Later entries supersede earlier ones
 // by virtue of overwriting the same Map key.
 //
-// We stub `Luker.getContext()` BEFORE the production module is imported so
-// the module-load-time `skillsApi = Luker.getContext().skills` binding
+// We stub `Atria.getContext()` BEFORE the production module is imported so
+// the module-load-time `skillsApi = Atria.getContext().skills` binding
 // captures our controlled `list` function. The shared `mutableSkillsList`
 // closure lets each test rewrite the inventory before invoking the
 // resolver — the resolver caches the inventory for ~5s, so each test
@@ -22,8 +22,8 @@ import { describe, test, expect, beforeAll, beforeEach } from '@jest/globals';
 let currentSkillsList = async () => [];
 
 // Install BEFORE import — the production module captures
-// `Luker.getContext().skills` at module-load time.
-globalThis.Luker = {
+// `Atria.getContext().skills` at module-load time.
+globalThis.Atria = {
     getContext: () => ({
         skills: {
             list: async (...args) => currentSkillsList(...args),

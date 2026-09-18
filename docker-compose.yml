@@ -1,7 +1,7 @@
 services:
-  luker:
-    image: ghcr.io/funnycups/luker:latest
-    container_name: luker
+  atria:
+    image: ghcr.io/funnycups/atria:latest
+    container_name: atria
     ports:
       - 127.0.0.1:8000:8000
     volumes:

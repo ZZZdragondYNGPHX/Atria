@@ -14,7 +14,7 @@
  * validates fully on writeFile, so the client check is purely UX.
  *
  * v1 deliberately keeps the editor simple: plain styled textarea, no
- * markdown preview, no Codemirror, no monaco. Luker's character-editor-assistant
+ * markdown preview, no Codemirror, no monaco. Atria's character-editor-assistant
  * studio loads codemirror.bundle.js but only for scripted use; pulling that
  * here would mean async loading for a feature that just needs typing
  * + saving. We leave the upgrade path open (the textarea selector is the
@@ -26,7 +26,7 @@
  * the tree; SKILL.md is excluded (the server enforces this too).
  *
  * Inline-tested helpers are exported alongside `openSkillEditor`,
- * `openCreateNewSkillFlow` for the test suite (Luker's Jest runs in node
+ * `openCreateNewSkillFlow` for the test suite (Atria's Jest runs in node
  * without jsdom, so we test the DOM rendering by parsing the produced
  * HTML strings into stub elements).
  */
@@ -143,7 +143,7 @@ export function buildFileTreeHtml({ files, activePath, t, esc }) {
     const rows = list.map(f => {
         const active = (f.path === activePath) ? ' data-file-active="true"' : '';
         const binBadge = f.isBinary
-            ? ` <span class="luker_skill_editor_binary">${esc(t('binary'))}</span>`
+            ? ` <span class="atria_skill_editor_binary">${esc(t('binary'))}</span>`
             : '';
         // SKILL.md is excluded from rename + delete: the server refuses
         // both (would orphan / bypass the manifest), so we hide the
@@ -152,32 +152,32 @@ export function buildFileTreeHtml({ files, activePath, t, esc }) {
         // hid them entirely on touch devices and at first glance.
         const editable = f.path !== 'SKILL.md';
         const actions = editable
-            ? `<span class="luker_skill_editor_file_actions">
-                <span class="luker_skill_editor_file_action luker_skill_editor_file_rename"
+            ? `<span class="atria_skill_editor_file_actions">
+                <span class="atria_skill_editor_file_action atria_skill_editor_file_rename"
                       data-editor-action="rename-file"
                       data-file-path="${esc(f.path)}"
                       title="${esc(t('Rename file'))}">✎</span>
-                <span class="luker_skill_editor_file_action luker_skill_editor_file_delete"
+                <span class="atria_skill_editor_file_action atria_skill_editor_file_delete"
                       data-editor-action="delete-file"
                       data-file-path="${esc(f.path)}"
                       title="${esc(t('Delete file'))}">×</span>
             </span>`
             : '';
-        return `<div class="luker_skill_editor_file" data-file-path="${esc(f.path)}"${active}>
-            <span class="luker_skill_editor_file_name">${esc(f.path)}${binBadge}</span>
+        return `<div class="atria_skill_editor_file" data-file-path="${esc(f.path)}"${active}>
+            <span class="atria_skill_editor_file_name">${esc(f.path)}${binBadge}</span>
             ${actions}
         </div>`;
     }).join('');
     const empty = list.length === 0
-        ? `<div class="luker_skill_editor_empty">${esc(t('(no files)'))}</div>`
+        ? `<div class="atria_skill_editor_empty">${esc(t('(no files)'))}</div>`
         : '';
     return `
-<div class="luker_skill_editor_tree">
-    <div class="luker_skill_editor_tree_header">
+<div class="atria_skill_editor_tree">
+    <div class="atria_skill_editor_tree_header">
         <span>${esc(t('Files'))}</span>
         <span class="menu_button menu_button_small" data-editor-action="new-file">${esc(t('+ New file'))}</span>
     </div>
-    <div class="luker_skill_editor_tree_body">
+    <div class="atria_skill_editor_tree_body">
         ${empty}${rows}
     </div>
 </div>
@@ -196,28 +196,28 @@ export function buildFileTreeHtml({ files, activePath, t, esc }) {
  */
 export function buildEditorHtml({ content, path, sha256, t, esc }) {
     if (!path) {
-        return `<div class="luker_skill_editor_pane luker_skill_editor_empty">
+        return `<div class="atria_skill_editor_pane atria_skill_editor_empty">
             <span>${esc(t('Select a file to edit, or click + New file.'))}</span>
         </div>`;
     }
-    // Encode the textarea body — same as Luker's other text-area renderings.
+    // Encode the textarea body — same as Atria's other text-area renderings.
     // The sha256 is parked on a hidden data attribute so we can read it back
     // on save without juggling extra closures.
     const body = String(content || '');
     return `
-<div class="luker_skill_editor_pane">
-    <div class="luker_skill_editor_pane_header">
-        <span class="luker_skill_editor_pane_path">${esc(path)}</span>
-        <span class="luker_skill_editor_pane_sha" data-editor-sha="${esc(sha256 || '')}" data-editor-path="${esc(path)}"></span>
+<div class="atria_skill_editor_pane">
+    <div class="atria_skill_editor_pane_header">
+        <span class="atria_skill_editor_pane_path">${esc(path)}</span>
+        <span class="atria_skill_editor_pane_sha" data-editor-sha="${esc(sha256 || '')}" data-editor-path="${esc(path)}"></span>
         <span class="menu_button menu_button_small" data-editor-save>${esc(t('Save'))}</span>
     </div>
     <textarea
-        class="text_pole luker_skill_editor_textarea"
+        class="text_pole atria_skill_editor_textarea"
         data-editor-textarea
         spellcheck="false">${esc(body)}</textarea>
-    <div class="luker_skill_editor_pane_footer">
-        <span class="luker_skill_editor_hint">${esc(t('Ctrl/Cmd+S to save'))}</span>
-        <span class="luker_skill_editor_validate" data-editor-validate></span>
+    <div class="atria_skill_editor_pane_footer">
+        <span class="atria_skill_editor_hint">${esc(t('Ctrl/Cmd+S to save'))}</span>
+        <span class="atria_skill_editor_validate" data-editor-validate></span>
     </div>
 </div>
     `;
@@ -276,7 +276,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
         files: [],
         activePath: null,
         sha256: '',
-        mountId: `luker_skill_editor_${Date.now()}`,
+        mountId: `atria_skill_editor_${Date.now()}`,
     };
 
     const initialHtml = `<div id="${state.mountId}"></div>`;
@@ -292,10 +292,10 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
     function render() {
         const mount = document.getElementById(state.mountId);
         if (!mount) return;
-        // Two-pane layout — the luker-studio root class lets the design
+        // Two-pane layout — the atria-studio root class lets the design
         // tokens cascade in (sidebar tree + large editor pane).
         mount.innerHTML = `
-<div class="luker_skill_editor luker-studio">
+<div class="atria_skill_editor atria-studio">
     ${buildFileTreeHtml({ files: state.files, activePath: state.activePath, t, esc })}
     ${buildEditorHtml({ content: state.currentContent || '', path: state.activePath, sha256: state.sha256, t, esc })}
 </div>

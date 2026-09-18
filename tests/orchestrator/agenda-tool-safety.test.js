@@ -13,10 +13,10 @@ import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/exte
 import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globals';
 
 // agenda-runtime.js + defaults.js consume core symbols via
-// `Luker.getContext()` after upstream commit 571c529c2. Provide a
+// `Atria.getContext()` after upstream commit 571c529c2. Provide a
 // shim with the constants + the shared `extensionSettings` binding the
 // runtime captures at module-load time. Mutating
-// `globalThis.Luker.__settings.orchestrator` in beforeEach
+// `globalThis.Atria.__settings.orchestrator` in beforeEach
 // propagates because the runtime stores the live object reference.
 const __sillyTavernSettings = {
     orchestrator: {
@@ -26,7 +26,7 @@ const __sillyTavernSettings = {
         nodeIterationMaxRounds: 3,
     },
 };
-globalThis.Luker = {
+globalThis.Atria = {
     __settings: __sillyTavernSettings,
     getContext: () => ({
         constants: {
@@ -91,12 +91,12 @@ beforeAll(async () => {
     plan = runtime.runAgendaPlannerStep; runAgenda = runtime.runAgendaOrchestration;
     panel = (await import('../../public/scripts/extensions/orchestrator/run-state/store.js')).getCurrentRun;
 });
-const expected = 'luker_orch_planner_step';
-const workerTool = 'luker_orch_submit_result';
+const expected = 'atri_orch_planner_step';
+const workerTool = 'atri_orch_submit_result';
 const step = { dispatches: [{ todo_id: 'main', agent: 'researcher', task_brief: 'inspect', input_run_ids: [] }] };
 const response = (name, args) => ({ toolCalls: [{ name, args, raw: { id: 'fixture-call', type: 'function', function: { name, arguments: JSON.stringify(args) } } }] });
 const profile = () => ({ mode: 'agenda', planner: { systemPrompt: 'Only plan.', userPromptTemplate: 'choose' },
-    agents: { researcher: { purpose: 'Inspect evidence', systemPrompt: 'WORKER PRIVATE PROTOCOL luker_orch_submit_result', userPromptTemplate: 'WORKER TEMPLATE', tools: {} },
+    agents: { researcher: { purpose: 'Inspect evidence', systemPrompt: 'WORKER PRIVATE PROTOCOL atri_orch_submit_result', userPromptTemplate: 'WORKER TEMPLATE', tools: {} },
         finalizer: { systemPrompt: 'Summarize', tools: {} } }, finalAgentId: 'finalizer', limits: { plannerMaxRounds: 3, maxConcurrentAgents: 1, maxTotalRuns: 4 } });
 const state = () => ({ todos: [{ id: 'main', status: 'todo', goal: 'inspect' }], runs: [], plannerRounds: 1 });
 const callPlan = (context, signal) => plan(context, {}, [{ role: 'user', content: 'Test task' }], profile(), state(), signal);
@@ -108,7 +108,7 @@ test('correct tool is accepted and Planner prompt excludes all Worker protocols'
     expect(request.stream).toBe(false);
     const text = JSON.stringify(request.taskMessages);
     expect(text).toContain('Inspect evidence');
-    expect(text).not.toMatch(/WORKER PRIVATE|WORKER TEMPLATE|luker_orch_submit_result|system_prompt/);
+    expect(text).not.toMatch(/WORKER PRIVATE|WORKER TEMPLATE|atri_orch_submit_result|system_prompt/);
 });
 test('wrong name with valid complete Planner schema is normalized with warning', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});

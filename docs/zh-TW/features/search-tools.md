@@ -13,7 +13,7 @@ TOOL: "工具模式" {
   T_DECIDE: "LLM 判斷\n需要搜尋嗎" {
     shape: diamond
   }
-  T_TOOL: "呼叫 luker_web_search\n/ luker_web_visit" {
+  T_TOOL: "呼叫 atri_web_search\n/ atri_web_visit" {
     style.fill: "#e1f5ff"
   }
   T_RESULT: "結果作為工具呼叫回傳值\n注入對話上下文"
@@ -51,7 +51,7 @@ AGENT: "預請求 Agent 模式" {
 搜尋功能作為創作 LLM 的可呼叫工具註冊到[函式呼叫執行時](/zh-TW/improvements/function-call-runtime)中。當 AI 判斷需要搜尋資訊時，會主動發起工具呼叫。
 
 - 透過 `enabled` 設定項開啟
-- 註冊 `luker_web_search` 和 `luker_web_visit` 兩個函式工具
+- 註冊 `atri_web_search` 和 `atri_web_visit` 兩個函式工具
 - AI 自主決定何時搜尋、搜尋什麼內容
 - 搜尋結果作為工具呼叫回傳值注入對話上下文
 
@@ -126,10 +126,10 @@ AGENT: "預請求 Agent 模式" {
 ### 使用範例
 
 ```javascript
-const api = Luker.searchTools;
+const api = Atria.searchTools;
 if (api) {
   // 檢查是否為搜尋工具
-  api.isToolName('luker_web_search'); // true
+  api.isToolName('atri_web_search'); // true
 
   // 取得工具定義
   const defs = api.getToolDefs();

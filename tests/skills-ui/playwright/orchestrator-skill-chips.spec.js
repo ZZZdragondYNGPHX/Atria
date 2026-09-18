@@ -53,7 +53,7 @@ test.describe('Skills: orchestrator skill chips', () => {
         // director is where the default profile lives. We
         // change the dropdown value, then synthesize the change event so
         // the orchestrator binders pick it up.
-        const modeSel = page.locator('#luker_orch_execution_mode');
+        const modeSel = page.locator('#atri_orch_execution_mode');
         await expect(modeSel).toBeVisible();
         const previousMode = await modeSel.inputValue();
         if (previousMode !== 'director') {
@@ -64,26 +64,26 @@ test.describe('Skills: orchestrator skill chips', () => {
         // The "Open Orchestration Editor" button surfaces inside whichever
         // mode-specific board is currently visible. Click the first
         // :visible instance for mode-agnostic targeting.
-        const openEditorBtn = page.locator('#orchestrator_settings [data-luker-action="open-orch-editor"]:visible').first();
+        const openEditorBtn = page.locator('#orchestrator_settings [data-atria-action="open-orch-editor"]:visible').first();
         await openEditorBtn.waitFor({ state: 'visible', timeout: 10_000 });
         await openEditorBtn.click();
 
         // Editor mounts into a `.popup` body that carries the
-        // `luker_orch_editor_popup` class through its content div.
-        const editorPopup = page.locator('.popup:has(.luker_orch_editor_popup)').last();
+        // `atri_orch_editor_popup` class through its content div.
+        const editorPopup = page.locator('.popup:has(.atri_orch_editor_popup)').last();
         await editorPopup.waitFor({ state: 'visible', timeout: 10_000 });
 
         // The popup paints asynchronously — wait for the director
         // workspace to mount + at least one skill chips block to hydrate.
-        // The hydrator replaces `.luker_skill_chips_loading` with `.luker_skill_chips`
+        // The hydrator replaces `.atria_skill_chips_loading` with `.atria_skill_chips`
         // inside the mount, so we wait for the latter.
-        const modeChipBlock = editorPopup.locator('.luker_skill_chips_block').filter({
-            has: page.locator('[data-luker-skill-chips-mount][data-luker-chip-target*="\\"level\\":\\"mode\\""]'),
+        const modeChipBlock = editorPopup.locator('.atria_skill_chips_block').filter({
+            has: page.locator('[data-atria-skill-chips-mount][data-atria-chip-target*="\\"level\\":\\"mode\\""]'),
         }).first();
 
         try {
             await modeChipBlock.waitFor({ state: 'visible', timeout: 15_000 });
-            await modeChipBlock.locator('.luker_skill_chips').waitFor({ state: 'visible', timeout: 10_000 });
+            await modeChipBlock.locator('.atria_skill_chips').waitFor({ state: 'visible', timeout: 10_000 });
         } catch {
             // If the chips never hydrate, surface this so the smoke
             // suite catches the regression rather than silently passing.
@@ -101,7 +101,7 @@ test.describe('Skills: orchestrator skill chips', () => {
         // already edited the profile may have a different count. We assert
         // ≥ 1 chip + log the actual count so doc review can verify
         // expectations match the shipped default profile.
-        const modeChips = modeChipBlock.locator('.luker_skill_chip[data-skill-chip-name]');
+        const modeChips = modeChipBlock.locator('.atria_skill_chip[data-skill-chip-name]');
         const modeChipCount = await modeChips.count();
         // eslint-disable-next-line no-console
         console.log(`[smoke] mode-level chip count = ${modeChipCount}`);
@@ -142,17 +142,17 @@ test.describe('Skills: orchestrator skill chips', () => {
         // their own chip blocks with a `level: 'agent'` mount + an
         // "inherit mode default" affordance. Some test envs may start
         // with zero sub-agents (user wiped them), so we soft-assert.
-        const subagentChipBlock = editorPopup.locator('.luker_skill_chips_block').filter({
-            has: page.locator('[data-luker-skill-chips-mount][data-luker-chip-target*="\\"level\\":\\"agent\\""]'),
+        const subagentChipBlock = editorPopup.locator('.atria_skill_chips_block').filter({
+            has: page.locator('[data-atria-skill-chips-mount][data-atria-chip-target*="\\"level\\":\\"agent\\""]'),
         }).first();
 
         const subagentVisible = await subagentChipBlock.isVisible().catch(() => false);
         if (subagentVisible) {
             // If a sub-agent chip block is on screen, it must hydrate to
-            // a .luker_skill_chips container. Scroll into view first so
+            // a .atria_skill_chips container. Scroll into view first so
             // the screenshot frames the row correctly.
             await subagentChipBlock.scrollIntoViewIfNeeded();
-            await subagentChipBlock.locator('.luker_skill_chips').waitFor({ state: 'visible', timeout: 10_000 });
+            await subagentChipBlock.locator('.atria_skill_chips').waitFor({ state: 'visible', timeout: 10_000 });
             await page.screenshot({
                 path: screenshotPath('chips', 'sub-agent'),
                 fullPage: false,
@@ -170,7 +170,7 @@ test.describe('Skills: orchestrator skill chips', () => {
         // Best-effort: restore the previous execution mode so the spec
         // doesn't leave the env mutated for subsequent suites.
         if (previousMode && previousMode !== 'director') {
-            const modeSelAgain = page.locator('#luker_orch_execution_mode');
+            const modeSelAgain = page.locator('#atri_orch_execution_mode');
             if (await modeSelAgain.isVisible().catch(() => false)) {
                 await modeSelAgain.selectOption(previousMode);
             }

@@ -29,13 +29,13 @@ import {
 } from '../../iteration-library/tools/character-presets-reads.js';
 import { floorRecordToTaskMessage, readPluginFloors } from '../../lib/plugin-floors.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const generateQuietPrompt = __ctx.generateQuietPrompt;
 const saveSettingsDebounced = __ctx.saveSettingsDebounced;
 const DOMPurify = __ctx.lib.DOMPurify;
 const lodash = __ctx.lib.lodash;
 const extension_settings = __ctx.extensionSettings;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const getCharacterState = __ctx.getCharacterState;
 const updateCharacterState = __ctx.updateCharacterState;
 const addLocaleData = __ctx.addLocaleData;
@@ -55,17 +55,17 @@ const UI_BLOCK_ID = 'character_editor_assistant_settings';
 const STYLE_ID = 'character_editor_assistant_style';
 
 const TOOL_NAMES = Object.freeze({
-    UPDATE_FIELDS: 'luker_card_update_fields',
-    SET_PRIMARY_BOOK: 'luker_card_set_primary_lorebook',
-    UPSERT_ENTRY: 'luker_card_upsert_lorebook_entry',
-    DELETE_ENTRY: 'luker_card_delete_lorebook_entry',
-    LIST_ENTRIES: 'luker_card_list_lorebook_entries',
-    QUERY_ENTRIES: 'luker_card_query_lorebook_entries',
-    GET_ENTRIES: 'luker_card_get_lorebook_entries',
-    SIMULATE_PROMPT: 'luker_card_simulate_prompt',
-    LIST_WORLD_BOOKS: 'luker_card_list_world_books',
-    UPDATE_ENTRY: 'luker_card_update_lorebook_entry',
-    STR_REPLACE_IN_ENTRY: 'luker_card_str_replace_in_lorebook_entry',
+    UPDATE_FIELDS: 'atria_card_update_fields',
+    SET_PRIMARY_BOOK: 'atria_card_set_primary_lorebook',
+    UPSERT_ENTRY: 'atria_card_upsert_lorebook_entry',
+    DELETE_ENTRY: 'atria_card_delete_lorebook_entry',
+    LIST_ENTRIES: 'atria_card_list_lorebook_entries',
+    QUERY_ENTRIES: 'atria_card_query_lorebook_entries',
+    GET_ENTRIES: 'atria_card_get_lorebook_entries',
+    SIMULATE_PROMPT: 'atria_card_simulate_prompt',
+    LIST_WORLD_BOOKS: 'atria_card_list_world_books',
+    UPDATE_ENTRY: 'atria_card_update_lorebook_entry',
+    STR_REPLACE_IN_ENTRY: 'atria_card_str_replace_in_lorebook_entry',
 });
 const CHARACTER_EDITOR_QUERY_LIMIT_DEFAULT = 10;
 const CHARACTER_EDITOR_QUERY_LIMIT_MAX = 20;
@@ -822,7 +822,7 @@ function clone(value) {
         try {
             return structuredClone(value);
         } catch {
-            // Fall back for Luker context proxy objects.
+            // Fall back for Atria context proxy objects.
         }
     }
     const serialized = JSON.stringify(value);
@@ -2674,7 +2674,7 @@ function createCharacterEditorWorldBookListToolApi(context, { avatar = '' } = {}
                 type: 'function',
                 function: {
                     name: toolNames.LIST_WORLD_BOOKS,
-                    description: 'List world book names visible to the character being edited, tagged with their scope. Sources: \'character\' (the card\'s primary book at character.data.extensions.world), \'character_aux\' (auxiliary books bound via Luker\'s lorebook editor at world_info.charLore[].extraBooks), \'chat\' (chat-bound books from chat_metadata.world_info — only the active chat), and \'global\' (selected_world_info — books active for every chat). Returns { books: string[], sources: { [name]: scope } } so you can tell which scope owns each book without inspecting the card directly.',
+                    description: 'List world book names visible to the character being edited, tagged with their scope. Sources: \'character\' (the card\'s primary book at character.data.extensions.world), \'character_aux\' (auxiliary books bound via Atria\'s lorebook editor at world_info.charLore[].extraBooks), \'chat\' (chat-bound books from chat_metadata.world_info — only the active chat), and \'global\' (selected_world_info — books active for every chat). Returns { books: string[], sources: { [name]: scope } } so you can tell which scope owns each book without inspecting the card directly.',
                     parameters: {
                         type: 'object',
                         properties: {},
@@ -2994,7 +2994,7 @@ const {
 
 
 function getCharacterEditorSearchApi() {
-    const api = globalThis?.Luker?.searchTools;
+    const api = globalThis?.Atria?.searchTools;
     if (!api || typeof api !== 'object') {
         return null;
     }
@@ -3040,7 +3040,7 @@ export async function runCharacterEditorHelperToolCall(call, helperToolApis = []
  *                                   world-book-list APIs to the right card.
  * @returns {Array<Object>} Helper-tool API objects (lorebook, simulate,
  *                          worldBookList, plus optional search when
- *                          `globalThis.Luker.searchTools` is wired).
+ *                          `globalThis.Atria.searchTools` is wired).
  */
 export function buildCharacterEditorHelperApis(context, opts = {}) {
     const avatar = String(opts?.avatar || '').trim();

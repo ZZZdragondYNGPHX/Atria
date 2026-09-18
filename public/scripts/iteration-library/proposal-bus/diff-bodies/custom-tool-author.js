@@ -10,7 +10,7 @@
  *
  * Entry shape (set by studio.js at propose time, mirrors
  * skill-author's meta shape):
- *   entry.op    — { name: 'luker_orch_set_custom_tool' | ..., args: {...} }
+ *   entry.op    — { name: 'atri_orch_set_custom_tool' | ..., args: {...} }
  *   entry.meta  — { kind, name, before, after }
  *                 before/after are full tool entries
  *                 (name/description/mode/parameters/body/simulateBody) or

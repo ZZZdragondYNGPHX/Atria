@@ -17,8 +17,8 @@ describe('object wire transfer', () => {
     let aRoot, bRoot;
 
     beforeEach(() => {
-        aRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-obj-a-'));
-        bRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-obj-b-'));
+        aRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-obj-a-'));
+        bRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-obj-b-'));
     });
     afterEach(() => {
         fs.rmSync(aRoot, { recursive: true, force: true });

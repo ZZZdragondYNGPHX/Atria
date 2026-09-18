@@ -245,7 +245,7 @@ describe.each(ENDPOINT_HARNESSES)('backup/restore roundtrip on $name', ({ mode }
         // deleteUser truly wipes rows.
         await getStorageEngine().deleteUser(harness.handle);
         if (mode === 'sqlite') {
-            const sqlitePath = path.join(harness.dirs.root, 'luker-storage.sqlite');
+            const sqlitePath = path.join(harness.dirs.root, 'atria-storage.sqlite');
             if (fs.existsSync(sqlitePath)) fs.rmSync(sqlitePath);
         }
         const wipedChat = await getChatRepo().get(harness.handle, 'Alice', 'c1');

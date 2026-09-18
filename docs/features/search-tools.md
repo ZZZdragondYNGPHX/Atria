@@ -13,7 +13,7 @@ TOOL: "Tool mode" {
   T_DECIDE: "LLM decides:\nsearch needed?" {
     shape: diamond
   }
-  T_TOOL: "Calls luker_web_search\n/ luker_web_visit" {
+  T_TOOL: "Calls atri_web_search\n/ atri_web_visit" {
     style.fill: "#e1f5ff"
   }
   T_RESULT: "Result returned as tool-call output\ninjected into context"
@@ -51,7 +51,7 @@ AGENT: "Pre-request agent mode" {
 Search functionality is registered as a callable tool for the creative LLM in the [Function Call Runtime](/improvements/function-call-runtime). When the AI determines it needs to search for information, it proactively initiates a tool call.
 
 - Enabled via the `enabled` configuration option
-- Registers `luker_web_search` and `luker_web_visit` as function tools
+- Registers `atri_web_search` and `atri_web_visit` as function tools
 - AI autonomously decides when to search and what to search for
 - Search results are injected into the conversation context as tool call return values
 
@@ -126,10 +126,10 @@ The search plugin provides a global API for integration by other plugins. For ex
 ### Usage Example
 
 ```javascript
-const api = Luker.searchTools;
+const api = Atria.searchTools;
 if (api) {
   // Check if it's a search tool
-  api.isToolName('luker_web_search'); // true
+  api.isToolName('atri_web_search'); // true
 
   // Get tool definitions
   const defs = api.getToolDefs();

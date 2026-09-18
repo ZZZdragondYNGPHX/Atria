@@ -1,7 +1,7 @@
 // tests/orchestrator/run-state-store.test.js
 import '@jest/globals';
 
-globalThis.Luker = globalThis.Luker || {
+globalThis.Atria = globalThis.Atria || {
     getContext: () => ({ addLocaleData: () => {}, translate: (s) => s }),
 };
 

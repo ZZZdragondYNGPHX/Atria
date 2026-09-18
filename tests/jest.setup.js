@@ -38,17 +38,17 @@ if (!getConfigFilePath()) {
 // need real seed data build their own dataRoot with startServer /
 // makeEndpointHarness / makeTempFsEngineHarness).
 if (!globalThis.DATA_ROOT) {
-    const scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-jest-data-'));
+    const scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-jest-data-'));
     globalThis.DATA_ROOT = scratchRoot;
 }
 
-if (typeof globalThis.Luker === 'undefined') {
+if (typeof globalThis.Atria === 'undefined') {
     // ---------------------------------------------------------------------
-    // Luker / SillyTavern / st global stub.
+    // Atria / SillyTavern / st global stub.
     //
     // Browser-side modules in public/scripts/extensions/** capture references
-    // at module-load time via `const x = Luker.getContext().y;`.
-    // public/script.js binds `globalThis.{Luker,st,SillyTavern}` to the same
+    // at module-load time via `const x = Atria.getContext().y;`.
+    // public/script.js binds `globalThis.{Atria,st,SillyTavern}` to the same
     // object so all three are user-facing aliases. Under jest (Node ESM) none
     // of those globals exist, so the import-time evaluation throws
     // ReferenceError and the entire test suite fails to load.
@@ -66,7 +66,7 @@ if (typeof globalThis.Luker === 'undefined') {
     // search-tools `register*OrchestrationTools()` populate the same
     // registry the tests then introspect via `__getExtensionRegistryForTest`.
     // ---------------------------------------------------------------------
-    const SENTINEL = Symbol('jest-setup:luker-stub');
+    const SENTINEL = Symbol('jest-setup:atria-stub');
     const cache = new WeakMap();
     function makeProxy() {
         const target = function () {};
@@ -75,7 +75,7 @@ if (typeof globalThis.Luker === 'undefined') {
             get(t, prop) {
                 if (prop === SENTINEL) return true;
                 if (prop === 'then') return undefined; // never look thenable
-                if (prop === Symbol.toPrimitive) return () => 'luker-stub';
+                if (prop === Symbol.toPrimitive) return () => 'atria-stub';
                 if (prop === Symbol.iterator) return undefined;
                 if (!cache.has(t)) cache.set(t, new Map());
                 const memo = cache.get(t);
@@ -112,9 +112,9 @@ if (typeof globalThis.Luker === 'undefined') {
         // Common ctx fields where production code does `c?.fn || fallback`
         // for capability detection. The Proxy default is truthy, so without
         // explicit identity / null defaults the fallback never fires and
-        // tests get the Proxy stringified to "luker-stub" in
+        // tests get the Proxy stringified to "atria-stub" in
         // unexpected places (i18n strings, lib helpers, etc.). Override
-        // any of these in a test by assigning a new globalThis.Luker.
+        // any of these in a test by assigning a new globalThis.Atria.
         const base = {
             getExtensionApi,
             // i18n helpers (e.g. orchestrator/i18n.js)
@@ -128,7 +128,7 @@ if (typeof globalThis.Luker === 'undefined') {
             get(t, prop) {
                 if (prop in t) return t[prop];
                 if (prop === 'then') return undefined;
-                if (prop === Symbol.toPrimitive) return () => 'luker-ctx-stub';
+                if (prop === Symbol.toPrimitive) return () => 'atria-ctx-stub';
                 if (prop === Symbol.iterator) return undefined;
                 if (!cache.has(t)) cache.set(t, new Map());
                 const memo = cache.get(t);
@@ -141,12 +141,12 @@ if (typeof globalThis.Luker === 'undefined') {
     const stub = {
         getContext: () => makeContextProxy(),
     };
-    // Mirror public/script.js:338-340 — Luker / st / SillyTavern are all
+    // Mirror public/script.js:338-340 — Atria / st / SillyTavern are all
     // aliases for the same plugin-facing API object. Plugin and test code
-    // consumes `Luker.getContext()`; the SillyTavern / st aliases remain
+    // consumes `Atria.getContext()`; the SillyTavern / st aliases remain
     // for compatibility with any third-party extension that still expects
     // them, so the stub installs all three.
-    globalThis.Luker = stub;
+    globalThis.Atria = stub;
     globalThis.st = stub;
     globalThis.SillyTavern = stub;
 }

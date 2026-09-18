@@ -61,7 +61,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT_A_NAME, preset: { temperature: SLOT_A_TEMP, chat_completion_source: 'openai' } },
@@ -85,27 +85,27 @@ test.afterAll(async () => {
  * Read the last `inspect_bound_preset` tool-result payload out of the
  * visible iter popup. Same shape as #47 — the shared iteration-library
  * message renderer emits the tool_result as JSON via
- * `<pre class="luker_lib_toolcall_result_pre">`.
+ * `<pre class="atria_lib_toolcall_result_pre">`.
  */
 async function readLastToolResultPayload(page, toolLabel) {
     return page.evaluate((name) => {
         const popups = Array.from(document.querySelectorAll('dialog.popup[open]'));
         let root = null;
         for (let i = popups.length - 1; i >= 0; i--) {
-            if (popups[i].querySelector('.luker_lib_message_assistant')) {
+            if (popups[i].querySelector('.atria_lib_message_assistant')) {
                 root = popups[i];
                 break;
             }
         }
         if (!root) return null;
-        const chips = Array.from(root.querySelectorAll('.luker_lib_toolcall'));
+        const chips = Array.from(root.querySelectorAll('.atria_lib_toolcall'));
         const matching = chips.filter((chip) => {
-            const label = chip.querySelector('.luker_lib_toolcall_label');
+            const label = chip.querySelector('.atria_lib_toolcall_label');
             return label && label.textContent.trim() === name;
         });
         if (matching.length === 0) return null;
         const last = matching[matching.length - 1];
-        const pre = last.querySelector('.luker_lib_toolcall_result_pre');
+        const pre = last.querySelector('.atria_lib_toolcall_result_pre');
         if (!pre) return null;
         const text = pre.textContent || '';
         const trimmed = text.trim();
@@ -124,7 +124,7 @@ async function sendReadOnlyPrompt(page, prompt, { expectedToolLabel = 'inspect_b
     const popup = page.locator('.popup:visible').last();
     const input = popup.locator('[data-cea-editor-input], .cea_editor_composer_input textarea, .cea_editor_composer_input [contenteditable="true"]').first();
     await input.waitFor({ state: 'visible', timeout: 10_000 });
-    const priorChipCount = await popup.locator('.luker_lib_toolcall .luker_lib_toolcall_label', { hasText: expectedToolLabel }).count().catch(() => 0);
+    const priorChipCount = await popup.locator('.atria_lib_toolcall .atria_lib_toolcall_label', { hasText: expectedToolLabel }).count().catch(() => 0);
     const tag = await input.evaluate(el => el.tagName.toLowerCase());
     if (tag === 'textarea' || tag === 'input') {
         await input.fill(prompt);
@@ -137,7 +137,7 @@ async function sendReadOnlyPrompt(page, prompt, { expectedToolLabel = 'inspect_b
     const sendBtn = popup.locator('[data-cea-editor-action="send"]').first();
     await sendBtn.click();
     await expect.poll(async () => {
-        return popup.locator('.luker_lib_toolcall .luker_lib_toolcall_label', { hasText: expectedToolLabel }).count();
+        return popup.locator('.atria_lib_toolcall .atria_lib_toolcall_label', { hasText: expectedToolLabel }).count();
     }, { timeout: timeoutMs }).toBeGreaterThan(priorChipCount);
     await expect.poll(async () => {
         return (await sendBtn.textContent().catch(() => ''))?.trim() || '';

@@ -4,7 +4,7 @@ import request from 'supertest';
 import {
     createGenerationJob,
     getTaskByRequestId,
-} from '../../src/endpoints/backends/luker-generation.js';
+} from '../../src/endpoints/backends/atria-generation.js';
 import { generationControlRouter } from '../../src/endpoints/generation-control.js';
 
 /**

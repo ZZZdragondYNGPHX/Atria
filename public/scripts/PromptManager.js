@@ -902,7 +902,7 @@ class PromptManager {
             // Include prompt groups if any exist
             const groups = this.getPromptGroups();
             if (groups.length > 0) {
-                exportPrompts.extensions = { luker: { prompt_groups: structuredClone(groups) } };
+                exportPrompts.extensions = { atria: { prompt_groups: structuredClone(groups) } };
             }
 
             this.export(exportPrompts, 'full', 'st-prompts');
@@ -925,7 +925,7 @@ class PromptManager {
             // Include prompt groups if any exist
             const groups = this.getPromptGroups();
             if (groups.length > 0) {
-                exportPrompts.extensions = { luker: { prompt_groups: structuredClone(groups) } };
+                exportPrompts.extensions = { atria: { prompt_groups: structuredClone(groups) } };
             }
 
             const name = this.activeCharacter.name + '-prompts';
@@ -2052,14 +2052,14 @@ class PromptManager {
         this.serviceSettings.extensions = this.serviceSettings.extensions && typeof this.serviceSettings.extensions === 'object'
             ? this.serviceSettings.extensions
             : {};
-        this.serviceSettings.extensions.luker = this.serviceSettings.extensions.luker && typeof this.serviceSettings.extensions.luker === 'object'
-            ? this.serviceSettings.extensions.luker
+        this.serviceSettings.extensions.atria = this.serviceSettings.extensions.atria && typeof this.serviceSettings.extensions.atria === 'object'
+            ? this.serviceSettings.extensions.atria
             : {};
-        this.serviceSettings.extensions.luker.prompt_layout = Array.isArray(this.serviceSettings.extensions.luker.prompt_layout)
-            ? this.serviceSettings.extensions.luker.prompt_layout
+        this.serviceSettings.extensions.atria.prompt_layout = Array.isArray(this.serviceSettings.extensions.atria.prompt_layout)
+            ? this.serviceSettings.extensions.atria.prompt_layout
             : [];
-        this.serviceSettings.extensions.luker.prompt_groups = Array.isArray(this.serviceSettings.extensions.luker.prompt_groups)
-            ? this.serviceSettings.extensions.luker.prompt_groups
+        this.serviceSettings.extensions.atria.prompt_groups = Array.isArray(this.serviceSettings.extensions.atria.prompt_groups)
+            ? this.serviceSettings.extensions.atria.prompt_groups
             : [];
 
         if ('global' === this.configuration.promptOrder.strategy) {
@@ -2320,7 +2320,7 @@ class PromptManager {
      * @returns {Array<{id: string, name: string, collapsed: boolean, identifiers: string[]}>}
      */
     getPromptGroups() {
-        return this.serviceSettings.extensions?.luker?.prompt_groups ?? [];
+        return this.serviceSettings.extensions?.atria?.prompt_groups ?? [];
     }
 
     /**
@@ -4640,9 +4640,9 @@ class PromptManager {
             throw new Error('Prompt order strategy not supported.');
         }
 
-        // Import prompt groups if present (Luker extension data)
-        if (Array.isArray(importData.data.extensions?.luker?.prompt_groups)) {
-            const importedGroups = importData.data.extensions.luker.prompt_groups;
+        // Import prompt groups if present (Atria extension data)
+        if (Array.isArray(importData.data.extensions?.atria?.prompt_groups)) {
+            const importedGroups = importData.data.extensions.atria.prompt_groups;
             const existingGroups = this.getPromptGroups();
 
             // Merge: imported groups override existing ones with the same ID
@@ -4652,7 +4652,7 @@ class PromptManager {
                     groupMap.set(importedGroup.id, structuredClone(importedGroup));
                 }
             }
-            this.serviceSettings.extensions.luker.prompt_groups = Array.from(groupMap.values());
+            this.serviceSettings.extensions.atria.prompt_groups = Array.from(groupMap.values());
             this.validateGroups();
             this.log('Prompt groups import succeeded');
         }

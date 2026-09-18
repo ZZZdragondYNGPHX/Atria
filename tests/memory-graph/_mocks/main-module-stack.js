@@ -23,7 +23,7 @@ import { jest } from '@jest/globals';
 // ---- Browser / jQuery shims ----
 // Return a chainable stub so top-level code like
 // `jQuery(document).off('click.foo').on('click.foo', ...)` in
-// public/scripts/extensions/luker-tabs.js (transitively imported via
+// public/scripts/extensions/atria-tabs.js (transitively imported via
 // memory-graph/ui-templates.js) doesn't blow up at module-load time.
 // Any prop access returns a callable that returns the same chain.
 globalThis.jQuery = (cb) => {

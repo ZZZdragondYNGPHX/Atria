@@ -81,7 +81,7 @@ test.describe('#74 — Capsule injection', () => {
             const mod = await import('/scripts/extensions/orchestrator/capsule-injection.js');
             const inj = mod.injectCapsuleToPayload;
 
-            const constants = Luker.getContext().constants;
+            const constants = Atria.getContext().constants;
             const wi = constants.wiPosition;
             const roles = constants.promptRoles;
 
@@ -195,7 +195,7 @@ test.describe('#74 — Capsule injection', () => {
         // dispatch — exactly the moment production capsule injection
         // also runs.
         await page.evaluate((sentinel) => {
-            const ctx = Luker.getContext();
+            const ctx = Atria.getContext();
             // Idempotent installer — ignore if already attached from
             // an earlier test in this worker.
             if (window.__test74Hook) {
@@ -268,7 +268,7 @@ test.describe('#74 — Capsule injection', () => {
 
         // Cleanup hook so subsequent tests aren't polluted.
         await page.evaluate(() => {
-            const ctx = Luker.getContext();
+            const ctx = Atria.getContext();
             if (window.__test74Hook) {
                 ctx.eventSource.removeListener(ctx.eventTypes.CHAT_COMPLETION_SETTINGS_READY, window.__test74Hook);
                 window.__test74Hook = null;

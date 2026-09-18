@@ -54,7 +54,7 @@
  * matches the pre-Apply state byte-for-byte.
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 import {
@@ -2954,7 +2954,7 @@ async function _openUnifiedCharacterEditorPopupInner(context, opts, rollbackEnve
         $root.on('click.ceaEditor', '[data-cea-editor-action="regenerate"]', async (e) => {
             e.preventDefault();
             if (state.isBusy) return;
-            const id = String(e.currentTarget?.getAttribute('data-luker-lib-msg-id') || '');
+            const id = String(e.currentTarget?.getAttribute('data-atria-lib-msg-id') || '');
             if (!id) return;
             const messages = state.session.messages || [];
             const idx = messages.findIndex(m => m && m.id === id);
@@ -3045,7 +3045,7 @@ async function _openUnifiedCharacterEditorPopupInner(context, opts, rollbackEnve
         $root.on('click.ceaEditor', '[data-cea-editor-action="edit-user-message"]', async (e) => {
             e.preventDefault();
             if (state.isBusy) return;
-            const id = String(e.currentTarget?.getAttribute('data-luker-lib-msg-id') || '');
+            const id = String(e.currentTarget?.getAttribute('data-atria-lib-msg-id') || '');
             if (!id) return;
             await editUserMessage(id);
         });
@@ -3344,7 +3344,7 @@ function buildPopupHtml({
             </button>`
         : '';
     return `
-<div id="${popupId}" class="cea_editor_studio luker-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
+<div id="${popupId}" class="cea_editor_studio atria-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
     <div class="cea_editor_topbar">
         <div class="cea_editor_title">${esc(title)}</div>
         <div class="cea_editor_topbar_actions">${replaceDiffBtnHtml}</div>
@@ -3358,18 +3358,18 @@ function buildPopupHtml({
         </div>
     </details>
 
-    <div class="luker-iter-workspace-tabs" role="tablist">
-        <button type="button" class="luker-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
-            <span class="luker-iter-workspace-tab-label">${esc(chatTabLabel)}</span>
-            <span class="luker-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${esc(chatBadgeAriaLabel)}"></span>
+    <div class="atria-iter-workspace-tabs" role="tablist">
+        <button type="button" class="atria-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
+            <span class="atria-iter-workspace-tab-label">${esc(chatTabLabel)}</span>
+            <span class="atria-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${esc(chatBadgeAriaLabel)}"></span>
         </button>
-        <button type="button" class="luker-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
-            <span class="luker-iter-workspace-tab-label">${esc(previewTabLabel)}</span>
+        <button type="button" class="atria-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
+            <span class="atria-iter-workspace-tab-label">${esc(previewTabLabel)}</span>
         </button>
     </div>
 
-    <div class="luker-iter-workspace-grid">
-        <div class="luker-iter-workspace-chat" data-iter-pane="chat">
+    <div class="atria-iter-workspace-grid">
+        <div class="atria-iter-workspace-chat" data-iter-pane="chat">
             <div class="cea_editor_messages" data-cea-editor-messages></div>
             <div class="cea_editor_composer">
                 <textarea class="text_pole" rows="2" data-cea-editor-input data-iter-input placeholder="${esc(composerPlaceholder)}"></textarea>
@@ -3384,8 +3384,8 @@ function buildPopupHtml({
                 </div>
             </div>
         </div>
-        <div class="luker-iter-workspace-resizer" data-iter-resizer aria-label="${esc(resizerAriaLabel)}"></div>
-        <div class="luker-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
+        <div class="atria-iter-workspace-resizer" data-iter-resizer aria-label="${esc(resizerAriaLabel)}"></div>
+        <div class="atria-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
     </div>
 </div>`;
 }

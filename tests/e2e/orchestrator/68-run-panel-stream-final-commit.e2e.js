@@ -92,7 +92,7 @@ test.describe('#68 — Run Panel: stream → final commit 1:1', () => {
         }, '*She steps to the rail, lantern raised against the salt-spray.* "What did the courier see?"');
 
         // Panel auto-opens on RUN_STARTED.
-        const panel = page.locator('#luker-orch-run-panel');
+        const panel = page.locator('#atria-orch-run-panel');
         await expect(panel).toHaveAttribute('data-state', 'open', { timeout: 30_000 });
 
         // At least one section <pre> should accumulate bytes. With our
@@ -132,7 +132,7 @@ test.describe('#68 — Run Panel: stream → final commit 1:1', () => {
         // strips markdown asterisks while displaying — the 1:1
         // contract is about what got persisted, not the rendered form.
         const lastMes = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const chat = ctx.chat || [];
             for (let i = chat.length - 1; i >= 0; i--) {
                 if (!chat[i]?.is_user) return chat[i]?.mes || '';

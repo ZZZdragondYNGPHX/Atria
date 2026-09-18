@@ -1,6 +1,6 @@
 // Storage Inspector · self drill-down (single-user mode).
 //
-// Boots a Luker server in single-user mode (enableUserAccounts:false so
+// Boots a Atria server in single-user mode (enableUserAccounts:false so
 // the default admin logs in without a password), seeds a plausible corpus
 // under default-user/, then drives the User Profile → Storage Inspector
 // popup entirely through real DOM gestures:

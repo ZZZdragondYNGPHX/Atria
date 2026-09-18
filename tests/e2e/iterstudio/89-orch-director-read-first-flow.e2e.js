@@ -1,4 +1,4 @@
-// #89 — Orchestrator iter-studio: read-first flow uses `luker_orch_read_director_fields`
+// #89 — Orchestrator iter-studio: read-first flow uses `atri_orch_read_director_fields`
 // between an anchor patch, and no `## working_profile` YAML dump is
 // injected into the user turn. Regression guard for the read-first
 // refactor that removed AUTO CONTINUE / working_profile up-front dumps
@@ -7,16 +7,16 @@
 // REAL USER-GESTURE flow:
 //   1. Open the orchestrator iter-studio popup via real clicks.
 //   2. Script mockLLM for 4 turns:
-//        Turn 0: tool_call `luker_orch_set_director_subagent` (creates seed sub-agent)
-//        Turn 1: tool_call `luker_orch_read_director_fields({paths: ['subAgents']})`
-//        Turn 2: tool_call `luker_orch_patch_director_subagent_system_prompt`
+//        Turn 0: tool_call `atri_orch_set_director_subagent` (creates seed sub-agent)
+//        Turn 1: tool_call `atri_orch_read_director_fields({paths: ['subAgents']})`
+//        Turn 2: tool_call `atri_orch_patch_director_subagent_system_prompt`
 //                using the exact oldString from the seed prompt.
 //        Turn 3: plain text "done" — terminates the loop.
 //   3. Send the prompt via sendIterPrompt (waits for Approve after Turn 0).
 //   4. Approve all → drain fires Turn 1 → Turn 2 → new Approve → click →
 //      Turn 3 exits.
 //   5. Assertions (structure, not wording):
-//      - The chat/completions requests carry a tool named `luker_orch_read_director_fields`.
+//      - The chat/completions requests carry a tool named `atri_orch_read_director_fields`.
 //      - No user message in any request contains `## working_profile` /
 //        `## global_profile_baseline` blocks (legacy up-front dumps).
 //      - The applied director preset carries the patched sub-agent on disk.
@@ -114,7 +114,7 @@ test.describe('#89 — Orchestrator iter-studio: read-first flow with per-mode r
             if (req.turn === 0) {
                 return {
                     toolCalls: [{
-                        name: 'luker_orch_set_director_subagent',
+                        name: 'atri_orch_set_director_subagent',
                         arguments: {
                             id: SEED_SUBAGENT_ID,
                             description: 'Analyzes the reef chart.',
@@ -126,7 +126,7 @@ test.describe('#89 — Orchestrator iter-studio: read-first flow with per-mode r
             if (req.turn === 1) {
                 return {
                     toolCalls: [{
-                        name: 'luker_orch_read_director_fields',
+                        name: 'atri_orch_read_director_fields',
                         arguments: { paths: ['subAgents'] },
                     }],
                 };
@@ -134,7 +134,7 @@ test.describe('#89 — Orchestrator iter-studio: read-first flow with per-mode r
             if (req.turn === 2) {
                 return {
                     toolCalls: [{
-                        name: 'luker_orch_patch_director_subagent_system_prompt',
+                        name: 'atri_orch_patch_director_subagent_system_prompt',
                         arguments: {
                             id: SEED_SUBAGENT_ID,
                             oldString: PATCH_OLD,
@@ -178,7 +178,7 @@ test.describe('#89 — Orchestrator iter-studio: read-first flow with per-mode r
                 if (!String(r.url || '').includes('chat/completions')) return false;
                 const parsed = r.body || {};
                 const tools = Array.isArray(parsed?.tools) ? parsed.tools : [];
-                return tools.some((t) => String(t?.function?.name || '') === 'luker_orch_read_director_fields');
+                return tools.some((t) => String(t?.function?.name || '') === 'atri_orch_read_director_fields');
             });
         }, { timeout: 10_000 }).toBe(true);
 

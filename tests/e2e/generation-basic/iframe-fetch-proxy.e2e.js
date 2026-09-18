@@ -1,7 +1,7 @@
 // generation-basic #8 — /generate calls issued from inside a same-origin
 // iframe MUST still route through the ws-delivery proxy.
 //
-// The runner architecture (src/luker-dispatch/runner.js) responds to every
+// The runner architecture (src/atria-dispatch/runner.js) responds to every
 // POST /api/backends/*/generate with HTTP 200 + `{}` immediately and pushes
 // the actual payload over the WebSocket. The top-window ws-delivery proxy
 // (public/scripts/ws-delivery.js:installFetchProxy) monkey-patches
@@ -33,7 +33,7 @@
 //      Response constructor (realm-correct — proves we shadowed the
 //      built-ins per-window inside installFetchProxy, not just returned
 //      a parent-realm object).
-//   6. Assert `x-luker-generation-id` was on the initial HTTP response
+//   6. Assert `x-atria-generation-id` was on the initial HTTP response
 //      (dispatch actually ran) and a WebSocket to /api/ws-delivery was
 //      opened (payload came via WS).
 
@@ -70,7 +70,7 @@ test('generation-basic: iframe-scoped fetch to /generate is proxied through ws-d
         if (url.includes('/api/backends/chat-completions/generate')) {
             generateResponses.push({
                 status: resp.status(),
-                generationId: resp.headers()['x-luker-generation-id'] || '',
+                generationId: resp.headers()['x-atria-generation-id'] || '',
             });
         }
     });
@@ -104,11 +104,11 @@ test('generation-basic: iframe-scoped fetch to /generate is proxied through ws-d
         // don't need `iframe.load` because contentWindow is already the
         // about:blank window (no navigate required).
         for (let i = 0; i < 50; i++) {
-            if (iframe.contentWindow?.__lukerFetchProxyDisposer) break;
+            if (iframe.contentWindow?.__atriaFetchProxyDisposer) break;
             await new Promise(r => setTimeout(r, 20));
         }
         const patchWaitMs = 20 * 50;
-        const wasPatched = Boolean(iframe.contentWindow?.__lukerFetchProxyDisposer);
+        const wasPatched = Boolean(iframe.contentWindow?.__atriaFetchProxyDisposer);
 
         // Build a shujuku-shape body: chat_completion_source=custom pointing
         // at the mock, stream:false so the caller expects a JSON body
@@ -142,7 +142,7 @@ test('generation-basic: iframe-scoped fetch to /generate is proxied through ws-d
                 { method: 'POST', headers, body },
             );
             httpStatus = response.status;
-            generationId = response.headers.get('x-luker-generation-id') || '';
+            generationId = response.headers.get('x-atria-generation-id') || '';
             // Realm check: with the shadowed built-ins the proxied fetch
             // constructs `new Response(...)` in the iframe's realm, so
             // this must hold. Without the shadow it would be false.
@@ -161,9 +161,9 @@ test('generation-basic: iframe-scoped fetch to /generate is proxied through ws-d
     // fails, everything downstream fails too — surface it explicitly.
     expect(iframeResult.wasPatched, `iframe.contentWindow was not patched within ${iframeResult.patchWaitMs}ms`).toBe(true);
 
-    // Runner contract: HTTP 200 + x-luker-generation-id header.
+    // Runner contract: HTTP 200 + x-atria-generation-id header.
     expect(iframeResult.httpStatus).toBe(200);
-    expect(iframeResult.generationId, 'x-luker-generation-id must be echoed on the /generate response').toMatch(/^[0-9a-f-]{8,}/i);
+    expect(iframeResult.generationId, 'x-atria-generation-id must be echoed on the /generate response').toMatch(/^[0-9a-f-]{8,}/i);
 
     // Realm-correctness: the Response returned to the iframe is an
     // instance of the iframe's own Response constructor. Without the
@@ -192,6 +192,6 @@ test('generation-basic: iframe-scoped fetch to /generate is proxied through ws-d
     expect(generateResponses.length, `expected at least one /generate response; observed ${generateResponses.length}`).toBeGreaterThanOrEqual(1);
     for (const resp of generateResponses) {
         expect(resp.status, `every /generate response must be 200; got ${resp.status}`).toBe(200);
-        expect(resp.generationId, 'every /generate response must carry x-luker-generation-id').toMatch(/^[0-9a-f-]{8,}/i);
+        expect(resp.generationId, 'every /generate response must carry x-atria-generation-id').toMatch(/^[0-9a-f-]{8,}/i);
     }
 });

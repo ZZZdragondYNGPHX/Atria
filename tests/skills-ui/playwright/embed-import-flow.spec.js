@@ -11,9 +11,9 @@
  *     `context.skills.list({ scope: 'all' })` and assert the new skill
  *     surfaces with `scope.kind = 'character'`.
  *
- * This spec deliberately avoids exercising Luker's real character upload
+ * This spec deliberately avoids exercising Atria's real character upload
  * UI because (a) the character-upload flow itself is a SillyTavern
- * surface, not a Luker-skills addition, and (b) Playwright file-upload
+ * surface, not a Atria-skills addition, and (b) Playwright file-upload
  * support is awkward when running against the live dev server (CSRF
  * tokens, the user-data sandbox, etc). The lifecycle handler that auto-
  * opens the dialog on CHAT_CHANGED is already covered by
@@ -72,7 +72,7 @@ test.describe('Skills: embed import dialog', () => {
         // scope to install into — any one works for this flow). Hard-fails
         // only when the env has zero characters at all.
         const targetScope = await page.evaluate(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             // Prefer the active character; fall back to the first one.
             let avatar = '';
             const cid = ctx?.characterId;
@@ -92,7 +92,7 @@ test.describe('Skills: embed import dialog', () => {
         // character, delete it so we re-trigger the "new" install path
         // rather than landing on "different (choose)".
         await page.evaluate(async ({ scope, name }) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             if (!ctx?.skills) return;
             try {
                 await ctx.skills.delete(scope, name);
@@ -111,8 +111,8 @@ test.describe('Skills: embed import dialog', () => {
         // to retrieve the install result.
         await page.evaluate(async ({ payload, targetScope }) => {
             const mod = await import('/scripts/skills/embed-import-dialog.js');
-            const context = window.Luker.getContext();
-            window.__luker_smoke_embed_result = mod.runEmbedImportFlow({
+            const context = window.Atria.getContext();
+            window.__atria_smoke_embed_result = mod.runEmbedImportFlow({
                 context,
                 payload,
                 targetScope,
@@ -121,17 +121,17 @@ test.describe('Skills: embed import dialog', () => {
         }, { payload, targetScope });
 
         // ── 2. Wait for the dialog to mount + assert table contents ──
-        const dialog = page.locator('.popup:has(.luker_skill_import_dialog)').last();
+        const dialog = page.locator('.popup:has(.atria_skill_import_dialog)').last();
         await dialog.waitFor({ state: 'visible', timeout: 10_000 });
 
-        const dialogBody = dialog.locator('.luker_skill_import_dialog').first();
+        const dialogBody = dialog.locator('.atria_skill_import_dialog').first();
         await expect(dialogBody).toBeVisible();
 
         // One row per skill in the payload. Each row has a name cell;
         // the status cell varies by row state (new / same / different /
         // invalid). For a freshly-cleaned character scope, the fixture
         // skill should be in the 'new' state.
-        const row = dialog.locator(`tr:has(.luker_skill_import_name:has-text("${fixtureSkillName}"))`).first();
+        const row = dialog.locator(`tr:has(.atria_skill_import_name:has-text("${fixtureSkillName}"))`).first();
         await expect(row).toBeVisible();
 
         await page.screenshot({
@@ -158,8 +158,8 @@ test.describe('Skills: embed import dialog', () => {
         await dialog.waitFor({ state: 'detached', timeout: 15_000 });
 
         const result = await page.evaluate(async () => {
-            const r = await window.__luker_smoke_embed_result;
-            delete window.__luker_smoke_embed_result;
+            const r = await window.__atria_smoke_embed_result;
+            delete window.__atria_smoke_embed_result;
             return r;
         });
 
@@ -178,7 +178,7 @@ test.describe('Skills: embed import dialog', () => {
 
         // ── 5. Verify the skill surfaces in character scope ──────────
         const skillsAfter = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return await ctx.skills.list({ scope: 'all' });
         });
         const characterRow = (skillsAfter || []).find(
@@ -193,7 +193,7 @@ test.describe('Skills: embed import dialog', () => {
 
         // ── 6. Cleanup so subsequent runs are idempotent ─────────────
         await page.evaluate(async ({ scope, name }) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             try {
                 await ctx.skills.delete(scope, name);
             } catch {

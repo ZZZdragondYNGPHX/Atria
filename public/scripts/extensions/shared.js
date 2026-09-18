@@ -362,7 +362,7 @@ export function isWebLlmSupported() {
         return false;
     }
 
-    if (!('llm' in Luker)) {
+    if (!('llm' in Atria)) {
         const warningKey = 'webllm_extension_warning_shown';
         if (!sessionStorage.getItem(warningKey)) {
             toastr.error('WebLLM extension is not installed. Click here to install it.', 'WebLLM', {
@@ -391,7 +391,7 @@ export async function generateWebLlmChatPrompt(messages, params = {}) {
     }
 
     console.debug('WebLLM chat completion request:', messages, params);
-    const engine = Luker.llm;
+    const engine = Atria.llm;
     const response = await engine.generateChatPrompt(messages, params);
     console.debug('WebLLM chat completion response:', response);
     return response;
@@ -409,7 +409,7 @@ export async function countWebLlmTokens(text) {
     }
 
     try {
-        const engine = Luker.llm;
+        const engine = Atria.llm;
         const response = await engine.countTokens(text);
         return response;
     } catch (error) {
@@ -427,7 +427,7 @@ export async function getWebLlmContextSize() {
         throw new Error('WebLLM extension is not installed.');
     }
 
-    const engine = Luker.llm;
+    const engine = Atria.llm;
     await engine.loadModel();
     const model = await engine.getCurrentModelInfo();
     return model?.context_size;
@@ -470,7 +470,7 @@ export class ConnectionManagerRequestService {
     static async sendRequest(profileId, prompt, maxTokens, custom = this.defaultSendRequestParams, overridePayload = {}) {
         const { stream, signal, extractData, includePreset, includeInstruct, instructSettings } = { ...this.defaultSendRequestParams, ...custom };
 
-        const context = Luker.getContext();
+        const context = Atria.getContext();
         if (context.extensionSettings.disabledExtensions.includes('connection-manager')) {
             throw new Error('Connection Manager is not available');
         }
@@ -586,7 +586,7 @@ export class ConnectionManagerRequestService {
     * @param {InstructSettings} instructSettings optional instruct settings
     */
     static constructPrompt(prompt, profileId, instructSettings = null) {
-        const context = Luker.getContext();
+        const context = Atria.getContext();
         const profile = this.getProfile(profileId);
         const selectedApiMap = this.validateProfile(profile);
         const instructName = profile.instruct;
@@ -615,7 +615,7 @@ export class ConnectionManagerRequestService {
      * @returns {import('./connection-manager/index.js').ConnectionProfile[]}
      */
     static getSupportedProfiles() {
-        const context = Luker.getContext();
+        const context = Atria.getContext();
         if (context.extensionSettings.disabledExtensions.includes('connection-manager')) {
             throw new Error('Connection Manager is not available');
         }
@@ -631,7 +631,7 @@ export class ConnectionManagerRequestService {
      * @throws {Error}
      */
     static getProfile(profileId) {
-        const profile = Luker.getContext().extensionSettings.connectionManager.profiles.find((p) => p.id === profileId);
+        const profile = Atria.getContext().extensionSettings.connectionManager.profiles.find((p) => p.id === profileId);
         if (!profile) throw new Error(`Profile not found (ID: ${profileId})`);
         return profile;
     }
@@ -643,11 +643,11 @@ export class ConnectionManagerRequestService {
      * @returns {HTMLImageElement | null}
      */
     static getProfileIcon(profileId) {
-        if ((Luker.getContext()).extensionSettings.disabledExtensions.includes('connection-manager')) {
+        if ((Atria.getContext()).extensionSettings.disabledExtensions.includes('connection-manager')) {
             return null;
         }
 
-        const id = profileId ?? (Luker.getContext()).extensionSettings.connectionManager.selectedProfile;
+        const id = profileId ?? (Atria.getContext()).extensionSettings.connectionManager.selectedProfile;
         if (!id) return null;
 
         try {
@@ -697,7 +697,7 @@ export class ConnectionManagerRequestService {
             throw new Error('Select a connection profile that has an API');
         }
 
-        const context = Luker.getContext();
+        const context = Atria.getContext();
         const selectedApiMap = context.CONNECT_API_MAP[profile.api];
         if (!selectedApiMap) {
             throw new Error(`Unknown API type ${profile.api}`);
@@ -726,7 +726,7 @@ export class ConnectionManagerRequestService {
         unUpdate = () => { },
         onDelete = () => { },
     ) {
-        const context = Luker.getContext();
+        const context = Atria.getContext();
         if (context.extensionSettings.disabledExtensions.includes('connection-manager')) {
             throw new Error('Connection Manager is not available');
         }

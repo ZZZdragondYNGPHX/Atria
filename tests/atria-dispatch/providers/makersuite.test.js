@@ -1,0 +1,459 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { jest } from '@jest/globals';
+import { dispatchMakerSuite } from '../../../src/atria-dispatch/providers/chat-completions/makersuite.js';
+
+/**
+ * Build a fake DispatchContext matching src/atria-dispatch/context.js shape.
+ * Mirrors ai21.test.js. onFetch: async (url, init) => Response.
+ *
+ * `source` toggles MAKERSUITE vs VERTEXAI branch. `secret` seeds the primary
+ * key (MAKERSUITE api key, VERTEXAI express key, or vertex service-account
+ * JSON depending on branch); we route via `secretsReadImpl` for granular
+ * per-key mocking.
+ */
+function fakeCtx({
+    body = {},
+    onFetch,
+    secret = 'gemini-fake-key',
+    secretsReadImpl,
+    signal,
+    source = 'makersuite',
+} = {}) {
+    const emitted = [];
+    const ac = new AbortController();
+    const attachedInspections = [];
+
+    const defaultOkResponse = () => new Response(JSON.stringify({
+        candidates: [{
+            content: { role: 'model', parts: [{ text: 'hello back' }] },
+            finishReason: 'STOP',
+        }],
+        usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 3, totalTokenCount: 8 },
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+
+    return {
+        body: {
+            chat_completion_source: source,
+            model: 'gemini-2.5-flash',
+            messages: [
+                { role: 'system', content: 'you are helpful' },
+                { role: 'user', content: 'hi' },
+            ],
+            use_sysprompt: true,
+            stream: false,
+            max_tokens: 128,
+            temperature: 0.7,
+            top_p: 1,
+            ...body,
+        },
+        user: {
+            handle: 'alice',
+            directories: {},
+            profile: { handle: 'alice' },
+        },
+        signal: signal || ac.signal,
+        fetch: onFetch || jest.fn(async () => defaultOkResponse()),
+        secrets: {
+            read: jest.fn((key) => {
+                if (secretsReadImpl) return secretsReadImpl(key);
+                return secret;
+            }),
+        },
+        generation: {
+            startJob: jest.fn(() => null),
+            appendEvent: jest.fn(),
+            hasActiveKeepAliveJob: jest.fn(() => false),
+        },
+        inspection: {
+            start: jest.fn(),
+            attach: jest.fn((url) => attachedInspections.push(url)),
+            complete: jest.fn(),
+            fail: jest.fn(),
+        },
+        emit: {
+            head: (h) => emitted.push({ kind: 'head', data: h }),
+            chunk: (b) => emitted.push({ kind: 'chunk', data: b }),
+            end: () => emitted.push({ kind: 'end' }),
+            error: (e) => emitted.push({ kind: 'error', error: e }),
+        },
+        _emitted: emitted,
+        _abortController: ac,
+        _attachedInspections: attachedInspections,
+    };
+}
+
+describe('dispatchMakerSuite', () => {
+    test('MAKERSUITE non-streaming: normalizes Gemini JSON to OpenAI shape then end', async () => {
+        const ctx = fakeCtx();
+        await dispatchMakerSuite(ctx);
+
+        const kinds = ctx._emitted.map(e => e.kind);
+        expect(kinds).toContain('chunk');
+        expect(kinds[kinds.length - 1]).toBe('end');
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(Buffer.from(chunks[0].data).toString('utf8'));
+        // normalizeGeminiResponseToOAI returns an OpenAI-shaped envelope.
+        expect(parsed.choices).toBeDefined();
+        expect(Array.isArray(parsed.choices)).toBe(true);
+        expect(parsed.choices[0].message.content).toBe('hello back');
+
+        expect(ctx.fetch).toHaveBeenCalledTimes(1);
+        const [url, init] = ctx.fetch.mock.calls[0];
+        expect(String(url)).toContain('generativelanguage.googleapis.com');
+        expect(String(url)).toContain('gemini-2.5-flash:generateContent');
+        expect(String(url)).toContain('key=gemini-fake-key');
+        expect(init.method).toBe('POST');
+        expect(init.headers['Content-Type']).toBe('application/json');
+        expect(init.signal).toBe(ctx.signal);
+    });
+
+    test('MAKERSUITE non-streaming: feeds raw Gemini body to inspector alongside OAI-normalized reply (Task 2D)', async () => {
+        // extractUsageFromGemini reads usageMetadata.cachedContentTokenCount
+        // + candidatesTokenCount from the raw shape; extractPartsFromPayload
+        // walks raw.candidates[0].content.parts for thoughtSignature,
+        // inlineData, functionCall. The OAI-normalized reply flattens
+        // usageMetadata → usage.prompt_tokens/completion_tokens/
+        // prompt_tokens_details and drops thoughtSignature entirely, so
+        // rawApiResponse must reach the inspector for the extractors to
+        // see the source-of-truth fields.
+        const rawGemini = {
+            candidates: [{
+                content: {
+                    role: 'model',
+                    parts: [
+                        { text: 'reasoning trace', thought: true, thoughtSignature: 'thought-sig-1' },
+                        { text: 'final answer' },
+                    ],
+                },
+                finishReason: 'STOP',
+            }],
+            usageMetadata: {
+                promptTokenCount: 100,
+                candidatesTokenCount: 20,
+                cachedContentTokenCount: 60,
+                totalTokenCount: 120,
+            },
+        };
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify(rawGemini), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+            })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        expect(ctx.inspection.complete).toHaveBeenCalledTimes(1);
+        const [oaiArg, rawArg] = ctx.inspection.complete.mock.calls[0];
+        // First arg = OAI-normalized (has choices[].message).
+        expect(oaiArg.choices?.[0]?.message?.content).toBe('final answer');
+        // Second arg = raw Gemini body (preserves usageMetadata +
+        // thoughtSignature).
+        expect(rawArg).toEqual(rawGemini);
+        expect(rawArg.usageMetadata.cachedContentTokenCount).toBe(60);
+        expect(rawArg.candidates[0].content.parts[0].thoughtSignature).toBe('thought-sig-1');
+    });
+
+    test('MAKERSUITE missing API key (no base_url, no reverse_proxy): emits error, no fetch', async () => {
+        const ctx = fakeCtx({ secret: '' });
+        await dispatchMakerSuite(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs.length).toBeGreaterThan(0);
+        expect(ctx.fetch).not.toHaveBeenCalled();
+    });
+
+    test('MAKERSUITE streaming: forwards upstream SSE chunks verbatim, URL contains alt=sse', async () => {
+        const sseBody =
+            'data: {"candidates":[{"content":{"parts":[{"text":"he"}]}}]}\n\n' +
+            'data: {"candidates":[{"content":{"parts":[{"text":"llo"}]}}]}\n\n';
+
+        const ctx = fakeCtx({
+            body: { stream: true },
+            onFetch: jest.fn(async () => new Response(sseBody, {
+                status: 200,
+                headers: { 'content-type': 'text/event-stream' },
+            })),
+        });
+
+        await dispatchMakerSuite(ctx);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks.length).toBeGreaterThan(0);
+        const decoded = chunks.map(c => Buffer.from(c.data).toString('utf8')).join('');
+        expect(decoded).toContain('"text":"he"');
+        expect(decoded).toContain('"text":"llo"');
+        expect(ctx._emitted[ctx._emitted.length - 1].kind).toBe('end');
+
+        const [url] = ctx.fetch.mock.calls[0];
+        expect(String(url)).toContain(':streamGenerateContent');
+        expect(String(url)).toContain('alt=sse');
+    });
+
+    test('MAKERSUITE upstream non-2xx: surfaces status+body via head+chunk+end (no emit.error)', async () => {
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response('{"error":{"message":"bad key"}}', {
+                status: 401,
+                headers: { 'content-type': 'application/json' },
+            })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const heads = ctx._emitted.filter(e => e.kind === 'head');
+        expect(heads).toHaveLength(1);
+        expect(heads[0].data.status).toBe(401);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const decoded = new TextDecoder().decode(chunks[0].data);
+        expect(decoded).toBe('{"error":{"message":"bad key"}}');
+
+        const ends = ctx._emitted.filter(e => e.kind === 'end');
+        expect(ends).toHaveLength(1);
+
+        expect(ctx.inspection.fail).toHaveBeenCalledTimes(1);
+    });
+
+    test('MAKERSUITE 200 with empty candidates array + promptFeedback.blockReason: emits head 200 + `{error:{message}}` chunk (blocked, terminal)', async () => {
+        // Blocked-prompt branch is TERMINAL — retrying against the same
+        // safety filter burns quota. Delivered as HTTP 200 + `{error:{message}}`
+        // (Express default) so the client's `data.error` handler fires with
+        // the descriptive block-reason message. HTTP 500 would bury the
+        // message inside the `!response.ok` generic throw.
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify({
+                candidates: [],
+                promptFeedback: { blockReason: 'SAFETY' },
+            }), { status: 200, headers: { 'content-type': 'application/json' } })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const heads = ctx._emitted.filter(e => e.kind === 'head');
+        expect(heads).toHaveLength(1);
+        expect(heads[0].data.status).toBe(200);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(new TextDecoder().decode(chunks[0].data));
+        expect(parsed.error).toBeDefined();
+        expect(parsed.error.message).toContain('no candidate');
+        expect(parsed.error.message).toContain('SAFETY');
+
+        const ends = ctx._emitted.filter(e => e.kind === 'end');
+        expect(ends).toHaveLength(1);
+
+        // Blocked payload routes through inspection.complete (not .fail):
+        // dispatch signals "the fetch itself succeeded, hand the payload to
+        // the inspector for classification". The inspector's provider-error
+        // detection (see request-inspector.js hasProviderError) then reads
+        // `payload.error` and marks the entry status='error' with the block
+        // message, so the UI shows a failed request that carries the
+        // descriptive reason instead of a silent green tick.
+        expect(ctx.inspection.complete).toHaveBeenCalledTimes(1);
+        const [payloadArg, rawArg] = ctx.inspection.complete.mock.calls[0];
+        expect(payloadArg.error.message).toContain('no candidate');
+        expect(rawArg.promptFeedback.blockReason).toBe('SAFETY');
+    });
+
+    test('MAKERSUITE 200 with empty candidates array + NO blockReason: emits normalized OAI shape with empty content (transient — client retries)', async () => {
+        // Transient-empty branch: upstream returned zero candidates but did
+        // NOT flag prompt-block. Likely a model flake; forward as legal OAI
+        // 200 + empty choices so the client-side empty-response detector
+        // (openai.js:isChatCompletionResponseEmpty) triggers withRetry.
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify({
+                candidates: [],
+                // no promptFeedback.blockReason
+            }), { status: 200, headers: { 'content-type': 'application/json' } })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(new TextDecoder().decode(chunks[0].data));
+        // Not a `{error:{message}}` envelope any more — it's the normalized
+        // OAI shape with empty content, which the client detector treats as
+        // retriable.
+        expect(parsed.error).toBeUndefined();
+        expect(Array.isArray(parsed.choices)).toBe(true);
+        expect(parsed.choices).toHaveLength(1);
+        expect(parsed.choices[0].message.content).toBe('');
+        expect(parsed.choices[0].message.tool_calls).toBeUndefined();
+    });
+
+    test('MAKERSUITE 200 with candidate but empty text AND deterministic blocked finishReason (BLOCKLIST): emits head 200 + `{error:{message}}` chunk (terminal)', async () => {
+        // Output-blocked by a deterministic filter (hard keyword blocklist).
+        // TERMINAL — retry deterministically hits the same list.
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify({
+                candidates: [{
+                    content: { role: 'model', parts: [] },
+                    finishReason: 'BLOCKLIST',
+                }],
+            }), { status: 200, headers: { 'content-type': 'application/json' } })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const heads = ctx._emitted.filter(e => e.kind === 'head');
+        expect(heads).toHaveLength(1);
+        expect(heads[0].data.status).toBe(200);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(new TextDecoder().decode(chunks[0].data));
+        expect(parsed.error).toBeDefined();
+        expect(parsed.error.message).toContain('Candidate text empty');
+        expect(parsed.error.message).toContain('BLOCKLIST');
+
+        const ends = ctx._emitted.filter(e => e.kind === 'end');
+        expect(ends).toHaveLength(1);
+
+        expect(ctx.inspection.complete).toHaveBeenCalledTimes(1);
+    });
+
+    test('MAKERSUITE 200 with candidate but empty text and probabilistic filter (SAFETY): emits normalized OAI shape with empty content (transient — client retries)', async () => {
+        // Gemini's SAFETY / RECITATION / PROHIBITED_CONTENT filters are
+        // probabilistic — same prompt + different sampling can flip the
+        // verdict, so they flow through the transient/retriable branch.
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify({
+                candidates: [{
+                    content: { role: 'model', parts: [] },
+                    finishReason: 'SAFETY',
+                }],
+            }), { status: 200, headers: { 'content-type': 'application/json' } })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(new TextDecoder().decode(chunks[0].data));
+        expect(parsed.error).toBeUndefined();
+        expect(Array.isArray(parsed.choices)).toBe(true);
+        expect(parsed.choices[0].message.content).toBe('');
+        expect(parsed.choices[0].message.tool_calls).toBeUndefined();
+    });
+
+    test('MAKERSUITE 200 with candidate but empty text and probabilistic filter (PROHIBITED_CONTENT): emits normalized OAI shape with empty content (regression: observed to flip on retry)', async () => {
+        // Regression: user log 2026-... surfaced PROHIBITED_CONTENT during a
+        // long-context RP call; a subsequent identical call went STOP normal.
+        // Confirms PROHIBITED_CONTENT is probabilistic in practice → retriable.
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify({
+                candidates: [{
+                    content: { role: 'model', parts: [] },
+                    finishReason: 'PROHIBITED_CONTENT',
+                }],
+            }), { status: 200, headers: { 'content-type': 'application/json' } })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(new TextDecoder().decode(chunks[0].data));
+        expect(parsed.error).toBeUndefined();
+        expect(parsed.choices[0].message.content).toBe('');
+    });
+
+    test('MAKERSUITE 200 with candidate but empty text and finishReason=STOP: emits normalized OAI shape with empty content (transient — client retries)', async () => {
+        // Model completed STOP but produced nothing usable (e.g. all parts
+        // are thoughts, or a truly blank text). Not policy-blocked → treat
+        // as transient and let client-side withRetry decide.
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify({
+                candidates: [{
+                    content: { role: 'model', parts: [] },
+                    finishReason: 'STOP',
+                }],
+            }), { status: 200, headers: { 'content-type': 'application/json' } })),
+        });
+        await dispatchMakerSuite(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(new TextDecoder().decode(chunks[0].data));
+        expect(parsed.error).toBeUndefined();
+        expect(Array.isArray(parsed.choices)).toBe(true);
+        expect(parsed.choices[0].message.content).toBe('');
+        expect(parsed.choices[0].message.tool_calls).toBeUndefined();
+        // finish_reason 'stop' propagates through normalizeGeminiResponseToOAI.
+        expect(parsed.choices[0].finish_reason).toBe('stop');
+    });
+
+    test('MAKERSUITE ctx.signal aborted mid-request: fetch AbortError caught, emits error, no chunk', async () => {
+        const ac = new AbortController();
+        const ctx = fakeCtx({
+            signal: ac.signal,
+            onFetch: jest.fn((url, init) => new Promise((_, reject) => {
+                init.signal.addEventListener('abort', () => {
+                    const err = new Error('The user aborted a request.');
+                    err.name = 'AbortError';
+                    reject(err);
+                });
+            })),
+        });
+
+        const dispatchPromise = dispatchMakerSuite(ctx);
+        setImmediate(() => ac.abort());
+        await dispatchPromise;
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(0);
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs.length).toBeGreaterThan(0);
+    });
+
+    test('VERTEXAI reverse-proxy branch: /v1/publishers/google/models URL, Authorization header, no key= param', async () => {
+        // Vertex express/full auth modes read secrets via readSecret (NOT
+        // ctx.secrets.read) inside getVertexAIAuth; those paths need the
+        // real filesystem-backed secret store to exercise. The reverse-proxy
+        // branch is auth-mode-independent (short-circuits before secret
+        // lookup) and exercises the Vertex-specific URL builder + auth
+        // header path, so we cover the MAKERSUITE-vs-VERTEXAI distinction
+        // through this path.
+        const ctx = fakeCtx({
+            source: 'vertexai',
+            body: {
+                chat_completion_source: 'vertexai',
+                reverse_proxy: 'https://vertex-proxy.example.com',
+                proxy_password: 'proxy-token-xyz',
+                model: 'gemini-2.5-pro',
+            },
+        });
+
+        await dispatchMakerSuite(ctx);
+
+        expect(ctx.fetch).toHaveBeenCalledTimes(1);
+        const [url, init] = ctx.fetch.mock.calls[0];
+        const urlStr = String(url);
+        // Proxy mode: uses original apiUrl base + /v1/publishers/google/models/...
+        expect(urlStr).toContain('vertex-proxy.example.com');
+        expect(urlStr).toContain('/v1/publishers/google/models/gemini-2.5-pro:generateContent');
+        // Vertex proxy mode uses Authorization header, NOT ?key= param.
+        expect(urlStr).not.toContain('key=');
+        expect(init.headers['Authorization']).toBe('Bearer proxy-token-xyz');
+
+        // End-to-end: still emits chunk + end for the default OK response.
+        const kinds = ctx._emitted.map(e => e.kind);
+        expect(kinds[kinds.length - 1]).toBe('end');
+    });
+});

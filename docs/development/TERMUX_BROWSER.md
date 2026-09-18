@@ -1,7 +1,7 @@
 # Termux backend + browser run mode
 
 This is the preferred Android development/use path when the bundled WebView APK is not required.
-Termux owns the Node.js backend; Chrome/Edge talks to Luker over Android loopback.
+Termux owns the Node.js backend; Chrome/Edge talks to Atria over Android loopback.
 
 ```text
 Termux / Node.js
@@ -23,35 +23,35 @@ pkg update -y
 pkg install -y git
 
 git clone -b custom-release --single-branch \
-  https://github.com/ZZZdragondYNGPHX/Luker.git
-cd Luker
+  https://github.com/ZZZdragondYNGPHX/Atria.git
+cd Atria
 bash scripts/termux/setup.sh
 ```
 
-`setup.sh` installs the missing Node.js/npm pieces plus native-addon build tools, runs `npm ci --omit=dev`, initializes config, repairs/verifies the Android `better-sqlite3` native binding when necessary, and installs the `luker-termux` command into `$PREFIX/bin`. If Termux already has a suitable Node.js (>=20), the installer keeps it instead of forcing a conflicting Node package switch.
+`setup.sh` installs the missing Node.js/npm pieces plus native-addon build tools, runs `npm ci --omit=dev`, initializes config, repairs/verifies the Android `better-sqlite3` native binding when necessary, and installs the `atria-termux` command into `$PREFIX/bin`. If Termux already has a suitable Node.js (>=20), the installer keeps it instead of forcing a conflicting Node package switch.
 
-Luker currently requires Node.js 20 or newer. `better-sqlite3@12.10.0` itself supports Node 20/22/23/24/25/26, so Termux Node 25 is acceptable for this Android/Termux mode. The Android-specific failure is instead in the native gyp path: generic node-gyp headers can reference `android_ndk_path`, while Termux uses its own bionic/clang toolchain. The repair script applies the minimal compatibility variables/clang warning flag only to the installed `node_modules/better-sqlite3` copy and then explicitly builds it against Termux's local Node headers. `package.json` and `package-lock.json` remain unchanged.
+Atria currently requires Node.js 20 or newer. `better-sqlite3@12.10.0` itself supports Node 20/22/23/24/25/26, so Termux Node 25 is acceptable for this Android/Termux mode. The Android-specific failure is instead in the native gyp path: generic node-gyp headers can reference `android_ndk_path`, while Termux uses its own bionic/clang toolchain. The repair script applies the minimal compatibility variables/clang warning flag only to the installed `node_modules/better-sqlite3` copy and then explicitly builds it against Termux's local Node headers. `package.json` and `package-lock.json` remain unchanged.
 
 The repair is intentionally regenerated after every `npm ci`; it does not rely on a third-party prebuilt native binary.
 
 ## Recovering an interrupted first setup
 
-If setup stopped at `better-sqlite3` before `luker-termux` was installed, update `custom-release` and simply run setup again:
+If setup stopped at `better-sqlite3` before `atria-termux` was installed, update `custom-release` and simply run setup again:
 
 ```bash
-cd ~/Luker
+cd ~/Atria
 git pull --ff-only
 bash scripts/termux/setup.sh
 ```
 
-`luker-termux: command not found` is expected after an interrupted setup because the wrapper is only written after dependency verification succeeds.
+`atria-termux: command not found` is expected after an interrupted setup because the wrapper is only written after dependency verification succeeds.
 
 ## Everyday use
 
 Start the backend and open the browser:
 
 ```bash
-luker-termux start
+atria-termux start
 ```
 
 Default address:
@@ -63,24 +63,24 @@ http://127.0.0.1:8000
 Other useful commands:
 
 ```bash
-luker-termux status
-luker-termux logs
-luker-termux logs -f
-luker-termux doctor
-luker-termux restart
-luker-termux stop
-luker-termux update
+atria-termux status
+atria-termux logs
+atria-termux logs -f
+atria-termux doctor
+atria-termux restart
+atria-termux stop
+atria-termux update
 ```
 
-`luker-termux update` only performs a fast-forward update of the branch that is currently checked out. It refuses to update a dirty worktree, refreshes production dependencies, reapplies the Termux native SQLite repair, and restarts Luker only if it had been running.
+`atria-termux update` only performs a fast-forward update of the branch that is currently checked out. It refuses to update a dirty worktree, refreshes production dependencies, reapplies the Termux native SQLite repair, and restarts Atria only if it had been running.
 
 ## Port override
 
 If port 8000 is already used:
 
 ```bash
-export LUKER_TERMUX_PORT=8001
-luker-termux start
+export ATRIA_TERMUX_PORT=8001
+atria-termux start
 ```
 
 Then use `http://127.0.0.1:8001`.
@@ -92,29 +92,29 @@ The runner uses `nohup`, so switching from Termux to the browser does not intent
 Optional wake lock:
 
 ```bash
-export LUKER_TERMUX_WAKE_LOCK=1
-luker-termux restart
+export ATRIA_TERMUX_WAKE_LOCK=1
+atria-termux restart
 ```
 
 This is intentionally opt-in because it can increase battery use. If Android still kills Termux, exempt Termux from battery optimization for long sessions.
 
 ## Browser shortcut
 
-After Luker opens successfully in Chrome/Edge, use the browser's **Add to Home screen / Install app** action if desired. This gives a near-app launch surface without coupling the Node backend to Android WebView lifecycle.
+After Atria opens successfully in Chrome/Edge, use the browser's **Add to Home screen / Install app** action if desired. This gives a near-app launch surface without coupling the Node backend to Android WebView lifecycle.
 
 ## Diagnostics
 
 If startup fails, the runner prints the last server log lines instead of leaving a blank WebView. The full log is stored at:
 
 ```text
-~/.local/state/luker-termux/server.log
+~/.local/state/atria-termux/server.log
 ```
 
 Run:
 
 ```bash
-luker-termux doctor
-luker-termux logs
+atria-termux doctor
+atria-termux logs
 ```
 
 The doctor checks Termux detection, Node >= 20, npm/git/curl, installed dependencies, and an in-memory `better-sqlite3` query.
@@ -129,11 +129,11 @@ That command prints the real node-gyp/clang build output instead of reporting a 
 
 ## Security boundary
 
-This mode intentionally keeps Luker on `127.0.0.1` and keeps CSRF enabled. The phone browser can access the loopback server, but devices on the LAN cannot. LAN exposure should be designed separately with authentication and explicit network policy rather than piggybacking on this mobile path.
+This mode intentionally keeps Atria on `127.0.0.1` and keeps CSRF enabled. The phone browser can access the loopback server, but devices on the LAN cannot. LAN exposure should be designed separately with authentication and explicit network policy rather than piggybacking on this mobile path.
 
 ## Persistence
 
-This mode uses Luker's normal standalone paths (`config.yaml`, `data/`, plugins/extensions paths) inside the repository checkout. Those user/runtime paths are already ignored by Git in this fork, so normal `git pull --ff-only` updates do not intentionally replace them.
+This mode uses Atria's normal standalone paths (`config.yaml`, `data/`, plugins/extensions paths) inside the repository checkout. Those user/runtime paths are already ignored by Git in this fork, so normal `git pull --ff-only` updates do not intentionally replace them.
 
 ## Validation boundary
 

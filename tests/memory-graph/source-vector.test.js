@@ -6,7 +6,7 @@ const embeddingService = {
     purgeCollection: jest.fn(), insert: jest.fn(),
 };
 let context;
-global.Luker = { getContext: () => context };
+global.Atria = { getContext: () => context };
 jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/embed-rerank.js', () => ({
     getEmbeddingProfileById: () => null, getRerankProfileById: () => null,
 }));

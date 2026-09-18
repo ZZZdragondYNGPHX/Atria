@@ -39,9 +39,9 @@ export async function makeFixtureUser(opts = {}) {
             JSON.stringify({ chat_metadata: { variables: { foo: 'bar' } } }) + '\n' +
             JSON.stringify({ name: 'User', mes: 'hi' }) + '\n' +
             JSON.stringify({ name: 'Sera', mes: 'hello' }) + '\n');
-        await write('chats/default_Seraphina/Chat 2024-01-15.luker-state.memory_graph__floor_log.json',
+        await write('chats/default_Seraphina/Chat 2024-01-15.atria-state.memory_graph__floor_log.json',
             JSON.stringify({ nodes: [] }));
-        await write('chats/default_Seraphina/Chat 2024-01-15.luker-state.luker_orchestrator_anchors__floor_log.json',
+        await write('chats/default_Seraphina/Chat 2024-01-15.atria-state.atri_orchestrator_anchors__floor_log.json',
             JSON.stringify({ anchors: [] }));
         await write('group chats/group_abc123.jsonl',
             JSON.stringify({ chat_metadata: {} }) + '\n');
@@ -102,9 +102,9 @@ export async function makeFixtureUser(opts = {}) {
                 ).join('\n');
                 const body = JSON.stringify(meta) + '\n' + msgs + '\n';
                 await write(`chats/${char}/${chatName}.jsonl`, body);
-                await write(`chats/${char}/${chatName}.luker-state.memory_graph__floor_log.json`,
+                await write(`chats/${char}/${chatName}.atria-state.memory_graph__floor_log.json`,
                     JSON.stringify({ nodes: Array.from({ length: 10 }, (_, i) => ({ id: i })) }));
-                await write(`chats/${char}/${chatName}.luker-state.luker_orchestrator_anchors__floor_log.json`,
+                await write(`chats/${char}/${chatName}.atria-state.atri_orchestrator_anchors__floor_log.json`,
                     JSON.stringify({ anchors: Array.from({ length: 20 }, (_, i) => ({ id: i })) }));
             }
         }

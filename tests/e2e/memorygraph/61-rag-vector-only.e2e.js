@@ -120,7 +120,7 @@ async function enableMgAndSelectRag(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        const enableCb = document.getElementById('luker_rpg_memory_enabled');
+        const enableCb = document.getElementById('atria_rpg_memory_enabled');
         if (enableCb && !enableCb.checked) {
             enableCb.checked = true;
             enableCb.dispatchEvent(new Event('input', { bubbles: true }));
@@ -129,13 +129,13 @@ async function enableMgAndSelectRag(page) {
         // Auto-extraction OFF — this test seeds the graph via Import, no LLM
         // extraction needed. Keeping it on causes the extract path to hit the
         // mock with a tool-call-shaped request the mock can't satisfy.
-        const autoCb = document.getElementById('luker_rpg_memory_auto_extraction_enabled');
+        const autoCb = document.getElementById('atria_rpg_memory_auto_extraction_enabled');
         if (autoCb && autoCb.checked) {
             autoCb.checked = false;
             autoCb.dispatchEvent(new Event('input', { bubbles: true }));
             autoCb.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        const method = document.getElementById('luker_rpg_memory_recall_method');
+        const method = document.getElementById('atria_rpg_memory_recall_method');
         if (method) {
             method.value = 'rag';
             method.dispatchEvent(new Event('change', { bubbles: true }));
@@ -145,7 +145,7 @@ async function enableMgAndSelectRag(page) {
         // user turns, suppressing them from the recall selection. Turn the
         // window off so the assertion exercises the RAG ranker itself, not
         // the post-filter.
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const s = ctx.extensionSettings?.memory_graph;
         if (s) s.recentRawTurns = 0;
     });
@@ -154,8 +154,8 @@ async function enableMgAndSelectRag(page) {
 async function importBindLatest(page, filePath) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
-    await page.locator('#luker_rpg_memory_import').click();
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click();
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 10_000 });
     await popup.locator('.popup-button-custom', { hasText: /Bind Latest|绑定最新/ }).first().click();
@@ -183,7 +183,7 @@ test.describe('#61 — RAG recall mode reaches the seeded graph via real chat se
         // (cliff lantern). The send drives the GENERATION_AFTER_WORLD_INFO_SCAN
         // listener → safeInjectMemoryPrompts → runRagRecall.
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const settings = ctx.extensionSettings?.memory_graph;
             const main = await import('/scripts/extensions/memory-graph/main.js');
             const vi = await import('/scripts/extensions/memory-graph/vector-index.js');
@@ -213,7 +213,7 @@ test.describe('#61 — RAG recall mode reaches the seeded graph via real chat se
         // the prompt. This is the same store field rendered by the
         // "View Last Injection" button.
         const trace = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const main = await import('/scripts/extensions/memory-graph/main.js');
             const store = await main.ensureMemoryStoreLoaded(ctx);
             return store?.lastRecallTrace || [];

@@ -81,10 +81,10 @@ test.afterAll(async () => {
 /** Read the card-bound state directly from the character in the browser's runtime. */
 async function readCardState(page) {
     return page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const chid = ctx?.characterId ?? window.this_chid;
         const c = ctx?.characters?.[chid];
-        const raw = c?.data?.extensions?.luker?.chat_completion_preset ?? null;
+        const raw = c?.data?.extensions?.atria?.chat_completion_preset ?? null;
         if (!raw) return { presets: [], defaultPresetName: null, isNull: true };
         if (Array.isArray(raw?.presets)) return { presets: raw.presets.map(p => ({ name: p.name, temperature: p?.preset?.temperature ?? null })), defaultPresetName: raw.defaultPresetName ?? null, isNull: false };
         return { raw, isNull: false };
@@ -116,7 +116,7 @@ async function fireDropdownAction(page, optionId) {
  * When both a card-bound ghost option and a same-named global option are
  * present, `selectPresetByName` picks the first-matching text (usually
  * the ghost). This helper filters by option value: card-bound options'
- * values start with `__luker_card__::`, globals do not.
+ * values start with `__atria_card__::`, globals do not.
  *
  * For origin='global' the selector's resolved value is the option's numeric
  * index (openai uses index-keyed presets — cf. preset-manager.js:1028). We
@@ -129,7 +129,7 @@ async function selectPresetByNameFromOrigin(page, name, origin) {
         if (!$sel?.length) throw new Error('settings_preset_openai not found');
         const opt = $sel.find('option').filter((_i, el) => {
             if (String(el.textContent).trim() !== target) return false;
-            const isCardBound = String(el.value ?? '').startsWith('__luker_card__::');
+            const isCardBound = String(el.value ?? '').startsWith('__atria_card__::');
             return wantOrigin === 'card' ? isCardBound : !isCardBound;
         }).first();
         if (!opt.length) throw new Error(`preset option not found: ${target} (origin=${wantOrigin})`);
@@ -139,12 +139,12 @@ async function selectPresetByNameFromOrigin(page, name, origin) {
     if (origin === 'card') {
         await page.waitForFunction((target) => {
             const v = String(document.querySelector('#settings_preset_openai')?.value ?? '');
-            return v.startsWith('__luker_card__::') && v.includes(encodeURIComponent(target));
+            return v.startsWith('__atria_card__::') && v.includes(encodeURIComponent(target));
         }, name, { timeout: 10_000 });
     } else {
         // Global path — preset_settings_openai carries the name at runtime.
         await page.waitForFunction((target) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return ctx?.chatCompletionSettings?.preset_settings_openai === target;
         }, name, { timeout: 10_000 });
     }
@@ -182,11 +182,11 @@ async function resetCharacterCardBindingsOnDisk({ dataRoot, avatarFile }) {
     const card = JSON.parse(readPngCard(png));
     if (!card.data) card.data = {};
     if (!card.data.extensions) card.data.extensions = {};
-    if (!card.data.extensions.luker) card.data.extensions.luker = {};
-    delete card.data.extensions.luker.chat_completion_preset;
+    if (!card.data.extensions.atria) card.data.extensions.atria = {};
+    delete card.data.extensions.atria.chat_completion_preset;
     // Mirror the mutation on the top-level payload too (v2 dual-encoding).
-    if (card.extensions && card.extensions.luker) {
-        delete card.extensions.luker.chat_completion_preset;
+    if (card.extensions && card.extensions.atria) {
+        delete card.extensions.atria.chat_completion_preset;
     }
     writeFileSync(path, writePngCard(png, JSON.stringify(card)));
 }
@@ -203,8 +203,8 @@ async function seedCharacterCardBindingsOnDisk({ dataRoot, avatarFile, state }) 
     const card = JSON.parse(readPngCard(png));
     if (!card.data) card.data = {};
     if (!card.data.extensions) card.data.extensions = {};
-    if (!card.data.extensions.luker) card.data.extensions.luker = {};
-    card.data.extensions.luker.chat_completion_preset = state;
+    if (!card.data.extensions.atria) card.data.extensions.atria = {};
+    card.data.extensions.atria.chat_completion_preset = state;
     writeFileSync(path, writePngCard(png, JSON.stringify(card)));
 }
 
@@ -295,11 +295,11 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
         await selectCharacterByName(page, CHAR_NAME);
 
         // The ghost auto-applies SlotB on character-select — the selector's
-        // value is already the __luker_card__::... encoded option. Clicking
+        // value is already the __atria_card__::... encoded option. Clicking
         // Bind now must NOT reopen the confirm; instead surface an info toast.
         await page.waitForFunction(() => {
             const v = String(document.querySelector('#settings_preset_openai')?.value ?? '');
-            return v.startsWith('__luker_card__::');
+            return v.startsWith('__atria_card__::');
         }, { timeout: 10_000 });
 
         await fireDropdownAction(page, 'bind_character_chat_completion_preset');
@@ -336,25 +336,25 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
 
         // Carried-over state: [SlotA, SlotB] default=SlotB.
         await fireDropdownAction(page, 'manage_character_bound_presets');
-        const dialog = page.locator('#luker_manage_bound_presets_dialog');
+        const dialog = page.locator('#atria_manage_bound_presets_dialog');
         await dialog.waitFor({ state: 'visible', timeout: 5000 });
 
         // Two rows.
-        await expect(dialog.locator('.luker-mbp-row')).toHaveCount(2);
+        await expect(dialog.locator('.atria-mbp-row')).toHaveCount(2);
 
         // SlotB row shows default badge; SlotA does not.
-        const rowA = dialog.locator('.luker-mbp-row[data-preset-name="SlotA"]');
-        const rowB = dialog.locator('.luker-mbp-row[data-preset-name="SlotB"]');
-        await expect(rowB.locator('.luker-mbp-default-badge')).toBeVisible();
-        await expect(rowA.locator('.luker-mbp-default-badge')).toHaveCount(0);
+        const rowA = dialog.locator('.atria-mbp-row[data-preset-name="SlotA"]');
+        const rowB = dialog.locator('.atria-mbp-row[data-preset-name="SlotB"]');
+        await expect(rowB.locator('.atria-mbp-default-badge')).toBeVisible();
+        await expect(rowA.locator('.atria-mbp-default-badge')).toHaveCount(0);
 
         // Set SlotA as default.
-        await rowA.locator('.luker-mbp-set-default').click();
+        await rowA.locator('.atria-mbp-set-default').click();
         await expect
             .poll(async () => (await readCardState(page)).defaultPresetName, { timeout: 5000 })
             .toBe(SLOT_A);
         // Re-render should have flipped the default badge to SlotA.
-        await expect(dialog.locator('.luker-mbp-row[data-preset-name="SlotA"] .luker-mbp-default-badge')).toBeVisible();
+        await expect(dialog.locator('.atria-mbp-row[data-preset-name="SlotA"] .atria-mbp-default-badge')).toBeVisible();
 
         // ── Overwrite from current: select a global preset with a distinct temp,
         //    then click Overwrite on SlotA. Layer 1 stores the current live body.
@@ -368,9 +368,9 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
         // Selector now sits on OverwriteSeed with temp = OVERWRITE_SEED_TEMP.
 
         await fireDropdownAction(page, 'manage_character_bound_presets');
-        const dialog2 = page.locator('#luker_manage_bound_presets_dialog');
+        const dialog2 = page.locator('#atria_manage_bound_presets_dialog');
         await dialog2.waitFor({ state: 'visible', timeout: 5000 });
-        await dialog2.locator('.luker-mbp-row[data-preset-name="SlotA"] .luker-mbp-overwrite-current').click();
+        await dialog2.locator('.atria-mbp-row[data-preset-name="SlotA"] .atria-mbp-overwrite-current').click();
         await acceptPopup(page);   // confirm-overwrite
         await expect
             .poll(async () => (await readCardState(page)).presets.find(p => p.name === SLOT_A)?.temperature, { timeout: 5000 })
@@ -385,7 +385,7 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
         //    we need to update for this test.
         await closeCurrentPopup(page);
         await page.evaluate(async ({ n, expected }) => {
-            const mgr = window.Luker?.getContext?.()?.getPresetManager?.('openai');
+            const mgr = window.Atria?.getContext?.()?.getPresetManager?.('openai');
             const cur = mgr?.getStoredPreset?.(n);
             if (!cur) throw new Error(`no local preset '${n}'`);
             const next = { ...cur, temperature: expected };
@@ -393,7 +393,7 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
         }, { n: SLOT_B, expected: UPDATED_B_TEMP });
         // Wait for the runtime settings array to reflect the new temperature.
         await page.waitForFunction(({ n, expected }) => {
-            const openai = window.Luker?.getContext?.()?.openai;
+            const openai = window.Atria?.getContext?.()?.openai;
             const settings = openai?.settings;
             const names = openai?.settingNames;
             if (!Array.isArray(settings) || !names) return false;
@@ -405,9 +405,9 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
         // Overwrite-from-current would use whatever's live. We use
         // update-from-local for SlotB specifically (reads the *global* SlotB body).
         await fireDropdownAction(page, 'manage_character_bound_presets');
-        const dialog3 = page.locator('#luker_manage_bound_presets_dialog');
+        const dialog3 = page.locator('#atria_manage_bound_presets_dialog');
         await dialog3.waitFor({ state: 'visible', timeout: 5000 });
-        await dialog3.locator('.luker-mbp-row[data-preset-name="SlotB"] .luker-mbp-update-from-local').click();
+        await dialog3.locator('.atria-mbp-row[data-preset-name="SlotB"] .atria-mbp-update-from-local').click();
         await expect
             .poll(async () => (await readCardState(page)).presets.find(p => p.name === SLOT_B)?.temperature, { timeout: 5000 })
             .toBeCloseTo(UPDATED_B_TEMP, 5);
@@ -421,7 +421,7 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
         // click Discard so the assertion below (SlotA gone, no global
         // preset side-effects) still holds. The promote flow has its own
         // dedicated test file.
-        await dialog3.locator('.luker-mbp-row[data-preset-name="SlotA"] .luker-mbp-remove').click();
+        await dialog3.locator('.atria-mbp-row[data-preset-name="SlotA"] .atria-mbp-remove').click();
         {
             const popup = page.locator('dialog.popup[open]').last();
             await popup.waitFor({ state: 'visible', timeout: 5000 });
@@ -441,10 +441,10 @@ test.describe('#43 — Bind (add + set-default) and Manage Bound Presets dialog'
 
         // ── Add-from-local: dialog should re-render after delete; add SlotA back. ──
         // The dialog re-renders in place. We select SlotA in the add dropdown.
-        const addSelect = page.locator('#luker_manage_bound_presets_dialog #luker-mbp-add-select');
+        const addSelect = page.locator('#atria_manage_bound_presets_dialog #atria-mbp-add-select');
         await addSelect.waitFor({ state: 'visible', timeout: 5000 });
         await addSelect.selectOption(SLOT_A);
-        await page.locator('#luker_manage_bound_presets_dialog .luker-mbp-add-button').click();
+        await page.locator('#atria_manage_bound_presets_dialog .atria-mbp-add-button').click();
         await waitForCardSlotCount(page, 2);
         {
             const state = await readCardState(page);

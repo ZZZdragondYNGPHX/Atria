@@ -3,15 +3,15 @@
  *
  * CEA Character Editor — unified AI iteration popup styles.
  *
- * Design language mirrors luker-studio.css (the shared shell stylesheet)
+ * Design language mirrors atria-studio.css (the shared shell stylesheet)
  * via local tokens — kept namespaced (`cea_editor_*`) so the popup remains
- * self-contained without depending on luker-studio class wrappers.
+ * self-contained without depending on atria-studio class wrappers.
  *
  * Theme-aware: all colors flow through color-mix() of --SmartTheme*
  * variables with sensible fallbacks for testbed environments.
  *
  * Message/diff/apply chrome is rendered by `iteration-library/ui` and
- * styled by its own stylesheet (`luker_lib_*` classes) — this file only
+ * styled by its own stylesheet (`atria_lib_*` classes) — this file only
  * styles the popup shell, history list, pending wrapper, and composer.
  */
 

@@ -12,7 +12,7 @@
  *
  * Test architecture: rather than spinning up a real MySQL/Postgres
  * (`makeEndpointHarness` skips those modes when the corresponding
- * `LUKER_DISABLE_*_TESTS` env is set, which is the default in CI), we
+ * `ATRIA_DISABLE_*_TESTS` env is set, which is the default in CI), we
  * stub `getStorageEngine` for this file alone via
  * `jest.unstable_mockModule` and stand up a minimal Express app whose
  * `req.user` is populated by a small inline middleware. The router under
@@ -73,7 +73,7 @@ beforeAll(async () => {
     ({ router: syncRouter } = await import('../../../src/endpoints/sync.js'));
 });
 
-function buildApp({ handle = 'alice', dataRoot = '/tmp/luker-storage-gate-not-real' } = {}) {
+function buildApp({ handle = 'alice', dataRoot = '/tmp/atria-storage-gate-not-real' } = {}) {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {

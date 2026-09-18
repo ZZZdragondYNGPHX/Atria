@@ -5,7 +5,7 @@
  * Layer 1 — Character-bound chat completion presets (multi-binding).
  *
  * Stores an array of {name, preset} on
- *   character.data.extensions.luker.chat_completion_preset
+ *   character.data.extensions.atria.chat_completion_preset
  * plus an optional `defaultPresetName`. Preserves the four-strip API safety model:
  * every write calls `stripOpenAIConnectionFieldsFromPreset` and every read
  * re-strips as defense in depth.
@@ -14,9 +14,9 @@
  * are detected on read and lifted into the new shape via a microtask-coalesced
  * flush hook, mirroring orchestrator/preset-library.js legacy-override migration.
  *
- * Writes go through `context.writeExtensionField(id, 'luker', value)`, which
+ * Writes go through `context.writeExtensionField(id, 'atria', value)`, which
  * has replace semantics — see the JSDoc at public/scripts/extensions.js above
- * `writeExtensionField`. Callers must read the current `data.extensions.luker`
+ * `writeExtensionField`. Callers must read the current `data.extensions.atria`
  * object, spread it, and overlay the target field before calling; otherwise
  * sibling subkeys under the same namespace (e.g. `embedded_skills_source`) are
  * wiped. Clearing the field is done by writing an explicit `null` value; the
@@ -26,7 +26,7 @@
 import { stripOpenAIConnectionFieldsFromPreset } from '/scripts/openai.js';
 import { getContext } from '/scripts/st-context.js';
 
-const NAMESPACE = 'luker';
+const NAMESPACE = 'atria';
 const FIELD = 'chat_completion_preset';
 
 /** @typedef {{ name: string, preset: object }} BoundPreset */
@@ -101,12 +101,12 @@ async function persistCharacterBoundState(character, state) {
     const value = (state.presets.length === 0 && !state.defaultPresetName)
         ? null                                                                      // clear entirely
         : { presets: state.presets, defaultPresetName: state.defaultPresetName };
-    // writeExtensionField has replace semantics: the whole `luker` object is
+    // writeExtensionField has replace semantics: the whole `atria` object is
     // overwritten. Read-spread-overlay preserves siblings like `embedded_skills_source`.
-    const currentLuker = (character?.data?.extensions?.[NAMESPACE] && typeof character.data.extensions[NAMESPACE] === 'object' && !Array.isArray(character.data.extensions[NAMESPACE]))
+    const currentAtria = (character?.data?.extensions?.[NAMESPACE] && typeof character.data.extensions[NAMESPACE] === 'object' && !Array.isArray(character.data.extensions[NAMESPACE]))
         ? character.data.extensions[NAMESPACE]
         : {};
-    await context.writeExtensionField(id, NAMESPACE, { ...currentLuker, [FIELD]: value });
+    await context.writeExtensionField(id, NAMESPACE, { ...currentAtria, [FIELD]: value });
 }
 
 /** microtask-coalesced migration flush; keyed by avatar. */
@@ -267,7 +267,7 @@ export async function renameCharacterBoundPreset(character, oldName, newName) {
  * Wipe the character-bound chat_completion_preset field entirely.
  * Layer 1's persist path writes an explicit `null` when presets is empty
  * AND defaultPresetName is null, which is exactly the field-cleared state.
- * Read-spread-overlay preserves sibling luker.* keys (embedded_skills_source
+ * Read-spread-overlay preserves sibling atria.* keys (embedded_skills_source
  * etc.). Idempotent — calling on an already-empty state is a no-op that
  * still writes `null` (harmless).
  * @param {object} character

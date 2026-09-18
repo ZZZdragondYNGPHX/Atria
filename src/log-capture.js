@@ -1,6 +1,6 @@
 import util from 'node:util';
 
-const WRAPPED_ORIGINAL = Symbol('luker.log.capture.original');
+const WRAPPED_ORIGINAL = Symbol('atria.log.capture.original');
 const LOG_LEVELS = ['log', 'info', 'warn', 'error', 'debug'];
 // Aligned with users-admin.js /logs/get per-request clamp and public/scripts/user.js MAX_LOG_VIEW_LIMIT; in-memory ring buffer.
 const DEFAULT_CAPACITY = 5000;

@@ -75,11 +75,11 @@ test.beforeAll(async () => {
     // routing, the mock's plain-text fallback would stall every batch.
     mock.scriptCompletion((req) => {
         const names = req.toolNames || [];
-        if (names.includes('luker_rpg_extract_event_create')) {
+        if (names.includes('atria_rpg_extract_event_create')) {
             return {
                 toolCalls: [
-                    { name: 'luker_rpg_extract_event_create', arguments: { summary: '时间：测试；Mocked extraction event.', links: [], no_link_reason: 'mock' } },
-                    { name: 'luker_rpg_extract_done', arguments: {} },
+                    { name: 'atria_rpg_extract_event_create', arguments: { summary: '时间：测试；Mocked extraction event.', links: [], no_link_reason: 'mock' } },
+                    { name: 'atria_rpg_extract_done', arguments: {} },
                 ],
             };
         }
@@ -96,8 +96,8 @@ async function fillGraphViaUi(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings');
     // Fill Graph lives in the Graph tab pane of the MG tab strip.
-    await page.locator('#luker_rpg_memory_tabs .luker-tabs-tab[data-luker-tab-key="graph"]').click();
-    await page.locator('#luker_rpg_memory_fill').click();
+    await page.locator('#atria_rpg_memory_tabs .atria-tabs-tab[data-atria-tab-key="graph"]').click();
+    await page.locator('#atria_rpg_memory_fill').click();
 }
 
 function collectRoleContents(body, asstContents, userContents) {
@@ -131,7 +131,7 @@ test.describe('#65 — extraction payload keeps old floors despite visible-windo
         await openExtensionsDrawer(page);
         await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
         await page.evaluate(() => {
-            for (const id of ['luker_rpg_memory_enabled', 'luker_rpg_memory_auto_extraction_enabled']) {
+            for (const id of ['atria_rpg_memory_enabled', 'atria_rpg_memory_auto_extraction_enabled']) {
                 const el = document.getElementById(id);
                 if (!el) continue;
                 if (!el.checked) {
@@ -151,13 +151,13 @@ test.describe('#65 — extraction payload keeps old floors despite visible-windo
         await expect.poll(() => {
             const bodies = mock.requests
                 .map(r => r.body)
-                .filter(b => Array.isArray(b?.tools) && b.tools.some(t => t?.function?.name === 'luker_rpg_extract_event_create'));
+                .filter(b => Array.isArray(b?.tools) && b.tools.some(t => t?.function?.name === 'atria_rpg_extract_event_create'));
             return bodies.some(b => JSON.stringify(b.messages).includes(TURNS[7]));
         }, { timeout: 120_000 }).toBe(true);
 
         const extractionBodies = mock.requests
             .map(r => r.body)
-            .filter(b => Array.isArray(b?.tools) && b.tools.some(t => t?.function?.name === 'luker_rpg_extract_event_create'));
+            .filter(b => Array.isArray(b?.tools) && b.tools.some(t => t?.function?.name === 'atria_rpg_extract_event_create'));
         expect(extractionBodies.length, 'Fill Graph must fire at least one extraction request').toBeGreaterThanOrEqual(1);
 
         const asstContents = [];

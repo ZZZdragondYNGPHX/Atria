@@ -12,7 +12,7 @@
       "scripts": [],
       "variables": {}
     },
-    "luker": {
+    "atria": {
       "embedded_regex_scripts_source": []
     }
   },
@@ -47,7 +47,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-open",
+          "identifier": "atri-atria-reference-open",
           "enabled": true
         },
         {
@@ -79,7 +79,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-close",
+          "identifier": "atri-atria-reference-close",
           "enabled": true
         },
         {
@@ -144,7 +144,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-open",
+          "identifier": "atri-atria-reference-open",
           "enabled": true
         },
         {
@@ -176,7 +176,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-close",
+          "identifier": "atri-atria-reference-close",
           "enabled": true
         },
         {
@@ -335,7 +335,7 @@
       "name": "Atri｜插件内部任务",
       "enabled": true,
       "role": "system",
-      "content": "你是 Luker 插件内部任务助手。完成运行时明确交付的提取、转换、配置、检索、规划或校验任务；不续写角色扮演正文，不把引用聊天末句当作当前请求。不要预设 XML、Markdown 或 JSON 输出包装；以当前任务和工具 schema 为准。",
+      "content": "你是 Atria 插件内部任务助手。完成运行时明确交付的提取、转换、配置、检索、规划或校验任务；不续写角色扮演正文，不把引用聊天末句当作当前请求。不要预设 XML、Markdown 或 JSON 输出包装；以当前任务和工具 schema 为准。",
       "system_prompt": true,
       "marker": false,
       "forbid_overrides": true,
@@ -488,7 +488,7 @@
       "forbid_overrides": false
     },
     {
-      "identifier": "atri-luker-reference-open",
+      "identifier": "atri-atria-reference-open",
       "name": "Atri｜参考资料开始",
       "content": "<atri_reference_context>\n以下是参考资料。",
       "enabled": true,
@@ -502,7 +502,7 @@
       "forbid_overrides": true
     },
     {
-      "identifier": "atri-luker-reference-close",
+      "identifier": "atri-atria-reference-close",
       "name": "Atri｜参考资料结束",
       "content": "</atri_reference_context>",
       "enabled": true,

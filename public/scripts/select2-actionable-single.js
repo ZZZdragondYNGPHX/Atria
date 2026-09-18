@@ -12,7 +12,7 @@ function buildOwnerKey(selectElement) {
         .replace(/^-+|-+$/g, '')
         || 'select';
     actionableSingleSelectCounter += 1;
-    return `luker-action-select-${baseId}-${actionableSingleSelectCounter}`;
+    return `atria-action-select-${baseId}-${actionableSingleSelectCounter}`;
 }
 
 function getOptionData(option, selectElement, ownerKey) {
@@ -34,8 +34,8 @@ function isDeleteButtonTarget(target, ownerKey) {
         return false;
     }
 
-    const button = target.closest('.luker-action-select2-option__delete');
-    return button instanceof HTMLElement && button.dataset.lukerActionOwner === ownerKey;
+    const button = target.closest('.atria-action-select2-option__delete');
+    return button instanceof HTMLElement && button.dataset.atriaActionOwner === ownerKey;
 }
 
 function isGroupMenuButtonTarget(target, ownerKey) {
@@ -43,22 +43,22 @@ function isGroupMenuButtonTarget(target, ownerKey) {
         return false;
     }
 
-    const button = target.closest('.luker-action-select2-option__group');
-    return button instanceof HTMLElement && button.dataset.lukerActionOwner === ownerKey;
+    const button = target.closest('.atria-action-select2-option__group');
+    return button instanceof HTMLElement && button.dataset.atriaActionOwner === ownerKey;
 }
 
 function isGroupHeaderTarget(target) {
     if (!(target instanceof Element)) {
         return false;
     }
-    return !!target.closest('.luker-preset-group-header');
+    return !!target.closest('.atria-preset-group-header');
 }
 
 function isGroupActionTarget(target) {
     if (!(target instanceof Element)) {
         return false;
     }
-    return !!target.closest('.luker-preset-group-action, .luker-preset-group-subgroup');
+    return !!target.closest('.atria-preset-group-action, .atria-preset-group-subgroup');
 }
 
 /**
@@ -98,32 +98,32 @@ function applyCollapsedState(selectElement, collapsedGroups) {
         const $content = $li.children().first();
 
         // Group member
-        if ($content.hasClass('luker-preset-group-member')) {
+        if ($content.hasClass('atria-preset-group-member')) {
             const groupId = $content.attr('data-preset-group-id');
             // Hide if own group is collapsed OR any ancestor is collapsed
             if (groupId && isAncestorCollapsed(groupId)) {
-                $li.addClass('luker-preset-group-member--hidden');
+                $li.addClass('atria-preset-group-member--hidden');
             } else {
-                $li.removeClass('luker-preset-group-member--hidden');
+                $li.removeClass('atria-preset-group-member--hidden');
             }
         }
 
         // Group header
-        if ($content.hasClass('luker-preset-group-header')) {
+        if ($content.hasClass('atria-preset-group-header')) {
             const groupId = $content.attr('data-preset-group-id');
-            const $chevron = $content.find('.luker-preset-group-chevron');
+            const $chevron = $content.find('.atria-preset-group-chevron');
             if (groupId && collapsedGroups.has(groupId)) {
-                $chevron.removeClass('luker-preset-group-chevron--expanded');
+                $chevron.removeClass('atria-preset-group-chevron--expanded');
             } else {
-                $chevron.addClass('luker-preset-group-chevron--expanded');
+                $chevron.addClass('atria-preset-group-chevron--expanded');
             }
 
             // Hide sub-group headers if any ancestor is collapsed (but not self)
             const parentId = $content.attr('data-preset-group-parent-id');
             if (parentId && isAncestorCollapsed(parentId)) {
-                $li.addClass('luker-preset-group-member--hidden');
+                $li.addClass('atria-preset-group-member--hidden');
             } else {
-                $li.removeClass('luker-preset-group-member--hidden');
+                $li.removeClass('atria-preset-group-member--hidden');
             }
         }
     });
@@ -173,14 +173,14 @@ export function refreshOpenDropdown(selectElement, ownerKey = '') {
  * Dismisses any open preset context menu.
  */
 function dismissContextMenu() {
-    $('.luker-preset-ctx-menu').remove();
-    $(document).off('pointerdown.lukerCtxMenu');
-    $('.luker-action-select2-option__group--selected').removeClass('luker-action-select2-option__group--selected');
+    $('.atria-preset-ctx-menu').remove();
+    $(document).off('pointerdown.atriaCtxMenu');
+    $('.atria-action-select2-option__group--selected').removeClass('atria-action-select2-option__group--selected');
 }
 
 function getOpenPresetContextMenu(ownerKey) {
-    return $('.luker-preset-ctx-menu').filter(function () {
-        return this.dataset.lukerActionOwner === ownerKey;
+    return $('.atria-preset-ctx-menu').filter(function () {
+        return this.dataset.atriaActionOwner === ownerKey;
     }).first();
 }
 
@@ -191,13 +191,13 @@ function getPresetContextSelection($menu) {
 
 function syncPresetContextSelectionState(ownerKey, selectedPresetNames = []) {
     const selected = new Set(selectedPresetNames);
-    $('.luker-action-select2-option__group').each(function () {
+    $('.atria-action-select2-option__group').each(function () {
         const $button = $(this);
-        if ($button.data('lukerActionOwner') !== ownerKey) {
+        if ($button.data('atriaActionOwner') !== ownerKey) {
             return;
         }
         const presetName = String($button.data('optionText') ?? '').trim();
-        $button.toggleClass('luker-action-select2-option__group--selected', selected.has(presetName));
+        $button.toggleClass('atria-action-select2-option__group--selected', selected.has(presetName));
     });
 }
 
@@ -266,15 +266,15 @@ function showPresetContextMenu(anchor, presetName, callbacks, selectElement, own
     const commonGroup = selectedGroups.length > 0 && selectedGroups.every(group => group?.id === selectedGroups[0]?.id) ? selectedGroups[0] : null;
     const hasGroupedPreset = selectedGroups.some(Boolean);
 
-    const $menu = $('<div class="luker-preset-ctx-menu"></div>')
-        .attr('data-luker-action-owner', ownerKey)
+    const $menu = $('<div class="atria-preset-ctx-menu"></div>')
+        .attr('data-atria-action-owner', ownerKey)
         .data('selectedPresetNames', selectedPresetNames)
         .on('pointerdown mousedown mouseup pointerup touchstart touchend click', (e) => {
             e.stopPropagation();
         });
 
     // "New Group..." option
-    const $newGroup = $('<div class="luker-preset-ctx-menu__item luker-preset-ctx-menu__item--new"></div>')
+    const $newGroup = $('<div class="atria-preset-ctx-menu__item atria-preset-ctx-menu__item--new"></div>')
         .html('<i class="fa-solid fa-folder-plus"></i> ' + t`New Preset Group...`)
         .on('click', async (e) => {
             e.preventDefault();
@@ -297,18 +297,18 @@ function showPresetContextMenu(anchor, presetName, callbacks, selectElement, own
 
     // Existing groups
     if (groups.length > 0) {
-        $menu.append('<div class="luker-preset-ctx-menu__divider"></div>');
+        $menu.append('<div class="atria-preset-ctx-menu__divider"></div>');
 
         if (selectedPresetNames.length > 1) {
-            const $current = $('<div class="luker-preset-ctx-menu__item luker-preset-ctx-menu__item--label"></div>')
+            const $current = $('<div class="atria-preset-ctx-menu__item atria-preset-ctx-menu__item--label"></div>')
                 .text(`${t`Selected presets`}: ${selectedPresetNames.length}`);
             $menu.append($current);
         } else if (currentGroup) {
-            const $current = $('<div class="luker-preset-ctx-menu__item luker-preset-ctx-menu__item--label"></div>')
+            const $current = $('<div class="atria-preset-ctx-menu__item atria-preset-ctx-menu__item--label"></div>')
                 .text(`${t`Current group`}: ${currentGroup.name}`);
             $menu.append($current);
         } else {
-            const $current = $('<div class="luker-preset-ctx-menu__item luker-preset-ctx-menu__item--label"></div>')
+            const $current = $('<div class="atria-preset-ctx-menu__item atria-preset-ctx-menu__item--label"></div>')
                 .text(t`Current group: Ungrouped`);
             $menu.append($current);
         }
@@ -318,9 +318,9 @@ function showPresetContextMenu(anchor, presetName, callbacks, selectElement, own
             const depth = callbacks.getGroupDepth ? callbacks.getGroupDepth(group.id) : 0;
             const indent = '\u00A0'.repeat(depth * 2);
             const prefix = depth > 0 ? '└ ' : '';
-            const $item = $('<div class="luker-preset-ctx-menu__item"></div>')
+            const $item = $('<div class="atria-preset-ctx-menu__item"></div>')
                 .text(isActive ? `${indent}${prefix}${t`In group`}: ${group.name}` : `${indent}${prefix}${t`Move to group`}: ${group.name}`)
-                .toggleClass('luker-preset-ctx-menu__item--active', isActive)
+                .toggleClass('atria-preset-ctx-menu__item--active', isActive)
                 .on('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -344,8 +344,8 @@ function showPresetContextMenu(anchor, presetName, callbacks, selectElement, own
 
     // "Remove from group" if currently grouped
     if (hasGroupedPreset) {
-        $menu.append('<div class="luker-preset-ctx-menu__divider"></div>');
-        const $remove = $('<div class="luker-preset-ctx-menu__item luker-preset-ctx-menu__item--remove"></div>')
+        $menu.append('<div class="atria-preset-ctx-menu__divider"></div>');
+        const $remove = $('<div class="atria-preset-ctx-menu__item atria-preset-ctx-menu__item--remove"></div>')
             .html('<i class="fa-solid fa-folder-minus"></i> ' + t`Remove from preset group`)
             .on('click', async (e) => {
                 e.preventDefault();
@@ -361,8 +361,8 @@ function showPresetContextMenu(anchor, presetName, callbacks, selectElement, own
             });
         $menu.append($remove);
     } else if (groups.length === 0) {
-        $menu.append('<div class="luker-preset-ctx-menu__divider"></div>');
-        const $empty = $('<div class="luker-preset-ctx-menu__item luker-preset-ctx-menu__item--label"></div>')
+        $menu.append('<div class="atria-preset-ctx-menu__divider"></div>');
+        const $empty = $('<div class="atria-preset-ctx-menu__item atria-preset-ctx-menu__item--label"></div>')
             .text(t`No preset groups yet`);
         $menu.append($empty);
     }
@@ -384,16 +384,16 @@ function showPresetContextMenu(anchor, presetName, callbacks, selectElement, own
 
     // Dismiss on outside click (next tick)
     requestAnimationFrame(() => {
-        $(document).off('pointerdown.lukerCtxMenu').on('pointerdown.lukerCtxMenu', (e) => {
+        $(document).off('pointerdown.atriaCtxMenu').on('pointerdown.atriaCtxMenu', (e) => {
             const $target = $(e.target);
-            const $groupButton = $target.closest('.luker-action-select2-option__group');
-            if ($target.closest('.luker-preset-ctx-menu').length) {
+            const $groupButton = $target.closest('.atria-action-select2-option__group');
+            if ($target.closest('.atria-preset-ctx-menu').length) {
                 return;
             }
-            if ($groupButton.length && $groupButton.data('lukerActionOwner') === ownerKey) {
+            if ($groupButton.length && $groupButton.data('atriaActionOwner') === ownerKey) {
                 return;
             }
-            if ($target.closest('.luker-action-select2-dropdown').length) {
+            if ($target.closest('.atria-action-select2-dropdown').length) {
                 return;
             }
             dismissContextMenu();
@@ -437,16 +437,16 @@ export function initActionableSingleSelect(select, {
         return;
     }
 
-    const previousNamespace = selectElement.dataset.lukerActionableSingleSelectNamespace;
+    const previousNamespace = selectElement.dataset.atriaActionableSingleSelectNamespace;
     if (previousNamespace) {
         $select.off(`select2:selecting${previousNamespace} select2:opening${previousNamespace} select2:open${previousNamespace} select2:close${previousNamespace}`);
         $(document).off(`pointerdown${previousNamespace} mousedown${previousNamespace} mouseup${previousNamespace} touchstart${previousNamespace} touchend${previousNamespace} pointerup${previousNamespace} click${previousNamespace} contextmenu${previousNamespace}`);
     }
 
     const ownerKey = buildOwnerKey(selectElement);
-    const namespace = `.lukerActionableSingleSelect-${ownerKey}`;
-    const dropdownClasses = ['luker-action-select2-dropdown', dropdownCssClass].filter(Boolean).join(' ');
-    selectElement.dataset.lukerActionableSingleSelectNamespace = namespace;
+    const namespace = `.atriaActionableSingleSelect-${ownerKey}`;
+    const dropdownClasses = ['atria-action-select2-dropdown', dropdownCssClass].filter(Boolean).join(' ');
+    selectElement.dataset.atriaActionableSingleSelectNamespace = namespace;
 
     // Initialize collapsed groups set for this owner
     if (!collapsedGroupsMap.has(ownerKey)) {
@@ -476,33 +476,33 @@ export function initActionableSingleSelect(select, {
                 const depth = parseInt(element.dataset.depth || '0', 10);
                 const parentId = element.dataset.presetGroupParentId || null;
 
-                const header = $('<div class="luker-preset-group-header"></div>')
+                const header = $('<div class="atria-preset-group-header"></div>')
                     .attr('data-preset-group-id', groupId)
-                    .attr('data-luker-action-owner', ownerKey)
+                    .attr('data-atria-action-owner', ownerKey)
                     .attr('data-preset-group-parent-id', parentId || '')
                     .css('padding-left', depth > 0 ? (depth * 20) + 'px' : '');
-                const chevron = $('<i class="fa-solid fa-chevron-right luker-preset-group-chevron"></i>')
-                    .toggleClass('luker-preset-group-chevron--expanded', !isCollapsed);
-                const label = $('<span class="luker-preset-group-header__label"></span>').text(option.text);
+                const chevron = $('<i class="fa-solid fa-chevron-right atria-preset-group-chevron"></i>')
+                    .toggleClass('atria-preset-group-chevron--expanded', !isCollapsed);
+                const label = $('<span class="atria-preset-group-header__label"></span>').text(option.text);
 
                 const memberCount = $(selectElement).find('option[data-preset-group-id="' + groupId + '"][data-preset-group-member="true"]').length;
-                const count = $('<span class="luker-preset-group-header__count"></span>').text('(' + memberCount + ')');
+                const count = $('<span class="atria-preset-group-header__count"></span>').text('(' + memberCount + ')');
 
-                const actions = $('<span class="luker-preset-group-header__actions"></span>');
-                const subgroupBtn = $('<button type="button" class="luker-preset-group-action luker-preset-group-subgroup" tabindex="-1"></button>')
+                const actions = $('<span class="atria-preset-group-header__actions"></span>');
+                const subgroupBtn = $('<button type="button" class="atria-preset-group-action atria-preset-group-subgroup" tabindex="-1"></button>')
                     .attr('data-action', 'subgroup')
                     .attr('data-group-id', groupId)
-                    .attr('data-luker-action-owner', ownerKey)
+                    .attr('data-atria-action-owner', ownerKey)
                     .html('<i class="fa-solid fa-folder-plus"></i>');
-                const renameBtn = $('<button type="button" class="luker-preset-group-action" tabindex="-1"></button>')
+                const renameBtn = $('<button type="button" class="atria-preset-group-action" tabindex="-1"></button>')
                     .attr('data-action', 'rename')
                     .attr('data-group-id', groupId)
-                    .attr('data-luker-action-owner', ownerKey)
+                    .attr('data-atria-action-owner', ownerKey)
                     .html('<i class="fa-solid fa-pen"></i>');
-                const deleteBtn = $('<button type="button" class="luker-preset-group-action" tabindex="-1"></button>')
+                const deleteBtn = $('<button type="button" class="atria-preset-group-action" tabindex="-1"></button>')
                     .attr('data-action', 'delete')
                     .attr('data-group-id', groupId)
-                    .attr('data-luker-action-owner', ownerKey)
+                    .attr('data-atria-action-owner', ownerKey)
                     .html('<i class="fa-solid fa-trash-can"></i>');
                 actions.append(subgroupBtn, renameBtn, deleteBtn);
 
@@ -515,27 +515,27 @@ export function initActionableSingleSelect(select, {
                 const groupId = element.dataset.presetGroupId;
                 const depth = parseInt(element.dataset.depth || '0', 10);
 
-                const row = $('<div class="luker-action-select2-option luker-preset-group-member"></div>')
+                const row = $('<div class="atria-action-select2-option atria-preset-group-member"></div>')
                     .attr('data-preset-group-id', groupId)
                     .css('padding-left', depth > 0 ? ((depth + 1) * 20) + 'px' : '');
-                const label = $('<span class="luker-action-select2-option__label"></span>').text(optionData.text);
+                const label = $('<span class="atria-action-select2-option__label"></span>').text(optionData.text);
                 row.append(label);
 
                 if (presetGroupCallbacks) {
-                    const groupButton = $('<button type="button" class="luker-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>')
+                    const groupButton = $('<button type="button" class="atria-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>')
                         .attr('title', t`Manage preset group`)
                         .attr('aria-label', t`Manage preset group`)
-                        .attr('data-luker-action-owner', ownerKey)
+                        .attr('data-atria-action-owner', ownerKey)
                         .attr('data-option-value', optionData.value)
                         .attr('data-option-text', optionData.text);
                     row.append(groupButton);
                 }
 
                 if (canDelete(optionData)) {
-                    const deleteButton = $('<button type="button" class="luker-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>')
+                    const deleteButton = $('<button type="button" class="atria-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>')
                         .attr('title', deleteButtonTitle)
                         .attr('aria-label', deleteButtonTitle)
-                        .attr('data-luker-action-owner', ownerKey)
+                        .attr('data-atria-action-owner', ownerKey)
                         .attr('data-option-value', optionData.value)
                         .attr('data-option-text', optionData.text);
                     row.append(deleteButton);
@@ -549,27 +549,27 @@ export function initActionableSingleSelect(select, {
                 return $('<span></span>').text(String(option?.text || ''));
             }
 
-            const row = $('<div class="luker-action-select2-option"></div>');
-            const label = $('<span class="luker-action-select2-option__label"></span>').text(optionData.text);
+            const row = $('<div class="atria-action-select2-option"></div>');
+            const label = $('<span class="atria-action-select2-option__label"></span>').text(optionData.text);
             row.append(label);
 
             if (presetGroupCallbacks) {
-                const groupButton = $('<button type="button" class="luker-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>');
+                const groupButton = $('<button type="button" class="atria-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>');
                 groupButton
                     .attr('title', t`Manage preset group`)
                     .attr('aria-label', t`Manage preset group`)
-                    .attr('data-luker-action-owner', ownerKey)
+                    .attr('data-atria-action-owner', ownerKey)
                     .attr('data-option-value', optionData.value)
                     .attr('data-option-text', optionData.text);
                 row.append(groupButton);
             }
 
             if (canDelete(optionData)) {
-                const deleteButton = $('<button type="button" class="luker-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>');
+                const deleteButton = $('<button type="button" class="atria-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>');
                 deleteButton
                     .attr('title', deleteButtonTitle)
                     .attr('aria-label', deleteButtonTitle)
-                    .attr('data-luker-action-owner', ownerKey)
+                    .attr('data-atria-action-owner', ownerKey)
                     .attr('data-option-value', optionData.value)
                     .attr('data-option-text', optionData.text);
                 row.append(deleteButton);
@@ -581,7 +581,7 @@ export function initActionableSingleSelect(select, {
     });
 
     $select.next('.select2-container')
-        .addClass('luker-action-select2')
+        .addClass('atria-action-select2')
         .addClass(containerCssClass);
 
     $select
@@ -621,10 +621,10 @@ export function initActionableSingleSelect(select, {
                     const $dropdown = $select.data('select2')?.$dropdown;
                     const $results = $dropdown?.find('.select2-results');
                     if ($results?.length) {
-                        $results.find('.luker-preset-group-toolbar').remove();
+                        $results.find('.atria-preset-group-toolbar').remove();
 
-                        const $toolbar = $('<div class="luker-preset-group-toolbar"></div>');
-                        const $newGroupButton = $('<button type="button" class="luker-preset-group-toolbar__new"></button>')
+                        const $toolbar = $('<div class="atria-preset-group-toolbar"></div>');
+                        const $newGroupButton = $('<button type="button" class="atria-preset-group-toolbar__new"></button>')
                             .html('<i class="fa-solid fa-folder-plus"></i> ' + t`New Preset Group...`)
                             .on('click', async (event) => {
                                 event.preventDefault();
@@ -674,10 +674,10 @@ export function initActionableSingleSelect(select, {
     // === Pointer events for delete buttons, group headers, group actions ===
     $(document)
         .off('pointerdown' + namespace + ' mousedown' + namespace + ' mouseup' + namespace + ' touchstart' + namespace + ' touchend' + namespace)
-        .on('pointerdown' + namespace + ' mousedown' + namespace + ' mouseup' + namespace + ' touchstart' + namespace + ' touchend' + namespace, '.luker-action-select2-option__delete, .luker-action-select2-option__group, .luker-preset-group-header, .luker-preset-group-action, .luker-preset-group-subgroup', function (event) {
+        .on('pointerdown' + namespace + ' mousedown' + namespace + ' mouseup' + namespace + ' touchstart' + namespace + ' touchend' + namespace, '.atria-action-select2-option__delete, .atria-action-select2-option__group, .atria-preset-group-header, .atria-preset-group-action, .atria-preset-group-subgroup', function (event) {
             const $el = $(this);
             // Only handle events for our owner
-            if ($el.data('lukerActionOwner') !== ownerKey && $el.closest('[data-luker-action-owner]').data('lukerActionOwner') !== ownerKey) {
+            if ($el.data('atriaActionOwner') !== ownerKey && $el.closest('[data-atria-action-owner]').data('atriaActionOwner') !== ownerKey) {
                 return;
             }
 
@@ -688,8 +688,8 @@ export function initActionableSingleSelect(select, {
     // === Group menu button handler ===
     $(document)
         .off('pointerup' + namespace + '.groupMenu')
-        .on('pointerup' + namespace + '.groupMenu', '.luker-action-select2-option__group', function (event) {
-            if ($(this).data('lukerActionOwner') !== ownerKey || !presetGroupCallbacks) {
+        .on('pointerup' + namespace + '.groupMenu', '.atria-action-select2-option__group', function (event) {
+            if ($(this).data('atriaActionOwner') !== ownerKey || !presetGroupCallbacks) {
                 return;
             }
 
@@ -708,8 +708,8 @@ export function initActionableSingleSelect(select, {
     // === Delete button handler ===
     $(document)
         .off('pointerup' + namespace + '.delete')
-        .on('pointerup' + namespace + '.delete', '.luker-action-select2-option__delete', async function (event) {
-            if ($(this).data('lukerActionOwner') !== ownerKey || typeof onDelete !== 'function') {
+        .on('pointerup' + namespace + '.delete', '.atria-action-select2-option__delete', async function (event) {
+            if ($(this).data('atriaActionOwner') !== ownerKey || typeof onDelete !== 'function') {
                 return;
             }
 
@@ -745,14 +745,14 @@ export function initActionableSingleSelect(select, {
     // === Group header pointerup - toggle collapse (pointerup for WebView touch handling) ===
     $(document)
         .off('pointerup' + namespace + '.groupHeader')
-        .on('pointerup' + namespace + '.groupHeader', '.luker-preset-group-header', function (event) {
+        .on('pointerup' + namespace + '.groupHeader', '.atria-preset-group-header', function (event) {
             const $header = $(this);
-            if ($header.data('lukerActionOwner') !== ownerKey) {
+            if ($header.data('atriaActionOwner') !== ownerKey) {
                 return;
             }
 
             // Don't toggle if clicking action buttons or subgroup button
-            if ($(event.target).closest('.luker-preset-group-action, .luker-preset-group-subgroup').length) {
+            if ($(event.target).closest('.atria-preset-group-action, .atria-preset-group-subgroup').length) {
                 return;
             }
 
@@ -774,8 +774,8 @@ export function initActionableSingleSelect(select, {
     // === Group action buttons (rename/delete/create sub-group) — pointerup for WebView touch handling ===
     $(document)
         .off('pointerup' + namespace + '.groupAction')
-        .on('pointerup' + namespace + '.groupAction', '.luker-preset-group-action, .luker-preset-group-subgroup', async function (event) {
-            if ($(this).data('lukerActionOwner') !== ownerKey || !presetGroupCallbacks) {
+        .on('pointerup' + namespace + '.groupAction', '.atria-preset-group-action, .atria-preset-group-subgroup', async function (event) {
+            if ($(this).data('atriaActionOwner') !== ownerKey || !presetGroupCallbacks) {
                 return;
             }
 

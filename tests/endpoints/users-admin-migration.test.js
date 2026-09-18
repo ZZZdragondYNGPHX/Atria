@@ -138,7 +138,7 @@ beforeEach(async () => {
     if (!_appForReset) _appForReset = makeApp();
     Object.assign(mockState, DEFAULT_MOCK_STATE);
     await request(_appForReset).post('/storage/migrate/reset').send({ confirm: true });
-    _activeDataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-migrate-route-'));
+    _activeDataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-migrate-route-'));
     globalThis.DATA_ROOT = _activeDataRoot;
 });
 

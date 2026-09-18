@@ -22,7 +22,7 @@ describe('renderDiffCard', () => {
         }];
         const html = renderDiffCard(edits, { i18n: ident, fieldLabels: {} });
         // Two sub-cards, one per changed key:
-        expect((html.match(/luker_lib_diff_card/g) || []).length).toBe(2);
+        expect((html.match(/atria_lib_diff_card/g) || []).length).toBe(2);
         // No raw JSON.stringify of the whole obj:
         expect(html).not.toMatch(/"keep":\s*"same"/);
     });
@@ -36,7 +36,7 @@ describe('renderDiffCard', () => {
         const newObj = {};
         for (let i = 0; i < 25; i++) { oldObj[`k${i}`] = 'a'; newObj[`k${i}`] = 'b'; }
         const html = renderDiffCard([{ op: 'set', path: '', oldValue: oldObj, newValue: newObj }], { i18n: ident });
-        expect((html.match(/luker_lib_diff_card/g) || []).length).toBe(25);
+        expect((html.match(/atria_lib_diff_card/g) || []).length).toBe(25);
     });
 
     it('renders short two-sided edit with dual-column line diff (not inline arrow)', () => {
@@ -44,7 +44,7 @@ describe('renderDiffCard', () => {
             [{ op: 'set', path: 'name', oldValue: 'Alice', newValue: 'Bob' }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_dual');
+        expect(html).toContain('atria_lib_diff_dual');
     });
 
     it('uses fieldLabels[path] when provided', () => {
@@ -61,10 +61,10 @@ describe('renderDiffCard', () => {
             [{ op: 'set', path: 'description', oldValue: long, newValue: long + 'x' }],
             { i18n: ident },
         );
-        // The underlying text-diff produces .luker_lib_diff_pre / .luker_lib_diff_side_scroll.
-        // Our stub returns .luker_lib_diff_dual which satisfies the dual-column expectation.
+        // The underlying text-diff produces .atria_lib_diff_pre / .atria_lib_diff_side_scroll.
+        // Our stub returns .atria_lib_diff_dual which satisfies the dual-column expectation.
         // Just verify the diff was emitted for the long-string case.
-        expect(html).toContain('luker_lib_diff');
+        expect(html).toContain('atria_lib_diff');
     });
 
     it('zoom dialog data attribute is present so binders can wire onclick', () => {
@@ -72,7 +72,7 @@ describe('renderDiffCard', () => {
             [{ op: 'set', path: 'description', oldValue: 'a', newValue: 'b' }],
             { i18n: ident },
         );
-        expect(html).toContain('data-luker-lib-diff-zoom');
+        expect(html).toContain('data-atria-lib-diff-zoom');
     });
 
     it('renders an added entry (oldValue undefined) without crashing', () => {
@@ -86,7 +86,7 @@ describe('renderDiffCard', () => {
             [{ op: 'set', path: 'nodeTypeSchema.foo', oldValue: undefined, newValue: { name: 'Foo', enabled: true } }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
     });
 
     it('suppresses the card when oldValue+newValue collapse to all empty leaves', () => {
@@ -106,7 +106,7 @@ describe('renderDiffCard', () => {
             [{ op: 'set', path: 'nodeTypeSchema.bar', oldValue: { fields: ['x'] }, newValue: undefined }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
     });
 
     it('renders str_replace as a focused find→replace diff card when no live snapshot is given', () => {
@@ -121,11 +121,11 @@ describe('renderDiffCard', () => {
             [{ op: 'str_replace', path: 'prompts[7].content', find: 'old phrase', replace: 'new phrase' }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         expect(html).toContain('prompts[7].content');
         // text-diff renderer is mocked to a dual-column placeholder; just
         // verify it WAS called (label flows through fileLabel attr).
-        expect(html).toContain('luker_lib_diff_dual');
+        expect(html).toContain('atria_lib_diff_dual');
     });
 
     it('renders str_replace as a FULL before/after when opts.live is supplied', () => {
@@ -140,10 +140,10 @@ describe('renderDiffCard', () => {
             [{ op: 'str_replace', path: 'prompts[7].content', find: 'old phrase', replace: 'new phrase' }],
             { i18n: ident, live: { prompts: [null, null, null, null, null, null, null, { content: liveContent }] } },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         // text-diff mock echoes its fileLabel — confirming the renderer
         // routed through the FULL-field path (not the fallback find→replace).
-        expect(html).toContain('luker_lib_diff_dual');
+        expect(html).toContain('atria_lib_diff_dual');
         expect(html).toContain('prompts[7].content');
     });
 
@@ -152,7 +152,7 @@ describe('renderDiffCard', () => {
             [{ op: 'str_insert', path: 'prompts[0].content', text: 'inserted' }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         expect(html).toContain('prompts[0].content');
     });
 
@@ -172,8 +172,8 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident, live: { prompts: [{ content: liveContent }] } },
         );
-        expect(html).toContain('luker_lib_diff_card');
-        expect(html).toContain('luker_lib_diff_dual');
+        expect(html).toContain('atria_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_dual');
         // Renderer routed through the live-aware path (not the "" → snippet fallback).
         expect(html).toContain('prompts[0].content');
     });
@@ -191,7 +191,7 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident, live: { prompts: [] } },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         expect(html).toContain('prompts[99].content');
     });
 
@@ -208,7 +208,7 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident, live: { prompts: [{ content: 'some other content' }] } },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         expect(html).toContain('prompts[0].content');
     });
 
@@ -217,7 +217,7 @@ describe('renderDiffCard', () => {
             [{ op: 'str_delete', path: 'prompts[0].content', find: 'deleted phrase' }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         expect(html).toContain('prompts[0].content');
     });
 
@@ -227,8 +227,8 @@ describe('renderDiffCard', () => {
             [{ op: 'str_delete', path: 'prompts[0].content', find: 'deleted phrase' }],
             { i18n: ident, live: { prompts: [{ content: liveContent }] } },
         );
-        expect(html).toContain('luker_lib_diff_card');
-        expect(html).toContain('luker_lib_diff_dual');
+        expect(html).toContain('atria_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_dual');
         expect(html).toContain('prompts[0].content');
     });
 
@@ -243,7 +243,7 @@ describe('renderDiffCard', () => {
             { i18n: ident },
         );
         // Two patched fields → two sub-cards.
-        expect((html.match(/luker_lib_diff_card/g) || []).length).toBe(2);
+        expect((html.match(/atria_lib_diff_card/g) || []).length).toBe(2);
         expect(html).toContain('entries.42.content');
         expect(html).toContain('entries.42.comment');
     });
@@ -262,7 +262,7 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card_list_op');
+        expect(html).toContain('atria_lib_diff_card_list_op');
         // The item is summarized by its `.name` and the anchor surfaces in
         // the header detail.
         expect(html).toContain('Insert into prompts');
@@ -280,7 +280,7 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card_list_op');
+        expect(html).toContain('atria_lib_diff_card_list_op');
         expect(html).toContain('firstPrompt');
         expect(html).toContain('before 0');
     });
@@ -295,7 +295,7 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card_list_op');
+        expect(html).toContain('atria_lib_diff_card_list_op');
         expect(html).toContain('Remove from prompts');
         expect(html).toContain('staleEntry');
         expect(html).toContain('[2]');
@@ -316,7 +316,7 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card_list_op');
+        expect(html).toContain('atria_lib_diff_card_list_op');
         expect(html).toContain('Reorder prompt_order');
         expect(html).toContain('movedItem');
         expect(html).toContain('[1]');
@@ -347,7 +347,7 @@ describe('renderDiffCard', () => {
         );
         // a.label changed (1) + c inserted with id+label leaves (2) = 3 cards.
         // ('b' unchanged is skipped.)
-        expect((html.match(/luker_lib_diff_card/g) || []).length).toBe(3);
+        expect((html.match(/atria_lib_diff_card/g) || []).length).toBe(3);
     });
 
     it('falls back to whole-object render for arrays without stable ids', () => {
@@ -363,7 +363,7 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident },
         );
-        expect((html.match(/luker_lib_diff_card/g) || []).length).toBe(1);
+        expect((html.match(/atria_lib_diff_card/g) || []).length).toBe(1);
     });
 
     it('reads insert_text field for str_insert (CPA tool name)', () => {
@@ -380,12 +380,12 @@ describe('renderDiffCard', () => {
             }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         // text-diff is mocked, so we can't directly assert the content
         // showed up in the dual-column diff. But we can verify the
         // mock's fileLabel attr received the path (and that some kind
         // of diff body was emitted).
-        expect(html).toContain('luker_lib_diff_dual');
+        expect(html).toContain('atria_lib_diff_dual');
     });
 
     it('suppresses leaf sub-cards whose before and after stringify identically', () => {
@@ -404,7 +404,7 @@ describe('renderDiffCard', () => {
             { i18n: ident },
         );
         // 2 real leaves (id, description) — the two empty-string leaves drop out.
-        expect((html.match(/luker_lib_diff_card/g) || []).length).toBe(2);
+        expect((html.match(/atria_lib_diff_card/g) || []).length).toBe(2);
         expect(html).not.toContain('apiPresetName');
         expect(html).not.toContain('promptPresetName');
     });
@@ -450,7 +450,7 @@ describe('renderDiffCard — bus entry shape', () => {
         // after is the registry's live ({ temperature: 1.0, ... }). The
         // leaf walker emits one card for the changed leaf, no card for
         // the unchanged max_tokens.
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
         expect(html).toContain('temperature');
         expect(html).not.toContain('max_tokens');
     });
@@ -489,6 +489,6 @@ describe('renderDiffCard — bus entry shape', () => {
             [{ op: 'set', path: 'name', oldValue: 'Alice', newValue: 'Bob' }],
             { i18n: ident },
         );
-        expect(html).toContain('luker_lib_diff_card');
+        expect(html).toContain('atria_lib_diff_card');
     });
 });

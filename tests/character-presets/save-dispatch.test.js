@@ -12,7 +12,7 @@
 //
 // Contract asserted here:
 //   1. readSelectedPresetRef({selectValue, fallbackName}) decodes a
-//      __luker_card__:: value to {name, origin:{kind:'character',avatar}}
+//      __atria_card__:: value to {name, origin:{kind:'character',avatar}}
 //      and otherwise returns {name, origin:{kind:'global'}}.
 //   2. decideSavePresetDispatch(currentRef, requestedName) returns
 //      {mode:'character', avatar} only when the DOM ref is character AND
@@ -60,7 +60,7 @@ test('readSelectedPresetRef: card-bound with special-char avatar+name round-trip
 test('readSelectedPresetRef: malformed card-bound value falls through to global', () => {
     // Prefix present but tail lacks the `::` separator → decode returns
     // null; helper must not throw and must treat as global with name=raw.
-    const raw = '__luker_card__::not-encoded-properly';
+    const raw = '__atria_card__::not-encoded-properly';
     const ref = readSelectedPresetRef({ selectValue: raw, fallbackName: 'FB' });
     expect(ref.origin).toEqual({ kind: 'global' });
     // The malformed sentinel is not a usable global name, so we prefer the

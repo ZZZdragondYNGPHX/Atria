@@ -334,8 +334,8 @@ function syncCharacterDedicatedPersonasJsonData(characterAvatar, entries) {
         const jsonData = JSON.parse(character.json_data);
         jsonData.data = isPlainObject(jsonData.data) ? jsonData.data : {};
         jsonData.data.extensions = isPlainObject(jsonData.data.extensions) ? jsonData.data.extensions : {};
-        jsonData.data.extensions.luker = isPlainObject(jsonData.data.extensions.luker) ? jsonData.data.extensions.luker : {};
-        jsonData.data.extensions.luker.dedicated_personas = entries;
+        jsonData.data.extensions.atria = isPlainObject(jsonData.data.extensions.atria) ? jsonData.data.extensions.atria : {};
+        jsonData.data.extensions.atria.dedicated_personas = entries;
 
         const nextJsonData = JSON.stringify(jsonData);
         character.json_data = nextJsonData;
@@ -459,7 +459,7 @@ function getPersonaDescriptorByAvatar(personaAvatar, { preferredCharacterAvatar 
 }
 
 function getDedicatedPersonaEntriesFromCharacter(character) {
-    const entries = character?.data?.extensions?.luker?.dedicated_personas;
+    const entries = character?.data?.extensions?.atria?.dedicated_personas;
     return Array.isArray(entries) ? entries : [];
 }
 
@@ -831,13 +831,13 @@ async function setCharacterDedicatedPersonaEntries(characterAvatar, entries, { r
     }
 
     const nextExtensions = structuredClone(character?.data?.extensions ?? {});
-    nextExtensions.luker = nextExtensions.luker && typeof nextExtensions.luker === 'object'
-        ? nextExtensions.luker
+    nextExtensions.atria = nextExtensions.atria && typeof nextExtensions.atria === 'object'
+        ? nextExtensions.atria
         : {};
 
     // merge-attributes deep-merges nested objects, so deletion-by-omission does not
     // remove existing keys on the character card. Always send an explicit array value.
-    nextExtensions.luker.dedicated_personas = nextDedicatedPersonas;
+    nextExtensions.atria.dedicated_personas = nextDedicatedPersonas;
 
     const mergeResponse = await fetch('/api/characters/merge-attributes', {
         method: 'POST',
@@ -846,7 +846,7 @@ async function setCharacterDedicatedPersonaEntries(characterAvatar, entries, { r
             avatar: character.avatar,
             data: {
                 extensions: {
-                    luker: {
+                    atria: {
                         dedicated_personas: nextDedicatedPersonas,
                     },
                 },

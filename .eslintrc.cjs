@@ -5,7 +5,7 @@ module.exports = {
     ],
     plugins: [
         'jsdoc',
-        'luker',
+        'atria',
     ],
     env: {
         es6: true,
@@ -62,7 +62,7 @@ module.exports = {
                 ePub: 'readonly',
                 pdfjsLib: 'readonly',
                 toastr: 'readonly',
-                Luker: 'readonly',
+                Atria: 'readonly',
                 SillyTavern: 'readonly',
             },
         },
@@ -78,7 +78,7 @@ module.exports = {
             // request.user.directories.*. See eslint-rules/no-raw-fs-in-endpoint.cjs.
             files: ['src/endpoints/**/*.js'],
             rules: {
-                'luker/no-raw-fs-in-endpoint': 'error',
+                'atria/no-raw-fs-in-endpoint': 'error',
             },
         },
     ],

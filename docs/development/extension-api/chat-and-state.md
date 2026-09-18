@@ -66,7 +66,7 @@ context.floorRecordToTaskMessage(record: FloorRecord): {
 Converts a record into a task message for arrays passed to [`generateTask`](/development/extension-api/generation). The role is derived from authorship flags (`is_user` → `'user'`, then `is_system` → `'system'`, otherwise `'assistant'`) and the content is `mesCooked`.
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
 const taskMessages = [
     { role: 'system', content: 'Summarize the conversation so far.' },
@@ -106,7 +106,7 @@ A rule with neither flag touches neither lane — it rewrites the stored chat hi
 
 ## Messages API
 
-Luker provides a unified high-level message API. Every operation is a full pipeline: memory update + DOM rendering + event emission + persistence.
+Atria provides a unified high-level message API. Every operation is a full pipeline: memory update + DOM rendering + event emission + persistence.
 
 ### addMessages
 
@@ -243,7 +243,7 @@ Saves chat metadata. If `withMetadata` is provided, it is merged into `chat_meta
 
 ## Chat State
 
-Chat State is a new chat-bound state mechanism introduced by Luker, allowing plugins to bind structured data to a specific chat instead of stuffing it into `chat_metadata`.
+Chat State is a new chat-bound state mechanism introduced by Atria, allowing plugins to bind structured data to a specific chat instead of stuffing it into `chat_metadata`.
 
 ### getChatState
 
@@ -483,7 +483,7 @@ context.buildObjectPatchOperationsAsync(
 ): Promise<RFC6902Operation[]>
 ```
 
-The diff engine that powers Luker's patch-first persistence. Returns the minimal RFC 6902 operations that transform `previousState` into `nextState`. Use this to construct the `operations` argument for `instance.patch()` when you want to commit a pre-computed diff. The same engine drives chat persistence, chat state, floor state, and preset state internally — calling it directly lets plugin code participate in the same incremental-save pipeline.
+The diff engine that powers Atria's patch-first persistence. Returns the minimal RFC 6902 operations that transform `previousState` into `nextState`. Use this to construct the `operations` argument for `instance.patch()` when you want to commit a pre-computed diff. The same engine drives chat persistence, chat state, floor state, and preset state internally — calling it directly lets plugin code participate in the same incremental-save pipeline.
 
 ### When to await `ready()`
 
@@ -870,7 +870,7 @@ setExtensionPrompt(
 | `filter` | Optional gate; when present and resolves falsy, the prompt is skipped |
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
 ctx.setExtensionPrompt(
     'my-plugin-context',
@@ -918,7 +918,7 @@ context.swipe.state(): SwipeState
 | `state` | Current `SWIPE_STATE` (`NONE`, plus animating states) |
 
 ```js
-const ctx = Luker.getContext();
+const ctx = Atria.getContext();
 
 if (ctx.swipe.isAllowed()) {
     await ctx.swipe.right();

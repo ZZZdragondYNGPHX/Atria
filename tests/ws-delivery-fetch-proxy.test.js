@@ -25,13 +25,13 @@ describe('installFetchProxy', () => {
             }),
         };
         originalFetch = jest.fn(async (url, init) => {
-            const requestId = init?.headers?.['x-luker-request-id'];
+            const requestId = init?.headers?.['x-atria-request-id'];
             return new Response(JSON.stringify({}), {
                 status: 200,
                 headers: {
                     'content-type': 'application/json',
-                    'x-luker-generation-id': requestId,
-                    'x-luker-server-persisted': '0',
+                    'x-atria-generation-id': requestId,
+                    'x-atria-server-persisted': '0',
                 },
             });
         });
@@ -56,10 +56,10 @@ describe('installFetchProxy', () => {
         expect(originalFetch).toHaveBeenCalledTimes(1);
         const [calledUrl, calledInit] = originalFetch.mock.calls[0];
         expect(calledUrl).toBe(PROXY_URL);
-        expect(calledInit.headers['x-luker-request-id']).toBe('test-uuid-fixed');
+        expect(calledInit.headers['x-atria-request-id']).toBe('test-uuid-fixed');
         expect(mockDelivery.subscribe).toHaveBeenCalledWith('test-uuid-fixed', expect.any(Object));
-        // Fake response carries x-luker-* headers
-        expect(resp.headers.get('x-luker-generation-id')).toBe('test-uuid-fixed');
+        // Fake response carries x-atria-* headers
+        expect(resp.headers.get('x-atria-generation-id')).toBe('test-uuid-fixed');
         expect(resp.status).toBe(200);
         // Body from stream
         const text = await new Response(resp.body).text();
