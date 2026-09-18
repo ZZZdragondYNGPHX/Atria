@@ -65,8 +65,23 @@ Lower-level scanner that produces World Info prompt fragments for a given chat s
 | `worldInfoDepth` | `Array<{depth, role, entries}>` | Depth-injection entries |
 | `anBefore` / `anAfter` | `string[]` | Author's note injections |
 | `outletEntries` | `Record<string, string[]>` | Custom outlet payloads |
+| `worldInfoEvaluationId` | `string` | Stable idempotency key for explicit commit |
+| `timedWorldInfoState` | `object` | Pending sticky/cooldown state; not written by evaluation |
+| `externalActivationCommitToken` | `Array<{key, revision}>` | One-shot force-activation revisions observed by the evaluation |
+| `worldInfoCommitScope` | `{chatId: string}` | Scope that must still match when committing |
 
-When `isDryRun` is `false`, an `event_types.WORLD_INFO_ACTIVATED` event is emitted with the activated entries.
+`getWorldInfoPrompt()` never commits timed state and never emits `WORLD_INFO_ACTIVATED`. To accept the result, call:
+
+```ts
+commitWorldInfoEvaluation(result): Promise<{
+    committed: boolean,
+    reason?: 'invalid_evaluation' | 'already_committed' | 'scope_changed',
+    activatedEntries?: number,
+    consumedExternalActivations?: number,
+}>
+```
+
+A committed evaluation writes its pending timed state, consumes only the force-activation revisions that exact evaluation observed, and emits `WORLD_INFO_ACTIVATED` once. Recommitting the same `worldInfoEvaluationId` is idempotent even if the result object was cloned.
 
 ## Writing World Info
 
@@ -159,7 +174,7 @@ Re-renders the World Info editor for `file`. By default a no-op when `file` isn'
 simulateWorldInfoActivation(request: {
     coreChat?: ChatMessage[],
     maxContext?: number,
-    dryRun?: boolean,
+    dryRun?: boolean, // defaults to true
     type?: string,
     chatForWI?: string[],
     includeNames?: boolean,
@@ -171,19 +186,19 @@ simulateWorldInfoActivation(request: {
 }>
 ```
 
-Runs a World Info activation pass against the supplied messages and returns the activation result. This is the primitive backing [`resolveWorldInfoForMessages`](/development/extension-api/presets-and-prompts#resolveworldinfoformessages); call it directly only when you need finer control over scan inputs.
+Runs a World Info evaluation against the supplied messages and returns the selection result. Evaluation is side-effect free with respect to chat metadata, timed World Info state, force-activation consumption, and `WORLD_INFO_ACTIVATED`; use `commitWorldInfoEvaluation()` only when the accepted result should be committed. This is the primitive backing [`resolveWorldInfoForMessages`](/development/extension-api/presets-and-prompts#resolveworldinfoformessages); call it directly only when you need finer control over scan inputs.
 
 | Parameter | Description |
 |------|------|
 | `coreChat` | Message list (`{ name, mes, is_user, is_system }`) used as scan source |
 | `maxContext` | Token budget; falls back to `getMaxPromptTokens()` when omitted or `<= 0` |
-| `dryRun` | If `true`, suppress `WORLD_INFO_ACTIVATED` event |
+| `dryRun` | Preview/diagnostic marker; defaults to `true`. Business state is not committed for either value. |
 | `type` | Generation trigger label (`'normal'`, `'quiet'`, `'regenerate'`, etc.) |
 | `chatForWI` | Pre-built scan input; skips `buildWorldInfoChatInput` when supplied |
 | `includeNames` | Whether to prepend `name:` to each scan line |
 | `globalScanData` | Override for character-card-derived scan fields |
 
-The returned object echoes `chatForWI`, `maxContext`, and `globalScanData` actually used, so callers can inspect the resolved scan inputs.
+The returned object echoes `chatForWI`, `maxContext`, and `globalScanData` actually used, and includes a stable `worldInfoEvaluationId` plus pending commit state. Call `commitWorldInfoEvaluation(result)` only after that exact evaluation has been accepted.
 
 ### buildWorldInfoChatInput
 
