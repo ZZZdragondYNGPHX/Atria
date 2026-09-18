@@ -26,6 +26,14 @@ import '@playwright/test';
  * connect handshake so #send_but un-hides.
  */
 export async function awaitMainUI(page, baseURL) {
+    const startupErrors = [];
+    const onPageError = error => startupErrors.push(`pageerror: ${error?.message || error}`);
+    const onConsole = message => {
+        if (message.type() === 'error') startupErrors.push(`console: ${message.text()}`);
+    };
+    page.on('pageerror', onPageError);
+    page.on('console', onConsole);
+
     if (baseURL) await page.goto(baseURL);
     else await page.goto('/');
     const gate = page.locator('#userList .userSelect:last-child');
@@ -33,8 +41,28 @@ export async function awaitMainUI(page, baseURL) {
         await gate.waitFor({ state: 'visible', timeout: 2000 });
         await gate.click();
     } catch { /* auto-login path */ }
-    await page.waitForFunction('document.getElementById("preloader") === null', { timeout: 60_000 });
-    await page.waitForFunction(() => !!window.Atria?.getContext, { timeout: 30_000 });
+
+    try {
+        await page.waitForFunction(
+            () => document.getElementById('preloader') === null && !!window.Atria?.getContext,
+            { timeout: 30_000 },
+        );
+    } catch (error) {
+        const state = await page.evaluate(() => ({
+            href: location.href,
+            preloaderPresent: document.getElementById('preloader') !== null,
+            atriaPresent: Boolean(window.Atria),
+            hasGetContext: Boolean(window.Atria?.getContext),
+        })).catch(() => ({ href: page.url() }));
+        const details = startupErrors.slice(-12).join('\n') || 'no browser console/page errors captured';
+        throw new Error(
+            `Atria UI failed to boot within 30s: ${JSON.stringify(state)}\n${details}`,
+            { cause: error },
+        );
+    } finally {
+        page.off('pageerror', onPageError);
+        page.off('console', onConsole);
+    }
     // Click the Connect button if present (canonical handshake entry).
     await page.evaluate(async () => {
         const btn = document.querySelector('#api_button_openai');
