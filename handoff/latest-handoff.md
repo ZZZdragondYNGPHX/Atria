@@ -6,9 +6,9 @@ Atria is an independent SillyTavern-based modified product. The product bootstra
 
 Current authoritative `main`:
 
-- `3ca80415386dff83017b608e23ee9475ee8e0128`
+- `03d97d655370b31c2a27dd1235f917deadd6246e`
 
-This commit is the squash merge of PR #8. The World Info foundation now includes bounded chat snapshot ownership, occurrence-level provenance, explicit evaluation commits, native read-only state conditions, committed transition events, and provider-owned scene persistence.
+This commit is the squash merge of PR #9. The World Info foundation now includes bounded chat snapshot ownership, occurrence-level provenance, explicit evaluation commits, native read-only state conditions, committed transition events, provider-owned scene persistence, incremental candidate indexing, explicit dependency bundles, atomic budget selection, and typed compatibility routing.
 
 ## Branch roles
 
@@ -122,18 +122,28 @@ Final validation for PR #4 passed:
 
 ### Worldbook Performance Foundation
 
-- PR #8
-- Baseline: `main@65321bb522febd369901127cd2b4b2c9883d4658`
-- Final validated head: `b5949b5a62b5907b0863bad0bcb4b904d409ad3f`
-- Squash merge / current `main`: `3ca80415386dff83017b608e23ee9475ee8e0128`
+- Foundation PR: #8
+- Foundation baseline: `main@65321bb522febd369901127cd2b4b2c9883d4658`
+- Foundation final head: `b5949b5a62b5907b0863bad0bcb4b904d409ad3f`
+- Foundation merge: `main@3ca80415386dff83017b608e23ee9475ee8e0128`
+- W-04/W-05 continuation PR: #9
+- W-04/W-05 baseline: `main@3ca80415386dff83017b608e23ee9475ee8e0128`
+- W-04/W-05 final validated head: `3dfe21f469389e85a96441b6e657daf9bde45f0c`
+- W-04/W-05 squash merge / current `main`: `03d97d655370b31c2a27dd1235f917deadd6246e`
 - Record: `features/worldbook-performance-foundation.md`
-- P-01 bounded chat snapshots and W-01/W-02/W-03 World Info foundation are complete.
-- Native World Info state integration is read-only: MVU/LoreState remain the state owners.
-- `stateActivation` is opt-in and defaults off; matched state conditions can sustain scene content without repeated keyword mentions.
-- Transition-event baselines advance only through accepted `commitWorldInfoEvaluation()` commits and use FloorState for retry/swipe/branch semantics.
-- Final validation passed Worldbook Performance Foundation #83, Workspace UI #144, Atria Migration Guard, ESLint, and the complete Node unit suite in Atria PR Checks #330.
-- Android JVM tests and Android/Docker builds were intentionally not run for this task.
-- W-04/W-05 and P-02 through P-05 remain follow-up work and should use new branches from current `main`.
+- P-01 bounded chat snapshots and W-01 through W-05 World Info work are complete.
+- Native World Info state integration remains read-only: MVU/LoreState remain the state owners.
+- `stateActivation` remains opt-in and defaults off; matched state conditions can sustain scene content without repeated keyword mentions.
+- W-04 adds conservative incremental candidate indexing. Unsupported/dynamic entries remain on the compatibility scan path, and index failure degrades to the complete candidate set.
+- Explicit required dependencies are resolved as bounded atomic bundles with cycle/missing/ineligibility/mutual-exclusion guards.
+- Budget selection supports full/compact bundle variants and never partially injects a required bundle.
+- W-05 uses runtime capability classification (`atria_v1`, `indexed_legacy`, `compatibility`) instead of rewriting old user data.
+- Character-book round-trip preserves W-04 Atria extension fields and unknown World Info fields.
+- No new default online/per-entry model call was added; the existing vectorized semantic path remains opt-in.
+- Final W-04/W-05 validation passed Worldbook Performance Foundation #105 and Atria PR Checks #352, including ESLint, complete Node unit tests, Migration Guard, focused selection tests, 1k/10k benchmark, real-host Chromium smoke, real mock-model request acceptance, and import/export round-trip acceptance.
+- Android JVM tests and Android/Docker image builds were intentionally not run because they remain opt-in.
+- The temporary `feat/worldbook-performance-foundation` branch was removed by the merged-task cleanup workflow.
+- Remaining master-plan work is P-02 through P-05 and should start from the live `main`.
 
 ## Long-lived references
 
