@@ -209,7 +209,11 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
 
 function validateTextContent(extension, content) {
     if (extension === '.json') {
-        JSON.parse(content);
+        try {
+            JSON.parse(content);
+        } catch (cause) {
+            throw error('E_INVALID_CONTENT', `Invalid JSON: ${cause.message}`);
+        }
         return;
     }
     if (extension === '.jsonl') {
