@@ -4,8 +4,7 @@
  * Mirrors the test layout of `tests/orchestrator/persistence.test.js`:
  * a hand-rolled chat-state store + event source that wires through
  * `createFloorStateWithDeps`, plus a `context` shim that the binding
- * uses to obtain the floor-state instance and read / delete legacy
- * sidecars.
+ * uses to obtain the FloorState instance and current Atria meta sidecar.
  */
 
 import { describe, test, expect, beforeEach } from '@jest/globals';
@@ -18,7 +17,6 @@ import {
     constants as bindingConstants,
     loadAnchorMap,
     loadMetaSidecar,
-    migrateLegacyAnchorsIfNeeded,
     persistFallbackManagedEntries,
     pickLatestValidSnapshot,
     resetFloorStateInstanceForTesting,
@@ -421,179 +419,47 @@ describe('persistFallbackManagedEntries / loadMetaSidecar', () => {
         const chatRef = { value: [] };
         const { context } = makeContext(chatRef);
         const meta = await loadMetaSidecar(context);
-        expect(meta).toEqual({ schemaVersion: 0, fallbackManagedEntries: [] });
+        expect(meta).toEqual({ fallbackManagedEntries: [] });
     });
 
-    test('writing fallback entries does not clobber an existing schemaVersion stamp', async () => {
+    test('writing fallback entries discards unrelated compatibility metadata', async () => {
         const chatRef = { value: [] };
         const { context, store } = makeContext(chatRef);
         store._raw.set(bindingConstants.META_NAMESPACE, {
-            schemaVersion: bindingConstants.SCHEMA_VERSION,
+            obsoleteVersionMarker: 3,
             fallbackManagedEntries: [],
         });
         await persistFallbackManagedEntries(context, [{ entryId: 'e', content: 'x' }]);
         const meta = await loadMetaSidecar(context);
-        expect(meta.schemaVersion).toBe(bindingConstants.SCHEMA_VERSION);
-        expect(meta.fallbackManagedEntries).toHaveLength(1);
+        expect(meta).toEqual({
+            fallbackManagedEntries: [{ entryId: 'e', content: 'x' }],
+        });
+        expect(store._raw.get(bindingConstants.META_NAMESPACE)).toEqual(meta);
     });
 });
 
-// --- legacy migration ---
+// --- hard-cutover namespace behavior ---
 
-describe('migrateLegacyAnchorsIfNeeded', () => {
-    test('migrates an index + per-anchor sidecars into floor-state commits and deletes legacy data', async () => {
-        const chatRef = {
-            value: [
-                userMsg('u1'), asstMsg('a1'),
-                userMsg('u2'), asstMsg('a2'),
-            ],
+describe('Atria namespace hard cutover', () => {
+    test('unrelated predecessor-style state is ignored and left untouched', async () => {
+        const chatRef = { value: [userMsg('u1')] };
+        const { store, context } = makeContext(chatRef);
+        const obsoleteNamespace = 'obsolete_search_tools_state';
+        const obsoletePayload = {
+            anchors: [1],
+            managedEntries: [{ entryId: 'old', content: 'old state' }],
         };
-        const { store, context } = makeContext(chatRef);
+        store._raw.set(obsoleteNamespace, structuredClone(obsoletePayload));
 
-        const a1 = buildAnchorAt(chatRef.value, 0);
-        const a2 = buildAnchorAt(chatRef.value, 2);
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 3,
-            anchors: [a1.playableFloor, a2.playableFloor],
-            managedEntries: [],
-        });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a1.playableFloor}`, {
-            anchorHash: a1.hash,
-            summary: 'legacy first',
-            managedEntries: [],
-        });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a2.playableFloor}`, {
-            anchorHash: a2.hash,
-            summary: 'legacy second',
-            managedEntries: [],
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result).toMatchObject({ migrated: true, committed: 2 });
-
-        // Legacy namespaces gone.
-        expect(store._raw.has(bindingConstants.LEGACY_INDEX_NAMESPACE)).toBe(false);
-        expect(store._raw.has(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a1.playableFloor}`)).toBe(false);
-        expect(store._raw.has(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a2.playableFloor}`)).toBe(false);
-
-        // Schema marker stamped in the meta sidecar.
-        const meta = await loadMetaSidecar(context);
-        expect(meta.schemaVersion).toBe(bindingConstants.SCHEMA_VERSION);
-
-        // Both snapshots reachable through the floor-state instance.
-        const map = await loadAnchorMap(context);
-        expect(map[a1.playableFloor]).toMatchObject({ summary: 'legacy first' });
-        expect(map[a2.playableFloor]).toMatchObject({ summary: 'legacy second' });
+        expect(await loadMetaSidecar(context)).toEqual({ fallbackManagedEntries: [] });
+        expect(await loadAnchorMap(context)).toEqual({});
+        expect(store._raw.get(obsoleteNamespace)).toEqual(obsoletePayload);
     });
 
-    test('a second call after migration is a no-op', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-        const a1 = buildAnchorAt(chatRef.value, 0);
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 3,
-            anchors: [a1.playableFloor],
-            managedEntries: [],
+    test('exports only current Atria persistence namespaces', () => {
+        expect(bindingConstants).toEqual({
+            STATE_NAMESPACE: 'atria_search_tools_anchors',
+            META_NAMESPACE: 'atria_search_tools_anchors__meta',
         });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}${a1.playableFloor}`, {
-            anchorHash: a1.hash,
-            summary: 'cap',
-            managedEntries: [],
-        });
-        const first = await migrateLegacyAnchorsIfNeeded(context);
-        expect(first.migrated).toBe(true);
-        const second = await migrateLegacyAnchorsIfNeeded(context);
-        expect(second.migrated).toBe(false);
-        expect(second.reason).toBe('already-migrated');
-    });
-
-    test('stamps the schema version on a fresh chat with no legacy data', async () => {
-        const chatRef = { value: [userMsg('hi')] };
-        const { context } = makeContext(chatRef);
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result.migrated).toBe(false);
-        expect(result.reason).toBe('no-legacy-data');
-        const meta = await loadMetaSidecar(context);
-        expect(meta.schemaVersion).toBe(bindingConstants.SCHEMA_VERSION);
-    });
-
-    test('drops legacy anchors whose user message no longer exists in the chat', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 3,
-            // playableFloor 99 has no corresponding message in the current chat.
-            anchors: [99],
-            managedEntries: [],
-        });
-        store._raw.set(`${bindingConstants.LEGACY_ANCHOR_NAMESPACE_PREFIX}99`, {
-            anchorHash: 'stale',
-            summary: 'stale cap',
-            managedEntries: [],
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result.migrated).toBe(true);
-        expect(result.committed).toBe(0);
-        const map = await loadAnchorMap(context);
-        expect(map).toEqual({});
-    });
-
-    test('promotes a legacy `snapshot` field into a floor-state commit', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-
-        const a1 = buildAnchorAt(chatRef.value, 0);
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 1,
-            anchors: [],
-            managedEntries: [],
-            snapshot: {
-                anchorPlayableFloor: a1.playableFloor,
-                anchorHash: a1.hash,
-                summary: 'pre-anchor-list',
-                managedEntries: [],
-            },
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result.migrated).toBe(true);
-        const map = await loadAnchorMap(context);
-        expect(map[a1.playableFloor]).toMatchObject({ summary: 'pre-anchor-list' });
-    });
-
-    test('lifts legacy fallback managedEntries into the meta sidecar', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 3,
-            anchors: [],
-            managedEntries: [
-                { entryId: 'e1', title: 't', keywords: [], content: 'body', alwaysInject: false },
-            ],
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result).toMatchObject({ migrated: true, fallbackManagedEntryCount: 1 });
-        const meta = await loadMetaSidecar(context);
-        expect(meta.fallbackManagedEntries).toHaveLength(1);
-        expect(meta.schemaVersion).toBe(bindingConstants.SCHEMA_VERSION);
-    });
-
-    test('a v3 envelope carrying neither anchors nor managedEntries nor an inline snapshot is treated as no legacy data', async () => {
-        const chatRef = { value: [userMsg('u1')] };
-        const { store, context } = makeContext(chatRef);
-
-        store._raw.set(bindingConstants.LEGACY_INDEX_NAMESPACE, {
-            version: 3,
-            anchors: [],
-            managedEntries: [],
-        });
-
-        const result = await migrateLegacyAnchorsIfNeeded(context);
-        expect(result.migrated).toBe(false);
-        expect(result.reason).toBe('no-legacy-data');
     });
 });
