@@ -382,6 +382,61 @@ function renderManagedGroups(root, records, reload) {
     }
 }
 
+async function loadRestoreRecoveryPoints(root) {
+    const payload = await postJson('/api/users/restore-backup/recovery/list');
+    const list = root.querySelector('.backupRecoveryList');
+    list.innerHTML = '';
+    const points = Array.isArray(payload?.recoveryPoints) ? payload.recoveryPoints : [];
+    if (points.length === 0) {
+        list.innerHTML = '<div class="menu_button_note">暂无归档恢复点。</div>';
+        return;
+    }
+
+    for (const point of points) {
+        const row = document.createElement('div');
+        row.className = 'backupManagedRow';
+
+        const meta = document.createElement('div');
+        meta.className = 'backupManagedRowMeta';
+        const source = point.sourceRecoveryPoint
+            ? ` · 源恢复点 ${point.sourceRecoveryPoint}`
+            : '';
+        meta.textContent = `${new Date(point.createdAt).toLocaleString()} · ${point.restoreMode || point.purpose || 'restore'} · ${point.engineKind || 'fs'}${source}`;
+
+        const restore = document.createElement('button');
+        restore.type = 'button';
+        restore.className = 'menu_button menu_button_icon';
+        restore.innerHTML = '<i class="fa-fw fa-solid fa-rotate-left"></i><span>回滚到这里</span>';
+        restore.addEventListener('click', async () => {
+            const confirmed = await callGenericPopup(
+                `回滚到账户恢复点 ${point.id}？应用前会先保存当前状态。`,
+                POPUP_TYPE.CONFIRM,
+                '',
+                { okButton: '回滚', cancelButton: '取消', wide: true },
+            );
+            if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
+
+            restore.disabled = true;
+            try {
+                const result = await postJson('/api/users/restore-backup/recovery/apply', { id: point.id });
+                toastr.success(
+                    result?.undoRecoveryPoint
+                        ? `恢复点已应用；当前状态已保存为 ${result.undoRecoveryPoint}。`
+                        : '恢复点已应用。',
+                );
+                await loadRestoreRecoveryPoints(root);
+            } catch (error) {
+                toastr.error(`恢复点应用失败：${error.message}`);
+            } finally {
+                if (restore.isConnected) restore.disabled = false;
+            }
+        });
+
+        row.append(meta, restore);
+        list.appendChild(row);
+    }
+}
+
 async function loadProviders(root) {
     const mount = root.querySelector('.backupCloudProviders');
     mount.innerHTML = '';
@@ -554,11 +609,15 @@ export async function openBackupSyncCenter({
         }
     });
 
+    center.querySelector('.backupRecoveryRefresh').addEventListener('click', () => {
+        void loadRestoreRecoveryPoints(center).catch(error => toastr.error(`读取恢复点失败：${error.message}`));
+    });
     center.querySelector('.backupOpenLanSync').addEventListener('click', () => void PROVIDERS.get('lan-sync').open());
     await Promise.all([
         refreshRetention(center).catch(error => toastr.error(`读取备份策略失败：${error.message}`)),
         reloadManaged().catch(error => toastr.error(`读取聊天备份失败：${error.message}`)),
         loadProviders(center).catch(error => toastr.error(`读取 Provider 失败：${error.message}`)),
+        loadRestoreRecoveryPoints(center).catch(error => toastr.error(`读取恢复点失败：${error.message}`)),
     ]);
 
     return callGenericPopup(center, POPUP_TYPE.DISPLAY, '', {
