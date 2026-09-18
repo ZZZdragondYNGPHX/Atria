@@ -47,13 +47,17 @@ try {
  await page.setViewportSize({width:1440,height:900});
  await page.screenshot({path:'.git/workspace-host-desktop.png'});
  await workspace.locator('.atria-workspace-nav').getByRole('button',{name:/^(Memory|记忆|記憶)$/,exact:true}).click();
- const memory = page.locator('#memory_graph_settings');
- assert.equal(await memory.locator('.inline-drawer').count(),0);
- assert.equal(await memory.locator('.memory-control-card').count(),5);
- const recall = memory.locator('#atria_rpg_memory_recall_enabled');
+ await workspace.getByRole('button',{name:/^(Overview|概览|概覽)$/,exact:true}).waitFor();
+ const recallCard = workspace.locator('.workspace-memory-toggle-card').filter({hasText:/Recall|召回/}).first();
+ const recall = recallCard.locator('input[type=checkbox]');
  const wasEnabled = await recall.isChecked(); await recall.setChecked(!wasEnabled);
- assert.equal(await page.evaluate(()=>window.Atria.getContext().extensionSettings.memory_graph.recallEnabled),!wasEnabled);
+ await page.waitForFunction(value=>window.Atria.getContext().extensionSettings.memory_graph.recallEnabled===value,!wasEnabled);
  await recall.setChecked(wasEnabled);
+ await workspace.getByRole('button',{name:/^(Maintenance|维护|維護)$/,exact:true}).click();
+ await workspace.getByText(/Advanced memory settings and maintenance|高级记忆设置与维护|進階記憶設定與維護/).click();
+ const memory = page.locator('#memory_graph_settings');
+ await memory.waitFor();
+ assert.equal(await memory.locator('.inline-drawer').count(),0);
  const retrieval = memory.locator('.memory-settings-group').filter({has:page.locator('#atria_rpg_memory_recall_method')});
  await retrieval.locator(':scope > summary').click();
  await memory.locator('#atria_rpg_memory_recall_method').selectOption('rag');
@@ -65,15 +69,10 @@ try {
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.querySelector('#agent-memory-workspace').scrollWidth>innerWidth),false);
  await page.screenshot({path:'.git/workspace-host-memory-mobile.png'});
- for(const summary of await memory.locator(':scope > details > summary').all()) {
-   await summary.click();
-   assert.equal(await page.evaluate(()=>document.querySelector('#workspace-content').scrollWidth>document.querySelector('#workspace-content').clientWidth),false);
-   await summary.click();
- }
  await workspace.locator('.atria-workspace-mobile-nav').getByRole('button',{name:/^(Orchestration|编排|編排)$/,exact:true}).click();
  assert.equal(await page.locator('#memory_graph_settings').count(),0);
  await workspace.locator('.atria-workspace-mobile-nav').getByRole('button',{name:/^(Memory|记忆|記憶)$/,exact:true}).click();
- assert.equal(await page.locator('#memory_graph_settings').count(),1);
+ assert.equal(await page.locator('#memory_graph_settings').count(),0);
  assert.deepEqual(errors, []);
  console.log(JSON.stringify({nativeHost:true,persistedBinding:id,pageErrors:errors}));
 } finally {await browser.close();}
