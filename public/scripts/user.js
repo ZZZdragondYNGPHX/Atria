@@ -1578,59 +1578,6 @@ async function changePassword(handle, callback) {
     }
 }
 
-/**
- * Delete a user.
- * @param {string} handle User handle
- * @param {function} callback Success callback
- */
-async function deleteUser(handle, callback) {
-    try {
-        if (handle === currentUser.handle) {
-            toastr.error('Cannot delete yourself', 'Failed to delete user');
-            throw new Error('Cannot delete yourself');
-        }
-
-        let purge = false;
-        let confirmHandle = '';
-
-        const template = $(await renderTemplateAsync('deleteUser'));
-        template.find('#deleteUserName').text(handle);
-        template.find('input[name="deleteUserData"]').on('input', function () {
-            purge = $(this).is(':checked');
-        });
-        template.find('input[name="deleteUserHandle"]').on('input', function () {
-            confirmHandle = String($(this).val());
-        });
-
-        const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', { okButton: 'Delete', cancelButton: 'Cancel', wide: false, large: false });
-
-        if (result !== POPUP_RESULT.AFFIRMATIVE) {
-            throw new Error('Delete user cancelled');
-        }
-
-        if (handle !== confirmHandle) {
-            toastr.error('Handles do not match', 'Failed to delete user');
-            throw new Error('Handles do not match');
-        }
-
-        const response = await fetch('/api/users/delete', {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ handle, purge }),
-        });
-
-        if (!response.ok) {
-            const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to delete user');
-            throw new Error('Failed to delete user');
-        }
-
-        toastr.success('User deleted successfully', 'User Deleted');
-        callback();
-    } catch (error) {
-        console.error('Error deleting user:', error);
-    }
-}
 
 /**
  * Reset a user's settings.
@@ -2042,29 +1989,6 @@ async function logout() {
     window.location.search = urlParams.toString();
 }
 
-/**
- * Runs a text through the slugify API endpoint.
- * @param {string} text Text to slugify
- * @returns {Promise<string>} Slugified text
- */
-async function slugify(text) {
-    try {
-        const response = await fetch('/api/users/slugify', {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ text }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to slugify text');
-        }
-
-        return response.text();
-    } catch (error) {
-        console.error('Error slugifying text:', error);
-        return text;
-    }
-}
 
 /**
  * Pings the server to extend the user session.
