@@ -336,6 +336,7 @@ function renderContent() {
     shell.stop.hidden = !!replay || run?.status !== 'running';
     shell.stop.disabled = !!run?.stopRequested;
     shell.stopText.textContent = run?.stopRequested ? i18n('Stopping…') : i18n('Stop Run');
+    shell.stop.setAttribute('aria-label', shell.stopText.textContent);
 
     disposePage?.();
     disposePage = null;
