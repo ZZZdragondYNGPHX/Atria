@@ -1,12 +1,11 @@
 import { subscribe, getCurrentRun, requestRunStop, inspectEngineNode } from '../run-state/store.js';
 import { workspaceRunView } from '../../../lib/agent-workspace/projection.js';
 import { CAPABILITIES } from '../../../lib/orchestration-engine/capabilities.js';
-import { downloadRunTraceAsJsonl } from '../runtime-trace-export.js';
 import { RUN_STARTED } from '../run-state/events.js';
 import { renderGraph } from '../../../lib/agent-workspace/graph-view.js';
-import { replayRuntimeEvents } from '../../../lib/agent-runtime/projection.js';
 import { i18n, i18nFormat } from '../i18n.js';
 import { createWorkspaceShell, syncWorkspaceNavigation, focusWorkspaceSection } from './shell.js';
+import { renderDiagnosticsPage } from './diagnostics/page.js';
 
 let shell, unsubscribe, frame, previousFocus, timer;
 let ports = {}, open = false, disposePage;
@@ -294,52 +293,26 @@ function renderMemoryPage(run, view) {
 
 function renderDiagnostics(run, view) {
     shell.inspector.hidden = true;
-    const head = el('div', undefined, shell.main, 'workspace-page-heading');
-    const title = el('div', undefined, head);
-    el('span', 'Advanced', title, 'workspace-eyebrow');
-    el('h3', 'Diagnostics', title);
-    el('p', 'Runtime journals, checkpoints, replay and raw projections live here.', title, 'workspace-hint');
-
-    const actions = el('div', undefined, head, 'workspace-actions');
-    const exportButton = button(actions, 'Export Trace', () => downloadRunTraceAsJsonl(selectedRun()?.runtime.events));
-    exportButton.disabled = !selectedRun()?.runtime?.events?.length;
-
-    const uploadLabel = el('label', 'Import trace', actions, 'workspace-file-action');
-    const upload = el('input', undefined, uploadLabel);
-    upload.type = 'file';
-    upload.accept = '.jsonl,.ndjson';
-    upload.setAttribute('aria-label', i18n('Replay metadata trace'));
-    upload.addEventListener('change', async () => {
-        try {
-            const file = upload.files[0];
-            if (!file) return;
-            if (file.size > 20 * 1024 * 1024) throw new Error(i18n('Trace import is limited to 20 MiB.'));
-            const runtime = replayRuntimeEvents((await file.text()).split(/\r?\n/).filter(line => line.trim()).map(line => JSON.parse(line)));
-            if (!upload.isConnected) return;
-            if (!runtime.runs.length) throw new Error(i18n('No valid Runtime events in this trace.'));
+    disposePage = renderDiagnosticsPage({
+        parent: shell.main,
+        el,
+        button,
+        detail,
+        paged,
+        run,
+        view,
+        replay,
+        onReplay: runtime => {
             replay = { runId: `replay:${runtime.runs[0].runId}`, mode: 'trace', status: 'replay', runtime };
             selection = {};
             render();
-        } catch (error) {
-            if (upload.isConnected) el('p', error.message, shell.main, 'workspace-error');
-        }
+        },
+        onReturnLive: () => {
+            replay = null;
+            selection = {};
+            render();
+        },
     });
-
-    if (replay) {
-        const banner = el('div', undefined, shell.main, 'workspace-replay-banner');
-        el('span', 'Viewing imported trace', banner);
-        button(banner, 'Return to live run', () => { replay = null; selection = {}; render(); });
-    }
-
-    detail(shell.main, 'Checkpoint / recovery', run?.runtime.runs.map(({ runId, version, generation, status, staleEffects }) => ({ runId, version, generation, status, staleEffects })) || []);
-    detail(shell.main, 'Context sources / token budgets', view.contexts);
-    if (view.engine) {
-        detail(shell.main, 'Engine projection', view.engine);
-        detail(shell.main, 'Arbitration', { policy: view.engine.arbitration, state: view.engine.arbitrationState });
-        detail(shell.main, 'Results and provenance', view.engine.results);
-    }
-    el('h3', i18nFormat('Runtime journal · ${0} events', view.diagnostics.length), shell.main);
-    paged(shell.main, [...view.diagnostics].reverse(), (parent, event) => detail(parent, `${event.type} · ${event.stepId || event.runId}`, event));
 }
 
 function renderContent() {
