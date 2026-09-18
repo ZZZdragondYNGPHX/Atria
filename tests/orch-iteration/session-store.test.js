@@ -82,11 +82,11 @@ describe('Orchestrator — session store (global scope, settings-backed)', () =>
         expect(await store.list()).toEqual([]);
     });
 
-    test('clearObsolete strips global_iteration_history if present', async () => {
+    test('clearObsolete leaves predecessor settings untouched', async () => {
         root.global_iteration_history = { stale: true };
         await store.clearObsolete();
-        expect(root.global_iteration_history).toBeUndefined();
-        expect(persistSettings).toHaveBeenCalled();
+        expect(root.global_iteration_history).toEqual({ stale: true });
+        expect(persistSettings).not.toHaveBeenCalled();
     });
 });
 

@@ -57,7 +57,7 @@ describe('enumerateCharacterDetail · L3 叶子', () => {
 
             const sidecars = res.entries.filter(e => e.kind === 'character-sidecar');
             const labels = sidecars.map(s => s.label).sort();
-            expect(labels).toEqual(['cardapp_studio_sessions_v2', 'atri_cea_editor_iter_sessions']);
+            expect(labels).toEqual(['atri_cea_editor_iter_sessions', 'cardapp_studio_sessions_v2']);
         } finally {
             await cleanup();
         }

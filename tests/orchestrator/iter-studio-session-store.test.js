@@ -135,7 +135,7 @@ describe('createOrchestratorIterationSessionStore — per-character sessions go 
         expect(stubs.sidecarWrites).toHaveLength(1);
     });
 
-    test('clearObsolete() strips legacy v1 global key like before', async () => {
+    test('clearObsolete() ignores predecessor settings under hard cutover', async () => {
         const stubs = makeStubs();
         stubs.settingsRoot.global_iteration_history = { sessions: ['stale'] };
         const store = createOrchestratorIterationSessionStore({
@@ -147,8 +147,8 @@ describe('createOrchestratorIterationSessionStore — per-character sessions go 
             ctx: stubs.ctx,
         });
         await store.clearObsolete();
-        expect(stubs.settingsRoot.global_iteration_history).toBeUndefined();
-        expect(stubs.persistSettings).toHaveBeenCalledTimes(1);
+        expect(stubs.settingsRoot.global_iteration_history).toEqual({ sessions: ['stale'] });
+        expect(stubs.persistSettings).not.toHaveBeenCalled();
     });
 
     test('save() under character scope throws when underlying envelope reports failure', async () => {
