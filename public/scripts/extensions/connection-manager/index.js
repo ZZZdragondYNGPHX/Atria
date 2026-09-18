@@ -14,7 +14,7 @@ import { SlashCommandParser } from '../../slash-commands/SlashCommandParser.js';
 import { SlashCommandScope } from '../../slash-commands/SlashCommandScope.js';
 import { collapseSpaces, getUniqueName, isFalseBoolean, isTrueBoolean, uuidv4, waitUntilCondition } from '../../utils.js';
 import { t } from '../../i18n.js';
-import { getSecretLabelById, SECRET_KEYS, writeSecret } from '../../secrets.js';
+import { getSecretLabelById } from '../../secrets.js';
 import { applyProxyProfileEntry, chat_completion_sources, getCurrentProxyProfileEntry, oai_settings, whenChatCompletionModelListReady } from '../../openai.js';
 import { initActionableSingleSelect } from '../../select2-actionable-single.js';
 import { performFuzzySearch } from '/scripts/power-user.js';

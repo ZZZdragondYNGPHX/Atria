@@ -2262,7 +2262,7 @@ function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
                 type: 'function',
                 function: {
                     name: toolNames.LIST,
-                    description: `List compact lorebook entry index rows for a world book. Returns only uid, name, and enabled. Call world_book_list first to know which book names exist. Optional range narrows the inclusive UID window, for example 0~100.`,
+                    description: 'List compact lorebook entry index rows for a world book. Returns only uid, name, and enabled. Call world_book_list first to know which book names exist. Optional range narrows the inclusive UID window, for example 0~100.',
                     parameters: {
                         type: 'object',
                         properties: {

@@ -720,7 +720,10 @@ export function sanitizeDirectorProfile(profile) {
     // Tools: absent means the current new-profile all-on default; an explicit
     // object is an override and missing flags default off.
     const hasToolsBlock = directorFields.tools && typeof directorFields.tools === 'object';
-    const sanitizedTools = sanitizeAgentToolFlags(directorFields.tools, {
+    const profileToolsInput = hasToolsBlock
+        ? directorFields.tools
+        : { custom: { ...DEFAULT_LAYER2_CUSTOMS } };
+    const sanitizedTools = sanitizeAgentToolFlags(profileToolsInput, {
         defaultAllOn: !hasToolsBlock,
         forceFinalize: false,
     });
