@@ -44,12 +44,15 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
 
         selectedId = selected.id;
         if (!draft || draftPresetId !== selected.id) {
+            const presetChanged = draftPresetId !== selected.id;
             draft = structuredClone(selected);
             draftPresetId = selected.id;
             if (!draft.planTemplate.agents.some(agent => agent.id === selectedAgentId)) {
                 selectedAgentId = draft.planTemplate.agents[0]?.id || null;
             }
-            inspectorMode = matchMedia('(min-width: 761px)').matches ? 'agent' : 'closed';
+            if (presetChanged || inspectorMode === null) {
+                inspectorMode = matchMedia('(min-width: 761px)').matches ? 'agent' : 'closed';
+            }
         }
 
         const status = el('p', notice, parent);
@@ -57,10 +60,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         status.setAttribute('role', 'status');
 
         const refresh = ({ resetDraft = false } = {}) => {
-            if (resetDraft) {
-                draft = null;
-                draftPresetId = null;
-            }
+            if (resetDraft) draft = null;
             parent.replaceChildren();
             inspector?.replaceChildren();
             renderPresets(parent, ui);
