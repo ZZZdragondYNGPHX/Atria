@@ -31,6 +31,14 @@ import {
     CrossModeConversionFailedError,
 } from '../storage/migration/cross-mode-errors.js';
 import { resolvePath, StorageInspectorError } from '../storage/inspector.js';
+import {
+    deleteStorageResource,
+    listStorageRecoveryPoints,
+    readStorageResource,
+    resolveStorageResource,
+    restoreStorageRecoveryPoint,
+    writeStorageResource,
+} from '../storage/management.js';
 import { getAdminSettings } from '../admin-settings.js';
 
 // Two sentinel filenames the backup ZIP carries when the storage engine isn't
@@ -1688,5 +1696,128 @@ router.post('/storage/inspect', async (request, response) => {
         }
         console.error('storage-inspector /inspect error:', err);
         return response.status(500).json({ error: { code: 'E_INTERNAL', message: String(err?.message ?? err) } });
+    }
+});
+
+
+function storageRecoveryRoot() {
+    return path.join(globalThis.DATA_ROOT, '_storage-recovery');
+}
+
+function storageResourceErrorResponse(response, err) {
+    const code = String(err?.code || 'E_INTERNAL');
+    const status = code === 'E_NOT_FOUND' ? 404
+        : code === 'E_CONFLICT' ? 409
+            : code === 'E_TOO_LARGE' ? 413
+                : code === 'E_INTERNAL' ? 500
+                    : 400;
+    return response.status(status).json({
+        error: {
+            code,
+            message: String(err?.message || err || 'Storage operation failed'),
+        },
+    });
+}
+
+function publicStorageResource(resource) {
+    const { absolutePath, ...safe } = resource;
+    return safe;
+}
+
+router.post('/storage/resource/read', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const resource = resolveStorageResource(
+            dirs.root,
+            Array.isArray(request.body?.path) ? request.body.path : [],
+            String(request.body?.kind || ''),
+        );
+        const result = await readStorageResource(resource);
+        return response.json(publicStorageResource(result));
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/resource/write', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const pathArr = Array.isArray(request.body?.path) ? request.body.path : [];
+        const resource = resolveStorageResource(dirs.root, pathArr, String(request.body?.kind || ''));
+        const result = await writeStorageResource({
+            resource,
+            content: request.body?.content,
+            recoveryRoot: storageRecoveryRoot(),
+            handle: user.handle,
+            expectedModifiedMs: request.body?.expectedModifiedMs ?? null,
+        });
+        await invalidateRecentChatIndex(request);
+        const refreshed = await readStorageResource(resolveStorageResource(dirs.root, pathArr, String(request.body?.kind || '')));
+        return response.json({
+            ok: true,
+            recovery: result.recovery,
+            resource: publicStorageResource(refreshed),
+        });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/resource/delete', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const resource = resolveStorageResource(
+            dirs.root,
+            Array.isArray(request.body?.path) ? request.body.path : [],
+            String(request.body?.kind || ''),
+        );
+        const result = await deleteStorageResource({
+            resource,
+            recoveryRoot: storageRecoveryRoot(),
+            handle: user.handle,
+        });
+        await invalidateRecentChatIndex(request);
+        return response.json({ ok: true, recovery: result.recovery });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/recovery/list', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const points = await listStorageRecoveryPoints(
+            storageRecoveryRoot(),
+            user.handle,
+            request.body?.limit,
+        );
+        return response.json({ recoveryPoints: points });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/recovery/restore', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const restored = await restoreStorageRecoveryPoint({
+            recoveryRoot: storageRecoveryRoot(),
+            handle: user.handle,
+            userRoot: dirs.root,
+            id: String(request.body?.id || ''),
+        });
+        await invalidateRecentChatIndex(request);
+        return response.json({ ok: true, restored });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
     }
 });
