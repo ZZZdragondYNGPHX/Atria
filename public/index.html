@@ -7463,10 +7463,17 @@
                             </label>
                         </div>
                         <div class="wi-state-condition-list flex-container flexFlowColumn flexGap8"></div>
-                        <button type="button" class="menu_button wi-state-condition-add">
-                            <i class="fa-solid fa-plus"></i>
-                            <span data-i18n="Add state condition">Add state condition</span>
-                        </button>
+                        <div class="flex-container alignitemscenter flexGap8 flexWrap">
+                            <button type="button" class="menu_button wi-state-condition-add">
+                                <i class="fa-solid fa-plus"></i>
+                                <span data-i18n="Add state condition">Add state condition</span>
+                            </button>
+                            <button type="button" class="menu_button wi-state-condition-save">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span data-i18n="Save conditions">Save conditions</span>
+                            </button>
+                            <small class="wi-state-condition-status opacity50p" aria-live="polite"></small>
+                        </div>
                         <small class="wi-state-condition-hint" data-i18n="Unknown, unavailable, or incomplete state conditions fail closed and block this entry.">
                             Unknown, unavailable, or incomplete state conditions fail closed and block this entry.
                         </small>
