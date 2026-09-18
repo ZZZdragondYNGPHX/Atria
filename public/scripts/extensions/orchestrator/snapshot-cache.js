@@ -41,7 +41,6 @@ import {
 import {
     commitAnchorSnapshot,
     loadAnchorMap,
-    migrateLegacyAnchorsIfNeeded,
     pickLatestValidSnapshot,
 } from './persistence.js';
 import { STATE_ERROR_REASONS, makeStateError } from '../../state-errors.js';
@@ -143,13 +142,8 @@ export function refreshActiveSnapshotFromCache(context) {
 }
 
 /**
- * Read the floor-state data namespace, run the legacy migration if a
- * pre-floor-state chat is being opened for the first time, and refresh
- * the in-memory caches that drive UI rendering.
- *
- * Safe to call repeatedly — the migration is idempotent and the
- * floor-state instance shares its ready gate so concurrent calls
- * coalesce on the same `fs.ready()` promise.
+ * Read the current Atria FloorState namespace and refresh the in-memory
+ * caches that drive UI rendering.
  */
 export async function loadOrchestratorChatState(context) {
     const chatKey = getChatKey(context);
@@ -157,12 +151,6 @@ export async function loadOrchestratorChatState(context) {
         latestOrchestrationSnapshot = null;
         latestAnchorMap = null;
         return;
-    }
-
-    try {
-        await migrateLegacyAnchorsIfNeeded(context);
-    } catch (error) {
-        console.warn(`[${MODULE_NAME}] legacy anchor migration failed`, error);
     }
 
     let map = {};
