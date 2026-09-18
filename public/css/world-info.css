@@ -1394,6 +1394,15 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     width: 100%;
 }
 
+#WorldInfo .wi-state-condition-row.is-incomplete {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 58%, var(--SmartThemeBorderColor));
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 7%, transparent);
+}
+
+#WorldInfo .wi-state-condition-row.is-incomplete .wi-state-condition-path input {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 72%, var(--SmartThemeBorderColor));
+}
+
 #WorldInfo .wi-state-condition-remove {
     align-self: end;
     min-width: 2.4em;
