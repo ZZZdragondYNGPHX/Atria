@@ -1,0 +1,36 @@
+name: Atria Semantic Audit
+
+on:
+  push:
+    branches:
+      - refactor/atria-namespace-migration
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan suspicious namespace replacement semantics
+        shell: bash
+        run: |
+          set -uo pipefail
+          found=0
+          scan() {
+            local pattern="$1"
+            local label="$2"
+            echo "::group::$label"
+            if grep -RInI -E "$pattern" .               --exclude-dir=.git               --exclude='atria-namespace-migration.md'               --exclude='latest-handoff.md'; then
+              found=1
+            fi
+            echo "::endgroup::"
+          }
+          scan 'successor.{0,80}Atria|Atria.{0,80}successor.{0,80}Atria' 'self-successor'
+          scan 'legacy[[:space:]_-]+Atria|legacy.{0,40}`atria`|`atria`.{0,40}legacy' 'legacy-atria'
+          scan 'former[[:space:]_-]+Atria|old[[:space:]_-]+Atria' 'former-atria'
+          scan 'funnycups/Atria' 'nonexistent-funnycups-atria-links'
+          scan '`atria`.{0,80}reference|reference.{0,80}`atria`' 'atria-reference-branch'
+          scan 'from[[:space:]]+Atria[[:space:]]+to[[:space:]]+Atria|Atria[[:space:]]*->[[:space:]]*Atria' 'self-migration'
+          exit "$found"
