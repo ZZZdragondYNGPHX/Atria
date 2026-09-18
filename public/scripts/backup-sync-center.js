@@ -2,12 +2,13 @@ import { displayPastChats, getRequestHeaders, importCharacterChat } from '../scr
 import { importGroupChat } from './group-chats.js';
 import { downloadFromServer } from './atria-download.js';
 import { t } from './i18n.js';
-import { openLanSyncPanel } from './lan-sync.js';
 import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
+import { createBackupSyncProviderRegistry } from './backup-sync/providers.js';
 import { renderTemplateAsync } from './templates.js';
 import { humanFileSize } from './utils.js';
 
 const MiB = 1024 * 1024;
+const PROVIDERS = createBackupSyncProviderRegistry();
 const BACKUP_CATEGORY_KEYS = Object.freeze([
     'settings',
     'secrets',
@@ -382,10 +383,9 @@ function renderManagedGroups(root, records, reload) {
 }
 
 async function loadProviders(root) {
-    const payload = await postJson('/api/backups/providers/list');
     const mount = root.querySelector('.backupCloudProviders');
     mount.innerHTML = '';
-    const providers = Array.isArray(payload?.providers) ? payload.providers : [];
+    const providers = PROVIDERS.list();
     for (const provider of providers.filter(item => item.future || !item.available)) {
         const card = document.createElement('div');
         card.className = 'backupProviderCard';
@@ -438,7 +438,7 @@ export async function openBackupSyncCenter({
         center.querySelector('.backupRestoreStart').classList.add('disabled');
         if (!selectedArchive) return;
         try {
-            const result = await runPreflight(center, selectedArchive, canManageGlobalExtensions);
+            const result = await runPreflight(center, selectedArchive.file, canManageGlobalExtensions);
             preflight = result;
             renderPreflight(center, result);
             center.querySelector('.backupRestoreStart').classList.remove('disabled');
@@ -529,7 +529,10 @@ export async function openBackupSyncCenter({
     const archiveInput = center.querySelector('.backupArchiveInput');
     center.querySelector('.backupArchiveChoose').addEventListener('click', () => archiveInput.click());
     archiveInput.addEventListener('change', async () => {
-        selectedArchive = archiveInput.files?.[0] || null;
+        const file = archiveInput.files?.[0] || null;
+        selectedArchive = file
+            ? await PROVIDERS.get('local-file').openArtifact(file)
+            : null;
         center.querySelector('.backupArchiveFileLabel').textContent = selectedArchive?.name || '未选择文件';
         await rerunPreflight();
     });
@@ -538,7 +541,7 @@ export async function openBackupSyncCenter({
         if (button.classList.contains('disabled') || !selectedArchive || !preflight) return;
         button.classList.add('disabled');
         try {
-            const result = await restoreArchive({ handle, file: selectedArchive, preflight });
+            const result = await restoreArchive({ handle, file: selectedArchive.file, preflight });
             if (!result) return;
             toastr.success(`恢复完成：${Number(result.restoredCount || 0)} 项；失败 ${Number(result.failedCount || 0)} 项。`);
             await onRestored?.(result);
@@ -551,7 +554,7 @@ export async function openBackupSyncCenter({
         }
     });
 
-    center.querySelector('.backupOpenLanSync').addEventListener('click', () => void openLanSyncPanel());
+    center.querySelector('.backupOpenLanSync').addEventListener('click', () => void PROVIDERS.get('lan-sync').open());
     await Promise.all([
         refreshRetention(center).catch(error => toastr.error(`读取备份策略失败：${error.message}`)),
         reloadManaged().catch(error => toastr.error(`读取聊天备份失败：${error.message}`)),
