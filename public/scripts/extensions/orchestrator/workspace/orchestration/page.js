@@ -679,7 +679,6 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         const graphHead = el('div', undefined, graphSection);
         graphHead.className = 'workspace-section-heading';
         el('h3', 'Plan', graphHead);
-        button(graphHead, 'Preset settings', () => renderPresetInspector());
 
         const graphCanvas = el('div', undefined, graphSection);
         graphCanvas.className = 'workspace-graph-canvas workspace-plan-canvas';
