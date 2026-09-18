@@ -29,7 +29,7 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 import { startMysqlContainer } from '../_lib/db-containers.js';
 import { markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { migrateViaAdminUI, fetchStorageStatus, closeAdminPanel } from '../_lib/storage-ui.js';
+import { migrateStorageBackend, fetchStorageStatus } from '../_lib/storage-ui.js';
 import {
     openLanSyncPanel,
     generatePairingLink,
@@ -142,10 +142,8 @@ test.describe('LAN Sync — cross-engine pair and sync', () => {
         // Flip A from fs to sqlite through the admin UI. After this
         // returns, every storage call on A routes through SqliteEngine.
         // B is already in mysql from the boot config; sanity-check both.
-        await migrateViaAdminUI(pageA, 'sqlite');
+        await migrateStorageBackend(pageA, 'sqlite');
         expect((await fetchStorageStatus(pageA)).currentMode).toBe('sqlite');
-        await closeAdminPanel(pageA);
-
         expect((await fetchStorageStatus(pageB)).currentMode).toBe('mysql');
 
         // Seed A's sqlite with the marker world. After this returns,
