@@ -206,10 +206,11 @@ try {
         return store.getCurrentRun().runtime.events.map(event => JSON.stringify(event)).join('\n');
     });
     await workspace.getByLabel('Replay metadata trace').setInputFiles({name:'trace.jsonl',mimeType:'application/x-ndjson',buffer:Buffer.from(trace)});
-    await workspace.getByRole('button', {name:'Viewing imported trace · Return to live run'}).waitFor();
+    await workspace.getByText('Viewing imported trace', {exact:true}).waitFor();
+    await workspace.getByRole('button', {name:'Return to live run',exact:true}).waitFor();
     assert.equal(await workspace.getByRole('button', {name:'Stop Run',exact:true}).isVisible(), false);
     assert.equal(await page.evaluate(() => window.stops), 1);
-    await workspace.getByRole('button', {name:'Viewing imported trace · Return to live run'}).click();
+    await workspace.getByRole('button', {name:'Return to live run',exact:true}).click();
     await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Memory', exact: true }).click();
     await workspace.getByRole('heading', { name: 'Memory is available', exact: true }).waitFor();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
