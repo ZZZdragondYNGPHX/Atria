@@ -7981,6 +7981,11 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     // Prompt Itemization already retains the assembled prompt.
     const worldInfoAttribution = createWorldInfoDispatchAttribution(
         wiFinalizedPayload.worldInfoProvenance ?? worldInfoResolution?.worldInfoProvenance,
+        {
+            includeAuthorsNote: Boolean(shouldWIAddPrompt),
+            includeDepth: skipWIAN !== true,
+            includeOutlets: skipWIAN !== true,
+        },
     );
 
     applyFinalizedAuthorsNoteInjections(anBefore, anAfter);
