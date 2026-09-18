@@ -145,15 +145,15 @@ export function resolveStorageResource(userRoot, pathArr, kind = '') {
     } else if (Object.hasOwn(SIMPLE_DIRS, category)) {
         if (rest.length !== 1) throw error('E_INVALID_PATH', `${category} resource path depth is invalid.`);
         absolutePath = path.join(userRoot, SIMPLE_DIRS[category], rest[0]);
+    } else if (category === 'presets' && rest[0] === 'main-settings') {
+        if (rest.length !== 2) throw error('E_INVALID_PATH', 'Main settings resource path depth is invalid.');
+        absolutePath = path.join(userRoot, rest[1]);
     } else if (Object.hasOwn(GROUPED_DIRS, category)) {
         if (rest.length !== 2) throw error('E_INVALID_PATH', `${category} resource path depth is invalid.`);
         const [bucket, name] = rest;
         const dirs = GROUPED_DIRS[category][bucket];
         if (!dirs) throw error('E_INVALID_PATH', `Unknown ${category} bucket: ${bucket}`);
         absolutePath = findUniqueExisting(userRoot, dirs, name);
-    } else if (category === 'presets' && rest[0] === 'main-settings') {
-        if (rest.length !== 2) throw error('E_INVALID_PATH', 'Main settings resource path depth is invalid.');
-        absolutePath = path.join(userRoot, rest[1]);
     } else if (category === 'other') {
         if (rest.length !== 1) throw error('E_INVALID_PATH', 'Other resource path depth is invalid.');
         const name = rest[0];
