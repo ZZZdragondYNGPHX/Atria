@@ -1088,6 +1088,17 @@ function convertWorldInfoToCharacterBook(name, entries) {
                     ? structuredClone(entry.stateEvents)
                     : [],
                 atria_state_event_logic: entry.stateEventLogic === 'any' ? 'any' : 'all',
+                atria_required_entries: Array.isArray(entry.requiredEntries)
+                    ? entry.requiredEntries.map(value => String(value ?? '').trim()).filter(Boolean).slice(0, 64)
+                    : [],
+                atria_related_entries: Array.isArray(entry.relatedEntries)
+                    ? entry.relatedEntries.map(value => String(value ?? '').trim()).filter(Boolean).slice(0, 64)
+                    : [],
+                atria_mutual_exclusion_group: String(entry.mutualExclusionGroup ?? '').trim(),
+                atria_budget_tier: ['critical', 'scene', 'normal', 'optional'].includes(entry.budgetTier)
+                    ? entry.budgetTier
+                    : 'normal',
+                atria_compact_content: typeof entry.compactContent === 'string' ? entry.compactContent : '',
                 ignore_budget: entry.ignoreBudget ?? false,
             },
         };
