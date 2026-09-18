@@ -1,7 +1,7 @@
 import { BrowserMutator, BrowserProvider } from './browser-storage-inspector.js';
 import { t } from './i18n.js';
 import { callGenericPopup, POPUP_TYPE } from './popup.js';
-import { createStorageInspector, RestProvider, ThrowingMutator } from './storage-inspector.js';
+import { createStorageInspector, RestMutator, RestProvider } from './storage-inspector.js';
 import { renderTemplateAsync } from './templates.js';
 
 export async function openStorageManagement() {
@@ -13,7 +13,7 @@ export async function openStorageManagement() {
 
     const serverInspector = createStorageInspector({
         provider: new RestProvider({ kind: 'self' }),
-        mutator: new ThrowingMutator(),
+        mutator: new RestMutator(),
         container: serverMount,
     });
     const browserInspector = createStorageInspector({
