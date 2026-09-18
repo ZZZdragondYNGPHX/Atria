@@ -24,6 +24,7 @@ test('native definition and default binding survive page reload', async ({ page 
     const inspector = root.locator('.atria-workspace-inspector');
     await inspector.getByLabel('Name',{ exact:true }).fill('Persistent native preset');
     await inspector.getByRole('button',{ name:'Save',exact:true }).click();
+    await inspector.getByRole('button',{ name:'Close inspector',exact:true }).click();
     await root.getByRole('button',{ name:'Bind as default',exact:true }).click();
     const id = await page.evaluate(async () => {
         const context = window.Atria.getContext();
