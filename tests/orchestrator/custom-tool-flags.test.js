@@ -1,13 +1,10 @@
 // tests/orchestrator/custom-tool-flags.test.js
 import { describe, test, expect } from '@jest/globals';
-import { sanitizeAgentToolFlags } from '../../public/scripts/extensions/orchestrator/persistence.js';
+import { DEFAULT_LAYER2_CUSTOMS, sanitizeAgentToolFlags } from '../../public/scripts/extensions/orchestrator/persistence.js';
 
-// Helper: in override mode, the sanitizer emits explicit `false` for every
-// Layer-2 memory_* / search_* verb the caller did not name (see the
-// override-narrowing contract in custom-tools-legacy-migration.test.js).
-// These tests don't care about that contract — they assert the caller-
-// supplied custom flags pass through untouched — so strip the Layer-2
-// default-offs before comparing.
+// In override mode current Layer-2 built-ins receive explicit false defaults.
+// These tests isolate caller-supplied custom flags, so strip built-ins before
+// comparing unrelated custom entries.
 function stripLayer2Defaults(custom) {
     const out = {};
     for (const [k, v] of Object.entries(custom)) {
@@ -19,6 +16,23 @@ function stripLayer2Defaults(custom) {
 }
 
 describe('sanitizeAgentToolFlags custom namespace', () => {
+    test('predecessor top-level tool bags are ignored', () => {
+        const out = sanitizeAgentToolFlags({
+            memory: { node_create: true },
+            search: { search: true },
+        }, { defaultAllOn: true });
+        expect(out.custom).toEqual({});
+        expect(out.memory).toBeUndefined();
+        expect(out.search).toBeUndefined();
+    });
+
+    test('override mode explicitly disables all current Layer-2 built-ins', () => {
+        const out = sanitizeAgentToolFlags({});
+        for (const name of Object.keys(DEFAULT_LAYER2_CUSTOMS)) {
+            expect(out.custom[name]).toBe(false);
+        }
+    });
+
     test('preserves custom flags verbatim', () => {
         const out = sanitizeAgentToolFlags({
             custom: { my_tool: true, another: false, weird_name: true },
