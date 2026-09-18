@@ -45,7 +45,9 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         if (!draft || draftPresetId !== selected.id) {
             draft = structuredClone(selected);
             draftPresetId = selected.id;
-            selectedAgentId = draft.planTemplate.agents[0]?.id || null;
+            if (!draft.planTemplate.agents.some(agent => agent.id === selectedAgentId)) {
+                selectedAgentId = draft.planTemplate.agents[0]?.id || null;
+            }
         }
 
         const status = el('p', notice, parent);
