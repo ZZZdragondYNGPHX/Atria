@@ -1581,3 +1581,72 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         flex-direction: column;
     }
 }
+
+
+/* Atria W-04 selection/dependency authoring. */
+#WorldInfo .wi-entry-selection-strategy {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 78%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 55%, transparent);
+    overflow: hidden;
+}
+
+#WorldInfo .wi-entry-selection-strategy > .inline-drawer-header {
+    min-height: 38px;
+    padding: 6px 10px;
+}
+
+#WorldInfo .wi-selection-strategy-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.7em;
+    padding: 0 0.55em;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 18%, transparent);
+    font-size: 0.76em;
+    font-weight: 700;
+}
+
+#WorldInfo .wi-selection-strategy-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+#WorldInfo .wi-selection-strategy-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+#WorldInfo .wi-selection-strategy-field > small:first-child {
+    font-weight: 600;
+}
+
+#WorldInfo .wi-selection-strategy-field > .opacity50p {
+    font-size: 0.76em;
+    line-height: 1.35;
+}
+
+#WorldInfo .wi-selection-strategy-field :is(input, select, textarea) {
+    width: 100%;
+    min-width: 0;
+}
+
+#WorldInfo .wi-selection-strategy-field textarea {
+    resize: vertical;
+}
+
+@media screen and (min-width: 1001px) {
+    #WorldInfo .world_entry .wi-entry-selection-strategy { order: 8; }
+    #WorldInfo .world_entry .wi-entry-bottom-controls { order: 9; }
+    #WorldInfo .world_entry .wi-entry-extra-sources { order: 10; }
+}
+
+@media screen and (max-width: 1000px) {
+    #WorldInfo .wi-selection-strategy-grid {
+        grid-template-columns: 1fr;
+    }
+}
