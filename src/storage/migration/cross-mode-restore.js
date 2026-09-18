@@ -24,13 +24,13 @@ import yauzl from 'yauzl';
 
 import { ChatRepo } from '../repositories/chat-repo.js';
 import { SettingsRepo } from '../repositories/settings-repo.js';
-import { PresetRepo } from '../repositories/preset-repo.js';
+import { PRESET_FOLDER_BY_API_ID, PresetRepo } from '../repositories/preset-repo.js';
 import { WorldInfoRepo } from '../repositories/world-info-repo.js';
-import { NamedDocRepo } from '../repositories/named-doc-repo.js';
+import { BUCKET_TO_DIR, NamedDocRepo } from '../repositories/named-doc-repo.js';
 import { GroupRepo } from '../repositories/group-repo.js';
 import { StatsRepo } from '../repositories/stats-repo.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../engine-backup-entries.js';
-import { setReadOnly } from '../read-only-mode.js';
+import { setReadOnly, withReadOnlyBypass } from '../read-only-mode.js';
 import { MigrationRunner } from './runner.js';
 import { snapshotUser, restoreFromSnapshot } from './backup.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './lock.js';
@@ -57,12 +57,103 @@ const CONVERT_STAGES = [
  * @property {{ mysqlUrl?: string, postgresUrl?: string, mysqlPoolSize?: number, postgresPoolSize?: number }} [scratchCreds]
  */
 
+
+async function clearSelectedEngineCategories(engine, handle, selection) {
+    const categories = selectionToRunnerCategories(selection);
+    const repos = buildRepos(engine);
+
+    await withReadOnlyBypass(async () => {
+        if (categories.settings) {
+            await engine.withTransaction(handle, (tx) =>
+                tx.deleteResource({ kind: 'settings', handle }));
+        }
+
+        if (categories.worlds) {
+            const entries = await repos.worldInfo.list(handle);
+            for (const entry of entries) {
+                const name = entry?.key?.name;
+                if (name) await repos.worldInfo.delete(handle, name);
+            }
+        }
+
+        if (categories.presets) {
+            const canonicalApiIds = [];
+            const seenDirs = new Set();
+            for (const [apiId, dirKey] of Object.entries(PRESET_FOLDER_BY_API_ID)) {
+                if (seenDirs.has(dirKey)) continue;
+                seenDirs.add(dirKey);
+                canonicalApiIds.push(apiId);
+            }
+            for (const apiId of canonicalApiIds) {
+                const entries = await repos.preset.list(handle, apiId);
+                for (const entry of entries) {
+                    const name = entry?.key?.name;
+                    if (name) await repos.preset.delete(handle, apiId, name);
+                }
+            }
+        }
+
+        if (categories.namedDocs) {
+            for (const bucket of Object.keys(BUCKET_TO_DIR)) {
+                const entries = await repos.namedDoc.list(handle, bucket);
+                for (const entry of entries) {
+                    const name = entry?.key?.name;
+                    if (name) await repos.namedDoc.delete(handle, bucket, name);
+                }
+            }
+        }
+
+        if (categories.chats) {
+            await engine.withTransaction(handle, async (tx) => {
+                const chats = await tx.listResources({ kind: 'chat', handle });
+                for (const entry of chats) {
+                    if (entry?.key) await tx.deleteResource(entry.key);
+                }
+            });
+        }
+
+        if (categories.groups) {
+            const groups = await repos.group.list(handle);
+            for (const entry of groups) {
+                const id = entry?.key?.id;
+                if (id != null) await repos.group.delete(handle, id);
+            }
+        }
+
+        if (categories.stats) {
+            await engine.withTransaction(handle, (tx) =>
+                tx.deleteResource({ kind: 'stats', handle }));
+        }
+    });
+}
+
+async function clearSelectedFsTreeCategories(dirs, selection, includeGlobalExtensions) {
+    const enabled = new Set();
+    for (const cat of FS_TREE_CATEGORIES) {
+        if (cat === 'globalExtensions' && !includeGlobalExtensions) continue;
+        if (selection?.[cat]) enabled.add(cat);
+    }
+    const rules = buildFsTreeRules(enabled, dirs);
+    const cleared = new Set();
+    for (const rule of rules) {
+        const target = rule.exact ? rule.targetPath : rule.targetDir;
+        if (!target || cleared.has(target)) continue;
+        cleared.add(target);
+        if (rule.exact) {
+            await fsPromises.rm(target, { force: true });
+        } else {
+            await fsPromises.rm(target, { recursive: true, force: true });
+            await fsPromises.mkdir(target, { recursive: true });
+        }
+    }
+}
+
 /**
  * @param {string} zipPath
  * @param {{ engineKind: string, handle?: string }} engineMeta
  * @param {object} dirs        Live user's `directories` object (must have `.root`).
  * @param {object} selection   10-key backup-category selection.
- * @param {'merge'|'overwrite'} mode
+ * @param {'merge'|'overwrite'|'full'} mode
  * @param {CrossModeRestoreOpts} opts
  */
 export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mode, opts) {
@@ -143,6 +234,17 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
         transient = await materializeTransientSource(engineMeta, zipPath, {
             dataRoot, scratchHandle, scratchCreds,
         });
+
+        // Replacement modes remove only the selected logical categories.
+        // Merge leaves unrelated and unmatched destination records intact.
+        if (mode === 'overwrite' || mode === 'full') {
+            await clearSelectedEngineCategories(currentEngine, handle, selection);
+            await clearSelectedFsTreeCategories(
+                dirs,
+                selection,
+                Boolean(opts.includeGlobalExtensions),
+            );
+        }
 
         // 3. MigrationRunner: scratch source → live destination.
         const sourceRepos = buildRepos(transient.engine);
