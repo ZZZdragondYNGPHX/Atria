@@ -201,6 +201,12 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
                 cleanupWarning,
             },
             recoveryPoint: snapshotPath ? path.basename(snapshotPath) : null,
+            verification: {
+                ok: Boolean(migrationStats.verified),
+                engineRecordsVerified: Boolean(migrationStats.verified),
+                fsEntriesRestored: extractResult.restoredCount,
+                fsEntriesFailed: extractResult.failedCount,
+            },
         };
     } catch (err) {
         // Rollback path. Three states:
