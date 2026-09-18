@@ -50,6 +50,7 @@ import { runLoopEngine } from './engine-v2/loop-adapter.js';
 import { isAbortSignalLike, throwIfAborted } from './abort-utils.js';
 import { canonicalStringifyArgs } from './canonical-stringify.js';
 import { executeLoopTool, getEnabledToolSchemas, resolveToolSource } from './loop-tools.js';
+import { getOrchestrationFallbackApiPresetName } from './api-fallback.js';
 import { buildPerRunCustomToolRegistry } from './per-run-custom-tools.js';
 import {
     appendRound, appendToSection, ensureSection,
@@ -193,6 +194,7 @@ async function defaultSendLlm({ context, settings, messages, tools, runtimeWorld
         ...(runtimeContext ? { runtimeContext } : {}),
         runtimeWorldInfo: runtimeWorldInfo || {},
         apiPresetName: resolvedApiPresetName,
+        fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, resolvedApiPresetName),
         llmPresetName: resolvedLlmPresetName,
         tools,
         allowedNames: null,
