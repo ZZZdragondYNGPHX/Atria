@@ -73,7 +73,7 @@ test.describe('Storage Inspector · self drill-down', () => {
         // The Inspector popup is a NEW callGenericPopup mounted on top of
         // the profile popup. Grab the top-most open dialog and scope from
         // there for the rest of the drill.
-        const inspector = page.locator('dialog.popup[open]').last().locator('.storageInspectorContainer');
+        const inspector = page.locator('dialog.popup[open]').last().locator('.storageManagementServerMount .storageInspectorContainer');
         await inspector.waitFor({ state: 'visible', timeout: 10_000 });
 
         // Wait for the L1 fetch to settle — loading skeleton disappears.
