@@ -101,7 +101,11 @@ function pushSourceSnapshot(target, channel, record, extra = {}) {
  * @param {object|null|undefined} provenance Request-local WI occurrence provenance.
  * @returns {{schemaVersion:number,sources:object[]}}
  */
-export function snapshotWorldInfoProvenance(provenance) {
+export function snapshotWorldInfoProvenance(provenance, {
+    includeAuthorsNote = true,
+    includeDepth = true,
+    includeOutlets = true,
+} = {}) {
     const snapshot = { schemaVersion: 1, sources: [] };
     if (!provenance || typeof provenance !== 'object') return snapshot;
 
@@ -113,10 +117,12 @@ export function snapshotWorldInfoProvenance(provenance) {
     addArray('before', provenance.worldInfoBeforeEntries);
     addArray('after', provenance.worldInfoAfterEntries);
     addArray('examples', provenance.worldInfoExamples);
-    addArray('authors_note_before', provenance.anBefore);
-    addArray('authors_note_after', provenance.anAfter);
+    if (includeAuthorsNote) {
+        addArray('authors_note_before', provenance.anBefore);
+        addArray('authors_note_after', provenance.anAfter);
+    }
 
-    if (Array.isArray(provenance.worldInfoDepth)) {
+    if (includeDepth && Array.isArray(provenance.worldInfoDepth)) {
         provenance.worldInfoDepth.forEach((bucket, bucketOrdinal) => {
             addArray('depth', bucket?.entries, {
                 bucketOrdinal,
@@ -126,7 +132,7 @@ export function snapshotWorldInfoProvenance(provenance) {
         });
     }
 
-    if (provenance.outletEntries && typeof provenance.outletEntries === 'object') {
+    if (includeOutlets && provenance.outletEntries && typeof provenance.outletEntries === 'object') {
         for (const outlet of Object.keys(provenance.outletEntries)) {
             addArray('outlet', provenance.outletEntries[outlet], { outlet });
         }
@@ -142,8 +148,8 @@ export function snapshotWorldInfoProvenance(provenance) {
  * @param {object|null|undefined} provenance Request-local WI provenance.
  * @returns {{schemaVersion:number,sources:object[],dispatches:object[]}}
  */
-export function createWorldInfoDispatchAttribution(provenance) {
-    const snapshot = snapshotWorldInfoProvenance(provenance);
+export function createWorldInfoDispatchAttribution(provenance, options = {}) {
+    const snapshot = snapshotWorldInfoProvenance(provenance, options);
     return {
         schemaVersion: snapshot.schemaVersion,
         sources: snapshot.sources,
