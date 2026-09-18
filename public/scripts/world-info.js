@@ -9903,6 +9903,57 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         );
     }
 
+    function isWorldInfoDependencyEligible(entry) {
+        if (!entry || entry.disable === true) return false;
+        if (Array.isArray(entry.decorators) && entry.decorators.includes('@@dont_activate')) return false;
+
+        if (hasConfiguredStateConditions(entry)) {
+            if (!Array.isArray(entry.stateConditions)) return false;
+            const result = evaluateWorldInfoStateConditions(
+                entry.stateConditions,
+                worldInfoStateProviders,
+                entry.stateConditionLogic,
+            );
+            if (result.status !== WORLD_INFO_CONDITION_RESULT.TRUE) return false;
+        }
+
+        if (hasConfiguredStateEvents(entry)) {
+            if (!Array.isArray(entry.stateEvents)) return false;
+            const result = evaluateWorldInfoStateEvents(
+                entry.stateEvents,
+                worldInfoEventComparisonBaseline,
+                worldInfoStateProviderSnapshot,
+                entry.stateEventLogic,
+            );
+            if (result.status !== WORLD_INFO_CONDITION_RESULT.TRUE) return false;
+        }
+
+        if (Array.isArray(entry.triggers) && entry.triggers.length > 0
+            && !entry.triggers.includes(globalScanData.trigger)) {
+            return false;
+        }
+
+        if (entry.characterFilter && entry.characterFilter?.names?.length > 0) {
+            const nameIncluded = entry.characterFilter.names.includes(getCharaFilename());
+            const filtered = entry.characterFilter.isExclude ? nameIncluded : !nameIncluded;
+            if (filtered) return false;
+        }
+
+        if (entry.characterFilter && entry.characterFilter?.tags?.length > 0) {
+            const tagKey = getTagKeyForEntity(this_chid);
+            if (tagKey) {
+                const tagMapEntry = context.tagMap[tagKey];
+                if (Array.isArray(tagMapEntry)) {
+                    const includesTag = tagMapEntry.some(tag => entry.characterFilter.tags.includes(tag));
+                    const filtered = entry.characterFilter.isExclude ? includesTag : !includesTag;
+                    if (filtered) return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     timedEffects.checkTimedEffects();
 
     if (sortedEntries.length === 0) {
@@ -10445,11 +10496,19 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         let newEntries;
         if (activatedNow.size > 1) {
             const sortedEntriesIndex = new Map(sortedEntries.map((entry, index) => [entry, index]));
+            const relatedEntryKeys = new Set(
+                [...activatedNow].flatMap(entry => getRelatedWorldInfoEntryKeys(entry)),
+            );
             newEntries = [...activatedNow]
                 .sort((a, b) => {
                     const isASticky = timedEffects.isEffectActive('sticky', a) ? 1 : 0;
                     const isBSticky = timedEffects.isEffectActive('sticky', b) ? 1 : 0;
+                    const tierDelta = getWorldInfoBudgetTierScore(b) - getWorldInfoBudgetTierScore(a);
+                    const relatedDelta = Number(relatedEntryKeys.has(getWorldInfoEntryKey(b)))
+                        - Number(relatedEntryKeys.has(getWorldInfoEntryKey(a)));
                     return isBSticky - isASticky
+                        || tierDelta
+                        || relatedDelta
                         || (sortedEntriesIndex.get(a) ?? -1) - (sortedEntriesIndex.get(b) ?? -1);
                 });
         } else {
@@ -10477,9 +10536,13 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         !newEntries.length && console.debug('[WI] No probability checks to do');
 
         let ignoresBudget = newEntries.filter(e => e.ignoreBudget).length;
+        const dependencyActivatedThisLoop = new Set();
 
         for (const entry of newEntries) {
             ignoresBudget -= (entry.ignoreBudget ? 1 : 0);
+            if (allActivatedEntries.has(getWorldInfoEntryKey(entry))) {
+                continue;
+            }
             if (token_budget_overflowed && !entry.ignoreBudget) {
                 if (ignoresBudget > 0) {
                     continue;
@@ -10521,6 +10584,110 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                         probability: Number(entry.probability ?? 100),
                     }),
                 );
+                continue;
+            }
+
+            if (hasWorldInfoSelectionMetadata(entry)) {
+                const bundle = resolveWorldInfoDependencyBundle(entry, {
+                    entryLookup: worldInfoSelectionEntryLookup,
+                    activeEntryKeys: new Set(allActivatedEntries.keys()),
+                    activeMutualExclusionGroups: activeWorldInfoMutualExclusionGroups,
+                    isEligible: isWorldInfoDependencyEligible,
+                });
+                if (!bundle.ok) {
+                    recordActivationAttempt(
+                        entry,
+                        'selection_dependency_blocked',
+                        withRecursionTraceSources({
+                            reason: bundle.reason,
+                            dependencyKey: bundle.key || '',
+                            dependencyRef: bundle.ref || '',
+                            mutualExclusionGroup: bundle.group || '',
+                            conflictingEntryKey: bundle.conflictingEntryKey || '',
+                        }),
+                    );
+                    continue;
+                }
+
+                const pendingEntries = bundle.entries.filter(
+                    candidate => !allActivatedEntries.has(getWorldInfoEntryKey(candidate)),
+                );
+                const materializeVariant = mode => buildWorldInfoBundleVariant(pendingEntries, mode)
+                    .map(item => ({
+                        ...item,
+                        content: String(substituteParams(item.content) ?? ''),
+                    }));
+                const fullVariant = materializeVariant('full');
+                let selectedVariant = fullVariant;
+                let selectedVariantName = 'full';
+                const bundleRequiresBudget = pendingEntries.some(candidate => !candidate.ignoreBudget);
+
+                if (bundleRequiresBudget) {
+                    const fullText = fullVariant.map(item => item.content).filter(Boolean).join('\n') + '\n';
+                    const fullTokens = await getTokenCountAsync(newContent + fullText);
+                    if ((textToScanTokens + fullTokens) >= budget) {
+                        const compactVariant = materializeVariant('compact');
+                        const compactDiffers = compactVariant.some((item, index) => (
+                            item.compact && item.content !== fullVariant[index]?.content
+                        ));
+                        if (compactDiffers) {
+                            const compactText = compactVariant.map(item => item.content).filter(Boolean).join('\n') + '\n';
+                            const compactTokens = await getTokenCountAsync(newContent + compactText);
+                            if ((textToScanTokens + compactTokens) < budget) {
+                                selectedVariant = compactVariant;
+                                selectedVariantName = 'compact';
+                            }
+                        }
+
+                        if (selectedVariantName === 'full') {
+                            if (!token_budget_overflowed) {
+                                console.debug('[WI] --- ATOMIC DEPENDENCY BUDGET OVERFLOW ---');
+                                if (world_info_overflow_alert) {
+                                    toastr.warning(
+                                        `World info dependency bundle could not fit within the ${budget} token budget.`,
+                                        'World Info',
+                                    );
+                                }
+                                token_budget_overflowed = true;
+                            }
+                            recordActivationAttempt(
+                                entry,
+                                'dependency_budget_overflow',
+                                withRecursionTraceSources({
+                                    budget: Number(budget),
+                                    dependencyBundle: bundle.entryKeys,
+                                    budgetTier: normalizeWorldInfoSelectionMetadata(entry).budgetTier,
+                                }),
+                            );
+                            continue;
+                        }
+                    }
+                }
+
+                const selectedText = selectedVariant.map(item => item.content).filter(Boolean).join('\n');
+                if (selectedText) newContent += selectedText + '\n';
+                const rootKey = getWorldInfoEntryKey(entry);
+                for (const item of selectedVariant) {
+                    const selectedEntry = item.entry;
+                    const selectedKey = getWorldInfoEntryKey(selectedEntry);
+                    selectedEntry.content = item.content;
+                    allActivatedEntries.set(selectedKey, selectedEntry);
+                    dependencyActivatedThisLoop.add(selectedEntry);
+                    const selectedMeta = normalizeWorldInfoSelectionMetadata(selectedEntry);
+                    if (selectedMeta.mutualExclusionGroup) {
+                        activeWorldInfoMutualExclusionGroups.set(selectedMeta.mutualExclusionGroup, selectedKey);
+                    }
+                    recordActivationSuccess(
+                        selectedEntry,
+                        withRecursionTraceSources({
+                            reason: selectedKey === rootKey ? 'added_to_prompt' : 'required_dependency',
+                            dependencyRoot: rootKey,
+                            dependencyBundle: bundle.entryKeys,
+                            budgetVariant: selectedVariantName,
+                            budgetTier: selectedMeta.budgetTier,
+                        }),
+                    );
+                }
                 continue;
             }
 
@@ -10569,7 +10736,10 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             console.debug(`[WI] Entry ${entry.uid} activation successful, adding to prompt`, entry);
         }
 
-        const successfulNewEntries = newEntries.filter(x => !failedProbabilityChecks.has(x));
+        const successfulNewEntries = [...new Set([
+            ...newEntries.filter(x => !failedProbabilityChecks.has(x)),
+            ...dependencyActivatedThisLoop,
+        ])];
         const successfulNewEntriesForRecursion = successfulNewEntries.filter(x => !x.preventRecursion);
 
         console.debug(`[WI] --- LOOP #${count} RESULT ---`);
