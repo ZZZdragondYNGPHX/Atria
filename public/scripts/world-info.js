@@ -1,5 +1,13 @@
 import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
 import { evaluateWorldInfoStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
+import {
+    buildWorldInfoEventRuntimeState,
+    evaluateWorldInfoStateEvents,
+    fingerprintWorldInfoStateSnapshot,
+    resolveWorldInfoEventComparisonBaseline,
+    snapshotWorldInfoStateProviders,
+} from './atri-world-info-state-events.js';
+import { createFloorState } from './floor-state.js';
 import { Fuse } from '../lib.js';
 import { setInfoBlock, clearInfoBlock } from './utils.js';
 
@@ -8544,6 +8552,8 @@ export const newWorldInfoEntryDefinition = {
     triggers: { default: [], type: 'array', arrayFilter: (value) => GENERATION_TYPE_TRIGGERS.includes(value) },
     stateConditions: { default: [], type: 'array' },
     stateConditionLogic: { default: 'all', type: 'enum' },
+    stateEvents: { default: [], type: 'array' },
+    stateEventLogic: { default: 'all', type: 'enum' },
 };
 
 export const newWorldInfoEntryTemplate = Object.fromEntries(
@@ -9338,6 +9348,54 @@ function parseDecorators(content) {
  * @returns {Promise<WIActivated>} The world info activated.
  */
 //MARK: checkWorldInfo
+const WORLD_INFO_EVENT_STATE_NAMESPACE = 'atri_world_info_events';
+let worldInfoEventFloorStatePromise = null;
+
+async function getWorldInfoEventFloorState() {
+    if (!worldInfoEventFloorStatePromise) {
+        worldInfoEventFloorStatePromise = createFloorState({ namespace: WORLD_INFO_EVENT_STATE_NAMESPACE })
+            .catch(error => {
+                worldInfoEventFloorStatePromise = null;
+                throw error;
+            });
+    }
+    return worldInfoEventFloorStatePromise;
+}
+
+function buildWorldInfoStateProviderContext(context, trigger = 'normal') {
+    return {
+        chat: Array.isArray(context?.chat) ? context.chat : [],
+        eventSource: context?.eventSource,
+        getCurrentChatId: typeof context?.getCurrentChatId === 'function'
+            ? context.getCurrentChatId.bind(context)
+            : getCurrentChatId,
+        memoryOsGenerationType: String(trigger || 'normal'),
+    };
+}
+
+function getWorldInfoEventScope(context) {
+    const sourceChat = Array.isArray(context?.chat) ? context.chat : [];
+    const floor = sourceChat.length - 1;
+    const message = floor >= 0 ? sourceChat[floor] : null;
+    return {
+        floor,
+        swipeId: Number.isInteger(message?.swipe_id) ? message.swipe_id : 0,
+    };
+}
+
+async function getWorldInfoEventRuntimeState() {
+    const floorState = await getWorldInfoEventFloorState();
+    await floorState.ready();
+    const result = await floorState.get();
+    if (!result?.ok) {
+        console.warn('[WI] Failed to read event FloorState baseline', result);
+        return {};
+    }
+    return result.state && typeof result.state === 'object' && !Array.isArray(result.state)
+        ? result.state
+        : {};
+}
+
 export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData = defaultGlobalScanData, entryFilter = null) {
     const context = getContext();
     const buffer = new WorldInfoBuffer(chat, globalScanData);
