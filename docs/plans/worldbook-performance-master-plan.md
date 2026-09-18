@@ -17,7 +17,7 @@
 - 首批写集：聊天写快照的容量／生命周期、世界书输出片段来源与 Orchestrator 过滤、相应确定性测试和合成基准。
 - 原则：不改存储格式、不删用户数据、不改扫描／概率／时效／预算语义、不新增默认模型调用；Android 与 Docker 不运行。
 - 验证：先回归已知重复正文和正则改写问题，再检查缓存切换、排队写入和异常释放；运行相关测试及 lint。浏览器长期堆、真实扩展和最终提供商请求单独标记，不以 Node 测试代替。
-- 分片状态：P-01 已完成有界聊天快照生命周期切口；W-01 已完成条目身份／来源到最终请求边界的轻量归因；W-02 已完成纯评估／显式提交分离并通过真实 Chromium、完整 Unit、Lint、Workspace 与迁移守卫。W-03 已启动，仅进入受限原生状态条件第一切口；W-04／W-05、P-02 至 P-05 仍未开始。
+- 分片状态：P-01 已完成有界聊天快照生命周期切口；W-01 已完成条目身份／来源到最终请求边界的轻量归因；W-02 已完成纯评估／显式提交分离；W-03 的受限原生状态条件、一次性状态变化事件与场景持续切口均已实现。W-04／W-05、P-02 至 P-05 仍未开始。
 - 回滚：首批作为独立代码提交，可整体 revert；无数据迁移。
 - 工程路由：`tavern-card-builder` → `consult-tavernweave-library`，快照 `2026-08-18`；已读取 ST-A0 与 ST-A3 相关章节。精确字段以当前 Atria 源码为准；设计／动效候选未采用。
 
@@ -28,7 +28,9 @@
 - **W-02 已完成：** 世界书扫描为纯评估；timed state、force-activation 消费和 `WORLD_INFO_ACTIVATED` 只在显式 `commitWorldInfoEvaluation()` 提交；稳定 evaluation ID、防 stale chat scope、重复提交幂等均已覆盖。
 - **W-02 出口证据：** `Worldbook Performance Foundation`（focused Jest、synthetic benchmark、真实 Chromium host smoke）通过；`Workspace UI` 通过；`Atria PR Checks` 的 Lint、Migration Guard、完整 Unit Tests 全部通过。
 - **W-03a 已完成：** 受限原生状态条件已接入世界书扫描、activation trace、角色卡往返与结构化作者 UI；MVU/LoreState 继续作为只读事实源，缺 provider／缺字段／busy/error／malformed 均 fail closed 为 `unknown`。完整 Unit、Lint、Migration Guard、Workspace UI 与真实 Chromium host smoke 全绿。
-- **W-03b 当前边界：** 开始状态变化事件。事件只比较“上一次已提交 provider 基线”和“本次只读 provider 快照”；评估不推进基线，只有最终 `commitWorldInfoEvaluation()` 才推进。首次没有基线、旧值未知或当前值未知都返回 `unknown`，不伪造变化。
+- **W-03b 已完成：** 状态变化事件只比较“上一次已提交 provider 基线”和“本次只读 provider 快照”；评估不推进基线，只有最终 `commitWorldInfoEvaluation()` 才推进。首次没有基线、旧值未知或当前值未知都返回 `unknown`；同 floor/swipe 重试可重放同一次 transition，swipe 与 branch 由 FloorState 回滚／继承。
+- **W-03c 已完成实现：** 新增显式 `stateActivation` 场景持续模式。默认关闭，不改变旧条目；启用后，非空状态条件只要为 `true` 即可作为直接激活源，不再要求关键词重复出现。状态仍由 MVU/LoreState 等 provider 持有，世界书不复制或写入场景状态；条件变为 `false`/`unknown` 后立即退出。
+- **W-03c 出口证据：** `Worldbook Performance Foundation` run `35363369027` 已通过 focused Jest、synthetic benchmark 与真实 Chromium host smoke；真实宿主验证覆盖“钟楼条件直接激活 → 同状态重复生成持续 → provider 切换到城堡后退出”，并覆盖结构化作者 UI 保存。最新 HEAD 的完整 PR Checks / Workspace UI 仍需最终确认后再宣告整个 W-03 验收收口。
 - Android 与 Docker 仍按用户约束不默认构建。
 
 ## 目录
