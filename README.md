@@ -14,7 +14,7 @@ Atria succeeds the former **Atria** product line. The project remains intentiona
 
 ## Development model
 
-New product work starts from `main`. SillyTavern changes are inspected through `vanilla` and selectively adapted rather than blindly merged. Atria code is treated as legacy/reference material after migration.
+New product work starts from `main`. SillyTavern changes are inspected through `vanilla` and selectively adapted rather than blindly merged. Luker code is retained only as legacy/reference material on the `luker` branch after migration.
 
 New Atria-owned modules should prefer concise `atri_*` naming (for example, `atri_memory`). Existing Atria internal identifiers may remain temporarily when they are part of compatibility-sensitive paths, storage keys, APIs, Android package names or persisted data.
 
@@ -25,7 +25,7 @@ The initial Atria baseline inherits the current Atria implementation, including 
 ## Upstream
 
 - SillyTavern: https://github.com/SillyTavern/SillyTavern
-- Legacy migration source: https://github.com/ZZZdragondYNGPHX/Atria
+- Legacy migration source: https://github.com/ZZZdragondYNGPHX/Luker
 
 ## License
 
