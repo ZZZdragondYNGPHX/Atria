@@ -1,0 +1,64 @@
+name: Backup and Storage UI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "public/scripts/backup-sync-center.js"
+      - "public/scripts/backup-sync/**"
+      - "public/scripts/storage-inspector.js"
+      - "public/scripts/storage-management.js"
+      - "public/scripts/browser-storage-inspector.js"
+      - "public/scripts/templates/backupSyncCenter.html"
+      - "public/scripts/templates/storageManagement.html"
+      - "public/scripts/templates/storageInspector.html"
+      - "public/css/backup-sync-center.css"
+      - "public/css/storage-inspector.css"
+      - "src/backup-sync/**"
+      - "src/backup-retention.js"
+      - "src/storage/management.js"
+      - "src/storage/migration/backup.js"
+      - "src/storage/migration/cross-mode-restore.js"
+      - "src/endpoints/backups.js"
+      - "src/endpoints/users-private.js"
+      - "tests/e2e/backup-sync-center/**"
+      - "tests/e2e/browser-storage-inspector/**"
+      - "tests/e2e/storage-inspector/01-self-drilldown.e2e.js"
+      - "tests/e2e/storage-inspector/02-sensitive-and-refresh.e2e.js"
+      - "tests/e2e/storage-inspector/03-mobile-viewport.e2e.js"
+      - ".github/workflows/backup-storage-ui.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  chromium:
+    name: Backup Storage Chromium
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Initialize Atria config
+        run: npm run init
+      - name: Run backup and storage UI E2E
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/backup-sync-center/01-shell-and-preflight.e2e.js
+          e2e/browser-storage-inspector
+          e2e/storage-inspector/01-self-drilldown.e2e.js
+          e2e/storage-inspector/02-sensitive-and-refresh.e2e.js
+          e2e/storage-inspector/03-mobile-viewport.e2e.js
+          --project=e2e --workers=1
