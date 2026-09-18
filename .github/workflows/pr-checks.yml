@@ -40,13 +40,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: luker
+          POSTGRES_USER: atria
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: luker_test
+          POSTGRES_DB: atria_test
         ports:
           - 55432:5432
         options: >-
-          --health-cmd="pg_isready -U luker -d luker_test"
+          --health-cmd="pg_isready -U atria -d atria_test"
           --health-interval=10s --health-timeout=5s --health-retries=12
     steps:
       - name: Checkout
@@ -73,7 +73,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Verify product identity
+      - name: Verify product identity and namespace
         shell: bash
         run: |
           set -euo pipefail
@@ -83,11 +83,15 @@ jobs:
           grep -q 'applicationId = "com.atria.app"' android-app/app/build.gradle.kts
           grep -q 'namespace = "com.atria.app"' android-app/app/build.gradle.kts
           test -f android-app/app/src/main/java/com/atria/app/AtriaApplication.kt
-          if grep -RInI -E 'com\.luker\.app|class Luker|package com\.luker' android-app --exclude-dir=build --exclude-dir=.gradle; then
-            echo "Legacy Luker Android identity remains."
+
+          legacy_lower="lu""ker"
+          legacy_title="Lu""ker"
+          if grep -RInI -E "com\\.${legacy_lower}\\.app|class ${legacy_title}|package com\\.${legacy_lower}" android-app --exclude-dir=build --exclude-dir=.gradle; then
+            echo "Legacy Android product identity remains."
             exit 1
           fi
 
+          bash scripts/check-atria-namespace.sh
 
   android-unit-tests:
     name: Android Unit Tests
