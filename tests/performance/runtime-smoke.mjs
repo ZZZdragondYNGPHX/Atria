@@ -34,7 +34,7 @@ try {
     config.enableDownloadableTokenizers = false;
     await writeFile(configPath, YAML.stringify(config));
     for (const name of ['atri-public-fixture', 'atri-private-fixture']) {
-        writeWorldBook({ dataRoot, name, entries: [{ content: 'SHARED_FIXTURE_BODY', constant: true }] });
+        writeWorldBook({ dataRoot, name, entries: [{ content: 'SHARED_FIXTURE_BODY', constant: true, sticky: 6 }] });
     }
     child = spawn(process.execPath, ['server.js', '--configPath=' + configPath, '--dataRoot=' + dataRoot, '--port=' + port, '--browserLaunchEnabled=false', '--listen=false'], {
         cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
@@ -73,10 +73,91 @@ try {
             replaceString: 'RENDERED_FIXTURE_BODY', trimStrings: [], placement: [regex_placement.WORLD_INFO],
             disabled: false, markdownOnly: false, promptOnly: true, runOnEdit: false, substituteRegex: 0,
         }];
-        const resolution = await core.simulateWorldInfoActivation({ chatForWI: ['fixture'], maxContext: 8192, dryRun: true });
+        let activationEvents = 0;
+        let lastActivatedCount = 0;
+        const onActivated = entries => {
+            activationEvents += 1;
+            lastActivatedCount = Array.isArray(entries) ? entries.length : 0;
+        };
+        core.eventSource.on(core.event_types.WORLD_INFO_ACTIVATED, onActivated);
+        const metadataBeforeEvaluation = structuredClone(core.chat_metadata);
+        const resolution = await core.simulateWorldInfoActivation({ chatForWI: ['fixture'], maxContext: 8192, dryRun: false });
+        const metadataAfterEvaluation = structuredClone(core.chat_metadata);
         const payload = { ...resolution, worldInfoResolution: resolution };
         const before = [...payload.worldInfoBeforeEntries];
-        applyProfileWorldInfoFilter(payload, { bookPattern: '^atri-private-fixture$' });
+        applyProfileWorldInfoFilter(payload, { bookPattern: '^atri-private-fixture
+        const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
+        markWorldInfoDispatch(attribution, {
+            boundary: 'browser_smoke_handoff',
+            providerConfirmed: false,
+            mainApi: 'fixture',
+            type: 'normal',
+            stream: false,
+        });
+        const targets = Array.from({ length: 12 }, (_, i) => ({ is_group: false, avatar_url: 'fixture.png', file_name: 'fixture-' + i, char_name: 'Fixture' }));
+        let retainedDuringWrite = 0;
+        await core.runSerializedChatWrite(async () => {
+            for (const target of targets) {
+                core.seedChatMessageSnapshot(target, [{ mes: target.file_name, swipe_info: [undefined] }]);
+                core.seedChatMetadataSnapshot(target, { integrity: target.file_name });
+            }
+            retainedDuringWrite = targets.filter(target => core.getChatMessageSnapshot(target)).length;
+        });
+        const retainedAfterWrite = targets.filter(target => core.getChatMessageSnapshot(target)).length;
+        const wireSnapshot = core.getChatMessageSnapshot(targets.at(-1));
+        const clone = core.getChatMessageSnapshot(targets.at(-1));
+        clone[0].mes = 'mutated';
+        const isolatedClone = core.getChatMessageSnapshot(targets.at(-1))[0].mes !== 'mutated';
+        return { before, after: payload.worldInfoBeforeEntries, aggregate: payload.worldInfoString,
+            sources, attribution, retainedDuringWrite, retainedAfterWrite, wireSnapshot, isolatedClone,
+            metadataBeforeEvaluation, metadataAfterEvaluation, metadataAfterCommit,
+            firstCommit, secondCommit, activationEvents, lastActivatedCount };
+    });
+    assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
+    assert.deepEqual(result.after, ['RENDERED_FIXTURE_BODY']);
+    assert.equal(result.aggregate, 'RENDERED_FIXTURE_BODY');
+    assert.equal(result.sources[0].world, 'atri-public-fixture');
+    assert.equal(result.attribution.sources.length, 1);
+    assert.equal(result.attribution.sources[0].world, 'atri-public-fixture');
+    assert.deepEqual(result.metadataAfterEvaluation, result.metadataBeforeEvaluation);
+    assert.equal(result.firstCommit.committed, true);
+    assert.equal(result.firstCommit.activatedEntries, 2);
+    assert.equal(result.secondCommit.committed, false);
+    assert.equal(result.secondCommit.reason, 'already_committed');
+    assert.equal(result.activationEvents, 1);
+    assert.equal(result.lastActivatedCount, 2);
+    assert.equal(Object.keys(result.metadataAfterCommit.timedWorldInfo?.sticky || {}).length, 2);
+    assert.equal(Object.hasOwn(result.attribution.sources[0], 'content'), false);
+    assert.deepEqual(result.attribution.dispatches, [{
+        sequence: 1,
+        boundary: 'browser_smoke_handoff',
+        providerConfirmed: false,
+        mainApi: 'fixture',
+        type: 'normal',
+        stream: false,
+    }]);
+    assert.equal(result.retainedDuringWrite, 12);
+    assert.equal(result.retainedAfterWrite, 1);
+    assert.deepEqual(result.wireSnapshot[0].swipe_info, [null]);
+    assert.equal(result.isolatedClone, true);
+    assert.deepEqual(pageErrors, []);
+    console.log(JSON.stringify({ kind: 'isolated-atria-host-smoke', browser: await browser.version(), viewport: '1280x900', result, pageErrors }, null, 2));
+} finally {
+    await browser?.close();
+    if (child && child.exitCode === null) {
+        const stopped = once(child, 'exit');
+        child.kill();
+        await stopped;
+    }
+    // Check the final absolute target before recursive cleanup on every OS.
+    if (dirname(scratch) !== resolve(tmpdir()) || !basename(scratch).startsWith('atria-performance-smoke-')) throw new Error('Unsafe cleanup path');
+    await rm(scratch, { recursive: true, force: true });
+}
+ });
+        const firstCommit = await wi.commitWorldInfoEvaluation(resolution);
+        const metadataAfterCommit = structuredClone(core.chat_metadata);
+        const secondCommit = await wi.commitWorldInfoEvaluation(resolution);
+        core.eventSource.removeListener(core.event_types.WORLD_INFO_ACTIVATED, onActivated);
         const sources = payload.worldInfoResolution.worldInfoProvenance.worldInfoBeforeEntries;
         const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
         markWorldInfoDispatch(attribution, {
