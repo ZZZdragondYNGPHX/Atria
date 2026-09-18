@@ -131,7 +131,19 @@ try {
     await authorConditionRow.waitFor({ state: 'visible', timeout: 5000 });
     await authorConditionRow.locator('.wi-state-condition-path input').fill('scene.place');
     await authorConditionRow.locator('.wi-state-condition-value-control').fill('clocktower');
-    await page.waitForTimeout(100);
+    const stagedConditionsBeforeSave = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
+        return structuredClone(data?.entries?.['0']?.stateConditions || []);
+    });
+    assert.deepEqual(stagedConditionsBeforeSave, []);
+    await conditionEditor.locator('.wi-state-condition-save').click();
+    await page.waitForFunction(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
+        return Array.isArray(data?.entries?.['0']?.stateConditions)
+            && data.entries['0'].stateConditions.length === 1;
+    });
     const authoredConditions = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
         const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
@@ -144,6 +156,7 @@ try {
         value: 'clocktower',
     }]);
     assert.equal(await conditionEditor.locator('.wi-state-condition-count').textContent(), '1');
+    assert.match(await conditionEditor.locator('.wi-state-condition-status').textContent(), /saved/i);
 
     const result = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
