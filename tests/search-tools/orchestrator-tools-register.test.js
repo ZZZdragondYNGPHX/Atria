@@ -164,4 +164,79 @@ describe('search-tools orchestrator tools', () => {
             expect(caught.hint.length).toBeGreaterThan(0);
         }
     });
+
+    test('provider status can disable agent Web Access without coupling to main-model toggle', async () => {
+        await registerSearchToolsOrchestrationTools();
+        const reg = __getExtensionRegistryForTest();
+        const adapter = {
+            getStatus: () => ({ available: false, provider: 'brave', reason: 'Brave Search API key is not configured.' }),
+            getSettings: () => ({ enabled: false, preRequestEnabled: false, provider: 'brave' }),
+            search: async () => ({ results: [] }),
+        };
+        await expect(reg.get('search_search').exec({ query: 'x' }, { __searchAdapter: adapter }))
+            .rejects.toMatchObject({ name: 'ToolError', code: 'SEARCH_UNAVAILABLE' });
+    });
+
+    test('same-run identical searches share one in-flight provider request', async () => {
+        await registerSearchToolsOrchestrationTools();
+        const reg = __getExtensionRegistryForTest();
+        let release;
+        const gate = new Promise(resolve => { release = resolve; });
+        const search = jest.fn(async args => {
+            await gate;
+            return { query: args.query, rows: [{ title: 'one' }] };
+        });
+        const adapter = {
+            getStatus: () => ({ available: true, provider: 'ddg' }),
+            getSettings: () => ({ provider: 'ddg' }),
+            search,
+        };
+        const run = {};
+        const ctxA = { __searchAdapter: adapter, __atriaRun: run };
+        const ctxB = { __searchAdapter: adapter, __atriaRun: run };
+        const first = reg.get('search_search').exec({ query: ' Atria search ' }, ctxA);
+        const second = reg.get('search_search').exec({ query: 'atria search' }, ctxB);
+        await Promise.resolve();
+        expect(search).toHaveBeenCalledTimes(1);
+        release();
+        await expect(Promise.all([first, second])).resolves.toEqual([
+            { query: ' Atria search ', rows: [{ title: 'one' }] },
+            { query: ' Atria search ', rows: [{ title: 'one' }] },
+        ]);
+        expect(run.webEvidenceStats).toMatchObject({ hits: 1, misses: 1 });
+    });
+
+    test('web evidence cache is run-scoped and never shared across unrelated runs', async () => {
+        await registerSearchToolsOrchestrationTools();
+        const reg = __getExtensionRegistryForTest();
+        const search = jest.fn(async args => ({ query: args.query }));
+        const adapter = {
+            getStatus: () => ({ available: true, provider: 'ddg' }),
+            getSettings: () => ({ provider: 'ddg' }),
+            search,
+        };
+        await reg.get('search_search').exec({ query: 'same' }, { __searchAdapter: adapter, __atriaRun: {} });
+        await reg.get('search_search').exec({ query: 'same' }, { __searchAdapter: adapter, __atriaRun: {} });
+        expect(search).toHaveBeenCalledTimes(2);
+    });
+
+    test('failed web request is evicted so a later call can recover', async () => {
+        await registerSearchToolsOrchestrationTools();
+        const reg = __getExtensionRegistryForTest();
+        const search = jest.fn()
+            .mockRejectedValueOnce(new Error('temporary network failure'))
+            .mockResolvedValueOnce({ ok: true });
+        const adapter = {
+            getStatus: () => ({ available: true, provider: 'ddg' }),
+            getSettings: () => ({ provider: 'ddg' }),
+            search,
+        };
+        const ctx = { __searchAdapter: adapter, __atriaRun: {} };
+        await expect(reg.get('search_search').exec({ query: 'retry me' }, ctx))
+            .rejects.toMatchObject({ code: 'SEARCH_FAILED' });
+        await expect(reg.get('search_search').exec({ query: 'retry me' }, ctx))
+            .resolves.toEqual({ ok: true });
+        expect(search).toHaveBeenCalledTimes(2);
+    });
+
 });
