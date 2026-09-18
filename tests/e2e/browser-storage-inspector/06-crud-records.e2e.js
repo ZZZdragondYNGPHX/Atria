@@ -22,8 +22,12 @@ test.afterAll(async () => {
     await tearDownServer(server);
 });
 
+function topActivePopup(page) {
+    return page.locator('dialog.popup[open]:not([closing])').last();
+}
+
 async function confirmTopPopup(page) {
-    const popup = page.locator('dialog.popup[open]').last();
+    const popup = topActivePopup(page);
     await popup.locator('.popup-button-ok').click();
 }
 
@@ -41,7 +45,7 @@ test.describe('Browser Storage Management · CRUD', () => {
 
         const row = inspector.locator('.storageInspectorEntry[data-key="atria-theme"]');
         await row.locator('.storageInspectorEntryEditButton').click();
-        const editPopup = page.locator('dialog.popup[open]').last();
+        const editPopup = topActivePopup(page);
         const editArea = editPopup.locator('textarea').first();
         await editArea.fill('light');
         await editPopup.locator('.popup-button-ok').click();
@@ -49,11 +53,11 @@ test.describe('Browser Storage Management · CRUD', () => {
         await expect.poll(() => page.evaluate(() => localStorage.getItem('atria-theme'))).toBe('light');
 
         await inspector.locator('.storageInspectorCreateButton').click();
-        const namePopup = page.locator('dialog.popup[open]').last();
+        const namePopup = topActivePopup(page);
         await namePopup.locator('.popup-input').fill('atria-new-key');
         await namePopup.locator('.popup-button-ok').click();
 
-        const valuePopup = page.locator('dialog.popup[open]').last();
+        const valuePopup = topActivePopup(page);
         await valuePopup.locator('textarea').first().fill('created-value');
         await valuePopup.locator('.popup-button-ok').click();
 
@@ -93,7 +97,7 @@ test.describe('Browser Storage Management · CRUD', () => {
         await expect(record).toBeVisible();
         await record.locator('.storageInspectorEntryEditButton').click();
 
-        const popup = page.locator('dialog.popup[open]').last();
+        const popup = topActivePopup(page);
         await popup.locator('textarea').first().fill(JSON.stringify({ value: 2, label: 'after' }, null, 2));
         await popup.locator('.popup-button-ok').click();
 
@@ -129,7 +133,7 @@ test.describe('Browser Storage Management · CRUD', () => {
 
         const row = inspector.locator('.storageInspectorEntry', { hasText: '/one.txt' }).first();
         await row.locator('.storageInspectorEntryViewButton').click();
-        const viewPopup = page.locator('dialog.popup[open]').last();
+        const viewPopup = topActivePopup(page);
         await expect(viewPopup.locator('textarea').first()).toHaveValue(/fake body/);
         await viewPopup.locator('.popup-button-ok').click();
 
