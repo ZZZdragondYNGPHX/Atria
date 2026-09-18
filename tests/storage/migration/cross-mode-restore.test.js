@@ -4,9 +4,10 @@
 //   1. Happy path: sqlite-source ZIP → fs live engine → all data lands
 //      at the real handle on the live engine, scratch is gone, snapshot is
 //      gone.
-//   2. Selection honored: only `chats` selected → only chats land; settings
-//      that were in the source dump don't appear on live.
-//   3. Overwrite vs merge: overwrite snapshots, merge does not.
+//   2. Selection honored: only `chats` selected → selected destination chats
+//      are replaced while unselected settings survive.
+//   3. Every mode creates a recovery point; overwrite clears only selected
+//      logical categories while merge preserves unmatched destination records.
 //   4. Rollback: dest engine throws mid-copy → snapshot is restored, live
 //      data returns to pre-restore state.
 //   5. Scratch creds gate: mysql/pg ZIP without creds → 400 typed error.
@@ -159,7 +160,7 @@ describe('crossModeRestore — happy path sqlite→fs', () => {
         }
     });
 
-    test('selection honored: chats only — settings does not appear on live', async () => {
+    test('overwrite replaces only selected categories and preserves unselected live data', async () => {
         const zipPath = path.join(dataRoot, 'src.zip');
         await buildSqliteSourceZip(zipPath, path.join(dataRoot, 'src'), 'alice');
         const selection = {
@@ -169,6 +170,18 @@ describe('crossModeRestore — happy path sqlite→fs', () => {
             globalExtensions: false, vectors: false,
         };
         const liveDirs = dirsForHandle('realuser');
+        const liveSettings = new SettingsRepo({ engine: dstEngine });
+        const liveChats = new ChatRepo({ engine: dstEngine });
+
+        await liveSettings.save('realuser', { user_name: 'keep-me', custom: 'live-only' });
+        await liveChats.save(
+            'realuser',
+            'OldCharacter',
+            'old-chat',
+            { user_name: 'keep-me' },
+            [{ name: 'User', mes: 'old selected-category data', is_user: true }],
+            null,
+        );
 
         await crossModeRestore(
             zipPath,
@@ -179,16 +192,55 @@ describe('crossModeRestore — happy path sqlite→fs', () => {
             { dataRoot, currentEngine: dstEngine },
         );
 
-        const liveSettings = new SettingsRepo({ engine: dstEngine });
-        expect(await liveSettings.get('realuser')).toBeNull();
-        const liveWorlds = new WorldInfoRepo({ engine: dstEngine });
-        expect(await liveWorlds.get('realuser', 'world1')).toBeNull();
-        const liveChats = new ChatRepo({ engine: dstEngine });
+        // Unselected settings survive replacement of the chat category.
+        expect(await liveSettings.get('realuser')).toMatchObject({
+            user_name: 'keep-me',
+            custom: 'live-only',
+        });
+
+        // Selected chat category is replaced: old destination-only chat is
+        // gone and source chat is present.
+        expect(await liveChats.get('realuser', 'OldCharacter', 'old-chat')).toBeNull();
         const chat = await liveChats.get('realuser', 'Alice', 'c1');
         expect(chat).not.toBeNull();
         expect(chat.body[0].mes).toBe('cross-mode 你好 🌍');
-        // secrets was off — no fs-tree extract
+
+        const liveWorlds = new WorldInfoRepo({ engine: dstEngine });
+        expect(await liveWorlds.get('realuser', 'world1')).toBeNull();
         expect(fs.existsSync(path.join(liveDirs.root, 'secrets.json'))).toBe(false);
+    });
+
+    test('merge preserves unmatched selected-category records', async () => {
+        const zipPath = path.join(dataRoot, 'src.zip');
+        await buildSqliteSourceZip(zipPath, path.join(dataRoot, 'src'), 'alice');
+        const selection = {
+            chats: true,
+            settings: false, secrets: false, lorebooks: false,
+            presets: false, characters: false, assets: false, extensions: false,
+            globalExtensions: false, vectors: false,
+        };
+        const liveDirs = dirsForHandle('realuser');
+        const liveChats = new ChatRepo({ engine: dstEngine });
+        await liveChats.save(
+            'realuser',
+            'OldCharacter',
+            'old-chat',
+            { user_name: 'keep-me' },
+            [{ name: 'User', mes: 'merge keeps me', is_user: true }],
+            null,
+        );
+
+        await crossModeRestore(
+            zipPath,
+            { engineKind: 'sqlite', handle: 'alice' },
+            liveDirs,
+            selection,
+            'merge',
+            { dataRoot, currentEngine: dstEngine },
+        );
+
+        expect(await liveChats.get('realuser', 'OldCharacter', 'old-chat')).not.toBeNull();
+        expect(await liveChats.get('realuser', 'Alice', 'c1')).not.toBeNull();
     });
 });
 
