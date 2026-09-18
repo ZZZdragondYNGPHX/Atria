@@ -47,7 +47,6 @@ import {
     isAbortSignalLike,
     throwIfAborted,
 } from './abort-utils.js';
-import { runWithOrchestrationApiFallback } from '../extensions/orchestrator/api-fallback.js';
 
 const MODULE_NAME = 'orchestrator';
 
@@ -79,14 +78,12 @@ export async function requestToolCallWithRetry(context, settings, {
     taskMessages = [],
     runtimeWorldInfo = null,
     apiPresetName = '',
-    fallbackApiPresetName = '',
     llmPresetName = '',
     functionName = '',
     functionDescription = '',
     parameters = {},
     stream = null,
     abortSignal = null,
-    onApiFallback = null,
 } = {}) {
     const fnName = String(functionName || '').trim();
     if (!fnName) {
@@ -109,66 +106,55 @@ export async function requestToolCallWithRetry(context, settings, {
         type: 'function',
         function: { name: fnName },
     };
-    const runRoute = async (routeApiPresetName) => {
-        let lastError = null;
-        for (let attempt = 0; attempt <= retries; attempt++) {
-            const attemptSignal = isAbortSignalLike(abortSignal) ? abortSignal : null;
-            try {
-                throwIfAborted(abortSignal, 'Orchestration aborted.');
-                await waitForRpmSlot(settings, abortSignal);
-                const generateTaskOpts = {
-                    ...(runtimeContext ? { runtimeContext } : {}),
-                    taskMessages,
-                    stream,
-                    includeCharacterCard: true,
-                    worldInfoSource: 'none',
-                    runtimeWorldInfo: runtimeWorldInfo || {},
-                    apiPresetName: String(routeApiPresetName || '').trim(),
-                    llmPresetName: String(llmPresetName || '').trim(),
-                    tools,
-                    toolChoice,
-                    functionCallMode: 'auto',
-                    functionCallOptions: {
-                        requiredFunctionName: fnName,
-                        protocolStyle: TOOL_PROTOCOL_STYLE.JSON_SCHEMA,
-                    },
-                    abortSignal: attemptSignal,
-                };
-                const result = await context.generateTask(generateTaskOpts);
-                throwIfAborted(abortSignal, 'Orchestration aborted.');
-                const calls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
-                const validationError = validateParsedToolCalls(calls, tools);
-                if (validationError) {
-                    throw new Error(validationError);
-                }
-                const matched = calls.find(call => String(call?.name || '') === fnName);
-                if (!matched) {
-                    throw new Error(`Model returned tool call, but not '${fnName}'.`);
-                }
-                return matched.args && typeof matched.args === 'object' ? matched.args : {};
-            } catch (error) {
-                if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
-                    throw error;
-                }
-                lastError = error;
-                if (attempt >= retries) {
-                    throw error;
-                }
-                console.warn(`[${MODULE_NAME}] Tool call '${fnName}' failed. Retrying (${attempt + 1}/${retries})...`, error);
+    let lastError = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const attemptSignal = isAbortSignalLike(abortSignal) ? abortSignal : null;
+        try {
+            throwIfAborted(abortSignal, 'Orchestration aborted.');
+            await waitForRpmSlot(settings, abortSignal);
+            const generateTaskOpts = {
+                ...(runtimeContext ? { runtimeContext } : {}),
+                taskMessages,
+                stream,
+                includeCharacterCard: true,
+                worldInfoSource: 'none',
+                runtimeWorldInfo: runtimeWorldInfo || {},
+                apiPresetName: String(apiPresetName || '').trim(),
+                llmPresetName: String(llmPresetName || '').trim(),
+                tools,
+                toolChoice,
+                functionCallMode: 'auto',
+                functionCallOptions: {
+                    requiredFunctionName: fnName,
+                    protocolStyle: TOOL_PROTOCOL_STYLE.JSON_SCHEMA,
+                },
+                abortSignal: attemptSignal,
+            };
+            const result = await context.generateTask(generateTaskOpts);
+            throwIfAborted(abortSignal, 'Orchestration aborted.');
+            const calls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
+            const validationError = validateParsedToolCalls(calls, tools);
+            if (validationError) {
+                throw new Error(validationError);
             }
+            const matched = calls.find(call => String(call?.name || '') === fnName);
+            if (!matched) {
+                throw new Error(`Model returned tool call, but not '${fnName}'.`);
+            }
+            return matched.args && typeof matched.args === 'object' ? matched.args : {};
+        } catch (error) {
+            if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
+                throw error;
+            }
+            lastError = error;
+            if (attempt >= retries) {
+                throw error;
+            }
+            console.warn(`[${MODULE_NAME}] Tool call '${fnName}' failed. Retrying (${attempt + 1}/${retries})...`, error);
         }
+    }
 
-        throw lastError || new Error(`Tool call '${fnName}' failed.`);
-
-    };
-
-    return await runWithOrchestrationApiFallback({
-        primaryApiPresetName: apiPresetName,
-        fallbackApiPresetName,
-        abortSignal,
-        execute: routeApiPresetName => runRoute(routeApiPresetName),
-        onEvent: onApiFallback,
-    });
+    throw lastError || new Error(`Tool call '${fnName}' failed.`);
 }
 
 // Control-flow tool calls (e.g. continue / finalize an iteration loop) do
@@ -191,7 +177,6 @@ export async function requestToolCallsWithRetry(context, settings, {
     taskMessages = [],
     runtimeWorldInfo = null,
     apiPresetName = '',
-    fallbackApiPresetName = '',
     llmPresetName = '',
     tools = [],
     allowedNames = null,
@@ -213,7 +198,6 @@ export async function requestToolCallsWithRetry(context, settings, {
     // extensions/orchestrator/dispatch-barrier.js. Callback errors are
     // swallowed with a console.warn, matching the other observer hooks.
     onFirstChunk = null,
-    onApiFallback = null,
 } = {}) {
     if (!Array.isArray(tools) || tools.length === 0) {
         throw new Error('Tools are required.');
@@ -229,193 +213,182 @@ export async function requestToolCallsWithRetry(context, settings, {
     const allowedSet = Array.isArray(allowedNames)
         ? new Set(allowedNames.map(name => String(name || '').trim()).filter(Boolean))
         : (allowedNames instanceof Set ? allowedNames : null);
-    const runRoute = async (routeApiPresetName) => {
-        let lastError = null;
-        for (let attempt = 0; attempt <= retries; attempt++) {
-            const attemptSignal = isAbortSignalLike(abortSignal) ? abortSignal : null;
-            try {
-                throwIfAborted(abortSignal, 'Orchestration aborted.');
-                await waitForRpmSlot(settings, abortSignal);
-                const generateTaskOpts = {
-                    ...(runtimeContext ? { runtimeContext } : {}),
-                    taskMessages,
-                    includeCharacterCard: true,
-                    worldInfoSource: 'none',
-                    runtimeWorldInfo: runtimeWorldInfo || {},
-                    apiPresetName: String(routeApiPresetName || '').trim(),
-                    llmPresetName: String(llmPresetName || '').trim(),
-                    tools,
-                    toolChoice: 'auto',
-                    functionCallMode: 'auto',
-                    functionCallOptions: {
-                        protocolStyle: TOOL_PROTOCOL_STYLE.JSON_SCHEMA,
-                    },
-                    // Iter studio popups (CPA / MG schema / Orch / CEA editor)
-                    // are EDITING source text that still contains literal
-                    // {{user}} / {{char}} / {{getvar::}} macros. The model
-                    // must see those source templates verbatim so str_replace
-                    // anchors land and the model doesn't "fix" template
-                    // placeholders into rendered names. Runtime executors
-                    // (orch nodes, MG extraction, preset use in chat) want
-                    // macros expanded — they call requestToolCallWithRetry
-                    // (singular) instead, which inherits generateTask's
-                    // default true.
-                    substituteMacros: false,
-                    abortSignal: attemptSignal,
-                };
-                // Streaming path (when the caller's preset has stream_openai
-                // enabled AND the context exposes generateTaskStream): drain
-                // chunks so we can fire onFirstChunk on the first upstream
-                // delta. iter-studio popups don't actually consume the chunks
-                // for rendering — they only need the terminal result — but
-                // the barrier consumers (spec/agenda) DO need first-chunk
-                // timing, and taking the stream path uniformly for both
-                // keeps the wire behavior consistent (see director-tools.js
-                // runOneRound for the same pattern on the main-agent path).
-                generateTaskOpts.stream = stream;
-                const streamEnabled = stream !== false && typeof context.isStreamingPresetEnabled === 'function'
-                    && typeof context.generateTaskStream === 'function'
-                    && context.isStreamingPresetEnabled(generateTaskOpts.llmPresetName || '');
-                let result;
-                if (streamEnabled) {
-                    const { stream, result: resultPromise } = context.generateTaskStream(generateTaskOpts);
-                    let firstChunkFired = false;
-                    for await (const chunk of stream) {
-                        // Any chunk (text or reasoning) means upstream has
-                        // committed to processing — fire the barrier signal
-                        // exactly once per attempt. The check-and-set is
-                        // safe under JS's single-threaded consumer because
-                        // for-await serializes chunk delivery.
-                        if (!firstChunkFired && chunk && typeof chunk === 'object' && typeof chunk.delta === 'string') {
-                            firstChunkFired = true;
-                            if (typeof onFirstChunk === 'function') {
-                                try {
-                                    onFirstChunk();
-                                } catch (cbErr) {
-                                    console.warn('[iter-tool-calling] onFirstChunk threw', cbErr);
-                                }
-                            }
-                        }
-                        // We intentionally do NOT forward chunks anywhere —
-                        // iter-studio consumers work off the terminal result,
-                        // and the stream is just a plumbing detail for the
-                        // first-chunk signal. Draining prevents back-pressure.
-                    }
-                    result = await resultPromise;
-                } else {
-                    result = await context.generateTask(generateTaskOpts);
-                }
-                throwIfAborted(abortSignal, 'Orchestration aborted.');
-                const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
-                const normalizedCalls = rawCalls.map(call => ({
-                    name: String(call?.name || ''),
-                    args: call?.args,
-                    // generate-task surfaces the provider-issued id on `call.raw.id`
-                    // (Anthropic tool_use.id / OpenAI tool_calls[].id / Gemini
-                    // synthesized). Propagate it so iter-studio popups round-trip
-                    // the same id across rounds — without this they fall back to
-                    // a locally-generated `edit_<idx>_<ts>` which collides when
-                    // two tool calls in one turn share the round-local index AND
-                    // millisecond, surfacing as Anthropic "tool_use ids must be
-                    // unique" 400 on the next round's replay.
-                    id: String(call?.id || call?.raw?.id || '').trim(),
-                    raw: call?.raw || null,
-                }));
-                const filteredCalls = allowedSet && allowedSet.size > 0
-                    ? normalizedCalls.filter(call => allowedSet.has(call.name))
-                    : normalizedCalls;
-                const assistantText = String(result?.assistantText || '');
-                const reasoning = String(result?.reasoning || '');
-                const reasoningBlocks = Array.isArray(result?.reasoningBlocks) && result.reasoningBlocks.length > 0
-                    ? result.reasoningBlocks
-                    : null;
-                const reasoningDetails = Array.isArray(result?.reasoningDetails) && result.reasoningDetails.length > 0
-                    ? result.reasoningDetails
-                    : null;
-                let returnValue;
-                if (filteredCalls.length === 0) {
-                    if (allowNoToolCalls && assistantText.trim()) {
-                        returnValue = includeAssistantText
-                            ? { toolCalls: [], assistantText, rawAssistantText: assistantText, reasoning, reasoningBlocks, reasoningDetails }
-                            : [];
-                    } else {
-                        throw new Error('Model response did not contain any matching tool calls.');
-                    }
-                } else {
-                    const validationError = validateParsedToolCalls(filteredCalls, tools);
-                    if (validationError) {
-                        throw new Error(validationError);
-                    }
-                    returnValue = includeAssistantText
-                        ? { toolCalls: filteredCalls, assistantText, rawAssistantText: assistantText, reasoning, reasoningBlocks, reasoningDetails }
-                        : filteredCalls;
-                }
-
-                // Per-round callbacks fire AFTER validation and BEFORE return, so
-                // a popup can rely on having seen the assistant turn and its
-                // tool calls in order before applying anything to the live
-                // target. A callback that throws must not derail the runner —
-                // these are observers, not gating hooks.
-                if (typeof onAssistantText === 'function' && assistantText) {
-                    try {
-                        onAssistantText(assistantText);
-                    } catch (cbErr) {
-                        console.warn('[iter-tool-calling] onAssistantText threw', cbErr);
-                    }
-                }
-                if (typeof onUsage === 'function' && result?.usage) {
-                    try {
-                        onUsage(result.usage);
-                    } catch (cbErr) {
-                        console.warn('[iter-tool-calling] onUsage threw', cbErr);
-                    }
-                }
-                if (filteredCalls.length > 0 && (typeof onToolCall === 'function' || typeof onControlCall === 'function')) {
-                    const detectControl = typeof isControlCall === 'function' ? isControlCall : null;
-                    for (const call of filteredCalls) {
-                        let isControl = false;
-                        if (detectControl) {
+    let lastError = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const attemptSignal = isAbortSignalLike(abortSignal) ? abortSignal : null;
+        try {
+            throwIfAborted(abortSignal, 'Orchestration aborted.');
+            await waitForRpmSlot(settings, abortSignal);
+            const generateTaskOpts = {
+                ...(runtimeContext ? { runtimeContext } : {}),
+                taskMessages,
+                includeCharacterCard: true,
+                worldInfoSource: 'none',
+                runtimeWorldInfo: runtimeWorldInfo || {},
+                apiPresetName: String(apiPresetName || '').trim(),
+                llmPresetName: String(llmPresetName || '').trim(),
+                tools,
+                toolChoice: 'auto',
+                functionCallMode: 'auto',
+                functionCallOptions: {
+                    protocolStyle: TOOL_PROTOCOL_STYLE.JSON_SCHEMA,
+                },
+                // Iter studio popups (CPA / MG schema / Orch / CEA editor)
+                // are EDITING source text that still contains literal
+                // {{user}} / {{char}} / {{getvar::}} macros. The model
+                // must see those source templates verbatim so str_replace
+                // anchors land and the model doesn't "fix" template
+                // placeholders into rendered names. Runtime executors
+                // (orch nodes, MG extraction, preset use in chat) want
+                // macros expanded — they call requestToolCallWithRetry
+                // (singular) instead, which inherits generateTask's
+                // default true.
+                substituteMacros: false,
+                abortSignal: attemptSignal,
+            };
+            // Streaming path (when the caller's preset has stream_openai
+            // enabled AND the context exposes generateTaskStream): drain
+            // chunks so we can fire onFirstChunk on the first upstream
+            // delta. iter-studio popups don't actually consume the chunks
+            // for rendering — they only need the terminal result — but
+            // the barrier consumers (spec/agenda) DO need first-chunk
+            // timing, and taking the stream path uniformly for both
+            // keeps the wire behavior consistent (see director-tools.js
+            // runOneRound for the same pattern on the main-agent path).
+            generateTaskOpts.stream = stream;
+            const streamEnabled = stream !== false && typeof context.isStreamingPresetEnabled === 'function'
+                && typeof context.generateTaskStream === 'function'
+                && context.isStreamingPresetEnabled(generateTaskOpts.llmPresetName || '');
+            let result;
+            if (streamEnabled) {
+                const { stream, result: resultPromise } = context.generateTaskStream(generateTaskOpts);
+                let firstChunkFired = false;
+                for await (const chunk of stream) {
+                    // Any chunk (text or reasoning) means upstream has
+                    // committed to processing — fire the barrier signal
+                    // exactly once per attempt. The check-and-set is
+                    // safe under JS's single-threaded consumer because
+                    // for-await serializes chunk delivery.
+                    if (!firstChunkFired && chunk && typeof chunk === 'object' && typeof chunk.delta === 'string') {
+                        firstChunkFired = true;
+                        if (typeof onFirstChunk === 'function') {
                             try {
-                                isControl = !!detectControl(call);
-                            } catch (predErr) {
-                                console.warn('[iter-tool-calling] isControlCall threw; treating as non-control', predErr);
-                                isControl = false;
-                            }
-                        }
-                        const cb = isControl ? onControlCall : onToolCall;
-                        if (typeof cb === 'function') {
-                            try {
-                                cb(call);
+                                onFirstChunk();
                             } catch (cbErr) {
-                                console.warn(`[iter-tool-calling] ${isControl ? 'onControlCall' : 'onToolCall'} threw`, cbErr);
+                                console.warn('[iter-tool-calling] onFirstChunk threw', cbErr);
                             }
                         }
                     }
+                    // We intentionally do NOT forward chunks anywhere —
+                    // iter-studio consumers work off the terminal result,
+                    // and the stream is just a plumbing detail for the
+                    // first-chunk signal. Draining prevents back-pressure.
                 }
-
-                return returnValue;
-            } catch (error) {
-                if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
-                    throw error;
-                }
-                lastError = error;
-                if (attempt >= retries) {
-                    throw error;
-                }
-                console.warn(`[${MODULE_NAME}] Multi tool call request failed. Retrying (${attempt + 1}/${retries})...`, error);
+                result = await resultPromise;
+            } else {
+                result = await context.generateTask(generateTaskOpts);
             }
+            throwIfAborted(abortSignal, 'Orchestration aborted.');
+            const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
+            const normalizedCalls = rawCalls.map(call => ({
+                name: String(call?.name || ''),
+                args: call?.args,
+                // generate-task surfaces the provider-issued id on `call.raw.id`
+                // (Anthropic tool_use.id / OpenAI tool_calls[].id / Gemini
+                // synthesized). Propagate it so iter-studio popups round-trip
+                // the same id across rounds — without this they fall back to
+                // a locally-generated `edit_<idx>_<ts>` which collides when
+                // two tool calls in one turn share the round-local index AND
+                // millisecond, surfacing as Anthropic "tool_use ids must be
+                // unique" 400 on the next round's replay.
+                id: String(call?.id || call?.raw?.id || '').trim(),
+                raw: call?.raw || null,
+            }));
+            const filteredCalls = allowedSet && allowedSet.size > 0
+                ? normalizedCalls.filter(call => allowedSet.has(call.name))
+                : normalizedCalls;
+            const assistantText = String(result?.assistantText || '');
+            const reasoning = String(result?.reasoning || '');
+            const reasoningBlocks = Array.isArray(result?.reasoningBlocks) && result.reasoningBlocks.length > 0
+                ? result.reasoningBlocks
+                : null;
+            const reasoningDetails = Array.isArray(result?.reasoningDetails) && result.reasoningDetails.length > 0
+                ? result.reasoningDetails
+                : null;
+            let returnValue;
+            if (filteredCalls.length === 0) {
+                if (allowNoToolCalls && assistantText.trim()) {
+                    returnValue = includeAssistantText
+                        ? { toolCalls: [], assistantText, rawAssistantText: assistantText, reasoning, reasoningBlocks, reasoningDetails }
+                        : [];
+                } else {
+                    throw new Error('Model response did not contain any matching tool calls.');
+                }
+            } else {
+                const validationError = validateParsedToolCalls(filteredCalls, tools);
+                if (validationError) {
+                    throw new Error(validationError);
+                }
+                returnValue = includeAssistantText
+                    ? { toolCalls: filteredCalls, assistantText, rawAssistantText: assistantText, reasoning, reasoningBlocks, reasoningDetails }
+                    : filteredCalls;
+            }
+
+            // Per-round callbacks fire AFTER validation and BEFORE return, so
+            // a popup can rely on having seen the assistant turn and its
+            // tool calls in order before applying anything to the live
+            // target. A callback that throws must not derail the runner —
+            // these are observers, not gating hooks.
+            if (typeof onAssistantText === 'function' && assistantText) {
+                try {
+                    onAssistantText(assistantText);
+                } catch (cbErr) {
+                    console.warn('[iter-tool-calling] onAssistantText threw', cbErr);
+                }
+            }
+            if (typeof onUsage === 'function' && result?.usage) {
+                try {
+                    onUsage(result.usage);
+                } catch (cbErr) {
+                    console.warn('[iter-tool-calling] onUsage threw', cbErr);
+                }
+            }
+            if (filteredCalls.length > 0 && (typeof onToolCall === 'function' || typeof onControlCall === 'function')) {
+                const detectControl = typeof isControlCall === 'function' ? isControlCall : null;
+                for (const call of filteredCalls) {
+                    let isControl = false;
+                    if (detectControl) {
+                        try {
+                            isControl = !!detectControl(call);
+                        } catch (predErr) {
+                            console.warn('[iter-tool-calling] isControlCall threw; treating as non-control', predErr);
+                            isControl = false;
+                        }
+                    }
+                    const cb = isControl ? onControlCall : onToolCall;
+                    if (typeof cb === 'function') {
+                        try {
+                            cb(call);
+                        } catch (cbErr) {
+                            console.warn(`[iter-tool-calling] ${isControl ? 'onControlCall' : 'onToolCall'} threw`, cbErr);
+                        }
+                    }
+                }
+            }
+
+            return returnValue;
+        } catch (error) {
+            if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
+                throw error;
+            }
+            lastError = error;
+            if (attempt >= retries) {
+                throw error;
+            }
+            console.warn(`[${MODULE_NAME}] Multi tool call request failed. Retrying (${attempt + 1}/${retries})...`, error);
         }
-        throw lastError || new Error('Multi tool call request failed.');
-
-    };
-
-    return await runWithOrchestrationApiFallback({
-        primaryApiPresetName: apiPresetName,
-        fallbackApiPresetName,
-        abortSignal,
-        execute: routeApiPresetName => runRoute(routeApiPresetName),
-        onEvent: onApiFallback,
-    });
+    }
+    throw lastError || new Error('Multi tool call request failed.');
 }
 
 export function makeRuntimeToolCallId() {
