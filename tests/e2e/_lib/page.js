@@ -63,6 +63,20 @@ export async function awaitMainUI(page, baseURL) {
         page.off('pageerror', onPageError);
         page.off('console', onConsole);
     }
+
+    // Fresh per-spec data roots can surface the first-run "Welcome to
+    // Atria" persona setup dialog after the preloader is gone. It overlays
+    // the navbar/account controls used by storage/backup E2E flows, so
+    // complete the standard first-run step before declaring the main UI ready.
+    try {
+        const onboarding = page.locator('dialog.popup[open]').filter({
+            has: page.locator('#onboarding_ui_language_select'),
+        }).first();
+        await onboarding.waitFor({ state: 'visible', timeout: 1500 });
+        await onboarding.locator('.popup-button-ok').first().click();
+        await onboarding.waitFor({ state: 'hidden', timeout: 5000 });
+    } catch { /* already configured / no onboarding */ }
+
     // Click the Connect button if present (canonical handshake entry).
     await page.evaluate(async () => {
         const btn = document.querySelector('#api_button_openai');
