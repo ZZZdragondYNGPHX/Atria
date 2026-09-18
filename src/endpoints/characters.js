@@ -1083,6 +1083,10 @@ function convertWorldInfoToCharacterBook(name, entries) {
                     ? structuredClone(entry.stateConditions)
                     : [],
                 atria_state_condition_logic: entry.stateConditionLogic === 'any' ? 'any' : 'all',
+                atria_state_events: Array.isArray(entry.stateEvents)
+                    ? structuredClone(entry.stateEvents)
+                    : [],
+                atria_state_event_logic: entry.stateEventLogic === 'any' ? 'any' : 'all',
                 ignore_budget: entry.ignoreBudget ?? false,
             },
         };
