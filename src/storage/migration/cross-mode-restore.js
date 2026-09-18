@@ -170,10 +170,11 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
     // Gate: if backup is from mysql/pg, the operator must supply a scratch DB
     // connection string. This is a 400, not a 500 — the UI prompts and retries.
-    if (engineMeta.engineKind === 'mysql' && !scratchCreds?.mysqlUrl) {
+    const sameEngineKind = engineMeta.engineKind === currentEngine.kind;
+    if (!sameEngineKind && engineMeta.engineKind === 'mysql' && !scratchCreds?.mysqlUrl) {
         throw new CrossModeScratchCredsRequiredError('mysql');
     }
-    if (engineMeta.engineKind === 'postgres' && !scratchCreds?.postgresUrl) {
+    if (!sameEngineKind && engineMeta.engineKind === 'postgres' && !scratchCreds?.postgresUrl) {
         throw new CrossModeScratchCredsRequiredError('postgres');
     }
 
@@ -232,7 +233,10 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
         // 2. Materialize transient source engine populated from the ZIP.
         transient = await materializeTransientSource(engineMeta, zipPath, {
-            dataRoot, scratchHandle, scratchCreds,
+            dataRoot,
+            scratchHandle,
+            scratchCreds,
+            reuseEngine: sameEngineKind ? currentEngine : null,
         });
 
         // Replacement modes remove only the selected logical categories.
@@ -287,27 +291,29 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
         }
         transient = null;
 
+        const staging = {
+            sourceKind: engineMeta.engineKind,
+            destKind: currentEngine.kind,
+            scratchHandle,
+            durationMs: Date.now() - startedAt,
+            converted: {
+                settings: migrationStats.settings,
+                presets: migrationStats.presets,
+                preset_states: migrationStats.preset_states,
+                worlds: migrationStats.worlds,
+                chats: migrationStats.chats,
+                chat_states: migrationStats.chat_states,
+                named_docs: migrationStats.named_docs,
+                groups: migrationStats.groups,
+                stats: migrationStats.stats,
+            },
+            cleanupWarning,
+        };
         return {
             restoredCount: extractResult.restoredCount,
             failedCount: extractResult.failedCount,
-            crossMode: {
-                sourceKind: engineMeta.engineKind,
-                destKind: currentEngine.kind,
-                scratchHandle,
-                durationMs: Date.now() - startedAt,
-                converted: {
-                    settings: migrationStats.settings,
-                    presets: migrationStats.presets,
-                    preset_states: migrationStats.preset_states,
-                    worlds: migrationStats.worlds,
-                    chats: migrationStats.chats,
-                    chat_states: migrationStats.chat_states,
-                    named_docs: migrationStats.named_docs,
-                    groups: migrationStats.groups,
-                    stats: migrationStats.stats,
-                },
-                cleanupWarning,
-            },
+            staging,
+            ...(sameEngineKind ? {} : { crossMode: staging }),
             recoveryPoint: snapshotPath ? path.basename(snapshotPath) : null,
             verification: {
                 ok: Boolean(migrationStats.verified),
