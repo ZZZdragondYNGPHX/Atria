@@ -661,21 +661,10 @@
     margin-top: 18px;
 }
 
-/* Existing Preset authoring, temporarily hosted inside the new shell. */
-#agent-memory-workspace .workspace-presets {
-    display: grid;
-    grid-template-columns: 248px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-}
-
+/* Shared preset library styles. */
 #agent-memory-workspace .workspace-library {
     position: sticky;
     top: 0;
-    min-width: 0;
-}
-
-#agent-memory-workspace .workspace-editor {
     min-width: 0;
 }
 
@@ -692,42 +681,6 @@
     padding: 12px;
 }
 
-#agent-memory-workspace .workspace-section {
-    padding: 16px;
-    margin: 16px 0;
-    border: 1px solid var(--atri-workspace-border);
-    border-radius: var(--atri-workspace-radius-md);
-    background: var(--atri-workspace-surface-1);
-}
-
-#agent-memory-workspace .workspace-field-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-#agent-memory-workspace .workspace-field-grid h4,
-#agent-memory-workspace .workspace-field-grid label:first-of-type {
-    grid-column: 1 / -1;
-}
-
-#agent-memory-workspace .workspace-field-grid label {
-    margin: 0;
-}
-
-#agent-memory-workspace .workspace-editor-heading {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-#agent-memory-workspace .workspace-editor-heading span {
-    font-size: 12px;
-    opacity: .68;
-}
-
 #agent-memory-workspace .workspace-danger {
     color: var(--atri-workspace-danger);
     margin-left: auto;
@@ -740,21 +693,6 @@
 #agent-memory-workspace .workspace-status:not(:empty) {
     padding: 12px;
     border-left: 3px solid var(--atri-workspace-accent);
-}
-
-#agent-memory-workspace .workspace-save-bar {
-    position: sticky;
-    bottom: -30px;
-    z-index: 3;
-    padding: 12px 0 0;
-    background: linear-gradient(transparent, var(--atri-workspace-bg) 35%);
-}
-
-#agent-memory-workspace .workspace-save-bar button {
-    width: 100%;
-    border-color: var(--atri-workspace-accent);
-    background: color-mix(in srgb, var(--atri-workspace-accent) 18%, var(--atri-workspace-surface-1));
-    font-weight: 650;
 }
 
 /* Memory host while Phase 4 replaces the old mounted inspector. */
@@ -1031,10 +969,6 @@
         display: grid;
     }
 
-    #agent-memory-workspace .workspace-presets {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
     #agent-memory-workspace .workspace-library {
         position: static;
     }
@@ -1042,12 +976,6 @@
     #agent-memory-workspace .workspace-preset-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         max-height: 220px;
-    }
-
-    #agent-memory-workspace .workspace-field-grid,
-    #agent-memory-workspace .memory-control-grid,
-    #agent-memory-workspace .memory-maintenance-grid {
-        grid-template-columns: minmax(0, 1fr);
     }
 
     #agent-memory-workspace .workspace-task-row,
