@@ -5,7 +5,6 @@ import { setInfoBlock, clearInfoBlock } from './utils.js';
 import { saveSettings, substituteParams, getRequestHeaders, chat_metadata, this_chid, characters, saveCharacterDebounced, menu_type, eventSource, event_types, getExtensionPromptByName, saveMetadata, getCurrentChatId, extension_prompt_roles, create_save, name1, buildObjectPatchOperationsAsync, requestAsyncDiffForNextSettingsSave, getOneCharacter, select_selected_character } from '../script.js';
 import { areLookupNamesEqual, download, debounce, findCanonicalIndexInList, findCanonicalNameInList, initScrollHeight, resetScrollHeight, parseJsonFile, extractDataFromPng, getFileBuffer, getCharaFilename, escapeRegex, PAGINATION_TEMPLATE, navigation_option, waitUntilCondition, isTrueBoolean, setValueByPath, flashHighlight, select2ModifyOptions, getSelect2OptionId, dynamicSelect2DataViaAjax, highlightRegex, select2ChoiceClickSubscribe, isFalseBoolean, getSanitizedFilename, checkOverwriteExistingData, getStringHash, parseStringArray, cancelDebounce, findChar, onlyUnique, equalsIgnoreCaseAndAccents, uuidv4, normalizeArray, getUniqueName, logSlashCommandWarn, addLongPressEvent, escapeHtml } from './utils.js';
 import { extension_settings, getContext, writeExtensionField } from './extensions.js';
-import { NOTE_MODULE_NAME, metadata_keys, shouldWIAddPrompt } from './authors-note.js';
 import { isMobile } from './RossAscends-mods.js';
 import { FILTER_TYPES, FilterHelper, WORLD_INFO_SEARCH_MODES, keywordSearchWorldInfo } from './filters.js';
 import { getTokenCountAsync } from './tokenizers.js';
@@ -1815,10 +1814,9 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         ? Array.from(activatedWorldInfo.allActivatedEntries.values())
         : [];
 
-    if (!isDryRun && activatedEntriesList.length > 0) {
-        await eventSource.emit(event_types.WORLD_INFO_ACTIVATED, activatedEntriesList);
-    }
-
+    // W-02: this function is an evaluation boundary. It never commits timed
+    // metadata and never emits WORLD_INFO_ACTIVATED. The accepted final result
+    // must be committed explicitly with commitWorldInfoEvaluation().
     return {
         worldInfoString,
         worldInfoBeforeEntries,
@@ -1830,13 +1828,63 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         anBefore: activatedWorldInfo.ANBeforeEntries ?? [],
         anAfter: activatedWorldInfo.ANAfterEntries ?? [],
         outletEntries: activatedWorldInfo.outletEntries ?? {},
-        // Per-entry attribution (book / comment / position) for consumers
-        // that need to surface which lorebook fired which entry. Existing
-        // consumers ignore this; new consumers (simulation-review popup)
-        // read it via st-context.resolveWorldInfoForMessages.
         activatedEntries: activatedEntriesList,
         worldInfoProvenance: activatedWorldInfo.worldInfoProvenance,
+        timedWorldInfoState: activatedWorldInfo.timedWorldInfoState ?? { sticky: {}, cooldown: {} },
+        worldInfoCommitScope: {
+            chatId: String(getCurrentChatId() || ''),
+        },
     };
+}
+
+const committedWorldInfoEvaluations = new WeakSet();
+
+/**
+ * Commit one accepted world-info evaluation. Reusing the same evaluation
+ * object is idempotent, so transport retries or duplicate callers cannot emit
+ * activation actions twice.
+ * @param {object} evaluation Result returned by getWorldInfoPrompt.
+ * @returns {Promise<{committed:boolean, reason?:string, activatedEntries?:number}>}
+ */
+export async function commitWorldInfoEvaluation(evaluation) {
+    if (!evaluation || typeof evaluation !== 'object') {
+        return { committed: false, reason: 'invalid_evaluation' };
+    }
+    if (committedWorldInfoEvaluations.has(evaluation)) {
+        return { committed: false, reason: 'already_committed' };
+    }
+
+    const expectedChatId = String(evaluation.worldInfoCommitScope?.chatId || '');
+    const currentChatId = String(getCurrentChatId() || '');
+    if (expectedChatId && expectedChatId !== currentChatId) {
+        return { committed: false, reason: 'scope_changed' };
+    }
+
+    const timed = evaluation.timedWorldInfoState;
+    if (timed && typeof timed === 'object') {
+        const cloneBucket = bucket => Object.fromEntries(
+            Object.entries(bucket && typeof bucket === 'object' ? bucket : {})
+                .filter(([, value]) => value && typeof value === 'object' && !Array.isArray(value))
+                .map(([key, value]) => [key, { ...value }]),
+        );
+        chat_metadata.timedWorldInfo = {
+            sticky: cloneBucket(timed.sticky),
+            cooldown: cloneBucket(timed.cooldown),
+        };
+    }
+
+    // Mark before dispatching actions so an observer failure cannot make a
+    // retry replay the same activation side effect.
+    committedWorldInfoEvaluations.add(evaluation);
+
+    const activatedEntries = Array.isArray(evaluation.activatedEntries)
+        ? evaluation.activatedEntries
+        : [];
+    if (activatedEntries.length > 0) {
+        await eventSource.emit(event_types.WORLD_INFO_ACTIVATED, activatedEntries);
+    }
+
+    return { committed: true, activatedEntries: activatedEntries.length };
 }
 
 export function setWorldInfoSettings(settings, data) {
@@ -2545,6 +2593,7 @@ function registerWorldInfoSlashCommands() {
 
         const newEffectState = getNewEffectState();
         timedEffects.setTimedEffect(effect, entry, newEffectState);
+        timedEffects.commit();
 
         await saveMetadata();
         toastr.success(`Timed effect "${effect}" for entry ${entry.uid} is now ${newEffectState ? 'active' : 'inactive'}`);
@@ -8948,7 +8997,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     console.debug(`[WI] Context size: ${maxContext}; WI budget: ${budget} (max% = ${world_info_budget}%, cap = ${world_info_budget_cap})`);
     const loadedEntries = await getSortedEntries();
     const sortedEntries = typeof entryFilter === 'function' ? loadedEntries.filter(entryFilter) : loadedEntries;
-    const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries, isDryRun);
+    const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries);
 
     timedEffects.checkTimedEffects();
 
@@ -8964,6 +9013,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             ANAfterEntries: [],
             outletEntries: {},
             allActivatedEntries: new Set(),
+            timedWorldInfoState: timedEffects.getPendingState(),
         };
     }
 
@@ -9661,16 +9711,12 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         world_info_position, wi_anchor_position, DEFAULT_DEPTH, extension_prompt_roles,
         render: (entry, depth) => getRegexedString(entry.content, regex_placement.WORLD_INFO, { depth, isMarkdown: false, isPrompt: true }),
     });
-    const { worldInfoBeforeEntries: WIBeforeEntries, worldInfoAfterEntries: WIAfterEntries,
-        ANBeforeEntries: ANTopEntries, ANAfterEntries: ANBottomEntries } = promptEntries;
+    const { worldInfoBeforeEntries: WIBeforeEntries, worldInfoAfterEntries: WIAfterEntries } = promptEntries;
 
-    if (shouldWIAddPrompt) {
-        const originalAN = context.extensionPrompts[NOTE_MODULE_NAME].value;
-        const ANWithWI = `${ANTopEntries.join('\n')}\n${originalAN}\n${ANBottomEntries.join('\n')}`.replace(/(^\n)|(\n$)/g, '');
-        context.setExtensionPrompt(NOTE_MODULE_NAME, ANWithWI, chat_metadata[metadata_keys.position], chat_metadata[metadata_keys.depth], extension_settings.note.allowWIScan, chat_metadata[metadata_keys.role]);
-    }
-
+    // Evaluation updates request-local timed state only. The caller may commit
+    // this snapshot once the finalized selection has been accepted.
     timedEffects.setTimedEffects(Array.from(allActivatedEntries.values()));
+    const timedWorldInfoState = timedEffects.getPendingState();
     buffer.resetExternalEffects();
     timedEffects.cleanUp();
 
@@ -9681,6 +9727,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         worldInfoBefore: WIBeforeEntries.length ? WIBeforeEntries.join('\n') : '',
         worldInfoAfter: WIAfterEntries.length ? WIAfterEntries.join('\n') : '',
         allActivatedEntries: new Set(allActivatedEntries.values()),
+        timedWorldInfoState,
     };
 }
 
