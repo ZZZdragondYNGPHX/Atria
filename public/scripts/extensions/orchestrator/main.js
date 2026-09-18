@@ -854,6 +854,26 @@ jQuery(() => {
             },
             getScope: () => ({ character: getCurrentAvatar(getContext()), conversation: getChatKey(getContext()) }) }),
         renderMemory: createMemoryWorkspace({ getContext }),
+        getWorkspaceContext: () => {
+            const scope = { character: getCurrentAvatar(getContext()), conversation: getChatKey(getContext()) };
+            let profile = null;
+            try {
+                profile = resolveWorkspaceProfile(getSettings(), scope);
+            } catch {
+                // The shell can still render before the first default preset is bound.
+            }
+            return {
+                enabled: getSettings().enabled === true,
+                character: scope.character || '',
+                conversation: scope.conversation || '',
+                presetName: profile?.name || '',
+                selectionSource: profile?.source || 'default',
+            };
+        },
+        setOrchestrationEnabled: enabled => {
+            getSettings().enabled = Boolean(enabled);
+            saveSettingsDebounced();
+        },
     });
     initRunPanel();
     ensureSettings();
