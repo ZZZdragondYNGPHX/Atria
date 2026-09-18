@@ -36,6 +36,20 @@ try {
     for (const name of ['atri-public-fixture', 'atri-private-fixture']) {
         writeWorldBook({ dataRoot, name, entries: [{ content: 'SHARED_FIXTURE_BODY', constant: true, sticky: 6 }] });
     }
+    writeWorldBook({
+        dataRoot,
+        name: 'atri-unknown-condition-fixture',
+        entries: [{
+            content: 'UNKNOWN_CONDITION_BODY',
+            constant: true,
+            stateConditions: [{
+                providerId: 'missing-provider',
+                path: ['scene', 'place'],
+                operator: 'eq',
+                value: 'clocktower',
+            }],
+        }],
+    });
     child = spawn(process.execPath, ['server.js', '--configPath=' + configPath, '--dataRoot=' + dataRoot, '--port=' + port, '--browserLaunchEnabled=false', '--listen=false'], {
         cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -67,7 +81,10 @@ try {
         const { regex_placement } = await import('/scripts/extensions/regex/engine.js');
         const { applyProfileWorldInfoFilter } = await import('/scripts/extensions/orchestrator/lorebook-filter.js');
         const { createWorldInfoDispatchAttribution, markWorldInfoDispatch } = await import('/scripts/atri-world-info-provenance.js');
-        wi.updateWorldInfoSettings({ world_info_budget: 100, world_info_recursive: false }, ['atri-public-fixture', 'atri-private-fixture']);
+        wi.updateWorldInfoSettings(
+            { world_info_budget: 100, world_info_recursive: false },
+            ['atri-public-fixture', 'atri-private-fixture', 'atri-unknown-condition-fixture'],
+        );
         extension_settings.regex = [{
             id: 'atri-smoke-regex', scriptName: 'fixture only', findRegex: '/SHARED_FIXTURE_BODY/g',
             replaceString: 'RENDERED_FIXTURE_BODY', trimStrings: [], placement: [regex_placement.WORLD_INFO],
@@ -126,7 +143,8 @@ try {
             sources, attribution, retainedDuringWrite, retainedAfterWrite, wireSnapshot, isolatedClone,
             metadataBeforeEvaluation, metadataAfterEvaluation, metadataAfterCommit,
             firstCommit, secondCommit, staleCommit, activationEvents, lastActivatedCount,
-            metadataBeforeStaleCommit, metadataAfterStaleCommit };
+            metadataBeforeStaleCommit, metadataAfterStaleCommit,
+            containedUnknownConditionBody: resolution.worldInfoString.includes('UNKNOWN_CONDITION_BODY') };
     });
     assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
     assert.deepEqual(result.after, ['RENDERED_FIXTURE_BODY']);
@@ -145,6 +163,7 @@ try {
     assert.equal(typeof result.firstCommit.committed, 'boolean');
     assert.equal(result.activationEvents, 1);
     assert.equal(result.lastActivatedCount, 2);
+    assert.equal(result.containedUnknownConditionBody, false);
     assert.equal(Object.keys(result.metadataAfterCommit.timedWorldInfo?.sticky || {}).length, 2);
     assert.equal(Object.hasOwn(result.attribution.sources[0], 'content'), false);
     assert.deepEqual(result.attribution.dispatches, [{
