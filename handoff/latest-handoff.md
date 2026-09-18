@@ -2,7 +2,13 @@
 
 ## Current state
 
-Atria bootstrap migration is complete. PR #1 established the product line, and PR #2 completed squash-safe temporary-branch cleanup. The product is a SillyTavern-based modified product and is independent from the former Luker product line, not from SillyTavern itself.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, and the Agent & Memory Workspace redesign are complete and merged into `main`.
+
+Current authoritative `main`:
+
+- `b84d411431e72be39099cba1a0a42cde9052c778`
+
+This commit is the squash merge of PR #4 and has the exact same tree as the final validated Workspace redesign head.
 
 ## Branch roles
 
@@ -16,33 +22,73 @@ Atria bootstrap migration is complete. PR #1 established the product line, and P
 
 1. Start ordinary work from the live `main` HEAD.
 2. Do not use `luker` or `vanilla` as the default development base.
-3. For new Atria-owned modules, prefer concise `atri_*` naming where practical.
-4. Preserve SillyTavern upstream structure when that helps future upstream synchronization.
-5. Preserve compatibility-sensitive legacy Luker storage/protocol identifiers until a deliberate migration exists.
-6. At task completion, write the implementation record to `docs`, merge the task branch into `main`, verify integration, then delete the temporary branch. The repository cleanup workflow supports both ancestry-preserving merges and squash merges.
+3. New Atria-owned runtime/protocol namespaces should use concise Atria naming such as `atri_*` where practical.
+4. Preserve real SillyTavern upstream structures when they are still part of the product/upstream contract.
+5. Do not reintroduce predecessor Luker compatibility into Atria-owned runtime state unless a future task explicitly requires it.
+6. Product UI should follow the standalone-first policy: host glue stays at adapters, while Workspace views consume stable Atria data/actions.
+7. At task completion, write the implementation record to `docs`, merge into `main`, verify integration, then remove the temporary task branch.
 
-## Current inherited architecture
+## Current architecture
 
-The initial Atria baseline inherits the current Luker implementation, including Agent Runtime, multi-agent orchestration, Memory OS / memory graph, Workspace, storage extensions, generation lifecycle changes, Android integration, Termux support and other SillyTavern modifications.
+Atria currently owns and maintains:
 
-These are now Atria-owned product capabilities. Future refactors should migrate naming and structure incrementally rather than globally replacing compatibility-sensitive identifiers.
+- Agent Runtime;
+- multi-agent Orchestration Engine;
+- four-section Atria Workspace;
+- Memory OS / memory graph;
+- Workspace Preset Library and scope bindings;
+- storage/FloorState extensions;
+- generation lifecycle modifications;
+- Android integration;
+- Termux support;
+- SillyTavern upstream integration layer.
 
-## Bootstrap references
+### Workspace product structure
 
-- Legacy source snapshot: `ZZZdragondYNGPHX/Luker:custom-release@463fd6274ba369d92f464aba5eddb7bdbabc45c3`
-- SillyTavern snapshot: `SillyTavern/SillyTavern:release@06bde939fb1e9c4c8d8641d810f0a916b5bce127`
-- Bootstrap PR: `#1`
-- Final validated feature head: `380c433f1eac27cf351b99dd284a2f8abcdebe63`
+The current Agent & Memory Workspace has four primary sections:
 
-See `features/bootstrap-migration.md` for the detailed migration record.
+1. Orchestration
+2. Run
+3. Memory
+4. Diagnostics
 
-## Integration result
+The old migration-era Presets / Live Run / Graph / Agents split is no longer the supported information architecture.
 
-- PR #1 merged into `main` with squash commit `45121d344873aea7bbc8892f9b8c30633b6b98eb`.
+The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
+## Recent completed integrations
 
-## Current integration point
+### Atria namespace migration
 
-- Current post-bootstrap `main`: `06fe61ac344f9240141489608b73b4072a3b6b99`
-- Long-lived remote branches: `main`, `docs`, `luker`, `vanilla`
-- Bootstrap temporary branches have been deleted after successful integration.
+- PR #3
+- Final validated head: `1aa9f0961a785db0b4512a1a9910981436bcc090`
+- Resulting `main`: `ed2957eba42fdbd9099eacd15eedf7f94b790fab`
+- Record: `features/atria-namespace-migration.md`
+
+### Agent & Memory Workspace redesign
+
+- PR #4
+- Baseline: `main@ed2957eba42fdbd9099eacd15eedf7f94b790fab`
+- Final validated head: `5f4cd9947e7858b88fed1c2a1ab5f7b36cb1094c`
+- Squash merge / current `main`: `b84d411431e72be39099cba1a0a42cde9052c778`
+- Final task tree and merged main tree: `cf3fc3a4794e1df0dc62dba5de212cb7f1f09d81`
+- Record: `features/atria-workspace-redesign.md`
+
+Final validation for PR #4 passed:
+
+- ESLint
+- full Node unit suite
+- Android JVM tests
+- Atria Migration Guard
+- Workspace IA guard
+- Run projection Chromium smoke
+- full Workspace UI Chromium smoke
+- Run call-count Chromium smoke
+- real-host Preset binding persistence E2E
+
+## Long-lived references
+
+- Former Luker source/reference: `luker`
+- SillyTavern upstream reference: `vanilla`
+
+These are reference branches, not ordinary development bases.
