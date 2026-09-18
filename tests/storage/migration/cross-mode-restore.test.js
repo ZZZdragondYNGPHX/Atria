@@ -345,11 +345,10 @@ describe('crossModeRestore — error paths', () => {
         expect(oldChat?.body[0]?.mes).toBe('pre-restore message');
     });
 
-    test('merge mode: no snapshot is taken; partial state warned', async () => {
+    test('merge mode: recovery point is taken and failure rolls back', async () => {
         const zipPath = path.join(dataRoot, 'src.zip');
         await buildSqliteSourceZip(zipPath, path.join(dataRoot, 'src'), 'alice');
 
-        // Sabotage so the conversion fails.
         const originalSave = dstEngine.withTransaction.bind(dstEngine);
         const sabotagedEngine = {
             kind: dstEngine.kind,
@@ -384,9 +383,9 @@ describe('crossModeRestore — error paths', () => {
         ).then(() => null, e => e);
 
         expect(err).toBeInstanceOf(CrossModeConversionFailedError);
-        expect(err.rollback).toBe('merge-no-snapshot');
-        expect(err.snapshotPath).toBeNull();
-    });
+        expect(err.rollback).toBe('ok');
+        expect(err.snapshotPath).toBeTruthy();
+    });;
 });
 
 describe('extractFsTreeCategories', () => {
