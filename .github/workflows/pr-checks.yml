@@ -87,3 +87,21 @@ jobs:
             echo "Legacy Luker Android identity remains."
             exit 1
           fi
+
+
+  android-unit-tests:
+    name: Android Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Run Android JVM tests
+        working-directory: android-app
+        run: ./gradlew testDebugUnitTest
