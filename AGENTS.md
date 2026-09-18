@@ -41,7 +41,7 @@ For a normal task:
 2. Use the appropriate temporary prefix: `feat/`, `fix/`, `refactor/`, or `chore/`.
 3. Diagnose/design before editing.
 4. Implement the smallest coherent change that preserves unrelated behavior.
-5. Run targeted checks, then broader lint/unit/build checks appropriate to the touched area.
+5. Run targeted checks, then broader lint/unit/build checks appropriate to the touched area. Android builds/tests and Docker builds/extra Docker validation are opt-in only: run them only when the user explicitly requests them.
 6. Record what was implemented, validated, and learned on the `docs` branch.
 7. Merge the verified temporary branch into `main`.
 8. Verify the integrated result.

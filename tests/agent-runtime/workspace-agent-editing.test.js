@@ -57,3 +57,33 @@ test('an agent display name survives normalization without renaming its referenc
     expect(plan.agents.find(agent => agent.id === id).name).toBe('Continuity editor');
     expect(plan.nodes.some(node => node.agentId === id)).toBe(true);
 });
+
+
+test('factory Workspace presets use least-privilege Web Access defaults', () => {
+    // Workspace intentionally starts from the dependency-light Minimal
+    // Director factory, so canon_scout is absent until the user selects or
+    // authors a research-capable profile. Every shipped remaining specialist
+    // must therefore start without Web Access.
+    const director = workspaceHostProfile(createWorkspaceFactoryPreset('director', 'web-director'));
+    expect(director.subAgents.find(agent => agent.id === 'canon_scout')).toBeUndefined();
+    for (const agent of director.subAgents) {
+        expect(agent.tools?.custom?.search_search).toBe(false);
+        expect(agent.tools?.custom?.search_visit).toBe(false);
+    }
+
+    const loop = workspaceHostProfile(createWorkspaceFactoryPreset('loop', 'web-loop'));
+    expect(loop.tools?.custom?.search_search).toBe(false);
+    expect(loop.tools?.custom?.search_visit).toBe(false);
+
+    const spec = workspaceHostProfile(createWorkspaceFactoryPreset('spec', 'web-spec'));
+    for (const preset of Object.values(spec.presets)) {
+        expect(preset.tools?.custom?.search_search).toBe(false);
+        expect(preset.tools?.custom?.search_visit).toBe(false);
+    }
+
+    const agenda = workspaceHostProfile(createWorkspaceFactoryPreset('agenda', 'web-agenda'));
+    for (const agent of Object.values(agenda.agents)) {
+        expect(agent.tools?.custom?.search_search).toBe(false);
+        expect(agent.tools?.custom?.search_visit).toBe(false);
+    }
+});

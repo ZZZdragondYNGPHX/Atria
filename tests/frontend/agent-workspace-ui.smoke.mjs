@@ -88,7 +88,7 @@ try {
     assert.equal(await workspace.getByText('Preset Library', { exact: true }).count(), 1);
     await workspace.getByText('Workspace defaults', { exact: true }).click();
     await workspace.getByLabel('Enable agent orchestration', { exact: true }).check();
-    await workspace.getByLabel('Default API profile', { exact: true }).selectOption('api-one');
+    await workspace.getByLabel('Default API profile · runtime fallback', { exact: true }).selectOption('api-one');
     await workspace.getByLabel('Default prompt preset', { exact: true }).selectOption('prompt-one');
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('settings')).enabled), true);
     assert.equal(await page.evaluate(() => window.settings.llmNodeApiPresetName), 'api-one');
@@ -151,7 +151,7 @@ try {
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 1);
     await workspace.locator('.workspace-agent-card').first().click();
     const agentInspector = workspace.locator('.atria-workspace-inspector');
-    await agentInspector.getByLabel('API profile', { exact: true }).selectOption('api-two');
+    await agentInspector.getByLabel('Primary API profile', { exact: true }).selectOption('api-two');
     await agentInspector.getByLabel('Prompt profile', { exact: true }).selectOption('prompt-two');
     assert.equal(await agentInspector.getByLabel('chat_search', { exact: true }).isChecked(), true);
     await agentInspector.getByRole('button', { name: 'Deny all', exact: true }).click();
@@ -161,10 +161,10 @@ try {
     assert.deepEqual(agent.tools, ['chat_search']);
     assert.deepEqual(agent.modelProfile, { apiPresetName: 'api-two', promptPresetName: 'prompt-two' });
     await agentInspector.getByLabel('chat_search', { exact: true }).uncheck();
-    await agentInspector.getByLabel('API profile', { exact: true }).selectOption('');
+    await agentInspector.getByLabel('Primary API profile', { exact: true }).selectOption('');
     await agentInspector.getByRole('button', { name: 'Save', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.agents[0].tools), []);
-    assert.equal(await agentInspector.getByLabel('API profile', { exact: true }).inputValue(), '');
+    assert.equal(await agentInspector.getByLabel('Primary API profile', { exact: true }).inputValue(), '');
     await agentInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     page.once('dialog', dialog => dialog.accept('Named stage'));
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();

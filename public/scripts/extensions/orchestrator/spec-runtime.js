@@ -63,6 +63,7 @@ import {
     resolveOrchestrationAgentPromptPresetName,
     resolveOrchestrationRuntimeWorldInfo,
 } from './agent-resolution.js';
+import { getOrchestrationFallbackApiPresetName } from './api-fallback.js';
 import { sanitizeIdentifierToken } from './editable-spec.js';
 import {
     buildDistillerOutputMarkdown,
@@ -819,6 +820,7 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
             taskMessages,
             runtimeWorldInfo,
             apiPresetName,
+            fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
             llmPresetName,
             tools,
             allowedNames,
@@ -1237,6 +1239,7 @@ async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset,
                 taskMessages,
                 runtimeWorldInfo,
                 apiPresetName,
+                fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
                 llmPresetName,
                 tools,
                 allowedNames,
