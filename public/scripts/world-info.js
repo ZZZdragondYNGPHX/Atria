@@ -9102,6 +9102,20 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     const sortedEntries = typeof entryFilter === 'function' ? loadedEntries.filter(entryFilter) : loadedEntries;
     const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries);
 
+    const hasStateConditions = sortedEntries.some(entry => Array.isArray(entry.stateConditions) && entry.stateConditions.length > 0);
+    let worldInfoStateProviders = [];
+    if (hasStateConditions) {
+        const stateContext = {
+            chat: Array.isArray(context.chat) ? context.chat : [],
+            eventSource: context.eventSource,
+            getCurrentChatId: typeof context.getCurrentChatId === 'function'
+                ? context.getCurrentChatId.bind(context)
+                : getCurrentChatId,
+            memoryOsGenerationType: String(globalScanData.trigger || 'normal'),
+        };
+        worldInfoStateProviders = readStateProviders(stateContext, {}, globalThis);
+    }
+
     timedEffects.checkTimedEffects();
 
     if (sortedEntries.length === 0) {
@@ -9242,6 +9256,36 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             if (entry.disable == true) {
                 log('disabled');
                 continue;
+            }
+
+            if (Array.isArray(entry.stateConditions) && entry.stateConditions.length > 0) {
+                const stateResult = evaluateWorldInfoStateConditions(
+                    entry.stateConditions,
+                    worldInfoStateProviders,
+                    entry.stateConditionLogic,
+                );
+                if (stateResult.status !== WORLD_INFO_CONDITION_RESULT.TRUE) {
+                    const reason = stateResult.status === WORLD_INFO_CONDITION_RESULT.UNKNOWN
+                        ? 'state_condition_unknown'
+                        : 'state_condition_false';
+                    log(`suppressed by native state conditions (${stateResult.status})`);
+                    recordActivationAttempt(
+                        entry,
+                        reason,
+                        withRecursionTraceSources({
+                            stateConditionLogic: stateResult.logic,
+                            stateConditions: stateResult.results.map(result => ({
+                                providerId: result.providerId,
+                                path: result.path,
+                                operator: result.operator,
+                                status: result.status,
+                                reason: result.reason,
+                                ...(result.providerStatus ? { providerStatus: result.providerStatus } : {}),
+                            })),
+                        }),
+                    );
+                    continue;
+                }
             }
 
             // Check for generation type trigger filter
