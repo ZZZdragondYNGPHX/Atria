@@ -57,3 +57,34 @@ test('an agent display name survives normalization without renaming its referenc
     expect(plan.agents.find(agent => agent.id === id).name).toBe('Continuity editor');
     expect(plan.nodes.some(node => node.agentId === id)).toBe(true);
 });
+
+
+test('factory Workspace presets use least-privilege Web Access defaults', () => {
+    const director = workspaceHostProfile(createWorkspaceFactoryPreset('director', 'web-director'));
+    const canon = director.subAgents.find(agent => agent.id === 'canon_scout');
+    const brainstormer = director.subAgents.find(agent => agent.id === 'plot_brainstormer');
+    const critic = director.subAgents.find(agent => agent.id === 'voice_critic');
+
+    expect(canon?.tools?.custom?.search_search).toBe(true);
+    expect(canon?.tools?.custom?.search_visit).toBe(true);
+    expect(brainstormer?.tools?.custom?.search_search).toBe(false);
+    expect(brainstormer?.tools?.custom?.search_visit).toBe(false);
+    expect(critic?.tools?.custom?.search_search).toBe(false);
+    expect(critic?.tools?.custom?.search_visit).toBe(false);
+
+    const loop = workspaceHostProfile(createWorkspaceFactoryPreset('loop', 'web-loop'));
+    expect(loop.tools?.custom?.search_search).toBe(false);
+    expect(loop.tools?.custom?.search_visit).toBe(false);
+
+    const spec = workspaceHostProfile(createWorkspaceFactoryPreset('spec', 'web-spec'));
+    for (const preset of Object.values(spec.presets)) {
+        expect(preset.tools?.custom?.search_search).toBe(false);
+        expect(preset.tools?.custom?.search_visit).toBe(false);
+    }
+
+    const agenda = workspaceHostProfile(createWorkspaceFactoryPreset('agenda', 'web-agenda'));
+    for (const agent of Object.values(agenda.agents)) {
+        expect(agent.tools?.custom?.search_search).toBe(false);
+        expect(agent.tools?.custom?.search_visit).toBe(false);
+    }
+});
