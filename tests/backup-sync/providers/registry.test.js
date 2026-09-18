@@ -18,7 +18,12 @@ describe('backup/sync provider registry', () => {
             },
         });
         for (const id of ['google-drive', 'onedrive', 'github']) {
-            expect(registry.get(id)).toMatchObject({ available: false, future: true });
+            expect(registry.get(id)).toMatchObject({
+                available: false,
+                future: true,
+                state: 'unavailable',
+                configSchema: { version: 1 },
+            });
         }
     });
 
@@ -35,5 +40,6 @@ describe('backup/sync provider registry', () => {
         const copy = registry.get('x');
         copy.capabilities.download = false;
         expect(registry.get('x').capabilities.download).toBe(true);
+        expect(registry.get('x').state).toBe('disconnected');
     });
 });
