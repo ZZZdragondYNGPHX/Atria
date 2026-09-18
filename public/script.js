@@ -1,4 +1,5 @@
 import { ChatSnapshotCache } from './scripts/atri-chat-snapshot-cache.js';
+import { createWorldInfoDispatchAttribution, markWorldInfoDispatch } from './scripts/atri-world-info-provenance.js';
 import {
     showdown,
     moment,
@@ -7975,6 +7976,13 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         worldInfoAfterEntries,
     });
 
+    // W-01: bind the final filtered identity/source snapshot to this
+    // generation. Rendered bodies are omitted from this attribution because
+    // Prompt Itemization already retains the assembled prompt.
+    const worldInfoAttribution = createWorldInfoDispatchAttribution(
+        wiFinalizedPayload.worldInfoProvenance ?? worldInfoResolution?.worldInfoProvenance,
+    );
+
     applyFinalizedAuthorsNoteInjections(anBefore, anAfter);
     setExtensionPrompt(inject_ids.QUIET_PROMPT, '', extension_prompt_types.IN_PROMPT, 0, true);
     const worldInfoBefore = joinWorldInfoEntries(worldInfoBeforeEntries);
@@ -8693,6 +8701,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             chatVectorsString: (extension_prompts['3_vectors']?.value || ''),
             dataBankVectorsString: (extension_prompts['4_vectors_data_bank']?.value || ''),
             worldInfoString: worldInfoString,
+            worldInfoAttribution,
             storyString: storyString,
             beforeScenarioAnchor: beforeScenarioAnchor,
             afterScenarioAnchor: afterScenarioAnchor,
@@ -8746,6 +8755,17 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             await eventSource.emit(event_types.GENERATE_TAKEOVER_DISPATCH, dispatchEvent);
 
             if (dispatchEvent.takeoverHandle) {
+                // The core can prove handoff to the takeover plugin, but it
+                // cannot assert that the plugin subsequently reached a model
+                // provider transport.
+                markWorldInfoDispatch(worldInfoAttribution, {
+                    boundary: 'plugin_takeover',
+                    providerConfirmed: false,
+                    mainApi: main_api,
+                    type,
+                    stream: isStreamingEnabled(),
+                });
+
                 // Takeover plugins replace the sendOpenAIRequest step, which
                 // is where CHAT_COMPLETION_SETTINGS_READY normally fires for
                 // chat-completion prompt processors (e.g. ST-Prompt-Template's
@@ -9024,7 +9044,10 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
                 streamingProcessor.firstMessageText = '';
             }
 
-            streamingProcessor.generator = await sendStreamingRequest(type, generate_data, { jsonSchema });
+            streamingProcessor.generator = await sendStreamingRequest(type, generate_data, {
+                jsonSchema,
+                onRequestReady: meta => markWorldInfoDispatch(worldInfoAttribution, meta),
+            });
 
             hideSwipeButtons();
             let getMessage = await streamingProcessor.generate();
@@ -9118,7 +9141,10 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
                 });
             }
         } else {
-            return await sendGenerationRequest(type, generate_data, { jsonSchema });
+            return await sendGenerationRequest(type, generate_data, {
+                jsonSchema,
+                onRequestReady: meta => markWorldInfoDispatch(worldInfoAttribution, meta),
+            });
         }
     }
 
@@ -10031,6 +10057,7 @@ function setInContextMessages(msgInContextCount, type) {
  * @property {string} [llmPresetName]
  * @property {string} [apiPresetName] Connection profile name; resolved internally to the corresponding connection settings override.
  * @property {object} [apiSettingsOverride]
+ * @property {(meta: object) => void} [onRequestReady] Internal lightweight request-boundary observer.
  */
 
 /**
@@ -10052,6 +10079,13 @@ export async function sendGenerationRequest(type, data, options = {}) {
     }
 
     if (main_api === 'koboldhorde') {
+        options?.onRequestReady?.({
+            boundary: 'transport_handoff',
+            providerConfirmed: false,
+            mainApi: main_api,
+            type,
+            stream: false,
+        });
         return await generateHorde(data.prompt, data, abortController.signal, true);
     }
 
@@ -10072,6 +10106,13 @@ export async function sendGenerationRequest(type, data, options = {}) {
     // funnels through this fetch, so it must respect the same per-profile
     // retry policy (max-request-retries + retry-status-whitelist) as the rest.
     const response = await withProfileRetry(async () => {
+        options?.onRequestReady?.({
+            boundary: 'provider_request',
+            providerConfirmed: true,
+            mainApi: main_api,
+            type,
+            stream: false,
+        });
         return await fetch(getGenerateUrl(main_api), {
             method: 'POST',
             headers: getRequestHeaders(),
@@ -10147,10 +10188,31 @@ export async function sendStreamingRequest(type, data, options = {}) {
         case 'openai':
             return await sendOpenAIRequest(type, data.prompt, streamingProcessor.abortController.signal, options);
         case 'textgenerationwebui':
+            options?.onRequestReady?.({
+                boundary: 'transport_handoff',
+                providerConfirmed: false,
+                mainApi: main_api,
+                type,
+                stream: true,
+            });
             return await generateTextGenWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         case 'novel':
+            options?.onRequestReady?.({
+                boundary: 'transport_handoff',
+                providerConfirmed: false,
+                mainApi: main_api,
+                type,
+                stream: true,
+            });
             return await generateNovelWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         case 'kobold':
+            options?.onRequestReady?.({
+                boundary: 'transport_handoff',
+                providerConfirmed: false,
+                mainApi: main_api,
+                type,
+                stream: true,
+            });
             return await generateKoboldWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         default:
             throw new Error('Streaming is enabled, but the current API does not support streaming.');
