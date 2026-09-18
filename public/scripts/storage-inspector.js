@@ -1,5 +1,5 @@
 import { getRequestHeaders } from '../script.js';
-import { callGenericPopup, POPUP_TYPE } from './popup.js';
+import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
 import { renderTemplateAsync } from './templates.js';
 import { humanFileSize } from './utils.js';
 import { t, translate } from './i18n.js';
