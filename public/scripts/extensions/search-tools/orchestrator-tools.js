@@ -53,14 +53,100 @@ function assertAdapterReady(adapter) {
         throw new ToolError(
             'Web search is unavailable: the search-tools plugin is not loaded.',
             'SEARCH_UNAVAILABLE',
-            'Ensure the search-tools extension is enabled, then retry.',
+            'Enable Search Tools or remove Web Access from this agent.',
+        );
+    }
+    const status = typeof adapter.getStatus === 'function' ? adapter.getStatus() : null;
+    if (status && status.available === false) {
+        throw new ToolError(
+            `Web search is unavailable: ${String(status.reason || 'provider is not configured')}`,
+            'SEARCH_UNAVAILABLE',
+            'Configure the selected Search Tools provider or disable Web Access for this agent.',
         );
     }
 }
 
 function buildOpts(context) {
-    const abortSignal = (context && typeof context === 'object' && context.abortSignal) || null;
+    const abortSignal = (context && typeof context === 'object'
+        && (context.abortSignal || context.__atriaRun?.abortSignal)) || null;
     return abortSignal ? { abortSignal } : {};
+}
+
+function stableCacheKey(kind, args, adapter) {
+    const settings = typeof adapter?.getSettings === 'function' ? adapter.getSettings() : {};
+    const provider = String(settings?.provider || '').trim().toLowerCase();
+    if (kind === 'search') {
+        return JSON.stringify({
+            kind,
+            provider,
+            query: String(args?.query || '').trim().toLowerCase(),
+            max_results: args?.max_results ?? null,
+            safe_search: String(args?.safe_search || '').trim().toLowerCase(),
+            time_range: String(args?.time_range || '').trim().toLowerCase(),
+            region: String(args?.region || '').trim().toLowerCase(),
+        });
+    }
+    return JSON.stringify({
+        kind,
+        provider,
+        url: String(args?.url || '').trim(),
+        max_chars: args?.max_chars ?? null,
+    });
+}
+
+function getRunEvidenceState(context) {
+    const run = context && typeof context === 'object' ? context.__atriaRun : null;
+    if (!run || typeof run !== 'object') return null;
+    if (!(run.webEvidenceCache instanceof Map)) {
+        Object.defineProperty(run, 'webEvidenceCache', {
+            value: new Map(),
+            configurable: true,
+            enumerable: false,
+        });
+    }
+    if (!run.webEvidenceStats || typeof run.webEvidenceStats !== 'object') {
+        Object.defineProperty(run, 'webEvidenceStats', {
+            value: { hits: 0, misses: 0, events: [] },
+            configurable: true,
+            enumerable: false,
+        });
+    }
+    return { cache: run.webEvidenceCache, stats: run.webEvidenceStats };
+}
+
+function cloneResult(value) {
+    try {
+        return structuredClone(value);
+    } catch {
+        return value;
+    }
+}
+
+async function invokeWithRunEvidenceCache(kind, args, context, adapter, invoke) {
+    const state = getRunEvidenceState(context);
+    if (!state) return await invoke();
+
+    const key = stableCacheKey(kind, args, adapter);
+    const existing = state.cache.get(key);
+    if (existing) {
+        state.stats.hits += 1;
+        state.stats.events.push({ kind, cacheHit: true, at: Date.now() });
+        if (state.stats.events.length > 40) state.stats.events.splice(0, state.stats.events.length - 40);
+        return cloneResult(await existing);
+    }
+
+    state.stats.misses += 1;
+    state.stats.events.push({ kind, cacheHit: false, at: Date.now() });
+    if (state.stats.events.length > 40) state.stats.events.splice(0, state.stats.events.length - 40);
+
+    const pending = Promise.resolve().then(invoke).then(cloneResult);
+    state.cache.set(key, pending);
+    try {
+        return cloneResult(await pending);
+    } catch (error) {
+        state.cache.delete(key);
+        throw error;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +172,13 @@ async function execSearchSearch(args, context) {
         );
     }
     try {
-        return await adapter.search(args || {}, buildOpts(context));
+        return await invokeWithRunEvidenceCache(
+            'search',
+            args || {},
+            context,
+            adapter,
+            () => adapter.search(args || {}, buildOpts(context)),
+        );
     } catch (error) {
         // Duck-typed instead of `instanceof ToolError` because the class
         // lives in this module — adapter implementations that throw their
@@ -121,7 +213,13 @@ async function execSearchVisit(args, context) {
         );
     }
     try {
-        return await adapter.visit(args || {}, buildOpts(context));
+        return await invokeWithRunEvidenceCache(
+            'visit',
+            args || {},
+            context,
+            adapter,
+            () => adapter.visit(args || {}, buildOpts(context)),
+        );
     } catch (error) {
         if (error && error.name === 'ToolError' && typeof error.code === 'string') {
             throw error;
@@ -143,6 +241,7 @@ async function execSearchVisit(args, context) {
 const SCHEMAS = [
     {
         name: 'search_search',
+        displayName: 'Web Search',
         mode: 'read',
         exec: execSearchSearch,
         description: 'Web search via the search-tools plugin (DuckDuckGo / SearXNG / Brave, depending on plugin settings). Use only when the user asks about current events, fresh facts, or external information not present in chat / lorebook / memory. Returns provider-shaped results (typically a list of {title, url, snippet}). Follow up with search_visit on a specific URL to read full readable text.',
@@ -180,6 +279,7 @@ const SCHEMAS = [
     },
     {
         name: 'search_visit',
+        displayName: 'Visit Web Page',
         mode: 'read',
         exec: execSearchVisit,
         description: 'Fetch one webpage discovered via search_search and return its readable text. Use sparingly: prefer the search snippet when it already answers the question.',
@@ -235,6 +335,7 @@ export function registerSearchToolsOrchestrationTools() {
     for (const s of SCHEMAS) {
         orch.registerOrchestrationTool({
             name: s.name,
+            displayName: s.displayName,
             description: s.description,
             parameters: s.parameters,
             mode: s.mode,
