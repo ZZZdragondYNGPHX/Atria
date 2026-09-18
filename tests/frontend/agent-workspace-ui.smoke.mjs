@@ -53,9 +53,12 @@ try {
             getTools: () => [{ name: 'chat_search' }, { name: 'memory_recall' }],
             getScope: () => window.scope, save: () => localStorage.setItem('settings', JSON.stringify(window.settings)) }),
         renderMemory: createMemoryWorkspace({ getContext }) });
-        panel.initWorkspace(); panel.initWorkspace(); panel.openWorkspace('Presets');
+        panel.initWorkspace(); panel.initWorkspace(); panel.openWorkspace('Orchestration');
     });
     const workspace = page.locator('#agent-memory-workspace');
+    const primaryNav = workspace.locator('.atria-workspace-nav');
+    assert.equal(await primaryNav.getByRole('button').count(), 4);
+    assert.deepEqual(await primaryNav.getByRole('button').allTextContents(), ['Orchestration', 'Run', 'Memory', 'Diagnostics']);
     assert.equal(await workspace.getByText('Unified Preset Library', { exact: true }).count(), 1);
     await workspace.getByLabel('Enable agent orchestration', { exact: true }).check();
     await workspace.getByLabel('Default API profile', { exact: true }).selectOption('api-one');
@@ -136,8 +139,8 @@ try {
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 2);
     // Keyboard navigation and explicit Node capability controls use native labels.
-    await page.getByRole('tab', { name: 'Presets', exact: true }).focus();
-    await page.keyboard.press('End'); assert.equal(await page.getByRole('tab', { name: 'Diagnostics', exact: true }).getAttribute('aria-selected'), 'true');
+    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Orchestration', exact: true }).focus();
+    await page.keyboard.press('End'); assert.equal(await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Diagnostics', exact: true }).getAttribute('aria-current'), 'page');
     await page.evaluate(async () => {
         const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
         window.stops = 0; window.runId = store.startRun({ mode: 'loop', chatKey: 'test-chat', stopFn: () => window.stops++ });
@@ -147,7 +150,7 @@ try {
         event('run.started', 1);
         event('memory.recall.completed', 2, { stepId: 'step-1', references: [{ id: 'memory-one' }], tokens: 42 });
     });
-    await page.getByRole('tab', { name: 'Memory', exact: true }).click();
+    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Memory', exact: true }).click();
     assert.equal(await workspace.getByText('agent:owner · 1 refs · step-1', {exact:true}).count(), 1);
     await workspace.getByRole('button', { name: 'Knowledge · Sources · Build & Maintenance' }).click();
     await workspace.getByText('Used this run by', {exact:true}).click();
@@ -158,7 +161,7 @@ try {
     });
     await workspace.getByText('agent:owner · 0 refs · step-2', {exact:true}).waitFor();
     assert.equal(await page.evaluate(() => window.mounts), 1);
-    await page.getByRole('tab', { name: 'Diagnostics', exact: true }).click();
+    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Diagnostics', exact: true }).click();
     assert.equal(await page.evaluate(() => window.disposals), 1);
     await workspace.getByRole('button', { name: 'Stop Run', exact: true }).click();
     await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Diagnostics'); });
@@ -173,11 +176,11 @@ try {
     assert.equal(await workspace.getByRole('button', {name:'Stop Run',exact:true}).isVisible(), false);
     assert.equal(await page.evaluate(() => window.stops), 1);
     await workspace.getByRole('button', {name:'Viewing imported trace · Return to live run'}).click();
-    await page.getByRole('tab', { name: 'Memory', exact: true }).click();
+    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Memory', exact: true }).click();
     await workspace.getByRole('button', { name: 'Knowledge · Sources · Build & Maintenance' }).click();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
     assert.equal(await page.evaluate(() => window.disposals), 2);
-    await page.evaluate(async () => {const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.destroyWorkspace(); panel.destroyWorkspace(); panel.openWorkspace('Presets');});
+    await page.evaluate(async () => {const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.destroyWorkspace(); panel.destroyWorkspace(); panel.openWorkspace('Orchestration');});
     assert.equal(await page.locator('#agent-memory-workspace').count(), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({path:resolve(root,`../.git/workspace-authoring-${channel}-mobile.png`)});
@@ -232,7 +235,7 @@ try {
         const { createPresetAuthoring } = await import('/scripts/extensions/orchestrator/workspace/authoring.js');
         window.settings = {};
         panel.configureWorkspace({ renderPresets: createPresetAuthoring({ getSettings: () => window.settings, save: () => {}, getScope: () => ({}) }) });
-        panel.openWorkspace('Presets');
+        panel.openWorkspace('Orchestration');
     });
     await workspace.getByPlaceholder('搜索预设').fill('固定流程');
     assert.equal(await workspace.locator('.workspace-preset-list button:visible').count(), 1);
