@@ -395,10 +395,22 @@ class StorageInspector {
         };
 
         if (capabilities.view && typeof this.provider.readAtPath === 'function') {
-            addAction('eye', translate('View'), () => this._viewResource(entry));
+            addAction(
+                'eye',
+                translate('View'),
+                () => this._viewResource(entry),
+                false,
+                'storageInspectorEntryViewButton',
+            );
         }
         if (capabilities.edit && typeof this.mutator.writeAtPath === 'function') {
-            addAction('pen', translate('Edit'), () => this._editResource(entry));
+            addAction(
+                'pen',
+                translate('Edit'),
+                () => this._editResource(entry),
+                false,
+                'storageInspectorEntryEditButton',
+            );
         }
         if (this.provider.canMutate && capabilities.delete && typeof this.mutator.deleteAtPath === 'function') {
             addAction(
