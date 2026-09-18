@@ -88,6 +88,7 @@ export function writeWorldBook({ dataRoot, handle = 'default-user', name = 'e2e-
     const indexed = {};
     entries.forEach((e, i) => {
         indexed[String(i)] = {
+            ...structuredClone(e),
             uid: i,
             key: e.key || [],
             keysecondary: e.keysecondary || [],
