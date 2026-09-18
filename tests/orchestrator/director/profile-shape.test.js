@@ -1,13 +1,7 @@
 // Sanitizer contract test for the flat director profile shape.
 //
-// Background: the director profile used to carry an outer `director:` wrapper
-// key — `{ mode: 'director', director: { mainAgent, subAgents, maxRounds, ... } }`
-// — while loop and agenda profiles are flat. The wrapper was the source of a
-// load-side trap where bare-director input fed into `sanitizeDirectorProfile`
-// silently returned defaults instead of preserving fields (see
-// `character-override-load.test.js`). The shape is being unified: every
-// director profile is now flat, and the sanitizer auto-detects legacy
-// wrapped input so existing on-disk data migrates transparently on read.
+// Director profiles use one flat current schema. Obsolete wrapped profile
+// bodies are intentionally not upgraded after the Atria hard cutover.
 
 import { describe, expect, test } from '@jest/globals';
 import {
@@ -63,53 +57,26 @@ describe('director profile flat-shape contract', () => {
         expect(after.discardOnAbort).toBe(true);
     });
 
-    test('sanitizeDirectorProfile accepts legacy wrapped input (auto-migrates)', () => {
-        // Existing `settings.directorProfile` blobs on disk + V3 portable
-        // exports use the wrapped shape. Reading them through the sanitizer
-        // must lift to flat output so the migration is transparent.
-        const legacyWrapped = {
+    test('obsolete wrapped input is dropped instead of upgraded', () => {
+        const obsoleteWrapped = {
             mode: ORCH_EXECUTION_MODE_DIRECTOR,
             director: {
-                mainAgent: {
-                    systemPrompt: 'legacy-prompt',
-                    apiPresetName: 'legacy-api',
-                    promptPresetName: 'legacy-prompt-preset',
-                },
-                subAgents: [
-                    {
-                        id: 'legacy_sub',
-                        description: 'legacy sub',
-                        systemPrompt: 'legacy-body',
-                        apiPresetName: '',
-                        promptPresetName: '',
-                    },
-                ],
+                mainAgent: { systemPrompt: 'obsolete-prompt' },
+                subAgents: [{ id: 'obsolete', description: 'd', systemPrompt: 'b' }],
                 maxRounds: 11,
-                maxConcurrentSubagents: 3,
-                maxTotalSubagentRuns: 15,
-                tools: { lorebook: { get: true } },
-                discardOnAbort: false,
             },
         };
 
-        const after = sanitizeDirectorProfile(legacyWrapped);
+        const after = sanitizeDirectorProfile(obsoleteWrapped);
 
         expect(after).not.toHaveProperty('director');
-        expect(after.mainAgent.systemPrompt).toBe('legacy-prompt');
-        expect(after.mainAgent.apiPresetName).toBe('legacy-api');
-        expect(after.subAgents).toHaveLength(1);
-        expect(after.subAgents[0].id).toBe('legacy_sub');
-        expect(after.maxRounds).toBe(11);
-        expect(after.maxConcurrentSubagents).toBe(3);
-        expect(after.maxTotalSubagentRuns).toBe(15);
-        expect(after.tools.lorebook.get).toBe(true);
+        expect(after.mainAgent.systemPrompt).not.toBe('obsolete-prompt');
+        expect(after.subAgents.some(agent => agent.id === 'obsolete')).toBe(false);
+        expect(after.maxRounds).not.toBe(11);
     });
 
-    test('sanitizeDirectorProfile accepts bare director sub-object (auto-migrates)', () => {
-        // Character-card overrides store the BARE director sub-object on the
-        // card — `{ mainAgent, subAgents, maxRounds, ... }` with no outer
-        // `director:` key (see persistCharacterDirectorEditor). When the
-        // loader reads it back, that bare shape must survive sanitize.
+    test('sanitizeDirectorProfile accepts current bare director sub-object', () => {
+        // Character-card overrides store the current bare per-mode body.
         const bareOverride = {
             mainAgent: { systemPrompt: 'override-prompt' },
             subAgents: [
