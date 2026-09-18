@@ -23,10 +23,6 @@ function recordEpisodeIds(record) {
     return [...new Set(refs.flatMap(ref => ref?.episodeIds || []))];
 }
 
-function statusValue(settings, key) {
-    if (key === 'autoExtractionEnabled' || key === 'autoCompressionEnabled') return settings?.[key] !== false;
-    return settings?.[key] === true;
-}
 
 function toggleCard({ host, el, label, description, checked, onChange }) {
     const row = el('label', undefined, host);
@@ -58,7 +54,6 @@ export function createMemoryWorkspace({ getContext }) {
     let query = '';
     let entityType = '';
     let includeHistory = false;
-    let selected = null;
 
     return function renderMemory(parent, ui) {
         const { el, button, inspector, getView } = ui;
@@ -98,7 +93,6 @@ export function createMemoryWorkspace({ getContext }) {
         for (const [id, label] of MEMORY_VIEWS) {
             const item = button(nav, label, () => {
                 activeView = id;
-                selected = null;
                 renderView();
             });
             item.dataset.memoryView = id;
@@ -179,7 +173,6 @@ export function createMemoryWorkspace({ getContext }) {
                 status.textContent = error.message;
                 return;
             }
-            selected = { record, kind };
             inspector.hidden = false;
             inspector.replaceChildren();
 
@@ -190,7 +183,6 @@ export function createMemoryWorkspace({ getContext }) {
             el('span', record.status || 'active', head).className = `workspace-status-chip is-${record.status || 'active'}`;
             const close = button(head, 'Close inspector', () => {
                 inspector.hidden = true;
-                selected = null;
             });
             close.className = 'workspace-inspector-close';
 
