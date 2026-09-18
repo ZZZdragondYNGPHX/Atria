@@ -871,10 +871,6 @@
         grid-template-columns: repeat(3, minmax(96px, 1fr));
     }
 
-    #agent-memory-workspace .workspace-presets {
-        grid-template-columns: 220px minmax(0, 1fr);
-        gap: 16px;
-    }
 }
 
 /* Mobile: full screen, one content surface, bottom nav. */
