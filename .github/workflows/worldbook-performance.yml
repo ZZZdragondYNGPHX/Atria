@@ -23,6 +23,7 @@ on:
       - "public/scripts/extensions/orchestrator/main.js"
       - "src/endpoints/characters.js"
       - "tests/e2e/_lib/fixtures.js"
+      - "tests/e2e/worldinfo/_helpers.js"
       - "tests/e2e/worldinfo/25-activation-strategies.e2e.js"
       - "tests/e2e/worldinfo/29-import-export-roundtrip.e2e.js"
       - "tests/performance/**"
