@@ -21,6 +21,10 @@ on:
       - "public/scripts/horde.js"
       - "public/scripts/extensions/orchestrator/lorebook-filter.js"
       - "public/scripts/extensions/orchestrator/main.js"
+      - "src/endpoints/characters.js"
+      - "tests/e2e/_lib/fixtures.js"
+      - "tests/e2e/worldinfo/25-activation-strategies.e2e.js"
+      - "tests/e2e/worldinfo/29-import-export-roundtrip.e2e.js"
       - "tests/performance/**"
       - "tests/world-info/**"
       - ".github/workflows/worldbook-performance.yml"
@@ -32,7 +36,7 @@ jobs:
   foundation:
     name: Worldbook / Performance Foundation
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,6 +77,14 @@ jobs:
 
       - name: Run isolated real-host Chromium smoke
         run: node tests/performance/runtime-smoke.mjs
+
+      - name: Run W-04/W-05 real-request and round-trip acceptance
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/worldinfo/25-activation-strategies.e2e.js
+          e2e/worldinfo/29-import-export-roundtrip.e2e.js
+          --workers=1
 
       - name: Upload synthetic baseline
         if: always()
