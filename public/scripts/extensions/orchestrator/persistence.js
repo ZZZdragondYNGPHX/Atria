@@ -1,39 +1,16 @@
 /**
  * Floor-state adapter for the orchestrator extension.
  *
- * Replaces the legacy two-tier persistence scheme (an index namespace
- * `atri_orchestrator_state` listing anchor playable floors, plus one
- * sidecar namespace `atri_orchestrator_anchor_<N>` per anchor) with a
- * single floor-state-managed data namespace `atri_orchestrator_anchors`
- * whose contents are `{ [playableFloor]: snapshot }`.
+ * Atria persists orchestration snapshots only in the current
+ * `atri_orchestrator_anchors` FloorState namespace. Namespace migration is
+ * intentionally not supported: predecessor product state is ignored by the
+ * hard cutover.
  *
- * Each commit tags itself at `(userMessageChatIndex, userMessageSwipeId)`
- * and applies one `add /<playableFloor>` patch op. This shape means:
- *
- *   - swipe of the anchored user turn → commit filtered out by floor-state's
- *     swipe map → the snapshot disappears, exactly what we want
- *   - tail truncation past the anchored floor → commit filtered out by
- *     `truncateCommits` → the snapshot disappears
- *   - branch creation → floor-state's CHAT_BRANCH_CREATED handler copies
- *     surviving commits into the new chat's log → snapshots follow the branch
- *
- * Edit invalidation (the user changes the anchored message text without
- * deleting it) is NOT handled here. The orchestrator stores the anchor's
- * content hash inside each snapshot, and consumers re-validate the hash
- * against the live message before reuse — so stale entries simply fail
- * the validity check instead of being proactively scrubbed. The trade-off
- * is a few orphan KB in the sidecar until the floor is itself deleted /
- * overwritten by a new orchestration; it buys ~150 lines of removed range-
- * invalidation code.
- *
- * Legacy upgrade is one-shot per chat: on first load we read the legacy
- * namespaces, replay each anchor as a floor-state commit, and delete the
- * legacy data. A `__schema` sidecar marks the migration complete so the
- * upgrade is idempotent across reloads.
+ * Each commit is tagged with the anchored user floor/swipe so FloorState
+ * structural handlers can invalidate stale snapshots automatically.
  */
 
 import {
-    getPlayableMessageAt,
     isStoredOrchestrationSnapshotValidForMessages,
     normalizeAnchorPlayableFloor,
     normalizeOrchestrationSnapshot,
@@ -41,14 +18,9 @@ import {
 import { DEFAULT_LOOP_SYSTEM_PROMPT } from './loop-default-prompt.js';
 import { sanitizeCustomTools } from './custom-tools-sanitize.js';
 import { seedDefaultCustomToolsIfNeeded } from './seed-default-custom-tools.js';
-import { STATE_ERROR_REASONS } from '../../state-errors.js';
 import { sanitizeLorebookFilter } from './lorebook-filter.js';
 
 const STATE_NAMESPACE = 'atri_orchestrator_anchors';
-const SCHEMA_NAMESPACE = `${STATE_NAMESPACE}__schema`;
-const LEGACY_INDEX_NAMESPACE = 'atri_orchestrator_state';
-const LEGACY_ANCHOR_NAMESPACE_PREFIX = 'atri_orchestrator_anchor_';
-const SCHEMA_VERSION = 1;
 
 /**
  * Canonical Layer-2 memory tool names. Mirrors the `MEMORY_TOOL_NAMES`
@@ -643,200 +615,6 @@ export function resetFloorStateInstanceForTesting() {
     floorStatePromise = null;
 }
 
-function getLegacyAnchorNamespace(playableFloor) {
-    const normalized = normalizeAnchorPlayableFloor(playableFloor);
-    if (!normalized) return '';
-    return `${LEGACY_ANCHOR_NAMESPACE_PREFIX}${normalized}`;
-}
-
-/**
- * Read the schema sidecar that records whether legacy data has been
- * migrated for this chat. Returns 0 when no sidecar exists.
- */
-async function readSchemaVersion(context) {
-    if (typeof context?.getChatState !== 'function') return 0;
-    const result = await context.getChatState(SCHEMA_NAMESPACE, {});
-    if (!result.ok) {
-        console.warn(`[orchestrator] readSchemaVersion failed (reason=${result.reason}, hint=${result.hint})`);
-        return 0;
-    }
-    const raw = result.state;
-    return Math.max(0, Math.floor(Number(raw?.version || 0)));
-}
-
-async function writeSchemaVersion(context, version) {
-    if (typeof context?.updateChatState !== 'function') return;
-    const result = await context.updateChatState(SCHEMA_NAMESPACE, () => ({ version: Number(version) || 0 }), {
-        maxOperations: 4,
-        maxRetries: 1,
-    });
-    if (!result.ok) {
-        console.warn(`[orchestrator] writeSchemaVersion failed (reason=${result.reason}, hint=${result.hint})`);
-    }
-}
-
-/**
- * Read every entry in the legacy index + anchor sidecars for the current
- * chat. Returns the parsed legacy payload plus the per-anchor snapshots
- * already keyed by playable floor, or `null` when no legacy data is
- * present (fresh chat or already migrated).
- */
-async function readLegacyOrchestratorState(context) {
-    if (typeof context?.getChatState !== 'function') return null;
-    const indexResult = await context.getChatState(LEGACY_INDEX_NAMESPACE, {});
-    if (!indexResult.ok) {
-        console.warn(`[orchestrator] legacy index read failed (reason=${indexResult.reason}, hint=${indexResult.hint})`);
-        // Throw — caller's migrateLegacyAnchorsIfNeeded must NOT proceed to schema-stamp if we couldn't read legacy
-        throw new Error(`[orchestrator] legacy index unreadable: ${indexResult.hint}`);
-    }
-    const indexPayload = indexResult.state;
-    if (!indexPayload || typeof indexPayload !== 'object') return null;
-
-    const rawAnchors = Array.isArray(indexPayload.anchors) ? indexPayload.anchors : [];
-    const anchors = [];
-    for (const raw of rawAnchors) {
-        const normalized = normalizeAnchorPlayableFloor(raw);
-        if (normalized > 0 && !anchors.includes(normalized)) {
-            anchors.push(normalized);
-        }
-    }
-    anchors.sort((a, b) => a - b);
-
-    const snapshots = new Map();
-    for (const anchorPlayableFloor of anchors) {
-        const ns = getLegacyAnchorNamespace(anchorPlayableFloor);
-        if (!ns) continue;
-        const sidecarResult = await context.getChatState(ns, {});
-        if (!sidecarResult.ok) {
-            console.warn(`[orchestrator] legacy sidecar read failed for ${ns} (reason=${sidecarResult.reason}, hint=${sidecarResult.hint})`);
-            throw new Error(`[orchestrator] legacy sidecar read failed: ${sidecarResult.hint}`);
-        }
-        const snapshot = sidecarResult.state;
-        const normalized = normalizeOrchestrationSnapshot(snapshot);
-        if (normalized) {
-            snapshots.set(anchorPlayableFloor, normalized);
-        }
-    }
-
-    let legacySnapshot = null;
-    if (indexPayload.snapshot && typeof indexPayload.snapshot === 'object') {
-        const playableFloor = normalizeAnchorPlayableFloor(
-            indexPayload.snapshot.anchorPlayableFloor || indexPayload.snapshot.anchorFloor,
-        );
-        const normalized = normalizeOrchestrationSnapshot(indexPayload.snapshot);
-        if (playableFloor > 0 && normalized) {
-            legacySnapshot = { playableFloor, snapshot: normalized };
-            if (!snapshots.has(playableFloor)) {
-                snapshots.set(playableFloor, normalized);
-                anchors.push(playableFloor);
-                anchors.sort((a, b) => a - b);
-            }
-        }
-    }
-
-    if (anchors.length === 0 && !legacySnapshot) return null;
-    return { anchors, snapshots };
-}
-
-/**
- * Delete every legacy namespace touched by the migration, including the
- * pre-anchor `snapshot` sidecar and the anchor index itself. Best-effort:
- * a missing `deleteChatState` helper just leaves orphan files behind,
- * which the consumer ignores anyway.
- */
-async function deleteLegacyOrchestratorState(context, anchors) {
-    if (typeof context?.deleteChatState !== 'function') return;
-    for (const playableFloor of anchors) {
-        const ns = getLegacyAnchorNamespace(playableFloor);
-        if (!ns) continue;
-        const result = await context.deleteChatState(ns, {});
-        if (!result.ok) {
-            console.warn(`[orchestrator] legacy cleanup failed for ${ns} (reason=${result.reason}, hint=${result.hint})`);
-        }
-    }
-    const indexResult = await context.deleteChatState(LEGACY_INDEX_NAMESPACE, {});
-    if (!indexResult.ok) {
-        console.warn(`[orchestrator] legacy index cleanup failed (reason=${indexResult.reason}, hint=${indexResult.hint})`);
-    }
-}
-
-/**
- * Replay each legacy anchor as a floor-state commit tagged at the user
- * message that owns that playable floor. Anchors whose user message
- * cannot be located in the current chat (e.g. truncated since the
- * snapshot was taken) are dropped.
- *
- * Returns `{ committed, skipped }` so callers can log progress. Aborts
- * early (returning the partial counts) when fs.patch reports
- * REPLAY_BROKEN / INSTANCE_DESTROYED / LOG_WRITE_FAILED — those reasons
- * indicate the floor-state instance itself is wedged and continuing
- * would just rack up more failures.
- */
-async function replayLegacyAnchorsAsCommits(context, fs, legacy) {
-    const messages = Array.isArray(context?.chat) ? context.chat : [];
-    let committed = 0;
-    let skipped = 0;
-    for (const playableFloor of legacy.anchors) {
-        const snapshot = legacy.snapshots.get(playableFloor);
-        if (!snapshot) continue;
-        const target = getPlayableMessageAt(messages, playableFloor);
-        if (!target?.message || !target.message.is_user) continue;
-        const swipeIdRaw = target.message.swipe_id;
-        const swipeId = Number.isInteger(swipeIdRaw) && swipeIdRaw >= 0 ? swipeIdRaw : 0;
-        const result = await fs.patch(
-            [{ op: 'add', path: `/${playableFloor}`, value: snapshot }],
-            { floor: target.index, swipeId },
-        );
-        if (result.ok) {
-            committed += 1;
-            continue;
-        }
-        if (result.reason === STATE_ERROR_REASONS.REPLAY_BROKEN
-            || result.reason === STATE_ERROR_REASONS.INSTANCE_DESTROYED
-            || result.reason === STATE_ERROR_REASONS.LOG_WRITE_FAILED) {
-            console.warn(`[orchestrator] migration aborted at anchor F${playableFloor} (reason=${result.reason}, hint=${result.hint})`);
-            return { committed, skipped: legacy.anchors.length - committed };
-        }
-        skipped += 1;
-        console.warn(`[orchestrator] migration: anchor F${playableFloor} dropped (reason=${result.reason}, hint=${result.hint})`);
-    }
-    return { committed, skipped };
-}
-
-/**
- * One-shot legacy upgrade. Idempotent — when the schema sidecar already
- * records `SCHEMA_VERSION`, returns immediately without I/O on the
- * legacy namespaces. Safe to call from any chat-loaded entry point.
- *
- * Order is "read legacy → write commits → write schema marker → delete
- * legacy". A crash before the schema marker is written means the next
- * startup re-runs the migration; the commit log is overwrite-only at
- * (floor, swipeId) so the replay is benign. A crash before the legacy
- * delete leaves orphan namespaces that the post-migration code never
- * reads; they are reaped on the next successful migration attempt.
- */
-export async function migrateLegacyAnchorsIfNeeded(context) {
-    const currentVersion = await readSchemaVersion(context);
-    if (currentVersion >= SCHEMA_VERSION) {
-        return { migrated: false, reason: 'already-migrated' };
-    }
-
-    const legacy = await readLegacyOrchestratorState(context);
-    if (!legacy) {
-        await writeSchemaVersion(context, SCHEMA_VERSION);
-        return { migrated: false, reason: 'no-legacy-data' };
-    }
-
-    const fs = await getFloorStateInstance(context);
-    await fs.ready();
-    const { committed } = await replayLegacyAnchorsAsCommits(context, fs, legacy);
-
-    await writeSchemaVersion(context, SCHEMA_VERSION);
-    await deleteLegacyOrchestratorState(context, legacy.anchors);
-
-    return { migrated: true, committed, anchors: legacy.anchors.slice() };
-}
-
 /**
  * Read the current data namespace state. Returns `{}` (not null) so
  * callers can iterate keys without a guard.
@@ -919,8 +697,4 @@ export function pickLatestValidSnapshot(context, anchorMap) {
 
 export const constants = Object.freeze({
     STATE_NAMESPACE,
-    SCHEMA_NAMESPACE,
-    LEGACY_INDEX_NAMESPACE,
-    LEGACY_ANCHOR_NAMESPACE_PREFIX,
-    SCHEMA_VERSION,
 });
