@@ -90,6 +90,7 @@ export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrch
 
     const inspector = el('aside', 'atria-workspace-inspector', frame);
     inspector.setAttribute('aria-label', i18n('Context Inspector'));
+    inspector.tabIndex = -1;
     inspector.hidden = true;
 
     const mobileNav = el('nav', 'atria-workspace-mobile-nav', root);
