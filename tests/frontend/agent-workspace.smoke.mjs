@@ -95,8 +95,12 @@ try {
     await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Run', exact: true }).click();
     assert.equal(await workspace.locator('.atria-workspace-mobile-nav').getByRole('button').count(), 4);
     await workspace.locator('.workspace-node-chip').filter({ hasText: 'agent' }).first().click();
-    assert.equal(await workspace.locator('.atria-workspace-inspector').getByText('reply.submit', {exact:true}).count(), 1);
-    assert.match(await workspace.locator('.atria-workspace-inspector').innerText(), /Memory evidence\s*0/);
+    const inspector = workspace.locator('.atria-workspace-inspector');
+    assert.equal(await inspector.getByText('reply.submit', {exact:true}).count(), 1);
+    assert.match(await inspector.innerText(), /Memory evidence\s*0/);
+    await page.keyboard.press('Escape');
+    assert.equal(await inspector.isHidden(), true);
+    assert.equal(await workspace.isVisible(), true);
     await workspace.getByRole('button', { name: 'Close', exact: true }).click();
     await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Run'); panel.destroyWorkspace(); panel.openWorkspace('Run'); });
     assert.equal(await page.locator('#agent-memory-workspace').count(), 1);
