@@ -15,9 +15,10 @@ try {
    await onboarding.waitFor({state:'hidden'});
  }
  console.log(JSON.stringify(await page.evaluate(()=>({presets:window.Atria.getContext().getExtensionApi('orchestrator').listWorkspacePresets(),workspaceSettings:document.querySelector('#orchestrator_settings')?.textContent,errors:[]}))));
- const state=await page.evaluate(async()=>{const panel=await import('/scripts/extensions/orchestrator/workspace/panel.js');panel.openWorkspace('Presets');return document.querySelector('#agent-memory-workspace').textContent;});
+ const state=await page.evaluate(async()=>{const panel=await import('/scripts/extensions/orchestrator/workspace/panel.js');panel.openWorkspace('Orchestration');return document.querySelector('#agent-memory-workspace').textContent;});
  assert(/Unified Preset Library|统一预设库|統一預設庫/.test(state)); assert(state.includes('Spec'));
  const workspace = page.locator('#agent-memory-workspace');
+ assert.equal(await workspace.locator('.atria-workspace-mobile-nav').getByRole('button').count(),4);
  for (const mode of ['spec','agenda','director']) {
    await workspace.locator('.workspace-preset-list button').filter({hasText:new RegExp(mode === 'agenda' ? '^Atri-agenda' : `^${mode}`, 'i')}).tap();
    const count=await page.evaluate(mode=>window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode);
@@ -37,13 +38,13 @@ try {
  await page.waitForTimeout(1800);await page.reload();
  await page.waitForFunction(()=>window.Atria?.getContext?.().getExtensionApi?.('orchestrator')?.listWorkspacePresets);
  assert.equal(await page.evaluate(()=>window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId),id);
- await page.evaluate(async()=>{const panel=await import('/scripts/extensions/orchestrator/workspace/panel.js');panel.openWorkspace('Presets');});
+ await page.evaluate(async()=>{const panel=await import('/scripts/extensions/orchestrator/workspace/panel.js');panel.openWorkspace('Orchestration');});
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.querySelector('#agent-memory-workspace').scrollWidth>innerWidth),false);
  await page.screenshot({path:'.git/workspace-host-mobile.png'});
  await page.setViewportSize({width:1440,height:900});
  await page.screenshot({path:'.git/workspace-host-desktop.png'});
- await page.getByRole('tab',{name:/^(Memory|记忆|記憶)$/,exact:true}).click();
+ await workspace.locator('.atria-workspace-nav').getByRole('button',{name:/^(Memory|记忆|記憶)$/,exact:true}).click();
  const memory = page.locator('#memory_graph_settings');
  assert.equal(await memory.locator('.inline-drawer').count(),0);
  assert.equal(await memory.locator('.memory-control-card').count(),5);
@@ -67,9 +68,9 @@ try {
    assert.equal(await page.evaluate(()=>document.querySelector('#workspace-content').scrollWidth>document.querySelector('#workspace-content').clientWidth),false);
    await summary.click();
  }
- await page.getByRole('tab',{name:/^(Presets|预设|預設)$/,exact:true}).click();
+ await workspace.locator('.atria-workspace-mobile-nav').getByRole('button',{name:/^(Orchestration|编排|編排)$/,exact:true}).click();
  assert.equal(await page.locator('#memory_graph_settings').count(),0);
- await page.getByRole('tab',{name:/^(Memory|记忆|記憶)$/,exact:true}).click();
+ await workspace.locator('.atria-workspace-mobile-nav').getByRole('button',{name:/^(Memory|记忆|記憶)$/,exact:true}).click();
  assert.equal(await page.locator('#memory_graph_settings').count(),1);
  assert.deepEqual(errors, []);
  console.log(JSON.stringify({nativeHost:true,persistedBinding:id,pageErrors:errors}));
