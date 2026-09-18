@@ -36,6 +36,8 @@ jobs:
       - name: Install Chromium
         working-directory: tests
         run: npx playwright install --with-deps chromium
+      - name: Guard Workspace information architecture
+        run: bash scripts/check-atria-workspace-ui.sh
       - name: Run Workspace projection smoke
         env:
           ENGINE_BROWSER: chromium
