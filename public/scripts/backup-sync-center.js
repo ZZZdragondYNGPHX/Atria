@@ -347,8 +347,13 @@ function renderManagedGroups(root, records, reload) {
                 button.innerHTML = `<i class="fa-fw fa-solid fa-${icon}"></i>`;
                 button.addEventListener('click', async () => {
                     button.disabled = true;
-                    try { await fn(); } catch (error) { toastr.error(error.message); }
-                    finally { if (button.isConnected) button.disabled = false; }
+                    try {
+                        await fn();
+                    } catch (error) {
+                        toastr.error(error.message);
+                    } finally {
+                        if (button.isConnected) button.disabled = false;
+                    }
                 });
                 return button;
             };
