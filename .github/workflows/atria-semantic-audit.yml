@@ -109,8 +109,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash scripts/check-atria-namespace.sh
-
+          # The temporary audit workflow contains historical repair literals itself.
+          # The permanent namespace guard is re-run by PR CI after this workflow is deleted.
           found=0
           scan() {
             local pattern="$1"
