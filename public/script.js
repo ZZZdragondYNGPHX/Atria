@@ -10060,6 +10060,15 @@ function setInContextMessages(msgInContextCount, type) {
  * @property {(meta: object) => void} [onRequestReady] Internal lightweight request-boundary observer.
  */
 
+function notifyGenerationRequestReady(options, meta) {
+    if (typeof options?.onRequestReady !== 'function') return;
+    try {
+        options.onRequestReady(meta);
+    } catch (error) {
+        console.warn('[world-info] request attribution observer failed', error);
+    }
+}
+
 /**
  * Sends a non-streaming request to the API.
  * @param {string} type Generation type
@@ -10079,14 +10088,15 @@ export async function sendGenerationRequest(type, data, options = {}) {
     }
 
     if (main_api === 'koboldhorde') {
-        options?.onRequestReady?.({
-            boundary: 'transport_handoff',
-            providerConfirmed: false,
-            mainApi: main_api,
-            type,
-            stream: false,
+        return await generateHorde(data.prompt, data, abortController.signal, true, {
+            onRequestReady: () => notifyGenerationRequestReady(options, {
+                boundary: 'provider_request',
+                providerConfirmed: true,
+                mainApi: main_api,
+                type,
+                stream: false,
+            }),
         });
-        return await generateHorde(data.prompt, data, abortController.signal, true);
     }
 
     const shouldTrackAtriaGenerationState = shouldUseAtriaServerPersistenceForType(type) && supportsAtriaServerPersistence(main_api);
@@ -10106,7 +10116,7 @@ export async function sendGenerationRequest(type, data, options = {}) {
     // funnels through this fetch, so it must respect the same per-profile
     // retry policy (max-request-retries + retry-status-whitelist) as the rest.
     const response = await withProfileRetry(async () => {
-        options?.onRequestReady?.({
+        notifyGenerationRequestReady(options, {
             boundary: 'provider_request',
             providerConfirmed: true,
             mainApi: main_api,
@@ -10188,32 +10198,38 @@ export async function sendStreamingRequest(type, data, options = {}) {
         case 'openai':
             return await sendOpenAIRequest(type, data.prompt, streamingProcessor.abortController.signal, options);
         case 'textgenerationwebui':
-            options?.onRequestReady?.({
-                boundary: 'transport_handoff',
-                providerConfirmed: false,
-                mainApi: main_api,
-                type,
-                stream: true,
+            return await generateTextGenWithStreaming(data, streamingProcessor.abortController.signal, {
+                onAtriaMeta,
+                onRequestReady: () => notifyGenerationRequestReady(options, {
+                    boundary: 'provider_request',
+                    providerConfirmed: true,
+                    mainApi: main_api,
+                    type,
+                    stream: true,
+                }),
             });
-            return await generateTextGenWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         case 'novel':
-            options?.onRequestReady?.({
-                boundary: 'transport_handoff',
-                providerConfirmed: false,
-                mainApi: main_api,
-                type,
-                stream: true,
+            return await generateNovelWithStreaming(data, streamingProcessor.abortController.signal, {
+                onAtriaMeta,
+                onRequestReady: () => notifyGenerationRequestReady(options, {
+                    boundary: 'provider_request',
+                    providerConfirmed: true,
+                    mainApi: main_api,
+                    type,
+                    stream: true,
+                }),
             });
-            return await generateNovelWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         case 'kobold':
-            options?.onRequestReady?.({
-                boundary: 'transport_handoff',
-                providerConfirmed: false,
-                mainApi: main_api,
-                type,
-                stream: true,
+            return await generateKoboldWithStreaming(data, streamingProcessor.abortController.signal, {
+                onAtriaMeta,
+                onRequestReady: () => notifyGenerationRequestReady(options, {
+                    boundary: 'provider_request',
+                    providerConfirmed: true,
+                    mainApi: main_api,
+                    type,
+                    stream: true,
+                }),
             });
-            return await generateKoboldWithStreaming(data, streamingProcessor.abortController.signal, { onAtriaMeta });
         default:
             throw new Error('Streaming is enabled, but the current API does not support streaming.');
     }
