@@ -37,10 +37,18 @@ export function renderToolPermissionPanel({ parent, el, button, agent, tools, i1
     actions.className = 'workspace-permission-actions';
     button(actions, 'Allow all', () => {
         agent.tools = ['*'];
+        for (const tool of catalog) {
+            if (typeof tool.effectiveEnabled === 'boolean') tool.effectiveEnabled = true;
+            if (typeof tool.setEnabled === 'function') tool.setEnabled(true);
+        }
         paint();
     });
     button(actions, 'Deny all', () => {
         agent.tools = [];
+        for (const tool of catalog) {
+            if (typeof tool.effectiveEnabled === 'boolean') tool.effectiveEnabled = false;
+            if (typeof tool.setEnabled === 'function') tool.setEnabled(false);
+        }
         paint();
     });
 
