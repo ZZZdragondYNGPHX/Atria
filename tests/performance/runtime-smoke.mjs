@@ -133,6 +133,8 @@ try {
         return wi.world_names.indexOf('atri-condition-author-ui-fixture');
     });
     assert.ok(authorUiWorldIndex >= 0);
+    await page.locator('#WIDrawerIcon').click();
+    await page.locator('#WorldInfo').waitFor({ state: 'visible', timeout: 10000 });
     await page.selectOption('#world_editor_select', String(authorUiWorldIndex));
     const authorUiEntry = page.locator('#world_popup_entries_list > .world_entry[uid="0"]');
     await authorUiEntry.waitFor({ state: 'visible', timeout: 15000 });
