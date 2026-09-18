@@ -33,18 +33,23 @@ try {
                 eventId: `event-${++version}`, runId: 'worker', agentId: 'agent', version, generation: 1, status: 'running', type, effectId,
             } });
             window.add('memory.recall.completed', 'memory'); window.add('model.request.started', 'model');
-            window.add('tool.execute.started', 'tool'); window.panel.openWorkspace('Live Run');
+            window.add('tool.execute.started', 'tool'); window.panel.openWorkspace('Run');
         });
-        await page.waitForSelector('.workspace-call-counts');
-        const counters = page.locator('.workspace-call-counts');
-        assert.deepEqual(await counters.locator('dt').allTextContents(), ['内部调用', '外部调用']);
-        assert.deepEqual(await counters.locator('dd').allTextContents(), ['2', '1']);
-        await page.evaluate(() => { window.add('model.request.completed', 'model'); window.add('tool.execute.completed', 'tool'); window.panel.openWorkspace('Live Run'); });
-        assert.deepEqual(await counters.locator('dd').allTextContents(), ['2', '1']);
+        await page.waitForSelector('.workspace-metrics');
+        const metrics = page.locator('.workspace-metrics .workspace-metric');
+        const metricValue = async label => {
+            const card = metrics.filter({ has: page.locator('.workspace-metric-label', { hasText: label }) });
+            return card.locator('.workspace-metric-value').innerText();
+        };
+        assert.equal(await metricValue('内部调用'), '2');
+        assert.equal(await metricValue('工具调用'), '1');
+        await page.evaluate(() => { window.add('model.request.completed', 'model'); window.add('tool.execute.completed', 'tool'); window.panel.openWorkspace('Run'); });
+        assert.equal(await metricValue('内部调用'), '2');
+        assert.equal(await metricValue('工具调用'), '1');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: resolve(process.env.SCREENSHOT_DIR, `calls-${width}.png`) });
-        await page.evaluate(() => { window.store.finishRun({ runId: window.runId, status: 'committed' }); window.store.clearCurrentRun(); window.panel.openWorkspace('Live Run'); });
-        assert.equal(await counters.count(), 0);
+        await page.evaluate(() => { window.store.finishRun({ runId: window.runId, status: 'committed' }); window.store.clearCurrentRun(); window.panel.openWorkspace('Run'); });
+        assert.equal(await page.locator('.workspace-metrics').count(), 0);
         assert.deepEqual(errors, []);
         await page.close();
     }
