@@ -11,7 +11,7 @@ import {
     WorldInfoSelectionIndex,
     buildWorldInfoEntryLookup,
     buildWorldInfoSelectionMigrationReport,
-    buildWorldInfoBundleVariant,
+    chooseWorldInfoBundleVariant,
     getRelatedWorldInfoEntryKeys,
     getWorldInfoBudgetTierScore,
     getWorldInfoEntryKey,
@@ -10711,61 +10711,45 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                 const pendingEntries = bundle.entries.filter(
                     candidate => !allActivatedEntries.has(getWorldInfoEntryKey(candidate)),
                 );
-                const materializeVariant = mode => buildWorldInfoBundleVariant(pendingEntries, mode)
-                    .map(item => ({
-                        ...item,
-                        content: String(substituteParams(item.content) ?? ''),
-                    }));
-                const fullVariant = materializeVariant('full');
-                let selectedVariant = fullVariant;
-                let selectedVariantName = 'full';
-                const bundleRequiresBudget = pendingEntries.some(candidate => !candidate.ignoreBudget);
+                const bundleSelection = await chooseWorldInfoBundleVariant(pendingEntries, {
+                    budget,
+                    priorTokens: textToScanTokens,
+                    prefixText: newContent,
+                    tokenCount: getTokenCountAsync,
+                    renderContent: value => String(substituteParams(value) ?? ''),
+                });
 
-                if (bundleRequiresBudget) {
-                    const fullText = fullVariant.map(item => item.content).filter(Boolean).join('\n') + '\n';
-                    const fullTokens = await getTokenCountAsync(newContent + fullText);
-                    if ((textToScanTokens + fullTokens) >= budget) {
-                        const compactVariant = materializeVariant('compact');
-                        const compactDiffers = compactVariant.some((item, index) => (
-                            item.compact && item.content !== fullVariant[index]?.content
-                        ));
-                        if (compactDiffers) {
-                            const compactText = compactVariant.map(item => item.content).filter(Boolean).join('\n') + '\n';
-                            const compactTokens = await getTokenCountAsync(newContent + compactText);
-                            if ((textToScanTokens + compactTokens) < budget) {
-                                selectedVariant = compactVariant;
-                                selectedVariantName = 'compact';
-                            }
-                        }
-
-                        if (selectedVariantName === 'full') {
-                            if (!token_budget_overflowed) {
-                                console.debug('[WI] --- ATOMIC DEPENDENCY BUDGET OVERFLOW ---');
-                                if (world_info_overflow_alert) {
-                                    toastr.warning(
-                                        `World info dependency bundle could not fit within the ${budget} token budget.`,
-                                        'World Info',
-                                    );
-                                }
-                                token_budget_overflowed = true;
-                            }
-                            failedAtomicSelectionEntries.add(entry);
-                            recordActivationAttempt(
-                                entry,
-                                'dependency_budget_overflow',
-                                withRecursionTraceSources({
-                                    budget: Number(budget),
-                                    dependencyBundle: bundle.entryKeys,
-                                    budgetTier: normalizeWorldInfoSelectionMetadata(entry).budgetTier,
-                                }),
+                if (!bundleSelection.ok) {
+                    if (!token_budget_overflowed) {
+                        console.debug('[WI] --- ATOMIC DEPENDENCY BUDGET OVERFLOW ---');
+                        if (world_info_overflow_alert) {
+                            toastr.warning(
+                                `World info dependency bundle could not fit within the ${budget} token budget.`,
+                                'World Info',
                             );
-                            continue;
                         }
+                        token_budget_overflowed = true;
                     }
+                    failedAtomicSelectionEntries.add(entry);
+                    recordActivationAttempt(
+                        entry,
+                        'dependency_budget_overflow',
+                        withRecursionTraceSources({
+                            budget: Number(budget),
+                            dependencyBundle: bundle.entryKeys,
+                            budgetTier: normalizeWorldInfoSelectionMetadata(entry).budgetTier,
+                            fullTokens: Number(bundleSelection.fullTokens || 0),
+                            compactTokens: bundleSelection.compactTokens === null
+                                ? null
+                                : Number(bundleSelection.compactTokens || 0),
+                        }),
+                    );
+                    continue;
                 }
 
-                const selectedText = selectedVariant.map(item => item.content).filter(Boolean).join('\n');
-                if (selectedText) newContent += selectedText + '\n';
+                const selectedVariant = bundleSelection.items;
+                const selectedVariantName = bundleSelection.variant;
+                if (bundleSelection.text) newContent += bundleSelection.text;
                 const rootKey = getWorldInfoEntryKey(entry);
                 for (const item of selectedVariant) {
                     const selectedEntry = item.entry;
