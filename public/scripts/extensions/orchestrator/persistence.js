@@ -79,6 +79,7 @@ export const ORCH_EXECUTION_MODE_LOOP = 'loop';
  * SEARCH_UNAVAILABLE as a structured error.
  */
 export const DEFAULT_LAYER2_CUSTOMS = Object.freeze({
+    memory_recall: true,
     memory_schema: true,
     memory_list_candidates: true,
     memory_edge_summary: true,
