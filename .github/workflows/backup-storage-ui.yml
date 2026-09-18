@@ -37,9 +37,22 @@ concurrency:
 
 jobs:
   chromium:
-    name: Backup Storage Chromium
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Backup Center Chromium
+            specs: e2e/backup-sync-center/01-shell-and-preflight.e2e.js
+          - name: Browser Storage Chromium
+            specs: e2e/browser-storage-inspector
+          - name: Server Storage Chromium
+            specs: >-
+              e2e/storage-inspector/01-self-drilldown.e2e.js
+              e2e/storage-inspector/02-sensitive-and-refresh.e2e.js
+              e2e/storage-inspector/03-mobile-viewport.e2e.js
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,13 +70,6 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Initialize Atria config
         run: npm run init
-      - name: Run backup and storage UI E2E
+      - name: Run UI E2E
         working-directory: tests
-        run: >-
-          npx playwright test
-          e2e/backup-sync-center/01-shell-and-preflight.e2e.js
-          e2e/browser-storage-inspector
-          e2e/storage-inspector/01-self-drilldown.e2e.js
-          e2e/storage-inspector/02-sensitive-and-refresh.e2e.js
-          e2e/storage-inspector/03-mobile-viewport.e2e.js
-          --project=e2e --workers=1
+        run: npx playwright test ${{ matrix.specs }} --project=e2e --workers=1
