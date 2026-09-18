@@ -59,6 +59,7 @@ export function renderToolPermissionPanel({ parent, el, button, agent, tools, i1
         agent.tools = [...selected];
         const tool = catalog.find(item => item.name === name);
         if (tool && typeof tool.effectiveEnabled === 'boolean') tool.effectiveEnabled = Boolean(allowed);
+        if (tool && typeof tool.setEnabled === 'function') tool.setEnabled(Boolean(allowed));
         if (typeof onToolToggle === 'function') onToolToggle(name, Boolean(allowed));
     };
 
