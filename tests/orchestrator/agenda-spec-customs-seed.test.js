@@ -74,7 +74,7 @@ beforeAll(async () => {
 });
 
 const EXPECTED_CUSTOM_KEYS = [
-    'memory_schema', 'memory_list_candidates', 'memory_edge_summary',
+    'memory_recall', 'memory_schema', 'memory_list_candidates', 'memory_edge_summary',
     'memory_node_brief', 'memory_expand_seeds', 'memory_keyword_search',
     'memory_vector_search', 'memory_find_by_name', 'memory_compaction_candidates',
     'memory_node_create', 'memory_node_edit', 'memory_node_delete',
@@ -83,7 +83,7 @@ const EXPECTED_CUSTOM_KEYS = [
 ];
 
 describe('agenda profile defaults seed memory + search customs', () => {
-    test('missing defaultTools seeds the 17 custom flags on', () => {
+    test('missing defaultTools seeds the current custom flags on', () => {
         const out = sanitizeAgendaWorkingProfile({});
         expect(out.defaultTools).not.toBeNull();
         expect(typeof out.defaultTools).toBe('object');
@@ -114,23 +114,20 @@ describe('agenda profile defaults seed memory + search customs', () => {
         expect(out.defaultTools.custom.search_search).toBe(true);
     });
 
-    test('legacy tools.memory.<verb> still translates as before', () => {
-        // The legacy translator (sanitizeAgentToolFlags) maps memory.node_create
-        // → custom.memory_node_create. Seeding happens BEFORE that translation;
-        // user's explicit legacy false should still win.
+    test('predecessor top-level memory bag is ignored by hard cutover', () => {
         const out = sanitizeAgendaWorkingProfile({
             defaultTools: {
                 memory: { node_create: false },
             },
         });
-        expect(out.defaultTools.custom.memory_node_create).toBe(false);
-        // Other seeded ones still on:
-        expect(out.defaultTools.custom.memory_schema).toBe(true);
+        expect(out.defaultTools).not.toHaveProperty('memory');
+        expect(out.defaultTools.custom.memory_node_create).toBe(true);
+        expect(out.defaultTools.custom.memory_recall).toBe(true);
     });
 });
 
 describe('spec profile defaults seed memory + search customs', () => {
-    test('missing defaultTools seeds the 17 custom flags on', () => {
+    test('missing defaultTools seeds the current custom flags on', () => {
         const out = sanitizeSpec({ spec: { stages: [] } });
         expect(out.defaultTools).not.toBeNull();
         for (const key of EXPECTED_CUSTOM_KEYS) {
