@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation completed and fully validated on the task branch. PR #3 CI is green; integration into `main` is the remaining integration step.
+Implementation completed, fully validated, and merged into `main`.
 
 ## Task identity
 
@@ -116,4 +116,15 @@ Core SillyTavern-owned data and formats remain part of Atria and were not remove
 
 ## Integration
 
-PR #3 is ready to merge after final task-branch validation. The resulting `main` merge SHA and branch-cleanup verification will be appended after integration.
+PR #3 was squash-merged into `main`.
+
+- PR: #3 — `refactor: complete Atria namespace migration`
+- Final validated task head: `1aa9f0961a785db0b4512a1a9910981436bcc090`
+- Squash merge / resulting `main` SHA: `ed2957eba42fdbd9099eacd15eedf7f94b790fab`
+- Merge time: 2026-09-18T06:48:29Z
+- The resulting `main` commit tree is exactly identical to the validated task-head tree: `d0bb80816ce8ea1d7ade83af5ad0077fe3e92fae`.
+- PR Checks run #63: completed / success.
+- Hard Cutover Inventory run #52: completed / success.
+- The temporary branch `refactor/atria-namespace-migration` was removed after merge; an exact branch lookup now returns GitHub 404 and branch search returns no match.
+
+The permanent `luker` reference branch remains untouched, as required by the migration plan.
