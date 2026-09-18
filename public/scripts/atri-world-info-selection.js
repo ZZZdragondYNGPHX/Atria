@@ -3,6 +3,7 @@
 
 const MAX_DEPENDENCY_DEPTH = 24;
 const MIN_STATIC_KEY_LENGTH = 3;
+const MAX_STATIC_ANCHOR_LENGTH = 8;
 const BUDGET_TIERS = Object.freeze(['critical', 'scene', 'normal', 'optional']);
 const BUDGET_TIER_SCORE = Object.freeze({ critical: 300, scene: 200, normal: 100, optional: 0 });
 
@@ -78,15 +79,17 @@ function isDynamicKey(key) {
 }
 
 function normalizeAnchor(value) {
-    return String(value ?? '').toLocaleLowerCase();
+    return String(value ?? '').toLowerCase();
 }
 
-function makeTrigrams(value) {
+function makeNgrams(value, lengths) {
     const text = normalizeAnchor(value);
     const result = new Set();
-    if (text.length < MIN_STATIC_KEY_LENGTH) return result;
-    for (let i = 0; i <= text.length - MIN_STATIC_KEY_LENGTH; i++) {
-        result.add(text.slice(i, i + MIN_STATIC_KEY_LENGTH));
+    for (const length of lengths || []) {
+        if (!Number.isInteger(length) || length < MIN_STATIC_KEY_LENGTH || text.length < length) continue;
+        for (let i = 0; i <= text.length - length; i++) {
+            result.add(text.slice(i, i + length));
+        }
     }
     return result;
 }
@@ -123,7 +126,7 @@ function getIndexability(entry) {
         if (isRegexKey(key)) return { indexable: false, reason: 'regex_primary_key' };
         if (isDynamicKey(key)) return { indexable: false, reason: 'dynamic_primary_key' };
         if (key.length < MIN_STATIC_KEY_LENGTH) return { indexable: false, reason: 'short_primary_key' };
-        anchors.push(normalizeAnchor(key).slice(0, MIN_STATIC_KEY_LENGTH));
+        anchors.push(normalizeAnchor(key).slice(0, Math.min(MAX_STATIC_ANCHOR_LENGTH, key.length)));
     }
 
     return {
@@ -155,6 +158,53 @@ export class WorldInfoSelectionIndex {
     #fallback = new Set();
     #entryByKey = new Map();
 
+    #removeFromCompiledIndex(descriptor) {
+        if (!descriptor) return;
+        if (!descriptor.indexability.indexable) {
+            this.#fallback.delete(descriptor.key);
+            return;
+        }
+        const group = this.#groups.get(descriptor.indexability.signature);
+        if (!group) return;
+        group.keys.delete(descriptor.key);
+        for (const anchor of descriptor.indexability.anchors) {
+            const keys = group.anchors.get(anchor);
+            keys?.delete(descriptor.key);
+            if (keys?.size === 0) group.anchors.delete(anchor);
+        }
+        if (group.representativeKey === descriptor.key) {
+            group.representativeKey = group.keys.values().next().value || '';
+        }
+        if (group.keys.size === 0) {
+            this.#groups.delete(descriptor.indexability.signature);
+        }
+    }
+
+    #addToCompiledIndex(descriptor) {
+        if (!descriptor.indexability.indexable) {
+            this.#fallback.add(descriptor.key);
+            return;
+        }
+        const signature = descriptor.indexability.signature;
+        let group = this.#groups.get(signature);
+        if (!group) {
+            group = {
+                keys: new Set(),
+                representativeKey: descriptor.key,
+                anchors: new Map(),
+                anchorLengths: new Set(),
+            };
+            this.#groups.set(signature, group);
+        }
+        group.keys.add(descriptor.key);
+        if (!group.representativeKey) group.representativeKey = descriptor.key;
+        for (const anchor of descriptor.indexability.anchors) {
+            if (!group.anchors.has(anchor)) group.anchors.set(anchor, new Set());
+            group.anchors.get(anchor).add(descriptor.key);
+            group.anchorLengths.add(anchor.length);
+        }
+    }
+
     update(entries = []) {
         const nextKeys = new Set();
         const nextEntryByKey = new Map();
@@ -175,37 +225,22 @@ export class WorldInfoSelectionIndex {
                 previous.entry = entry;
                 continue;
             }
-            this.#descriptors.set(key, { entry, key, indexability, fingerprint });
+            if (previous) this.#removeFromCompiledIndex(previous);
+            const descriptor = { entry, key, indexability, fingerprint };
+            this.#descriptors.set(key, descriptor);
+            this.#addToCompiledIndex(descriptor);
             rebuilt++;
         }
 
-        for (const key of [...this.#descriptors.keys()]) {
+        for (const [key, descriptor] of [...this.#descriptors.entries()]) {
             if (!nextKeys.has(key)) {
+                this.#removeFromCompiledIndex(descriptor);
                 this.#descriptors.delete(key);
                 removed++;
             }
         }
 
         this.#entryByKey = nextEntryByKey;
-        this.#groups = new Map();
-        this.#fallback = new Set();
-        for (const descriptor of this.#descriptors.values()) {
-            if (!descriptor.indexability.indexable) {
-                this.#fallback.add(descriptor.key);
-                continue;
-            }
-            const signature = descriptor.indexability.signature;
-            let group = this.#groups.get(signature);
-            if (!group) {
-                group = { representative: descriptor.entry, anchors: new Map() };
-                this.#groups.set(signature, group);
-            }
-            for (const anchor of descriptor.indexability.anchors) {
-                if (!group.anchors.has(anchor)) group.anchors.set(anchor, new Set());
-                group.anchors.get(anchor).add(descriptor.key);
-            }
-        }
-
         return {
             total: this.#descriptors.size,
             indexed: this.#descriptors.size - this.#fallback.size,
@@ -235,9 +270,11 @@ export class WorldInfoSelectionIndex {
                 if (this.#entryByKey.has(forced)) keys.add(forced);
             }
             for (const group of this.#groups.values()) {
-                const trigrams = makeTrigrams(getScanText(group.representative));
-                for (const trigram of trigrams) {
-                    const matches = group.anchors.get(trigram);
+                const representative = this.#entryByKey.get(group.representativeKey);
+                if (!representative) continue;
+                const ngrams = makeNgrams(getScanText(representative), group.anchorLengths);
+                for (const ngram of ngrams) {
+                    const matches = group.anchors.get(ngram);
                     if (!matches) continue;
                     for (const key of matches) keys.add(key);
                 }
