@@ -1,0 +1,89 @@
+name: Atria PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Run ESLint
+        run: npm run lint
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 53306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: luker
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: luker_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd="pg_isready -U luker -d luker_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Run unit tests
+        run: npm run test:unit --prefix tests -- --maxWorkers=2
+
+  migration-guard:
+    name: Atria Migration Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify product identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -p "require('./package.json').name")" = "atria"
+          grep -q '<title>Atria</title>' public/index.html
+          grep -q '"name": "Atria"' public/manifest.json
+          grep -q 'applicationId = "com.atria.app"' android-app/app/build.gradle.kts
+          grep -q 'namespace = "com.atria.app"' android-app/app/build.gradle.kts
+          test -f android-app/app/src/main/java/com/atria/app/AtriaApplication.kt
+          if grep -RInI -E 'com\.luker\.app|class Luker|package com\.luker' android-app --exclude-dir=build --exclude-dir=.gradle; then
+            echo "Legacy Luker Android identity remains."
+            exit 1
+          fi
