@@ -10634,6 +10634,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
 
         let ignoresBudget = newEntries.filter(e => e.ignoreBudget).length;
         const dependencyActivatedThisLoop = new Set();
+        const failedAtomicSelectionEntries = new Set();
 
         for (const entry of newEntries) {
             ignoresBudget -= (entry.ignoreBudget ? 1 : 0);
@@ -10692,6 +10693,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                     isEligible: isWorldInfoDependencyEligible,
                 });
                 if (!bundle.ok) {
+                    failedAtomicSelectionEntries.add(entry);
                     recordActivationAttempt(
                         entry,
                         'selection_dependency_blocked',
@@ -10747,6 +10749,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                                 }
                                 token_budget_overflowed = true;
                             }
+                            failedAtomicSelectionEntries.add(entry);
                             recordActivationAttempt(
                                 entry,
                                 'dependency_budget_overflow',
@@ -10834,7 +10837,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         }
 
         const successfulNewEntries = [...new Set([
-            ...newEntries.filter(x => !failedProbabilityChecks.has(x)),
+            ...newEntries.filter(x => !failedProbabilityChecks.has(x) && !failedAtomicSelectionEntries.has(x)),
             ...dependencyActivatedThisLoop,
         ])];
         const successfulNewEntriesForRecursion = successfulNewEntries.filter(x => !x.preventRecursion);
