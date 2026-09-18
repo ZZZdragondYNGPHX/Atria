@@ -9,9 +9,6 @@ import yaml from 'yaml';
 import yauzl from 'yauzl';
 import {
     getAdminSettings,
-    saveAdminSettings,
-    getEffectiveUserQuotaBytes,
-    getDirectorySizeBytes,
 } from '../admin-settings.js';
 import { checkForNewContent, CONTENT_TYPES } from './content-manager.js';
 import {
@@ -40,13 +37,6 @@ import {
     ValidationError as AnnouncementValidationError,
 } from '../announcements.js';
 import { ensureDirectory, getConfigFilePath, getConfigValue, normalizeZipEntryPath, reloadConfigCache } from '../util.js';
-import {
-    installServerPlugin,
-    listInstalledServerPlugins,
-    removeServerPlugin,
-    updateServerPlugin,
-} from '../plugin-loader.js';
-import { SERVER_PLUGINS_DIRECTORY } from '../constants.js';
 import {
     getStorageEngine,
     initStorage,
@@ -284,86 +274,6 @@ router.post('/update/apk-latest', requireAdminMiddleware, async (_request, respo
     }
 });
 
-router.post('/overview', requireAdminMiddleware, async (_request, response) => {
-    try {
-        const adminSettings = await getAdminSettings();
-
-        /** @type {import('../users.js').User[]} */
-        const users = await storage.values(x => x.key.startsWith(KEY_PREFIX));
-
-        const usersWithStats = await Promise.all(users.map(async user => {
-            const directories = getUserDirectories(user.handle);
-            const storageBytes = await getDirectorySizeBytes(directories.root);
-            const effectiveQuotaBytes = getEffectiveUserQuotaBytes(user, adminSettings);
-
-            return {
-                handle: user.handle,
-                name: user.name,
-                admin: user.admin,
-                enabled: user.enabled,
-                password: Boolean(user.password),
-                created: user.created,
-                storageBytes: storageBytes,
-                storageQuotaBytes: effectiveQuotaBytes,
-                storageUsageRatio: effectiveQuotaBytes >= 0 ? storageBytes / Math.max(effectiveQuotaBytes, 1) : null,
-            };
-        }));
-
-        usersWithStats.sort((x, y) => (x.created ?? 0) - (y.created ?? 0));
-
-        const totals = {
-            users: usersWithStats.length,
-            enabledUsers: usersWithStats.filter(x => x.enabled).length,
-            adminUsers: usersWithStats.filter(x => x.admin).length,
-            protectedUsers: usersWithStats.filter(x => x.password).length,
-            storageBytes: usersWithStats.reduce((acc, user) => acc + user.storageBytes, 0),
-            overQuotaUsers: usersWithStats.filter(x => x.storageQuotaBytes >= 0 && x.storageBytes > x.storageQuotaBytes).length,
-        };
-
-        const security = {
-            adminWithoutPassword: usersWithStats.filter(x => x.admin && !x.password).map(x => x.handle),
-            disabledAdmins: usersWithStats.filter(x => x.admin && !x.enabled).map(x => x.handle),
-            disabledUsers: usersWithStats.filter(x => !x.enabled).map(x => x.handle),
-        };
-
-        return response.json({
-            server: {
-                nodeVersion: process.version,
-                platform: process.platform,
-                uptimeSec: Math.floor(process.uptime()),
-                now: Date.now(),
-            },
-            totals,
-            settings: adminSettings,
-            users: usersWithStats,
-            security,
-        });
-    } catch (error) {
-        console.error('Admin overview failed:', error);
-        return response.sendStatus(500);
-    }
-});
-
-router.post('/settings/get', requireAdminMiddleware, async (_request, response) => {
-    try {
-        const settings = await getAdminSettings();
-        return response.json(settings);
-    } catch (error) {
-        console.error('Admin settings get failed:', error);
-        return response.sendStatus(500);
-    }
-});
-
-router.post('/settings/save', requireAdminMiddleware, async (request, response) => {
-    try {
-        const saved = await saveAdminSettings(request.body || {});
-        return response.json(saved);
-    } catch (error) {
-        console.error('Admin settings save failed:', error);
-        return response.sendStatus(500);
-    }
-});
-
 function resolveYamlBool(rawValue, defaultValue) {
     if (rawValue === undefined || rawValue === null) {
         return defaultValue;
@@ -425,55 +335,6 @@ function validateConfigSafety(parsed) {
 
     return { codes, errors };
 }
-
-router.post('/config/get', requireAdminMiddleware, async (_request, response) => {
-    try {
-        const configPath = getConfigFilePath();
-        if (!configPath) {
-            return response.status(500).json({ error: 'Config path not initialized' });
-        }
-
-        const content = await fsPromises.readFile(configPath, 'utf8');
-        return response.json({ path: configPath, content });
-    } catch (error) {
-        console.error('Config get failed:', error);
-        return response.status(500).json({ error: String(error?.message || error) });
-    }
-});
-
-router.post('/config/save', requireAdminMiddleware, async (request, response) => {
-    try {
-        const content = request.body?.content;
-        if (typeof content !== 'string') {
-            return response.status(400).json({ error: 'Missing config content' });
-        }
-
-        const configPath = getConfigFilePath();
-        if (!configPath) {
-            return response.status(500).json({ error: 'Config path not initialized' });
-        }
-
-        const parsedConfig = yaml.parse(content);
-        const { codes: safetyCodes, errors: safetyErrors } = validateConfigSafety(parsedConfig);
-        if (safetyCodes.length > 0) {
-            return response.status(400).json({ error: safetyErrors.join(' '), codes: safetyCodes });
-        }
-        await fsPromises.writeFile(configPath, content, 'utf8');
-        reloadConfigCache();
-
-        return response.json({
-            ok: true,
-            hotReloadApplied: true,
-            restartRecommended: true,
-        });
-    } catch (error) {
-        if (error instanceof Error && error.name.startsWith('YAML')) {
-            return response.status(400).json({ error: error.message });
-        }
-        console.error('Config save failed:', error);
-        return response.status(500).json({ error: String(error?.message || error) });
-    }
-});
 
 router.post('/import/config', requireAdminMiddleware, async (request, response) => {
     let uploadPath = '';
@@ -546,120 +407,6 @@ router.post('/import/global-extensions', requireAdminMiddleware, async (request,
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true });
         }
-    }
-});
-
-router.post('/plugins/list', requireAdminMiddleware, async (_request, response) => {
-    try {
-        const plugins = await listInstalledServerPlugins(SERVER_PLUGINS_DIRECTORY);
-        const enabled = !!getConfigValue('enableServerPlugins', false, 'boolean');
-
-        return response.json({
-            ok: true,
-            enabled,
-            pluginsPath: path.resolve(SERVER_PLUGINS_DIRECTORY),
-            plugins,
-        });
-    } catch (error) {
-        console.error('Server plugin list failed:', error);
-        return response.status(500).json({ error: String(error?.message || error) });
-    }
-});
-
-router.post('/plugins/install', requireAdminMiddleware, async (request, response) => {
-    try {
-        const repoUrl = String(request.body?.repoUrl || '').trim();
-        if (!repoUrl) {
-            return response.status(400).json({ error: 'Missing plugin repository URL' });
-        }
-
-        const plugin = await installServerPlugin(SERVER_PLUGINS_DIRECTORY, repoUrl);
-        const enabled = !!getConfigValue('enableServerPlugins', false, 'boolean');
-
-        return response.json({
-            ok: true,
-            enabled,
-            restartRecommended: true,
-            plugin,
-        });
-    } catch (error) {
-        console.error('Server plugin install failed:', error);
-        const statusCode = Number(error?.statusCode);
-        const status = Number.isFinite(statusCode) && statusCode >= 400 ? statusCode : 500;
-        return response.status(status).json({ error: String(error?.message || error) });
-    }
-});
-
-router.post('/plugins/update', requireAdminMiddleware, async (request, response) => {
-    try {
-        const directory = String(request.body?.directory || '').trim();
-        if (!directory) {
-            return response.status(400).json({ error: 'Missing plugin directory name' });
-        }
-
-        const plugin = await updateServerPlugin(SERVER_PLUGINS_DIRECTORY, directory);
-
-        return response.json({
-            ok: true,
-            restartRecommended: true,
-            plugin,
-        });
-    } catch (error) {
-        console.error('Server plugin update failed:', error);
-        const statusCode = Number(error?.statusCode);
-        const status = Number.isFinite(statusCode) && statusCode >= 400 ? statusCode : 500;
-        return response.status(status).json({ error: String(error?.message || error) });
-    }
-});
-
-router.post('/plugins/delete', requireAdminMiddleware, async (request, response) => {
-    try {
-        const directory = String(request.body?.directory || '').trim();
-        if (!directory) {
-            return response.status(400).json({ error: 'Missing plugin directory name' });
-        }
-
-        const plugin = await removeServerPlugin(SERVER_PLUGINS_DIRECTORY, directory);
-
-        return response.json({
-            ok: true,
-            restartRecommended: true,
-            plugin,
-        });
-    } catch (error) {
-        console.error('Server plugin delete failed:', error);
-        const statusCode = Number(error?.statusCode);
-        const status = Number.isFinite(statusCode) && statusCode >= 400 ? statusCode : 500;
-        return response.status(status).json({ error: String(error?.message || error) });
-    }
-});
-
-router.post('/set-quota', requireAdminMiddleware, async (request, response) => {
-    try {
-        const handle = String(request.body?.handle || '').trim();
-        if (!handle) {
-            return response.status(400).json({ error: 'Missing required fields' });
-        }
-
-        /** @type {import('../users.js').User} */
-        const user = await storage.getItem(toKey(handle));
-        if (!user) {
-            return response.status(404).json({ error: 'User not found' });
-        }
-
-        const rawQuota = request.body?.storageQuotaBytes;
-        const parsed = Number(rawQuota);
-        if (rawQuota === null || rawQuota === '' || rawQuota === undefined || !Number.isFinite(parsed) || parsed < 0) {
-            delete user.storageQuotaBytes;
-        } else {
-            user.storageQuotaBytes = Math.floor(parsed);
-        }
-
-        await storage.setItem(toKey(handle), user);
-        return response.sendStatus(204);
-    } catch (error) {
-        console.error('Set user quota failed:', error);
-        return response.sendStatus(500);
     }
 });
 
