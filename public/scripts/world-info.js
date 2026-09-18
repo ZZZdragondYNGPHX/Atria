@@ -1,5 +1,5 @@
 import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
-import { evaluateWorldInfoStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
+import { evaluateWorldInfoStateConditions, shouldActivateWorldInfoFromStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
 import {
     buildWorldInfoEventRuntimeState,
     evaluateWorldInfoStateEvents,
@@ -2616,6 +2616,10 @@ function registerWorldInfoSlashCommands() {
             case 'stateConditionLogic':
                 entry.stateConditionLogic = String(value || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
                 setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', entry.stateConditionLogic);
+                break;
+            case 'stateActivation':
+                entry.stateActivation = isTrueBoolean(value);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_activation', entry.stateActivation);
                 break;
             case 'stateEvents': {
                 try {
@@ -6774,6 +6778,7 @@ export const originalWIDataKeyMap = {
     'triggers': 'extensions.triggers',
     'stateConditions': 'extensions.atria_state_conditions',
     'stateConditionLogic': 'extensions.atria_state_condition_logic',
+    'stateActivation': 'extensions.atria_state_activation',
     'stateEvents': 'extensions.atria_state_events',
     'stateEventLogic': 'extensions.atria_state_event_logic',
     'ignoreBudget': 'extensions.ignore_budget',
@@ -7882,6 +7887,7 @@ export async function getWorldEntry(name, data, entry) {
         const stateConditionsList = stateConditionsRoot.find('.wi-state-condition-list');
         const stateConditionCount = stateConditionsRoot.find('.wi-state-condition-count');
         const stateConditionLogicInput = stateConditionsRoot.find('select[name="stateConditionLogic"]');
+        const stateActivationInput = stateConditionsRoot.find('input[name="stateActivation"]');
         const stateConditionAdd = stateConditionsRoot.find('.wi-state-condition-add');
         const stateConditionSave = stateConditionsRoot.find('.wi-state-condition-save');
         const stateConditionStatus = stateConditionsRoot.find('.wi-state-condition-status');
@@ -7936,12 +7942,13 @@ export async function getWorldEntry(name, data, entry) {
                 throw new TypeError('Every state condition needs a provider, path, operator, and scalar value');
             }
             const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
+            const stateActivation = persistable.length > 0 && stateActivationInput.prop('checked') === true;
             const evaluation = evaluateWorldInfoStateConditions(persistable, [], logic);
             const invalidIndex = evaluation.results.findIndex(result => result.reason === 'invalid_condition');
             if (invalidIndex >= 0) {
                 throw new TypeError(`Condition #${invalidIndex + 1} is invalid`);
             }
-            return { persistable, logic };
+            return { persistable, logic, stateActivation };
         };
 
         const saveStateConditions = async () => {
@@ -7949,13 +7956,16 @@ export async function getWorldEntry(name, data, entry) {
             const liveEntry = data.entries[uid];
             if (!liveEntry) return false;
             try {
-                const { persistable, logic } = validateStateConditionDrafts();
+                const { persistable, logic, stateActivation } = validateStateConditionDrafts();
                 liveEntry.stateConditions = persistable;
                 liveEntry.stateConditionLogic = logic;
+                liveEntry.stateActivation = stateActivation;
                 entry.stateConditions = structuredClone(persistable);
                 entry.stateConditionLogic = logic;
+                entry.stateActivation = stateActivation;
                 setWIOriginalDataValue(data, uid, 'extensions.atria_state_conditions', structuredClone(persistable));
                 setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', logic);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_activation', stateActivation);
                 await saveWorldInfo(name, data);
                 stateConditionsDirty = false;
                 stateConditionCount.text(String(persistable.length));
@@ -7979,6 +7989,8 @@ export async function getWorldEntry(name, data, entry) {
         const renderStateConditionRows = () => {
             stateConditionsList.empty();
             stateConditionCount.text(String(stateConditionDrafts.length));
+            stateActivationInput.prop('disabled', stateConditionDrafts.length === 0);
+            if (stateConditionDrafts.length === 0) stateActivationInput.prop('checked', false);
 
             stateConditionDrafts.forEach((condition, index) => {
                 const row = $('<div class="wi-state-condition-row"></div>');
@@ -8128,6 +8140,8 @@ export async function getWorldEntry(name, data, entry) {
 
         stateConditionLogicInput.val(entry.stateConditionLogic === 'any' ? 'any' : 'all');
         stateConditionLogicInput.on('input', markStateConditionsDirty);
+        stateActivationInput.prop('checked', entry.stateActivation === true);
+        stateActivationInput.on('input', markStateConditionsDirty);
         stateConditionAdd.on('click', event => {
             event.preventDefault();
             event.stopPropagation();
@@ -8898,6 +8912,7 @@ export const newWorldInfoEntryDefinition = {
     triggers: { default: [], type: 'array', arrayFilter: (value) => GENERATION_TYPE_TRIGGERS.includes(value) },
     stateConditions: { default: [], type: 'array' },
     stateConditionLogic: { default: 'all', type: 'enum' },
+    stateActivation: { default: false, type: 'boolean' },
     stateEvents: { default: [], type: 'array' },
     stateEventLogic: { default: 'all', type: 'enum' },
 };
@@ -9991,6 +10006,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                 continue;
             }
 
+            let stateConditionActivationTrace = null;
             if (hasConfiguredStateConditions(entry)) {
                 const stateResult = Array.isArray(entry.stateConditions)
                     ? evaluateWorldInfoStateConditions(
@@ -10010,6 +10026,17 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                         }],
                         reason: 'unknown',
                     };
+                const stateConditionTrace = {
+                    stateConditionLogic: stateResult.logic,
+                    stateConditions: stateResult.results.map(result => ({
+                        providerId: result.providerId,
+                        path: result.path,
+                        operator: result.operator,
+                        status: result.status,
+                        reason: result.reason,
+                        ...(result.providerStatus ? { providerStatus: result.providerStatus } : {}),
+                    })),
+                };
                 if (stateResult.status !== WORLD_INFO_CONDITION_RESULT.TRUE) {
                     const reason = stateResult.status === WORLD_INFO_CONDITION_RESULT.UNKNOWN
                         ? 'state_condition_unknown'
@@ -10018,19 +10045,15 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                     recordActivationAttempt(
                         entry,
                         reason,
-                        withRecursionTraceSources({
-                            stateConditionLogic: stateResult.logic,
-                            stateConditions: stateResult.results.map(result => ({
-                                providerId: result.providerId,
-                                path: result.path,
-                                operator: result.operator,
-                                status: result.status,
-                                reason: result.reason,
-                                ...(result.providerStatus ? { providerStatus: result.providerStatus } : {}),
-                            })),
-                        }),
+                        withRecursionTraceSources(stateConditionTrace),
                     );
                     continue;
+                }
+                if (shouldActivateWorldInfoFromStateConditions(entry, stateResult)) {
+                    stateConditionActivationTrace = {
+                        stateActivation: true,
+                        ...stateConditionTrace,
+                    };
                 }
             }
 
@@ -10173,6 +10196,17 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                     withRecursionTraceSources({ sourceEntry: makeTraceKey(entry) }),
                 );
                 activatedNow.add(externallyActivated);
+                continue;
+            }
+
+            if (stateConditionActivationTrace) {
+                log('activated by matched native state conditions');
+                recordActivationAttempt(
+                    entry,
+                    'state_condition_activate',
+                    withRecursionTraceSources(stateConditionActivationTrace),
+                );
+                activatedNow.add(entry);
                 continue;
             }
 
@@ -11074,6 +11108,7 @@ export function convertCharacterBook(characterBook) {
                 ? structuredClone(entry.extensions.atria_state_conditions)
                 : [],
             stateConditionLogic: entry.extensions?.atria_state_condition_logic === 'any' ? 'any' : 'all',
+            stateActivation: entry.extensions?.atria_state_activation === true,
             stateEvents: Array.isArray(entry.extensions?.atria_state_events)
                 ? structuredClone(entry.extensions.atria_state_events)
                 : [],
