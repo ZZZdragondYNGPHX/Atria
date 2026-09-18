@@ -58,16 +58,13 @@ function paged(parent, items, draw, size = 50) {
 const selectedRun = () => replay || getCurrentRun();
 
 function normalizeSection(value) {
+    const normalized = String(value || '').trim().toLowerCase();
     return {
-        Presets: 'orchestration',
-        Orchestration: 'orchestration',
-        'Live Run': 'run',
-        Graph: 'run',
-        Agents: 'run',
-        Run: 'run',
-        Memory: 'memory',
-        Diagnostics: 'diagnostics',
-    }[value] || value;
+        orchestration: 'orchestration',
+        run: 'run',
+        memory: 'memory',
+        diagnostics: 'diagnostics',
+    }[normalized] || normalized;
 }
 
 export function configureWorkspace(next) {
