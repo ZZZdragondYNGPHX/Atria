@@ -41,7 +41,7 @@ async function openInspector(page) {
     }
     await page.locator('#account_button').click();
     const profilePopup = page.locator('dialog.popup[open]').last();
-    await profilePopup.locator('.userStorageInspectorButton').click();
+    await profilePopup.locator('.userStorageManagementButton').click();
     const inspector = page.locator('dialog.popup[open]').last().locator('.storageInspectorContainer');
     await inspector.waitFor({ state: 'visible', timeout: 10_000 });
     await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached', timeout: 15_000 });
