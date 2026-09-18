@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, and agent-native Web Access / API fallback integration are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, and the Worldbook Performance Foundation are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `12038702ebc6ce9d9b2f2bbf60f6a0996b7c6ef3`
+- `3ca80415386dff83017b608e23ee9475ee8e0128`
 
-This commit is the squash merge of PR #6. Search Tools now acts as an on-demand Web Access capability for agents, and the Workspace Default API profile can act as a runtime fallback after eligible primary-route failures.
+This commit is the squash merge of PR #8. The World Info foundation now includes bounded chat snapshot ownership, occurrence-level provenance, explicit evaluation commits, native read-only state conditions, committed transition events, and provider-owned scene persistence.
 
 ## Branch roles
 
@@ -119,6 +119,21 @@ Final validation for PR #4 passed:
 - Android JVM tests and Android/Docker builds are no longer default validation/build steps; manual workflows remain available.
 - Temporary branch `feat/agent-web-access-api-fallback` has been removed after merge.
 
+
+### Worldbook Performance Foundation
+
+- PR #8
+- Baseline: `main@65321bb522febd369901127cd2b4b2c9883d4658`
+- Final validated head: `b5949b5a62b5907b0863bad0bcb4b904d409ad3f`
+- Squash merge / current `main`: `3ca80415386dff83017b608e23ee9475ee8e0128`
+- Record: `features/worldbook-performance-foundation.md`
+- P-01 bounded chat snapshots and W-01/W-02/W-03 World Info foundation are complete.
+- Native World Info state integration is read-only: MVU/LoreState remain the state owners.
+- `stateActivation` is opt-in and defaults off; matched state conditions can sustain scene content without repeated keyword mentions.
+- Transition-event baselines advance only through accepted `commitWorldInfoEvaluation()` commits and use FloorState for retry/swipe/branch semantics.
+- Final validation passed Worldbook Performance Foundation #83, Workspace UI #144, Atria Migration Guard, ESLint, and the complete Node unit suite in Atria PR Checks #330.
+- Android JVM tests and Android/Docker builds were intentionally not run for this task.
+- W-04/W-05 and P-02 through P-05 remain follow-up work and should use new branches from current `main`.
 
 ## Long-lived references
 
