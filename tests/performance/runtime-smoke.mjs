@@ -263,13 +263,19 @@ try {
         const clone = core.getChatMessageSnapshot(targets.at(-1));
         clone[0].mes = 'mutated';
         const isolatedClone = core.getChatMessageSnapshot(targets.at(-1))[0].mes !== 'mutated';
+        const stateConditionAuthorUi = {
+            drawers: document.querySelectorAll('#entry_edit_template .wi-entry-state-conditions').length,
+            addButtons: document.querySelectorAll('#entry_edit_template .wi-state-condition-add').length,
+            saveButtons: document.querySelectorAll('#entry_edit_template .wi-state-condition-save').length,
+            logicSelects: document.querySelectorAll('#entry_edit_template select[name="stateConditionLogic"]').length,
+        };
         return { before, after: payload.worldInfoBeforeEntries, aggregate: payload.worldInfoString,
             sources, attribution, retainedDuringWrite, retainedAfterWrite, wireSnapshot, isolatedClone,
             metadataBeforeEvaluation, metadataAfterEvaluation, metadataAfterCommit,
             firstCommit, secondCommit, staleCommit, activationEvents, lastActivatedCount,
             metadataBeforeStaleCommit, metadataAfterStaleCommit,
             containedUnknownConditionBody: resolution.worldInfoString.includes('UNKNOWN_CONDITION_BODY'),
-            readyConditionTrueBody, readyConditionFalseBody };
+            readyConditionTrueBody, readyConditionFalseBody, stateConditionAuthorUi };
     });
     assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
     assert.deepEqual(result.after, ['RENDERED_FIXTURE_BODY']);
@@ -291,6 +297,12 @@ try {
     assert.equal(result.containedUnknownConditionBody, false);
     assert.equal(result.readyConditionTrueBody, true);
     assert.equal(result.readyConditionFalseBody, false);
+    assert.deepEqual(result.stateConditionAuthorUi, {
+        drawers: 1,
+        addButtons: 1,
+        saveButtons: 1,
+        logicSelects: 1,
+    });
     assert.equal(Object.keys(result.metadataAfterCommit.timedWorldInfo?.sticky || {}).length, 2);
     assert.equal(Object.hasOwn(result.attribution.sources[0], 'content'), false);
     assert.deepEqual(result.attribution.dispatches, [{
