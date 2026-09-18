@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, and Termux main-branch pinning are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, and agent-native Web Access / API fallback integration are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `a32a2c4e815cb9e9590f303b36423f6e959d8076`
+- `12038702ebc6ce9d9b2f2bbf60f6a0996b7c6ef3`
 
-This commit is the squash merge of PR #5. Atria Termux normal installation and update flows now follow the authoritative `main` branch.
+This commit is the squash merge of PR #6. Search Tools now acts as an on-demand Web Access capability for agents, and the Workspace Default API profile can act as a runtime fallback after eligible primary-route failures.
 
 ## Branch roles
 
@@ -26,7 +26,8 @@ This commit is the squash merge of PR #5. Atria Termux normal installation and u
 4. Preserve real SillyTavern upstream structures when they are still part of the product/upstream contract.
 5. Do not reintroduce predecessor Luker compatibility into Atria-owned runtime state unless a future task explicitly requires it.
 6. Product UI should follow the standalone-first policy: host glue stays at adapters, while Workspace views consume stable Atria data/actions.
-7. At task completion, write the implementation record to `docs`, merge into `main`, verify integration, then remove the temporary task branch.
+7. Android builds/tests and Docker image builds are opt-in validation. Run them only when the user explicitly requests them.
+8. At task completion, write the implementation record to `docs`, merge into `main`, verify integration, then remove the temporary task branch.
 
 ## Current architecture
 
@@ -41,7 +42,9 @@ Atria currently owns and maintains:
 - generation lifecycle modifications;
 - Android integration;
 - Termux support;
-- SillyTavern upstream integration layer.
+- SillyTavern upstream integration layer;
+- agent-native Web Access backed by Search Tools;
+- orchestration runtime API fallback through the Workspace Default API profile.
 
 ### Workspace product structure
 
@@ -97,6 +100,24 @@ Final validation for PR #4 passed:
 - Record: `fixes/termux-main-branch.md`
 - Normal Termux install/update is pinned to `main`; Tag/Commit checkout remains available for explicit debugging or rollback.
 - PR Checks run #136 passed Atria Migration Guard, ESLint, full Node unit tests, and Android JVM tests.
+
+
+### Agent-native Web Access and API fallback
+
+- PR #6
+- Original baseline: `main@b84d411431e72be39099cba1a0a42cde9052c778`
+- Synchronized baseline before merge: `main@a32a2c4e815cb9e9590f303b36423f6e959d8076`
+- Final validated head: `af157c8dd79c358c8e56921d5d0a81e82fc3da5d`
+- Squash merge / current `main`: `12038702ebc6ce9d9b2f2bbf60f6a0996b7c6ef3`
+- Record: `features/agent-web-access-api-fallback.md`
+- Search Tools remains independent and exposes on-demand Web Access to agents through `search_search` / `search_visit`.
+- Main-model web tools remain available without orchestration.
+- Pre-request automatic research remains available as an Advanced opt-in path.
+- Web evidence is deduplicated per orchestration run without global prompt injection.
+- Workspace Default API is a runtime fallback for eligible provider/transport failures after primary retries.
+- Final default validation passed ESLint, full Node unit tests, Atria Migration Guard, Workspace IA/projection/UI/call-count Chromium smoke, and real-host Workspace binding E2E.
+- Android JVM tests and Android/Docker builds are no longer default validation/build steps; manual workflows remain available.
+- Temporary branch `feat/agent-web-access-api-fallback` has been removed after merge.
 
 
 ## Long-lived references
