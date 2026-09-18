@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
+      - "public/index.html"
+      - "public/css/world-info.css"
       - "public/script.js"
       - "public/scripts/world-info.js"
       - "public/scripts/atri-chat-snapshot-cache.js"
