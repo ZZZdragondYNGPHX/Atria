@@ -154,7 +154,7 @@ import { ToolManager } from './tool-calling.js';
 import { accountStorage } from './util/AccountStorage.js';
 import { areLookupNamesEqual, findCanonicalNameInList, timestampToMoment, uuidv4, importFromExternalUrl, getCharaFilename, escapeHtml, download, getFileText, getStringHash, createThumbnail, isValidUrl } from './utils.js';
 import { addGlobalVariable, addLocalVariable, decrementGlobalVariable, decrementLocalVariable, deleteGlobalVariable, deleteLocalVariable, existsGlobalVariable, existsLocalVariable, getGlobalVariable, getLocalVariable, incrementGlobalVariable, incrementLocalVariable, popLocalVariable, pushLocalVariable, setGlobalVariable, setLocalVariable } from './variables.js';
-import { commitWorldInfoEvaluation, convertCharacterBook, getWorldInfoPrompt, loadWorldInfo, loadWorldInfoBatch, reloadEditor, saveWorldInfo, updateWorldInfoList, wi_anchor_position, world_info_position, world_names, getCharaAuxWorlds, createNewWorldInfo, importEmbeddedWorldInfo, charUpdatePrimaryWorld, getCharacterEmbeddedWorld, newWorldInfoEntryTemplate, createWorldInfoEntry, setWorldInfoButtonClass, setGlobalWorldInfoSelection, deleteWorldInfoEntry, deleteWorldInfo, selected_world_info, getChatWorldInfoNames, setChatWorldInfoSelection, getSortedEntries } from './world-info.js';
+import { convertCharacterBook, getWorldInfoPrompt, loadWorldInfo, loadWorldInfoBatch, reloadEditor, saveWorldInfo, updateWorldInfoList, wi_anchor_position, world_info_position, world_names, getCharaAuxWorlds, createNewWorldInfo, importEmbeddedWorldInfo, charUpdatePrimaryWorld, getCharacterEmbeddedWorld, newWorldInfoEntryTemplate, createWorldInfoEntry, setWorldInfoButtonClass, setGlobalWorldInfoSelection, deleteWorldInfoEntry, deleteWorldInfo, selected_world_info, getChatWorldInfoNames, setChatWorldInfoSelection, getSortedEntries } from './world-info.js';
 import { ChatCompletionService, TextCompletionService } from './custom-request.js';
 import { ConnectionManagerRequestService } from './extensions/shared.js';
 import { getChatCompletionConnectionProfiles, resolveChatCompletionRequestProfile } from './extensions/connection-manager/profile-resolver.js';
@@ -2410,6 +2410,15 @@ function buildGenerateTaskSenders() {
     };
 }
 
+
+async function commitWorldInfoEvaluationForContext(evaluation) {
+    const module = await import('./world-info.js');
+    if (typeof module.commitWorldInfoEvaluation !== 'function') {
+        return { committed: false, reason: 'unsupported' };
+    }
+    return module.commitWorldInfoEvaluation(evaluation);
+}
+
 export function getContext() {
     return {
         accountStorage,
@@ -2678,7 +2687,7 @@ export function getContext() {
         buildWorldInfoChatInput,
         buildWorldInfoGlobalScanData,
         simulateWorldInfoActivation,
-        commitWorldInfoEvaluation,
+        commitWorldInfoEvaluation: commitWorldInfoEvaluationForContext,
         resolveWorldInfoForMessages,
         uuidv4,
         humanizedDateTime,
