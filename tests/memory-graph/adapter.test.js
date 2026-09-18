@@ -540,7 +540,7 @@ describe('Atria memory persistence hard cutover', () => {
         await fs.ready();
         const current = await fs.get();
         expect(current.ok).toBe(true);
-        expect(current.state).toEqual({});
+        expect(current.state).toBeNull();
         expect(store._raw.get('memory_graph')).toEqual(obsoletePayload);
     });
 });
