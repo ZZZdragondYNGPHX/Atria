@@ -1373,10 +1373,11 @@ router.post('/restore-backup/probe', async (request, response) => {
         const crossModeRequired = sourceKind !== currentEngine.kind;
         // Every database-backed archive is staged before apply so category
         // selection never replays a whole-user dump directly into the live
-        // engine. MySQL/PostgreSQL staging needs an operator-provided scratch
-        // connection even when source/destination engine kinds match.
+        // engine. Same-kind MySQL/PostgreSQL staging reuses the live engine
+        // under an isolated scratch handle; extra scratch credentials are
+        // needed only for a true cross-engine MySQL/PostgreSQL source.
         const stagedEngineRestore = Boolean(analysis.engineMeta) || crossModeRequired;
-        const scratchCredsNeeded = stagedEngineRestore && (sourceKind === 'mysql' || sourceKind === 'postgres')
+        const scratchCredsNeeded = crossModeRequired && (sourceKind === 'mysql' || sourceKind === 'postgres')
             ? sourceKind
             : null;
 
