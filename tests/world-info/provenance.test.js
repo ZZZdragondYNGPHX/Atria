@@ -1,6 +1,11 @@
 import { describe, test, expect, jest } from '@jest/globals';
 import { applyProfileWorldInfoFilter } from '../../public/scripts/extensions/orchestrator/lorebook-filter.js';
-import { filterWorldInfoByProvenance } from '../../public/scripts/atri-world-info-provenance.js';
+import {
+    createWorldInfoDispatchAttribution,
+    filterWorldInfoByProvenance,
+    markWorldInfoDispatch,
+    snapshotWorldInfoProvenance,
+} from '../../public/scripts/atri-world-info-provenance.js';
 import { positions, makeEntry, makePayload } from './prompt-fixture.js';
 
 const filter = { bookPattern: '^private$', entryPattern: '' };
@@ -93,5 +98,110 @@ describe('rendered world info occurrence identity', () => {
         expect(Object.getPrototypeOf(payload.outletEntries)).toBe(Object.prototype);
         applyProfileWorldInfoFilter(payload, filter);
         expect(payload.outletEntries.__proto__).toEqual([]);
+    });
+});
+
+
+describe('world info request attribution', () => {
+    test('compact snapshot preserves occurrence identity without duplicating rendered bodies', () => {
+        const render = entry => entry.content.replace('shared', 'rendered');
+        const payload = makePayload([
+            makeEntry('public', 1, { comment: 'visible' }),
+            makeEntry('private', 2, { comment: 'secret' }),
+        ], render);
+        applyProfileWorldInfoFilter(payload, filter);
+
+        const snapshot = snapshotWorldInfoProvenance(payload.worldInfoResolution.worldInfoProvenance);
+        expect(snapshot).toEqual({
+            schemaVersion: 1,
+            sources: [
+                expect.objectContaining({
+                    channel: 'before',
+                    id: '["public",1]',
+                    world: 'public',
+                    uid: 1,
+                    sourceVersion: 124,
+                    comment: 'visible',
+                    ordinal: 0,
+                }),
+            ],
+        });
+        expect(snapshot.sources[0]).not.toHaveProperty('content');
+        expect(JSON.stringify(snapshot)).not.toContain('rendered body');
+        expect(JSON.stringify(snapshot)).not.toContain('shared body');
+    });
+
+    test('dispatch receipts append request attempts without copying provider payloads', () => {
+        const payload = makePayload([makeEntry('public', 1)]);
+        const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
+
+        markWorldInfoDispatch(attribution, {
+            boundary: 'provider_request',
+            providerConfirmed: true,
+            mainApi: 'openai',
+            type: 'normal',
+            stream: false,
+            requestScope: 'chat',
+            model: 'fixture-model',
+            messageCount: 7,
+            ignoredPayload: { messages: ['large prompt that must not be retained'] },
+        });
+        markWorldInfoDispatch(attribution, {
+            boundary: 'provider_request',
+            providerConfirmed: true,
+            mainApi: 'openai',
+            type: 'normal',
+            stream: false,
+            requestScope: 'chat',
+            model: 'fixture-model',
+            messageCount: 8,
+        });
+
+        expect(attribution.sources).toEqual([
+            expect.objectContaining({ id: '["public",1]', channel: 'before' }),
+        ]);
+        expect(attribution.dispatches).toEqual([
+            expect.objectContaining({ sequence: 1, boundary: 'provider_request', providerConfirmed: true, messageCount: 7 }),
+            expect.objectContaining({ sequence: 2, boundary: 'provider_request', providerConfirmed: true, messageCount: 8 }),
+        ]);
+        expect(JSON.stringify(attribution)).not.toContain('large prompt');
+        expect(attribution.dispatches[0]).not.toHaveProperty('ignoredPayload');
+    });
+
+    test('takeover handoff stays distinguishable from a core-confirmed provider request', () => {
+        const attribution = createWorldInfoDispatchAttribution(null);
+        markWorldInfoDispatch(attribution, {
+            boundary: 'plugin_takeover',
+            providerConfirmed: false,
+            mainApi: 'openai',
+            type: 'normal',
+            stream: true,
+        });
+        expect(attribution.dispatches).toEqual([
+            {
+                sequence: 1,
+                boundary: 'plugin_takeover',
+                providerConfirmed: false,
+                mainApi: 'openai',
+                type: 'normal',
+                stream: true,
+            },
+        ]);
+    });
+
+    test('dispatch history is bounded during repeated transport attempts', () => {
+        const attribution = createWorldInfoDispatchAttribution(null);
+        for (let i = 0; i < 25; i++) {
+            markWorldInfoDispatch(attribution, {
+                boundary: 'provider_request',
+                providerConfirmed: true,
+                mainApi: 'openai',
+                type: 'normal',
+                stream: false,
+            });
+        }
+        expect(attribution.dispatches).toHaveLength(16);
+        expect(attribution.dispatches[0].sequence).toBe(1);
+        expect(attribution.dispatches.at(-1).sequence).toBe(16);
     });
 });
