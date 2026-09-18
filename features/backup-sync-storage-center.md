@@ -254,4 +254,15 @@ The dedicated UI workflow now stops each lane after the first failing test (`--m
 
 ## Integration
 
-PR #7 validation is complete. Merge commit and post-merge `main` verification are recorded after integration.
+PR #7 was squash-merged into `main`.
+
+- validated task head: `7f8063e5f8ed0c6bcb639a6ae819653163ded662`
+- merge commit / current main: `65321bb522febd369901127cd2b4b2c9883d4658`
+- validated head tree: `95f5586b87c029e3c0a67df6b6ecb8ea9139f951`
+- merged main tree: `95f5586b87c029e3c0a67df6b6ecb8ea9139f951`
+- tree equality: confirmed
+- PR #7 state: merged
+- cleanup workflow run: `35345750721` — passed
+- temporary branch `feat/backup-sync-storage-center`: deleted
+
+The merged `main` working tree is therefore byte-for-byte the same Git tree that passed the final PR Checks and all three Backup/Storage Chromium lanes.
