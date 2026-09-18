@@ -53,6 +53,7 @@ jobs:
           performance/chat-snapshot-cache.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
+          world-info/state-conditions.test.js
           --runInBand
 
       - name: Capture synthetic offline baseline
