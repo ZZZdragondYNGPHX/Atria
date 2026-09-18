@@ -855,6 +855,41 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         extractMs = Date.now() - tExtract;
         reportExtractProgress(true);
 
+        const verification = {
+            ok: true,
+            checkedFiles: 0,
+            missingFiles: [],
+            enginePing: null,
+        };
+        for (const mapping of analysis.targetByNormalizedEntry.values()) {
+            verification.checkedFiles += 1;
+            if (!fs.existsSync(mapping.targetPath)) {
+                verification.ok = false;
+                verification.missingFiles.push(path.relative(targetRoot, mapping.targetPath));
+            }
+        }
+        if (analysis.engineMeta && currentEngine.kind !== 'fs') {
+            try {
+                await currentEngine.ping();
+                verification.enginePing = true;
+            } catch (verifyError) {
+                verification.ok = false;
+                verification.enginePing = false;
+                addRestoreReportSample(
+                    result.preflight,
+                    ENGINE_DUMP_ENTRY,
+                    `engine_verify_failed:${verifyError?.message || verifyError}`,
+                );
+            }
+        }
+        if (!verification.ok) {
+            throw new Error(
+                `Restore verification failed: ${verification.missingFiles.length} restored file(s) missing`
+                + (verification.enginePing === false ? '; storage engine verification failed' : ''),
+            );
+        }
+        result.verification = verification;
+
         reportProgress({ phase: 'finalize' });
         result.recoveryPoint = path.basename(recoveryPath);
     } catch (extractError) {
