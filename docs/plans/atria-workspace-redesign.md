@@ -1,6 +1,6 @@
 # Atria Agent & Memory Workspace Redesign
 
-> 状态：Approved / implementation in progress  
+> 状态：Implementation / core redesign complete, validation and polish in progress  
 > 工作分支：`feat/atria-workspace-redesign`  
 > 基线：`main@ed2957eba42fdbd9099eacd15eedf7f94b790fab`  
 > 日期：2026-09-18
@@ -575,6 +575,19 @@ workspace/
 ```
 
 实际落地允许根据依赖关系合并小模块，避免人为碎片化。
+
+## 当前实施进度
+
+- Phase 1 — Workspace Shell：完成
+- Phase 2 — Orchestration Authoring：主体完成，进入交互/响应式验证
+- Phase 3 — Runtime Console：完成
+- Phase 4 — Memory Workspace：主体完成；高频 Maintenance 已原生化，高级参数仍通过 advanced adapter 承载
+- Phase 5 — Diagnostics + Cleanup：Diagnostics 已产品化，正在进行浏览器 smoke、i18n、旧 CSS/入口清理
+
+当前验证：
+- Atria PR Checks 持续运行；
+- 新增 Workspace UI Chromium smoke workflow；
+- 重点覆盖移动端 Inspector、四入口导航、Run graph/timeline、Memory 原生视图、overflow 与 teardown。
 
 ## 13. 实施阶段
 
