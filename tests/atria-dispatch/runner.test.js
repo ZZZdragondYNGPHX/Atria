@@ -188,7 +188,7 @@ describe('runAtriaDispatch', () => {
         if (attached.persistenceTimer) { clearTimeout(attached.persistenceTimer); attached.persistenceTimer = null; }
     });
 
-    test('runner emits legacy atria trailer SSE frame so client openai.js:4316 can read generation_id/persisted', async () => {
+    test('runner emits Atria generation metadata trailer so client can read generation_id/persisted', async () => {
         const req = fakeRequest({ requestId: 'trailer-test-1', body: { stream: true } });
         const res = fakeResponse();
         const emittedChunks = [];
