@@ -71,9 +71,6 @@ export const ORCH_EXECUTION_MODES = Object.freeze([
     ORCH_EXECUTION_MODE_LOOP,
     _ORCH_EXECUTION_MODE_DIRECTOR,
 ]);
-export const PORTABLE_PROFILE_FORMAT_V1 = 'atri_orchestrator_profile_v1';
-export const PORTABLE_PROFILE_FORMAT_V2 = 'atri_orchestrator_profile_v2';
-export const PORTABLE_PROFILE_FORMAT_V3 = 'atri_orchestrator_profile_v3';
 export const PORTABLE_PROFILE_FORMAT_V4 = 'atri_orchestrator_profile_v4';
 export const AGENDA_PLANNER_TOOL = 'atri_orch_planner_step';
 export const AGENDA_RESULT_TOOL = 'atri_orch_submit_result';
@@ -81,13 +78,11 @@ export const DEFAULT_AGENDA_PLANNER_SYSTEM_PROMPT = defaultAgendaProfile.planner
 export const DEFAULT_AGENDA_PLANNER_PROMPT = defaultAgendaProfile.planner.userPromptTemplate;
 export const TEMPLATE_PLACEHOLDER_VARS = ['recent_chat', 'last_user', 'previous_outputs', 'distiller'];
 export const AUTO_INJECTED_CONTEXT_VARS = ['previous_orchestration'];
-export const LEGACY_REMOVED_CONTEXT_VARS = ['previous_snapshot'];
-export const ALLOWED_TEMPLATE_VARS = [...TEMPLATE_PLACEHOLDER_VARS, ...AUTO_INJECTED_CONTEXT_VARS, ...LEGACY_REMOVED_CONTEXT_VARS];
+export const ALLOWED_TEMPLATE_VARS = [...TEMPLATE_PLACEHOLDER_VARS, ...AUTO_INJECTED_CONTEXT_VARS];
 export const AI_VISIBLE_TEMPLATE_VARS = [...TEMPLATE_PLACEHOLDER_VARS];
 export const AUTO_INJECTED_PLACEHOLDER_RUNTIME_NOTE = '(auto-injected above)';
 export const AUTO_INJECTED_PLACEHOLDER_AI_NOTE = '(auto-injected by runtime before this template)';
 export const AUTO_INJECTED_PLACEHOLDER_REGEX = new RegExp(`{{\\s*(${AUTO_INJECTED_CONTEXT_VARS.join('|')})\\s*}}`, 'gi');
-export const LEGACY_REMOVED_PLACEHOLDER_REGEX = new RegExp(`{{\\s*(${LEGACY_REMOVED_CONTEXT_VARS.join('|')})\\s*}}`, 'gi');
 export const ORCH_ALLOWED_GENERATION_TYPES = new Set(['normal', 'continue', 'regenerate', 'swipe', 'impersonate']);
 export const CAPSULE_INJECT_POSITION_SCHEMA_VERSION = 2;
 export const ORCH_NODE_TYPE_WORKER = 'worker';
