@@ -14794,40 +14794,23 @@ function bindUi() {
         .catch(() => refreshUiStats());
 
     root.find('#atria_rpg_memory_os_enabled').off('input').on('input', function () {
-        settings.memoryOsEnabled = Boolean(jQuery(this).prop('checked'));
-        latestRecallSnapshot = null;
-        // Cancel work admitted under the previous mode. Lifecycle reads the
-        // same saved flag per operation, so enabling needs no host restart.
-        void stopMemoryRuntimeWork();
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('memoryOsEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_enabled').off('input').on('input', function () {
-        settings.enabled = Boolean(jQuery(this).prop('checked'));
-        syncGenerationVisibleHistoryRuntimeRegexScripts();
-        void syncMemoryLorebookActivation(getContext(), settings);
-        if (settings.enabled) {
-            void syncPersistentProjectionForCurrentChat(getContext());
-        } else {
-            void stopMemoryRuntimeWork();
-            updateUiStatus(i18n('Memory disabled, cleared memory lorebook injections.'));
-        }
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('enabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_recall_enabled').off('input').on('input', function () {
-        settings.recallEnabled = Boolean(jQuery(this).prop('checked'));
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('recallEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_auto_extraction_enabled').off('input').on('input', function () {
-        settings.autoExtractionEnabled = Boolean(jQuery(this).prop('checked'));
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('autoExtractionEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_auto_compression_enabled').off('input').on('input', function () {
-        settings.autoCompressionEnabled = Boolean(jQuery(this).prop('checked'));
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('autoCompressionEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     // Recall method selector + RAG settings visibility
@@ -14890,9 +14873,8 @@ function bindUi() {
     updateRecallMethodVisibility();
 
     root.find('#atria_rpg_memory_recall_method').off('change').on('change', function () {
-        settings.recallMethod = String(jQuery(this).val() || 'llm').trim();
+        void setMemoryWorkspaceControl('recallMethod', String(jQuery(this).val() || 'llm').trim());
         updateRecallMethodVisibility();
-        saveSettingsDebounced();
     });
 
     root.find('#atria_rpg_memory_vector_topk').off('change input').on('change input', function () {
