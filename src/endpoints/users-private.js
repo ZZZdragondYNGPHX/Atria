@@ -651,8 +651,12 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // db engine. This subsumes the legacy 400 "run storage-migrate" error.
     const currentEngine = getStorageEngine();
     const effectiveMeta = analysis.engineMeta || (currentEngine.kind !== 'fs' ? { engineKind: 'fs' } : null);
-    if (effectiveMeta && effectiveMeta.engineKind !== currentEngine.kind) {
-        // Cross-mode restore delegation. Returns a normalized
+    if (effectiveMeta) {
+        // Database-backed archives are always staged, even when source and
+        // destination engine kinds match. This prevents a selected-category
+        // restore from replaying a whole-user dump via engine.restoreUser().
+        // Legacy fs archives on DB destinations use the same staging path.
+        // Returns a normalized
         // `{ restoredCount, failedCount, crossMode: {...} }` shape that the
         // caller can echo straight back.
         const crossResult = await crossModeRestore(
@@ -681,7 +685,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // type is kept exported for defensive backward compat with consumers that
     // still match on it, but the throw site has been removed.
 
-    if (mode === 'overwrite' && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
+    if (isReplacingRestoreMode(mode) && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
         throw new Error('Archive does not match selected restore categories. Overwrite was cancelled to protect existing data.');
     }
 
@@ -697,7 +701,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     }
     snapshotMs = Date.now() - tSnap;
 
-    if (mode === 'overwrite') {
+    if (isReplacingRestoreMode(mode)) {
         try {
             for (const filePath of targetFiles) {
                 await fsPromises.rm(filePath, { force: true });
@@ -1300,6 +1304,22 @@ router.post('/restore-backup/recovery/apply', async (request, response) => {
     }
 });
 
+function normalizeRestoreMode(value) {
+    const mode = String(value || 'merge').trim().toLowerCase();
+    return mode === 'overwrite' || mode === 'full' ? mode : 'merge';
+}
+
+function buildFullRestoreSelection(isAdminUser) {
+    const base = normalizeUserBackupSelection({});
+    for (const key of Object.keys(base)) base[key] = true;
+    if (!isAdminUser) base.globalExtensions = false;
+    return base;
+}
+
+function isReplacingRestoreMode(mode) {
+    return mode === 'overwrite' || mode === 'full';
+}
+
 router.post('/restore-backup/probe', async (request, response) => {
     let uploadPath = '';
     try {
@@ -1319,14 +1339,14 @@ router.post('/restore-backup/probe', async (request, response) => {
         }
 
         const isAdminUser = Boolean(user.admin);
+        const mode = normalizeRestoreMode(request.body?.mode);
         const parsedSelection = parseBackupSelectionPayload(request.body?.selection);
-        const selection = sanitizeBackupSelectionForUser(parsedSelection, isAdminUser);
+        const selection = mode === 'full'
+            ? buildFullRestoreSelection(isAdminUser)
+            : sanitizeBackupSelectionForUser(parsedSelection, isAdminUser);
         if (!Object.values(selection).some(Boolean)) {
             return response.status(400).json({ error: 'At least one restore category must be selected.' });
         }
-
-        const modeInput = String(request.body?.mode || 'merge').toLowerCase();
-        const mode = modeInput === 'full' ? 'full' : modeInput === 'overwrite' ? 'overwrite' : 'merge';
         const directories = request.user.directories ?? getUserDirectories(user.handle);
         const backupTargets = getUserBackupTargets(directories, selection, {
             includeGlobalExtensions: isAdminUser,
@@ -1351,7 +1371,12 @@ router.post('/restore-backup/probe', async (request, response) => {
         const supportedKinds = new Set(['fs', 'sqlite', 'mysql', 'postgres']);
         const sourceKind = String(sourceMeta.engineKind || '');
         const crossModeRequired = sourceKind !== currentEngine.kind;
-        const scratchCredsNeeded = crossModeRequired && (sourceKind === 'mysql' || sourceKind === 'postgres')
+        // Every database-backed archive is staged before apply so category
+        // selection never replays a whole-user dump directly into the live
+        // engine. MySQL/PostgreSQL staging needs an operator-provided scratch
+        // connection even when source/destination engine kinds match.
+        const stagedEngineRestore = Boolean(analysis.engineMeta) || crossModeRequired;
+        const scratchCredsNeeded = stagedEngineRestore && (sourceKind === 'mysql' || sourceKind === 'postgres')
             ? sourceKind
             : null;
 
@@ -1377,6 +1402,23 @@ router.post('/restore-backup/probe', async (request, response) => {
             restoreMode: mode,
             selectedCategories: Object.entries(selection).filter(([, enabled]) => enabled).map(([key]) => key),
             requiresRecoveryPoint: true,
+            restorePlan: {
+                mode,
+                destructive: isReplacingRestoreMode(mode),
+                fullAccount: mode === 'full',
+                selectedCategories: Object.entries(selection)
+                    .filter(([, enabled]) => enabled)
+                    .map(([key]) => key),
+                sourceEngineKind: sourceKind,
+                destinationEngineKind: currentEngine.kind,
+                stagedEngineRestore,
+                crossModeRequired,
+                scratchCredsNeeded,
+                recoveryPoint: 'required',
+                verification: 'required',
+                targetableEntries: analysis.report.targetableEntries,
+                engineDumpEntries: analysis.report.engineDumpEntries,
+            },
             preflight: analysis.report,
         });
     } catch (err) {
@@ -1416,7 +1458,7 @@ router.post('/restore-backup', async (request, response) => {
         }
 
         uploadPath = request.file.path;
-        const mode = String(request.body.mode || 'merge').toLowerCase() === 'overwrite' ? 'overwrite' : 'merge';
+        const mode = normalizeRestoreMode(request.body.mode);
 
         let parsedSelection = request.body.selection;
         if (typeof parsedSelection === 'string' && parsedSelection.trim()) {
@@ -1428,7 +1470,9 @@ router.post('/restore-backup', async (request, response) => {
         }
 
         const isAdminUser = Boolean(request.user?.profile?.admin);
-        const selection = sanitizeBackupSelectionForUser(parsedSelection, isAdminUser);
+        const selection = mode === 'full'
+            ? buildFullRestoreSelection(isAdminUser)
+            : sanitizeBackupSelectionForUser(parsedSelection, isAdminUser);
         if (!Object.values(selection).some(Boolean)) {
             return response.status(400).json({ error: 'At least one restore category must be selected.' });
         }
