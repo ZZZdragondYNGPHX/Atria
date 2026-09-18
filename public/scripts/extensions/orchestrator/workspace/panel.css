@@ -1764,6 +1764,24 @@
     margin-bottom: 12px;
 }
 
+#agent-memory-workspace .workspace-memory-danger-zone {
+    margin: 12px 0;
+    padding: 16px 18px;
+    border: 1px solid color-mix(in srgb, var(--atri-workspace-danger) 42%, var(--atri-workspace-border));
+    border-radius: var(--atri-workspace-radius-lg);
+    background: color-mix(in srgb, var(--atri-workspace-danger) 6%, var(--atri-workspace-surface-1));
+}
+
+#agent-memory-workspace .workspace-memory-danger-zone h3 {
+    color: var(--atri-workspace-danger);
+}
+
+#agent-memory-workspace .workspace-memory-danger-zone .workspace-danger {
+    margin-top: 10px;
+    margin-left: 0;
+    border-color: color-mix(in srgb, var(--atri-workspace-danger) 55%, var(--atri-workspace-border));
+}
+
 #agent-memory-workspace .workspace-memory-advanced {
     margin-top: 12px;
 }
