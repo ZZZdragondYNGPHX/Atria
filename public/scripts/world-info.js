@@ -2554,6 +2554,7 @@ function registerWorldInfoSlashCommands() {
                     const parsed = JSON.parse(value);
                     if (!Array.isArray(parsed)) throw new TypeError('stateConditions must be a JSON array');
                     entry.stateConditions = parsed.slice(0, 32).filter(item => item && typeof item === 'object' && !Array.isArray(item));
+                    setWIOriginalDataValue(data, uid, 'extensions.atria_state_conditions', structuredClone(entry.stateConditions));
                 } catch (error) {
                     toastr.warning(t`State conditions must be a JSON array of condition objects`);
                     logSlashCommandWarn('setEntryFieldCallback: Invalid stateConditions JSON', args, { value, error: String(error?.message || error) });
@@ -2563,6 +2564,7 @@ function registerWorldInfoSlashCommands() {
             }
             case 'stateConditionLogic':
                 entry.stateConditionLogic = String(value || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', entry.stateConditionLogic);
                 break;
             default:
                 if (Array.isArray(entry[field])) {
@@ -6702,6 +6704,8 @@ export const originalWIDataKeyMap = {
     'cooldown': 'extensions.cooldown',
     'delay': 'extensions.delay',
     'triggers': 'extensions.triggers',
+    'stateConditions': 'extensions.atria_state_conditions',
+    'stateConditionLogic': 'extensions.atria_state_condition_logic',
     'ignoreBudget': 'extensions.ignore_budget',
 };
 
@@ -7800,6 +7804,81 @@ export async function getWorldEntry(name, data, entry) {
         initCharacterFilterSelect2Helper(characterFilter);
         fillCharacterAndTagOptionsHelper({ characterFilter, entry });
         handleCharacterFilterChangeHelper({ characterFilter, data, entry, name });
+
+        // Native state conditions (W-03). Editing is staged in the textarea
+        // and only persisted when Apply is pressed so incomplete JSON never
+        // temporarily suppresses the entry during normal typing.
+        const stateConditionsInput = editTemplate.find('textarea[name="stateConditionsJson"]');
+        const stateConditionLogicInput = editTemplate.find('select[name="stateConditionLogic"]');
+        const stateConditionsStatus = editTemplate.find('.wi-state-conditions-status');
+        const stateConditionsApply = editTemplate.find('.wi-state-conditions-apply');
+        const stateConditionsClear = editTemplate.find('.wi-state-conditions-clear');
+
+        const renderStateConditionsEditor = () => {
+            const liveEntry = data.entries[entry.uid];
+            const conditions = Array.isArray(liveEntry?.stateConditions) ? liveEntry.stateConditions : [];
+            stateConditionsInput.val(JSON.stringify(conditions, null, 2));
+            stateConditionLogicInput.val(liveEntry?.stateConditionLogic === 'any' ? 'any' : 'all');
+            stateConditionsStatus.text(conditions.length
+                ? `${conditions.length} condition${conditions.length === 1 ? '' : 's'} saved`
+                : t`No state conditions`);
+        };
+
+        const validateStateConditionsForAuthor = (conditions, logic) => {
+            if (!Array.isArray(conditions)) {
+                throw new TypeError('State conditions must be a JSON array');
+            }
+            if (conditions.length > 32) {
+                throw new RangeError('State conditions are limited to 32 per entry');
+            }
+            const evaluation = evaluateWorldInfoStateConditions(conditions, [], logic);
+            const invalidIndex = evaluation.results.findIndex(result => result.reason === 'invalid_condition');
+            if (invalidIndex >= 0) {
+                throw new TypeError(`Condition #${invalidIndex + 1} is invalid. Use providerId, a JSON-array path, a supported operator, and a scalar value.`);
+            }
+            return structuredClone(conditions);
+        };
+
+        stateConditionLogicInput.data('uid', entry.uid);
+        stateConditionLogicInput.on('input', async function (_, { noSave = false } = {}) {
+            const uid = $(this).data('uid');
+            const value = String($(this).val() || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
+            data.entries[uid].stateConditionLogic = value;
+            setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', value);
+            !noSave && await saveWorldInfo(name, data);
+        });
+
+        stateConditionsApply.on('click', async function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            try {
+                const parsed = JSON.parse(String(stateConditionsInput.val() || '[]'));
+                const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
+                const validated = validateStateConditionsForAuthor(parsed, logic);
+                data.entries[entry.uid].stateConditions = validated;
+                data.entries[entry.uid].stateConditionLogic = logic;
+                setWIOriginalDataValue(data, entry.uid, 'extensions.atria_state_conditions', structuredClone(validated));
+                setWIOriginalDataValue(data, entry.uid, 'extensions.atria_state_condition_logic', logic);
+                await saveWorldInfo(name, data);
+                renderStateConditionsEditor();
+                stateConditionsStatus.text(t`State conditions saved` + ` (${validated.length})`);
+            } catch (error) {
+                const message = String(error?.message || error || 'Invalid state conditions');
+                stateConditionsStatus.text(message);
+                toastr.warning(message, t`Invalid state conditions`);
+            }
+        });
+
+        stateConditionsClear.on('click', async function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            data.entries[entry.uid].stateConditions = [];
+            setWIOriginalDataValue(data, entry.uid, 'extensions.atria_state_conditions', []);
+            await saveWorldInfo(name, data);
+            renderStateConditionsEditor();
+        });
+
+        renderStateConditionsEditor();
 
         // Content
         const counter = editTemplate.find('.world_entry_form_token_counter');
