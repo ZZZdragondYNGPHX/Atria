@@ -91,13 +91,14 @@ try {
     assert.deepEqual(evidence, { status: 'completed', values: ['value-one', 'value-two'], counts: [1, 2],
         engineEvent: true, replayEqual: true, traceVisible: true, noPrivateValues: true, overflow: false });
     await page.screenshot({ path: resolve(root, `../.git/workspace-${channel}-mobile.png`) });
-    await page.getByRole('tab', { name: 'Graph', exact: true }).click();
-    await page.getByRole('button', { name: 'one (agent)', exact: false }).click();
-    assert.equal(await page.getByRole('tabpanel').getByText('reply.submit', {exact:true}).count(), 1);
-    await page.getByRole('button', { name: 'This node’s Memory' }).click();
-    assert.equal(await page.getByText('No matching recall evidence.', {exact:false}).count(), 1);
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Graph'); panel.destroyWorkspace(); panel.openWorkspace('Graph'); });
+    const workspace = page.locator('#agent-memory-workspace');
+    await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Run', exact: true }).click();
+    assert.equal(await workspace.locator('.atria-workspace-mobile-nav').getByRole('button').count(), 4);
+    await workspace.locator('.workspace-node-chip').filter({ hasText: 'agent' }).first().click();
+    assert.equal(await workspace.locator('.atria-workspace-inspector').getByText('reply.submit', {exact:true}).count(), 1);
+    assert.match(await workspace.locator('.atria-workspace-inspector').innerText(), /Memory evidence\s*0/);
+    await workspace.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Run'); panel.destroyWorkspace(); panel.openWorkspace('Run'); });
     assert.equal(await page.locator('#agent-memory-workspace').count(), 1);
     await page.setViewportSize({ width: 1440, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
