@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation is complete on the task branch. Final validation and integration metadata are appended after PR #7 is merged.
+Implementation and branch validation are complete. PR #7 is ready for integration into `main`. Final merge metadata is appended after the merge is verified.
 
 ## Task identity
 
@@ -222,6 +222,36 @@ Default repository validation for this task is:
 
 Android JVM tests and Docker builds remain opt-in and were intentionally not part of the default validation for this task.
 
+## Final validation
+
+Validated task head:
+
+- `feat/backup-sync-storage-center@7f8063e5f8ed0c6bcb639a6ae819653163ded662`
+
+Required CI passed:
+
+- Atria PR Checks run `35345241830`
+  - Atria Migration Guard: passed
+  - ESLint: passed
+  - full Node unit suite: passed
+- Backup and Storage UI run `35345241821`
+  - Backup Center Chromium: passed
+  - Server Storage Chromium: passed
+  - Browser Storage Chromium: passed
+
+Android JVM tests and Docker builds were intentionally not run because repository/task policy makes them opt-in.
+
+### Final E2E stabilization
+
+The final Chromium validation exposed and fixed four integration issues that were not visible in the Node suite:
+
+1. `public/scripts/user.js` had dropped the still-required `getConfigValidationMessage` export while `public/script.js` continued to import it. That prevented the main browser module graph from instantiating and left `#preloader` mounted indefinitely.
+2. Fresh E2E data roots could show the first-run Atria onboarding dialog after the preloader disappeared, blocking account UI controls.
+3. Storage CRUD tests could target a popup that was still in its closing animation. The CRUD suite now targets active popup content explicitly instead of generic hidden template inputs.
+4. IndexedDB record writes now await the full read/write transaction commit, not only the individual `put()` request success.
+
+The dedicated UI workflow now stops each lane after the first failing test (`--max-failures=1`) and `awaitMainUI()` fails fast with browser console/page-error diagnostics, preventing repeated multi-minute opaque timeouts.
+
 ## Integration
 
-To be finalized after PR #7 validation and merge.
+PR #7 validation is complete. Merge commit and post-merge `main` verification are recorded after integration.
