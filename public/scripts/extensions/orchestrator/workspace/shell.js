@@ -47,7 +47,7 @@ export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrch
     orchestrationText.textContent = i18n('Orchestration');
     const orchestrationToggle = el('input', '', orchestrationLabel);
     orchestrationToggle.type = 'checkbox';
-    orchestrationToggle.setAttribute('aria-label', i18n('Enable agent orchestration'));
+    orchestrationToggle.setAttribute('aria-label', i18n('Orchestration enabled'));
     orchestrationToggle.addEventListener('change', () => onToggleOrchestration?.(orchestrationToggle.checked));
 
     const headerStatus = el('div', 'atria-workspace-header-status', header);
