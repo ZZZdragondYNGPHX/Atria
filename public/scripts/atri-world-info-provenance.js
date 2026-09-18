@@ -77,3 +77,110 @@ export function filterWorldInfoByProvenance(payload, provenance, reject) {
         payload.worldInfoResolution.worldInfoAfter = (payload.worldInfoAfterEntries ?? []).join('\n');
     }
 }
+
+
+function pushSourceSnapshot(target, channel, record, extra = {}) {
+    if (!record || typeof record !== 'object') return;
+    target.push({
+        channel,
+        id: String(record.id ?? ''),
+        world: String(record.world ?? ''),
+        uid: record.uid ?? null,
+        sourceVersion: record.sourceVersion ?? null,
+        comment: String(record.comment ?? ''),
+        ...extra,
+    });
+}
+
+/**
+ * Create a compact, immutable-by-convention snapshot for request diagnostics.
+ * Rendered body text is intentionally omitted: itemized prompts already retain
+ * the assembled prompt, and duplicating world-info bodies here would multiply
+ * long-chat diagnostic storage.
+ *
+ * @param {object|null|undefined} provenance Request-local WI occurrence provenance.
+ * @returns {{schemaVersion:number,sources:object[]}}
+ */
+export function snapshotWorldInfoProvenance(provenance) {
+    const snapshot = { schemaVersion: 1, sources: [] };
+    if (!provenance || typeof provenance !== 'object') return snapshot;
+
+    const addArray = (channel, records, extra = {}) => {
+        if (!Array.isArray(records)) return;
+        records.forEach((record, ordinal) => pushSourceSnapshot(snapshot.sources, channel, record, { ...extra, ordinal }));
+    };
+
+    addArray('before', provenance.worldInfoBeforeEntries);
+    addArray('after', provenance.worldInfoAfterEntries);
+    addArray('examples', provenance.worldInfoExamples);
+    addArray('authors_note_before', provenance.anBefore);
+    addArray('authors_note_after', provenance.anAfter);
+
+    if (Array.isArray(provenance.worldInfoDepth)) {
+        provenance.worldInfoDepth.forEach((bucket, bucketOrdinal) => {
+            addArray('depth', bucket?.entries, {
+                bucketOrdinal,
+                depth: bucket?.depth ?? null,
+                role: bucket?.role ?? null,
+            });
+        });
+    }
+
+    if (provenance.outletEntries && typeof provenance.outletEntries === 'object') {
+        for (const outlet of Object.keys(provenance.outletEntries)) {
+            addArray('outlet', provenance.outletEntries[outlet], { outlet });
+        }
+    }
+
+    return snapshot;
+}
+
+/**
+ * Bind a compact WI identity snapshot to one generated request. Dispatch
+ * receipts are appended later at the actual transport boundary.
+ *
+ * @param {object|null|undefined} provenance Request-local WI provenance.
+ * @returns {{schemaVersion:number,sources:object[],dispatches:object[]}}
+ */
+export function createWorldInfoDispatchAttribution(provenance) {
+    const snapshot = snapshotWorldInfoProvenance(provenance);
+    return {
+        schemaVersion: snapshot.schemaVersion,
+        sources: snapshot.sources,
+        dispatches: [],
+    };
+}
+
+/**
+ * Append a lightweight request-boundary receipt without copying the provider
+ * request or prompt body. This function is deliberately best-effort and never
+ * throws for malformed metadata.
+ *
+ * @param {object|null|undefined} attribution Mutable attribution object.
+ * @param {object} [meta] Dispatch metadata.
+ * @returns {object|null} The appended receipt, if any.
+ */
+export function markWorldInfoDispatch(attribution, meta = {}) {
+    if (!attribution || typeof attribution !== 'object') return null;
+    if (!Array.isArray(attribution.dispatches)) attribution.dispatches = [];
+
+    const receipt = {
+        sequence: attribution.dispatches.length + 1,
+        boundary: String(meta.boundary || 'transport_handoff'),
+        providerConfirmed: meta.providerConfirmed === true,
+        mainApi: String(meta.mainApi || ''),
+        type: String(meta.type || ''),
+        stream: meta.stream === true,
+    };
+    if (meta.requestScope != null) receipt.requestScope = String(meta.requestScope);
+    if (meta.model != null && String(meta.model).trim()) receipt.model = String(meta.model).trim();
+    if (Number.isFinite(Number(meta.messageCount))) receipt.messageCount = Number(meta.messageCount);
+
+    attribution.dispatches.push(receipt);
+    // Bound diagnostics even if a transport performs many retries.
+    if (attribution.dispatches.length > 16) {
+        attribution.dispatches.splice(0, attribution.dispatches.length - 16);
+        attribution.dispatches.forEach((entry, index) => { entry.sequence = index + 1; });
+    }
+    return receipt;
+}
