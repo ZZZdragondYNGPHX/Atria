@@ -9381,7 +9381,14 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     const sortedEntries = typeof entryFilter === 'function' ? loadedEntries.filter(entryFilter) : loadedEntries;
     const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries);
 
-    const hasStateConditions = sortedEntries.some(entry => Array.isArray(entry.stateConditions) && entry.stateConditions.length > 0);
+    const hasConfiguredStateConditions = entry => (
+        Object.hasOwn(entry || {}, 'stateConditions')
+        && (
+            !Array.isArray(entry.stateConditions)
+            || entry.stateConditions.length > 0
+        )
+    );
+    const hasStateConditions = sortedEntries.some(hasConfiguredStateConditions);
     let worldInfoStateProviders = [];
     if (hasStateConditions) {
         const stateContext = {
@@ -9537,12 +9544,25 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                 continue;
             }
 
-            if (Array.isArray(entry.stateConditions) && entry.stateConditions.length > 0) {
-                const stateResult = evaluateWorldInfoStateConditions(
-                    entry.stateConditions,
-                    worldInfoStateProviders,
-                    entry.stateConditionLogic,
-                );
+            if (hasConfiguredStateConditions(entry)) {
+                const stateResult = Array.isArray(entry.stateConditions)
+                    ? evaluateWorldInfoStateConditions(
+                        entry.stateConditions,
+                        worldInfoStateProviders,
+                        entry.stateConditionLogic,
+                    )
+                    : {
+                        status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                        logic: entry.stateConditionLogic === 'any' ? 'any' : 'all',
+                        results: [{
+                            providerId: '',
+                            path: [],
+                            operator: '',
+                            status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                            reason: 'invalid_condition',
+                        }],
+                        reason: 'unknown',
+                    };
                 if (stateResult.status !== WORLD_INFO_CONDITION_RESULT.TRUE) {
                     const reason = stateResult.status === WORLD_INFO_CONDITION_RESULT.UNKNOWN
                         ? 'state_condition_unknown'
