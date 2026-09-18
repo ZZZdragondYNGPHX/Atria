@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import {
     registerSearchToolsOrchestrationTools,
     unregisterSearchToolsOrchestrationTools,
