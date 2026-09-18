@@ -247,7 +247,10 @@ function renderRun(run, view) {
             const label = event.type.startsWith('agent.handoff') ? 'Handoff'
                 : event.type.startsWith('parallel.fanout') ? 'Delegate'
                     : event.type.startsWith('parallel.join') ? 'Join'
-                        : event.type;
+                        : event.type.startsWith('model.request') ? 'Model call'
+                            : event.type.startsWith('tool.execute') ? 'Tool call'
+                                : event.type.startsWith('memory.recall') ? 'Memory recall'
+                                    : event.type;
             el('strong', label, row);
             el('span', event.nodeId || event.agentId || event.runId || '', row);
             if (event.stepId) button(row, 'Inspect step', () => {
