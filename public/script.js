@@ -7981,8 +7981,10 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     // resolution once, after all rescan/finalization hooks have settled.
     if (!dryRun) {
         const commitResult = await commitWorldInfoEvaluation(worldInfoResolution);
-        if (commitResult.reason === 'scope_changed') {
-            console.warn('[WI] Final evaluation scope changed before commit; dropping stale generation.');
+        if (['scope_changed', 'state_changed', 'state_commit_failed'].includes(commitResult.reason)) {
+            console.warn(
+                `[WI] Final evaluation could not commit (${commitResult.reason}); dropping stale generation.`,
+            );
             if (type !== 'quiet') {
                 unblockGeneration(type);
             }
