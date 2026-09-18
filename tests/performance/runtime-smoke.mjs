@@ -50,6 +50,34 @@ try {
             }],
         }],
     });
+    writeWorldBook({
+        dataRoot,
+        name: 'atri-ready-condition-true-fixture',
+        entries: [{
+            content: 'READY_CONDITION_TRUE_BODY',
+            constant: true,
+            stateConditions: [{
+                providerId: 'mvu',
+                path: ['scene', 'place'],
+                operator: 'eq',
+                value: 'clocktower',
+            }],
+        }],
+    });
+    writeWorldBook({
+        dataRoot,
+        name: 'atri-ready-condition-false-fixture',
+        entries: [{
+            content: 'READY_CONDITION_FALSE_BODY',
+            constant: true,
+            stateConditions: [{
+                providerId: 'mvu',
+                path: ['scene', 'place'],
+                operator: 'eq',
+                value: 'castle',
+            }],
+        }],
+    });
     child = spawn(process.execPath, ['server.js', '--configPath=' + configPath, '--dataRoot=' + dataRoot, '--port=' + port, '--browserLaunchEnabled=false', '--listen=false'], {
         cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -116,6 +144,46 @@ try {
         const staleCommit = await wi.commitWorldInfoEvaluation(staleResolution);
         const metadataAfterStaleCommit = structuredClone(core.chat_metadata);
         core.eventSource.removeListener(core.event_types.WORLD_INFO_ACTIVATED, onActivated);
+
+        // W-03 real-host provider check: use a detached committed MVU snapshot
+        // and prove both the true and false branches through the production
+        // readStateProviders -> condition evaluator -> scanner path.
+        const originalChatLength = core.chat.length;
+        const previousMvu = globalThis.Mvu;
+        core.chat.push({
+            name: 'Fixture Assistant',
+            mes: 'Committed state fixture',
+            is_user: false,
+            is_system: false,
+            swipe_id: 0,
+            variables: [{ scene: { place: 'clocktower' } }],
+        });
+        globalThis.Mvu = {
+            isDuringExtraAnalysis: () => false,
+            getMvuData: () => ({
+                stat_data: { scene: { place: 'clocktower' } },
+                schema: { scene: { place: 'string' } },
+            }),
+        };
+        wi.updateWorldInfoSettings(
+            { world_info_budget: 100, world_info_recursive: false },
+            ['atri-ready-condition-true-fixture', 'atri-ready-condition-false-fixture'],
+        );
+        const readyConditionResolution = await core.simulateWorldInfoActivation({
+            chatForWI: ['fixture'],
+            maxContext: 8192,
+            dryRun: true,
+        });
+        const readyConditionTrueBody = readyConditionResolution.worldInfoString.includes('READY_CONDITION_TRUE_BODY');
+        const readyConditionFalseBody = readyConditionResolution.worldInfoString.includes('READY_CONDITION_FALSE_BODY');
+        core.chat.splice(originalChatLength);
+        if (previousMvu === undefined) delete globalThis.Mvu;
+        else globalThis.Mvu = previousMvu;
+        wi.updateWorldInfoSettings(
+            { world_info_budget: 100, world_info_recursive: false },
+            ['atri-public-fixture', 'atri-private-fixture', 'atri-unknown-condition-fixture'],
+        );
+
         const sources = payload.worldInfoResolution.worldInfoProvenance.worldInfoBeforeEntries;
         const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
         markWorldInfoDispatch(attribution, {
@@ -144,7 +212,8 @@ try {
             metadataBeforeEvaluation, metadataAfterEvaluation, metadataAfterCommit,
             firstCommit, secondCommit, staleCommit, activationEvents, lastActivatedCount,
             metadataBeforeStaleCommit, metadataAfterStaleCommit,
-            containedUnknownConditionBody: resolution.worldInfoString.includes('UNKNOWN_CONDITION_BODY') };
+            containedUnknownConditionBody: resolution.worldInfoString.includes('UNKNOWN_CONDITION_BODY'),
+            readyConditionTrueBody, readyConditionFalseBody };
     });
     assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
     assert.deepEqual(result.after, ['RENDERED_FIXTURE_BODY']);
@@ -164,6 +233,8 @@ try {
     assert.equal(result.activationEvents, 1);
     assert.equal(result.lastActivatedCount, 2);
     assert.equal(result.containedUnknownConditionBody, false);
+    assert.equal(result.readyConditionTrueBody, true);
+    assert.equal(result.readyConditionFalseBody, false);
     assert.equal(Object.keys(result.metadataAfterCommit.timedWorldInfo?.sticky || {}).length, 2);
     assert.equal(Object.hasOwn(result.attribution.sources[0], 'content'), false);
     assert.deepEqual(result.attribution.dispatches, [{
