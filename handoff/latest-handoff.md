@@ -35,3 +35,7 @@ These are now Atria-owned product capabilities. Future refactors should migrate 
 - Final validated feature head: `380c433f1eac27cf351b99dd284a2f8abcdebe63`
 
 See `features/bootstrap-migration.md` for the detailed migration record.
+
+## Integration result
+
+- PR #1 merged into `main` with squash commit `45121d344873aea7bbc8892f9b8c30633b6b98eb`.
