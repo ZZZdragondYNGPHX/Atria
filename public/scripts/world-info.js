@@ -898,6 +898,10 @@ function renderTraceDetailLines(details = {}) {
  * @property {Array} anAfter - Array of entries after Author's Note
  * @property {{[key: string]: string[]}} outletEntries - Array of entries to be added to an outlet
  * @property {object} [worldInfoProvenance] Request-local rendered occurrence sources; not a final send receipt.
+ * @property {string} [worldInfoEvaluationId] Stable idempotency key for an explicit commit.
+ * @property {{sticky:object,cooldown:object}} [timedWorldInfoState] Pending timed-effect state; evaluation does not write it.
+ * @property {Array<{key:string,revision:number}>} [externalActivationCommitToken] One-shot force-activation revisions observed by this evaluation.
+ * @property {{chatId:string}} [worldInfoCommitScope] Scope that must still match when committing.
  */
 
 /**
@@ -913,6 +917,8 @@ function renderTraceDetailLines(details = {}) {
  * @property {{[key: string]: string[]}} outletEntries - Array of entries to be added to an outlet
  * @property {object} [worldInfoProvenance] Request-local rendered occurrence sources; not a final send receipt.
  * @property {Set<any>} allActivatedEntries All entries.
+ * @property {{sticky:object,cooldown:object}} [timedWorldInfoState] Pending timed-effect state for explicit commit.
+ * @property {Array<{key:string,revision:number}>} [externalActivationCommitToken] Force-activation revisions observed by this scan.
  */
 
 /**
@@ -1847,7 +1853,7 @@ function invalidateWorldInfoRequestCache(names = []) {
  * Gets the world info based on chat messages.
  * @param {string[]} chat - The chat messages to scan, in reverse order.
  * @param {number} maxContext - The maximum context size of the generation.
- * @param {boolean} isDryRun - If true, the function will not emit any events.
+ * @param {boolean} isDryRun - Marks a preview/diagnostic scan. Business state is never committed by this function; use commitWorldInfoEvaluation() explicitly.
  * @param {WIGlobalScanData} globalScanData Chat independent context to be scanned
  * @returns {Promise<WIPromptResult>} The world info string and depth.
  */
