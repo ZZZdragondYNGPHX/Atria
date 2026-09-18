@@ -66,6 +66,7 @@ try {
         const { extension_settings } = await import('/scripts/extensions.js');
         const { regex_placement } = await import('/scripts/extensions/regex/engine.js');
         const { applyProfileWorldInfoFilter } = await import('/scripts/extensions/orchestrator/lorebook-filter.js');
+        const { createWorldInfoDispatchAttribution, markWorldInfoDispatch } = await import('/scripts/atri-world-info-provenance.js');
         wi.updateWorldInfoSettings({ world_info_budget: 100, world_info_recursive: false }, ['atri-public-fixture', 'atri-private-fixture']);
         extension_settings.regex = [{
             id: 'atri-smoke-regex', scriptName: 'fixture only', findRegex: '/SHARED_FIXTURE_BODY/g',
@@ -77,6 +78,14 @@ try {
         const before = [...payload.worldInfoBeforeEntries];
         applyProfileWorldInfoFilter(payload, { bookPattern: '^atri-private-fixture$' });
         const sources = payload.worldInfoResolution.worldInfoProvenance.worldInfoBeforeEntries;
+        const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
+        markWorldInfoDispatch(attribution, {
+            boundary: 'browser_smoke_handoff',
+            providerConfirmed: false,
+            mainApi: 'fixture',
+            type: 'normal',
+            stream: false,
+        });
         const targets = Array.from({ length: 12 }, (_, i) => ({ is_group: false, avatar_url: 'fixture.png', file_name: 'fixture-' + i, char_name: 'Fixture' }));
         let retainedDuringWrite = 0;
         await core.runSerializedChatWrite(async () => {
@@ -92,12 +101,23 @@ try {
         clone[0].mes = 'mutated';
         const isolatedClone = core.getChatMessageSnapshot(targets.at(-1))[0].mes !== 'mutated';
         return { before, after: payload.worldInfoBeforeEntries, aggregate: payload.worldInfoString,
-            sources, retainedDuringWrite, retainedAfterWrite, wireSnapshot, isolatedClone };
+            sources, attribution, retainedDuringWrite, retainedAfterWrite, wireSnapshot, isolatedClone };
     });
     assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
     assert.deepEqual(result.after, ['RENDERED_FIXTURE_BODY']);
     assert.equal(result.aggregate, 'RENDERED_FIXTURE_BODY');
     assert.equal(result.sources[0].world, 'atri-public-fixture');
+    assert.equal(result.attribution.sources.length, 1);
+    assert.equal(result.attribution.sources[0].world, 'atri-public-fixture');
+    assert.equal(Object.hasOwn(result.attribution.sources[0], 'content'), false);
+    assert.deepEqual(result.attribution.dispatches, [{
+        sequence: 1,
+        boundary: 'browser_smoke_handoff',
+        providerConfirmed: false,
+        mainApi: 'fixture',
+        type: 'normal',
+        stream: false,
+    }]);
     assert.equal(result.retainedDuringWrite, 12);
     assert.equal(result.retainedAfterWrite, 1);
     assert.deepEqual(result.wireSnapshot[0].swipe_info, [null]);
