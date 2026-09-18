@@ -21,7 +21,7 @@ jobs:
           git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
           git branch -r --merged origin/main |
             sed 's#^[[:space:]]*origin/##' |
-            grep -E '^(feat|fix|refactor|chore)/' |
+            awk '/^(feat|fix|refactor|chore)\//' |
             while read -r branch; do
               [ -n "$branch" ] || continue
               echo "Deleting merged task branch: $branch"
