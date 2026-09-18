@@ -370,10 +370,11 @@ class StorageInspector {
         const actions = document.createElement('span');
         actions.className = 'storageInspectorEntryActions';
 
-        const addAction = (iconNameValue, title, handler, warning = false) => {
+        const addAction = (iconNameValue, title, handler, warning = false, extraClass = '') => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = `storageInspectorEntryActionButton menu_button menu_button_icon${warning ? ' warning' : ''}`;
+            if (extraClass) button.classList.add(extraClass);
             button.title = title;
             const actionIcon = document.createElement('i');
             actionIcon.classList.add('fa-fw', 'fa-solid', `fa-${iconNameValue}`);
@@ -400,7 +401,13 @@ class StorageInspector {
             addAction('pen', translate('Edit'), () => this._editResource(entry));
         }
         if (this.provider.canMutate && capabilities.delete && typeof this.mutator.deleteAtPath === 'function') {
-            addAction('trash', translate('Delete'), () => this._confirmAndDelete(entry), true);
+            addAction(
+                'trash',
+                translate('Delete'),
+                () => this._confirmAndDelete(entry),
+                true,
+                'storageInspectorEntryDeleteButton',
+            );
         }
         if (actions.childElementCount > 0) row.appendChild(actions);
 
