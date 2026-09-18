@@ -197,6 +197,7 @@ try {
         const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
         store.recordRuntimeEvent({runId: window.runId, event:{eventId:'later-recall',runId:'engine-live',type:'memory.recall.completed',version:3,generation:0,agentId:'agent:owner',stepId:'step-2',references:[]}});
     });
+    await memoryInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await workspace.getByRole('button', { name: 'Overview', exact: true }).click();
     await workspace.getByText('0 references', { exact: true }).waitFor();
     assert((await page.evaluate(() => window.memoryLoads)) >= 1);
