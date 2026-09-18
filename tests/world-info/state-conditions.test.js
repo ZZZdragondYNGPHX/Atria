@@ -3,6 +3,7 @@ import {
     WORLD_INFO_CONDITION_RESULT,
     evaluateWorldInfoStateCondition,
     evaluateWorldInfoStateConditions,
+    shouldActivateWorldInfoFromStateConditions,
 } from '../../public/scripts/atri-world-info-state-conditions.js';
 
 const ready = {
@@ -78,6 +79,40 @@ describe('W-03 tri-state world info conditions', () => {
         expect(evaluateWorldInfoStateConditions([yes, unknown], [ready], 'any').status).toBe('true');
         expect(evaluateWorldInfoStateConditions([no, unknown], [ready], 'any').status).toBe('unknown');
         expect(evaluateWorldInfoStateConditions([no], [ready], 'any').status).toBe('false');
+    });
+
+    test('state-driven activation requires an explicit flag, real conditions, and a true result', () => {
+        const conditions = [{
+            providerId: 'mvu',
+            path: ['scene', 'place'],
+            operator: 'eq',
+            value: 'clocktower',
+        }];
+        const matched = evaluateWorldInfoStateConditions(conditions, [ready], 'all');
+        const notMatched = evaluateWorldInfoStateConditions([
+            { ...conditions[0], value: 'castle' },
+        ], [ready], 'all');
+
+        expect(shouldActivateWorldInfoFromStateConditions({
+            stateActivation: true,
+            stateConditions: conditions,
+        }, matched)).toBe(true);
+        expect(shouldActivateWorldInfoFromStateConditions({
+            stateActivation: false,
+            stateConditions: conditions,
+        }, matched)).toBe(false);
+        expect(shouldActivateWorldInfoFromStateConditions({
+            stateActivation: true,
+            stateConditions: [],
+        }, matched)).toBe(false);
+        expect(shouldActivateWorldInfoFromStateConditions({
+            stateActivation: true,
+            stateConditions: conditions,
+        }, notMatched)).toBe(false);
+        expect(shouldActivateWorldInfoFromStateConditions({
+            stateActivation: true,
+            stateConditions: conditions,
+        }, { status: WORLD_INFO_CONDITION_RESULT.UNKNOWN })).toBe(false);
     });
 
     test('empty conditions pass and malformed/prototype paths fail closed', () => {
