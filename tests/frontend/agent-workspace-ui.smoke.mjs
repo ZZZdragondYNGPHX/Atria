@@ -149,6 +149,7 @@ try {
     await page.waitForFunction(() => window.settings.agentWorkspace.presets.length === 7);
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).name), 'Named single agent preset');
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 1);
+    await workspace.locator('.workspace-agent-card').first().click();
     const agentInspector = workspace.locator('.atria-workspace-inspector');
     await agentInspector.getByLabel('API profile', { exact: true }).selectOption('api-two');
     await agentInspector.getByLabel('Prompt profile', { exact: true }).selectOption('prompt-two');
