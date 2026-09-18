@@ -15,6 +15,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
     let draft = null;
     let draftPresetId = null;
     let selectedAgentId = null;
+    let inspectorMode = null;
 
     const modeLabel = mode => i18n({
         spec: 'Fixed workflow · Spec',
@@ -48,6 +49,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             if (!draft.planTemplate.agents.some(agent => agent.id === selectedAgentId)) {
                 selectedAgentId = draft.planTemplate.agents[0]?.id || null;
             }
+            inspectorMode = matchMedia('(min-width: 761px)').matches ? 'agent' : 'closed';
         }
 
         const status = el('p', notice, parent);
@@ -231,6 +233,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
                     plan.scheduler.workerNodeIds[agentId] = nodeId;
                 }
                 selectedAgentId = agentId;
+                inspectorMode = 'agent';
                 draft = next;
                 saveDraft(i18nFormat('Created: ${0}', name));
             } catch (error) {
@@ -240,6 +243,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
 
         const renderPresetInspector = () => {
             if (!inspector) return;
+            inspectorMode = 'preset';
             inspector.hidden = false;
             inspector.replaceChildren();
 
@@ -250,6 +254,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             el('span', modeLabel(draft.mode), head).className = 'workspace-hint';
 
             const close = button(head, 'Close inspector', () => {
+                inspectorMode = 'closed';
                 inspector.hidden = true;
             });
             close.className = 'workspace-inspector-close';
@@ -369,6 +374,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
                 return;
             }
             selectedAgentId = agent.id;
+            inspectorMode = 'agent';
             inspector.hidden = false;
             inspector.replaceChildren();
 
@@ -378,7 +384,10 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             el('h3', agent.name || agent.id, head);
             const nodes = draft.planTemplate.nodes.filter(node => node.agentId === agent.id);
             el('p', nodes.map(node => node.nodeId).join(' · '), head).className = 'workspace-hint';
-            const close = button(head, 'Close inspector', () => { inspector.hidden = true; });
+            const close = button(head, 'Close inspector', () => {
+                inspectorMode = 'closed';
+                inspector.hidden = true;
+            });
             close.className = 'workspace-inspector-close';
 
             const field = (host, label, value, change, type = 'text') => {
@@ -454,6 +463,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
                     const next = removeWorkspaceAgent(draft, agent.id);
                     draft = next;
                     selectedAgentId = next.planTemplate.agents[0]?.id || null;
+                    inspectorMode = 'closed';
                     saveDraft(i18nFormat('Deleted: ${0}', agent.name || agent.id));
                 } catch (error) {
                     showError(error);
@@ -500,6 +510,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const item = button(list, undefined, () => {
                 selectedId = preset.id;
                 selectedAgentId = null;
+                inspectorMode = null;
                 refresh({ resetDraft: true });
             });
             item.dataset.name = `${preset.name} ${modeLabel(preset.mode)}`.toLowerCase();
@@ -712,7 +723,12 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         };
 
         renderCanvas();
-        renderAgentInspector(selectedAgentId || draft.planTemplate.agents[0]?.id);
+        if (inspectorMode === 'preset') renderPresetInspector();
+        else if (inspectorMode === 'agent') renderAgentInspector(selectedAgentId || draft.planTemplate.agents[0]?.id);
+        else if (inspector) {
+            inspector.replaceChildren();
+            inspector.hidden = true;
+        }
 
         return () => {
             if (inspector) {
