@@ -131,7 +131,14 @@ describe('seq=1 uninitialized event extraction transaction', () => {
         const store = createEmptyStore();
         context.generateTask = jest.fn(async request => {
             expect(Object.values(store.nodes || {})).toHaveLength(0);
-            expect(request.stream).toBe(false); expect(request.toolChoice).toBe('required');
+            expect(request.stream).toBe(false);
+            const requestToolNames = request.tools.map(tool => tool.function.name);
+            const expectedToolChoice = requestToolNames.length === 1
+                ? { type: 'function', function: { name: requestToolNames[0] } }
+                : 'required';
+            expect(request.toolChoice).toEqual(expectedToolChoice);
+            expect(request.functionCallOptions?.requiredFunctionName ?? '')
+                .toBe(requestToolNames.length === 1 ? requestToolNames[0] : '');
             expect(request.promptMode).toBe('task'); expect(request.includeCharacterCard).toBe(false);
             expect(JSON.stringify(request.taskMessages)).not.toContain('<thought>');
             return { toolCalls: responses.shift() };
@@ -139,10 +146,15 @@ describe('seq=1 uninitialized event extraction transaction', () => {
         await runEventBatch(store);
         expect(Object.values(store.nodes).filter(node => node.type === 'event')).toHaveLength(1);
         const requests = context.generateTask.mock.calls.map(([request]) => request);
-        if (_name === 'event only') {
-            expect(requests.slice(1).map(request => request.tools.map(tool => tool.function.name))).toEqual([['luker_memory_facts'], ['luker_rpg_extract_done']]);
-            expect(requests[1].temperature).toBe(0);
-        }
+        const repairTools = _name === 'event only'
+            ? requests.slice(1).map(request => request.tools.map(tool => tool.function.name))
+            : [];
+        const expectedRepairTools = _name === 'event only'
+            ? [['luker_memory_facts'], ['luker_rpg_extract_done']]
+            : [];
+        expect(repairTools).toEqual(expectedRepairTools);
+        expect(_name === 'event only' ? requests[1]?.temperature : undefined)
+            .toBe(_name === 'event only' ? 0 : undefined);
     });
     test.each([
         ['duplicate facts', [eventCall(), factsCall(), factsCall(), doneCall()]],
@@ -159,7 +171,7 @@ describe('seq=1 uninitialized event extraction transaction', () => {
         const store = createEmptyStore();
         context.generateTask = jest.fn(async () => ({ assistantText: 'no tool', toolCalls: [] }));
         await expect(runEventBatch(store)).rejects.toThrow('no tool calls');
-        expect(context.generateTask).toHaveBeenCalledTimes(2);
+        expect(context.generateTask).toHaveBeenCalledTimes(3);
         expect(store.appliedSeqTo || 0).toBe(0);
     });
     test('abort between phases does not publish the staged event', async () => {
@@ -184,11 +196,12 @@ test('invalid fact evidence repairs only facts and done after a valid staged eve
     context.generateTask = jest.fn(async request => {
         index++;
         if (index === 1) return { toolCalls: [eventCall(), ...answer(request, 'fabricated').toolCalls] };
-        if (index === 2) { expect(request.tools.map(tool => tool.function.name)).toEqual(['luker_memory_facts']); return { toolCalls: [factsCall()] }; }
+        if (index === 2) return { toolCalls: [factsCall()] };
         return { toolCalls: [doneCall()] };
     });
     await runEventBatch(store);
     expect(Object.values(store.nodes).filter(node => node.type === 'event')).toHaveLength(1);
+    expect(context.generateTask.mock.calls[1][0].tools.map(tool => tool.function.name)).toEqual(['luker_memory_facts']);
     expect(context.generateTask).toHaveBeenCalledTimes(3);
 });
 test('failed provenance commit never publishes the staged graph', async () => {
