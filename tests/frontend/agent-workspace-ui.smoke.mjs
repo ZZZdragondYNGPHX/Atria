@@ -5,6 +5,7 @@ import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
+async function expectText(locator, text) { await locator.getByText(text, { exact: true }).waitFor(); }
 const root = resolve(fileURLToPath(new URL('../../public', import.meta.url)));
 const server = createServer(async (req, res) => {
     try {
@@ -34,13 +35,38 @@ try {
         const { createMemoryWorkspace } = await import('/scripts/extensions/orchestrator/workspace/memory.js');
         window.settings = JSON.parse(localStorage.getItem('settings') || '{}');
         window.scope = { character: 'test-character', conversation: 'test-chat' };
-        window.mounts = 0; window.disposals = 0;
-        const getContext = () => ({ getExtensionApi: () => ({ getWorkspacePorts: () => ({
-            mountKnowledge: async (container, signal, inspect) => {
-                window.mounts++; const record = document.createElement('p'); record.textContent = 'Existing Memory Inspector'; container.append(record);
-                inspect({ id: 'memory-one' }, container);
-                await new Promise(resolve => signal.addEventListener('abort', () => { window.disposals++; record.remove(); resolve(); }, { once: true }));
+        window.memoryLoads = 0;
+        window.memoryControls = {
+            memoryOsEnabled: true,
+            enabled: true,
+            recallEnabled: true,
+            autoExtractionEnabled: true,
+            autoCompressionEnabled: true,
+            recallMethod: 'llm',
+            updateEvery: 1,
+        };
+        const memorySnapshot = {
+            state: {
+                episodes: { ep1: { id: 'ep1', sourceFloor: 2, status: 'active', content: 'Memory source text' } },
+                corrections: {}, providerSources: {}, providerSnapshots: {},
             },
+            chat: [],
+            assertCurrent() {},
+        };
+        const memoryComputed = {
+            graph: {
+                entities: [{ id: 'memory-one', canonicalName: 'Memory One', aliases: [], type: 'Event', status: 'active',
+                    supports: [{ episodeIds: ['ep1'] }] }],
+                relations: [],
+                pending: [],
+            },
+            facts: [],
+        };
+        const getContext = () => ({ getExtensionApi: () => ({ getWorkspacePorts: () => ({
+            getStatus: () => ({ ...window.memoryControls }),
+            setControl: async (name, value) => ({ ...window.memoryControls, [name]: (window.memoryControls[name] = value) }),
+            load: async () => { window.memoryLoads++; return memorySnapshot; },
+            inspect: async () => memoryComputed,
         }) }) });
         panel.configureWorkspace({ renderPresets: createPresetAuthoring({ getSettings: () => window.settings,
             renderProfileOptions: (kind, value, inherited) => {
@@ -153,18 +179,24 @@ try {
         event('memory.recall.completed', 2, { stepId: 'step-1', references: [{ id: 'memory-one' }], tokens: 42 });
     });
     await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Memory', exact: true }).click();
-    assert.equal(await workspace.getByText('agent:owner · 1 refs · step-1', {exact:true}).count(), 1);
-    await workspace.getByRole('button', { name: 'Knowledge · Sources · Build & Maintenance' }).click();
-    await workspace.getByText('Used this run by', {exact:true}).click();
-    await workspace.locator('pre').filter({hasText:'step-1'}).waitFor();
+    await workspace.getByRole('heading', { name: 'Memory is available', exact: true }).waitFor();
+    assert.equal(await workspace.getByRole('button', { name: 'Overview', exact: true }).count(), 1);
+    assert.equal(await workspace.getByRole('button', { name: 'Knowledge', exact: true }).count(), 1);
+    assert.equal(await workspace.getByRole('button', { name: 'Sources', exact: true }).count(), 1);
+    assert.equal(await workspace.getByRole('button', { name: 'Maintenance', exact: true }).count(), 1);
+    await workspace.getByRole('button', { name: 'Knowledge', exact: true }).click();
+    await workspace.getByRole('button', { name: /Memory One/ }).click();
+    const memoryInspector = workspace.locator('.atria-workspace-inspector');
+    await memoryInspector.getByRole('heading', { name: 'Memory One', exact: true }).waitFor();
+    await expectText(memoryInspector, 'step-1');
     await page.evaluate(async () => {
         const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
         store.recordRuntimeEvent({runId: window.runId, event:{eventId:'later-recall',runId:'engine-live',type:'memory.recall.completed',version:3,generation:0,agentId:'agent:owner',stepId:'step-2',references:[]}});
     });
-    await workspace.getByText('agent:owner · 0 refs · step-2', {exact:true}).waitFor();
-    assert.equal(await page.evaluate(() => window.mounts), 1);
+    await workspace.getByRole('button', { name: 'Overview', exact: true }).click();
+    await workspace.getByText('0 references', { exact: true }).waitFor();
+    assert((await page.evaluate(() => window.memoryLoads)) >= 1);
     await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Diagnostics', exact: true }).click();
-    assert.equal(await page.evaluate(() => window.disposals), 1);
     await workspace.getByRole('button', { name: 'Stop Run', exact: true }).click();
     await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Diagnostics'); });
     assert.equal(await workspace.getByRole('button', { name: 'Stopping…', exact: true }).isDisabled(), true);
@@ -179,43 +211,43 @@ try {
     assert.equal(await page.evaluate(() => window.stops), 1);
     await workspace.getByRole('button', {name:'Viewing imported trace · Return to live run'}).click();
     await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Memory', exact: true }).click();
-    await workspace.getByRole('button', { name: 'Knowledge · Sources · Build & Maintenance' }).click();
+    await workspace.getByRole('heading', { name: 'Memory is available', exact: true }).waitFor();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
-    assert.equal(await page.evaluate(() => window.disposals), 2);
     await page.evaluate(async () => {const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.destroyWorkspace(); panel.destroyWorkspace(); panel.openWorkspace('Orchestration');});
     assert.equal(await page.locator('#agent-memory-workspace').count(), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({path:resolve(root,`../.git/workspace-authoring-${channel}-mobile.png`)});
     await page.setViewportSize({width:1440,height:900});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    // Embed the real Memory inspector, Worker, graph and provenance UI using a guarded fixture.
+    // Embed the real Memory snapshot/worker/graph path using a guarded fixture.
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(async () => {
         const { largeMemory } = await import('/__workspace_large.js');
         const { default: cytoscape } = await import('/__workspace_cytoscape.js');
-        const { openMemoryOsInspector } = await import('/scripts/extensions/memory-graph/graph-inspector.js');
+        const { computeInspector } = await import('/scripts/extensions/memory-graph/inspector-compute.js');
         const { createMemoryWorkspace } = await import('/scripts/extensions/orchestrator/workspace/memory.js');
         const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
         const snapshot = largeMemory(1000); window.memoryValid = true;
         snapshot.assertCurrent = () => { if (!window.memoryValid) throw new Error('fixture scope changed'); };
         const context = { getExtensionApi: () => ({ getWorkspacePorts: () => ({
-            mountKnowledge: (container, signal, onInspect) => openMemoryOsInspector({}, { container, signal, onInspect,
-                load: async () => snapshot, correct: async () => { throw new Error('Read-only fixture'); },
-                loadCytoscape: async () => options => { window.memoryGraph = cytoscape(options); return window.memoryGraph; },
-            }),
+            getStatus: () => ({ memoryOsEnabled:true, enabled:true, recallEnabled:true, autoExtractionEnabled:true, autoCompressionEnabled:true, recallMethod:'llm', updateEvery:1 }),
+            setControl: async () => {},
+            load: async () => snapshot,
+            inspect: current => computeInspector(current),
+            loadGraphLibrary: async () => options => { window.memoryGraph = cytoscape(options); return window.memoryGraph; },
         }) }) };
         panel.configureWorkspace({renderMemory:createMemoryWorkspace({getContext:() => context})});
         panel.openWorkspace('Memory');
     });
-    await workspace.getByRole('button', {name:'Knowledge · Sources · Build & Maintenance'}).click();
-    await workspace.getByRole('status').filter({hasText:'显示 250/1001'}).waitFor();
-    await workspace.getByRole('button', {name:'Person 0 · active',exact:true}).click();
-    await workspace.getByText('Used this run by',{exact:true}).waitFor();
-    assert.equal(await page.evaluate(() => window.memoryGraph.nodes().length), 250);
+    await workspace.getByRole('button', {name:'Knowledge',exact:true}).click();
+    await workspace.locator('.workspace-memory-record').filter({hasText:'Person 0'}).first().waitFor();
+    await workspace.locator('.workspace-memory-record').filter({hasText:'Person 0'}).first().click();
+    await workspace.locator('.atria-workspace-inspector').getByRole('heading',{name:'Person 0',exact:true}).waitFor();
+    await page.waitForFunction(() => window.memoryGraph?.nodes().length === 250);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({path:resolve(root,`../.git/workspace-memory-${channel}-mobile.png`)});
     await page.evaluate(() => { window.memoryValid = false; });
-    await workspace.getByRole('button', {name:'Person 1 · active',exact:true}).click();
+    await workspace.locator('.workspace-memory-record').filter({hasText:'Person 1'}).first().click();
     await workspace.getByRole('status').filter({hasText:'fixture scope changed'}).waitFor();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
     await page.waitForFunction(() => window.memoryGraph.destroyed());
