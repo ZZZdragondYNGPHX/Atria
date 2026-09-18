@@ -136,7 +136,7 @@ describe('world info request attribution', () => {
             makeEntry('public', 1, { position: positions.before }),
             makeEntry('public', 2, { position: positions.atDepth, depth: 2, role: 1 }),
             makeEntry('public', 3, { position: positions.outlet, outletName: 'slot' }),
-            makeEntry('public', 4, { position: positions.ANBefore }),
+            makeEntry('public', 4, { position: positions.ANTop }),
         ]);
         const snapshot = snapshotWorldInfoProvenance(payload.worldInfoResolution.worldInfoProvenance, {
             includeAuthorsNote: false,
