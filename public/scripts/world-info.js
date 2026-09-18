@@ -1,10 +1,12 @@
 import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
+import { evaluateWorldInfoStateConditions, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
 import { Fuse } from '../lib.js';
 import { setInfoBlock, clearInfoBlock } from './utils.js';
 
 import { saveSettings, substituteParams, getRequestHeaders, chat_metadata, this_chid, characters, saveCharacterDebounced, menu_type, eventSource, event_types, getExtensionPromptByName, saveMetadata, getCurrentChatId, extension_prompt_roles, create_save, name1, buildObjectPatchOperationsAsync, requestAsyncDiffForNextSettingsSave, getOneCharacter, select_selected_character } from '../script.js';
 import { areLookupNamesEqual, download, debounce, findCanonicalIndexInList, findCanonicalNameInList, initScrollHeight, resetScrollHeight, parseJsonFile, extractDataFromPng, getFileBuffer, getCharaFilename, escapeRegex, PAGINATION_TEMPLATE, navigation_option, waitUntilCondition, isTrueBoolean, setValueByPath, flashHighlight, select2ModifyOptions, getSelect2OptionId, dynamicSelect2DataViaAjax, highlightRegex, select2ChoiceClickSubscribe, isFalseBoolean, getSanitizedFilename, checkOverwriteExistingData, getStringHash, parseStringArray, cancelDebounce, findChar, onlyUnique, equalsIgnoreCaseAndAccents, uuidv4, normalizeArray, getUniqueName, logSlashCommandWarn, addLongPressEvent, escapeHtml } from './utils.js';
 import { getContext, writeExtensionField } from './extensions.js';
+import { readStateProviders } from './extensions/memory-graph/state-providers.js';
 import { isMobile } from './RossAscends-mods.js';
 import { FILTER_TYPES, FilterHelper, WORLD_INFO_SEARCH_MODES, keywordSearchWorldInfo } from './filters.js';
 import { getTokenCountAsync } from './tokenizers.js';
@@ -2546,6 +2548,21 @@ function registerWorldInfoSlashCommands() {
                 createCharacterFilterFieldObjectIfNeeded(entry);
                 entry.characterFilter.isExclude = isTrueBoolean(value);
                 setWIOriginalDataValue(data, uid, 'character_filter', entry.characterFilter);
+                break;
+            case 'stateConditions': {
+                try {
+                    const parsed = JSON.parse(value);
+                    if (!Array.isArray(parsed)) throw new TypeError('stateConditions must be a JSON array');
+                    entry.stateConditions = parsed.slice(0, 32).filter(item => item && typeof item === 'object' && !Array.isArray(item));
+                } catch (error) {
+                    toastr.warning(t`State conditions must be a JSON array of condition objects`);
+                    logSlashCommandWarn('setEntryFieldCallback: Invalid stateConditions JSON', args, { value, error: String(error?.message || error) });
+                    return '';
+                }
+                break;
+            }
+            case 'stateConditionLogic':
+                entry.stateConditionLogic = String(value || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
                 break;
             default:
                 if (Array.isArray(entry[field])) {
@@ -8246,6 +8263,8 @@ export const newWorldInfoEntryDefinition = {
     characterFilterTags: { default: [], type: 'array', excludeFromTemplate: true },
     characterFilterExclude: { default: false, type: 'boolean', excludeFromTemplate: true },
     triggers: { default: [], type: 'array', arrayFilter: (value) => GENERATION_TYPE_TRIGGERS.includes(value) },
+    stateConditions: { default: [], type: 'array' },
+    stateConditionLogic: { default: 'all', type: 'enum' },
 };
 
 export const newWorldInfoEntryTemplate = Object.fromEntries(
@@ -10210,6 +10229,10 @@ export function convertCharacterBook(characterBook) {
             matchCreatorNotes: entry.extensions?.match_creator_notes ?? false,
             extensions: entry.extensions ?? {},
             triggers: entry.extensions?.triggers || [],
+            stateConditions: Array.isArray(entry.extensions?.atria_state_conditions)
+                ? structuredClone(entry.extensions.atria_state_conditions)
+                : [],
+            stateConditionLogic: entry.extensions?.atria_state_condition_logic === 'any' ? 'any' : 'all',
             ignoreBudget: entry.extensions?.ignore_budget ?? false,
         };
     });
