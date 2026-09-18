@@ -108,7 +108,7 @@ function getIndexability(entry) {
     if (entry.constant === true) return { indexable: false, reason: 'constant' };
     if (entry.stateActivation === true) return { indexable: false, reason: 'state_activation' };
     if (entry.vectorized === true) return { indexable: false, reason: 'vectorized' };
-    if (entry.sticky !== null && entry.sticky !== undefined) return { indexable: false, reason: 'timed_sticky' };
+    if (Number(entry.sticky) > 0) return { indexable: false, reason: 'timed_sticky' };
     if (Array.isArray(entry.decorators) && entry.decorators.includes('@@activate')) {
         return { indexable: false, reason: 'activate_decorator' };
     }
