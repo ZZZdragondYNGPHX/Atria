@@ -97,7 +97,7 @@ test.describe('Browser Storage Management · CRUD', () => {
         await popup.locator('textarea').first().fill(JSON.stringify({ value: 2, label: 'after' }, null, 2));
         await popup.locator('.popup-button-ok').click();
 
-        const stored = await page.evaluate(async () => {
+        await expect.poll(() => page.evaluate(async () => {
             return await new Promise((resolve, reject) => {
                 const req = indexedDB.open('atria-records');
                 req.onerror = () => reject(req.error);
@@ -112,8 +112,7 @@ test.describe('Browser Storage Management · CRUD', () => {
                     get.onerror = () => reject(get.error);
                 };
             });
-        });
-        expect(stored).toEqual({ value: 2, label: 'after' });
+        })).toEqual({ value: 2, label: 'after' });
         await wipeBrowserFixture(page);
     });
 
