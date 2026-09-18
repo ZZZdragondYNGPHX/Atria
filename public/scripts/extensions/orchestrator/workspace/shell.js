@@ -57,6 +57,7 @@ export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrch
     const stop = el('button', 'atria-workspace-action atria-workspace-stop', headerActions);
     stop.type = 'button';
     stop.hidden = true;
+    stop.setAttribute('aria-label', i18n('Stop Run'));
     stop.addEventListener('click', onStop);
     icon('fa-stop', stop);
     const stopText = el('span', '', stop);
