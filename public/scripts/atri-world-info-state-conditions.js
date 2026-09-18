@@ -10,7 +10,10 @@ export const WORLD_INFO_CONDITION_RESULT = Object.freeze({
 
 const MAX_CONDITIONS = 32;
 const MAX_PATH_DEPTH = 12;
-const operators = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'contains']);
+export const WORLD_INFO_CONDITION_OPERATORS = Object.freeze([
+    'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'contains',
+]);
+const operators = new Set(WORLD_INFO_CONDITION_OPERATORS);
 
 function normalizePath(path) {
     if (!Array.isArray(path) || path.length === 0 || path.length > MAX_PATH_DEPTH) return null;
