@@ -11901,6 +11901,13 @@ function updateAuxBooks(fileName, computeNext) {
 }
 
 export function initWorldInfo() {
+    // W-03b: register the event-baseline FloorState as part of normal World
+    // Info startup so branch/checkpoint inheritance works even before the
+    // first state-event scan in this page session.
+    void getWorldInfoEventFloorState().catch(error => {
+        console.warn('[WI] Failed to register event FloorState during init', error);
+    });
+
     $('#world_info').on('mousedown change', async function (e) {
         // If there's no world names, don't do anything
         if (world_names.length === 0) {
