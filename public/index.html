@@ -7523,6 +7523,57 @@
                         </small>
                     </div>
                 </div>
+                <div class="inline-drawer wide100p flexFlowColumn wi-entry-selection-strategy">
+                    <div class="inline-drawer-toggle inline-drawer-header inline-drawer-header-pointer userSettingsInnerExpandable">
+                        <div class="flex-container alignitemscenter flexGap10">
+                            <strong data-i18n="Selection & Dependencies">Selection & Dependencies</strong>
+                            <span class="wi-selection-strategy-badge" data-i18n="Optional">Optional</span>
+                        </div>
+                        <div class="fa-solid fa-circle-chevron-down inline-drawer-icon down"></div>
+                    </div>
+                    <div class="inline-drawer-content flex-container flexFlowColumn flexGap10 paddingBottom5px">
+                        <small data-i18n="Optional Atria selection rules. Leave these fields empty to keep legacy World Info selection and budget behavior.">
+                            Optional Atria selection rules. Leave these fields empty to keep legacy World Info selection and budget behavior.
+                        </small>
+                        <div class="wi-selection-strategy-grid">
+                            <label class="wi-selection-strategy-field">
+                                <small data-i18n="Required entries">Required entries</small>
+                                <textarea name="requiredEntriesText" class="text_pole" rows="2" placeholder="12&#10;Other Book#4"></textarea>
+                                <span class="opacity50p" data-i18n="One UID or Book#UID per line. Required entries are selected atomically with this entry.">One UID or Book#UID per line. Required entries are selected atomically with this entry.</span>
+                            </label>
+                            <label class="wi-selection-strategy-field">
+                                <small data-i18n="Related entries">Related entries</small>
+                                <textarea name="relatedEntriesText" class="text_pole" rows="2" placeholder="18&#10;Other Book#9"></textarea>
+                                <span class="opacity50p" data-i18n="Related entries gain relevance only when they are already candidates; they are not forced into the prompt.">Related entries gain relevance only when they are already candidates; they are not forced into the prompt.</span>
+                            </label>
+                            <label class="wi-selection-strategy-field">
+                                <small data-i18n="Mutual exclusion group">Mutual exclusion group</small>
+                                <input name="mutualExclusionGroup" class="text_pole" type="text" autocomplete="off" placeholder="castle-version">
+                            </label>
+                            <label class="wi-selection-strategy-field">
+                                <small data-i18n="Budget tier">Budget tier</small>
+                                <select name="budgetTier" class="text_pole">
+                                    <option value="critical" data-i18n="Critical">Critical</option>
+                                    <option value="scene" data-i18n="Current scene">Current scene</option>
+                                    <option value="normal" data-i18n="Normal">Normal</option>
+                                    <option value="optional" data-i18n="Optional background">Optional background</option>
+                                </select>
+                            </label>
+                        </div>
+                        <label class="wi-selection-strategy-field">
+                            <small data-i18n="Compact content">Compact content</small>
+                            <textarea name="compactContent" class="text_pole" rows="3" placeholder="Short fallback used only when the complete dependency bundle does not fit."></textarea>
+                            <span class="opacity50p" data-i18n="Compact content is considered only for an atomic dependency bundle. A required bundle is never partially injected.">Compact content is considered only for an atomic dependency bundle. A required bundle is never partially injected.</span>
+                        </label>
+                        <div class="flex-container alignitemscenter flexGap8 flexWrap">
+                            <button type="button" class="menu_button wi-selection-strategy-save">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span data-i18n="Save selection rules">Save selection rules</span>
+                            </button>
+                            <small class="wi-selection-strategy-status opacity50p" aria-live="polite"></small>
+                        </div>
+                    </div>
+                </div>
                     <div name="WIEntryBottomControls" class="flex-container flex1 justifySpaceBetween world_entry_form_horizontal wi-entry-bottom-controls">
                         <div class="flex-container flexFlowColumn flexNoGap wi-enter-footer-text">
                             <label class="checkbox flex-container">
