@@ -93,6 +93,11 @@ jobs:
 
           bash scripts/check-atria-namespace.sh
 
+          for script in scripts/termux/*.sh android-app/scripts/build-android-apk.sh; do
+            bash -n "$script"
+          done
+          gzip -dc scripts/termux/atria_toolbox.runtime.sh.gz | bash -n
+
   android-unit-tests:
     name: Android Unit Tests
     runs-on: ubuntu-latest
