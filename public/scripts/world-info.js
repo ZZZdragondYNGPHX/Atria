@@ -1,3 +1,4 @@
+import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
 import { Fuse } from '../lib.js';
 import { setInfoBlock, clearInfoBlock } from './utils.js';
 
@@ -897,6 +898,7 @@ function renderTraceDetailLines(details = {}) {
  * @property {Array} anBefore - Array of entries before Author's Note
  * @property {Array} anAfter - Array of entries after Author's Note
  * @property {{[key: string]: string[]}} outletEntries - Array of entries to be added to an outlet
+ * @property {object} [worldInfoProvenance] Request-local rendered occurrence sources; not a final send receipt.
  */
 
 /**
@@ -910,6 +912,7 @@ function renderTraceDetailLines(details = {}) {
  * @property {any[]} ANBeforeEntries The entries before Author's Note.
  * @property {any[]} ANAfterEntries The entries after Author's Note.
  * @property {{[key: string]: string[]}} outletEntries - Array of entries to be added to an outlet
+ * @property {object} [worldInfoProvenance] Request-local rendered occurrence sources; not a final send receipt.
  * @property {Set<any>} allActivatedEntries All entries.
  */
 
@@ -1824,6 +1827,7 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         // consumers ignore this; new consumers (simulation-review popup)
         // read it via st-context.resolveWorldInfoForMessages.
         activatedEntries: activatedEntriesList,
+        worldInfoProvenance: activatedWorldInfo.worldInfoProvenance,
     };
 }
 
@@ -9645,79 +9649,12 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
 
     console.debug('[WI] --- BUILDING PROMPT ---');
 
-    // Forward-sorted list of entries for joining
-    const WIBeforeEntries = [];
-    const WIAfterEntries = [];
-    const EMEntries = [];
-    const ANTopEntries = [];
-    const ANBottomEntries = [];
-    const WIDepthEntries = [];
-    /** @type {{[key: string]: string[]}} */
-    const WIOutletEntries = {};
-
-    // Appends from insertion order 999 to 1. Use unshift for this purpose
-    // TODO (kingbri): Change to use WI Anchor positioning instead of separate top/bottom arrays
-    [...allActivatedEntries.values()].sort(sortFn).forEach((entry) => {
-        const regexDepth = entry.position === world_info_position.atDepth ? (entry.depth ?? DEFAULT_DEPTH) : null;
-        const content = getRegexedString(entry.content, regex_placement.WORLD_INFO, { depth: regexDepth, isMarkdown: false, isPrompt: true });
-
-        if (!content) {
-            console.debug(`[WI] Entry ${entry.uid}`, 'skipped adding to prompt due to empty content', entry);
-            return;
-        }
-
-        switch (entry.position) {
-            case world_info_position.before:
-                WIBeforeEntries.unshift(content);
-                break;
-            case world_info_position.after:
-                WIAfterEntries.unshift(content);
-                break;
-            case world_info_position.EMTop:
-                EMEntries.unshift(
-                    { position: wi_anchor_position.before, content: content },
-                );
-                break;
-            case world_info_position.EMBottom:
-                EMEntries.unshift(
-                    { position: wi_anchor_position.after, content: content },
-                );
-                break;
-            case world_info_position.ANTop:
-                ANTopEntries.unshift(content);
-                break;
-            case world_info_position.ANBottom:
-                ANBottomEntries.unshift(content);
-                break;
-            case world_info_position.atDepth: {
-                const existingDepthIndex = WIDepthEntries.findIndex((e) => e.depth === (entry.depth ?? DEFAULT_DEPTH) && e.role === (entry.role ?? extension_prompt_roles.SYSTEM));
-                if (existingDepthIndex !== -1) {
-                    WIDepthEntries[existingDepthIndex].entries.unshift(content);
-                } else {
-                    WIDepthEntries.push({
-                        depth: entry.depth,
-                        entries: [content],
-                        role: entry.role ?? extension_prompt_roles.SYSTEM,
-                    });
-                }
-                break;
-            }
-            case world_info_position.outlet: {
-                if (!entry.outletName) {
-                    console.warn(`[WI] Entry ${entry.uid} has position 'outlet' but no outlet name. Skipping.`);
-                    break;
-                }
-                if (Array.isArray(WIOutletEntries[entry.outletName])) {
-                    WIOutletEntries[entry.outletName].push(content);
-                } else {
-                    WIOutletEntries[entry.outletName] = [content];
-                }
-                break;
-            }
-            default:
-                break;
-        }
+    const promptEntries = buildWorldInfoPromptEntries([...allActivatedEntries.values()].sort(sortFn), {
+        world_info_position, wi_anchor_position, DEFAULT_DEPTH, extension_prompt_roles,
+        render: (entry, depth) => getRegexedString(entry.content, regex_placement.WORLD_INFO, { depth, isMarkdown: false, isPrompt: true }),
     });
+    const { worldInfoBeforeEntries: WIBeforeEntries, worldInfoAfterEntries: WIAfterEntries,
+        ANBeforeEntries: ANTopEntries, ANAfterEntries: ANBottomEntries } = promptEntries;
 
     if (shouldWIAddPrompt) {
         const originalAN = context.extensionPrompts[NOTE_MODULE_NAME].value;
@@ -9732,15 +9669,9 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     console.debug(`[WI] --- DONE${isDryRun ? ' (DRY RUN)' : ''} ---`);
 
     return {
-        worldInfoBeforeEntries: [...WIBeforeEntries],
-        worldInfoAfterEntries: [...WIAfterEntries],
+        ...promptEntries,
         worldInfoBefore: WIBeforeEntries.length ? WIBeforeEntries.join('\n') : '',
         worldInfoAfter: WIAfterEntries.length ? WIAfterEntries.join('\n') : '',
-        EMEntries,
-        WIDepthEntries,
-        ANBeforeEntries: ANTopEntries,
-        ANAfterEntries: ANBottomEntries,
-        outletEntries: WIOutletEntries,
         allActivatedEntries: new Set(allActivatedEntries.values()),
     };
 }

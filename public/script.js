@@ -1,3 +1,4 @@
+import { ChatSnapshotCache } from './scripts/atri-chat-snapshot-cache.js';
 import {
     showdown,
     moment,
@@ -1313,8 +1314,7 @@ let dialogueResolve = null;
 let dialogueCloseStop = false;
 /** @type {ChatMetadata} */
 export let chat_metadata = {};
-const chatMetadataSnapshotCache = new Map();
-const chatMessageSnapshotCache = new Map();
+const chatSnapshotCache = new ChatSnapshotCache({ activeKey: () => getChatMessageSnapshotKey() });
 /** @type {StreamingProcessor} */
 export let streamingProcessor = null;
 let crop_data = undefined;
@@ -3489,6 +3489,7 @@ export async function clearChat({ clearData = false } = {}) {
     itemizedPrompts.length = 0;
 
     if (clearData) chat.length = 0;
+    chatSnapshotCache.prune();
 }
 
 export async function deleteLastMessage() {
@@ -12207,7 +12208,7 @@ function rememberChatMetadataSnapshot(target = resolveChatStateTarget(), metadat
     if (!key) {
         return;
     }
-    chatMetadataSnapshotCache.set(key, cloneJsonValue(isPlainObject(metadata) ? metadata : {}));
+    chatSnapshotCache.set(key, 'metadata', cloneJsonValue(isPlainObject(metadata) ? metadata : {}));
 }
 
 export function seedChatMetadataSnapshot(target = null, metadata = chat_metadata) {
@@ -12221,7 +12222,7 @@ export function getChatMetadataSnapshot(target = null) {
     if (!key) {
         return null;
     }
-    const snapshot = chatMetadataSnapshotCache.get(key);
+    const snapshot = chatSnapshotCache.get(key, 'metadata');
     return isPlainObject(snapshot) ? cloneJsonValue(snapshot) : null;
 }
 
@@ -12231,7 +12232,7 @@ function rememberChatMessageSnapshot(target = resolveChatStateTarget(), messages
         return;
     }
     if (!Array.isArray(messages)) {
-        chatMessageSnapshotCache.delete(key);
+        chatSnapshotCache.delete(key, 'messages');
         return;
     }
     // Wire-format clone (not structured clone): snapshot mirrors what server
@@ -12241,7 +12242,7 @@ function rememberChatMessageSnapshot(target = resolveChatStateTarget(), messages
     // JSON.stringify on the network path collapses them to null. Diffing a
     // structured-form snapshot against a wire-form server state then ships
     // phantom replace ops or fires false test failures (the conflict toast).
-    chatMessageSnapshotCache.set(key, cloneAsJsonWire(messages));
+    chatSnapshotCache.set(key, 'messages', cloneAsJsonWire(messages));
 }
 
 export function seedChatMessageSnapshot(target = null, messages = chat) {
@@ -12255,7 +12256,7 @@ export function getChatMessageSnapshot(target = null) {
     if (!key) {
         return null;
     }
-    const snapshot = chatMessageSnapshotCache.get(key);
+    const snapshot = chatSnapshotCache.get(key, 'messages');
     return Array.isArray(snapshot) ? cloneJsonValue(snapshot) : null;
 }
 
@@ -12301,9 +12302,11 @@ export function runSerializedChatWrite(task) {
         return Promise.resolve(undefined);
     }
 
+    const releaseSnapshots = chatSnapshotCache.holdWrites();
     const run = chatWriteQueue
         .catch(() => undefined)
-        .then(() => task());
+        .then(() => task())
+        .finally(releaseSnapshots);
 
     chatWriteQueue = run.catch(() => undefined);
     return run;
@@ -13306,8 +13309,7 @@ export function invalidateChatWriteSnapshot(target = resolveChatStateTarget()) {
         return;
     }
 
-    chatMessageSnapshotCache.delete(snapshotKey);
-    chatMetadataSnapshotCache.delete(snapshotKey);
+    chatSnapshotCache.delete(snapshotKey);
 }
 
 
@@ -13615,7 +13617,7 @@ export async function resolveChatWriteConflictForTarget(response, target = null,
     // skipping the diff in that branch loses real signal about which message
     // a concurrent writer touched.
     const snapshotKey = target ? getChatMessageSnapshotKey(target) : null;
-    const clientSnapshot = snapshotKey ? chatMessageSnapshotCache.get(snapshotKey) : null;
+    const clientSnapshot = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'messages') : null;
     let divergenceSummary = null;
     let divergenceDetails = null;
     if (Array.isArray(clientSnapshot)) {
@@ -13739,7 +13741,7 @@ async function appendChatMessagesInternal(messages, retryCount = 0) {
         // happening on `chat[i]` during the await window and silently smuggled
         // those changes into snapshot without ever sending them to BE → drift.
         const snapshotKey = target ? getChatMessageSnapshotKey(target) : null;
-        const previousMessages = snapshotKey ? chatMessageSnapshotCache.get(snapshotKey) : null;
+        const previousMessages = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'messages') : null;
         if (Array.isArray(previousMessages) && snapshotKey) {
             // rememberChatMessageSnapshot deep-clones internally, so spreading
             // raw references is safe here — they get frozen on `.set`.
@@ -13914,7 +13916,7 @@ async function patchChatMessagesInternal(operations, retryCount = 0) {
     try {
         target = resolveChatStateTarget();
         const snapshotKey = target ? getChatMessageSnapshotKey(target) : null;
-        const previousMessages = snapshotKey ? chatMessageSnapshotCache.get(snapshotKey) : null;
+        const previousMessages = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'messages') : null;
         const guardedOperations = attachChatMessagePatchTests(previousMessages, normalizedOperations);
 
         // Optimistic snapshot commit: compute what snapshot will be after BE
@@ -14166,7 +14168,7 @@ async function saveChatMetadataInternal(withMetadata = undefined, retryCount = 0
         const effectiveForce = Boolean(forceRecovery);
 
         const snapshotKey = getChatMetadataSnapshotKey(target);
-        const previousMetadata = snapshotKey ? chatMetadataSnapshotCache.get(snapshotKey) : null;
+        const previousMetadata = snapshotKey ? chatSnapshotCache.get(snapshotKey, 'metadata') : null;
         const operations = await buildChatMetadataPatchOperationsAsync(previousMetadata, metadata);
 
         // Nothing changed.
@@ -14370,7 +14372,7 @@ async function saveChatInternal({ chatName, withMetadata, mesId, force = false, 
         // force (typically false) if not.
         const forceRecovery = consumePendingForceOverwrite(writeTarget);
         const effectiveForce = force || Boolean(forceRecovery);
-        const previousMessages = chatMessageSnapshotCache.get(getChatMessageSnapshotKey(writeTarget));
+        const previousMessages = chatSnapshotCache.get(getChatMessageSnapshotKey(writeTarget), 'messages');
 
         if (!effectiveForce && Array.isArray(previousMessages)) {
             const operations = await buildChatMessagePatchOperations(previousMessages, trimmedChat);
