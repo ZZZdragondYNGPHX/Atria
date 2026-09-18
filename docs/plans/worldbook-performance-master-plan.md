@@ -17,9 +17,18 @@
 - 首批写集：聊天写快照的容量／生命周期、世界书输出片段来源与 Orchestrator 过滤、相应确定性测试和合成基准。
 - 原则：不改存储格式、不删用户数据、不改扫描／概率／时效／预算语义、不新增默认模型调用；Android 与 Docker 不运行。
 - 验证：先回归已知重复正文和正则改写问题，再检查缓存切换、排队写入和异常释放；运行相关测试及 lint。浏览器长期堆、真实扩展和最终提供商请求单独标记，不以 Node 测试代替。
-- 分片状态：P-00／W-00 补可重放离线基线；P-01 和 W-01 各落一个最小边界。W-01 的最终模型请求归因、W-02 至 W-05、P-02 至 P-05 不宣称完成。
+- 分片状态：P-01 已完成有界聊天快照生命周期切口；W-01 已完成条目身份／来源到最终请求边界的轻量归因；W-02 已完成纯评估／显式提交分离并通过真实 Chromium、完整 Unit、Lint、Workspace 与迁移守卫。W-03 已启动，仅进入受限原生状态条件第一切口；W-04／W-05、P-02 至 P-05 仍未开始。
 - 回滚：首批作为独立代码提交，可整体 revert；无数据迁移。
 - 工程路由：`tavern-card-builder` → `consult-tavernweave-library`，快照 `2026-08-18`；已读取 ST-A0 与 ST-A3 相关章节。精确字段以当前 Atria 源码为准；设计／动效候选未采用。
+
+## 实施进度记录 · 2026-09-18
+
+- **P-01 已完成：** 聊天 wire snapshot 改为有界工作集；活跃／排队写入期间保留，结算后淘汰；异常释放和 clone 隔离已有回归。
+- **W-01 已完成：** 世界书 occurrence identity / provenance 贯穿渲染、Orchestrator 过滤与最终请求诊断；相同正文、正则改写和不同接收方不会再靠正文反查来源。
+- **W-02 已完成：** 世界书扫描为纯评估；timed state、force-activation 消费和 `WORLD_INFO_ACTIVATED` 只在显式 `commitWorldInfoEvaluation()` 提交；稳定 evaluation ID、防 stale chat scope、重复提交幂等均已覆盖。
+- **W-02 出口证据：** `Worldbook Performance Foundation`（focused Jest、synthetic benchmark、真实 Chromium host smoke）通过；`Workspace UI` 通过；`Atria PR Checks` 的 Lint、Migration Guard、完整 Unit Tests 全部通过。
+- **W-03 当前边界：** 只开始受限、可验证的原生状态条件；状态来源继续由现有只读 provider 拥有，缺 provider／缺字段返回 `unknown`；不引入任意 JavaScript、默认联网或逐条 LLM 判定。
+- Android 与 Docker 仍按用户约束不默认构建。
 
 ## 目录
 
