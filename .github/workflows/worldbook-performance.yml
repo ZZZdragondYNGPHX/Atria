@@ -13,6 +13,7 @@ on:
       - "public/scripts/atri-world-info-provenance.js"
       - "public/scripts/atri-world-info-state-conditions.js"
       - "public/scripts/atri-world-info-state-events.js"
+      - "public/scripts/atri-world-info-selection.js"
       - "public/scripts/openai.js"
       - "public/scripts/textgen-settings.js"
       - "public/scripts/nai-settings.js"
@@ -60,6 +61,7 @@ jobs:
           world-info/state-conditions.test.js
           world-info/state-events.test.js
           world-info/state-events-floor-state.test.js
+          world-info/selection-strategy.test.js
           --runInBand
 
       - name: Capture synthetic offline baseline
