@@ -42,6 +42,7 @@ import {
 import {
     world_info,
     getWorldInfoPrompt,
+    commitWorldInfoEvaluation,
     getWorldInfoSettings,
     setWorldInfoSettings,
     world_names,
@@ -7215,7 +7216,7 @@ export function buildWorldInfoGlobalScanData(type, overrides = {}) {
  * @param {object} params Parameters.
  * @param {ChatMessage[]} [params.coreChat=[]] Chat snapshot to scan.
  * @param {number} [params.maxContext] Max context for WI scan.
- * @param {boolean} [params.dryRun=false] Dry run flag.
+ * @param {boolean} [params.dryRun=true] Preview/evaluation flag.
  * @param {string} [params.type='normal'] Generation type.
  * @param {string[]} [params.chatForWI] Optional prebuilt WI chat array.
  * @param {boolean} [params.includeNames=world_info_include_names] Include speaker names when building WI chat.
@@ -7225,7 +7226,7 @@ export function buildWorldInfoGlobalScanData(type, overrides = {}) {
 export async function simulateWorldInfoActivation({
     coreChat = [],
     maxContext: maxContextOverride = undefined,
-    dryRun = false,
+    dryRun = true,
     type = 'normal',
     chatForWI = undefined,
     includeNames = world_info_include_names,
@@ -7975,6 +7976,22 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         worldInfoBeforeEntries,
         worldInfoAfterEntries,
     });
+
+    // W-02: scans above are evaluations only. Commit the accepted final
+    // resolution once, after all rescan/finalization hooks have settled.
+    if (!dryRun) {
+        const commitResult = await commitWorldInfoEvaluation(worldInfoResolution);
+        if (commitResult.reason === 'scope_changed') {
+            console.warn('[WI] Final evaluation scope changed before commit; dropping stale generation.');
+            if (type !== 'quiet') {
+                unblockGeneration(type);
+            }
+            return Promise.resolve();
+        }
+        if (exitAbortedGenerationIfNeeded()) {
+            return Promise.resolve();
+        }
+    }
 
     // W-01: bind the final filtered identity/source snapshot to this
     // generation. Rendered bodies are omitted from this attribution because
