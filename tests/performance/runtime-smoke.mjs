@@ -97,6 +97,20 @@ try {
     });
     writeWorldBook({
         dataRoot,
+        name: 'atri-scene-state-fixture',
+        entries: [{
+            content: 'SCENE_STATE_BODY',
+            stateActivation: true,
+            stateConditions: [{
+                providerId: 'mvu',
+                path: ['scene', 'place'],
+                operator: 'eq',
+                value: 'clocktower',
+            }],
+        }],
+    });
+    writeWorldBook({
+        dataRoot,
         name: 'atri-condition-author-ui-fixture',
         entries: [{
             content: 'AUTHOR_UI_CONDITION_BODY',
@@ -202,6 +216,9 @@ try {
     await authorConditionRow.waitFor({ state: 'visible', timeout: 5000 });
     await authorConditionRow.locator('.wi-state-condition-path input').fill('scene.place');
     await authorConditionRow.locator('.wi-state-condition-value-control').fill('clocktower');
+    const stateActivationToggle = conditionEditor.locator('input[name="stateActivation"]');
+    assert.equal(await stateActivationToggle.isChecked(), false);
+    await stateActivationToggle.check();
     const stagedConditionsBeforeSave = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
         const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
@@ -220,12 +237,18 @@ try {
         const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
         return structuredClone(data?.entries?.['0']?.stateConditions || []);
     });
+    const authoredStateActivation = await page.evaluate(async () => {
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo('atri-condition-author-ui-fixture');
+        return data?.entries?.['0']?.stateActivation === true;
+    });
     assert.deepEqual(authoredConditions, [{
         providerId: 'mvu',
         path: ['scene', 'place'],
         operator: 'eq',
         value: 'clocktower',
     }]);
+    assert.equal(authoredStateActivation, true);
     assert.equal(await conditionEditor.locator('.wi-state-condition-count').textContent(), '1');
     assert.match(await conditionEditor.locator('.wi-state-condition-status').textContent(), /saved/i);
 
@@ -332,7 +355,7 @@ try {
         };
         wi.updateWorldInfoSettings(
             { world_info_budget: 100, world_info_recursive: false },
-            ['atri-ready-condition-true-fixture', 'atri-ready-condition-false-fixture'],
+            ['atri-ready-condition-true-fixture', 'atri-ready-condition-false-fixture', 'atri-scene-state-fixture'],
         );
         const readyConditionResolution = await core.simulateWorldInfoActivation({
             chatForWI: ['fixture'],
@@ -341,6 +364,13 @@ try {
         });
         const readyConditionTrueBody = readyConditionResolution.worldInfoString.includes('READY_CONDITION_TRUE_BODY');
         const readyConditionFalseBody = readyConditionResolution.worldInfoString.includes('READY_CONDITION_FALSE_BODY');
+        const sceneStateBody = readyConditionResolution.worldInfoString.includes('SCENE_STATE_BODY');
+        const sceneRepeatResolution = await core.simulateWorldInfoActivation({
+            chatForWI: ['fixture'],
+            maxContext: 8192,
+            dryRun: true,
+        });
+        const sceneStateRepeatBody = sceneRepeatResolution.worldInfoString.includes('SCENE_STATE_BODY');
         const metadataBeforeStateGuardCommit = structuredClone(core.chat_metadata);
         const stateGuardResolution = await core.simulateWorldInfoActivation({
             chatForWI: ['fixture'],
@@ -356,6 +386,12 @@ try {
         };
         const stateGuardCommit = await wi.commitWorldInfoEvaluation(stateGuardResolution);
         const metadataAfterStateGuardCommit = structuredClone(core.chat_metadata);
+        const sceneExitResolution = await core.simulateWorldInfoActivation({
+            chatForWI: ['fixture'],
+            maxContext: 8192,
+            dryRun: true,
+        });
+        const sceneStateExitedBody = sceneExitResolution.worldInfoString.includes('SCENE_STATE_BODY');
 
         globalThis.Mvu = {
             isDuringExtraAnalysis: () => false,
@@ -410,6 +446,7 @@ try {
             addButtons: document.querySelectorAll('#entry_edit_template .wi-state-condition-add').length,
             saveButtons: document.querySelectorAll('#entry_edit_template .wi-state-condition-save').length,
             logicSelects: document.querySelectorAll('#entry_edit_template select[name="stateConditionLogic"]').length,
+            activationToggles: document.querySelectorAll('#entry_edit_template input[name="stateActivation"]').length,
             eventDrawers: document.querySelectorAll('#entry_edit_template .wi-entry-state-events').length,
             eventAddButtons: document.querySelectorAll('#entry_edit_template .wi-state-event-add').length,
             eventSaveButtons: document.querySelectorAll('#entry_edit_template .wi-state-event-save').length,
@@ -422,7 +459,7 @@ try {
             metadataBeforeStaleCommit, metadataAfterStaleCommit,
             containedUnknownConditionBody: resolution.worldInfoString.includes('UNKNOWN_CONDITION_BODY'),
             containedMalformedConditionBody: resolution.worldInfoString.includes('MALFORMED_CONDITION_BODY'),
-            readyConditionTrueBody, readyConditionFalseBody, stateConditionAuthorUi,
+            readyConditionTrueBody, readyConditionFalseBody, sceneStateBody, sceneStateRepeatBody, sceneStateExitedBody, stateConditionAuthorUi,
             stateGuardCommit, metadataBeforeStateGuardCommit, metadataAfterStateGuardCommit,
             eventNoBaselineBody };
     });
@@ -447,6 +484,9 @@ try {
     assert.equal(result.containedMalformedConditionBody, false);
     assert.equal(result.readyConditionTrueBody, true);
     assert.equal(result.readyConditionFalseBody, false);
+    assert.equal(result.sceneStateBody, true);
+    assert.equal(result.sceneStateRepeatBody, true);
+    assert.equal(result.sceneStateExitedBody, false);
     assert.equal(result.stateGuardCommit.committed, false);
     assert.equal(result.stateGuardCommit.reason, 'state_changed');
     assert.deepEqual(result.metadataAfterStateGuardCommit, result.metadataBeforeStateGuardCommit);
@@ -456,6 +496,7 @@ try {
         addButtons: 1,
         saveButtons: 1,
         logicSelects: 1,
+        activationToggles: 1,
         eventDrawers: 1,
         eventAddButtons: 1,
         eventSaveButtons: 1,
