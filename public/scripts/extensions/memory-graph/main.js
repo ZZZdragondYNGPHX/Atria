@@ -4469,6 +4469,7 @@ export function getMemoryWorkspacePorts(context) {
         load: () => sourceLifecycle.retrievalSnapshot(context),
         inspect: async snapshot => (await import('./inspector-compute.js')).computeInspector(snapshot),
         correct: (command, snapshot) => sourceLifecycle.correct(context, command, snapshot),
+        loadGraphLibrary: () => ensureCytoscapeLoaded(),
         openHistory: () => openHistoryBuildPopup(context, createMemoryHistoryBuilder()),
         mountSettings: container => mountMemorySettingsUi(container),
         mountKnowledge: (container, signal, onInspect) => openMemoryOsInspector(context, {
