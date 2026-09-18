@@ -1897,3 +1897,139 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+
+/* Diagnostics */
+#agent-memory-workspace .workspace-diagnostics-summary,
+#agent-memory-workspace .workspace-diagnostic-card,
+#agent-memory-workspace .workspace-diagnostics-advanced {
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: var(--atri-workspace-radius-lg);
+    background: var(--atri-workspace-surface-1);
+}
+
+#agent-memory-workspace .workspace-diagnostics-summary {
+    padding: 18px;
+    margin-bottom: 12px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-metrics {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-metric {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+    padding: 12px;
+    border-radius: var(--atri-workspace-radius-md);
+    background: var(--atri-workspace-surface-1);
+}
+
+#agent-memory-workspace .workspace-diagnostic-metric small,
+#agent-memory-workspace .workspace-diagnostic-metric span {
+    opacity: .62;
+    font-size: 10px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-metric strong {
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+}
+
+#agent-memory-workspace .workspace-diagnostics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-card {
+    min-width: 0;
+    padding: 18px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--atri-workspace-border);
+}
+
+#agent-memory-workspace .workspace-diagnostic-row:last-child {
+    border-bottom: 0;
+}
+
+#agent-memory-workspace .workspace-diagnostic-row > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-row strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#agent-memory-workspace .workspace-diagnostic-row small {
+    opacity: .6;
+    font-size: 10px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-context {
+    margin-top: 8px;
+}
+
+#agent-memory-workspace .workspace-diagnostics-advanced {
+    padding: 14px 16px;
+}
+
+#agent-memory-workspace .workspace-diagnostics-advanced > summary {
+    font-size: 14px;
+}
+
+#agent-memory-workspace .workspace-diagnostic-journal {
+    margin-top: 14px;
+}
+
+#agent-memory-workspace .workspace-replay-banner > div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+#agent-memory-workspace .workspace-replay-banner small {
+    opacity: .62;
+    font-size: 10px;
+}
+
+@media (max-width: 1100px) {
+    #agent-memory-workspace .workspace-diagnostic-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    #agent-memory-workspace .workspace-diagnostics-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #agent-memory-workspace .workspace-diagnostic-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #agent-memory-workspace .workspace-replay-banner {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 420px) {
+    #agent-memory-workspace .workspace-diagnostic-metrics {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
