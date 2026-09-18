@@ -8,7 +8,7 @@ set -o pipefail
 
 SCRIPT_VERSION="v0.3.2"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
-# v0.3.0 完整运行时；本启动器在执行前注入 v0.3.1 就绪检测修复。
+# v0.3.0 完整运行时；本启动器在执行前注入 v0.3.1 就绪检测与 v0.3.2 main 分支策略。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
 BOOT_DIR="${TMPDIR:-${PREFIX:-/data/data/com.termux/files/usr}/tmp}/atria-toolbox-$$"
 GZ_FILE="$BOOT_DIR/runtime.sh.gz"
@@ -240,7 +240,7 @@ open_browser() {
 # ============================================================================
 SCRIPT_VERSION="v0.3.2"
 DEFAULT_BRANCH="main"
-SCRIPT_URL="\${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
+SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 
 update_main_branch() {
     ensure_repo || return 1
@@ -258,7 +258,7 @@ update_main_branch() {
     old_sha=$(git -C "$ATRIA_DIR" rev-parse HEAD)
     remote_sha=$(git -C "$ATRIA_DIR" rev-parse "origin/main")
     if [ "$branch" = "main" ] && [ "$old_sha" = "$remote_sha" ]; then
-        info "main 已经是最新：main @ \${old_sha:0:10}"
+        info "main 已经是最新：main @ ${old_sha:0:10}"
         return 0
     fi
 
@@ -287,7 +287,7 @@ switch_branch_interactive() {
 version_menu() {
     while true; do
         clear
-        echo -e "\${CYAN}========== Atria 版本管理 ==========\${NC}"
+        echo -e "${CYAN}========== Atria 版本管理 ==========${NC}"
         echo "当前：$(current_ref_label)"
         echo ""
         echo "1. 更新 / 切换到 main"
