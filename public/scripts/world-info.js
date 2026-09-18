@@ -7813,6 +7813,9 @@ export async function getWorldEntry(name, data, entry) {
         const stateConditionCount = stateConditionsRoot.find('.wi-state-condition-count');
         const stateConditionLogicInput = stateConditionsRoot.find('select[name="stateConditionLogic"]');
         const stateConditionAdd = stateConditionsRoot.find('.wi-state-condition-add');
+        const stateConditionSave = stateConditionsRoot.find('.wi-state-condition-save');
+        const stateConditionStatus = stateConditionsRoot.find('.wi-state-condition-status');
+        let stateConditionsDirty = false;
         let stateConditionDrafts = (Array.isArray(entry.stateConditions) ? entry.stateConditions : []).map(condition => ({
             providerId: String(condition?.providerId || 'mvu').trim() || 'mvu',
             path: Array.isArray(condition?.path)
@@ -7848,20 +7851,52 @@ export async function getWorldEntry(name, data, entry) {
             ))
             .map(condition => structuredClone(condition));
 
-        const persistStateConditions = async () => {
+        const markStateConditionsDirty = () => {
+            stateConditionsDirty = true;
+            stateConditionStatus.text(t`Unsaved state condition changes`);
+            stateConditionCount.text(String(stateConditionDrafts.length));
+        };
+
+        const validateStateConditionDrafts = () => {
+            if (stateConditionDrafts.length > 32) {
+                throw new RangeError('State conditions are limited to 32 per entry');
+            }
+            const persistable = getPersistableStateConditions();
+            if (persistable.length !== stateConditionDrafts.length) {
+                throw new TypeError('Every state condition needs a provider, path, operator, and scalar value');
+            }
+            const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
+            const evaluation = evaluateWorldInfoStateConditions(persistable, [], logic);
+            const invalidIndex = evaluation.results.findIndex(result => result.reason === 'invalid_condition');
+            if (invalidIndex >= 0) {
+                throw new TypeError(`Condition #${invalidIndex + 1} is invalid`);
+            }
+            return { persistable, logic };
+        };
+
+        const saveStateConditions = async () => {
             const uid = entry.uid;
             const liveEntry = data.entries[uid];
-            if (!liveEntry) return;
-            const persistable = getPersistableStateConditions();
-            const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
-            liveEntry.stateConditions = persistable;
-            liveEntry.stateConditionLogic = logic;
-            entry.stateConditions = persistable;
-            entry.stateConditionLogic = logic;
-            stateConditionCount.text(String(persistable.length));
-            setWIOriginalDataValue(data, uid, 'extensions.atria_state_conditions', structuredClone(persistable));
-            setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', logic);
-            await saveWorldInfo(name, data);
+            if (!liveEntry) return false;
+            try {
+                const { persistable, logic } = validateStateConditionDrafts();
+                liveEntry.stateConditions = persistable;
+                liveEntry.stateConditionLogic = logic;
+                entry.stateConditions = structuredClone(persistable);
+                entry.stateConditionLogic = logic;
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_conditions', structuredClone(persistable));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', logic);
+                await saveWorldInfo(name, data);
+                stateConditionsDirty = false;
+                stateConditionCount.text(String(persistable.length));
+                stateConditionStatus.text(t`State conditions saved`);
+                return true;
+            } catch (error) {
+                const message = String(error?.message || error || 'Invalid state conditions');
+                stateConditionStatus.text(message);
+                toastr.warning(message, t`Invalid state conditions`);
+                return false;
+            }
         };
 
         const makeStateConditionField = (label, extraClass = '') => {
@@ -7873,7 +7908,7 @@ export async function getWorldEntry(name, data, entry) {
 
         const renderStateConditionRows = () => {
             stateConditionsList.empty();
-            stateConditionCount.text(String(getPersistableStateConditions().length));
+            stateConditionCount.text(String(stateConditionDrafts.length));
 
             stateConditionDrafts.forEach((condition, index) => {
                 const row = $('<div class="wi-state-condition-row"></div>');
@@ -7894,7 +7929,7 @@ export async function getWorldEntry(name, data, entry) {
                 providerInput.val(condition.providerId);
                 providerInput.on('input', async () => {
                     stateConditionDrafts[index].providerId = String(providerInput.val() || '');
-                    await persistStateConditions();
+                    markStateConditionsDirty();
                 });
                 providerField.append(providerInput);
 
@@ -7905,7 +7940,7 @@ export async function getWorldEntry(name, data, entry) {
                 pathInput.on('input', async () => {
                     stateConditionDrafts[index].path = parseStateConditionPath(pathInput.val());
                     row.toggleClass('is-incomplete', stateConditionDrafts[index].path.length === 0);
-                    await persistStateConditions();
+                    markStateConditionsDirty();
                 });
                 pathField.append(pathInput);
 
@@ -7935,7 +7970,7 @@ export async function getWorldEntry(name, data, entry) {
                 operatorInput.val(condition.operator);
                 operatorInput.on('input', async () => {
                     stateConditionDrafts[index].operator = String(operatorInput.val() || 'eq');
-                    await persistStateConditions();
+                    markStateConditionsDirty();
                 });
                 operatorField.append(operatorInput);
 
@@ -7960,7 +7995,7 @@ export async function getWorldEntry(name, data, entry) {
                             .val(condition.value === true ? 'true' : 'false');
                         valueInput.on('input', async () => {
                             stateConditionDrafts[index].value = valueInput.val() === 'true';
-                            await persistStateConditions();
+                            markStateConditionsDirty();
                         });
                     } else {
                         valueInput = $('<input class="text_pole margin0 wi-state-condition-value-control">');
@@ -7974,7 +8009,7 @@ export async function getWorldEntry(name, data, entry) {
                             valueInput.on('input', async () => {
                                 const numeric = Number(valueInput.val());
                                 stateConditionDrafts[index].value = Number.isFinite(numeric) ? numeric : 0;
-                                await persistStateConditions();
+                                markStateConditionsDirty();
                             });
                         } else if (valueType === 'null') {
                             valueInput.attr('type', 'text').val('null').prop('disabled', true);
@@ -7986,7 +8021,7 @@ export async function getWorldEntry(name, data, entry) {
                             );
                             valueInput.on('input', async () => {
                                 stateConditionDrafts[index].value = String(valueInput.val() ?? '');
-                                await persistStateConditions();
+                                markStateConditionsDirty();
                             });
                         }
                     }
@@ -8001,7 +8036,7 @@ export async function getWorldEntry(name, data, entry) {
                     else if (valueType === 'null') stateConditionDrafts[index].value = null;
                     else stateConditionDrafts[index].value = '';
                     renderValueInput();
-                    await persistStateConditions();
+                    markStateConditionsDirty();
                 });
                 renderValueInput();
 
@@ -8013,7 +8048,7 @@ export async function getWorldEntry(name, data, entry) {
                     event.stopPropagation();
                     stateConditionDrafts.splice(index, 1);
                     renderStateConditionRows();
-                    await persistStateConditions();
+                    markStateConditionsDirty();
                 });
 
                 row.append(providerField, pathField, operatorField, typeField, valueField, removeButton);
@@ -8022,15 +8057,28 @@ export async function getWorldEntry(name, data, entry) {
         };
 
         stateConditionLogicInput.val(entry.stateConditionLogic === 'any' ? 'any' : 'all');
-        stateConditionLogicInput.on('input', persistStateConditions);
+        stateConditionLogicInput.on('input', markStateConditionsDirty);
         stateConditionAdd.on('click', event => {
             event.preventDefault();
             event.stopPropagation();
+            if (stateConditionDrafts.length >= 32) {
+                toastr.warning(t`State conditions are limited to 32 per entry`);
+                return;
+            }
             stateConditionDrafts.push({ providerId: 'mvu', path: [], operator: 'eq', value: '' });
             renderStateConditionRows();
+            markStateConditionsDirty();
             stateConditionsRoot.find('.wi-state-condition-row').last().find('.wi-state-condition-path input').trigger('focus');
         });
+        stateConditionSave.on('click', async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            await saveStateConditions();
+        });
         renderStateConditionRows();
+        stateConditionStatus.text(stateConditionsDirty
+            ? t`Unsaved state condition changes`
+            : t`State conditions saved`);
 
         // Content
         const counter = editTemplate.find('.world_entry_form_token_counter');
