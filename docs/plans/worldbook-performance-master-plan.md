@@ -27,7 +27,8 @@
 - **W-01 已完成：** 世界书 occurrence identity / provenance 贯穿渲染、Orchestrator 过滤与最终请求诊断；相同正文、正则改写和不同接收方不会再靠正文反查来源。
 - **W-02 已完成：** 世界书扫描为纯评估；timed state、force-activation 消费和 `WORLD_INFO_ACTIVATED` 只在显式 `commitWorldInfoEvaluation()` 提交；稳定 evaluation ID、防 stale chat scope、重复提交幂等均已覆盖。
 - **W-02 出口证据：** `Worldbook Performance Foundation`（focused Jest、synthetic benchmark、真实 Chromium host smoke）通过；`Workspace UI` 通过；`Atria PR Checks` 的 Lint、Migration Guard、完整 Unit Tests 全部通过。
-- **W-03 当前边界：** 只开始受限、可验证的原生状态条件；状态来源继续由现有只读 provider 拥有，缺 provider／缺字段返回 `unknown`；不引入任意 JavaScript、默认联网或逐条 LLM 判定。
+- **W-03a 已完成：** 受限原生状态条件已接入世界书扫描、activation trace、角色卡往返与结构化作者 UI；MVU/LoreState 继续作为只读事实源，缺 provider／缺字段／busy/error／malformed 均 fail closed 为 `unknown`。完整 Unit、Lint、Migration Guard、Workspace UI 与真实 Chromium host smoke 全绿。
+- **W-03b 当前边界：** 开始状态变化事件。事件只比较“上一次已提交 provider 基线”和“本次只读 provider 快照”；评估不推进基线，只有最终 `commitWorldInfoEvaluation()` 才推进。首次没有基线、旧值未知或当前值未知都返回 `unknown`，不伪造变化。
 - Android 与 Docker 仍按用户约束不默认构建。
 
 ## 目录
