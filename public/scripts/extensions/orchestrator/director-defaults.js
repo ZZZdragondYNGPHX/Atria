@@ -19,7 +19,7 @@
  * would produce two same-named tool schemas in the LLM's tools array.
  */
 
-import { sanitizeAgentToolFlags, sanitizeOptionalAgentToolFlags } from './persistence.js';
+import { DEFAULT_LAYER2_CUSTOMS, sanitizeAgentToolFlags, sanitizeOptionalAgentToolFlags } from './persistence.js';
 import { buildDirectorDefaultSystemPrompt } from './director-default-prompt.js';
 import { sanitizeCustomTools } from './custom-tools-sanitize.js';
 import { sanitizeLorebookFilter } from './lorebook-filter.js';
@@ -68,55 +68,15 @@ export function getDirectorLimitBounds() {
     return DIRECTOR_LIMIT_BOUNDS;
 }
 
-// Canonical memory verb list passed to the legacy translator in
-// `sanitizeAgentToolFlags`. Spelled out here (rather than imported from
-// `persistence.js`'s private `MEMORY_TOOL_NAMES`) so director-defaults
-// stays self-contained, matching the loose-coupling note on that const.
-// `buildDefaultDirectorTools` and `buildMinimalDirectorTools` both read
-// from this list; flipping a verb on/off across both presets at once is
-// a single-line edit.
-const DIRECTOR_LEGACY_MEMORY_VERBS = Object.freeze([
-    'schema',
-    'list_candidates',
-    'edge_summary',
-    'node_brief',
-    'expand_seeds',
-    'keyword_search',
-    'vector_search',
-    'find_by_name',
-    'compaction_candidates',
-    'node_create',
-    'node_edit',
-    'node_delete',
-    'link_upsert',
-    'link_delete',
-    'compact_nodes',
-]);
-
-const DIRECTOR_LEGACY_SEARCH_VERBS = Object.freeze(['search', 'visit']);
-
-function buildLegacyVerbBag(verbs, value) {
-    const out = {};
-    for (const verb of verbs) out[verb] = value;
-    return out;
-}
-
 function buildDefaultDirectorTools() {
     // defaultAllOn: true → every verb (chat.read_range, chat.search, …)
     // starts enabled. forceFinalize: false → finalize is NOT forced on; we
     // explicitly override it to false below because director has its own
     // finalize tool with the same name.
     //
-    // memory + search tools live in Layer-2 and route through
-    // `tools.custom`. The sanitizer's defaultAllOn applies to the
-    // namespaces it manages (note / chat / lorebook / collab), but
-    // custom-tool flags only flip on when explicitly listed. Spell out
-    // the legacy memory_* / search_* verbs here so the director's
-    // default ships with the same enabled tool set users had before
-    // the namespace drop.
+    // Layer-2 built-ins live directly in the current custom namespace.
     const input = {
-        memory: buildLegacyVerbBag(DIRECTOR_LEGACY_MEMORY_VERBS, true),
-        search: buildLegacyVerbBag(DIRECTOR_LEGACY_SEARCH_VERBS, true),
+        custom: { ...DEFAULT_LAYER2_CUSTOMS },
         // Explicit off for sub-agent draft editing on brand-new profiles.
         // `defaultAllOn: true` below would otherwise flip these on, but
         // granting sub-agents write/patch on the message body is a
@@ -131,19 +91,10 @@ function buildDefaultDirectorTools() {
 }
 
 function buildMinimalDirectorTools() {
-    // Same default-all-on shape as the Full preset (notes / chat / lorebook /
-    // collab default-on), but every memory_* and search_* Layer-2 verb is
-    // explicitly disabled. Without these explicit `false` entries Layer-2's
-    // default-on policy (`customFlags[name] !== false` in
-    // `getEnabledToolSchemas`) would silently surface every memory / search
-    // tool to the director regardless of preset choice — defeating the whole
-    // point of the Minimal split. The legacy translator in
-    // `sanitizeAgentToolFlags` turns `tools.memory.<verb> = false` into
-    // `tools.custom.memory_<verb> = false`, which IS recognized by the
-    // runtime as "explicitly off".
+    // Same core defaults as Full, but every Layer-2 built-in is explicitly
+    // disabled in the current custom namespace.
     const input = {
-        memory: buildLegacyVerbBag(DIRECTOR_LEGACY_MEMORY_VERBS, false),
-        search: buildLegacyVerbBag(DIRECTOR_LEGACY_SEARCH_VERBS, false),
+        custom: Object.fromEntries(Object.keys(DEFAULT_LAYER2_CUSTOMS).map(name => [name, false])),
         // See `buildFullDirectorTools` — same rationale for opting sub-
         // agent draft editing OUT of the brand-new-profile default.
         message: { write_message: false, apply_message_patches: false },
@@ -697,49 +648,27 @@ function clampInt(value, { min, default: def }) {
  *   1. Flat profile — `{ mode, mainAgent, subAgents, maxRounds, ... }`.
  *      The current canonical shape. Loop and agenda profiles already use
  *      this idiom; director matches.
- *   2. Legacy wrapped profile — `{ mode, director: { mainAgent, ... } }`.
- *      Older `settings.directorProfile` blobs and V3 portable export files
- *      use this. Lifted to flat output on read so on-disk data migrates
- *      transparently — no separate migration script.
- *   3. Bare director sub-object — `{ mainAgent, subAgents, ... }` with no
- *      outer envelope. This is what preset-library entries store
- *      (per-mode `presetLibraries.director[<id>]` payloads). The loader
- *      can pass it straight through.
+ * Atria uses one flat shape. A bare director sub-object is also current
+ * because preset-library entries store exactly that per-mode body. Obsolete
+ * wrapped profiles are not upgraded; an unsupported `director:` member is
+ * simply dropped by the hard cutover.
  *
- * Returns a flat object. Non-director top-level fields on the input
- * (`avatar`, `enabled`, etc. that ride along on editor / portable
- * profiles) are preserved; the legacy `director:` wrapper is dropped.
+ * Non-director top-level fields (`avatar`, `enabled`, etc.) are preserved.
  */
 export function sanitizeDirectorProfile(profile) {
     const safeProfile = profile && typeof profile === 'object' ? profile : {};
-    // Auto-detect: legacy wrapped input nests director fields under
-    // `profile.director`; flat / bare input has them at top level.
-    const directorFields = safeProfile.director && typeof safeProfile.director === 'object'
-        ? safeProfile.director
-        : safeProfile;
-    // Drop the legacy `director:` key from passthrough so the flat output
-    // never carries the old wrapper alongside the new top-level fields.
+    const directorFields = safeProfile;
+    // Obsolete wrapped profiles are unsupported after the hard cutover.
     const passthrough = { ...safeProfile };
     delete passthrough.director;
     const bounds = getDirectorLimitBounds();
 
     const mainAgent = directorFields.mainAgent && typeof directorFields.mainAgent === 'object' ? directorFields.mainAgent : {};
 
-    // Per-agent tools override: null/undefined → inherit `director.tools`
-    // default; object → replace default entirely (not merged). The shared
-    // `sanitizeOptionalAgentToolFlags` returns null for the inherit case
-    // and a fully canonical flag bag for the override case. Director
-    // forces `finalize: false` on every layer (it has its own finalize
-    // tool with the same name). Same legacy-collab migration shim as
-    // the director.tools sanitizer below: an override authored before
-    // the `collab` namespace shipped pre-fills both dispatchers on so
-    // the user does not silently lose them.
+    // Per-agent tools override: null/undefined inherits profile tools; an
+    // object is sanitized as an explicit current-schema override.
     const sanitizeAgentOverride = (toolsInput) => {
-        const migratedInput = (toolsInput && typeof toolsInput === 'object'
-            && (!toolsInput.collab || typeof toolsInput.collab !== 'object'))
-            ? { ...toolsInput, collab: { dispatch_subagent: true, dispatch_inline_subagent: true } }
-            : toolsInput;
-        const sanitized = sanitizeOptionalAgentToolFlags(migratedInput, {
+        const sanitized = sanitizeOptionalAgentToolFlags(toolsInput, {
             defaultAllOn: false,
             forceFinalize: false,
         });
@@ -789,66 +718,20 @@ export function sanitizeDirectorProfile(profile) {
         subAgentMap.set(id, entry);
     }
 
-    // Tools: when input.tools is absent, populate with all-on defaults so
-    // newly-created profiles get the full toolbox. When input.tools is
-    // present but incomplete, missing verbs default off (caller wanted
-    // explicit control). We detect "absent" by checking that input.tools
-    // is not a plain object.
+    // Tools: absent means the current new-profile all-on default; an explicit
+    // object is an override and missing flags default off.
     const hasToolsBlock = directorFields.tools && typeof directorFields.tools === 'object';
-    // Migration shim: profiles persisted before the `collab` namespace
-    // shipped have a tools block but no `collab` key. Treat that as
-    // legacy = both dispatchers on, otherwise existing director users
-    // would silently lose their sub-agent dispatchers on the first load
-    // after upgrading. Profiles that DO have an explicit collab block
-    // pass through unchanged.
-    const toolsInput = hasToolsBlock
-        ? (directorFields.tools.collab && typeof directorFields.tools.collab === 'object'
-            ? directorFields.tools
-            : { ...directorFields.tools, collab: { dispatch_subagent: true, dispatch_inline_subagent: true } })
-        : directorFields.tools;
-    const sanitizedTools = sanitizeAgentToolFlags(toolsInput, {
+    const sanitizedTools = sanitizeAgentToolFlags(directorFields.tools, {
         defaultAllOn: !hasToolsBlock,
         forceFinalize: false,
     });
     sanitizedTools.finalize = false;
 
-    // Legacy migration: profiles persisted before the `message` namespace
-    // shipped had unconditional main-agent write_message /
-    // apply_message_patches. On upgrade the sanitizer would leave both
-    // flags off (baseline for override sanitize is `defaultAllOn: false`;
-    // for profile sanitize it's `!hasToolsBlock`, i.e. also false when
-    // the old tools block exists), which would strip the main agent of
-    // draft-editing power and break director's whole point.
-    //
-    // We detect a pre-`message`-feature profile by "has a tools block
-    // but no `message` namespace inside it" — new profiles built via
-    // `createFullDirectorProfile` / `createMinimalDirectorProfile`
-    // always ship with the namespace present (via
-    // `buildFullDirectorTools` / `buildMinimalDirectorTools`), so this
-    // branch only fires on legacy round-trips. When it does, we
-    // synthesize an explicit `mainAgent.tools` override that keeps the
-    // pre-flag write/patch behavior:
-    //   - if the user had no override → start from the profile default
-    //     snapshot so every other flag mirrors what sub-agents see
-    //   - if the user had an override → start from that override (their
-    //     explicit choices for other namespaces stay intact)
-    // Either way we force message.<verb> = true so upgrade is transparent.
-    const isPreMessageProfile = hasToolsBlock
-        && !(directorFields.tools.message && typeof directorFields.tools.message === 'object');
-    const mainAgentToolsInput = isPreMessageProfile
-        ? {
-            ...(mainAgent.tools && typeof mainAgent.tools === 'object'
-                ? mainAgent.tools
-                : directorFields.tools),
-            message: { write_message: true, apply_message_patches: true },
-        }
-        : mainAgent.tools;
-
     const mainAgentOut = {
         promptPresetName: String(mainAgent.promptPresetName ?? '').trim(),
         apiPresetName: String(mainAgent.apiPresetName ?? '').trim(),
         systemPrompt: String(mainAgent.systemPrompt ?? ''),
-        tools: sanitizeAgentOverride(mainAgentToolsInput),
+        tools: sanitizeAgentOverride(mainAgent.tools),
     };
     if (mainAgent.skills && typeof mainAgent.skills === 'object') {
         mainAgentOut.skills = mainAgent.skills;
