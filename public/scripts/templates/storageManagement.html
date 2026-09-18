@@ -10,6 +10,11 @@
         </button>
     </div>
     <section class="storageManagementSection" data-panel="server">
+        <div class="flex-container alignItemsCenter spaceBetween marginBot10">
+            <div class="menu_button_note flex1">文本资源会在保存前校验并生成恢复点；敏感凭据和数据库文件只显示元信息。</div>
+            <button type="button" class="menu_button storageRecoveryRefresh"><i class="fa-fw fa-solid fa-clock-rotate-left"></i>最近恢复点</button>
+        </div>
+        <div class="storageRecoveryList displayNone marginBot10"></div>
         <div class="storageManagementServerMount storageManagementMount"></div>
     </section>
     <section class="storageManagementSection displayNone" data-panel="browser">
