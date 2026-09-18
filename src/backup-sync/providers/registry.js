@@ -1,31 +1,33 @@
-const PROVIDER_KINDS = Object.freeze({
-    ARCHIVE: 'archive',
-    SYNC: 'sync',
-});
+import {
+    BACKUP_SYNC_PROVIDER_KINDS as PROVIDER_KINDS,
+    BackupSyncProviderContract,
+} from './contract.js';
 
 const BUILTIN_PROVIDERS = Object.freeze([
-    Object.freeze({
+    new BackupSyncProviderContract({
         id: 'local-file',
         label: 'Local File',
         kind: PROVIDER_KINDS.ARCHIVE,
         available: true,
-        capabilities: Object.freeze({
+        capabilities: {
             list: false,
             upload: false,
             download: true,
+            openArtifact: true,
+            exportArtifact: true,
             delete: false,
             backgroundSync: false,
             bidirectionalSync: false,
             incrementalSync: false,
             conflictResolution: false,
-        }),
+        },
     }),
-    Object.freeze({
+    new BackupSyncProviderContract({
         id: 'lan-sync',
         label: 'LAN Sync',
         kind: PROVIDER_KINDS.SYNC,
         available: true,
-        capabilities: Object.freeze({
+        capabilities: {
             list: true,
             upload: true,
             download: true,
@@ -34,15 +36,16 @@ const BUILTIN_PROVIDERS = Object.freeze([
             bidirectionalSync: true,
             incrementalSync: true,
             conflictResolution: true,
-        }),
+            undo: true,
+        },
     }),
-    Object.freeze({
+    new BackupSyncProviderContract({
         id: 'google-drive',
         label: 'Google Drive',
         kind: PROVIDER_KINDS.ARCHIVE,
         available: false,
         future: true,
-        capabilities: Object.freeze({
+        capabilities: {
             list: true,
             upload: true,
             download: true,
@@ -51,15 +54,22 @@ const BUILTIN_PROVIDERS = Object.freeze([
             bidirectionalSync: true,
             incrementalSync: true,
             conflictResolution: true,
-        }),
+        },
+        configSchema: {
+            version: 1,
+            fields: [
+                { key: 'folderId', type: 'string', required: false },
+            ],
+            auth: { type: 'oauth2', implemented: false },
+        },
     }),
-    Object.freeze({
+    new BackupSyncProviderContract({
         id: 'onedrive',
         label: 'Microsoft OneDrive',
         kind: PROVIDER_KINDS.ARCHIVE,
         available: false,
         future: true,
-        capabilities: Object.freeze({
+        capabilities: {
             list: true,
             upload: true,
             download: true,
@@ -68,15 +78,22 @@ const BUILTIN_PROVIDERS = Object.freeze([
             bidirectionalSync: true,
             incrementalSync: true,
             conflictResolution: true,
-        }),
+        },
+        configSchema: {
+            version: 1,
+            fields: [
+                { key: 'folderId', type: 'string', required: false },
+            ],
+            auth: { type: 'oauth2', implemented: false },
+        },
     }),
-    Object.freeze({
+    new BackupSyncProviderContract({
         id: 'github',
         label: 'GitHub',
         kind: PROVIDER_KINDS.ARCHIVE,
         available: false,
         future: true,
-        capabilities: Object.freeze({
+        capabilities: {
             list: true,
             upload: true,
             download: true,
@@ -85,15 +102,23 @@ const BUILTIN_PROVIDERS = Object.freeze([
             bidirectionalSync: true,
             incrementalSync: true,
             conflictResolution: true,
-        }),
+        },
+        configSchema: {
+            version: 1,
+            fields: [
+                { key: 'repository', type: 'string', required: true },
+                { key: 'branch', type: 'string', required: false, default: 'main' },
+                { key: 'path', type: 'string', required: false, default: 'atria-backups' },
+            ],
+            auth: { type: 'github', implemented: false },
+        },
     }),
 ]);
 
 function cloneDescriptor(provider) {
-    return {
-        ...provider,
-        capabilities: { ...provider.capabilities },
-    };
+    return typeof provider?.describe === 'function'
+        ? provider.describe()
+        : structuredClone(provider);
 }
 
 export class BackupSyncProviderRegistry {
@@ -103,16 +128,13 @@ export class BackupSyncProviderRegistry {
         if (!provider || typeof provider !== 'object') {
             throw new TypeError('Provider descriptor must be an object.');
         }
-        const id = String(provider.id || '').trim();
-        const kind = String(provider.kind || '').trim();
-        if (!id) throw new TypeError('Provider id is required.');
-        if (!Object.values(PROVIDER_KINDS).includes(kind)) {
-            throw new TypeError(`Unknown provider kind: ${kind}`);
+        const normalized = provider instanceof BackupSyncProviderContract
+            ? provider
+            : new BackupSyncProviderContract(provider);
+        if (this.#providers.has(normalized.id)) {
+            throw new TypeError(`Provider already registered: ${normalized.id}`);
         }
-        if (this.#providers.has(id)) {
-            throw new TypeError(`Provider already registered: ${id}`);
-        }
-        this.#providers.set(id, cloneDescriptor({ ...provider, id, kind }));
+        this.#providers.set(normalized.id, normalized);
         return this;
     }
 
