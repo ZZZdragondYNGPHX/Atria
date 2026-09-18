@@ -7454,13 +7454,19 @@
                             <small data-i18n="Require committed state from supported providers before this entry can activate.">
                                 Require committed state from supported providers before this entry can activate.
                             </small>
-                            <label class="flex-container alignitemscenter flexNoGap">
-                                <span class="wi-state-condition-logic-label" data-i18n="Match">Match</span>
-                                <select name="stateConditionLogic" class="text_pole widthFitContent margin0">
-                                    <option value="all" data-i18n="All conditions">All conditions</option>
-                                    <option value="any" data-i18n="Any condition">Any condition</option>
-                                </select>
-                            </label>
+                            <div class="wi-state-condition-toolbar-controls flex-container alignitemscenter flexGap10 flexWrap">
+                                <label class="checkbox_label wi-state-activation-toggle" title="Activate this entry directly while the conditions match">
+                                    <input type="checkbox" name="stateActivation">
+                                    <span data-i18n="Activate while matched">Activate while matched</span>
+                                </label>
+                                <label class="flex-container alignitemscenter flexNoGap">
+                                    <span class="wi-state-condition-logic-label" data-i18n="Match">Match</span>
+                                    <select name="stateConditionLogic" class="text_pole widthFitContent margin0">
+                                        <option value="all" data-i18n="All conditions">All conditions</option>
+                                        <option value="any" data-i18n="Any condition">Any condition</option>
+                                    </select>
+                                </label>
+                            </div>
                         </div>
                         <div class="wi-state-condition-list flex-container flexFlowColumn flexGap8"></div>
                         <div class="flex-container alignitemscenter flexGap8 flexWrap">
@@ -7474,8 +7480,8 @@
                             </button>
                             <small class="wi-state-condition-status opacity50p" aria-live="polite"></small>
                         </div>
-                        <small class="wi-state-condition-hint" data-i18n="Unknown, unavailable, or incomplete state conditions fail closed and block this entry.">
-                            Unknown, unavailable, or incomplete state conditions fail closed and block this entry.
+                        <small class="wi-state-condition-hint" data-i18n="Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.">
+                            Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.
                         </small>
                     </div>
                 </div>
