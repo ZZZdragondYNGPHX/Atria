@@ -7,6 +7,18 @@ import {
     resolveWorldInfoEventComparisonBaseline,
     snapshotWorldInfoStateProviders,
 } from './atri-world-info-state-events.js';
+import {
+    WorldInfoSelectionIndex,
+    buildWorldInfoEntryLookup,
+    buildWorldInfoSelectionMigrationReport,
+    buildWorldInfoBundleVariant,
+    getRelatedWorldInfoEntryKeys,
+    getWorldInfoBudgetTierScore,
+    getWorldInfoEntryKey,
+    hasWorldInfoSelectionMetadata,
+    normalizeWorldInfoSelectionMetadata,
+    resolveWorldInfoDependencyBundle,
+} from './atri-world-info-selection.js';
 import { createFloorState } from './floor-state.js';
 import { Fuse } from '../lib.js';
 import { setInfoBlock, clearInfoBlock } from './utils.js';
@@ -951,6 +963,10 @@ const defaultGlobalScanData = Object.freeze({
     creatorNotes: '',
 });
 
+// W-04 incremental candidate index. Unsupported/dynamic entry shapes remain
+// in the compatibility set and therefore retain the established scan path.
+const worldInfoSelectionIndex = new WorldInfoSelectionIndex();
+
 /**
  * Represents a scanning buffer for one evaluation of World Info.
  */
@@ -1265,6 +1281,11 @@ class WorldInfoBuffer {
      */
     getExternallyActivated(entry) {
         return this.#externalActivations.get(`${entry.world}.${entry.uid}`)?.entry;
+    }
+
+    /** @returns {string[]} Keys forced into this evaluation. */
+    getExternalActivationKeys() {
+        return [...this.#externalActivations.keys()];
     }
 
     /**
@@ -6781,6 +6802,11 @@ export const originalWIDataKeyMap = {
     'stateActivation': 'extensions.atria_state_activation',
     'stateEvents': 'extensions.atria_state_events',
     'stateEventLogic': 'extensions.atria_state_event_logic',
+    'requiredEntries': 'extensions.atria_required_entries',
+    'relatedEntries': 'extensions.atria_related_entries',
+    'mutualExclusionGroup': 'extensions.atria_mutual_exclusion_group',
+    'budgetTier': 'extensions.atria_budget_tier',
+    'compactContent': 'extensions.atria_compact_content',
     'ignoreBudget': 'extensions.ignore_budget',
 };
 
@@ -8915,6 +8941,11 @@ export const newWorldInfoEntryDefinition = {
     stateActivation: { default: false, type: 'boolean' },
     stateEvents: { default: [], type: 'array' },
     stateEventLogic: { default: 'all', type: 'enum' },
+    requiredEntries: { default: [], type: 'array' },
+    relatedEntries: { default: [], type: 'array' },
+    mutualExclusionGroup: { default: '', type: 'string' },
+    budgetTier: { default: 'normal', type: 'enum' },
+    compactContent: { default: '', type: 'string' },
 };
 
 export const newWorldInfoEntryTemplate = Object.fromEntries(
@@ -9813,6 +9844,14 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     const loadedEntries = await getSortedEntries();
     const sortedEntries = typeof entryFilter === 'function' ? loadedEntries.filter(entryFilter) : loadedEntries;
     const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries);
+    const worldInfoSelectionDiagnostics = {
+        version: 1,
+        indexUpdate: worldInfoSelectionIndex.update(sortedEntries),
+        migration: buildWorldInfoSelectionMigrationReport(sortedEntries),
+        loops: [],
+    };
+    const worldInfoSelectionEntryLookup = buildWorldInfoEntryLookup(sortedEntries);
+    const activeWorldInfoMutualExclusionGroups = new Map();
 
     const hasConfiguredStateConditions = entry => (
         Object.hasOwn(entry || {}, 'stateConditions')
@@ -9880,6 +9919,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             allActivatedEntries: new Set(),
             timedWorldInfoState: timedEffects.getPendingState(),
             externalActivationCommitToken: buffer.getExternalActivationCommitToken(),
+            worldInfoSelectionDiagnostics,
         };
     }
 
@@ -9979,13 +10019,25 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         console.debug(`[WI] --- LOOP #${count} START ---`);
         console.debug('[WI] Scan state', Object.entries(scan_state).find(x => x[1] === scanState));
 
+        const candidateSelection = worldInfoSelectionIndex.select({
+            getScanText: entry => buffer.get(entry, scanState),
+            forcedEntryKeys: buffer.getExternalActivationKeys(),
+        });
+        worldInfoSelectionDiagnostics.loops.push({
+            loop: count,
+            scanState: getScanStateName(scanState),
+            totalEntries: sortedEntries.length,
+            candidateEntries: candidateSelection.entries.length,
+            ...candidateSelection.diagnostics,
+        });
+
         // Until decided otherwise, we set the loop to stop scanning after this
         let nextScanState = scan_state.NONE;
 
         // Loop and find all entries that can activate here
         let activatedNow = new Set();
 
-        for (const entry of sortedEntries) {
+        for (const entry of candidateSelection.entries) {
             // Logging preparation
             let headerLogged = false;
             function log(...args) {
@@ -10708,6 +10760,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         worldInfoEventScope,
         worldInfoEventPendingState,
         worldInfoEventReplay,
+        worldInfoSelectionDiagnostics,
     };
 }
 
@@ -11113,6 +11166,19 @@ export function convertCharacterBook(characterBook) {
                 ? structuredClone(entry.extensions.atria_state_events)
                 : [],
             stateEventLogic: entry.extensions?.atria_state_event_logic === 'any' ? 'any' : 'all',
+            requiredEntries: Array.isArray(entry.extensions?.atria_required_entries)
+                ? entry.extensions.atria_required_entries.map(value => String(value ?? '').trim()).filter(Boolean).slice(0, 64)
+                : [],
+            relatedEntries: Array.isArray(entry.extensions?.atria_related_entries)
+                ? entry.extensions.atria_related_entries.map(value => String(value ?? '').trim()).filter(Boolean).slice(0, 64)
+                : [],
+            mutualExclusionGroup: String(entry.extensions?.atria_mutual_exclusion_group ?? '').trim(),
+            budgetTier: ['critical', 'scene', 'normal', 'optional'].includes(entry.extensions?.atria_budget_tier)
+                ? entry.extensions.atria_budget_tier
+                : 'normal',
+            compactContent: typeof entry.extensions?.atria_compact_content === 'string'
+                ? entry.extensions.atria_compact_content
+                : '',
             ignoreBudget: entry.extensions?.ignore_budget ?? false,
         };
     });
