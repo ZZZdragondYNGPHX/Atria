@@ -350,9 +350,19 @@ function renderContent() {
 
     syncWorkspaceNavigation(shell, section);
     shell.title.textContent = i18n('Atria Workspace');
-    shell.context.textContent = run
-        ? `${run.mode} · ${run.status}`
-        : i18n('Agent orchestration and long-term memory');
+    const workspaceContext = ports.getWorkspaceContext?.() || {};
+    const scopeParts = [
+        workspaceContext.character ? `${i18n('Character')}: ${workspaceContext.character}` : '',
+        workspaceContext.conversation && workspaceContext.conversation !== 'invalid_target'
+            ? `${i18n('Conversation')}: ${workspaceContext.conversation}`
+            : '',
+    ].filter(Boolean);
+    shell.context.textContent = scopeParts.join(' · ') || i18n('Agent orchestration and long-term memory');
+    shell.presetChip.textContent = workspaceContext.presetName
+        ? `${workspaceContext.presetName} · ${i18n(workspaceContext.selectionSource || 'default')}`
+        : i18n('No preset');
+    shell.orchestrationToggle.checked = workspaceContext.enabled === true;
+    shell.headerStatus.textContent = run ? `${run.mode} · ${i18n(run.status || 'idle')}` : '';
     shell.stop.hidden = !!replay || run?.status !== 'running';
     shell.stop.disabled = !!run?.stopRequested;
     shell.stopText.textContent = run?.stopRequested ? i18n('Stopping…') : i18n('Stop Run');
@@ -420,6 +430,10 @@ function mount() {
         onNavigate: next => setSection(next, { focus: false }),
         onClose: closeWorkspace,
         onStop: () => requestRunStop(getCurrentRun()?.runId),
+        onToggleOrchestration: enabled => {
+            ports.setOrchestrationEnabled?.(enabled);
+            render();
+        },
     });
     bindNavigationKeyboard(shell.nav, true);
     bindNavigationKeyboard(shell.mobileNav, false);
