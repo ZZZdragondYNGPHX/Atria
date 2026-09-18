@@ -73,6 +73,7 @@ The permanent Workspace UI guard and Chromium workflow should be treated as arch
 - Squash merge / current `main`: `b84d411431e72be39099cba1a0a42cde9052c778`
 - Final task tree and merged main tree: `cf3fc3a4794e1df0dc62dba5de212cb7f1f09d81`
 - Record: `features/atria-workspace-redesign.md`
+- Temporary branch `feat/atria-workspace-redesign` has been removed after merge.
 
 Final validation for PR #4 passed:
 
