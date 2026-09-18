@@ -850,6 +850,41 @@ jQuery(() => {
                             tools: resolveAgentToolFlags(config.tools, options.tools) || {}, customToolRegistry }).map(schema => schema.function));
                     }
                 }
+                const webNames = new Set(['search_search', 'search_visit']);
+                const extensionWebTools = listExtensionTools().filter(tool => webNames.has(tool.name));
+                const existing = new Map(tools.map(tool => [tool.name, tool]));
+                const setWebToolEnabled = (name, allowed) => {
+                    for (const node of plan.nodes.filter(node => node.agentId === agent.id)) {
+                        if (preset.mode === 'spec') {
+                            const nodeSpec = (node.metadata ||= {}).nodeSpec ||= {};
+                            const toolFlags = nodeSpec.tools ||= {};
+                            const custom = toolFlags.custom ||= {};
+                            custom[name] = Boolean(allowed);
+                        } else {
+                            const host = (agent.metadata ||= {}).hostAdapters ||= {};
+                            const atria = host.atria ||= {};
+                            const toolFlags = atria.tools ||= {};
+                            const custom = toolFlags.custom ||= {};
+                            custom[name] = Boolean(allowed);
+                        }
+                    }
+                };
+                for (const tool of extensionWebTools) {
+                    const current = existing.get(tool.name);
+                    if (current) {
+                        current.displayName ||= tool.displayName;
+                        current.effectiveEnabled = true;
+                        current.setEnabled = allowed => setWebToolEnabled(tool.name, allowed);
+                        continue;
+                    }
+                    tools.push({
+                        name: tool.name,
+                        displayName: tool.displayName,
+                        description: tool.description,
+                        effectiveEnabled: false,
+                        setEnabled: allowed => setWebToolEnabled(tool.name, allowed),
+                    });
+                }
                 return tools;
             },
             getScope: () => ({ character: getCurrentAvatar(getContext()), conversation: getChatKey(getContext()) }) }),
