@@ -13,27 +13,14 @@ import {
 import { sanitizeAgentToolFlags } from '../../../public/scripts/extensions/orchestrator/persistence.js';
 import { getEnabledToolSchemas } from '../../../public/scripts/extensions/orchestrator/loop-tools.js';
 
-describe('sanitizeAgentToolFlags: note flag migration', () => {
-    test('legacy note.add/delete migrated to note.open/close', () => {
-        const sanitized = sanitizeAgentToolFlags({
-            note: { add: true, delete: false },
-        });
-        expect(sanitized.note).toEqual({ open: true, close: false });
-        expect(sanitized.note.add).toBeUndefined();
-        expect(sanitized.note.delete).toBeUndefined();
-    });
-
-    test('new note.open/close pass through unchanged', () => {
-        const sanitized = sanitizeAgentToolFlags({
-            note: { open: false, close: true },
-        });
+describe('sanitizeAgentToolFlags: note namespace', () => {
+    test('current note.open/close pass through unchanged', () => {
+        const sanitized = sanitizeAgentToolFlags({ note: { open: false, close: true } });
         expect(sanitized.note).toEqual({ open: false, close: true });
     });
 
-    test('mixed old+new: new takes precedence', () => {
-        const sanitized = sanitizeAgentToolFlags({
-            note: { add: true, open: false, delete: true, close: false },
-        });
+    test('obsolete add/delete keys are ignored', () => {
+        const sanitized = sanitizeAgentToolFlags({ note: { add: true, delete: true } });
         expect(sanitized.note).toEqual({ open: false, close: false });
     });
 
@@ -132,175 +119,49 @@ describe('sanitizeAgentToolFlags: message namespace (sub-agent draft edits)', ()
     });
 });
 
-describe('sanitizeDirectorProfile: legacy-collab migration', () => {
-    // Pre-existing director profiles persisted before the collab namespace
-    // shipped have a `tools` object with no `collab` key. The director
-    // sanitizer must treat that case as legacy (both dispatchers on),
-    // otherwise upgrading the plugin would silently strip every existing
-    // user's sub-agent dispatchers on the first load. Explicit collab
-    // blocks pass through unchanged.
-
-    test('director.tools with no collab key → both dispatchers on (legacy migration)', () => {
+describe('sanitizeDirectorProfile: current collab semantics', () => {
+    test('explicit profile tools with no collab flags default dispatchers off', () => {
         const sanitized = sanitizeDirectorProfile({
-            director: {
-                tools: {
-                    chat: { read_range: true, search: false },
-                    // intentionally no `collab` — simulates a pre-upgrade profile
-                },
-            },
-        });
-        expect(sanitized.tools.collab).toEqual({
-            dispatch_subagent: true,
-            dispatch_inline_subagent: true,
-        });
-        // Legacy migration must not silently re-enable other explicitly-
-        // disabled flags — only the missing namespace is filled.
-        expect(sanitized.tools.chat.read_range).toBe(true);
-        expect(sanitized.tools.chat.search).toBe(false);
-    });
-
-    test('director.tools.collab present passes through unchanged (no migration)', () => {
-        const sanitized = sanitizeDirectorProfile({
-            director: {
-                tools: {
-                    collab: { dispatch_subagent: false, dispatch_inline_subagent: false },
-                },
-            },
+            tools: { chat: { read_range: true, search: false } },
         });
         expect(sanitized.tools.collab).toEqual({
             dispatch_subagent: false,
             dispatch_inline_subagent: false,
         });
+        expect(sanitized.tools.chat).toEqual({ read_range: true, search: false });
     });
 
-    test('mainAgent.tools override with no collab key → both dispatchers on (legacy migration)', () => {
+    test('explicit mainAgent override with no collab flags defaults off', () => {
         const sanitized = sanitizeDirectorProfile({
-            director: {
-                mainAgent: {
-                    tools: {
-                        chat: { read_range: true },
-                        // no collab — legacy override
-                    },
-                },
-            },
-        });
-        expect(sanitized.mainAgent.tools.collab).toEqual({
-            dispatch_subagent: true,
-            dispatch_inline_subagent: true,
-        });
-    });
-
-    test('mainAgent.tools override with explicit collab passes through unchanged', () => {
-        const sanitized = sanitizeDirectorProfile({
-            director: {
-                mainAgent: {
-                    tools: {
-                        collab: { dispatch_subagent: false, dispatch_inline_subagent: true },
-                    },
-                },
-            },
+            mainAgent: { tools: { chat: { read_range: true } } },
         });
         expect(sanitized.mainAgent.tools.collab).toEqual({
             dispatch_subagent: false,
-            dispatch_inline_subagent: true,
+            dispatch_inline_subagent: false,
         });
     });
 });
 
-describe('sanitizeDirectorProfile: legacy-message migration', () => {
-    // Pre-existing director profiles persisted before the `message`
-    // namespace shipped had unconditional main-agent write_message /
-    // apply_message_patches. On upgrade the sanitizer would leave both
-    // flags off (baseline for override sanitize is `defaultAllOn: false`;
-    // for profile sanitize it's `!hasToolsBlock`, i.e. also false when
-    // the old tools block exists), which would strip the main agent of
-    // draft-editing power and break director's core loop.
-    //
-    // We detect a pre-`message`-feature profile by "has a tools block
-    // but no `message` namespace inside it" and synthesize an explicit
-    // `mainAgent.tools` override forcing message.<verb> on. This mirrors
-    // the collab legacy-migration shim above.
-
-    test('legacy profile (tools block, no message ns) with no mainAgent override → synthesizes mainAgent override with message on', () => {
+describe('sanitizeDirectorProfile: current message semantics', () => {
+    test('profile tools without message flags default message editing off', () => {
         const sanitized = sanitizeDirectorProfile({
-            director: {
-                tools: {
-                    chat: { read_range: true, search: false },
-                    // intentionally no `message` — simulates pre-upgrade profile
-                },
-                // no mainAgent.tools override — this is the pre-flag
-                // "inherit profile default" state.
-            },
+            tools: { chat: { read_range: true } },
+            mainAgent: {},
         });
-        expect(sanitized.mainAgent.tools).not.toBeNull();
-        expect(sanitized.mainAgent.tools.message).toEqual({
-            write_message: true,
-            apply_message_patches: true,
-        });
-        // Profile-level tools also gets a message namespace filled by
-        // the sanitizer, at default-off (sub-agents don't get promoted).
         expect(sanitized.tools.message).toEqual({
             write_message: false,
             apply_message_patches: false,
         });
+        expect(sanitized.mainAgent.tools).toBeNull();
     });
 
-    test('legacy profile with existing mainAgent.tools override (no message ns) → merges message-on into override', () => {
+    test('explicit current mainAgent message override is preserved', () => {
         const sanitized = sanitizeDirectorProfile({
-            director: {
-                tools: {
-                    chat: { read_range: true },
-                },
-                mainAgent: {
-                    tools: {
-                        chat: { read_range: false, search: true },
-                        // no message — pre-flag override
-                    },
-                },
+            mainAgent: {
+                tools: { message: { write_message: true, apply_message_patches: true } },
             },
         });
         expect(sanitized.mainAgent.tools.message).toEqual({
-            write_message: true,
-            apply_message_patches: true,
-        });
-        // Migration must NOT clobber other explicit values in the override.
-        expect(sanitized.mainAgent.tools.chat.read_range).toBe(false);
-        expect(sanitized.mainAgent.tools.chat.search).toBe(true);
-    });
-
-    test('new profile (tools block has message ns) → no legacy migration fires, mainAgent.tools override respected as-is', () => {
-        // A profile that already carries the `message` namespace is by
-        // definition post-migration. The synthesizer must not fire —
-        // otherwise it would forcibly re-enable message on a mainAgent
-        // whose user explicitly chose to disable it (pure-orchestrator
-        // config).
-        const sanitized = sanitizeDirectorProfile({
-            director: {
-                tools: {
-                    chat: { read_range: true },
-                    message: { write_message: false, apply_message_patches: false },
-                },
-                mainAgent: {
-                    tools: {
-                        chat: { read_range: true },
-                        message: { write_message: false, apply_message_patches: false },
-                    },
-                },
-            },
-        });
-        expect(sanitized.mainAgent.tools.message).toEqual({
-            write_message: false,
-            apply_message_patches: false,
-        });
-    });
-
-    test('new profile with no tools block at all (fresh empty input) → sanitizer fills message default on (defaultAllOn:true), no legacy migration', () => {
-        // Empty input triggers `defaultAllOn: !hasToolsBlock === true`,
-        // so every flag gets fallback true — including message. This is
-        // NOT a legacy-migration path (there's no old profile to
-        // preserve). Just documents the behavior.
-        const sanitized = sanitizeDirectorProfile({});
-        expect(sanitized.tools.message).toEqual({
             write_message: true,
             apply_message_patches: true,
         });
@@ -356,11 +217,10 @@ describe('director schema fields', () => {
         expect(p.tools.note.open).toBe(true);
         expect(p.tools.custom.search_search).toBe(true);
         expect(p.tools.custom.search_visit).toBe(true);
-        // legacy `tools.search` namespace is gone post-Unit-5.
-        expect(p.tools.search).toBeUndefined();
+        // search tools live only in the current custom namespace.
         // Spec 2: read-api pipeline tools ship on by default so memory_scout
         // can run an LLM-grade recall pass out of the box. A regression here
-        // would silently demote memory_scout back to legacy substring search.
+        // would silently demote memory_scout back to fallback substring search.
         expect(p.tools.custom.memory_list_candidates).toBe(true);
         expect(p.tools.custom.memory_edge_summary).toBe(true);
         expect(p.tools.custom.memory_node_brief).toBe(true);
@@ -603,32 +463,40 @@ describe('director schema fields', () => {
         expect(vc.skills?.visible || []).toContain('voice-critic-method-zh');
     });
 
-    test('sanitizeDirectorProfile preserves director.subAgents entries', () => {
+    test('sanitizeDirectorProfile preserves current subAgents entries', () => {
         const profile = {
             mode: 'director',
-            director: {
-                mainAgent: { systemPrompt: 'main' },
-                subAgents: [
-                    { id: 'critic', description: 'finds issues', systemPrompt: 'be a critic' },
-                    { id: 'planner', description: 'plans structure', systemPrompt: 'plan' },
-                ],
-                maxRounds: 10,
-                maxConcurrentSubagents: 2,
-                maxTotalSubagentRuns: 8,
-                tools: {
-                    chat: { read_range: true, search: false },
-                    lorebook: { search: false, get: false },
-                    memory: {
-                        list_candidates: true, edge_summary: true, node_brief: true,
-                        expand_seeds: true, schema: true,
-                        keyword_search: true, vector_search: true, find_by_name: true,
-                        compaction_candidates: true,
-                        node_create: true, node_edit: true, node_delete: true,
-                        link_upsert: true, link_delete: true, compact_nodes: true,
-                    },
-                    note: { open: false, close: false },
-                    search: { search: false, visit: false },
+            mainAgent: { systemPrompt: 'main' },
+            subAgents: [
+                { id: 'critic', description: 'finds issues', systemPrompt: 'be a critic' },
+                { id: 'planner', description: 'plans structure', systemPrompt: 'plan' },
+            ],
+            maxRounds: 10,
+            maxConcurrentSubagents: 2,
+            maxTotalSubagentRuns: 8,
+            tools: {
+                chat: { read_range: true, search: false },
+                lorebook: { search: false, get: false },
+                custom: {
+                    memory_list_candidates: true,
+                    memory_edge_summary: true,
+                    memory_node_brief: true,
+                    memory_expand_seeds: true,
+                    memory_schema: true,
+                    memory_keyword_search: true,
+                    memory_vector_search: true,
+                    memory_find_by_name: true,
+                    memory_compaction_candidates: true,
+                    memory_node_create: true,
+                    memory_node_edit: true,
+                    memory_node_delete: true,
+                    memory_link_upsert: true,
+                    memory_link_delete: true,
+                    memory_compact_nodes: true,
+                    search_search: false,
+                    search_visit: false,
                 },
+                note: { open: false, close: false },
             },
         };
         const sanitized = sanitizeDirectorProfile(profile);
@@ -645,11 +513,9 @@ describe('director schema fields', () => {
     test('sanitizeDirectorProfile forces tools.finalize to false even if input sets it true', () => {
         const sanitized = sanitizeDirectorProfile({
             mode: 'director',
-            director: {
-                mainAgent: {},
-                subAgents: [],
-                tools: { finalize: true, chat: { read_range: true, search: true } },
-            },
+            mainAgent: {},
+            subAgents: [],
+            tools: { finalize: true, chat: { read_range: true, search: true } },
         });
         // Director's own finalize tool has the same name; allowing loop's
         // would create a duplicate in the LLM tools array.
@@ -659,16 +525,14 @@ describe('director schema fields', () => {
     test('sanitizeDirectorProfile drops sub-agents with empty id or missing fields', () => {
         const profile = {
             mode: 'director',
-            director: {
-                mainAgent: {},
-                subAgents: [
-                    { id: '', description: 'x', systemPrompt: 'x' },        // empty id
-                    { id: 'ok', description: 'x', systemPrompt: 'x' },
-                    null,                                                     // not an object
-                    { id: 'ok2', description: 'x' },                          // missing systemPrompt
-                ],
-                maxRounds: 5,
-            },
+            mainAgent: {},
+            subAgents: [
+                { id: '', description: 'x', systemPrompt: 'x' },        // empty id
+                { id: 'ok', description: 'x', systemPrompt: 'x' },
+                null,                                                     // not an object
+                { id: 'ok2', description: 'x' },                          // missing systemPrompt
+            ],
+            maxRounds: 5,
         };
         const sanitized = sanitizeDirectorProfile(profile);
         const ids = sanitized.subAgents.map(a => a.id);
@@ -680,13 +544,11 @@ describe('director schema fields', () => {
     test('sanitizeDirectorProfile dedupes sub-agent ids (last wins)', () => {
         const profile = {
             mode: 'director',
-            director: {
-                mainAgent: {},
-                subAgents: [
-                    { id: 'dup', description: 'first', systemPrompt: 'first' },
-                    { id: 'dup', description: 'second', systemPrompt: 'second' },
-                ],
-            },
+            mainAgent: {},
+            subAgents: [
+                { id: 'dup', description: 'first', systemPrompt: 'first' },
+                { id: 'dup', description: 'second', systemPrompt: 'second' },
+            ],
         };
         const sanitized = sanitizeDirectorProfile(profile);
         expect(sanitized.subAgents).toHaveLength(1);
@@ -696,13 +558,11 @@ describe('director schema fields', () => {
     test('sanitizeDirectorProfile floors numeric limits but accepts arbitrary positive values', () => {
         const profile = {
             mode: 'director',
-            director: {
-                mainAgent: {},
-                subAgents: [],
-                maxRounds: -5,                  // → 1
-                maxConcurrentSubagents: 0,      // → 1
-                maxTotalSubagentRuns: 9999,     // preserved
-            },
+            mainAgent: {},
+            subAgents: [],
+            maxRounds: -5,                  // → 1
+            maxConcurrentSubagents: 0,      // → 1
+            maxTotalSubagentRuns: 9999,     // preserved
         };
         const sanitized = sanitizeDirectorProfile(profile);
         expect(sanitized.maxRounds).toBeGreaterThanOrEqual(1);
@@ -712,22 +572,20 @@ describe('director schema fields', () => {
 
     test('mainAgent.tools null/undefined → inherit (null after sanitize)', () => {
         const sanitizedNull = sanitizeDirectorProfile({
-            director: { mainAgent: { tools: null }, subAgents: [] },
+            mainAgent: { tools: null }, subAgents: [],
         });
         expect(sanitizedNull.mainAgent.tools).toBeNull();
 
         const sanitizedUndef = sanitizeDirectorProfile({
-            director: { mainAgent: {}, subAgents: [] },
+            mainAgent: {}, subAgents: [],
         });
         expect(sanitizedUndef.mainAgent.tools).toBeNull();
     });
 
     test('mainAgent.tools object → override (full canonical shape, finalize:false)', () => {
         const sanitized = sanitizeDirectorProfile({
-            director: {
-                mainAgent: { tools: { chat: { read_range: true }, finalize: true } },
-                subAgents: [],
-            },
+            mainAgent: { tools: { chat: { read_range: true }, finalize: true } },
+            subAgents: [],
         });
         expect(sanitized.mainAgent.tools).not.toBeNull();
         expect(sanitized.mainAgent.tools.chat.read_range).toBe(true);
@@ -739,19 +597,17 @@ describe('director schema fields', () => {
 
     test('subAgents[i].tools null → inherit; object → override (narrows)', () => {
         const sanitized = sanitizeDirectorProfile({
-            director: {
-                mainAgent: {},
-                subAgents: [
-                    { id: 'inh', description: 'x', systemPrompt: 'x', tools: null },
-                    { id: 'ovr', description: 'x', systemPrompt: 'x', tools: { memory: { keyword_search: true } } },
-                ],
-            },
+            mainAgent: {},
+            subAgents: [
+                { id: 'inh', description: 'x', systemPrompt: 'x', tools: null },
+                { id: 'ovr', description: 'x', systemPrompt: 'x', tools: { custom: { memory_keyword_search: true } } },
+            ],
         });
         const inh = sanitized.subAgents.find(a => a.id === 'inh');
         const ovr = sanitized.subAgents.find(a => a.id === 'ovr');
         expect(inh.tools).toBeNull();
         expect(ovr.tools).not.toBeNull();
-        // The memory.* override narrows: only the requested verb is exposed.
+        // The memory_keyword_search custom override narrows: only the requested verb is exposed.
         // The other 14 memory verbs must be explicitly false (not just absent
         // from the override) so Layer-2's default-on policy
         // (`customFlags[name] !== false`) keeps them OUT of the schema list.
