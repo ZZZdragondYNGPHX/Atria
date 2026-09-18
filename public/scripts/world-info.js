@@ -1,5 +1,5 @@
 import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
-import { evaluateWorldInfoStateConditions, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
+import { evaluateWorldInfoStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
 import { Fuse } from '../lib.js';
 import { setInfoBlock, clearInfoBlock } from './utils.js';
 
@@ -7805,80 +7805,232 @@ export async function getWorldEntry(name, data, entry) {
         fillCharacterAndTagOptionsHelper({ characterFilter, entry });
         handleCharacterFilterChangeHelper({ characterFilter, data, entry, name });
 
-        // Native state conditions (W-03). Editing is staged in the textarea
-        // and only persisted when Apply is pressed so incomplete JSON never
-        // temporarily suppresses the entry during normal typing.
-        const stateConditionsInput = editTemplate.find('textarea[name="stateConditionsJson"]');
-        const stateConditionLogicInput = editTemplate.find('select[name="stateConditionLogic"]');
-        const stateConditionsStatus = editTemplate.find('.wi-state-conditions-status');
-        const stateConditionsApply = editTemplate.find('.wi-state-conditions-apply');
-        const stateConditionsClear = editTemplate.find('.wi-state-conditions-clear');
+        // Native state conditions (W-03). The editor keeps incomplete new
+        // rows as local drafts; only rows with a non-empty path are persisted,
+        // so typing a condition never temporarily suppresses a live entry.
+        const stateConditionsRoot = editTemplate.find('.wi-entry-state-conditions');
+        const stateConditionsList = stateConditionsRoot.find('.wi-state-condition-list');
+        const stateConditionCount = stateConditionsRoot.find('.wi-state-condition-count');
+        const stateConditionLogicInput = stateConditionsRoot.find('select[name="stateConditionLogic"]');
+        const stateConditionAdd = stateConditionsRoot.find('.wi-state-condition-add');
+        let stateConditionDrafts = (Array.isArray(entry.stateConditions) ? entry.stateConditions : []).map(condition => ({
+            providerId: String(condition?.providerId || 'mvu').trim() || 'mvu',
+            path: Array.isArray(condition?.path)
+                ? condition.path.map(part => String(part ?? '').trim()).filter(Boolean).slice(0, 12)
+                : [],
+            operator: String(condition?.operator || 'eq').trim().toLowerCase() || 'eq',
+            value: condition?.value === null || ['string', 'number', 'boolean'].includes(typeof condition?.value)
+                ? condition.value
+                : '',
+        }));
 
-        const renderStateConditionsEditor = () => {
-            const liveEntry = data.entries[entry.uid];
-            const conditions = Array.isArray(liveEntry?.stateConditions) ? liveEntry.stateConditions : [];
-            stateConditionsInput.val(JSON.stringify(conditions, null, 2));
-            stateConditionLogicInput.val(liveEntry?.stateConditionLogic === 'any' ? 'any' : 'all');
-            stateConditionsStatus.text(conditions.length
-                ? `${conditions.length} condition${conditions.length === 1 ? '' : 's'} saved`
-                : t`No state conditions`);
+        const inferStateConditionValueType = value => {
+            if (value === null) return 'null';
+            if (typeof value === 'number') return 'number';
+            if (typeof value === 'boolean') return 'boolean';
+            return 'string';
         };
 
-        const validateStateConditionsForAuthor = (conditions, logic) => {
-            if (!Array.isArray(conditions)) {
-                throw new TypeError('State conditions must be a JSON array');
-            }
-            if (conditions.length > 32) {
-                throw new RangeError('State conditions are limited to 32 per entry');
-            }
-            const evaluation = evaluateWorldInfoStateConditions(conditions, [], logic);
-            const invalidIndex = evaluation.results.findIndex(result => result.reason === 'invalid_condition');
-            if (invalidIndex >= 0) {
-                throw new TypeError(`Condition #${invalidIndex + 1} is invalid. Use providerId, a JSON-array path, a supported operator, and a scalar value.`);
-            }
-            return structuredClone(conditions);
-        };
+        const parseStateConditionPath = value => String(value || '')
+            .split('.')
+            .map(part => part.trim())
+            .filter(Boolean)
+            .slice(0, 12);
 
-        stateConditionLogicInput.data('uid', entry.uid);
-        stateConditionLogicInput.on('input', async function (_, { noSave = false } = {}) {
-            const uid = $(this).data('uid');
-            const value = String($(this).val() || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
-            data.entries[uid].stateConditionLogic = value;
-            setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', value);
-            !noSave && await saveWorldInfo(name, data);
-        });
+        const getPersistableStateConditions = () => stateConditionDrafts
+            .filter(condition => (
+                condition
+                && String(condition.providerId || '').trim()
+                && Array.isArray(condition.path)
+                && condition.path.length > 0
+                && String(condition.operator || '').trim()
+                && (condition.value === null || ['string', 'number', 'boolean'].includes(typeof condition.value))
+            ))
+            .map(condition => structuredClone(condition));
 
-        stateConditionsApply.on('click', async function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            try {
-                const parsed = JSON.parse(String(stateConditionsInput.val() || '[]'));
-                const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
-                const validated = validateStateConditionsForAuthor(parsed, logic);
-                data.entries[entry.uid].stateConditions = validated;
-                data.entries[entry.uid].stateConditionLogic = logic;
-                setWIOriginalDataValue(data, entry.uid, 'extensions.atria_state_conditions', structuredClone(validated));
-                setWIOriginalDataValue(data, entry.uid, 'extensions.atria_state_condition_logic', logic);
-                await saveWorldInfo(name, data);
-                renderStateConditionsEditor();
-                stateConditionsStatus.text(t`State conditions saved` + ` (${validated.length})`);
-            } catch (error) {
-                const message = String(error?.message || error || 'Invalid state conditions');
-                stateConditionsStatus.text(message);
-                toastr.warning(message, t`Invalid state conditions`);
-            }
-        });
-
-        stateConditionsClear.on('click', async function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            data.entries[entry.uid].stateConditions = [];
-            setWIOriginalDataValue(data, entry.uid, 'extensions.atria_state_conditions', []);
+        const persistStateConditions = async () => {
+            const uid = entry.uid;
+            const liveEntry = data.entries[uid];
+            if (!liveEntry) return;
+            const persistable = getPersistableStateConditions();
+            const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
+            liveEntry.stateConditions = persistable;
+            liveEntry.stateConditionLogic = logic;
+            entry.stateConditions = persistable;
+            entry.stateConditionLogic = logic;
+            stateConditionCount.text(String(persistable.length));
+            setWIOriginalDataValue(data, uid, 'extensions.atria_state_conditions', structuredClone(persistable));
+            setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', logic);
             await saveWorldInfo(name, data);
-            renderStateConditionsEditor();
-        });
+        };
 
-        renderStateConditionsEditor();
+        const makeStateConditionField = (label, extraClass = '') => {
+            const field = $('<label class="wi-state-condition-field"></label>');
+            if (extraClass) field.addClass(extraClass);
+            field.append($('<small></small>').text(label));
+            return field;
+        };
+
+        const renderStateConditionRows = () => {
+            stateConditionsList.empty();
+            stateConditionCount.text(String(getPersistableStateConditions().length));
+
+            stateConditionDrafts.forEach((condition, index) => {
+                const row = $('<div class="wi-state-condition-row"></div>');
+                row.toggleClass('is-incomplete', !Array.isArray(condition.path) || condition.path.length === 0);
+
+                const providerField = makeStateConditionField(translate('Provider'));
+                const providerInput = $('<select class="text_pole margin0"></select>');
+                providerInput
+                    .append($('<option value="mvu">MVU</option>'))
+                    .append($('<option value="lorestate">LoreState</option>'));
+                if (!['mvu', 'lorestate'].includes(condition.providerId)) {
+                    providerInput.append(
+                        $('<option></option>').val(condition.providerId).text(
+                            condition.providerId + ' (' + translate('unsupported') + ')',
+                        ),
+                    );
+                }
+                providerInput.val(condition.providerId);
+                providerInput.on('input', async () => {
+                    stateConditionDrafts[index].providerId = String(providerInput.val() || '');
+                    await persistStateConditions();
+                });
+                providerField.append(providerInput);
+
+                const pathField = makeStateConditionField(translate('Path'), 'wi-state-condition-path');
+                const pathInput = $('<input class="text_pole margin0" type="text" autocomplete="off">')
+                    .attr('placeholder', 'scene.place')
+                    .val(condition.path.join('.'));
+                pathInput.on('input', async () => {
+                    stateConditionDrafts[index].path = parseStateConditionPath(pathInput.val());
+                    row.toggleClass('is-incomplete', stateConditionDrafts[index].path.length === 0);
+                    await persistStateConditions();
+                });
+                pathField.append(pathInput);
+
+                const operatorField = makeStateConditionField(translate('Operator'));
+                const operatorInput = $('<select class="text_pole margin0"></select>');
+                const operatorLabels = {
+                    eq: '=',
+                    neq: '≠',
+                    gt: '>',
+                    gte: '≥',
+                    lt: '<',
+                    lte: '≤',
+                    contains: 'contains',
+                };
+                for (const operator of WORLD_INFO_CONDITION_OPERATORS) {
+                    operatorInput.append(
+                        $('<option></option>').val(operator).text(operatorLabels[operator] || operator),
+                    );
+                }
+                if (!WORLD_INFO_CONDITION_OPERATORS.includes(condition.operator)) {
+                    operatorInput.append(
+                        $('<option></option>').val(condition.operator).text(
+                            condition.operator + ' (' + translate('unsupported') + ')',
+                        ),
+                    );
+                }
+                operatorInput.val(condition.operator);
+                operatorInput.on('input', async () => {
+                    stateConditionDrafts[index].operator = String(operatorInput.val() || 'eq');
+                    await persistStateConditions();
+                });
+                operatorField.append(operatorInput);
+
+                const typeField = makeStateConditionField(translate('Value type'));
+                const typeInput = $('<select class="text_pole margin0"></select>');
+                for (const type of ['string', 'number', 'boolean', 'null']) {
+                    typeInput.append($('<option></option>').val(type).text(type));
+                }
+                typeInput.val(inferStateConditionValueType(condition.value));
+                typeField.append(typeInput);
+
+                const valueField = makeStateConditionField(translate('Value'), 'wi-state-condition-value');
+                const renderValueInput = () => {
+                    valueField.find('.wi-state-condition-value-control').remove();
+                    const valueType = String(typeInput.val() || 'string');
+                    let valueInput;
+
+                    if (valueType === 'boolean') {
+                        valueInput = $('<select class="text_pole margin0 wi-state-condition-value-control"></select>')
+                            .append($('<option value="true">true</option>'))
+                            .append($('<option value="false">false</option>'))
+                            .val(condition.value === true ? 'true' : 'false');
+                        valueInput.on('input', async () => {
+                            stateConditionDrafts[index].value = valueInput.val() === 'true';
+                            await persistStateConditions();
+                        });
+                    } else {
+                        valueInput = $('<input class="text_pole margin0 wi-state-condition-value-control">');
+                        if (valueType === 'number') {
+                            valueInput.attr({ type: 'number', step: 'any' });
+                            valueInput.val(
+                                typeof condition.value === 'number' && Number.isFinite(condition.value)
+                                    ? String(condition.value)
+                                    : '0',
+                            );
+                            valueInput.on('input', async () => {
+                                const numeric = Number(valueInput.val());
+                                stateConditionDrafts[index].value = Number.isFinite(numeric) ? numeric : 0;
+                                await persistStateConditions();
+                            });
+                        } else if (valueType === 'null') {
+                            valueInput.attr('type', 'text').val('null').prop('disabled', true);
+                        } else {
+                            valueInput.attr('type', 'text').val(
+                                typeof condition.value === 'string'
+                                    ? condition.value
+                                    : String(condition.value ?? ''),
+                            );
+                            valueInput.on('input', async () => {
+                                stateConditionDrafts[index].value = String(valueInput.val() ?? '');
+                                await persistStateConditions();
+                            });
+                        }
+                    }
+
+                    valueField.append(valueInput);
+                };
+
+                typeInput.on('input', async () => {
+                    const valueType = String(typeInput.val() || 'string');
+                    if (valueType === 'number') stateConditionDrafts[index].value = 0;
+                    else if (valueType === 'boolean') stateConditionDrafts[index].value = false;
+                    else if (valueType === 'null') stateConditionDrafts[index].value = null;
+                    else stateConditionDrafts[index].value = '';
+                    renderValueInput();
+                    await persistStateConditions();
+                });
+                renderValueInput();
+
+                const removeButton = $(
+                    '<button type="button" class="menu_button wi-state-condition-remove" title="Remove condition"><i class="fa-solid fa-trash-can"></i></button>',
+                );
+                removeButton.on('click', async event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    stateConditionDrafts.splice(index, 1);
+                    renderStateConditionRows();
+                    await persistStateConditions();
+                });
+
+                row.append(providerField, pathField, operatorField, typeField, valueField, removeButton);
+                stateConditionsList.append(row);
+            });
+        };
+
+        stateConditionLogicInput.val(entry.stateConditionLogic === 'any' ? 'any' : 'all');
+        stateConditionLogicInput.on('input', persistStateConditions);
+        stateConditionAdd.on('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            stateConditionDrafts.push({ providerId: 'mvu', path: [], operator: 'eq', value: '' });
+            renderStateConditionRows();
+            stateConditionsRoot.find('.wi-state-condition-row').last().find('.wi-state-condition-path input').trigger('focus');
+        });
+        renderStateConditionRows();
 
         // Content
         const counter = editTemplate.find('.world_entry_form_token_counter');
