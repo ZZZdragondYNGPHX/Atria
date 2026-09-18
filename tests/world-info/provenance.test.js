@@ -131,6 +131,23 @@ describe('world info request attribution', () => {
         expect(JSON.stringify(snapshot)).not.toContain('shared body');
     });
 
+    test('snapshot excludes channels suppressed by final generation flags', () => {
+        const payload = makePayload([
+            makeEntry('public', 1, { position: positions.before }),
+            makeEntry('public', 2, { position: positions.atDepth, depth: 2, role: 1 }),
+            makeEntry('public', 3, { position: positions.outlet, outletName: 'slot' }),
+            makeEntry('public', 4, { position: positions.ANBefore }),
+        ]);
+        const snapshot = snapshotWorldInfoProvenance(payload.worldInfoResolution.worldInfoProvenance, {
+            includeAuthorsNote: false,
+            includeDepth: false,
+            includeOutlets: false,
+        });
+
+        expect(snapshot.sources.map(source => source.id)).toEqual(['["public",1]']);
+        expect(snapshot.sources.map(source => source.channel)).toEqual(['before']);
+    });
+
     test('dispatch receipts append request attempts without copying provider payloads', () => {
         const payload = makePayload([makeEntry('public', 1)]);
         const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
