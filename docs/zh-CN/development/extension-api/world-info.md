@@ -83,6 +83,26 @@ commitWorldInfoEvaluation(result): Promise<{
 
 提交会写入本次评估计算出的 timed state，只消费这次评估实际看到的 force-activation revision，并且只触发一次 `WORLD_INFO_ACTIVATED`。即使结果对象被克隆，同一个 `worldInfoEvaluationId` 重复提交也不会重复执行。
 
+## 原生状态条件与场景持续
+
+Atria 世界书可以读取已提交、只读的状态 provider 快照，而不会把世界书变成第二套可写状态源。
+
+当前条目字段：
+
+| 字段 | 类型 | 语义 |
+|------|------|------|
+| `stateConditions` | `Array<{providerId, path, operator, value}>` | 受限标量条件，结果为 `true` / `false` / `unknown` |
+| `stateConditionLogic` | `'all' | 'any'` | 状态条件的三值聚合逻辑 |
+| `stateActivation` | `boolean` | 为 `true` 时，非空条件集只要评估为 `true`，即可不依赖关键词直接激活条目 |
+| `stateEvents` | `Array<{providerId, path, from?, to?}>` | 比较“上次已提交 provider 基线”和“当前快照”的一次性标量变化事件 |
+| `stateEventLogic` | `'all' | 'any'` | 状态变化事件的三值聚合逻辑 |
+
+`stateActivation` 默认是 `false`，因此旧条目的关键词／常驻行为不会改变。启用后可用于场景持续：例如条件为 `scene.place == "clocktower"` 的条目，会在已提交状态仍处于钟楼时跨多次生成持续生效；provider 一旦报告其他地点，该条目立即退出。provider 缺失、字段缺失、busy/error、条件格式错误或类型不兼容都会得到 `unknown`，不会被当成成立。
+
+世界书不会写入 MVU/LoreState。状态变化事件的比较基线只有在接受并调用 `commitWorldInfoEvaluation()` 后才推进；预览和重试不会推进基线。
+
+角色卡导出时，这些字段分别保存在 `extensions.atria_state_conditions`、`extensions.atria_state_condition_logic`、`extensions.atria_state_activation`、`extensions.atria_state_events` 和 `extensions.atria_state_event_logic`。
+
 ## 写入世界书
 
 ### saveWorldInfo
