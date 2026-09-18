@@ -8150,6 +8150,290 @@ export async function getWorldEntry(name, data, entry) {
             ? t`Unsaved state condition changes`
             : t`State conditions saved`);
 
+        // Native state transition events (W-03b). Drafts are staged until
+        // Save events is pressed, matching the state-condition editor contract.
+        const stateEventsRoot = editTemplate.find('.wi-entry-state-events');
+        const stateEventsList = stateEventsRoot.find('.wi-state-event-list');
+        const stateEventCount = stateEventsRoot.find('.wi-state-event-count');
+        const stateEventLogicInput = stateEventsRoot.find('select[name="stateEventLogic"]');
+        const stateEventAdd = stateEventsRoot.find('.wi-state-event-add');
+        const stateEventSave = stateEventsRoot.find('.wi-state-event-save');
+        const stateEventStatus = stateEventsRoot.find('.wi-state-event-status');
+        let stateEventsDirty = false;
+        let stateEventDrafts = (Array.isArray(entry.stateEvents) ? entry.stateEvents : []).map(event => ({
+            providerId: String(event?.providerId || 'mvu').trim() || 'mvu',
+            path: Array.isArray(event?.path)
+                ? event.path.map(part => String(part ?? '').trim()).filter(Boolean).slice(0, 12)
+                : [],
+            fromPresent: Object.hasOwn(event || {}, 'from'),
+            fromValue: event?.from === null || ['string', 'number', 'boolean'].includes(typeof event?.from)
+                ? event.from
+                : '',
+            toPresent: Object.hasOwn(event || {}, 'to'),
+            toValue: event?.to === null || ['string', 'number', 'boolean'].includes(typeof event?.to)
+                ? event.to
+                : '',
+        }));
+
+        const inferStateEventValueType = (present, value) => {
+            if (!present) return 'any';
+            if (value === null) return 'null';
+            if (typeof value === 'number') return 'number';
+            if (typeof value === 'boolean') return 'boolean';
+            return 'string';
+        };
+
+        const getPersistableStateEvents = () => stateEventDrafts
+            .filter(event => (
+                event
+                && String(event.providerId || '').trim()
+                && Array.isArray(event.path)
+                && event.path.length > 0
+                && (event.fromPresent || event.toPresent)
+                && (!event.fromPresent || event.fromValue === null || ['string', 'number', 'boolean'].includes(typeof event.fromValue))
+                && (!event.toPresent || event.toValue === null || ['string', 'number', 'boolean'].includes(typeof event.toValue))
+            ))
+            .map(event => ({
+                providerId: String(event.providerId || '').trim(),
+                path: [...event.path],
+                ...(event.fromPresent ? { from: structuredClone(event.fromValue) } : {}),
+                ...(event.toPresent ? { to: structuredClone(event.toValue) } : {}),
+            }));
+
+        const markStateEventsDirty = () => {
+            stateEventsDirty = true;
+            stateEventStatus.text(t`Unsaved state event changes`);
+            stateEventCount.text(String(stateEventDrafts.length));
+        };
+
+        const validateStateEventDrafts = () => {
+            if (stateEventDrafts.length > 32) {
+                throw new RangeError('State events are limited to 32 per entry');
+            }
+            const persistable = getPersistableStateEvents();
+            if (persistable.length !== stateEventDrafts.length) {
+                throw new TypeError('Every state event needs a provider, path, and at least one From/To value');
+            }
+            const logic = stateEventLogicInput.val() === 'any' ? 'any' : 'all';
+            return { persistable, logic };
+        };
+
+        const saveStateEvents = async () => {
+            const uid = entry.uid;
+            const liveEntry = data.entries[uid];
+            if (!liveEntry) return false;
+            try {
+                const { persistable, logic } = validateStateEventDrafts();
+                liveEntry.stateEvents = persistable;
+                liveEntry.stateEventLogic = logic;
+                entry.stateEvents = structuredClone(persistable);
+                entry.stateEventLogic = logic;
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_events', structuredClone(persistable));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_event_logic', logic);
+                await saveWorldInfo(name, data);
+                stateEventsDirty = false;
+                stateEventCount.text(String(persistable.length));
+                stateEventStatus.text(t`State events saved`);
+                return true;
+            } catch (error) {
+                const message = String(error?.message || error || 'Invalid state events');
+                stateEventStatus.text(message);
+                toastr.warning(message, t`Invalid state events`);
+                return false;
+            }
+        };
+
+        const makeStateEventField = (label, extraClass = '') => {
+            const field = $('<label class="wi-state-event-field"></label>');
+            if (extraClass) field.addClass(extraClass);
+            field.append($('<small></small>').text(label));
+            return field;
+        };
+
+        const renderStateEventRows = () => {
+            stateEventsList.empty();
+            stateEventCount.text(String(stateEventDrafts.length));
+
+            stateEventDrafts.forEach((eventDraft, index) => {
+                const row = $('<div class="wi-state-event-row"></div>');
+                const refreshIncomplete = () => row.toggleClass(
+                    'is-incomplete',
+                    !Array.isArray(eventDraft.path)
+                    || eventDraft.path.length === 0
+                    || (!eventDraft.fromPresent && !eventDraft.toPresent),
+                );
+                refreshIncomplete();
+
+                const providerField = makeStateEventField(translate('Provider'));
+                const providerInput = $('<select class="text_pole margin0"></select>')
+                    .append($('<option value="mvu">MVU</option>'))
+                    .append($('<option value="lorestate">LoreState</option>'));
+                if (!['mvu', 'lorestate'].includes(eventDraft.providerId)) {
+                    providerInput.append(
+                        $('<option></option>').val(eventDraft.providerId).text(
+                            eventDraft.providerId + ' (' + translate('unsupported') + ')',
+                        ),
+                    );
+                }
+                providerInput.val(eventDraft.providerId);
+                providerInput.on('input', () => {
+                    stateEventDrafts[index].providerId = String(providerInput.val() || '');
+                    markStateEventsDirty();
+                });
+                providerField.append(providerInput);
+
+                const pathField = makeStateEventField(translate('Path'), 'wi-state-event-path');
+                const pathInput = $('<input class="text_pole margin0" type="text" autocomplete="off">')
+                    .attr('placeholder', 'scene.place')
+                    .val(eventDraft.path.join('.'));
+                pathInput.on('input', () => {
+                    stateEventDrafts[index].path = parseStateConditionPath(pathInput.val());
+                    refreshIncomplete();
+                    markStateEventsDirty();
+                });
+                pathField.append(pathInput);
+
+                const buildEndpointControls = (side, label, presentKey, valueKey) => {
+                    const typeField = makeStateEventField(label);
+                    const valueField = makeStateEventField(translate('Value'), `wi-state-event-${side}-value`);
+                    const typeInput = $('<select class="text_pole margin0"></select>');
+                    for (const type of ['any', 'string', 'number', 'boolean', 'null']) {
+                        typeInput.append($('<option></option>').val(type).text(type));
+                    }
+                    typeInput.val(inferStateEventValueType(eventDraft[presentKey], eventDraft[valueKey]));
+                    typeField.append(typeInput);
+
+                    const renderValueInput = () => {
+                        valueField.find('.wi-state-event-value-control').remove();
+                        const valueType = String(typeInput.val() || 'any');
+                        let valueInput;
+
+                        if (valueType === 'any') {
+                            valueInput = $('<input class="text_pole margin0 wi-state-event-value-control" type="text">')
+                                .val('Any')
+                                .prop('disabled', true);
+                        } else if (valueType === 'boolean') {
+                            valueInput = $('<select class="text_pole margin0 wi-state-event-value-control"></select>')
+                                .append($('<option value="true">true</option>'))
+                                .append($('<option value="false">false</option>'))
+                                .val(eventDraft[valueKey] === true ? 'true' : 'false');
+                            valueInput.on('input', () => {
+                                stateEventDrafts[index][valueKey] = valueInput.val() === 'true';
+                                markStateEventsDirty();
+                            });
+                        } else {
+                            valueInput = $('<input class="text_pole margin0 wi-state-event-value-control">');
+                            if (valueType === 'number') {
+                                valueInput.attr({ type: 'number', step: 'any' });
+                                valueInput.val(
+                                    typeof eventDraft[valueKey] === 'number' && Number.isFinite(eventDraft[valueKey])
+                                        ? String(eventDraft[valueKey])
+                                        : '0',
+                                );
+                                valueInput.on('input', () => {
+                                    const numeric = Number(valueInput.val());
+                                    stateEventDrafts[index][valueKey] = Number.isFinite(numeric) ? numeric : 0;
+                                    markStateEventsDirty();
+                                });
+                            } else if (valueType === 'null') {
+                                valueInput.attr('type', 'text').val('null').prop('disabled', true);
+                            } else {
+                                valueInput.attr('type', 'text').val(
+                                    typeof eventDraft[valueKey] === 'string'
+                                        ? eventDraft[valueKey]
+                                        : String(eventDraft[valueKey] ?? ''),
+                                );
+                                valueInput.on('input', () => {
+                                    stateEventDrafts[index][valueKey] = String(valueInput.val() ?? '');
+                                    markStateEventsDirty();
+                                });
+                            }
+                        }
+                        valueField.append(valueInput);
+                    };
+
+                    typeInput.on('input', () => {
+                        const valueType = String(typeInput.val() || 'any');
+                        if (valueType === 'any') {
+                            stateEventDrafts[index][presentKey] = false;
+                            stateEventDrafts[index][valueKey] = '';
+                        } else {
+                            stateEventDrafts[index][presentKey] = true;
+                            if (valueType === 'number') stateEventDrafts[index][valueKey] = 0;
+                            else if (valueType === 'boolean') stateEventDrafts[index][valueKey] = false;
+                            else if (valueType === 'null') stateEventDrafts[index][valueKey] = null;
+                            else stateEventDrafts[index][valueKey] = '';
+                        }
+                        renderValueInput();
+                        refreshIncomplete();
+                        markStateEventsDirty();
+                    });
+                    renderValueInput();
+                    return [typeField, valueField];
+                };
+
+                const [fromTypeField, fromValueField] = buildEndpointControls(
+                    'from', translate('From'), 'fromPresent', 'fromValue',
+                );
+                const [toTypeField, toValueField] = buildEndpointControls(
+                    'to', translate('To'), 'toPresent', 'toValue',
+                );
+
+                const removeButton = $(
+                    '<button type="button" class="menu_button wi-state-event-remove" title="Remove event"><i class="fa-solid fa-trash-can"></i></button>',
+                );
+                removeButton.on('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    stateEventDrafts.splice(index, 1);
+                    renderStateEventRows();
+                    markStateEventsDirty();
+                });
+
+                row.append(
+                    providerField,
+                    pathField,
+                    fromTypeField,
+                    fromValueField,
+                    toTypeField,
+                    toValueField,
+                    removeButton,
+                );
+                stateEventsList.append(row);
+            });
+        };
+
+        stateEventLogicInput.val(entry.stateEventLogic === 'any' ? 'any' : 'all');
+        stateEventLogicInput.on('input', markStateEventsDirty);
+        stateEventAdd.on('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (stateEventDrafts.length >= 32) {
+                toastr.warning(t`State events are limited to 32 per entry`);
+                return;
+            }
+            stateEventDrafts.push({
+                providerId: 'mvu',
+                path: [],
+                fromPresent: false,
+                fromValue: '',
+                toPresent: true,
+                toValue: '',
+            });
+            renderStateEventRows();
+            markStateEventsDirty();
+            stateEventsRoot.find('.wi-state-event-row').last().find('.wi-state-event-path input').trigger('focus');
+        });
+        stateEventSave.on('click', async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            await saveStateEvents();
+        });
+        renderStateEventRows();
+        stateEventStatus.text(stateEventsDirty
+            ? t`Unsaved state event changes`
+            : t`State events saved`);
+
         // Content
         const counter = editTemplate.find('.world_entry_form_token_counter');
         const countTokensDebounced = debounce(async function (counter, value) {
