@@ -158,6 +158,24 @@ export function getCurrentUserHandle() {
 }
 
 /**
+ * Map a config-validation error code returned by the server to a localized message.
+ * This remains part of script.js' public startup contract even though the
+ * former admin-panel UI has been removed.
+ * @param {string} code Machine-readable error code
+ * @returns {string|null} Localized message, or null if the code is unknown
+ */
+export function getConfigValidationMessage(code) {
+    switch (code) {
+        case 'CONFIG_UNSAFE_NO_AUTH':
+            return t`Cannot save: with "listen" on, you must enable one of whitelistMode, basicAuthMode, or enableUserAccounts (or set securityOverride: true). Otherwise the server will refuse to start.`;
+        case 'CONFIG_UNSAFE_NO_PROTOCOL':
+            return t`Cannot save: at least one of protocol.ipv4 or protocol.ipv6 must be enabled (or set to "auto"). Otherwise the server will refuse to start.`;
+        default:
+            return null;
+    }
+}
+
+/**
  * Refresh the current account view model.
  * @returns {Promise<void>}
  */
