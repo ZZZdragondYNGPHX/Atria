@@ -423,6 +423,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
         // subAgents[i].tools.
         tools: resolveAgentToolFlags(director.mainAgent?.tools, director.tools) || {},
         customToolRegistry,
+        sharedRunState: sharedToolRunState,
     });
 
     // Resolve the cached content payload (captured by
@@ -437,6 +438,17 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
         ? deps.getContentPayload
         : () => null;
     const contentPayload = getContentPayload();
+
+    // Director executes after the normal generation frame, so it cannot reuse
+    // payload.__atriaRun. Keep one explicit run object shared by the main
+    // agent and every sub-agent. Layer-2 tools use this for run-scoped state
+    // such as Web Evidence Cache and activated-entry bookkeeping.
+    const sharedToolRunState = {
+        lorebookFilter: director?.lorebookFilter || { bookPattern: '', entryPattern: '' },
+        activatedEntryKeys: new Set(),
+        wiFinalizedPayload: null,
+        abortSignal: eventData?.abortSignal || null,
+    };
 
     const dispatcher = createSubagentDispatcher({
         orchestrationPlan: safeProfile.orchestrationPlan,
@@ -764,11 +776,8 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                 // suppress filtered books/entries at source. Empty
                 // filter default keeps existing behavior for profiles
                 // that never set one.
-                toolCtx.__atriaRun = {
-                    lorebookFilter: director?.lorebookFilter || { bookPattern: '', entryPattern: '' },
-                    activatedEntryKeys: new Set(),
-                    wiFinalizedPayload: null,
-                };
+                toolCtx.__atriaRun = sharedToolRunState;
+                toolCtx.abortSignal = eventData?.abortSignal || null;
                 // Custom tools in director mode often want to inspect the
                 // in-flight draft (e.g. a pre-finalize skeleton check). The
                 // built-in `get_draft` tool returns `handle.getText()`, so
