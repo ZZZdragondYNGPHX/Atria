@@ -16,7 +16,7 @@ try {
  }
  console.log(JSON.stringify(await page.evaluate(()=>({presets:window.Atria.getContext().getExtensionApi('orchestrator').listWorkspacePresets(),workspaceSettings:document.querySelector('#orchestrator_settings')?.textContent,errors:[]}))));
  const state=await page.evaluate(async()=>{const panel=await import('/scripts/extensions/orchestrator/workspace/panel.js');panel.openWorkspace('Orchestration');return document.querySelector('#agent-memory-workspace').textContent;});
- assert(/Unified Preset Library|统一预设库|統一預設庫/.test(state)); assert(state.includes('Spec'));
+ assert(/Preset Library|预设库|預設庫/.test(state)); assert(state.includes('Spec'));
  const workspace = page.locator('#agent-memory-workspace');
  assert.equal(await workspace.locator('.atria-workspace-mobile-nav').getByRole('button').count(),4);
  for (const mode of ['spec','agenda','director']) {
@@ -24,16 +24,18 @@ try {
    const count=await page.evaluate(mode=>window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode);
    page.once('dialog',dialog=>dialog.accept(`Mobile ${mode}`));
    await workspace.getByRole('button',{name:mode==='spec'?/^(Append worker stage|添加执行阶段)$/:/^(Add specialist|添加协作智能体)$/}).tap();
-   const card=workspace.locator('.workspace-agent').filter({has:page.locator('summary').filter({hasText:`Mobile ${mode}`})});
-   assert.equal(await card.getAttribute('open'),'');
+   const inspector=workspace.locator('.atria-workspace-inspector');
+   await inspector.getByRole('heading',{name:`Mobile ${mode}`,exact:true}).waitFor();
    assert.equal(await page.evaluate(mode=>window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode),count+1);
+   await inspector.getByText(/^(Danger zone|危险区域|危險區域)$/).tap();
    page.once('dialog',dialog=>dialog.accept());
-   await card.getByRole('button',{name:/^(Delete agent|删除智能体)$/}).tap();
+   await inspector.getByRole('button',{name:/^(Delete agent|删除智能体|刪除智能體)$/}).tap();
    assert.equal(await page.evaluate(mode=>window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.presets.find(p=>p.mode===mode).planTemplate.nodes.length,mode),count);
  }
  await workspace.locator('.workspace-preset-list button').filter({hasText:/^Spec/}).tap();
+ await workspace.locator('.workspace-more-menu > summary').tap();
  await page.locator('#agent-memory-workspace').getByRole('button',{name:/^(Duplicate|复制|複製)$/,exact:true}).click();
- await page.locator('#agent-memory-workspace').getByRole('button',{name:/^(Bind as default|设为全局默认)$/,exact:true}).click();
+ await page.locator('#agent-memory-workspace').getByRole('button',{name:/^(Bind as default|设为全局默认|設為全域預設)$/,exact:true}).click();
  const id=await page.evaluate(()=>window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId);
  await page.waitForTimeout(1800);await page.reload();
  await page.waitForFunction(()=>window.Atria?.getContext?.().getExtensionApi?.('orchestrator')?.listWorkspacePresets);
