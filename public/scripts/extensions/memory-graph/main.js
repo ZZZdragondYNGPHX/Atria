@@ -91,7 +91,7 @@ const SYMMETRIC_RELATIONS = new Set([
     'family_of',
     'partner_of',
 ]);
-import { getFloorStateInstance, resetFloorStateInstance, loadMetaFields, persistMetaFields, migrateLegacyMemoryGraphState, constants as floorStateAdapterConstants, createEmptyStore, normalizeStoreForRuntime, normalizePersistedMemoryState, applyMemoryLogEntryToStore, buildRuntimeStoreFromPersistedState, graphPayloadFromStore, metaFieldsFromStore, buildRuntimeStoreFromGraphPayloadAndMeta, normalizeVectorIndexState, synthesizePersistedStateFromStoreAndMeta, hasPersistedStoreMetadataChanges, getStoreCoveredSeqTo, getCachedMeta, setCachedMeta, clearCachedMeta, activeSwipeIdAtFloor, resolveInFlightAnchor, seqToFloor } from './persistence.js';
+import { getFloorStateInstance, resetFloorStateInstance, loadMetaFields, persistMetaFields, constants as floorStateAdapterConstants, createEmptyStore, normalizeStoreForRuntime, normalizePersistedMemoryState, applyMemoryLogEntryToStore, buildRuntimeStoreFromPersistedState, graphPayloadFromStore, metaFieldsFromStore, buildRuntimeStoreFromGraphPayloadAndMeta, normalizeVectorIndexState, synthesizePersistedStateFromStoreAndMeta, hasPersistedStoreMetadataChanges, getStoreCoveredSeqTo, getCachedMeta, setCachedMeta, clearCachedMeta, activeSwipeIdAtFloor, resolveInFlightAnchor, seqToFloor } from './persistence.js';
 import { STATE_ERROR_REASONS } from '../../state-errors.js';
 import {
     LEVEL,
@@ -114,7 +114,6 @@ const sourceLifecycle = configureSourceLifecycle({
     readProviders: context => readStateProviders(context, getEffectiveSettings(context, getSettings())),
     onInvalidation: () => { latestRecallSnapshot = null; },
 });
-const CHAT_STATE_NAMESPACE = MODULE_NAME;
 const META_NAMESPACE = floorStateAdapterConstants.META_NAMESPACE;
 const META_SCHEMA_VERSION = floorStateAdapterConstants.SCHEMA_VERSION;
 void (floorStateAdapterConstants.PERSISTED_STORE_VERSION);
@@ -1311,15 +1310,13 @@ async function deleteMemoryStoreByTarget(context, target) {
     if (typeof context.deleteChatState !== 'function') {
         throw new Error('Chat state delete API is unavailable in extension context.');
     }
-    // Floor-state owns the log sidecar — ask it to purge that itself.
-    // memory-graph still owns the META sidecar, so we delete that directly.
-    // The legacy CHAT_STATE_NAMESPACE data sidecar should already be gone
-    // post-migration; deleting it here is a no-op guard for chats whose
-    // first fs.get() never ran (e.g. fresh install meeting an old sidecar).
+    // FloorState owns the current Atria data/log namespaces and purges them
+    // together. Memory Graph owns the current Atria meta sidecar, which is
+    // deleted directly below. Pre-Atria namespaces are intentionally ignored.
     //
     // Returns `{ ok, partial }` so the Reset button can surface which step
-    // failed (log / meta / legacy) instead of flashing a green success toast
-    // over a half-deleted state. Each failure is also console-logged.
+    // failed instead of flashing a green success toast over a half-deleted
+    // state. Each failure is also console-logged.
     const partial = {};
     try {
         const fs = await getFloorStateInstance(context);
@@ -1344,16 +1341,6 @@ async function deleteMemoryStoreByTarget(context, target) {
     } catch (error) {
         console.warn(`[${MODULE_NAME}] Failed to delete memory-graph meta sidecar`, { target, error });
         partial.meta = 'EXCEPTION';
-    }
-    try {
-        const legacyResult = await context.deleteChatState(CHAT_STATE_NAMESPACE, { target });
-        if (legacyResult && legacyResult.ok === false) {
-            partial.legacy = legacyResult.reason;
-            console.warn(`[${MODULE_NAME}] legacy data sidecar delete failed (reason=${legacyResult.reason}, hint=${legacyResult.hint})`);
-        }
-    } catch (error) {
-        console.warn(`[${MODULE_NAME}] Failed to delete legacy memory-graph data sidecar`, { target, error });
-        partial.legacy = 'EXCEPTION';
     }
     return { ok: Object.keys(partial).length === 0, partial };
 }
@@ -1507,53 +1494,33 @@ async function loadMemoryStoreByTarget(context, target) {
     if (typeof context.getChatState !== 'function') {
         throw new Error('Chat state API is unavailable in extension context.');
     }
+
     const metaResult = await context.getChatState(META_NAMESPACE, { target });
     const meta = metaResult?.ok ? metaResult.state : null;
-    const isV2 = meta && Number(meta.schemaVersion || 0) >= META_SCHEMA_VERSION;
 
-    if (isV2) {
-        // Floor-state owns the log: replay, swipe-map projection, migration,
-        // and one-shot recovery from a stale data namespace are all centralized
-        // in fs.get(). We never read the log namespace directly here.
-        const fs = await getFloorStateInstance(context);
-        await fs.ready();
-        const payloadResult = await fs.get();
-        if (!payloadResult.ok) {
-            // A read failure (transient HTTP / REPLAY_BROKEN / destroyed) must
-            // NOT degrade to an empty payload — the caller would cache an
-            // empty store, then the next write would diff `realLog → empty`
-            // and persist a graph-wiping commit (or `commitSessionMutation`
-            // would fs.reset([]) the log entirely). Surface the failure and
-            // let the caller decide; the on-disk log stays intact.
-            const isReplayBroken = payloadResult.reason === STATE_ERROR_REASONS.REPLAY_BROKEN;
-            const message = isReplayBroken
-                ? i18n('Memory graph log replay failed, data may be unrecoverable. Use Reset or Import to recover.')
-                : i18nFormat('Memory graph load failed: ${0}', payloadResult.hint || payloadResult.reason || i18n('reason unknown'));
-            notifyError(message);
-            throw new Error(`[${MODULE_NAME}] loadMemoryStoreByTarget read failed (reason=${payloadResult.reason}, hint=${payloadResult.hint})`);
-        }
-        const payload = payloadResult.state || {};
-        const runtimeStore = buildRuntimeStoreFromGraphPayloadAndMeta(payload, meta);
-        return {
-            state: synthesizePersistedStateFromStoreAndMeta(runtimeStore, meta),
-            store: runtimeStore,
-            migrated: false,
-            meta: meta && typeof meta === 'object' ? structuredClone(meta) : null,
-            v2: true,
-        };
+    // Hard cutover: the current Atria FloorState namespace is the only graph
+    // source. Missing current metadata means a fresh Atria graph, not a cue to
+    // inspect or import predecessor namespaces.
+    const fs = await getFloorStateInstance(context);
+    await fs.ready();
+    const payloadResult = await fs.get();
+    if (!payloadResult.ok) {
+        const isReplayBroken = payloadResult.reason === STATE_ERROR_REASONS.REPLAY_BROKEN;
+        const message = isReplayBroken
+            ? i18n('Memory graph log replay failed, data may be unrecoverable. Use Reset or Import to recover.')
+            : i18nFormat('Memory graph load failed: ${0}', payloadResult.hint || payloadResult.reason || i18n('reason unknown'));
+        notifyError(message);
+        throw new Error(`[${MODULE_NAME}] loadMemoryStoreByTarget read failed (reason=${payloadResult.reason}, hint=${payloadResult.hint})`);
     }
 
-    // v1 / legacy raw fallback: opLog inside main namespace, no __meta.
-    // Schema-migration will hoist this to v2 on the next ensureMemoryStoreLoaded.
-    const dataResult = await context.getChatState(CHAT_STATE_NAMESPACE, { target });
-    const data = dataResult?.ok ? dataResult.state : null;
-    const { state, migrated } = normalizePersistedMemoryState(data, context);
+    const payload = payloadResult.state || {};
+    const runtimeStore = buildRuntimeStoreFromGraphPayloadAndMeta(payload, meta);
     return {
-        state,
-        store: buildRuntimeStoreFromPersistedState(state),
-        migrated,
-        meta: null,
-        v2: false,
+        state: synthesizePersistedStateFromStoreAndMeta(runtimeStore, meta),
+        store: runtimeStore,
+        migrated: false,
+        meta: meta && typeof meta === 'object' ? structuredClone(meta) : null,
+        v2: true,
     };
 }
 
@@ -1821,34 +1788,10 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
     }
 
     const task = (async () => {
-        // Schema migration runs at init/CHAT_CHANGED for current target.
-        // Bring the target up to v2 before reading so loadMemoryStoreByTarget
-        // always sees the current shape.
-        try {
-            await migrateLegacyMemoryGraphState(
-                context,
-                target,
-                isExtractableAssistantMessage,
-                applyMemoryLogEntryToStore,
-            );
-        } catch (error) {
-            console.warn(`[${MODULE_NAME}] Legacy schema migration failed for target`, { target, error });
-        }
-
         const loaded = await loadMemoryStoreByTarget(context, target);
 
         setCachedMeta(chatKey, loaded.meta || metaFieldsFromStore(loaded.store));
         memoryStoreCache.set(chatKey, loaded.store);
-        if (loaded.migrated) {
-            const migrationSeq = getStoreCoveredSeqTo(loaded.store);
-            await commitMemoryStoreReplaceByChatKey(
-                context,
-                chatKey,
-                loaded.store,
-                migrationSeq,
-                { floor: seqToFloor(context, migrationSeq) },
-            );
-        }
         const current = memoryStoreCache.get(chatKey) || loaded.store;
         await refreshMemorySources(context, current);
         return current;
@@ -16094,67 +16037,11 @@ jQuery(() => {
     // extension isn't loaded the call is a silent no-op.
     void registerMemoryGraphOrchestrationTools();
 
-    // ORDER MATTERS for the migration path. Floor-state's log is the only
-    // persisted source of truth; if a legacy chat (v8 opLog inside the main
-    // namespace) reaches `fs.get()` before our schema migration has hoisted
-    // the opLog into the log namespace, replay sees an empty log and recall
-    // observes a wiped store until the next write rebuilds.
-    //
-    // We therefore: (a) subscribe memory-graph's CHAT_CHANGED handler BEFORE
-    // mounting floor-state — its `migrateLegacyMemoryGraphState` call runs
-    // early on every chat switch; (b) run an explicit migration for the
-    // initial chat before mounting the singleton.
-    context.eventSource.on(context.eventTypes.CHAT_CHANGED, async () => {
-        latestRecallSnapshot = null;
-        ensureUi();
-        const runtimeContext = getContext();
-        const newTarget = buildMemoryTargetFromContext(runtimeContext);
-        const newChatKey = getChatKey(runtimeContext);
-        if (newTarget && newChatKey && newChatKey !== 'invalid_target') {
-            memoryStoreTargets.set(newChatKey, newTarget);
-            try {
-                await migrateLegacyMemoryGraphState(
-                    runtimeContext,
-                    newTarget,
-                    isExtractableAssistantMessage,
-                    applyMemoryLogEntryToStore,
-                );
-            } catch (error) {
-                console.warn(`[${MODULE_NAME}] Schema migration failed on CHAT_CHANGED`, { target: newTarget, error });
-            }
-        }
+    // Mount only the current Atria FloorState namespace. Old product state
+    // is intentionally invisible after the namespace hard cutover.
+    void getFloorStateInstance(context).catch((error) => {
+        console.warn(`[${MODULE_NAME}] Failed to mount floor-state singleton`, error);
     });
-
-    // Mount the floor-state singleton AFTER subscribing the migration
-    // handler. The initial migration writes the log for the current chat,
-    // so the singleton's first `fs.get()` replays against the migrated log.
-    // From this point onward, our CHAT_CHANGED handler runs after core's
-    // settleChatChanged on every switch, and is followed by the cache-refresh
-    // handler below.
-    void (async () => {
-        const initialChatKey = getChatKey(context);
-        if (initialChatKey && initialChatKey !== 'invalid_target') {
-            const initialTarget = buildMemoryTargetFromContext(context);
-            if (initialTarget) {
-                memoryStoreTargets.set(initialChatKey, initialTarget);
-                try {
-                    await migrateLegacyMemoryGraphState(
-                        context,
-                        initialTarget,
-                        isExtractableAssistantMessage,
-                        applyMemoryLogEntryToStore,
-                    );
-                } catch (error) {
-                    console.warn(`[${MODULE_NAME}] Initial schema migration failed`, { target: initialTarget, error });
-                }
-            }
-        }
-        try {
-            await getFloorStateInstance(context);
-        } catch (error) {
-            console.warn(`[${MODULE_NAME}] Failed to mount floor-state singleton`, error);
-        }
-    })();
 
     const wiBeforeEvent = context.eventTypes.GENERATION_BEFORE_WORLD_INFO_SCAN;
     if (wiBeforeEvent) {
@@ -16264,15 +16151,16 @@ jQuery(() => {
         context.eventSource.on(eventName, () => ensureUi());
     }
     context.eventSource.on(context.eventTypes.CHAT_CHANGED, async () => {
-        // The pre-fs-mount CHAT_CHANGED handler at the top of jQuery init
-        // already runs migration; this listener fires after both that one
-        // and core's settleChatChanged (which drives floor-state
-        // instances), so by now fs.get() reflects the new chat. Our job
-        // here is to refresh the runtime store cache and trigger UI
-        // updates.
+        // Core settles every mounted FloorState instance before extension
+        // listeners observe the new chat, so the current Atria namespace is
+        // ready to reload directly. No predecessor-state migration runs.
+        latestRecallSnapshot = null;
+        ensureUi();
         const runtimeContext = getContext();
+        const newTarget = buildMemoryTargetFromContext(runtimeContext);
         const newChatKey = getChatKey(runtimeContext);
-        if (newChatKey && newChatKey !== 'invalid_target') {
+        if (newTarget && newChatKey && newChatKey !== 'invalid_target') {
+            memoryStoreTargets.set(newChatKey, newTarget);
             try {
                 await refreshMemoryStoreCacheFromFloorState(runtimeContext, newChatKey);
             } catch (error) {
