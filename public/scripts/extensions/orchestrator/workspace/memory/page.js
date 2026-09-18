@@ -54,6 +54,7 @@ export function createMemoryWorkspace({ getContext }) {
     let query = '';
     let entityType = '';
     let includeHistory = false;
+    let selected = null;
 
     return function renderMemory(parent, ui) {
         const { el, button, inspector, getView } = ui;
@@ -173,6 +174,7 @@ export function createMemoryWorkspace({ getContext }) {
                 status.textContent = error.message;
                 return;
             }
+            selected = { record, kind };
             inspector.hidden = false;
             inspector.replaceChildren();
 
@@ -474,6 +476,7 @@ export function createMemoryWorkspace({ getContext }) {
                 inspector.replaceChildren();
                 inspector.hidden = true;
             }
+            selected = null;
             if (activeView === 'overview') renderOverview();
             else if (activeView === 'knowledge') renderKnowledge();
             else if (activeView === 'sources') renderSources();
@@ -483,17 +486,24 @@ export function createMemoryWorkspace({ getContext }) {
         renderView();
         void loadData();
 
-        return () => {
-            disposed = true;
-            refreshVersion++;
-            controller.abort();
-            graphInstance?.destroy?.();
-            graphInstance = null;
-            settingsDisposer?.();
-            if (inspector) {
-                inspector.replaceChildren();
-                inspector.hidden = true;
-            }
+        return {
+            updateRun() {
+                if (disposed) return;
+                if (activeView === 'overview') renderView();
+                else if (selected && inspector && !inspector.hidden) showRecord(selected.record, selected.kind);
+            },
+            dispose() {
+                disposed = true;
+                refreshVersion++;
+                controller.abort();
+                graphInstance?.destroy?.();
+                graphInstance = null;
+                settingsDisposer?.();
+                if (inspector) {
+                    inspector.replaceChildren();
+                    inspector.hidden = true;
+                }
+            },
         };
     };
 }
