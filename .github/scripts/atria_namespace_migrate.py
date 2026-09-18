@@ -15,10 +15,8 @@ os.chdir(ROOT)
 PROTECTED_TEXT = {
     "AGENTS.md",
     "FORK_MAINTENANCE.md",
-    ".github/workflows/sync-reference-branches.yml",
     "docs/plans/atria-namespace-migration.md",
     ".github/scripts/atria_namespace_migrate.py",
-    ".github/workflows/atria-namespace-migration.yml",
 }
 
 DELETE_PATHS = {
@@ -88,7 +86,7 @@ def delete_stale_artifacts() -> None:
 
 def migrate_text_files() -> None:
     for rel in tracked_files():
-        if rel in PROTECTED_TEXT:
+        if rel in PROTECTED_TEXT or rel.startswith(".github/workflows/"):
             continue
         path = Path(rel)
         if not path.is_file() or path.suffix == ".gz":
@@ -151,9 +149,8 @@ if git grep -n -I -E "${pattern}" -- \
   ':!docs/**' \
   ':!AGENTS.md' \
   ':!FORK_MAINTENANCE.md' \
-  ':!.github/workflows/sync-reference-branches.yml' \
-  ':!.github/scripts/atria_namespace_migrate.py' \
-  ':!.github/workflows/atria-namespace-migration.yml'
+  ':!.github/workflows/**' \
+  ':!.github/scripts/atria_namespace_migrate.py'
 then
   echo "Unexpected legacy product namespace remains in active Atria code."
   exit 1
@@ -179,26 +176,6 @@ echo "Atria namespace guard passed."
     path = Path("scripts/check-atria-namespace.sh")
     path.write_text(guard, encoding="utf-8")
     path.chmod(0o755)
-
-    workflow = '''name: Atria Namespace Guard
-
-on:
-  pull_request:
-  push:
-    branches: [main]
-
-permissions:
-  contents: read
-
-jobs:
-  namespace-guard:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify Atria active namespace
-        run: bash scripts/check-atria-namespace.sh
-'''
-    Path(".github/workflows/atria-namespace-guard.yml").write_text(workflow, encoding="utf-8")
 
 def update_agent_rules() -> None:
     path = Path("AGENTS.md")
