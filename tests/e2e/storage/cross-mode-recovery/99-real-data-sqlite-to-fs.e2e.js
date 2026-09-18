@@ -213,17 +213,19 @@ async function openBackupManagerViaUI(page) {
     const accountBtn = page.locator('#account_button');
     await accountBtn.waitFor({ state: 'visible', timeout: 10_000 });
     await accountBtn.click();
-    const backupBtn = page.locator('.userBackupButton').last();
+    const backupBtn = page.locator('.userBackupSyncButton').last();
     await backupBtn.waitFor({ state: 'visible', timeout: 10_000 });
     await backupBtn.click();
-    await page.locator('.userBackupManager').last().waitFor({ state: 'visible', timeout: 10_000 });
+    const center = page.locator('.backupSyncCenter').last();
+    await center.waitFor({ state: 'visible', timeout: 10_000 });
+    await center.locator('.backupSyncTab[data-tab="archive"]').click();
 }
 
 async function downloadBackupViaUI(page, destPath) {
     await openBackupManagerViaUI(page);
     const [download] = await Promise.all([
         page.waitForEvent('download', { timeout: 120_000 }),
-        page.locator('.backupDownloadButton').last().click(),
+        page.locator('.backupSyncCenter').last().locator('.backupArchiveDownload').click(),
     ]);
     await download.saveAs(destPath);
     await page.keyboard.press('Escape').catch(() => {});
@@ -233,10 +235,15 @@ async function downloadBackupViaUI(page, destPath) {
 async function restoreBackupViaUI(page, zipPath) {
     await openBackupManagerViaUI(page);
     await page.locator('input[name="backupRestoreMode"][value="overwrite"]').last().click();
-    const fileInput = page.locator('.backupRestoreFileInput').last();
+    const fileInput = page.locator('.backupSyncCenter').last().locator('.backupArchiveInput');
     await fileInput.setInputFiles(zipPath);
+    const restoreButton = page.locator('.backupSyncCenter').last().locator('.backupRestoreStart');
+    await page.waitForFunction(() => {
+        const button = document.querySelector('.backupSyncCenter .backupRestoreStart');
+        return button && !button.classList.contains('disabled');
+    }, { timeout: 15_000 });
     const baseOpenCount = await openPopupCount(page);
-    await page.locator('.backupRestoreButton').last().click();
+    await restoreButton.click();
     await resolveTopmostPopupAffirmative(page, baseOpenCount + 1);
 }
 
