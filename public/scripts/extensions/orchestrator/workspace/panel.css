@@ -164,7 +164,7 @@
 /* Header */
 #agent-memory-workspace .atria-workspace-header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     align-items: center;
     gap: 16px;
     min-height: 68px;
@@ -181,6 +181,43 @@
     margin: 3px 0 0;
     font-size: 12px;
     opacity: .62;
+}
+
+#agent-memory-workspace .atria-workspace-header-meta {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+#agent-memory-workspace .atria-workspace-preset-chip {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 5px 9px;
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: 999px;
+    background: var(--atri-workspace-surface-1);
+    font-size: 11px;
+}
+
+#agent-memory-workspace label.atria-workspace-orchestration-toggle {
+    min-height: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: 999px;
+    background: var(--atri-workspace-surface-1);
+    font-size: 11px;
+}
+
+#agent-memory-workspace label.atria-workspace-orchestration-toggle > input {
+    margin: 0;
 }
 
 #agent-memory-workspace .atria-workspace-header-status {
@@ -918,6 +955,7 @@
         padding: max(10px, env(safe-area-inset-top)) 12px 10px;
     }
 
+    #agent-memory-workspace .atria-workspace-header-meta,
     #agent-memory-workspace .atria-workspace-header-status {
         display: none;
     }
