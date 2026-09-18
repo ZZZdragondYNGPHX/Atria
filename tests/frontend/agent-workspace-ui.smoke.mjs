@@ -169,6 +169,7 @@ try {
     page.once('dialog', dialog => dialog.accept('Named stage'));
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 2);
+    await workspace.locator('.atria-workspace-inspector').getByRole('button', { name: 'Close inspector', exact: true }).click();
     // Keyboard navigation and explicit Node capability controls use native labels.
     await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Orchestration', exact: true }).focus();
     await page.keyboard.press('End'); assert.equal(await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Diagnostics', exact: true }).getAttribute('aria-current'), 'page');
