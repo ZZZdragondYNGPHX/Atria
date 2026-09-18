@@ -91,7 +91,6 @@ const defaultSettings = {
     editorIterationSystemPrompt: DEFAULT_EDITOR_ITERATION_SYSTEM_PROMPT,
     cardAppStudioSystemPrompt: DEFAULT_CARDAPP_STUDIO_SYSTEM_PROMPT,
 };
-const CHARACTER_EDITOR_SESSION_NAMESPACE = 'character_editor_assistant_sessions';
 
 
 const stateCache = new Map();
@@ -1138,94 +1137,6 @@ async function clearHistoryRecords(context, { avatar = '' } = {}) {
     state.updatedAt = Date.now();
     await persistOperationState(context, state, { avatar });
     return true;
-}
-
-
-/**
- * Read the raw legacy CEA editor session bundle for an avatar. Returns the
- * underlying `sessions[]` array exactly as it was persisted on the character
- * card (no normalization beyond what the legacy store applied at write time),
- * so the M4 migration converter can introspect every original field.
- *
- * Used only by the unified popup's first-open migration path
- * (`editor-iteration/studio.js`). Returns `[]` on any read error so the
- * popup's session list still loads (migration is best-effort).
- *
- * @param {object} context - SillyTavern context (currently unused; reserved
- *   for symmetry with `loadCharacterEditorSessionStore`).
- * @param {string} avatar - Character avatar key.
- * @returns {Promise<Array<object>>}
- */
-export async function readLegacyCeaEditorSessions(context, avatar) {
-    try {
-        const result = await getCharacterState(avatar, CHARACTER_EDITOR_SESSION_NAMESPACE);
-        // Best-effort legacy migration read — any envelope failure (or a thrown
-        // surprise from a non-conforming stub) falls through to `[]` so the
-        // unified popup never blocks on a recoverable read error.
-        if (!result?.ok) {
-            if (result?.reason) {
-                // eslint-disable-next-line no-console
-                console.warn(`[character-editor-assistant] legacy session read failed: ${result.reason} ${result.hint || ''}`);
-            }
-            return [];
-        }
-        const raw = result.state;
-        const sessions = Array.isArray(raw?.sessions) ? raw.sessions : [];
-        // Return a shallow clone so downstream mutation can't corrupt the
-        // persisted card state if the migrator decides to mutate-in-place.
-        return sessions.map(s => (s && typeof s === 'object') ? { ...s } : s);
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn('[character-editor-assistant] readLegacyCeaEditorSessions failed', err);
-        return [];
-    }
-}
-
-/**
- * Read the raw legacy character-iteration popup session bucket for an avatar.
- *
- * The deleted CHARACTER_REPLACED auto-popup persisted sessions to
- * `extension_settings.character_editor_assistant.popupSessionsV2[char_<avatar>]`.
- * After that popup was removed, those sessions became orphans
- * the new unified-popup migration ignored. This reader gives the migrator a
- * second source so that history is recovered on first open.
- *
- * The bucket shape is `{ [sessionId]: sessionObject }`. We return an array of
- * session objects (shallow-cloned) — the convertLegacyMessage / migrator
- * downstream handles the same conversationMessages / pendingApproval shape
- * that the editor popup used, so no separate adapter is needed.
- *
- * Returns `[]` on any read error so the migration's outer empty-check still
- * works gracefully.
- *
- * @param {object} context - SillyTavern context (currently unused; reserved
- *   for symmetry with `readLegacyCeaEditorSessions`).
- * @param {string} avatar - Character avatar key.
- * @returns {Promise<Array<object>>}
- */
-export async function readLegacyCharIterPopupSessions(context, avatar) {
-    try {
-        const root = context?.extensionSettings?.character_editor_assistant
-            || (typeof globalThis !== 'undefined' && globalThis.extension_settings && globalThis.extension_settings.character_editor_assistant)
-            || null;
-        if (!root || typeof root !== 'object') return [];
-        const v2 = root.popupSessionsV2;
-        if (!v2 || typeof v2 !== 'object') return [];
-        const scope = `char_${avatar}`;
-        const bucket = v2[scope];
-        if (!bucket) return [];
-        if (Array.isArray(bucket)) {
-            return bucket.filter(s => s && typeof s === 'object').map(s => ({ ...s }));
-        }
-        if (typeof bucket === 'object') {
-            return Object.values(bucket).filter(s => s && typeof s === 'object').map(s => ({ ...s }));
-        }
-        return [];
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn('[character-editor-assistant] readLegacyCharIterPopupSessions failed', err);
-        return [];
-    }
 }
 
 
