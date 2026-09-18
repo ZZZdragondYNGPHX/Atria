@@ -123,14 +123,13 @@ export function createSearchToolsSettingsUi(deps) {
         <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
+        <h4>${escapeHtml(i18n('Main model web access'))}</h4>
         <label class="checkbox_label">
             <input id="search_tools_enabled" type="checkbox" />
-            ${escapeHtml(i18n('Expose tools to main model'))}
+            ${escapeHtml(i18n('Expose Web Search to the main model'))}
         </label>
-        <label class="checkbox_label">
-            <input id="search_tools_pre_request_enabled" type="checkbox" />
-            ${escapeHtml(i18n('Run pre-request search agent'))}
-        </label>
+        <p class="text_muted">${escapeHtml(i18n('Works without agent orchestration. Agent Web Access is controlled separately in the Atria Workspace.'))}</p>
+        <h4>${escapeHtml(i18n('Provider'))}</h4>
         <label for="search_tools_provider">${escapeHtml(i18n('Search provider'))}</label>
         <select id="search_tools_provider" class="text_pole"></select>
         <div id="search_tools_provider_settings"></div>
@@ -138,6 +137,13 @@ export function createSearchToolsSettingsUi(deps) {
         <input id="search_tools_default_max_results" class="text_pole" type="number" min="1" max="20" step="1" />
         <label for="search_tools_default_visit_max_chars">${escapeHtml(i18n('Default page excerpt max chars (0 = no truncation)'))}</label>
         <input id="search_tools_default_visit_max_chars" class="text_pole" type="number" min="0" max="50000" step="100" />
+        <details class="search-tools-advanced">
+            <summary>${escapeHtml(i18n('Advanced automatic pre-request research'))}</summary>
+            <p class="text_muted">${escapeHtml(i18n('Optional high-cost mode. Runs a dedicated research agent before every reply. The recommended Atria path is on-demand Web Access from the agents that need it.'))}</p>
+            <label class="checkbox_label">
+                <input id="search_tools_pre_request_enabled" type="checkbox" />
+                ${escapeHtml(i18n('Run automatic research before every reply'))}
+            </label>
         <label for="search_tools_agent_api_preset_name">${escapeHtml(i18n('Agent API preset (Connection profile)'))}</label>
         <select id="search_tools_agent_api_preset_name" class="text_pole"></select>
         <label for="search_tools_agent_preset_name">${escapeHtml(i18n('Agent preset (params + prompt)'))}${renderPresetHelpButton({ kind: 'agent' })}</label>
@@ -185,6 +191,7 @@ export function createSearchToolsSettingsUi(deps) {
         <div class="flex-container" style="margin-top: 8px;">
             <div id="search_tools_manage_entries" class="menu_button menu_button_small">${escapeHtml(i18n('Manage stored search entries'))}</div>
         </div>
+        </details>
         <div id="${STATUS_ID}" class="wide100p text_muted" style="margin-top: 8px;"></div>
     </div>
 </div>`;
@@ -197,6 +204,16 @@ export function createSearchToolsSettingsUi(deps) {
 
         jQuery('head').append(`
 <style id="${STYLE_ID}">
+#${UI_BLOCK_ID} h4 {
+    margin: 12px 0 6px;
+}
+#${UI_BLOCK_ID} .search-tools-advanced {
+    margin-top: 12px;
+}
+#${UI_BLOCK_ID} .search-tools-advanced > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
 #${UI_BLOCK_ID} .menu_button,
 #${UI_BLOCK_ID} .menu_button_small {
     display: inline-flex;
