@@ -1093,100 +1093,6 @@ async function generateStreamCallback(args, value) {
     }
 }
 
-/**
- * Atria one-shot migration: collapse legacy proxy fields onto the unified
- * base-url + secret-store path. Safe to call repeatedly — uses a marker on
- * `extension_settings.connectionManager` to skip after the first run.
- */
-async function migrateProxyToBaseUrl() {
-    const settings = extension_settings.connectionManager;
-    if (settings._proxyToBaseUrlMigratedAt) {
-        return;
-    }
-
-
-    if (Array.isArray(settings.profiles)) {
-        for (const profile of settings.profiles) {
-            try {
-                const profileMode = String(profile?.mode || '').toLowerCase();
-                if (profileMode !== 'cc') {
-                    continue;
-                }
-
-                const proxyUrl = String(profile['proxy-url'] || '').trim();
-                const proxyPassword = String(profile['proxy-password'] || '');
-
-                if (!proxyUrl && !proxyPassword) {
-                    continue;
-                }
-
-                if (proxyUrl && !profile['base-url']) {
-                    profile['base-url'] = proxyUrl;
-                }
-
-                if (proxyPassword) {
-                    const sourceKey = Object.entries(chat_completion_sources)
-                        .find(([, value]) => value === profile.source)?.[0];
-                    const secretKey = sourceKey ? SECRET_KEYS[sourceKey] : null;
-
-                    if (secretKey) {
-                        const label = `${profile.name || 'Profile'} proxy key`;
-                        try {
-                            const newSecretId = await writeSecret(secretKey, proxyPassword, label, { allowEmpty: false });
-                            if (newSecretId) {
-                                if (!profile['secret-id']) {
-                                    profile['secret-id'] = newSecretId;
-                                } else {
-                                    profile._atria_migration_conflict = true;
-                                }
-                            }
-                        } catch (err) {
-                            console.warn('[base-url migration] failed to write secret for profile', profile?.name, err);
-                            continue;
-                        }
-                    }
-                }
-
-                delete profile.proxy;
-                delete profile['proxy-url'];
-                delete profile['proxy-password'];
-            } catch (err) {
-                console.warn('[base-url migration] profile migration failed', profile?.name, err);
-            }
-        }
-    }
-
-    try {
-        const globalUrl = String(oai_settings.reverse_proxy || '').trim();
-        const globalPassword = String(oai_settings.proxy_password || '');
-        if (globalUrl || globalPassword) {
-            if (globalUrl && !oai_settings.base_url) {
-                oai_settings.base_url = globalUrl;
-            }
-            if (globalPassword) {
-                const currentSource = oai_settings.chat_completion_source;
-                const sourceKey = Object.entries(chat_completion_sources)
-                    .find(([, value]) => value === currentSource)?.[0];
-                const secretKey = sourceKey ? SECRET_KEYS[sourceKey] : null;
-                if (secretKey) {
-                    try {
-                        await writeSecret(secretKey, globalPassword, 'Migrated proxy key', { allowEmpty: false });
-                    } catch (err) {
-                        console.warn('[base-url migration] failed to write global proxy password to secret store', err);
-                    }
-                }
-            }
-            oai_settings.reverse_proxy = '';
-            oai_settings.proxy_password = '';
-        }
-    } catch (err) {
-        console.warn('[base-url migration] global oai_settings migration failed', err);
-    }
-
-    settings._proxyToBaseUrlMigratedAt = Date.now();
-    saveSettingsDebounced();
-}
-
 export async function init() {
     extension_settings.connectionManager = extension_settings.connectionManager || structuredClone(DEFAULT_SETTINGS);
 
@@ -1208,7 +1114,6 @@ export async function init() {
         saveSettingsDebounced();
     }
 
-    await migrateProxyToBaseUrl();
     const container = document.getElementById('rm_api_block');
     const settings = await renderExtensionTemplateAsync(MODULE_NAME, 'settings');
     container.insertAdjacentHTML('afterbegin', settings);
