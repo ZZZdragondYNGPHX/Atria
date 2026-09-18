@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - "public/scripts/extensions/orchestrator/workspace/**"
+      - "public/scripts/extensions/orchestrator/main.js"
       - "public/scripts/lib/agent-workspace/**"
       - "public/scripts/extensions/memory-graph/main.js"
       - "public/scripts/extensions/memory-graph/inspector-compute.js"
@@ -12,6 +13,8 @@ on:
       - "public/scripts/extensions/orchestrator/i18n.js"
       - "tests/frontend/agent-workspace*.mjs"
       - "tests/agent-runtime/workspace-*.test.js"
+      - "tests/e2e/regression/125-orch-preset-switch-persist.e2e.js"
+      - "scripts/check-atria-workspace-ui.sh"
       - ".github/workflows/workspace-ui.yml"
 
 permissions:
