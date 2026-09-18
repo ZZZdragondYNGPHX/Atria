@@ -50,3 +50,6 @@ jobs:
         env:
           ENGINE_BROWSER: chromium
         run: node tests/frontend/agent-workspace-call-counts.smoke.mjs
+      - name: Run Workspace binding persistence E2E
+        working-directory: tests
+        run: npx playwright test e2e/regression/125-orch-preset-switch-persist.e2e.js --project=e2e --workers=1
