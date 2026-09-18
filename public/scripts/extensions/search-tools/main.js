@@ -478,6 +478,34 @@ function getProviderSettings(settings = getSettings(), providerId = '') {
     return {};
 }
 
+function getWebAccessStatus(settings = getSettings()) {
+    const provider = normalizeProvider(settings?.provider);
+    const providerSettings = getProviderSettings(settings, provider);
+    if (provider === 'searxng' && !normalizeWhitespace(providerSettings.baseUrl || '')) {
+        return {
+            available: false,
+            provider,
+            label: 'SearXNG',
+            reason: 'SearXNG instance URL is not configured.',
+        };
+    }
+    if (provider === 'brave' && !hasConfiguredSecret(SECRET_KEYS.BRAVE_SEARCH)) {
+        return {
+            available: false,
+            provider,
+            label: 'Brave Search',
+            reason: 'Brave Search API key is not configured.',
+        };
+    }
+    const definition = getSearchProviderDefinition(provider);
+    return {
+        available: true,
+        provider,
+        label: String(definition?.label || provider),
+        reason: '',
+    };
+}
+
 function hasConfiguredSecret(key) {
     const secrets = secret_state?.[key];
     return Array.isArray(secrets) ? secrets.length > 0 : Boolean(secrets);
@@ -1094,6 +1122,7 @@ function installGlobalApi() {
     root.Atria.searchTools = {
         toolNames: EXPORTED_TOOL_NAMES,
         getToolDefs: () => getSharedSearchToolDefs(),
+        getStatus: () => structuredClone(getWebAccessStatus(getSettings())),
         isToolName: (name) => isSharedSearchToolName(name),
         invoke: async (call, options = {}) => await invokeSharedSearchToolCall(call, options),
         search: searchWeb,
