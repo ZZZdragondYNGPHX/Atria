@@ -3,14 +3,14 @@
 //
 // Flow:
 //   1. acquireMigrationLock + setReadOnly(true)
-//   2. snapshot live destination (overwrite mode only) — so a failure can roll back
+//   2. snapshot the live destination for every restore mode so any failure can roll back
 //   3. materializeTransientSource(engineMeta, zip, scratchCreds) — build a live
 //      source engine instance populated from the ZIP's dump
 //   4. MigrationRunner(transient→liveEngine, categories=selectionToRunnerCategories,
 //      skipInternalSnapshot=true, destHandle=realHandle).migrateUser(scratchHandle)
 //   5. extractFsTreeCategories(zip, dirs, selection) — secrets/characters/etc.
 //   6. transient.cleanup() — drop scratch dir / scratch DB rows
-//   7. removeSnapshot (on success) or restoreFromSnapshot (on failure)
+//   7. retain the recovery point on success, or restoreFromSnapshot on failure
 //   8. setReadOnly(false) + releaseMigrationLock
 //
 // Errors are surfaced as typed errors so the route handler maps to 400/500.
@@ -32,7 +32,7 @@ import { StatsRepo } from '../repositories/stats-repo.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../engine-backup-entries.js';
 import { setReadOnly } from '../read-only-mode.js';
 import { MigrationRunner } from './runner.js';
-import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
+import { snapshotUser, restoreFromSnapshot } from './backup.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './lock.js';
 import { materializeTransientSource } from './transient-source.js';
 import { selectionToRunnerCategories, FS_TREE_CATEGORIES } from './selection-mapping.js';
@@ -74,7 +74,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
     if (!dataRoot) throw new Error('crossModeRestore: dataRoot is required');
 
     const handle = path.basename(dirs.root);
-    const backupRoot = path.join(dataRoot, '_storage-migrations');
+    const backupRoot = path.join(dataRoot, '_restore-recovery');
     fs.mkdirSync(backupRoot, { recursive: true });
 
     // Gate: if backup is from mysql/pg, the operator must supply a scratch DB
@@ -113,22 +113,24 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
     let cleanupWarning = null;
     try {
-        // 1. Snapshot live destination (overwrite mode only — merge mode
-        //    intentionally has no rollback per spec §4.2/4.3).
-        if (mode === 'overwrite') {
-            try {
-                snapshotPath = await snapshotUser({
-                    handle,
-                    userRoot: dirs.root,
-                    backupRoot,
-                    engine: currentEngine,
-                });
-            } catch (err) {
-                throw new CrossModeConversionFailedError(err, {
-                    rollback: 'merge-no-snapshot',
-                    snapshotPath: null,
-                });
+        // 1. Snapshot the full live destination before every restore. Merge
+        //    can mutate both engine rows and filesystem categories, so it must
+        //    have the same rollback guarantee as replace/full restores.
+        try {
+            snapshotPath = await snapshotUser({
+                handle,
+                userRoot: dirs.root,
+                backupRoot,
+                engine: currentEngine,
+            });
+            if (onProgress) {
+                try { onProgress({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
             }
+        } catch (err) {
+            throw new CrossModeConversionFailedError(err, {
+                rollback: 'snapshot-failed',
+                snapshotPath: null,
+            });
         }
 
         // 2. Materialize transient source engine populated from the ZIP.
@@ -168,11 +170,8 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             onProgress,
         });
 
-        // 5. Success: drop the snapshot and tear down the transient.
-        if (snapshotPath) {
-            try { removeSnapshot(snapshotPath); } catch { /* preserve on rm failure */ }
-            snapshotPath = null;
-        }
+        // 5. Success: retain the snapshot as the user's recovery point and
+        // tear down the transient source.
         try {
             await transient.cleanup();
         } catch (err) {
@@ -201,12 +200,12 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
                 },
                 cleanupWarning,
             },
+            recoveryPoint: snapshotPath ? path.basename(snapshotPath) : null,
         };
     } catch (err) {
         // Rollback path. Three states:
-        //   - overwrite + snapshot exists  → restore live dest from snapshot
-        //   - merge (no snapshot)          → cannot roll back, surface warning
-        //   - rollback itself fails        → CCFE.partial with snapshotPath
+        //   - every admitted restore has a snapshot → restore live dest
+        //   - rollback itself fails                 → CCFE.partial with snapshotPath
         // Always try to clean up the transient last so a leaked scratch
         // doesn't survive the failure.
         //
@@ -267,7 +266,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             try { await transient.cleanup(); } catch { /* best-effort */ }
         }
         throw new CrossModeConversionFailedError(err, {
-            rollback: 'merge-no-snapshot',
+            rollback: 'snapshot-missing',
             snapshotPath: null,
         });
     } finally {
