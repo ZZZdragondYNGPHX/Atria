@@ -2,14 +2,14 @@
 
 ## Status
 
-Implementation completed and validated on the task branch; integration into `main` is pending PR CI/merge.
+Implementation completed and fully validated on the task branch. PR #3 CI is green; integration into `main` is the remaining integration step.
 
 ## Task identity
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Task branch: `refactor/atria-namespace-migration`
 - Baseline: `main@06fe61ac344f9240141489608b73b4072a3b6b99`
-- Validated implementation head before PR: `6e8a046baa491b31a9854d5bd40ff835cc630e53`
+- Final validated task-branch head: `1aa9f0961a785db0b4512a1a9910981436bcc090`
 - Formal plan: `refactor/atria-namespace-migration:docs/plans/atria-namespace-migration.md`
 
 ## Goal
@@ -55,6 +55,25 @@ The migration replaced Atria-owned predecessor naming across the active product,
 
 No alias, dual-read, dual-write, fallback, compatibility global or legacy tool registration was added.
 
+### Post-PR hard-cutover audit
+
+After the initial PR was opened, a second semantic audit removed mechanically-renamed compatibility paths that still violated the formal hard-cutover plan:
+
+- Search Tools no longer imports predecessor index/anchor sidecars into FloorState.
+- Orchestrator no longer imports predecessor anchor/index state or maintains a schema-stamp migrator.
+- Memory Graph now persists only under `atri_memory_graph`, `atri_memory_graph__meta`, and `atri_memory_graph__floor_log`; its v5/v8 predecessor migration pipeline was removed.
+- Orchestrator portable/profile compatibility was reduced to the current schema: V1-V3 portable format constants, wrapped-director lifting, `tools.memory` / `tools.search` translation, `note.add/delete`, and `previous_snapshot` compatibility were removed.
+- Connection Manager's former Luker one-shot proxy-to-base-url settings migration was removed rather than renamed to Atria.
+- CEA helper tools now use the same canonical names internally and model-facing; the mechanically-renamed `atria_card_*` helper alias layer was removed.
+- Iteration-studio local/session persistence was hard-cut to Atria-owned namespaces:
+  - `atri_orchestrator_iter_studio_history`
+  - `atri_iter_studio_global_sessions`
+  - `atri_mg_schema_iter_history`
+  - `atri_mg_schema_iter_global_sessions`
+  - `atri_cea_editor_iter_sessions`
+- Orchestrator / Memory Graph / CEA settings-to-sidecar session movers and CEA predecessor-session readers were removed. Predecessor session buckets are ignored rather than copied or deleted.
+- Termux shell syntax checks were added to the permanent PR migration guard, including the compressed runtime script.
+
 ## Namespace guard
 
 `scripts/check-atria-namespace.sh` is the permanent residual gate and is invoked by Atria PR checks.
@@ -69,26 +88,25 @@ Termux compressed/runtime distribution content is scanned separately.
 
 ## Validation actually executed
 
-The migration executor completed successfully at generated implementation commit `73626c3a47ed02e840f7e599798ed165c14a8b21`, followed by CI/guard cleanup through `6e8a046baa491b31a9854d5bd40ff835cc630e53`.
+Final validation was performed on task-branch head `1aa9f0961a785db0b4512a1a9910981436bcc090`.
 
-Passed:
+PR #3 / Atria PR Checks run #63 completed successfully:
 
-- Termux Bash syntax checks
-- Atria namespace residual guard
-- frontend library build (`node docker/build-lib.js`)
-- ESLint
-- dispatch/generation targeted Jest tests
-- orchestrator targeted Jest tests
-- Memory OS / memory graph / search / context / docs targeted Jest tests
-- full Node unit suite
-- Android JVM tests
-- Android debug APK build
-- final residual scan
-- `git diff --check`
+- Atria Migration Guard: passed
+  - product identity checks
+  - `scripts/check-atria-namespace.sh`
+  - Termux / Android shell syntax checks
+  - compressed Termux runtime shell syntax check
+- frontend library build (`node docker/build-lib.js`): passed as the prerequisite step of the Node unit-test job
+- ESLint: passed
+- full Node unit suite: passed
+  - includes dispatch/generation, orchestrator, Memory OS / memory graph, search/context/docs, CEA and persistence coverage
+- Android JVM tests: passed
+- Atria Hard Cutover Inventory run #52: passed
 
-An intermediate APK validation failure was caused by the migration-only workflow omitting the existing Node.js Mobile runtime-major environment values. The validation workflow was aligned with the repository Android build workflow and the APK build then passed.
+Earlier pre-PR validation also completed the Android debug APK build and `git diff --check`.
 
-An intermediate push failure was caused by the GitHub Actions token not having permission to create/update workflow files. Workflow edits were therefore separated from the generated migration payload and applied through the repository GitHub connection.
+Intermediate CI failures during the second audit were caused by tests that still asserted predecessor migration/alias behavior. Those tests were rewritten to assert the hard-cutover contract instead; no compatibility behavior was restored to make CI pass.
 
 ## Data/config impact
 
@@ -98,4 +116,4 @@ Core SillyTavern-owned data and formats remain part of Atria and were not remove
 
 ## Integration
 
-PR and final `main` merge details will be appended after CI passes and integration completes.
+PR #3 is ready to merge after final task-branch validation. The resulting `main` merge SHA and branch-cleanup verification will be appended after integration.
