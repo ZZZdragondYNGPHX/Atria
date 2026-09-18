@@ -108,6 +108,7 @@ export function writeWorldBook({ dataRoot, handle = 'default-user', name = 'e2e-
             delay: e.delay ?? 0,
             stateConditions: Array.isArray(e.stateConditions) ? structuredClone(e.stateConditions) : [],
             stateConditionLogic: e.stateConditionLogic === 'any' ? 'any' : 'all',
+            stateActivation: e.stateActivation === true,
             stateEvents: Array.isArray(e.stateEvents) ? structuredClone(e.stateEvents) : [],
             stateEventLogic: e.stateEventLogic === 'any' ? 'any' : 'all',
             probability: 100,
