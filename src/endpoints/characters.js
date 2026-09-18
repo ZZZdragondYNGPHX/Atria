@@ -1083,6 +1083,7 @@ function convertWorldInfoToCharacterBook(name, entries) {
                     ? structuredClone(entry.stateConditions)
                     : [],
                 atria_state_condition_logic: entry.stateConditionLogic === 'any' ? 'any' : 'all',
+                atria_state_activation: entry.stateActivation === true,
                 atria_state_events: Array.isArray(entry.stateEvents)
                     ? structuredClone(entry.stateEvents)
                     : [],
