@@ -534,6 +534,7 @@ export function createSubagentDispatcher({
     chat,
     contextForNotes,
     customToolRegistry = null,
+    sharedRunState = null,
     onRuntimeEvent,
 }) {
     const runtimeParentId = runId || createLegacyWorkflowRunId();
@@ -1129,11 +1130,13 @@ export function createSubagentDispatcher({
                     // source. wiFinalizedPayload stays null —
                     // director's takeover fires after WI join, so
                     // force_activate cleanly hits NO_PAYLOAD.
-                    toolCtx.__atriaRun = {
+                    toolCtx.__atriaRun = sharedRunState || {
                         lorebookFilter: directorProfile?.lorebookFilter || { bookPattern: '', entryPattern: '' },
                         activatedEntryKeys: new Set(),
                         wiFinalizedPayload: null,
+                        abortSignal: childSignal,
                     };
+                    toolCtx.abortSignal = childSignal;
                     // Mirror director-runtime.js main-agent path:
                     // give custom tools a stable sync way to read
                     // the in-flight draft body without round-tripping
