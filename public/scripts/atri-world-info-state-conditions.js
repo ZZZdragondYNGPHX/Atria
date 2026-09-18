@@ -132,6 +132,23 @@ export function evaluateWorldInfoStateCondition(condition, providers = []) {
  * @param {'all'|'any'} logic
  * @returns {{status:'true'|'false'|'unknown',logic:'all'|'any',results:Array<object>,reason:string}}
  */
+/**
+ * Decide whether a successful state-condition evaluation is allowed to become
+ * an activation source by itself. This is the W-03 scene-persistence boundary:
+ * the provider remains the owner of scene state; World Info only observes the
+ * committed snapshot and never creates a second scene state machine.
+ *
+ * @param {object} entry
+ * @param {{status:string}|null} evaluation
+ * @returns {boolean}
+ */
+export function shouldActivateWorldInfoFromStateConditions(entry, evaluation) {
+    return entry?.stateActivation === true
+        && Array.isArray(entry?.stateConditions)
+        && entry.stateConditions.length > 0
+        && evaluation?.status === WORLD_INFO_CONDITION_RESULT.TRUE;
+}
+
 export function evaluateWorldInfoStateConditions(conditions, providers = [], logic = 'all') {
     const list = Array.isArray(conditions) ? conditions.slice(0, MAX_CONDITIONS) : [];
     const normalizedLogic = logic === 'any' ? 'any' : 'all';
