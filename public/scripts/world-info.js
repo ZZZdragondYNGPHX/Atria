@@ -1317,10 +1317,11 @@ class WorldInfoTimedEffects {
     #entries = [];
 
     /**
-     * Is this a dry run?
-     * @type {boolean}
+     * Request-local timed-effect state. Evaluation mutates this snapshot only;
+     * chat metadata changes happen later through an explicit commit.
+     * @type {{sticky: Record<string, WITimedEffect>, cooldown: Record<string, WITimedEffect>, delay: Record<string, WITimedEffect>}}
      */
-    #isDryRun = false;
+    #state = { sticky: {}, cooldown: {}, delay: {} };
 
     /**
      * Buffer for active timed effects.
@@ -1349,7 +1350,7 @@ class WorldInfoTimedEffects {
 
             const key = this.#getEntryKey(entry);
             const effect = this.#getEntryTimedEffect('cooldown', entry, true);
-            chat_metadata.timedWorldInfo.cooldown[key] = effect;
+            this.#state.cooldown[key] = effect;
             console.log(`[WI] Adding cooldown entry ${key} on ended sticky: start=${effect.start}, end=${effect.end}, protected=${effect.protected}`);
             // Set the cooldown immediately for this evaluation
             this.#buffer.cooldown.push(entry);
@@ -1369,38 +1370,33 @@ class WorldInfoTimedEffects {
 
     /**
      * Initialize the timed effects with the given messages.
+     * Extra constructor arguments are intentionally ignored for compatibility
+     * with older call sites that passed a dry-run flag.
      * @param {string[]} chat Array of chat messages
      * @param {WIScanEntry[]} entries Array of entries
-     * @param {boolean} isDryRun Whether the operation is a dry run
      */
-    constructor(chat, entries, isDryRun = false) {
+    constructor(chat, entries) {
         this.#chat = chat;
         this.#entries = entries;
-        this.#isDryRun = isDryRun;
-        this.#ensureChatMetadata();
+        this.#state = this.#createState(chat_metadata?.timedWorldInfo);
     }
 
     /**
-     * Verify correct structure of chat metadata.
+     * Normalize a metadata snapshot without mutating the live chat metadata.
+     * @param {object} raw Existing timedWorldInfo value.
+     * @returns {{sticky: Record<string, WITimedEffect>, cooldown: Record<string, WITimedEffect>, delay: Record<string, WITimedEffect>}}
      */
-    #ensureChatMetadata() {
-        if (!chat_metadata.timedWorldInfo) {
-            chat_metadata.timedWorldInfo = {};
-        }
-
-        ['sticky', 'cooldown'].forEach(type => {
-            // Ensure the property exists and is an object
-            if (!chat_metadata.timedWorldInfo[type] || typeof chat_metadata.timedWorldInfo[type] !== 'object') {
-                chat_metadata.timedWorldInfo[type] = {};
+    #createState(raw) {
+        const state = { sticky: {}, cooldown: {}, delay: {} };
+        for (const type of ['sticky', 'cooldown']) {
+            const source = raw?.[type];
+            if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+            for (const [key, value] of Object.entries(source)) {
+                if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+                state[type][key] = { ...value };
             }
-
-            // Clean up invalid entries
-            Object.entries(chat_metadata.timedWorldInfo[type]).forEach(([key, value]) => {
-                if (!value || typeof value !== 'object') {
-                    delete chat_metadata.timedWorldInfo[type][key];
-                }
-            });
-        });
+        }
+        return state;
     }
 
     /**
@@ -1445,14 +1441,14 @@ class WorldInfoTimedEffects {
      */
     #checkTimedEffectOfType(type, buffer, onEnded) {
         /** @type {[string, WITimedEffect][]} */
-        const effects = Object.entries(chat_metadata.timedWorldInfo[type]);
+        const effects = Object.entries(this.#state[type]);
         for (const [key, value] of effects) {
             console.log(`[WI] Processing ${type} entry ${key}`, value);
             const entry = this.#entries.find(x => String(this.#getEntryHash(x)) === String(value.hash));
 
             if (this.#chat.length <= Number(value.start) && !value.protected) {
                 console.log(`[WI] Removing ${type} entry ${key} from timedWorldInfo: chat not advanced`, value);
-                delete chat_metadata.timedWorldInfo[type][key];
+                delete this.#state[type][key];
                 continue;
             }
 
@@ -1460,7 +1456,7 @@ class WorldInfoTimedEffects {
             if (!entry) {
                 if (this.#chat.length >= Number(value.end)) {
                     console.log(`[WI] Removing ${type} entry from timedWorldInfo: entry not found and interval passed`, entry);
-                    delete chat_metadata.timedWorldInfo[type][key];
+                    delete this.#state[type][key];
                 }
                 continue;
             }
@@ -1468,13 +1464,13 @@ class WorldInfoTimedEffects {
             // Ignore invalid entries (not configured for timed effects)
             if (!entry[type]) {
                 console.log(`[WI] Removing ${type} entry from timedWorldInfo: entry not ${type}`, entry);
-                delete chat_metadata.timedWorldInfo[type][key];
+                delete this.#state[type][key];
                 continue;
             }
 
             if (this.#chat.length >= Number(value.end)) {
                 console.log(`[WI] Removing ${type} entry from timedWorldInfo: ${type} interval passed`, entry);
-                delete chat_metadata.timedWorldInfo[type][key];
+                delete this.#state[type][key];
                 if (typeof onEnded === 'function') {
                     onEnded(entry);
                 }
@@ -1507,10 +1503,8 @@ class WorldInfoTimedEffects {
      * Checks for timed effects on chat messages.
      */
     checkTimedEffects() {
-        if (!this.#isDryRun) {
-            this.#checkTimedEffectOfType('sticky', this.#buffer.sticky, this.#onEnded.sticky.bind(this));
-            this.#checkTimedEffectOfType('cooldown', this.#buffer.cooldown, this.#onEnded.cooldown.bind(this));
-        }
+        this.#checkTimedEffectOfType('sticky', this.#buffer.sticky, this.#onEnded.sticky.bind(this));
+        this.#checkTimedEffectOfType('cooldown', this.#buffer.cooldown, this.#onEnded.cooldown.bind(this));
         this.#checkDelayEffect(this.#buffer.delay);
     }
 
@@ -1526,7 +1520,7 @@ class WorldInfoTimedEffects {
         }
 
         const key = this.#getEntryKey(entry);
-        return chat_metadata.timedWorldInfo[type][key];
+        return this.#state[type][key];
     }
 
     /**
@@ -1542,9 +1536,9 @@ class WorldInfoTimedEffects {
 
         const key = this.#getEntryKey(entry);
 
-        if (!chat_metadata.timedWorldInfo[type][key]) {
+        if (!this.#state[type][key]) {
             const effect = this.#getEntryTimedEffect(type, entry, false);
-            chat_metadata.timedWorldInfo[type][key] = effect;
+            this.#state[type][key] = effect;
 
             console.log(`[WI] Adding ${type} entry ${key}: start=${effect.start}, end=${effect.end}, protected=${effect.protected}`);
         }
@@ -1555,7 +1549,6 @@ class WorldInfoTimedEffects {
      * @param {WIScanEntry[]} activatedEntries Entries that were activated
      */
     setTimedEffects(activatedEntries) {
-        if (this.#isDryRun) return;
         for (const entry of activatedEntries) {
             this.#setTimedEffectOfType('sticky', entry);
             this.#setTimedEffectOfType('cooldown', entry);
@@ -1572,16 +1565,12 @@ class WorldInfoTimedEffects {
         if (!this.isValidEffectType(type)) {
             return;
         }
-        if (this.#isDryRun && type !== 'delay') {
-            return;
-        }
-
         const key = this.#getEntryKey(entry);
-        delete chat_metadata.timedWorldInfo[type][key];
+        delete this.#state[type][key];
 
         if (newState) {
             const effect = this.#getEntryTimedEffect(type, entry, false);
-            chat_metadata.timedWorldInfo[type][key] = effect;
+            this.#state[type][key] = effect;
             console.log(`[WI] Adding ${type} entry ${key}: start=${effect.start}, end=${effect.end}, protected=${effect.protected}`);
         }
     }
@@ -1607,6 +1596,25 @@ class WorldInfoTimedEffects {
         }
 
         return this.#buffer[type]?.some(x => this.#getEntryHash(x) === this.#getEntryHash(entry)) ?? false;
+    }
+
+    /**
+     * Return the pending persistent timed-effect state.
+     * @returns {{sticky: Record<string, WITimedEffect>, cooldown: Record<string, WITimedEffect>}}
+     */
+    getPendingState() {
+        return {
+            sticky: Object.fromEntries(Object.entries(this.#state.sticky).map(([key, value]) => [key, { ...value }])),
+            cooldown: Object.fromEntries(Object.entries(this.#state.cooldown).map(([key, value]) => [key, { ...value }])),
+        };
+    }
+
+    /**
+     * Explicitly commit the pending state to chat metadata.
+     * Evaluation paths do not call this method.
+     */
+    commit() {
+        chat_metadata.timedWorldInfo = this.getPendingState();
     }
 
     /**
