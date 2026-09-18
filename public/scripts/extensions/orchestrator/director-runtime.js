@@ -423,7 +423,6 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
         // subAgents[i].tools.
         tools: resolveAgentToolFlags(director.mainAgent?.tools, director.tools) || {},
         customToolRegistry,
-        sharedRunState: sharedToolRunState,
     });
 
     // Resolve the cached content payload (captured by
@@ -516,6 +515,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
         // schemas (`buildSubAgentToolSchemas`) and into the ctx passed
         // to `executeLoopTool` for each sub-agent tool call.
         customToolRegistry,
+        sharedRunState: sharedToolRunState,
     });
 
     // Per-dispatch runtime state (open notes + available skills catalog)
