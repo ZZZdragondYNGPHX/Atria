@@ -1790,6 +1790,17 @@
     margin-top: 12px;
 }
 
+#agent-memory-workspace .workspace-memory-advanced-host :is(
+    #atria_rpg_memory_manual_compress,
+    #atria_rpg_memory_recompute_vectors,
+    #atria_rpg_memory_export,
+    #atria_rpg_memory_import,
+    #atria_rpg_memory_reset,
+    #atria_rpg_memory_import_file
+) {
+    display: none !important;
+}
+
 @media (max-width: 1100px) {
     #agent-memory-workspace .workspace-memory-control-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
