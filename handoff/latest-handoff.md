@@ -2,7 +2,7 @@
 
 ## Current state
 
-Atria bootstrap migration is complete and PR #1 has passed final validation. The product is a SillyTavern-based modified product and is independent from the former Luker product line, not from SillyTavern itself.
+Atria bootstrap migration is complete. PR #1 established the product line, and PR #2 completed squash-safe temporary-branch cleanup. The product is a SillyTavern-based modified product and is independent from the former Luker product line, not from SillyTavern itself.
 
 ## Branch roles
 
@@ -39,3 +39,10 @@ See `features/bootstrap-migration.md` for the detailed migration record.
 ## Integration result
 
 - PR #1 merged into `main` with squash commit `45121d344873aea7bbc8892f9b8c30633b6b98eb`.
+
+
+## Current integration point
+
+- Current post-bootstrap `main`: `06fe61ac344f9240141489608b73b4072a3b6b99`
+- Long-lived remote branches: `main`, `docs`, `luker`, `vanilla`
+- Bootstrap temporary branches have been deleted after successful integration.
