@@ -1,26 +1,28 @@
-# Copilot Instructions for ZZZdragondYNGPHX/Luker
+# Copilot Instructions for ZZZdragondYNGPHX/Atria
 
-This fork is maintained independently. Before proposing or editing code, read from `custom-release`:
+Atria is a SillyTavern-based modified product and the successor product line to Luker.
 
-- `AGENTS.md`
-- `AI_HANDOFF.md`
-- `FORK_MAINTENANCE.md`
-- `NEW_BUG_PROMPT.md` for bug work
-- `NEW_FEATURE_PROMPT.md` for feature work
+Before editing code:
 
-Core rules:
+- read `AGENTS.md` and `FORK_MAINTENANCE.md` from current `main`;
+- read `handoff/latest-handoff.md` from the `docs` branch;
+- verify the live `main` HEAD.
 
-- `custom-release` is the authoritative personal development and integration branch.
-- New unrelated bugs start from the latest `custom-release` on a fresh `fix/<bug-name>` branch.
-- New unrelated features start from the latest `custom-release` on a fresh `feat/<feature-name>` branch.
-- Daily delivery targets desktop browsers and phone browsers served by Termux. Do not build APKs unless explicitly requested; the fork APK workflow is manual-only.
-- Preserve existing private behavior already integrated into `custom-release` unless the task intentionally changes it.
-- One independent bug/feature per branch.
-- `release` is only an optional upstream-reference/mirror branch; do not use it as the normal development base.
-- Do not require upstream synchronization or official Android Actions verification before ordinary private development.
-- `funnycups/Luker` is reference material unless the task explicitly involves upstream comparison, porting, refresh, compatibility analysis, or contribution.
-- Upstream PRs are optional and only prepared when explicitly requested.
-- For bugs, diagnose root cause before patching.
-- For features, inspect existing fork architecture and reuse existing infrastructure before introducing new state/services/UI/persistence paths.
-- Prefer minimal compatible changes and preserve existing config/data formats unless migration is actually required.
-- Report the `custom-release` baseline SHA, branch, changed files, checks actually run, resulting commit, integration status, and private-behavior dependencies after each task.
+Branch rules:
+
+- develop from `main`;
+- use `feat/*` for features, `fix/*` for bugs, `refactor/*` for refactors, and `chore/*` for maintenance;
+- `vanilla` is SillyTavern upstream reference only;
+- `luker` is legacy Luker reference only;
+- completed tasks are documented on `docs`, merged into `main`, verified, then their temporary branch is deleted.
+
+Engineering rules:
+
+- diagnose/design before editing;
+- preserve unrelated Atria behavior and persisted formats;
+- reuse current architecture;
+- use upstream/reference branches only when materially relevant;
+- product identity is `Atria`;
+- prefer concise `atri_*` names for new Atria-owned code;
+- compatibility-sensitive legacy Luker identifiers may remain until a dedicated migration handles them;
+- run and report only checks actually executed.
