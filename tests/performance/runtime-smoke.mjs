@@ -88,7 +88,7 @@ try {
         applyProfileWorldInfoFilter(payload, { bookPattern: '^atri-private-fixture$' });
         const firstCommit = await wi.commitWorldInfoEvaluation(resolution);
         const metadataAfterCommit = structuredClone(core.chat_metadata);
-        const secondCommit = await wi.commitWorldInfoEvaluation(resolution);
+        const secondCommit = await wi.commitWorldInfoEvaluation(structuredClone(resolution));
         core.eventSource.removeListener(core.event_types.WORLD_INFO_ACTIVATED, onActivated);
         const sources = payload.worldInfoResolution.worldInfoProvenance.worldInfoBeforeEntries;
         const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
@@ -129,6 +129,7 @@ try {
     assert.equal(result.firstCommit.activatedEntries, 2);
     assert.equal(result.secondCommit.committed, false);
     assert.equal(result.secondCommit.reason, 'already_committed');
+    assert.equal(typeof result.firstCommit.committed, 'boolean');
     assert.equal(result.activationEvents, 1);
     assert.equal(result.lastActivatedCount, 2);
     assert.equal(Object.keys(result.metadataAfterCommit.timedWorldInfo?.sticky || {}).length, 2);
