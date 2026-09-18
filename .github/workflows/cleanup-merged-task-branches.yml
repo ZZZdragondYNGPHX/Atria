@@ -1,0 +1,29 @@
+name: Cleanup merged task branches
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Delete fully merged temporary branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+          git branch -r --merged origin/main |
+            sed 's#^[[:space:]]*origin/##' |
+            awk '/^(feat|fix|refactor|chore)\//' |
+            while read -r branch; do
+              [ -n "$branch" ] || continue
+              echo "Deleting merged task branch: $branch"
+              git push origin --delete "$branch" || true
+            done

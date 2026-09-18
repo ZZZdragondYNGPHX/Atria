@@ -1,104 +1,57 @@
-# Fork Maintenance
+# Atria Maintenance
 
-This fork is maintained as an independent personal fork. The normal development baseline is `custom-release`.
+## Product model
 
-## Daily delivery and verification
-
-- Desktop: run Luker locally and open it in a browser.
-- Phone: run Luker through the existing Termux launcher and open it in the phone browser.
-- Do not build or upload APKs for normal fixes/features. The fork APK workflow is manual-only;
-  use it only for an explicit APK request. Keep the existing Android code, not an automatic build gate.
-- Run targeted tests and desktop/mobile-width browser checks. Distinguish those checks from
-  a real Termux-device or real-model run; never report unexecuted acceptance as passed.
-
-## AI / automation entry point
-
-Any AI assistant, coding agent, or automation working on this fork should first read from `custom-release`:
-
-1. `AGENTS.md`
-2. `AI_HANDOFF.md`
-3. this file
-4. `NEW_BUG_PROMPT.md` for bug fixes, or `NEW_FEATURE_PROMPT.md` for new features
-5. `.github/copilot-instructions.md` when applicable
-
-A new session that only receives the repository URL should explicitly fetch these files from `custom-release` before editing code.
+Atria is maintained as a SillyTavern-based modified product. The active product line lives in `ZZZdragondYNGPHX/Atria`; the old Luker repository is legacy reference material.
 
 ## Branch roles
 
-- `custom-release`: authoritative personal development and integration branch. It contains the current fork behavior, verified fixes/features, and fork-only AI maintenance documentation.
-- `fix/*`: one bug per branch. New bug-fix branches start from the latest `custom-release` unless the user explicitly chooses another base.
-- `feat/*`: one feature per branch. New feature branches start from the latest `custom-release` unless the user explicitly chooses another base.
-- `release`: optional upstream-reference/mirror branch. It may track `funnycups/Luker:release`, but ordinary private development does not depend on it being synchronized.
+- `main`: authoritative Atria integration branch.
+- `docs`: permanent development documentation and latest handoff.
+- `vanilla`: selected SillyTavern upstream snapshot; refresh only when needed.
+- `luker`: selected legacy Luker snapshot; refresh only when needed.
+- `feat/*`, `fix/*`, `refactor/*`, `chore/*`: temporary task branches created from current `main`.
 
-## Core development model
+## Normal development flow
 
-The fork is no longer maintained around upstream-first contribution flow.
+1. Verify current `main`.
+2. Read `AGENTS.md` and the latest handoff from `docs:handoff/latest-handoff.md`.
+3. Create one temporary task branch from `main`.
+4. Implement and validate the isolated task.
+5. Write the completed implementation record to `docs`.
+6. Merge into `main`.
+7. Verify integration.
+8. Delete the completed task branch.
 
-For normal work:
+## Reference branches
 
-1. Read the maintenance documents from `custom-release`.
-2. Verify the current `custom-release` HEAD and inspect relevant recent changes.
-3. Create a fresh `fix/*` or `feat/*` branch from that HEAD.
-4. Implement and test the isolated change.
-5. Merge the verified work back into `custom-release` when the user wants it in the daily build.
-6. Update `AI_HANDOFF.md` when the change creates long-term architectural, behavioral, migration, or maintenance context that future sessions should know.
+`vanilla` and `luker` are reference-only during normal work.
 
-Upstream comparison is optional and task-driven, not a prerequisite for every bug or feature.
+Use `vanilla` for SillyTavern upstream comparison, compatibility work, or deliberate upstream refreshes. Use `luker` for migration archaeology or legacy behavior comparison. Never blindly merge either reference branch into `main`.
 
-## Workflow for every new bug
+The repository provides a manual reference-sync workflow. Refresh reference branches only when needed.
 
-1. Use the latest `ZZZdragondYNGPHX/Luker:custom-release` as the normal baseline.
-2. Inspect whether the bug is caused by existing fork behavior, a previous private patch, or inherited upstream code.
-3. Create a fresh `fix/<short-bug-name>` from `custom-release`.
-4. Reproduce or establish the failure path and identify root cause before patching.
-5. Make the smallest compatible change and test it.
-6. Keep the fix isolated and traceable.
-7. Merge it back into `custom-release` after it is sufficiently understood and checked for the user's use case.
-8. Update long-term handoff notes when needed.
+## Verification
 
-Only inspect or compare upstream when doing so helps diagnose the bug, find an existing upstream fix, assess compatibility, or prepare a deliberate upstream port/PR.
+Select checks based on the touched surface:
 
-Full bug instructions live in `NEW_BUG_PROMPT.md`.
+- JavaScript/frontend/backend: syntax, lint, targeted tests, unit/regression tests.
+- Runtime/storage/memory/orchestration: relevant unit and integration coverage.
+- Android: Android JVM tests for Kotlin/package changes; APK build when delivery/build behavior changes.
+- CI/build changes: validate the actual workflow path when practical.
 
-## Workflow for every new feature
+Do not describe unexecuted checks as passed.
 
-1. Use the latest `ZZZdragondYNGPHX/Luker:custom-release` as the normal baseline.
-2. Inspect the fork's current architecture and any private behavior the feature should integrate with.
-3. Create a fresh `feat/<short-feature-name>` from `custom-release`.
-4. Identify the correct module, state, service, UI, API, and persistence paths before coding.
-5. Reuse existing infrastructure and prefer a minimal coherent implementation over duplicate subsystems.
-6. Test the feature, including desktop Web/mobile Termux and persistence/migration implications when relevant.
-7. Keep the feature isolated and traceable.
-8. Merge it back into `custom-release` after it is sufficiently understood and checked for the user's use case.
-9. Update long-term handoff notes when needed.
+## Documentation
 
-Only inspect or compare upstream when it provides useful implementation context or when the user explicitly wants compatibility, porting, syncing, or an upstream contribution.
+The `docs` branch is the durable development knowledge base. At the end of a completed task, record:
 
-Full feature instructions live in `NEW_FEATURE_PROMPT.md`.
+- task goal and branch;
+- baseline and resulting commit/PR;
+- implementation summary;
+- architecture or compatibility decisions;
+- tests/checks actually run;
+- known limitations or follow-up;
+- migration/data/config impact.
 
-## Upstream refreshes
-
-`funnycups/Luker` remains a reference source, not the day-to-day development base.
-
-When deliberately refreshing this fork from upstream:
-
-- inspect the incoming upstream range first;
-- identify conflicts with private changes;
-- preserve fork-specific behavior unless the user chooses to replace it;
-- avoid resetting or recreating `custom-release` from upstream;
-- treat removal of a private patch as a conscious migration decision, not automatic cleanup;
-- test the integrated result before treating the refresh as complete.
-
-The `release` branch may be updated as a convenience mirror, but keeping it synchronized is not a blocker for normal `fix/*` or `feat/*` work.
-
-## Rules
-
-- `custom-release` is the source of truth for normal personal development.
-- Every unrelated `fix/*` or `feat/*` starts from the latest `custom-release` by default.
-- Do not mix unrelated bugs/features in one branch.
-- Do not start unrelated work from an old `fix/*` or `feat/*` branch.
-- Do not develop directly on `release`.
-- Never merge `custom-release` into `release` merely to preserve a mirror relationship.
-- Do not discard private behavior just because upstream differs.
-- Upstream PRs are optional and should only be prepared when the user explicitly asks.
-- Report the exact branch, baseline commit, changed files, checks actually run, and resulting commit for each task.
+Long-term handoff state belongs in `docs:handoff/latest-handoff.md`, not in stale task branches.

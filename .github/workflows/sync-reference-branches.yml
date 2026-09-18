@@ -1,0 +1,51 @@
+name: Sync reference branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Reference source to refresh
+        required: true
+        type: choice
+        options: [vanilla, luker]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Refresh selected reference branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ "${{ inputs.source }}" = "vanilla" ]; then
+            remote_url="https://github.com/SillyTavern/SillyTavern.git"
+            remote_ref="release"
+            target="vanilla"
+          else
+            remote_url="https://github.com/ZZZdragondYNGPHX/Luker.git"
+            remote_ref="custom-release"
+            target="luker"
+          fi
+
+          git remote add reference "$remote_url"
+          git fetch --no-tags reference "$remote_ref"
+          git switch -C reference-transport FETCH_HEAD
+
+          # The repository token cannot import foreign workflow files. Reference
+          # branches intentionally track source code while excluding executable
+          # upstream workflows.
+          if [ -d .github/workflows ]; then
+            git rm -r .github/workflows
+            git commit -m "chore: omit executable workflows from reference transport"
+          fi
+
+          git push origin HEAD:"$target" --force

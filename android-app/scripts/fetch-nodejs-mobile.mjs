@@ -65,7 +65,7 @@ function extractArchive(archivePath, extractDir) {
 function requestJson(url) {
     return new Promise((resolve, reject) => {
         const headers = {
-            'User-Agent': 'luker-android-runtime-fetch',
+            'User-Agent': 'atria-android-runtime-fetch',
             'Accept': 'application/vnd.github+json',
         };
         if (token) {
@@ -203,7 +203,7 @@ function parseNodeMajorFromHeader(nodeVersionHeaderPath) {
 
 function download(url, target) {
     return new Promise((resolve, reject) => {
-        const headers = { 'User-Agent': 'luker-android-runtime-fetch' };
+        const headers = { 'User-Agent': 'atria-android-runtime-fetch' };
         if (token) {
             headers.Authorization = `Bearer ${token}`;
         }
@@ -314,7 +314,7 @@ async function main() {
         ? runtimeMajorOverride
         : (parseNodeMajor(releaseTag) ?? parseNodeMajor(target.assetName));
 
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-nodejs-mobile-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-nodejs-mobile-'));
     const archivePath = path.join(tempRoot, target.assetName);
     const extractDir = path.join(tempRoot, 'extract');
     fs.mkdirSync(extractDir, { recursive: true });

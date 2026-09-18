@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LukerAndroid"
+rootProject.name = "AtriaAndroid"
 include(":app")

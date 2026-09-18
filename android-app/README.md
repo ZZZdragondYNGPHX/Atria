@@ -1,6 +1,6 @@
-# Luker Android App (Backend-in-App)
+# Atria Android App (Backend-in-App)
 
-This directory contains an Android shell app that runs Luker backend locally on the phone and opens it in a WebView.
+This directory contains an Android shell app that runs Atria backend locally on the phone and opens it in a WebView.
 
 ## Architecture
 
@@ -73,7 +73,7 @@ bash android-app/scripts/build-android-apk.sh release
 - No in-app APK auto-update is implemented.
 - Recommend GitHub Release distribution with user-side APK overlay install.
 - App data stays in app-specific storage and survives overlay install.
-- Preferred persistent root is `Android/data/<package>/files/luker-data`.
+- Preferred persistent root is `Android/data/<package>/files/atria-data`.
 - Server plugins and global third-party extensions live directly under that root:
   - `plugins/`
   - `extensions/third-party/`
