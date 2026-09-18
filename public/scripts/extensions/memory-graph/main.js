@@ -4416,8 +4416,56 @@ function buildRecallFinalizeInputTail({
     ].join('\n');
 }
 
+function getMemoryWorkspaceStatus() {
+    const settings = getSettings();
+    return {
+        memoryOsEnabled: isMemoryOsEnabled(settings),
+        enabled: Boolean(settings.enabled),
+        recallEnabled: Boolean(settings.recallEnabled),
+        autoExtractionEnabled: settings.autoExtractionEnabled !== false,
+        autoCompressionEnabled: settings.autoCompressionEnabled !== false,
+        recallMethod: String(settings.recallMethod || 'llm'),
+        updateEvery: Math.max(1, Number(settings.updateEvery) || defaultSettings.updateEvery),
+    };
+}
+
+async function setMemoryWorkspaceControl(name, value) {
+    const settings = getSettings();
+    const enabled = Boolean(value);
+    if (name === 'memoryOsEnabled') {
+        settings.memoryOsEnabled = enabled;
+        latestRecallSnapshot = null;
+        await stopMemoryRuntimeWork();
+    } else if (name === 'enabled') {
+        settings.enabled = enabled;
+        syncGenerationVisibleHistoryRuntimeRegexScripts();
+        await syncMemoryLorebookActivation(getContext(), settings);
+        if (enabled) await syncPersistentProjectionForCurrentChat(getContext());
+        else {
+            await stopMemoryRuntimeWork();
+            updateUiStatus(i18n('Memory disabled, cleared memory lorebook injections.'));
+        }
+    } else if (name === 'recallEnabled') {
+        settings.recallEnabled = enabled;
+    } else if (name === 'autoExtractionEnabled') {
+        settings.autoExtractionEnabled = enabled;
+    } else if (name === 'autoCompressionEnabled') {
+        settings.autoCompressionEnabled = enabled;
+    } else if (name === 'recallMethod') {
+        const method = String(value || '').trim();
+        if (!['llm', 'rag'].includes(method)) throw new Error('Invalid recall method');
+        settings.recallMethod = method;
+    } else {
+        throw new Error(`Unknown Memory Workspace control: ${name}`);
+    }
+    saveSettingsDebounced();
+    return getMemoryWorkspaceStatus();
+}
+
 export function getMemoryWorkspacePorts(context) {
     return {
+        getStatus: () => getMemoryWorkspaceStatus(),
+        setControl: (name, value) => setMemoryWorkspaceControl(name, value),
         load: () => sourceLifecycle.retrievalSnapshot(context),
         inspect: async snapshot => (await import('./inspector-compute.js')).computeInspector(snapshot),
         correct: (command, snapshot) => sourceLifecycle.correct(context, command, snapshot),
