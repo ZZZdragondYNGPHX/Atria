@@ -89,6 +89,15 @@ try {
         const firstCommit = await wi.commitWorldInfoEvaluation(resolution);
         const metadataAfterCommit = structuredClone(core.chat_metadata);
         const secondCommit = await wi.commitWorldInfoEvaluation(structuredClone(resolution));
+        const staleResolution = await core.simulateWorldInfoActivation({
+            chatForWI: ['fixture'],
+            maxContext: 8192,
+            dryRun: true,
+        });
+        staleResolution.worldInfoCommitScope = { chatId: '__stale_chat_scope__' };
+        const metadataBeforeStaleCommit = structuredClone(core.chat_metadata);
+        const staleCommit = await wi.commitWorldInfoEvaluation(staleResolution);
+        const metadataAfterStaleCommit = structuredClone(core.chat_metadata);
         core.eventSource.removeListener(core.event_types.WORLD_INFO_ACTIVATED, onActivated);
         const sources = payload.worldInfoResolution.worldInfoProvenance.worldInfoBeforeEntries;
         const attribution = createWorldInfoDispatchAttribution(payload.worldInfoResolution.worldInfoProvenance);
@@ -116,7 +125,8 @@ try {
         return { before, after: payload.worldInfoBeforeEntries, aggregate: payload.worldInfoString,
             sources, attribution, retainedDuringWrite, retainedAfterWrite, wireSnapshot, isolatedClone,
             metadataBeforeEvaluation, metadataAfterEvaluation, metadataAfterCommit,
-            firstCommit, secondCommit, activationEvents, lastActivatedCount };
+            firstCommit, secondCommit, staleCommit, activationEvents, lastActivatedCount,
+            metadataBeforeStaleCommit, metadataAfterStaleCommit };
     });
     assert.deepEqual(result.before, ['RENDERED_FIXTURE_BODY', 'RENDERED_FIXTURE_BODY']);
     assert.deepEqual(result.after, ['RENDERED_FIXTURE_BODY']);
@@ -129,6 +139,9 @@ try {
     assert.equal(result.firstCommit.activatedEntries, 2);
     assert.equal(result.secondCommit.committed, false);
     assert.equal(result.secondCommit.reason, 'already_committed');
+    assert.equal(result.staleCommit.committed, false);
+    assert.equal(result.staleCommit.reason, 'scope_changed');
+    assert.deepEqual(result.metadataAfterStaleCommit, result.metadataBeforeStaleCommit);
     assert.equal(typeof result.firstCommit.committed, 'boolean');
     assert.equal(result.activationEvents, 1);
     assert.equal(result.lastActivatedCount, 2);
