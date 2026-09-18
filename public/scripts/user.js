@@ -223,30 +223,30 @@ async function openLogsViewer() {
     installFrontendLogCapture();
     const canViewServerLogs = !accountsEnabled || isAdmin();
     const template = $(`
-        <div class="userBackupManager flex-container flexFlowColumn flexNoGap">
+        <div class="accountLogsViewer flex-container flexFlowColumn flexNoGap">
             <h3 class="marginBot5">${t`Logs`}</h3>
-            <div class="backupActionRow flex-container flexGap10 marginBot10">
-                <label class="checkbox_label backupRestoreModeLabel logSourceLabel">
+            <div class="accountLogsActionRow flex-container flexGap10 marginBot10">
+                <label class="checkbox_label accountLogsFieldLabel logSourceLabel">
                     <span>${t`Log source`}</span>
                     <select class="serverLogsSource text_pole">
                         ${canViewServerLogs ? `<option value="server">${t`Server`}</option>` : ''}
                         <option value="frontend">${t`Frontend`}</option>
                     </select>
                 </label>
-                <label class="checkbox_label backupRestoreModeLabel logFilterLabel">
+                <label class="checkbox_label accountLogsFieldLabel logFilterLabel">
                     <span>${t`Start time`}</span>
                     <input type="datetime-local" class="serverLogsStartTime text_pole" step="60">
                 </label>
-                <label class="checkbox_label backupRestoreModeLabel logFilterLabel">
+                <label class="checkbox_label accountLogsFieldLabel logFilterLabel">
                     <span>${t`End time`}</span>
                     <input type="datetime-local" class="serverLogsEndTime text_pole" step="60">
                 </label>
-                <label class="checkbox_label backupRestoreModeLabel logFilterLabel">
+                <label class="checkbox_label accountLogsFieldLabel logFilterLabel">
                     <span>${t`Max entries`}</span>
                     <input type="number" class="serverLogsLimit text_pole" min="1" max="${MAX_LOG_VIEW_LIMIT}" step="50" value="${DEFAULT_LOG_VIEW_LIMIT}">
                 </label>
             </div>
-            <div class="backupActionRow flex-container flexGap10 marginBot10">
+            <div class="accountLogsActionRow flex-container flexGap10 marginBot10">
                 <div class="serverLogsRefreshButton menu_button menu_button_icon">
                     <i class="fa-fw fa-solid fa-rotate"></i>
                     <span>${t`Refresh`}</span>
@@ -259,13 +259,13 @@ async function openLogsViewer() {
                     <i class="fa-fw fa-solid fa-trash"></i>
                     <span>${t`Clear`}</span>
                 </div>
-                <label class="checkbox_label backupRestoreModeLabel">
+                <label class="checkbox_label accountLogsFieldLabel">
                     <input type="checkbox" class="serverLogsAutoRefresh" checked>
                     <span>${t`Auto refresh`}</span>
                 </label>
             </div>
-            <div class="backupActionRow flex-container flexGap10 marginBot10">
-                <label class="checkbox_label backupRestoreModeLabel logFilterLabel wide100p">
+            <div class="accountLogsActionRow flex-container flexGap10 marginBot10">
+                <label class="checkbox_label accountLogsFieldLabel logFilterLabel wide100p">
                     <span>${t`Search`}</span>
                     <input type="search" class="serverLogsSearch text_pole" placeholder="${t`Search loaded logs`}">
                 </label>
