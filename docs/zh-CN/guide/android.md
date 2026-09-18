@@ -10,7 +10,7 @@ Atria 提供了 Android APK 版本，让你可以直接在手机上运行 Atria�
 
 前往 GitHub Releases 页面下载最新版 APK：
 
-👉 [https://github.com/funnycups/Atria/releases/latest](https://github.com/funnycups/Atria/releases/latest)
+👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
 
 下载 `.apk` 文件后，在手机上打开并按照系统提示完成安装。
 

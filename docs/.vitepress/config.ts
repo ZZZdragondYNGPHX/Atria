@@ -652,7 +652,7 @@ export default defineConfig({
     siteTitle: 'Atria',
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/funnycups/Atria' },
+      { icon: 'github', link: 'https://github.com/ZZZdragondYNGPHX/Atria' },
     ],
 
     search: {

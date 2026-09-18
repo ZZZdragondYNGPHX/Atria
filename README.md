@@ -8,7 +8,7 @@ Atria succeeds the former **Atria** product line. The project remains intentiona
 
 - `main` — active Atria product line.
 - `vanilla` — SillyTavern upstream reference snapshot; update only when upstream comparison/synchronization is needed.
-- `atria` — legacy Atria reference snapshot; update only when migration/reference work is needed.
+- `luker` — legacy Luker reference snapshot; update only when migration/reference work is needed.
 - `docs` — long-lived planning, architecture, handoff and completed-work documentation.
 - `feat/*`, `fix/*`, `refactor/*`, `chore/*` — temporary task branches.
 

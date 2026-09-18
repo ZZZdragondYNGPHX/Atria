@@ -19,7 +19,7 @@
 ### 1. 複製儲存庫
 
 ```bash
-git clone https://github.com/funnycups/Atria.git
+git clone https://github.com/ZZZdragondYNGPHX/Atria.git
 cd Atria
 ```
 
@@ -108,7 +108,7 @@ Atria 提供 Android APP，你可以直接在手機上執行 Atria，無需依�
 
 前往 GitHub Release 頁面下載最新版 APK：
 
-👉 [https://github.com/funnycups/Atria/releases/latest](https://github.com/funnycups/Atria/releases/latest)
+👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
 
 下載並安裝 APK 後，開啟應用即可直接使用。
 

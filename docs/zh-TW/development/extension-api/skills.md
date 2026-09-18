@@ -20,7 +20,7 @@ async function init(ctx) {
 }
 ```
 
-CardApp ctx 介面是底層同一組函式的薄包裝 —— 呼叫簽名與返回形狀相同（遵循 Atria 的 [API 對等約定](https://github.com/funnycups/Atria/blob/release/CLAUDE.md)）。
+CardApp ctx 介面是底層同一組函式的薄包裝 —— 呼叫簽名與返回形狀相同（遵循 Atria 的 [API 對等約定](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/development/extension-api/index.md)）。
 
 ## scope 形狀
 

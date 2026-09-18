@@ -19,7 +19,7 @@ Best for users who want to manage and update manually.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/funnycups/Atria.git
+git clone https://github.com/ZZZdragondYNGPHX/Atria.git
 cd Atria
 ```
 
@@ -108,7 +108,7 @@ Atria provides an Android app that lets you run Atria directly on your phone wit
 
 Download the latest APK from the GitHub Releases page:
 
-👉 [https://github.com/funnycups/Atria/releases/latest](https://github.com/funnycups/Atria/releases/latest)
+👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
 
 Download and install the APK, then open the app to start using it right away.
 

@@ -10,6 +10,10 @@ if git grep -n -I -E "${pattern}" -- \
   ':!docs/**' \
   ':!AGENTS.md' \
   ':!FORK_MAINTENANCE.md' \
+  ':!README.md' \
+  ':!NEW_BUG_PROMPT.md' \
+  ':!NEW_FEATURE_PROMPT.md' \
+  ':!.github/copilot-instructions.md' \
   ':!.github/workflows/sync-reference-branches.yml'
 then
   echo "Unexpected legacy product namespace remains in active Atria code."

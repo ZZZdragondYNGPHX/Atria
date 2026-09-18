@@ -59,7 +59,7 @@ Atria's importer auto-recognizes subdirectories like `characters/`, `chats/`, `w
 
 ### 2. Install the Atria APK and trigger the first-launch wizard
 
-Download the latest APK from [GitHub Releases](https://github.com/funnycups/Atria/releases/latest).
+Download the latest APK from [GitHub Releases](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest).
 
 The **first time you open** Atria, a **"Welcome to Atria!"** dialog appears. The top of the dialog has a Language selector. The middle has a **"Migrate from SillyTavern"** block with three side-by-side buttons:
 

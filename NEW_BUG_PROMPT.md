@@ -9,7 +9,7 @@ Repository: `ZZZdragondYNGPHX/Atria`
 3. Verify the live `main` HEAD and create a fresh `fix/<short-name>` branch from it.
 4. Reproduce or establish the failure path and identify root cause before editing.
 5. Inspect existing Atria behavior and tests in the affected subsystem.
-6. Consult `vanilla` only if SillyTavern upstream comparison is useful; consult `atria` only for legacy/migration context.
+6. Consult `vanilla` only if SillyTavern upstream comparison is useful; consult `luker` only for legacy/migration context.
 7. Make the smallest compatible fix, preserving unrelated behavior and persisted formats.
 8. Run relevant targeted checks and broader lint/unit/build checks appropriate to the change.
 9. Record the completed fix in the `docs` branch.

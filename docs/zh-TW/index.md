@@ -11,7 +11,7 @@ hero:
       link: /zh-TW/guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/funnycups/Atria
+      link: https://github.com/ZZZdragondYNGPHX/Atria
 
 features:
   - icon: 🧠

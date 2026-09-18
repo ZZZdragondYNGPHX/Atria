@@ -10,7 +10,7 @@ After installing the APK, opening the app displays the full Atria interface — 
 
 Download the latest APK from the GitHub Releases page:
 
-👉 [https://github.com/funnycups/Atria/releases/latest](https://github.com/funnycups/Atria/releases/latest)
+👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
 
 Download the `.apk` file, then open it on your phone and follow the system prompts to complete installation.
 

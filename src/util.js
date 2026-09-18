@@ -180,7 +180,7 @@ export async function checkRemoteVersion() {
             try {
                 remoteTags = await git.listRemote(['--tags', 'origin']);
             } catch {
-                const remoteUrl = String(process.env.ATRIA_UPDATE_REMOTE || 'https://github.com/funnycups/Atria.git').trim();
+                const remoteUrl = String(process.env.ATRIA_UPDATE_REMOTE || 'https://github.com/ZZZdragondYNGPHX/Atria.git').trim();
                 if (remoteUrl) {
                     try {
                         remoteTags = await simpleGit().listRemote(['--tags', remoteUrl]);

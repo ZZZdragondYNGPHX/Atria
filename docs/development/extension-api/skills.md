@@ -20,7 +20,7 @@ async function init(ctx) {
 }
 ```
 
-The CardApp ctx surface is a thin wrapper around the same underlying functions — call signatures and return shapes are identical (per Atria's [API parity convention](https://github.com/funnycups/Atria/blob/release/CLAUDE.md)).
+The CardApp ctx surface is a thin wrapper around the same underlying functions — call signatures and return shapes are identical (per Atria's [API parity convention](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/development/extension-api/index.md)).
 
 ## Scope shapes
 

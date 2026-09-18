@@ -23,7 +23,7 @@ Atria is a fork of SillyTavern focused on cleaner API design and stronger extens
 - Backend-owned generation lifecycle (including reconnect-safe persistence and active-output recovery behavior).
 - Plugin-first helpers via `getContext()` and generation world-info hooks.
 - Built-in `Orchestrator` and `Memory` plugins.
-- Plugin/API migration guide: [docs/atria-api-migration.md](https://github.com/funnycups/Atria/blob/release/docs/atria-api-migration.md)
+- Plugin/API migration guide: [docs/development/extension-api/index.md](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/development/extension-api/index.md)
 
 SillyTavern provides a single unified interface for many LLM APIs (KoboldAI/CPP, Horde, NovelAI, Ooba, Tabby, OpenAI, OpenRouter, Claude, Mistral and more), a mobile-friendly layout, Visual Novel Mode, Automatic1111 & ComfyUI API image generation integration, TTS, WorldInfo (lorebooks), customizable UI, auto-translate, more prompt options than you'd ever want or need, and endless growth potential via third-party extensions.
 

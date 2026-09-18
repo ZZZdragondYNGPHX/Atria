@@ -9,7 +9,7 @@ Repository: `ZZZdragondYNGPHX/Atria`
 3. Verify the live `main` HEAD and create a fresh `feat/<short-name>` branch.
 4. Inspect the owning module, state/service/API/UI/persistence path, relevant tests, and existing Atria-specific behavior before coding.
 5. Reuse existing architecture rather than creating duplicate subsystems.
-6. Consult `vanilla` only when SillyTavern upstream behavior is relevant; consult `atria` only for legacy/migration context.
+6. Consult `vanilla` only when SillyTavern upstream behavior is relevant; consult `luker` only for legacy/migration context.
 7. New Atria-owned modules should prefer concise `atri_*` naming where practical.
 8. Preserve existing data/config compatibility unless a migration is deliberately designed.
 9. Run targeted checks followed by lint/unit/build/regression checks appropriate to the feature.

@@ -19,7 +19,7 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/funnycups/Atria.git
+git clone https://github.com/ZZZdragondYNGPHX/Atria.git
 cd Atria
 ```
 
@@ -108,7 +108,7 @@ Atria 提供安卓 APP，你可以直接在手机上运行 Atria，无需依赖�
 
 前往 GitHub Release 页面下载最新版 APK：
 
-👉 [https://github.com/funnycups/Atria/releases/latest](https://github.com/funnycups/Atria/releases/latest)
+👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
 
 下载并安装 APK 后，打开应用即可直接使用。
 

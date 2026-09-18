@@ -59,7 +59,7 @@ Atria 的导入逻辑会自动识别 ZIP 里 `characters/`、`chats/`、`worlds/
 
 ### 2. 安装 Atria APK 并触发首次启动向导
 
-从 [GitHub Releases](https://github.com/funnycups/Atria/releases/latest) 下载安装最新 APK。
+从 [GitHub Releases](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest) 下载安装最新 APK。
 
 **首次打开** Atria 会弹出标题为 **「欢迎来到 Atria！」** 的引导窗口。窗口顶部可以选界面语言（Language，默认英文，建议先切到「简体中文」，下面的按钮就会变中文），中间是一块 **「从 SillyTavern 迁移」**，列出三个并排按钮：
 
