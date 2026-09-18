@@ -164,7 +164,8 @@ try {
     await agentInspector.getByLabel('API profile', { exact: true }).selectOption('');
     await agentInspector.getByRole('button', { name: 'Save', exact: true }).click();
     assert.deepEqual(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.agents[0].tools), []);
-    assert.equal(await workspace.getByLabel('API profile', { exact: true }).inputValue(), '');
+    assert.equal(await agentInspector.getByLabel('API profile', { exact: true }).inputValue(), '');
+    await agentInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     page.once('dialog', dialog => dialog.accept('Named stage'));
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 2);
