@@ -5,8 +5,8 @@
 // under default-user/, then drives the User Profile → Storage Inspector
 // popup entirely through real DOM gestures:
 //
-//   1. Open Storage Inspector via #user-settings-button → #account_button
-//      → .userStorageInspectorButton.
+//   1. Open Storage Management via #user-settings-button → #account_button
+//      → .userStorageManagementButton.
 //   2. Verify L1 shows the stacked bar + at least the categories that our
 //      fixture populates.
 //   3. Verify leaf categories do not expose invalid deeper navigation.
@@ -54,7 +54,7 @@ test.describe('Storage Inspector · self drill-down', () => {
         await awaitMainUI(page, server.baseURL);
 
         // Open user-settings drawer, click Account (#account_button) to
-        // launch the User Profile popup, then the Storage Inspector button
+        // launch the User Profile popup, then the Storage Management button
         // inside it.
         const drawerClosed = await page.locator('#user-settings-button .drawer-icon.closedIcon').count().then(n => n > 0);
         if (drawerClosed) {
@@ -66,9 +66,9 @@ test.describe('Storage Inspector · self drill-down', () => {
         }
         await page.locator('#account_button').click();
         // User Profile popup is a callGenericPopup TEXT modal — wait for
-        // its Storage Inspector button to be visible.
+        // its Storage Management button to be visible.
         const profilePopup = page.locator('dialog.popup[open]').last();
-        await profilePopup.locator('.userStorageInspectorButton').click();
+        await profilePopup.locator('.userStorageManagementButton').click();
 
         // The Inspector popup is a NEW callGenericPopup mounted on top of
         // the profile popup. Grab the top-most open dialog and scope from
