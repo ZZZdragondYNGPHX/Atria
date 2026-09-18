@@ -172,24 +172,23 @@ export async function runCrossModeRecoveryFlow({ page, sourceMode, destMode, spe
 
 async function openBackupManagerViaUI(page) {
     await ensureUserSettingsDrawerOpen(page);
-    // The Backup Manager opens from inside the User Profile popup, which is
-    // reached via the `#account_button` in the user-settings drawer.
+    // Backup & Sync opens from inside the User Profile popup.
     const accountBtn = page.locator('#account_button');
     await accountBtn.waitFor({ state: 'visible', timeout: 10_000 });
     await accountBtn.click();
-    // The user profile popup contains the `.userBackupButton`.
-    const backupBtn = page.locator('.userBackupButton').last();
+    const backupBtn = page.locator('.userBackupSyncButton').last();
     await backupBtn.waitFor({ state: 'visible', timeout: 10_000 });
     await backupBtn.click();
-    // Backup Manager popup is now open.
-    await page.locator('.userBackupManager').last().waitFor({ state: 'visible', timeout: 10_000 });
+    const center = page.locator('.backupSyncCenter').last();
+    await center.waitFor({ state: 'visible', timeout: 10_000 });
+    await center.locator('.backupSyncTab[data-tab="archive"]').click();
 }
 
 async function downloadBackupViaUI(page, destPath) {
     await openBackupManagerViaUI(page);
     const [download] = await Promise.all([
         page.waitForEvent('download', { timeout: 30_000 }),
-        page.locator('.backupDownloadButton').last().click(),
+        page.locator('.backupSyncCenter').last().locator('.backupArchiveDownload').click(),
     ]);
     await download.saveAs(destPath);
     // Close the popup chain to leave the page in a clean state.
@@ -207,17 +206,17 @@ async function restoreBackupViaUI(page, zipPath, { sourceMode, scratchDbConfig }
     await page.locator('input[name="backupRestoreMode"][value="overwrite"]').last().click();
 
     // Pick the ZIP file directly via the hidden file input.
-    const fileInput = page.locator('.backupRestoreFileInput').last();
+    const fileInput = page.locator('.backupSyncCenter').last().locator('.backupArchiveInput');
     await fileInput.setInputFiles(zipPath);
 
-    // Snapshot the current open-popup count BEFORE triggering the restore;
-    // resolveTopmostPopupAffirmative waits for one MORE popup to mount so
-    // we don't accidentally dismiss a pre-existing popup (Account Info /
-    // Backup Manager itself).
-    const baseOpenCount = await openPopupCount(page);
+    const restoreButton = page.locator('.backupSyncCenter').last().locator('.backupRestoreStart');
+    await page.waitForFunction(() => {
+        const button = document.querySelector('.backupSyncCenter .backupRestoreStart');
+        return button && !button.classList.contains('disabled');
+    }, { timeout: 15_000 });
 
-    // Click Restore — this triggers the confirm popup.
-    await page.locator('.backupRestoreButton').last().click();
+    const baseOpenCount = await openPopupCount(page);
+    await restoreButton.click();
 
     // Wait for the confirm popup to mount (open count = base + 1), then
     // resolve it with POPUP_RESULT.AFFIRMATIVE via Popup.util.complete.
@@ -228,29 +227,14 @@ async function restoreBackupViaUI(page, zipPath, { sourceMode, scratchDbConfig }
     // ends up taking, just without the DOM event plumbing.
     await resolveTopmostPopupAffirmative(page, baseOpenCount + 1);
 
-    // For mysql/pg source: a probe-driven prompt asks for the scratch URL.
+    // For mysql/pg source the safe-restore flow asks for a scratch URL in a
+    // standard INPUT popup after the first confirmation resolves.
     if ((sourceMode === 'mysql' || sourceMode === 'postgres') && scratchDbConfig) {
-        const credsBlock = page.locator('.crossModeScratchCreds').last();
-        await credsBlock.waitFor({ state: 'visible', timeout: 15_000 });
         const url = sourceMode === 'mysql' ? scratchDbConfig.mysql?.url : scratchDbConfig.postgres?.url;
-        const inputSel = sourceMode === 'mysql' ? '.crossModeScratchMysqlUrl' : '.crossModeScratchPostgresUrl';
-        // Use evaluate to set value directly and dispatch input event so
-        // jQuery sees the change. locator.fill() under headless Chrome has
-        // intermittently no-op'd here against the cross-mode template.
-        await page.evaluate(({ sel, val }) => {
-            const el = document.querySelector(sel);
-            if (!el) throw new Error(`scratch input not found: ${sel}`);
-            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-            setter.call(el, val);
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-        }, { sel: inputSel, val: url });
-        const probedVal = await page.locator(inputSel).last().inputValue();
-        if (probedVal !== url) {
-            throw new Error(`scratch URL input did not accept fill: got "${probedVal}" want "${url}"`);
-        }
-        const credsBaseOpenCount = await openPopupCount(page);
-        await resolveTopmostPopupAffirmative(page, credsBaseOpenCount);
+        const popupInput = page.locator('dialog.popup[open] .popup-input').last();
+        await popupInput.waitFor({ state: 'visible', timeout: 15_000 });
+        await popupInput.fill(url);
+        await page.locator('dialog.popup[open] .popup-button-ok').last().click();
     }
 }
 

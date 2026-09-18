@@ -11,12 +11,13 @@ const DEFAULT_CLEANUP_INTERVAL_MS = 60_000;
 const MIN_CLEANUP_INTERVAL_MS = 10_000;
 const BACKUP_TIMESTAMP_MARKER = /_\d{8}-\d{6}$/;
 const BACKUP_RETENTION_SETTINGS_FILE = 'backup-retention.json';
-const PERSISTED_POLICY_KEYS = Object.freeze([
+const POLICY_KEYS = Object.freeze([
     'enabled',
     'maxPerEntity',
     'maxTotalBackups',
     'maxTotalSizeBytes',
 ]);
+export const BACKUP_RETENTION_TYPES = Object.freeze(['chat', 'settings']);
 
 let schedulerStarted = false;
 
@@ -43,27 +44,54 @@ function getRetentionSettingsPath(userDirectories) {
         : null;
 }
 
+function configKeyFor(type, key) {
+    return `backups.retention.${type}.${key}`;
+}
+
+function readPolicyDefaults(type) {
+    const sharedEnabled = !!getConfigValue('backups.retention.enabled', true, 'boolean');
+    const sharedMaxPerEntity = normalizeLimit(
+        getConfigValue('backups.retention.maxPerEntity', DEFAULT_MAX_PER_ENTITY, 'number'),
+        DEFAULT_MAX_PER_ENTITY,
+    );
+    const sharedMaxTotalBackups = normalizeLimit(
+        getConfigValue('backups.retention.maxTotalBackups', DEFAULT_MAX_TOTAL_BACKUPS, 'number'),
+        DEFAULT_MAX_TOTAL_BACKUPS,
+    );
+    const sharedMaxTotalSizeBytes = normalizeLimit(
+        getConfigValue('backups.retention.maxTotalSizeBytes', DEFAULT_MAX_TOTAL_SIZE_BYTES, 'number'),
+        DEFAULT_MAX_TOTAL_SIZE_BYTES,
+    );
+
+    return {
+        enabled: !!getConfigValue(configKeyFor(type, 'enabled'), sharedEnabled, 'boolean'),
+        maxPerEntity: normalizeLimit(
+            getConfigValue(configKeyFor(type, 'maxPerEntity'), sharedMaxPerEntity, 'number'),
+            sharedMaxPerEntity,
+        ),
+        maxTotalBackups: normalizeLimit(
+            getConfigValue(configKeyFor(type, 'maxTotalBackups'), sharedMaxTotalBackups, 'number'),
+            sharedMaxTotalBackups,
+        ),
+        maxTotalSizeBytes: normalizeLimit(
+            getConfigValue(configKeyFor(type, 'maxTotalSizeBytes'), sharedMaxTotalSizeBytes, 'number'),
+            sharedMaxTotalSizeBytes,
+        ),
+    };
+}
+
 /**
- * Returns the server-level defaults for backup retention.
- * A value of -1 disables the corresponding limit.
+ * Returns server-level defaults split by managed backup class.
  *
- * @returns {{ enabled: boolean, maxPerEntity: number, maxTotalBackups: number, maxTotalSizeBytes: number, cleanupIntervalMs: number }}
+ * The historic shared `backups.retention.*` config remains a server-level
+ * fallback so existing config.yaml files keep their intent. New installations
+ * can override either class under `backups.retention.chat.*` or
+ * `backups.retention.settings.*`.
  */
 export function getDefaultBackupRetentionConfig() {
     return {
-        enabled: !!getConfigValue('backups.retention.enabled', true, 'boolean'),
-        maxPerEntity: normalizeLimit(
-            getConfigValue('backups.retention.maxPerEntity', DEFAULT_MAX_PER_ENTITY, 'number'),
-            DEFAULT_MAX_PER_ENTITY,
-        ),
-        maxTotalBackups: normalizeLimit(
-            getConfigValue('backups.retention.maxTotalBackups', DEFAULT_MAX_TOTAL_BACKUPS, 'number'),
-            DEFAULT_MAX_TOTAL_BACKUPS,
-        ),
-        maxTotalSizeBytes: normalizeLimit(
-            getConfigValue('backups.retention.maxTotalSizeBytes', DEFAULT_MAX_TOTAL_SIZE_BYTES, 'number'),
-            DEFAULT_MAX_TOTAL_SIZE_BYTES,
-        ),
+        chat: readPolicyDefaults('chat'),
+        settings: readPolicyDefaults('settings'),
         cleanupIntervalMs: Math.max(
             MIN_CLEANUP_INTERVAL_MS,
             normalizeLimit(
@@ -74,12 +102,44 @@ export function getDefaultBackupRetentionConfig() {
     };
 }
 
+function normalizeSavedPolicy(input, keyPrefix) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+        throw new TypeError(`${keyPrefix} retention settings must be an object.`);
+    }
+    if (typeof input.enabled !== 'boolean') {
+        throw new TypeError(`${keyPrefix}.enabled must be a boolean.`);
+    }
+    return {
+        enabled: input.enabled,
+        maxPerEntity: normalizePersistedLimit(input.maxPerEntity, `${keyPrefix}.maxPerEntity`),
+        maxTotalBackups: normalizePersistedLimit(input.maxTotalBackups, `${keyPrefix}.maxTotalBackups`),
+        maxTotalSizeBytes: normalizePersistedLimit(input.maxTotalSizeBytes, `${keyPrefix}.maxTotalSizeBytes`),
+    };
+}
+
+function mergePolicy(base, input) {
+    const out = { ...base };
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+        return out;
+    }
+    if (typeof input.enabled === 'boolean') {
+        out.enabled = input.enabled;
+    }
+    for (const key of ['maxPerEntity', 'maxTotalBackups', 'maxTotalSizeBytes']) {
+        if (!Object.hasOwn(input, key)) continue;
+        const value = Number(input[key]);
+        if (Number.isSafeInteger(value) && value >= -1) {
+            out[key] = value;
+        }
+    }
+    return out;
+}
+
 /**
- * Returns the effective policy for one user. A per-user JSON override is
- * merged onto the server defaults so older installations need no migration.
+ * Returns the effective per-user split retention configuration.
  *
- * @param {object} [userDirectories] Per-user directory map
- * @returns {{ enabled: boolean, maxPerEntity: number, maxTotalBackups: number, maxTotalSizeBytes: number, cleanupIntervalMs: number }}
+ * Older flat per-user files are read as a one-time compatibility input and
+ * applied to both classes. The next save writes only the split shape.
  */
 export function getBackupRetentionConfig(userDirectories = undefined) {
     const defaults = getDefaultBackupRetentionConfig();
@@ -94,43 +154,34 @@ export function getBackupRetentionConfig(userDirectories = undefined) {
             return defaults;
         }
 
-        const policy = { ...defaults };
-        if (typeof parsed.enabled === 'boolean') {
-            policy.enabled = parsed.enabled;
+        const hasSplitShape = parsed.chat && typeof parsed.chat === 'object'
+            || parsed.settings && typeof parsed.settings === 'object';
+        if (hasSplitShape) {
+            return {
+                chat: mergePolicy(defaults.chat, parsed.chat),
+                settings: mergePolicy(defaults.settings, parsed.settings),
+                cleanupIntervalMs: defaults.cleanupIntervalMs,
+            };
         }
-        for (const key of ['maxPerEntity', 'maxTotalBackups', 'maxTotalSizeBytes']) {
-            if (Object.hasOwn(parsed, key)) {
-                const value = Number(parsed[key]);
-                if (Number.isSafeInteger(value) && value >= -1) {
-                    policy[key] = value;
-                }
-            }
-        }
-        return policy;
+
+        // Historic flat override: preserve the user's existing limits until
+        // they save the new split form.
+        return {
+            chat: mergePolicy(defaults.chat, parsed),
+            settings: mergePolicy(defaults.settings, parsed),
+            cleanupIntervalMs: defaults.cleanupIntervalMs,
+        };
     } catch (error) {
         console.warn(`Could not read backup retention settings from ${settingsPath}:`, error?.message || error);
         return defaults;
     }
 }
 
-/**
- * Whether the current user has explicitly saved an override policy.
- *
- * @param {object} userDirectories Per-user directory map
- * @returns {boolean}
- */
 export function hasBackupRetentionOverride(userDirectories) {
     const settingsPath = getRetentionSettingsPath(userDirectories);
     return Boolean(settingsPath && fs.existsSync(settingsPath));
 }
 
-/**
- * Validates and persists a per-user retention policy.
- *
- * @param {object} userDirectories Per-user directory map
- * @param {object} input Policy payload
- * @returns {{ enabled: boolean, maxPerEntity: number, maxTotalBackups: number, maxTotalSizeBytes: number, cleanupIntervalMs: number }}
- */
 export function saveBackupRetentionConfig(userDirectories, input) {
     if (!userDirectories?.root) {
         throw new TypeError('User root directory is required.');
@@ -138,15 +189,11 @@ export function saveBackupRetentionConfig(userDirectories, input) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) {
         throw new TypeError('Backup retention settings must be an object.');
     }
-    if (typeof input.enabled !== 'boolean') {
-        throw new TypeError('enabled must be a boolean.');
-    }
 
     const persisted = {
-        enabled: input.enabled,
-        maxPerEntity: normalizePersistedLimit(input.maxPerEntity, 'maxPerEntity'),
-        maxTotalBackups: normalizePersistedLimit(input.maxTotalBackups, 'maxTotalBackups'),
-        maxTotalSizeBytes: normalizePersistedLimit(input.maxTotalSizeBytes, 'maxTotalSizeBytes'),
+        version: 2,
+        chat: normalizeSavedPolicy(input.chat, 'chat'),
+        settings: normalizeSavedPolicy(input.settings, 'settings'),
     };
 
     fs.mkdirSync(userDirectories.root, { recursive: true });
@@ -158,12 +205,6 @@ export function saveBackupRetentionConfig(userDirectories, input) {
     return getBackupRetentionConfig(userDirectories);
 }
 
-/**
- * Removes a user's override and returns the server defaults.
- *
- * @param {object} userDirectories Per-user directory map
- * @returns {{ enabled: boolean, maxPerEntity: number, maxTotalBackups: number, maxTotalSizeBytes: number, cleanupIntervalMs: number }}
- */
 export function resetBackupRetentionConfig(userDirectories) {
     const settingsPath = getRetentionSettingsPath(userDirectories);
     if (settingsPath) {
@@ -174,12 +215,7 @@ export function resetBackupRetentionConfig(userDirectories) {
 }
 
 /**
- * Maps a Atria backup filename to the logical entity it belongs to.
- * Both chat backups and settings snapshots end with `_YYYYMMDD-HHMMSS`.
- * Unknown files are deliberately ignored by the retention manager.
- *
- * @param {string} fileName Backup filename
- * @returns {string|null} Logical entity key, or null when this is not a managed backup
+ * Maps a managed backup filename to the logical entity it belongs to.
  */
 export function getBackupEntityKey(fileName) {
     const extension = path.extname(fileName).toLowerCase();
@@ -198,19 +234,31 @@ export function getBackupEntityKey(fileName) {
     return stem.slice(0, match.index);
 }
 
-function listBackupRecords(directory) {
+export function getBackupType(fileName) {
+    if (fileName.startsWith('chat_') && path.extname(fileName).toLowerCase() === '.jsonl') {
+        return 'chat';
+    }
+    if (fileName.startsWith('settings_') && path.extname(fileName).toLowerCase() === '.json') {
+        return 'settings';
+    }
+    return null;
+}
+
+export function listManagedBackupRecords(directory, type = undefined) {
     if (!directory || !fs.existsSync(directory)) {
         return [];
+    }
+    if (type !== undefined && !BACKUP_RETENTION_TYPES.includes(type)) {
+        throw new TypeError(`Unknown backup type: ${type}`);
     }
 
     const records = [];
     for (const dirent of fs.readdirSync(directory, { withFileTypes: true })) {
-        if (!dirent.isFile()) {
-            continue;
-        }
+        if (!dirent.isFile()) continue;
 
+        const backupType = getBackupType(dirent.name);
         const entityKey = getBackupEntityKey(dirent.name);
-        if (!entityKey) {
+        if (!backupType || !entityKey || (type && backupType !== type)) {
             continue;
         }
 
@@ -220,6 +268,7 @@ function listBackupRecords(directory) {
             records.push({
                 name: dirent.name,
                 path: filePath,
+                type: backupType,
                 entityKey,
                 modifiedMs: stat.mtimeMs,
                 size: stat.size,
@@ -232,39 +281,40 @@ function listBackupRecords(directory) {
     return records;
 }
 
-/**
- * Returns non-destructive usage statistics for the managed backup files.
- *
- * @param {string} directory Backup directory
- * @returns {{ scanned: number, remaining: number, remainingBytes: number, chatBackups: number, settingsBackups: number }}
- */
-export function getBackupDirectoryUsage(directory) {
-    const records = listBackupRecords(directory);
+function usageFor(records) {
     return {
-        scanned: records.length,
-        remaining: records.length,
-        remainingBytes: records.reduce((sum, record) => sum + record.size, 0),
-        chatBackups: records.filter(record => record.name.startsWith('chat_')).length,
-        settingsBackups: records.filter(record => record.name.startsWith('settings_')).length,
+        count: records.length,
+        bytes: records.reduce((sum, record) => sum + record.size, 0),
     };
 }
 
-/**
- * Prunes a single backup directory using the same three-tier policy as
- * TauriTavern: per-entity count, global count, then global byte budget.
- * Oldest backups are removed first and unrelated files are never touched.
- *
- * @param {string} directory Backup directory
- * @param {{ enabled?: boolean, maxPerEntity?: number, maxTotalBackups?: number, maxTotalSizeBytes?: number }} [policy]
- * @returns {{ scanned: number, deleted: number, remaining: number, remainingBytes: number, deletedFiles: string[] }}
- */
-export function pruneBackupDirectory(directory, policy = undefined) {
-    const effectivePolicy = policy ?? getBackupRetentionConfig();
-    const enabled = effectivePolicy.enabled ?? true;
-    const records = listBackupRecords(directory);
+export function getBackupDirectoryUsage(directory) {
+    const records = listManagedBackupRecords(directory);
+    const chatRecords = records.filter(record => record.type === 'chat');
+    const settingsRecords = records.filter(record => record.type === 'settings');
+    const chat = usageFor(chatRecords);
+    const settings = usageFor(settingsRecords);
+    return {
+        scanned: records.length,
+        remaining: records.length,
+        remainingBytes: chat.bytes + settings.bytes,
+        chatBackups: chat.count,
+        settingsBackups: settings.count,
+        chat,
+        settings,
+    };
+}
 
-    if (!enabled || records.length === 0) {
+export function pruneBackupType(directory, type, policy) {
+    if (!BACKUP_RETENTION_TYPES.includes(type)) {
+        throw new TypeError(`Unknown backup type: ${type}`);
+    }
+    const effectivePolicy = policy ?? getDefaultBackupRetentionConfig()[type];
+    const records = listManagedBackupRecords(directory, type);
+
+    if (!(effectivePolicy.enabled ?? true) || records.length === 0) {
         return {
+            type,
             scanned: records.length,
             deleted: 0,
             remaining: records.length,
@@ -276,7 +326,6 @@ export function pruneBackupDirectory(directory, policy = undefined) {
     const maxPerEntity = normalizeLimit(effectivePolicy.maxPerEntity, DEFAULT_MAX_PER_ENTITY);
     const maxTotalBackups = normalizeLimit(effectivePolicy.maxTotalBackups, DEFAULT_MAX_TOTAL_BACKUPS);
     const maxTotalSizeBytes = normalizeLimit(effectivePolicy.maxTotalSizeBytes, DEFAULT_MAX_TOTAL_SIZE_BYTES);
-
     const deletionSet = new Set();
 
     if (!isUnlimited(maxPerEntity)) {
@@ -286,7 +335,6 @@ export function pruneBackupDirectory(directory, policy = undefined) {
             group.push(record);
             grouped.set(record.entityKey, group);
         }
-
         for (const group of grouped.values()) {
             group.sort((a, b) => b.modifiedMs - a.modifiedMs || b.name.localeCompare(a.name));
             for (const record of group.slice(Math.max(0, maxPerEntity))) {
@@ -297,8 +345,8 @@ export function pruneBackupDirectory(directory, policy = undefined) {
 
     let remaining = records.filter(record => !deletionSet.has(record.path));
     remaining.sort((a, b) => a.modifiedMs - b.modifiedMs || a.name.localeCompare(b.name));
-
     let remainingBytes = remaining.reduce((sum, record) => sum + record.size, 0);
+
     while (
         remaining.length > 0
         && (
@@ -321,44 +369,44 @@ export function pruneBackupDirectory(directory, policy = undefined) {
         }
     }
 
-    if (deletedFiles.length > 0) {
-        const survivingRecords = listBackupRecords(directory);
-        remainingBytes = survivingRecords.reduce((sum, record) => sum + record.size, 0);
-        return {
-            scanned: records.length,
-            deleted: deletedFiles.length,
-            remaining: survivingRecords.length,
-            remainingBytes,
-            deletedFiles,
-        };
-    }
-
+    const survivingRecords = listManagedBackupRecords(directory, type);
     return {
+        type,
         scanned: records.length,
-        deleted: 0,
-        remaining: records.length,
-        remainingBytes: records.reduce((sum, record) => sum + record.size, 0),
+        deleted: deletedFiles.length,
+        remaining: survivingRecords.length,
+        remainingBytes: survivingRecords.reduce((sum, record) => sum + record.size, 0),
         deletedFiles,
     };
 }
 
 /**
- * Applies retention to every user's backup directory.
- *
- * @returns {Promise<void>}
+ * Applies chat and settings retention independently.
  */
+export function pruneBackupDirectory(directory, config = undefined) {
+    const effective = config ?? getDefaultBackupRetentionConfig();
+    const chat = pruneBackupType(directory, 'chat', effective.chat);
+    const settings = pruneBackupType(directory, 'settings', effective.settings);
+    return {
+        scanned: chat.scanned + settings.scanned,
+        deleted: chat.deleted + settings.deleted,
+        remaining: chat.remaining + settings.remaining,
+        remainingBytes: chat.remainingBytes + settings.remainingBytes,
+        deletedFiles: [...chat.deletedFiles, ...settings.deletedFiles],
+        chat,
+        settings,
+    };
+}
+
 export async function pruneAllUserBackups() {
     const handles = await getAllUserHandles();
     for (const handle of handles) {
         try {
             const directories = getUserDirectories(handle);
-            const policy = getBackupRetentionConfig(directories);
-            if (!policy.enabled) {
-                continue;
-            }
-            const result = pruneBackupDirectory(directories.backups, policy);
+            const config = getBackupRetentionConfig(directories);
+            const result = pruneBackupDirectory(directories.backups, config);
             if (result.deleted > 0) {
-                console.info(`[Backup retention] ${handle}: removed ${result.deleted} old backup(s); ${result.remaining} remain.`);
+                console.info(`[Backup retention] ${handle}: removed ${result.deleted} old backup(s); chat=${result.chat.remaining}, settings=${result.settings.remaining}.`);
             }
         } catch (error) {
             console.warn(`[Backup retention] Failed for ${handle}:`, error?.message || error);
@@ -366,17 +414,11 @@ export async function pruneAllUserBackups() {
     }
 }
 
-/**
- * Starts a lightweight periodic cleanup loop. Timers are unref'd so they do
- * not keep Node alive during shutdown or tests.
- */
 export function startBackupRetentionScheduler() {
-    if (schedulerStarted) {
-        return;
-    }
+    if (schedulerStarted) return;
     schedulerStarted = true;
 
-    const policy = getDefaultBackupRetentionConfig();
+    const config = getDefaultBackupRetentionConfig();
     const runCleanup = () => {
         void pruneAllUserBackups().catch((error) => {
             console.warn('[Backup retention] Cleanup failed:', error?.message || error);
@@ -386,8 +428,8 @@ export function startBackupRetentionScheduler() {
     const initialTimer = setTimeout(runCleanup, 5_000);
     initialTimer.unref?.();
 
-    const intervalTimer = setInterval(runCleanup, policy.cleanupIntervalMs);
+    const intervalTimer = setInterval(runCleanup, config.cleanupIntervalMs);
     intervalTimer.unref?.();
 }
 
-export const backupRetentionPolicyKeys = PERSISTED_POLICY_KEYS;
+export const backupRetentionPolicyKeys = POLICY_KEYS;

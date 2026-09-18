@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { snapshotUser } from '../../../src/storage/migration/backup.js';
+import { SNAPSHOT_META_ENTRY, restoreFromSnapshot, snapshotUser } from '../../../src/storage/migration/backup.js';
 
 describe('snapshotUser', () => {
     let tmpRoot;
@@ -86,4 +86,42 @@ describe('snapshotUser', () => {
         const base = path.basename(dest);
         expect(base).not.toMatch(/[:.]/);
     });
+
+    test('operator metadata is recorded in snapshot but never restored into user data', async () => {
+        const userRoot = path.join(tmpRoot, 'u');
+        fs.mkdirSync(userRoot, { recursive: true });
+        fs.writeFileSync(path.join(userRoot, 'settings.json'), '{"before":true}');
+        const backupRoot = path.join(tmpRoot, '_restore-recovery');
+
+        const dest = await snapshotUser({
+            handle: 'u',
+            userRoot,
+            backupRoot,
+            metadata: {
+                purpose: 'backup-restore',
+                restoreMode: 'merge',
+                engineKind: 'fs',
+            },
+        });
+
+        const meta = JSON.parse(fs.readFileSync(path.join(dest, SNAPSHOT_META_ENTRY), 'utf8'));
+        expect(meta).toMatchObject({
+            handle: 'u',
+            purpose: 'backup-restore',
+            restoreMode: 'merge',
+            engineKind: 'fs',
+        });
+        expect(meta.createdAt).toBeTruthy();
+
+        fs.writeFileSync(path.join(userRoot, 'settings.json'), '{"after":true}');
+        await restoreFromSnapshot({
+            handle: 'u',
+            userRoot,
+            backupPath: dest,
+        });
+
+        expect(fs.readFileSync(path.join(userRoot, 'settings.json'), 'utf8')).toBe('{"before":true}');
+        expect(fs.existsSync(path.join(userRoot, SNAPSHOT_META_ENTRY))).toBe(false);
+    });
+
 });

@@ -180,3 +180,34 @@
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+
+.storageInspectorEntryActions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-inline-start: 6px;
+    flex-shrink: 0;
+}
+
+.storageInspectorEntryActionButton {
+    min-width: 30px;
+    padding: 0.25em 0.45em;
+}
+
+.storageInspectorCreateButton {
+    margin-inline-end: 4px;
+}
+
+@media (max-width: 700px) {
+    .storageInspectorEntry {
+        flex-wrap: wrap;
+    }
+
+    .storageInspectorEntryActions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-inline-start: 0;
+        margin-top: 4px;
+    }
+}

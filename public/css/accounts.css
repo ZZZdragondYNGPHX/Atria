@@ -4,44 +4,17 @@
     border-radius: 5px;
 }
 
-.userBackupManager .backupSelectionToolbar,
-.userBackupManager .backupActionRow {
+.accountLogsViewer .accountLogsActionRow {
     flex-wrap: wrap;
     align-items: center;
 }
 
-.userBackupManager .backupCategoryGrid {
-    width: 100%;
-}
-
-.userBackupManager .backupCategoryItem {
-    padding: 4px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.userBackupManager .backupCategorySummary {
-    font-size: 0.9rem;
-    opacity: 0.9;
-}
-
-.userBackupManager .backupSelectedFileName {
-    min-height: 20px;
-    word-break: break-word;
-}
-
-.userBackupManager .backupLanGeneratedLink,
-.userBackupManager .backupLanImportLink {
-    width: 100%;
-}
-
-.userBackupManager .backupRestoreModeLabel {
+.accountLogsViewer .accountLogsFieldLabel {
     margin-left: 10px;
 }
 
-.userBackupManager .logSourceLabel,
-.userBackupManager .logFilterLabel {
+.accountLogsViewer .logSourceLabel,
+.accountLogsViewer .logFilterLabel {
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
@@ -50,48 +23,26 @@
     text-orientation: mixed;
 }
 
-.userBackupManager .logSourceLabel > span,
-.userBackupManager .logFilterLabel > span {
+.accountLogsViewer .logSourceLabel > span,
+.accountLogsViewer .logFilterLabel > span {
     white-space: nowrap;
     writing-mode: horizontal-tb;
     text-orientation: mixed;
 }
 
-.userBackupManager .logSourceLabel .serverLogsSource {
+.accountLogsViewer .logSourceLabel .serverLogsSource {
     min-width: 8em;
 }
 
-.userBackupManager .logFilterLabel .text_pole {
+.accountLogsViewer .logFilterLabel .text_pole {
     min-width: 10em;
 }
 
-.userBackupManager .logFilterLabel .serverLogsLimit {
+.accountLogsViewer .logFilterLabel .serverLogsLimit {
     min-width: 7em;
     width: 7em;
 }
 
-.userBackupManager .backupSelectionToolbar .menu_button,
-.userBackupManager .backupActionRow .menu_button {
+.accountLogsViewer .accountLogsActionRow .menu_button {
     width: auto;
-}
-
-.configEditorTab .runtimeConfigEditor {
-    width: 100%;
-    min-height: 360px;
-    resize: vertical;
-    font-family: var(--monoFontFamily);
-    white-space: pre;
-    overflow-wrap: normal;
-    writing-mode: horizontal-tb;
-    text-orientation: mixed;
-}
-
-.configEditorTab .menu_button {
-    width: auto;
-    writing-mode: horizontal-tb;
-    text-orientation: mixed;
-}
-
-.configEditorTab .runtimeConfigPath {
-    word-break: break-all;
 }

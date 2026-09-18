@@ -87,7 +87,7 @@ export async function expectHandleMismatchToast(page, { expectedHandle, gotHandl
 }
 
 /**
- * Open Settings → Account → Backup & Restore → LAN Sync.
+ * Open Settings → Account → Backup & Sync → Device Sync → LAN Sync.
  *
  * Multi-step popup navigation: User Settings drawer → Account button →
  * Backup & Restore button → LAN Sync button. Each of the inner popups is
@@ -95,8 +95,7 @@ export async function expectHandleMismatchToast(page, { expectedHandle, gotHandl
  * dialog body.
  *
  * Drawer toggle is idempotent across runs: if a previous step left the
- * User Settings drawer open (e.g. closeAdminPanel only dismisses the
- * popup, not the drawer behind it), a click would TOGGLE it shut. We
+ * User Settings drawer open, a click would TOGGLE it shut. We
  * check the drawer's `closedDrawer` class first and only click when it's
  * actually closed.
  */
@@ -107,8 +106,11 @@ export async function openLanSyncPanel(page) {
         await page.locator('#user-settings-button .drawer-toggle').click();
     }
     await page.locator('#account_button').click();
-    await page.locator('.userBackupButton').first().click();
-    await page.locator('.backupLanSyncOpenButton').click();
+    await page.locator('.userBackupSyncButton').last().click();
+    const center = page.locator('.backupSyncCenter').last();
+    await center.waitFor({ state: 'visible', timeout: 10_000 });
+    await center.locator('.backupSyncTab[data-tab="device"]').click();
+    await center.locator('.backupOpenLanSync').click();
     await page.locator('.userLanSync').waitFor({ state: 'visible', timeout: 10_000 });
 }
 

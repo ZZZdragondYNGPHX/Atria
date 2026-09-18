@@ -21,7 +21,7 @@ import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { migrateViaAdminUI, fetchStorageStatus, closeAdminPanel } from '../_lib/storage-ui.js';
+import { migrateStorageBackend, fetchStorageStatus } from '../_lib/storage-ui.js';
 import {
     openLanSyncPanel,
     generatePairingLink,
@@ -160,14 +160,10 @@ test.describe('LAN Sync — SQLite per-record chat conflict', () => {
         // Migrate both sides fs → sqlite through the real admin UI.
         // After this returns, every storage call on either server
         // routes through SqliteEngine.
-        await migrateViaAdminUI(pageA, 'sqlite');
+        await migrateStorageBackend(pageA, 'sqlite');
         expect((await fetchStorageStatus(pageA)).currentMode).toBe('sqlite');
-        await closeAdminPanel(pageA);
-
-        await migrateViaAdminUI(pageB, 'sqlite');
+        await migrateStorageBackend(pageB, 'sqlite');
         expect((await fetchStorageStatus(pageB)).currentMode).toBe('sqlite');
-        await closeAdminPanel(pageB);
-
         // Seed each side with a chat at the same path but with
         // different message bodies. Both writes go through
         // /api/chats/save → ChatRepo.save → SqliteEngine.putResource,

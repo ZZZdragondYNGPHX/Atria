@@ -16,7 +16,7 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply, reloadAndAwait } from '../_lib/page.js';
-import { migrateViaAdminUI, closeAdminPanel, fetchStorageStatus } from '../_lib/storage-ui.js';
+import { migrateStorageBackend, fetchStorageStatus } from '../_lib/storage-ui.js';
 
 let server, mock;
 
@@ -61,15 +61,13 @@ test('migrate fs -> sqlite via admin UI preserves an in-progress chat', async ({
     expect(preStatus.currentMode).toBe('fs');
 
     // Drive the admin migration UI.
-    await migrateViaAdminUI(page, 'sqlite');
+    await migrateStorageBackend(page, 'sqlite');
 
     // Post-migration: sqlite is now live (verify via the same endpoint
     // that the admin panel uses).
     const postStatus = await fetchStorageStatus(page);
     expect(postStatus.currentMode).toBe('sqlite');
     expect(postStatus.lastMigration).toBeTruthy();
-    await closeAdminPanel(page);
-
     // Reload to force the chat list to re-load entirely from the new
     // (SQLite) backend. Without the reload, the chat panel keeps its
     // in-memory copy from the pre-migration session — a stale copy that

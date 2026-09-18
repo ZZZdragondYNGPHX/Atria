@@ -1,4 +1,3 @@
-import './backup-retention-ui.js';
 import { t } from './i18n.js';
 import { callGenericPopup, Popup, POPUP_TYPE } from './popup.js';
 import { getFileExtension, sortMoments, timestampToMoment } from './utils.js';

@@ -13,7 +13,7 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply, reloadAndAwait } from '../_lib/page.js';
-import { migrateViaAdminUI, closeAdminPanel, fetchStorageStatus } from '../_lib/storage-ui.js';
+import { migrateStorageBackend, fetchStorageStatus } from '../_lib/storage-ui.js';
 
 let server, mock;
 
@@ -36,11 +36,9 @@ test('migrate sqlite -> fs via admin UI preserves a chat sent while in sqlite', 
     await awaitMainUI(page, server.baseURL);
 
     // First leg: fs → sqlite so SQLite becomes the live engine.
-    await migrateViaAdminUI(page, 'sqlite');
+    await migrateStorageBackend(page, 'sqlite');
     const sqliteStatus = await fetchStorageStatus(page);
     expect(sqliteStatus.currentMode).toBe('sqlite');
-    await closeAdminPanel(page);
-
     // Send a chat under SQLite mode. The user + assistant pair must
     // land in the SQLite kv_chats table (verified indirectly by the
     // post-fs-migration assertion: any data on disk has to have come
@@ -63,12 +61,10 @@ test('migrate sqlite -> fs via admin UI preserves a chat sent while in sqlite', 
     expect(preChatSnapshot.some(m => /gulls turn|first hour past dawn/.test(m))).toBe(true);
 
     // Second leg: sqlite → fs. This is the assertion under test.
-    await migrateViaAdminUI(page, 'fs');
+    await migrateStorageBackend(page, 'fs');
     const fsStatus = await fetchStorageStatus(page);
     expect(fsStatus.currentMode).toBe('fs');
     expect(fsStatus.lastMigration).toBeTruthy();
-    await closeAdminPanel(page);
-
     // Reload so the chat panel re-reads from the (now active) fs engine.
     await reloadAndAwait(page, server.baseURL);
     await selectCharacterByName(page, 'Seraphina');
