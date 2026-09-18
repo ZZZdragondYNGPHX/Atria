@@ -1,4 +1,4 @@
-package com.luker.app
+package com.atria.app
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -67,10 +67,10 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
-    private val tag = "LukerMainActivity"
-    private val runtimeReportFileName = "luker-runtime-last-error.txt"
-    private val messageAlertNotificationChannelId = "luker_message_alerts_v1"
-    private val messageProgressNotificationChannelId = "luker_message_progress_v1"
+    private val tag = "AtriaMainActivity"
+    private val runtimeReportFileName = "atria-runtime-last-error.txt"
+    private val messageAlertNotificationChannelId = "atria_message_alerts_v1"
+    private val messageProgressNotificationChannelId = "atria_message_progress_v1"
     private val messageNotificationId = 12001
     private val messageProgressNotificationId = 12002
     private val streamDownloadNotificationId = 12003
@@ -134,7 +134,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private val bootstrapSequence = AtomicInteger(0)
-    private val recentHttpAuthAttempts = mutableMapOf<Pair<String, String>, LukerHttpAuthStore.Credentials>()
+    private val recentHttpAuthAttempts = mutableMapOf<Pair<String, String>, AtriaHttpAuthStore.Credentials>()
     private val backPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
             if (fullscreenCustomView != null) {
@@ -215,9 +215,9 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (!granted) {
             Log.w(tag, "Notification permission denied. Foreground runtime notification may be hidden.")
-            LukerEndpointStatusNotification.clear(applicationContext)
+            AtriaEndpointStatusNotification.clear(applicationContext)
         } else {
-            LukerEndpointStatusNotification.sync(applicationContext)
+            AtriaEndpointStatusNotification.sync(applicationContext)
         }
     }
     private val saveFileLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -277,7 +277,7 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, backPressedCallback)
 
         contentRoot = findViewById(android.R.id.content)
-        webView = findViewById(R.id.lukerWebView)
+        webView = findViewById(R.id.atriaWebView)
         loadingOverlay = findViewById(R.id.loadingOverlay)
         loadingText = findViewById(R.id.loadingText)
         fullscreenContainer = findViewById(R.id.fullscreenContainer)
@@ -295,7 +295,7 @@ class MainActivity : AppCompatActivity() {
         contentRootBasePaddingRight = contentRoot.paddingRight
         contentRootBasePaddingBottom = contentRoot.paddingBottom
         installImeInsetsHandling()
-        webView.addJavascriptInterface(LukerAndroidBridge(), "LukerAndroid")
+        webView.addJavascriptInterface(AtriaAndroidBridge(), "AtriaAndroid")
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(message: ConsoleMessage?): Boolean {
                 if (message != null) {
@@ -303,7 +303,7 @@ class MainActivity : AppCompatActivity() {
                     val source = message.sourceId().orEmpty()
                     val lineNo = message.lineNumber()
                     val text = message.message().orEmpty()
-                    LukerDebugTrail.append(
+                    AtriaDebugTrail.append(
                         "webconsole",
                         "$level $source:$lineNo $text",
                     )
@@ -412,7 +412,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 val authRealm = realm?.trim().orEmpty()
                 val authKey = buildHttpAuthKey(authHost, authRealm)
-                val storedCredentials = LukerHttpAuthStore.load(applicationContext, authHost, authRealm)
+                val storedCredentials = AtriaHttpAuthStore.load(applicationContext, authHost, authRealm)
                 val lastAttemptedCredentials = recentHttpAuthAttempts[authKey]
 
                 if (storedCredentials != null && storedCredentials != lastAttemptedCredentials) {
@@ -422,7 +422,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (storedCredentials != null && storedCredentials == lastAttemptedCredentials) {
-                    LukerHttpAuthStore.clear(applicationContext, authHost, authRealm)
+                    AtriaHttpAuthStore.clear(applicationContext, authHost, authRealm)
                 }
 
                 runOnUiThread {
@@ -454,18 +454,18 @@ class MainActivity : AppCompatActivity() {
                     (view?.parent as? ViewGroup)?.removeView(view)
                     view?.destroy()
                 }
-                LukerDebugTrail.append("native", "renderProcessGone didCrash=$crashed url=$url")
-                val crash = LukerCrashCapture.captureWebViewCrash(
+                AtriaDebugTrail.append("native", "renderProcessGone didCrash=$crashed url=$url")
+                val crash = AtriaCrashCapture.captureWebViewCrash(
                     context = applicationContext,
                     webViewUrl = url,
                     didCrash = crashed,
                     rendererPriorityAtExit = rendererPriority,
                 )
-                val cdpSnapshot = LukerCdpCollector.harvestForCrash(applicationContext)
+                val cdpSnapshot = AtriaCdpCollector.harvestForCrash(applicationContext)
                 // Go through the shared enrichment helper instead of
                 // duplicating debug-trail + logcat + cdp-snapshot append
                 // logic here — the two paths were drifting.
-                val enriched = LukerCrashCapture.enrichCrashReport(
+                val enriched = AtriaCrashCapture.enrichCrashReport(
                     applicationContext,
                     crash,
                     cdpSnapshot?.absolutePath,
@@ -493,7 +493,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun maybeShowPreviousCrashReport() {
-        val crash = LukerCrashCapture.pollUnhandledCrash(applicationContext) ?: return
+        val crash = AtriaCrashCapture.pollUnhandledCrash(applicationContext) ?: return
         Log.w(tag, "Detected abnormal exit from previous session: ${crash.report.lineSequence().firstOrNull()}")
         window.decorView.post {
             if (isFinishing || isDestroyed) {
@@ -840,7 +840,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private inner class LukerAndroidBridge {
+    private inner class AtriaAndroidBridge {
         @JavascriptInterface
         fun saveFileFromDataUrl(dataUrl: String?, suggestedName: String?, mimeType: String?) {
             if (dataUrl.isNullOrBlank()) {
@@ -933,10 +933,10 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun setDebugRecordingEnabled(enabled: Boolean): Boolean {
-            val wasEnabled = LukerAndroidDebugConfig.isEnabled(applicationContext)
-            LukerAndroidDebugConfig.setEnabled(applicationContext, enabled)
-            LukerLogcatTail.setEnabled(applicationContext, enabled)
-            LukerDebugTrail.append("native", "debug-recording $enabled")
+            val wasEnabled = AtriaAndroidDebugConfig.isEnabled(applicationContext)
+            AtriaAndroidDebugConfig.setEnabled(applicationContext, enabled)
+            AtriaLogcatTail.setEnabled(applicationContext, enabled)
+            AtriaDebugTrail.append("native", "debug-recording $enabled")
 
             // Chromium's WebView debugging switch is process-global and
             // unreversible — once armed we can't tear it down for this
@@ -944,7 +944,7 @@ class MainActivity : AppCompatActivity() {
             // right now so the CDP collector is running for any future
             // renderer; on disable, we can only stop the logcat tail
             // and let the debug switch stay hot until the next cold
-            // start (LukerApplication.initDebugRecording reads the pref
+            // start (AtriaApplication.initDebugRecording reads the pref
             // again then).
             //
             // Returns true iff the caller needs to prompt the user to
@@ -955,7 +955,7 @@ class MainActivity : AppCompatActivity() {
             // attach it. Toggling off never has a "restart to take
             // effect" story that helps the user, so we return false.
             return if (enabled && !wasEnabled) {
-                val app = application as? LukerApplication
+                val app = application as? AtriaApplication
                 app?.armWebViewCdp()
                 true
             } else {
@@ -971,12 +971,12 @@ class MainActivity : AppCompatActivity() {
         // then silently disabled recording on next reload).
         @JavascriptInterface
         fun isDebugRecordingEnabled(): Boolean {
-            return LukerAndroidDebugConfig.isEnabled(applicationContext)
+            return AtriaAndroidDebugConfig.isEnabled(applicationContext)
         }
 
         @JavascriptInterface
         fun pushDebugTrail(category: String?, text: String?) {
-            LukerDebugTrail.append(category.orEmpty(), text.orEmpty())
+            AtriaDebugTrail.append(category.orEmpty(), text.orEmpty())
         }
 
         @JavascriptInterface
@@ -1161,7 +1161,7 @@ class MainActivity : AppCompatActivity() {
         }
         val jsEnabled = if (enabled) "true" else "false"
         webView.evaluateJavascript(
-            "window.__lukerSetImmersiveModeFromNative && window.__lukerSetImmersiveModeFromNative($jsEnabled);",
+            "window.__atriaSetImmersiveModeFromNative && window.__atriaSetImmersiveModeFromNative($jsEnabled);",
             null,
         )
     }
@@ -1175,7 +1175,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         pendingBackCheck = true
-        val script = "(function(){try{return (typeof window.__lukerHandleBack === 'function') ? String(window.__lukerHandleBack()) : 'noop';}catch(e){return 'noop';}})();"
+        val script = "(function(){try{return (typeof window.__atriaHandleBack === 'function') ? String(window.__atriaHandleBack()) : 'noop';}catch(e){return 'noop';}})();"
         webView.evaluateJavascript(script) { rawResult ->
             runOnUiThread {
                 pendingBackCheck = false
@@ -1330,16 +1330,16 @@ class MainActivity : AppCompatActivity() {
     private fun installBlobDownloadBridge() {
         val script = """
             (function () {
-              if (window.__lukerAndroidDownloadBridgeInstalled) return;
-              window.__lukerAndroidDownloadBridgeInstalled = true;
-              if (!window.LukerAndroid || typeof window.LukerAndroid.saveFileFromDataUrl !== 'function') return;
+              if (window.__atriaAndroidDownloadBridgeInstalled) return;
+              window.__atriaAndroidDownloadBridgeInstalled = true;
+              if (!window.AtriaAndroid || typeof window.AtriaAndroid.saveFileFromDataUrl !== 'function') return;
 
-              const topLukerAndroid = window.LukerAndroid;
+              const topAtriaAndroid = window.AtriaAndroid;
 
               const applyToWindow = (win) => {
                 try {
-                  if (!win || win.__lukerAndroidDownloadBridgeApplied) return;
-                  win.__lukerAndroidDownloadBridgeApplied = true;
+                  if (!win || win.__atriaAndroidDownloadBridgeApplied) return;
+                  win.__atriaAndroidDownloadBridgeApplied = true;
                 } catch (_) {
                   return;
                 }
@@ -1379,10 +1379,10 @@ class MainActivity : AppCompatActivity() {
                       dataUrl = await toDataUrl(blob);
                     }
 
-                    topLukerAndroid.saveFileFromDataUrl(dataUrl, fileName, mime);
+                    topAtriaAndroid.saveFileFromDataUrl(dataUrl, fileName, mime);
                     return true;
                   } catch (error) {
-                    try { console.error('[LukerAndroid] blob download handoff failed', error); } catch (_) {}
+                    try { console.error('[AtriaAndroid] blob download handoff failed', error); } catch (_) {}
                     return false;
                   }
                 };
@@ -1460,7 +1460,7 @@ class MainActivity : AppCompatActivity() {
                       try {
                         const childWin = iframe.contentWindow;
                         if (childWin) {
-                          try { delete childWin.__lukerAndroidDownloadBridgeApplied; } catch (_) {}
+                          try { delete childWin.__atriaAndroidDownloadBridgeApplied; } catch (_) {}
                         }
                       } catch (_) {}
                       tryApplyToIframe(iframe);
@@ -1563,8 +1563,8 @@ class MainActivity : AppCompatActivity() {
 
         val baseUrl = sequenceOf(
             if (this::webView.isInitialized) webView.url else null,
-            LukerEndpointConfig.load(applicationContext).resolveBaseUrl(),
-            LukerRuntimeManager.SERVER_URL,
+            AtriaEndpointConfig.load(applicationContext).resolveBaseUrl(),
+            AtriaRuntimeManager.SERVER_URL,
         ).firstOrNull { !it.isNullOrBlank() } ?: return null
 
         val resolved = runCatching { java.net.URI(baseUrl).resolve(trimmedUrl).toString() }.getOrNull() ?: return null
@@ -1689,7 +1689,7 @@ class MainActivity : AppCompatActivity() {
             if (req.headers.keys.none { it.equals("Authorization", ignoreCase = true) }) {
                 val authHost = runCatching { URL(resolvedUrl).host }.getOrNull()
                 if (!authHost.isNullOrBlank()) {
-                    val creds = LukerHttpAuthStore.loadAnyForHost(applicationContext, authHost)
+                    val creds = AtriaHttpAuthStore.loadAnyForHost(applicationContext, authHost)
                     if (creds != null) {
                         val basicHeader = "Basic " + Base64.encodeToString(
                             "${creds.username}:${creds.password}".toByteArray(Charsets.UTF_8),
@@ -1909,7 +1909,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        return LukerRuntimeManager.isSameOriginUrl(targetUri)
+        return AtriaRuntimeManager.isSameOriginUrl(targetUri)
     }
 
     private fun effectivePort(scheme: String, port: Int): Int {
@@ -2060,7 +2060,7 @@ class MainActivity : AppCompatActivity() {
         handler: HttpAuthHandler,
         host: String,
         realm: String,
-        prefill: LukerHttpAuthStore.Credentials?,
+        prefill: AtriaHttpAuthStore.Credentials?,
     ) {
         if (isFinishing || isDestroyed) {
             handler.cancel()
@@ -2133,11 +2133,11 @@ class MainActivity : AppCompatActivity() {
 
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val credentials = LukerHttpAuthStore.Credentials(
+                val credentials = AtriaHttpAuthStore.Credentials(
                     username = usernameInput.text?.toString().orEmpty(),
                     password = passwordInput.text?.toString().orEmpty(),
                 )
-                LukerHttpAuthStore.save(applicationContext, host, realm, credentials)
+                AtriaHttpAuthStore.save(applicationContext, host, realm, credentials)
                 recentHttpAuthAttempts[authKey] = credentials
                 dialog.dismiss()
                 handler.proceed(credentials.username, credentials.password)
@@ -2160,15 +2160,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bootstrapConfiguredEndpoint() {
-        val selection = LukerEndpointConfig.load(applicationContext)
+        val selection = AtriaEndpointConfig.load(applicationContext)
         val bootstrapToken = bootstrapSequence.incrementAndGet()
         runtimeFailureDialogShown = false
         loadingOverlay.visibility = View.VISIBLE
-        LukerEndpointStatusNotification.sync(applicationContext, selection)
+        AtriaEndpointStatusNotification.sync(applicationContext, selection)
 
         if (!selection.usesDefaultLocalRuntime) {
             val baseUrl = selection.resolveBaseUrl()
-            LukerRuntimeForegroundService.stop(applicationContext)
+            AtriaRuntimeForegroundService.stop(applicationContext)
             loadingText.text = getString(R.string.loading_custom_endpoint, baseUrl)
             webView.stopLoading()
             webView.loadUrl(baseUrl)
@@ -2177,9 +2177,9 @@ class MainActivity : AppCompatActivity() {
 
         loadingText.setText(R.string.loading_runtime)
 
-        val watchdogResult = LukerBootWatchdog.detectAndArm(
+        val watchdogResult = AtriaBootWatchdog.detectAndArm(
             applicationContext,
-            LukerRuntimeManager.dataRootFor(applicationContext),
+            AtriaRuntimeManager.dataRootFor(applicationContext),
         )
         if (watchdogResult.tripped) {
             Log.w(
@@ -2203,7 +2203,7 @@ class MainActivity : AppCompatActivity() {
                 if (!isBootstrapCurrent(bootstrapToken)) {
                     return@Thread
                 }
-                val result = LukerRuntimeManager.startIfNeeded(applicationContext)
+                val result = AtriaRuntimeManager.startIfNeeded(applicationContext)
                 if (!result.ok) {
                     if (!isBootstrapCurrent(bootstrapToken)) {
                         return@Thread
@@ -2218,7 +2218,7 @@ class MainActivity : AppCompatActivity() {
                 if (!isBootstrapCurrent(bootstrapToken)) {
                     return@Thread
                 }
-                LukerRuntimeForegroundService.start(applicationContext)
+                AtriaRuntimeForegroundService.start(applicationContext)
 
                 runOnUiThread {
                     if (isBootstrapCurrent(bootstrapToken)) {
@@ -2244,25 +2244,25 @@ class MainActivity : AppCompatActivity() {
     private fun waitUntilServerReady(totalBudgetMs: Long, delayMs: Long, bootstrapToken: Int) {
         val deadline = System.currentTimeMillis() + totalBudgetMs
         while (isBootstrapCurrent(bootstrapToken)) {
-            if (LukerRuntimeManager.isServerReady()) {
-                LukerBootWatchdog.markBootSucceeded(applicationContext)
+            if (AtriaRuntimeManager.isServerReady()) {
+                AtriaBootWatchdog.markBootSucceeded(applicationContext)
                 runOnUiThread {
                     if (isBootstrapCurrent(bootstrapToken)) {
-                        webView.loadUrl(LukerRuntimeManager.SERVER_URL)
+                        webView.loadUrl(AtriaRuntimeManager.SERVER_URL)
                     }
                 }
                 return
             }
 
-            if (!LukerRuntimeManager.isNodeProcessRunning()) {
-                val diagnostics = LukerRuntimeManager.collectDiagnostics(applicationContext)
+            if (!AtriaRuntimeManager.isNodeProcessRunning()) {
+                val diagnostics = AtriaRuntimeManager.collectDiagnostics(applicationContext)
                 Log.e(tag, "Node runtime stopped before server became ready.\n$diagnostics")
                 reportRuntimeFailure(getString(R.string.runtime_failure_reason_node_exited), diagnostics)
                 return
             }
 
             if (System.currentTimeMillis() >= deadline) {
-                val diagnostics = LukerRuntimeManager.collectDiagnostics(applicationContext)
+                val diagnostics = AtriaRuntimeManager.collectDiagnostics(applicationContext)
                 Log.e(tag, "Server readiness timed out.\n$diagnostics")
                 reportRuntimeFailure(getString(R.string.loading_failed_timeout), diagnostics)
                 return
@@ -2280,7 +2280,7 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState != null || launchAction == ACTION_OPEN_ENDPOINT_SETTINGS) {
             return
         }
-        val selection = LukerEndpointConfig.load(applicationContext)
+        val selection = AtriaEndpointConfig.load(applicationContext)
         if (!selection.usesDefaultLocalRuntime) {
             window.decorView.post { showEndpointDialog() }
         }
@@ -2307,7 +2307,7 @@ class MainActivity : AppCompatActivity() {
         }
         endpointDialog?.takeIf { it.isShowing }?.let { return }
 
-        val selection = LukerEndpointConfig.load(applicationContext)
+        val selection = AtriaEndpointConfig.load(applicationContext)
         val padding = (20 * resources.displayMetrics.density).toInt()
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -2352,12 +2352,12 @@ class MainActivity : AppCompatActivity() {
 
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val normalizedEndpoint = LukerEndpointConfig.normalizeCustomBaseUrl(inputView.text?.toString())
+                val normalizedEndpoint = AtriaEndpointConfig.normalizeCustomBaseUrl(inputView.text?.toString())
                 if (normalizedEndpoint == null) {
                     inputView.error = getString(R.string.endpoint_invalid_url)
                     return@setOnClickListener
                 }
-                LukerEndpointConfig.saveCustom(applicationContext, normalizedEndpoint)
+                AtriaEndpointConfig.saveCustom(applicationContext, normalizedEndpoint)
                 Toast.makeText(
                     this,
                     getString(R.string.endpoint_saved, normalizedEndpoint),
@@ -2367,7 +2367,7 @@ class MainActivity : AppCompatActivity() {
                 bootstrapConfiguredEndpoint()
             }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                LukerEndpointConfig.resetToDefault(applicationContext)
+                AtriaEndpointConfig.resetToDefault(applicationContext)
                 Toast.makeText(
                     this,
                     getString(R.string.endpoint_reset_default_done),
@@ -2388,7 +2388,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun collectRuntimeDiagnosticsSafe(): String {
-        return runCatching { LukerRuntimeManager.collectDiagnostics(applicationContext) }
+        return runCatching { AtriaRuntimeManager.collectDiagnostics(applicationContext) }
             .getOrElse { t -> "diagnostics_unavailable: ${t.message ?: t.javaClass.simpleName}" }
     }
 
@@ -2426,7 +2426,7 @@ class MainActivity : AppCompatActivity() {
 
         return buildString {
             append("reason=").append(reason).append('\n')
-            append("server=").append(LukerEndpointConfig.load(applicationContext).resolveBaseUrl()).append('\n')
+            append("server=").append(AtriaEndpointConfig.load(applicationContext).resolveBaseUrl()).append('\n')
             append("device=").append(android.os.Build.MANUFACTURER)
                 .append(' ')
                 .append(android.os.Build.MODEL)
@@ -2490,7 +2490,7 @@ class MainActivity : AppCompatActivity() {
             if (fullReportFile != null) {
                 append('\n').append(getString(R.string.runtime_error_report_saved, fullReportFile.absolutePath))
             }
-            if (!LukerAndroidDebugConfig.isEnabled(applicationContext)) {
+            if (!AtriaAndroidDebugConfig.isEnabled(applicationContext)) {
                 append(getString(R.string.crash_dialog_debug_hint))
             }
         }
@@ -2509,7 +2509,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun exportAndShareDiagnosticsBundle(shareSubjectRes: Int) {
         runCatching {
-            val export = LukerDiagnosticsExporter.exportTo(applicationContext)
+            val export = AtriaDiagnosticsExporter.exportTo(applicationContext)
             val intent = Intent(export.intent).apply {
                 putExtra(Intent.EXTRA_SUBJECT, getString(shareSubjectRes))
             }
@@ -2565,9 +2565,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val ACTION_OPEN_ENDPOINT_SETTINGS = "com.luker.app.action.OPEN_ENDPOINT_SETTINGS"
-        const val ACTION_RELOAD_WEBVIEW = "com.luker.app.action.RELOAD_WEBVIEW"
-        const val FULL_REPORT_FILE_NAME = "luker-last-crash-full-report.txt"
+        const val ACTION_OPEN_ENDPOINT_SETTINGS = "com.atria.app.action.OPEN_ENDPOINT_SETTINGS"
+        const val ACTION_RELOAD_WEBVIEW = "com.atria.app.action.RELOAD_WEBVIEW"
+        const val FULL_REPORT_FILE_NAME = "atria-last-crash-full-report.txt"
         private const val SERVER_READY_TOTAL_BUDGET_MS: Long = 240_000L
         private const val SERVER_READY_POLL_DELAY_MS: Long = 100L
     }

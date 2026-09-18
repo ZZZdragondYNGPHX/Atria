@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 /**
  * Extracts the small set of "at-a-glance" fields from an enriched crash

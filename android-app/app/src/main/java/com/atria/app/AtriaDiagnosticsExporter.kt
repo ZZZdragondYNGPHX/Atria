@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.content.Context
 import android.content.Intent
@@ -18,7 +18,7 @@ import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-object LukerDiagnosticsExporter {
+object AtriaDiagnosticsExporter {
     private const val FILE_PROVIDER_AUTHORITY_SUFFIX = ".fileprovider"
     private const val EXPORT_DIR_NAME = "diagnostics"
     private const val MAX_BOOTSTRAP_LOG_BYTES = 512 * 1024
@@ -26,14 +26,14 @@ object LukerDiagnosticsExporter {
     data class ExportResult(val zip: File, val shareUri: Uri, val intent: Intent)
 
     /**
-     * Bundles every diagnostic artifact Luker knows how to find into one zip
+     * Bundles every diagnostic artifact Atria knows how to find into one zip
      * under `externalFilesDir/diagnostics/`, then returns a share Intent.
      *
      * Contents:
-     * - summary.txt: snapshot of `LukerRuntimeManager.collectDiagnostics`
+     * - summary.txt: snapshot of `AtriaRuntimeManager.collectDiagnostics`
      * - bootstrap.log (last MAX_BOOTSTRAP_LOG_BYTES bytes if larger)
-     * - luker-last-jvm-crash.txt, luker-last-crash-report.txt,
-     *   luker-last-webview-crash-report.txt, luker-last-native-tombstone.pb
+     * - atria-last-jvm-crash.txt, atria-last-crash-report.txt,
+     *   atria-last-webview-crash-report.txt, atria-last-native-tombstone.pb
      *   from `filesDir/` (whichever exist)
      * - every `report.*.json` and `*.heapsnapshot` Node wrote to the runtime
      *   root (newest first)
@@ -46,13 +46,13 @@ object LukerDiagnosticsExporter {
             mkdirs()
         }
         val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        val zipFile = File(exportDir, "luker-diagnostics-$timestamp.zip")
+        val zipFile = File(exportDir, "atria-diagnostics-$timestamp.zip")
         val summary = buildSummary(context)
 
         ZipOutputStream(FileOutputStream(zipFile).buffered()).use { zip ->
             writeEntry(zip, "summary.txt", summary.toByteArray(Charsets.UTF_8))
 
-            val bootstrapLog = LukerRuntimeManager.bootstrapLogFile(context)
+            val bootstrapLog = AtriaRuntimeManager.bootstrapLogFile(context)
             if (bootstrapLog.isFile) {
                 writeFileEntry(zip, "bootstrap.log", bootstrapLog, tail = MAX_BOOTSTRAP_LOG_BYTES)
             }
@@ -61,18 +61,18 @@ object LukerDiagnosticsExporter {
                 writeFileEntry(zip, "crashes/${file.name}", file)
             }
 
-            for (file in LukerRuntimeManager.listNodeDiagnosticArtifacts(context)) {
+            for (file in AtriaRuntimeManager.listNodeDiagnosticArtifacts(context)) {
                 writeFileEntry(zip, "node/${file.name}", file)
             }
 
-            val trail = runCatching { LukerDebugTrail.dumpAll() }.getOrDefault("")
+            val trail = runCatching { AtriaDebugTrail.dumpAll() }.getOrDefault("")
             writeEntry(zip, "debug-trail.txt", trail.toByteArray(Charsets.UTF_8))
 
-            val currentLogcat = LukerLogcatTail.currentLogFile(context)
+            val currentLogcat = AtriaLogcatTail.currentLogFile(context)
             if (currentLogcat.isFile) {
                 writeFileEntry(zip, "logcat/current.log", currentLogcat)
             }
-            val lastLogcat = LukerLogcatTail.lastLogFile(context)
+            val lastLogcat = AtriaLogcatTail.lastLogFile(context)
             if (lastLogcat.isFile) {
                 writeFileEntry(zip, "logcat/last.log", lastLogcat)
             }
@@ -88,7 +88,7 @@ object LukerDiagnosticsExporter {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/zip"
             putExtra(Intent.EXTRA_STREAM, shareUri)
-            putExtra(Intent.EXTRA_SUBJECT, "Luker diagnostics ($timestamp)")
+            putExtra(Intent.EXTRA_SUBJECT, "Atria diagnostics ($timestamp)")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         return ExportResult(zip = zipFile, shareUri = shareUri, intent = intent)
@@ -96,7 +96,7 @@ object LukerDiagnosticsExporter {
 
     private fun buildSummary(context: Context): String {
         val sb = StringBuilder()
-        sb.append("Luker diagnostics bundle\n")
+        sb.append("Atria diagnostics bundle\n")
         sb.append("generatedAt=").append(
             SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
         ).append('\n')
@@ -123,29 +123,29 @@ object LukerDiagnosticsExporter {
         }.onFailure {
             sb.append("webViewPackage=<error: ").append(it.message ?: it.javaClass.simpleName).append(">\n")
         }
-        sb.append("cdpCollectorEnabled=").append(LukerCdpCollector.started).append('\n')
-        val current = LukerCdpCollector.currentRingFile()
-        val last = LukerCdpCollector.lastRingFile()
+        sb.append("cdpCollectorEnabled=").append(AtriaCdpCollector.started).append('\n')
+        val current = AtriaCdpCollector.currentRingFile()
+        val last = AtriaCdpCollector.lastRingFile()
         sb.append("cdpRingCurrentSize=").append(if (current?.isFile == true) current.length() else 0L).append('\n')
         sb.append("cdpRingLastSize=").append(if (last?.isFile == true) last.length() else 0L).append('\n')
-        val crashSnap = File(context.filesDir, LukerCdpCollector.CRASH_SNAPSHOT_FILE_NAME)
+        val crashSnap = File(context.filesDir, AtriaCdpCollector.CRASH_SNAPSHOT_FILE_NAME)
         sb.append("cdpCrashSnapshots=").append(if (crashSnap.isFile) 1 else 0).append('\n')
         sb.append('\n')
         sb.append("--- runtime diagnostics ---\n")
-        runCatching { sb.append(LukerRuntimeManager.collectDiagnostics(context)) }
+        runCatching { sb.append(AtriaRuntimeManager.collectDiagnostics(context)) }
             .onFailure { sb.append("<failed: ").append(it.message).append('>') }
         return sb.toString()
     }
 
     private fun collectCrashReportsFromFilesDir(context: Context): List<File> {
         val candidates = listOf(
-            "luker-last-jvm-crash.txt",
-            "luker-last-crash-report.txt",
-            "luker-last-webview-crash-report.txt",
-            "luker-last-native-tombstone.pb",
-            "luker-runtime-last-error.txt",
-            "luker-last-crash-full-report.txt",
-            "luker-last-crash-cdp.jsonl",
+            "atria-last-jvm-crash.txt",
+            "atria-last-crash-report.txt",
+            "atria-last-webview-crash-report.txt",
+            "atria-last-native-tombstone.pb",
+            "atria-runtime-last-error.txt",
+            "atria-last-crash-full-report.txt",
+            "atria-last-crash-cdp.jsonl",
         )
         return candidates.mapNotNull { name ->
             val f = File(context.filesDir, name)
@@ -160,7 +160,7 @@ object LukerDiagnosticsExporter {
     }
 
     private fun addCdpEntries(zip: ZipOutputStream) {
-        val (current, bytesLimit) = LukerCdpCollector.snapshotForExport()
+        val (current, bytesLimit) = AtriaCdpCollector.snapshotForExport()
         if (current != null && current.isFile && bytesLimit > 0L) {
             zip.putNextEntry(ZipEntry("cdp/current.jsonl"))
             FileInputStream(current).use { input ->
@@ -176,7 +176,7 @@ object LukerDiagnosticsExporter {
             }
             zip.closeEntry()
         }
-        val last = LukerCdpCollector.lastRingFile()
+        val last = AtriaCdpCollector.lastRingFile()
         if (last != null && last.isFile) {
             writeFileEntry(zip, "cdp/last.jsonl", last)
         }

@@ -1,4 +1,4 @@
-package com.luker.app
+package com.atria.app
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -13,7 +13,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlin.system.exitProcess
 
-class LukerRuntimeForegroundService : Service() {
+class AtriaRuntimeForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -88,7 +88,7 @@ class LukerRuntimeForegroundService : Service() {
         val exitIntent = PendingIntent.getService(
             this,
             2,
-            Intent(this, LukerRuntimeForegroundService::class.java).apply {
+            Intent(this, AtriaRuntimeForegroundService::class.java).apply {
                 action = ACTION_EXIT_APP
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -122,12 +122,12 @@ class LukerRuntimeForegroundService : Service() {
     }
 
     companion object {
-        private const val CHANNEL_ID = "luker_runtime"
+        private const val CHANNEL_ID = "atria_runtime"
         private const val NOTIFICATION_ID = 1001
-        private const val ACTION_EXIT_APP = "com.luker.app.action.EXIT_APP"
+        private const val ACTION_EXIT_APP = "com.atria.app.action.EXIT_APP"
 
         fun start(context: Context) {
-            val intent = Intent(context, LukerRuntimeForegroundService::class.java)
+            val intent = Intent(context, AtriaRuntimeForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -136,7 +136,7 @@ class LukerRuntimeForegroundService : Service() {
         }
 
         fun stop(context: Context) {
-            context.stopService(Intent(context, LukerRuntimeForegroundService::class.java))
+            context.stopService(Intent(context, AtriaRuntimeForegroundService::class.java))
         }
     }
 }

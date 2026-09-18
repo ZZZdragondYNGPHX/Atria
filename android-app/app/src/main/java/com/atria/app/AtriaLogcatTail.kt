@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.content.Context
 import android.util.Log
@@ -18,12 +18,12 @@ import java.io.OutputStream
  * at 256 KB; when current overflows, it is moved to `logcat.last`
  * (overwriting), and a new `logcat.current` is opened.
  *
- * setEnabled is idempotent and survives crashes via LukerAndroidDebugConfig.
+ * setEnabled is idempotent and survives crashes via AtriaAndroidDebugConfig.
  * On unexpected daemon death we retry up to 3 times, then give up and write
- * a marker to LukerDebugTrail.
+ * a marker to AtriaDebugTrail.
  */
-object LukerLogcatTail {
-    private const val TAG = "LukerLogcatTail"
+object AtriaLogcatTail {
+    private const val TAG = "AtriaLogcatTail"
     private const val CURRENT_FILE_NAME = "logcat.current"
     private const val LAST_FILE_NAME = "logcat.last"
     private const val FILE_CAP_BYTES = 256 * 1024L
@@ -48,7 +48,7 @@ object LukerLogcatTail {
             if (daemon?.isAlive == true) return
             stopRequested = false
             val appContext = context.applicationContext
-            daemon = Thread({ runDaemonLoop(appContext) }, "LukerLogcatTail").apply {
+            daemon = Thread({ runDaemonLoop(appContext) }, "AtriaLogcatTail").apply {
                 isDaemon = true
                 start()
             }
@@ -76,7 +76,7 @@ object LukerLogcatTail {
 
             restarts++
             if (restarts > MAX_RESTARTS) {
-                LukerDebugTrail.append(
+                AtriaDebugTrail.append(
                     "native",
                     "logcat-tail-give-up reason=${giveUpReason ?: "unknown"} after $restarts attempts",
                 )

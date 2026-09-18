@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,7 +41,7 @@ class CrashSummaryTest {
         val report = """
             android=14 (sdk=34)
             device=Pixel 7
-            processName=com.luker.app
+            processName=com.atria.app
             pid=1234
             importance=FOREGROUND (100)
             reason=CRASH (4)
@@ -63,7 +63,7 @@ class CrashSummaryTest {
             reason=CRASH (4)
             importance=FOREGROUND (100)
             pid=1234
-            processName=com.luker.app
+            processName=com.atria.app
         """.trimIndent()
         assertEquals(expected, out)
     }

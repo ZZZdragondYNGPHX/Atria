@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.app.Application
 import android.os.Build
@@ -17,7 +17,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class LukerApplication : Application() {
+class AtriaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         installUncaughtExceptionHandler()
@@ -67,13 +67,13 @@ class LukerApplication : Application() {
 
     private fun initDebugRecording() {
         runCatching {
-            LukerDebugTrail.append(
+            AtriaDebugTrail.append(
                 "native",
                 "process onCreate pid=${android.os.Process.myPid()} uid=${android.os.Process.myUid()}",
             )
-            val enabled = LukerAndroidDebugConfig.isEnabled(this)
+            val enabled = AtriaAndroidDebugConfig.isEnabled(this)
             if (enabled) {
-                LukerLogcatTail.setEnabled(this, true)
+                AtriaLogcatTail.setEnabled(this, true)
                 armWebViewCdp()
             }
         }.onFailure {
@@ -96,12 +96,12 @@ class LukerApplication : Application() {
             WebView.setWebContentsDebuggingEnabled(true)
             true
         }.getOrElse { t ->
-            LukerDebugTrail.append("native", "cdp-collector state=abort-webview-debug err=${t.message ?: t.javaClass.simpleName}")
+            AtriaDebugTrail.append("native", "cdp-collector state=abort-webview-debug err=${t.message ?: t.javaClass.simpleName}")
             false
         }
         if (debugArmed) {
-            LukerDebugTrail.append("native", "cdp-collector state=arm debug-enabled=true")
-            LukerCdpCollector.start(this)
+            AtriaDebugTrail.append("native", "cdp-collector state=arm debug-enabled=true")
+            AtriaCdpCollector.start(this)
         }
     }
 
@@ -125,7 +125,7 @@ class LukerApplication : Application() {
     }
 
     companion object {
-        private const val TAG = "LukerApplication"
-        const val JVM_CRASH_FILE_NAME = "luker-last-jvm-crash.txt"
+        private const val TAG = "AtriaApplication"
+        const val JVM_CRASH_FILE_NAME = "atria-last-jvm-crash.txt"
     }
 }

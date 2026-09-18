@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -15,7 +15,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import kotlin.experimental.xor
 
-class LukerWebSocketClientTest {
+class AtriaWebSocketClientTest {
 
     // -------- helpers --------
 
@@ -63,10 +63,10 @@ class LukerWebSocketClientTest {
     /** Builds a fake handshake response line stream. Not used here; we
      *  drive the client past handshake by never calling handshake() — the
      *  public sendText/readMessage do not require it. */
-    private fun clientOver(inputBytes: ByteArray): Pair<LukerWebSocketClient, ByteArrayOutputStream> {
+    private fun clientOver(inputBytes: ByteArray): Pair<AtriaWebSocketClient, ByteArrayOutputStream> {
         val input: InputStream = ByteArrayInputStream(inputBytes)
         val output = ByteArrayOutputStream()
-        return LukerWebSocketClient(input, object : OutputStream() {
+        return AtriaWebSocketClient(input, object : OutputStream() {
             override fun write(b: Int) = output.write(b)
             override fun write(b: ByteArray, off: Int, len: Int) = output.write(b, off, len)
         }) to output

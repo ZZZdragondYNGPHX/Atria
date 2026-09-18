@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import androidx.annotation.VisibleForTesting
 import java.util.concurrent.atomic.AtomicLong
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong
  * AtomicLong increment. Failures are swallowed — never let the trail break
  * the calling site.
  */
-object LukerDebugTrail {
+object AtriaDebugTrail {
     private const val CAPACITY = 2048
     private const val MAX_LINE_CHARS = 1024
     private const val TRUNCATION_SUFFIX = "…[truncated]"

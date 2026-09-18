@@ -1,11 +1,11 @@
-package com.luker.app
+package com.atria.app
 
 import android.content.Context
 import android.util.Base64
 import java.util.Locale
 
-object LukerHttpAuthStore {
-    private const val PREFS_NAME = "luker_http_auth"
+object AtriaHttpAuthStore {
+    private const val PREFS_NAME = "atria_http_auth"
 
     data class Credentials(
         val username: String,

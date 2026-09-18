@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
@@ -17,14 +17,14 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
-object LukerCrashCapture {
-    private const val TAG = "LukerCrashCapture"
-    private const val PREF_NAME = "luker_crash_capture"
+object AtriaCrashCapture {
+    private const val TAG = "AtriaCrashCapture"
+    private const val PREF_NAME = "atria_crash_capture"
     private const val PREF_KEY_LAST_TIMESTAMP = "last_handled_exit_timestamp"
     private const val PREF_KEY_LAST_JVM_TIMESTAMP = "last_handled_jvm_timestamp"
-    private const val REPORT_FILE_NAME = "luker-last-crash-report.txt"
-    private const val NATIVE_TOMBSTONE_FILE_NAME = "luker-last-native-tombstone.pb"
-    private const val WEBVIEW_REPORT_FILE_NAME = "luker-last-webview-crash-report.txt"
+    private const val REPORT_FILE_NAME = "atria-last-crash-report.txt"
+    private const val NATIVE_TOMBSTONE_FILE_NAME = "atria-last-native-tombstone.pb"
+    private const val WEBVIEW_REPORT_FILE_NAME = "atria-last-webview-crash-report.txt"
     private const val MAX_HISTORY_LOOKUP = 16
 
     data class CapturedCrash(
@@ -52,7 +52,7 @@ object LukerCrashCapture {
         // surface its path in the enriched jvm-crash report too so both crash
         // paths get the same treatment. onRenderProcessGone freshly harvests
         // and calls enrichCrashReport directly with its returned path.
-        val cdpSnapshot = File(context.filesDir, LukerCdpCollector.CRASH_SNAPSHOT_FILE_NAME)
+        val cdpSnapshot = File(context.filesDir, AtriaCdpCollector.CRASH_SNAPSHOT_FILE_NAME)
         val cdpSnapshotPath = if (cdpSnapshot.isFile) cdpSnapshot.absolutePath else null
         return enrichCrashReport(context, captured, cdpSnapshotPath)
     }
@@ -72,13 +72,13 @@ object LukerCrashCapture {
         val enrichedReport = buildString {
             append(captured.report)
             append("\n\n--- debug-trail ---\n")
-            val trail = runCatching { LukerDebugTrail.dumpAll() }.getOrDefault("")
+            val trail = runCatching { AtriaDebugTrail.dumpAll() }.getOrDefault("")
             append(trail.ifEmpty { "<empty>" })
             appendLogcatTailsForCrash(this, context)
             if (cdpSnapshotPath != null) {
                 append("\n\n--- cdp snapshot ---\n")
                 append(cdpSnapshotPath).append('\n')
-                append("(complete event stream in diagnostics zip crashes/luker-last-crash-cdp.jsonl)")
+                append("(complete event stream in diagnostics zip crashes/atria-last-crash-cdp.jsonl)")
             }
         }
         val reportFile = runCatching {
@@ -89,8 +89,8 @@ object LukerCrashCapture {
 
     private fun appendLogcatTailsForCrash(sb: StringBuilder, context: Context) {
         sb.append("\n\n--- logcat tail ---\n")
-        val current = LukerLogcatTail.currentLogFile(context)
-        val last = LukerLogcatTail.lastLogFile(context)
+        val current = AtriaLogcatTail.currentLogFile(context)
+        val last = AtriaLogcatTail.lastLogFile(context)
         if (!current.isFile && !last.isFile) {
             sb.append("<not recorded>")
             return
@@ -199,7 +199,7 @@ object LukerCrashCapture {
     }
 
     private fun readJvmCrashReport(context: Context, prefs: SharedPreferences): JvmCrashReport? {
-        val file = File(context.filesDir, LukerApplication.JVM_CRASH_FILE_NAME)
+        val file = File(context.filesDir, AtriaApplication.JVM_CRASH_FILE_NAME)
         if (!file.isFile) {
             return null
         }
@@ -302,7 +302,7 @@ object LukerCrashCapture {
                 }
             }
             ApplicationExitInfo.REASON_CRASH -> {
-                "trace: <no JVM stack was attached to this exit record; Luker's in-process handler should normally capture one — its absence here suggests the crash happened before the handler was installed>"
+                "trace: <no JVM stack was attached to this exit record; Atria's in-process handler should normally capture one — its absence here suggests the crash happened before the handler was installed>"
             }
             ApplicationExitInfo.REASON_LOW_MEMORY -> {
                 "trace: <Android killed the process because the device was low on memory; no stack trace is produced for this reason>"

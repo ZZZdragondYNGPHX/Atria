@@ -1,4 +1,4 @@
-package com.luker.app
+package com.atria.app
 
 import android.Manifest
 import android.app.NotificationChannel
@@ -11,11 +11,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
-object LukerEndpointStatusNotification {
-    private const val CHANNEL_ID = "luker_endpoint_status_v1"
+object AtriaEndpointStatusNotification {
+    private const val CHANNEL_ID = "atria_endpoint_status_v1"
     private const val NOTIFICATION_ID = 1003
 
-    fun sync(context: Context, selection: LukerEndpointConfig.Selection = LukerEndpointConfig.load(context)) {
+    fun sync(context: Context, selection: AtriaEndpointConfig.Selection = AtriaEndpointConfig.load(context)) {
         if (selection.usesDefaultLocalRuntime || !notificationsEnabled(context)) {
             clear(context)
             return

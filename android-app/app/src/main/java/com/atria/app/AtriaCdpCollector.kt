@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.content.Context
 import java.io.File
@@ -11,28 +11,28 @@ import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Owns the three CDP daemon threads. Started once from
- * LukerApplication.onCreate when the "Android debug recording" pref is on
+ * AtriaApplication.onCreate when the "Android debug recording" pref is on
  * (after WebView.setWebContentsDebuggingEnabled(true) has been called).
  * Has no stop() — the process-global static setWebContentsDebuggingEnabled
  * is not reversible, so a running collector matches the WebView state.
  *
- * All internal failures write to LukerDebugTrail; nothing here is allowed
+ * All internal failures write to AtriaDebugTrail; nothing here is allowed
  * to propagate up into the WebView main path.
  */
-object LukerCdpCollector {
-    private const val TAG = "LukerCdpCollector"
+object AtriaCdpCollector {
+    private const val TAG = "AtriaCdpCollector"
     private const val MAX_CLIENTS = 32
     private const val FAIL_THRESHOLD = 3
     const val CDP_DIR_NAME = "cdp"
-    const val CRASH_SNAPSHOT_FILE_NAME = "luker-last-crash-cdp.jsonl"
+    const val CRASH_SNAPSHOT_FILE_NAME = "atria-last-crash-cdp.jsonl"
 
     private val startedFlag = AtomicBoolean(false)
     val started: Boolean get() = startedFlag.get()
 
-    private val clients = ConcurrentHashMap<Int, LukerCdpClient>()
+    private val clients = ConcurrentHashMap<Int, AtriaCdpClient>()
     private val failedPids = ConcurrentHashMap<Int, Int>()
-    private var discovery: LukerCdpDiscovery? = null
-    private var writer: LukerCdpWriter? = null
+    private var discovery: AtriaCdpDiscovery? = null
+    private var writer: AtriaCdpWriter? = null
     private lateinit var cdpDir: File
     private val lastDropLogAtMs = AtomicLong(0L)
 
@@ -42,13 +42,13 @@ object LukerCdpCollector {
         if (!startedFlag.compareAndSet(false, true)) return
         try {
             cdpDir = File(context.filesDir, CDP_DIR_NAME).also { it.mkdirs() }
-            val w = LukerCdpWriter(cdpDir, rotateLock).also { it.start() }
+            val w = AtriaCdpWriter(cdpDir, rotateLock).also { it.start() }
             writer = w
-            val d = LukerCdpDiscovery(this).also { it.start() }
+            val d = AtriaCdpDiscovery(this).also { it.start() }
             discovery = d
-            LukerDebugTrail.append("native", "cdp-collector state=start")
+            AtriaDebugTrail.append("native", "cdp-collector state=start")
         } catch (t: Throwable) {
-            LukerDebugTrail.append("native", "cdp-collector state=abort-cdp-start err=${t.message ?: t.javaClass.simpleName}")
+            AtriaDebugTrail.append("native", "cdp-collector state=abort-cdp-start err=${t.message ?: t.javaClass.simpleName}")
         }
     }
 
@@ -57,10 +57,10 @@ object LukerCdpCollector {
             if (clients.containsKey(pid)) continue
             if ((failedPids[pid] ?: 0) >= FAIL_THRESHOLD) continue
             if (clients.size >= MAX_CLIENTS) {
-                LukerDebugTrail.append("native", "cdp-collector state=clients-full pid=$pid")
+                AtriaDebugTrail.append("native", "cdp-collector state=clients-full pid=$pid")
                 continue
             }
-            val client = LukerCdpClient(pid, this)
+            val client = AtriaCdpClient(pid, this)
             clients[pid] = client
             client.start()
         }
@@ -68,7 +68,7 @@ object LukerCdpCollector {
         for (pid in dead) {
             clients.remove(pid)?.requestStop()
             failedPids.remove(pid)
-            LukerDebugTrail.append("native", "cdp-collector state=unbind pid=$pid")
+            AtriaDebugTrail.append("native", "cdp-collector state=unbind pid=$pid")
         }
         for (pid in failedPids.keys.toList()) {
             if (pid !in alive) {
@@ -85,11 +85,11 @@ object LukerCdpCollector {
         clients.remove(pid)
     }
 
-    fun enqueueEvent(entry: LukerCdpWriter.Entry) {
+    fun enqueueEvent(entry: AtriaCdpWriter.Entry) {
         val w = writer ?: return
         // Short-circuit if the drain thread crashed. Without this the queue
         // would fill to capacity and then queue.put would have blocked the
-        // caller (LukerCdpClient reader thread) forever — offer() below also
+        // caller (AtriaCdpClient reader thread) forever — offer() below also
         // fixes that, but skipping the offer entirely on a dead writer keeps
         // the queue drainable if the writer is ever restarted. Gate on
         // isDrainAlive() rather than hasWriter() so that events arriving
@@ -105,14 +105,14 @@ object LukerCdpCollector {
             val now = System.currentTimeMillis()
             val prev = lastDropLogAtMs.get()
             if (now - prev > 1_000L && lastDropLogAtMs.compareAndSet(prev, now)) {
-                LukerDebugTrail.append("native", "cdp-collector state=writer-dropped queue-full")
+                AtriaDebugTrail.append("native", "cdp-collector state=writer-dropped queue-full")
             }
         }
     }
 
     /**
      * Atomically flushes the current ring, renames it to
-     * filesDir/luker-last-crash-cdp.jsonl (overwriting any previous file),
+     * filesDir/atria-last-crash-cdp.jsonl (overwriting any previous file),
      * and reopens a fresh empty current for the writer to keep appending.
      *
      * Called from the main thread inside MainActivity.onRenderProcessGone —
@@ -142,7 +142,7 @@ object LukerCdpCollector {
                         src.delete()
                         target
                     }.getOrElse {
-                        LukerDebugTrail.append("native", "cdp-collector state=harvest-copy-fail err=${it.message ?: it.javaClass.simpleName}")
+                        AtriaDebugTrail.append("native", "cdp-collector state=harvest-copy-fail err=${it.message ?: it.javaClass.simpleName}")
                         null
                     }
                 }
@@ -155,18 +155,18 @@ object LukerCdpCollector {
                 if (w.isDrainAlive()) {
                     w.reopenUnderLock()
                 } else {
-                    LukerDebugTrail.append("native", "cdp-collector state=harvest skip-reopen reason=drain-dead")
+                    AtriaDebugTrail.append("native", "cdp-collector state=harvest skip-reopen reason=drain-dead")
                 }
-                LukerDebugTrail.append("native", "cdp-collector state=harvest saved=${finalFile?.name ?: "<none>"}")
+                AtriaDebugTrail.append("native", "cdp-collector state=harvest saved=${finalFile?.name ?: "<none>"}")
                 finalFile
             } catch (t: Throwable) {
-                LukerDebugTrail.append("native", "cdp-collector state=harvest-fail err=${t.message ?: t.javaClass.simpleName}")
+                AtriaDebugTrail.append("native", "cdp-collector state=harvest-fail err=${t.message ?: t.javaClass.simpleName}")
                 if (w.isDrainAlive()) {
                     runCatching { w.reopenUnderLock() }.onFailure {
-                        LukerDebugTrail.append("native", "cdp-collector state=harvest-reopen-fail err=${it.message ?: it.javaClass.simpleName}")
+                        AtriaDebugTrail.append("native", "cdp-collector state=harvest-reopen-fail err=${it.message ?: it.javaClass.simpleName}")
                     }
                 } else {
-                    LukerDebugTrail.append("native", "cdp-collector state=harvest skip-reopen reason=drain-dead")
+                    AtriaDebugTrail.append("native", "cdp-collector state=harvest skip-reopen reason=drain-dead")
                 }
                 null
             }
@@ -174,7 +174,7 @@ object LukerCdpCollector {
     }
 
     /**
-     * Called by LukerDiagnosticsExporter. Flushes the current ring under
+     * Called by AtriaDiagnosticsExporter. Flushes the current ring under
      * rotateLock and returns the current file plus the byte-limit valid at
      * the flush point. Writer keeps appending after we release the lock;
      * exporter must read only the first `bytesLimit` bytes to avoid a
@@ -194,7 +194,7 @@ object LukerCdpCollector {
     // Return the on-disk paths regardless of drain-thread state — if the
     // writer thread has crashed the ring files still exist and the
     // exporter should surface their real size instead of reporting 0.
-    fun currentRingFile(): File? = if (::cdpDir.isInitialized) File(cdpDir, LukerCdpWriter.CURRENT_NAME) else null
-    fun lastRingFile(): File? = if (::cdpDir.isInitialized) File(cdpDir, LukerCdpWriter.LAST_NAME) else null
+    fun currentRingFile(): File? = if (::cdpDir.isInitialized) File(cdpDir, AtriaCdpWriter.CURRENT_NAME) else null
+    fun lastRingFile(): File? = if (::cdpDir.isInitialized) File(cdpDir, AtriaCdpWriter.LAST_NAME) else null
     fun ringDir(): File? = if (::cdpDir.isInitialized) cdpDir else null
 }

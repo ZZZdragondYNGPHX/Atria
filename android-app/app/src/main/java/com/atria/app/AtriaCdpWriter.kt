@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import java.io.BufferedWriter
 import java.io.File
@@ -17,14 +17,14 @@ import java.util.concurrent.TimeUnit
  * "recover on next boot" model, and SIGKILL loses at most one 32KB
  * BufferedWriter window.
  *
- * The rotateLock is shared with LukerCdpCollector so that
+ * The rotateLock is shared with AtriaCdpCollector so that
  * harvestForCrash() and snapshotForExport() can atomically flush and
  * snapshot without racing this writer.
  */
-class LukerCdpWriter(
+class AtriaCdpWriter(
     private val cdpDir: File,
     val rotateLock: Any,
-) : Thread("luker-cdp-writer") {
+) : Thread("atria-cdp-writer") {
     data class Entry(val pid: Int, val recvMs: Long, val payload: String)
 
     val queue: ArrayBlockingQueue<Entry> = ArrayBlockingQueue(QUEUE_CAPACITY)
@@ -68,7 +68,7 @@ class LukerCdpWriter(
             // isDrainAlive() gets an accurate answer before we start
             // tearing down the BufferedWriter.
             drainCrashed = true
-            LukerDebugTrail.append("native", "cdp-collector state=writer-crashed err=${t.message ?: t.javaClass.simpleName}")
+            AtriaDebugTrail.append("native", "cdp-collector state=writer-crashed err=${t.message ?: t.javaClass.simpleName}")
             // Null the writer so enqueueEvent can short-circuit and never
             // block on a dead drain thread. Best-effort close of the
             // BufferedWriter — we don't care about IOException here since
@@ -122,13 +122,13 @@ class LukerCdpWriter(
         if (queue.remainingCapacity() < 100) {
             val now = System.currentTimeMillis()
             if (now - backpressureLoggedAt > 5_000L) {
-                LukerDebugTrail.append("native", "cdp-collector state=writer-backpressure remaining=${queue.remainingCapacity()}")
+                AtriaDebugTrail.append("native", "cdp-collector state=writer-backpressure remaining=${queue.remainingCapacity()}")
                 backpressureLoggedAt = now
             }
         }
     }
 
-    /** Called under rotateLock by LukerCdpCollector.harvestForCrash. */
+    /** Called under rotateLock by AtriaCdpCollector.harvestForCrash. */
     fun flushAndCloseUnderLock() {
         writer?.let {
             it.flush()
@@ -137,7 +137,7 @@ class LukerCdpWriter(
         writer = null
     }
 
-    /** Called under rotateLock by LukerCdpCollector.harvestForCrash after rename. */
+    /** Called under rotateLock by AtriaCdpCollector.harvestForCrash after rename. */
     fun reopenUnderLock() {
         writer = BufferedWriter(
             OutputStreamWriter(FileOutputStream(currentFile, /* append = */ false), Charsets.UTF_8),
@@ -146,7 +146,7 @@ class LukerCdpWriter(
         currentBytes = 0L
     }
 
-    /** Called under rotateLock by LukerCdpCollector.snapshotForExport. */
+    /** Called under rotateLock by AtriaCdpCollector.snapshotForExport. */
     fun flushUnderLock(): Long {
         writer?.flush()
         return currentBytes

@@ -1,4 +1,4 @@
-package com.luker.app
+package com.atria.app
 
 import android.content.Context
 import android.content.res.AssetManager
@@ -13,22 +13,22 @@ import java.net.ServerSocket
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
-object LukerRuntimeManager {
-    private const val TAG = "LukerRuntime"
+object AtriaRuntimeManager {
+    private const val TAG = "AtriaRuntime"
     private const val DEFAULT_SERVER_PORT = 8000
     private const val MAX_PORT_PROBE_ATTEMPTS = 50
     private val started = AtomicBoolean(false)
     private val librariesLoaded = AtomicBoolean(false)
     private const val RUNTIME_LAYOUT_VERSION = "3"
     private const val RUNTIME_MARKER = ".runtime-version"
-    private const val RUNTIME_DIR_NAME = "luker-runtime"
-    private const val PERSISTENT_DATA_DIR_NAME = "luker-data"
+    private const val RUNTIME_DIR_NAME = "atria-runtime"
+    private const val PERSISTENT_DATA_DIR_NAME = "atria-data"
     private const val CONFIG_FILE_NAME = "config.yaml"
     private const val RUNTIME_PERSIST_DIR_NAME = "_runtime-persist"
     private const val SERVER_PLUGINS_DIR_NAME = "plugins"
     private const val GLOBAL_EXTENSIONS_RELATIVE_PATH = "extensions/third-party"
     private const val NODE_SCRIPT_PATH = "nodejs-project/bootstrap.js"
-    private const val NODE_PROJECT_ASSET_PATH = "luker"
+    private const val NODE_PROJECT_ASSET_PATH = "atria"
     private const val PREBUILT_BUNDLES_ASSET_PATH = "_prebuilt-bundles"
     private const val PREBUILT_BUNDLES_RUNTIME_DIR_NAME = "_prebuilt-bundles"
     // Must match PREBUILT_BUNDLE_FILES in src/middleware/webpack-serve.js. If any

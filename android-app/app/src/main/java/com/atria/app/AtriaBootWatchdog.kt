@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.content.Context
 import android.util.Log
@@ -11,7 +11,7 @@ import java.io.File
  * Detects "the previous launch never reached server-ready" — typically because
  * Node crashed (e.g. OOM from a broken extension) before the WebView could
  * connect to /api/ping. On detection, drops a sentinel at
- * `<dataRoot>/.luker-safe-mode.json` that `src/safe-mode.js` consumes early
+ * `<dataRoot>/.atria-safe-mode.json` that `src/safe-mode.js` consumes early
  * in `preSetupTasks` to disable every third-party extension across all users.
  *
  * The watchdog uses SharedPreferences as the boot-in-progress flag (cheap,
@@ -24,13 +24,13 @@ import java.io.File
  * crashes (which usually restart within seconds) from user-initiated swipes
  * from recents (which typically come back much later).
  */
-object LukerBootWatchdog {
-    private const val TAG = "LukerBootWatchdog"
-    private const val PREF_NAME = "luker_boot_watchdog"
+object AtriaBootWatchdog {
+    private const val TAG = "AtriaBootWatchdog"
+    private const val PREF_NAME = "atria_boot_watchdog"
     private const val PREF_KEY_IN_PROGRESS_AT = "boot_in_progress_at_millis"
     private const val PREF_KEY_LAST_FAILED_AT = "boot_last_failed_at_millis"
     private const val PREF_KEY_FAILED_STREAK = "boot_failed_streak"
-    private const val SENTINEL_FILE_NAME = ".luker-safe-mode.json"
+    private const val SENTINEL_FILE_NAME = ".atria-safe-mode.json"
 
     /**
      * Window after marking boot-in-progress within which a fresh start counts

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,7 +11,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-class LukerLogcatTailRotationTest {
+class AtriaLogcatTailRotationTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
@@ -20,7 +20,7 @@ class LukerLogcatTailRotationTest {
         val current = File(tmp.root, "logcat.current").apply { writeText("CURRENT") }
         val last = File(tmp.root, "logcat.last").apply { writeText("OLD_LAST") }
 
-        LukerLogcatTail.rotateForTest(current, last)
+        AtriaLogcatTail.rotateForTest(current, last)
 
         assertFalse("current should be gone after rotate", current.exists())
         assertTrue("last should exist after rotate", last.exists())
@@ -33,7 +33,7 @@ class LukerLogcatTailRotationTest {
         val last = File(tmp.root, "logcat.last")
         assertFalse(last.exists())
 
-        LukerLogcatTail.rotateForTest(current, last)
+        AtriaLogcatTail.rotateForTest(current, last)
 
         assertFalse(current.exists())
         assertTrue(last.exists())
@@ -46,7 +46,7 @@ class LukerLogcatTailRotationTest {
         val last = File(tmp.root, "logcat.last").apply { writeText("KEEP") }
         assertFalse(current.exists())
 
-        LukerLogcatTail.rotateForTest(current, last)
+        AtriaLogcatTail.rotateForTest(current, last)
 
         assertFalse(current.exists())
         assertEquals("KEEP", last.readText())

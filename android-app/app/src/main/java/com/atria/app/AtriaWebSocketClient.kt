@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -29,7 +29,7 @@ import kotlin.experimental.xor
  * Payload cap: MAX_MESSAGE_BYTES per assembled message; exceeding it
  * throws IOException so the caller can log payload-oversize.
  */
-class LukerWebSocketClient(
+class AtriaWebSocketClient(
     private val input: InputStream,
     private val output: OutputStream,
 ) {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
@@ -27,9 +27,9 @@ import java.io.IOException
  * target (all pages across all sandboxed renderers) over the same socket
  * via `/json/list`.
  */
-class LukerCdpDiscovery(
-    private val collector: LukerCdpCollector,
-) : Thread("luker-cdp-discovery") {
+class AtriaCdpDiscovery(
+    private val collector: AtriaCdpCollector,
+) : Thread("atria-cdp-discovery") {
 
     @Volatile var stopping = false
 
@@ -62,7 +62,7 @@ class LukerCdpDiscovery(
         while (!stopping) {
             if (isDevtoolsSocketUp(addr)) {
                 if (!everConnected) {
-                    LukerDebugTrail.append(
+                    AtriaDebugTrail.append(
                         "native",
                         "cdp-collector state=socket-up pid=$myPid attempts=${attempt + 1}",
                     )
@@ -79,7 +79,7 @@ class LukerCdpDiscovery(
             } else if (!everConnected) {
                 attempt++
                 if (attempt >= MAX_PROBE_ATTEMPTS) {
-                    LukerDebugTrail.append(
+                    AtriaDebugTrail.append(
                         "native",
                         "cdp-collector state=discovery-give-up pid=$myPid attempts=$attempt reason=socket-never-up",
                     )

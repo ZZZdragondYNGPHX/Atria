@@ -5,7 +5,7 @@ plugins {
 
 val projectRootDir = rootProject.projectDir.parentFile
 val generatedNodeProjectDir = layout.buildDirectory.dir("generated/nodejs-project")
-val generatedNodeProjectLukerDir = generatedNodeProjectDir.map { it.dir("luker") }
+val generatedNodeProjectAtriaDir = generatedNodeProjectDir.map { it.dir("atria") }
 val prebuiltBundlesRelativePath = "_prebuilt-bundles"
 val jniLibsDir = file("src/main/jniLibs")
 val availableNodeAbis = jniLibsDir
@@ -97,17 +97,17 @@ val prepareNodeProject by tasks.registering(Sync::class) {
         exclude("**/*.map")
         exclude("**/.DS_Store")
     }
-    into(generatedNodeProjectLukerDir)
+    into(generatedNodeProjectAtriaDir)
 }
 
 android {
-    namespace = "com.luker.app"
+    namespace = "com.atria.app"
     compileSdk = 34
     
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "com.luker.app"
+        applicationId = "com.atria.app"
         minSdk = 26
         targetSdk = 34
         versionCode = appVersionCode

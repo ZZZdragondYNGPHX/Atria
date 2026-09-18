@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-package com.luker.app
+package com.atria.app
 
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
@@ -20,10 +20,10 @@ import org.json.JSONObject
  * from the clients map; DiscoveryThread will not re-spawn if the pid is
  * in failedPids with count >= 3.
  */
-class LukerCdpClient(
+class AtriaCdpClient(
     val pid: Int,
-    private val collector: LukerCdpCollector,
-) : Thread("luker-cdp-client-$pid") {
+    private val collector: AtriaCdpCollector,
+) : Thread("atria-cdp-client-$pid") {
 
     @Volatile var stopping = false
     @Volatile private var socket: LocalSocket? = null
@@ -45,16 +45,16 @@ class LukerCdpClient(
             val target = fetchTarget() ?: return
             val wsPath = extractPath(target.optString("webSocketDebuggerUrl", ""))
             if (wsPath.isEmpty()) {
-                LukerDebugTrail.append("native", "cdp-collector state=no-ws-path pid=$pid")
+                AtriaDebugTrail.append("native", "cdp-collector state=no-ws-path pid=$pid")
                 collector.markFailedPid(pid)
                 return
             }
             runWebSocket(wsPath)
         } catch (e: IOException) {
-            LukerDebugTrail.append("native", "cdp-collector state=client-io pid=$pid err=${e.message ?: "io"}")
+            AtriaDebugTrail.append("native", "cdp-collector state=client-io pid=$pid err=${e.message ?: "io"}")
             collector.markFailedPid(pid)
         } catch (t: Throwable) {
-            LukerDebugTrail.append("native", "cdp-collector state=client-err pid=$pid err=${t.message ?: t.javaClass.simpleName}")
+            AtriaDebugTrail.append("native", "cdp-collector state=client-err pid=$pid err=${t.message ?: t.javaClass.simpleName}")
             collector.markFailedPid(pid)
         } finally {
             collector.removeClient(pid)
@@ -77,7 +77,7 @@ class LukerCdpClient(
                     return obj
                 }
             }
-            LukerDebugTrail.append("native", "cdp-collector state=no-target pid=$pid targets=${arr.length()}")
+            AtriaDebugTrail.append("native", "cdp-collector state=no-target pid=$pid targets=${arr.length()}")
             collector.markFailedPid(pid)
             return null
         }
@@ -116,15 +116,15 @@ class LukerCdpClient(
         sock.connect(LocalSocketAddress("$SOCKET_NAME_PREFIX$pid", LocalSocketAddress.Namespace.ABSTRACT))
         socket = sock
         try {
-            val ws = LukerWebSocketClient(sock.inputStream, sock.outputStream)
+            val ws = AtriaWebSocketClient(sock.inputStream, sock.outputStream)
             ws.handshake(wsPath)
-            LukerDebugTrail.append("native", "cdp-collector state=bind pid=$pid")
+            AtriaDebugTrail.append("native", "cdp-collector state=bind pid=$pid")
             ws.sendText("""{"id":1,"method":"Log.enable"}""")
             ws.sendText("""{"id":2,"method":"Runtime.enable"}""")
             ws.sendText("""{"id":3,"method":"Inspector.enable"}""")
             while (!stopping) {
                 val msg = ws.readMessage()
-                val entry = LukerCdpWriter.Entry(pid, System.currentTimeMillis(), msg)
+                val entry = AtriaCdpWriter.Entry(pid, System.currentTimeMillis(), msg)
                 collector.enqueueEvent(entry)
             }
         } finally {

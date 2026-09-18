@@ -1,17 +1,17 @@
-package com.luker.app
+package com.atria.app
 
 import android.content.Context
 import android.net.Uri
 
-object LukerEndpointConfig {
-    private const val PREFS_NAME = "luker_endpoint_config"
+object AtriaEndpointConfig {
+    private const val PREFS_NAME = "atria_endpoint_config"
     private const val KEY_CUSTOM_BASE_URL = "custom_base_url"
 
     data class Selection(val customBaseUrl: String?) {
         val usesDefaultLocalRuntime: Boolean
             get() = customBaseUrl.isNullOrBlank()
 
-        fun resolveBaseUrl(): String = customBaseUrl ?: LukerRuntimeManager.SERVER_URL
+        fun resolveBaseUrl(): String = customBaseUrl ?: AtriaRuntimeManager.SERVER_URL
     }
 
     fun load(context: Context): Selection {
