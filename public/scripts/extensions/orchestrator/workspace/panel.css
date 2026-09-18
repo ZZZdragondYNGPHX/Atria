@@ -1042,3 +1042,486 @@
         padding: 10px;
     }
 }
+
+
+/* Orchestration authoring */
+#agent-memory-workspace .workspace-authoring-layout {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+#agent-memory-workspace .workspace-authoring-library {
+    position: sticky;
+    top: 0;
+    min-width: 0;
+    max-height: calc(100dvh - 130px);
+    overflow: auto;
+    padding-right: 4px;
+}
+
+#agent-memory-workspace .workspace-library-heading {
+    margin-bottom: 14px;
+}
+
+#agent-memory-workspace .workspace-effective-preset {
+    display: grid;
+    gap: 2px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: var(--atri-workspace-radius-md);
+    background: var(--atri-workspace-surface-1);
+}
+
+#agent-memory-workspace .workspace-effective-preset small,
+#agent-memory-workspace .workspace-effective-preset span {
+    opacity: .62;
+    font-size: 11px;
+}
+
+#agent-memory-workspace .workspace-authoring-library > input[type=search] {
+    margin-bottom: 10px;
+}
+
+#agent-memory-workspace .workspace-preset-list button {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+}
+
+#agent-memory-workspace .workspace-preset-list button strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#agent-memory-workspace .workspace-preset-list button small {
+    opacity: .62;
+    font-size: 11px;
+}
+
+#agent-memory-workspace .workspace-library-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+#agent-memory-workspace .workspace-library-more {
+    margin-top: 8px;
+}
+
+#agent-memory-workspace .workspace-library-more > button,
+#agent-memory-workspace .workspace-library-more > label {
+    width: 100%;
+    margin-top: 8px;
+}
+
+#agent-memory-workspace .workspace-authoring-canvas-pane {
+    min-width: 0;
+}
+
+#agent-memory-workspace .workspace-authoring-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+#agent-memory-workspace .workspace-authoring-topbar > :first-child {
+    min-width: 0;
+}
+
+#agent-memory-workspace .workspace-primary-action {
+    border-color: var(--atri-workspace-accent);
+    background: color-mix(in srgb, var(--atri-workspace-accent) 18%, var(--atri-workspace-surface-1));
+    font-weight: 650;
+}
+
+#agent-memory-workspace .workspace-more-menu {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+#agent-memory-workspace .workspace-more-menu > summary {
+    list-style: none;
+    min-width: 40px;
+    min-height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: var(--atri-workspace-radius-sm);
+    background: var(--atri-workspace-surface-1);
+    font-size: 18px;
+}
+
+#agent-memory-workspace .workspace-more-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+#agent-memory-workspace .workspace-more-menu[open] {
+    z-index: 12;
+}
+
+#agent-memory-workspace .workspace-more-menu[open] > :not(summary) {
+    position: relative;
+    width: 190px;
+    margin-top: 4px;
+}
+
+#agent-memory-workspace .workspace-authoring-defaults {
+    margin: 0 0 12px;
+}
+
+#agent-memory-workspace .workspace-authoring-defaults > label,
+#agent-memory-workspace .workspace-authoring-defaults > .workspace-inspector-field {
+    margin-top: 12px;
+}
+
+#agent-memory-workspace .workspace-binding-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: var(--atri-workspace-radius-md);
+    background: var(--atri-workspace-surface-1);
+}
+
+#agent-memory-workspace .workspace-binding-bar > div:first-child {
+    display: grid;
+    gap: 2px;
+}
+
+#agent-memory-workspace .workspace-binding-bar small {
+    opacity: .62;
+    font-size: 11px;
+}
+
+#agent-memory-workspace .workspace-binding-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+#agent-memory-workspace .workspace-binding-actions button.is-active {
+    border-color: var(--atri-workspace-accent);
+    background: color-mix(in srgb, var(--atri-workspace-accent) 15%, transparent);
+}
+
+#agent-memory-workspace .workspace-plan-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+#agent-memory-workspace .workspace-plan-summary > div {
+    display: grid;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: var(--atri-workspace-radius-md);
+    background: var(--atri-workspace-surface-1);
+}
+
+#agent-memory-workspace .workspace-plan-summary small {
+    opacity: .6;
+    font-size: 10px;
+}
+
+#agent-memory-workspace .workspace-authoring-graph {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: var(--atri-workspace-radius-lg);
+    background: var(--atri-workspace-surface-1);
+}
+
+#agent-memory-workspace .workspace-plan-canvas {
+    min-height: 330px;
+}
+
+#agent-memory-workspace .workspace-agent-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+}
+
+#agent-memory-workspace .workspace-agent-card {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    text-align: left;
+}
+
+#agent-memory-workspace .workspace-agent-card > span:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+#agent-memory-workspace .workspace-agent-card strong,
+#agent-memory-workspace .workspace-agent-card small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#agent-memory-workspace .workspace-agent-card small {
+    opacity: .6;
+    font-size: 10px;
+}
+
+#agent-memory-workspace .workspace-agent-card.is-active {
+    border-color: var(--atri-workspace-accent);
+    background: color-mix(in srgb, var(--atri-workspace-accent) 12%, transparent);
+}
+
+#agent-memory-workspace .workspace-agent-count {
+    flex: 0 0 auto;
+    min-width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--atri-workspace-surface-3);
+    font-size: 10px;
+}
+
+#agent-memory-workspace .workspace-inspector-heading {
+    position: relative;
+}
+
+#agent-memory-workspace .workspace-inspector-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px 8px;
+    border-color: transparent;
+    background: transparent;
+    font-size: 11px;
+}
+
+#agent-memory-workspace .workspace-inspector-field {
+    display: block;
+    margin: 12px 0 0;
+}
+
+#agent-memory-workspace .workspace-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 12px 0;
+}
+
+#agent-memory-workspace .workspace-inspector-save {
+    position: sticky;
+    bottom: -20px;
+    z-index: 5;
+    margin-top: 18px;
+    padding: 12px 0 0;
+    background: linear-gradient(transparent, var(--atri-workspace-bg) 35%);
+}
+
+#agent-memory-workspace .workspace-inspector-save button {
+    width: 100%;
+    border-color: var(--atri-workspace-accent);
+    background: color-mix(in srgb, var(--atri-workspace-accent) 18%, var(--atri-workspace-surface-1));
+    font-weight: 650;
+}
+
+#agent-memory-workspace .workspace-permission-panel {
+    margin-top: 12px;
+}
+
+#agent-memory-workspace .workspace-permission-toolbar {
+    display: grid;
+    gap: 8px;
+}
+
+#agent-memory-workspace .workspace-permission-actions {
+    display: flex;
+    gap: 6px;
+}
+
+#agent-memory-workspace .workspace-permission-actions button {
+    flex: 1;
+}
+
+#agent-memory-workspace .workspace-permission-groups {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+#agent-memory-workspace .workspace-permission-group {
+    overflow: hidden;
+    border: 1px solid var(--atri-workspace-border);
+    border-radius: var(--atri-workspace-radius-md);
+}
+
+#agent-memory-workspace .workspace-permission-group-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 10px;
+    background: var(--atri-workspace-surface-2);
+}
+
+#agent-memory-workspace .workspace-permission-group-heading span {
+    opacity: .55;
+    font-size: 10px;
+}
+
+#agent-memory-workspace .workspace-permission-items {
+    display: grid;
+}
+
+#agent-memory-workspace label.workspace-permission-item {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 9px 10px;
+    border-top: 1px solid var(--atri-workspace-border);
+}
+
+#agent-memory-workspace .workspace-permission-item > span {
+    min-width: 0;
+    display: grid;
+}
+
+#agent-memory-workspace .workspace-permission-item strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+}
+
+#agent-memory-workspace .workspace-permission-item small {
+    opacity: .58;
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+#agent-memory-workspace .workspace-capability-editor,
+#agent-memory-workspace .workspace-capability-group {
+    margin-top: 10px;
+}
+
+#agent-memory-workspace .workspace-capability-rows {
+    display: grid;
+}
+
+#agent-memory-workspace .workspace-capability-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--atri-workspace-border);
+}
+
+#agent-memory-workspace .workspace-capability-row > div {
+    min-width: 0;
+    display: grid;
+}
+
+#agent-memory-workspace .workspace-capability-row strong {
+    font-size: 12px;
+}
+
+#agent-memory-workspace .workspace-capability-row small {
+    opacity: .55;
+    font-size: 9px;
+}
+
+#agent-memory-workspace .workspace-capability-node {
+    margin-top: 10px;
+}
+
+#agent-memory-workspace .workspace-edge-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--atri-workspace-border);
+}
+
+#agent-memory-workspace .workspace-danger-zone {
+    color: var(--atri-workspace-danger);
+}
+
+@media (max-width: 1100px) {
+    #agent-memory-workspace .workspace-authoring-layout {
+        grid-template-columns: 210px minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    #agent-memory-workspace .workspace-plan-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    #agent-memory-workspace .workspace-authoring-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #agent-memory-workspace .workspace-authoring-library {
+        position: static;
+        max-height: none;
+    }
+
+    #agent-memory-workspace .workspace-authoring-topbar {
+        display: grid;
+    }
+
+    #agent-memory-workspace .workspace-binding-bar {
+        display: grid;
+    }
+
+    #agent-memory-workspace .workspace-binding-actions {
+        justify-content: stretch;
+    }
+
+    #agent-memory-workspace .workspace-binding-actions button {
+        flex: 1;
+    }
+
+    #agent-memory-workspace .workspace-plan-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #agent-memory-workspace .workspace-agent-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #agent-memory-workspace .workspace-inspector-close {
+        position: sticky;
+        float: right;
+    }
+}
+
+@media (max-width: 420px) {
+    #agent-memory-workspace .workspace-agent-strip {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
