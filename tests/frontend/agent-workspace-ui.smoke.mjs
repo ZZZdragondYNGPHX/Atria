@@ -82,7 +82,7 @@ try {
         panel.initWorkspace(); panel.initWorkspace(); panel.openWorkspace('Orchestration');
     });
     const workspace = page.locator('#agent-memory-workspace');
-    const primaryNav = workspace.locator('.atria-workspace-nav');
+    const primaryNav = workspace.locator('.atria-workspace-mobile-nav');
     assert.equal(await primaryNav.getByRole('button').count(), 4);
     assert.deepEqual(await primaryNav.getByRole('button').allTextContents(), ['Orchestration', 'Run', 'Memory', 'Diagnostics']);
     assert.equal(await workspace.getByText('Preset Library', { exact: true }).count(), 1);
@@ -167,8 +167,8 @@ try {
     await workspace.getByRole('button', { name: 'Append worker stage', exact: true }).click();
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.at(-1).planTemplate.nodes.length), 2);
     // Keyboard navigation and explicit Node capability controls use native labels.
-    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Orchestration', exact: true }).focus();
-    await page.keyboard.press('End'); assert.equal(await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Diagnostics', exact: true }).getAttribute('aria-current'), 'page');
+    await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Orchestration', exact: true }).focus();
+    await page.keyboard.press('End'); assert.equal(await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Diagnostics', exact: true }).getAttribute('aria-current'), 'page');
     await page.evaluate(async () => {
         const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
         window.stops = 0; window.runId = store.startRun({ mode: 'loop', chatKey: 'test-chat', stopFn: () => window.stops++ });
@@ -178,7 +178,7 @@ try {
         event('run.started', 1);
         event('memory.recall.completed', 2, { stepId: 'step-1', references: [{ id: 'memory-one' }], tokens: 42 });
     });
-    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Memory', exact: true }).click();
+    await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Memory', exact: true }).click();
     await workspace.getByRole('heading', { name: 'Memory is available', exact: true }).waitFor();
     assert.equal(await workspace.getByRole('button', { name: 'Overview', exact: true }).count(), 1);
     assert.equal(await workspace.getByRole('button', { name: 'Knowledge', exact: true }).count(), 1);
@@ -196,7 +196,7 @@ try {
     await workspace.getByRole('button', { name: 'Overview', exact: true }).click();
     await workspace.getByText('0 references', { exact: true }).waitFor();
     assert((await page.evaluate(() => window.memoryLoads)) >= 1);
-    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Diagnostics', exact: true }).click();
+    await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Diagnostics', exact: true }).click();
     await workspace.getByRole('button', { name: 'Stop Run', exact: true }).click();
     await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Diagnostics'); });
     assert.equal(await workspace.getByRole('button', { name: 'Stopping…', exact: true }).isDisabled(), true);
@@ -210,7 +210,7 @@ try {
     assert.equal(await workspace.getByRole('button', {name:'Stop Run',exact:true}).isVisible(), false);
     assert.equal(await page.evaluate(() => window.stops), 1);
     await workspace.getByRole('button', {name:'Viewing imported trace · Return to live run'}).click();
-    await workspace.locator('.atria-workspace-nav').getByRole('button', { name: 'Memory', exact: true }).click();
+    await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Memory', exact: true }).click();
     await workspace.getByRole('heading', { name: 'Memory is available', exact: true }).waitFor();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
     await page.evaluate(async () => {const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.destroyWorkspace(); panel.destroyWorkspace(); panel.openWorkspace('Orchestration');});
