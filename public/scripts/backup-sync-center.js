@@ -140,11 +140,22 @@ function renderPreflight(root, result) {
             .join(' · ')
         : '';
     const warnings = Array.isArray(report?.warnings) ? report.warnings : [];
+    const plan = result?.restorePlan || {};
+    const modeLabel = plan.mode === 'full'
+        ? '完整恢复'
+        : plan.mode === 'overwrite'
+            ? '替换所选类别'
+            : '合并恢复';
     const parts = [
+        `模式：${modeLabel}`,
         `来源引擎：${source}`,
         `目标引擎：${dest}`,
         `可恢复条目：${Number(report?.targetableEntries ?? result?.targetableEntries ?? 0)}`,
-        result?.crossModeRequired ? '需要跨存储引擎转换' : '同存储引擎恢复',
+        plan.stagedEngineRestore
+            ? (plan.crossModeRequired ? '执行 staging + 跨引擎转换' : '执行 staging + 按类别恢复')
+            : '直接文件恢复',
+        plan.recoveryPoint === 'required' ? '恢复点：必建' : '',
+        plan.verification === 'required' ? '恢复后校验：必做' : '',
         categoryStats,
         warnings.length ? `警告：${warnings.join('；')}` : '',
     ].filter(Boolean);
@@ -220,7 +231,7 @@ async function restoreArchive({ handle, file, preflight }) {
     const formData = new FormData();
     formData.append('avatar', file);
     formData.append('handle', handle);
-    formData.append('mode', preflight.mode === 'merge' ? 'merge' : 'overwrite');
+    formData.append('mode', preflight.mode);
     formData.append('selection', JSON.stringify(preflight.selection));
     for (const [key, value] of Object.entries(scratchFields)) formData.append(key, value);
 
