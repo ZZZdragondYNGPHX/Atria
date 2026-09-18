@@ -86,6 +86,14 @@ function requestResult(request, code = 'E_UNKNOWN') {
     });
 }
 
+function transactionResult(transaction, code = 'E_UNKNOWN') {
+    return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(makeErr(code, transaction.error?.message || 'IndexedDB transaction failed'));
+        transaction.onabort = () => reject(makeErr(code, transaction.error?.message || 'IndexedDB transaction aborted'));
+    });
+}
+
 function openDatabase(dbName) {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(dbName);
@@ -689,9 +697,11 @@ export class BrowserMutator {
             const db = await openDatabase(dbName);
             try {
                 const tx = db.transaction(storeName, 'readwrite');
+                const committed = transactionResult(tx, 'E_WRITE_FAILED');
                 const store = tx.objectStore(storeName);
                 const request = store.keyPath == null ? store.put(value, key) : store.put(value);
-                await requestResult(request);
+                await requestResult(request, 'E_WRITE_FAILED');
+                await committed;
             } finally {
                 db.close();
             }
