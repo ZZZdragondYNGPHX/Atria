@@ -139,16 +139,43 @@ try {
     }
     assert.equal(await page.locator('dialog[open]').count(), 0, 'startup dialog still blocks the workspace');
 
-    const authorUiWorldIndex = await page.evaluate(async () => {
-        const wi = await import('/scripts/world-info.js');
-        return wi.world_names.indexOf('atri-condition-author-ui-fixture');
-    });
-    assert.ok(authorUiWorldIndex >= 0);
-    await page.locator('#WIDrawerIcon').click();
-    await page.locator('#WorldInfo').waitFor({ state: 'visible', timeout: 10000 });
-    await page.selectOption('#world_editor_select', String(authorUiWorldIndex));
+    const wiDrawerIcon = page.locator('#WIDrawerIcon');
+    if (await wiDrawerIcon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true)) {
+        await wiDrawerIcon.click();
+    }
+    await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10000 });
+    const authorBookName = 'atri-condition-author-ui-fixture';
+    await page.waitForFunction((wanted) => {
+        const select = document.querySelector('#world_editor_select');
+        if (!select) return false;
+        return Array.from(select.options).some(
+            option => String(option.textContent || '').trim() === wanted,
+        );
+    }, authorBookName, { timeout: 15000 });
+    const authorBookOptionValue = await page.evaluate((wanted) => {
+        const select = document.querySelector('#world_editor_select');
+        if (!select) return null;
+        const option = Array.from(select.options).find(
+            item => String(item.textContent || '').trim() === wanted,
+        );
+        return option?.value ?? null;
+    }, authorBookName);
+    assert.ok(authorBookOptionValue, 'author UI book option not found');
+
     const authorUiEntry = page.locator('#world_popup_entries_list > .world_entry[uid="0"]');
-    await authorUiEntry.waitFor({ state: 'visible', timeout: 15000 });
+    let authorBookRendered = false;
+    for (let attempt = 0; attempt < 3 && !authorBookRendered; attempt++) {
+        await page.evaluate((value) => {
+            const jq = window.jQuery || window.$;
+            if (!jq) throw new Error('jQuery missing');
+            jq('#world_editor_select').val(value).trigger('change');
+        }, authorBookOptionValue);
+        try {
+            await authorUiEntry.waitFor({ state: 'visible', timeout: 6000 });
+            authorBookRendered = true;
+        } catch { /* retry async editor bootstrap */ }
+    }
+    assert.equal(authorBookRendered, true, 'author UI book entries did not render');
     await authorUiEntry.locator('.wi-entry-toggle').click();
     const conditionEditor = authorUiEntry.locator('.wi-entry-state-conditions');
     await conditionEditor.waitFor({ state: 'visible', timeout: 10000 });
