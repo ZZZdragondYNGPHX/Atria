@@ -33,6 +33,16 @@ describe('Termux update guards', () => {
             .toBeLessThan(source.indexOf('prebuild_frontend_cache || return 1'));
     });
 
+    test('warm startup readiness is detected at sub-second cadence', () => {
+        const toolboxSource = fs.readFileSync(toolboxPath, 'utf8');
+        const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
+
+        expect(toolboxSource).toContain('local polls_per_second=5');
+        expect(toolboxSource).toContain('sleep 0.2');
+        expect(cliSource).toContain('for attempt in $(seq 1 600)');
+        expect(cliSource).toContain('sleep 0.2');
+    });
+
     test('direct Termux setup/update prebuild the versioned frontend cache', () => {
         const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
         const setupSource = fs.readFileSync(path.join(repoRoot, 'scripts', 'termux', 'setup.sh'), 'utf8');
