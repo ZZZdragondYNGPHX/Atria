@@ -158,6 +158,48 @@ export class ChatRepo {
         });
     }
 
+    async patchMessages(handle, charDir, name, operations, expectedIntegrity, {
+        isGroup = false,
+        groupId,
+        chatMetadata = {},
+    } = {}) {
+        assertWritable();
+        const key = this._key(handle, charDir, name, { isGroup, groupId });
+        const newIntegrity = randomUUID();
+        const now = this._now();
+        const ops = Array.isArray(operations) ? operations : [];
+
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.patchChatMessages !== 'function') {
+                return { status: 'unsupported' };
+            }
+            const result = await tx.patchChatMessages(key, ops, {
+                expectedIntegrity,
+                newIntegrity,
+                updatedAt: now,
+                chatMetadata,
+            });
+            if (result?.status === 'ok') {
+                return {
+                    ...result,
+                    integrity: result.integrity ?? newIntegrity,
+                    applied: Number(result.applied) || ops.length,
+                    totalMessages: Math.max(0, Number(result.totalMessages) || 0),
+                };
+            }
+            if (result?.status === 'missing') {
+                throw new NotFoundError('chat', { handle, charDir, name });
+            }
+            if (result?.status === 'conflict') {
+                throw new ConflictError('integrity_mismatch', {
+                    expected: expectedIntegrity,
+                    actual: result.actualIntegrity ?? '',
+                });
+            }
+            return { status: 'unsupported' };
+        });
+    }
+
     async patch(handle, charDir, name, ops, expectedIntegrity, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
