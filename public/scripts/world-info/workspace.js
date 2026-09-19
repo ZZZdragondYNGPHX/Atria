@@ -309,14 +309,37 @@ function buildInspectorSections(root, entry) {
     move('.wi-entry-keywords-grid', activation.body);
     move('.wi-entry-filter-grid', activation.body);
 
-    move('.wi-entry-timing-grid', lifecycle.body);
+    const overridesGrid = edit.querySelector('.wi-entry-overrides-grid');
+    if (overridesGrid) {
+        for (const child of [...overridesGrid.children]) {
+            if (child.querySelector('[name="scanDepth"], [name="caseSensitive"], [name="matchWholeWords"]')) {
+                activation.body.append(child);
+            } else if (child.querySelector('[name="delayUntilRecursionLevel"]')) {
+                lifecycle.body.append(child);
+            } else {
+                advanced.body.append(child);
+            }
+        }
+        overridesGrid.remove();
+    }
+
+    const timingGrid = edit.querySelector('.wi-entry-timing-grid');
+    if (timingGrid) {
+        for (const child of [...timingGrid.children]) {
+            if (child.querySelector('[name="sticky"], [name="cooldown"], [name="delay"]')) {
+                lifecycle.body.append(child);
+            } else {
+                advanced.body.append(child);
+            }
+        }
+        timingGrid.remove();
+    }
 
     move('.wi-entry-state-conditions', stateDriven.body);
     move('.wi-entry-state-events', stateDriven.body);
 
     move('.wi-entry-selection-strategy', relationships.body);
 
-    move('.wi-entry-overrides-grid', advanced.body);
     move('.wi-entry-bottom-controls', advanced.body);
     move('.wi-entry-extra-sources', advanced.body);
 
@@ -623,6 +646,7 @@ function setContinuousCards(enabled, { notify = true } = {}) {
     document.querySelector('#wi_workspace_entries_split')?.classList.toggle('displayNone', state.continuousCards);
     document.querySelector('#wi_workspace_cards')?.classList.toggle('displayNone', !state.continuousCards);
     document.querySelector('#wi_workspace_continuous_cards')?.classList.toggle('is-active', state.continuousCards);
+    document.querySelector('#world_info_pagination')?.classList.toggle('displayNone', !state.continuousCards);
     document.querySelectorAll('[data-cards-only="true"]').forEach(button => {
         button.classList.toggle('displayNone', !state.continuousCards);
     });
