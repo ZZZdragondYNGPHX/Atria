@@ -2744,17 +2744,18 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     position: relative;
 }
 
-#WorldInfo .world_info_manager_item_more > summary {
+#WorldInfo .world_info_manager_more_button {
     display: grid;
     min-width: 34px;
     min-height: 34px;
     place-items: center;
-    list-style: none;
+    padding: 0;
     cursor: pointer;
 }
 
-#WorldInfo .world_info_manager_item_more > summary::-webkit-details-marker {
-    display: none;
+#WorldInfo .world_info_manager_item_more.is-open > .world_info_manager_more_button {
+    color: var(--SmartThemeQuoteColor);
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent);
 }
 
 #WorldInfo .world_info_manager_item_menu {
