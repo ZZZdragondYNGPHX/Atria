@@ -1,15 +1,15 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.3
-# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
+# Atria Toolbox launcher - v0.3.4
+# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。\n# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
 # v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
 # v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
 
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.3"
+SCRIPT_VERSION="v0.3.4"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
-# v0.3.0 完整运行时；本启动器在执行前注入 v0.3.1 就绪检测与 v0.3.2 main 分支策略。
+# v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
 BOOT_DIR="${TMPDIR:-${PREFIX:-/data/data/com.termux/files/usr}/tmp}/atria-toolbox-$$"
 GZ_FILE="$BOOT_DIR/runtime.sh.gz"
@@ -239,9 +239,34 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.3"
+SCRIPT_VERSION="v0.3.4"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
+
+prebuild_frontend_cache() {
+    if [ ! -f "$ATRIA_DIR/scripts/prebuild-frontend-cache.js" ]; then
+        return 0
+    fi
+
+    info "正在预构建当前版本前端资源；完成后日常启动将跳过 Webpack..."
+    (
+        cd "$ATRIA_DIR" || exit 1
+        npm run frontend:prebuild-cache
+    ) || {
+        error "前端缓存预构建失败。"
+        return 1
+    }
+}
+
+# Keep the runtime's existing dependency/config/native-module repair sequence,
+# then warm the versioned frontend cache for every code-change path (main/tag/commit).
+if declare -F post_code_change >/dev/null 2>&1; then
+    eval "$(declare -f post_code_change | sed '1s/post_code_change/post_code_change_base/')"
+    post_code_change() {
+        post_code_change_base "$@" || return 1
+        prebuild_frontend_cache || return 1
+    }
+fi
 
 heal_known_restore_sentinel_dirty_state() {
     local sentinel="public/scripts/extensions/third-party/.gitkeep"
