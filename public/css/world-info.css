@@ -2977,7 +2977,7 @@ select.keyselect+span.select2-container .select2-selection--multiple {
 
     #WorldInfo #wi_workspace_library .world_info_manager_filter_controls {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr) auto auto;
         gap: 6px;
     }
 
