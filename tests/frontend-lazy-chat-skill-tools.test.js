@@ -33,6 +33,7 @@ describe('lazy chat and skill tools', () => {
         expect(source).toContain("import('./scripts/chat-merge-split.js')");
         expect(source).toContain("wireEntryPoints();");
         expect(source).toContain("$(target).trigger('click');");
+        expect(source).toContain("installLazyChatMergeSplitEntryPoint();");
     });
 
     test('loads skill embed lifecycle only from post-visible batch 3', () => {
