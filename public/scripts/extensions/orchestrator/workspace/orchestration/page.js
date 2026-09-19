@@ -642,7 +642,10 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         const menu = el('details', undefined, actions);
         menu.className = 'workspace-more-menu';
         el('summary', '⋯', menu);
-        button(menu, 'Preset settings', () => renderPresetInspector());
+        button(menu, 'Preset settings', () => {
+            menu.open = false;
+            renderPresetInspector();
+        });
         button(menu, 'Duplicate', duplicateDraft);
         button(menu, 'Export', exportDraft);
         const removePreset = button(menu, 'Delete preset', () => {
