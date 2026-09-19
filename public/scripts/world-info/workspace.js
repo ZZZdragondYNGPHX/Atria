@@ -339,6 +339,10 @@ function buildInspectorSections(root, entry) {
     move('.wi-entry-state-events', stateDriven.body);
 
     move('.wi-entry-selection-strategy', relationships.body);
+    const relationshipEditor = relationships.body.querySelector('.wi-entry-selection-strategy');
+    relationshipEditor?.querySelector(':scope > .inline-drawer-header')?.classList.add('displayNone');
+    const relationshipContent = relationshipEditor?.querySelector(':scope > .inline-drawer-content');
+    if (relationshipContent instanceof HTMLElement) relationshipContent.style.display = 'flex';
 
     move('.wi-entry-bottom-controls', advanced.body);
     move('.wi-entry-extra-sources', advanced.body);
