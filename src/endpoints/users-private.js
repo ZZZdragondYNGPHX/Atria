@@ -1555,6 +1555,7 @@ router.post('/restore-backup/probe', async (request, response) => {
 
 router.post('/restore-backup', async (request, response) => {
     let uploadPath = '';
+    let stagedArchive = null;
     const streaming = wantsRestoreProgressStream(request);
     let stream = null;
 
@@ -1613,8 +1614,9 @@ router.post('/restore-backup', async (request, response) => {
             stream = beginRestoreProgressStream(response);
         }
 
+        stagedArchive = await stageRestoreArchiveForRandomAccess(uploadPath, stream?.onProgress);
         const restoreResult = await restoreUserBackupArchive(
-            uploadPath,
+            stagedArchive.path,
             directories,
             selection,
             mode,
@@ -1673,6 +1675,7 @@ router.post('/restore-backup', async (request, response) => {
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        await stagedArchive?.cleanup?.().catch(() => {});
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true });
         }
