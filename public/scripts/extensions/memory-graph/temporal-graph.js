@@ -47,8 +47,16 @@ function canonicalId(state, id, chat, cache = new Map(), check = ref => current(
     return result;
 }
 
-export function projectTemporalGraph(state, chat, { includeInactive = false, at = null } = {}) {
-    const check = createMemorySupportChecker(state, chat); const canonicalCache = new Map();
+export function projectTemporalGraph(state, chat, {
+    includeInactive = false,
+    at = null,
+    checkSupport = null,
+    projectedFacts = null,
+} = {}) {
+    const check = typeof checkSupport === 'function'
+        ? checkSupport
+        : createMemorySupportChecker(state, chat);
+    const canonicalCache = new Map();
     const resolveCanonical = id => canonicalId(state, id, chat, canonicalCache, check);
     const entities = Object.values(state.entities || {}).filter(entity => entity?.scopeId === state.scopeId && Array.isArray(entity.names)).map(entity => {
         const names = entity.names.filter(name => !name.manualDisabled && check(name));
@@ -67,7 +75,10 @@ export function projectTemporalGraph(state, chat, { includeInactive = false, at 
         const target = entityMap.get(entity.resolvedId);
         if (target?.status === 'active') target.aliases = [...new Set([...target.aliases, entity.canonicalName, ...entity.aliases])].filter(name => name !== target.canonicalName);
     }
-    const facts = new Map(projectFacts(state, chat, { includeInactive: true, checkSupport: check }).map(fact => [fact.id, fact]));
+    const factProjection = Array.isArray(projectedFacts)
+        ? projectedFacts
+        : projectFacts(state, chat, { includeInactive: true, checkSupport: check });
+    const facts = new Map(factProjection.map(fact => [fact.id, fact]));
     const relations = Object.values(state.relations || {}).filter(relation => relation?.scopeId === state.scopeId && Array.isArray(relation.supports)).map(relation => {
         const source = resolveCanonical(relation.sourceEntityId);
         const target = resolveCanonical(relation.targetEntityId);

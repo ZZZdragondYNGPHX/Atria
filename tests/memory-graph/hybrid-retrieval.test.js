@@ -68,6 +68,24 @@ describe('Memory OS hybrid retrieval', () => {
         expect(corpus.documents.some(doc => doc.id === 'episode:m1:1')).toBe(false);
         expect(rankMemory('Castle', corpus, ['episode:m1:1', 'relation:foreign']).candidates).toEqual([]);
     });
+    test('adjacency index preserves stable graph lane order for equal relation scores', () => {
+        const entities = [
+            { id: 'alice', canonicalName: 'Alice', aliases: [] },
+            { id: 'b', canonicalName: 'B', aliases: [] },
+            { id: 'c', canonicalName: 'C', aliases: [] },
+            { id: 'd', canonicalName: 'D', aliases: [] },
+        ];
+        const documents = [
+            { id: 'r-third', kind: 'relation', text: 'connected', status: 'active', sourceEntityId: 'alice', targetEntityId: 'd', episodeIds: [], confidence: 0.5, supports: [] },
+            { id: 'r-first', kind: 'relation', text: 'connected', status: 'active', sourceEntityId: 'alice', targetEntityId: 'b', episodeIds: [], confidence: 0.5, supports: [] },
+            { id: 'r-second', kind: 'relation', text: 'connected', status: 'active', sourceEntityId: 'alice', targetEntityId: 'c', episodeIds: [], confidence: 0.5, supports: [] },
+        ];
+
+        const result = rankMemory('Alice', { documents, entities });
+
+        expect(result.candidates.map(doc => doc.id)).toEqual(['r-third', 'r-first', 'r-second']);
+    });
+
     test('depth, relation and entity bounds prevent graph expansion', () => {
         const entities = Array.from({ length: 100 }, (_, id) => ({ id: String(id), canonicalName: id ? `Person${id}` : 'Alice', aliases: [] }));
         const documents = Array.from({ length: 99 }, (_, id) => ({ id: `r${id}`, kind: 'relation', text: 'knows',

@@ -15,6 +15,54 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — basic CRUD', ({ make })
         expect(r).toBeNull();
     });
 
+    test('getRange returns one bounded window with stable pagination metadata', async () => {
+        const messages = Array.from({ length: 12 }, (_, index) => ({
+            name: index % 2 ? 'C' : 'U',
+            mes: `m-${index}`,
+            extra: { index },
+        }));
+        const { integrity } = await repo.save(
+            h.handle,
+            'Alice',
+            'range',
+            { user_name: 'U', chat_metadata: { marker: 'range' } },
+            messages,
+            null,
+        );
+
+        const range = await repo.getRange(h.handle, 'Alice', 'range', {
+            fromIndex: 4,
+            limit: 3,
+        });
+
+        expect(range.body).toEqual(messages.slice(4, 7));
+        expect(range.header.chat_metadata.marker).toBe('range');
+        expect(range.integrity).toBe(integrity);
+        expect(range.fromIndex).toBe(4);
+        expect(range.nextIndex).toBe(7);
+        expect(range.totalMessages).toBe(12);
+        expect(range.hasMore).toBe(true);
+    });
+
+    test('getRange clamps past-end requests and missing chats consistently', async () => {
+        await repo.save(h.handle, 'Alice', 'range', {}, [{ mes: 'only' }], null);
+
+        const pastEnd = await repo.getRange(h.handle, 'Alice', 'range', {
+            fromIndex: 99,
+            limit: 5,
+        });
+        expect(pastEnd.body).toEqual([]);
+        expect(pastEnd.fromIndex).toBe(1);
+        expect(pastEnd.nextIndex).toBe(1);
+        expect(pastEnd.totalMessages).toBe(1);
+        expect(pastEnd.hasMore).toBe(false);
+
+        await expect(repo.getRange(h.handle, 'Alice', 'missing', {
+            fromIndex: 0,
+            limit: 1,
+        })).resolves.toBeNull();
+    });
+
     test('save then get returns same chat with new integrity', async () => {
         const header = { user_name: 'U', chat_metadata: { variables: {} } };
         const messages = [{ name: 'U', mes: 'hi' }];

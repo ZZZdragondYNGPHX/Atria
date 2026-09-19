@@ -17,6 +17,37 @@ export class ChatRepo {
         });
     }
 
+    async getRange(handle, charDir, name, { fromIndex = 0, limit = 0, isGroup = false, groupId } = {}) {
+        const key = this._key(handle, charDir, name, { isGroup, groupId });
+        const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
+        const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.getChatRange === 'function') {
+                return tx.getChatRange(key, { fromIndex: requestedFrom, limit: requestedLimit });
+            }
+
+            const existing = await tx.getResource(key);
+            if (!existing) return null;
+            const body = Array.isArray(existing.body) ? existing.body : [];
+            const totalMessages = body.length;
+            const start = Math.min(requestedFrom, totalMessages);
+            const end = requestedLimit > 0
+                ? Math.min(start + requestedLimit, totalMessages)
+                : totalMessages;
+            return {
+                header: existing.header,
+                body: body.slice(start, end),
+                integrity: existing.integrity,
+                updatedAt: existing.updatedAt,
+                createdAt: existing.createdAt,
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        });
+    }
+
     async save(handle, charDir, name, header, messages, expectedIntegrity, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
@@ -62,6 +93,34 @@ export class ChatRepo {
         const newIntegrity = randomUUID();
         const now = this._now();
         return this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.appendChatMessages === 'function') {
+                const native = await tx.appendChatMessages(key, newMessages, {
+                    expectedIntegrity,
+                    newIntegrity,
+                    updatedAt: now,
+                });
+                if (native?.status === 'ok') {
+                    return {
+                        integrity: native.integrity ?? newIntegrity,
+                        accepted: Number(native.accepted) || 0,
+                        dedupedGenIds: Array.isArray(native.dedupedGenIds) ? native.dedupedGenIds : [],
+                    };
+                }
+                if (native?.status === 'missing') {
+                    throw new NotFoundError('chat', { handle, charDir, name });
+                }
+                if (native?.status === 'conflict') {
+                    throw new ConflictError('integrity_mismatch', {
+                        expected: expectedIntegrity,
+                        actual: native.actualIntegrity ?? '',
+                    });
+                }
+                // Unsupported means this chat shape cannot be safely mutated
+                // incrementally (for example an old FS header without a
+                // fixed-length integrity slot). Fall back to the established
+                // full-resource path for correctness.
+            }
+
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {
@@ -96,6 +155,48 @@ export class ChatRepo {
                 createdAt: existing.createdAt,
             });
             return { integrity: newIntegrity, accepted: accepted.length, dedupedGenIds };
+        });
+    }
+
+    async patchMessages(handle, charDir, name, operations, expectedIntegrity, {
+        isGroup = false,
+        groupId,
+        chatMetadata = {},
+    } = {}) {
+        assertWritable();
+        const key = this._key(handle, charDir, name, { isGroup, groupId });
+        const newIntegrity = randomUUID();
+        const now = this._now();
+        const ops = Array.isArray(operations) ? operations : [];
+
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.patchChatMessages !== 'function') {
+                return { status: 'unsupported' };
+            }
+            const result = await tx.patchChatMessages(key, ops, {
+                expectedIntegrity,
+                newIntegrity,
+                updatedAt: now,
+                chatMetadata,
+            });
+            if (result?.status === 'ok') {
+                return {
+                    ...result,
+                    integrity: result.integrity ?? newIntegrity,
+                    applied: Number(result.applied) || ops.length,
+                    totalMessages: Math.max(0, Number(result.totalMessages) || 0),
+                };
+            }
+            if (result?.status === 'missing') {
+                throw new NotFoundError('chat', { handle, charDir, name });
+            }
+            if (result?.status === 'conflict') {
+                throw new ConflictError('integrity_mismatch', {
+                    expected: expectedIntegrity,
+                    actual: result.actualIntegrity ?? '',
+                });
+            }
+            return { status: 'unsupported' };
         });
     }
 
@@ -308,35 +409,48 @@ export class ChatRepo {
     }
 
     // Lightweight "chat info" — body length, last message preview, header
-    // chat_metadata. Used by /api/characters/chats?metadata=1 and
-    // /api/chats/recent. Implemented as a Repo.get + projection because
-    // engines all hold the full body in memory after a get anyway; this
-    // keeps a single shape across engines without per-engine SQL.
+    // chat_metadata. Engines with a native summary primitive avoid
+    // materializing the complete body; monolithic engines retain the previous
+    // full-resource fallback until their P-04 storage slice is implemented.
     async getInfo(handle, charDir, name, { isGroup = false, groupId } = {}) {
-        const chat = await this.get(handle, charDir, name, { isGroup, groupId });
-        if (chat == null) return null;
-        const body = Array.isArray(chat.body) ? chat.body : [];
-        const lastMessage = body.length > 0 ? body[body.length - 1] : null;
-        // Approximate jsonl byte size: header line + one line per message,
-        // utf-8 encoded. Within a few percent of the on-disk file (whitespace
-        // and trailing-newline differences) — used only as a UI hint.
-        const headerLine = chat.header ? JSON.stringify(chat.header) : '';
-        const bodyLines = body.map((m) => JSON.stringify(m)).join('\n');
-        const serialized = bodyLines ? `${headerLine}\n${bodyLines}` : headerLine;
-        const byteSize = Buffer.byteLength(serialized, 'utf8');
+        const key = this._key(handle, charDir, name, { isGroup, groupId });
+        const info = await this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.getChatInfo === 'function') {
+                return tx.getChatInfo(key);
+            }
+
+            const chat = await tx.getResource(key);
+            if (chat == null) return null;
+            const body = Array.isArray(chat.body) ? chat.body : [];
+            const lastMessage = body.length > 0 ? body[body.length - 1] : null;
+            const headerLine = chat.header ? JSON.stringify(chat.header) : '';
+            const bodyLines = body.map(message => JSON.stringify(message)).join('\n');
+            const serialized = bodyLines ? `${headerLine}\n${bodyLines}` : headerLine;
+            return {
+                header: chat.header,
+                integrity: chat.integrity,
+                updatedAt: chat.updatedAt,
+                createdAt: chat.createdAt,
+                messageCount: body.length,
+                byteSize: Buffer.byteLength(serialized, 'utf8'),
+                lastMessage,
+            };
+        });
+
+        if (info == null) return null;
         return {
             handle,
             charDir,
             name,
             isGroup: !!isGroup,
             groupId: groupId || undefined,
-            messageCount: body.length,
-            byteSize,
-            lastMessage,
-            chatMetadata: chat.header?.chat_metadata ?? {},
-            updatedAt: chat.updatedAt,
-            createdAt: chat.createdAt,
-            integrity: chat.integrity,
+            messageCount: Math.max(0, Number(info.messageCount) || 0),
+            byteSize: Math.max(0, Number(info.byteSize) || 0),
+            lastMessage: info.lastMessage ?? null,
+            chatMetadata: info.header?.chat_metadata ?? {},
+            updatedAt: info.updatedAt,
+            createdAt: info.createdAt,
+            integrity: info.integrity,
         };
     }
 

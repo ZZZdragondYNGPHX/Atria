@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -24,6 +25,30 @@ export class SqliteTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getChatRange(key, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.getChatRange: chat resource required');
+        }
+        return this._h(key.kind, 'getChatRange').range(key, options);
+    }
+    async getChatInfo(key) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.getChatInfo: chat resource required');
+        }
+        return this._h(key.kind, 'getChatInfo').info(key);
+    }
+    async appendChatMessages(key, messages, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.appendChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
+    async patchChatMessages(key, operations, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.patchChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'patchChatMessages').patch(key, operations, options);
+    }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
@@ -39,6 +64,18 @@ export class SqliteTransaction {
         await this.putResource(key, record);
         return { updated: true };
     }
+}
+
+function parseJsonEachValue(value, type) {
+    if (type === 'object' || type === 'array') {
+        try { return JSON.parse(value); } catch { return undefined; }
+    }
+    if (type === 'null') return null;
+    if (type === 'true') return true;
+    if (type === 'false') return false;
+    if (type === 'integer' || type === 'real') return Number(value);
+    if (type === 'text') return String(value);
+    return undefined;
 }
 
 function chatKeyToParams(key) {
@@ -65,6 +102,40 @@ export function registerChatHandler(tx) {
     const stmt = {
         get: db.prepare(`SELECT doc, integrity, updated_at, created_at
                          FROM chats WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        appendMeta: db.prepare(`SELECT integrity,
+                                json_type(doc, '$.header') AS header_type,
+                                json_type(doc, '$.header.chat_metadata') AS metadata_type,
+                                json_type(doc, '$.body') AS body_type
+                            FROM chats
+                            WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        rangeMeta: db.prepare(`SELECT
+                                json_extract(doc, '$.header') AS header_value,
+                                json_type(doc, '$.header') AS header_type,
+                                json_type(doc, '$.body') AS body_type,
+                                json_array_length(doc, '$.body') AS total_messages,
+                                integrity, updated_at, created_at
+                            FROM chats
+                            WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        info: db.prepare(`SELECT
+                                json_extract(doc, '$.header') AS header_value,
+                                json_type(doc, '$.header') AS header_type,
+                                json_type(doc, '$.body') AS body_type,
+                                json_array_length(doc, '$.body') AS message_count,
+                                json_extract(doc, '$.body[#-1]') AS last_message_value,
+                                json_type(doc, '$.body[#-1]') AS last_message_type,
+                                length(CAST(doc AS BLOB)) AS byte_size,
+                                integrity, updated_at, created_at
+                            FROM chats
+                            WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        rangeRows: db.prepare(`SELECT
+                                CAST(j.key AS INTEGER) AS message_index,
+                                j.value AS message_value,
+                                j.type AS message_type
+                            FROM chats AS c, json_each(c.doc, '$.body') AS j
+                            WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                              AND CAST(j.key AS INTEGER) >= ?
+                              AND (? <= 0 OR CAST(j.key AS INTEGER) < ?)
+                            ORDER BY CAST(j.key AS INTEGER) ASC`),
         upsert: db.prepare(`INSERT INTO chats (handle, char_dir, name, is_group, group_id, doc, updated_at, created_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                             ON CONFLICT(handle, char_dir, name, is_group, group_id) DO UPDATE SET
@@ -89,6 +160,261 @@ export function registerChatHandler(tx) {
     };
 
     tx._handlers.set('chat', {
+        patch(key, operations, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+            chatMetadata = {},
+        } = {}) {
+            const parsedOps = [];
+            for (const operation of Array.isArray(operations) ? operations : []) {
+                const op = String(operation?.op || '').trim().toLowerCase();
+                const match = /^\/(0|[1-9]\d*)$/.exec(String(operation?.path || ''));
+                if (!['test', 'replace', 'remove'].includes(op) || !match) {
+                    return { status: 'unsupported' };
+                }
+                if ((op === 'test' || op === 'replace') && !Object.hasOwn(operation, 'value')) {
+                    return { status: 'unsupported' };
+                }
+                const serialized = op === 'replace' ? JSON.stringify(operation.value) : null;
+                if (op === 'replace' && serialized === undefined) return { status: 'unsupported' };
+                parsedOps.push({ op, index: Number(match[1]), value: operation?.value, serialized });
+            }
+            if (parsedOps.length === 0) return { status: 'unsupported' };
+
+            const p = chatKeyToParams(key);
+            const meta = db.prepare(`SELECT integrity,
+                    json_extract(doc, '$.header.chat_metadata') AS metadata_value,
+                    json_type(doc, '$.header.chat_metadata') AS metadata_type,
+                    json_type(doc, '$.body') AS body_type,
+                    json_array_length(doc, '$.body') AS message_count
+                FROM chats
+                WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                .get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!meta) return { status: 'missing' };
+            if (meta.metadata_type !== 'object' || meta.body_type !== 'array') {
+                return { status: 'unsupported' };
+            }
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            let currentMetadata;
+            try { currentMetadata = JSON.parse(meta.metadata_value); } catch { return { status: 'unsupported' }; }
+            let messageCount = Math.max(0, Number(meta.message_count) || 0);
+
+            for (const operation of parsedOps) {
+                if (operation.index < 0 || operation.index >= messageCount) {
+                    if (operation.op === 'test') throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    throw new Error(`Invalid JSON Patch ${operation.op} path. Array index out of bounds`);
+                }
+                const jsonPath = `$.body[${operation.index}]`;
+                if (operation.op === 'test') {
+                    const row = db.prepare(`SELECT json_extract(doc, ?) AS value, json_type(doc, ?) AS type
+                        FROM chats
+                        WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                        .get(jsonPath, jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+                    const actual = parseJsonEachValue(row?.value, row?.type);
+                    if (!isDeepStrictEqual(actual, operation.value)) {
+                        throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    }
+                    continue;
+                }
+                if (operation.op === 'replace') {
+                    db.prepare(`UPDATE chats
+                        SET doc=json_set(doc, ?, json(?))
+                        WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                        .run(jsonPath, operation.serialized, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+                    continue;
+                }
+                db.prepare(`UPDATE chats
+                    SET doc=json_remove(doc, ?)
+                    WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                    .run(jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+                messageCount -= 1;
+            }
+
+            const mergedMetadata = {
+                ...(currentMetadata && typeof currentMetadata === 'object' && !Array.isArray(currentMetadata)
+                    ? currentMetadata : {}),
+                ...(chatMetadata && typeof chatMetadata === 'object' && !Array.isArray(chatMetadata)
+                    ? chatMetadata : {}),
+                integrity: newIntegrity,
+            };
+            db.prepare(`UPDATE chats
+                SET doc=json_set(doc, '$.header.chat_metadata', json(?)), updated_at=?
+                WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                .run(
+                    JSON.stringify(mergedMetadata),
+                    updatedAt,
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                );
+
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                applied: parsedOps.length,
+                totalMessages: messageCount,
+            };
+        },
+        append(key, messages, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+        } = {}) {
+            const p = chatKeyToParams(key);
+            const meta = stmt.appendMeta.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!meta) return { status: 'missing' };
+            if (meta.header_type !== 'object' || meta.metadata_type !== 'object' || meta.body_type !== 'array') {
+                return { status: 'unsupported' };
+            }
+
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const input = Array.isArray(messages) ? messages : [];
+            const incomingGenIds = [...new Set(input
+                .map(message => message?.extra?.gen_id)
+                .filter(id => typeof id === 'string' && id.length > 0))];
+            const seenGenIds = new Set();
+
+            if (incomingGenIds.length > 0) {
+                const placeholders = incomingGenIds.map(() => '?').join(',');
+                const rows = db.prepare(`SELECT DISTINCT json_extract(j.value, '$.extra.gen_id') AS gen_id
+                    FROM chats AS c, json_each(c.doc, '$.body') AS j
+                    WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                      AND json_extract(j.value, '$.extra.gen_id') IN (${placeholders})`)
+                    .all(
+                        p.handle,
+                        p.char_dir,
+                        p.name,
+                        p.is_group,
+                        p.group_id,
+                        ...incomingGenIds,
+                    );
+                for (const row of rows) {
+                    if (typeof row.gen_id === 'string') seenGenIds.add(row.gen_id);
+                }
+            }
+
+            const accepted = [];
+            const dedupedGenIds = [];
+            for (const message of input) {
+                const genId = message?.extra?.gen_id;
+                if (typeof genId === 'string' && genId.length > 0 && seenGenIds.has(genId)) {
+                    dedupedGenIds.push(genId);
+                    continue;
+                }
+                if (typeof genId === 'string' && genId.length > 0) seenGenIds.add(genId);
+                accepted.push(message);
+            }
+
+            const appendPairs = accepted.map(() => '\'$.body[#]\', json(?)').join(', ');
+            const documentExpr = appendPairs ? `json_insert(doc, ${appendPairs})` : 'doc';
+            const sql = `UPDATE chats
+                SET doc = json_set(${documentExpr}, '$.header.chat_metadata.integrity', ?),
+                    updated_at = ?
+                WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`;
+            const args = [
+                ...accepted.map(message => JSON.stringify(message)),
+                newIntegrity,
+                updatedAt,
+                p.handle,
+                p.char_dir,
+                p.name,
+                p.is_group,
+                p.group_id,
+            ];
+            const result = db.prepare(sql).run(...args);
+            if (result.changes !== 1) return { status: 'missing' };
+
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                accepted: accepted.length,
+                dedupedGenIds,
+            };
+        },
+        info(key) {
+            const p = chatKeyToParams(key);
+            const row = stmt.info.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!row || row.header_type !== 'object' || row.body_type !== 'array') return null;
+
+            let header;
+            try { header = JSON.parse(row.header_value); } catch { return null; }
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            let lastMessage = null;
+            if (Number(row.message_count) > 0) {
+                lastMessage = parseJsonEachValue(row.last_message_value, row.last_message_type);
+                if (lastMessage === undefined) return null;
+            }
+
+            return {
+                header,
+                integrity: row.integrity ?? '',
+                updatedAt: row.updated_at,
+                createdAt: row.created_at,
+                messageCount: Math.max(0, Number(row.message_count) || 0),
+                byteSize: Math.max(0, Number(row.byte_size) || 0),
+                lastMessage,
+            };
+        },
+        range(key, { fromIndex = 0, limit = 0 } = {}) {
+            const p = chatKeyToParams(key);
+            const meta = stmt.rangeMeta.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!meta || meta.header_type !== 'object' || meta.body_type !== 'array') return null;
+
+            let header;
+            try { header = JSON.parse(meta.header_value); } catch { return null; }
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const totalMessages = Math.max(0, Number(meta.total_messages) || 0);
+            const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
+            const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+            const start = Math.min(requestedFrom, totalMessages);
+            const end = requestedLimit > 0
+                ? Math.min(start + requestedLimit, totalMessages)
+                : totalMessages;
+            const queryEnd = requestedLimit > 0 ? end : 0;
+            const rows = stmt.rangeRows.all(
+                p.handle,
+                p.char_dir,
+                p.name,
+                p.is_group,
+                p.group_id,
+                start,
+                queryEnd,
+                queryEnd,
+            );
+            const body = [];
+            for (const row of rows) {
+                const parsed = parseJsonEachValue(row.message_value, row.message_type);
+                if (parsed === undefined) return null;
+                body.push(parsed);
+            }
+
+            return {
+                header,
+                body,
+                integrity: meta.integrity ?? '',
+                updatedAt: meta.updated_at,
+                createdAt: meta.created_at,
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        },
         get(key) {
             const p = chatKeyToParams(key);
             const row = stmt.get.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);

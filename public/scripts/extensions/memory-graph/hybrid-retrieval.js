@@ -42,21 +42,37 @@ export function buildMemoryCorpus(snapshot, at = null) {
     const check = createMemorySupportChecker(state, chat);
     const facts = projectFacts(state, chat, { includeInactive: true, checkSupport: check });
     const factOrder = new Map(facts.map((fact, index) => [fact.id, index]));
-    const graph = projectTemporalGraph(state, chat, { includeInactive: true, at });
+    const graph = projectTemporalGraph(state, chat, {
+        includeInactive: true,
+        at,
+        checkSupport: check,
+        projectedFacts: facts,
+    });
     const entities = graph.entities.filter(entity => entity.status === 'active');
     const names = new Map(entities.map(entity => [entity.id, entity.canonicalName]));
     const eligible = record => ['active', 'superseded'].includes(record.status);
-    // A relation may supersede another without rewriting its original Fact.
-    // Keep that supporting assertion out of current-state recall as well.
-    const inactiveFacts = new Set(graph.relations.filter(relation => relation.status !== 'active').flatMap(relation => relation.supports.map(ref => ref.factId)));
-    const activeFacts = new Set(graph.relations.filter(relation => relation.status === 'active').flatMap(relation => relation.supports.map(ref => ref.factId)));
-    const uncertainFacts = new Set(graph.relations.filter(relation => ['stale', 'disputed', 'rejected'].includes(relation.status)).flatMap(relation => relation.supports.map(ref => ref.factId)));
+    // Build relation-derived fact indexes in one pass. These sets are used by
+    // both current-state suppression and historical validAt checks.
+    const inactiveFacts = new Set();
+    const activeFacts = new Set();
+    const uncertainFacts = new Set();
+    const validAtFacts = new Set();
+    for (const relation of graph.relations) {
+        for (const ref of relation.supports || []) {
+            const factId = ref.factId;
+            if (!factId) continue;
+            if (relation.status === 'active') activeFacts.add(factId);
+            else inactiveFacts.add(factId);
+            if (['stale', 'disputed', 'rejected'].includes(relation.status)) uncertainFacts.add(factId);
+            if (relation.validAt === true) validAtFacts.add(factId);
+        }
+    }
     const documents = facts.filter(fact => eligible(fact) && (!uncertainFacts.has(fact.id) || activeFacts.has(fact.id))).map(fact => ({ ...fact, id: `fact:${fact.id}`, kind: 'fact', factId: fact.id,
         status: fact.validUntil !== undefined || inactiveFacts.has(fact.id) && !activeFacts.has(fact.id) ? 'superseded' : fact.status,
         validAt: Number.isFinite(at) && Number.isFinite(fact.validFrom) && (fact.validUntil === undefined || Number.isFinite(fact.validUntil))
             && (fact.status !== 'superseded' || Number.isFinite(fact.validUntil))
             && (!inactiveFacts.has(fact.id) || activeFacts.has(fact.id)
-                || graph.relations.some(relation => relation.validAt === true && relation.supports.some(ref => ref.factId === fact.id)))
+                || validAtFacts.has(fact.id))
             ? at >= fact.validFrom && (fact.validUntil === undefined || at < fact.validUntil) : null,
         manualSources: (fact.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(fact, check) }));
     documents.push(...graph.relations.filter(eligible).map(relation => ({ ...relation, id: `relation:${relation.id}`, kind: 'relation',
@@ -89,62 +105,150 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
     const plan = analyzeMemoryQuery(query, corpus.entities, options);
     if (!plan.text.trim()) return { plan, candidates: [] };
     const cfg = RETRIEVAL_DEFAULTS;
-    const authoritative = corpus.documents.filter(doc => doc.kind === 'state' && doc.status === 'active').flatMap(doc => doc.claims || []);
-    const overridden = corpus.documents.filter(doc => !plan.history && doc.kind === 'relation' && authoritative.some(claim =>
-        claim.entityId && claim.predicate && claim.entityId === doc.sourceEntityId && claim.predicate === doc.predicate));
-    const overriddenFacts = new Set(overridden.flatMap(doc => doc.supports.map(ref => ref.factId)));
-    const documents = corpus.documents.filter(doc => (plan.history || doc.status === 'active')
-        && !overridden.includes(doc) && !overriddenFacts.has(doc.factId)
-        && (plan.at === null || doc.kind !== 'episode' && doc.validAt === true));
+    const entityIdSet = new Set(plan.entityIds);
+
+    const authoritativeSlots = new Set();
+    for (const doc of corpus.documents) {
+        if (doc.kind !== 'state' || doc.status !== 'active') continue;
+        for (const claim of doc.claims || []) {
+            if (claim.entityId && claim.predicate) {
+                authoritativeSlots.add(JSON.stringify([claim.entityId, claim.predicate]));
+            }
+        }
+    }
+
+    const overriddenIds = new Set();
+    const overriddenFacts = new Set();
+    if (!plan.history && authoritativeSlots.size > 0) {
+        for (const doc of corpus.documents) {
+            if (doc.kind !== 'relation'
+                || !authoritativeSlots.has(JSON.stringify([doc.sourceEntityId, doc.predicate]))) continue;
+            overriddenIds.add(doc.id);
+            for (const ref of doc.supports || []) overriddenFacts.add(ref.factId);
+        }
+    }
+
+    const documents = [];
+    const documentById = new Map();
+    const relations = [];
+    const stateDocs = [];
+    const episodeDocs = [];
+    for (const doc of corpus.documents) {
+        if (!(plan.history || doc.status === 'active')
+            || overriddenIds.has(doc.id)
+            || overriddenFacts.has(doc.factId)
+            || (plan.at !== null && (doc.kind === 'episode' || doc.validAt !== true))) {
+            continue;
+        }
+        documents.push(doc);
+        documentById.set(doc.id, doc);
+        if (doc.kind === 'relation') relations.push(doc);
+        else if (doc.kind === 'state') stateDocs.push(doc);
+        else if (doc.kind === 'episode') episodeDocs.push(doc);
+    }
+
     const queryTerms = [...new Set(terms(query))];
+    const documentFrequency = new Map(queryTerms.map(term => [term, 0]));
     const bags = documents.map(doc => {
-        const words = terms(doc.text); const counts = new Map();
+        const words = terms(doc.text);
+        const counts = new Map();
         for (const word of words) counts.set(word, (counts.get(word) || 0) + 1);
+        for (const term of queryTerms) {
+            if (counts.has(term)) documentFrequency.set(term, documentFrequency.get(term) + 1);
+        }
         return { length: words.length, counts };
     });
     const average = bags.reduce((sum, bag) => sum + bag.length, 0) / (bags.length || 1) || 1;
-    const df = new Map(queryTerms.map(term => [term, bags.filter(bag => bag.counts.has(term)).length]));
     const lexical = documents.map((doc, index) => ({ id: doc.id, score: queryTerms.reduce((sum, term) => {
         const count = bags[index].counts.get(term) || 0;
-        return sum + Math.log(1 + (documents.length - df.get(term) + 0.5) / (df.get(term) + 0.5))
+        const df = documentFrequency.get(term) || 0;
+        return sum + Math.log(1 + (documents.length - df + 0.5) / (df + 0.5))
             * count * 2.2 / (count + 1.2 * (0.25 + 0.75 * bags[index].length / average));
     }, 0) })).filter(hit => hit.score > 0).sort((a, b) => b.score - a.score).slice(0, cfg.topK);
+
+    // Build relation adjacency once instead of filtering the complete document
+    // corpus at every graph depth. The explicit order map preserves the old
+    // stable-sort tie behavior for equal status/confidence edges.
+    const relationOrder = new Map();
+    const adjacency = new Map();
+    relations.forEach((relation, index) => {
+        relationOrder.set(relation.id, index);
+        for (const entityId of [relation.sourceEntityId, relation.targetEntityId]) {
+            if (!adjacency.has(entityId)) adjacency.set(entityId, []);
+            adjacency.get(entityId).push(relation);
+        }
+    });
+
     const visited = new Set(plan.entityIds);
     let frontier = [...visited];
     const graphHits = new Map();
     for (let depth = 1; depth <= cfg.maxDepth && frontier.length; depth++) {
         const next = [];
-        const edges = documents.filter(doc => doc.kind === 'relation' && (frontier.includes(doc.sourceEntityId) || frontier.includes(doc.targetEntityId)))
-            .sort((a, b) => Number(b.status === 'active') - Number(a.status === 'active') || b.confidence - a.confidence);
+        const edgeIds = new Set();
+        const edges = [];
+        for (const entityId of frontier) {
+            for (const edge of adjacency.get(entityId) || []) {
+                if (edgeIds.has(edge.id)) continue;
+                edgeIds.add(edge.id);
+                edges.push(edge);
+            }
+        }
+        edges.sort((a, b) => Number(b.status === 'active') - Number(a.status === 'active')
+            || b.confidence - a.confidence
+            || relationOrder.get(a.id) - relationOrder.get(b.id));
         for (const edge of edges) {
             if (graphHits.size >= cfg.maxRelations) break;
             if (graphHits.has(edge.id)) continue;
             const additions = [edge.sourceEntityId, edge.targetEntityId].filter(id => !visited.has(id));
             if (visited.size + additions.length > cfg.maxEntities) continue;
             graphHits.set(edge.id, depth);
-            for (const id of additions) { visited.add(id); next.push(id); }
+            for (const id of additions) {
+                visited.add(id);
+                next.push(id);
+            }
         }
         frontier = next;
     }
+
     const scores = new Map();
-    const lane = (ids, weight) => ids.forEach((id, index) => scores.set(id, (scores.get(id) || 0) + weight / (cfg.rrf + index + 1)));
+    const lane = (ids, weight) => ids.forEach((id, index) => {
+        scores.set(id, (scores.get(id) || 0) + weight / (cfg.rrf + index + 1));
+    });
     lane(lexical.map(hit => hit.id), cfg.weights.lexical);
     lane(vectorIds.slice(0, cfg.topK), cfg.weights.vector);
     lane([...graphHits.keys()], cfg.weights.graph);
-    lane(documents.filter(doc => doc.kind === 'state' && doc.claims?.some(claim => plan.entityIds.includes(claim.entityId))).map(doc => doc.id), 2);
+    lane(stateDocs
+        .filter(doc => doc.claims?.some(claim => entityIdSet.has(claim.entityId)))
+        .map(doc => doc.id), 2);
+
     // Retrieve source Episodes behind relevant edges/facts, even without lexical overlap.
-    const supporting = new Set(documents.filter(doc => scores.has(doc.id) && doc.kind !== 'episode').flatMap(doc => doc.episodeIds));
-    lane(documents.filter(doc => doc.kind === 'episode' && supporting.has(doc.episodeIds[0])).map(doc => doc.id), 0.5);
+    const supporting = new Set();
+    for (const [id] of scores) {
+        const doc = documentById.get(id);
+        if (!doc || doc.kind === 'episode') continue;
+        for (const episodeId of doc.episodeIds || []) supporting.add(episodeId);
+    }
+    lane(episodeDocs
+        .filter(doc => supporting.has(doc.episodeIds?.[0]))
+        .map(doc => doc.id), 0.5);
+
     const now = options.now ?? Date.now();
-    const candidates = documents.filter(doc => scores.has(doc.id)).map(doc => {
+    const candidates = [];
+    for (const [id, score] of scores) {
+        const doc = documentById.get(id);
+        if (!doc) continue;
         const boost = cfg.weights.confidence * unit(doc.confidence) + cfg.weights.importance * unit(doc.importance)
             + cfg.weights.recency / (1 + Math.max(0, now - (doc.updatedAt || doc.createdAt || 0)) / 86400000)
             + cfg.weights.access * Math.min(1, Math.log1p(Math.max(0, Number(doc.accessCount) || 0)) / 10);
         const intentBoost = doc.kind === 'relation' && (plan.intent === 'location' && doc.predicate === 'located_in'
             || plan.intent === 'ownership' && ['owns', 'holds'].includes(doc.predicate)) ? 1.5 : 1;
-        return { ...doc, score: scores.get(doc.id) * (1 + boost) * intentBoost / (graphHits.get(doc.id) || 1) };
-    }).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)).slice(0, cfg.topK);
-    return { plan, candidates };
+        candidates.push({
+            ...doc,
+            score: score * (1 + boost) * intentBoost / (graphHits.get(doc.id) || 1),
+        });
+    }
+    candidates.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+    return { plan, candidates: candidates.slice(0, cfg.topK) };
 }
 
 export function memoryTokenBudget(settings = {}) {

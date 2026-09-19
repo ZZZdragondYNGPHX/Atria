@@ -22,6 +22,17 @@
  * @typedef {Object} StorageTransaction
  * @property {(resource: ResourceKey) => Promise<ResourceRecord | null>} getResource
  *   Read a single resource by its key. Returns null if not found.
+ * @property {(resource: ResourceKey, options: {fromIndex?: number, limit?: number}) => Promise<ChatRangeRecord | null>} [getChatRange]
+ *   Optional chat-specialized range read. Engines that can avoid materializing the
+ *   complete body expose this method; ChatRepo falls back to getResource otherwise.
+ * @property {(resource: ResourceKey) => Promise<ChatInfoRecord | null>} [getChatInfo]
+ *   Optional lightweight chat summary read for list/recent views.
+ * @property {(resource: ResourceKey, messages: object[], options: {expectedIntegrity?: string|null, newIntegrity: string, updatedAt?: number}) => Promise<ChatAppendResult>} [appendChatMessages]
+ *   Optional chat-specialized append primitive. Engines return unsupported when
+ *   they cannot safely append without materializing/replacing the whole body.
+ * @property {(resource: ResourceKey, operations: object[], options: {expectedIntegrity?: string|null, newIntegrity: string, updatedAt?: number, chatMetadata?: object}) => Promise<ChatPatchResult>} [patchChatMessages]
+ *   Optional whole-message JSON-patch primitive for test/replace/remove paths.
+ *   Unsupported operation shapes must return unsupported before mutating data.
  * @property {(resource: ResourceKey, record: ResourceRecord) => Promise<void>} putResource
  *   Write or replace a single resource. Caller must do OCC checks via getResource first if needed.
  * @property {(resource: ResourceKey, expectedIntegrity: string | null, record: ResourceRecord) => Promise<{updated: boolean}>} putResourceIfMatch
@@ -45,6 +56,52 @@
  *   kind: string,
  *   [key: string]: any,
  * }} ResourceKey
+ */
+
+/**
+ * @typedef {{
+ *   status: 'ok'|'conflict'|'missing'|'unsupported',
+ *   integrity?: string,
+ *   actualIntegrity?: string,
+ *   accepted?: number,
+ *   dedupedGenIds?: string[],
+ * }} ChatAppendResult
+ */
+
+/**
+ * @typedef {{
+ *   status: 'ok'|'conflict'|'missing'|'unsupported',
+ *   integrity?: string,
+ *   actualIntegrity?: string,
+ *   applied?: number,
+ *   totalMessages?: number,
+ * }} ChatPatchResult
+ */
+
+/**
+ * @typedef {{
+ *   header: object,
+ *   integrity: string,
+ *   updatedAt: number,
+ *   createdAt: number,
+ *   messageCount: number,
+ *   byteSize: number,
+ *   lastMessage: any,
+ * }} ChatInfoRecord
+ */
+
+/**
+ * @typedef {{
+ *   header: object,
+ *   body: object[],
+ *   integrity: string,
+ *   updatedAt: number,
+ *   createdAt: number,
+ *   totalMessages: number,
+ *   fromIndex: number,
+ *   nextIndex: number,
+ *   hasMore: boolean,
+ * }} ChatRangeRecord
  */
 
 /**
