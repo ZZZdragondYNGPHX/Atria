@@ -17,6 +17,43 @@ export class ChatRepo {
         });
     }
 
+    /**
+     * Read a message window. Engines may provide a native range primitive;
+     * monolithic engines fall back to the full resource while keeping one
+     * repository/API contract.
+     */
+    async getRange(handle, charDir, name, {
+        fromIndex = 0,
+        limit = 0,
+        isGroup = false,
+        groupId,
+    } = {}) {
+        const key = this._key(handle, charDir, name, { isGroup, groupId });
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.getResourceRange === 'function') {
+                const ranged = await tx.getResourceRange(key, { fromIndex, limit });
+                if (ranged !== undefined) return ranged;
+            }
+
+            const existing = await tx.getResource(key);
+            if (!existing) return null;
+            const body = Array.isArray(existing.body) ? existing.body : [];
+            const totalMessages = body.length;
+            const rawStart = Number.isFinite(Number(fromIndex)) ? Math.floor(Number(fromIndex)) : 0;
+            const rawLimit = Number.isFinite(Number(limit)) ? Math.floor(Number(limit)) : 0;
+            const start = Math.max(0, Math.min(rawStart, totalMessages));
+            const end = rawLimit > 0 ? Math.min(start + rawLimit, totalMessages) : totalMessages;
+            return {
+                ...existing,
+                body: body.slice(start, end),
+                fromIndex: start,
+                nextIndex: end,
+                totalMessages,
+                hasMore: end < totalMessages,
+            };
+        });
+    }
+
     async save(handle, charDir, name, header, messages, expectedIntegrity, { isGroup = false, groupId } = {}) {
         assertWritable();
         const key = this._key(handle, charDir, name, { isGroup, groupId });
