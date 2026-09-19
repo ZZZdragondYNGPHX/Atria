@@ -21,6 +21,21 @@ export async function openWorldInfoDrawer(page) {
 }
 
 /**
+ * Enable the explicit Continuous Cards compatibility view.
+ *
+ * New Workspace tests should stay in the default list + Inspector mode.
+ * Older behavioral tests that intentionally inspect the legacy card DOM can
+ * call this helper so the compatibility requirement is explicit.
+ */
+export async function enableWorldInfoContinuousCards(page) {
+    await openWorldInfoDrawer(page);
+    const button = page.locator('#wi_workspace_continuous_cards');
+    if (await button.count() === 0) return;
+    const active = await button.evaluate(el => el.classList.contains('is-active'));
+    if (!active) await button.click();
+}
+
+/**
  * Select a world book by name from the editor select (#world_editor_select).
  * Triggers the real change event so the entries panel populates.
  */
