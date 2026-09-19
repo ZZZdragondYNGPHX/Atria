@@ -15,6 +15,53 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — patch', ({ make }) => {
         return integrity;
     }
 
+    test('patchMessages uses native whole-message operations where supported', async () => {
+        const int1 = await setup([{ mes: 'old' }, { mes: 'remove-me' }]);
+        const result = await repo.patchMessages(
+            h.handle,
+            'A',
+            'c',
+            [
+                { op: 'test', path: '/0', value: { mes: 'old' } },
+                { op: 'replace', path: '/0', value: { mes: 'new' } },
+                { op: 'test', path: '/1', value: { mes: 'remove-me' } },
+                { op: 'remove', path: '/1' },
+            ],
+            int1,
+            { chatMetadata: { marker: 'native' } },
+        );
+
+        const read = await repo.get(h.handle, 'A', 'c');
+        if (h.kind === 'fs') {
+            expect(result).toEqual({ status: 'unsupported' });
+            expect(read.body).toEqual([{ mes: 'old' }, { mes: 'remove-me' }]);
+            return;
+        }
+
+        expect(result.status).toBe('ok');
+        expect(result.applied).toBe(4);
+        expect(result.totalMessages).toBe(1);
+        expect(result.integrity).not.toBe(int1);
+        expect(read.body).toEqual([{ mes: 'new' }]);
+        expect(read.header.chat_metadata.marker).toBe('native');
+        expect(read.integrity).toBe(result.integrity);
+    });
+
+    test('patchMessages refuses nested paths without mutating the chat', async () => {
+        const int1 = await setup([{ mes: 'old' }]);
+        const result = await repo.patchMessages(
+            h.handle,
+            'A',
+            'c',
+            [{ op: 'replace', path: '/0/mes', value: 'new' }],
+            int1,
+        );
+        expect(result).toEqual({ status: 'unsupported' });
+        const read = await repo.get(h.handle, 'A', 'c');
+        expect(read.body).toEqual([{ mes: 'old' }]);
+        expect(read.integrity).toBe(int1);
+    });
+
     test('patch replaces a message field and rotates integrity', async () => {
         const int1 = await setup([{ name: 'C', mes: 'old' }]);
         const { integrity: int2 } = await repo.patch(h.handle, 'A', 'c', [
