@@ -6270,6 +6270,8 @@
     ,"Lorebook actions": "世界書操作"
     ,"Tags": "標籤"
     ,"Pin": "置頂"
+    ,"Pin lorebook": "置頂世界書"
+    ,"Unpin lorebook": "取消置頂世界書"
     ,"Fill empty titles": "填入空白標題"
     ,"Apply sorting as Order": "將目前排序套用為「順序」"
     ,"Custom field visibility": "自訂欄位可見性"
