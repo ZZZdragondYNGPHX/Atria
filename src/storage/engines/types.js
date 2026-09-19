@@ -22,6 +22,8 @@
  * @typedef {Object} StorageTransaction
  * @property {(resource: ResourceKey) => Promise<ResourceRecord | null>} getResource
  *   Read a single resource by its key. Returns null if not found.
+ * @property {(resource: ResourceKey, options: {fromIndex?: number, limit?: number}) => Promise<(ResourceRecord & {fromIndex:number,nextIndex:number,totalMessages:number,hasMore:boolean}) | null>} [getResourceRange]
+ *   Optional engine-native chat range read. Engines without it fall back in ChatRepo.
  * @property {(resource: ResourceKey, record: ResourceRecord) => Promise<void>} putResource
  *   Write or replace a single resource. Caller must do OCC checks via getResource first if needed.
  * @property {(resource: ResourceKey, expectedIntegrity: string | null, record: ResourceRecord) => Promise<{updated: boolean}>} putResourceIfMatch
