@@ -1977,14 +1977,23 @@ async function firstLoadInit() {
     }
 
     // Boot the WebSocket delivery channel and install the fetch proxy that
-    // tunnels long-running /generate requests through it. The proxy replaces
-    // window.fetch so all subsequent generate calls stream chunks over WS.
-    // Ticket minting reuses the just-set CSRF token via getRequestHeaders().
-    // NOTE: install the fetch proxy FIRST (before connect resolves), so any
-    // /generate request issued during connect / retry is queued through the
-    // proxy. If connect fails outright we still surface a loud error — the
-    // server requires x-atria-request-id and /generate cannot fall back to
-    // plain HTTP under the new architecture.
+    // tunnels long-running /generate requests through it. Start the handshake
+    // now, but overlap it with the mandatory bootstrap snapshot below. The
+    // loader still stays up until deliveryReadyPromise settles, so normal UI
+    // generation cannot race the initial socket connection.
+    let deliveryReadyPromise = Promise.resolve();
+
+    const reportDeliveryBootFailure = (err) => {
+        console.error('[ws-delivery] Boot failed — /generate requests will hang or 400:', err?.message || err);
+        try {
+            toastr.error(
+                t`WebSocket delivery failed to start. Chat and plugin generation will not work. Check console for details.`,
+                t`Connection error`,
+                { timeOut: 0, extendedTimeOut: 0, preventDuplicates: true },
+            );
+        } catch { /* toastr may not be ready yet */ }
+    };
+
     try {
         const delivery = createAtriaDelivery();
         installFetchProxy(delivery, {
@@ -1992,18 +2001,13 @@ async function firstLoadInit() {
         });
         // Also patch every same-origin iframe's own fetch, current and future.
         // TavernHelper (JS-Slash-Runner) sandboxes user scripts inside a
-        // `TH-render` iframe whose `window.fetch` was untouched by the top
-        // proxy above — those scripts calling `/api/backends/*/generate`
-        // would otherwise receive the runner's synthetic `{}` body directly
-        // and bail with "invalid response format". See
-        // public/scripts/ws-delivery.js:installFetchProxyForAllIframes for
-        // the three-step lifecycle (current + MutationObserver + iframe
-        // `load` re-patch) and per-window idempotency guard.
+        // TH-render iframe whose window.fetch would otherwise bypass delivery.
         installFetchProxyForAllIframes(delivery, {
             getExtraHeaders: () => getRequestHeaders({ omitContentType: true }),
         });
         window.__atriaDelivery = delivery;
-        await delivery.connect(async () => {
+
+        deliveryReadyPromise = delivery.connect(async () => {
             const resp = await fetch('/api/ws-ticket', {
                 method: 'POST',
                 headers: getRequestHeaders(),
@@ -2014,23 +2018,13 @@ async function firstLoadInit() {
                 throw new Error('ws-ticket: malformed response');
             }
             return data.ticket;
-        });
-        // Page-lifecycle hooks: force a reconnect on tab-becomes-visible and
-        // on network-back-online. Covers the mobile suspend / laptop sleep /
-        // network-handoff cases where the WS TCP dies silently and neither
-        // the browser's onclose nor the OS TCP keepalive notices for
-        // minutes to hours. Installed AFTER connect so we don't fight the
-        // initial connect race.
-        installLifecycleHooks(delivery);
+        }).then(() => {
+            // Install lifecycle reconnect hooks only after the first socket is
+            // open so visibility/online events cannot fight initial connect.
+            installLifecycleHooks(delivery);
+        }).catch(reportDeliveryBootFailure);
     } catch (err) {
-        console.error('[ws-delivery] Boot failed — /generate requests will hang or 400:', err?.message || err);
-        try {
-            toastr.error(
-                t`WebSocket delivery failed to start. Chat and plugin generation will not work. Check console for details.`,
-                t`Connection error`,
-                { timeOut: 0, extendedTimeOut: 0, preventDuplicates: true },
-            );
-        } catch { /* toastr may not be ready yet */ }
+        reportDeliveryBootFailure(err);
     }
 
     console.debug('[init] csrf-token done, showing loader');
@@ -2051,6 +2045,10 @@ async function firstLoadInit() {
         bootstrapPromise,
     ]);
     console.debug('[init] bootstrap snapshot received');
+
+    // Preserve the existing readiness guarantee: loader/UI startup does not
+    // progress past this point until the initial delivery connection settled.
+    await deliveryReadyPromise;
     await initSecrets();
     if (bootstrapSnapshot?.secret_state) {
         primeSecretStateSnapshot(bootstrapSnapshot.secret_state);
