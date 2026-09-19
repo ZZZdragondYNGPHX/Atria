@@ -7614,6 +7614,8 @@ async function testWorldInfoWorkspaceEntryActivation(name, entry) {
         Number.isFinite(maxContext) && maxContext > 0 ? maxContext : 8192,
         true,
         defaultGlobalScanData,
+        candidate => Number(candidate?.uid) === Number(entry?.uid)
+            && (!candidate?.world || String(candidate.world) === String(name)),
     );
 
     const trace = getEntryActivationTrace(getActivationTraceScopeKey(), name, entry?.uid);
@@ -7638,9 +7640,30 @@ async function testWorldInfoWorkspaceEntryActivation(name, entry) {
         ? explainTraceReason(reason, details)
         : (latest.activated ? t`Activated by the current runtime scan.` : t`No activation path succeeded in the current runtime scan.`);
 
+    const detailParts = [explanation];
+    const sourceHints = Array.isArray(details.sourceHints)
+        ? details.sourceHints.map(explainTraceSourceHint).filter(Boolean)
+        : [];
+    if (sourceHints.length) {
+        detailParts.push(`${t`Matched in`}: ${[...new Set(sourceHints)].slice(0, 4).join(', ')}`);
+    }
+    if (Array.isArray(details.secondaryKeys) && details.secondaryKeys.length) {
+        const matched = Array.isArray(details.matchedSecondaryKeys) ? details.matchedSecondaryKeys : [];
+        detailParts.push(`${t`Secondary keys matched`}: ${matched.length}/${details.secondaryKeys.length}`);
+    }
+    if (details.group) {
+        detailParts.push(`${t`Inclusion group`}: ${String(details.group)}`);
+    }
+    if (Number.isFinite(details.probability)) {
+        detailParts.push(`${t`Probability`}: ${Number(details.probability)}%`);
+    }
+    if (Number.isFinite(details.budget)) {
+        detailParts.push(`${t`Budget`}: ${Number(details.budget)}`);
+    }
+
     return {
         label: latest.activated ? t`Would activate` : t`Would not activate`,
-        detail: explanation,
+        detail: detailParts.join(' · '),
     };
 }
 
