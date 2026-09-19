@@ -50,6 +50,11 @@ import { getAdminSettings } from '../admin-settings.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
 import {
+    isRestoreCancelledError,
+    RestoreCancelledError,
+    throwIfRestoreCancelled,
+} from '../backup-sync/restore-cancel.js';
+import {
     extractZipEntryWithAdmZip,
     isRestoreEntryIdleTimeoutError,
     RestoreEntryAdaptivePolicy,
@@ -578,6 +583,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
 }
 
 const RESTORE_RECOVERY_DIR = '_restore-recovery';
+const activeRestoreControllers = new Map();
 
 async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null, metadata = {}) {
     const backupRoot = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
@@ -609,6 +615,8 @@ async function rollbackRestoreRecoveryPoint(handle, directories, engine, recover
 
 async function restoreUserBackupArchive(uploadPath, directories, selection, mode, options = {}) {
     const restoreStart = Date.now();
+    const signal = options.signal || null;
+    throwIfRestoreCancelled(signal);
     const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
     const reportProgress = (event) => {
         if (!onProgress) {
@@ -643,6 +651,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     const categoryTargets = buildRestoreCategoryTargets(directories, selection, options);
     const tAnalyze = Date.now();
     const analysis = await analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, targetDirectories, categoryTargets, reportProgress);
+    throwIfRestoreCancelled(signal);
     const analyzeMs = Date.now() - tAnalyze;
     console.info(
         `[user-backup] Analyze done: entries=${analysis.report.totalEntries} targetable=${analysis.report.targetableEntries} `
@@ -683,6 +692,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                 onProgress: reportProgress,
                 scratchCreds: options.scratchCreds || null,
                 includeGlobalExtensions: !!options.includeGlobalExtensions,
+                signal,
             },
         );
         const totalMs = Date.now() - restoreStart;
@@ -724,14 +734,17 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         }
         snapshotMs = Date.now() - tSnap;
         console.info(`[user-backup] Recovery snapshot done: ${snapshotMs}ms path=${path.basename(recoveryPath)}`);
+        throwIfRestoreCancelled(signal);
 
         if (isReplacingRestoreMode(mode)) {
             try {
                 for (const filePath of targetFiles) {
+                    throwIfRestoreCancelled(signal);
                     await fsPromises.rm(filePath, { force: true });
                 }
                 const globalExtensionsPath = path.resolve(PUBLIC_DIRECTORIES.globalExtensions);
                 for (const directoryPath of targetDirectories) {
+                    throwIfRestoreCancelled(signal);
                     if (path.resolve(directoryPath) === globalExtensionsPath) {
                         await resetGlobalExtensionsRestoreDirectory(directoryPath);
                         continue;
@@ -805,6 +818,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
 
                     zipfile.on('entry', (entry) => {
                         (async () => {
+                            throwIfRestoreCancelled(signal);
                             // Engine sentinel entries (spec §5.2). _engine_meta.json
                             // was already consumed during analyze for kind
                             // validation, so skip it on disk. _engine_dump.bin is
@@ -898,6 +912,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                         entry,
                                         targetPath,
                                         timeoutMs: entryExtractionPolicy.timeoutMs,
+                                        signal,
                                         onChunk: (_chunkBytes, totalBytes) => {
                                             entryBytes = totalBytes;
                                             reportEntryProgress(false);
@@ -923,6 +938,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                     await fsPromises.rm(targetPath, { force: true });
                                     entryBytes = 0;
                                     reportEntryProgress(true);
+                                    throwIfRestoreCancelled(signal);
                                     await extractZipEntryWithAdmZip({
                                         zipPath: uploadPath,
                                         entryName: entry.fileName,
