@@ -1166,18 +1166,30 @@ export function getRegexedString(rawString, placement, { characterOverride, isMa
     // Runtime provider callbacks remain dynamic by contract. Evaluate them on
     // every call, but still narrow them by placement/lane before execution.
     const runtimeScripts = collectRuntimeRegexScripts({ allowedOnly: true });
-    const runtimePlan = createRegexExecutionPlan(runtimeScripts, { warnInvalidPlacement: true });
-    const runtimeCandidates = getRegexExecutionCandidates(runtimePlan, placement, executionParams);
+    const runtimeCandidates = runtimeScripts.length > 0
+        ? getRegexExecutionCandidates(
+            createRegexExecutionPlan(runtimeScripts, { warnInvalidPlacement: true }),
+            placement,
+            executionParams,
+        )
+        : [];
 
-    for (const script of staticCandidates.concat(runtimeCandidates)) {
-        if (isRegexScriptPaused(script.id)) {
-            continue;
+    const runCandidates = candidates => {
+        for (const script of candidates) {
+            if (isRegexScriptPaused(script.id)) {
+                continue;
+            }
+            const __regexStart = performance.now();
+            finalString = runRegexScript(script, finalString, { characterOverride });
+            const __regexElapsed = performance.now() - __regexStart;
+            recordRegexExecution(script, __regexElapsed);
         }
-        const __regexStart = performance.now();
-        finalString = runRegexScript(script, finalString, { characterOverride });
-        const __regexElapsed = performance.now() - __regexStart;
-        recordRegexExecution(script, __regexElapsed);
-    }
+    };
+
+    // Preserve the historical ordering exactly without allocating a joined
+    // candidate array on every processed string.
+    runCandidates(staticCandidates);
+    runCandidates(runtimeCandidates);
 
     return finalString;
 }
