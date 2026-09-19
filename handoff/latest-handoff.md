@@ -61,6 +61,21 @@ The permanent Workspace UI guard and Chromium workflow should be treated as arch
 
 ## Recent completed integrations
 
+### Android shared-storage archive restore stall
+
+- PR #15
+- Baseline: `main@dbaf8f2f397220a4e9544e44df55a114ea408067`
+- Final validated head: `c6b143f7d9b55ada9be194a4587e053bc54867dd`
+- Squash merge / current `main`: `43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
+- Final task tree and merged-main tree: `5e73acc167d1de065f975b9b43cc3bbdbf93bbea`
+- Record: `fixes/android-archive-restore-stall.md`
+- Android/shared-storage ZIPs are copied into the internal temporary filesystem before yauzl random-access extraction.
+- Local archive restore, LAN migration import, and Data ZIP import share the staging protection.
+- Backup Center reports staging and current-entry byte progress instead of only completed-file count.
+- Recovery-point controls are disabled while restore holds the migration lock.
+- Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
+- Android JVM tests and Android/Docker builds were not run because they remain opt-in and this task changes Node/frontend restore logic only.
+
 ### Android archive restore stall
 
 - PR #15
