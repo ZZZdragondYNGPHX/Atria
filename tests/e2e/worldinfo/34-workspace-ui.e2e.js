@@ -211,6 +211,17 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await page.locator('[data-wi-workspace-view="library"]').click();
     await expect(page.locator('#wi_workspace_library #world_info_manager_active_panel')).toBeHidden();
     await expect(page.locator('.wi-workspace-primary-toolbar .world_popup_primary_select')).toBeHidden();
+
+    // Advanced cross-book search survives the visual simplification behind
+    // one compact filter menu instead of occupying a permanent second row.
+    const librarySearchOptions = page.locator('.wi-library-mobile-search-options');
+    await expect(librarySearchOptions).toBeVisible();
+    await librarySearchOptions.locator('summary').click();
+    await librarySearchOptions.locator('[data-control="entries"]').click();
+    await expect(page.locator('#world_info_manager_search_entries')).toBeChecked();
+    await librarySearchOptions.locator('[data-control="entries"]').click();
+    await expect(page.locator('#world_info_manager_search_entries')).not.toBeChecked();
+
     await openBookFromLibrary(page);
 
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();
