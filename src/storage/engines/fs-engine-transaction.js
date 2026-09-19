@@ -10,7 +10,7 @@ import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
-import { invalidateFsChatRangeIndex, readFsChatInfo, readFsChatRange } from './fs-chat-range.js';
+import { appendFsChatMessages, invalidateFsChatRangeIndex, readFsChatInfo, readFsChatRange } from './fs-chat-range.js';
 
 export class FsTransaction {
     constructor({ directoriesByHandle }) {
@@ -51,6 +51,13 @@ export class FsTransaction {
             throw new Error('FsTransaction.getChatInfo: chat resource required');
         }
         return this._h(key.kind, 'getChatInfo').info(key);
+    }
+
+    async appendChatMessages(key, messages, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('FsTransaction.appendChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
     }
 
     async deleteResource(key) {
@@ -166,6 +173,10 @@ function registerChatHandler(tx) {
             const filePath = chatFilePath(key);
             const result = readFsChatInfo(filePath);
             return result ? { key, ...result } : null;
+        },
+        append(key, messages, options) {
+            const filePath = chatFilePath(key);
+            return appendFsChatMessages(filePath, messages, options);
         },
         put(key, record) {
             if (key.isGroup) {
