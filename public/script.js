@@ -400,13 +400,15 @@ export {
 };
 
 /**
- * Wait for page to load before continuing the app initialization.
+ * Wait only until the DOM is parse-ready. Module scripts already execute
+ * after document parsing, so waiting for the full window "load" event here
+ * needlessly serialized Atria startup behind fonts/images/other subresources.
  */
 await new Promise((resolve) => {
-    if (document.readyState === 'complete') {
+    if (document.readyState !== 'loading') {
         resolve();
     } else {
-        window.addEventListener('load', resolve);
+        document.addEventListener('DOMContentLoaded', resolve, { once: true });
     }
 });
 
