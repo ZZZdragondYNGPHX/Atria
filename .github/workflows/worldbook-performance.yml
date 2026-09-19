@@ -28,6 +28,13 @@ on:
       - "public/scripts/extensions/memory-graph/temporal-graph.js"
       - "public/scripts/extensions/memory-graph/hybrid-retrieval.js"
       - "src/endpoints/characters.js"
+      - "tests/storage/endpoints/group-chat-parity.test.js"
+      - "tests/storage/endpoints/chat-read-parity.test.js"
+      - "src/endpoints/chats.js"
+      - "src/storage/repositories/chat-repo.js"
+      - "src/storage/engines/types.js"
+      - "src/storage/engines/fs-engine-transaction.js"
+      - "src/storage/engines/fs-chat-range.js"
       - "tests/e2e/_lib/fixtures.js"
       - "tests/e2e/worldinfo/_helpers.js"
       - "tests/e2e/worldinfo/25-activation-strategies.e2e.js"
@@ -69,6 +76,7 @@ jobs:
           performance/chat-snapshot-cache.test.js
           performance/itemized-prompt-store.test.js
           performance/message-depth.test.js
+          performance/fs-chat-range.test.js
           memory-graph/temporal-graph.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
