@@ -9,10 +9,10 @@ import {
 
 describe('Android archive restore staging', () => {
     test('recognizes Android shared-storage paths and android platform', () => {
-        expect(shouldStageRestoreArchive('/storage/emulated/0/Atria/data/_uploads/a.zip', 'linux')).toBe(true);
-        expect(shouldStageRestoreArchive('/sdcard/Atria/data/_uploads/a.zip', 'linux')).toBe(true);
-        expect(shouldStageRestoreArchive('/tmp/a.zip', 'android')).toBe(true);
-        expect(shouldStageRestoreArchive('/tmp/a.zip', 'linux')).toBe(false);
+        expect(shouldStageRestoreArchive('/storage/emulated/0/Atria/data/_uploads/a.zip', { platform: 'linux' })).toBe(true);
+        expect(shouldStageRestoreArchive('/sdcard/Atria/data/_uploads/a.zip', { platform: 'linux' })).toBe(true);
+        expect(shouldStageRestoreArchive('/tmp/a.zip', { platform: 'android' })).toBe(true);
+        expect(shouldStageRestoreArchive('/tmp/a.zip', { platform: 'linux' })).toBe(false);
     });
 
     test('Android staging copies bytes into internal temp storage, reports progress, and cleans up', async () => {
@@ -33,7 +33,7 @@ describe('Android archive restore staging', () => {
             staged = await stageRestoreArchiveForRandomAccess(
                 source,
                 event => events.push({ ...event }),
-                { platform: 'android', tempRoot },
+                { platform: 'android', tempRootParent: tempRoot },
             );
 
             expect(staged.staged).toBe(true);
@@ -64,7 +64,7 @@ describe('Android archive restore staging', () => {
         try {
             const staged = await stageRestoreArchiveForRandomAccess(source, null, {
                 platform: 'linux',
-                tempRoot: path.join(fixtureRoot, 'unused'),
+                tempRootParent: path.join(fixtureRoot, 'unused'),
             });
             expect(staged.staged).toBe(false);
             expect(staged.path).toBe(source);
