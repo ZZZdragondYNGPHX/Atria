@@ -36,6 +36,9 @@ on:
       - "src/storage/engines/fs-engine-transaction.js"
       - "src/storage/engines/fs-chat-range.js"
       - "tests/storage/repositories/chat-repo.test.js"
+      - "tests/storage/endpoints/chat-incremental-backup.parity.test.js"
+      - "tests/storage/engines/sqlite-engine-chat.test.js"
+      - "tests/storage/repositories/chat-repo-append.test.js"
       - "src/storage/engines/sqlite-engine-transaction.js"
       - "tests/e2e/_lib/fixtures.js"
       - "tests/e2e/worldinfo/_helpers.js"
@@ -83,6 +86,8 @@ jobs:
           performance/message-depth.test.js
           performance/fs-chat-range.test.js
           storage/repositories/chat-repo.test.js
+          storage/engines/sqlite-engine-chat.test.js
+          storage/repositories/chat-repo-append.test.js
           memory-graph/temporal-graph.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
