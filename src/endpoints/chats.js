@@ -2810,7 +2810,12 @@ router.post('/get-delta', validateAvatarUrlMiddleware, async function (request, 
         const fromIndex = Number(request.body.from_index) || 0;
         const limit = Number(request.body.limit) || 0;
         const handle = request.user.profile.handle;
-        const chat = await getChatRepo().get(handle, dirName, stripJsonlExt(request.body.file_name));
+        const chat = await getChatRepo().getRange(
+            handle,
+            dirName,
+            stripJsonlExt(request.body.file_name),
+            { fromIndex, limit },
+        );
         if (chat == null) {
             return response.send({
                 chat: [],
@@ -2822,18 +2827,13 @@ router.post('/get-delta', validateAvatarUrlMiddleware, async function (request, 
             });
         }
 
-        const body = Array.isArray(chat.body) ? chat.body : [];
-        const total = body.length;
-        const start = Math.max(0, Math.min(fromIndex, total));
-        const end = limit > 0 ? Math.min(start + limit, total) : total;
-        const slice = body.slice(start, end);
         return response.send({
-            chat: slice,
+            chat: Array.isArray(chat.body) ? chat.body : [],
             chat_metadata: chat.header?.chat_metadata ?? {},
-            from_index: start,
-            next_index: end,
-            total_messages: total,
-            has_more: end < total,
+            from_index: chat.fromIndex,
+            next_index: chat.nextIndex,
+            total_messages: chat.totalMessages,
+            has_more: chat.hasMore,
         });
     } catch (error) {
         console.error(error);
@@ -3383,7 +3383,12 @@ router.post('/group/get-delta', async (request, response) => {
     const fromIndex = Number(request.body.from_index) || 0;
     const limit = Number(request.body.limit) || 0;
     const handle = request.user.profile.handle;
-    const chat = await getChatRepo().get(handle, '', id, { isGroup: true, groupId: id });
+    const chat = await getChatRepo().getRange(handle, '', id, {
+        fromIndex,
+        limit,
+        isGroup: true,
+        groupId: id,
+    });
     if (chat == null) {
         return response.send({
             chat: [],
@@ -3394,17 +3399,13 @@ router.post('/group/get-delta', async (request, response) => {
             has_more: false,
         });
     }
-    const body = Array.isArray(chat.body) ? chat.body : [];
-    const total = body.length;
-    const start = Math.max(0, Math.min(fromIndex, total));
-    const end = limit > 0 ? Math.min(start + limit, total) : total;
     return response.send({
-        chat: body.slice(start, end),
+        chat: Array.isArray(chat.body) ? chat.body : [],
         chat_metadata: chat.header?.chat_metadata ?? {},
-        from_index: start,
-        next_index: end,
-        total_messages: total,
-        has_more: end < total,
+        from_index: chat.fromIndex,
+        next_index: chat.nextIndex,
+        total_messages: chat.totalMessages,
+        has_more: chat.hasMore,
     });
 });
 
