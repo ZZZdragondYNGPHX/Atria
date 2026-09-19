@@ -24,7 +24,12 @@ import { listForUser, mergeReadIds } from '../announcements.js';
 import { getStorageEngine, setReadOnly } from '../storage/index.js';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../storage/engine-backup-entries.js';
 import { crossModeRestore } from '../storage/migration/cross-mode-restore.js';
-import { SNAPSHOT_META_ENTRY, snapshotUser, restoreFromSnapshot } from '../storage/migration/backup.js';
+import {
+    SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY,
+    SNAPSHOT_META_ENTRY,
+    snapshotUser,
+    restoreFromSnapshot,
+} from '../storage/migration/backup.js';
 import {
     CrossModeScratchCredsRequiredError,
     CrossModeScratchConnectionError,
@@ -588,6 +593,7 @@ const activeRestoreControllers = new Map();
 async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null, metadata = {}) {
     const backupRoot = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
     ensureDirectory(backupRoot);
+    const includeGlobalExtensions = metadata?.includeGlobalExtensions === true;
     try { onProgress?.({ phase: 'snapshot', current: 0, total: 1 }); } catch { /* observer */ }
     const backupPath = await snapshotUser({
         handle,
@@ -600,6 +606,12 @@ async function createRestoreRecoveryPoint(handle, directories, engine, onProgres
             ...metadata,
         },
     });
+
+    if (includeGlobalExtensions && fs.existsSync(PUBLIC_DIRECTORIES.globalExtensions)) {
+        const globalSnapshotPath = path.join(backupPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY);
+        await fsPromises.cp(PUBLIC_DIRECTORIES.globalExtensions, globalSnapshotPath, { recursive: true });
+    }
+
     try { onProgress?.({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
     return backupPath;
 }
@@ -611,6 +623,15 @@ async function rollbackRestoreRecoveryPoint(handle, directories, engine, recover
         backupPath: recoveryPath,
         engine,
     });
+
+    const globalSnapshotPath = path.join(recoveryPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY);
+    if (fs.existsSync(globalSnapshotPath)) {
+        await resetGlobalExtensionsRestoreDirectory(PUBLIC_DIRECTORIES.globalExtensions);
+        await fsPromises.cp(globalSnapshotPath, PUBLIC_DIRECTORIES.globalExtensions, {
+            recursive: true,
+            force: true,
+        });
+    }
 }
 
 async function restoreUserBackupArchive(uploadPath, directories, selection, mode, options = {}) {
@@ -728,6 +749,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         try {
             recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress, {
                 restoreMode: mode,
+                includeGlobalExtensions: Boolean(options.includeGlobalExtensions && selection.globalExtensions),
             });
         } catch (snapshotError) {
             throw new Error(`Failed to create recovery point before restore: ${snapshotError?.message || snapshotError}`);
