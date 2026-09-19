@@ -3321,7 +3321,27 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     }
 
     #WorldInfo .wi-workspace-inspector-entry .wi-entry-header {
+        display: flex;
+        min-height: 40px;
+        margin: 6px 0;
+        padding: 5px 6px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        background: color-mix(in srgb, var(--SmartThemeBodyColor) 4%, transparent);
+        scrollbar-width: none;
+    }
+
+    #WorldInfo .wi-workspace-inspector-entry .wi-entry-header::-webkit-scrollbar {
         display: none;
+    }
+
+    #WorldInfo .wi-workspace-inspector-entry .wi-entry-header-main {
+        min-width: max-content;
+        overflow: visible;
+    }
+
+    #WorldInfo .wi-workspace-inspector-entry .wi-entry-header-fields {
+        gap: 3px;
     }
 
     #WorldInfo .wi-inspector-sections {
