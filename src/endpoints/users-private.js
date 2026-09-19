@@ -1037,6 +1037,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
 
             reportProgress({ phase: 'finalize' });
             result.recoveryPoint = path.basename(recoveryPath);
+            throwIfRestoreCancelled(signal);
         } catch (extractError) {
             extractMs = Date.now() - tExtract;
             const totalMs = Date.now() - restoreStart;
