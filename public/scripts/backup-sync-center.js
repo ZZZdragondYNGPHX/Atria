@@ -43,20 +43,30 @@ function renderRestoreProgress(root, event = {}) {
         ? ` ${Math.max(0, current)}/${Math.max(0, total)}`
         : '';
 
-    const phaseLabel = phase === 'analyze'
-        ? '正在检查归档'
-        : phase === 'snapshot'
-            ? '正在创建恢复点'
-            : phase === 'extract'
-                ? '正在写入恢复数据'
-                : phase === 'convert'
-                    ? '正在转换存储数据'
-                    : phase === 'finalize'
-                        ? '正在校验并完成恢复'
-                        : '正在恢复';
+    const phaseLabel = phase === 'stage'
+        ? '正在准备恢复文件'
+        : phase === 'analyze'
+            ? '正在检查归档'
+            : phase === 'snapshot'
+                ? '正在创建恢复点'
+                : phase === 'extract'
+                    ? '正在写入恢复数据'
+                    : phase === 'convert'
+                        ? '正在转换存储数据'
+                        : phase === 'finalize'
+                            ? '正在校验并完成恢复'
+                            : '正在恢复';
 
     const stage = event.stage ? ` · ${String(event.stage)}` : '';
-    box.textContent = `${phaseLabel}${countText}${stage}…`;
+    const entry = event.entry
+        ? ` · ${String(event.entry).split('/').slice(-2).join('/')}`
+        : '';
+    const entryBytes = Number(event.entryBytes);
+    const entryTotalBytes = Number(event.entryTotalBytes);
+    const byteText = Number.isFinite(entryBytes) && Number.isFinite(entryTotalBytes) && entryTotalBytes > 0
+        ? ` · ${humanFileSize(entryBytes)} / ${humanFileSize(entryTotalBytes)}`
+        : '';
+    box.textContent = `${phaseLabel}${countText}${entry}${byteText}${stage}…`;
 }
 
 function renderRestoreTerminalState(root, text, state = 'ok') {
