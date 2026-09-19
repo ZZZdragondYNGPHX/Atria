@@ -768,6 +768,14 @@ function buildWorkspaceDom() {
                             <div class="wi-workspace-inspector-actions">
                                 <button id="wi_workspace_test_activation" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-flask"></i><span>Test Activation</span></button>
                                 <button id="wi_workspace_activation_trace" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-route"></i><span>Activation Trace</span></button>
+                                <details class="wi-workspace-inspector-more">
+                                    <summary class="menu_button" title="More entry actions" aria-label="More entry actions"><i class="fa-solid fa-ellipsis"></i></summary>
+                                    <div class="wi-workspace-inspector-menu">
+                                        <button type="button" class="menu_button menu_button_icon" data-action="move-entry"><i class="fa-solid fa-right-left"></i><span>Move / Copy</span></button>
+                                        <button type="button" class="menu_button menu_button_icon" data-action="duplicate-entry"><i class="fa-solid fa-copy"></i><span>Duplicate</span></button>
+                                        <button type="button" class="menu_button menu_button_icon is-destructive" data-action="delete-entry"><i class="fa-solid fa-trash-can"></i><span>Delete</span></button>
+                                    </div>
+                                </details>
                             </div>
                         </div>
                         <div id="wi_workspace_activation_result" class="wi-workspace-activation-result displayNone" aria-live="polite"></div>
@@ -877,6 +885,17 @@ function buildWorkspaceDom() {
         const entry = state.entries.find(item => String(item?.uid ?? '') === state.selectedUid);
         if (entry && typeof state.callbacks.onTrace === 'function') await state.callbacks.onTrace(entry);
     });
+
+    const forwardInspectorAction = (action, selector) => {
+        shell.querySelector(`[data-action="${action}"]`)?.addEventListener('click', () => {
+            shell.querySelector('#wi_workspace_inspector_body')?.querySelector(selector)?.click();
+            const menu = shell.querySelector('.wi-workspace-inspector-more');
+            if (menu instanceof HTMLDetailsElement) menu.open = false;
+        });
+    };
+    forwardInspectorAction('move-entry', '.move_entry_button');
+    forwardInspectorAction('duplicate-entry', '.duplicate_entry_button');
+    forwardInspectorAction('delete-entry', '.delete_entry_button');
 
     window.addEventListener('resize', () => {
         if (!isMobileWorkspace()) state.mobileDetail = false;
