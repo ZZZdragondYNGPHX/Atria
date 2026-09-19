@@ -107,6 +107,21 @@ describe('static regex execution plans', () => {
         expect(regexFromStringMock).toHaveBeenCalledTimes(1);
     });
 
+    test('grows compiled-regex capacity beyond the historical 1000-rule ceiling', () => {
+        extensionSettings.regex = Array.from({ length: 1200 }, (_, index) => script({
+            id: `capacity-${index}`,
+            scriptName: `capacity-${index}`,
+            findRegex: `/P${index}/g`,
+            placement: [2],
+        }));
+        engine.invalidateRegexExecutionPlans();
+
+        // Building the active static plan is enough to reserve capacity even
+        // though this particular placement has no executable candidates.
+        expect(engine.getRegexedString('A', 1)).toBe('A');
+        expect(engine.RegexProvider.instance.getStats().capacity).toBeGreaterThanOrEqual(1200);
+    });
+
     test('persisted save invalidates the plan and the next execution rebuilds it', async () => {
         extensionSettings.regex = [
             script({ id: 'first', findRegex: '/A/g', replaceString: 'B' }),
