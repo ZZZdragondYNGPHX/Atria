@@ -1159,7 +1159,9 @@ function resolveRestoreRecoveryPath(handle, id) {
 }
 
 async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
-    const { recoveryPath } = resolveRestoreRecoveryPath(handle, recoveryId);
+    const { recoveryPath, meta } = resolveRestoreRecoveryPath(handle, recoveryId);
+    const includeGlobalExtensions = meta?.includeGlobalExtensions === true
+        || fs.existsSync(path.join(recoveryPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY));
     const engine = getStorageEngine();
     const holderId = makeHolderId();
     let heartbeat = null;
@@ -1173,13 +1175,9 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
             purpose: 'before-recovery-apply',
             restoreMode: 'recovery',
             sourceRecoveryPoint: recoveryId,
+            includeGlobalExtensions,
         });
-        await restoreFromSnapshot({
-            handle,
-            userRoot: directories.root,
-            backupPath: recoveryPath,
-            engine,
-        });
+        await rollbackRestoreRecoveryPoint(handle, directories, engine, recoveryPath);
         return {
             restored: recoveryId,
             undoRecoveryPoint: path.basename(undoPath),
@@ -1187,12 +1185,7 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
     } catch (error) {
         if (undoPath) {
             try {
-                await restoreFromSnapshot({
-                    handle,
-                    userRoot: directories.root,
-                    backupPath: undoPath,
-                    engine,
-                });
+                await rollbackRestoreRecoveryPoint(handle, directories, engine, undoPath);
             } catch (rollbackError) {
                 throw new Error(
                     `Recovery apply failed and rollback failed. Undo point: ${undoPath}. `
