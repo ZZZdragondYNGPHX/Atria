@@ -25,6 +25,8 @@
  * @property {(resource: ResourceKey, options: {fromIndex?: number, limit?: number}) => Promise<ChatRangeRecord | null>} [getChatRange]
  *   Optional chat-specialized range read. Engines that can avoid materializing the
  *   complete body expose this method; ChatRepo falls back to getResource otherwise.
+ * @property {(resource: ResourceKey) => Promise<ChatInfoRecord | null>} [getChatInfo]
+ *   Optional lightweight chat summary read for list/recent views.
  * @property {(resource: ResourceKey, record: ResourceRecord) => Promise<void>} putResource
  *   Write or replace a single resource. Caller must do OCC checks via getResource first if needed.
  * @property {(resource: ResourceKey, expectedIntegrity: string | null, record: ResourceRecord) => Promise<{updated: boolean}>} putResourceIfMatch
@@ -48,6 +50,18 @@
  *   kind: string,
  *   [key: string]: any,
  * }} ResourceKey
+ */
+
+/**
+ * @typedef {{
+ *   header: object,
+ *   integrity: string,
+ *   updatedAt: number,
+ *   createdAt: number,
+ *   messageCount: number,
+ *   byteSize: number,
+ *   lastMessage: any,
+ * }} ChatInfoRecord
  */
 
 /**
