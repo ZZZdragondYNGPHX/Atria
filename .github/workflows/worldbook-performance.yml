@@ -24,6 +24,9 @@ on:
       - "public/scripts/horde.js"
       - "public/scripts/extensions/orchestrator/lorebook-filter.js"
       - "public/scripts/extensions/orchestrator/main.js"
+      - "tests/memory-graph/temporal-graph.test.js"
+      - "public/scripts/extensions/memory-graph/temporal-graph.js"
+      - "public/scripts/extensions/memory-graph/hybrid-retrieval.js"
       - "src/endpoints/characters.js"
       - "tests/e2e/_lib/fixtures.js"
       - "tests/e2e/worldinfo/_helpers.js"
@@ -66,6 +69,7 @@ jobs:
           performance/chat-snapshot-cache.test.js
           performance/itemized-prompt-store.test.js
           performance/message-depth.test.js
+          memory-graph/temporal-graph.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
           world-info/state-conditions.test.js
