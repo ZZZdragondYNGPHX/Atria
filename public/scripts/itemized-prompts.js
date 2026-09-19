@@ -390,40 +390,40 @@ export async function itemizedParams(itemizedPrompts, thisPromptSet, incomingMes
     return params;
 }
 
-export function findItemizedPromptSet(itemizedPrompts, incomingMesId) {
-    let thisPromptSet = undefined;
-    priorPromptArrayItemForRawPromptDisplay = -1;
-
-    for (let i = 0; i < itemizedPrompts.length; i++) {
-        console.log(`looking for ${incomingMesId} vs ${itemizedPrompts[i].mesId}`);
-        if (itemizedPrompts[i].mesId === incomingMesId) {
-            console.log(`found matching mesID ${i}`);
-            thisPromptSet = i;
-            PromptArrayItemForRawPromptDisplay = i;
-            console.log(`wanting to raw display of ArrayItem: ${PromptArrayItemForRawPromptDisplay} which is mesID ${incomingMesId}`);
-            console.log(itemizedPrompts[thisPromptSet]);
-            break;
-        } else if (itemizedPrompts[i].rawPrompt) {
-            priorPromptArrayItemForRawPromptDisplay = i;
-        }
-    }
-    return thisPromptSet;
+export function findItemizedPromptSet(promptIndex, incomingMesId) {
+    const targetMesId = Number(incomingMesId);
+    return Array.isArray(promptIndex)
+        ? promptIndex.findIndex(entry => Number(entry?.mesId) === targetMesId)
+        : -1;
 }
 
-export async function promptItemize(itemizedPrompts, requestedMesId) {
-    console.log('PROMPT ITEMIZE ENTERED');
-    var incomingMesId = Number(requestedMesId);
-    console.debug(`looking for MesId ${incomingMesId}`);
-    var thisPromptSet = findItemizedPromptSet(itemizedPrompts, incomingMesId);
-
-    if (thisPromptSet === undefined) {
-        console.log(`couldnt find the right mesId. looked for ${incomingMesId}`);
-        console.log(itemizedPrompts);
+export async function promptItemize(promptIndex, requestedMesId) {
+    const incomingMesId = Number(requestedMesId);
+    const summaryIndex = findItemizedPromptSet(promptIndex, incomingMesId);
+    if (summaryIndex < 0) {
+        console.debug(`No itemized prompt index entry for message ${incomingMesId}`);
         return null;
     }
 
-    const params = await itemizedParams(itemizedPrompts, thisPromptSet, incomingMesId);
-    const flatten = (rawPrompt) => Array.isArray(rawPrompt) ? rawPrompt.map(x => x.content).join('\n') : rawPrompt;
+    const chatId = activePromptChatId || String(getCurrentChatId() || '').trim();
+    if (!chatId) return null;
+
+    await waitForPromptMutations();
+    const selectedPrompt = await promptStore.getRecord(chatId, incomingMesId, itemizedPrompts);
+    if (!selectedPrompt) {
+        console.warn(`Prompt diagnostic record missing for message ${incomingMesId}`);
+        return null;
+    }
+    const previousPrompt = await promptStore.getPreviousRecordWithRawPrompt(
+        chatId,
+        incomingMesId,
+        itemizedPrompts,
+    );
+
+    const params = await itemizedParams([selectedPrompt], 0, incomingMesId);
+    const flatten = (rawPrompt) => Array.isArray(rawPrompt)
+        ? rawPrompt.map(x => x?.content ?? '').join('\n')
+        : String(rawPrompt ?? '');
 
     const template = params.this_main_api == 'openai'
         ? await renderTemplateAsync('itemizationChat', params)
@@ -433,18 +433,16 @@ export async function promptItemize(itemizedPrompts, requestedMesId) {
 
     /** @type {HTMLElement} */
     const diffPrevPrompt = popup.dlg.querySelector('#diffPrevPrompt');
-    if (priorPromptArrayItemForRawPromptDisplay >= 0) {
+    if (previousPrompt?.rawPrompt) {
         diffPrevPrompt.style.display = '';
         diffPrevPrompt.addEventListener('click', function () {
             const dmp = new DiffMatchPatch();
-            const text1 = flatten(itemizedPrompts[priorPromptArrayItemForRawPromptDisplay].rawPrompt);
-            const text2 = flatten(itemizedPrompts[PromptArrayItemForRawPromptDisplay].rawPrompt);
+            const text1 = flatten(previousPrompt.rawPrompt);
+            const text2 = flatten(selectedPrompt.rawPrompt);
 
             dmp.Diff_Timeout = 2.0;
-
             const d = dmp.diff_main(text1, text2);
             let ds = dmp.diff_prettyHtml(d);
-            // make it readable
             ds = ds.replaceAll('background:#e6ffe6;', 'background:#b9f3b9; color:black;');
             ds = ds.replaceAll('background:#ffe6e6;', 'background:#f5b4b4; color:black;');
             ds = ds.replaceAll('&para;', '');
@@ -457,38 +455,27 @@ export async function promptItemize(itemizedPrompts, requestedMesId) {
     } else {
         diffPrevPrompt.style.display = 'none';
     }
+
     popup.dlg.querySelector('#copyPromptToClipboard').addEventListener('pointerup', async function () {
-        let rawPrompt = itemizedPrompts[PromptArrayItemForRawPromptDisplay].rawPrompt;
-        let rawPromptValues = rawPrompt;
-
-        if (Array.isArray(rawPrompt)) {
-            rawPromptValues = rawPrompt.map(x => x.content).join('\n');
-        }
-
-        await copyText(rawPromptValues);
+        await copyText(flatten(selectedPrompt.rawPrompt));
         toastr.info(t`Copied!`);
     });
 
     popup.dlg.querySelector('#showRawPrompt').addEventListener('click', async function () {
-        //console.log(itemizedPrompts[PromptArrayItemForRawPromptDisplay].rawPrompt);
-        console.log(PromptArrayItemForRawPromptDisplay);
-        console.log(itemizedPrompts);
-        console.log(itemizedPrompts[PromptArrayItemForRawPromptDisplay].rawPrompt);
+        const rawPrompt = flatten(selectedPrompt.rawPrompt);
 
-        const rawPrompt = flatten(itemizedPrompts[PromptArrayItemForRawPromptDisplay].rawPrompt);
-
-        // Mobile needs special handholding. The side-view on the popup wouldn't work,
-        // so we just show an additional popup for this.
         if (isMobile()) {
             const content = document.createElement('div');
             content.classList.add('tokenItemizingMaintext');
             content.innerText = rawPrompt;
-            const popup = new Popup(content, POPUP_TYPE.TEXT, null, { allowVerticalScrolling: true, leftAlign: true });
-            await popup.show();
+            const rawPopup = new Popup(content, POPUP_TYPE.TEXT, null, {
+                allowVerticalScrolling: true,
+                leftAlign: true,
+            });
+            await rawPopup.show();
             return;
         }
 
-        //let DisplayStringifiedPrompt = JSON.stringify(itemizedPrompts[PromptArrayItemForRawPromptDisplay].rawPrompt).replace(/\n+/g, '<br>');
         const rawPromptWrapper = document.getElementById('rawPromptWrapper');
         rawPromptWrapper.innerText = rawPrompt;
         $('#rawPromptPopup').slideToggle();
@@ -498,6 +485,13 @@ export async function promptItemize(itemizedPrompts, requestedMesId) {
 }
 
 export function initItemizedPrompts() {
+    registerDebugFunction('rollbackPromptDiagnostics', 'Rollback prompt diagnostics storage', 'Rebuilds the legacy per-chat prompt diagnostics array without deleting the P-02 records.', async () => {
+        const chatId = getCurrentChatId();
+        if (!chatId) return;
+        const records = await rollbackItemizedPromptsStorage(chatId);
+        toastr.info(`Rebuilt legacy prompt diagnostics for ${records.length} message(s).`);
+    });
+
     registerDebugFunction('clearPrompts', 'Delete itemized prompts', 'Deletes all itemized prompts from the local storage.', async () => {
         await clearItemizedPrompts();
         toastr.info('Itemized prompts deleted.');
@@ -528,37 +522,32 @@ export function initItemizedPrompts() {
  * @param {number} targetMessageId Target message ID
  */
 export function swapItemizedPrompts(sourceMessageId, targetMessageId) {
-    if (!Array.isArray(itemizedPrompts)) {
-        return;
-    }
+    const chatId = activePromptChatId || String(getCurrentChatId() || '').trim();
+    if (!chatId || !Array.isArray(itemizedPrompts)) return;
 
-    const sourcePrompts = itemizedPrompts.filter(x => x.mesId === sourceMessageId);
-    const targetPrompts = itemizedPrompts.filter(x => x.mesId === targetMessageId);
-
-    sourcePrompts.forEach(prompt => {
-        prompt.mesId = targetMessageId;
-    });
-
-    targetPrompts.forEach(prompt => {
-        prompt.mesId = sourceMessageId;
-    });
-
-    itemizedPrompts.sort((a, b) => a.mesId - b.mesId);
+    const before = itemizedPrompts.map(entry => ({ ...entry }));
+    const next = swapItemizedPromptIndexMessageIds(before, sourceMessageId, targetMessageId);
+    replacePromptSummaries(next);
+    queuePromptMutation(() => promptStore.swapMessageIds(
+        chatId,
+        sourceMessageId,
+        targetMessageId,
+        before,
+    )).catch(error => console.warn('Failed to persist itemized prompt reorder', error));
 }
 
 /**
- * Deletes the itemized prompt for a specific message.
- * Shifts down other itemized prompts as necessary.
+ * Deletes the itemized prompt for a specific message and shifts only the
+ * lightweight index for later message ids. Prompt bodies are not rewritten.
  * @param {number} messageId Message ID to delete itemized prompt for
  */
 export function deleteItemizedPromptForMessage(messageId) {
-    if (!Array.isArray(itemizedPrompts)) {
-        return;
-    }
+    const chatId = activePromptChatId || String(getCurrentChatId() || '').trim();
+    if (!chatId || !Array.isArray(itemizedPrompts)) return;
 
-    itemizedPrompts = itemizedPrompts.filter(x => x.mesId !== messageId);
-
-    for (const prompt of itemizedPrompts.filter(x => x.mesId > messageId)) {
-        prompt.mesId -= 1;
-    }
+    const before = itemizedPrompts.map(entry => ({ ...entry }));
+    const next = deleteItemizedPromptIndexMessage(before, messageId);
+    replacePromptSummaries(next.entries);
+    queuePromptMutation(() => promptStore.deleteMessage(chatId, messageId, before))
+        .catch(error => console.warn('Failed to persist itemized prompt deletion', error));
 }
