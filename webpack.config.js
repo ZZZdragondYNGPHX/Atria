@@ -61,6 +61,12 @@ function readRefFromGitDirectory(gitDirectory, refName) {
     return null;
 }
 
+/**
+ * Resolve the checkout HEAD without spawning Git.
+ * Supports ordinary repositories, detached HEADs, packed refs, and worktrees.
+ *
+ * @returns {string | null} Full local commit SHA when available.
+ */
 export function readLocalGitRevision() {
     const gitDirectory = resolveGitDirectory();
     if (!gitDirectory) return null;
