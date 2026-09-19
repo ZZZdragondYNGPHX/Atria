@@ -89,7 +89,27 @@ function backupChat(directory, name, data, backupPrefix = CHAT_BACKUPS_PREFIX) {
 }
 
 /**
- * @type {Map<string, import('lodash').DebouncedFunc<typeof backupChat>>}
+ * Resolves backup data only when the throttled backup actually executes.
+ * String callers retain the old synchronous behavior; incremental mutation
+ * paths may pass an async provider so suppressed throttle calls never perform
+ * a full chat read/serialization just to discard the result.
+ * @param {string} directory
+ * @param {string} name
+ * @param {string|(() => string|Promise<string|null>)} dataSource
+ * @param {string} [backupPrefix]
+ */
+async function resolveAndBackupChat(directory, name, dataSource, backupPrefix = CHAT_BACKUPS_PREFIX) {
+    try {
+        const data = typeof dataSource === 'function' ? await dataSource() : dataSource;
+        if (typeof data !== 'string' || data.length === 0) return;
+        backupChat(directory, name, data, backupPrefix);
+    } catch (error) {
+        console.error(`Could not prepare chat backup for ${name}`, error);
+    }
+}
+
+/**
+ * @type {Map<string, import('lodash').DebouncedFunc<typeof resolveAndBackupChat>>}
  */
 const backupFunctions = new Map();
 
@@ -99,12 +119,12 @@ const backupFunctions = new Map();
  * swallow the throttled backup of another chat saved in the same window.
  * @param {string} handle User handle
  * @param {string} name The name of the chat, as passed to backupChat
- * @returns {typeof backupChat} Backup function
+ * @returns {import('lodash').DebouncedFunc<typeof resolveAndBackupChat>} Backup function
  */
 function getBackupFunction(handle, name) {
     const key = `${handle} ${name}`;
     if (!backupFunctions.has(key)) {
-        backupFunctions.set(key, _.throttle(backupChat, throttleInterval, { leading: true, trailing: true }));
+        backupFunctions.set(key, _.throttle(resolveAndBackupChat, throttleInterval, { leading: true, trailing: true }));
     }
     return backupFunctions.get(key) || (() => { });
 }
