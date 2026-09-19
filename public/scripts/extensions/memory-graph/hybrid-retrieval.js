@@ -51,17 +51,28 @@ export function buildMemoryCorpus(snapshot, at = null) {
     const entities = graph.entities.filter(entity => entity.status === 'active');
     const names = new Map(entities.map(entity => [entity.id, entity.canonicalName]));
     const eligible = record => ['active', 'superseded'].includes(record.status);
-    // A relation may supersede another without rewriting its original Fact.
-    // Keep that supporting assertion out of current-state recall as well.
-    const inactiveFacts = new Set(graph.relations.filter(relation => relation.status !== 'active').flatMap(relation => relation.supports.map(ref => ref.factId)));
-    const activeFacts = new Set(graph.relations.filter(relation => relation.status === 'active').flatMap(relation => relation.supports.map(ref => ref.factId)));
-    const uncertainFacts = new Set(graph.relations.filter(relation => ['stale', 'disputed', 'rejected'].includes(relation.status)).flatMap(relation => relation.supports.map(ref => ref.factId)));
+    // Build relation-derived fact indexes in one pass. These sets are used by
+    // both current-state suppression and historical validAt checks.
+    const inactiveFacts = new Set();
+    const activeFacts = new Set();
+    const uncertainFacts = new Set();
+    const validAtFacts = new Set();
+    for (const relation of graph.relations) {
+        for (const ref of relation.supports || []) {
+            const factId = ref.factId;
+            if (!factId) continue;
+            if (relation.status === 'active') activeFacts.add(factId);
+            else inactiveFacts.add(factId);
+            if (['stale', 'disputed', 'rejected'].includes(relation.status)) uncertainFacts.add(factId);
+            if (relation.validAt === true) validAtFacts.add(factId);
+        }
+    }
     const documents = facts.filter(fact => eligible(fact) && (!uncertainFacts.has(fact.id) || activeFacts.has(fact.id))).map(fact => ({ ...fact, id: `fact:${fact.id}`, kind: 'fact', factId: fact.id,
         status: fact.validUntil !== undefined || inactiveFacts.has(fact.id) && !activeFacts.has(fact.id) ? 'superseded' : fact.status,
         validAt: Number.isFinite(at) && Number.isFinite(fact.validFrom) && (fact.validUntil === undefined || Number.isFinite(fact.validUntil))
             && (fact.status !== 'superseded' || Number.isFinite(fact.validUntil))
             && (!inactiveFacts.has(fact.id) || activeFacts.has(fact.id)
-                || graph.relations.some(relation => relation.validAt === true && relation.supports.some(ref => ref.factId === fact.id)))
+                || validAtFacts.has(fact.id))
             ? at >= fact.validFrom && (fact.validUntil === undefined || at < fact.validUntil) : null,
         manualSources: (fact.supports || []).filter(ref => state.corrections?.[ref.manualId]).map(ref => ref.manualId), episodeIds: evidenceIds(fact, check) }));
     documents.push(...graph.relations.filter(eligible).map(relation => ({ ...relation, id: `relation:${relation.id}`, kind: 'relation',
@@ -94,9 +105,15 @@ export function rankMemory(query, corpus, vectorIds = [], options = {}) {
     const plan = analyzeMemoryQuery(query, corpus.entities, options);
     if (!plan.text.trim()) return { plan, candidates: [] };
     const cfg = RETRIEVAL_DEFAULTS;
-    const authoritative = corpus.documents.filter(doc => doc.kind === 'state' && doc.status === 'active').flatMap(doc => doc.claims || []);
-    const overridden = corpus.documents.filter(doc => !plan.history && doc.kind === 'relation' && authoritative.some(claim =>
-        claim.entityId && claim.predicate && claim.entityId === doc.sourceEntityId && claim.predicate === doc.predicate));
+    const authoritative = corpus.documents
+        .filter(doc => doc.kind === 'state' && doc.status === 'active')
+        .flatMap(doc => doc.claims || []);
+    const authoritativeSlots = new Set(authoritative
+        .filter(claim => claim.entityId && claim.predicate)
+        .map(claim => JSON.stringify([claim.entityId, claim.predicate])));
+    const overridden = corpus.documents.filter(doc => !plan.history
+        && doc.kind === 'relation'
+        && authoritativeSlots.has(JSON.stringify([doc.sourceEntityId, doc.predicate])));
     const overriddenFacts = new Set(overridden.flatMap(doc => doc.supports.map(ref => ref.factId)));
     const documents = corpus.documents.filter(doc => (plan.history || doc.status === 'active')
         && !overridden.includes(doc) && !overriddenFacts.has(doc.factId)
