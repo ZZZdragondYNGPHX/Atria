@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import getPublicLibConfig from '../../webpack.config.js';
+import getPublicLibConfig, { getWebpackBundleInputFiles, getWebpackRootInfo } from '../../webpack.config.js';
 import { markStartupMilestone } from '../startup-timing.js';
 
 // Pre-built bundles shipped by the packager (Android APK, etc.) skip the
@@ -36,6 +36,98 @@ export function hasCompleteWebpackOutput(config) {
             return false;
         }
     });
+}
+
+
+function getOutputFileNames(config) {
+    return Object.keys(config.entry || {}).map((entryName) => `${entryName}.js`);
+}
+
+function getNewestInputMtimeMs() {
+    let newest = 0;
+    for (const filePath of getWebpackBundleInputFiles()) {
+        try {
+            newest = Math.max(newest, fs.statSync(filePath).mtimeMs);
+        } catch {
+            return Number.POSITIVE_INFINITY;
+        }
+    }
+    return newest;
+}
+
+function isOutputFreshForCurrentInputs(config) {
+    if (!hasCompleteWebpackOutput(config)) return false;
+    const outputPath = config.output.path;
+    const newestInput = getNewestInputMtimeMs();
+    let oldestOutput = Number.POSITIVE_INFINITY;
+
+    for (const name of getOutputFileNames(config)) {
+        try {
+            oldestOutput = Math.min(oldestOutput, fs.statSync(path.join(outputPath, name)).mtimeMs);
+        } catch {
+            return false;
+        }
+    }
+
+    // Allow coarse filesystem timestamp resolution while still rejecting
+    // outputs that clearly predate an entry/package-lock change.
+    return oldestOutput + 1000 >= newestInput;
+}
+
+/**
+ * Copy a still-fresh legacy DATA_ROOT/_webpack output into the automatic
+ * Termux-private cache. This avoids one final 10-20s rebuild when upgrading
+ * from the old shared-storage cache layout.
+ *
+ * @param {import('webpack').Configuration} targetConfig
+ * @returns {string|null} Legacy source directory when migration succeeded.
+ */
+export function migrateLegacyWebpackOutput(targetConfig) {
+    try {
+        const rootInfo = getWebpackRootInfo();
+        if (rootInfo.source !== 'termux-private' || !globalThis.DATA_ROOT) return null;
+
+        const legacyRoot = getWebpackRootInfo({ forceDataRoot: true }).root;
+        if (path.resolve(legacyRoot) === path.resolve(rootInfo.root) || !fs.existsSync(legacyRoot)) {
+            return null;
+        }
+
+        const candidates = fs.readdirSync(legacyRoot, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => {
+                const outputPath = path.join(legacyRoot, entry.name, 'output');
+                const candidate = {
+                    ...targetConfig,
+                    output: { ...targetConfig.output, path: outputPath },
+                };
+                let newestBundleMtime = 0;
+                if (isOutputFreshForCurrentInputs(candidate)) {
+                    for (const name of getOutputFileNames(candidate)) {
+                        newestBundleMtime = Math.max(newestBundleMtime, fs.statSync(path.join(outputPath, name)).mtimeMs);
+                    }
+                    return { outputPath, candidate, newestBundleMtime };
+                }
+                return null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.newestBundleMtime - a.newestBundleMtime);
+
+        const source = candidates[0];
+        if (!source) return null;
+
+        fs.mkdirSync(targetConfig.output.path, { recursive: true });
+        for (const name of getOutputFileNames(targetConfig)) {
+            fs.copyFileSync(
+                path.join(source.outputPath, name),
+                path.join(targetConfig.output.path, name),
+            );
+        }
+
+        return hasCompleteWebpackOutput(targetConfig) ? source.outputPath : null;
+    } catch (error) {
+        console.warn('[startup] frontend-cache legacy migration skipped:', error?.message || error);
+        return null;
+    }
 }
 
 // Resolved once at module load: ATRIA_PREBUILT_BUNDLES_DIR is set by the
@@ -104,12 +196,21 @@ export default function getWebpackServeMiddleware() {
         const outputPath = publicLibConfig.output?.path || '';
         const cacheVersionDir = outputPath ? path.dirname(outputPath) : '';
         const cacheKey = cacheVersionDir ? path.basename(cacheVersionDir) : 'unknown';
-        const cacheRoot = cacheVersionDir ? path.dirname(cacheVersionDir) : 'unknown';
-        const cacheSource = process.env.ATRIA_WEBPACK_CACHE_ROOT ? 'env' : (forceDist ? 'dist' : 'dataRoot');
-        const cacheHit = !forceCompile && hasCompleteWebpackOutput(publicLibConfig);
+        const cacheRootInfo = getWebpackRootInfo({ forceDist });
+        let cacheHit = !forceCompile && hasCompleteWebpackOutput(publicLibConfig);
+        let migratedFrom = null;
+
+        if (!cacheHit && !forceCompile && cacheRootInfo.source === 'termux-private') {
+            migratedFrom = migrateLegacyWebpackOutput(publicLibConfig);
+            cacheHit = Boolean(migratedFrom) && hasCompleteWebpackOutput(publicLibConfig);
+        }
+
         console.log();
-        console.log(`[startup] frontend-cache source=${cacheSource} root=${cacheRoot} key=${cacheKey} hit=${cacheHit}`);
-        markStartupMilestone('frontend.cache.checked', `source=${cacheSource} hit=${cacheHit}`);
+        console.log(`[startup] frontend-cache source=${cacheRootInfo.source} root=${cacheRootInfo.root} key=${cacheKey} hit=${cacheHit}`);
+        if (migratedFrom) {
+            console.log(`[startup] frontend-cache migrated-from=${migratedFrom}`);
+        }
+        markStartupMilestone('frontend.cache.checked', `source=${cacheRootInfo.source} hit=${cacheHit}`);
 
         if (cacheHit) {
             console.log(`Using cached frontend bundles from ${publicLibConfig.output.path}`);
