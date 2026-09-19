@@ -851,6 +851,33 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                             const targetPath = targetMapping.targetPath;
                             ensureDirectory(path.dirname(targetPath));
 
+                            const entryOrdinal = result.restoredCount + result.failedCount + 1;
+                            const entryTotalBytes = Number(entry.uncompressedSize || 0);
+                            let entryBytes = 0;
+                            let lastEntryReportAt = 0;
+                            const reportEntryProgress = (force = false) => {
+                                const now = Date.now();
+                                if (!force && now - lastEntryReportAt < 500) return;
+                                lastEntryReportAt = now;
+                                reportProgress({
+                                    phase: 'extract',
+                                    current: result.restoredCount + result.failedCount,
+                                    total: extractTotal,
+                                    entry: normalized,
+                                    entryOrdinal,
+                                    entryBytes,
+                                    entryTotalBytes,
+                                });
+                                if (force || now - lastExtractLogAt >= 5000) {
+                                    lastExtractLogAt = now;
+                                    console.info(
+                                        `[user-backup] Extract entry: ${entryOrdinal}/${extractTotal} `
+                                        + `name=${normalized} bytes=${entryBytes}/${entryTotalBytes}`,
+                                    );
+                                }
+                            };
+                            reportEntryProgress(true);
+
                             zipfile.openReadStream(entry, async (streamError, readStream) => {
                                 if (streamError) {
                                     finish(streamError);
@@ -858,7 +885,15 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                 }
 
                                 try {
-                                    await pipeline(readStream, fs.createWriteStream(targetPath, { mode: 0o644 }));
+                                    const meter = new Transform({
+                                        transform(chunk, _encoding, callback) {
+                                            entryBytes += chunk.length;
+                                            reportEntryProgress(false);
+                                            callback(null, chunk);
+                                        },
+                                    });
+                                    await pipeline(readStream, meter, fs.createWriteStream(targetPath, { mode: 0o644 }));
+                                    reportEntryProgress(true);
                                     const zipLastModified = typeof entry.getLastModDate === 'function'
                                         ? entry.getLastModDate()
                                         : null;
