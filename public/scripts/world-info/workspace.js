@@ -299,13 +299,16 @@ function buildInspectorSections(root, entry) {
         if (node) target.append(node);
     };
 
+    // Recursion controls live inside the Content heading in the legacy
+    // template. Detach them first so Lifecycle owns them before Content moves.
+    move('.wi-entry-recursion-grid', lifecycle.body);
+
     move('.wi-entry-content-block', basic.body);
     move('.commentContainer', basic.body);
 
     move('.wi-entry-keywords-grid', activation.body);
     move('.wi-entry-filter-grid', activation.body);
 
-    move('.wi-entry-recursion-grid', lifecycle.body);
     move('.wi-entry-timing-grid', lifecycle.body);
 
     move('.wi-entry-state-conditions', stateDriven.body);
@@ -664,7 +667,10 @@ function buildWorkspaceDom() {
                         <button type="button" class="menu_button" data-wi-entry-filter="special">Special</button>
                         <button type="button" class="menu_button" data-wi-entry-filter="issues">Issues</button>
                     </div>
-                    <small id="wi_workspace_entry_count" class="opacity50p"></small>
+                    <div class="wi-workspace-list-actions">
+                        <small id="wi_workspace_entry_count" class="opacity50p"></small>
+                        <button id="wi_workspace_select_visible" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-check-double"></i><span>Select filtered</span></button>
+                    </div>
                 </div>
                 <div id="wi_workspace_entries_split" class="wi-workspace-entries-split">
                     <aside class="wi-workspace-entry-list-pane">
@@ -747,6 +753,14 @@ function buildWorkspaceDom() {
     });
 
     shell.querySelector('#wi_workspace_entry_list')?.addEventListener('scroll', scheduleVirtualRows);
+    shell.querySelector('#wi_workspace_select_visible')?.addEventListener('click', () => {
+        const visible = getFilteredEntries();
+        const shouldSelect = visible.some(entry => !state.selectedUids.has(String(entry?.uid ?? '')));
+        for (const entry of visible) {
+            state.callbacks.onSelectionChange?.(entry, shouldSelect, { deferSync: true });
+        }
+        state.callbacks.onSelectionBatchComplete?.();
+    });
     shell.querySelector('#wi_workspace_mobile_back')?.addEventListener('click', () => {
         state.mobileDetail = false;
         syncMobileDrilldown();
