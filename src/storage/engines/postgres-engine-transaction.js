@@ -190,7 +190,7 @@ export function registerChatHandler(tx) {
                 }
                 if (operation.op === 'test') {
                     const result = await client.query(
-                        'SELECT (doc->\'body\')->$6 AS value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
+                        'SELECT (doc->\'body\')->($6::int) AS value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
                         [p.handle, p.char_dir, p.name, p.is_group, p.group_id, operation.index],
                     );
                     const actual = coerceJson(result.rows[0]?.value);
@@ -210,7 +210,7 @@ export function registerChatHandler(tx) {
                 }
                 await client.query(
                     `UPDATE chats
-                     SET doc=jsonb_set(doc, '{body}', (doc->'body') - $6, false)
+                     SET doc=jsonb_set(doc, '{body}', (doc->'body') - ($6::int), false)
                      WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5`,
                     [p.handle, p.char_dir, p.name, p.is_group, p.group_id, operation.index],
                 );
