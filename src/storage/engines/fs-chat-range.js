@@ -1,8 +1,269 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 
 const DEFAULT_CHUNK_SIZE = 64 * 1024;
 const MAX_CACHE_ENTRIES = 64;
 const rangeIndexCache = new Map();
+
+const PATCH_JOURNAL_SUFFIX = '.atria-patch-journal';
+const PATCH_JOURNAL_TEMP_PREFIX = PATCH_JOURNAL_SUFFIX + '.tmp-';
+const PATCH_JOURNAL_MAGIC = 'ATRIA_FS_CHAT_PATCH_V1';
+const PATCH_JOURNAL_PENDING = 'P';
+const PATCH_JOURNAL_COMMITTED = 'C';
+
+function writeAll(fd, buffer, position = null) {
+    let written = 0;
+    while (written < buffer.length) {
+        const count = fs.writeSync(
+            fd,
+            buffer,
+            written,
+            buffer.length - written,
+            position === null ? null : position + written,
+        );
+        if (count <= 0) throw new Error('Unexpected short write while updating chat storage');
+        written += count;
+    }
+}
+
+function readSpanBuffer(fd, span) {
+    const length = Math.max(0, span.end - span.start);
+    if (length === 0) return Buffer.alloc(0);
+    const buffer = Buffer.allocUnsafe(length);
+    let offset = 0;
+    while (offset < length) {
+        const read = fs.readSync(fd, buffer, offset, length - offset, span.start + offset);
+        if (read <= 0) throw new Error('Unexpected EOF while reading chat range');
+        offset += read;
+    }
+    return buffer;
+}
+
+function patchJournalPath(filePath) {
+    return filePath + PATCH_JOURNAL_SUFFIX;
+}
+
+function fsyncDirectoryBestEffort(filePath) {
+    let fd = null;
+    try {
+        fd = fs.openSync(path.dirname(filePath), 'r');
+        fs.fsyncSync(fd);
+    } catch {
+        // Directory fsync is unsupported on some platforms (notably Windows).
+        // The journal file itself is still fsynced before target mutation.
+    } finally {
+        if (fd !== null) {
+            try { fs.closeSync(fd); } catch { /* best-effort */ }
+        }
+    }
+}
+
+function removeFileBestEffort(filePath) {
+    try { fs.unlinkSync(filePath); } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+    }
+}
+
+function readPatchJournal(journalPath) {
+    const bytes = fs.readFileSync(journalPath);
+    const newline = bytes.indexOf(0x0a);
+    if (newline < 0) throw new Error('Invalid Atria FS chat patch journal header');
+
+    const headerLine = bytes.subarray(0, newline).toString('utf8');
+    const marker = ' ' + PATCH_JOURNAL_MAGIC + ' ';
+    const status = headerLine.slice(0, 1);
+    if (![PATCH_JOURNAL_PENDING, PATCH_JOURNAL_COMMITTED].includes(status)
+        || !headerLine.slice(1).startsWith(marker)) {
+        throw new Error('Invalid Atria FS chat patch journal marker');
+    }
+
+    let metadata;
+    try {
+        metadata = JSON.parse(headerLine.slice(1 + marker.length));
+    } catch {
+        throw new Error('Invalid Atria FS chat patch journal metadata');
+    }
+
+    const headerStart = Number(metadata?.headerStart);
+    const headerLength = Number(metadata?.headerLength);
+    const suffixStart = Number(metadata?.suffixStart);
+    const originalSize = Number(metadata?.originalSize);
+    const mtimeMs = Number(metadata?.mtimeMs);
+    if (![headerStart, headerLength, suffixStart, originalSize, mtimeMs].every(Number.isFinite)
+        || headerStart < 0
+        || headerLength < 0
+        || suffixStart < 0
+        || originalSize < suffixStart) {
+        throw new Error('Invalid Atria FS chat patch journal bounds');
+    }
+
+    const payload = bytes.subarray(newline + 1);
+    const expectedPayloadLength = headerLength + (originalSize - suffixStart);
+    if (payload.length !== expectedPayloadLength) {
+        throw new Error('Incomplete Atria FS chat patch journal payload');
+    }
+
+    return {
+        status,
+        metadata: { headerStart, headerLength, suffixStart, originalSize, mtimeMs },
+        originalHeader: payload.subarray(0, headerLength),
+        originalSuffix: payload.subarray(headerLength),
+    };
+}
+
+/**
+ * Recover or finalize an interrupted FS whole-message patch.
+ *
+ * PENDING means the target may have been partially mutated, so the original
+ * header + affected suffix are restored. COMMITTED means target fsync and the
+ * journal commit marker both completed; only stale journal cleanup remains.
+ *
+ * @param {string} filePath canonical chat JSONL path
+ * @returns {boolean} true when a journal was found
+ */
+export function recoverFsChatPatchJournal(filePath) {
+    const journalPath = patchJournalPath(filePath);
+    if (!fs.existsSync(journalPath)) return false;
+
+    const journal = readPatchJournal(journalPath);
+    if (journal.status === PATCH_JOURNAL_COMMITTED) {
+        removeFileBestEffort(journalPath);
+        fsyncDirectoryBestEffort(journalPath);
+        rangeIndexCache.delete(filePath);
+        return true;
+    }
+
+    if (!fs.existsSync(filePath)) {
+        throw new Error('Cannot recover Atria FS chat patch journal: target chat is missing');
+    }
+
+    const fd = fs.openSync(filePath, 'r+');
+    try {
+        writeAll(fd, journal.originalHeader, journal.metadata.headerStart);
+        writeAll(fd, journal.originalSuffix, journal.metadata.suffixStart);
+        fs.ftruncateSync(fd, journal.metadata.originalSize);
+        fs.fsyncSync(fd);
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    const seconds = journal.metadata.mtimeMs / 1000;
+    try { fs.utimesSync(filePath, seconds, seconds); } catch { /* best-effort */ }
+    removeFileBestEffort(journalPath);
+    fsyncDirectoryBestEffort(journalPath);
+    rangeIndexCache.delete(filePath);
+    return true;
+}
+
+function createPatchJournal(filePath, index, suffixStart) {
+    recoverFsChatPatchJournal(filePath);
+
+    const fd = fs.openSync(filePath, 'r');
+    let originalHeader;
+    let originalSuffix;
+    try {
+        originalHeader = readSpanBuffer(fd, index.headerSpan);
+        originalSuffix = readSpanBuffer(fd, { start: suffixStart, end: index.size });
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    const metadata = {
+        headerStart: index.headerSpan.start,
+        headerLength: originalHeader.length,
+        suffixStart,
+        originalSize: index.size,
+        mtimeMs: index.mtimeMs,
+    };
+    const envelope = Buffer.from(
+        PATCH_JOURNAL_PENDING + ' ' + PATCH_JOURNAL_MAGIC + ' ' + JSON.stringify(metadata) + '\n',
+        'utf8',
+    );
+    const journalPath = patchJournalPath(filePath);
+    const tempPath = journalPath + '.tmp-' + process.pid + '-' + Date.now();
+
+    let journalFd = null;
+    try {
+        journalFd = fs.openSync(tempPath, 'wx');
+        writeAll(journalFd, envelope);
+        writeAll(journalFd, originalHeader);
+        writeAll(journalFd, originalSuffix);
+        fs.fsyncSync(journalFd);
+        fs.closeSync(journalFd);
+        journalFd = null;
+        fs.renameSync(tempPath, journalPath);
+        fsyncDirectoryBestEffort(journalPath);
+    } catch (error) {
+        if (journalFd !== null) {
+            try { fs.closeSync(journalFd); } catch { /* best-effort */ }
+        }
+        removeFileBestEffort(tempPath);
+        throw error;
+    }
+
+    return journalPath;
+}
+
+function markPatchJournalCommitted(journalPath) {
+    const fd = fs.openSync(journalPath, 'r+');
+    try {
+        writeAll(fd, Buffer.from(PATCH_JOURNAL_COMMITTED), 0);
+        fs.fsyncSync(fd);
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+function discardPendingPatchJournal(journalPath) {
+    removeFileBestEffort(journalPath);
+    fsyncDirectoryBestEffort(journalPath);
+}
+
+function readDescriptorValue(fd, descriptor) {
+    if (descriptor.hasReplacement) return descriptor.value;
+    return JSON.parse(readSpan(fd, descriptor.span));
+}
+
+function serializeDescriptor(fd, descriptor) {
+    const line = descriptor.hasReplacement
+        ? descriptor.bytes
+        : readSpanBuffer(fd, descriptor.span);
+    return Buffer.concat([line, Buffer.from('\n')]);
+}
+
+/**
+ * One-time recovery sweep used when an FsEngine first touches a user after
+ * process start. It makes pending local patches safe before normal Repo reads.
+ *
+ * @param {object} directories user directory map
+ */
+export function recoverFsChatPatchJournals(directories) {
+    const roots = [];
+    if (typeof directories?.groupChats === 'string') roots.push(directories.groupChats);
+    if (typeof directories?.chats === 'string' && fs.existsSync(directories.chats)) {
+        for (const entry of fs.readdirSync(directories.chats, { withFileTypes: true })) {
+            if (entry.isDirectory()) roots.push(path.join(directories.chats, entry.name));
+        }
+    }
+
+    for (const root of roots) {
+        if (!fs.existsSync(root)) continue;
+        for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+            if (!entry.isFile()) continue;
+            const full = path.join(root, entry.name);
+            if (entry.name.endsWith(PATCH_JOURNAL_SUFFIX)) {
+                recoverFsChatPatchJournal(full.slice(0, -PATCH_JOURNAL_SUFFIX.length));
+                continue;
+            }
+            if (entry.name.includes(PATCH_JOURNAL_TEMP_PREFIX)) {
+                // Temp journals are renamed to the durable journal before the
+                // target is touched, so a leftover temp can always be dropped.
+                removeFileBestEffort(full);
+            }
+        }
+    }
+}
 
 function touchCache(filePath, value) {
     rangeIndexCache.delete(filePath);
@@ -19,16 +280,7 @@ function sameFileVersion(index, stat) {
 }
 
 function readSpan(fd, span) {
-    const length = Math.max(0, span.end - span.start);
-    if (length === 0) return '';
-    const buffer = Buffer.allocUnsafe(length);
-    let offset = 0;
-    while (offset < length) {
-        const read = fs.readSync(fd, buffer, offset, length - offset, span.start + offset);
-        if (read <= 0) throw new Error('Unexpected EOF while reading chat range');
-        offset += read;
-    }
-    return buffer.toString('utf8');
+    return readSpanBuffer(fd, span).toString('utf8');
 }
 
 function collectLineSpans(filePath, stat, chunkSize = DEFAULT_CHUNK_SIZE) {
@@ -99,6 +351,7 @@ function collectLineSpans(filePath, stat, chunkSize = DEFAULT_CHUNK_SIZE) {
 }
 
 function getRangeIndex(filePath) {
+    recoverFsChatPatchJournal(filePath);
     if (!fs.existsSync(filePath)) return null;
     const stat = fs.statSync(filePath);
     const cached = rangeIndexCache.get(filePath);
@@ -310,6 +563,186 @@ export function appendFsChatMessages(filePath, messages, {
         integrity: newIntegrity,
         accepted: acceptedMessages.length,
         dedupedGenIds,
+    };
+}
+
+
+/**
+ * Applies the same native whole-message patch subset as the SQL engines while
+ * keeping the canonical JSONL file as the source of truth.
+ *
+ * Variable-length replace/remove rewrites only the suffix beginning at the
+ * earliest affected message. A transient fsynced journal stores the original
+ * header + suffix so an interrupted in-place rewrite can be rolled back on
+ * the next storage access. Unsupported shapes return before mutation and use
+ * ChatRepo's established atomic full-rewrite fallback.
+ *
+ * @param {string} filePath
+ * @param {object[]} operations whole-message test/replace/remove operations
+ * @param {{expectedIntegrity?:string|null,newIntegrity:string,updatedAt?:number,chatMetadata?:object}} options
+ * @returns {{status:'ok',integrity:string,applied:number,totalMessages:number}|{status:'conflict',actualIntegrity:string}|{status:'missing'}|{status:'unsupported'}}
+ */
+export function patchFsChatMessages(filePath, operations, {
+    expectedIntegrity = null,
+    newIntegrity,
+    updatedAt = Date.now(),
+    chatMetadata = {},
+} = {}) {
+    const parsedOps = [];
+    for (const operation of Array.isArray(operations) ? operations : []) {
+        const op = String(operation?.op || '').trim().toLowerCase();
+        const match = /^\/(0|[1-9]\d*)$/.exec(String(operation?.path || ''));
+        if (!['test', 'replace', 'remove'].includes(op) || !match) {
+            return { status: 'unsupported' };
+        }
+        if ((op === 'test' || op === 'replace') && !Object.hasOwn(operation, 'value')) {
+            return { status: 'unsupported' };
+        }
+        const serialized = op === 'replace' ? JSON.stringify(operation.value) : null;
+        if (op === 'replace' && serialized === undefined) return { status: 'unsupported' };
+        parsedOps.push({
+            op,
+            index: Number(match[1]),
+            value: operation?.value,
+            bytes: serialized === null ? null : Buffer.from(serialized, 'utf8'),
+        });
+    }
+    if (parsedOps.length === 0) return { status: 'unsupported' };
+
+    const index = getRangeIndex(filePath);
+    if (!index) return { status: 'missing' };
+    if (index.headerSpan.start !== 0) return { status: 'unsupported' };
+
+    const currentMetadata = index.header?.chat_metadata;
+    if (!currentMetadata || typeof currentMetadata !== 'object' || Array.isArray(currentMetadata)) {
+        return { status: 'unsupported' };
+    }
+
+    const currentIntegrity = String(currentMetadata.integrity ?? '');
+    if (expectedIntegrity !== null && expectedIntegrity !== undefined
+        && currentIntegrity !== expectedIntegrity) {
+        return { status: 'conflict', actualIntegrity: currentIntegrity };
+    }
+
+    const mergedMetadata = {
+        ...currentMetadata,
+        ...(chatMetadata && typeof chatMetadata === 'object' && !Array.isArray(chatMetadata)
+            ? chatMetadata : {}),
+        integrity: newIntegrity,
+    };
+    const nextHeader = {
+        ...index.header,
+        chat_metadata: mergedMetadata,
+    };
+    const headerBytes = Buffer.from(JSON.stringify(nextHeader), 'utf8');
+    const currentHeaderLength = index.headerSpan.end - index.headerSpan.start;
+    if (headerBytes.length !== currentHeaderLength) {
+        return { status: 'unsupported' };
+    }
+
+    const descriptors = index.bodySpans.map(span => ({
+        span,
+        value: undefined,
+        bytes: null,
+        hasReplacement: false,
+    }));
+    let earliestChangedStart = null;
+
+    const fd = fs.openSync(filePath, 'r');
+    try {
+        for (const operation of parsedOps) {
+            if (operation.index < 0 || operation.index >= descriptors.length) {
+                if (operation.op === 'test') {
+                    throw new Error('JSON Patch test failed at /' + operation.index);
+                }
+                throw new Error('Invalid JSON Patch ' + operation.op + ' path. Array index out of bounds');
+            }
+
+            const descriptor = descriptors[operation.index];
+            if (operation.op === 'test') {
+                const actual = readDescriptorValue(fd, descriptor);
+                if (!isDeepStrictEqual(actual, operation.value)) {
+                    throw new Error('JSON Patch test failed at /' + operation.index);
+                }
+                continue;
+            }
+
+            earliestChangedStart = earliestChangedStart === null
+                ? descriptor.span.start
+                : Math.min(earliestChangedStart, descriptor.span.start);
+            if (operation.op === 'replace') {
+                descriptor.value = operation.value;
+                descriptor.bytes = operation.bytes;
+                descriptor.hasReplacement = true;
+                continue;
+            }
+            descriptors.splice(operation.index, 1);
+        }
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    const suffixStart = earliestChangedStart ?? index.size;
+    const suffixDescriptors = descriptors.filter(descriptor => descriptor.span.start >= suffixStart);
+    let suffixBytes = Buffer.alloc(0);
+    if (suffixDescriptors.length > 0) {
+        const sourceFd = fs.openSync(filePath, 'r');
+        try {
+            suffixBytes = Buffer.concat(suffixDescriptors.map(descriptor => serializeDescriptor(sourceFd, descriptor)));
+        } finally {
+            fs.closeSync(sourceFd);
+        }
+    }
+
+    const before = fs.statSync(filePath);
+    if (!sameFileVersion(index, before)) {
+        rangeIndexCache.delete(filePath);
+        return { status: 'unsupported' };
+    }
+
+    const journalPath = createPatchJournal(filePath, index, suffixStart);
+    const afterJournal = fs.statSync(filePath);
+    if (!sameFileVersion(index, afterJournal)) {
+        discardPendingPatchJournal(journalPath);
+        rangeIndexCache.delete(filePath);
+        return { status: 'unsupported' };
+    }
+
+    try {
+        const targetFd = fs.openSync(filePath, 'r+');
+        try {
+            if (earliestChangedStart !== null) {
+                writeAll(targetFd, suffixBytes, suffixStart);
+                fs.ftruncateSync(targetFd, suffixStart + suffixBytes.length);
+            }
+            writeAll(targetFd, headerBytes, index.headerSpan.start);
+            fs.fsyncSync(targetFd);
+        } finally {
+            fs.closeSync(targetFd);
+        }
+
+        if (typeof updatedAt === 'number' && Number.isFinite(updatedAt)) {
+            const seconds = updatedAt / 1000;
+            try { fs.utimesSync(filePath, seconds, seconds); } catch { /* best-effort */ }
+        }
+
+        markPatchJournalCommitted(journalPath);
+        removeFileBestEffort(journalPath);
+        fsyncDirectoryBestEffort(journalPath);
+    } catch (error) {
+        // The journal is still pending unless the commit marker itself was
+        // written. Recovery handles both pending rollback and committed cleanup.
+        recoverFsChatPatchJournal(filePath);
+        throw error;
+    } finally {
+        rangeIndexCache.delete(filePath);
+    }
+
+    return {
+        status: 'ok',
+        integrity: newIntegrity,
+        applied: parsedOps.length,
+        totalMessages: descriptors.length,
     };
 }
 
