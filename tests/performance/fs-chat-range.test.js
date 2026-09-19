@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 
 import {
+    appendFsChatMessages,
     clearFsChatRangeIndexCache,
     invalidateFsChatRangeIndex,
     readFsChatRange,
@@ -99,5 +100,74 @@ describe('P-04 FS chat range reader', () => {
         fs.writeFileSync(filePath, lines.join('\n'));
 
         expect(readFsChatRange(filePath, { fromIndex: 0, limit: 1 })).toBeNull();
+    });
+
+
+    test('warm native append writes only the new tail plus fixed-length integrity header', () => {
+        const { filePath, byteLength } = makeChat(5_000);
+        const lines = fs.readFileSync(filePath, 'utf8').trimEnd().split('\n');
+        const uuid1 = '00000000-0000-4000-8000-000000000001';
+        const uuid2 = '00000000-0000-4000-8000-000000000002';
+        const header = JSON.parse(lines[0]);
+        header.chat_metadata.integrity = uuid1;
+        lines[0] = JSON.stringify(header);
+        fs.writeFileSync(filePath, lines.join('\n') + '\n');
+        clearFsChatRangeIndexCache();
+
+        // Build the disposable index once; append itself should not scan the body.
+        expect(readFsChatRange(filePath, { fromIndex: 4_999, limit: 1 })?.body).toHaveLength(1);
+        const readSpy = jest.spyOn(fs, 'readSync');
+        const result = appendFsChatMessages(filePath, [
+            { name: 'Assistant', mes: 'new tail', extra: { gen_id: 'g-new' } },
+        ], {
+            expectedIntegrity: uuid1,
+            newIntegrity: uuid2,
+            updatedAt: Date.now(),
+        });
+        const bytesRead = readSpy.mock.calls.reduce((sum, call) => sum + Number(call[3] || 0), 0);
+
+        expect(result).toMatchObject({ status: 'ok', integrity: uuid2, accepted: 1, dedupedGenIds: [] });
+        expect(bytesRead).toBeLessThan(byteLength / 100);
+        const persisted = fs.readFileSync(filePath, 'utf8').trimEnd().split('\n');
+        expect(JSON.parse(persisted[0]).chat_metadata.integrity).toBe(uuid2);
+        expect(JSON.parse(persisted.at(-1)).mes).toBe('new tail');
+    });
+
+    test('warm generation-id dedup rotates integrity without appending a duplicate body', () => {
+        const { filePath } = makeChat(20);
+        let lines = fs.readFileSync(filePath, 'utf8').trimEnd().split('\n');
+        const uuid1 = '00000000-0000-4000-8000-000000000011';
+        const uuid2 = '00000000-0000-4000-8000-000000000012';
+        const uuid3 = '00000000-0000-4000-8000-000000000013';
+        const header = JSON.parse(lines[0]);
+        header.chat_metadata.integrity = uuid1;
+        lines[0] = JSON.stringify(header);
+        lines.push(JSON.stringify({ mes: 'first', extra: { gen_id: 'same-gen' } }));
+        fs.writeFileSync(filePath, lines.join('\n') + '\n');
+        clearFsChatRangeIndexCache();
+        readFsChatRange(filePath, { fromIndex: 20, limit: 1 });
+
+        const beforeSize = fs.statSync(filePath).size;
+        const result = appendFsChatMessages(filePath, [
+            { mes: 'retry', extra: { gen_id: 'same-gen' } },
+        ], {
+            expectedIntegrity: uuid1,
+            newIntegrity: uuid2,
+        });
+
+        expect(result).toEqual({
+            status: 'ok',
+            integrity: uuid2,
+            accepted: 0,
+            dedupedGenIds: ['same-gen'],
+        });
+        expect(fs.statSync(filePath).size).toBe(beforeSize);
+        expect(JSON.parse(fs.readFileSync(filePath, 'utf8').split('\n')[0]).chat_metadata.integrity).toBe(uuid2);
+
+        const conflict = appendFsChatMessages(filePath, [{ mes: 'x' }], {
+            expectedIntegrity: uuid1,
+            newIntegrity: uuid3,
+        });
+        expect(conflict).toEqual({ status: 'conflict', actualIntegrity: uuid2 });
     });
 });
