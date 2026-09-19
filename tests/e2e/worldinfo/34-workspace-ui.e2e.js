@@ -228,8 +228,9 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(mobileBookMenu.locator('.world_info_manager_export')).toBeVisible();
     await expect(mobileBookMenu.locator('.world_info_manager_rename')).toBeVisible();
     await expect(mobileBookMenu.locator('.world_info_manager_duplicate')).toBeVisible();
-    await mobileBookCard.locator('.world_info_manager_more_button').click();
+    await page.keyboard.press('Escape');
     await expect(page.locator('body > dialog.wi-worldbook-action-sheet-dialog[open]')).toHaveCount(0);
+    await expect(mobileBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'false');
 
     // Advanced cross-book search survives the visual simplification behind
     // one compact filter menu instead of occupying a permanent second row.
