@@ -1945,7 +1945,7 @@ async function onRegexDebuggerOpenClick() {
         const newScopedScripts = $('#regex_debugger_rules_scoped').children('li').map((_, el) => allKnownScripts.find(s => s.id === $(el).data('id'))).get().filter(Boolean);
         const newPresetScripts = $('#regex_debugger_rules_preset').children('li').map((_, el) => allKnownScripts.find(s => s.id === $(el).data('id'))).get().filter(Boolean);
 
-        extension_settings.regex = newGlobalScripts;
+        await saveScriptsByType(newGlobalScripts, SCRIPT_TYPES.GLOBAL);
         if (this_chid !== undefined) {
             await saveScriptsByType(newScopedScripts, SCRIPT_TYPES.SCOPED);
         }
