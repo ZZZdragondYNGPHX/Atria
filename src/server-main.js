@@ -100,7 +100,7 @@ import { recoverFsChatPatchJournals } from './storage/engines/fs-chat-range.js';
 import { maybeFailFast } from './storage/fail-fast.js';
 
 import getWebpackServeMiddleware from './middleware/webpack-serve.js';
-import { shouldSkipLocalFrontendBundleCompression } from './middleware/compression-policy.js';
+import { shouldSkipLoopbackCompression } from './middleware/compression-policy.js';
 import basicAuthMiddleware from './middleware/basicAuth.js';
 import getWhitelistMiddleware from './middleware/whitelist.js';
 import accessLoggerMiddleware, { getAccessLogPath, migrateAccessLog } from './middleware/accessLogWriter.js';
@@ -195,7 +195,7 @@ app.use((_, res, next) => {
 });
 app.use(compression({
     filter: (req, res) => {
-        if (shouldSkipLocalFrontendBundleCompression(req)) {
+        if (shouldSkipLoopbackCompression(req)) {
             return false;
         }
 
