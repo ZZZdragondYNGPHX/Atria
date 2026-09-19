@@ -17,6 +17,37 @@ export class ChatRepo {
         });
     }
 
+    async getRange(handle, charDir, name, { fromIndex = 0, limit = 0, isGroup = false, groupId } = {}) {
+        const key = this._key(handle, charDir, name, { isGroup, groupId });
+        const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
+        const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.getChatRange === 'function') {
+                return tx.getChatRange(key, { fromIndex: requestedFrom, limit: requestedLimit });
+            }
+
+            const existing = await tx.getResource(key);
+            if (!existing) return null;
+            const body = Array.isArray(existing.body) ? existing.body : [];
+            const totalMessages = body.length;
+            const start = Math.min(requestedFrom, totalMessages);
+            const end = requestedLimit > 0
+                ? Math.min(start + requestedLimit, totalMessages)
+                : totalMessages;
+            return {
+                header: existing.header,
+                body: body.slice(start, end),
+                integrity: existing.integrity,
+                updatedAt: existing.updatedAt,
+                createdAt: existing.createdAt,
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        });
+    }
+
     /**
      * Read a message window. Engines may provide a native range primitive;
      * monolithic engines fall back to the full resource while keeping one
