@@ -130,9 +130,16 @@ jobs:
         run: >-
           npx playwright test
           e2e/worldinfo/25-activation-strategies.e2e.js
+          e2e/worldinfo/26-cache-key-trim.e2e.js
+          e2e/worldinfo/27-bind-character-switch.e2e.js
+          e2e/worldinfo/28-chat-lore-binding.e2e.js
           e2e/worldinfo/29-import-export-roundtrip.e2e.js
+          e2e/worldinfo/30-bulk-edit.e2e.js
+          e2e/worldinfo/31-recursive-activation.e2e.js
+          e2e/worldinfo/32-vectorized-entries.e2e.js
+          e2e/worldinfo/33-import-array-form-entries.e2e.js
           e2e/worldinfo/34-workspace-ui.e2e.js
-          --workers=1
+          --workers=2
 
       - name: Upload synthetic baseline
         if: always()
