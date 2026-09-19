@@ -303,7 +303,9 @@ test('Simplified Chinese localizes Workspace-owned World Info surfaces', async (
     await expect(page.locator('#wi_workspace_continuous_cards')).toContainText('连续卡片');
     await expect(page.locator('#wi_workspace_display_mode option[value="standard"]')).toHaveText('标准');
 
+    await page.locator('[data-wi-workspace-view="library"]').click();
     const zhBookCard = page.locator('#wi_workspace_library .world_info_manager_item', { hasText: BOOK_NAME }).first();
+    await expect(zhBookCard).toBeVisible();
     await expect(zhBookCard.locator('.world_info_manager_toggle_label')).toHaveText(/全局/);
     await zhBookCard.locator('.world_info_manager_item_more > summary').click();
     await expect(zhBookCard.locator('.world_info_manager_export')).toContainText('导出');
