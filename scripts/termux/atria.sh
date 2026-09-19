@@ -112,7 +112,9 @@ start_server() {
   printf '%s\n' "${pid}" > "${PID_FILE}"
 
   local attempt
-  for attempt in $(seq 1 120); do
+  # Poll at 200 ms so a warm-start server can open the browser as soon as it
+  # is ready instead of paying an artificial one-second launcher delay.
+  for attempt in $(seq 1 600); do
     if ! kill -0 "${pid}" 2>/dev/null; then
       rm -f "${PID_FILE}"
       log "Atria exited during startup. Last log lines:"
@@ -124,7 +126,7 @@ start_server() {
       open_browser
       return
     fi
-    sleep 1
+    sleep 0.2
   done
 
   log "Startup timed out after 120 seconds. Last log lines:"
@@ -303,6 +305,8 @@ update_repo() {
   npm_package_config_node_gyp_nodedir="${PREFIX:-}" npm ci --omit=dev --no-audit --no-fund
   bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
   npm run init
+  log "Prebuilding frontend bundles for the updated revision..."
+  npm run frontend:prebuild-cache
   doctor
 
   if (( was_running == 1 )); then
