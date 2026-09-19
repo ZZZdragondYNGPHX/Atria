@@ -42,6 +42,31 @@ describe('SqliteEngine chat handler', () => {
         expect(got.createdAt).toBe(50);
     });
 
+    test('getChatRange reads only the requested JSON-array window', async () => {
+        const body = Array.from({ length: 20 }, (_, index) => ({ mes: `m-${index}`, index }));
+        await engine.withTransaction(handle, async (tx) => {
+            tx.putResource(chatKey(), {
+                header: { chat_metadata: { marker: 'range' } },
+                body,
+                integrity: 'range-int',
+                updatedAt: 100,
+                createdAt: 50,
+            });
+        });
+
+        const got = await engine.withTransaction(handle, async (tx) => (
+            tx.getChatRange(chatKey(), { fromIndex: 7, limit: 4 })
+        ));
+
+        expect(got.header.chat_metadata.marker).toBe('range');
+        expect(got.body).toEqual(body.slice(7, 11));
+        expect(got.fromIndex).toBe(7);
+        expect(got.nextIndex).toBe(11);
+        expect(got.totalMessages).toBe(20);
+        expect(got.hasMore).toBe(true);
+        expect(got.integrity).toBe('range-int');
+    });
+
     test('get returns null when missing', async () => {
         const got = await engine.withTransaction(handle, async (tx) => tx.getResource(chatKey()));
         expect(got).toBeNull();
