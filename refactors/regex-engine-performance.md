@@ -8,6 +8,8 @@ Reduce regex-system stalls as active rule counts grow, especially when many rule
 - Task branch: `refactor/regex-engine-performance`
 - PR: #22
 - Final validated task head: `345e4f06f6169c7383ae840997775c5cc3dfb669`
+- Squash merge / resulting `main`: `21f11b93f0e165485488236b74072a12c7df0c4e`
+- Validated task tree is identical to the merged `main` tree.
 
 ## Root cause
 
