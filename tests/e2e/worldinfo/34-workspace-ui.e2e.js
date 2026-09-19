@@ -210,7 +210,7 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     // of the product navigation; selecting a book card opens its Entries.
     await page.locator('[data-wi-workspace-view="library"]').click();
     await expect(page.locator('#wi_workspace_library #world_info_manager_active_panel')).toBeHidden();
-    await expect(page.locator('#wi_workspace_library .world_popup_primary_select')).toBeHidden();
+    await expect(page.locator('.wi-workspace-primary-toolbar .world_popup_primary_select')).toBeHidden();
     await openBookFromLibrary(page);
 
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();
