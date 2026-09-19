@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -50,6 +51,12 @@ export class MysqlTransaction {
             throw new Error('MysqlTransaction.appendChatMessages: chat resource required');
         }
         return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
+    async patchChatMessages(key, operations, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('MysqlTransaction.patchChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'patchChatMessages').patch(key, operations, options);
     }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
@@ -114,6 +121,117 @@ export function registerChatHandler(tx) {
     }
 
     tx._handlers.set('chat', {
+        async patch(key, operations, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+            chatMetadata = {},
+        } = {}) {
+            const parsedOps = [];
+            for (const operation of Array.isArray(operations) ? operations : []) {
+                const op = String(operation?.op || '').trim().toLowerCase();
+                const match = /^\/(0|[1-9]\d*)$/.exec(String(operation?.path || ''));
+                if (!['test', 'replace', 'remove'].includes(op) || !match) {
+                    return { status: 'unsupported' };
+                }
+                if ((op === 'test' || op === 'replace') && !Object.hasOwn(operation, 'value')) {
+                    return { status: 'unsupported' };
+                }
+                const serialized = op === 'replace' ? JSON.stringify(operation.value) : null;
+                if (op === 'replace' && serialized === undefined) return { status: 'unsupported' };
+                parsedOps.push({ op, index: Number(match[1]), value: operation?.value, serialized });
+            }
+            if (parsedOps.length === 0) return { status: 'unsupported' };
+
+            const p = chatKeyToParams(key);
+            const [metaRows] = await conn.execute(
+                `SELECT integrity,
+                        JSON_EXTRACT(doc, '$.header.chat_metadata') AS metadata_value,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header.chat_metadata')) AS metadata_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type,
+                        JSON_LENGTH(doc, '$.body') AS message_count
+                 FROM chats
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?
+                 FOR UPDATE`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaRows[0];
+            if (!meta) return { status: 'missing' };
+            if (meta.metadata_type !== 'OBJECT' || meta.body_type !== 'ARRAY') {
+                return { status: 'unsupported' };
+            }
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const currentMetadata = coerceJson(meta.metadata_value);
+            if (!currentMetadata || typeof currentMetadata !== 'object' || Array.isArray(currentMetadata)) {
+                return { status: 'unsupported' };
+            }
+            let messageCount = Math.max(0, Number(meta.message_count) || 0);
+
+            for (const operation of parsedOps) {
+                if (operation.index < 0 || operation.index >= messageCount) {
+                    if (operation.op === 'test') throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    throw new Error(`Invalid JSON Patch ${operation.op} path. Array index out of bounds`);
+                }
+                const jsonPath = `$.body[${operation.index}]`;
+                if (operation.op === 'test') {
+                    const [rows] = await conn.execute(
+                        'SELECT JSON_EXTRACT(doc, ?) AS value FROM chats WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?',
+                        [jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                    );
+                    const actual = coerceJson(rows[0]?.value);
+                    if (!isDeepStrictEqual(actual, operation.value)) {
+                        throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    }
+                    continue;
+                }
+                if (operation.op === 'replace') {
+                    await conn.execute(
+                        'UPDATE chats SET doc=JSON_SET(doc, ?, CAST(? AS JSON)) WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?',
+                        [jsonPath, operation.serialized, p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                    );
+                    continue;
+                }
+                await conn.execute(
+                    'UPDATE chats SET doc=JSON_REMOVE(doc, ?) WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?',
+                    [jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                );
+                messageCount -= 1;
+            }
+
+            const mergedMetadata = {
+                ...currentMetadata,
+                ...(chatMetadata && typeof chatMetadata === 'object' && !Array.isArray(chatMetadata)
+                    ? chatMetadata : {}),
+                integrity: newIntegrity,
+            };
+            await conn.execute(
+                `UPDATE chats
+                 SET doc=JSON_SET(doc, '$.header.chat_metadata', CAST(? AS JSON)),
+                     updated_at=?
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`,
+                [
+                    JSON.stringify(mergedMetadata),
+                    updatedAt,
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                ],
+            );
+
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                applied: parsedOps.length,
+                totalMessages: messageCount,
+            };
+        },
         async range(key, { fromIndex = 0, limit = 0 } = {}) {
             const p = chatKeyToParams(key);
             const [metaRows] = await conn.execute(
