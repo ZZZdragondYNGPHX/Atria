@@ -48,6 +48,12 @@ export class PgTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async appendChatMessages(key, messages, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('PgTransaction.appendChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
