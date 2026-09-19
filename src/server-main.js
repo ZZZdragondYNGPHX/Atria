@@ -988,8 +988,10 @@ initUserStorage(globalThis.DATA_ROOT)
         acquireTimeoutMs: getConfigValue('storage.acquireTimeoutMs', 30000),
         retries: { transient: getConfigValue('storage.retries.transient', 3) },
     })))
-    .then(timedStartupStep('bootstrap.storage-fail-fast', () => maybeFailFast(getStorageEngine(), getConfigValue('storage.failFast', false)))
-    )
+    .then(timedStartupStep(
+        'bootstrap.storage-fail-fast',
+        () => maybeFailFast(getStorageEngine(), getConfigValue('storage.failFast', false)),
+    ))
     // Cross-mode restore scratch sweep — best-effort, runs in the background
     // so a slow disk doesn't block server start.
     .then(() => {
