@@ -11,7 +11,9 @@ Fix the Android local-archive restore path that could enter extraction and remai
 - Final validated task head: `c6b143f7d9b55ada9be194a4587e053bc54867dd`
 - Validated task tree: `5e73acc167d1de065f975b9b43cc3bbdbf93bbea`
 - PR: #15
-- Merge: pending at record creation
+- Squash merge / resulting `main`: `43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
+- Merged tree: `5e73acc167d1de065f975b9b43cc3bbdbf93bbea` (identical to the validated task-head tree)
+- Temporary task branch was removed after merge
 
 ## Field evidence
 
