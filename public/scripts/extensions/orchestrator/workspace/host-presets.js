@@ -4,6 +4,40 @@ import { compileWorkspacePreset, emptyPresetLibrary, updatePresetLibrary, resolv
 import { AGENDA_BUILTIN_REVISION } from '../agenda-defaults.js';
 
 const WEB_TOOL_NAMES = Object.freeze(['search_search', 'search_visit']);
+export const NATIVE_WORKSPACE_MODES = Object.freeze(['spec', 'loop', 'agenda', 'director']);
+export const NATIVE_WORKSPACE_PRESET_REVISION = 1;
+
+export function getNativeWorkspacePresetId(mode) {
+    if (!NATIVE_WORKSPACE_MODES.includes(mode)) return null;
+    return `builtin-${mode}`;
+}
+
+export function isNativeWorkspacePresetId(id) {
+    return NATIVE_WORKSPACE_MODES.some(mode => getNativeWorkspacePresetId(mode) === id);
+}
+
+export function uniqueWorkspacePresetName(library, preferredName, suffix = 'imported') {
+    const base = String(preferredName || 'Imported preset').trim() || 'Imported preset';
+    const used = new Set((library?.presets || []).map(item => String(item?.name || '').trim().toLocaleLowerCase()));
+    if (!used.has(base.toLocaleLowerCase())) return base;
+    for (let index = 1; index < 10000; index++) {
+        const tail = index === 1 ? suffix : `${suffix} ${index}`;
+        const candidate = `${base} (${tail})`;
+        if (!used.has(candidate.toLocaleLowerCase())) return candidate;
+    }
+    throw new Error('Could not allocate a unique preset name');
+}
+
+export function prepareImportedWorkspacePreset(library, preset, id = crypto.randomUUID()) {
+    const copy = structuredClone(preset);
+    copy.id = id;
+    copy.name = uniqueWorkspacePresetName(library, copy.name);
+    if (copy.planTemplate?.metadata) {
+        delete copy.planTemplate.metadata.nativePreset;
+        delete copy.planTemplate.metadata.builtinAgendaRevision;
+    }
+    return copy;
+}
 
 function setWebAccessFlags(tools, enabled) {
     const target = tools && typeof tools === 'object' ? tools : {};
@@ -59,6 +93,10 @@ export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
         'max_rounds', 'maxRounds', 'maxConcurrentSubagents', 'limits', 'finalAgentId']) delete hostOptions[key];
     if (profile.spec) { hostOptions.specOptions = structuredClone(profile.spec); delete hostOptions.specOptions.stages; }
     plan.metadata = { hostAdapters: { atria: hostOptions } };
+    const nativeId = getNativeWorkspacePresetId(mode);
+    if (nativeId && id === nativeId) {
+        plan.metadata.nativePreset = { mode, revision: NATIVE_WORKSPACE_PRESET_REVISION };
+    }
     if (mode === 'agenda') plan.metadata.builtinAgendaRevision = AGENDA_BUILTIN_REVISION;
     for (const agent of plan.agents) {
         const settings = structuredClone(agent.metadata.config);
@@ -71,24 +109,27 @@ export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
     return { schemaVersion: 1, id, name: single ? 'Single Agent' : mode === 'agenda' ? profile.name : `${mode[0].toUpperCase()}${mode.slice(1)}`, mode, planTemplate: plan, editorMetadata: {} };
 }
 
-export function getWorkspaceLibrary(settings) {
-    if (!settings.agentWorkspace) {
-        let library = emptyPresetLibrary();
-        for (const mode of ['spec', 'loop', 'agenda', 'director']) {
-            library = updatePresetLibrary(library, { type: 'save', preset: createWorkspaceFactoryPreset(mode, `builtin-${mode}`) });
-        }
-        settings.agentWorkspace = updatePresetLibrary(library, { type: 'bind', scope: 'default', presetId: 'builtin-spec' });
-    } else {
-        // Replace the retired shipped Agenda in place once. Keep every binding,
-        // user-owned preset ID and already-admitted run snapshot intact. Do not
-        // resurrect a built-in the user deleted, or reapply over later edits.
-        const agenda = settings.agentWorkspace.presets.find(preset => preset.id === 'builtin-agenda' && preset.mode === 'agenda');
-        if (agenda && !agenda.planTemplate.metadata?.builtinAgendaRevision) {
-            settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, {
-                type: 'save', preset: createWorkspaceFactoryPreset('agenda', 'builtin-agenda'),
-            });
+export function restoreNativeWorkspacePresets(library) {
+    let next = library || emptyPresetLibrary();
+    for (const mode of NATIVE_WORKSPACE_MODES) {
+        const id = getNativeWorkspacePresetId(mode);
+        const factory = createWorkspaceFactoryPreset(mode, id);
+        const current = next.presets?.find(preset => preset.id === id);
+        // Native definitions are Atria-owned and fixed. This deliberately
+        // repairs stale backup/restore copies, wrong revisions, accidental
+        // edits and missing/deleted native presets without touching user IDs.
+        if (!current || JSON.stringify(current) !== JSON.stringify(factory)) {
+            next = updatePresetLibrary(next, { type: 'save', preset: factory });
         }
     }
+    if (!next.bindings.defaultPresetId) {
+        next = updatePresetLibrary(next, { type: 'bind', scope: 'default', presetId: 'builtin-spec' });
+    }
+    return next;
+}
+
+export function getWorkspaceLibrary(settings) {
+    settings.agentWorkspace = restoreNativeWorkspacePresets(settings.agentWorkspace || emptyPresetLibrary());
     return settings.agentWorkspace;
 }
 
