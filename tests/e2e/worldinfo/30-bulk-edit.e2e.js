@@ -22,7 +22,7 @@ import { resolve } from 'node:path';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded, writeWorldBook } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { enableWorldInfoContinuousCards, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -41,6 +41,7 @@ const BOOK_NAME = 'bulk-edit-routes';
 
 async function openBookInEditor(page, bookName) {
     await openWorldInfoDrawer(page);
+    await enableWorldInfoContinuousCards(page);
     await page.locator('#world_editor_select').waitFor({ state: 'visible', timeout: 5000 });
     // Wait for world_names to be populated — without this, the change
     // handler may run before the editor wiring is fully bound, leaving
