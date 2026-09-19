@@ -56,6 +56,13 @@ import { accountStorage } from './util/AccountStorage.js';
 import { getOrCreatePersonaDescriptor, setPersonaDescription, user_avatar } from './personas.js';
 import { initActionableSingleSelect, refreshOpenDropdown } from './select2-actionable-single.js';
 import { showUndoToast } from './undo-toast.js';
+import {
+    decorateWorldInfoWorkspaceInspector,
+    initWorldInfoWorkspace,
+    isWorldInfoWorkspaceContinuousCards,
+    syncWorldInfoWorkspace,
+    syncWorldInfoWorkspaceSelection,
+} from './world-info/workspace.js';
 
 function buildWorldInfoDragHelper(item) {
     const itemEl = item?.get?.(0) || item?.[0] || item;
@@ -4376,6 +4383,7 @@ function syncWorldInfoEntryBulkToolbar(name = '', data = null) {
 
     if (!name || !data?.entries || typeof data.entries !== 'object') {
         resetWorldInfoEntrySelection('');
+        syncWorldInfoWorkspaceSelection([]);
         toolbar.addClass('displayNone');
         status.text('');
         worldEntriesList.removeData('worldEntryPageUids');
@@ -4388,7 +4396,9 @@ function syncWorldInfoEntryBulkToolbar(name = '', data = null) {
     const selectedCount = selectedUids.length;
     const allPageSelected = pageUids.length > 0 && pageUids.every((uid) => selectedWorldInfoEntryUids.has(uid));
 
-    toolbar.removeClass('displayNone');
+    toolbar.toggleClass('displayNone', selectedCount === 0);
+    toolbar.toggleClass('wi-workspace-bulk-active', selectedCount > 0);
+    syncWorldInfoWorkspaceSelection(selectedUids);
     selectPageButton.find('span').text(allPageSelected ? t`Deselect Page` : t`Select Page`);
     clearSelectionButton.toggleClass('disabled', selectedCount === 0);
     enableSelectedButton.toggleClass('disabled', selectedCount === 0);
@@ -6356,6 +6366,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         $('#world_entries_delete_selected').off('click');
         worldEntriesList.hide();
         $('#world_info_pagination').html('');
+        syncWorldInfoWorkspace({ name: '', data: null, entries: [] });
         syncWorldInfoEntryBulkToolbar('', null);
         return;
     }
@@ -6408,6 +6419,20 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
     const storageKey = 'WI_PerPage';
     const perPageDefault = 25;
     const entriesArray = getDataArray();
+
+    syncWorldInfoWorkspace({
+        name,
+        data,
+        entries: entriesArray,
+        callbacks: {
+            renderInspector: (entry, host) => renderWorldInfoWorkspaceInspector(name, data, entry, host),
+            onSelectionChange: (entry, selected) => setWorldInfoEntrySelected(name, entry.uid, selected, data),
+            onContinuousCardsChange: () => updateEditor(navigation_option.previous),
+            onTestActivation: entry => testWorldInfoWorkspaceEntryActivation(name, entry),
+            onTrace: entry => showActivationTracePopup(name, entry.uid),
+        },
+    });
+
     const perPage = Number(accountStorage.getItem(storageKey)) || perPageDefault;
     const keywordHeaders = await renderTemplateAsync('worldInfoKeywordHeaders');
     let startPage = 1;
@@ -6436,6 +6461,17 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         showNavigator: true,
         callback: async function (/** @type {object[]} */ page) {
             try {
+                worldEntriesList.data(
+                    'worldEntryPageUids',
+                    page.map(entry => String(entry?.uid ?? '').trim()).filter(Boolean),
+                );
+                if (!isWorldInfoWorkspaceContinuousCards()) {
+                    clearEntryList(worldEntriesList);
+                    worldEntriesList.hide();
+                    syncWorldInfoEntryBulkToolbar(name, data);
+                    return;
+                }
+                worldEntriesList.show();
                 await renderWorldEntriesPage(worldEntriesList, name, data, page, renderPass, keywordHeaders);
             } catch (error) {
                 console.error('Error while rendering WI entries:', error);
@@ -7530,6 +7566,78 @@ async function showActivationTracePopup(worldName, uid) {
         t`Lorebook Activation Trace`,
         { wide: true, large: true, allowVerticalScrolling: true },
     );
+}
+
+async function waitForWorkspaceEntryEditor(block, timeoutMs = 5000) {
+    const startedAt = performance.now();
+    while (performance.now() - startedAt < timeoutMs) {
+        const editor = block?.querySelector?.('.wi-entry-edit');
+        if (editor) return editor;
+        await new Promise(resolve => setTimeout(resolve, 16));
+    }
+    return null;
+}
+
+async function renderWorldInfoWorkspaceInspector(name, data, entry, host) {
+    const block = await getWorldEntry(name, data, entry);
+    const node = block?.get?.(0);
+    if (!(node instanceof HTMLElement) || !(host instanceof HTMLElement)) {
+        return null;
+    }
+
+    host.replaceChildren(node);
+    const toggle = block.find('.wi-entry-toggle');
+    if (toggle.hasClass('down')) {
+        toggle.trigger('click');
+    }
+
+    const editor = await waitForWorkspaceEntryEditor(node);
+    if (editor) {
+        decorateWorldInfoWorkspaceInspector(node, entry);
+    }
+
+    return node;
+}
+
+async function testWorldInfoWorkspaceEntryActivation(name, entry) {
+    const context = getContext();
+    const chat = Array.isArray(context?.chat)
+        ? context.chat.filter(message => !message?.is_system).map(message => String(message?.mes ?? ''))
+        : [];
+    const maxContext = Number(context?.maxContext);
+    await getWorldInfoPrompt(
+        chat,
+        Number.isFinite(maxContext) && maxContext > 0 ? maxContext : 8192,
+        true,
+        defaultGlobalScanData,
+    );
+
+    const trace = getEntryActivationTrace(getActivationTraceScopeKey(), name, entry?.uid);
+    const scans = Array.isArray(trace?.recentDryRunScans) ? trace.recentDryRunScans : [];
+    const latest = scans[0];
+    if (!latest) {
+        return {
+            label: t`Unknown for current chat`,
+            detail: t`The existing World Info dry-run produced no trace for this entry. It may not be part of the currently active lorebook scan. No activation result was invented.`,
+        };
+    }
+
+    const attempts = Array.isArray(latest.attempts) ? latest.attempts : [];
+    const lastAttempt = attempts.at(-1);
+    const reason = latest.lastActivation?.details?.reason
+        ?? lastAttempt?.reason
+        ?? '';
+    const details = latest.lastActivation?.details
+        ?? lastAttempt?.details
+        ?? {};
+    const explanation = reason
+        ? explainTraceReason(reason, details)
+        : (latest.activated ? t`Activated by the current runtime scan.` : t`No activation path succeeded in the current runtime scan.`);
+
+    return {
+        label: latest.activated ? t`Would activate` : t`Would not activate`,
+        detail: explanation,
+    };
 }
 
 /**
@@ -12262,6 +12370,8 @@ function updateAuxBooks(fileName, computeNext) {
 }
 
 export function initWorldInfo() {
+    initWorldInfoWorkspace();
+
     // W-03b: register the event-baseline FloorState as part of normal World
     // Info startup so branch/checkpoint inheritance works even before the
     // first state-event scan in this page session.
