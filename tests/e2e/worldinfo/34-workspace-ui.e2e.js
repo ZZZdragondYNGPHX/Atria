@@ -217,11 +217,11 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(mobileBookCard.locator('.world_info_manager_item_meta')).toContainText(/Globally enabled|Not global/);
     await mobileBookCard.locator('.world_info_manager_more_button').click();
     await expect(mobileBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'true');
-    const mobileBookDialog = page.locator('body > dialog.wi-worldbook-action-sheet-dialog[open]');
+    const mobileBookDialog = page.locator('#WorldInfo > dialog.wi-worldbook-action-sheet-dialog[open]');
     await expect(mobileBookDialog).toBeVisible();
     const mobileBookMenu = mobileBookDialog.locator('.wi-worldbook-action-sheet-portal');
     await expect(mobileBookMenu).toBeVisible();
-    expect(await mobileBookDialog.evaluate(node => node.parentElement === document.body)).toBe(true);
+    expect(await mobileBookDialog.evaluate(node => node.parentElement?.id === 'WorldInfo')).toBe(true);
     const mobileMenuBox = await mobileBookMenu.boundingBox();
     expect(mobileMenuBox?.y || 0).toBeGreaterThan(300);
     expect((mobileMenuBox?.y || 0) + (mobileMenuBox?.height || 0)).toBeLessThanOrEqual(900);
@@ -229,10 +229,11 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(mobileBookMenu.locator('.world_info_manager_rename')).toBeVisible();
     await expect(mobileBookMenu.locator('.world_info_manager_duplicate')).toBeVisible();
     await mobileBookDialog.locator('.wi-worldbook-action-sheet-close').click();
-    await expect(page.locator('body > dialog.wi-worldbook-action-sheet-dialog[open]')).toHaveCount(0);
+    await expect(page.locator('#WorldInfo > dialog.wi-worldbook-action-sheet-dialog[open]')).toHaveCount(0);
     await expect(mobileBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('#WorldInfo')).toBeVisible();
     await expect(page.locator('#wi_workspace_library')).toHaveClass(/is-active/);
+    await expect(page.locator('#WIMultiSelector .inline-drawer-content')).toBeVisible();
 
     // Advanced cross-book search survives the visual simplification behind
     // one compact filter menu instead of occupying a permanent second row.
