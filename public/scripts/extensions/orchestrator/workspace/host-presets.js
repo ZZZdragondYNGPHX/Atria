@@ -1,6 +1,6 @@
 import { compilePreset } from '../engine-v2/preset-compiler.js';
 import { createFactoryPresetForMode, DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT, DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE } from '../defaults.js';
-import { compileWorkspacePreset, emptyPresetLibrary, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
+import { compileWorkspacePreset, emptyPresetLibrary, normalizeWorkspacePreset, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
 import { AGENDA_BUILTIN_REVISION } from '../agenda-defaults.js';
 
 const WEB_TOOL_NAMES = Object.freeze(['search_search', 'search_visit']);
@@ -113,7 +113,7 @@ export function restoreNativeWorkspacePresets(library) {
     let next = library || emptyPresetLibrary();
     for (const mode of NATIVE_WORKSPACE_MODES) {
         const id = getNativeWorkspacePresetId(mode);
-        const factory = createWorkspaceFactoryPreset(mode, id);
+        const factory = normalizeWorkspacePreset(createWorkspaceFactoryPreset(mode, id));
         const current = next.presets?.find(preset => preset.id === id);
         // Native definitions are Atria-owned and fixed. This deliberately
         // repairs stale backup/restore copies, wrong revisions, accidental
