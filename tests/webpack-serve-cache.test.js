@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { hasCompleteWebpackOutput } from '../src/middleware/webpack-serve.js';
-import getPublicLibConfig, { getWebpackCacheVersion } from '../webpack.config.js';
+import { hasCompleteWebpackOutput, migrateLegacyWebpackOutput } from '../src/middleware/webpack-serve.js';
+import getPublicLibConfig, { getWebpackCacheVersion, getWebpackRootInfo, isTermuxRuntime } from '../webpack.config.js';
 
 describe('Webpack warm-start output detection', () => {
     test('bundle cache key is stable and based on bundle inputs rather than Git HEAD', () => {
@@ -21,6 +21,82 @@ describe('Webpack warm-start output detection', () => {
         expect(configSource).not.toContain('readLocalGitRevision');
     });
 
+
+    test('Termux auto-routes frontend cache to private HOME without launcher env', () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-webpack-termux-'));
+        const home = path.join(root, 'home');
+        const dataRoot = path.join(root, 'shared-data');
+        const previous = {
+            home: process.env.HOME,
+            prefix: process.env.PREFIX,
+            cacheRoot: process.env.ATRIA_WEBPACK_CACHE_ROOT,
+            dataRoot: globalThis.DATA_ROOT,
+        };
+        fs.mkdirSync(home, { recursive: true });
+        fs.mkdirSync(dataRoot, { recursive: true });
+
+        process.env.HOME = home;
+        process.env.PREFIX = '/data/data/com.termux/files/usr';
+        delete process.env.ATRIA_WEBPACK_CACHE_ROOT;
+        globalThis.DATA_ROOT = dataRoot;
+
+        try {
+            expect(isTermuxRuntime()).toBe(true);
+            const info = getWebpackRootInfo();
+            expect(info.source).toBe('termux-private');
+            expect(info.root).toBe(path.join(home, '.cache', 'atria-webpack'));
+
+            const config = getPublicLibConfig();
+            expect(config.output.path.startsWith(info.root)).toBe(true);
+            expect(config.output.path).not.toContain(dataRoot);
+        } finally {
+            if (previous.home === undefined) delete process.env.HOME; else process.env.HOME = previous.home;
+            if (previous.prefix === undefined) delete process.env.PREFIX; else process.env.PREFIX = previous.prefix;
+            if (previous.cacheRoot === undefined) delete process.env.ATRIA_WEBPACK_CACHE_ROOT; else process.env.ATRIA_WEBPACK_CACHE_ROOT = previous.cacheRoot;
+            globalThis.DATA_ROOT = previous.dataRoot;
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test('migrates a fresh legacy shared-storage bundle into Termux private cache', () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-webpack-migrate-'));
+        const home = path.join(root, 'home');
+        const dataRoot = path.join(root, 'shared-data');
+        const previous = {
+            home: process.env.HOME,
+            prefix: process.env.PREFIX,
+            cacheRoot: process.env.ATRIA_WEBPACK_CACHE_ROOT,
+            dataRoot: globalThis.DATA_ROOT,
+        };
+        fs.mkdirSync(home, { recursive: true });
+        fs.mkdirSync(dataRoot, { recursive: true });
+
+        process.env.HOME = home;
+        process.env.PREFIX = '/data/data/com.termux/files/usr';
+        delete process.env.ATRIA_WEBPACK_CACHE_ROOT;
+        globalThis.DATA_ROOT = dataRoot;
+
+        try {
+            const target = getPublicLibConfig();
+            const legacyOutput = path.join(dataRoot, '_webpack', 'legacy-layout-key', 'output');
+            fs.mkdirSync(legacyOutput, { recursive: true });
+            for (const entryName of Object.keys(target.entry)) {
+                fs.writeFileSync(path.join(legacyOutput, `${entryName}.js`), `legacy-${entryName}`);
+            }
+
+            const source = migrateLegacyWebpackOutput(target);
+            expect(source).toBe(legacyOutput);
+            expect(hasCompleteWebpackOutput(target)).toBe(true);
+            expect(fs.readFileSync(path.join(target.output.path, 'lib.core.bundle.js'), 'utf8'))
+                .toBe('legacy-lib.core.bundle');
+        } finally {
+            if (previous.home === undefined) delete process.env.HOME; else process.env.HOME = previous.home;
+            if (previous.prefix === undefined) delete process.env.PREFIX; else process.env.PREFIX = previous.prefix;
+            if (previous.cacheRoot === undefined) delete process.env.ATRIA_WEBPACK_CACHE_ROOT; else process.env.ATRIA_WEBPACK_CACHE_ROOT = previous.cacheRoot;
+            globalThis.DATA_ROOT = previous.dataRoot;
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
 
     test('explicit private cache root wins over external dataRoot', () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-webpack-private-'));
