@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
+WEBPACK_CACHE_ROOT="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-${HOME}/.cache/atria-webpack}"
 
 if ! command -v pkg >/dev/null 2>&1 || [[ "${PREFIX:-}" != *com.termux* ]]; then
   echo "[atria-termux] This installer must be run inside Termux on Android." >&2
@@ -51,8 +52,9 @@ npm run init
 log "Verifying/repairing native SQLite binding for Termux..."
 bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
 
-log "Prebuilding frontend bundles so normal startup can skip Webpack..."
-npm run frontend:prebuild-cache
+log "Prebuilding frontend bundles in fast private storage..."
+mkdir -p "${WEBPACK_CACHE_ROOT}"
+ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" npm run frontend:prebuild-cache
 
 # Install an executable wrapper outside the Git worktree. Do not chmod tracked
 # scripts: changing their file mode would make future `git pull` updates dirty.
