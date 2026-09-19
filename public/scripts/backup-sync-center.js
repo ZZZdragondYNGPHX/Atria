@@ -24,6 +24,7 @@ function setRestoreControlsBusy(root, busy) {
     const disabled = Boolean(busy);
     root.querySelectorAll(
         '.backupArchiveChoose, .backupSelectAll, .backupSelectRecommended, .backupSelectNone, '
+        + '.backupRecoveryRefresh, .backupRecoveryList button, '
         + 'input[name="backupCategory"], input[name="backupRestoreMode"]',
     ).forEach(control => {
         control.disabled = disabled;
