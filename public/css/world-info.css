@@ -3240,6 +3240,17 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         display: none !important;
     }
 
+    #WorldInfo #wi_workspace_shell.is-continuous-cards .world_popup_search_toolbar {
+        flex-wrap: wrap;
+    }
+
+    #WorldInfo #wi_workspace_shell.is-continuous-cards .world_popup_search_toolbar #world_info_pagination {
+        display: flex !important;
+        flex: 1 0 100%;
+        justify-content: center;
+        margin-left: 0;
+    }
+
     #WorldInfo .wi-workspace-entry-filterbar {
         min-height: 38px;
         flex-wrap: nowrap;
