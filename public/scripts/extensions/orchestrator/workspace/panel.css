@@ -19,7 +19,15 @@
 
     position: fixed;
     inset: clamp(10px, 1.4vw, 22px);
-    z-index: 3200;
+    /*
+     * SillyTavern moves open settings drawers under #movingDivs where they
+     * sit at z-index: 4000, and some maximized/top-layer drawer states raise
+     * #top-settings-holder to 4005. The Workspace is a product-level shell
+     * opened from inside those drawers, so it must sit above the host drawer
+     * stack or the real "Open Atria Workspace" button appears to do nothing.
+     * Native <dialog> popups still live in the browser top layer above this.
+     */
+    z-index: 4100;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
