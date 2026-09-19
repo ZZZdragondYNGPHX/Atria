@@ -27,6 +27,9 @@
  *   complete body expose this method; ChatRepo falls back to getResource otherwise.
  * @property {(resource: ResourceKey) => Promise<ChatInfoRecord | null>} [getChatInfo]
  *   Optional lightweight chat summary read for list/recent views.
+ * @property {(resource: ResourceKey, messages: object[], options: {expectedIntegrity?: string|null, newIntegrity: string, updatedAt?: number}) => Promise<ChatAppendResult>} [appendChatMessages]
+ *   Optional chat-specialized append primitive. Engines return unsupported when
+ *   they cannot safely append without materializing/replacing the whole body.
  * @property {(resource: ResourceKey, record: ResourceRecord) => Promise<void>} putResource
  *   Write or replace a single resource. Caller must do OCC checks via getResource first if needed.
  * @property {(resource: ResourceKey, expectedIntegrity: string | null, record: ResourceRecord) => Promise<{updated: boolean}>} putResourceIfMatch
@@ -50,6 +53,16 @@
  *   kind: string,
  *   [key: string]: any,
  * }} ResourceKey
+ */
+
+/**
+ * @typedef {{
+ *   status: 'ok'|'conflict'|'missing'|'unsupported',
+ *   integrity?: string,
+ *   actualIntegrity?: string,
+ *   accepted?: number,
+ *   dedupedGenIds?: string[],
+ * }} ChatAppendResult
  */
 
 /**
