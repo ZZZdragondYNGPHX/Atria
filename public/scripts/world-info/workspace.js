@@ -580,7 +580,7 @@ function renderVirtualRows() {
     }
 
     const count = document.querySelector('#wi_workspace_entry_count');
-    if (count) count.textContent = t`${total} entries`;
+    if (count) count.textContent = total === 1 ? t`${total} entry` : t`${total} entries`;
 }
 
 function scheduleVirtualRows() {
