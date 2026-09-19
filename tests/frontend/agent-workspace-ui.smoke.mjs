@@ -96,27 +96,40 @@ try {
     assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.every(p => p.planTemplate.agents.every(a => (p.mode === 'agenda' ? a.tools.length === 0 : a.tools.includes('*')) && a.capabilities['tool.call']))), true);
     for (const mode of ['spec', 'agenda', 'director']) {
         await workspace.locator('.workspace-preset-list button').filter({ hasText: new RegExp(mode === 'agenda' ? '^Atri-agenda' : `^${mode}`, 'i') }).click();
-        const before = await page.evaluate(mode => structuredClone(window.settings.agentWorkspace.presets.find(p => p.mode === mode)), mode);
+
+        // Shipped native presets are fixed. Duplicate before authoring changes.
+        await workspace.locator('.workspace-more-menu > summary').click();
+        assert.equal(await workspace.getByRole('button', { name: 'Delete preset', exact: true }).isDisabled(), true);
+        await workspace.getByRole('button', { name: 'Duplicate', exact: true }).click();
+
+        const before = await page.evaluate(mode => structuredClone(
+            window.settings.agentWorkspace.presets.find(p => p.mode === mode && !p.id.startsWith('builtin-')),
+        ), mode);
         const add = workspace.getByRole('button', { name: mode === 'spec' ? 'Append worker stage' : 'Add specialist', exact: true });
         page.once('dialog', dialog => dialog.dismiss()); await add.click();
-        assert.equal(await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode).planTemplate.nodes.length, mode), before.planTemplate.nodes.length);
+        assert.equal(await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode && !p.id.startsWith('builtin-')).planTemplate.nodes.length, mode), before.planTemplate.nodes.length);
         page.once('dialog', dialog => dialog.accept('   ')); await add.click();
         assert.equal(await workspace.getByRole('status').innerText(), 'Enter a non-empty name.');
-        assert.equal(await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode).planTemplate.nodes.length, mode), before.planTemplate.nodes.length);
+        assert.equal(await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode && !p.id.startsWith('builtin-')).planTemplate.nodes.length, mode), before.planTemplate.nodes.length);
         page.once('dialog', dialog => dialog.accept(`${mode} specialist`)); await add.click();
         const inspector = workspace.locator('.atria-workspace-inspector');
         await inspector.getByRole('heading', { name: `${mode} specialist`, exact: true }).waitFor();
         await inspector.getByLabel('Agent name', { exact: true }).fill(`${mode} renamed`);
         await inspector.getByRole('button', { name: 'Save', exact: true }).click();
-        const saved = await page.evaluate(mode => JSON.parse(localStorage.getItem('settings')).agentWorkspace.presets.find(p => p.mode === mode), mode);
+        const saved = await page.evaluate(mode => JSON.parse(localStorage.getItem('settings')).agentWorkspace.presets.find(p => p.mode === mode && !p.id.startsWith('builtin-')), mode);
         assert.equal(saved.planTemplate.agents.at(-1).name, `${mode} renamed`);
         assert.equal(saved.planTemplate.nodes.length, before.planTemplate.nodes.length + 1);
         await inspector.getByText('Danger zone', { exact: true }).click();
         page.once('dialog', dialog => dialog.accept()); await inspector.getByRole('button', { name: 'Delete agent', exact: true }).click();
-        const removed = await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode), mode);
+        const removed = await page.evaluate(mode => window.settings.agentWorkspace.presets.find(p => p.mode === mode && !p.id.startsWith('builtin-')), mode);
         assert.equal(removed.planTemplate.agents.length, before.planTemplate.agents.length);
         assert.equal(removed.planTemplate.nodes.length, before.planTemplate.nodes.length);
         assert(!JSON.stringify(removed).includes(saved.planTemplate.agents.at(-1).id));
+
+        // Keep the library stable for the rest of the smoke test.
+        await workspace.locator('.workspace-more-menu > summary').click();
+        page.once('dialog', dialog => dialog.accept());
+        await workspace.getByRole('button', { name: 'Delete preset', exact: true }).click();
     }
     await workspace.locator('.workspace-preset-list button').filter({ hasText: /^Spec/ }).click();
     await workspace.locator('.workspace-more-menu > summary').click();
