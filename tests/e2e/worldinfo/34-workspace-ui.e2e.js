@@ -204,3 +204,55 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await page.locator('#wi_workspace_close').click();
     await expect(page.locator('#WorldInfo')).toBeHidden();
 });
+
+
+test('Simplified Chinese localizes Workspace-owned World Info surfaces', async ({ page }) => {
+    await page.addInitScript(() => {
+        window.localStorage.setItem('language', 'zh-cn');
+    });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await awaitMainUI(page, server.baseURL);
+    await openWorldInfoDrawer(page);
+
+    await expect(page.locator('[data-wi-workspace-view="library"]')).toContainText('书库');
+    await expect(page.locator('[data-wi-workspace-view="entries"]')).toContainText('条目');
+    await expect(page.locator('[data-wi-workspace-view="global"]')).toContainText('全局规则');
+    await expect(page.locator('#wi_workspace_continuous_cards')).toContainText('连续卡片');
+    await expect(page.locator('#wi_workspace_display_mode option[value="standard"]')).toHaveText('标准');
+
+    await openEntries(page);
+
+    const sectionTitles = await page.locator('.wi-inspector-section-title').allTextContents();
+    expect(sectionTitles).toEqual([
+        '基础',
+        '激活',
+        '生命周期',
+        '状态驱动',
+        '条目关系',
+        '高级',
+    ]);
+
+    await expect(page.locator('[data-wi-entry-filter="all"]')).toHaveText('全部');
+    await expect(page.locator('[data-wi-entry-filter="enabled"]')).toHaveText('已启用');
+    await expect(page.locator('[data-wi-entry-filter="special"]')).toHaveText('特殊');
+    await expect(page.locator('[data-wi-entry-filter="issues"]')).toHaveText('问题');
+
+    await page.locator('[data-wi-entry-filter="issues"]').click();
+    const issueRow = page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first();
+    await issueRow.click();
+    await expect(page.locator('#wi_workspace_inspector_issues')).toContainText('内容为空。');
+    await expect(page.locator('#wi_workspace_inspector_issues')).toContainText('普通关键词驱动条目没有主关键词。');
+
+    const relationships = page.locator('.wi-inspector-section-relationships');
+    await relationships.locator('> summary').click();
+    await expect(relationships.locator('.wi-relationship-picker[data-kind="required"] input[type="search"]'))
+        .toHaveAttribute('placeholder', '搜索必需条目…');
+    await expect(relationships.locator('.wi-relationship-picker[data-kind="related"] input[type="search"]'))
+        .toHaveAttribute('placeholder', '搜索关联条目…');
+
+    await page.locator('[data-wi-workspace-view="global"]').click();
+    await expect(page.locator('.wi-global-rule-card[data-rule-group="scanning"]')).toContainText('扫描');
+    await expect(page.locator('.wi-global-rule-card[data-rule-group="budget"]')).toContainText('预算');
+    await expect(page.locator('.wi-global-rule-card[data-rule-group="recursion"]')).toContainText('递归');
+    await expect(page.locator('.wi-global-rule-card[data-rule-group="selection"]')).toContainText('选择 / 优先级');
+});
