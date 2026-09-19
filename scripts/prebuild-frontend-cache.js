@@ -7,16 +7,21 @@ import getWebpackServeMiddleware from '../src/middleware/webpack-serve.js';
 
 const args = process.argv.slice(2);
 let configPath = './config.yaml';
+let dataRootOverride = '';
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--configPath' && args[i + 1]) {
         configPath = args[++i];
+        continue;
+    }
+    if (args[i] === '--dataRoot' && args[i + 1]) {
+        dataRootOverride = args[++i];
     }
 }
 
 configPath = path.resolve(configPath);
 initConfig(configPath);
 
-const configuredDataRoot = String(getConfigValue('dataRoot', './data') || './data');
+const configuredDataRoot = String(dataRootOverride || getConfigValue('dataRoot', './data') || './data');
 globalThis.DATA_ROOT = path.isAbsolute(configuredDataRoot)
     ? configuredDataRoot
     : path.resolve(process.cwd(), configuredDataRoot);
