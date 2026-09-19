@@ -213,6 +213,24 @@ Final validation for PR #4 passed:
 - Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in.
 
 
+### Workspace settings launcher visibility fix
+
+- PR #13
+- Baseline: `main@2c8141a532338eba0756805b741bb258a113043d`
+- Final validated head: `e8a1ccdedb8925ac1e301eccef7e119d1deef8b5`
+- Squash merge / current `main`: `9dc4cf842ca20d95caa07dfefb51efe856ce80f5`
+- Final validated / merged tree: `b5052b02d206a35d9d41f390a895c16d72223333`
+- Record: `fixes/workspace-settings-entry.md`
+- Root cause: on mobile, transformed `html` plus fixed `body` caused the fixed Workspace shell to resolve against a zero-height containing block; the launcher executed correctly but the Workspace bounding box height was 0px.
+- The Workspace overlay now uses z-index 4100, above host settings drawers at 4000/4005.
+- Mobile Workspace height prefers the JS-measured `--doc-height` with `100dvh` / `100vh` fallback.
+- The launcher remains a direct `openWorkspace('Orchestration')` call; no drawer-closing workaround is retained.
+- A real-host mobile E2E now opens Extensions, expands Agent & Memory, clicks the actual launcher, verifies non-zero geometry, and verifies top-surface hit testing.
+- Final validation passed Workspace UI #150, Atria PR Checks #453 and Worldbook Performance Foundation #204.
+- Cleanup workflow #13 succeeded and removed `fix/workspace-settings-entry`.
+- No persisted data, Workspace preset schema, memory state, orchestration state or API contract changed.
+- Android JVM/APK and Docker builds were intentionally not run because they remain opt-in and this task changes browser/mobile UI layout only.
+
 ## Long-lived references
 
 - Former Luker source/reference: `luker`
