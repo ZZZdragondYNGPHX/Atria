@@ -73,6 +73,9 @@ jobs:
         run: node docker/build-lib.js
 
       - name: Run focused regression tests
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: "1"
+          ATRIA_DISABLE_POSTGRES_TESTS: "1"
         run: >-
           npm run test:unit --prefix tests --
           performance/chat-snapshot-cache.test.js
