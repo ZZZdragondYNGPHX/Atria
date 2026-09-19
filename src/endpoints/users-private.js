@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { promises as fsPromises } from 'node:fs';
 import crypto from 'node:crypto';
 import net from 'node:net';
-import { Readable, Transform } from 'node:stream';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import storage from 'node-persist';
@@ -49,6 +49,11 @@ import {
 import { getAdminSettings } from '../admin-settings.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
+import {
+    extractZipEntryWithAdmZip,
+    isRestoreEntryIdleTimeoutError,
+    streamZipEntryWithIdleTimeout,
+} from '../backup-sync/restore-entry-extractor.js';
 
 // Two sentinel filenames the backup ZIP carries when the storage engine isn't
 // fs (spec §5.1/§5.2). The meta entry is captured during the analyze pass for
@@ -884,48 +889,70 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                             };
                             reportEntryProgress(true);
 
-                            zipfile.openReadStream(entry, async (streamError, readStream) => {
-                                if (streamError) {
-                                    finish(streamError);
-                                    return;
-                                }
-
+                            try {
                                 try {
-                                    const meter = new Transform({
-                                        transform(chunk, _encoding, callback) {
-                                            entryBytes += chunk.length;
+                                    await streamZipEntryWithIdleTimeout({
+                                        zipfile,
+                                        entry,
+                                        targetPath,
+                                        onChunk: (_chunkBytes, totalBytes) => {
+                                            entryBytes = totalBytes;
                                             reportEntryProgress(false);
-                                            callback(null, chunk);
                                         },
                                     });
-                                    await pipeline(readStream, meter, fs.createWriteStream(targetPath, { mode: 0o644 }));
-                                    reportEntryProgress(true);
-                                    const zipLastModified = typeof entry.getLastModDate === 'function'
-                                        ? entry.getLastModDate()
-                                        : null;
-                                    if (zipLastModified instanceof Date && !Number.isNaN(zipLastModified.getTime())) {
-                                        try {
-                                            await fsPromises.utimes(targetPath, zipLastModified, zipLastModified);
-                                        } catch {
-                                            // Non-fatal: keep restored content even if timestamp restore fails.
-                                        }
-                                    }
-                                    result.restoredCount += 1;
-                                    if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
-                                        result.preflight.categoryStats[targetMapping.category].restoredEntries += 1;
-                                    }
-                                    reportExtractProgress(false);
-                                    zipfile.readEntry();
                                 } catch (error) {
-                                    result.failedCount += 1;
-                                    if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
-                                        result.preflight.categoryStats[targetMapping.category].failedEntries += 1;
+                                    if (!isRestoreEntryIdleTimeoutError(error)) {
+                                        throw error;
                                     }
-                                    addRestoreReportSample(result.preflight, normalized, `write_failed:${error instanceof Error ? error.message : String(error)}`);
-                                    reportExtractProgress(true);
-                                    finish(error);
+
+                                    console.warn(
+                                        '[user-backup] Entry stream stalled; retrying with fallback extractor: '
+                                        + `name=${normalized} size=${entryTotalBytes}`,
+                                    );
+                                    await fsPromises.rm(targetPath, { force: true });
+                                    entryBytes = 0;
+                                    reportEntryProgress(true);
+                                    await extractZipEntryWithAdmZip({
+                                        zipPath: uploadPath,
+                                        entryName: entry.fileName,
+                                        targetPath,
+                                        expectedSize: entryTotalBytes,
+                                        onBytes: totalBytes => {
+                                            entryBytes = totalBytes;
+                                            reportEntryProgress(true);
+                                        },
+                                    });
+                                    console.info(
+                                        `[user-backup] Fallback extractor succeeded: name=${normalized} bytes=${entryBytes}`,
+                                    );
                                 }
-                            });
+
+                                reportEntryProgress(true);
+                                const zipLastModified = typeof entry.getLastModDate === 'function'
+                                    ? entry.getLastModDate()
+                                    : null;
+                                if (zipLastModified instanceof Date && !Number.isNaN(zipLastModified.getTime())) {
+                                    try {
+                                        await fsPromises.utimes(targetPath, zipLastModified, zipLastModified);
+                                    } catch {
+                                        // Non-fatal: keep restored content even if timestamp restore fails.
+                                    }
+                                }
+                                result.restoredCount += 1;
+                                if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
+                                    result.preflight.categoryStats[targetMapping.category].restoredEntries += 1;
+                                }
+                                reportExtractProgress(false);
+                                zipfile.readEntry();
+                            } catch (error) {
+                                result.failedCount += 1;
+                                if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
+                                    result.preflight.categoryStats[targetMapping.category].failedEntries += 1;
+                                }
+                                addRestoreReportSample(result.preflight, normalized, `write_failed:${error instanceof Error ? error.message : String(error)}`);
+                                reportExtractProgress(true);
+                                finish(error);
+                            }
                         })().catch(finish);
                     });
 
