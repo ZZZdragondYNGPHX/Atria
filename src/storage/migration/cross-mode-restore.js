@@ -294,6 +294,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             onProgress,
             signal,
         });
+        throwIfRestoreCancelled(signal);
 
         // 5. Success: retain the snapshot as the user's recovery point and
         // tear down the transient source.
