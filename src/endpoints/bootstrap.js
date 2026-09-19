@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { getImages } from '../util.js';
+import { getImages, getVersion } from '../util.js';
 import { getCharactersSnapshot } from './characters.js';
 import { getGroupsSnapshot } from './groups.js';
 import { SecretManager } from './secrets.js';
@@ -14,6 +14,7 @@ router.post('/bootstrap', async (request, response) => {
         const handle = request.user.profile.handle;
         const charactersPromise = getCharactersSnapshot(directories, { useShallowCharacters: true, handle });
         const groupsPromise = getGroupsSnapshot(handle);
+        const versionPromise = getVersion();
         const settings = await buildSettingsResponse(request, {
             includePresetContents: false,
             includeQuickReplyPresets: false,
@@ -24,8 +25,10 @@ router.post('/bootstrap', async (request, response) => {
         const secret_state = new SecretManager(directories).getSecretState();
         const characters = await charactersPromise;
         const groups = await groupsPromise;
+        const version = await versionPromise;
 
         return response.send({
+            version,
             settings,
             characters,
             groups,
