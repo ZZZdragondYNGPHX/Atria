@@ -15,7 +15,7 @@ let activeArchiveRestore = null;
 const archiveRestoreViews = new Set();
 
 function archiveRestoreRunning() {
-    return activeArchiveRestore?.state === 'running';
+    return activeArchiveRestore?.state === 'running' || activeArchiveRestore?.state === 'cancelling';
 }
 
 function activateArchivePanel(root) {
@@ -27,20 +27,41 @@ function activateArchivePanel(root) {
     });
 }
 
+function setRestoreCancelState(root, { visible = false, disabled = false, label = '中断并回退' } = {}) {
+    const button = root.querySelector('.backupRestoreCancel');
+    if (!button) return;
+    button.classList.toggle('displayNone', !visible);
+    button.disabled = Boolean(disabled);
+    const text = button.querySelector('span');
+    if (text) text.textContent = label;
+    else button.innerHTML = `<i class="fa-fw fa-solid fa-rotate-left"></i><span>${label}</span>`;
+}
+
 function syncArchiveRestoreView(root) {
     const session = activeArchiveRestore;
     if (!root || !session) return;
 
     if (session.fileName) {
         const label = root.querySelector('.backupArchiveFileLabel');
-        if (label && session.state === 'running') label.textContent = `恢复中：${session.fileName}`;
+        if (label && (session.state === 'running' || session.state === 'cancelling')) {
+            label.textContent = session.state === 'cancelling'
+                ? `正在中断：${session.fileName}`
+                : `恢复中：${session.fileName}`;
+        }
     }
 
-    if (session.state === 'running') {
+    if (session.state === 'running' || session.state === 'cancelling') {
         activateArchivePanel(root);
         setRestoreControlsBusy(root, true);
         setRestoreStartEnabled(root, false);
-        if (session.progress) {
+        setRestoreCancelState(root, {
+            visible: true,
+            disabled: session.state === 'cancelling',
+            label: session.state === 'cancelling' ? '正在中断并回退…' : '中断并回退',
+        });
+        if (session.state === 'cancelling') {
+            renderRestoreTerminalState(root, '正在中断当前恢复并回退到开始前状态…', 'running');
+        } else if (session.progress) {
             renderRestoreProgress(root, session.progress);
         } else {
             renderRestoreTerminalState(root, '恢复任务仍在后台运行…', 'running');
@@ -49,6 +70,7 @@ function syncArchiveRestoreView(root) {
     }
 
     setRestoreControlsBusy(root, false);
+    setRestoreCancelState(root, { visible: false });
 
     if (session.state === 'completed') {
         renderRestoreTerminalState(
@@ -59,7 +81,13 @@ function syncArchiveRestoreView(root) {
     } else if (session.state === 'failed') {
         renderRestoreTerminalState(root, `上次恢复失败：${session.error || '未知错误'}`, 'error');
     } else if (session.state === 'cancelled') {
-        renderRestoreTerminalState(root, '上次恢复已取消。', 'idle');
+        renderRestoreTerminalState(
+            root,
+            session.result?.rolledBack
+                ? '恢复已中断，并已回退到开始前状态。'
+                : '恢复已中断；尚未写入数据，无需回退。',
+            'idle',
+        );
     }
 }
 
@@ -93,7 +121,7 @@ function updateArchiveRestoreProgress(session, event) {
 function finishArchiveRestoreSession(session, state, payload = null) {
     if (activeArchiveRestore !== session) return;
     session.state = state;
-    if (state === 'completed') session.result = payload;
+    if (state === 'completed' || state === 'cancelled') session.result = payload;
     if (state === 'failed') session.error = String(payload?.message || payload || '恢复失败');
     broadcastArchiveRestoreState();
 }
@@ -181,7 +209,7 @@ async function readRestoreResponse(response, onProgress = () => {}) {
     const decoder = new TextDecoder();
     let buffer = '';
     let result = null;
-    let streamedError = '';
+    let streamedError = null;
 
     const consumeLine = (line) => {
         const trimmed = line.trim();
@@ -197,7 +225,11 @@ async function readRestoreResponse(response, onProgress = () => {}) {
             return;
         }
         if (payload?.type === 'error') {
-            streamedError = String(payload.error || '恢复失败');
+            streamedError = {
+                message: String(payload.error || '恢复失败'),
+                code: payload.code || null,
+                rolledBack: Boolean(payload.rolledBack),
+            };
             return;
         }
         if (payload?.type === 'result') {
@@ -221,7 +253,12 @@ async function readRestoreResponse(response, onProgress = () => {}) {
     buffer += decoder.decode();
     if (buffer.trim()) consumeLine(buffer);
 
-    if (streamedError) throw new Error(streamedError);
+    if (streamedError) {
+        const error = new Error(streamedError.message);
+        error.code = streamedError.code;
+        error.rolledBack = streamedError.rolledBack;
+        throw error;
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     if (!result) throw new Error('恢复连接已结束，但服务器没有返回完成结果。');
     return result;
