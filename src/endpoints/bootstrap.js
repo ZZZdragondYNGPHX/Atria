@@ -30,7 +30,10 @@ router.post('/bootstrap', async (request, response) => {
         const groups = await groupsPromise;
         const version = await versionPromise;
 
-        finishStartupPhase(`characters=${characters.length} groups=${groups.length} avatars=${avatars.length}`);
+        const characterCount = Array.isArray(characters) ? characters.length : 0;
+        const groupCount = Array.isArray(groups) ? groups.length : 0;
+        const avatarCount = Array.isArray(avatars) ? avatars.length : 0;
+        finishStartupPhase(`characters=${characterCount} groups=${groupCount} avatars=${avatarCount}`);
         markStartupMilestone('http.bootstrap.done');
         return response.send({
             version,
