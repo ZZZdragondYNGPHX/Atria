@@ -184,4 +184,9 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await page.locator('#wi_workspace_mobile_back').click();
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();
     await expect(page.locator('#wi_workspace_inspector')).toBeHidden();
+
+    // Full-screen mobile keeps an in-workspace close action because the
+    // external drawer launcher is covered by the workspace itself.
+    await page.locator('#wi_workspace_close').click();
+    await expect(page.locator('#WorldInfo')).toBeHidden();
 });
