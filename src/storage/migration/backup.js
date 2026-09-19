@@ -12,8 +12,7 @@ export const SNAPSHOT_META_ENTRY = '_atria_snapshot_meta.json';
  * The snapshot is a verbatim recursive copy of the user's per-handle directory.
  * For SQLite users this copies the .sqlite file too (better-sqlite3 keeps it
  * consistent on close, but during normal operation the WAL/SHM files coexist —
- * cpSync copies all of them, which is fine because a restore is "rm new dir,
- * mv backup back").
+ * the recursive copy captures all of them.
  *
  * The timestamp uses ISO-8601 with `:` and `.` replaced by `-` so it's both
  * filename-safe and lexicographically sortable.
@@ -25,8 +24,8 @@ export const SNAPSHOT_META_ENTRY = '_atria_snapshot_meta.json';
  *    `engine.dumpUser(handle)` into `<dest>/_engine_dump.bin` plus a
  *    `<dest>/_engine_meta.json` sidecar so `restoreFromSnapshot` can replay it.
  *  - When `engine` is null/undefined OR `engine.kind === 'fs'`, the dump step
- *    is skipped — fs users have no engine-side state and the cpSync alone is
- *    a faithful snapshot. This makes the parameter strictly opt-in: callers
+ *    is skipped — fs users have no engine-side state and the directory copy
+ *    alone is a faithful snapshot. This makes the parameter strictly opt-in: callers
  *    that pre-date engine-dump capture (auto-rollback test, runner.test.js
  *    fs↔sqlite paths) keep working without modification.
  *
@@ -52,7 +51,7 @@ export async function snapshotUser({ handle, userRoot, backupRoot, engine = null
     fs.mkdirSync(backupRoot, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const dest = path.join(backupRoot, `${timestamp}-${handle}`);
-    fs.cpSync(userRoot, dest, { recursive: true });
+    await fs.promises.cp(userRoot, dest, { recursive: true });
 
     if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
         const snapshotMeta = {
@@ -60,7 +59,7 @@ export async function snapshotUser({ handle, userRoot, backupRoot, engine = null
             handle,
             createdAt: new Date().toISOString(),
         };
-        fs.writeFileSync(
+        await fs.promises.writeFile(
             path.join(dest, SNAPSHOT_META_ENTRY),
             JSON.stringify(snapshotMeta, null, 2) + '\n',
             'utf8',
@@ -84,7 +83,7 @@ export async function snapshotUser({ handle, userRoot, backupRoot, engine = null
                 createdAt: new Date().toISOString(),
                 handle,
             };
-            fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+            await fs.promises.writeFile(metaPath, JSON.stringify(meta, null, 2));
             await new Promise((resolve, reject) => {
                 const write = fs.createWriteStream(dumpPath);
                 dumpStream.on('error', reject);
@@ -140,7 +139,7 @@ export async function restoreFromSnapshot({ handle, userRoot, backupPath, engine
         throw new Error(`restoreFromSnapshot: backupPath does not exist: ${backupPath}`);
     }
     if (fs.existsSync(userRoot)) {
-        fs.rmSync(userRoot, { recursive: true, force: true });
+        await fs.promises.rm(userRoot, { recursive: true, force: true });
     }
     // Exclude the engine-side artifacts at copy time so userRoot doesn't end up
     // with top-level `_engine_dump.bin` / `_engine_meta.json` after rollback —
@@ -148,7 +147,7 @@ export async function restoreFromSnapshot({ handle, userRoot, backupPath, engine
     // not part of the user's payload. Without this filter the next snapshot
     // taken from the restored userRoot would re-snapshot the previous dump,
     // bloating backups and confusing forensic inspection.
-    fs.cpSync(backupPath, userRoot, {
+    await fs.promises.cp(backupPath, userRoot, {
         recursive: true,
         filter: (src) => {
             const base = path.basename(src);
