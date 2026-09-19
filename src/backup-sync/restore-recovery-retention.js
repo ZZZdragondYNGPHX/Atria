@@ -50,9 +50,10 @@ export async function pruneRestoreRecoveryPoints({
     }
 
     points.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const pointPaths = new Set(points.map(point => point.path));
     const keep = new Set(points.slice(0, maxPoints).map(point => point.path));
     for (const protectedPath of protectedPaths) {
-        keep.add(protectedPath);
+        if (pointPaths.has(protectedPath)) keep.add(protectedPath);
     }
 
     // If a protected old point pushes us over the cap, evict the oldest
