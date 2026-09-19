@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, and the restore UI / five-point recovery retention fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, and the regex engine performance refactor are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `892476eb6a694bc5fa89124e0a3de65a86a8c12e`
+- `21f11b93f0e165485488236b74072a12c7df0c4e`
 
-This commit is the squash merge of PR #20. Backup Center now keeps the `中断并回退` control visible while idle (disabled until a restore is active), and restore recovery history is physically capped at five points per account with safe pruning of existing backlogs. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #22. The regex engine now caches bounded static execution plans by active context, narrows rules by placement/lane/edit/depth before execution, grows compiled-pattern capacity beyond the historical 1000-rule ceiling when needed, keeps runtime providers dynamic, reports active duplicate/conflicting rules conservatively, and renders large Regex Editor lists in detached chunks. No regex persistence schema or rule ordering semantics changed. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,23 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Regex engine performance refactor
+
+- PR #22
+- Baseline: `main@9b9801ab941f8bb0c08a3cbf52974b045a96da82`
+- Final validated head: `345e4f06f6169c7383ae840997775c5cc3dfb669`
+- Squash merge / current `main`: `21f11b93f0e165485488236b74072a12c7df0c4e`
+- Validated task tree and merged-main tree are identical.
+- Record: `refactors/regex-engine-performance.md`
+- Static persisted regexes now use bounded cached execution plans with placement and lane/edit/depth narrowing instead of rescanning the complete active rule list for every processed string.
+- Plain runtime regex providers remain dynamically evaluated on every call; historical static-before-runtime and sequential replacement ordering are preserved.
+- Compiled-regex LRU capacity grows from its 1000 base to cover the active unique-pattern set, capped at 8192 to avoid >1000-rule compile/evict thrashing.
+- Duplicate and same-pattern conflict diagnostics are advisory only and use placement × lane bucketing; no rule is automatically deleted, disabled, merged or reordered.
+- Regex Editor rows are built in detached fragments, yielding every 80 rows, and attached per source list once.
+- Final validation passed Atria Migration Guard, ESLint, frontend libraries build and the complete Node unit suite.
+- Android JVM/APK and Docker builds were not run because they remain opt-in and this task changes browser JavaScript/CSS/HTML only.
+
 
 ### Restore UI visibility and five-point recovery retention
 
