@@ -112,6 +112,7 @@ import corsProxyMiddleware from './middleware/corsProxy.js';
 import hostWhitelistMiddleware from './middleware/hostWhitelist.js';
 import userCssMiddleware from './middleware/userCss.js';
 import { storageErrorHandler } from './middleware/storage-errors.js';
+import { markStartupMilestone } from './startup-timing.js';
 import {
     getVersion,
     checkRemoteVersion,
@@ -329,6 +330,7 @@ if (!cliArgs.disableCsrf) {
     });
 
     app.get('/csrf-token', (req, res) => {
+        markStartupMilestone('http.csrf-token');
         res.json({
             'token': csrfSyncProtection.generateToken(req),
         });
@@ -342,6 +344,7 @@ if (!cliArgs.disableCsrf) {
 } else {
     console.warn('\nCSRF protection is disabled. This will make your server vulnerable to CSRF attacks.\n');
     app.get('/csrf-token', (req, res) => {
+        markStartupMilestone('http.csrf-token');
         res.json({
             'token': 'disabled',
         });
@@ -351,6 +354,7 @@ if (!cliArgs.disableCsrf) {
 // Static files
 // Host index page
 app.get('/', cacheBuster.middleware, (request, response) => {
+    markStartupMilestone(`http.root.${request.method.toLowerCase()}`);
     if (shouldRedirectToLogin(request)) {
         const query = request.url.split('?')[1];
         const redirectUrl = query ? `/login?${query}` : '/login';
@@ -375,6 +379,18 @@ app.get('/callback/:source?', (request, response) => {
 app.get('/login', loginPageMiddleware);
 
 // Host frontend assets
+const STARTUP_ASSET_MILESTONES = new Set([
+    '/init.js',
+    '/lib.js',
+    '/lib.core.bundle.js',
+    '/script.js',
+]);
+app.use((request, _response, next) => {
+    if (request.method === 'GET' && STARTUP_ASSET_MILESTONES.has(request.path)) {
+        markStartupMilestone(`http.asset.${request.path.slice(1)}`);
+    }
+    next();
+});
 const webpackMiddleware = getWebpackServeMiddleware();
 app.use(webpackMiddleware);
 app.use(userCssMiddleware);

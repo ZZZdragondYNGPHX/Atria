@@ -18,6 +18,7 @@
 
 import crypto from 'node:crypto';
 import express from 'express';
+import { markStartupMilestone } from './startup-timing.js';
 
 const TICKET_TTL_MS = 30_000;
 const TICKET_CLEANUP_INTERVAL_MS = 60_000;
@@ -86,6 +87,7 @@ setInterval(() => {
 export const wsTicketRouter = express.Router();
 
 wsTicketRouter.post('/', (req, res) => {
+    markStartupMilestone('http.ws-ticket');
     const userHandle = req?.user?.profile?.handle || '';
     const ticket = mintTicket(userHandle);
     res.json({ ticket });
