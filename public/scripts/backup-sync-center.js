@@ -48,6 +48,8 @@ function syncArchiveRestoreView(root) {
         return;
     }
 
+    setRestoreControlsBusy(root, false);
+
     if (session.state === 'completed') {
         renderRestoreTerminalState(
             root,
