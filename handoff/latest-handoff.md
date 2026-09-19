@@ -2,13 +2,77 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, the World Info Workspace UI refactor, the World Info Workspace Chinese-localization fix, the World Info mobile product UI refactor, the World Info mobile controls follow-up, the mobile lorebook action-menu reliability fix, and the mobile lorebook top-layer action-sheet hardening are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. All previously recorded product, storage, orchestration, memory, World Info, restore, mobile UI, and namespace work remains integrated. The latest development pass continued the Android / Termux startup-speed program and has now exhausted the obvious low-risk critical-path reductions that can be justified without new real-device timing data.
 
 Current authoritative `main`:
 
-- `653b1b59f771e0c494e73af64f799790c6c3a856`
+- `ffc2857b9fdf8225958c2bf8934b360ad4cff91b`
 
-This commit is the squash merge of PR #28, a real-device hardening follow-up to PR #27. Mobile lorebook actions now render in a WorldInfo-owned modal `<dialog>` top layer with explicit close/event isolation, full-viewport bottom-sheet geometry, and a higher-specificity reset of the legacy absolute card-menu positioning. Library / Entries mobile search disclosure controls also use explicit JS-driven buttons instead of native `details`. Existing book actions and World Info persistence/API/import-export/activation/state/selection/storage semantics are unchanged. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #58, `perf: load Select2 after first visible paint`. Select2 classic JavaScript no longer executes before the first visible UI; the mobile focus guard stays eager, while desktop OpenAI model-picker Select2 enhancement is initialized only after Select2 is ready. Final validation passed Atria PR Checks #655 and Worldbook Performance Foundation #315, including complete Node unit tests, ESLint, Atria Migration Guard, real-host Chromium startup smoke, and full World Info browser acceptance.
+
+### Android / Termux startup optimization continuation
+
+The current optimization sequence is complete through the following merged work:
+
+- #30 warm-start frontend fast path;
+- #31 stable content-addressed frontend bundle fingerprint;
+- #32 Termux-private disposable Webpack cache;
+- #33 parallel frontend bootstrap module loading;
+- #34 critical frontend module preload;
+- #35 process-local version metadata cache;
+- #37 loopback frontend-bundle compression bypass;
+- #38 version metadata folded into bootstrap;
+- #39 extension-discovery startup burst cache;
+- #41 WebSocket handshake overlapped with bootstrap;
+- #42 loopback traffic bypasses dynamic compression;
+- #43 Termux readiness probe uses HEAD;
+- #44 first-load loader immediate hide;
+- #45 startup milestone telemetry;
+- #46 automatic Termux-private Webpack cache plus backend phase timing;
+- #47 client startup timing returned to backend logs;
+- #48 frontend startup no longer waits for full `window.load`;
+- #49 post-visible startup module lazy loading;
+- #50 on-demand advanced frontend tools;
+- #51 chat and skill tool lazy loading;
+- #52 account-management tool lazy loading;
+- #53 Request Inspector lazy loading;
+- #55 process-local Webpack fingerprint memoization;
+- #56 variable-operation panel lazy loading;
+- #57 Cropper libraries loaded only for crop UI;
+- #54 audio player loaded only for audio attachments;
+- #59 Bulk Edit Overlay removed from the initial static graph and its `script.js` cycle broken;
+- #58 Select2 + Atria patch moved behind first visible paint, with desktop OpenAI Select2 controls deferred safely.
+
+Permanent records for the final continuation items:
+
+- `performance/android-termux-startup-lazy-audio-player.md`
+- `performance/android-termux-startup-lazy-bulk-edit-overlay.md`
+- `performance/android-termux-startup-lazy-select2.md`
+
+Important audit conclusions:
+
+- Do not perform superficial lazy imports when another first-screen module still statically imports the same module. This ruled out, among others, `scrapers.js`, `announcements.js`, and `samplerSelect.js`.
+- `toolcool-color-picker.js` was not delayed because Quick Reply can synchronously assign custom-element properties before registration; the regression risk is not justified without stronger evidence.
+- `pagination.js` remains eager because personas, groups, text-generation model UI, and slash-command helpers use it on normal product paths.
+- Stats, logprobs, CFG, migration/safe-mode, and other deeper runtime paths were not reordered merely to chase source-byte reductions.
+- Experimental PR #60 (overlap frontend cache check with backend pre-setup) was intentionally closed unmerged after audit: a warm-cache hit now performs only a tiny set of output-stat checks after #55, while overlapping a cache-miss Webpack compile could increase CPU/IO contention.
+- Old PR #40 was closed as superseded by already-merged PR #41.
+
+No Android APK/JVM or Docker build was run during this browser/Node startup continuation because those validations are opt-in unless explicitly requested.
+
+### Measurement gate / next action
+
+Do not continue blind startup refactors from this point. The code shape has changed substantially since the last real-device log, especially through #46–#59.
+
+The next useful action is to update the Termux installation to current `main` and collect one new complete startup log containing:
+
+- backend `bootstrap.*` phase lines;
+- backend `pre-setup.*` phase lines;
+- frontend-cache source/root/key/hit;
+- `server.listening`, root GET, CSRF, WS ticket/connection, bootstrap timing;
+- the final `[startup-client] {...}` summary.
+
+Use that log to decide whether the next bottleneck is backend pre-listen work, HTML/module discovery/import, settings/bootstrap work, or post-visible batches. Do not claim a real-device speedup for #54/#58/#59 until that measurement exists.
 
 ## Branch roles
 
