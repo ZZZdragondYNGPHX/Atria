@@ -3845,15 +3845,29 @@ router.post('/group/patch', async function (request, response) {
             return sendIntegrityConflict(response, createIntegrityMismatchError(chatFilePath, integritySlug));
         }
 
+        const nativeOperations = operations.every(operation => {
+            const op = String(operation?.op || '').trim().toLowerCase();
+            return ['test', 'replace', 'remove'].includes(op)
+                && /^\/body\/(0|[1-9]\d*)$/.test(String(operation?.path || ''))
+                && (op === 'remove' || Object.hasOwn(operation, 'value'));
+        })
+            ? operations.map(operation => ({
+                ...operation,
+                path: String(operation.path).replace(/^\/body/, ''),
+            }))
+            : null;
+
         try {
-            const native = await repo.patchMessages(
-                handle,
-                '',
-                id,
-                operations,
-                expected,
-                { ...route, chatMetadata },
-            );
+            const native = nativeOperations
+                ? await repo.patchMessages(
+                    handle,
+                    '',
+                    id,
+                    nativeOperations,
+                    expected,
+                    { ...route, chatMetadata },
+                )
+                : { status: 'unsupported' };
             if (native?.status === 'ok') {
                 writeChatSyncState(chatFilePath, {
                     integrity: native.integrity,
@@ -3924,16 +3938,24 @@ router.post('/group/patch', async function (request, response) {
             const saved = await repo.save(handle, '', id, patched.header, patched.body, existing.integrity,
                 { isGroup: true, groupId: id });
 
-            try {
-                const headerWithIntegrity = {
-                    ...(patched.header ?? {}),
-                    chat_metadata: applyIntegrityToMetadata(patched.header?.chat_metadata, saved.integrity),
-                };
-                const jsonlData = [headerWithIntegrity, ...(patched.body ?? [])].map(m => JSON.stringify(m)).join('\n');
-                getBackupFunction(handle, id)(request.user.directories.backups, id, jsonlData);
-            } catch (backupErr) {
-                console.error('Chat backup after group/patch failed', backupErr);
-            }
+            await getBackupFunction(handle, id)(
+                request.user.directories.backups,
+                id,
+                async () => {
+                    const chatDoc = await repo.get(handle, '', id, route);
+                    if (!chatDoc) return null;
+                    const headerWithIntegrity = {
+                        ...(chatDoc.header ?? {}),
+                        chat_metadata: applyIntegrityToMetadata(
+                            chatDoc.header?.chat_metadata,
+                            chatDoc.integrity,
+                        ),
+                    };
+                    return [headerWithIntegrity, ...(chatDoc.body ?? [])]
+                        .map(message => JSON.stringify(message))
+                        .join('\n');
+                },
+            );
 
             await refreshRecentChatIndexEntry(request, chatFilePath);
             acknowledgeGenerationFromValueOrPersistTarget(request, operations, buildGroupPersistTargetHint(request));
