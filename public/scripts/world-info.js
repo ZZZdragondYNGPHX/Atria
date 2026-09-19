@@ -7937,6 +7937,14 @@ export async function getWorldEntry(name, data, entry) {
             return 'string';
         };
 
+        const stateScalarTypeLabels = Object.freeze({
+            any: translate('Any value'),
+            string: translate('String value'),
+            number: translate('Number value'),
+            boolean: translate('Boolean value'),
+            null: translate('Null value'),
+        });
+
         const parseStateConditionPath = value => String(value || '')
             .split('.')
             .map(part => part.trim())
@@ -7962,18 +7970,18 @@ export async function getWorldEntry(name, data, entry) {
 
         const validateStateConditionDrafts = () => {
             if (stateConditionDrafts.length > 32) {
-                throw new RangeError('State conditions are limited to 32 per entry');
+                throw new RangeError(t`State conditions are limited to 32 per entry`);
             }
             const persistable = getPersistableStateConditions();
             if (persistable.length !== stateConditionDrafts.length) {
-                throw new TypeError('Every state condition needs a provider, path, operator, and scalar value');
+                throw new TypeError(t`Every state condition needs a provider, path, operator, and scalar value`);
             }
             const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
             const stateActivation = persistable.length > 0 && stateActivationInput.prop('checked') === true;
             const evaluation = evaluateWorldInfoStateConditions(persistable, [], logic);
             const invalidIndex = evaluation.results.findIndex(result => result.reason === 'invalid_condition');
             if (invalidIndex >= 0) {
-                throw new TypeError(`Condition #${invalidIndex + 1} is invalid`);
+                throw new TypeError(t`Condition #${invalidIndex + 1} is invalid`);
             }
             return { persistable, logic, stateActivation };
         };
@@ -7999,7 +8007,7 @@ export async function getWorldEntry(name, data, entry) {
                 stateConditionStatus.text(t`State conditions saved`);
                 return true;
             } catch (error) {
-                const message = String(error?.message || error || 'Invalid state conditions');
+                const message = String(error?.message || error || t`Invalid state conditions`);
                 stateConditionStatus.text(message);
                 toastr.warning(message, t`Invalid state conditions`);
                 return false;
@@ -8062,7 +8070,7 @@ export async function getWorldEntry(name, data, entry) {
                     gte: '≥',
                     lt: '<',
                     lte: '≤',
-                    contains: 'contains',
+                    contains: translate('Contains'),
                 };
                 for (const operator of WORLD_INFO_CONDITION_OPERATORS) {
                     operatorInput.append(
@@ -8086,7 +8094,7 @@ export async function getWorldEntry(name, data, entry) {
                 const typeField = makeStateConditionField(translate('Value type'));
                 const typeInput = $('<select class="text_pole margin0"></select>');
                 for (const type of ['string', 'number', 'boolean', 'null']) {
-                    typeInput.append($('<option></option>').val(type).text(type));
+                    typeInput.append($('<option></option>').val(type).text(stateScalarTypeLabels[type] || type));
                 }
                 typeInput.val(inferStateConditionValueType(condition.value));
                 typeField.append(typeInput);
@@ -8099,8 +8107,8 @@ export async function getWorldEntry(name, data, entry) {
 
                     if (valueType === 'boolean') {
                         valueInput = $('<select class="text_pole margin0 wi-state-condition-value-control"></select>')
-                            .append($('<option value="true">true</option>'))
-                            .append($('<option value="false">false</option>'))
+                            .append($('<option value="true"></option>').text(translate('True')))
+                            .append($('<option value="false"></option>').text(translate('False')))
                             .val(condition.value === true ? 'true' : 'false');
                         valueInput.on('input', async () => {
                             stateConditionDrafts[index].value = valueInput.val() === 'true';
@@ -8121,7 +8129,7 @@ export async function getWorldEntry(name, data, entry) {
                                 markStateConditionsDirty();
                             });
                         } else if (valueType === 'null') {
-                            valueInput.attr('type', 'text').val('null').prop('disabled', true);
+                            valueInput.attr('type', 'text').val(translate('Null value')).prop('disabled', true);
                         } else {
                             valueInput.attr('type', 'text').val(
                                 typeof condition.value === 'string'
@@ -8149,9 +8157,8 @@ export async function getWorldEntry(name, data, entry) {
                 });
                 renderValueInput();
 
-                const removeButton = $(
-                    '<button type="button" class="menu_button wi-state-condition-remove" title="Remove condition"><i class="fa-solid fa-trash-can"></i></button>',
-                );
+                const removeButton = $('<button type="button" class="menu_button wi-state-condition-remove"><i class="fa-solid fa-trash-can"></i></button>')
+                    .attr('title', translate('Remove condition'));
                 removeButton.on('click', async event => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -8249,11 +8256,11 @@ export async function getWorldEntry(name, data, entry) {
 
         const validateStateEventDrafts = () => {
             if (stateEventDrafts.length > 32) {
-                throw new RangeError('State events are limited to 32 per entry');
+                throw new RangeError(t`State events are limited to 32 per entry`);
             }
             const persistable = getPersistableStateEvents();
             if (persistable.length !== stateEventDrafts.length) {
-                throw new TypeError('Every state event needs a provider, path, and at least one From/To value');
+                throw new TypeError(t`Every state event needs a provider, path, and at least one From/To value`);
             }
             const logic = stateEventLogicInput.val() === 'any' ? 'any' : 'all';
             return { persistable, logic };
@@ -8277,7 +8284,7 @@ export async function getWorldEntry(name, data, entry) {
                 stateEventStatus.text(t`State events saved`);
                 return true;
             } catch (error) {
-                const message = String(error?.message || error || 'Invalid state events');
+                const message = String(error?.message || error || t`Invalid state events`);
                 stateEventStatus.text(message);
                 toastr.warning(message, t`Invalid state events`);
                 return false;
@@ -8339,7 +8346,7 @@ export async function getWorldEntry(name, data, entry) {
                     const valueField = makeStateEventField(translate('Value'), `wi-state-event-${side}-value`);
                     const typeInput = $('<select class="text_pole margin0"></select>');
                     for (const type of ['any', 'string', 'number', 'boolean', 'null']) {
-                        typeInput.append($('<option></option>').val(type).text(type));
+                        typeInput.append($('<option></option>').val(type).text(stateScalarTypeLabels[type] || type));
                     }
                     typeInput.val(inferStateEventValueType(eventDraft[presentKey], eventDraft[valueKey]));
                     typeField.append(typeInput);
@@ -8351,12 +8358,12 @@ export async function getWorldEntry(name, data, entry) {
 
                         if (valueType === 'any') {
                             valueInput = $('<input class="text_pole margin0 wi-state-event-value-control" type="text">')
-                                .val('Any')
+                                .val(translate('Any value'))
                                 .prop('disabled', true);
                         } else if (valueType === 'boolean') {
                             valueInput = $('<select class="text_pole margin0 wi-state-event-value-control"></select>')
-                                .append($('<option value="true">true</option>'))
-                                .append($('<option value="false">false</option>'))
+                                .append($('<option value="true"></option>').text(translate('True')))
+                                .append($('<option value="false"></option>').text(translate('False')))
                                 .val(eventDraft[valueKey] === true ? 'true' : 'false');
                             valueInput.on('input', () => {
                                 stateEventDrafts[index][valueKey] = valueInput.val() === 'true';
@@ -8377,7 +8384,7 @@ export async function getWorldEntry(name, data, entry) {
                                     markStateEventsDirty();
                                 });
                             } else if (valueType === 'null') {
-                                valueInput.attr('type', 'text').val('null').prop('disabled', true);
+                                valueInput.attr('type', 'text').val(translate('Null value')).prop('disabled', true);
                             } else {
                                 valueInput.attr('type', 'text').val(
                                     typeof eventDraft[valueKey] === 'string'
@@ -8420,9 +8427,8 @@ export async function getWorldEntry(name, data, entry) {
                     'to', translate('To'), 'toPresent', 'toValue',
                 );
 
-                const removeButton = $(
-                    '<button type="button" class="menu_button wi-state-event-remove" title="Remove event"><i class="fa-solid fa-trash-can"></i></button>',
-                );
+                const removeButton = $('<button type="button" class="menu_button wi-state-event-remove"><i class="fa-solid fa-trash-can"></i></button>')
+                    .attr('title', translate('Remove event'));
                 removeButton.on('click', event => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -8523,17 +8529,17 @@ export async function getWorldEntry(name, data, entry) {
                 for (const value of refs) {
                     const normalized = normalizeWorldInfoEntryRef(value, currentWorld);
                     if (!normalized) {
-                        throw new TypeError(`${label}: invalid entry reference "${value}"`);
+                        throw new TypeError(t`${label}: invalid entry reference "${value}"`);
                     }
                     if (normalized.key === currentKey) {
-                        throw new TypeError(`${label}: an entry cannot depend on or relate to itself`);
+                        throw new TypeError(t`${label}: an entry cannot depend on or relate to itself`);
                     }
                 }
             };
 
             try {
-                validateRefs(requiredEntries, 'Required entries');
-                validateRefs(relatedEntries, 'Related entries');
+                validateRefs(requiredEntries, translate('Required entries'));
+                validateRefs(relatedEntries, translate('Related entries'));
                 const mutualExclusionGroup = String(mutualExclusionGroupInput.val() ?? '').trim().slice(0, 160);
                 const budgetTier = ['critical', 'scene', 'normal', 'optional'].includes(String(budgetTierInput.val()))
                     ? String(budgetTierInput.val())
