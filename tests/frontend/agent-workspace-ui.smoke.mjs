@@ -322,12 +322,14 @@ try {
     await workspace.getByPlaceholder('搜索预设').fill('');
     assert.equal(await workspace.getByRole('button', { name: '绑定当前角色', exact: true }).isDisabled(), true);
     await workspace.locator('.workspace-more-menu > summary').click();
+    await workspace.getByRole('button', { name: '复制', exact: true }).click();
+    await workspace.locator('.workspace-more-menu > summary').click();
     await workspace.getByRole('button', { name: '预设设置', exact: true }).click();
     const zhInspector = workspace.locator('.atria-workspace-inspector');
     await zhInspector.getByLabel('最大执行步数', { exact: true }).fill('12');
     await zhInspector.getByRole('button', { name: '保存', exact: true }).click();
     await zhInspector.getByRole('button', { name: '关闭检查器', exact: true }).click();
-    assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets[0].planTemplate.budgets.maxSteps), 12);
+    assert.equal(await page.evaluate(() => window.settings.agentWorkspace.presets.find(p => p.mode === 'spec' && !p.id.startsWith('builtin-')).planTemplate.budgets.maxSteps), 12);
     const text = await workspace.innerText();
     for (const leaked of ['Effective:', 'Selected by:', 'Bind as', 'maxSteps', 'Append worker', 'Search presets']) assert(!text.includes(leaked), leaked);
     for (const width of [320, 390, 768, 1440]) {
