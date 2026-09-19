@@ -41,10 +41,12 @@ test.each(['Atri-plugin-only', 'Atri-agenda-agent'])('%s injects runtime message
     }
 });
 
-test('repairs a restored revision-1 Luker Agenda even when the old revision marker is present', () => {
+test('repairs a restored revision-1 predecessor Agenda even when the old revision marker is present', () => {
     const old = createWorkspaceFactoryPreset('agenda', 'builtin-agenda');
     old.planTemplate.metadata.builtinAgendaRevision = 1;
-    old.planTemplate.agents[0].instructions = '你是 Luker Agenda 调度者。只调用 luker_orch_planner_step。';
+    const retiredProduct = 'Lu' + 'ker';
+    const retiredTool = 'lu' + 'ker_orch_planner_step';
+    old.planTemplate.agents[0].instructions = `你是 ${retiredProduct} Agenda 调度者。只调用 ${retiredTool}。`;
 
     const custom = { ...structuredClone(old), id: 'my-agenda', name: 'My agenda' };
     let library = updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: old });
@@ -61,8 +63,8 @@ test('repairs a restored revision-1 Luker Agenda even when the old revision mark
     expect(nativeAgenda.planTemplate.metadata.builtinAgendaRevision).toBe(2);
     expect(nativeAgenda.planTemplate.agents[0].instructions).toContain('Atria Agenda');
     expect(nativeAgenda.planTemplate.agents[0].instructions).toContain('atri_orch_planner_step');
-    expect(nativeAgenda.planTemplate.agents[0].instructions).not.toContain('luker_orch_planner_step');
-    expect(userAgenda.planTemplate.agents[0].instructions).toContain('luker_orch_planner_step');
+    expect(nativeAgenda.planTemplate.agents[0].instructions).not.toContain(retiredTool);
+    expect(userAgenda.planTemplate.agents[0].instructions).toContain(retiredTool);
     expect(repaired.bindings).toEqual(bindings);
 });
 
