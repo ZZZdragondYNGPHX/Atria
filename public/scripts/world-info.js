@@ -5816,7 +5816,6 @@ function sortWorldInfoManagerItems(items, { searchActive = false } = {}) {
     return [...items].sort((a, b) =>
         (searchActive ? ((a.searchScore ?? 0) - (b.searchScore ?? 0)) : 0)
         || Number(b.pinned) - Number(a.pinned)
-        || Number(b.active) - Number(a.active)
         || a.name.localeCompare(b.name),
     );
 }
@@ -5927,23 +5926,48 @@ function buildWorldInfoManagerItem(item) {
                 <input type="checkbox" class="world_info_manager_select">
                 <span class="fa-solid fa-check"></span>
             </label>
+            <span class="world_info_manager_book_icon fa-solid fa-book-open" aria-hidden="true"></span>
             <div class="world_info_manager_item_main">
                 <button type="button" class="world_info_manager_item_title"></button>
                 <div class="world_info_manager_item_meta"></div>
             </div>
             <div class="world_info_manager_item_actions">
-                <div class="menu_button world_info_manager_tags_button fa-solid fa-tags"></div>
-                <div class="menu_button world_info_manager_pin fa-solid fa-thumbtack"></div>
-                <div class="menu_button world_info_manager_toggle fa-solid fa-toggle-off"></div>
-                <div class="menu_button world_info_manager_edit fa-solid fa-pen-to-square" title="${escapeHtmlText(t`Open lorebook in editor`)}"></div>
-                <div class="menu_button world_info_manager_delete fa-solid fa-trash-can" title="${escapeHtmlText(t`Delete lorebook`)}"></div>
+                <button type="button" class="menu_button world_info_manager_toggle fa-solid fa-toggle-off"></button>
+                <details class="world_info_manager_item_more">
+                    <summary class="menu_button fa-solid fa-ellipsis-vertical" title="${escapeHtmlText(t`Lorebook actions`)}" aria-label="${escapeHtmlText(t`Lorebook actions`)}"></summary>
+                    <div class="world_info_manager_item_menu">
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_edit"><i class="fa-solid fa-list"></i><span>${escapeHtmlText(t`Entries`)}</span></button>
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_tags_button"><i class="fa-solid fa-tags"></i><span>${escapeHtmlText(t`Tags`)}</span></button>
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_pin"><i class="fa-solid fa-thumbtack"></i><span>${escapeHtmlText(item.pinned ? t`Unpin lorebook` : t`Pin lorebook`)}</span></button>
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_delete is-destructive"><i class="fa-solid fa-trash-can"></i><span>${escapeHtmlText(t`Delete`)}</span></button>
+                    </div>
+                </details>
             </div>
         </div>
     `);
 
-    itemElement.attr('data-name', item.name);
+    itemElement.attr({
+        'data-name': item.name,
+        'role': 'button',
+        'tabindex': '0',
+        'aria-label': t`Open lorebook in editor` + `: ${item.name}`,
+    });
     itemElement.toggleClass('is-active', item.active);
     itemElement.toggleClass('is-selected', isSelected);
+    itemElement.on('click', (event) => {
+        const interactiveTarget = $(event.target).closest('button, input, label, .menu_button, details, summary, a, select, textarea');
+        if (interactiveTarget.length > 0) {
+            return;
+        }
+        openWorldInfoEditor(item.name);
+    });
+    itemElement.on('keydown', (event) => {
+        if (event.target !== itemElement[0] || (event.key !== 'Enter' && event.key !== ' ')) {
+            return;
+        }
+        event.preventDefault();
+        openWorldInfoEditor(item.name);
+    });
 
     const selectLabel = itemElement.find('.world_info_manager_select_label');
     const selectInput = itemElement.find('.world_info_manager_select');
@@ -6015,7 +6039,11 @@ function buildWorldInfoManagerItem(item) {
             renderWorldInfoManager();
         });
 
-    itemElement.find('.world_info_manager_edit').on('click', () => openWorldInfoEditor(item.name));
+    itemElement.find('.world_info_manager_edit').on('click', () => {
+        openWorldInfoEditor(item.name);
+        const menu = itemElement.find('.world_info_manager_item_more')[0];
+        if (menu instanceof HTMLDetailsElement) menu.open = false;
+    });
     itemElement.find('.world_info_manager_delete').on('click', async () => {
         const confirmation = await Popup.show.confirm(
             t`Delete the World/Lorebook: "${item.name}"?`,
@@ -6151,6 +6179,7 @@ function renderWorldInfoManager() {
     const selectedCount = selectedWorldInfoManagerNames.size;
 
     manager.removeClass('displayNone');
+    manager.toggleClass('has-selection', selectedCount > 0);
     drawerSummary.text(allItems.length > 0 ? `${activeItemCount}/${allItems.length}` : t`No lorebooks available.`);
     activeList.empty();
     list.empty();
