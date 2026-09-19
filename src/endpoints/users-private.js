@@ -1033,11 +1033,21 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
             const totalMs = Date.now() - restoreStart;
             console.warn(`[user-backup] Restore failed after ${totalMs}ms (analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms): ${extractError?.message || extractError}`);
             const baseMessage = extractError instanceof Error ? extractError.message : String(extractError);
+            const cancelled = isRestoreCancelledError(extractError);
             if (recoveryPath) {
                 try {
                     await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
+                    if (cancelled) {
+                        throw new RestoreCancelledError(
+                            'Restore cancelled by user; previous data restored from recovery point.',
+                            { rolledBack: true },
+                        );
+                    }
                     throw new Error(`Restore failed; previous data restored from recovery point. Original error: ${baseMessage}`);
                 } catch (rollbackError) {
+                    if (isRestoreCancelledError(rollbackError)) {
+                        throw rollbackError;
+                    }
                     if (String(rollbackError?.message || '').startsWith('Restore failed; previous data restored')) {
                         throw rollbackError;
                     }
@@ -1189,7 +1199,14 @@ function beginRestoreProgressStream(response) {
     return {
         onProgress(event) { writeLine({ type: 'progress', ...event }); },
         sendResult(payload) { writeLine({ type: 'result', ...payload }); response.end(); },
-        sendError(message) { writeLine({ type: 'error', error: String(message || 'Restore failed') }); response.end(); },
+        sendError(message, details = {}) {
+            writeLine({
+                type: 'error',
+                error: String(message || 'Restore failed'),
+                ...details,
+            });
+            response.end();
+        },
     };
 }
 
@@ -1558,6 +1575,7 @@ router.post('/restore-backup/probe', async (request, response) => {
 router.post('/restore-backup', async (request, response) => {
     let uploadPath = '';
     let stagedArchive = null;
+    let restoreSession = null;
     const streaming = wantsRestoreProgressStream(request);
     let stream = null;
 
@@ -1604,6 +1622,18 @@ router.post('/restore-backup', async (request, response) => {
 
         const directories = handle === request.user.profile.handle ? request.user.directories : getUserDirectories(handle);
 
+        if (activeRestoreControllers.has(handle)) {
+            return response.status(409).json({ error: 'A restore is already active for this account.' });
+        }
+        const controller = new AbortController();
+        restoreSession = {
+            controller,
+            restoreId: crypto.randomUUID(),
+            handle,
+            startedAt: Date.now(),
+        };
+        activeRestoreControllers.set(handle, restoreSession);
+
         // Cross-mode restore optionally needs scratch DB connection strings
         // when the backup's source engine is mysql or postgres. These are
         // multipart fields the UI fills in after a probe-endpoint call
@@ -1616,7 +1646,11 @@ router.post('/restore-backup', async (request, response) => {
             stream = beginRestoreProgressStream(response);
         }
 
-        stagedArchive = await stageRestoreArchiveForRandomAccess(uploadPath, stream?.onProgress);
+        stagedArchive = await stageRestoreArchiveForRandomAccess(
+            uploadPath,
+            stream?.onProgress,
+            { signal: restoreSession.controller.signal },
+        );
         const restoreResult = await restoreUserBackupArchive(
             stagedArchive.path,
             directories,
@@ -1626,6 +1660,7 @@ router.post('/restore-backup', async (request, response) => {
                 includeGlobalExtensions: isAdminUser,
                 onProgress: stream?.onProgress,
                 scratchCreds,
+                signal: restoreSession.controller.signal,
             },
         );
         await invalidateRecentChatIndex(request);
@@ -1640,7 +1675,10 @@ router.post('/restore-backup', async (request, response) => {
         console.error('Restore failed', error);
         const message = error?.message || 'Restore failed';
         if (stream) {
-            stream.sendError(message);
+            stream.sendError(message, {
+                code: error?.code || null,
+                rolledBack: Boolean(error?.rolledBack),
+            });
             return;
         }
         // Engine-kind mismatch and legacy-fs-on-db (both spec §5.2) plus
@@ -1671,12 +1709,22 @@ router.post('/restore-backup', async (request, response) => {
                 },
             });
         }
+        if (isRestoreCancelledError(error)) {
+            return response.status(409).json({
+                error: message,
+                code: error.code,
+                rolledBack: Boolean(error.rolledBack),
+            });
+        }
         const isValidationError = error instanceof RestoreEngineKindMismatchError
             || error instanceof RestoreLegacyFsOnDbModeError
             || message.includes('Archive does not match selected restore categories');
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        if (restoreSession && activeRestoreControllers.get(restoreSession.handle) === restoreSession) {
+            activeRestoreControllers.delete(restoreSession.handle);
+        }
         await stagedArchive?.cleanup?.().catch(() => {});
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true });
