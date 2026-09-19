@@ -2833,6 +2833,10 @@ select.keyselect+span.select2-container .select2-selection--multiple {
 
     #WorldInfo .wi-workspace-mobile-options {
         position: relative;
+        display: none;
+    }
+
+    #WorldInfo #wi_workspace_shell[data-active-view="entries"] .wi-workspace-mobile-options {
         display: block;
     }
 
@@ -3123,6 +3127,17 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     #WorldInfo .wi-workspace-entry-tools > summary {
         min-height: 38px;
         padding: 5px 9px;
+    }
+
+    #WorldInfo .wi-workspace-entry-tools .wi-workspace-overflow-menu {
+        position: fixed;
+        top: auto;
+        right: 10px;
+        bottom: calc(66px + env(safe-area-inset-bottom));
+        left: 10px;
+        min-width: 0;
+        max-width: none;
+        border-radius: 14px;
     }
 
     #WorldInfo .world_popup_search_cluster {
