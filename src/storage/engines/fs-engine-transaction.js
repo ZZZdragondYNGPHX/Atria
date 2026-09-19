@@ -10,6 +10,7 @@ import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
+import { invalidateFsChatRangeIndex, readFsChatRange } from './fs-chat-range.js';
 
 export class FsTransaction {
     constructor({ directoriesByHandle }) {
@@ -44,6 +45,14 @@ export class FsTransaction {
 
     async listResources(filter) {
         return this._h(filter.kind, 'listResources').list(filter);
+    }
+
+    async getResourceRange(key, options) {
+        const handler = this._h(key.kind, 'getResourceRange');
+        if (typeof handler.range !== 'function') {
+            return null;
+        }
+        return handler.range(key, options);
     }
 
     async putResourceIfMatch(key, expectedIntegrity, record) {
@@ -142,6 +151,11 @@ function registerChatHandler(tx) {
                 createdAt: Math.floor(stat.birthtimeMs || stat.ctimeMs),
             };
         },
+        range(key, options) {
+            const filePath = chatFilePath(key);
+            const result = readFsChatRange(filePath, options);
+            return result ? { key, ...result } : null;
+        },
         put(key, record) {
             if (key.isGroup) {
                 assertSafeRepoNameShape(key.groupId ?? key.name, { field: 'chat.groupId' });
@@ -161,6 +175,7 @@ function registerChatHandler(tx) {
             const lines = [JSON.stringify(headerWithIntegrity)];
             for (const msg of record.body) lines.push(JSON.stringify(msg));
             writeFileAtomic(filePath, lines.join('\n') + '\n');
+            invalidateFsChatRangeIndex(filePath);
             // Restore the caller-supplied updatedAt as the file mtime so a
             // migration-time saveRaw doesn't reset every chat's "last edited"
             // to the migration moment. createdAt maps to birthtime on FS,
@@ -181,6 +196,7 @@ function registerChatHandler(tx) {
             const filePath = chatFilePath(key);
             if (!fs.existsSync(filePath)) return false;
             fs.unlinkSync(filePath);
+            invalidateFsChatRangeIndex(filePath);
             return true;
         },
         list(filter) {
