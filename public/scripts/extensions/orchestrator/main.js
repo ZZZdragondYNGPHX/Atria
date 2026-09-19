@@ -819,20 +819,7 @@ function ensureUi() {
 
     const workspace = document.createElement('button'); workspace.type = 'button'; workspace.className = 'menu_button';
     workspace.textContent = i18n('Open Atria Workspace');
-    workspace.addEventListener('click', (event) => {
-        // The Workspace is a product-level surface, not a child page of the
-        // Extensions drawer. On mobile the open host drawer constrains the
-        // visual viewport/layout stack and can collapse a newly-mounted fixed
-        // Workspace to zero height. Close the launcher drawer first, then mount
-        // the Workspace on the next frame after host drawer state has settled.
-        event.preventDefault();
-        event.stopPropagation();
-        const extensionsDrawer = document.getElementById('rm_extensions_block');
-        if (extensionsDrawer?.classList.contains('openDrawer')) {
-            document.querySelector('#extensions-settings-button .drawer-toggle')?.click();
-        }
-        requestAnimationFrame(() => openWorkspace('Orchestration'));
-    });
+    workspace.addEventListener('click', () => openWorkspace('Orchestration'));
     content.append(workspace);
 
     const status = document.createElement('p'); status.id = 'atri_orch_status'; status.setAttribute('role', 'status'); content.append(status);
