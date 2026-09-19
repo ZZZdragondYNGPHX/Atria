@@ -5816,7 +5816,6 @@ function sortWorldInfoManagerItems(items, { searchActive = false } = {}) {
     return [...items].sort((a, b) =>
         (searchActive ? ((a.searchScore ?? 0) - (b.searchScore ?? 0)) : 0)
         || Number(b.pinned) - Number(a.pinned)
-        || Number(b.active) - Number(a.active)
         || a.name.localeCompare(b.name),
     );
 }
