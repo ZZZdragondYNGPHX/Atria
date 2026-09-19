@@ -8,6 +8,8 @@ Fix the Atria Agent & Memory Workspace launcher on mobile/real host where clicki
 - Baseline: `main@2c8141a532338eba0756805b741bb258a113043d`
 - Final validated head: `e8a1ccdedb8925ac1e301eccef7e119d1deef8b5`
 - Pull request: #13
+- Squash merge / resulting `main`: `9dc4cf842ca20d95caa07dfefb51efe856ce80f5`
+- Final validated / merged tree: `b5052b02d206a35d9d41f390a895c16d72223333`
 
 ## Root cause
 
@@ -58,3 +60,11 @@ Android JVM/APK and Docker builds were not run because this task changes browser
 ## Compatibility / data impact
 
 No persisted data, Workspace preset schema, memory state, orchestration state, or API contract changed. This is a presentation/host-layout fix only.
+
+## Integration result
+
+PR #13 was squash-merged into `main@9dc4cf842ca20d95caa07dfefb51efe856ce80f5`.
+
+The merged `main` tree is exactly `b5052b02d206a35d9d41f390a895c16d72223333`, identical to the final validated task-head tree.
+
+Cleanup workflow #13 succeeded and removed `fix/workspace-settings-entry`.
