@@ -960,6 +960,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                     );
                                 }
 
+                                throwIfRestoreCancelled(signal);
                                 reportEntryProgress(true);
                                 const zipLastModified = typeof entry.getLastModDate === 'function'
                                     ? entry.getLastModDate()
@@ -996,6 +997,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
             });
             extractMs = Date.now() - tExtract;
             reportExtractProgress(true);
+            throwIfRestoreCancelled(signal);
 
             const verification = {
                 ok: true,
@@ -1031,6 +1033,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                 );
             }
             result.verification = verification;
+            throwIfRestoreCancelled(signal);
 
             reportProgress({ phase: 'finalize' });
             result.recoveryPoint = path.basename(recoveryPath);
