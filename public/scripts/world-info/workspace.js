@@ -617,6 +617,9 @@ function setContinuousCards(enabled, { notify = true } = {}) {
     document.querySelector('#wi_workspace_entries_split')?.classList.toggle('displayNone', state.continuousCards);
     document.querySelector('#wi_workspace_cards')?.classList.toggle('displayNone', !state.continuousCards);
     document.querySelector('#wi_workspace_continuous_cards')?.classList.toggle('is-active', state.continuousCards);
+    document.querySelectorAll('[data-cards-only="true"]').forEach(button => {
+        button.classList.toggle('displayNone', !state.continuousCards);
+    });
 
     if (notify) state.callbacks.onContinuousCardsChange?.(state.continuousCards);
 }
@@ -795,6 +798,52 @@ function buildWorkspaceDom() {
 
     if (primaryToolbar) shell.querySelector('#wi_workspace_primary_toolbar').append(primaryToolbar);
     if (editorToolbar) shell.querySelector('#wi_workspace_entries_toolbar').append(editorToolbar);
+
+    const bookActionsHost = primaryToolbar?.querySelector('.world_popup_primary_actions');
+    if (bookActionsHost) {
+        const details = document.createElement('details');
+        details.className = 'wi-workspace-book-actions';
+        details.innerHTML = `
+            <summary class="menu_button" title="Lorebook actions" aria-label="Lorebook actions"><i class="fa-solid fa-ellipsis"></i></summary>
+            <div class="wi-workspace-overflow-menu">
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_popup_export"><i class="fa-solid fa-file-export"></i><span>Export</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_popup_name_button"><i class="fa-solid fa-pen"></i><span>Rename</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_duplicate"><i class="fa-solid fa-copy"></i><span>Duplicate</span></button>
+                <button type="button" class="menu_button menu_button_icon is-destructive" data-forward="#world_popup_delete"><i class="fa-solid fa-trash-can"></i><span>Delete</span></button>
+            </div>
+        `;
+        bookActionsHost.querySelectorAll('#world_popup_export, #world_popup_name_button, #world_duplicate, #world_popup_delete')
+            .forEach(node => node.classList.add('wi-workspace-action-plumbing'));
+        bookActionsHost.append(details);
+    }
+
+    const entryActionsHost = editorToolbar?.querySelector('.world_popup_entry_actions');
+    if (entryActionsHost) {
+        const details = document.createElement('details');
+        details.className = 'wi-workspace-entry-tools';
+        details.innerHTML = `
+            <summary class="menu_button menu_button_icon"><i class="fa-solid fa-screwdriver-wrench"></i><span>Tools</span></summary>
+            <div class="wi-workspace-overflow-menu">
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_refresh"><i class="fa-solid fa-arrows-rotate"></i><span>Refresh</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_backfill_memos"><i class="fa-solid fa-notes-medical"></i><span>Fill empty titles</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_apply_current_sorting"><i class="fa-solid fa-arrow-down-9-1"></i><span>Apply sorting as Order</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_entry_display_settings"><i class="fa-solid fa-eye"></i><span>Custom field visibility</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#OpenAllWIEntries" data-cards-only="true"><i class="fa-solid fa-expand"></i><span>Open all cards</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#CloseAllWIEntries" data-cards-only="true"><i class="fa-solid fa-compress"></i><span>Close all cards</span></button>
+            </div>
+        `;
+        entryActionsHost.querySelectorAll('#OpenAllWIEntries, #CloseAllWIEntries, #world_backfill_memos, #world_apply_current_sorting, #world_entry_display_settings, #world_refresh')
+            .forEach(node => node.classList.add('wi-workspace-action-plumbing'));
+        entryActionsHost.append(details);
+    }
+
+    shell.querySelectorAll('[data-forward]').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelector(button.dataset.forward)?.click();
+            const details = button.closest('details');
+            if (details instanceof HTMLDetailsElement) details.open = false;
+        });
+    });
     if (searchToolbar) shell.querySelector('#wi_workspace_entries_toolbar').append(searchToolbar);
     if (bulkToolbar) shell.querySelector('#wi_workspace_entries_toolbar').append(bulkToolbar);
     if (cardsList) shell.querySelector('#wi_workspace_cards').append(cardsList);
