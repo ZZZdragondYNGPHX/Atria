@@ -74,7 +74,7 @@ The permanent Workspace UI guard and Chromium workflow should be treated as arch
 - If fallback also fails, the existing restore failure/rollback path receives the error.
 - The reported `为美好的世界献上祝福 - 沙盒 - 1.3.0.json` case was confirmed to stall before JSON parsing, so no worldbook format change was required.
 - Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
-- The temporary `fix/restore-entry-stream-fallback` branch is expected to be removed by the merged-branch cleanup workflow.
+- The temporary `fix/restore-entry-stream-fallback` branch was removed after merge.
 
 ### Restore lifecycle and repository sentinel preservation
 
