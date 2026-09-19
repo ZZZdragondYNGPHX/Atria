@@ -176,7 +176,9 @@ export function registerChatHandler(tx) {
                 if ((op === 'test' || op === 'replace') && !Object.hasOwn(operation, 'value')) {
                     return { status: 'unsupported' };
                 }
-                parsedOps.push({ op, index: Number(match[1]), value: operation?.value });
+                const serialized = op === 'replace' ? JSON.stringify(operation.value) : null;
+                if (op === 'replace' && serialized === undefined) return { status: 'unsupported' };
+                parsedOps.push({ op, index: Number(match[1]), value: operation?.value, serialized });
             }
             if (parsedOps.length === 0) return { status: 'unsupported' };
 
@@ -221,12 +223,10 @@ export function registerChatHandler(tx) {
                     continue;
                 }
                 if (operation.op === 'replace') {
-                    const json = JSON.stringify(operation.value);
-                    if (json === undefined) return { status: 'unsupported' };
                     db.prepare(`UPDATE chats
                         SET doc=json_set(doc, ?, json(?))
                         WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
-                        .run(jsonPath, json, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+                        .run(jsonPath, operation.serialized, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
                     continue;
                 }
                 db.prepare(`UPDATE chats
