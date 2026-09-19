@@ -10,6 +10,7 @@ on:
       - "public/scripts/world-info.js"
       - "public/scripts/atri-chat-snapshot-cache.js"
       - "public/scripts/atri-itemized-prompt-store.js"
+      - "public/scripts/atri-message-depth.js"
       - "public/scripts/itemized-prompts.js"
       - "public/scripts/atri-world-info-prompt.js"
       - "public/scripts/atri-world-info-provenance.js"
@@ -64,6 +65,7 @@ jobs:
           npm run test:unit --prefix tests --
           performance/chat-snapshot-cache.test.js
           performance/itemized-prompt-store.test.js
+          performance/message-depth.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
           world-info/state-conditions.test.js
