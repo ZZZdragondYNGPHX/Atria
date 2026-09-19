@@ -579,11 +579,20 @@ export const extensionsEnabledFeatureGuard = (_, response, next) => {
 
 router.use(extensionsEnabledFeatureGuard);
 
-// Any extension-management write can change discoverable folders or their
-// precedence. Drop the tiny burst cache before handling it so the next
-// discovery always observes the new filesystem state.
+// Only operations that can change extension folders or their precedence
+// invalidate discovery. Read-only POST endpoints such as /version and
+// /branches must not erase a cache that was built milliseconds earlier.
+const EXTENSION_DISCOVERY_MUTATION_PATHS = new Set([
+    '/install',
+    '/update',
+    '/switch',
+    '/move',
+    '/delete',
+]);
 router.use((request, _response, next) => {
-    if (request.method !== 'GET') invalidateExtensionDiscoveryCache();
+    if (request.method === 'POST' && EXTENSION_DISCOVERY_MUTATION_PATHS.has(request.path)) {
+        invalidateExtensionDiscoveryCache();
+    }
     next();
 });
 
