@@ -204,7 +204,9 @@ try {
         } catch { /* retry async editor bootstrap */ }
     }
     assert.equal(authorBookRendered, true, 'author UI book Inspector did not render');
-    const conditionEditor = authorUiEntry.locator('.wi-entry-state-conditions');
+    const stateSection = authorUiEntry.locator('.wi-inspector-section-state');
+    await stateSection.locator('> summary').click();
+    const conditionEditor = stateSection.locator('.wi-entry-state-conditions');
     await conditionEditor.waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await conditionEditor.count(), 1);
     assert.equal(await authorUiEntry.locator('textarea[name="stateConditionsJson"]').count(), 0);
