@@ -93,6 +93,34 @@ export class ChatRepo {
         const newIntegrity = randomUUID();
         const now = this._now();
         return this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.appendChatMessages === 'function') {
+                const native = await tx.appendChatMessages(key, newMessages, {
+                    expectedIntegrity,
+                    newIntegrity,
+                    updatedAt: now,
+                });
+                if (native?.status === 'ok') {
+                    return {
+                        integrity: native.integrity ?? newIntegrity,
+                        accepted: Number(native.accepted) || 0,
+                        dedupedGenIds: Array.isArray(native.dedupedGenIds) ? native.dedupedGenIds : [],
+                    };
+                }
+                if (native?.status === 'missing') {
+                    throw new NotFoundError('chat', { handle, charDir, name });
+                }
+                if (native?.status === 'conflict') {
+                    throw new ConflictError('integrity_mismatch', {
+                        expected: expectedIntegrity,
+                        actual: native.actualIntegrity ?? '',
+                    });
+                }
+                // Unsupported means this chat shape cannot be safely mutated
+                // incrementally (for example an old FS header without a
+                // fixed-length integrity slot). Fall back to the established
+                // full-resource path for correctness.
+            }
+
             const existing = await tx.getResource(key);
             if (!existing) throw new NotFoundError('chat', { handle, charDir, name });
             if (expectedIntegrity !== null && expectedIntegrity !== undefined) {
