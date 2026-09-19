@@ -764,6 +764,7 @@ function buildWorkspaceDom() {
                 </select>
                 <button id="wi_workspace_custom_fields" type="button" class="menu_button menu_button_icon displayNone"><i class="fa-solid fa-sliders"></i><span>Custom fields</span></button>
                 <button id="wi_workspace_continuous_cards" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-table-columns"></i><span>Continuous Cards</span></button>
+                <button id="wi_workspace_close" type="button" class="menu_button" title="Close World Info Workspace" aria-label="Close World Info Workspace"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
         <div id="wi_workspace_primary_toolbar" class="wi-workspace-primary-toolbar"></div>
@@ -948,6 +949,9 @@ function buildWorkspaceDom() {
     });
     shell.querySelector('#wi_workspace_continuous_cards')?.addEventListener('click', () => {
         setContinuousCards(!state.continuousCards);
+    });
+    shell.querySelector('#wi_workspace_close')?.addEventListener('click', () => {
+        document.querySelector('#WIDrawerIcon')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     shell.querySelector('#wi_workspace_bulk_inspector [data-action="bulk-edit"]')?.addEventListener('click', () => {
         document.querySelector('#world_entries_bulk_set_field')?.click();
