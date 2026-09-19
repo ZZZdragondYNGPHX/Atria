@@ -6180,6 +6180,7 @@ function renderWorldInfoManager() {
     const selectedCount = selectedWorldInfoManagerNames.size;
 
     manager.removeClass('displayNone');
+    manager.toggleClass('has-selection', selectedCount > 0);
     drawerSummary.text(allItems.length > 0 ? `${activeItemCount}/${allItems.length}` : t`No lorebooks available.`);
     activeList.empty();
     list.empty();
