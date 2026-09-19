@@ -5939,7 +5939,7 @@ function buildWorldInfoManagerItem(item) {
                     <div class="world_info_manager_item_menu">
                         <button type="button" class="menu_button menu_button_icon world_info_manager_edit"><i class="fa-solid fa-list"></i><span>${escapeHtmlText(t`Entries`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_tags_button"><i class="fa-solid fa-tags"></i><span>${escapeHtmlText(t`Tags`)}</span></button>
-                        <button type="button" class="menu_button menu_button_icon world_info_manager_pin"><i class="fa-solid fa-thumbtack"></i><span>${escapeHtmlText(t`Pin`)}</span></button>
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_pin"><i class="fa-solid fa-thumbtack"></i><span>${escapeHtmlText(item.pinned ? t`Unpin lorebook` : t`Pin lorebook`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_delete is-destructive"><i class="fa-solid fa-trash-can"></i><span>${escapeHtmlText(t`Delete`)}</span></button>
                     </div>
                 </details>
