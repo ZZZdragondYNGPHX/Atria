@@ -57,9 +57,26 @@ function syncWorkspaceChrome() {
     const root = document.querySelector('#wi_workspace_shell');
     if (!(root instanceof HTMLElement)) return;
 
+    const mobile = isMobileWorkspace();
     root.dataset.activeView = state.activeView;
     root.classList.toggle('has-open-book', Boolean(state.worldName));
-    root.classList.toggle('is-mobile-detail', isMobileWorkspace() && state.mobileDetail);
+    root.classList.toggle('is-mobile-detail', mobile && state.mobileDetail);
+
+    // Mobile bottom navigation must be a direct child of the full-screen
+    // workspace. Keeping it inside the top header creates a containing block
+    // that can place an otherwise fixed/absolute nav outside the viewport.
+    // Reparenting preserves the same buttons/listeners and restores the
+    // desktop header structure when the viewport grows again.
+    const header = root.querySelector('.wi-workspace-header');
+    const nav = root.querySelector('.wi-workspace-nav');
+    const controls = header?.querySelector('.wi-workspace-mode-controls');
+    if (nav instanceof HTMLElement && header instanceof HTMLElement) {
+        if (mobile) {
+            if (nav.parentElement !== root) root.append(nav);
+        } else if (nav.parentElement !== header) {
+            header.insertBefore(nav, controls || null);
+        }
+    }
 
     const contextTitle = root.querySelector('#wi_workspace_context_title');
     if (contextTitle) contextTitle.textContent = getWorkspaceContextTitle();
