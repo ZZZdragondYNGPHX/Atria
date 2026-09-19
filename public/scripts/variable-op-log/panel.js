@@ -191,11 +191,15 @@ export async function openVarOpsPanel(messageId) {
     await eventSource.emit(event_types.MESSAGE_EDITED, messageId);
 }
 
+let panelHandlerInitialized = false;
+
 /**
  * Wire up event delegation for the per-message Variable button. Should be
  * called once during init, after the DOM is ready.
  */
 export function initVarOpsPanelHandler() {
+    if (panelHandlerInitialized) return;
+    panelHandlerInitialized = true;
     $(document).on('click', '.mes_var_ops', async function () {
         const mes = $(this).closest('.mes');
         const idStr = mes.attr('mesid');
@@ -220,6 +224,11 @@ export function initVarOpsPanelHandler() {
     // Show more messages re-inserts old .mes DOM nodes; their .mes_var_ops button
     // ships with style="display:none" and only refreshButtonVisibility() flips it.
     eventSource.on(event_types.MORE_MESSAGES_LOADED, refreshAllButtons);
+
+    // The module may now be loaded after the main UI becomes visible. Bring
+    // already-rendered messages into the same state as future event-driven
+    // renders so no variable-operation button is missed.
+    refreshAllButtons();
 }
 
 function refreshButtonVisibility(messageId) {

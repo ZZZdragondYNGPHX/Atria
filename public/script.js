@@ -286,7 +286,6 @@ import { getPresetManager, initPresetManager } from './scripts/preset-manager.js
 import { evaluateMacros, getLastMessageId, initMacros } from './scripts/macros.js';
 import { initVariableOpLog, extractMessageById, pushFloorVarOp } from './scripts/variable-op-log/index.js';
 import { extractFromText as extractSideEffectMacrosFromText } from './scripts/variable-op-log/extractor.js';
-import { initVarOpsPanelHandler } from './scripts/variable-op-log/panel.js';
 import { installFrontendLogCapture, setFrontendConsoleDebugLoggingEnabled } from './scripts/frontend-log-manager.js';
 import { initAndroidDebugTrail } from './scripts/atria-android-debug-trail.js';
 import { currentUser, getConfigValidationMessage, isAdmin, setUserControls } from './scripts/user.js';
@@ -2133,6 +2132,9 @@ async function firstLoadInit() {
     void loadPostVisibleStartupModules().catch((error) => {
         console.warn('[init] deferred startup modules failed to preload', error);
     });
+    void loadVariableOpsPanelModule()
+        .then(({ initVarOpsPanelHandler }) => initVarOpsPanelHandler())
+        .catch((error) => console.warn('[init] variable-op panel failed to load', error));
 
     console.debug('[init] initPresetManager start');
     await initPresetManager();
@@ -2264,6 +2266,18 @@ let macroAutoCompleteModulePromise;
 
 function loadMacroAutoCompleteModule() {
     return macroAutoCompleteModulePromise ??= import('./scripts/autocomplete/MacroAutoComplete.js');
+}
+
+let variableOpsPanelModulePromise;
+
+function loadVariableOpsPanelModule() {
+    if (!variableOpsPanelModulePromise) {
+        variableOpsPanelModulePromise = import('./scripts/variable-op-log/panel.js').catch((error) => {
+            variableOpsPanelModulePromise = null;
+            throw error;
+        });
+    }
+    return variableOpsPanelModulePromise;
 }
 
 let postVisibleStartupModulesPromise;
@@ -15606,7 +15620,6 @@ export async function getSettings(options = {}) {
         // power_user.experimental_macro_engine
         initMacros();
         initVariableOpLog();
-        initVarOpsPanelHandler();
 
         if (data.enable_extensions) {
             const enableAutoUpdate = Boolean(data.enable_extensions_auto_update);
