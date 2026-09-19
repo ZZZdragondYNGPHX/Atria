@@ -190,7 +190,7 @@ export function registerChatHandler(tx) {
                 }
                 if (operation.op === 'test') {
                     const result = await client.query(
-                        `SELECT (doc->'body')->$6 AS value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5`,
+                        'SELECT (doc->\'body\')->$6 AS value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
                         [p.handle, p.char_dir, p.name, p.is_group, p.group_id, operation.index],
                     );
                     const actual = coerceJson(result.rows[0]?.value);
@@ -249,7 +249,7 @@ export function registerChatHandler(tx) {
         async range(key, { fromIndex = 0, limit = 0 } = {}) {
             const p = chatKeyToParams(key);
             const metaQuery = await client.query(
-                `SELECT doc->'header' AS header_value, jsonb_typeof(doc->'header') AS header_type, jsonb_typeof(doc->'body') AS body_type, jsonb_array_length(doc->'body') AS total_messages, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5`,
+                'SELECT doc->\'header\' AS header_value, jsonb_typeof(doc->\'header\') AS header_type, jsonb_typeof(doc->\'body\') AS body_type, jsonb_array_length(doc->\'body\') AS total_messages, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
                 [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
             );
             const meta = metaQuery.rows[0];
@@ -264,7 +264,7 @@ export function registerChatHandler(tx) {
             const end = requestedLimit > 0 ? Math.min(start + requestedLimit, totalMessages) : totalMessages;
 
             const rowsQuery = await client.query(
-                `SELECT t.elem AS message_value FROM chats AS c CROSS JOIN LATERAL jsonb_array_elements(c.doc->'body') WITH ORDINALITY AS t(elem, ord) WHERE c.handle=$1 AND c.char_dir=$2 AND c.name=$3 AND c.is_group=$4 AND c.group_id=$5 AND t.ord > $6 AND ($7 <= 0 OR t.ord <= $8) ORDER BY t.ord ASC`,
+                'SELECT t.elem AS message_value FROM chats AS c CROSS JOIN LATERAL jsonb_array_elements(c.doc->\'body\') WITH ORDINALITY AS t(elem, ord) WHERE c.handle=$1 AND c.char_dir=$2 AND c.name=$3 AND c.is_group=$4 AND c.group_id=$5 AND t.ord > $6 AND ($7 <= 0 OR t.ord <= $8) ORDER BY t.ord ASC',
                 [p.handle, p.char_dir, p.name, p.is_group, p.group_id, start, requestedLimit, end],
             );
             const body = [];
@@ -288,7 +288,7 @@ export function registerChatHandler(tx) {
         async info(key) {
             const p = chatKeyToParams(key);
             const metaQuery = await client.query(
-                `SELECT doc->'header' AS header_value, jsonb_typeof(doc->'header') AS header_type, jsonb_typeof(doc->'body') AS body_type, jsonb_array_length(doc->'body') AS message_count, octet_length(doc::text) AS byte_size, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5`,
+                'SELECT doc->\'header\' AS header_value, jsonb_typeof(doc->\'header\') AS header_type, jsonb_typeof(doc->\'body\') AS body_type, jsonb_array_length(doc->\'body\') AS message_count, octet_length(doc::text) AS byte_size, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
                 [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
             );
             const row = metaQuery.rows[0];
@@ -300,7 +300,7 @@ export function registerChatHandler(tx) {
             let lastMessage = null;
             if (messageCount > 0) {
                 const lastQuery = await client.query(
-                    `SELECT (doc->'body')->(jsonb_array_length(doc->'body') - 1) AS message_value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5`,
+                    'SELECT (doc->\'body\')->(jsonb_array_length(doc->\'body\') - 1) AS message_value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
                     [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
                 );
                 if (!lastQuery.rows.length) return null;
