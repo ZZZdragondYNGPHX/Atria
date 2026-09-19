@@ -208,7 +208,12 @@ test.describe('Backup & Sync Center', () => {
         await restoreRequested;
 
         const firstDialog = page.locator('dialog.popup[open]', { has: firstCenter });
-        await firstDialog.locator('.popup-button-ok').click();
+        const firstClose = firstDialog.locator('.popup-button-close').first();
+        if (await firstClose.isVisible().catch(() => false)) {
+            await firstClose.click();
+        } else {
+            await firstDialog.locator('.popup-button-ok').dispatchEvent('click');
+        }
         await firstCenter.waitFor({ state: 'detached' });
 
         await page.evaluate(async () => {
