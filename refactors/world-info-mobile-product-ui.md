@@ -10,6 +10,8 @@ Refine the World Info Workspace from the live Atria `main` after real mobile-dev
 - Baseline: `main@59bc6862487331d12378e4fdd1da403a248e12a5`
 - PR: #25
 - Final validated head: `d672ef4e70ada778ba87818804e071501266eab6`
+- Squash merge / resulting `main`: `71dc40588f02c96d16d7be64f1e0ccd0223982ba`
+- Validated task-head tree and merged-main tree: `3e2482f496ad6a5f94681addf667bbea4dec88f2` (identical)
 
 ## Product decisions
 
