@@ -957,6 +957,36 @@ function buildWorkspaceDom() {
     if (managerBlock) shell.querySelector('#wi_workspace_library').append(managerBlock);
     if (globalBlock) shell.querySelector('#wi_workspace_global').append(globalBlock);
 
+    const managerFilters = managerBlock?.querySelector('.world_info_manager_filter_controls');
+    if (managerFilters && !managerFilters.querySelector('.wi-library-mobile-search-options')) {
+        const options = document.createElement('details');
+        options.className = 'wi-library-mobile-search-options';
+        options.innerHTML = `
+            <summary class="menu_button" title="${t`Search`}" aria-label="${t`Search`}"><i class="fa-solid fa-filter"></i></summary>
+            <div class="wi-library-mobile-search-menu">
+                <label for="world_info_manager_search_entries" data-control="entries">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span>${t`Search entries/content`}</span>
+                </label>
+                <label for="world_info_manager_search_advanced" data-control="advanced">
+                    <i class="fa-solid fa-code"></i>
+                    <span>${t`Advanced syntax`}</span>
+                </label>
+            </div>
+        `;
+        managerFilters.append(options);
+
+        const syncOptionState = () => {
+            const entrySearch = document.querySelector('#world_info_manager_search_entries');
+            const advanced = document.querySelector('#world_info_manager_search_advanced');
+            options.querySelector('[data-control="entries"]')?.classList.toggle('is-active', Boolean(entrySearch?.checked));
+            options.querySelector('[data-control="advanced"]')?.classList.toggle('is-active', Boolean(advanced?.checked));
+        };
+        document.querySelector('#world_info_manager_search_entries')?.addEventListener('change', syncOptionState);
+        document.querySelector('#world_info_manager_search_advanced')?.addEventListener('change', syncOptionState);
+        syncOptionState();
+    }
+
     buildGlobalRulesPanels();
     topBlock.classList.add('displayNone');
 
