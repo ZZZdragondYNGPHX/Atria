@@ -133,7 +133,12 @@ test('desktop workspace uses Library / Entries / Global Rules and bounded list r
     await expect(page.locator('#world_entry_bulk_toolbar')).toBeHidden();
 
     // Relationship picker persists the existing underlying reference format.
-    await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row[data-uid="0"]').click();
+    // The list is virtualized, so operate on the first materialized row rather
+    // than assuming a particular UID must be in the current viewport.
+    const relationRow = page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first();
+    const sourceUid = await relationRow.getAttribute('data-uid');
+    await relationRow.click();
+
     const relationships = page.locator('.wi-inspector-section-relationships');
     await relationships.locator('> summary').click();
     const relationDrawer = relationships.locator('.wi-entry-selection-strategy');
@@ -143,11 +148,13 @@ test('desktop workspace uses Library / Entries / Global Rules and bounded list r
     }
     const relatedPicker = relationDrawer.locator('.wi-relationship-picker[data-kind="related"]');
     await expect(relatedPicker).toBeVisible();
-    await relatedPicker.locator('input[type="search"]').fill('#1 · workspace-entry-1');
+
+    const targetUid = sourceUid === '1' ? '2' : '1';
+    await relatedPicker.locator('input[type="search"]').fill(`#${targetUid} · workspace-entry-${targetUid}`);
     await relatedPicker.getByRole('button', { name: 'Add' }).click();
     await relationDrawer.locator('.wi-selection-strategy-save').click();
     await page.waitForTimeout(500);
-    expect(readBook(server.dataRoot).entries['0'].extensions?.atria_related_entries).toContain('1');
+    expect(readBook(server.dataRoot).entries[sourceUid].extensions?.atria_related_entries).toContain(targetUid);
 
     // Test Activation uses the existing dry-run and always produces an honest result surface.
     await page.locator('#wi_workspace_test_activation').click();
