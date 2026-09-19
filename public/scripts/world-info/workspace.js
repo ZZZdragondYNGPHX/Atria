@@ -997,6 +997,7 @@ export function syncWorldInfoWorkspace({
     name = '',
     data = null,
     entries = [],
+    focusUid = null,
     callbacks = {},
 } = {}) {
     initWorldInfoWorkspace();
@@ -1007,6 +1008,9 @@ export function syncWorldInfoWorkspace({
     state.data = data;
     state.entries = Array.isArray(entries) ? entries : [];
     state.callbacks = callbacks || {};
+    const requestedUid = focusUid === null || focusUid === undefined
+        ? ''
+        : String(focusUid);
 
     if (bookChanged) {
         state.selectedUid = '';
@@ -1021,6 +1025,11 @@ export function syncWorldInfoWorkspace({
         void renderInspector(null);
         renderVirtualRows();
         return;
+    }
+
+    if (requestedUid && state.entries.some(entry => String(entry?.uid ?? '') === requestedUid)) {
+        state.selectedUid = requestedUid;
+        state.mobileDetail = isMobileWorkspace();
     }
 
     setView('entries');
