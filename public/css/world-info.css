@@ -2448,3 +2448,91 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         overflow: auto;
     }
 }
+
+
+#WorldInfo .wi-workspace-tools-menu {
+    position: relative;
+    margin-left: auto;
+}
+
+#WorldInfo .wi-workspace-tools-menu > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+#WorldInfo .wi-workspace-tools-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+#WorldInfo .wi-workspace-tools-menu > .world_popup_primary_actions {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+    z-index: 30;
+    display: flex;
+    min-width: 180px;
+    padding: 7px;
+    gap: 5px;
+    justify-content: flex-end;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);
+    border-radius: 9px;
+    background: var(--SmartThemeBlurTintColor);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 25%);
+}
+
+#WorldInfo .wi-workspace-list-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#WorldInfo .wi-workspace-bulk-defaults {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 10px;
+    padding-top: 4px;
+}
+
+#WorldInfo .wi-workspace-bulk-defaults span {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 70%, transparent);
+    font-size: 0.78rem;
+}
+
+#WorldInfo .wi-workspace-bulk-defaults b {
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 92%, transparent);
+    font-weight: 550;
+}
+
+#WorldInfo .wi-workspace-inspector.has-bulk-selection > :is(
+    #wi_workspace_inspector_header,
+    #wi_workspace_activation_result,
+    #wi_workspace_inspector_issues,
+    #wi_workspace_inspector_empty,
+    #wi_workspace_inspector_body
+) {
+    display: none !important;
+}
+
+@media screen and (max-width: 1000px) {
+    #WorldInfo .wi-workspace-tools-menu {
+        margin-left: 0;
+    }
+
+    #WorldInfo .wi-workspace-tools-menu > .world_popup_primary_actions {
+        right: auto;
+        left: 0;
+    }
+
+    #WorldInfo .wi-workspace-list-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #WorldInfo .wi-workspace-bulk-defaults {
+        grid-template-columns: 1fr;
+    }
+}
