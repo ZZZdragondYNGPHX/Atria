@@ -711,7 +711,6 @@ export async function openBackupSyncCenter({
     let selectedArchive = null;
     let preflight = null;
     let preflightVersion = 0;
-    let restoreBusy = archiveRestoreRunning();
     archiveRestoreViews.add(center);
 
     const reloadManaged = async () => {
@@ -724,15 +723,15 @@ export async function openBackupSyncCenter({
         const version = ++preflightVersion;
         preflight = null;
         setRestoreStartEnabled(center, false);
-        if (!selectedArchive || restoreBusy) return;
+        if (!selectedArchive || archiveRestoreRunning()) return;
         try {
             const result = await runPreflight(center, selectedArchive.file, canManageGlobalExtensions);
-            if (version !== preflightVersion || restoreBusy) return;
+            if (version !== preflightVersion || archiveRestoreRunning()) return;
             preflight = result;
             renderPreflight(center, result);
             setRestoreStartEnabled(center, true);
         } catch (error) {
-            if (version !== preflightVersion || restoreBusy) return;
+            if (version !== preflightVersion || archiveRestoreRunning()) return;
             renderPreflightError(center, error);
         }
     };
@@ -829,9 +828,8 @@ export async function openBackupSyncCenter({
     });
     center.querySelector('.backupRestoreStart').addEventListener('click', async () => {
         const button = center.querySelector('.backupRestoreStart');
-        if (button.disabled || restoreBusy || archiveRestoreRunning() || !selectedArchive || !preflight) return;
+        if (button.disabled || archiveRestoreRunning() || !selectedArchive || !preflight) return;
 
-        restoreBusy = true;
         preflightVersion++;
         const session = beginArchiveRestoreSession({
             fileName: selectedArchive.name,
@@ -863,7 +861,6 @@ export async function openBackupSyncCenter({
             finishArchiveRestoreSession(session, 'failed', error);
             toastr.error(`恢复失败：${error.message}`);
         } finally {
-            restoreBusy = false;
             if (center.isConnected) {
                 setRestoreControlsBusy(center, false);
                 setRestoreStartEnabled(center, Boolean(preflight) && !archiveRestoreRunning());
