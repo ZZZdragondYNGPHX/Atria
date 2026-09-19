@@ -62,6 +62,70 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — patch', ({ make }) => {
         expect(read.integrity).toBe(int1);
     });
 
+    test('native whole-message patch uses supported engines and explicitly falls back on FS', async () => {
+        const int1 = await setup([
+            { name: 'U', mes: 'a' },
+            { name: 'C', mes: 'b' },
+        ]);
+
+        const result = await repo.patchMessages(
+            h.handle,
+            'A',
+            'c',
+            [{ op: 'replace', path: '/1', value: { name: 'C', mes: 'native' } }],
+            int1,
+        );
+
+        if (h.kind === 'fs') {
+            expect(result).toEqual({ status: 'unsupported' });
+            const unchanged = await repo.get(h.handle, 'A', 'c');
+            expect(unchanged.body[1].mes).toBe('b');
+            return;
+        }
+
+        expect(result.status).toBe('ok');
+        expect(result.applied).toBe(1);
+        expect(result.totalMessages).toBe(2);
+        expect(result.integrity).not.toBe(int1);
+        const read = await repo.get(h.handle, 'A', 'c');
+        expect(read.body[1].mes).toBe('native');
+    });
+
+    test('native whole-message remove preserves array shifting semantics', async () => {
+        const int1 = await setup([{ mes: 'a' }, { mes: 'b' }, { mes: 'c' }]);
+        const result = await repo.patchMessages(
+            h.handle,
+            'A',
+            'c',
+            [{ op: 'remove', path: '/1' }],
+            int1,
+        );
+
+        if (h.kind === 'fs') {
+            expect(result.status).toBe('unsupported');
+            return;
+        }
+
+        expect(result).toMatchObject({ status: 'ok', applied: 1, totalMessages: 2 });
+        const read = await repo.get(h.handle, 'A', 'c');
+        expect(read.body.map(message => message.mes)).toEqual(['a', 'c']);
+    });
+
+    test('native path rejects nested message patches before mutation', async () => {
+        const int1 = await setup([{ mes: 'old' }]);
+        const result = await repo.patchMessages(
+            h.handle,
+            'A',
+            'c',
+            [{ op: 'replace', path: '/0/mes', value: 'new' }],
+            int1,
+        );
+        expect(result).toEqual({ status: 'unsupported' });
+        const read = await repo.get(h.handle, 'A', 'c');
+        expect(read.body[0].mes).toBe('old');
+        expect(read.integrity).toBe(int1);
+    });
+
     test('patch replaces a message field and rotates integrity', async () => {
         const int1 = await setup([{ name: 'C', mes: 'old' }]);
         const { integrity: int2 } = await repo.patch(h.handle, 'A', 'c', [
