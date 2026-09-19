@@ -21382,24 +21382,28 @@ jQuery(async function () {
     });
 
     const lazyChatMergeSplitSelector = '#merge_chats_button, .mes_split_chat';
-    $(document)
-        .off('click.atriaLazyChatMergeSplit', lazyChatMergeSplitSelector)
-        .on('click.atriaLazyChatMergeSplit', lazyChatMergeSplitSelector, async function (event) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
+    const installLazyChatMergeSplitEntryPoint = () => {
+        $(document)
+            .off('click.atriaLazyChatMergeSplit', lazyChatMergeSplitSelector)
+            .on('click.atriaLazyChatMergeSplit', lazyChatMergeSplitSelector, async function (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
 
-            const target = this;
-            $(document).off('click.atriaLazyChatMergeSplit', lazyChatMergeSplitSelector);
+                const target = this;
+                $(document).off('click.atriaLazyChatMergeSplit', lazyChatMergeSplitSelector);
 
-            try {
-                const { wireEntryPoints } = await import('./scripts/chat-merge-split.js');
-                wireEntryPoints();
-                $(target).trigger('click');
-            } catch (error) {
-                console.error('[chat-merge-split] failed to load UI wiring', error);
-                toastr.error(t`Failed to load chat merge/split tools.`);
-            }
-        });
+                try {
+                    const { wireEntryPoints } = await import('./scripts/chat-merge-split.js');
+                    wireEntryPoints();
+                    $(target).trigger('click');
+                } catch (error) {
+                    console.error('[chat-merge-split] failed to load UI wiring', error);
+                    toastr.error(t`Failed to load chat merge/split tools.`);
+                    installLazyChatMergeSplitEntryPoint();
+                }
+            });
+    };
+    installLazyChatMergeSplitEntryPoint();
 
     $('#chat_import_file').on('change', async function (e) {
         const targetElement = e.target;
