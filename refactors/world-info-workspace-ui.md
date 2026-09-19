@@ -9,7 +9,8 @@ Refactor the traditional SillyTavern World Info drawer presentation into a respo
 - PR: #23
 - Final validated implementation head: `40be055246e4b423658f0952421a58bdcbea1891`
 - Documentation-only task head after validation: `d9d2c4f12b3745ae396f7d34fb00180727b5faad`
-- Merge: pending at record creation
+- Squash merge / resulting `main`: `5645020e68c95d37c1ee44a375b22328173948b8`
+- Final task tree is identical to the merged `main` tree.
 
 ## Implementation
 
@@ -187,7 +188,9 @@ The World Info engine was not broadly split or rewritten.
 
 Final validated implementation head: `40be055246e4b423658f0952421a58bdcbea1891`.
 
-### Atria PR Checks #534
+The documentation-only task head `d9d2c4f12b3745ae396f7d34fb00180727b5faad` was subsequently revalidated before merge.
+
+### Atria PR Checks #535
 
 Passed:
 
@@ -196,7 +199,7 @@ Passed:
 - complete Node unit suite
 - Atria Migration Guard
 
-### Worldbook Performance Foundation #219
+### Worldbook Performance Foundation #220
 
 Passed:
 
