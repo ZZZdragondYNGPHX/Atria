@@ -687,6 +687,7 @@ function setContinuousCards(enabled, { notify = true } = {}) {
     document.querySelector('#wi_workspace_cards')?.classList.toggle('displayNone', !state.continuousCards);
     document.querySelector('#wi_workspace_continuous_cards')?.classList.toggle('is-active', state.continuousCards);
     document.querySelector('#wi_workspace_mobile_continuous_cards')?.classList.toggle('is-active', state.continuousCards);
+    document.querySelector('#wi_workspace_shell')?.classList.toggle('is-continuous-cards', state.continuousCards);
     document.querySelector('#world_info_pagination')?.classList.toggle('displayNone', !state.continuousCards);
     document.querySelectorAll('[data-cards-only="true"]').forEach(button => {
         button.classList.toggle('displayNone', !state.continuousCards);
