@@ -55,14 +55,6 @@ export class FsTransaction {
         return this._h(filter.kind, 'listResources').list(filter);
     }
 
-    async getResourceRange(key, options) {
-        const handler = this._h(key.kind, 'getResourceRange');
-        if (typeof handler.range !== 'function') {
-            return null;
-        }
-        return handler.range(key, options);
-    }
-
     async putResourceIfMatch(key, expectedIntegrity, record) {
         const existing = await this.getResource(key);
         if (expectedIntegrity === null) {
