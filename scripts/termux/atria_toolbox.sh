@@ -242,8 +242,25 @@ SCRIPT_VERSION="v0.3.2"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 
+heal_known_restore_sentinel_dirty_state() {
+    local sentinel="public/scripts/extensions/third-party/.gitkeep"
+    local status
+    status=$(git -C "$ATRIA_DIR" status --porcelain -- "$sentinel" 2>/dev/null || true)
+
+    # A buggy full-restore path could delete this tracked empty-directory
+    # sentinel before the archive finished. It contains no user data, so it is
+    # safe to restore automatically before the normal dirty-worktree guard.
+    if [ "$status" = " D $sentinel" ] || [ "$status" = "D  $sentinel" ]; then
+        if git -C "$ATRIA_DIR" cat-file -e "HEAD:$sentinel" 2>/dev/null; then
+            git -C "$ATRIA_DIR" restore --worktree -- "$sentinel" || return 1
+            info "已自动恢复仓库占位文件：$sentinel"
+        fi
+    fi
+}
+
 update_main_branch() {
     ensure_repo || return 1
+    heal_known_restore_sentinel_dirty_state || return 1
     require_clean_worktree || return 1
 
     local branch old_sha remote_sha running
