@@ -217,7 +217,7 @@ export class ActionLoaderHandle {
     /**
      * Disposes this handle, removing it from active handles and hiding overlay if last.
      */
-    async #dispose() {
+    async #dispose({ immediate = false } = {}) {
         if (this.#disposed) return;
         this.#disposed = true;
 
@@ -226,7 +226,7 @@ export class ActionLoaderHandle {
 
         // Hide the overlay if this was the last blocking handle
         if (this.#blocking && !hasBlockingLoaders()) {
-            await hideOverlay();
+            await hideOverlay({ immediate });
         }
     }
 
@@ -289,7 +289,7 @@ export class ActionLoaderHandle {
      * Hides this loader and clears its toast.
      * Calls the custom onHide handler if provided.
      */
-    async hide() {
+    async hide({ immediate = false } = {}) {
         if (this.#disposed) return;
 
         // Call custom hide handler if provided
@@ -301,7 +301,7 @@ export class ActionLoaderHandle {
             }
         }
 
-        await this.#dispose();
+        await this.#dispose({ immediate });
     }
 }
 
@@ -552,7 +552,7 @@ function showOverlay(customContent = null) {
  * Internal function - use hideActionLoader() instead.
  * @returns {Promise<void>}
  */
-async function hideOverlay() {
+async function hideOverlay({ immediate = false } = {}) {
     if (!loaderPopup) {
         return Promise.resolve();
     }
@@ -563,6 +563,11 @@ async function hideOverlay() {
 
         if (!loaderElement.length) {
             console.warn('Loader element not found, skipping animation');
+            cleanup();
+            return;
+        }
+
+        if (immediate) {
             cleanup();
             return;
         }
