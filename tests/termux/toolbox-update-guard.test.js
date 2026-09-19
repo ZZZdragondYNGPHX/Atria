@@ -5,10 +5,12 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const toolboxPath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.sh');
+const termuxCliPath = path.join(repoRoot, 'scripts', 'termux', 'atria.sh');
 
-describe('Termux toolbox update guard', () => {
-    test('launcher remains valid bash', () => {
+describe('Termux update guards', () => {
+    test('launchers remain valid bash', () => {
         execFileSync('bash', ['-n', toolboxPath], { stdio: 'pipe' });
+        execFileSync('bash', ['-n', termuxCliPath], { stdio: 'pipe' });
     });
 
     test('known restore-deleted .gitkeep is healed before dirty-worktree refusal', () => {
@@ -19,5 +21,13 @@ describe('Termux toolbox update guard', () => {
         expect(cleanGuard).toBeGreaterThan(healCall);
         expect(source).toContain('public/scripts/extensions/third-party/.gitkeep');
         expect(source).toContain('git -C "$ATRIA_DIR" restore --worktree -- "$sentinel"');
+    });
+
+    test('atria-termux updater heals only the known unstaged sentinel deletion', () => {
+        const source = fs.readFileSync(termuxCliPath, 'utf8');
+        expect(source).toContain('public/scripts/extensions/third-party/.gitkeep');
+        expect(source).toContain('git restore --worktree -- "${restore_sentinel}"');
+        expect(source.indexOf('git restore --worktree -- "${restore_sentinel}"'))
+            .toBeLessThan(source.indexOf('git status --porcelain)"'));
     });
 });
