@@ -32,28 +32,23 @@ test('settings drawer entry opens Workspace above the host drawer on mobile', as
     await openButton.click();
 
     const root = page.locator('#agent-memory-workspace');
-    console.log('WORKSPACE_ENTRY_DIAGNOSTIC', JSON.stringify(await page.evaluate(() => {
-        const node = document.getElementById('agent-memory-workspace');
-        const style = node ? getComputedStyle(node) : null;
-        const rect = node?.getBoundingClientRect?.();
-        const sheet = document.getElementById('agent-memory-workspace-css');
-        return {
-            exists: Boolean(node),
-            hiddenProperty: node?.hidden,
-            hiddenAttribute: node?.hasAttribute?.('hidden'),
-            display: style?.display,
-            visibility: style?.visibility,
-            opacity: style?.opacity,
-            width: rect?.width,
-            height: rect?.height,
-            zIndex: style?.zIndex,
-            stylesheetHref: sheet?.href || '',
-            stylesheetLoaded: Boolean(sheet?.sheet),
-            openDrawer: document.getElementById('rm_extensions_block')?.className || '',
-        };
-    })));
     await expect(root).toBeVisible();
     await expect(root.getByRole('heading', { name: /Atria Workspace|Atria 工作台/ })).toBeVisible();
+
+    const geometry = await root.evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return {
+            width: rect.width,
+            height: rect.height,
+            display: style.display,
+            visibility: style.visibility,
+        };
+    });
+    expect(geometry.width).toBeGreaterThan(0);
+    expect(geometry.height).toBeGreaterThan(0);
+    expect(geometry.display).toBe('grid');
+    expect(geometry.visibility).toBe('visible');
 
     const stack = await page.evaluate(() => {
         const workspace = document.getElementById('agent-memory-workspace');
