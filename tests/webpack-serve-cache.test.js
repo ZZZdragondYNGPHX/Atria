@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { hasCompleteWebpackOutput } from '../src/middleware/webpack-serve.js';
-import { getWebpackCacheVersion } from '../webpack.config.js';
+import getPublicLibConfig, { getWebpackCacheVersion } from '../webpack.config.js';
 
 describe('Webpack warm-start output detection', () => {
     test('bundle cache key is stable and based on bundle inputs rather than Git HEAD', () => {
@@ -21,6 +21,26 @@ describe('Webpack warm-start output detection', () => {
         expect(configSource).not.toContain('readLocalGitRevision');
     });
 
+
+    test('explicit private cache root wins over external dataRoot', () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-webpack-private-'));
+        const previousEnv = process.env.ATRIA_WEBPACK_CACHE_ROOT;
+        const previousDataRoot = globalThis.DATA_ROOT;
+        process.env.ATRIA_WEBPACK_CACHE_ROOT = root;
+        globalThis.DATA_ROOT = '/storage/emulated/0/Atria/data';
+
+        try {
+            const config = getPublicLibConfig();
+            expect(config.output.path.startsWith(root)).toBe(true);
+            expect(config.cache.cacheDirectory.startsWith(root)).toBe(true);
+            expect(config.output.path).not.toContain('/storage/emulated/0/Atria/data');
+        } finally {
+            if (previousEnv === undefined) delete process.env.ATRIA_WEBPACK_CACHE_ROOT;
+            else process.env.ATRIA_WEBPACK_CACHE_ROOT = previousEnv;
+            globalThis.DATA_ROOT = previousDataRoot;
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
 
     test('requires every current bundle to exist and be non-empty', () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-webpack-output-'));
