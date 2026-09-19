@@ -156,7 +156,8 @@ Final validation for PR #4 passed:
 - Synthetic #183 reference measurements on Xeon 6973P / Node 24.20: 10k latest-message depth 1,000 calls median 0.013 ms; 3k-relation Memory fixture (9k corpus docs) corpus median 57.367 ms and ranking median 23.755 ms. These are CI synthetic measurements, not user-device SLA.
 - Android JVM tests and Android/Docker image builds were intentionally not run because they remain opt-in.
 - Cleanup workflow #10 succeeded and removed the temporary `feat/worldbook-performance-foundation` branch.
-- Remaining deeper performance work is now mainly the P-03 formatter-cache/partial-stream revision contract and, only if future measurements justify it, a separate physical-record/segmented-storage migration for near-O(1) arbitrary historical edits. Start any such work from the live `main`.
+- P-03 deeper completed-message HTML caching / partial Markdown streaming is intentionally deferred after review: the safe depth-scan win is already merged, while the remaining path lacks evidence that formatting is the dominant current bottleneck and still needs one exact revision contract spanning runtime Regex providers, macros, MessageFormatter hooks, Showdown rebuilds, DOMPurify hooks/config and per-call sanitizer overrides. Re-open only after real browser/self-profile evidence justifies the invalidation complexity; implement the revision contract before enabling a cache or partial renderer.
+- A separate physical-record/segmented-storage migration for near-O(1) arbitrary historical edits is likewise measurement-gated. Start any future performance continuation from the live `main`.
 
 
 ### P-04 FS local whole-message patch continuation
