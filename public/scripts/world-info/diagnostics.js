@@ -120,8 +120,9 @@ export function getWorldInfoEntryIssues(entry, context = {}) {
                 push('self-reference', `${label} points to this entry.`, 'error');
                 continue;
             }
-            if (!lookup.has(normalized.key) && !lookup.has(String(ref))) {
-                push('unresolved-relationship', `${label} "${text(ref)}" does not resolve in the loaded book.`);
+            const isSameBook = normalized.world === worldName;
+            if (isSameBook && !lookup.has(normalized.key) && !lookup.has(String(ref))) {
+                push('unresolved-relationship', `${label} "${text(ref)}" does not resolve in this lorebook.`);
             }
         }
     }
