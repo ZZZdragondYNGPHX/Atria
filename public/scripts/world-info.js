@@ -5936,9 +5936,11 @@ function buildWorldInfoManagerItem(item) {
                     <i class="fa-solid fa-globe"></i>
                     <span class="world_info_manager_toggle_label"></span>
                 </button>
-                <details class="world_info_manager_item_more">
-                    <summary class="menu_button fa-solid fa-ellipsis-vertical" title="${escapeHtmlText(t`Lorebook actions`)}" aria-label="${escapeHtmlText(t`Lorebook actions`)}"></summary>
-                    <div class="world_info_manager_item_menu">
+                <div class="world_info_manager_item_more">
+                    <button type="button" class="menu_button world_info_manager_more_button" title="${escapeHtmlText(t`Lorebook actions`)}" aria-label="${escapeHtmlText(t`Lorebook actions`)}" aria-expanded="false">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div class="world_info_manager_item_menu displayNone">
                         <button type="button" class="menu_button menu_button_icon world_info_manager_edit"><i class="fa-solid fa-list"></i><span>${escapeHtmlText(t`Entries`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_export"><i class="fa-solid fa-file-export"></i><span>${escapeHtmlText(t`Export`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_rename"><i class="fa-solid fa-pen"></i><span>${escapeHtmlText(t`Rename`)}</span></button>
@@ -5947,7 +5949,7 @@ function buildWorldInfoManagerItem(item) {
                         <button type="button" class="menu_button menu_button_icon world_info_manager_pin"><i class="fa-solid fa-thumbtack"></i><span>${escapeHtmlText(item.pinned ? t`Unpin lorebook` : t`Pin lorebook`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_delete is-destructive"><i class="fa-solid fa-trash-can"></i><span>${escapeHtmlText(t`Delete`)}</span></button>
                     </div>
-                </details>
+                </div>
             </div>
         </div>
     `);
@@ -6034,10 +6036,32 @@ function buildWorldInfoManagerItem(item) {
             renderWorldInfoManager();
         });
 
+    const itemMenu = itemElement.find('.world_info_manager_item_menu');
+    const moreButton = itemElement.find('.world_info_manager_more_button');
     const closeItemMenu = () => {
-        const menu = itemElement.find('.world_info_manager_item_more')[0];
-        if (menu instanceof HTMLDetailsElement) menu.open = false;
+        itemMenu.addClass('displayNone');
+        moreButton.attr('aria-expanded', 'false');
+        itemElement.find('.world_info_manager_item_more').removeClass('is-open');
     };
+    const openItemMenu = () => {
+        $('.world_info_manager_item_menu').addClass('displayNone');
+        $('.world_info_manager_more_button').attr('aria-expanded', 'false');
+        $('.world_info_manager_item_more').removeClass('is-open');
+        itemMenu.removeClass('displayNone');
+        moreButton.attr('aria-expanded', 'true');
+        itemElement.find('.world_info_manager_item_more').addClass('is-open');
+    };
+    moreButton.on('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const shouldOpen = itemMenu.hasClass('displayNone');
+        if (shouldOpen) {
+            openItemMenu();
+        } else {
+            closeItemMenu();
+        }
+    });
+    itemMenu.on('click', (event) => event.stopPropagation());
 
     const toggleButton = itemElement.find('.world_info_manager_toggle');
     const globalActionLabel = item.active ? t`Disable globally` : t`Enable globally`;
