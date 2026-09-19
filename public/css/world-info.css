@@ -2784,20 +2784,27 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     color: var(--crimson70a);
 }
 
-.world_info_manager_action_sheet_backdrop {
+.wi-worldbook-action-sheet-dialog {
     position: fixed;
-    z-index: 10040;
-    inset: 0;
-    background: rgb(0 0 0 / 16%);
+    inset: auto 10px calc(72px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--SmartThemeBodyColor);
+    overflow: visible;
 }
 
-.wi-worldbook-action-sheet-portal {
-    position: fixed;
-    z-index: 10050;
-    right: 10px;
-    bottom: calc(72px + env(safe-area-inset-bottom));
-    left: 10px;
+.wi-worldbook-action-sheet-dialog::backdrop {
+    background: rgb(0 0 0 / 18%);
+}
+
+.wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal {
+    position: static;
     display: flex;
+    width: 100%;
     max-height: min(70dvh, 560px);
     flex-direction: column;
     gap: 5px;
@@ -2810,13 +2817,13 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     pointer-events: auto;
 }
 
-.wi-worldbook-action-sheet-portal .menu_button {
+.wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal .menu_button {
     justify-content: flex-start;
     width: 100%;
     min-height: 42px;
 }
 
-.wi-worldbook-action-sheet-portal .is-destructive {
+.wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal .is-destructive {
     color: var(--crimson70a);
 }
 
