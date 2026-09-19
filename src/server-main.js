@@ -96,6 +96,7 @@ import {
     isRequestAdmin,
 } from './users.js';
 import { initStorage, getStorageEngine } from './storage/index.js';
+import { recoverFsChatPatchJournals } from './storage/engines/fs-chat-range.js';
 import { maybeFailFast } from './storage/fail-fast.js';
 
 import getWebpackServeMiddleware from './middleware/webpack-serve.js';
@@ -653,6 +654,13 @@ async function preSetupTasks() {
     console.log();
 
     const directories = await getUserDirectoriesList();
+
+    // Recover any FS whole-message patch interrupted by the previous process
+    // before *any* startup migration/cache code can read raw chat JSONL.
+    // This also protects maintenance paths that intentionally bypass Repos.
+    for (const userDirectories of directories) {
+        recoverFsChatPatchJournals(userDirectories);
+    }
 
     // Schema migrations must complete before downstream readers run, because
     // diskCache.verify / initializeAllUserMetadata / settingsInit / statsInit
