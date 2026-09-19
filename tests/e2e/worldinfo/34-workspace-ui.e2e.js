@@ -228,7 +228,7 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(mobileBookMenu.locator('.world_info_manager_export')).toBeVisible();
     await expect(mobileBookMenu.locator('.world_info_manager_rename')).toBeVisible();
     await expect(mobileBookMenu.locator('.world_info_manager_duplicate')).toBeVisible();
-    await page.keyboard.press('Escape');
+    await mobileBookDialog.locator('.wi-worldbook-action-sheet-close').click();
     await expect(page.locator('body > dialog.wi-worldbook-action-sheet-dialog[open]')).toHaveCount(0);
     await expect(mobileBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'false');
 
