@@ -49,6 +49,18 @@ describe('Termux update guards', () => {
         expect(prebuildCall).toBeLessThan(earlyReturn);
     });
 
+    test('Termux runtime keeps disposable Webpack files on private storage', () => {
+        const toolboxSource = fs.readFileSync(toolboxPath, 'utf8');
+        const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
+        const setupSource = fs.readFileSync(path.join(repoRoot, 'scripts', 'termux', 'setup.sh'), 'utf8');
+
+        expect(toolboxSource).toContain('ATRIA_TERMUX_WEBPACK_CACHE_ROOT');
+        expect(toolboxSource).toContain('ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" nohup node');
+        expect(toolboxSource).toContain('ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" npm run frontend:prebuild-cache');
+        expect(cliSource).toContain('ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" nohup node');
+        expect(setupSource).toContain('ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" npm run frontend:prebuild-cache');
+    });
+
     test('warm startup readiness is detected at sub-second cadence', () => {
         const toolboxSource = fs.readFileSync(toolboxPath, 'utf8');
         const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
