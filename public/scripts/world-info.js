@@ -5932,11 +5932,17 @@ function buildWorldInfoManagerItem(item) {
                 <div class="world_info_manager_item_meta"></div>
             </div>
             <div class="world_info_manager_item_actions">
-                <button type="button" class="menu_button world_info_manager_toggle fa-solid fa-toggle-off"></button>
+                <button type="button" class="menu_button menu_button_icon world_info_manager_toggle">
+                    <i class="fa-solid fa-globe"></i>
+                    <span class="world_info_manager_toggle_label"></span>
+                </button>
                 <details class="world_info_manager_item_more">
                     <summary class="menu_button fa-solid fa-ellipsis-vertical" title="${escapeHtmlText(t`Lorebook actions`)}" aria-label="${escapeHtmlText(t`Lorebook actions`)}"></summary>
                     <div class="world_info_manager_item_menu">
                         <button type="button" class="menu_button menu_button_icon world_info_manager_edit"><i class="fa-solid fa-list"></i><span>${escapeHtmlText(t`Entries`)}</span></button>
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_export"><i class="fa-solid fa-file-export"></i><span>${escapeHtmlText(t`Export`)}</span></button>
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_rename"><i class="fa-solid fa-pen"></i><span>${escapeHtmlText(t`Rename`)}</span></button>
+                        <button type="button" class="menu_button menu_button_icon world_info_manager_duplicate"><i class="fa-solid fa-copy"></i><span>${escapeHtmlText(t`Duplicate`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_tags_button"><i class="fa-solid fa-tags"></i><span>${escapeHtmlText(t`Tags`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_pin"><i class="fa-solid fa-thumbtack"></i><span>${escapeHtmlText(item.pinned ? t`Unpin lorebook` : t`Pin lorebook`)}</span></button>
                         <button type="button" class="menu_button menu_button_icon world_info_manager_delete is-destructive"><i class="fa-solid fa-trash-can"></i><span>${escapeHtmlText(t`Delete`)}</span></button>
@@ -6028,21 +6034,54 @@ function buildWorldInfoManagerItem(item) {
             renderWorldInfoManager();
         });
 
-    const toggleButton = itemElement.find('.world_info_manager_toggle');
-    toggleButton
-        .toggleClass('fa-toggle-on', item.active)
-        .toggleClass('fa-toggle-off', !item.active)
-        .toggleClass('is-active', item.active)
-        .attr('title', item.active ? t`Disable lorebook` : t`Enable lorebook`)
-        .on('click', async () => {
-            await setGlobalWorldInfoSelection(item.name, !item.active);
-            renderWorldInfoManager();
-        });
-
-    itemElement.find('.world_info_manager_edit').on('click', () => {
-        openWorldInfoEditor(item.name);
+    const closeItemMenu = () => {
         const menu = itemElement.find('.world_info_manager_item_more')[0];
         if (menu instanceof HTMLDetailsElement) menu.open = false;
+    };
+
+    const toggleButton = itemElement.find('.world_info_manager_toggle');
+    const globalActionLabel = item.active ? t`Disable globally` : t`Enable globally`;
+    toggleButton
+        .toggleClass('is-active', item.active)
+        .attr('title', globalActionLabel)
+        .attr('aria-label', `${globalActionLabel}: ${item.name}`)
+        .find('.world_info_manager_toggle_label')
+        .text(globalActionLabel);
+    toggleButton.on('click', async () => {
+        await setGlobalWorldInfoSelection(item.name, !item.active);
+        renderWorldInfoManager();
+    });
+
+    itemElement.find('.world_info_manager_edit').on('click', () => {
+        closeItemMenu();
+        openWorldInfoEditor(item.name);
+    });
+
+    itemElement.find('.world_info_manager_export').on('click', async () => {
+        closeItemMenu();
+        const data = await loadWorldInfo(item.name);
+        if (!data) return;
+        download(JSON.stringify(data), `${item.name}.json`, 'application/json');
+    });
+
+    itemElement.find('.world_info_manager_rename').on('click', async () => {
+        closeItemMenu();
+        const data = await loadWorldInfo(item.name);
+        if (!data) return;
+        await renameWorldInfo(item.name, data);
+        renderWorldInfoManager();
+    });
+
+    itemElement.find('.world_info_manager_duplicate').on('click', async () => {
+        closeItemMenu();
+        const data = await loadWorldInfo(item.name);
+        if (!data) return;
+        const tempName = getFreeWorldName(item.name);
+        const finalName = await Popup.show.input(t`Create a new World Info?`, t`Enter a name for the new file:`, tempName);
+        if (!finalName) return;
+        await saveWorldInfo(finalName, data, true);
+        await updateWorldInfoList();
+        renderWorldInfoManager();
     });
     itemElement.find('.world_info_manager_delete').on('click', async () => {
         const confirmation = await Popup.show.confirm(
