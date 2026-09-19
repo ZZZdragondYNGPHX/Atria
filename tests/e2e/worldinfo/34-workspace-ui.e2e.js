@@ -154,7 +154,7 @@ test('desktop workspace uses Library / Entries / Global Rules and bounded list r
     await relatedPicker.getByRole('button', { name: 'Add' }).click();
     await relationDrawer.locator('.wi-selection-strategy-save').click();
     await page.waitForTimeout(500);
-    expect(readBook(server.dataRoot).entries[sourceUid].extensions?.atria_related_entries).toContain(targetUid);
+    expect(readBook(server.dataRoot).entries[sourceUid].relatedEntries).toContain(targetUid);
 
     // Test Activation uses the existing dry-run and always produces an honest result surface.
     await page.locator('#wi_workspace_test_activation').click();
