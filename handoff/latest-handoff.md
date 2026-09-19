@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, and its P-02–P-05 no-storage-migration performance continuation are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, and the approved P-04 FS crash-safe local patch continuation are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `ff804b53adb514919cc3bfb6ac82334df5fe7cf2`
+- `32227e997c136228477bb4571e828f3852fe8eb1`
 
-This commit is the squash merge of PR #10. In addition to the completed World Info foundation, Atria now has on-demand prompt diagnostics, bounded message-depth computation, engine-level chat range/info/append capabilities, native SQL whole-message patching, lazy throttled backup materialization, and indexed Memory OS retrieval hot paths. The merged tree exactly matches the final validated PR #10 task tree.
+This commit is the squash merge of PR #11. In addition to the completed World Info/P-02–P-05 foundation, Atria now has crash-safe native FS whole-message `test/replace/remove`: canonical JSONL remains the source of truth, variable-length edits rewrite only the affected suffix, transient fsynced journals provide rollback/recovery, and LAN Sync excludes those local recovery artifacts. The merged tree exactly matches the final validated PR #11 task tree.
 
 ## Branch roles
 
@@ -139,11 +139,10 @@ Final validation for PR #4 passed:
 - P-01 bounded chat snapshots and W-01 through W-05 World Info work are complete.
 - P-02 prompt diagnostics now use a lightweight per-chat index and per-message records; heavy prompt bodies are loaded on demand, old arrays migrate lazily and remain rollback-accessible.
 - P-03 removes the full-chat message-depth rebuild from the formatting hot path. Latest-message depth is constant-time and the recent visible suffix remains bounded. Completed-message HTML caching / partial Markdown streaming remains deliberately disabled until Atria has a precise formatter revision contract for dynamic Regex, macros, formatter hooks, Showdown settings and DOMPurify hooks.
-- P-04 now exposes engine-level `getChatRange`, `getChatInfo`, `appendChatMessages` and `patchChatMessages` capabilities with correctness fallbacks.
+- P-04 exposes engine-level `getChatRange`, `getChatInfo`, `appendChatMessages` and `patchChatMessages` capabilities with correctness fallbacks.
   - FS uses a disposable byte-offset JSONL index for warm range/info and native append.
-  - SQLite/MySQL/PostgreSQL use their native JSON/JSONB operations for range/info/append.
-  - SQLite/MySQL/PostgreSQL also implement the high-frequency whole-message `test/replace/remove` patch subset.
-  - FS variable-length replace/remove remains on the reliable atomic full-rewrite fallback; a truly local crash-safe implementation would cross the explicit storage-format migration approval boundary.
+  - SQLite/MySQL/PostgreSQL use their native JSON/JSONB operations for range/info/append and whole-message `test/replace/remove`.
+  - PR #11 adds crash-safe native FS whole-message `test/replace/remove` using affected-suffix rewrite plus a transient fsynced recovery journal while retaining canonical JSONL.
   - Throttled backups materialize the complete chat only when the throttle actually executes.
 - P-05 reuses Memory fact/support projections and builds relation/document/provider indexes once, avoiding repeated full-corpus scans while preserving retrieval semantics and stable RRF ordering.
 - Native World Info state integration remains read-only: MVU/LoreState remain the state owners.
@@ -157,7 +156,28 @@ Final validation for PR #4 passed:
 - Synthetic #183 reference measurements on Xeon 6973P / Node 24.20: 10k latest-message depth 1,000 calls median 0.013 ms; 3k-relation Memory fixture (9k corpus docs) corpus median 57.367 ms and ranking median 23.755 ms. These are CI synthetic measurements, not user-device SLA.
 - Android JVM tests and Android/Docker image builds were intentionally not run because they remain opt-in.
 - Cleanup workflow #10 succeeded and removed the temporary `feat/worldbook-performance-foundation` branch.
-- Remaining deeper performance work is limited to explicitly deferred architecture boundaries such as a precise formatter-cache/partial-stream revision contract or crash-safe FS local replace/remove storage representation. Start any such work from the live `main` and treat storage-format migration as a separately approved task.
+- Remaining deeper performance work is now mainly the P-03 formatter-cache/partial-stream revision contract and, only if future measurements justify it, a separate physical-record/segmented-storage migration for near-O(1) arbitrary historical edits. Start any such work from the live `main`.
+
+
+### P-04 FS local whole-message patch continuation
+
+- PR #11
+- Baseline: `main@ff804b53adb514919cc3bfb6ac82334df5fe7cf2`
+- Final validated head: `0c8e18964acf8b1c85ee41feea4b8c1232994204`
+- Squash merge / current `main`: `32227e997c136228477bb4571e828f3852fe8eb1`
+- Final merged tree: `7e6dd92fc4cc6943ecded805667c8b3512c6725c`, identical to the task-head tree.
+- Record: `features/worldbook-performance-foundation.md`
+- FS now supports native whole-message `test/replace/remove` while retaining canonical JSONL.
+- Variable-length edits rewrite only the affected suffix and are protected by a transient fsynced `.atria-patch-journal`.
+- Pending/uncertain commits roll back; durable committed journals are cleanup-only.
+- Startup and first-access recovery are both present.
+- LAN Sync excludes recovery journals in both directions and will not delete an in-flight local journal.
+- Unsupported shapes/header-growth cases preserve the established atomic full-resource fallback.
+- P-04 tail-edit performance regression on a 5,000-message chat enforces read < 1%, write < 2%, and unchanged JSONL inode.
+- Final validation passed Worldbook Performance Foundation #199 and Atria PR Checks #446; the validated implementation code tree also passed 591 suites / 7,930 tests on #445.
+- Cleanup workflow #11 succeeded after merge and removed the temporary task branch.
+- Remaining P-04 boundary: middle/front variable-length edits still scale with the affected suffix. Near-single-message arbitrary historical edits require a separate physical-record/segmented-storage migration task.
+- Android JVM tests and Android/Docker image builds were intentionally not run because they remain opt-in.
 
 ## Long-lived references
 
