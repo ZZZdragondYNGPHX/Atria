@@ -83,13 +83,16 @@ wait_for_server_ready() {
     local pid="$1"
     local timeout="${2:-$STARTUP_WAIT_SECONDS}"
     local port="${3:-$(get_port)}"
-    local elapsed=0
+    local poll=0
+    local polls_per_second=5
+    local max_polls elapsed
 
     [[ "$timeout" =~ ^[0-9]+$ ]] || timeout=180
     [ "$timeout" -gt 0 ] 2>/dev/null || timeout=180
+    max_polls=$((timeout * polls_per_second))
 
-    info "等待 Atria Web 服务就绪（首次启动可能需要编译前端）..."
-    while [ "$elapsed" -lt "$timeout" ]; do
+    info "等待 Atria Web 服务就绪..."
+    while [ "$poll" -lt "$max_polls" ]; do
         if ! kill -0 "$pid" 2>/dev/null; then
             rm -f "$PID_FILE"
             error "Atria 进程在启动阶段退出。最近日志："
@@ -98,20 +101,22 @@ wait_for_server_ready() {
         fi
 
         if server_http_ready "$port"; then
-            info "Atria Web 服务已就绪（${elapsed}s）。"
+            elapsed=$((poll / polls_per_second))
+            info "Atria Web 服务已就绪（约 ${elapsed}s）。"
             return 0
         fi
 
-        if [ "$elapsed" -gt 0 ] && [ $((elapsed % 10)) -eq 0 ]; then
+        poll=$((poll + 1))
+        if [ "$poll" -gt 0 ] && [ $((poll % 50)) -eq 0 ]; then
+            elapsed=$((poll / polls_per_second))
             info "仍在初始化... ${elapsed}s / ${timeout}s"
         fi
-        sleep 1
-        elapsed=$((elapsed + 1))
+        sleep 0.2
     done
 
     if kill -0 "$pid" 2>/dev/null; then
         warn "Atria 进程仍在运行，但 ${timeout}s 内 Web 端口尚未就绪。"
-        warn "它可能仍在编译/迁移；可稍后查看状态或后台日志。"
+        warn "它可能仍在初始化；可稍后查看状态或后台日志。"
         echo "--- 最近启动日志 ---"
         tail -n 40 "$LOG_FILE" 2>/dev/null || true
         echo "--------------------"
