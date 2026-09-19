@@ -32,12 +32,6 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — patch', ({ make }) => {
         );
 
         const read = await repo.get(h.handle, 'A', 'c');
-        if (h.kind === 'fs') {
-            expect(result).toEqual({ status: 'unsupported' });
-            expect(read.body).toEqual([{ mes: 'old' }, { mes: 'remove-me' }]);
-            return;
-        }
-
         expect(result.status).toBe('ok');
         expect(result.applied).toBe(4);
         expect(result.totalMessages).toBe(1);
@@ -62,7 +56,7 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — patch', ({ make }) => {
         expect(read.integrity).toBe(int1);
     });
 
-    test('native whole-message patch uses supported engines and explicitly falls back on FS', async () => {
+    test('native whole-message replace is available on every storage engine', async () => {
         const int1 = await setup([
             { name: 'U', mes: 'a' },
             { name: 'C', mes: 'b' },
@@ -75,13 +69,6 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — patch', ({ make }) => {
             [{ op: 'replace', path: '/1', value: { name: 'C', mes: 'native' } }],
             int1,
         );
-
-        if (h.kind === 'fs') {
-            expect(result).toEqual({ status: 'unsupported' });
-            const unchanged = await repo.get(h.handle, 'A', 'c');
-            expect(unchanged.body[1].mes).toBe('b');
-            return;
-        }
 
         expect(result.status).toBe('ok');
         expect(result.applied).toBe(1);
@@ -100,11 +87,6 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — patch', ({ make }) => {
             [{ op: 'remove', path: '/1' }],
             int1,
         );
-
-        if (h.kind === 'fs') {
-            expect(result.status).toBe('unsupported');
-            return;
-        }
 
         expect(result).toMatchObject({ status: 'ok', applied: 1, totalMessages: 2 });
         const read = await repo.get(h.handle, 'A', 'c');
