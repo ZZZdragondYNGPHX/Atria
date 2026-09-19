@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, and the Android shared-storage archive extraction stall fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, and the restore-lifecycle / Git-sentinel fix are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
+- `c2f2cf9f2e9da8cc7d591dc4d862dcbe888a8baf`
 
-This commit is the squash merge of PR #15. Android/shared-storage restore ZIPs are now staged onto Termux/internal temporary storage before `yauzl` random-access extraction; extraction reports per-entry byte progress, and recovery controls stay locked while restore owns the migration lock. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #16. Full restore now preserves the tracked third-party extension `.gitkeep`, both Termux update entry points can self-heal that exact interrupted-restore deletion, and Backup Center can reattach to an archive restore after the popup is closed and reopened. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,21 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Restore lifecycle and Git sentinel preservation
+
+- PR #16
+- Baseline: `main@43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
+- Final validated head: `e426ef0f09adeabd660baaa39eba4c955a842c76`
+- Squash merge / current `main`: `c2f2cf9f2e9da8cc7d591dc4d862dcbe888a8baf`
+- Final task tree and merged-main tree: `1d6d6745aaa9b1956c1c684c7d9d524877ddf9f2`
+- Record: `fixes/restore-lifecycle-and-gitkeep.md`
+- Destructive full restore preserves/recreates `public/scripts/extensions/third-party/.gitkeep` instead of dirtying the checkout.
+- Both Termux update entry points self-heal only that exact unstaged sentinel deletion before applying the normal dirty-worktree guard.
+- Archive restore state survives Backup Center popup closure; reopening Backup Center reattaches to the active task and shows the latest progress.
+- Recovery controls remain disabled while restore owns the migration lock and unlock when the original task reaches a terminal state.
+- Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
+- The temporary `fix/restore-lifecycle-and-gitkeep` branch was removed after merge.
 
 ### Android shared-storage archive restore stall
 
