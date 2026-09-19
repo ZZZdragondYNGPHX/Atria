@@ -5,6 +5,7 @@ import { Readable } from 'node:stream';
 
 import AdmZip from 'adm-zip';
 
+import { RestoreCancelledError } from '../../src/backup-sync/restore-cancel.js';
 import {
     extractZipEntryWithAdmZip,
     isRestoreEntryIdleTimeoutError,
@@ -48,6 +49,36 @@ describe('restore entry extraction fallback', () => {
             })).rejects.toMatchObject({
                 code: 'ATRIA_RESTORE_ENTRY_IDLE',
                 entryName: 'worlds/stalled.json',
+            });
+        } finally {
+            stalled.destroy();
+            fs.rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    test('manual cancel aborts a stalled entry before the idle watchdog', async () => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-entry-cancel-'));
+        const targetPath = path.join(root, 'stalled.bin');
+        const stalled = new Readable({ read() {} });
+        const zipfile = {
+            openReadStream(_entry, callback) {
+                callback(null, stalled);
+            },
+        };
+        const controller = new AbortController();
+
+        try {
+            const pending = streamZipEntryWithIdleTimeout({
+                zipfile,
+                entry: { fileName: 'worlds/cancel-me.json' },
+                targetPath,
+                timeoutMs: 2_000,
+                signal: controller.signal,
+            });
+            setTimeout(() => controller.abort(new RestoreCancelledError()), 20);
+
+            await expect(pending).rejects.toMatchObject({
+                code: 'ATRIA_RESTORE_CANCELLED',
             });
         } finally {
             stalled.destroy();
