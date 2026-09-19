@@ -80,33 +80,71 @@ function pruneWebpackCache(webpackRoot, currentCacheVersion) {
 
 
 /**
+ * Detect a Termux process without relying on the launcher to inject Atria-
+ * specific environment variables.
+ *
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {boolean}
+ */
+export function isTermuxRuntime(env = process.env) {
+    const prefix = String(env.PREFIX || '').toLowerCase();
+    const home = String(env.HOME || '').toLowerCase();
+    return prefix.includes('com.termux') || home.includes('/com.termux/');
+}
+
+/**
+ * Resolve the root used for frontend Webpack cache/output.
+ *
+ * forceDataRoot is used only for migrating legacy shared-storage cache into
+ * the new Termux-private cache. Normal callers should leave it false.
+ *
+ * @param {object} [options]
+ * @param {boolean} [options.forceDist=false]
+ * @param {boolean} [options.forceDataRoot=false]
+ * @returns {{ root: string, source: 'dist'|'env'|'termux-private'|'dataRoot' }}
+ */
+export function getWebpackRootInfo({ forceDist = false, forceDataRoot = false } = {}) {
+    if (forceDist || isDocker()) {
+        return { root: path.resolve(process.cwd(), 'dist', '_webpack'), source: 'dist' };
+    }
+
+    if (forceDataRoot) {
+        if (typeof globalThis.DATA_ROOT === 'string') {
+            return { root: path.resolve(globalThis.DATA_ROOT, '_webpack'), source: 'dataRoot' };
+        }
+        throw new Error('DATA_ROOT variable is not set.');
+    }
+
+    const explicitCacheRoot = String(process.env.ATRIA_WEBPACK_CACHE_ROOT || '').trim();
+    if (explicitCacheRoot) {
+        return { root: path.resolve(explicitCacheRoot), source: 'env' };
+    }
+
+    if (isTermuxRuntime()) {
+        const home = String(process.env.HOME || '').trim();
+        if (home) {
+            return { root: path.resolve(home, '.cache', 'atria-webpack'), source: 'termux-private' };
+        }
+    }
+
+    if (typeof globalThis.DATA_ROOT === 'string') {
+        return { root: path.resolve(globalThis.DATA_ROOT, '_webpack'), source: 'dataRoot' };
+    }
+
+    throw new Error('DATA_ROOT variable is not set.');
+}
+/**
  * Get the Webpack configuration for the bundled frontend library chunks.
  * 1. Docker has got cache and the output file pre-baked.
  * 2. Non-Docker environments use the global DATA_ROOT variable to determine the cache and output directories.
  * @param {object} options Configuration options.
  * @param {boolean} [options.forceDist=false] Whether to force the use the /dist folder.
  * @param {boolean} [options.pruneCache=false] Whether to prune old cache directories.
+ * @param {boolean} [options.forceDataRoot=false] Force legacy DATA_ROOT/_webpack resolution.
  * @returns {import('webpack').Configuration}
  * @throws {Error} If the DATA_ROOT variable is not set.
  * */
-export default function getPublicLibConfig({ forceDist = false, pruneCache = false } = {}) {
-    function getWebpackRoot() {
-        if (forceDist || isDocker()) {
-            return path.resolve(process.cwd(), 'dist', '_webpack');
-        }
-
-        const explicitCacheRoot = String(process.env.ATRIA_WEBPACK_CACHE_ROOT || '').trim();
-        if (explicitCacheRoot) {
-            return path.resolve(explicitCacheRoot);
-        }
-
-        if (typeof globalThis.DATA_ROOT === 'string') {
-            return path.resolve(globalThis.DATA_ROOT, '_webpack');
-        }
-
-        throw new Error('DATA_ROOT variable is not set.');
-    }
-
+export default function getPublicLibConfig({ forceDist = false, pruneCache = false, forceDataRoot = false } = {}) {
     function getCacheDirectory() {
         return path.join(webpackRoot, cacheVersion, 'cache');
     }
@@ -115,7 +153,7 @@ export default function getPublicLibConfig({ forceDist = false, pruneCache = fal
         return path.join(webpackRoot, cacheVersion, 'output');
     }
 
-    const webpackRoot = getWebpackRoot();
+    const { root: webpackRoot } = getWebpackRootInfo({ forceDist, forceDataRoot });
     const cacheVersion = getWebpackCacheVersion();
     const cacheDirectory = getCacheDirectory();
     const outputDirectory = getOutputDirectory();
