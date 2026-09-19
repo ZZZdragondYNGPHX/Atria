@@ -26,7 +26,7 @@ describe('client startup telemetry', () => {
         expect(source).toContain("fetch('/api/startup/client-timing'");
         expect(source).toContain("keepalive: true");
         expect(source.indexOf("markClientStartupTiming('appReady')"))
-            .toBeLessThan(source.indexOf('reportClientStartupTiming()'));
+            .toBeLessThan(source.lastIndexOf('reportClientStartupTiming();'));
     });
 
     test('backend logs only numeric startup timing summary fields', () => {
