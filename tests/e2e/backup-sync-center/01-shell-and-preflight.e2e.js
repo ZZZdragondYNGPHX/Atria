@@ -235,6 +235,103 @@ test.describe('Backup & Sync Center', () => {
         await expect(secondCenter.locator('.backupRecoveryRefresh')).toBeEnabled();
     });
 
+    test('manual interrupt requests backend cancel and reports successful rollback', async ({ page }) => {
+        let releaseRestore;
+        let markCancelRequested;
+        const cancelRequested = new Promise(resolve => { markCancelRequested = resolve; });
+        const restoreGate = new Promise(resolve => { releaseRestore = resolve; });
+
+        await page.route('**/api/users/restore-backup/probe', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    compatible: true,
+                    engineKind: 'fs',
+                    destinationEngineKind: 'fs',
+                    restorePlan: {
+                        mode: 'full',
+                        stagedEngineRestore: false,
+                        crossModeRequired: false,
+                        recoveryPoint: 'required',
+                        verification: 'required',
+                    },
+                    preflight: {
+                        totalEntries: 2,
+                        targetableEntries: 2,
+                        skippedEntries: 0,
+                        rejectedEntries: 0,
+                        categoryStats: { worlds: { targetableEntries: 2 } },
+                        warnings: [],
+                    },
+                }),
+            });
+        });
+        await page.route('**/api/users/restore-backup/cancel', async route => {
+            markCancelRequested();
+            releaseRestore();
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    cancelRequested: true,
+                    restoreId: 'test-restore-id',
+                }),
+            });
+        });
+        await page.route('**/api/users/restore-backup', async route => {
+            await restoreGate;
+            await route.fulfill({
+                status: 200,
+                headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
+                body: [
+                    JSON.stringify({ type: 'progress', phase: 'extract', current: 1, total: 2 }),
+                    JSON.stringify({
+                        type: 'error',
+                        error: 'Restore cancelled by user; previous data restored from recovery point.',
+                        code: 'ATRIA_RESTORE_CANCELLED',
+                        rolledBack: true,
+                    }),
+                    '',
+                ].join('\n'),
+            });
+        });
+
+        await awaitMainUI(page, server.baseURL);
+        await page.evaluate(async () => {
+            const mod = await import('/scripts/backup-sync-center.js');
+            void mod.openBackupSyncCenter({ handle: 'default-user' });
+        });
+        const center = page.locator('.backupSyncCenter').last();
+        await center.waitFor({ state: 'visible', timeout: 10_000 });
+        await center.locator('.backupSyncTab[data-tab="archive"]').click();
+        await center.locator('input[name="backupRestoreMode"][value="full"]').check();
+
+        const zipPath = path.join(tempDir, 'cancel.zip');
+        writeFileSync(zipPath, 'PK\u0003\u0004mock');
+        await center.locator('.backupArchiveInput').setInputFiles(zipPath);
+        await expect(center.locator('.backupRestoreStart')).toBeEnabled();
+
+        await center.locator('.backupRestoreStart').click();
+        await page.locator('dialog.popup[open]').last().locator('.popup-button-ok').click();
+
+        const cancelButton = center.locator('.backupRestoreCancel');
+        await expect(cancelButton).toBeVisible();
+        await expect(cancelButton).toBeEnabled();
+        await cancelButton.click();
+
+        const cancelConfirm = page.locator('dialog.popup[open]').last();
+        await cancelConfirm.locator('.popup-button-ok').click();
+        await cancelRequested;
+
+        await expect(cancelButton).toBeDisabled();
+        await expect(center.locator('.backupRestoreProgress')).toContainText('正在中断当前恢复并回退');
+
+        await expect(center.locator('.backupRestoreProgress')).toContainText('恢复已中断，并已回退到开始前状态。');
+        await expect(cancelButton).toBeHidden();
+        await expect(center.locator('.backupRecoveryRefresh')).toBeEnabled();
+    });
+
     test('archive recovery history section is present and refreshable', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
         const center = await openBackupSyncCenter(page);
