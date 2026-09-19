@@ -4,6 +4,7 @@ import path from 'node:path';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../engine-backup-entries.js';
 
 export const SNAPSHOT_META_ENTRY = '_atria_snapshot_meta.json';
+export const SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY = '_atria_global_extensions';
 
 /**
  * Snapshot a user's directory tree into <backupRoot>/<timestamp>-<handle>/.
@@ -153,7 +154,8 @@ export async function restoreFromSnapshot({ handle, userRoot, backupPath, engine
             const base = path.basename(src);
             return base !== ENGINE_DUMP_ENTRY
                 && base !== ENGINE_META_ENTRY
-                && base !== SNAPSHOT_META_ENTRY;
+                && base !== SNAPSHOT_META_ENTRY
+                && base !== SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY;
         },
     });
 
