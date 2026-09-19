@@ -761,6 +761,12 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                         + `Prepare error: ${clearError?.message || clearError}. Rollback error: ${rollbackError?.message || rollbackError}`,
                     );
                 }
+                if (isRestoreCancelledError(clearError)) {
+                    throw new RestoreCancelledError(
+                        'Restore cancelled by user; previous data restored from recovery point.',
+                        { rolledBack: true },
+                    );
+                }
                 throw new Error(`Failed to prepare overwrite restore; previous data restored. ${clearError?.message || clearError}`);
             }
         }
