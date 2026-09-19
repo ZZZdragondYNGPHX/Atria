@@ -31,6 +31,23 @@ describe('startup milestone telemetry', () => {
         expect(String(log.mock.calls[0][0])).toContain('done');
     });
 
+    test('frontend cache work overlaps independent pre-setup phases but still gates listen', () => {
+        const serverMain = readFileSync(new URL('../src/server-main.js', import.meta.url), 'utf8');
+
+        const kickoff = serverMain.indexOf('const frontendCacheReady = webpackMiddleware.runWebpackCompiler');
+        const version = serverMain.indexOf("const finishVersion = startStartupPhase('pre-setup.version')");
+        const networkDone = serverMain.indexOf('finishNetworkPolicy();');
+        const join = serverMain.indexOf('const frontendCacheResult = await frontendCacheReady;');
+
+        expect(kickoff).toBeGreaterThanOrEqual(0);
+        expect(version).toBeGreaterThan(kickoff);
+        expect(networkDone).toBeGreaterThan(version);
+        expect(join).toBeGreaterThan(networkDone);
+        expect(serverMain).not.toContain('await webpackMiddleware.runWebpackCompiler({ pruneCache: true })');
+        expect(serverMain).toContain('if (!frontendCacheResult.ok)');
+        expect(serverMain).toContain('throw frontendCacheResult.error');
+    });
+
     test('critical startup path is instrumented end to end', () => {
         const serverMain = readFileSync(new URL('../src/server-main.js', import.meta.url), 'utf8');
         const bootstrap = readFileSync(new URL('../src/endpoints/bootstrap.js', import.meta.url), 'utf8');
