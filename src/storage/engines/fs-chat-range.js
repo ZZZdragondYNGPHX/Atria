@@ -12,6 +12,20 @@ const PATCH_JOURNAL_MAGIC = 'ATRIA_FS_CHAT_PATCH_V1';
 const PATCH_JOURNAL_PENDING = 'P';
 const PATCH_JOURNAL_COMMITTED = 'C';
 
+/**
+ * Recovery artifacts are local transaction state, never user content.
+ * Sync/backup walkers can use this predicate to keep them out of portable
+ * trees while leaving ordinary JSONL names untouched.
+ *
+ * @param {string} name basename of a candidate file
+ * @returns {boolean}
+ */
+export function isFsChatPatchArtifactName(name) {
+    const value = String(name || '');
+    return value.endsWith(PATCH_JOURNAL_SUFFIX)
+        || value.includes('.jsonl' + PATCH_JOURNAL_TEMP_PREFIX);
+}
+
 function writeAll(fd, buffer, position = null) {
     let written = 0;
     while (written < buffer.length) {
@@ -277,8 +291,7 @@ export function recoverFsChatPatchJournals(directories) {
                 recoverFsChatPatchJournal(full.slice(0, -PATCH_JOURNAL_SUFFIX.length));
                 continue;
             }
-            if (entry.name.includes('.jsonl' + PATCH_JOURNAL_TEMP_PREFIX)
-                && !entry.name.endsWith('.jsonl')) {
+            if (isFsChatPatchArtifactName(entry.name)) {
                 // Temp journals are renamed to the durable journal before the
                 // target is touched, so a leftover temp can always be dropped.
                 // Keep the pattern specific enough that a user-named JSONL is
