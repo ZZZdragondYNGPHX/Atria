@@ -969,7 +969,56 @@ function buildWorkspaceDom() {
             if (details instanceof HTMLDetailsElement) details.open = false;
         });
     });
-    if (searchToolbar) shell.querySelector('#wi_workspace_entries_toolbar').append(searchToolbar);
+    if (searchToolbar) {
+        shell.querySelector('#wi_workspace_entries_toolbar').append(searchToolbar);
+
+        if (!searchToolbar.querySelector('.wi-entry-mobile-search-options')) {
+            const sourceMode = searchToolbar.querySelector('#world_info_search_mode');
+            const sourceAdvanced = searchToolbar.querySelector('#world_info_search_advanced');
+            const options = document.createElement('details');
+            options.className = 'wi-entry-mobile-search-options';
+            options.innerHTML = `
+                <summary class="menu_button" title="${t`Search options`}" aria-label="${t`Search options`}"><i class="fa-solid fa-filter"></i></summary>
+                <div class="wi-entry-mobile-search-menu">
+                    <label class="wi-entry-mobile-search-mode-field">
+                        <span>${t`Search mode`}</span>
+                        <select id="wi_workspace_mobile_search_mode" class="text_pole textarea_compact"></select>
+                    </label>
+                    <button type="button" class="menu_button menu_button_icon" data-control="advanced">
+                        <i class="fa-solid fa-code"></i>
+                        <span>${t`Advanced syntax`}</span>
+                    </button>
+                </div>
+            `;
+
+            const proxyMode = options.querySelector('#wi_workspace_mobile_search_mode');
+            if (proxyMode instanceof HTMLSelectElement && sourceMode instanceof HTMLSelectElement) {
+                for (const sourceOption of sourceMode.options) {
+                    proxyMode.append(sourceOption.cloneNode(true));
+                }
+                proxyMode.value = sourceMode.value;
+                proxyMode.addEventListener('change', () => {
+                    sourceMode.value = proxyMode.value;
+                    sourceMode.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                sourceMode.addEventListener('change', () => {
+                    proxyMode.value = sourceMode.value;
+                });
+            }
+
+            const advancedButton = options.querySelector('[data-control="advanced"]');
+            const syncAdvancedState = () => {
+                advancedButton?.classList.toggle('is-active', Boolean(sourceAdvanced?.checked));
+            };
+            advancedButton?.addEventListener('click', () => {
+                if (sourceAdvanced instanceof HTMLInputElement) sourceAdvanced.click();
+            });
+            sourceAdvanced?.addEventListener('change', syncAdvancedState);
+            syncAdvancedState();
+
+            searchToolbar.append(options);
+        }
+    }
     if (bulkToolbar) shell.querySelector('#wi_workspace_entries_toolbar').append(bulkToolbar);
     if (cardsList) shell.querySelector('#wi_workspace_cards').append(cardsList);
     if (managerBlock) shell.querySelector('#wi_workspace_library').append(managerBlock);
