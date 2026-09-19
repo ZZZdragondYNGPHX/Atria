@@ -4,6 +4,56 @@ import { t } from './i18n.js';
 import { power_user, toastPositionClasses } from './power-user.js';
 import { clamp, focusWithoutVirtualKeyboard, removeFromArray, runAfterAnimation, uuidv4 } from './utils.js';
 
+let cropperLibrariesPromise = null;
+
+function loadClassicScript(src) {
+    const selector = `script[data-atria-lazy-src="${src}"]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+        if (existing.dataset.atriaLazyLoaded === 'true') {
+            return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+            existing.addEventListener('load', resolve, { once: true });
+            existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+        });
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = false;
+        script.dataset.atriaLazySrc = src;
+        script.addEventListener('load', () => {
+            script.dataset.atriaLazyLoaded = 'true';
+            resolve();
+        }, { once: true });
+        script.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+        document.head.append(script);
+    });
+}
+
+function ensureCropperLibraries() {
+    if (typeof $.fn?.cropper === 'function') {
+        return Promise.resolve();
+    }
+
+    if (!cropperLibrariesPromise) {
+        cropperLibrariesPromise = (async () => {
+            await loadClassicScript('/lib/cropper.min.js');
+            await loadClassicScript('/lib/jquery-cropper.min.js');
+            if (typeof $.fn?.cropper !== 'function') {
+                throw new Error('Cropper library loaded without jQuery cropper plugin');
+            }
+        })().catch((error) => {
+            cropperLibrariesPromise = null;
+            throw error;
+        });
+    }
+
+    return cropperLibrariesPromise;
+}
+
 /** @readonly */
 /** @enum {Number} */
 export const POPUP_TYPE = {
@@ -230,6 +280,9 @@ export class Popup {
         this.onClosing = onClosing;
         this.onClose = onClose;
         this.onOpen = onOpen;
+
+        this.cropAspect = cropAspect;
+        this.cropperInitialized = false;
 
         /**@type {HTMLTemplateElement}*/
         const template = document.querySelector('#popup_template');
@@ -489,16 +542,8 @@ export class Popup {
             case POPUP_TYPE.CROP: {
                 this.cropWrap.style.display = 'block';
                 this.cropImage.src = cropImage;
-                $(this.cropImage).cropper({
-                    aspectRatio: cropAspect ?? 2 / 3,
-                    autoCropArea: 1,
-                    viewMode: 2,
-                    rotatable: false,
-                    crop: (event) => {
-                        this.cropData = event.detail;
-                        this.cropData.want_resize = !power_user.never_resize_avatars;
-                    },
-                });
+                // Cropper itself is loaded lazily in show(); keeping the
+                // constructor synchronous preserves every non-crop popup path.
                 // Crop shows OK if not explicitly set to false, and CANCEL if not explicitly set to false
                 if (okButton === false) this.okButton.style.display = 'none';
                 if (cancelButton === false) this.cancelButton.style.display = 'none';
@@ -677,6 +722,21 @@ export class Popup {
      * @returns {Promise<string|number|boolean?>} A promise that resolves with the value of the popup when it is completed.
      */
     async show() {
+        if (this.type === POPUP_TYPE.CROP && !this.cropperInitialized) {
+            await ensureCropperLibraries();
+            $(this.cropImage).cropper({
+                aspectRatio: this.cropAspect ?? 2 / 3,
+                autoCropArea: 1,
+                viewMode: 2,
+                rotatable: false,
+                crop: (event) => {
+                    this.cropData = event.detail;
+                    this.cropData.want_resize = !power_user.never_resize_avatars;
+                },
+            });
+            this.cropperInitialized = true;
+        }
+
         document.body.append(this.dlg);
 
         // Run opening animation
