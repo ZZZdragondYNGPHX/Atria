@@ -863,6 +863,40 @@ export async function openBackupSyncCenter({
         center.querySelector('.backupArchiveFileLabel').textContent = selectedArchive?.name || '未选择文件';
         await rerunPreflight();
     });
+
+    center.querySelector('.backupRestoreCancel').addEventListener('click', async () => {
+        const session = activeArchiveRestore;
+        if (!session || session.state !== 'running') return;
+
+        const confirmed = await callGenericPopup(
+            '中断当前恢复并回退到开始恢复前的状态？',
+            POPUP_TYPE.CONFIRM,
+            '',
+            {
+                okButton: '中断并回退',
+                cancelButton: '继续恢复',
+                wide: true,
+            },
+        );
+        if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
+        if (activeArchiveRestore !== session || session.state !== 'running') return;
+
+        session.state = 'cancelling';
+        broadcastArchiveRestoreState();
+
+        try {
+            const result = await postJson('/api/users/restore-backup/cancel', { handle });
+            if (!result?.cancelRequested) {
+                throw new Error('服务器没有接受中断请求。');
+            }
+        } catch (error) {
+            if (activeArchiveRestore === session && session.state === 'cancelling') {
+                session.state = 'running';
+                broadcastArchiveRestoreState();
+            }
+            toastr.error(`中断恢复失败：${error.message}`);
+        }
+    });
     center.querySelector('.backupRestoreStart').addEventListener('click', async () => {
         const button = center.querySelector('.backupRestoreStart');
         if (button.disabled || archiveRestoreRunning() || !selectedArchive || !preflight) return;
@@ -895,6 +929,17 @@ export async function openBackupSyncCenter({
                 await reloadManaged();
             }
         } catch (error) {
+            if (error?.code === 'ATRIA_RESTORE_CANCELLED') {
+                finishArchiveRestoreSession(session, 'cancelled', {
+                    rolledBack: Boolean(error.rolledBack),
+                });
+                toastr.success(
+                    error.rolledBack
+                        ? '恢复已中断，并已回退到开始前状态。'
+                        : '恢复已中断；尚未写入数据，无需回退。',
+                );
+                return;
+            }
             finishArchiveRestoreSession(session, 'failed', error);
             toastr.error(`恢复失败：${error.message}`);
         } finally {
