@@ -319,9 +319,7 @@ test('Simplified Chinese localizes Workspace-owned World Info surfaces', async (
     await expect(zhBookCard.locator('.world_info_manager_toggle_label')).toHaveText(/全局/);
     await zhBookCard.locator('.world_info_manager_more_button').click();
     await expect(zhBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'true');
-    const zhBookDialog = page.locator('body > dialog.wi-worldbook-action-sheet-dialog[open]');
-    await expect(zhBookDialog).toBeVisible();
-    const zhBookMenu = zhBookDialog.locator('.wi-worldbook-action-sheet-portal');
+    const zhBookMenu = zhBookCard.locator('.world_info_manager_item_menu');
     await expect(zhBookMenu).toBeVisible();
     await expect(zhBookMenu.locator('.world_info_manager_export')).toContainText('导出');
     await expect(zhBookMenu.locator('.world_info_manager_rename')).toContainText('重命名');
