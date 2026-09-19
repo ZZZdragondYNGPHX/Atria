@@ -1,3 +1,4 @@
+import { recoverFsChatPatchJournals } from './fs-chat-range.js';
 import { FsTransaction } from './fs-engine-transaction.js';
 
 export class FsEngine {
@@ -7,6 +8,7 @@ export class FsEngine {
         }
         this.kind = 'fs';
         this._directoriesByHandle = directoriesByHandle;
+        this._recoveredPatchJournals = new Set();
     }
 
     // `handle` is accepted but unused by FsTransaction — its per-kind handlers
@@ -14,6 +16,13 @@ export class FsEngine {
     // *does* need it to pick the per-user DB before the transaction begins, so
     // the engine contract takes (handle, fn) uniformly.
     async withTransaction(handle, fn) {
+        // Whole-message local patches are protected by transient journals.
+        // Sweep once per user/process before the first Repo transaction so a
+        // crash cannot leave a partially rewritten JSONL visible to storage.
+        if (!this._recoveredPatchJournals.has(handle)) {
+            recoverFsChatPatchJournals(this._directoriesByHandle(handle));
+            this._recoveredPatchJournals.add(handle);
+        }
         const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle });
         return fn(tx);
     }

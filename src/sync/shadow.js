@@ -4,6 +4,7 @@ import git from 'isomorphic-git';
 import { sync as writeFileAtomicSync } from 'write-file-atomic';
 
 import { SYNC_CATEGORIES, resolveCategoryPaths } from './categories.js';
+import { isFsChatPatchArtifactName } from '../storage/engines/fs-chat-range.js';
 
 export const PEER_ID_PATTERN = /^[A-Za-z0-9._@-]+$/;
 
@@ -179,7 +180,7 @@ function toPosixRel(liveRoot, absolutePath) {
 async function walkLiveDir(absDir, liveRoot, desired) {
     const entries = await fs.promises.readdir(absDir, { withFileTypes: true });
     for (const entry of entries) {
-        if (entry.name === '.git') continue;
+        if (entry.name === '.git' || isFsChatPatchArtifactName(entry.name)) continue;
         const abs = path.join(absDir, entry.name);
         if (entry.isDirectory()) {
             await walkLiveDir(abs, liveRoot, desired);
@@ -514,9 +515,9 @@ export async function reconcileShadowToLive({ userRoot, peerId, directories, ena
 async function walkShadowForDesired(absDir, prefix, desired) {
     const entries = await fs.promises.readdir(absDir, { withFileTypes: true });
     for (const entry of entries) {
-        // Defensive: the shadow's .git is a sibling of workdir, not inside it,
-        // but a stray .git in the workdir would taint the desired set.
-        if (entry.name === '.git') continue;
+        // Recovery journals are machine-local transactional state. A remote
+        // tree that happens to contain one must never materialize it.
+        if (entry.name === '.git' || isFsChatPatchArtifactName(entry.name)) continue;
         const abs = path.join(absDir, entry.name);
         // Mirror snapshot-side walkers (walkLiveDir / pruneWorkdir /
         // collectWorkdirFiles): ternary form prevents leading-slash rel paths
@@ -550,9 +551,9 @@ async function walkShadowForDesired(absDir, prefix, desired) {
 async function walkLiveForDeletions(absDir, prefix, desired, deleted) {
     const entries = await fs.promises.readdir(absDir, { withFileTypes: true });
     for (const entry of entries) {
-        // card-apps and any other live directory may host
-        // per-content git repos we must never touch.
-        if (entry.name === '.git') continue;
+        // Never delete a live recovery journal as part of remote reconcile:
+        // an in-flight FS patch owns it until commit/rollback completes.
+        if (entry.name === '.git' || isFsChatPatchArtifactName(entry.name)) continue;
         const abs = path.join(absDir, entry.name);
         // Mirror snapshot-side walkers (see walkShadowForDesired): ternary
         // form prevents leading-slash rel paths if this walker is ever entered
