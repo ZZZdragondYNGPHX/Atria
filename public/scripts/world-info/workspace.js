@@ -88,6 +88,19 @@ function summarizeState(entry) {
     return parts.join(' · ') || t`Not configured`;
 }
 
+function budgetTierLabel(value) {
+    switch (String(value || '').toLowerCase()) {
+        case 'critical':
+            return t`Critical tier`;
+        case 'scene':
+            return t`Scene tier`;
+        case 'optional':
+            return t`Optional tier`;
+        default:
+            return String(value || '');
+    }
+}
+
 function summarizeRelationships(entry) {
     const required = Array.isArray(entry?.requiredEntries) ? entry.requiredEntries.length : 0;
     const related = Array.isArray(entry?.relatedEntries) ? entry.relatedEntries.length : 0;
@@ -95,7 +108,7 @@ function summarizeRelationships(entry) {
     if (required) parts.push(t`Required ${required}`);
     if (related) parts.push(t`Related ${related}`);
     if (entry?.mutualExclusionGroup) parts.push(t`Group ${entry.mutualExclusionGroup}`);
-    if (entry?.budgetTier && entry.budgetTier !== 'normal') parts.push(entry.budgetTier);
+    if (entry?.budgetTier && entry.budgetTier !== 'normal') parts.push(budgetTierLabel(entry.budgetTier));
     return parts.join(' · ') || t`Not configured`;
 }
 
@@ -479,7 +492,7 @@ function renderBadges(entry, issues) {
         (Array.isArray(entry?.requiredEntries) && entry.requiredEntries.length)
         || (Array.isArray(entry?.relatedEntries) && entry.relatedEntries.length)
     ) badges.push(t`Dependencies`);
-    if (entry?.budgetTier && entry.budgetTier !== 'normal') badges.push(entry.budgetTier);
+    if (entry?.budgetTier && entry.budgetTier !== 'normal') badges.push(budgetTierLabel(entry.budgetTier));
     if (issues.length) badges.push(t`Issues ${issues.length}`);
     return badges.slice(0, 5);
 }
