@@ -6041,14 +6041,18 @@ function buildWorldInfoManagerItem(item) {
     const itemMenu = itemElement.find('.world_info_manager_item_menu');
     const moreButton = itemElement.find('.world_info_manager_more_button');
     const itemMenuHome = itemElement.find('.world_info_manager_item_more')[0];
-    let itemMenuBackdrop = null;
+    let itemMenuDialog = null;
 
     const closeItemMenu = () => {
         itemMenu.addClass('displayNone').removeClass('wi-worldbook-action-sheet-portal');
         moreButton.attr('aria-expanded', 'false');
         itemElement.find('.world_info_manager_item_more').removeClass('is-open');
-        itemMenuBackdrop?.remove();
-        itemMenuBackdrop = null;
+
+        if (itemMenuDialog) {
+            if (itemMenuDialog.open) itemMenuDialog.close();
+            itemMenuDialog.remove();
+            itemMenuDialog = null;
+        }
 
         if (itemMenuHome?.isConnected && itemMenu[0]?.parentNode !== itemMenuHome) {
             itemMenuHome.append(itemMenu[0]);
@@ -6065,18 +6069,28 @@ function buildWorldInfoManagerItem(item) {
         }
         activeWorldInfoManagerMenuCloser = closeItemMenu;
 
-        const usePortal = window.matchMedia?.('(max-width: 1000px)')?.matches;
-        if (usePortal) {
-            itemMenuBackdrop = document.createElement('div');
-            itemMenuBackdrop.className = 'world_info_manager_action_sheet_backdrop';
-            itemMenuBackdrop.addEventListener('click', closeItemMenu);
-            document.body.append(itemMenuBackdrop);
+        const useTopLayer = window.matchMedia?.('(max-width: 1000px)')?.matches
+            && typeof HTMLDialogElement !== 'undefined';
+        if (useTopLayer) {
+            itemMenuDialog = document.createElement('dialog');
+            itemMenuDialog.className = 'wi-worldbook-action-sheet-dialog';
+            itemMenuDialog.setAttribute('aria-label', `${t`Lorebook actions`}: ${item.name}`);
+            itemMenuDialog.addEventListener('cancel', (event) => {
+                event.preventDefault();
+                closeItemMenu();
+            });
+            itemMenuDialog.addEventListener('click', (event) => {
+                if (event.target === itemMenuDialog) closeItemMenu();
+            });
 
-            itemMenu.addClass('wi-worldbook-action-sheet-portal');
-            document.body.append(itemMenu[0]);
+            itemMenu.addClass('wi-worldbook-action-sheet-portal').removeClass('displayNone');
+            itemMenuDialog.append(itemMenu[0]);
+            document.body.append(itemMenuDialog);
+            itemMenuDialog.showModal();
+        } else {
+            itemMenu.removeClass('displayNone');
         }
 
-        itemMenu.removeClass('displayNone');
         moreButton.attr('aria-expanded', 'true');
         itemElement.find('.world_info_manager_item_more').addClass('is-open');
     };
