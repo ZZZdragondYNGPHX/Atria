@@ -315,3 +315,78 @@ W-04/W-05 are complete in PR #9 and merged to `main@03d97d655370b31c2a27dd1235f9
 PR #10 implements the no-migration P-02–P-05 continuation described above. Remaining deeper work is limited to boundaries that require a new contract or explicit architectural approval, notably exact formatter-cache invalidation / partial Markdown streaming and crash-safe FS local replace/remove storage representation.
 
 W-04/W-05 should not be reopened as a compatibility migration unless a new measured requirement justifies it.
+
+
+## P-04 FS local whole-message patch continuation · PR #11
+
+- Baseline: `main@ff804b53adb514919cc3bfb6ac82334df5fe7cf2`
+- Temporary branch: `feat/p04-fs-message-storage`
+- Pull request: #11 — `feat: deepen P04 filesystem chat patch storage`
+- Validated implementation tree before the master-plan-only status commit: `a11bf58d94ef7351676d6af3b901b4db999412b0`
+- Final task-head candidate: `0c8e18964acf8b1c85ee41feea4b8c1232994204`
+- Master plan: `docs/plans/worldbook-performance-master-plan.md`
+
+### Goal
+
+Cross the explicitly deferred P-04 FS crash-safety boundary without replacing Atria's canonical SillyTavern-compatible chat JSONL format. High-frequency whole-message `test/replace/remove` should no longer require an atomic rewrite of the complete chat when the current FS file can be mutated safely.
+
+### Implementation
+
+- FS now implements the same native whole-message `test /N`, `replace /N`, and `remove /N` capability already available in the SQL engines.
+- The existing disposable byte-offset JSONL index is reused to locate the earliest affected message.
+- Variable-length edits rewrite only the suffix beginning at that message. The canonical `.jsonl` remains the single chat-body source of truth.
+- A transient sibling `<chat>.jsonl.atria-patch-journal` protects the in-place mutation:
+  1. store the original fixed-width header plus original affected suffix;
+  2. fsync the journal;
+  3. rewrite/truncate the affected target suffix and rotate the fixed-width integrity header;
+  4. fsync the target;
+  5. write and fsync the committed marker;
+  6. remove the journal.
+- A pending journal is rolled back on startup / first FS storage access. A durably committed journal is cleanup-only and never rolls back the accepted chat mutation.
+- Commit-marker fsync failure is treated conservatively: the original header/suffix are restored even when the one-byte marker write reached page cache before fsync failed.
+- Server startup recovers journals before raw chat-file migrations/cache readers run; the FS engine also performs a once-per-handle recovery sweep as defense in depth.
+- LAN Sync treats journal and journal-temp files as machine-local transaction artifacts:
+  - snapshot does not publish them;
+  - remote reconcile does not import them;
+  - reconcile does not delete an in-flight local journal.
+- Unsupported operation shapes, legacy/incompatible headers, and metadata updates that change serialized header byte length return `unsupported` before mutation and continue through the established atomic full-resource fallback.
+
+### Performance and correctness evidence
+
+The focused FS performance regression uses a 5,000-message chat and a warm range index. Replacing the final message with a different-length payload must:
+
+- keep the canonical JSONL inode unchanged, proving the operation did not use the full-file atomic rename path;
+- read less than 1% of the original chat bytes;
+- write less than 2% of the original chat bytes;
+- persist the replacement and rotate integrity.
+
+Focused coverage also exercises variable-length replace, sequential remove/replace shifting, fixed-width metadata merge, safe header-growth fallback, exact pending-journal rollback, committed-journal cleanup, process-restart recovery, and uncertain commit-marker fsync rollback.
+
+LAN Sync regressions pin both directions of the portability boundary.
+
+### Validation recorded before merge
+
+The implementation code tree `a11bf58d94ef7351676d6af3b901b4db999412b0` passed:
+
+- Worldbook Performance Foundation #198;
+- Atria PR Checks #445:
+  - ESLint;
+  - Atria Migration Guard;
+  - complete Node unit suite: **591 suites / 7,930 tests**;
+  - MySQL 8.4 and PostgreSQL 16 service-backed storage coverage;
+  - the new `sync/shadow-snapshot.test.js` and `sync/shadow-reconcile.test.js` cases.
+
+The immediately preceding safety head `d7e02c77f1c23f61951b732a3eda2c3a546a1730` also passed Worldbook Performance Foundation #195 and Atria PR Checks #442. #195 explicitly passed the P-04 focused suites, synthetic benchmark, isolated real-host Chromium smoke, and W-04/W-05 E2E.
+
+The final task head adds only the master-plan status update on top of the validated implementation tree. Its final CI result and resulting `main` SHA are recorded when PR #11 is merged.
+
+Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in and this task did not touch Android delivery code.
+
+### Compatibility and remaining boundary
+
+- Existing chat JSONL requires no batch migration.
+- Import/export and ordinary direct JSONL consumers continue to see the canonical file.
+- The journal is transient recovery state and is not portable user content.
+- Integrity/OCC, existing reliable full-rewrite fallback, backup materialization and SQL-engine behavior remain intact.
+- An edit near the front or middle of a JSONL chat still rewrites and journals the affected suffix. Cost therefore scales with that suffix, not strictly with one message.
+- If measured workloads later require near-single-message cost for arbitrary old-message edits, that should be a separate physical-record / segmented-storage migration with its own compatibility and recovery contract.
