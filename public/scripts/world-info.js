@@ -6105,7 +6105,8 @@ function buildWorldInfoManagerItem(item) {
 
             itemMenu.addClass('wi-worldbook-action-sheet-portal').removeClass('displayNone');
             itemMenuDialog.append(sheetHeader, itemMenu[0]);
-            document.body.append(itemMenuDialog);
+            const dialogHost = document.querySelector('#WorldInfo') || document.body;
+            dialogHost.append(itemMenuDialog);
             itemMenuDialog.showModal();
         } else {
             itemMenu.removeClass('displayNone');
