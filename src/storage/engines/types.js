@@ -70,6 +70,16 @@
 
 /**
  * @typedef {{
+ *   status: 'ok'|'conflict'|'missing'|'unsupported',
+ *   integrity?: string,
+ *   actualIntegrity?: string,
+ *   applied?: number,
+ *   totalMessages?: number,
+ * }} ChatPatchResult
+ */
+
+/**
+ * @typedef {{
  *   header: object,
  *   integrity: string,
  *   updatedAt: number,
