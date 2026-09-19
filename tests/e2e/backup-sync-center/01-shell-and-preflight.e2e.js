@@ -97,7 +97,18 @@ test.describe('Backup & Sync Center', () => {
                 status: 200,
                 headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
                 body: [
+                    JSON.stringify({ type: 'progress', phase: 'stage', current: 64, total: 128 }),
                     JSON.stringify({ type: 'progress', phase: 'snapshot', current: 0, total: 1 }),
+                    JSON.stringify({
+                        type: 'progress',
+                        phase: 'extract',
+                        current: 1,
+                        total: 3,
+                        entry: 'extensions/example/model.bin',
+                        entryOrdinal: 2,
+                        entryBytes: 1024,
+                        entryTotalBytes: 4096,
+                    }),
                     JSON.stringify({ type: 'progress', phase: 'extract', current: 2, total: 3 }),
                     JSON.stringify({ type: 'result', restoredCount: 3, failedCount: 0 }),
                     '',
