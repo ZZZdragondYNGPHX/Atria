@@ -2359,107 +2359,65 @@ router.post('/append', validateAvatarUrlMiddleware, async function (request, res
             return response.status(400).send({ error: 'No message payload found. Expected body.messages or body.message.' });
         }
 
-        const repo = getChatRepo();
-        const existing = await repo.get(handle, cardName, fileNameRaw);
+        const result = await appendMessagesToChatFile({
+            filePath: chatFilePath,
+            messages,
+            chatMetadata,
+            integritySlug: slugRaw,
+            force,
+            incomingGenerationId: incomingId,
+            handle,
+            charDir: cardName,
+            name: fileNameRaw,
+            isGroup: false,
+        });
 
-        if (slugRaw && !force && existing && existing.integrity !== slugRaw) {
-            throw createIntegrityMismatchError(chatFilePath, slugRaw);
-        }
-
-        const cleanedMessages = messages.map(m => stripAtriaGenerationIdFromMessage(_.cloneDeep(m)));
-
-        if (!existing) {
-            const header = createChatHeader(_.isObjectLike(chatMetadata) ? chatMetadata : {});
-            const { integrity: newIntegrity } = await repo.save(handle, cardName, fileNameRaw, header, cleanedMessages, null);
-            writeChatSyncState(chatFilePath, { integrity: newIntegrity, updated_at: Date.now() });
-            if (incomingId) {
-                writeLastChatGenerationId(chatFilePath, incomingId);
-            }
-            try {
-                const headerWithIntegrity = {
-                    ...header,
-                    chat_metadata: applyIntegrityToMetadata(header.chat_metadata, newIntegrity),
-                };
-                const jsonlData = [headerWithIntegrity, ...cleanedMessages].map(m => JSON.stringify(m)).join('\n');
-                getBackupFunction(handle, cardName)(request.user.directories.backups, cardName, jsonlData);
-            } catch (backupErr) {
-                console.error('Chat backup after append failed', backupErr);
-            }
-            await refreshRecentChatIndexEntry(request, chatFilePath, { avatar: String(request.body.avatar_url || '') });
-            acknowledgeGenerationFromValueOrPersistTarget(request, messages, buildCharacterPersistTargetHint(request));
-            return response.send({ ok: true, appended: cleanedMessages.length, created: true, integrity: newIntegrity });
-        }
-
-        const dedupedMessages = cleanedMessages.slice();
-        const lastStoredMessage = existing.body.length > 0 ? existing.body[existing.body.length - 1] : null;
-        const sidecarLastGenerationId = readLastChatGenerationId(chatFilePath);
-        let matchedExistingGenerationId = false;
-        while (dedupedMessages.length > 0) {
-            const lastStoredStripped = isChatMessageLike(lastStoredMessage)
-                ? stripAtriaGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
-                : null;
-            if (lastStoredStripped && isChatMessageLike(dedupedMessages[0]) && _.isEqual(lastStoredStripped, dedupedMessages[0])) {
-                dedupedMessages.shift();
-                continue;
-            }
-            if (!sidecarLastGenerationId || !incomingId || incomingId !== sidecarLastGenerationId) {
-                break;
-            }
-            matchedExistingGenerationId = true;
-            dedupedMessages.shift();
-        }
-
-        if (dedupedMessages.length === 0) {
-            await refreshRecentChatIndexEntry(request, chatFilePath, { avatar: String(request.body.avatar_url || '') });
-            acknowledgeGenerationFromValueOrPersistTarget(request, messages, buildCharacterPersistTargetHint(request));
-            return response.send({
-                ok: true,
-                appended: 0,
-                created: false,
-                skipped: cleanedMessages.length,
-                matched_existing_generation_id: matchedExistingGenerationId,
-                integrity: existing.integrity,
+        // Keep the existing sync sidecar current for retry/OCC consumers that
+        // still read it directly. This write is O(1) and does not touch chat
+        // body data.
+        if (result?.integrity) {
+            writeChatSyncState(chatFilePath, {
+                integrity: result.integrity,
+                updated_at: Date.now(),
             });
         }
 
-        const mergedBody = existing.body.concat(dedupedMessages);
-        const expectedForSave = (slugRaw && !force) ? slugRaw : null;
-        let newIntegrity;
-        try {
-            ({ integrity: newIntegrity } = await repo.save(handle, cardName, fileNameRaw, existing.header, mergedBody, expectedForSave));
-        } catch (err) {
-            if (err instanceof ConflictError) {
-                return sendRepoIntegrityConflict(response, err);
-            }
-            throw err;
-        }
-        writeChatSyncState(chatFilePath, { integrity: newIntegrity, updated_at: Date.now() });
-        if (incomingId) {
-            writeLastChatGenerationId(chatFilePath, incomingId);
-        }
-
-        try {
-            const headerWithIntegrity = {
-                ...(existing.header ?? {}),
-                chat_metadata: applyIntegrityToMetadata(existing.header?.chat_metadata, newIntegrity),
-            };
-            const jsonlData = [headerWithIntegrity, ...mergedBody].map(m => JSON.stringify(m)).join('\n');
-            getBackupFunction(handle, cardName)(request.user.directories.backups, cardName, jsonlData);
-        } catch (backupErr) {
-            console.error('Chat backup after append failed', backupErr);
+        // Preserve reliable full-chat backups, but defer the expensive read
+        // and serialization until this per-chat throttle actually fires.
+        if (result?.created || (result?.appended ?? 0) > 0) {
+            await getBackupFunction(handle, cardName)(
+                request.user.directories.backups,
+                cardName,
+                async () => {
+                    const chatDoc = await getChatRepo().get(handle, cardName, fileNameRaw);
+                    if (!chatDoc) return null;
+                    const headerWithIntegrity = {
+                        ...(chatDoc.header ?? {}),
+                        chat_metadata: applyIntegrityToMetadata(
+                            chatDoc.header?.chat_metadata,
+                            chatDoc.integrity,
+                        ),
+                    };
+                    return [headerWithIntegrity, ...(chatDoc.body ?? [])]
+                        .map(message => JSON.stringify(message))
+                        .join('\n');
+                },
+            );
         }
 
-        await refreshRecentChatIndexEntry(request, chatFilePath, { avatar: String(request.body.avatar_url || '') });
-        acknowledgeGenerationFromValueOrPersistTarget(request, messages, buildCharacterPersistTargetHint(request));
-        return response.send({
-            ok: true,
-            appended: dedupedMessages.length,
-            created: false,
-            skipped: cleanedMessages.length - dedupedMessages.length,
-            matched_existing_generation_id: matchedExistingGenerationId,
-            integrity: newIntegrity,
+        await refreshRecentChatIndexEntry(request, chatFilePath, {
+            avatar: String(request.body.avatar_url || ''),
         });
+        acknowledgeGenerationFromValueOrPersistTarget(
+            request,
+            messages,
+            buildCharacterPersistTargetHint(request),
+        );
+        return response.send({ ok: true, ...result });
     } catch (error) {
+        if (error instanceof ConflictError) {
+            return sendRepoIntegrityConflict(response, error);
+        }
         if (error instanceof IntegrityMismatchError) {
             return sendIntegrityConflict(response, error);
         }
