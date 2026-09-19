@@ -10160,6 +10160,64 @@ function registerConnectionProfileAdditionalParameterSlashCommands() {
     }));
 }
 
+let openAIModelSelectsInitialized = false;
+
+/**
+ * Initialize the desktop-only Select2 enhancements for Chat Completion model
+ * pickers after the Select2 classic library has loaded.
+ */
+export function initOpenAIModelSelects() {
+    if (openAIModelSelectsInitialized || isMobile()) {
+        return;
+    }
+
+    $('#model_openrouter_select').select2({
+        placeholder: t`Select a model`,
+        searchInputPlaceholder: t`Search models...`,
+        searchInputCssClass: 'text_pole',
+        width: '100%',
+        templateResult: getOpenRouterModelTemplate,
+        matcher: textValueMatcher,
+    });
+    $('#model_aimlapi_select').select2({
+        placeholder: t`Select a model`,
+        searchInputPlaceholder: t`Search models...`,
+        searchInputCssClass: 'text_pole',
+        width: '100%',
+        templateResult: getAimlapiModelTemplate,
+    });
+    $('#model_electronhub_select').select2({
+        placeholder: t`Select a model`,
+        searchInputPlaceholder: t`Search models...`,
+        searchInputCssClass: 'text_pole',
+        width: '100%',
+        templateResult: getElectronHubModelTemplate,
+        matcher: textValueMatcher,
+    });
+    $('#model_chutes_select').select2({
+        placeholder: t`Select a model`,
+        searchInputPlaceholder: t`Search models...`,
+        searchInputCssClass: 'text_pole',
+        width: '100%',
+        templateResult: getChutesModelTemplate,
+        matcher: textValueMatcher,
+    });
+    $('#model_nanogpt_select').select2({
+        placeholder: t`Select a model`,
+        searchInputPlaceholder: t`Search models...`,
+        searchInputCssClass: 'text_pole',
+        width: '100%',
+        templateResult: getNanoGptModelTemplate,
+        matcher: textValueMatcher,
+    });
+    $('#completion_prompt_manager_popup_entry_form_injection_trigger').select2({
+        placeholder: t`All types (default)`,
+        width: '100%',
+        closeOnSelect: false,
+    });
+    openAIModelSelectsInitialized = true;
+}
+
 export function initOpenAI() {
     registerConnectionProfileAdditionalParameterSlashCommands();
 
@@ -10670,52 +10728,7 @@ export function initOpenAI() {
         });
     }
 
-    if (!isMobile()) {
-        $('#model_openrouter_select').select2({
-            placeholder: t`Select a model`,
-            searchInputPlaceholder: t`Search models...`,
-            searchInputCssClass: 'text_pole',
-            width: '100%',
-            templateResult: getOpenRouterModelTemplate,
-            matcher: textValueMatcher,
-        });
-        $('#model_aimlapi_select').select2({
-            placeholder: t`Select a model`,
-            searchInputPlaceholder: t`Search models...`,
-            searchInputCssClass: 'text_pole',
-            width: '100%',
-            templateResult: getAimlapiModelTemplate,
-        });
-        $('#model_electronhub_select').select2({
-            placeholder: t`Select a model`,
-            searchInputPlaceholder: t`Search models...`,
-            searchInputCssClass: 'text_pole',
-            width: '100%',
-            templateResult: getElectronHubModelTemplate,
-            matcher: textValueMatcher,
-        });
-        $('#model_chutes_select').select2({
-            placeholder: t`Select a model`,
-            searchInputPlaceholder: t`Search models...`,
-            searchInputCssClass: 'text_pole',
-            width: '100%',
-            templateResult: getChutesModelTemplate,
-            matcher: textValueMatcher,
-        });
-        $('#model_nanogpt_select').select2({
-            placeholder: t`Select a model`,
-            searchInputPlaceholder: t`Search models...`,
-            searchInputCssClass: 'text_pole',
-            width: '100%',
-            templateResult: getNanoGptModelTemplate,
-            matcher: textValueMatcher,
-        });
-        $('#completion_prompt_manager_popup_entry_form_injection_trigger').select2({
-            placeholder: t`All types (default)`,
-            width: '100%',
-            closeOnSelect: false,
-        });
-    }
+
 
     $('#openrouter_providers_chat').on('change', function () {
         const selectedProviders = $(this).val();
