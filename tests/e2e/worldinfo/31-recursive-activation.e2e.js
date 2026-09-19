@@ -210,6 +210,8 @@ async function setRecursive(page, value) {
  * via fill triggers the same setting writer.
  */
 async function setMaxRecursionSteps(page, value) {
+    // Global recursion controls live in the Workspace's Global Rules view.
+    await page.locator('[data-wi-workspace-view="global"]').click();
     // The number-input counter is paired with the slider; setting it
     // via .fill() is the user-equivalent gesture.
     const input = page.locator('#world_info_max_recursion_steps_counter');
