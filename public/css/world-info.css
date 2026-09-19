@@ -2784,6 +2784,42 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     color: var(--crimson70a);
 }
 
+.world_info_manager_action_sheet_backdrop {
+    position: fixed;
+    z-index: 10040;
+    inset: 0;
+    background: rgb(0 0 0 / 16%);
+}
+
+.wi-worldbook-action-sheet-portal {
+    position: fixed;
+    z-index: 10050;
+    right: 10px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    left: 10px;
+    display: flex;
+    max-height: min(70dvh, 560px);
+    flex-direction: column;
+    gap: 5px;
+    overflow: auto;
+    padding: 9px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 16px;
+    background: var(--SmartThemeBlurTintColor);
+    box-shadow: 0 18px 48px rgb(0 0 0 / 34%);
+    pointer-events: auto;
+}
+
+.wi-worldbook-action-sheet-portal .menu_button {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 42px;
+}
+
+.wi-worldbook-action-sheet-portal .is-destructive {
+    color: var(--crimson70a);
+}
+
 @media screen and (max-width: 1000px) {
     /* Remove the inherited drawer title row. The workspace now owns its
        navigation, close action and current-page title. */
@@ -3134,13 +3170,7 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     }
 
     #WorldInfo .world_info_manager_item_menu {
-        position: fixed;
-        top: auto;
-        right: 10px;
-        bottom: calc(66px + env(safe-area-inset-bottom));
-        left: 10px;
         min-width: 0;
-        border-radius: 14px;
     }
 
     /* On phones the catalogue owns creation/import. Once a book is open,
