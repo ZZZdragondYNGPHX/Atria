@@ -72,6 +72,78 @@ describe('SqliteEngine chat handler', () => {
         expect(got).toBeNull();
     });
 
+    test('native append mutates only the JSON body path and rotates integrity', async () => {
+        await engine.withTransaction(handle, async (tx) => {
+            tx.putResource(chatKey(), {
+                header: { chat_metadata: {}, marker: 'keep' },
+                body: [{ mes: 'm0', extra: { gen_id: 'g0' } }],
+                integrity: 'v1',
+                updatedAt: 1,
+                createdAt: 1,
+            });
+        });
+
+        const result = await engine.withTransaction(handle, async (tx) =>
+            tx.appendChatMessages(
+                chatKey(),
+                [
+                    { mes: 'm1', extra: { gen_id: 'g1' } },
+                    { mes: 'm2' },
+                ],
+                { expectedIntegrity: 'v1', newIntegrity: 'v2', updatedAt: 2 },
+            ));
+
+        expect(result).toEqual({
+            status: 'ok',
+            integrity: 'v2',
+            accepted: 2,
+            dedupedGenIds: [],
+        });
+
+        const got = await engine.withTransaction(handle, async (tx) => tx.getResource(chatKey()));
+        expect(got.header.marker).toBe('keep');
+        expect(got.integrity).toBe('v2');
+        expect(got.updatedAt).toBe(2);
+        expect(got.body.map(message => message.mes)).toEqual(['m0', 'm1', 'm2']);
+    });
+
+    test('native append deduplicates only incoming generation ids and preserves OCC', async () => {
+        await engine.withTransaction(handle, async (tx) => {
+            tx.putResource(chatKey(), {
+                header: { chat_metadata: {} },
+                body: [{ mes: 'stored', extra: { gen_id: 'same' } }],
+                integrity: 'v1',
+                updatedAt: 1,
+                createdAt: 1,
+            });
+        });
+
+        const duplicate = await engine.withTransaction(handle, async (tx) =>
+            tx.appendChatMessages(
+                chatKey(),
+                [{ mes: 'retry', extra: { gen_id: 'same' } }],
+                { expectedIntegrity: 'v1', newIntegrity: 'v2', updatedAt: 2 },
+            ));
+        expect(duplicate).toEqual({
+            status: 'ok',
+            integrity: 'v2',
+            accepted: 0,
+            dedupedGenIds: ['same'],
+        });
+
+        const conflict = await engine.withTransaction(handle, async (tx) =>
+            tx.appendChatMessages(
+                chatKey(),
+                [{ mes: 'late' }],
+                { expectedIntegrity: 'v1', newIntegrity: 'v3', updatedAt: 3 },
+            ));
+        expect(conflict).toEqual({ status: 'conflict', actualIntegrity: 'v2' });
+
+        const got = await engine.withTransaction(handle, async (tx) => tx.getResource(chatKey()));
+        expect(got.body).toHaveLength(1);
+        expect(got.integrity).toBe('v2');
+    });
+
     test('put overwrites existing and preserves created_at', async () => {
         await engine.withTransaction(handle, async (tx) => {
             tx.putResource(chatKey(), {
