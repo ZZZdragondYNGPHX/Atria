@@ -1222,6 +1222,7 @@ export function syncWorldInfoWorkspace({
 
     const nextName = escapeText(name).trim();
     const bookChanged = state.worldName !== nextName;
+    const openingEntriesFromAnotherView = state.activeView !== 'entries';
     state.worldName = nextName;
     state.data = data;
     state.entries = Array.isArray(entries) ? entries : [];
@@ -1249,6 +1250,12 @@ export function syncWorldInfoWorkspace({
     if (requestedUid && state.entries.some(entry => String(entry?.uid ?? '') === requestedUid)) {
         state.selectedUid = requestedUid;
         state.mobileDetail = isMobileWorkspace();
+    } else if (openingEntriesFromAnotherView && isMobileWorkspace()) {
+        // A catalogue → book transition always lands on the mobile entry
+        // list. Detail mode is entered only after selecting an entry (or via
+        // an explicit focusUid deep-link), never by inheriting stale UI state.
+        state.selectedUid = '';
+        state.mobileDetail = false;
     }
 
     setView('entries');
