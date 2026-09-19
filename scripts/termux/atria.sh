@@ -15,12 +15,13 @@ resolve_self() {
 SCRIPT_DIR="$(resolve_self)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 STATE_DIR="${ATRIA_TERMUX_STATE_DIR:-${HOME}/.local/state/atria-termux}"
+WEBPACK_CACHE_ROOT="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-${HOME}/.cache/atria-webpack}"
 PID_FILE="${STATE_DIR}/server.pid"
 LOG_FILE="${STATE_DIR}/server.log"
 PORT="${ATRIA_TERMUX_PORT:-8000}"
 URL="http://127.0.0.1:${PORT}"
 
-mkdir -p "${STATE_DIR}"
+mkdir -p "${STATE_DIR}" "${WEBPACK_CACHE_ROOT}"
 
 log() {
   printf '[atria-termux] %s\n' "$*"
@@ -100,7 +101,7 @@ start_server() {
   fi
 
   log "Starting Atria on ${URL}..."
-  nohup node server.js \
+  ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" nohup node server.js \
     --port "${PORT}" \
     --listen false \
     --enableIPv4 true \
@@ -306,7 +307,7 @@ update_repo() {
   bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
   npm run init
   log "Prebuilding frontend bundles for the updated revision..."
-  npm run frontend:prebuild-cache
+  ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" npm run frontend:prebuild-cache
   doctor
 
   if (( was_running == 1 )); then
@@ -335,6 +336,7 @@ Environment:
   ATRIA_TERMUX_PORT=8000
   ATRIA_TERMUX_STATE_DIR=~/.local/state/atria-termux
   ATRIA_TERMUX_WAKE_LOCK=1   # optional; may increase battery use
+  ATRIA_TERMUX_WEBPACK_CACHE_ROOT=~/.cache/atria-webpack
 EOF2
 }
 
