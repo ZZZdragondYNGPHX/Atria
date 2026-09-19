@@ -61,6 +61,21 @@ The permanent Workspace UI guard and Chromium workflow should be treated as arch
 
 ## Recent completed integrations
 
+### Restore lifecycle and repository sentinel preservation
+
+- PR #16
+- Baseline: `main@43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
+- Final validated head: `e426ef0f09adeabd660baaa39eba4c955a842c76`
+- Squash merge / current `main`: `c2f2cf9f2e9da8cc7d591dc4d862dcbe888a8baf`
+- Final task tree and merged-main tree: `1d6d6745aaa9b1956c1c684c7d9d524877ddf9f2`
+- Record: `fixes/restore-lifecycle-and-gitkeep.md`
+- Destructive full restore preserves/recreates `public/scripts/extensions/third-party/.gitkeep` instead of dirtying the source checkout.
+- Toolbox v0.3.3 and `atria-termux update` auto-heal only that exact unstaged sentinel deletion before applying the normal dirty-worktree guard.
+- Active archive restore state survives Backup Center popup closure; reopening the panel shows the running task and keeps recovery controls locked.
+- Reopened views receive completion/failure state from the original request.
+- Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
+- Android JVM tests and Android/Docker builds were not run because they remain opt-in and this task changes Node/frontend/Termux restore logic only.
+
 ### Restore lifecycle and Git sentinel preservation
 
 - PR #16
@@ -90,22 +105,6 @@ The permanent Workspace UI guard and Chromium workflow should be treated as arch
 - Recovery-point controls are disabled while restore holds the migration lock.
 - Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
 - Android JVM tests and Android/Docker builds were not run because they remain opt-in and this task changes Node/frontend restore logic only.
-
-### Android archive restore stall
-
-- PR #15
-- Baseline: `main@dbaf8f2f397220a4e9544e44df55a114ea408067`
-- Final validated head: `c6b143f7d9b55ada9be194a4587e053bc54867dd`
-- Squash merge / current `main`: `43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
-- Final merged tree: `5e73acc167d1de065f975b9b43cc3bbdbf93bbea`, identical to the validated task-head tree.
-- Record: `fixes/android-archive-restore-stall.md`
-- Android/shared-storage ZIPs under paths such as `/storage/emulated/0/.../_uploads` are staged to internal temporary storage before random-access extraction.
-- Local archive restore, LAN migration import, and legacy Data ZIP import share the staging protection.
-- Backup Center now exposes the current entry and byte-level extraction progress, so a large file is distinguishable from a stalled restore.
-- Recovery-point controls are disabled while an archive restore holds the migration lock; server-side lock rejection remains the safety backstop.
-- Final validation passed Atria Migration Guard, ESLint, the complete Node unit suite, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
-- Android JVM tests and Android/Docker builds were not run because they remain opt-in and this task changes no Kotlin or container-delivery code.
-- The temporary `fix/android-archive-restore-stall` branch was removed after merge.
 
 ### Workspace maintenance and archive restore responsiveness
 
