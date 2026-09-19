@@ -51,14 +51,16 @@ export function showLoader() {
  * // ... do work ...
  * await handle.hide();
  *
+ * @param {object} [options] Hide options.
+ * @param {boolean} [options.immediate=false] Skip the visual fade-out transition.
  * @returns {Promise<void>}
  */
-export async function hideLoader() {
+export async function hideLoader({ immediate = false } = {}) {
     if (!legacyLoaderHandle || !legacyLoaderHandle.isActive) {
         console.warn('There is no loader showing to hide');
         return Promise.resolve();
     }
 
-    await legacyLoaderHandle.hide();
+    await legacyLoaderHandle.hide({ immediate });
     legacyLoaderHandle = null;
 }
