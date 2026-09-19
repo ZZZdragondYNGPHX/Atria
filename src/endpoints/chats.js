@@ -2456,19 +2456,92 @@ router.post('/patch', validateAvatarUrlMiddleware, async function (request, resp
         }
 
         const repo = getChatRepo();
+        const sanitizedOperations = sanitizeOperationsAgainstAtriaGenerationId(operations);
+        if (sanitizedOperations.length === 0) {
+            if (incomingId) writeLastChatGenerationId(chatFilePath, incomingId);
+            const current = await repo.getInfo(handle, cardName, fileNameRaw);
+            await refreshRecentChatIndexEntry(request, chatFilePath, { avatar: String(request.body.avatar_url || '') });
+            acknowledgeGenerationFromValueOrPersistTarget(request, operations, buildCharacterPersistTargetHint(request));
+            return response.send({
+                ok: true,
+                applied: 0,
+                total_messages: current?.messageCount ?? 0,
+                integrity: current?.integrity ?? '',
+            });
+        }
+
+        const expectedIntegrity = (slugRaw && !force) ? slugRaw : null;
+        try {
+            const native = await repo.patchMessages(
+                handle,
+                cardName,
+                fileNameRaw,
+                sanitizedOperations,
+                expectedIntegrity,
+                { chatMetadata },
+            );
+            if (native?.status === 'ok') {
+                writeChatSyncState(chatFilePath, {
+                    integrity: native.integrity,
+                    updated_at: Date.now(),
+                });
+                if (incomingId) writeLastChatGenerationId(chatFilePath, incomingId);
+
+                await getBackupFunction(handle, cardName)(
+                    request.user.directories.backups,
+                    cardName,
+                    async () => {
+                        const chatDoc = await repo.get(handle, cardName, fileNameRaw);
+                        if (!chatDoc) return null;
+                        const headerWithIntegrity = {
+                            ...(chatDoc.header ?? {}),
+                            chat_metadata: applyIntegrityToMetadata(
+                                chatDoc.header?.chat_metadata,
+                                chatDoc.integrity,
+                            ),
+                        };
+                        return [headerWithIntegrity, ...(chatDoc.body ?? [])]
+                            .map(message => JSON.stringify(message))
+                            .join('\n');
+                    },
+                );
+
+                await refreshRecentChatIndexEntry(request, chatFilePath, {
+                    avatar: String(request.body.avatar_url || ''),
+                });
+                acknowledgeGenerationFromValueOrPersistTarget(
+                    request,
+                    operations,
+                    buildCharacterPersistTargetHint(request),
+                );
+                return response.send({
+                    ok: true,
+                    applied: native.applied,
+                    total_messages: native.totalMessages,
+                    integrity: native.integrity,
+                });
+            }
+        } catch (error) {
+            if (error instanceof ConflictError) {
+                return sendRepoIntegrityConflict(response, error);
+            }
+            if (!(error instanceof NotFoundError)) {
+                if (isChatStatePatchConflictError(error)) {
+                    return response.status(409).send({ error: 'Chat patch conflict.' });
+                }
+                if (isJsonPatchValidationError(error)) {
+                    return response.status(400).send({ error: 'Invalid chat patch payload.' });
+                }
+                throw error;
+            }
+            // Missing chats and unsupported engines/shapes preserve the
+            // established full-document fallback below.
+        }
+
         const existing = await repo.get(handle, cardName, fileNameRaw);
 
         if (slugRaw && !force && existing && existing.integrity !== slugRaw) {
             throw createIntegrityMismatchError(chatFilePath, slugRaw);
-        }
-
-        const sanitizedOperations = sanitizeOperationsAgainstAtriaGenerationId(operations);
-        if (sanitizedOperations.length === 0) {
-            if (incomingId) writeLastChatGenerationId(chatFilePath, incomingId);
-            const currentIntegrity = existing ? existing.integrity : '';
-            await refreshRecentChatIndexEntry(request, chatFilePath, { avatar: String(request.body.avatar_url || '') });
-            acknowledgeGenerationFromValueOrPersistTarget(request, operations, buildCharacterPersistTargetHint(request));
-            return response.send({ ok: true, applied: 0, total_messages: 0, integrity: currentIntegrity });
         }
 
         const currentHeader = existing?.header
@@ -2521,16 +2594,24 @@ router.post('/patch', validateAvatarUrlMiddleware, async function (request, resp
         writeChatSyncState(chatFilePath, { integrity: newIntegrity, updated_at: Date.now() });
         if (incomingId) writeLastChatGenerationId(chatFilePath, incomingId);
 
-        try {
-            const headerWithIntegrity = {
-                ...mergedHeader,
-                chat_metadata: applyIntegrityToMetadata(mergedHeader.chat_metadata, newIntegrity),
-            };
-            const jsonlData = [headerWithIntegrity, ...patchedMessages].map(m => JSON.stringify(m)).join('\n');
-            getBackupFunction(handle, cardName)(request.user.directories.backups, cardName, jsonlData);
-        } catch (backupErr) {
-            console.error('Chat backup after patch failed', backupErr);
-        }
+        await getBackupFunction(handle, cardName)(
+            request.user.directories.backups,
+            cardName,
+            async () => {
+                const chatDoc = await repo.get(handle, cardName, fileNameRaw);
+                if (!chatDoc) return null;
+                const headerWithIntegrity = {
+                    ...(chatDoc.header ?? {}),
+                    chat_metadata: applyIntegrityToMetadata(
+                        chatDoc.header?.chat_metadata,
+                        chatDoc.integrity,
+                    ),
+                };
+                return [headerWithIntegrity, ...(chatDoc.body ?? [])]
+                    .map(message => JSON.stringify(message))
+                    .join('\n');
+            },
+        );
 
         await refreshRecentChatIndexEntry(request, chatFilePath, { avatar: String(request.body.avatar_url || '') });
         acknowledgeGenerationFromValueOrPersistTarget(request, operations, buildCharacterPersistTargetHint(request));
