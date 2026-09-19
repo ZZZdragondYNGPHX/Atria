@@ -6,7 +6,33 @@ import { pipeline } from 'node:stream/promises';
 import AdmZip from 'adm-zip';
 
 export const RESTORE_ENTRY_IDLE_TIMEOUT_MS = 15_000;
+export const RESTORE_ENTRY_DEGRADED_IDLE_TIMEOUT_MS = 1_000;
 export const RESTORE_ENTRY_FALLBACK_MAX_BYTES = 128 * 1024 * 1024;
+
+export class RestoreEntryAdaptivePolicy {
+    #degraded = false;
+
+    constructor({
+        normalTimeoutMs = RESTORE_ENTRY_IDLE_TIMEOUT_MS,
+        degradedTimeoutMs = RESTORE_ENTRY_DEGRADED_IDLE_TIMEOUT_MS,
+    } = {}) {
+        this.normalTimeoutMs = normalTimeoutMs;
+        this.degradedTimeoutMs = degradedTimeoutMs;
+    }
+
+    get degraded() {
+        return this.#degraded;
+    }
+
+    get timeoutMs() {
+        return this.#degraded ? this.degradedTimeoutMs : this.normalTimeoutMs;
+    }
+
+    noteStall() {
+        this.#degraded = true;
+    }
+}
+
 
 export class RestoreEntryIdleTimeoutError extends Error {
     constructor(entryName, timeoutMs) {
