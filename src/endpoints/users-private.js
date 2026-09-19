@@ -1108,21 +1108,26 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
 
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
 
-function shouldStageRestoreArchive(uploadPath) {
+export function shouldStageRestoreArchive(uploadPath, { platform = process.platform } = {}) {
     const normalized = path.resolve(String(uploadPath || '')).replaceAll('\\', '/');
-    return process.platform === 'android'
+    return platform === 'android'
         || normalized.startsWith('/storage/emulated/')
         || normalized.startsWith('/sdcard/');
 }
 
-async function stageRestoreArchiveForRandomAccess(uploadPath, onProgress = null) {
-    if (!shouldStageRestoreArchive(uploadPath)) {
+export async function stageRestoreArchiveForRandomAccess(
+    uploadPath,
+    onProgress = null,
+    { force = false, tempRootParent = os.tmpdir() } = {},
+) {
+    if (!force && !shouldStageRestoreArchive(uploadPath)) {
         return { path: uploadPath, cleanup: async () => {} };
     }
 
     const stat = await fsPromises.stat(uploadPath);
     const total = Number(stat.size || 0);
-    const tempRoot = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'atria-restore-'));
+    await fsPromises.mkdir(tempRootParent, { recursive: true });
+    const tempRoot = await fsPromises.mkdtemp(path.join(tempRootParent, 'atria-restore-'));
     const stagedPath = path.join(tempRoot, 'archive.zip');
     let copied = 0;
     let lastReportAt = 0;
