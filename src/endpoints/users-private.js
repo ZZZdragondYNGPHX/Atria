@@ -593,6 +593,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
 
 const RESTORE_RECOVERY_DIR = '_restore-recovery';
 const activeRestoreControllers = new Map();
+const activeRecoveryPointPaths = new Set();
 
 async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null, metadata = {}) {
     const backupRoot = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
@@ -1129,6 +1130,11 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
 
 async function listRestoreRecoveryPoints(handle) {
     const root = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
+    await pruneRestoreRecoveryPoints({
+        backupRoot: root,
+        handle,
+        protectPaths: [...activeRecoveryPointPaths],
+    });
     let entries = [];
     try {
         entries = await fsPromises.readdir(root, { withFileTypes: true });
@@ -1180,6 +1186,7 @@ function resolveRestoreRecoveryPath(handle, id) {
 
 async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
     const { recoveryPath, meta } = resolveRestoreRecoveryPath(handle, recoveryId);
+    activeRecoveryPointPaths.add(recoveryPath);
     const includeGlobalExtensions = meta?.includeGlobalExtensions === true
         || fs.existsSync(path.join(recoveryPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY));
     const engine = getStorageEngine();
@@ -1215,6 +1222,7 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
         }
         throw error;
     } finally {
+        activeRecoveryPointPaths.delete(recoveryPath);
         try { setReadOnly(false); } catch { /* best effort */ }
         try { stopHeartbeat(heartbeat); } catch { /* best effort */ }
         try { await releaseMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId }); } catch { /* best effort */ }
