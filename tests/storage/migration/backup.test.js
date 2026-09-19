@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { SNAPSHOT_META_ENTRY, restoreFromSnapshot, snapshotUser } from '../../../src/storage/migration/backup.js';
+import {
+    SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY,
+    SNAPSHOT_META_ENTRY,
+    restoreFromSnapshot,
+    snapshotUser,
+} from '../../../src/storage/migration/backup.js';
 
 describe('snapshotUser', () => {
     let tmpRoot;
@@ -85,6 +90,31 @@ describe('snapshotUser', () => {
         });
         const base = path.basename(dest);
         expect(base).not.toMatch(/[:.]/);
+    });
+
+    test('snapshot-only global extension payload is excluded from user-root restore', async () => {
+        const userRoot = path.join(tmpRoot, 'u');
+        fs.mkdirSync(userRoot, { recursive: true });
+        fs.writeFileSync(path.join(userRoot, 'settings.json'), '{"before":true}');
+        const dest = await snapshotUser({
+            handle: 'u',
+            userRoot,
+            backupRoot: path.join(tmpRoot, 'backup'),
+        });
+        fs.mkdirSync(path.join(dest, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY), { recursive: true });
+        fs.writeFileSync(
+            path.join(dest, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY, 'extension.js'),
+            'snapshot-only',
+        );
+
+        await restoreFromSnapshot({
+            handle: 'u',
+            userRoot,
+            backupPath: dest,
+        });
+
+        expect(fs.existsSync(path.join(userRoot, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY))).toBe(false);
+        expect(fs.readFileSync(path.join(userRoot, 'settings.json'), 'utf8')).toBe('{"before":true}');
     });
 
     test('operator metadata is recorded in snapshot but never restored into user data', async () => {
