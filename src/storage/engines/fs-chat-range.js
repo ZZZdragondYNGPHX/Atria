@@ -107,6 +107,44 @@ function getRangeIndex(filePath) {
     return index;
 }
 
+export function readFsChatInfo(filePath) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const index = getRangeIndex(filePath);
+        if (!index) return null;
+
+        let lastMessage = null;
+        if (index.bodySpans.length > 0) {
+            const fd = fs.openSync(filePath, 'r');
+            try {
+                const span = index.bodySpans[index.bodySpans.length - 1];
+                lastMessage = JSON.parse(readSpan(fd, span));
+            } catch {
+                rangeIndexCache.delete(filePath);
+                return null;
+            } finally {
+                fs.closeSync(fd);
+            }
+        }
+
+        const after = fs.statSync(filePath);
+        if (!sameFileVersion(index, after)) {
+            rangeIndexCache.delete(filePath);
+            continue;
+        }
+
+        return {
+            header: structuredClone(index.header),
+            integrity: index.header?.chat_metadata?.integrity ?? '',
+            updatedAt: index.updatedAt,
+            createdAt: index.createdAt,
+            messageCount: index.bodySpans.length,
+            byteSize: index.size,
+            lastMessage,
+        };
+    }
+    return null;
+}
+
 /**
  * Reads a message window from an FS-backed JSONL chat without materializing
  * the rest of the chat body after the line index is warm.
