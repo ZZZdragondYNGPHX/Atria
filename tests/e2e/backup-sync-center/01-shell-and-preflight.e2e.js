@@ -269,7 +269,6 @@ test.describe('Backup & Sync Center', () => {
         });
         await page.route('**/api/users/restore-backup/cancel', async route => {
             markCancelRequested();
-            releaseRestore();
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -326,6 +325,8 @@ test.describe('Backup & Sync Center', () => {
 
         await expect(cancelButton).toBeDisabled();
         await expect(center.locator('.backupRestoreProgress')).toContainText('正在中断当前恢复并回退');
+
+        releaseRestore();
 
         await expect(center.locator('.backupRestoreProgress')).toContainText('恢复已中断，并已回退到开始前状态。');
         await expect(cancelButton).toBeHidden();
