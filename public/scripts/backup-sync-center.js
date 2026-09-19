@@ -27,11 +27,13 @@ function activateArchivePanel(root) {
     });
 }
 
-function setRestoreCancelState(root, { visible = false, disabled = false, label = '中断并回退' } = {}) {
+function setRestoreCancelState(root, { disabled = true, label = '中断并回退' } = {}) {
     const button = root.querySelector('.backupRestoreCancel');
     if (!button) return;
-    button.classList.toggle('displayNone', !visible);
+    button.classList.remove('displayNone');
     button.disabled = Boolean(disabled);
+    button.setAttribute('aria-disabled', String(Boolean(disabled)));
+    button.title = disabled ? '仅在恢复进行中可用' : '中断当前恢复并回退到开始前状态';
     const text = button.querySelector('span');
     if (text) text.textContent = label;
     else button.innerHTML = `<i class="fa-fw fa-solid fa-rotate-left"></i><span>${label}</span>`;
@@ -55,7 +57,6 @@ function syncArchiveRestoreView(root) {
         setRestoreControlsBusy(root, true);
         setRestoreStartEnabled(root, false);
         setRestoreCancelState(root, {
-            visible: true,
             disabled: session.state === 'cancelling',
             label: session.state === 'cancelling' ? '正在中断并回退…' : '中断并回退',
         });
@@ -70,7 +71,7 @@ function syncArchiveRestoreView(root) {
     }
 
     setRestoreControlsBusy(root, false);
-    setRestoreCancelState(root, { visible: false });
+    setRestoreCancelState(root, { disabled: true });
 
     if (session.state === 'completed') {
         renderRestoreTerminalState(

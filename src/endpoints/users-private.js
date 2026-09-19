@@ -55,6 +55,10 @@ import { getAdminSettings } from '../admin-settings.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
 import {
+    pruneRestoreRecoveryPoints,
+    RESTORE_RECOVERY_POINT_LIMIT,
+} from '../backup-sync/restore-recovery-retention.js';
+import {
     isRestoreCancelledError,
     RestoreCancelledError,
     throwIfRestoreCancelled,
@@ -589,6 +593,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
 
 const RESTORE_RECOVERY_DIR = '_restore-recovery';
 const activeRestoreControllers = new Map();
+const activeRecoveryPointPaths = new Set();
 
 async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null, metadata = {}) {
     const backupRoot = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
@@ -610,6 +615,22 @@ async function createRestoreRecoveryPoint(handle, directories, engine, onProgres
     if (includeGlobalExtensions && fs.existsSync(PUBLIC_DIRECTORIES.globalExtensions)) {
         const globalSnapshotPath = path.join(backupPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY);
         await fsPromises.cp(PUBLIC_DIRECTORIES.globalExtensions, globalSnapshotPath, { recursive: true });
+    }
+
+    const protectedPaths = [backupPath];
+    if (metadata?.sourceRecoveryPoint) {
+        protectedPaths.push(path.join(backupRoot, String(metadata.sourceRecoveryPoint)));
+    }
+    const retention = await pruneRestoreRecoveryPoints({
+        backupRoot,
+        handle,
+        protectPaths: protectedPaths,
+    });
+    if (retention.removed.length > 0) {
+        console.info(
+            `[user-backup] Recovery retention: handle=${handle} kept=${retention.kept} `
+            + `removed=${retention.removed.length} limit=${RESTORE_RECOVERY_POINT_LIMIT}`,
+        );
     }
 
     try { onProgress?.({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
@@ -1109,6 +1130,11 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
 
 async function listRestoreRecoveryPoints(handle) {
     const root = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
+    await pruneRestoreRecoveryPoints({
+        backupRoot: root,
+        handle,
+        protectPaths: [...activeRecoveryPointPaths],
+    });
     let entries = [];
     try {
         entries = await fsPromises.readdir(root, { withFileTypes: true });
@@ -1138,7 +1164,7 @@ async function listRestoreRecoveryPoints(handle) {
         }
     }
     points.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    return points.slice(0, 50);
+    return points.slice(0, RESTORE_RECOVERY_POINT_LIMIT);
 }
 
 function resolveRestoreRecoveryPath(handle, id) {
@@ -1166,6 +1192,7 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
     const holderId = makeHolderId();
     let heartbeat = null;
     await acquireMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    activeRecoveryPointPaths.add(recoveryPath);
     heartbeat = startHeartbeat({ dataRoot: globalThis.DATA_ROOT, holderId });
     setReadOnly(true);
 
@@ -1195,6 +1222,7 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
         }
         throw error;
     } finally {
+        activeRecoveryPointPaths.delete(recoveryPath);
         try { setReadOnly(false); } catch { /* best effort */ }
         try { stopHeartbeat(heartbeat); } catch { /* best effort */ }
         try { await releaseMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId }); } catch { /* best effort */ }
