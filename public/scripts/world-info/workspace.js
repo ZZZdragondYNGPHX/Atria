@@ -975,11 +975,11 @@ function buildWorkspaceDom() {
         if (!searchToolbar.querySelector('.wi-entry-mobile-search-options')) {
             const sourceMode = searchToolbar.querySelector('#world_info_search_mode');
             const sourceAdvanced = searchToolbar.querySelector('#world_info_search_advanced');
-            const options = document.createElement('details');
+            const options = document.createElement('div');
             options.className = 'wi-entry-mobile-search-options';
             options.innerHTML = `
-                <summary class="menu_button" title="${t`Search options`}" aria-label="${t`Search options`}"><i class="fa-solid fa-filter"></i></summary>
-                <div class="wi-entry-mobile-search-menu">
+                <button type="button" class="menu_button wi-entry-mobile-search-trigger" title="${t`Search options`}" aria-label="${t`Search options`}" aria-expanded="false"><i class="fa-solid fa-filter"></i></button>
+                <div class="wi-entry-mobile-search-menu displayNone">
                     <label class="wi-entry-mobile-search-mode-field">
                         <span>${t`Search mode`}</span>
                         <select id="wi_workspace_mobile_search_mode" class="text_pole textarea_compact"></select>
@@ -990,6 +990,17 @@ function buildWorkspaceDom() {
                     </button>
                 </div>
             `;
+
+            const entryTrigger = options.querySelector('.wi-entry-mobile-search-trigger');
+            const entryMenu = options.querySelector('.wi-entry-mobile-search-menu');
+            entryTrigger?.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const shouldOpen = entryMenu?.classList.contains('displayNone');
+                entryMenu?.classList.toggle('displayNone', !shouldOpen);
+                entryTrigger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            });
+            entryMenu?.addEventListener('click', event => event.stopPropagation());
 
             const proxyMode = options.querySelector('#wi_workspace_mobile_search_mode');
             if (proxyMode instanceof HTMLSelectElement && sourceMode instanceof HTMLSelectElement) {
@@ -1026,11 +1037,11 @@ function buildWorkspaceDom() {
 
     const managerFilters = managerBlock?.querySelector('.world_info_manager_filter_controls');
     if (managerFilters && !managerFilters.querySelector('.wi-library-mobile-search-options')) {
-        const options = document.createElement('details');
+        const options = document.createElement('div');
         options.className = 'wi-library-mobile-search-options';
         options.innerHTML = `
-            <summary class="menu_button" title="${t`Search`}" aria-label="${t`Search`}"><i class="fa-solid fa-filter"></i></summary>
-            <div class="wi-library-mobile-search-menu">
+            <button type="button" class="menu_button wi-library-mobile-search-trigger" title="${t`Search`}" aria-label="${t`Search`}" aria-expanded="false"><i class="fa-solid fa-filter"></i></button>
+            <div class="wi-library-mobile-search-menu displayNone">
                 <label for="world_info_manager_search_entries" data-control="entries">
                     <i class="fa-solid fa-file-lines"></i>
                     <span>${t`Search entries/content`}</span>
@@ -1042,6 +1053,17 @@ function buildWorkspaceDom() {
             </div>
         `;
         managerFilters.append(options);
+
+        const libraryTrigger = options.querySelector('.wi-library-mobile-search-trigger');
+        const libraryMenu = options.querySelector('.wi-library-mobile-search-menu');
+        libraryTrigger?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const shouldOpen = libraryMenu?.classList.contains('displayNone');
+            libraryMenu?.classList.toggle('displayNone', !shouldOpen);
+            libraryTrigger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        });
+        libraryMenu?.addEventListener('click', event => event.stopPropagation());
 
         const syncOptionState = () => {
             const entrySearch = document.querySelector('#world_info_manager_search_entries');
