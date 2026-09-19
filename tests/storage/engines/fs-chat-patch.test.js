@@ -74,7 +74,10 @@ describe('FS native whole-message patch journal', () => {
         const filePath = chatPath(h);
         const before = fs.readFileSync(filePath);
         const starts = lineStarts(before);
-        const prefixBefore = before.subarray(0, starts[3]);
+        // Header integrity rotates on every successful write. The invariant
+        // we want here is that message bytes *before* the changed tail remain
+        // byte-for-byte untouched.
+        const bodyPrefixBefore = before.subarray(starts[1], starts[3]);
 
         const result = await repo.patchMessages(
             h.handle,
@@ -86,7 +89,8 @@ describe('FS native whole-message patch journal', () => {
 
         expect(result).toMatchObject({ status: 'ok', applied: 1, totalMessages: 3 });
         const after = fs.readFileSync(filePath);
-        expect(after.subarray(0, prefixBefore.length).equals(prefixBefore)).toBe(true);
+        const afterStarts = lineStarts(after);
+        expect(after.subarray(afterStarts[1], afterStarts[3]).equals(bodyPrefixBefore)).toBe(true);
         const parsed = after.toString('utf8').trimEnd().split('\n').map(line => JSON.parse(line));
         expect(parsed).toHaveLength(4);
         expect(parsed[1]).toMatchObject({ mes: 'first', marker: 'keep-prefix' });
