@@ -906,7 +906,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                     }
 
                                     console.warn(
-                                        `[user-backup] Entry stream stalled; retrying with fallback extractor: `
+                                        '[user-backup] Entry stream stalled; retrying with fallback extractor: '
                                         + `name=${normalized} size=${entryTotalBytes}`,
                                     );
                                     await fsPromises.rm(targetPath, { force: true });
