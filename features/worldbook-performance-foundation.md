@@ -185,6 +185,7 @@ Android JVM tests and Android / Docker builds were intentionally not run for thi
 - Temporary branch: `feat/worldbook-performance-foundation`
 - Pull request: #10 — `perf: continue worldbook performance P02-P05`
 - P-02–P-05 final validated task head: `f752e0e1f532d2796b5b476acc2c57149973ef5a`
+- P-02–P-05 squash merge / resulting main: `ff804b53adb514919cc3bfb6ac82334df5fe7cf2`
 - Android and Docker remain opt-in and are intentionally not part of the default validation.
 
 ### P-02 diagnostics on demand
@@ -304,7 +305,7 @@ Final validation for PR #10 passed on `f752e0e1f532d2796b5b476acc2c57149973ef5a`
   - complete Node unit suite using MySQL 8.4 and PostgreSQL 16.
 - The same code tree before the documentation-only master-plan status commit also passed Atria PR Checks #431 with **590 test suites / 7,920 tests**.
 
-The resulting `main` squash-merge SHA is added immediately after PR #10 is merged.
+PR #10 was squash-merged to `main@ff804b53adb514919cc3bfb6ac82334df5fe7cf2`. The merged main tree `848d4d8d88717737baec6e1d58abb90379fdf6e9` exactly matches the final task-head tree.
 
 
 ## Follow-up
