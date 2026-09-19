@@ -1769,7 +1769,10 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
                 null,
                 route,
             );
-            if (incomingId && filePath) writeLastChatGenerationId(filePath, incomingId);
+            if (filePath) {
+                writeChatSyncState(filePath, { integrity: saved.integrity, updated_at: Date.now() });
+                if (incomingId) writeLastChatGenerationId(filePath, incomingId);
+            }
             return {
                 appended: cleanedMessages.length,
                 created: true,
@@ -1816,7 +1819,10 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
             (integritySlug && !force) ? integritySlug : null,
             route,
         );
-        if (incomingId && filePath) writeLastChatGenerationId(filePath, incomingId);
+        if (filePath) {
+            writeChatSyncState(filePath, { integrity: appended.integrity, updated_at: Date.now() });
+            if (incomingId) writeLastChatGenerationId(filePath, incomingId);
+        }
         const accepted = Math.max(0, Number(appended.accepted) || 0);
         return {
             appended: accepted,
