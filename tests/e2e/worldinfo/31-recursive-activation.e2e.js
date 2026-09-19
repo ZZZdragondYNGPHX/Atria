@@ -162,6 +162,7 @@ async function settleFirstMes(page) {
  */
 async function openWIActivationSettings(page) {
     await openWorldInfoDrawer(page);
+    await page.locator('[data-wi-workspace-view="global"]').click();
     await page.waitForFunction(() => !!document.querySelector('#world_info_recursive'), { timeout: 5000 });
     // Expand the activation-settings inline drawer if its content is hidden.
     await page.evaluate(() => {
@@ -210,8 +211,6 @@ async function setRecursive(page, value) {
  * via fill triggers the same setting writer.
  */
 async function setMaxRecursionSteps(page, value) {
-    // Global recursion controls live in the Workspace's Global Rules view.
-    await page.locator('[data-wi-workspace-view="global"]').click();
     // The number-input counter is paired with the slider; setting it
     // via .fill() is the user-equivalent gesture.
     const input = page.locator('#world_info_max_recursion_steps_counter');
