@@ -19,7 +19,15 @@
 
     position: fixed;
     inset: clamp(10px, 1.4vw, 22px);
-    z-index: 3200;
+    /*
+     * SillyTavern moves open settings drawers under #movingDivs where they
+     * sit at z-index: 4000, and some maximized/top-layer drawer states raise
+     * #top-settings-holder to 4005. The Workspace is a product-level shell
+     * opened from inside those drawers, so it must sit above the host drawer
+     * stack or the real "Open Atria Workspace" button appears to do nothing.
+     * Native <dialog> popups still live in the browser top layer above this.
+     */
+    z-index: 4100;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
@@ -877,6 +885,23 @@
 @media (max-width: 760px) {
     #agent-memory-workspace {
         inset: 0;
+        /*
+         * On mobile the host fixes <body> while <html> keeps a transform.
+         * That makes fixed descendants resolve inset geometry against a
+         * zero-height transformed containing block unless height is explicit.
+         * --doc-height is Atria/SillyTavern's JS-measured viewport authority;
+         * viewport units remain the fallback for early paint.
+         */
+        width: 100vw;
+        width: 100dvw;
+        height: 100vh;
+        height: 100dvh;
+        height: var(--doc-height, 100dvh);
+        max-width: 100vw;
+        max-width: 100dvw;
+        max-height: 100vh;
+        max-height: 100dvh;
+        max-height: var(--doc-height, 100dvh);
         border: 0;
         border-radius: 0;
         grid-template-rows: auto minmax(0, 1fr) auto;

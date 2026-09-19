@@ -818,7 +818,9 @@ function ensureUi() {
     intro.textContent = i18n('Open Atria Workspace to configure orchestration, monitor runs and manage long-term memory.'); content.append(intro);
 
     const workspace = document.createElement('button'); workspace.type = 'button'; workspace.className = 'menu_button';
-    workspace.textContent = i18n('Open Atria Workspace'); workspace.addEventListener('click', () => openWorkspace('Orchestration')); content.append(workspace);
+    workspace.textContent = i18n('Open Atria Workspace');
+    workspace.addEventListener('click', () => openWorkspace('Orchestration'));
+    content.append(workspace);
 
     const status = document.createElement('p'); status.id = 'atri_orch_status'; status.setAttribute('role', 'status'); content.append(status);
     const notes = document.createElement('div'); content.append(notes); host.append(section);
