@@ -2642,6 +2642,25 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     display: none;
 }
 
+#WorldInfo .wi-entry-mobile-search-options {
+    display: none;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 5px 9px;
+    white-space: nowrap;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_toggle_label {
+    font-size: 0.76rem;
+    line-height: 1;
+}
+
 /* The Library is the catalogue itself. Active status remains on each book,
    so the old duplicated active-lorebooks strip is visual noise here. */
 #WorldInfo #wi_workspace_library #world_info_manager_active_panel {
@@ -3077,6 +3096,16 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         gap: 4px;
     }
 
+    #WorldInfo #wi_workspace_library .world_info_manager_item_actions {
+        flex-wrap: nowrap;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_toggle {
+        min-width: 86px;
+        min-height: 36px;
+        padding: 5px 8px;
+    }
+
     #WorldInfo #wi_workspace_library .world_info_manager_badge {
         padding: 1px 6px;
         font-size: 0.68rem;
@@ -3194,6 +3223,13 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         border-radius: 14px;
     }
 
+    #WorldInfo .world_popup_search_toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 5px;
+    }
+
     #WorldInfo .world_popup_search_cluster {
         width: 100%;
         min-width: 0;
@@ -3201,6 +3237,7 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     }
 
     #WorldInfo .world_popup_search_group {
+        width: 100%;
         min-width: 0;
     }
 
@@ -3213,41 +3250,73 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         min-height: 36px;
     }
 
-    #WorldInfo .world_popup_filter_group {
-        flex: 0 0 auto;
-        gap: 4px;
-    }
-
-    #WorldInfo #world_info_search_mode {
-        width: 96px;
-        min-width: 96px;
-        max-width: 96px;
-    }
-
-    #WorldInfo .world_popup_search_toolbar .world_info_search_toggle_label {
-        width: 32px;
-        min-width: 32px;
-        height: 32px;
-        justify-content: center;
-        padding: 0;
-    }
-
-    #WorldInfo .world_popup_search_toolbar .world_info_search_toggle_label small {
-        display: none;
-    }
-
-    #WorldInfo .world_popup_search_toolbar #world_info_pagination {
+    #WorldInfo .world_popup_search_toolbar .world_popup_filter_group {
         display: none !important;
     }
 
-    #WorldInfo #wi_workspace_shell.is-continuous-cards .world_popup_search_toolbar {
-        flex-wrap: wrap;
+    #WorldInfo .wi-entry-mobile-search-options {
+        position: relative;
+        display: block;
+    }
+
+    #WorldInfo .wi-entry-mobile-search-options > summary {
+        display: grid;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        place-items: center;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    #WorldInfo .wi-entry-mobile-search-options > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    #WorldInfo .wi-entry-mobile-search-menu {
+        position: fixed;
+        z-index: 3700;
+        top: auto;
+        right: 10px;
+        bottom: calc(66px + env(safe-area-inset-bottom));
+        left: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 9px;
+        border: 1px solid var(--SmartThemeBorderColor);
+        border-radius: 14px;
+        background: var(--SmartThemeBlurTintColor);
+        box-shadow: 0 16px 40px rgb(0 0 0 / 28%);
+    }
+
+    #WorldInfo .wi-entry-mobile-search-mode-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 3px 4px;
+    }
+
+    #WorldInfo .wi-entry-mobile-search-menu .menu_button {
+        justify-content: flex-start;
+        width: 100%;
+        min-height: 40px;
+    }
+
+    #WorldInfo .wi-entry-mobile-search-menu .menu_button.is-active {
+        color: var(--SmartThemeQuoteColor);
+        background: color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent);
+    }
+
+    #WorldInfo #wi_workspace_shell:not(.is-continuous-cards) #world_info_pagination {
+        display: none !important;
     }
 
     #WorldInfo #wi_workspace_shell.is-continuous-cards .world_popup_search_toolbar #world_info_pagination {
         display: flex !important;
-        flex: 1 0 100%;
+        grid-column: 1 / -1;
         justify-content: center;
+        width: 100%;
         margin-left: 0;
     }
 
