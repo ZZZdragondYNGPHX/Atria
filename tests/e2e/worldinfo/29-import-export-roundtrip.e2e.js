@@ -113,7 +113,7 @@ async function openBookInEditor(page, bookName) {
             jq('#world_editor_select').val(value).trigger('change');
         }, optionValue);
         try {
-            await page.locator('#world_popup_entries_list .world_entry').first().waitFor({ state: 'visible', timeout: 6_000 });
+            await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first().waitFor({ state: 'visible', timeout: 6_000 });
             rendered = true;
         } catch { /* retry */ }
     }
@@ -122,8 +122,8 @@ async function openBookInEditor(page, bookName) {
 
 async function readEditorComments(page) {
     return page.evaluate(() => {
-        const rows = Array.from(document.querySelectorAll('#world_popup_entries_list .world_entry'));
-        return rows.map(r => r.querySelector('input[name="comment"], textarea[name="comment"]')?.value || '');
+        const rows = Array.from(document.querySelectorAll('#wi_workspace_entry_list_canvas .wi-workspace-entry-row'));
+        return rows.map(r => String(r.querySelector('.wi-workspace-entry-title')?.textContent || '').trim());
     });
 }
 
