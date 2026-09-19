@@ -1227,8 +1227,8 @@ async function loadRegexScripts() {
 
     const diagnostics = getRegexScriptDiagnostics([
         ...globalScripts,
-        ...presetScripts,
-        ...scopedScripts,
+        ...(isPresetScriptsAllowed(getCurrentPresetAPI(), getCurrentPresetName()) ? presetScripts : []),
+        ...(isScopedScriptsAllowed(characters?.[this_chid]) ? scopedScripts : []),
         ...runtimeScripts,
     ]);
     const duplicateCount = diagnostics.duplicates.reduce((count, group) => count + Math.max(0, group.scripts.length - 1), 0);
@@ -1237,7 +1237,7 @@ async function loadRegexScripts() {
     if (duplicateCount > 0 || conflictCount > 0) {
         healthSummary
             .removeClass('displayNone')
-            .text(`Potential duplicate rules: ${duplicateCount} · Same-pattern conflicts: ${conflictCount}. Execution order is preserved; review these rules if regex processing feels slow.`);
+            .text(`Active duplicate rules: ${duplicateCount} · Same-pattern conflicts: ${conflictCount}. Execution order is preserved; review these rules if regex processing feels slow.`);
         console.warn('[Regex] Potential duplicate/conflicting rules detected', {
             duplicateCount,
             conflictCount,
