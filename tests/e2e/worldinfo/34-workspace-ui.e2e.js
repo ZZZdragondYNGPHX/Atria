@@ -238,7 +238,9 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     // one compact filter menu instead of occupying a permanent second row.
     const librarySearchOptions = page.locator('.wi-library-mobile-search-options');
     await expect(librarySearchOptions).toBeVisible();
-    await librarySearchOptions.locator('summary').click();
+    await librarySearchOptions.locator('.wi-library-mobile-search-trigger').click();
+    await expect(librarySearchOptions.locator('.wi-library-mobile-search-trigger')).toHaveAttribute('aria-expanded', 'true');
+    await expect(librarySearchOptions.locator('.wi-library-mobile-search-menu')).toBeVisible();
     await librarySearchOptions.locator('[data-control="entries"]').click();
     await expect(page.locator('#world_info_manager_search_entries')).toBeChecked();
     await librarySearchOptions.locator('[data-control="entries"]').click();
@@ -256,18 +258,18 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     const [searchBox, searchHelpBox, searchOptionsBox] = await Promise.all([
         page.locator('#world_info_search').boundingBox(),
         page.locator('#world_info_search_help').boundingBox(),
-        page.locator('.wi-entry-mobile-search-options > summary').boundingBox(),
+        page.locator('.wi-entry-mobile-search-trigger').boundingBox(),
     ]);
     expect((searchBox?.x || 0) + (searchBox?.width || 0)).toBeLessThanOrEqual((searchHelpBox?.x || 0) + 1);
     expect((searchHelpBox?.x || 0) + (searchHelpBox?.width || 0)).toBeLessThanOrEqual((searchOptionsBox?.x || 0) + 1);
 
-    await page.locator('.wi-entry-mobile-search-options > summary').click();
+    await page.locator('.wi-entry-mobile-search-trigger').click();
     await expect(page.locator('#wi_workspace_mobile_search_mode')).toBeVisible();
     await expect(page.locator('.wi-entry-mobile-search-menu [data-control="advanced"]')).toBeVisible();
     await page.locator('#wi_workspace_mobile_search_mode').selectOption('fuzzy');
     await expect(page.locator('#world_info_search_mode')).toHaveValue('fuzzy');
     await page.locator('#wi_workspace_mobile_search_mode').selectOption('keyword');
-    await page.locator('.wi-entry-mobile-search-options > summary').click();
+    await page.locator('.wi-entry-mobile-search-trigger').click();
 
     const [headerBox, listBox, navBox] = await Promise.all([
         page.locator('.wi-workspace-header').boundingBox(),
