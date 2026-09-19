@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, and the regex engine performance refactor are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, and the World Info Workspace UI refactor are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `21f11b93f0e165485488236b74072a12c7df0c4e`
+- `5645020e68c95d37c1ee44a375b22328173948b8`
 
-This commit is the squash merge of PR #22. The regex engine now caches bounded static execution plans by active context, narrows rules by placement/lane/edit/depth before execution, grows compiled-pattern capacity beyond the historical 1000-rule ceiling when needed, keeps runtime providers dynamic, reports active duplicate/conflicting rules conservatively, and renders large Regex Editor lists in detached chunks. No regex persistence schema or rule ordering semantics changed. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #23. World Info now opens as a responsive Library / Entries / Global Rules workspace. The default Entries surface uses a bounded virtual list plus one six-section Inspector; mobile uses full-screen drill-down. Deterministic Issues diagnostics, searchable relationship picking, contextual bulk editing, display modes, runtime-backed Test Activation and Continuous Cards compatibility are integrated through thin adapters around the existing World Info runtime. No World Info persistence/API/import-export/state protocol migration was introduced. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,27 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### World Info Workspace UI refactor
+
+- PR #23
+- Baseline: `main@21f11b93f0e165485488236b74072a12c7df0c4e`
+- Final validated implementation head: `40be055246e4b423658f0952421a58bdcbea1891`
+- Documentation-only final task head: `d9d2c4f12b3745ae396f7d34fb00180727b5faad`
+- Squash merge / current `main`: `5645020e68c95d37c1ee44a375b22328173948b8`
+- Final task tree and merged-main tree are identical.
+- Record: `refactors/world-info-workspace-ui.md`
+- `#WIDrawerIcon` now opens a wide responsive World Info Workspace with Library, Entries and Global Rules work areas.
+- Entries defaults to a bounded virtual list plus a single Inspector with Basic, Activation, Lifecycle, State-driven, Entry Relationships and Advanced sections.
+- Mobile World Info is full-screen and uses explicit entry-list -> entry-detail drill-down rather than a squeezed desktop split.
+- State Conditions and State Change Events remain on their existing protocols but are presented together under State-driven.
+- Required/Related Entries use a searchable picker that preserves existing reference strings and canonical persistence.
+- The Issues filter uses deterministic advisory checks only; it never rewrites or disables user data.
+- Test Activation reuses the existing World Info dry-run / Activation Trace runtime rather than implementing a second evaluator.
+- Contextual bulk editing defaults supported fields to Keep unchanged; Continuous Cards remains as the paginated compatibility view.
+- A synthetic 1000-entry browser smoke verifies bounded DOM growth and no default mass rendering of full editors.
+- Final validation passed Atria PR Checks #535 and Worldbook Performance Foundation #220, including complete Node unit tests, ESLint, Atria Migration Guard, focused World Info regressions, benchmark, real-host Chromium smoke and World Info Playwright specs #25–#34.
+- Android JVM/APK and Docker builds were intentionally not run because they remain opt-in and this task changes browser JavaScript/CSS/tests only.
 
 ### Regex engine performance refactor
 
