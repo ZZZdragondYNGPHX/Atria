@@ -6079,7 +6079,11 @@ function buildWorldInfoManagerItem(item) {
                 event.preventDefault();
                 closeItemMenu();
             });
+            itemMenuDialog.addEventListener('pointerdown', (event) => {
+                event.stopPropagation();
+            });
             itemMenuDialog.addEventListener('click', (event) => {
+                event.stopPropagation();
                 if (event.target === itemMenuDialog) closeItemMenu();
             });
 
@@ -6092,7 +6096,11 @@ function buildWorldInfoManagerItem(item) {
             sheetClose.className = 'menu_button wi-worldbook-action-sheet-close';
             sheetClose.setAttribute('aria-label', t`Close`);
             sheetClose.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-            sheetClose.addEventListener('click', closeItemMenu);
+            sheetClose.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                closeItemMenu();
+            });
             sheetHeader.append(sheetTitle, sheetClose);
 
             itemMenu.addClass('wi-worldbook-action-sheet-portal').removeClass('displayNone');
