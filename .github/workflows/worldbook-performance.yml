@@ -51,7 +51,7 @@ on:
       - "tests/e2e/worldinfo/25-activation-strategies.e2e.js"
       - "tests/e2e/worldinfo/29-import-export-roundtrip.e2e.js"
       - "tests/e2e/worldinfo/34-workspace-ui.e2e.js"
-      - "tests/world-info-workspace-diagnostics.test.js"
+      - "tests/world-info/workspace-diagnostics.test.js"
       - "tests/performance/**"
       - "tests/world-info/**"
       - ".github/workflows/worldbook-performance.yml"
@@ -112,7 +112,7 @@ jobs:
           world-info/state-events.test.js
           world-info/state-events-floor-state.test.js
           world-info/selection-strategy.test.js
-          world-info-workspace-diagnostics.test.js
+          world-info/workspace-diagnostics.test.js
           --runInBand
 
       - name: Capture synthetic offline baseline
