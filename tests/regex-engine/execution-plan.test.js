@@ -90,7 +90,7 @@ describe('static regex execution plans', () => {
                 id: `irrelevant-${index}`,
                 scriptName: `irrelevant-${index}`,
                 findRegex: '/NEVER/g',
-                replacementString: 'x',
+                replaceString: 'x',
                 placement: [2],
             })),
             script({ id: 'relevant', scriptName: 'relevant', findRegex: '/A/g', replaceString: 'B', placement: [1] }),
