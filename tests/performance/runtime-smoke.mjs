@@ -190,7 +190,7 @@ try {
     }, authorBookName);
     assert.ok(authorBookOptionValue, 'author UI book option not found');
 
-    const authorUiEntry = page.locator('#world_popup_entries_list > .world_entry[uid="0"]');
+    const authorUiEntry = page.locator('#wi_workspace_inspector_body .world_entry[uid="0"]');
     let authorBookRendered = false;
     for (let attempt = 0; attempt < 3 && !authorBookRendered; attempt++) {
         await page.evaluate((value) => {
@@ -203,8 +203,7 @@ try {
             authorBookRendered = true;
         } catch { /* retry async editor bootstrap */ }
     }
-    assert.equal(authorBookRendered, true, 'author UI book entries did not render');
-    await authorUiEntry.locator('.wi-entry-toggle').click();
+    assert.equal(authorBookRendered, true, 'author UI book Inspector did not render');
     const conditionEditor = authorUiEntry.locator('.wi-entry-state-conditions');
     await conditionEditor.waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await conditionEditor.count(), 1);
