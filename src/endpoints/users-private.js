@@ -1626,6 +1626,7 @@ router.post('/restore-backup', async (request, response) => {
 
 router.post('/lan-migration/import', async (request, response) => {
     let downloadPath = '';
+    let stagedArchive = null;
     const streaming = wantsRestoreProgressStream(request);
     let stream = null;
 
@@ -1665,8 +1666,9 @@ router.post('/lan-migration/import', async (request, response) => {
 
         const directories = handle === request.user.profile.handle ? request.user.directories : getUserDirectories(handle);
         const scratchCreds = parseScratchCreds(request.body);
+        stagedArchive = await stageRestoreArchiveForRandomAccess(downloadPath, stream?.onProgress);
         const restoreResult = await restoreUserBackupArchive(
-            downloadPath,
+            stagedArchive.path,
             directories,
             selection,
             mode,
@@ -1722,6 +1724,7 @@ router.post('/lan-migration/import', async (request, response) => {
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        await stagedArchive?.cleanup?.().catch(() => {});
         if (downloadPath) {
             await fsPromises.rm(downloadPath, { force: true });
         }
@@ -1730,6 +1733,7 @@ router.post('/lan-migration/import', async (request, response) => {
 
 router.post('/import/data-zip', async (request, response) => {
     let uploadPath = '';
+    let stagedArchive = null;
 
     try {
         if (!request.file) {
@@ -1744,8 +1748,9 @@ router.post('/import/data-zip', async (request, response) => {
         uploadPath = request.file.path;
         const mode = String(request.body.mode || 'merge').toLowerCase() === 'overwrite' ? 'overwrite' : 'merge';
         const scratchCreds = parseScratchCreds(request.body);
+        stagedArchive = await stageRestoreArchiveForRandomAccess(uploadPath);
         const restoreResult = await restoreUserBackupArchive(
-            uploadPath, request.user.directories, FULL_IMPORT_SELECTION, mode,
+            stagedArchive.path, request.user.directories, FULL_IMPORT_SELECTION, mode,
             { includeGlobalExtensions: false, scratchCreds },
         );
         await invalidateRecentChatIndex(request);
@@ -1781,6 +1786,7 @@ router.post('/import/data-zip', async (request, response) => {
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        await stagedArchive?.cleanup?.().catch(() => {});
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true });
         }
