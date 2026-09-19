@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import { RestoreCancelledError } from '../../src/backup-sync/restore-cancel.js';
 import {
     shouldStageRestoreArchive,
     stageRestoreArchiveForRandomAccess,
@@ -42,6 +43,34 @@ describe('restore archive staging', () => {
             const stagedDir = path.dirname(staged.path);
             await staged.cleanup();
             await expect(fs.stat(stagedDir)).rejects.toThrow();
+        } finally {
+            await fs.rm(root, { recursive: true, force: true });
+        }
+    });
+
+    test('manual cancel aborts Android staging without leaving a staged copy', async () => {
+        const root = await fs.mkdtemp(path.join(os.tmpdir(), 'atria-restore-stage-cancel-'));
+        try {
+            const source = path.join(root, 'source.zip');
+            const tempRootParent = path.join(root, 'internal');
+            await fs.writeFile(source, Buffer.alloc(512 * 1024, 9));
+            const controller = new AbortController();
+            controller.abort(new RestoreCancelledError());
+
+            await expect(stageRestoreArchiveForRandomAccess(
+                source,
+                null,
+                {
+                    force: true,
+                    tempRootParent,
+                    signal: controller.signal,
+                },
+            )).rejects.toMatchObject({
+                code: 'ATRIA_RESTORE_CANCELLED',
+            });
+
+            const leftovers = await fs.readdir(tempRootParent).catch(() => []);
+            expect(leftovers).toEqual([]);
         } finally {
             await fs.rm(root, { recursive: true, force: true });
         }
