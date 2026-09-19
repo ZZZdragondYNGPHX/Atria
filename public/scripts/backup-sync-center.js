@@ -62,11 +62,7 @@ function syncArchiveRestoreView(root) {
 }
 
 function broadcastArchiveRestoreState() {
-    for (const view of [...archiveRestoreViews]) {
-        if (!view.isConnected) {
-            archiveRestoreViews.delete(view);
-            continue;
-        }
+    for (const view of archiveRestoreViews) {
         syncArchiveRestoreView(view);
     }
 }
