@@ -208,7 +208,7 @@ export function registerChatHandler(tx) {
                 accepted.push(message);
             }
 
-            const appendPairs = accepted.map(() => `'$.body[#]', json(?)`).join(', ');
+            const appendPairs = accepted.map(() => '\'$.body[#]\', json(?)').join(', ');
             const documentExpr = appendPairs ? `json_insert(doc, ${appendPairs})` : 'doc';
             const sql = `UPDATE chats
                 SET doc = json_set(${documentExpr}, '$.header.chat_metadata.integrity', ?),
