@@ -689,6 +689,16 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // type is kept exported for defensive backward compat with consumers that
     // still match on it, but the throw site has been removed.
 
+    // Same-mode fs restore mutates the live user tree directly. Hold the same
+    // migration lock/read-only gate used by cross-mode restore so the
+    // asynchronous recovery snapshot cannot race normal writes.
+    const holderId = makeHolderId();
+    let heartbeat = null;
+    await acquireMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    heartbeat = startHeartbeat({ dataRoot: globalThis.DATA_ROOT, holderId });
+    setReadOnly(true);
+
+    try {
     if (isReplacingRestoreMode(mode) && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
         throw new Error('Archive does not match selected restore categories. Overwrite was cancelled to protect existing data.');
     }
@@ -951,6 +961,11 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     const totalMs = Date.now() - restoreStart;
     console.info(`[user-backup] Restore done: mode=${mode} entries=${result.restoredCount}/${analysis.report.totalEntries} failed=${result.failedCount} analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms total=${totalMs}ms recovery=${result.recoveryPoint}`);
     return result;
+    } finally {
+        try { setReadOnly(false); } catch { /* best effort */ }
+        try { stopHeartbeat(heartbeat); } catch { /* best effort */ }
+        try { await releaseMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId }); } catch { /* best effort */ }
+    }
 }
 
 
