@@ -2801,6 +2801,33 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     background: rgb(0 0 0 / 18%);
 }
 
+.wi-worldbook-action-sheet-header {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 9px 5px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+    background: var(--SmartThemeBlurTintColor);
+}
+
+.wi-worldbook-action-sheet-header strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wi-worldbook-action-sheet-close {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+}
+
 .wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal {
     position: static;
     display: flex;
@@ -2811,7 +2838,7 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     overflow: auto;
     padding: 9px;
     border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 16px;
+    border-radius: 0 0 16px 16px;
     background: var(--SmartThemeBlurTintColor);
     box-shadow: 0 18px 48px rgb(0 0 0 / 34%);
     pointer-events: auto;
