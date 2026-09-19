@@ -6005,7 +6005,7 @@ function buildWorldInfoManagerItem(item) {
     }
     meta.append($(`
         <span class="world_info_manager_badge ${item.active ? 'is-active' : ''}">
-            ${escapeHtmlText(item.active ? t`Active` : t`Inactive`)}
+            ${escapeHtmlText(item.active ? t`Globally enabled` : t`Not global`)}
         </span>
     `));
     if (item.tags.length > 0) {
