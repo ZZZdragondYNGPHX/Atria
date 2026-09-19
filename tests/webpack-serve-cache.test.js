@@ -12,7 +12,7 @@ describe('Webpack warm-start output detection', () => {
         expect(first).toMatch(/^[0-9a-f]{16}$/);
         expect(second).toBe(first);
 
-        const configSource = fs.readFileSync(path.join(process.cwd(), 'webpack.config.js'), 'utf8');
+        const configSource = fs.readFileSync(new URL('../webpack.config.js', import.meta.url), 'utf8');
         expect(configSource).toContain("package-lock.json");
         expect(configSource).toContain("public/lib-bundle-core.js");
         expect(configSource).toContain("public/lib-bundle-optional.js");
