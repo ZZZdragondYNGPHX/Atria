@@ -95,6 +95,11 @@ export default function getPublicLibConfig({ forceDist = false, pruneCache = fal
             return path.resolve(process.cwd(), 'dist', '_webpack');
         }
 
+        const explicitCacheRoot = String(process.env.ATRIA_WEBPACK_CACHE_ROOT || '').trim();
+        if (explicitCacheRoot) {
+            return path.resolve(explicitCacheRoot);
+        }
+
         if (typeof globalThis.DATA_ROOT === 'string') {
             return path.resolve(globalThis.DATA_ROOT, '_webpack');
         }
