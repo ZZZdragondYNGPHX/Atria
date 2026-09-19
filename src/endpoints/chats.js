@@ -1724,33 +1724,42 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
     // routing tuple, so it flows through the Repo branch.
     if (typeof handle === 'string' && typeof name === 'string') {
         const repo = getChatRepo();
-        const existing = await repo.get(handle, charDir ?? '', name, { isGroup: !!isGroup, groupId });
+        const route = { isGroup: !!isGroup, groupId };
+        const existing = await repo.getInfo(handle, charDir ?? '', name, route);
         const cleanedMessages = messages.map(m => stripAtriaGenerationIdFromMessage(_.cloneDeep(m)));
         const incomingId = String(incomingGenerationId || '').trim();
 
-        // Integrity gate: if provided, the slug must match the chat's current
-        // integrity. Force=true skips. Missing chat = creation, which always
-        // proceeds.
+        // Integrity gate remains visible before content-dedup so callers get
+        // the same stale-write behavior without loading the full chat body.
         if (existing && integritySlug && !force && existing.integrity !== integritySlug) {
-            throw createIntegrityMismatchError(filePath || `<repo>/${charDir}/${name}`, integritySlug);
+            throw new ConflictError('integrity_mismatch', {
+                expected: integritySlug,
+                actual: existing.integrity,
+            });
         }
 
         if (!existing) {
-            // Create: write header + messages atomically.
             const header = createChatHeader(chatMetadata);
-            const saved = await repo.save(handle, charDir ?? '', name, header, cleanedMessages, null,
-                { isGroup: !!isGroup, groupId });
-            if (incomingId && filePath) {
-                writeLastChatGenerationId(filePath, incomingId);
-            }
-            return { appended: cleanedMessages.length, created: true, integrity: saved.integrity };
+            const saved = await repo.save(
+                handle,
+                charDir ?? '',
+                name,
+                header,
+                cleanedMessages,
+                null,
+                route,
+            );
+            if (incomingId && filePath) writeLastChatGenerationId(filePath, incomingId);
+            return {
+                appended: cleanedMessages.length,
+                created: true,
+                integrity: saved.integrity,
+            };
         }
 
-        // Dedup logic, identical to the fs branch: drop the leading incoming
-        // messages while they match the tail of the existing body (content or
-        // gen-id match).
-        const existingBody = Array.isArray(existing.body) ? existing.body : [];
-        const lastStoredMessage = existingBody.length > 0 ? existingBody[existingBody.length - 1] : null;
+        // Retry-content dedup only needs the current tail message; getInfo()
+        // supplies that via the engine's lightweight summary path.
+        const lastStoredMessage = existing.lastMessage;
         const sidecarLastGenerationId = filePath ? readLastChatGenerationId(filePath) : '';
         const dedupedMessages = cleanedMessages.slice();
         let matchedExistingGenerationId = false;
@@ -1758,16 +1767,17 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
             const lastStoredStripped = isChatMessageLike(lastStoredMessage)
                 ? stripAtriaGenerationIdFromMessage(_.cloneDeep(lastStoredMessage))
                 : null;
-            if (lastStoredStripped && isChatMessageLike(dedupedMessages[0]) && _.isEqual(lastStoredStripped, dedupedMessages[0])) {
+            if (lastStoredStripped
+                && isChatMessageLike(dedupedMessages[0])
+                && _.isEqual(lastStoredStripped, dedupedMessages[0])) {
                 dedupedMessages.shift();
                 continue;
             }
-            if (!sidecarLastGenerationId || !incomingId || incomingId !== sidecarLastGenerationId) {
-                break;
-            }
+            if (!sidecarLastGenerationId || !incomingId || incomingId !== sidecarLastGenerationId) break;
             matchedExistingGenerationId = true;
             dedupedMessages.shift();
         }
+
         if (dedupedMessages.length === 0) {
             return {
                 appended: 0,
@@ -1778,18 +1788,23 @@ export async function appendMessagesToChatFile({ filePath, messages, chatMetadat
             };
         }
 
-        const nextBody = existingBody.concat(dedupedMessages);
-        const saved = await repo.save(handle, charDir ?? '', name, existing.header, nextBody, existing.integrity,
-            { isGroup: !!isGroup, groupId });
-        if (incomingId && filePath) {
-            writeLastChatGenerationId(filePath, incomingId);
-        }
+        const appended = await repo.append(
+            handle,
+            charDir ?? '',
+            name,
+            dedupedMessages,
+            (integritySlug && !force) ? integritySlug : null,
+            route,
+        );
+        if (incomingId && filePath) writeLastChatGenerationId(filePath, incomingId);
+        const accepted = Math.max(0, Number(appended.accepted) || 0);
         return {
-            appended: dedupedMessages.length,
+            appended: accepted,
             created: false,
-            skipped: cleanedMessages.length - dedupedMessages.length,
+            skipped: cleanedMessages.length - accepted,
             matched_existing_generation_id: matchedExistingGenerationId,
-            integrity: saved.integrity,
+            deduped_gen_ids: appended.dedupedGenIds || [],
+            integrity: appended.integrity,
         };
     }
 
