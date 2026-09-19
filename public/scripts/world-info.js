@@ -4424,7 +4424,7 @@ function syncWorldInfoEntryBulkToolbar(name = '', data = null) {
     });
 }
 
-function setWorldInfoEntrySelected(name, uid, selected, data = null) {
+function setWorldInfoEntrySelected(name, uid, selected, data = null, { deferSync = false } = {}) {
     const normalizedUid = String(uid ?? '').trim();
     if (!normalizedUid) {
         return;
@@ -4437,7 +4437,9 @@ function setWorldInfoEntrySelected(name, uid, selected, data = null) {
         selectedWorldInfoEntryUids.delete(normalizedUid);
     }
 
-    syncWorldInfoEntryBulkToolbar(name, data);
+    if (!deferSync) {
+        syncWorldInfoEntryBulkToolbar(name, data);
+    }
 }
 
 // #region Bulk field edit (registry, menu, dialogs, apply/restore)
@@ -6426,7 +6428,8 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         entries: entriesArray,
         callbacks: {
             renderInspector: (entry, host) => renderWorldInfoWorkspaceInspector(name, data, entry, host),
-            onSelectionChange: (entry, selected) => setWorldInfoEntrySelected(name, entry.uid, selected, data),
+            onSelectionChange: (entry, selected, options) => setWorldInfoEntrySelected(name, entry.uid, selected, data, options),
+            onSelectionBatchComplete: () => syncWorldInfoEntryBulkToolbar(name, data),
             onContinuousCardsChange: () => updateEditor(navigation_option.previous),
             onTestActivation: entry => testWorldInfoWorkspaceEntryActivation(name, entry),
             onTrace: entry => showActivationTracePopup(name, entry.uid),
