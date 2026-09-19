@@ -339,35 +339,48 @@ export class ChatRepo {
     }
 
     // Lightweight "chat info" — body length, last message preview, header
-    // chat_metadata. Used by /api/characters/chats?metadata=1 and
-    // /api/chats/recent. Implemented as a Repo.get + projection because
-    // engines all hold the full body in memory after a get anyway; this
-    // keeps a single shape across engines without per-engine SQL.
+    // chat_metadata. Engines with a native summary primitive avoid
+    // materializing the complete body; monolithic engines retain the previous
+    // full-resource fallback until their P-04 storage slice is implemented.
     async getInfo(handle, charDir, name, { isGroup = false, groupId } = {}) {
-        const chat = await this.get(handle, charDir, name, { isGroup, groupId });
-        if (chat == null) return null;
-        const body = Array.isArray(chat.body) ? chat.body : [];
-        const lastMessage = body.length > 0 ? body[body.length - 1] : null;
-        // Approximate jsonl byte size: header line + one line per message,
-        // utf-8 encoded. Within a few percent of the on-disk file (whitespace
-        // and trailing-newline differences) — used only as a UI hint.
-        const headerLine = chat.header ? JSON.stringify(chat.header) : '';
-        const bodyLines = body.map((m) => JSON.stringify(m)).join('\n');
-        const serialized = bodyLines ? `${headerLine}\n${bodyLines}` : headerLine;
-        const byteSize = Buffer.byteLength(serialized, 'utf8');
+        const key = this._key(handle, charDir, name, { isGroup, groupId });
+        const info = await this._engine.withTransaction(handle, async (tx) => {
+            if (typeof tx.getChatInfo === 'function') {
+                return tx.getChatInfo(key);
+            }
+
+            const chat = await tx.getResource(key);
+            if (chat == null) return null;
+            const body = Array.isArray(chat.body) ? chat.body : [];
+            const lastMessage = body.length > 0 ? body[body.length - 1] : null;
+            const headerLine = chat.header ? JSON.stringify(chat.header) : '';
+            const bodyLines = body.map(message => JSON.stringify(message)).join('\n');
+            const serialized = bodyLines ? `${headerLine}\n${bodyLines}` : headerLine;
+            return {
+                header: chat.header,
+                integrity: chat.integrity,
+                updatedAt: chat.updatedAt,
+                createdAt: chat.createdAt,
+                messageCount: body.length,
+                byteSize: Buffer.byteLength(serialized, 'utf8'),
+                lastMessage,
+            };
+        });
+
+        if (info == null) return null;
         return {
             handle,
             charDir,
             name,
             isGroup: !!isGroup,
             groupId: groupId || undefined,
-            messageCount: body.length,
-            byteSize,
-            lastMessage,
-            chatMetadata: chat.header?.chat_metadata ?? {},
-            updatedAt: chat.updatedAt,
-            createdAt: chat.createdAt,
-            integrity: chat.integrity,
+            messageCount: Math.max(0, Number(info.messageCount) || 0),
+            byteSize: Math.max(0, Number(info.byteSize) || 0),
+            lastMessage: info.lastMessage ?? null,
+            chatMetadata: info.header?.chat_metadata ?? {},
+            updatedAt: info.updatedAt,
+            createdAt: info.createdAt,
+            integrity: info.integrity,
         };
     }
 
