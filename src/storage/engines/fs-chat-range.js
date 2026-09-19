@@ -122,18 +122,7 @@ function readPatchJournal(journalPath) {
  * @param {string} filePath canonical chat JSONL path
  * @returns {boolean} true when a journal was found
  */
-export function recoverFsChatPatchJournal(filePath) {
-    const journalPath = patchJournalPath(filePath);
-    if (!fs.existsSync(journalPath)) return false;
-
-    const journal = readPatchJournal(journalPath);
-    if (journal.status === PATCH_JOURNAL_COMMITTED) {
-        removeFileBestEffort(journalPath);
-        fsyncDirectoryBestEffort(journalPath);
-        rangeIndexCache.delete(filePath);
-        return true;
-    }
-
+function restorePatchJournal(filePath, journalPath, journal) {
     if (!fs.existsSync(filePath)) {
         throw new Error('Cannot recover Atria FS chat patch journal: target chat is missing');
     }
@@ -153,6 +142,38 @@ export function recoverFsChatPatchJournal(filePath) {
     removeFileBestEffort(journalPath);
     fsyncDirectoryBestEffort(journalPath);
     rangeIndexCache.delete(filePath);
+}
+
+function rollbackPatchJournal(filePath) {
+    const journalPath = patchJournalPath(filePath);
+    if (!fs.existsSync(journalPath)) return;
+    const journal = readPatchJournal(journalPath);
+    // Used only before a commit-marker fsync has completed. Be conservative:
+    // even if the one-byte marker write reached page cache before fsync threw,
+    // restore the original bytes because durability was not confirmed.
+    restorePatchJournal(filePath, journalPath, journal);
+}
+
+export function recoverFsChatPatchJournal(filePath) {
+    const journalPath = patchJournalPath(filePath);
+    if (!fs.existsSync(journalPath)) return false;
+
+    const journal = readPatchJournal(journalPath);
+    if (journal.status === PATCH_JOURNAL_COMMITTED) {
+        try {
+            removeFileBestEffort(journalPath);
+            fsyncDirectoryBestEffort(journalPath);
+        } catch (error) {
+            // Target data is already durably committed. A stale committed
+            // journal is safe to retry-clean later and must never trigger a
+            // rollback of the successful chat mutation.
+            console.warn('[fs-chat] failed to remove committed patch journal:', error);
+        }
+        rangeIndexCache.delete(filePath);
+        return true;
+    }
+
+    restorePatchJournal(filePath, journalPath, journal);
     return true;
 }
 
@@ -732,13 +753,38 @@ export function patchFsChatMessages(filePath, operations, {
             try { fs.utimesSync(filePath, seconds, seconds); } catch { /* best-effort */ }
         }
 
-        markPatchJournalCommitted(journalPath);
-        removeFileBestEffort(journalPath);
-        fsyncDirectoryBestEffort(journalPath);
+        try {
+            markPatchJournalCommitted(journalPath);
+        } catch (error) {
+            // A commit marker that was written but not fsynced is not a
+            // durable commit. Roll back conservatively instead of interpreting
+            // the page-cache byte as authoritative.
+            try {
+                rollbackPatchJournal(filePath);
+            } catch (rollbackError) {
+                rollbackError.cause = error;
+                throw rollbackError;
+            }
+            throw error;
+        }
+
+        try {
+            removeFileBestEffort(journalPath);
+            fsyncDirectoryBestEffort(journalPath);
+        } catch (error) {
+            // The committed marker is already durable. Keep the successful
+            // target mutation and leave the journal for later cleanup.
+            console.warn('[fs-chat] committed patch journal cleanup deferred:', error);
+        }
     } catch (error) {
-        // The journal is still pending unless the commit marker itself was
-        // written. Recovery handles both pending rollback and committed cleanup.
-        recoverFsChatPatchJournal(filePath);
+        if (fs.existsSync(journalPath)) {
+            try {
+                rollbackPatchJournal(filePath);
+            } catch (rollbackError) {
+                rollbackError.cause = error;
+                throw rollbackError;
+            }
+        }
         throw error;
     } finally {
         rangeIndexCache.delete(filePath);
