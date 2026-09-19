@@ -232,6 +232,9 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             }
             throwIfRestoreCancelled(signal);
         } catch (err) {
+            if (isRestoreCancelledError(err)) {
+                throw err;
+            }
             throw new CrossModeConversionFailedError(err, {
                 rollback: 'snapshot-failed',
                 snapshotPath: null,
