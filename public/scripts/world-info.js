@@ -5918,6 +5918,8 @@ async function deleteWorldInfoSelection(names) {
     return true;
 }
 
+let activeWorldInfoManagerMenuCloser = null;
+
 function buildWorldInfoManagerItem(item) {
     const isSelected = selectedWorldInfoManagerNames.has(item.name);
     const itemElement = $(`
@@ -6038,19 +6040,47 @@ function buildWorldInfoManagerItem(item) {
 
     const itemMenu = itemElement.find('.world_info_manager_item_menu');
     const moreButton = itemElement.find('.world_info_manager_more_button');
+    const itemMenuHome = itemElement.find('.world_info_manager_item_more')[0];
+    let itemMenuBackdrop = null;
+
     const closeItemMenu = () => {
-        itemMenu.addClass('displayNone');
+        itemMenu.addClass('displayNone').removeClass('wi-worldbook-action-sheet-portal');
         moreButton.attr('aria-expanded', 'false');
         itemElement.find('.world_info_manager_item_more').removeClass('is-open');
+        itemMenuBackdrop?.remove();
+        itemMenuBackdrop = null;
+
+        if (itemMenuHome?.isConnected && itemMenu[0]?.parentNode !== itemMenuHome) {
+            itemMenuHome.append(itemMenu[0]);
+        }
+
+        if (activeWorldInfoManagerMenuCloser === closeItemMenu) {
+            activeWorldInfoManagerMenuCloser = null;
+        }
     };
+
     const openItemMenu = () => {
-        $('.world_info_manager_item_menu').addClass('displayNone');
-        $('.world_info_manager_more_button').attr('aria-expanded', 'false');
-        $('.world_info_manager_item_more').removeClass('is-open');
+        if (activeWorldInfoManagerMenuCloser && activeWorldInfoManagerMenuCloser !== closeItemMenu) {
+            activeWorldInfoManagerMenuCloser();
+        }
+        activeWorldInfoManagerMenuCloser = closeItemMenu;
+
+        const usePortal = window.matchMedia?.('(max-width: 1000px)')?.matches;
+        if (usePortal) {
+            itemMenuBackdrop = document.createElement('div');
+            itemMenuBackdrop.className = 'world_info_manager_action_sheet_backdrop';
+            itemMenuBackdrop.addEventListener('click', closeItemMenu);
+            document.body.append(itemMenuBackdrop);
+
+            itemMenu.addClass('wi-worldbook-action-sheet-portal');
+            document.body.append(itemMenu[0]);
+        }
+
         itemMenu.removeClass('displayNone');
         moreButton.attr('aria-expanded', 'true');
         itemElement.find('.world_info_manager_item_more').addClass('is-open');
     };
+
     moreButton.on('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
