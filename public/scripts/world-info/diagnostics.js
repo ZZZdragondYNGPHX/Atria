@@ -113,8 +113,8 @@ export function getWorldInfoEntryIssues(entry, context = {}) {
 
     const currentKey = `${worldName}#${Number(entry.uid)}`;
     const relationshipGroups = [
-        [ 'requiredEntries', tr`Required entry` ],
-        [ 'relatedEntries', tr`Related entry` ],
+        ['requiredEntries', tr`Required entry`],
+        ['relatedEntries', tr`Related entry`],
     ];
     for (const [field, label] of relationshipGroups) {
         const refs = Array.isArray(entry[field]) ? entry[field] : [];
