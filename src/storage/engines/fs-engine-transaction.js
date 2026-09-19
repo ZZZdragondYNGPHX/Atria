@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import readline from 'node:readline';
 
 import _ from 'lodash';
 import sanitizeFilename from 'sanitize-filename';
@@ -127,67 +126,6 @@ function registerChatHandler(tx) {
     };
 
     tx._handlers.set('chat', {
-        async range(key, { fromIndex = 0, limit = 0 } = {}) {
-            const filePath = chatFilePath(key);
-            if (!fs.existsSync(filePath)) return null;
-
-            const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
-            const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
-            const body = [];
-            let header = null;
-            let messageIndex = 0;
-            let sawHeader = false;
-
-            const input = fs.createReadStream(filePath, { encoding: 'utf-8' });
-            const lines = readline.createInterface({ input, crlfDelay: Infinity });
-            try {
-                for await (const line of lines) {
-                    if (!line.length) continue;
-                    let parsed;
-                    try {
-                        parsed = JSON.parse(line);
-                    } catch {
-                        return null;
-                    }
-
-                    if (!sawHeader) {
-                        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-                        header = parsed;
-                        sawHeader = true;
-                        continue;
-                    }
-
-                    const withinStart = messageIndex >= requestedFrom;
-                    const withinLimit = requestedLimit <= 0 || messageIndex < requestedFrom + requestedLimit;
-                    if (withinStart && withinLimit) {
-                        body.push(parsed);
-                    }
-                    messageIndex += 1;
-                }
-            } finally {
-                lines.close();
-                input.destroy();
-            }
-
-            if (!sawHeader) return null;
-            const totalMessages = messageIndex;
-            const start = Math.min(requestedFrom, totalMessages);
-            const end = requestedLimit > 0
-                ? Math.min(start + requestedLimit, totalMessages)
-                : totalMessages;
-            const stat = fs.statSync(filePath);
-            return {
-                header,
-                body,
-                integrity: header.chat_metadata?.integrity ?? '',
-                updatedAt: Math.floor(stat.mtimeMs),
-                createdAt: Math.floor(stat.birthtimeMs || stat.ctimeMs),
-                totalMessages,
-                fromIndex: start,
-                nextIndex: end,
-                hasMore: end < totalMessages,
-            };
-        },
         get(key) {
             const filePath = chatFilePath(key);
             if (!fs.existsSync(filePath)) return null;
