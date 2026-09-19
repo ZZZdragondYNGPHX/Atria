@@ -426,8 +426,8 @@ export function registerChatHandler(tx) {
 
             const params = [];
             const bodyExpr = accepted.length > 0
-                ? `JSON_MERGE_PRESERVE(JSON_EXTRACT(doc, '$.body'), JSON_EXTRACT(?, '$'))`
-                : `JSON_EXTRACT(doc, '$.body')`;
+                ? 'JSON_MERGE_PRESERVE(JSON_EXTRACT(doc, \'$.body\'), JSON_EXTRACT(?, \'$\'))'
+                : 'JSON_EXTRACT(doc, \'$.body\')';
             if (accepted.length > 0) params.push(JSON.stringify(accepted));
             params.push(
                 newIntegrity,
