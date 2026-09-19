@@ -422,6 +422,12 @@ async function renderInspector(entry) {
     if (root) {
         root.classList.add('wi-workspace-inspector-entry');
         buildInspectorSections(root, entry);
+        const refreshAuthoringStatus = () => {
+            renderInspectorIssues(entry);
+            scheduleVirtualRows();
+        };
+        root.addEventListener('input', refreshAuthoringStatus);
+        root.addEventListener('change', refreshAuthoringStatus);
     }
     applyDisplayModeToInspector();
 }
@@ -471,9 +477,10 @@ function renderVirtualRows() {
             entries: state.entries,
         });
 
-        const row = document.createElement('button');
-        row.type = 'button';
+        const row = document.createElement('div');
         row.className = 'wi-workspace-entry-row';
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
         row.dataset.uid = uid;
         row.style.transform = `translateY(${index * ROW_HEIGHT}px)`;
         row.classList.toggle('is-selected', uid === state.selectedUid);
@@ -519,6 +526,12 @@ function renderVirtualRows() {
         copy.append(title, keyword, meta, badges);
         row.append(select, copy);
         row.addEventListener('click', () => selectWorkspaceEntry(entry));
+        row.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                selectWorkspaceEntry(entry);
+            }
+        });
         canvas.append(row);
     }
 
