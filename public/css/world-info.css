@@ -2638,6 +2638,10 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     gap: 6px;
 }
 
+#WorldInfo .wi-library-mobile-search-options {
+    display: none;
+}
+
 /* The Library is the catalogue itself. Active status remains on each book,
    so the old duplicated active-lorebooks strip is visual noise here. */
 #WorldInfo #wi_workspace_library #world_info_manager_active_panel {
@@ -2984,6 +2988,56 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     #WorldInfo #wi_workspace_library #world_info_manager_search_help {
         min-width: 40px;
         min-height: 40px;
+    }
+
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-options {
+        position: relative;
+        display: block;
+    }
+
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-options > summary {
+        display: grid;
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        place-items: center;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-options > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-menu {
+        position: absolute;
+        z-index: 3500;
+        top: calc(100% + 6px);
+        right: 0;
+        display: flex;
+        width: min(240px, calc(100dvw - 28px));
+        flex-direction: column;
+        gap: 4px;
+        padding: 7px;
+        border: 1px solid var(--SmartThemeBorderColor);
+        border-radius: 12px;
+        background: var(--SmartThemeBlurTintColor);
+        box-shadow: 0 14px 34px rgb(0 0 0 / 24%);
+    }
+
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-menu label {
+        display: flex;
+        min-height: 40px;
+        align-items: center;
+        gap: 9px;
+        padding: 6px 9px;
+        border-radius: 9px;
+        cursor: pointer;
+    }
+
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-menu label.is-active {
+        color: var(--SmartThemeQuoteColor);
+        background: color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent);
     }
 
     #WorldInfo #wi_workspace_library .world_info_manager_search_entries_label,
