@@ -1,10 +1,11 @@
 import dns from 'node:dns/promises';
 import path from 'node:path';
+import os from 'node:os';
 import fs from 'node:fs';
 import { promises as fsPromises } from 'node:fs';
 import crypto from 'node:crypto';
 import net from 'node:net';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import storage from 'node-persist';
@@ -1071,6 +1072,64 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
 }
 
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
+
+function shouldStageRestoreArchive(uploadPath) {
+    const normalized = path.resolve(String(uploadPath || '')).replaceAll('\\', '/');
+    return process.platform === 'android'
+        || normalized.startsWith('/storage/emulated/')
+        || normalized.startsWith('/sdcard/');
+}
+
+async function stageRestoreArchiveForRandomAccess(uploadPath, onProgress = null) {
+    if (!shouldStageRestoreArchive(uploadPath)) {
+        return { path: uploadPath, cleanup: async () => {} };
+    }
+
+    const stat = await fsPromises.stat(uploadPath);
+    const total = Number(stat.size || 0);
+    const tempRoot = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'atria-restore-'));
+    const stagedPath = path.join(tempRoot, 'archive.zip');
+    let copied = 0;
+    let lastReportAt = 0;
+
+    const report = (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastReportAt < 250) return;
+        lastReportAt = now;
+        try {
+            onProgress?.({ phase: 'stage', current: copied, total });
+        } catch { /* progress observer must not affect restore */ }
+    };
+
+    console.info(`[user-backup] Stage archive start: source=${uploadPath} size=${total}B tempRoot=${tempRoot}`);
+    report(true);
+
+    try {
+        const meter = new Transform({
+            transform(chunk, _encoding, callback) {
+                copied += chunk.length;
+                report(false);
+                callback(null, chunk);
+            },
+        });
+        await pipeline(
+            fs.createReadStream(uploadPath),
+            meter,
+            fs.createWriteStream(stagedPath, { mode: 0o600 }),
+        );
+        report(true);
+        console.info(`[user-backup] Stage archive done: copied=${copied}B path=${stagedPath}`);
+        return {
+            path: stagedPath,
+            cleanup: async () => {
+                await fsPromises.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+            },
+        };
+    } catch (error) {
+        await fsPromises.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+        throw new Error(`Failed to stage restore archive into internal temp storage: ${error?.message || error}`);
+    }
+}
 
 function wantsRestoreProgressStream(request) {
     const accept = String(request.headers.accept || '');
