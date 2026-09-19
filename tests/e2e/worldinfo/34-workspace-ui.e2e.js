@@ -152,9 +152,16 @@ test('desktop workspace uses Library / Entries / Global Rules and bounded list r
     const targetUid = sourceUid === '1' ? '2' : '1';
     await relatedPicker.locator('input[type="search"]').fill(`#${targetUid} · workspace-entry-${targetUid}`);
     await relatedPicker.getByRole('button', { name: 'Add' }).click();
+
+    const rawRelatedEntries = relationDrawer.locator('textarea[name="relatedEntriesText"]');
+    await expect(rawRelatedEntries).toHaveValue(targetUid);
+
     await relationDrawer.locator('.wi-selection-strategy-save').click();
-    await page.waitForTimeout(500);
-    expect(readBook(server.dataRoot).entries[sourceUid].relatedEntries).toContain(targetUid);
+    await expect(relationDrawer.locator('.wi-selection-strategy-status')).toContainText(/saved/i);
+    await expect.poll(
+        () => readBook(server.dataRoot).entries[sourceUid].relatedEntries,
+        { timeout: 10_000 },
+    ).toContain(targetUid);
 
     // Test Activation uses the existing dry-run and always produces an honest result surface.
     await page.locator('#wi_workspace_test_activation').click();
