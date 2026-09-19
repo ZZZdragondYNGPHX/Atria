@@ -10,13 +10,16 @@ describe.each(CONTRACT_HARNESSES)('ChatRepo on $name — patch', ({ make }) => {
     });
     afterEach(() => h.cleanup());
 
-    async function setup(initialBody = []) {
-        const { integrity } = await repo.save(h.handle, 'A', 'c', { chat_metadata: {} }, initialBody, null);
+    async function setup(initialBody = [], chatMetadata = {}) {
+        const { integrity } = await repo.save(h.handle, 'A', 'c', { chat_metadata: chatMetadata }, initialBody, null);
         return integrity;
     }
 
     test('patchMessages uses native whole-message operations where supported', async () => {
-        const int1 = await setup([{ mes: 'old' }, { mes: 'remove-me' }]);
+        const int1 = await setup(
+            [{ mes: 'old' }, { mes: 'remove-me' }],
+            { marker: 'before' },
+        );
         const result = await repo.patchMessages(
             h.handle,
             'A',
