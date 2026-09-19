@@ -1,12 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.2
+# Atria Toolbox launcher - v0.3.3
+# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
 # v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
 # v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
 
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.2"
+SCRIPT_VERSION="v0.3.3"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入 v0.3.1 就绪检测与 v0.3.2 main 分支策略。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
@@ -238,7 +239,7 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.2"
+SCRIPT_VERSION="v0.3.3"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 
