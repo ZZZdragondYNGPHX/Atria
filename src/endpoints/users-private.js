@@ -1572,6 +1572,40 @@ router.post('/restore-backup/probe', async (request, response) => {
     }
 });
 
+router.post('/restore-backup/cancel', async (request, response) => {
+    try {
+        const handle = String(request.body?.handle || request.user?.profile?.handle || '').trim();
+        if (!handle) {
+            return response.status(400).json({ error: 'Missing required fields' });
+        }
+        if (handle !== request.user.profile.handle && !request.user.profile.admin) {
+            return response.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const session = activeRestoreControllers.get(handle);
+        if (!session) {
+            return response.status(404).json({
+                error: 'No active restore for this account.',
+                cancelRequested: false,
+            });
+        }
+
+        if (!session.controller.signal.aborted) {
+            session.controller.abort(new RestoreCancelledError());
+            console.warn(`[user-backup] Manual cancel requested: handle=${handle} restoreId=${session.restoreId}`);
+        }
+
+        return response.json({
+            cancelRequested: true,
+            restoreId: session.restoreId,
+            startedAt: session.startedAt,
+        });
+    } catch (error) {
+        console.error('Restore cancel failed', error);
+        return response.status(500).json({ error: error?.message || 'Restore cancel failed' });
+    }
+});
+
 router.post('/restore-backup', async (request, response) => {
     let uploadPath = '';
     let stagedArchive = null;
