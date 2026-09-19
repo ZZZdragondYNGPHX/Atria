@@ -217,17 +217,32 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(mobileBookCard.locator('.world_info_manager_item_meta')).toContainText(/Globally enabled|Not global/);
     await mobileBookCard.locator('.world_info_manager_more_button').click();
     await expect(mobileBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'true');
-    await expect(mobileBookCard.locator('.world_info_manager_item_menu')).toBeVisible();
-    await expect(mobileBookCard.locator('.world_info_manager_export')).toBeVisible();
-    await expect(mobileBookCard.locator('.world_info_manager_rename')).toBeVisible();
-    await expect(mobileBookCard.locator('.world_info_manager_duplicate')).toBeVisible();
-    await mobileBookCard.locator('.world_info_manager_more_button').click();
+    const mobileBookDialog = page.locator('#WorldInfo > dialog.wi-worldbook-action-sheet-dialog[open]');
+    await expect(mobileBookDialog).toBeVisible();
+    const mobileBookMenu = mobileBookDialog.locator('.wi-worldbook-action-sheet-portal');
+    await expect(mobileBookMenu).toBeVisible();
+    expect(await mobileBookDialog.evaluate(node => node.parentElement?.id === 'WorldInfo')).toBe(true);
+    const mobileMenuBox = await mobileBookMenu.boundingBox();
+    expect(mobileMenuBox?.y || 0).toBeGreaterThan(300);
+    expect((mobileMenuBox?.y || 0) + (mobileMenuBox?.height || 0)).toBeLessThanOrEqual(900);
+    await expect(mobileBookMenu.locator('.world_info_manager_export')).toBeVisible();
+    await expect(mobileBookMenu.locator('.world_info_manager_rename')).toBeVisible();
+    await expect(mobileBookMenu.locator('.world_info_manager_duplicate')).toBeVisible();
+    await mobileBookDialog.locator('.wi-worldbook-action-sheet-close').click();
+    await expect(page.locator('#WorldInfo > dialog.wi-worldbook-action-sheet-dialog[open]')).toHaveCount(0);
+    await expect(mobileBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#WorldInfo')).toBeVisible();
+    await expect(page.locator('#wi_workspace_library')).toHaveClass(/is-active/);
+    await expect(page.locator('#WIMultiSelector .inline-drawer-content')).toBeVisible();
 
     // Advanced cross-book search survives the visual simplification behind
     // one compact filter menu instead of occupying a permanent second row.
     const librarySearchOptions = page.locator('.wi-library-mobile-search-options');
-    await expect(librarySearchOptions).toBeVisible();
-    await librarySearchOptions.locator('summary').click();
+    const librarySearchTrigger = librarySearchOptions.locator('.wi-library-mobile-search-trigger');
+    await expect(librarySearchTrigger).toBeVisible();
+    await librarySearchTrigger.click();
+    await expect(librarySearchTrigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(librarySearchOptions.locator('.wi-library-mobile-search-menu')).toBeVisible();
     await librarySearchOptions.locator('[data-control="entries"]').click();
     await expect(page.locator('#world_info_manager_search_entries')).toBeChecked();
     await librarySearchOptions.locator('[data-control="entries"]').click();
@@ -245,18 +260,18 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     const [searchBox, searchHelpBox, searchOptionsBox] = await Promise.all([
         page.locator('#world_info_search').boundingBox(),
         page.locator('#world_info_search_help').boundingBox(),
-        page.locator('.wi-entry-mobile-search-options > summary').boundingBox(),
+        page.locator('.wi-entry-mobile-search-trigger').boundingBox(),
     ]);
     expect((searchBox?.x || 0) + (searchBox?.width || 0)).toBeLessThanOrEqual((searchHelpBox?.x || 0) + 1);
     expect((searchHelpBox?.x || 0) + (searchHelpBox?.width || 0)).toBeLessThanOrEqual((searchOptionsBox?.x || 0) + 1);
 
-    await page.locator('.wi-entry-mobile-search-options > summary').click();
+    await page.locator('.wi-entry-mobile-search-trigger').click();
     await expect(page.locator('#wi_workspace_mobile_search_mode')).toBeVisible();
     await expect(page.locator('.wi-entry-mobile-search-menu [data-control="advanced"]')).toBeVisible();
     await page.locator('#wi_workspace_mobile_search_mode').selectOption('fuzzy');
     await expect(page.locator('#world_info_search_mode')).toHaveValue('fuzzy');
     await page.locator('#wi_workspace_mobile_search_mode').selectOption('keyword');
-    await page.locator('.wi-entry-mobile-search-options > summary').click();
+    await page.locator('.wi-entry-mobile-search-trigger').click();
 
     const [headerBox, listBox, navBox] = await Promise.all([
         page.locator('.wi-workspace-header').boundingBox(),
@@ -311,10 +326,11 @@ test('Simplified Chinese localizes Workspace-owned World Info surfaces', async (
     await expect(zhBookCard.locator('.world_info_manager_toggle_label')).toHaveText(/全局/);
     await zhBookCard.locator('.world_info_manager_more_button').click();
     await expect(zhBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'true');
-    await expect(zhBookCard.locator('.world_info_manager_item_menu')).toBeVisible();
-    await expect(zhBookCard.locator('.world_info_manager_export')).toContainText('导出');
-    await expect(zhBookCard.locator('.world_info_manager_rename')).toContainText('重命名');
-    await expect(zhBookCard.locator('.world_info_manager_duplicate')).toContainText('复制');
+    const zhBookMenu = zhBookCard.locator('.world_info_manager_item_menu');
+    await expect(zhBookMenu).toBeVisible();
+    await expect(zhBookMenu.locator('.world_info_manager_export')).toContainText('导出');
+    await expect(zhBookMenu.locator('.world_info_manager_rename')).toContainText('重命名');
+    await expect(zhBookMenu.locator('.world_info_manager_duplicate')).toContainText('复制');
     await zhBookCard.locator('.world_info_manager_more_button').click();
 
     await openEntries(page);
