@@ -303,6 +303,8 @@ update_repo() {
   npm_package_config_node_gyp_nodedir="${PREFIX:-}" npm ci --omit=dev --no-audit --no-fund
   bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
   npm run init
+  log "Prebuilding frontend bundles for the updated revision..."
+  npm run frontend:prebuild-cache
   doctor
 
   if (( was_running == 1 )); then
