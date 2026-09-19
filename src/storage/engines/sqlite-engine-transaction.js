@@ -24,6 +24,12 @@ export class SqliteTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getChatRange(key, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.getChatRange: chat resource required');
+        }
+        return this._h(key.kind, 'getChatRange').range(key, options);
+    }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
@@ -39,6 +45,18 @@ export class SqliteTransaction {
         await this.putResource(key, record);
         return { updated: true };
     }
+}
+
+function parseJsonEachValue(value, type) {
+    if (type === 'object' || type === 'array') {
+        try { return JSON.parse(value); } catch { return undefined; }
+    }
+    if (type === 'null') return null;
+    if (type === 'true') return true;
+    if (type === 'false') return false;
+    if (type === 'integer' || type === 'real') return Number(value);
+    if (type === 'text') return String(value);
+    return undefined;
 }
 
 function chatKeyToParams(key) {
@@ -65,6 +83,23 @@ export function registerChatHandler(tx) {
     const stmt = {
         get: db.prepare(`SELECT doc, integrity, updated_at, created_at
                          FROM chats WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        rangeMeta: db.prepare(`SELECT
+                                json_extract(doc, '$.header') AS header_value,
+                                json_type(doc, '$.header') AS header_type,
+                                json_type(doc, '$.body') AS body_type,
+                                json_array_length(doc, '$.body') AS total_messages,
+                                integrity, updated_at, created_at
+                            FROM chats
+                            WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        rangeRows: db.prepare(`SELECT
+                                CAST(j.key AS INTEGER) AS message_index,
+                                j.value AS message_value,
+                                j.type AS message_type
+                            FROM chats AS c, json_each(c.doc, '$.body') AS j
+                            WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                              AND CAST(j.key AS INTEGER) >= ?
+                              AND (? <= 0 OR CAST(j.key AS INTEGER) < ?)
+                            ORDER BY CAST(j.key AS INTEGER) ASC`),
         upsert: db.prepare(`INSERT INTO chats (handle, char_dir, name, is_group, group_id, doc, updated_at, created_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                             ON CONFLICT(handle, char_dir, name, is_group, group_id) DO UPDATE SET
@@ -89,6 +124,52 @@ export function registerChatHandler(tx) {
     };
 
     tx._handlers.set('chat', {
+        range(key, { fromIndex = 0, limit = 0 } = {}) {
+            const p = chatKeyToParams(key);
+            const meta = stmt.rangeMeta.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!meta || meta.header_type !== 'object' || meta.body_type !== 'array') return null;
+
+            let header;
+            try { header = JSON.parse(meta.header_value); } catch { return null; }
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const totalMessages = Math.max(0, Number(meta.total_messages) || 0);
+            const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
+            const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+            const start = Math.min(requestedFrom, totalMessages);
+            const end = requestedLimit > 0
+                ? Math.min(start + requestedLimit, totalMessages)
+                : totalMessages;
+            const queryEnd = requestedLimit > 0 ? end : 0;
+            const rows = stmt.rangeRows.all(
+                p.handle,
+                p.char_dir,
+                p.name,
+                p.is_group,
+                p.group_id,
+                start,
+                queryEnd,
+                queryEnd,
+            );
+            const body = [];
+            for (const row of rows) {
+                const parsed = parseJsonEachValue(row.message_value, row.message_type);
+                if (parsed === undefined) return null;
+                body.push(parsed);
+            }
+
+            return {
+                header,
+                body,
+                integrity: meta.integrity ?? '',
+                updatedAt: meta.updated_at,
+                createdAt: meta.created_at,
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        },
         get(key) {
             const p = chatKeyToParams(key);
             const row = stmt.get.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
