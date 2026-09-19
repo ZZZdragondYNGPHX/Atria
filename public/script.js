@@ -207,7 +207,6 @@ import {
     createTimeout,
 } from './scripts/utils.js';
 import { debounce_timeout, GENERATION_TYPE_TRIGGERS, IGNORE_SYMBOL, inject_ids, MEDIA_DISPLAY, MEDIA_SOURCE, MEDIA_TYPE, OVERSWIPE_BEHAVIOR, SCROLL_BEHAVIOR, SWIPE_DIRECTION, SWIPE_SOURCE, SWIPE_STATE } from './scripts/constants.js';
-import { downloadFromServer } from './scripts/atria-download.js';
 
 import { bootstrapExtensions, cancelDebouncedMetadataSave, doDailyExtensionUpdatesCheck, extension_settings, initExtensions, primeExtensionSettings, runGenerationInterceptors, saveMetadataDebounced } from './scripts/extensions.js';
 import { STATE_ERROR_REASONS, makeStateError, makeStateOk } from './scripts/state-errors.js';
@@ -283,7 +282,6 @@ import { loader } from './scripts/action-loader.js';
 import { BulkEditOverlay } from './scripts/BulkEditOverlay.js';
 import { initTextGenModels, initTextGenModelSelects } from './scripts/textgen-models.js';
 import { appendFileContent, hasPendingFileAttachment, populateFileAttachment, decodeStyleTags, encodeStyleTags, hideChatMessageRange, isExternalMediaAllowed, preserveNeutralChat, restoreNeutralChat, formatCreatorNotes, initChatUtilities, addDOMPurifyHooks } from './scripts/chats.js';
-import { wireEntryPoints as wireChatMergeSplit } from './scripts/chat-merge-split.js';
 import { getPresetManager, initPresetManager } from './scripts/preset-manager.js';
 import { evaluateMacros, getLastMessageId, initMacros } from './scripts/macros.js';
 import { initVariableOpLog, extractMessageById, pushFloorVarOp } from './scripts/variable-op-log/index.js';
@@ -303,7 +301,6 @@ import { initDynamicStyles } from './scripts/dynamic-styles.js';
 import { AbortReason } from './scripts/util/AbortReason.js';
 import { initSystemPrompts } from './scripts/sysprompt.js';
 import { ToolManager } from './scripts/tool-calling.js';
-import { registerSkillEmbedLifecycle } from './scripts/skills/embed-lifecycle.js';
 import { addShowdownPatch } from './scripts/util/showdown-patch.js';
 import { applyBrowserFixes } from './scripts/browser-fixes.js';
 import { getContext } from './scripts/st-context.js';
@@ -2210,13 +2207,14 @@ async function firstLoadInit() {
         () => initSwipePicker(),
         () => addDebugFunctions(),
         () => doDailyExtensionUpdatesCheck(),
-        () => {
-            // Hook skills lifecycle (CHARACTER_DELETED / PRESET_DELETED
-            // cascade + import dialogs) into the core boot sequence so it
-            // is deterministic — not contingent on the orchestrator
-            // extension loading first.
-            try { registerSkillEmbedLifecycle({ context: getContext() }); } catch (_) { /* best-effort */ }
-        },
+        () => import('./scripts/skills/embed-lifecycle.js')
+            .then(({ registerSkillEmbedLifecycle }) => {
+                // Hook skills lifecycle (CHARACTER_DELETED / PRESET_DELETED
+                // cascade + import dialogs) into the core boot sequence so it
+                // is deterministic — not contingent on the orchestrator
+                // extension loading first.
+                try { registerSkillEmbedLifecycle({ context: getContext() }); } catch (_) { /* best-effort */ }
+            }),
         () => {
             // Drop the batched preset-state read cache for a preset the
             // moment PRESET_DELETED fires. The server-side PresetRepo.delete
@@ -19932,6 +19930,7 @@ jQuery(async function () {
             format,
         };
         try {
+            const { downloadFromServer } = await import('./scripts/atria-download.js');
             await downloadFromServer({
                 url: '/api/chats/export',
                 fileName: exportfilename,
@@ -21382,7 +21381,9 @@ jQuery(async function () {
         $('#chat_import_file').trigger('click');
     });
 
-    wireChatMergeSplit();
+    void import('./scripts/chat-merge-split.js')
+        .then(({ wireEntryPoints }) => wireEntryPoints())
+        .catch((error) => console.warn('[chat-merge-split] failed to load UI wiring', error));
 
     $('#chat_import_file').on('change', async function (e) {
         const targetElement = e.target;
