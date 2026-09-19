@@ -1,7 +1,6 @@
 'use strict';
 
 import {
-    characterGroupOverlay,
     characters,
     event_types,
     eventSource,
@@ -25,16 +24,6 @@ import { t } from './i18n.js';
  * character context menu override.
  */
 class CharacterContextMenu {
-    /**
-     * Tag one or more characters,
-     * opens a popup.
-     *
-     * @param {Array<number>} selectedCharacters
-     */
-    static tag = (selectedCharacters) => {
-        characterGroupOverlay.bulkTagPopupHandler.show(selectedCharacters);
-    };
-
     /**
      * Duplicate one or more characters
      *
@@ -870,7 +859,7 @@ class BulkEditOverlay {
      * Attaches and opens the tag menu
      */
     handleContextMenuTag = () => {
-        CharacterContextMenu.tag(this.selectedCharacters);
+        this.bulkTagPopupHandler.show(this.selectedCharacters);
         this.browseState();
     };
 
