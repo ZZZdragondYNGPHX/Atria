@@ -55,6 +55,10 @@ import { getAdminSettings } from '../admin-settings.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
 import {
+    pruneRestoreRecoveryPoints,
+    RESTORE_RECOVERY_POINT_LIMIT,
+} from '../backup-sync/restore-recovery-retention.js';
+import {
     isRestoreCancelledError,
     RestoreCancelledError,
     throwIfRestoreCancelled,
@@ -612,6 +616,22 @@ async function createRestoreRecoveryPoint(handle, directories, engine, onProgres
         await fsPromises.cp(PUBLIC_DIRECTORIES.globalExtensions, globalSnapshotPath, { recursive: true });
     }
 
+    const protectedPaths = [backupPath];
+    if (metadata?.sourceRecoveryPoint) {
+        protectedPaths.push(path.join(backupRoot, String(metadata.sourceRecoveryPoint)));
+    }
+    const retention = await pruneRestoreRecoveryPoints({
+        backupRoot,
+        handle,
+        protectPaths: protectedPaths,
+    });
+    if (retention.removed.length > 0) {
+        console.info(
+            `[user-backup] Recovery retention: handle=${handle} kept=${retention.kept} `
+            + `removed=${retention.removed.length} limit=${RESTORE_RECOVERY_POINT_LIMIT}`,
+        );
+    }
+
     try { onProgress?.({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
     return backupPath;
 }
@@ -1138,7 +1158,7 @@ async function listRestoreRecoveryPoints(handle) {
         }
     }
     points.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    return points.slice(0, 50);
+    return points.slice(0, RESTORE_RECOVERY_POINT_LIMIT);
 }
 
 function resolveRestoreRecoveryPath(handle, id) {
