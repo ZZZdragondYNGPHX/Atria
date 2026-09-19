@@ -75,7 +75,7 @@ The permanent Workspace UI guard and Chromium workflow should be treated as arch
 - Cancellation aborts staging and active entry streams; once mutations have started, the pre-restore recovery point is applied before terminal cancellation is reported.
 - Administrator full-restore recovery points include the global third-party extension scope so rollback matches the destructive restore scope.
 - Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
-- The temporary `fix/restore-adaptive-fallback` branch is expected to be removed by the merged-branch cleanup workflow.
+- The temporary `fix/restore-adaptive-fallback` branch was removed after merge.
 
 ### Restore ZIP entry stream fallback
 
