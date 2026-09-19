@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, the World Info Workspace UI refactor, the World Info Workspace Chinese-localization fix, the World Info mobile product UI refactor, the World Info mobile controls follow-up, and the mobile lorebook action-menu reliability fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, the World Info Workspace UI refactor, the World Info Workspace Chinese-localization fix, the World Info mobile product UI refactor, the World Info mobile controls follow-up, the mobile lorebook action-menu reliability fix, and the mobile lorebook top-layer action-sheet hardening are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `f7dd82ee4089e9e59f6effdd61509b14b39daa2d`
+- `653b1b59f771e0c494e73af64f799790c6c3a856`
 
-This commit is the squash merge of PR #27, a real-device follow-up to PR #26. The per-lorebook three-dot action menu no longer relies on nested native `<details><summary>`; it now uses an explicit Atria-controlled button/menu state so Android taps reliably open the existing action sheet. Existing book actions and World Info persistence/API/import-export/activation/state/selection/storage semantics are unchanged. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #28, a real-device hardening follow-up to PR #27. Mobile lorebook actions now render in a WorldInfo-owned modal `<dialog>` top layer with explicit close/event isolation, full-viewport bottom-sheet geometry, and a higher-specificity reset of the legacy absolute card-menu positioning. Library / Entries mobile search disclosure controls also use explicit JS-driven buttons instead of native `details`. Existing book actions and World Info persistence/API/import-export/activation/state/selection/storage semantics are unchanged. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,23 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Mobile lorebook top-layer action-sheet hardening
+
+- PR #28
+- Baseline: `main@f7dd82ee4089e9e59f6effdd61509b14b39daa2d`
+- Final validated head: `9f1abf3004e51428ea0be3c9f5a161a9037b6f66`
+- Squash merge / current `main`: `653b1b59f771e0c494e73af64f799790c6c3a856`
+- Final validated / merged tree: `adad34a4b45a1b5eb3a1463c054cbc0c9dc6f4b1`, identical.
+- Record: `fixes/world-info-mobile-book-menu-top-layer.md`
+- The lorebook three-dot trigger is an explicit Atria button with synchronized `aria-expanded` state.
+- Mobile book actions render in a modal top-layer `dialog` owned by `#WorldInfo`, preventing Library clipping while preserving drawer interaction ownership.
+- The sheet has an explicit close action and isolated pointer/click events, and its full-viewport host bottom-aligns the action sheet above mobile navigation.
+- A higher-specificity top-layer selector resets the legacy `#WorldInfo .world_info_manager_item_menu` absolute positioning that previously pushed the sheet below the viewport.
+- Existing Entries / Export / Rename / Duplicate / Tags / Pin / Delete actions are unchanged.
+- Mobile Library / Entries search option controls now use explicit JS-driven menus instead of native `details` disclosure controls.
+- Final validation passed Atria PR Checks #587 and Worldbook Performance Foundation #272, including ESLint, complete Node unit tests, Atria Migration Guard, frontend libraries build, focused regressions, benchmark, real-host Chromium smoke and complete World Info browser acceptance.
+- Android JVM/APK and Docker builds were intentionally not run because they remain opt-in and this task changes browser JavaScript/CSS/tests only.
 
 ### Mobile lorebook action-menu reliability fix
 
