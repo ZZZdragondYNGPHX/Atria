@@ -13,9 +13,9 @@ const PREBUILT_BUNDLE_FILES = ['lib.core.bundle.js', 'lib.optional.bundle.js', '
  * Returns true when every bundle expected by the current Webpack config
  * already exists in that config's versioned output directory.
  *
- * The output path includes Atria package version + Git revision + Webpack
- * version (see webpack.config.js), so a hit is safe to reuse across normal
- * restarts without recompiling. A code update naturally moves to a new path.
+ * The output path is content-addressed from the actual frontend bundle inputs
+ * (see webpack.config.js), so a hit is safe to reuse across normal restarts
+ * and unrelated Atria code updates without recompiling.
  *
  * @param {import('webpack').Configuration} config Webpack configuration.
  * @returns {boolean} Whether all expected output bundles are present.
