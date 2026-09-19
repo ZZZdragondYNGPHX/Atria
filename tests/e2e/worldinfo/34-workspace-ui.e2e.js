@@ -234,7 +234,7 @@ test('Simplified Chinese localizes Workspace-owned World Info surfaces', async (
     ]);
 
     await expect(page.locator('[data-wi-entry-filter="all"]')).toHaveText('全部');
-    await expect(page.locator('[data-wi-entry-filter="enabled"]')).toHaveText('已启用');
+    await expect(page.locator('[data-wi-entry-filter="enabled"]')).toHaveText('启用');
     await expect(page.locator('[data-wi-entry-filter="special"]')).toHaveText('特殊');
     await expect(page.locator('[data-wi-entry-filter="issues"]')).toHaveText('问题');
 
