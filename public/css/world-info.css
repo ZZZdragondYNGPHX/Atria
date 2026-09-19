@@ -2901,7 +2901,7 @@ select.keyselect+span.select2-container .select2-selection--multiple {
 
     /* Bottom navigation is the stable mobile primary navigation. */
     #WorldInfo .wi-workspace-nav {
-        position: fixed;
+        position: absolute;
         z-index: 35;
         right: 0;
         bottom: 0;
