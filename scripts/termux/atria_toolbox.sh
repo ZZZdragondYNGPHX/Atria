@@ -76,7 +76,8 @@ BROWSER_WAIT_SECONDS="${ATRIA_BROWSER_WAIT_SECONDS:-60}"
 server_http_ready() {
     local port="${1:-$(get_port)}"
     command -v curl >/dev/null 2>&1 || return 1
-    curl -sS -o /dev/null --connect-timeout 1 --max-time 2 "http://127.0.0.1:${port}/" >/dev/null 2>&1
+    # HEAD confirms the server is ready without downloading the full SPA HTML.
+    curl -fsSI --connect-timeout 1 --max-time 2 "http://127.0.0.1:${port}/" >/dev/null 2>&1
 }
 
 wait_for_server_ready() {
