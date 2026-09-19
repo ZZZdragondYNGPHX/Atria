@@ -217,11 +217,17 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(mobileBookCard.locator('.world_info_manager_item_meta')).toContainText(/Globally enabled|Not global/);
     await mobileBookCard.locator('.world_info_manager_more_button').click();
     await expect(mobileBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'true');
-    await expect(mobileBookCard.locator('.world_info_manager_item_menu')).toBeVisible();
-    await expect(mobileBookCard.locator('.world_info_manager_export')).toBeVisible();
-    await expect(mobileBookCard.locator('.world_info_manager_rename')).toBeVisible();
-    await expect(mobileBookCard.locator('.world_info_manager_duplicate')).toBeVisible();
+    const mobileBookMenu = page.locator('body > .wi-worldbook-action-sheet-portal');
+    await expect(mobileBookMenu).toBeVisible();
+    expect(await mobileBookMenu.evaluate(node => node.parentElement === document.body)).toBe(true);
+    const mobileMenuBox = await mobileBookMenu.boundingBox();
+    expect(mobileMenuBox?.y || 0).toBeGreaterThan(300);
+    expect((mobileMenuBox?.y || 0) + (mobileMenuBox?.height || 0)).toBeLessThanOrEqual(900);
+    await expect(mobileBookMenu.locator('.world_info_manager_export')).toBeVisible();
+    await expect(mobileBookMenu.locator('.world_info_manager_rename')).toBeVisible();
+    await expect(mobileBookMenu.locator('.world_info_manager_duplicate')).toBeVisible();
     await mobileBookCard.locator('.world_info_manager_more_button').click();
+    await expect(page.locator('body > .wi-worldbook-action-sheet-portal')).toHaveCount(0);
 
     // Advanced cross-book search survives the visual simplification behind
     // one compact filter menu instead of occupying a permanent second row.
@@ -311,10 +317,11 @@ test('Simplified Chinese localizes Workspace-owned World Info surfaces', async (
     await expect(zhBookCard.locator('.world_info_manager_toggle_label')).toHaveText(/全局/);
     await zhBookCard.locator('.world_info_manager_more_button').click();
     await expect(zhBookCard.locator('.world_info_manager_more_button')).toHaveAttribute('aria-expanded', 'true');
-    await expect(zhBookCard.locator('.world_info_manager_item_menu')).toBeVisible();
-    await expect(zhBookCard.locator('.world_info_manager_export')).toContainText('导出');
-    await expect(zhBookCard.locator('.world_info_manager_rename')).toContainText('重命名');
-    await expect(zhBookCard.locator('.world_info_manager_duplicate')).toContainText('复制');
+    const zhBookMenu = page.locator('body > .wi-worldbook-action-sheet-portal');
+    await expect(zhBookMenu).toBeVisible();
+    await expect(zhBookMenu.locator('.world_info_manager_export')).toContainText('导出');
+    await expect(zhBookMenu.locator('.world_info_manager_rename')).toContainText('重命名');
+    await expect(zhBookMenu.locator('.world_info_manager_duplicate')).toContainText('复制');
     await zhBookCard.locator('.world_info_manager_more_button').click();
 
     await openEntries(page);
