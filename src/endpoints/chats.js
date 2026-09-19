@@ -3688,29 +3688,39 @@ router.post('/group/append', async function (request, response) {
             groupId: id,
         });
 
-        // Re-read the chat doc to compose a backup payload; appendMessagesToChatFile
-        // doesn't return the full header+body. Skip when the helper dedup'd
-        // everything (no save happened).
+        // Preserve the existing full-chat backup policy, but only materialize
+        // the complete chat when this per-chat throttle actually executes.
         if (result?.created || (result?.appended ?? 0) > 0) {
-            try {
-                const chatDoc = await getChatRepo().get(handle, '', id, { isGroup: true, groupId: id });
-                if (chatDoc) {
+            await getBackupFunction(handle, id)(
+                request.user.directories.backups,
+                id,
+                async () => {
+                    const chatDoc = await getChatRepo().get(handle, '', id, {
+                        isGroup: true,
+                        groupId: id,
+                    });
+                    if (!chatDoc) return null;
                     const headerWithIntegrity = {
                         ...(chatDoc.header ?? {}),
-                        chat_metadata: applyIntegrityToMetadata(chatDoc.header?.chat_metadata, chatDoc.integrity),
+                        chat_metadata: applyIntegrityToMetadata(
+                            chatDoc.header?.chat_metadata,
+                            chatDoc.integrity,
+                        ),
                     };
-                    const jsonlData = [headerWithIntegrity, ...(chatDoc.body ?? [])].map(m => JSON.stringify(m)).join('\n');
-                    getBackupFunction(handle, id)(request.user.directories.backups, id, jsonlData);
-                }
-            } catch (backupErr) {
-                console.error('Chat backup after group/append failed', backupErr);
-            }
+                    return [headerWithIntegrity, ...(chatDoc.body ?? [])]
+                        .map(message => JSON.stringify(message))
+                        .join('\n');
+                },
+            );
         }
 
         await refreshRecentChatIndexEntry(request, chatFilePath);
         acknowledgeGenerationFromValueOrPersistTarget(request, messages, buildGroupPersistTargetHint(request));
         return response.send({ ok: true, ...result });
     } catch (error) {
+        if (error instanceof ConflictError) {
+            return sendRepoIntegrityConflict(response, error);
+        }
         if (error instanceof IntegrityMismatchError) {
             return sendIntegrityConflict(response, error);
         }
