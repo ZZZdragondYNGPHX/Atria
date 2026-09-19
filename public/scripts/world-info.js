@@ -6091,7 +6091,12 @@ function buildWorldInfoManagerItem(item) {
             closeItemMenu();
         }
     });
-    itemMenu.on('click', (event) => event.stopPropagation());
+    itemMenu.on('click', (event) => {
+        event.stopPropagation();
+        if ($(event.target).closest('button').length > 0) {
+            closeItemMenu();
+        }
+    });
 
     const toggleButton = itemElement.find('.world_info_manager_toggle');
     const globalActionLabel = item.active ? t`Disable globally` : t`Enable globally`;
