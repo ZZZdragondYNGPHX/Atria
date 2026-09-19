@@ -124,10 +124,6 @@ test('desktop workspace uses Library / Entries / Global Rules and bounded list r
     await expect(page.locator('#wi_workspace_entry_count')).toContainText('1000');
 
     // Contextual bulk UI appears only after selection; two selections expose safe Bulk Inspector.
-    const firstTwoChecks = page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-select').first().or(
-        page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-select').nth(1),
-    );
-    // Playwright's .or() is not an array; click explicitly.
     await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-select').nth(0).check();
     await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-select').nth(1).check();
     await expect(page.locator('#world_entry_bulk_toolbar')).toBeVisible();
