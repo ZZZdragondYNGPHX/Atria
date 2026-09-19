@@ -48,6 +48,14 @@ export class PgTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getChatRange(key, options = {}) {
+        if (key?.kind !== 'chat') throw new Error('PgTransaction.getChatRange: chat resource required');
+        return this._h(key.kind, 'getChatRange').range(key, options);
+    }
+    async getChatInfo(key) {
+        if (key?.kind !== 'chat') throw new Error('PgTransaction.getChatInfo: chat resource required');
+        return this._h(key.kind, 'getChatInfo').info(key);
+    }
     async appendChatMessages(key, messages, options = {}) {
         if (key?.kind !== 'chat') {
             throw new Error('PgTransaction.appendChatMessages: chat resource required');
@@ -117,6 +125,78 @@ export function registerChatHandler(tx) {
     }
 
     tx._handlers.set('chat', {
+        async range(key, { fromIndex = 0, limit = 0 } = {}) {
+            const p = chatKeyToParams(key);
+            const metaQuery = await client.query(
+                "SELECT doc->'header' AS header_value, jsonb_typeof(doc->'header') AS header_type, jsonb_typeof(doc->'body') AS body_type, jsonb_array_length(doc->'body') AS total_messages, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5",
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaQuery.rows[0];
+            if (!meta || meta.header_type !== 'object' || meta.body_type !== 'array') return null;
+            const header = coerceJson(meta.header_value);
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const totalMessages = Math.max(0, Number(meta.total_messages) || 0);
+            const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
+            const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+            const start = Math.min(requestedFrom, totalMessages);
+            const end = requestedLimit > 0 ? Math.min(start + requestedLimit, totalMessages) : totalMessages;
+
+            const rowsQuery = await client.query(
+                "SELECT t.elem AS message_value FROM chats AS c CROSS JOIN LATERAL jsonb_array_elements(c.doc->'body') WITH ORDINALITY AS t(elem, ord) WHERE c.handle=$1 AND c.char_dir=$2 AND c.name=$3 AND c.is_group=$4 AND c.group_id=$5 AND t.ord > $6 AND ($7 <= 0 OR t.ord <= $8) ORDER BY t.ord ASC",
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id, start, requestedLimit, end],
+            );
+            const body = [];
+            for (const row of rowsQuery.rows) {
+                const parsed = coerceJson(row.message_value);
+                if (parsed === null && row.message_value !== null) return null;
+                body.push(parsed);
+            }
+            return {
+                header,
+                body,
+                integrity: meta.integrity ?? '',
+                updatedAt: Number(meta.updated_at),
+                createdAt: Number(meta.created_at),
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        },
+        async info(key) {
+            const p = chatKeyToParams(key);
+            const metaQuery = await client.query(
+                "SELECT doc->'header' AS header_value, jsonb_typeof(doc->'header') AS header_type, jsonb_typeof(doc->'body') AS body_type, jsonb_array_length(doc->'body') AS message_count, octet_length(doc::text) AS byte_size, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5",
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const row = metaQuery.rows[0];
+            if (!row || row.header_type !== 'object' || row.body_type !== 'array') return null;
+            const header = coerceJson(row.header_value);
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const messageCount = Math.max(0, Number(row.message_count) || 0);
+            let lastMessage = null;
+            if (messageCount > 0) {
+                const lastQuery = await client.query(
+                    "SELECT (doc->'body')->(jsonb_array_length(doc->'body') - 1) AS message_value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5",
+                    [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                );
+                if (!lastQuery.rows.length) return null;
+                lastMessage = coerceJson(lastQuery.rows[0].message_value);
+                if (lastMessage === null && lastQuery.rows[0].message_value !== null) return null;
+            }
+
+            return {
+                header,
+                integrity: row.integrity ?? '',
+                updatedAt: Number(row.updated_at),
+                createdAt: Number(row.created_at),
+                messageCount,
+                byteSize: Math.max(0, Number(row.byte_size) || 0),
+                lastMessage,
+            };
+        },
         async append(key, messages, {
             expectedIntegrity = null,
             newIntegrity,
