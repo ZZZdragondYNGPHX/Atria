@@ -690,25 +690,25 @@ function buildGlobalRulesPanels() {
         {
             key: 'scanning',
             title: t`Scanning`,
-            description: t`How text is scanned and matched before entry-specific overrides.`, 
+            description: t`How text is scanned and matched before entry-specific overrides.`,
             ids: ['world_info_depth', 'world_info_include_names', 'world_info_case_sensitive', 'world_info_match_whole_words'],
         },
         {
             key: 'budget',
             title: t`Budget`,
-            description: t`How much prompt context World Info may consume.`, 
+            description: t`How much prompt context World Info may consume.`,
             ids: ['world_info_budget', 'world_info_budget_cap', 'world_info_overflow_alert'],
         },
         {
             key: 'recursion',
             title: t`Recursion`,
-            description: t`How recursive discovery proceeds and where it stops.`, 
+            description: t`How recursive discovery proceeds and where it stops.`,
             ids: ['world_info_recursive', 'world_info_min_activations', 'world_info_min_activations_depth_max', 'world_info_max_recursion_steps'],
         },
         {
             key: 'selection',
             title: t`Selection / Priority`,
-            description: t`Global ordering and scoring defaults.`, 
+            description: t`Global ordering and scoring defaults.`,
             ids: ['world_info_character_strategy', 'world_info_use_group_scoring'],
         },
     ];
