@@ -636,6 +636,10 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     const tAnalyze = Date.now();
     const analysis = await analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, targetDirectories, categoryTargets, reportProgress);
     const analyzeMs = Date.now() - tAnalyze;
+    console.info(
+        `[user-backup] Analyze done: entries=${analysis.report.totalEntries} targetable=${analysis.report.targetableEntries} `
+        + `skipped=${analysis.report.skippedEntries} rejected=${analysis.report.rejectedEntries} analyze=${analyzeMs}ms`,
+    );
 
     // When the archive carries an engine dump, validate that the
     // recorded engineKind matches the server's current engine. If kinds
@@ -692,6 +696,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     let recoveryPath = null;
     let snapshotMs = 0;
     const tSnap = Date.now();
+    console.info('[user-backup] Recovery snapshot start');
     try {
         recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress, {
             restoreMode: mode,
@@ -700,6 +705,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         throw new Error(`Failed to create recovery point before restore: ${snapshotError?.message || snapshotError}`);
     }
     snapshotMs = Date.now() - tSnap;
+    console.info(`[user-backup] Recovery snapshot done: ${snapshotMs}ms path=${path.basename(recoveryPath)}`);
 
     if (isReplacingRestoreMode(mode)) {
         try {
@@ -734,15 +740,21 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     const tExtract = Date.now();
     let extractMs = 0;
     const extractTotal = analysis.report.targetableEntries;
+    console.info(`[user-backup] Extract start: targetable=${extractTotal}`);
     reportProgress({ phase: 'extract', current: 0, total: extractTotal });
     let lastExtractProgressAt = 0;
+    let lastExtractLogAt = 0;
     const reportExtractProgress = (force) => {
         const now = Date.now();
-        if (!force && now - lastExtractProgressAt < 200) {
-            return;
+        const current = result.restoredCount + result.failedCount;
+        if (force || now - lastExtractProgressAt >= 200) {
+            lastExtractProgressAt = now;
+            reportProgress({ phase: 'extract', current, total: extractTotal });
         }
-        lastExtractProgressAt = now;
-        reportProgress({ phase: 'extract', current: result.restoredCount + result.failedCount, total: extractTotal });
+        if (force || now - lastExtractLogAt >= 5000) {
+            lastExtractLogAt = now;
+            console.info(`[user-backup] Extract progress: ${current}/${extractTotal} failed=${result.failedCount}`);
+        }
     };
     try {
         await new Promise((resolve, reject) => {
