@@ -536,6 +536,10 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const name = el('strong', preset.name, item);
             name.className = 'workspace-preset-name';
             el('small', modeLabel(preset.mode), item);
+            if (isNativeWorkspacePresetId(preset.id)) {
+                const badge = el('small', 'Native · fixed', item);
+                badge.className = 'workspace-preset-native';
+            }
         }
         search.addEventListener('input', () => {
             searchText = search.value;
@@ -567,7 +571,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         const moreCreate = el('details', undefined, sidebar);
         moreCreate.className = 'workspace-library-more';
         el('summary', 'More', moreCreate);
-        button(moreCreate, 'Restore native presets', () => {
+        button(moreCreate, 'Add / restore native presets', () => {
             settings.agentWorkspace = restoreNativeWorkspacePresets(settings.agentWorkspace);
             save();
             notice = i18n('Native presets restored.');
