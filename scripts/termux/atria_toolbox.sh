@@ -251,7 +251,7 @@ heal_known_restore_sentinel_dirty_state() {
     # A buggy full-restore path could delete this tracked empty-directory
     # sentinel before the archive finished. It contains no user data, so it is
     # safe to restore automatically before the normal dirty-worktree guard.
-    if [ "$status" = " D $sentinel" ] || [ "$status" = "D  $sentinel" ]; then
+    if [ "$status" = " D $sentinel" ]; then
         if git -C "$ATRIA_DIR" cat-file -e "HEAD:$sentinel" 2>/dev/null; then
             git -C "$ATRIA_DIR" restore --worktree -- "$sentinel" || return 1
             info "已自动恢复仓库占位文件：$sentinel"
