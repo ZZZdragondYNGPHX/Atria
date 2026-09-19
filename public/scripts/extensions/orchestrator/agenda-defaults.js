@@ -1,5 +1,5 @@
 /** Shipped Atri Agenda authoring data; shared by native Workspace and legacy adapters. */
-export const AGENDA_BUILTIN_REVISION = 1;
+export const AGENDA_BUILTIN_REVISION = 2;
 
 export const defaultAgendaProfile = {
     'name': 'Atri-agenda',
