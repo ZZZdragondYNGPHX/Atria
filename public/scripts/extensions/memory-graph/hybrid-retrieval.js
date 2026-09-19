@@ -42,7 +42,12 @@ export function buildMemoryCorpus(snapshot, at = null) {
     const check = createMemorySupportChecker(state, chat);
     const facts = projectFacts(state, chat, { includeInactive: true, checkSupport: check });
     const factOrder = new Map(facts.map((fact, index) => [fact.id, index]));
-    const graph = projectTemporalGraph(state, chat, { includeInactive: true, at });
+    const graph = projectTemporalGraph(state, chat, {
+        includeInactive: true,
+        at,
+        checkSupport: check,
+        projectedFacts: facts,
+    });
     const entities = graph.entities.filter(entity => entity.status === 'active');
     const names = new Map(entities.map(entity => [entity.id, entity.canonicalName]));
     const eligible = record => ['active', 'superseded'].includes(record.status);
