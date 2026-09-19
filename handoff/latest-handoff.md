@@ -192,6 +192,7 @@ Final validation for PR #4 passed:
 - Simplified/Traditional Chinese now cover Native State Conditions, State Change Events, Selection & Dependencies, dynamic state/event fields and selection/budget hints.
 - Persisted World Info enums/extension fields are unchanged; this is localization-only.
 - Final validation passed Worldbook Performance Foundation #200 and Atria PR Checks #447 with 591 suites / 7,930 tests.
+- Cleanup workflow #12 succeeded and removed `fix/worldbook-zh-localization` after merge.
 - Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in.
 
 ## Long-lived references
