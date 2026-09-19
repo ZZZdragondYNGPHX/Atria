@@ -9,6 +9,8 @@ on:
       - "public/script.js"
       - "public/scripts/world-info.js"
       - "public/scripts/atri-chat-snapshot-cache.js"
+      - "public/scripts/atri-itemized-prompt-store.js"
+      - "public/scripts/itemized-prompts.js"
       - "public/scripts/atri-world-info-prompt.js"
       - "public/scripts/atri-world-info-provenance.js"
       - "public/scripts/atri-world-info-state-conditions.js"
@@ -61,6 +63,7 @@ jobs:
         run: >-
           npm run test:unit --prefix tests --
           performance/chat-snapshot-cache.test.js
+          performance/itemized-prompt-store.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
           world-info/state-conditions.test.js
