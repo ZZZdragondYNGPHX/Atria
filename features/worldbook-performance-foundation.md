@@ -184,7 +184,7 @@ Android JVM tests and Android / Docker builds were intentionally not run for thi
 - Continuation baseline: `main@03d97d655370b31c2a27dd1235f917deadd6246e`
 - Temporary branch: `feat/worldbook-performance-foundation`
 - Pull request: #10 — `perf: continue worldbook performance P02-P05`
-- Current implementation head while final validation is running: `f752e0e1f532d2796b5b476acc2c57149973ef5a`
+- P-02–P-05 final validated task head: `f752e0e1f532d2796b5b476acc2c57149973ef5a`
 - Android and Docker remain opt-in and are intentionally not part of the default validation.
 
 ### P-02 diagnostics on demand
@@ -291,7 +291,20 @@ The continuation validation matrix is intentionally split:
 - **Worldbook Performance Foundation:** P-02/P-03/P-04/P-05 focused regressions, synthetic benchmark artifact, isolated real-host Chromium smoke, and W-04/W-05 real-request/import-export E2E.
 - **Atria PR Checks:** ESLint, Atria Migration Guard and the complete Node unit suite with real MySQL 8.4 and PostgreSQL 16 service containers.
 
-The final validated head and resulting `main` merge are recorded after the latest PR #10 runs complete.
+Final validation for PR #10 passed on `f752e0e1f532d2796b5b476acc2c57149973ef5a`:
+
+- Worldbook Performance Foundation #185 — success:
+  - focused P-02/P-03/P-04/P-05 regressions;
+  - synthetic benchmark artifact;
+  - isolated real-host Chromium smoke;
+  - W-04/W-05 real-request and import/export E2E.
+- Atria PR Checks #432 — success:
+  - ESLint;
+  - Atria Migration Guard;
+  - complete Node unit suite using MySQL 8.4 and PostgreSQL 16.
+- The same code tree before the documentation-only master-plan status commit also passed Atria PR Checks #431 with **590 test suites / 7,920 tests**.
+
+The resulting `main` squash-merge SHA is added immediately after PR #10 is merged.
 
 
 ## Follow-up
