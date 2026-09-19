@@ -222,6 +222,7 @@ test('Simplified Chinese localizes Workspace-owned World Info surfaces', async (
 
     await openEntries(page);
 
+    await expect(page.locator('.wi-inspector-section-title')).toHaveCount(6);
     const sectionTitles = await page.locator('.wi-inspector-section-title').allTextContents();
     expect(sectionTitles).toEqual([
         '基础',
