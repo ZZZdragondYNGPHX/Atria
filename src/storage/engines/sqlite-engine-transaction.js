@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -41,6 +42,12 @@ export class SqliteTransaction {
             throw new Error('SqliteTransaction.appendChatMessages: chat resource required');
         }
         return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
+    async patchChatMessages(key, operations, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.patchChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'patchChatMessages').patch(key, operations, options);
     }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
@@ -153,6 +160,109 @@ export function registerChatHandler(tx) {
     };
 
     tx._handlers.set('chat', {
+        patch(key, operations, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+            chatMetadata = {},
+        } = {}) {
+            const parsedOps = [];
+            for (const operation of Array.isArray(operations) ? operations : []) {
+                const op = String(operation?.op || '').trim().toLowerCase();
+                const match = /^\/(0|[1-9]\d*)$/.exec(String(operation?.path || ''));
+                if (!['test', 'replace', 'remove'].includes(op) || !match) {
+                    return { status: 'unsupported' };
+                }
+                if ((op === 'test' || op === 'replace') && !Object.hasOwn(operation, 'value')) {
+                    return { status: 'unsupported' };
+                }
+                parsedOps.push({ op, index: Number(match[1]), value: operation?.value });
+            }
+            if (parsedOps.length === 0) return { status: 'unsupported' };
+
+            const p = chatKeyToParams(key);
+            const meta = db.prepare(`SELECT integrity,
+                    json_extract(doc, '$.header.chat_metadata') AS metadata_value,
+                    json_type(doc, '$.header.chat_metadata') AS metadata_type,
+                    json_type(doc, '$.body') AS body_type,
+                    json_array_length(doc, '$.body') AS message_count
+                FROM chats
+                WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                .get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!meta) return { status: 'missing' };
+            if (meta.metadata_type !== 'object' || meta.body_type !== 'array') {
+                return { status: 'unsupported' };
+            }
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            let currentMetadata;
+            try { currentMetadata = JSON.parse(meta.metadata_value); } catch { return { status: 'unsupported' }; }
+            let messageCount = Math.max(0, Number(meta.message_count) || 0);
+
+            for (const operation of parsedOps) {
+                if (operation.index < 0 || operation.index >= messageCount) {
+                    if (operation.op === 'test') throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    throw new Error(`Invalid JSON Patch ${operation.op} path. Array index out of bounds`);
+                }
+                const jsonPath = `$.body[${operation.index}]`;
+                if (operation.op === 'test') {
+                    const row = db.prepare(`SELECT json_extract(doc, ?) AS value, json_type(doc, ?) AS type
+                        FROM chats
+                        WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                        .get(jsonPath, jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+                    const actual = parseJsonEachValue(row?.value, row?.type);
+                    if (!isDeepStrictEqual(actual, operation.value)) {
+                        throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    }
+                    continue;
+                }
+                if (operation.op === 'replace') {
+                    const json = JSON.stringify(operation.value);
+                    if (json === undefined) return { status: 'unsupported' };
+                    db.prepare(`UPDATE chats
+                        SET doc=json_set(doc, ?, json(?))
+                        WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                        .run(jsonPath, json, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+                    continue;
+                }
+                db.prepare(`UPDATE chats
+                    SET doc=json_remove(doc, ?)
+                    WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                    .run(jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+                messageCount -= 1;
+            }
+
+            const mergedMetadata = {
+                ...(currentMetadata && typeof currentMetadata === 'object' && !Array.isArray(currentMetadata)
+                    ? currentMetadata : {}),
+                ...(chatMetadata && typeof chatMetadata === 'object' && !Array.isArray(chatMetadata)
+                    ? chatMetadata : {}),
+                integrity: newIntegrity,
+            };
+            db.prepare(`UPDATE chats
+                SET doc=json_set(doc, '$.header.chat_metadata', json(?)), updated_at=?
+                WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`)
+                .run(
+                    JSON.stringify(mergedMetadata),
+                    updatedAt,
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                );
+
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                applied: parsedOps.length,
+                totalMessages: messageCount,
+            };
+        },
         append(key, messages, {
             expectedIntegrity = null,
             newIntegrity,
