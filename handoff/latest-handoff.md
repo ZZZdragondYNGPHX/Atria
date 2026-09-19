@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, the World Info Workspace UI refactor, and the World Info Workspace Chinese-localization fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, the World Info Workspace UI refactor, the World Info Workspace Chinese-localization fix, and the World Info mobile product UI refactor are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `59bc6862487331d12378e4fdd1da403a248e12a5`
+- `71dc40588f02c96d16d7be64f1e0ccd0223982ba`
 
-This commit is the squash merge of PR #24. The World Info Workspace introduced by PR #23 now routes its Workspace-owned navigation, Inspector, Issues diagnostics, relationship picker, bulk UI, Global Rules and Test Activation text through the existing i18n system, with complete Simplified Chinese and Traditional Chinese coverage. The deterministic diagnostics module remains Node/Jest-safe through the optional runtime i18n bridge. No World Info persistence/API/import-export/activation/state/selection/storage semantics changed. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #25. World Info now uses a book-first Library and a dedicated mobile application shell: lorebook cards open directly into Entries, global activation is secondary state rather than the catalogue hierarchy, mobile primary navigation is fixed at the bottom, and entry detail mode removes list/search/filter/navigation chrome so the Inspector and Content editor own the viewport. Advanced cross-book search and Continuous Cards remain available through compact mobile affordances. No World Info persistence/API/import-export/activation/state/selection/storage semantics changed. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,24 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### World Info mobile product UI refactor
+
+- PR #25
+- Baseline: `main@59bc6862487331d12378e4fdd1da403a248e12a5`
+- Final validated head: `d672ef4e70ada778ba87818804e071501266eab6`
+- Squash merge / current `main`: `71dc40588f02c96d16d7be64f1e0ccd0223982ba`
+- Final validated / merged tree: `3e2482f496ad6a5f94681addf667bbea4dec88f2`, identical.
+- Record: `refactors/world-info-mobile-product-ui.md`
+- Library is now book-first: lorebook cards are the primary objects, the whole card opens Entries, activation state is secondary, and activation no longer controls catalogue ordering.
+- The duplicated Active Lorebooks strip is hidden in Workspace presentation; bulk book actions are contextual.
+- Mobile World Info uses its own compact header and fixed bottom Library / Entries / Global Rules navigation instead of stacking inherited drawer controls.
+- Mobile entry browsing retains compact command/search/filter controls; entry detail mode removes those surfaces and gives the Inspector/Content editor the viewport.
+- Cross-book entry/content search and advanced syntax remain accessible through a compact Library search-options menu.
+- Continuous Cards remains available as a compatibility mode with mobile pagination preserved.
+- A real-browser regression caught and prevented a transformed/fixed containing-block bug that initially placed the bottom navigation near the top of the viewport.
+- Final validation passed Atria PR Checks #563 and Worldbook Performance Foundation #248, including ESLint, complete Node unit tests, Atria Migration Guard, frontend libraries build, focused regressions, synthetic benchmark, real-host Chromium smoke and complete World Info browser acceptance.
+- Android JVM/APK and Docker builds were intentionally not run because they remain opt-in and this task changes browser JavaScript/CSS/localization/tests only.
 
 ### World Info Workspace Chinese localization
 
