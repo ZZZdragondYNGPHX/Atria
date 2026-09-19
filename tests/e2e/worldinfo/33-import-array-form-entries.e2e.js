@@ -26,7 +26,7 @@ import { resolve } from 'node:path';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { enableWorldInfoContinuousCards, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -185,6 +185,7 @@ test.describe('#33 — WI import tolerates array-form entries', () => {
 
         // Select the imported book and confirm the entries actually
         // rendered (not just that the name appeared in the dropdown).
+        await enableWorldInfoContinuousCards(page);
         await page.evaluate((wanted) => {
             const jq = window.jQuery || window.$;
             const select = document.querySelector('#world_editor_select');
