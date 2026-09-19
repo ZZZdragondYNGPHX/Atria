@@ -350,7 +350,7 @@ function createRegexExecutionPlan(scripts, { warnInvalidPlacement = false } = {}
 }
 
 function getRegexExecutionBaseCandidates(plan, placement, requestScopeMask, isEdit) {
-    const key = `${String(placement)}|${requestScopeMask}|${isEdit ? 1 : 0}`;
+    const key = `${typeof placement}:${String(placement)}|${requestScopeMask}|${isEdit ? 1 : 0}`;
     const cached = plan.selectionCache.get(key);
     if (cached) {
         touchBoundedMap(plan.selectionCache, key, cached, EXECUTION_SELECTION_CACHE_MAX);
@@ -379,7 +379,7 @@ function getRegexExecutionCandidates(plan, placement, params = {}) {
         return base;
     }
 
-    const depthKey = `${String(placement)}|${requestScopeMask}|${params?.isEdit ? 1 : 0}|d:${String(depth)}`;
+    const depthKey = `${typeof placement}:${String(placement)}|${requestScopeMask}|${params?.isEdit ? 1 : 0}|d:${String(depth)}`;
     const cached = plan.depthSelectionCache.get(depthKey);
     if (cached) {
         touchBoundedMap(plan.depthSelectionCache, depthKey, cached, EXECUTION_SELECTION_CACHE_MAX);
@@ -788,20 +788,40 @@ export function getRegexScripts(options = DEFAULT_GET_REGEX_SCRIPTS_OPTIONS) {
  * @returns {{duplicates:Array<{signature:string, scripts:RegexScript[]}>, conflicts:Array<{pattern:string, scripts:RegexScript[]}>}}
  */
 export function getRegexScriptDiagnostics(scripts = getRegexScripts({ allowedOnly: true })) {
-    const source = Array.isArray(scripts) ? scripts.filter(script => script && typeof script === 'object') : [];
+    const source = Array.isArray(scripts)
+        ? scripts.filter(script => script && typeof script === 'object' && !script.disabled && script.findRegex)
+        : [];
     const duplicateGroups = new Map();
     const patternGroups = new Map();
 
+    const normalizedPlacements = script => Array.isArray(script.placement)
+        ? [...new Set(script.placement)]
+        : [];
+    const placementsOverlap = (left, right) => {
+        const rightPlacements = new Set(normalizedPlacements(right));
+        return normalizedPlacements(left).some(placement => rightPlacements.has(placement));
+    };
+    const scopesOverlap = (left, right) => {
+        const leftMask = getRegexScriptScopeMask(left);
+        const rightMask = getRegexScriptScopeMask(right);
+        if (leftMask === 0 || rightMask === 0) {
+            return leftMask === rightMask;
+        }
+        return (leftMask & rightMask) !== 0;
+    };
+    const behaviorSignature = script => JSON.stringify({
+        replaceString: script.replaceString ?? '',
+        trimStrings: Array.isArray(script.trimStrings) ? script.trimStrings : [],
+    });
+
     for (const script of source) {
-        const placements = Array.isArray(script.placement)
-            ? [...new Set(script.placement)].sort((a, b) => String(a).localeCompare(String(b)))
-            : [];
+        const placements = normalizedPlacements(script)
+            .sort((a, b) => `${typeof a}:${String(a)}`.localeCompare(`${typeof b}:${String(b)}`));
         const signature = JSON.stringify({
             findRegex: script.findRegex ?? '',
             replaceString: script.replaceString ?? '',
             trimStrings: Array.isArray(script.trimStrings) ? script.trimStrings : [],
             placement: placements,
-            disabled: Boolean(script.disabled),
             markdownOnly: Boolean(script.markdownOnly),
             promptOnly: Boolean(script.promptOnly),
             pluginOnly: Boolean(script.pluginOnly),
@@ -833,13 +853,26 @@ export function getRegexScriptDiagnostics(scripts = getRegexScripts({ allowedOnl
     const conflicts = [];
     for (const [pattern, group] of patternGroups.entries()) {
         if (group.length < 2) continue;
-        const behaviorSignatures = new Set(group.map(script => JSON.stringify({
-            replaceString: script.replaceString ?? '',
-            trimStrings: Array.isArray(script.trimStrings) ? script.trimStrings : [],
-            disabled: Boolean(script.disabled),
-        })));
-        if (behaviorSignatures.size > 1) {
-            conflicts.push({ pattern, scripts: group });
+        const involved = new Set();
+        for (let i = 0; i < group.length; i++) {
+            for (let j = i + 1; j < group.length; j++) {
+                const left = group[i];
+                const right = group[j];
+                if (!placementsOverlap(left, right) || !scopesOverlap(left, right)) {
+                    continue;
+                }
+                if (behaviorSignature(left) === behaviorSignature(right)) {
+                    continue;
+                }
+                involved.add(left);
+                involved.add(right);
+            }
+        }
+        if (involved.size > 1) {
+            conflicts.push({
+                pattern,
+                scripts: group.filter(script => involved.has(script)),
+            });
         }
     }
 
