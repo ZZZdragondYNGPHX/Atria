@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, and the approved P-04 FS crash-safe local patch continuation are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, and the final W-03/W-04 World Info Chinese-localization cleanup are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `32227e997c136228477bb4571e828f3852fe8eb1`
+- `2c8141a532338eba0756805b741bb258a113043d`
 
-This commit is the squash merge of PR #11. In addition to the completed World Info/P-02–P-05 foundation, Atria now has crash-safe native FS whole-message `test/replace/remove`: canonical JSONL remains the source of truth, variable-length edits rewrite only the affected suffix, transient fsynced journals provide rollback/recovery, and LAN Sync excludes those local recovery artifacts. The merged tree exactly matches the final validated PR #11 task tree.
+This commit is the squash merge of PR #12. It keeps the completed World Info/P-02–P-05/P-04 runtime behavior unchanged and finishes the Atria World Info author UI localization for Simplified and Traditional Chinese, including native state conditions, state change events, selection/dependencies and their dynamic controls. The merged tree exactly matches the final validated PR #12 task tree.
 
 ## Branch roles
 
@@ -179,6 +179,20 @@ Final validation for PR #4 passed:
 - Cleanup workflow #11 succeeded after merge and removed the temporary task branch.
 - Remaining P-04 boundary: middle/front variable-length edits still scale with the affected suffix. Near-single-message arbitrary historical edits require a separate physical-record/segmented-storage migration task.
 - Android JVM tests and Android/Docker image builds were intentionally not run because they remain opt-in.
+
+
+### World Info author UI Chinese localization
+
+- PR #12
+- Baseline: `main@32227e997c136228477bb4571e828f3852fe8eb1`
+- Final validated head: `e55659943b59b38b1dff42f0d5b7580f480838a5`
+- Squash merge / current `main`: `2c8141a532338eba0756805b741bb258a113043d`
+- Final merged tree: `c3ba1507b0ec557797b5e1d38e96991ed0f3d480`, identical to the task-head tree.
+- Record: `features/worldbook-performance-foundation.md`
+- Simplified/Traditional Chinese now cover Native State Conditions, State Change Events, Selection & Dependencies, dynamic state/event fields and selection/budget hints.
+- Persisted World Info enums/extension fields are unchanged; this is localization-only.
+- Final validation passed Worldbook Performance Foundation #200 and Atria PR Checks #447 with 591 suites / 7,930 tests.
+- Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in.
 
 ## Long-lived references
 
