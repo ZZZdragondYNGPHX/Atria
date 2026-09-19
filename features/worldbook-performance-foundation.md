@@ -392,3 +392,43 @@ Android JVM tests and Android/Docker builds were intentionally not run because t
 - Integrity/OCC, existing reliable full-rewrite fallback, backup materialization and SQL-engine behavior remain intact.
 - An edit near the front or middle of a JSONL chat still rewrites and journals the affected suffix. Cost therefore scales with that suffix, not strictly with one message.
 - If measured workloads later require near-single-message cost for arbitrary old-message edits, that should be a separate physical-record / segmented-storage migration with its own compatibility and recovery contract.
+
+
+## Worldbook author UI Chinese localization · PR #12
+
+- Baseline: `main@32227e997c136228477bb4571e828f3852fe8eb1`
+- Temporary branch: `fix/worldbook-zh-localization`
+- Final validated task head: `e55659943b59b38b1dff42f0d5b7580f480838a5`
+- Pull request: #12 — `fix: localize Atria worldbook author controls`
+- Squash merge / resulting main: `2c8141a532338eba0756805b741bb258a113043d`
+- Final merged tree: `c3ba1507b0ec557797b5e1d38e96991ed0f3d480`, identical to the validated task-head tree.
+
+### Implementation
+
+- Added Simplified Chinese and Traditional Chinese localization for the Atria W-03/W-04 World Info author controls.
+- Covered the visible collapsed sections:
+  - Native State Conditions
+  - State Change Events
+  - Selection & Dependencies
+- Covered dynamic expanded controls and status/error text:
+  - provider/path/operator/value type/value;
+  - From/To event endpoints;
+  - scalar type labels, boolean/null/any labels, contains operator;
+  - add/save/remove controls and unsaved/saved/invalid status messages;
+  - dependency/related/mutual-exclusion/budget/compact-content fields and hints.
+- Added dedicated World Info budget-tier i18n keys so `critical` renders as “关键/關鍵” without changing the global `Critical` severity translation.
+- Localized the new placeholders/examples while preserving all persisted enum values and extension-field names unchanged.
+
+### Compatibility and validation
+
+This is UI-only localization. It does not change World Info selection semantics, state-provider behavior, import/export shape or persisted data.
+
+Final validation on `e55659943b59b38b1dff42f0d5b7580f480838a5` passed:
+
+- Worldbook Performance Foundation #200;
+- Atria PR Checks #447:
+  - ESLint;
+  - Atria Migration Guard;
+  - complete Node unit suite: **591 suites / 7,930 tests**.
+
+Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in and this task changed only web localization/UI strings.
