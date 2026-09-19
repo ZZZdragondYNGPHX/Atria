@@ -54,6 +54,7 @@ export async function streamZipEntryWithIdleTimeout({
     targetPath,
     onChunk = null,
     timeoutMs = RESTORE_ENTRY_IDLE_TIMEOUT_MS,
+    signal = null,
 }) {
     if (!zipfile || typeof zipfile.openReadStream !== 'function') {
         throw new Error('streamZipEntryWithIdleTimeout: zipfile is required');
@@ -71,6 +72,14 @@ export async function streamZipEntryWithIdleTimeout({
         let readStream = null;
         let writeStream = null;
         let bytes = 0;
+        let abortHandler = null;
+
+        const clearAbortListener = () => {
+            if (abortHandler && signal) {
+                signal.removeEventListener('abort', abortHandler);
+                abortHandler = null;
+            }
+        };
 
         const clearTimer = () => {
             if (timer) {
@@ -83,6 +92,7 @@ export async function streamZipEntryWithIdleTimeout({
             if (settled) return;
             settled = true;
             clearTimer();
+            clearAbortListener();
             if (error) {
                 try { readStream?.destroy?.(); } catch { /* best effort */ }
                 try { writeStream?.destroy?.(); } catch { /* best effort */ }
@@ -102,6 +112,20 @@ export async function streamZipEntryWithIdleTimeout({
             }, timeoutMs);
             timer.unref?.();
         };
+
+        if (signal?.aborted) {
+            finish(signal.reason || new Error('Restore cancelled'));
+            return;
+        }
+        if (signal) {
+            abortHandler = () => {
+                const reason = signal.reason || new Error('Restore cancelled');
+                try { readStream?.destroy?.(reason); } catch { /* best effort */ }
+                try { writeStream?.destroy?.(reason); } catch { /* best effort */ }
+                finish(reason);
+            };
+            signal.addEventListener('abort', abortHandler, { once: true });
+        }
 
         armTimer();
         zipfile.openReadStream(entry, (streamError, stream) => {
