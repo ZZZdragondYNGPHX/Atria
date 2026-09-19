@@ -142,6 +142,94 @@ test.describe('Backup & Sync Center', () => {
         await expect(center.locator('.backupRestoreStart')).toBeEnabled();
     });
 
+    test('active restore survives closing the popup and reattaches when Backup Center reopens', async ({ page }) => {
+        let releaseRestore;
+        let markRestoreRequested;
+        const restoreGate = new Promise(resolve => { releaseRestore = resolve; });
+        const restoreRequested = new Promise(resolve => { markRestoreRequested = resolve; });
+
+        await page.route('**/api/users/restore-backup/probe', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    compatible: true,
+                    engineKind: 'fs',
+                    destinationEngineKind: 'fs',
+                    restorePlan: {
+                        mode: 'full',
+                        stagedEngineRestore: false,
+                        crossModeRequired: false,
+                        recoveryPoint: 'required',
+                        verification: 'required',
+                    },
+                    preflight: {
+                        totalEntries: 2,
+                        targetableEntries: 2,
+                        skippedEntries: 0,
+                        rejectedEntries: 0,
+                        categoryStats: { settings: { targetableEntries: 1 }, chats: { targetableEntries: 1 } },
+                        warnings: [],
+                    },
+                }),
+            });
+        });
+        await page.route('**/api/users/restore-backup', async route => {
+            markRestoreRequested();
+            await restoreGate;
+            await route.fulfill({
+                status: 200,
+                headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
+                body: [
+                    JSON.stringify({ type: 'progress', phase: 'extract', current: 1, total: 2 }),
+                    JSON.stringify({ type: 'result', restoredCount: 2, failedCount: 0 }),
+                    '',
+                ].join('\n'),
+            });
+        });
+
+        await awaitMainUI(page, server.baseURL);
+        await page.evaluate(async () => {
+            const mod = await import('/scripts/backup-sync-center.js');
+            void mod.openBackupSyncCenter({ handle: 'default-user' });
+        });
+        const firstCenter = page.locator('.backupSyncCenter').last();
+        await firstCenter.waitFor({ state: 'visible', timeout: 10_000 });
+        await firstCenter.locator('.backupSyncTab[data-tab="archive"]').click();
+        await firstCenter.locator('input[name="backupRestoreMode"][value="full"]').check();
+
+        const zipPath = path.join(tempDir, 'reattach.zip');
+        writeFileSync(zipPath, 'PK\u0003\u0004mock');
+        await firstCenter.locator('.backupArchiveInput').setInputFiles(zipPath);
+        await expect(firstCenter.locator('.backupRestoreStart')).toBeEnabled();
+
+        await firstCenter.locator('.backupRestoreStart').click();
+        await page.locator('dialog.popup[open]').last().locator('.popup-button-ok').click();
+        await restoreRequested;
+
+        const firstDialog = page.locator('dialog.popup[open]', { has: firstCenter });
+        await firstDialog.locator('.popup-button-ok').click();
+        await firstCenter.waitFor({ state: 'detached' });
+
+        await page.evaluate(async () => {
+            const mod = await import('/scripts/backup-sync-center.js');
+            void mod.openBackupSyncCenter({ handle: 'default-user' });
+        });
+        const secondCenter = page.locator('.backupSyncCenter').last();
+        await secondCenter.waitFor({ state: 'visible', timeout: 10_000 });
+
+        await expect(secondCenter.locator('.backupSyncPanel[data-panel="archive"]')).toBeVisible();
+        await expect(secondCenter.locator('.backupRestoreProgress')).toHaveAttribute('data-state', 'running');
+        await expect(secondCenter.locator('.backupRestoreProgress')).toContainText('后台运行');
+        await expect(secondCenter.locator('.backupRecoveryRefresh')).toBeDisabled();
+
+        releaseRestore();
+
+        await expect(secondCenter.locator('.backupRestoreProgress')).toHaveAttribute('data-state', 'ok');
+        await expect(secondCenter.locator('.backupRestoreProgress')).toContainText('上次恢复完成：2 项；失败 0 项。');
+        await expect(secondCenter.locator('.backupRecoveryRefresh')).toBeEnabled();
+    });
+
     test('archive recovery history section is present and refreshable', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
         const center = await openBackupSyncCenter(page);
