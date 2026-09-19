@@ -61,6 +61,16 @@ describe('Termux update guards', () => {
         expect(setupSource).toContain('ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" npm run frontend:prebuild-cache');
     });
 
+    test('readiness probes use HEAD instead of downloading the SPA document', () => {
+        const toolboxSource = fs.readFileSync(toolboxPath, 'utf8');
+        const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
+
+        expect(toolboxSource).toContain('curl -fsSI --connect-timeout 1 --max-time 2');
+        expect(cliSource).toContain('curl -fsSI --max-time 3');
+        expect(toolboxSource).not.toContain('curl -sS -o /dev/null --connect-timeout 1 --max-time 2');
+        expect(cliSource).not.toContain('curl -fsS --max-time 3 "${URL}/"');
+    });
+
     test('warm startup readiness is detected at sub-second cadence', () => {
         const toolboxSource = fs.readFileSync(toolboxPath, 'utf8');
         const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
