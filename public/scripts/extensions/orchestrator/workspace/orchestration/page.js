@@ -537,7 +537,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             name.className = 'workspace-preset-name';
             el('small', modeLabel(preset.mode), item);
             if (isNativeWorkspacePresetId(preset.id)) {
-                const badge = el('small', 'Native · fixed', item);
+                const badge = el('small', i18n('Native · fixed'), item);
                 badge.className = 'workspace-preset-native';
             }
         }
@@ -618,7 +618,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         el('p', draft.editorMetadata?.description || modeDescription(draft.mode), heading).className = 'workspace-hint';
 
         if (nativePreset) {
-            const nativeNotice = el('p', 'Native preset · fixed by Atria. Duplicate it before customizing.', canvasPane);
+            const nativeNotice = el('p', i18n('Native preset · fixed by Atria. Duplicate it before customizing.'), canvasPane);
             nativeNotice.className = 'workspace-hint';
         }
 
