@@ -1,4 +1,10 @@
-import { t } from '../i18n.js';
+function tr(strings, ...values) {
+    const translator = globalThis.__i18n?.t;
+    if (typeof translator === 'function') {
+        return translator(strings, ...values);
+    }
+    return strings.reduce((result, string, index) => result + string + (values[index] !== undefined ? values[index] : ''), '');
+}
 
 /**
  * Deterministic World Info authoring diagnostics.
@@ -95,36 +101,36 @@ export function getWorldInfoEntryIssues(entry, context = {}) {
     const push = (code, message, severity = 'warning') => issues.push({ code, message, severity });
 
     if (!text(entry.content)) {
-        push('empty-content', t`Content is empty.`);
+        push('empty-content', tr`Content is empty.`);
     }
 
     const primaryKeys = Array.isArray(entry.key) ? entry.key.map(text).filter(Boolean) : [];
     const hasStateGate = Array.isArray(entry.stateConditions) && entry.stateConditions.length > 0;
     const isKeywordDriven = entry.constant !== true && entry.vectorized !== true && !hasStateGate;
     if (isKeywordDriven && primaryKeys.length === 0) {
-        push('missing-primary-keywords', t`Normal keyword-driven entry has no Primary Keywords.`);
+        push('missing-primary-keywords', tr`Normal keyword-driven entry has no Primary Keywords.`);
     }
 
     const currentKey = `${worldName}#${Number(entry.uid)}`;
     const relationshipGroups = [
-        [ 'requiredEntries', t`Required entry` ],
-        [ 'relatedEntries', t`Related entry` ],
+        [ 'requiredEntries', tr`Required entry` ],
+        [ 'relatedEntries', tr`Related entry` ],
     ];
     for (const [field, label] of relationshipGroups) {
         const refs = Array.isArray(entry[field]) ? entry[field] : [];
         for (const ref of refs) {
             const normalized = normalizeEntryRef(ref, worldName);
             if (!normalized) {
-                push('invalid-relationship-target', t`${label} reference "${text(ref)}" is invalid.`, 'error');
+                push('invalid-relationship-target', tr`${label} reference "${text(ref)}" is invalid.`, 'error');
                 continue;
             }
             if (normalized.key === currentKey) {
-                push('self-reference', t`${label} points to this entry.`, 'error');
+                push('self-reference', tr`${label} points to this entry.`, 'error');
                 continue;
             }
             const isSameBook = normalized.world === worldName;
             if (isSameBook && !lookup.has(normalized.key) && !lookup.has(String(ref))) {
-                push('unresolved-relationship', t`${label} "${text(ref)}" does not resolve in this lorebook.`);
+                push('unresolved-relationship', tr`${label} "${text(ref)}" does not resolve in this lorebook.`);
             }
         }
     }
@@ -132,26 +138,26 @@ export function getWorldInfoEntryIssues(entry, context = {}) {
     const conditions = Array.isArray(entry.stateConditions) ? entry.stateConditions : [];
     conditions.forEach((condition, index) => {
         if (stateConditionIsIncomplete(condition)) {
-            push('incomplete-state-condition', t`State condition #${index + 1} is incomplete.`);
+            push('incomplete-state-condition', tr`State condition #${index + 1} is incomplete.`);
         }
     });
 
     const events = Array.isArray(entry.stateEvents) ? entry.stateEvents : [];
     events.forEach((event, index) => {
         if (stateEventIsIncomplete(event)) {
-            push('incomplete-state-event', t`State change event #${index + 1} is incomplete.`);
+            push('incomplete-state-event', tr`State change event #${index + 1} is incomplete.`);
         }
     });
 
     const automationId = text(entry.automationId);
     if (automationId && duplicateIds.has(automationId)) {
-        push('duplicate-automation-id', t`Automation ID "${automationId}" is used by more than one entry.`);
+        push('duplicate-automation-id', tr`Automation ID "${automationId}" is used by more than one entry.`);
     }
 
     const hasRelationshipConfig = (Array.isArray(entry.requiredEntries) && entry.requiredEntries.length > 0)
         || (Array.isArray(entry.relatedEntries) && entry.relatedEntries.length > 0);
     if (text(entry.compactContent) && !hasRelationshipConfig) {
-        push('orphan-compact-content', t`Compact Content is configured without Required or Related Entries.`);
+        push('orphan-compact-content', tr`Compact Content is configured without Required or Related Entries.`);
     }
 
     return issues;
