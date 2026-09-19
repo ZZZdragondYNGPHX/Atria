@@ -83,52 +83,51 @@ function isOutputFreshForCurrentInputs(config) {
  * @returns {string|null} Legacy source directory when migration succeeded.
  */
 export function migrateLegacyWebpackOutput(targetConfig) {
-    const rootInfo = getWebpackRootInfo();
-    if (rootInfo.source !== 'termux-private' || !globalThis.DATA_ROOT) return null;
-
-    let legacyRoot;
     try {
-        legacyRoot = getWebpackRootInfo({ forceDataRoot: true }).root;
-    } catch {
-        return null;
-    }
+        const rootInfo = getWebpackRootInfo();
+        if (rootInfo.source !== 'termux-private' || !globalThis.DATA_ROOT) return null;
 
-    if (path.resolve(legacyRoot) === path.resolve(rootInfo.root) || !fs.existsSync(legacyRoot)) {
-        return null;
-    }
-
-    const candidates = fs.readdirSync(legacyRoot, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => {
-            const outputPath = path.join(legacyRoot, entry.name, 'output');
-            const candidate = {
-                ...targetConfig,
-                output: { ...targetConfig.output, path: outputPath },
-            };
-            let newestBundleMtime = 0;
-            if (isOutputFreshForCurrentInputs(candidate)) {
-                for (const name of getOutputFileNames(candidate)) {
-                    newestBundleMtime = Math.max(newestBundleMtime, fs.statSync(path.join(outputPath, name)).mtimeMs);
-                }
-                return { outputPath, candidate, newestBundleMtime };
-            }
+        const legacyRoot = getWebpackRootInfo({ forceDataRoot: true }).root;
+        if (path.resolve(legacyRoot) === path.resolve(rootInfo.root) || !fs.existsSync(legacyRoot)) {
             return null;
-        })
-        .filter(Boolean)
-        .sort((a, b) => b.newestBundleMtime - a.newestBundleMtime);
+        }
 
-    const source = candidates[0];
-    if (!source) return null;
+        const candidates = fs.readdirSync(legacyRoot, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => {
+                const outputPath = path.join(legacyRoot, entry.name, 'output');
+                const candidate = {
+                    ...targetConfig,
+                    output: { ...targetConfig.output, path: outputPath },
+                };
+                let newestBundleMtime = 0;
+                if (isOutputFreshForCurrentInputs(candidate)) {
+                    for (const name of getOutputFileNames(candidate)) {
+                        newestBundleMtime = Math.max(newestBundleMtime, fs.statSync(path.join(outputPath, name)).mtimeMs);
+                    }
+                    return { outputPath, candidate, newestBundleMtime };
+                }
+                return null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.newestBundleMtime - a.newestBundleMtime);
 
-    fs.mkdirSync(targetConfig.output.path, { recursive: true });
-    for (const name of getOutputFileNames(targetConfig)) {
-        fs.copyFileSync(
-            path.join(source.outputPath, name),
-            path.join(targetConfig.output.path, name),
-        );
+        const source = candidates[0];
+        if (!source) return null;
+
+        fs.mkdirSync(targetConfig.output.path, { recursive: true });
+        for (const name of getOutputFileNames(targetConfig)) {
+            fs.copyFileSync(
+                path.join(source.outputPath, name),
+                path.join(targetConfig.output.path, name),
+            );
+        }
+
+        return hasCompleteWebpackOutput(targetConfig) ? source.outputPath : null;
+    } catch (error) {
+        console.warn('[startup] frontend-cache legacy migration skipped:', error?.message || error);
+        return null;
     }
-
-    return hasCompleteWebpackOutput(targetConfig) ? source.outputPath : null;
 }
 
 // Resolved once at module load: ATRIA_PREBUILT_BUNDLES_DIR is set by the
