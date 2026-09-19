@@ -3,7 +3,6 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
 import isDocker from 'is-docker';
 import { serverDirectory } from './src/server-directory.js';
 import { color } from './src/util.js';
@@ -16,15 +15,20 @@ const require = createRequire(import.meta.url);
 // frontend bundles and forced a 10-20 second mobile rebuild on first launch.
 //
 // Keep this list intentionally narrow and explicit. Changes to any entry file,
-// package-lock, Webpack version or this config file produce a new fingerprint.
+// package-lock, Webpack version or the explicit bundle schema version produce a
+// new fingerprint. Cache-routing/logging edits must not invalidate bundle bytes.
 const webpackVersion = require('webpack/package.json').version;
+const WEBPACK_BUNDLE_SCHEMA_VERSION = '1';
 const WEBPACK_BUNDLE_INPUT_FILES = Object.freeze([
     path.join(serverDirectory, 'package-lock.json'),
     path.join(serverDirectory, 'public/lib-bundle-core.js'),
     path.join(serverDirectory, 'public/lib-bundle-optional.js'),
     path.join(serverDirectory, 'public/lib-bundle-codemirror.js'),
-    fileURLToPath(import.meta.url),
 ]);
+
+export function getWebpackBundleInputFiles() {
+    return [...WEBPACK_BUNDLE_INPUT_FILES];
+}
 
 /**
  * Generate the frontend bundle cache key from inputs that can actually affect
@@ -35,7 +39,7 @@ const WEBPACK_BUNDLE_INPUT_FILES = Object.freeze([
  */
 export function getWebpackCacheVersion() {
     const hash = crypto.createHash('shake256', { outputLength: 8 });
-    hash.update(`webpack:${webpackVersion}\0`);
+    hash.update(`webpack:${webpackVersion}\0bundle-schema:${WEBPACK_BUNDLE_SCHEMA_VERSION}\0`);
 
     for (const filePath of WEBPACK_BUNDLE_INPUT_FILES) {
         hash.update(path.relative(serverDirectory, filePath));
