@@ -117,7 +117,13 @@ export function registerChatHandler(tx) {
         async range(key, { fromIndex = 0, limit = 0 } = {}) {
             const p = chatKeyToParams(key);
             const [metaRows] = await conn.execute(
-                "SELECT JSON_EXTRACT(doc, '$.header') AS header_value, JSON_TYPE(JSON_EXTRACT(doc, '$.header')) AS header_type, JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type, JSON_LENGTH(doc, '$.body') AS total_messages, integrity, updated_at, created_at FROM chats WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?",
+                `SELECT JSON_EXTRACT(doc, '$.header') AS header_value,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header')) AS header_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type,
+                        JSON_LENGTH(doc, '$.body') AS total_messages,
+                        integrity, updated_at, created_at
+                 FROM chats
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`,
                 [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
             );
             const meta = metaRows[0];
@@ -129,10 +135,105 @@ export function registerChatHandler(tx) {
             const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
             const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
             const start = Math.min(requestedFrom, totalMessages);
-            const end = requestedLimit > 0 ? Math.min(start + requestedLimit, totalMessages) : totalMessages;
+            const end = requestedLimit > 0
+                ? Math.min(start + requestedLimit, totalMessages)
+                : totalMessages;
 
             const [rows] = await conn.execute(
-                "SELECT jt.message_value FROM chats AS c JOIN JSON_TABLE(c.doc, '$.body[*]' COLUMNS(ord FOR ORDINALITY, message_value JSON PATH '        async append(key, messages, {
+                `SELECT jt.message_value
+                 FROM chats AS c
+                 JOIN JSON_TABLE(
+                     c.doc,
+                     '$.body[*]' COLUMNS(
+                         ord FOR ORDINALITY,
+                         message_value JSON PATH '$'
+                     )
+                 ) AS jt
+                 WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                   AND jt.ord > ?
+                   AND (? <= 0 OR jt.ord <= ?)
+                 ORDER BY jt.ord ASC`,
+                [
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                    start,
+                    requestedLimit,
+                    end,
+                ],
+            );
+            const body = [];
+            for (const row of rows) {
+                const parsed = coerceJson(row.message_value);
+                if (parsed === null && row.message_value !== null) return null;
+                body.push(parsed);
+            }
+            return {
+                header,
+                body,
+                integrity: meta.integrity ?? '',
+                updatedAt: Number(meta.updated_at),
+                createdAt: Number(meta.created_at),
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        },
+        async info(key) {
+            const p = chatKeyToParams(key);
+            const [metaRows] = await conn.execute(
+                `SELECT JSON_EXTRACT(doc, '$.header') AS header_value,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header')) AS header_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type,
+                        JSON_LENGTH(doc, '$.body') AS message_count,
+                        OCTET_LENGTH(CAST(doc AS CHAR)) AS byte_size,
+                        integrity, updated_at, created_at
+                 FROM chats
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const row = metaRows[0];
+            if (!row || row.header_type !== 'OBJECT' || row.body_type !== 'ARRAY') return null;
+            const header = coerceJson(row.header_value);
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const messageCount = Math.max(0, Number(row.message_count) || 0);
+            let lastMessage = null;
+            if (messageCount > 0) {
+                const [lastRows] = await conn.execute(
+                    `SELECT jt.message_value
+                     FROM chats AS c
+                     JOIN JSON_TABLE(
+                         c.doc,
+                         '$.body[*]' COLUMNS(
+                             ord FOR ORDINALITY,
+                             message_value JSON PATH '$'
+                         )
+                     ) AS jt
+                     WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                     ORDER BY jt.ord DESC
+                     LIMIT 1`,
+                    [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                );
+                if (!lastRows.length) return null;
+                lastMessage = coerceJson(lastRows[0].message_value);
+                if (lastMessage === null && lastRows[0].message_value !== null) return null;
+            }
+
+            return {
+                header,
+                integrity: row.integrity ?? '',
+                updatedAt: Number(row.updated_at),
+                createdAt: Number(row.created_at),
+                messageCount,
+                byteSize: Math.max(0, Number(row.byte_size) || 0),
+                lastMessage,
+            };
+        },
+        async append(key, messages, {
             expectedIntegrity = null,
             newIntegrity,
             updatedAt = Date.now(),
@@ -207,7 +308,7 @@ export function registerChatHandler(tx) {
 
             const params = [];
             const bodyExpr = accepted.length > 0
-                ? `JSON_MERGE_PRESERVE(JSON_EXTRACT(doc, '$.body'), CAST(? AS JSON))`
+                ? `JSON_MERGE_PRESERVE(JSON_EXTRACT(doc, '$.body'), JSON_EXTRACT(?, '$'))`
                 : `JSON_EXTRACT(doc, '$.body')`;
             if (accepted.length > 0) params.push(JSON.stringify(accepted));
             params.push(
