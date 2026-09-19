@@ -256,9 +256,12 @@ export function recoverFsChatPatchJournals(directories) {
                 recoverFsChatPatchJournal(full.slice(0, -PATCH_JOURNAL_SUFFIX.length));
                 continue;
             }
-            if (entry.name.includes(PATCH_JOURNAL_TEMP_PREFIX)) {
+            if (entry.name.includes('.jsonl' + PATCH_JOURNAL_TEMP_PREFIX)
+                && !entry.name.endsWith('.jsonl')) {
                 // Temp journals are renamed to the durable journal before the
                 // target is touched, so a leftover temp can always be dropped.
+                // Keep the pattern specific enough that a user-named JSONL is
+                // never mistaken for recovery debris.
                 removeFileBestEffort(full);
             }
         }
@@ -671,7 +674,10 @@ export function patchFsChatMessages(filePath, operations, {
                 ? descriptor.span.start
                 : Math.min(earliestChangedStart, descriptor.span.start);
             if (operation.op === 'replace') {
-                descriptor.value = operation.value;
+                // Match JSON-backed SQL engines exactly: subsequent tests in
+                // the same patch observe the JSON-normalized replacement, not
+                // JS-only values such as undefined object properties.
+                descriptor.value = JSON.parse(operation.bytes.toString('utf8'));
                 descriptor.bytes = operation.bytes;
                 descriptor.hasReplacement = true;
                 continue;
