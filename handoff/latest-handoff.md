@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, and the yauzl 3.4 primary-path validation are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, and the restore UI / five-point recovery retention fix are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `aebd6ada8760fea3b07b65ba0f05b5b278b3f471`
+- `892476eb6a694bc5fa89124e0a3de65a86a8c12e`
 
-This commit is the squash merge of PR #19. Atria now resolves yauzl 3.4.0 instead of 3.3.0, retains all existing fallback/rollback protections, and permanently tests an archiver-generated large Unicode JSON plus binary ZIP through the primary yauzl restore path. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #20. Backup Center now keeps the `中断并回退` control visible while idle (disabled until a restore is active), and restore recovery history is physically capped at five points per account with safe pruning of existing backlogs. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,21 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Restore UI visibility and five-point recovery retention
+
+- PR #20
+- Baseline: `main@aebd6ada8760fea3b07b65ba0f05b5b278b3f471`
+- Final validated head: `cdcca4ed1906c60a9063a786e9a02c04d2e758ab`
+- Squash merge / current `main`: `892476eb6a694bc5fa89124e0a3de65a86a8c12e`
+- Final task tree and merged-main tree: `f59238cb6ddb1514ad2a481111908e64ed25137c`
+- Record: `fixes/restore-ui-and-recovery-retention.md`
+- `中断并回退` is always visible: disabled while idle, enabled during an active restore, and disabled with a cancelling label during rollback.
+- Restore recovery history is capped at five points per account on disk rather than merely truncating the displayed list.
+- Existing backlogs are pruned when recovery history is opened/refreshed, and new same-mode/cross-mode recovery points also trigger pruning.
+- The current recovery source and newly created undo point are protected while a recovery apply is in progress.
+- Recovery points for other accounts are never counted or deleted by another account's retention pass.
+- Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
 
 ### yauzl 3.4 primary restore validation
 
