@@ -212,6 +212,15 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(page.locator('#wi_workspace_library #world_info_manager_active_panel')).toBeHidden();
     await expect(page.locator('.wi-workspace-primary-toolbar .world_popup_primary_select')).toBeHidden();
 
+    const mobileBookCard = page.locator('#wi_workspace_library .world_info_manager_item', { hasText: BOOK_NAME }).first();
+    await expect(mobileBookCard.locator('.world_info_manager_toggle_label')).toHaveText(/Enable globally|Disable globally/);
+    await expect(mobileBookCard.locator('.world_info_manager_item_meta')).toContainText(/Globally enabled|Not global/);
+    await mobileBookCard.locator('.world_info_manager_item_more > summary').click();
+    await expect(mobileBookCard.locator('.world_info_manager_export')).toBeVisible();
+    await expect(mobileBookCard.locator('.world_info_manager_rename')).toBeVisible();
+    await expect(mobileBookCard.locator('.world_info_manager_duplicate')).toBeVisible();
+    await mobileBookCard.locator('.world_info_manager_item_more > summary').click();
+
     // Advanced cross-book search survives the visual simplification behind
     // one compact filter menu instead of occupying a permanent second row.
     const librarySearchOptions = page.locator('.wi-library-mobile-search-options');
@@ -227,6 +236,25 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();
     await expect(page.locator('#wi_workspace_inspector')).toBeHidden();
     await expect(page.locator('.wi-workspace-primary-toolbar')).toBeHidden();
+    await expect(page.locator('.world_popup_search_toolbar .world_popup_filter_group')).toBeHidden();
+    await expect(page.locator('.wi-entry-mobile-search-options')).toBeVisible();
+    await expect(page.locator('#world_info_pagination')).toBeHidden();
+
+    const [searchBox, searchHelpBox, searchOptionsBox] = await Promise.all([
+        page.locator('#world_info_search').boundingBox(),
+        page.locator('#world_info_search_help').boundingBox(),
+        page.locator('.wi-entry-mobile-search-options > summary').boundingBox(),
+    ]);
+    expect((searchBox?.x || 0) + (searchBox?.width || 0)).toBeLessThanOrEqual((searchHelpBox?.x || 0) + 1);
+    expect((searchHelpBox?.x || 0) + (searchHelpBox?.width || 0)).toBeLessThanOrEqual((searchOptionsBox?.x || 0) + 1);
+
+    await page.locator('.wi-entry-mobile-search-options > summary').click();
+    await expect(page.locator('#wi_workspace_mobile_search_mode')).toBeVisible();
+    await expect(page.locator('.wi-entry-mobile-search-menu [data-control="advanced"]')).toBeVisible();
+    await page.locator('#wi_workspace_mobile_search_mode').selectOption('fuzzy');
+    await expect(page.locator('#world_info_search_mode')).toHaveValue('fuzzy');
+    await page.locator('#wi_workspace_mobile_search_mode').selectOption('keyword');
+    await page.locator('.wi-entry-mobile-search-options > summary').click();
 
     const [headerBox, listBox, navBox] = await Promise.all([
         page.locator('.wi-workspace-header').boundingBox(),
@@ -274,6 +302,16 @@ test('Simplified Chinese localizes Workspace-owned World Info surfaces', async (
     await expect(page.locator('[data-wi-workspace-view="global"]')).toContainText('全局规则');
     await expect(page.locator('#wi_workspace_continuous_cards')).toContainText('连续卡片');
     await expect(page.locator('#wi_workspace_display_mode option[value="standard"]')).toHaveText('标准');
+
+    await page.locator('[data-wi-workspace-view="library"]').click();
+    const zhBookCard = page.locator('#wi_workspace_library .world_info_manager_item', { hasText: BOOK_NAME }).first();
+    await expect(zhBookCard).toBeVisible();
+    await expect(zhBookCard.locator('.world_info_manager_toggle_label')).toHaveText(/全局/);
+    await zhBookCard.locator('.world_info_manager_item_more > summary').click();
+    await expect(zhBookCard.locator('.world_info_manager_export')).toContainText('导出');
+    await expect(zhBookCard.locator('.world_info_manager_rename')).toContainText('重命名');
+    await expect(zhBookCard.locator('.world_info_manager_duplicate')).toContainText('复制');
+    await zhBookCard.locator('.world_info_manager_item_more > summary').click();
 
     await openEntries(page);
 
