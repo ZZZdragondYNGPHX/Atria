@@ -237,41 +237,10 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     // Advanced cross-book search survives the visual simplification behind
     // one compact filter menu instead of occupying a permanent second row.
     const librarySearchOptions = page.locator('.wi-library-mobile-search-options');
-    const librarySearchVisibility = await librarySearchOptions.evaluate((node) => {
-        const ancestry = [];
-        let current = node;
-        while (current && ancestry.length < 6) {
-            const style = getComputedStyle(current);
-            const rect = current.getBoundingClientRect();
-            ancestry.push({
-                tag: current.tagName,
-                id: current.id,
-                className: String(current.className || ''),
-                display: style.display,
-                visibility: style.visibility,
-                opacity: style.opacity,
-                width: rect.width,
-                height: rect.height,
-            });
-            current = current.parentElement;
-        }
-        return {
-            mobileMedia: matchMedia('(max-width: 1000px)').matches,
-            activeView: document.querySelector('#wi_workspace_shell')?.dataset?.activeView || '',
-            ancestry,
-        };
-    });
-    expect(
-        librarySearchVisibility.ancestry[0]?.display,
-        JSON.stringify(librarySearchVisibility),
-    ).not.toBe('none');
-    expect(
-        librarySearchVisibility.ancestry.every(item => item.display !== 'none' && item.visibility !== 'hidden'),
-        JSON.stringify(librarySearchVisibility),
-    ).toBe(true);
-    await expect(librarySearchOptions).toBeVisible();
-    await librarySearchOptions.locator('.wi-library-mobile-search-trigger').click();
-    await expect(librarySearchOptions.locator('.wi-library-mobile-search-trigger')).toHaveAttribute('aria-expanded', 'true');
+    const librarySearchTrigger = librarySearchOptions.locator('.wi-library-mobile-search-trigger');
+    await expect(librarySearchTrigger).toBeVisible();
+    await librarySearchTrigger.click();
+    await expect(librarySearchTrigger).toHaveAttribute('aria-expanded', 'true');
     await expect(librarySearchOptions.locator('.wi-library-mobile-search-menu')).toBeVisible();
     await librarySearchOptions.locator('[data-control="entries"]').click();
     await expect(page.locator('#world_info_manager_search_entries')).toBeChecked();
