@@ -303,6 +303,7 @@ function regexScriptMatchesDepth(script, depth) {
  *   selectionCache: Map<string, RegexScript[]>,
  *   depthSelectionCache: Map<string, RegexScript[]>,
  *   scriptCount: number,
+ *   patternCount: number,
  * }} RegexExecutionPlan
  */
 
@@ -315,12 +316,15 @@ function regexScriptMatchesDepth(script, depth) {
  */
 function createRegexExecutionPlan(scripts, { warnInvalidPlacement = false } = {}) {
     const placementIndex = new Map();
+    const uniquePatterns = new Set();
     const source = Array.isArray(scripts) ? scripts : [];
 
     source.forEach((script, index) => {
         if (!script || typeof script !== 'object' || script.disabled || !script.findRegex) {
             return;
         }
+
+        uniquePatterns.add(String(script.findRegex));
 
         if (!Array.isArray(script.placement)) {
             if (warnInvalidPlacement) {
@@ -346,6 +350,7 @@ function createRegexExecutionPlan(scripts, { warnInvalidPlacement = false } = {}
         selectionCache: new Map(),
         depthSelectionCache: new Map(),
         scriptCount: source.length,
+        patternCount: uniquePatterns.size,
     };
 }
 
@@ -419,6 +424,7 @@ function getStaticRegexExecutionPlan() {
     const scripts = Object.values(SCRIPT_TYPES)
         .flatMap(type => getScriptsByType(type, { allowedOnly: true }));
     const plan = createRegexExecutionPlan(scripts, { warnInvalidPlacement: true });
+    RegexProvider.instance.reserve(plan.patternCount);
     staticRegexExecutionPlanBuilds += 1;
     touchBoundedMap(staticRegexExecutionPlans, key, plan, STATIC_EXECUTION_PLAN_CACHE_MAX);
     return plan;
@@ -624,8 +630,35 @@ export class RegexProvider {
     #cache = new Map();
     /** @type {number} */
     #maxSize = 1000;
+    /** @type {number} */
+    #baseMaxSize = 1000;
+    /** @type {number} */
+    #hardMaxSize = 8192;
 
     static instance = new RegexProvider();
+
+    /**
+     * Grow the cache to cover the active rule set and avoid LRU thrashing
+     * when users have more than the historical 1000 compiled patterns.
+     * Capacity only grows during the session and remains hard-bounded.
+     *
+     * @param {number} minimumSize
+     * @returns {number} Effective capacity
+     */
+    reserve(minimumSize) {
+        const requested = Number.isFinite(Number(minimumSize))
+            ? Math.max(this.#baseMaxSize, Math.ceil(Number(minimumSize)))
+            : this.#baseMaxSize;
+        this.#maxSize = Math.min(this.#hardMaxSize, Math.max(this.#maxSize, requested));
+        return this.#maxSize;
+    }
+
+    /**
+     * @returns {{size:number, capacity:number}}
+     */
+    getStats() {
+        return { size: this.#cache.size, capacity: this.#maxSize };
+    }
 
     /**
      * Gets a regex instance by its string representation.
@@ -1229,30 +1262,37 @@ export function runRegexScript(regexScript, rawString, { characterOverride } = {
         return newString;
     }
 
+    // Normalize the static replacement template once per script execution,
+    // not once per regex match. Large global matches can invoke the callback
+    // thousands of times.
+    const replaceString = regexScript.replaceString.replace(/{{match}}/gi, '$0');
+    const hasCaptureSubstitutions = /\$(\d+)|\$<([^>]+)>/.test(replaceString);
+
     // Run replacement. Currently does not support the Overlay strategy
     newString = rawString.replace(findRegex, function (match) {
-        const args = [...arguments];
-        const replaceString = regexScript.replaceString.replace(/{{match}}/gi, '$0');
-        const replaceWithGroups = replaceString.replaceAll(/\$(\d+)|\$<([^>]+)>/g, (_, num, groupName) => {
-            if (num) {
-                // Handle numbered capture groups ($1, $2, etc.)
-                match = args[Number(num)];
-            } else if (groupName) {
-                // Handle named capture groups ($<name>)
-                const groups = args[args.length - 1];
-                match = groups && typeof groups === 'object' && groups[groupName];
-            }
+        let replaceWithGroups = replaceString;
+        if (hasCaptureSubstitutions) {
+            const args = [...arguments];
+            replaceWithGroups = replaceString.replaceAll(/\$(\d+)|\$<([^>]+)>/g, (_, num, groupName) => {
+                let capturedMatch = match;
+                if (num) {
+                    // Handle numbered capture groups ($1, $2, etc.)
+                    capturedMatch = args[Number(num)];
+                } else if (groupName) {
+                    // Handle named capture groups ($<name>)
+                    const groups = args[args.length - 1];
+                    capturedMatch = groups && typeof groups === 'object' && groups[groupName];
+                }
 
-            // No match found - return the empty string
-            if (!match) {
-                return '';
-            }
+                // No match found - return the empty string
+                if (!capturedMatch) {
+                    return '';
+                }
 
-            // Remove trim strings from the match
-            const filteredMatch = filterString(match, regexScript.trimStrings, { characterOverride });
-
-            return filteredMatch;
-        });
+                // Remove trim strings from the match
+                return filterString(capturedMatch, regexScript.trimStrings, { characterOverride });
+            });
+        }
 
         // Substitute at the end
         return substituteParams(replaceWithGroups);
