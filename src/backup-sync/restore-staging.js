@@ -19,6 +19,7 @@ export async function stageRestoreArchiveForRandomAccess(
         force = false,
         platform = process.platform,
         tempRootParent = os.tmpdir(),
+        signal = null,
     } = {},
 ) {
     if (!force && !shouldStageRestoreArchive(uploadPath, { platform })) {
@@ -60,6 +61,7 @@ export async function stageRestoreArchiveForRandomAccess(
             fs.createReadStream(uploadPath),
             meter,
             fs.createWriteStream(stagedPath, { mode: 0o600 }),
+            signal ? { signal } : {},
         );
 
         report(true);
@@ -73,6 +75,9 @@ export async function stageRestoreArchiveForRandomAccess(
         };
     } catch (error) {
         await fsPromises.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+        if (signal?.aborted && signal.reason) {
+            throw signal.reason;
+        }
         throw new Error(`Failed to stage restore archive into internal temp storage: ${error?.message || error}`);
     }
 }
