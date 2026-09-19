@@ -2615,3 +2615,765 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         max-width: calc(100dvw - 24px);
     }
 }
+
+
+/* ==========================================================================
+   Atria World Info — product workspace refinement
+   Library is book-first; mobile is a dedicated application shell instead of
+   a compressed copy of the desktop editor.
+   ========================================================================== */
+
+#WorldInfo #wi_workspace_shell {
+    position: relative;
+}
+
+#WorldInfo .wi-workspace-mobile-context,
+#WorldInfo .wi-workspace-mobile-options {
+    display: none;
+}
+
+#WorldInfo .wi-workspace-desktop-mode-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* The Library is the catalogue itself. Active status remains on each book,
+   so the old duplicated active-lorebooks strip is visual noise here. */
+#WorldInfo #wi_workspace_library #world_info_manager_active_panel {
+    display: none !important;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_list {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    gap: 10px;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_toolbar > .world_info_manager_action_row:first-child {
+    display: none;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager.has-selection .world_info_manager_toolbar > .world_info_manager_action_row:first-child {
+    display: flex;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager:not(.has-selection) #world_info_manager_selection_status {
+    display: none;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_item {
+    position: relative;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    min-height: 82px;
+    padding: 12px;
+    border-color: color-mix(in srgb, var(--SmartThemeBorderColor) 58%, transparent);
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 62%, transparent);
+    cursor: pointer;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_item:hover,
+#WorldInfo #wi_workspace_library .world_info_manager_item:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 58%, var(--SmartThemeBorderColor));
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, var(--SmartThemeBlurTintColor));
+    box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_book_icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    align-self: center;
+    border-radius: 10px;
+    color: var(--SmartThemeQuoteColor);
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 12%, transparent);
+    font-size: 1rem;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_item_title {
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_item_actions {
+    flex-wrap: nowrap;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_toggle {
+    min-width: 34px;
+    min-height: 34px;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_select_label {
+    width: 28px;
+    height: 28px;
+    align-self: center;
+    opacity: 0.28;
+}
+
+#WorldInfo #wi_workspace_library .world_info_manager_item:is(:hover, :focus-within, .is-selected) .world_info_manager_select_label,
+#WorldInfo #wi_workspace_library .world_info_manager_select_label:has(input:checked) {
+    opacity: 1;
+}
+
+#WorldInfo .world_info_manager_item_more {
+    position: relative;
+}
+
+#WorldInfo .world_info_manager_item_more > summary {
+    display: grid;
+    min-width: 34px;
+    min-height: 34px;
+    place-items: center;
+    list-style: none;
+    cursor: pointer;
+}
+
+#WorldInfo .world_info_manager_item_more > summary::-webkit-details-marker {
+    display: none;
+}
+
+#WorldInfo .world_info_manager_item_menu {
+    position: absolute;
+    z-index: 3400;
+    top: calc(100% + 5px);
+    right: 0;
+    display: flex;
+    min-width: 178px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 10px;
+    background: var(--SmartThemeBlurTintColor);
+    box-shadow: 0 14px 34px rgb(0 0 0 / 24%);
+}
+
+#WorldInfo .world_info_manager_item_menu .menu_button {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 36px;
+}
+
+#WorldInfo .world_info_manager_item_menu .is-destructive {
+    color: var(--crimson70a);
+}
+
+@media screen and (max-width: 1000px) {
+    /* Remove the inherited drawer title row. The workspace now owns its
+       navigation, close action and current-page title. */
+    #WorldInfo.openDrawer > .flex-container:first-of-type {
+        display: none !important;
+    }
+
+    #WorldInfo.openDrawer #world_popup {
+        padding: 0 !important;
+    }
+
+    #WorldInfo #wi_workspace_shell {
+        gap: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--SmartThemeBlurTintColor);
+    }
+
+    #WorldInfo .wi-workspace-header {
+        position: relative;
+        z-index: 40;
+        display: flex;
+        flex: 0 0 50px;
+        min-height: 50px;
+        align-items: center;
+        justify-content: space-between;
+        flex-direction: row;
+        gap: 8px;
+        padding: max(4px, env(safe-area-inset-top)) 10px 5px;
+        border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 42%, transparent);
+        background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 97%, transparent);
+        backdrop-filter: blur(12px);
+    }
+
+    #WorldInfo .wi-workspace-mobile-context {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 9px;
+    }
+
+    #WorldInfo .wi-workspace-mobile-context-icon {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        place-items: center;
+        border-radius: 9px;
+        color: var(--SmartThemeQuoteColor);
+        background: color-mix(in srgb, var(--SmartThemeQuoteColor) 12%, transparent);
+    }
+
+    #WorldInfo #wi_workspace_context_title {
+        overflow: hidden;
+        font-size: 1rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #WorldInfo .wi-workspace-mode-controls {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 4px;
+        overflow: visible;
+    }
+
+    #WorldInfo .wi-workspace-desktop-mode-controls {
+        display: none;
+    }
+
+    #WorldInfo .wi-workspace-mobile-options {
+        position: relative;
+        display: block;
+    }
+
+    #WorldInfo .wi-workspace-mobile-options > summary {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    #WorldInfo .wi-workspace-mobile-options > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    #WorldInfo .wi-workspace-mobile-menu {
+        position: absolute;
+        z-index: 3600;
+        top: calc(100% + 6px);
+        right: 0;
+        display: flex;
+        width: min(260px, calc(100dvw - 24px));
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px;
+        border: 1px solid var(--SmartThemeBorderColor);
+        border-radius: 12px;
+        background: var(--SmartThemeBlurTintColor);
+        box-shadow: 0 16px 40px rgb(0 0 0 / 28%);
+    }
+
+    #WorldInfo .wi-workspace-mobile-menu .menu_button {
+        justify-content: flex-start;
+        width: 100%;
+        min-height: 38px;
+    }
+
+    #WorldInfo .wi-workspace-mobile-mode-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 4px 5px 7px;
+    }
+
+    #WorldInfo .wi-workspace-mobile-menu-separator {
+        height: 1px;
+        margin: 3px 0;
+        background: color-mix(in srgb, var(--SmartThemeBorderColor) 55%, transparent);
+    }
+
+    #WorldInfo #wi_workspace_close {
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0;
+    }
+
+    /* Bottom navigation is the stable mobile primary navigation. */
+    #WorldInfo .wi-workspace-nav {
+        position: absolute;
+        z-index: 35;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: grid;
+        height: calc(58px + env(safe-area-inset-bottom));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+        padding: 4px 8px max(4px, env(safe-area-inset-bottom));
+        border-top: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);
+        background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 98%, transparent);
+        box-shadow: 0 -6px 20px rgb(0 0 0 / 8%);
+        backdrop-filter: blur(12px);
+    }
+
+    #WorldInfo .wi-workspace-nav-button {
+        min-width: 0;
+        min-height: 48px;
+        justify-content: center;
+        flex-direction: column;
+        gap: 2px;
+        padding: 3px 5px;
+        border-radius: 10px;
+        font-size: 0.76rem;
+    }
+
+    #WorldInfo .wi-workspace-nav-button i {
+        font-size: 1rem;
+    }
+
+    #WorldInfo .wi-workspace-nav-button.is-active {
+        box-shadow: none;
+        color: var(--SmartThemeQuoteColor);
+        background: color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent);
+    }
+
+    #WorldInfo .wi-workspace-panes {
+        min-height: 0;
+        padding-bottom: calc(58px + env(safe-area-inset-bottom));
+    }
+
+    #WorldInfo #wi_workspace_shell.is-mobile-detail .wi-workspace-nav {
+        display: none;
+    }
+
+    #WorldInfo #wi_workspace_shell.is-mobile-detail .wi-workspace-panes {
+        padding-bottom: 0;
+    }
+
+    #WorldInfo .wi-workspace-pane.is-active {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Book catalogue */
+    #WorldInfo #wi_workspace_library {
+        padding: 10px 10px 14px;
+        overflow: auto;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager {
+        gap: 10px;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_filters {
+        position: sticky;
+        z-index: 8;
+        top: 0;
+        gap: 7px;
+        padding: 0 0 8px;
+        background: var(--SmartThemeBlurTintColor);
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_filter_controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+    }
+
+    #WorldInfo #wi_workspace_library #world_info_manager_search {
+        min-height: 40px;
+    }
+
+    #WorldInfo #wi_workspace_library #world_info_manager_search_help {
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_search_entries_label,
+    #WorldInfo #wi_workspace_library label[for="world_info_manager_search_advanced"] {
+        display: none;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_list {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_item {
+        min-height: 78px;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 9px;
+        padding: 11px;
+        border-radius: 14px;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_select_label {
+        position: absolute;
+        top: 7px;
+        left: 7px;
+        z-index: 2;
+        width: 24px;
+        height: 24px;
+        background: var(--SmartThemeBlurTintColor);
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_book_icon {
+        width: 42px;
+        height: 42px;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_item_meta {
+        gap: 4px;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_badge {
+        padding: 1px 6px;
+        font-size: 0.68rem;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_toolbar {
+        position: sticky;
+        bottom: 0;
+        z-index: 7;
+        padding: 7px 0 1px;
+        background: linear-gradient(transparent, var(--SmartThemeBlurTintColor) 22%);
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_action_row_secondary {
+        min-height: 38px;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_page_size_label,
+    #WorldInfo #wi_workspace_library #world_info_manager_page_size {
+        display: none;
+    }
+
+    #WorldInfo #wi_workspace_library .world_info_manager_pagination {
+        margin-left: auto;
+    }
+
+    #WorldInfo .world_info_manager_item_menu {
+        position: fixed;
+        top: auto;
+        right: 10px;
+        bottom: calc(66px + env(safe-area-inset-bottom));
+        left: 10px;
+        min-width: 0;
+        border-radius: 14px;
+    }
+
+    /* On phones the catalogue owns creation/import. Once a book is open,
+       switching books happens through Library instead of a permanent picker. */
+    #WorldInfo #wi_workspace_shell[data-active-view="library"] .wi-workspace-primary-toolbar {
+        display: flex;
+        flex: 0 0 auto;
+        padding: 7px 10px 0;
+    }
+
+    #WorldInfo #wi_workspace_shell[data-active-view="library"] .world_popup_primary_picker {
+        flex: 0 0 auto;
+    }
+
+    #WorldInfo #wi_workspace_shell[data-active-view="library"] .world_popup_primary_picker > small,
+    #WorldInfo #wi_workspace_shell[data-active-view="library"] .world_popup_primary_select,
+    #WorldInfo #wi_workspace_shell[data-active-view="library"] .wi-workspace-book-actions {
+        display: none !important;
+    }
+
+    #WorldInfo #wi_workspace_shell[data-active-view="library"] .world_popup_primary_actions {
+        margin-left: 4px;
+    }
+
+    #WorldInfo #wi_workspace_shell[data-active-view="entries"] .wi-workspace-primary-toolbar,
+    #WorldInfo #wi_workspace_shell[data-active-view="global"] .wi-workspace-primary-toolbar {
+        display: none;
+    }
+
+    /* Entry list: one compact command row, one search row, one filter row. */
+    #WorldInfo #wi_workspace_entries {
+        gap: 0;
+    }
+
+    #WorldInfo .wi-workspace-entries-toolbar {
+        gap: 4px;
+        padding: 6px 8px 0;
+    }
+
+    #WorldInfo .wi-workspace-entries-toolbar .world_popup_editor_toolbar,
+    #WorldInfo .wi-workspace-entries-toolbar .world_popup_search_toolbar {
+        min-height: 38px;
+        flex-wrap: nowrap;
+        gap: 5px;
+    }
+
+    #WorldInfo .world_popup_entry_actions {
+        width: 100%;
+        min-width: 0;
+    }
+
+    #WorldInfo .world_popup_entry_actions #world_popup_new {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+    }
+
+    #WorldInfo .world_popup_entry_actions #world_info_sort_order {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: none;
+    }
+
+    #WorldInfo .wi-workspace-entry-tools {
+        flex: 0 0 auto;
+    }
+
+    #WorldInfo .wi-workspace-entry-tools > summary {
+        min-height: 38px;
+        padding: 5px 9px;
+    }
+
+    #WorldInfo .world_popup_search_cluster {
+        width: 100%;
+        min-width: 0;
+        gap: 5px;
+    }
+
+    #WorldInfo .world_popup_search_group {
+        min-width: 0;
+    }
+
+    #WorldInfo #world_info_search {
+        min-height: 38px;
+    }
+
+    #WorldInfo #world_info_search_help {
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    #WorldInfo .world_popup_filter_group {
+        flex: 0 0 auto;
+        gap: 4px;
+    }
+
+    #WorldInfo #world_info_search_mode {
+        width: 96px;
+        min-width: 96px;
+        max-width: 96px;
+    }
+
+    #WorldInfo .world_popup_search_toolbar .world_info_search_toggle_label {
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+        justify-content: center;
+        padding: 0;
+    }
+
+    #WorldInfo .world_popup_search_toolbar .world_info_search_toggle_label small {
+        display: none;
+    }
+
+    #WorldInfo .world_popup_search_toolbar #world_info_pagination {
+        display: none !important;
+    }
+
+    #WorldInfo .wi-workspace-entry-filterbar {
+        min-height: 38px;
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding: 4px 8px 5px;
+    }
+
+    #WorldInfo .wi-workspace-quick-filters {
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: 2px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    #WorldInfo .wi-workspace-quick-filters::-webkit-scrollbar {
+        display: none;
+    }
+
+    #WorldInfo .wi-workspace-quick-filters .menu_button {
+        min-height: 30px;
+        padding: 3px 8px;
+        white-space: nowrap;
+    }
+
+    #WorldInfo .wi-workspace-list-actions {
+        flex: 0 0 auto;
+        width: auto;
+        gap: 4px;
+    }
+
+    #WorldInfo #wi_workspace_entry_count {
+        display: none;
+    }
+
+    #WorldInfo #wi_workspace_select_visible {
+        width: 34px;
+        min-width: 34px;
+        height: 32px;
+        padding: 0;
+    }
+
+    #WorldInfo #wi_workspace_select_visible span {
+        display: none;
+    }
+
+    #WorldInfo .wi-workspace-entries-split {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    #WorldInfo .wi-workspace-entry-list {
+        height: 100%;
+        min-height: 0;
+    }
+
+    /* Detail mode becomes an editor page. List chrome leaves the viewport. */
+    #WorldInfo #wi_workspace_shell.is-mobile-detail .wi-workspace-entries-toolbar,
+    #WorldInfo #wi_workspace_shell.is-mobile-detail .wi-workspace-entry-filterbar {
+        display: none;
+    }
+
+    #WorldInfo #wi_workspace_shell.is-mobile-detail .wi-workspace-inspector {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    #WorldInfo #wi_workspace_shell.is-mobile-detail #wi_workspace_inspector_body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        padding: 0 8px 18px;
+    }
+
+    #WorldInfo .wi-workspace-inspector-header {
+        position: relative;
+        top: 0;
+        display: grid;
+        min-height: 50px;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        flex-direction: unset;
+        gap: 6px;
+        padding: 5px 8px;
+        background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 98%, transparent);
+    }
+
+    #WorldInfo .wi-workspace-mobile-back {
+        position: static;
+        display: grid;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        place-items: center;
+        margin: 0;
+        padding: 0;
+    }
+
+    #WorldInfo .wi-workspace-inspector-heading {
+        min-width: 0;
+    }
+
+    #WorldInfo #wi_workspace_inspector_title {
+        font-size: 0.96rem;
+    }
+
+    #WorldInfo #wi_workspace_inspector_meta {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #WorldInfo .wi-workspace-inspector-actions {
+        width: auto;
+        flex: 0 0 auto;
+        gap: 3px;
+        overflow: visible;
+    }
+
+    #WorldInfo .wi-workspace-inspector-actions > .menu_button {
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0;
+    }
+
+    #WorldInfo .wi-workspace-inspector-actions > .menu_button span {
+        display: none;
+    }
+
+    #WorldInfo .wi-workspace-inspector-more > summary {
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0;
+    }
+
+    #WorldInfo .wi-workspace-inspector-menu {
+        position: fixed;
+        top: auto;
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+        max-width: none;
+        border-radius: 14px;
+    }
+
+    #WorldInfo .wi-workspace-inspector-entry .wi-entry-header {
+        display: none;
+    }
+
+    #WorldInfo .wi-inspector-sections {
+        gap: 7px;
+        padding-top: 8px;
+    }
+
+    #WorldInfo .wi-inspector-section {
+        border-radius: 10px;
+    }
+
+    #WorldInfo .wi-inspector-section-heading {
+        min-height: 42px;
+        padding: 8px 10px;
+    }
+
+    #WorldInfo .wi-inspector-section-body {
+        gap: 10px;
+        padding: 4px 8px 12px;
+    }
+
+    #WorldInfo .wi-inspector-section-basic textarea[name="content"] {
+        min-height: 46dvh;
+        max-height: none;
+        resize: vertical;
+    }
+
+    #WorldInfo .wi-workspace-activation-result,
+    #WorldInfo .wi-workspace-inspector-issues {
+        flex: 0 0 auto;
+        margin: 6px 8px 0;
+    }
+
+    /* Bulk selection is an action mode, not permanent top chrome. */
+    #WorldInfo #world_entry_bulk_toolbar.wi-workspace-bulk-active {
+        right: 8px;
+        bottom: calc(66px + env(safe-area-inset-bottom));
+        left: 8px;
+        max-height: 34vh;
+    }
+
+    #WorldInfo #wi_workspace_shell.is-mobile-detail #world_entry_bulk_toolbar.wi-workspace-bulk-active {
+        bottom: 8px;
+    }
+
+    /* Global rules remain a scrollable settings page inside the app shell. */
+    #WorldInfo #wi_workspace_global {
+        padding: 10px 10px 16px;
+    }
+
+    #WorldInfo .wi-global-rule-card {
+        border-radius: 14px;
+        padding: 12px;
+    }
+}
