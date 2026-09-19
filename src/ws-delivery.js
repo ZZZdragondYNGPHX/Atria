@@ -4,6 +4,7 @@ import {
     getTaskByRequestId,
     subscribeToJob,
 } from './endpoints/backends/atria-generation.js';
+import { markStartupMilestone } from './startup-timing.js';
 
 const TICKET_PROTOCOL_PREFIX = 'atria-ws-ticket.';
 
@@ -123,6 +124,7 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
     httpServer.on('upgrade', onUpgrade);
 
     wss.on('connection', (ws, req) => {
+        markStartupMilestone('ws.connection');
         const peer = req?.socket?.remoteAddress || '?';
         console.info(`[ws-delivery] connection user=${ws.userHandle} peer=${peer}`);
         // ws.WebSocket is an EventEmitter; per the `ws` docs an unlistened
