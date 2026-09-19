@@ -1,13 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.4
-# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。\n# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
+# Atria Toolbox launcher - v0.3.5
+# v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。\n# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。\n# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
 # v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
 # v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
 
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.4"
+SCRIPT_VERSION="v0.3.5"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
@@ -134,7 +134,7 @@ start_background_process() {
     mkdir -p "$TOOLBOX_HOME"
     : > "$LOG_FILE"
 
-    nohup node "$ATRIA_DIR/server.js" >>"$LOG_FILE" 2>&1 &
+    ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" nohup node "$ATRIA_DIR/server.js" >>"$LOG_FILE" 2>&1 &
     local pid=$!
     local port
     port=$(get_port)
@@ -244,9 +244,11 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.4"
+SCRIPT_VERSION="v0.3.5"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
+WEBPACK_CACHE_ROOT="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-${HOME}/.cache/atria-webpack}"
+mkdir -p "$WEBPACK_CACHE_ROOT"
 
 prebuild_frontend_cache() {
     if [ ! -f "$ATRIA_DIR/scripts/prebuild-frontend-cache.js" ]; then
@@ -260,9 +262,9 @@ prebuild_frontend_cache() {
     (
         cd "$ATRIA_DIR" || exit 1
         if [ -n "$data_root" ]; then
-            npm run frontend:prebuild-cache -- --dataRoot "$data_root"
+            ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" npm run frontend:prebuild-cache -- --dataRoot "$data_root"
         else
-            npm run frontend:prebuild-cache
+            ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" npm run frontend:prebuild-cache
         fi
     ) || {
         error "前端缓存预构建失败。"
