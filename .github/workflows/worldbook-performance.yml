@@ -35,6 +35,8 @@ on:
       - "src/storage/engines/types.js"
       - "src/storage/engines/fs-engine-transaction.js"
       - "src/storage/engines/fs-chat-range.js"
+      - "tests/storage/repositories/chat-repo.test.js"
+      - "src/storage/engines/sqlite-engine-transaction.js"
       - "tests/e2e/_lib/fixtures.js"
       - "tests/e2e/worldinfo/_helpers.js"
       - "tests/e2e/worldinfo/25-activation-strategies.e2e.js"
@@ -77,6 +79,7 @@ jobs:
           performance/itemized-prompt-store.test.js
           performance/message-depth.test.js
           performance/fs-chat-range.test.js
+          storage/repositories/chat-repo.test.js
           memory-graph/temporal-graph.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
