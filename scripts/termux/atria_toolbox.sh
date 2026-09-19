@@ -253,10 +253,17 @@ prebuild_frontend_cache() {
         return 0
     fi
 
+    local data_root=""
+    data_root=$(resolve_config_data_dir 2>/dev/null || true)
+
     info "正在预构建当前版本前端资源；完成后日常启动将跳过 Webpack..."
     (
         cd "$ATRIA_DIR" || exit 1
-        npm run frontend:prebuild-cache
+        if [ -n "$data_root" ]; then
+            npm run frontend:prebuild-cache -- --dataRoot "$data_root"
+        else
+            npm run frontend:prebuild-cache
+        fi
     ) || {
         error "前端缓存预构建失败。"
         return 1
@@ -307,6 +314,7 @@ update_main_branch() {
     remote_sha=$(git -C "$ATRIA_DIR" rev-parse "origin/main")
     if [ "$branch" = "main" ] && [ "$old_sha" = "$remote_sha" ]; then
         info "main 已经是最新：main @ ${old_sha:0:10}"
+        prebuild_frontend_cache || return 1
         return 0
     fi
 
