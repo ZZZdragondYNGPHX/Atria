@@ -3832,15 +3832,79 @@ router.post('/group/patch', async function (request, response) {
             return response.status(400).send({ error: 'No patch operations found. Expected body.operations or body.operation.' });
         }
 
-        // Apply the JSON patch to the live chat document {header, body}.
+        // Prefer the engine-native whole-message patch path. Unsupported
+        // engines/shapes fall back to the established full-document path.
         const repo = getChatRepo();
-        const existing = await repo.get(handle, '', id, { isGroup: true, groupId: id });
-        if (existing == null) {
+        const route = { isGroup: true, groupId: id };
+        const summary = await repo.getInfo(handle, '', id, route);
+        if (summary == null) {
             return response.status(400).send({ error: 'Chat not found.' });
         }
-        const expected = force ? null : (integritySlug || existing.integrity);
-        if (expected !== null && expected !== existing.integrity) {
+        const expected = force ? null : (integritySlug || summary.integrity);
+        if (expected !== null && expected !== summary.integrity) {
             return sendIntegrityConflict(response, createIntegrityMismatchError(chatFilePath, integritySlug));
+        }
+
+        try {
+            const native = await repo.patchMessages(
+                handle,
+                '',
+                id,
+                operations,
+                expected,
+                { ...route, chatMetadata },
+            );
+            if (native?.status === 'ok') {
+                writeChatSyncState(chatFilePath, {
+                    integrity: native.integrity,
+                    updated_at: Date.now(),
+                });
+                await getBackupFunction(handle, id)(
+                    request.user.directories.backups,
+                    id,
+                    async () => {
+                        const chatDoc = await repo.get(handle, '', id, route);
+                        if (!chatDoc) return null;
+                        const headerWithIntegrity = {
+                            ...(chatDoc.header ?? {}),
+                            chat_metadata: applyIntegrityToMetadata(
+                                chatDoc.header?.chat_metadata,
+                                chatDoc.integrity,
+                            ),
+                        };
+                        return [headerWithIntegrity, ...(chatDoc.body ?? [])]
+                            .map(message => JSON.stringify(message))
+                            .join('\n');
+                    },
+                );
+                await refreshRecentChatIndexEntry(request, chatFilePath);
+                acknowledgeGenerationFromValueOrPersistTarget(request, operations, buildGroupPersistTargetHint(request));
+                return response.send({
+                    ok: true,
+                    applied: native.applied,
+                    total_messages: native.totalMessages,
+                    integrity: native.integrity,
+                });
+            }
+        } catch (error) {
+            if (error instanceof ConflictError) {
+                return sendIntegrityConflict(response, createIntegrityMismatchError(chatFilePath, integritySlug));
+            }
+            if (error instanceof NotFoundError) {
+                return response.status(400).send({ error: 'Chat not found.' });
+            }
+            if (isChatStatePatchConflictError(error)) {
+                return response.status(409).send({ error: 'Chat patch conflict.' });
+            }
+            if (isJsonPatchValidationError(error)) {
+                return response.status(400).send({ error: 'Invalid chat patch payload.' });
+            }
+            throw error;
+        }
+
+        const existing = await repo.get(handle, '', id, route);
+        if (existing == null) {
+            return response.status(400).send({ error: 'Chat not found.' });
         }
 
         // Compose a temporary patch doc {header, body} and run the JSON Patch
