@@ -838,16 +838,6 @@ function buildWorkspaceDom() {
 
     if (primaryToolbar) {
         shell.querySelector('#wi_workspace_primary_toolbar').append(primaryToolbar);
-        const lowFrequencyActions = primaryToolbar.querySelector('.world_popup_primary_actions');
-        if (lowFrequencyActions) {
-            const tools = document.createElement('details');
-            tools.className = 'wi-workspace-tools-menu';
-            const summary = document.createElement('summary');
-            summary.className = 'menu_button menu_button_icon';
-            summary.innerHTML = '<i class="fa-solid fa-ellipsis"></i><span>Tools</span>';
-            lowFrequencyActions.before(tools);
-            tools.append(summary, lowFrequencyActions);
-        }
     }
     if (editorToolbar) shell.querySelector('#wi_workspace_entries_toolbar').append(editorToolbar);
 
