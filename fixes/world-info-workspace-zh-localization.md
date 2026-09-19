@@ -8,7 +8,8 @@ Complete the localization coverage for the World Info Workspace introduced by PR
 - Task branch: `fix/world-info-workspace-zh-localization`
 - PR: #24
 - Final validated task head: `fe91c5692e6fe03d2f6a953ca3d41b8e4264812e`
-- Merge: pending at record creation
+- Squash merge / resulting `main`: `59bc6862487331d12378e4fdd1da403a248e12a5`
+- Final task tree is identical to the merged `main` tree.
 
 ## Root cause
 
