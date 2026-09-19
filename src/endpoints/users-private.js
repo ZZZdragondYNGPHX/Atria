@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { promises as fsPromises } from 'node:fs';
 import crypto from 'node:crypto';
 import net from 'node:net';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import storage from 'node-persist';
@@ -47,6 +47,7 @@ import {
     writeStorageResource,
 } from '../storage/management.js';
 import { getAdminSettings } from '../admin-settings.js';
+import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 
 // Two sentinel filenames the backup ZIP carries when the storage engine isn't
 // fs (spec §5.1/§5.2). The meta entry is captured during the analyze pass for
@@ -850,6 +851,33 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                             const targetPath = targetMapping.targetPath;
                             ensureDirectory(path.dirname(targetPath));
 
+                            const entryOrdinal = result.restoredCount + result.failedCount + 1;
+                            const entryTotalBytes = Number(entry.uncompressedSize || 0);
+                            let entryBytes = 0;
+                            let lastEntryReportAt = 0;
+                            const reportEntryProgress = (force = false) => {
+                                const now = Date.now();
+                                if (!force && now - lastEntryReportAt < 500) return;
+                                lastEntryReportAt = now;
+                                reportProgress({
+                                    phase: 'extract',
+                                    current: result.restoredCount + result.failedCount,
+                                    total: extractTotal,
+                                    entry: normalized,
+                                    entryOrdinal,
+                                    entryBytes,
+                                    entryTotalBytes,
+                                });
+                                if (force || now - lastExtractLogAt >= 5000) {
+                                    lastExtractLogAt = now;
+                                    console.info(
+                                        `[user-backup] Extract entry: ${entryOrdinal}/${extractTotal} `
+                                        + `name=${normalized} bytes=${entryBytes}/${entryTotalBytes}`,
+                                    );
+                                }
+                            };
+                            reportEntryProgress(true);
+
                             zipfile.openReadStream(entry, async (streamError, readStream) => {
                                 if (streamError) {
                                     finish(streamError);
@@ -857,7 +885,15 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                 }
 
                                 try {
-                                    await pipeline(readStream, fs.createWriteStream(targetPath, { mode: 0o644 }));
+                                    const meter = new Transform({
+                                        transform(chunk, _encoding, callback) {
+                                            entryBytes += chunk.length;
+                                            reportEntryProgress(false);
+                                            callback(null, chunk);
+                                        },
+                                    });
+                                    await pipeline(readStream, meter, fs.createWriteStream(targetPath, { mode: 0o644 }));
+                                    reportEntryProgress(true);
                                     const zipLastModified = typeof entry.getLastModDate === 'function'
                                         ? entry.getLastModDate()
                                         : null;
@@ -1461,6 +1497,7 @@ router.post('/restore-backup/probe', async (request, response) => {
 
 router.post('/restore-backup', async (request, response) => {
     let uploadPath = '';
+    let stagedArchive = null;
     const streaming = wantsRestoreProgressStream(request);
     let stream = null;
 
@@ -1519,8 +1556,9 @@ router.post('/restore-backup', async (request, response) => {
             stream = beginRestoreProgressStream(response);
         }
 
+        stagedArchive = await stageRestoreArchiveForRandomAccess(uploadPath, stream?.onProgress);
         const restoreResult = await restoreUserBackupArchive(
-            uploadPath,
+            stagedArchive.path,
             directories,
             selection,
             mode,
@@ -1579,6 +1617,7 @@ router.post('/restore-backup', async (request, response) => {
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        await stagedArchive?.cleanup?.().catch(() => {});
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true });
         }
@@ -1587,6 +1626,7 @@ router.post('/restore-backup', async (request, response) => {
 
 router.post('/lan-migration/import', async (request, response) => {
     let downloadPath = '';
+    let stagedArchive = null;
     const streaming = wantsRestoreProgressStream(request);
     let stream = null;
 
@@ -1626,8 +1666,9 @@ router.post('/lan-migration/import', async (request, response) => {
 
         const directories = handle === request.user.profile.handle ? request.user.directories : getUserDirectories(handle);
         const scratchCreds = parseScratchCreds(request.body);
+        stagedArchive = await stageRestoreArchiveForRandomAccess(downloadPath, stream?.onProgress);
         const restoreResult = await restoreUserBackupArchive(
-            downloadPath,
+            stagedArchive.path,
             directories,
             selection,
             mode,
@@ -1683,6 +1724,7 @@ router.post('/lan-migration/import', async (request, response) => {
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        await stagedArchive?.cleanup?.().catch(() => {});
         if (downloadPath) {
             await fsPromises.rm(downloadPath, { force: true });
         }
@@ -1691,6 +1733,7 @@ router.post('/lan-migration/import', async (request, response) => {
 
 router.post('/import/data-zip', async (request, response) => {
     let uploadPath = '';
+    let stagedArchive = null;
 
     try {
         if (!request.file) {
@@ -1705,8 +1748,9 @@ router.post('/import/data-zip', async (request, response) => {
         uploadPath = request.file.path;
         const mode = String(request.body.mode || 'merge').toLowerCase() === 'overwrite' ? 'overwrite' : 'merge';
         const scratchCreds = parseScratchCreds(request.body);
+        stagedArchive = await stageRestoreArchiveForRandomAccess(uploadPath);
         const restoreResult = await restoreUserBackupArchive(
-            uploadPath, request.user.directories, FULL_IMPORT_SELECTION, mode,
+            stagedArchive.path, request.user.directories, FULL_IMPORT_SELECTION, mode,
             { includeGlobalExtensions: false, scratchCreds },
         );
         await invalidateRecentChatIndex(request);
@@ -1742,6 +1786,7 @@ router.post('/import/data-zip', async (request, response) => {
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        await stagedArchive?.cleanup?.().catch(() => {});
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true });
         }
