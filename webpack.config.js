@@ -3,95 +3,48 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import isDocker from 'is-docker';
 import { serverDirectory } from './src/server-directory.js';
 import { color } from './src/util.js';
 
 const require = createRequire(import.meta.url);
 
-// Keep cache-version calculation on the startup fast path: reading package
-// metadata and Git refs from disk is much cheaper than spawning several `git`
-// subprocesses on every Termux launch.
+// Webpack output only depends on the library entrypoints, installed dependency
+// graph, Webpack itself and the bundle configuration. Using the whole Atria
+// Git revision here made every unrelated application commit invalidate the
+// frontend bundles and forced a 10-20 second mobile rebuild on first launch.
+//
+// Keep this list intentionally narrow and explicit. Changes to any entry file,
+// package-lock, Webpack version or this config file produce a new fingerprint.
 const webpackVersion = require('webpack/package.json').version;
-const packageVersion = require('./package.json').version;
-
-function resolveGitDirectory() {
-    const dotGit = path.join(serverDirectory, '.git');
-    try {
-        const stat = fs.statSync(dotGit);
-        if (stat.isDirectory()) return dotGit;
-        if (!stat.isFile()) return null;
-        const pointer = fs.readFileSync(dotGit, 'utf8').trim();
-        if (!pointer.startsWith('gitdir:')) return null;
-        return path.resolve(serverDirectory, pointer.slice('gitdir:'.length).trim());
-    } catch {
-        return null;
-    }
-}
-
-function readRefFromGitDirectory(gitDirectory, refName) {
-    const candidates = [gitDirectory];
-    try {
-        const commonDir = fs.readFileSync(path.join(gitDirectory, 'commondir'), 'utf8').trim();
-        if (commonDir) candidates.push(path.resolve(gitDirectory, commonDir));
-    } catch {
-        // Ordinary repositories do not have a commondir file.
-    }
-
-    for (const root of candidates) {
-        try {
-            const value = fs.readFileSync(path.join(root, refName), 'utf8').trim();
-            if (value) return value;
-        } catch {
-            // Fall through to packed-refs.
-        }
-
-        try {
-            const packed = fs.readFileSync(path.join(root, 'packed-refs'), 'utf8');
-            for (const line of packed.split(/\r?\n/)) {
-                if (!line || line.startsWith('#') || line.startsWith('^')) continue;
-                const [sha, name] = line.trim().split(/\s+/, 2);
-                if (name === refName && sha) return sha;
-            }
-        } catch {
-            // No packed refs in this git directory.
-        }
-    }
-
-    return null;
-}
+const WEBPACK_BUNDLE_INPUT_FILES = Object.freeze([
+    path.join(serverDirectory, 'package-lock.json'),
+    path.join(serverDirectory, 'public/lib-bundle-core.js'),
+    path.join(serverDirectory, 'public/lib-bundle-optional.js'),
+    path.join(serverDirectory, 'public/lib-bundle-codemirror.js'),
+    fileURLToPath(import.meta.url),
+]);
 
 /**
- * Resolve the checkout HEAD without spawning Git.
- * Supports ordinary repositories, detached HEADs, packed refs, and worktrees.
+ * Generate the frontend bundle cache key from inputs that can actually affect
+ * emitted bundle bytes. Unrelated Atria source commits therefore retain the
+ * same output directory and warm-start instantly.
  *
- * @returns {string | null} Full local commit SHA when available.
+ * @returns {string} Stable content fingerprint for the current bundle inputs.
  */
-export function readLocalGitRevision() {
-    const gitDirectory = resolveGitDirectory();
-    if (!gitDirectory) return null;
+export function getWebpackCacheVersion() {
+    const hash = crypto.createHash('shake256', { outputLength: 8 });
+    hash.update(`webpack:${webpackVersion}\0`);
 
-    try {
-        const head = fs.readFileSync(path.join(gitDirectory, 'HEAD'), 'utf8').trim();
-        if (/^[0-9a-f]{40}$/i.test(head)) return head;
-        if (!head.startsWith('ref:')) return null;
-        return readRefFromGitDirectory(gitDirectory, head.slice('ref:'.length).trim());
-    } catch {
-        return null;
+    for (const filePath of WEBPACK_BUNDLE_INPUT_FILES) {
+        hash.update(path.relative(serverDirectory, filePath));
+        hash.update('\0');
+        hash.update(fs.readFileSync(filePath));
+        hash.update('\0');
     }
-}
 
-const gitRevision = readLocalGitRevision();
-
-/**
- * Generate a cache version string based on the application version, local Git
- * revision, and Webpack version.
- * @returns {string} The cache version string.
- */
-function getWebpackCacheVersion() {
-    return crypto.createHash('shake256', { outputLength: 8 })
-        .update(JSON.stringify([packageVersion, gitRevision, webpackVersion]))
-        .digest('hex');
+    return hash.digest('hex');
 }
 
 /**
