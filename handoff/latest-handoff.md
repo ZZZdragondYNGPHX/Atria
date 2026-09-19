@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, and the mobile Atria Workspace launcher repair are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, and the Workspace maintenance / archive-restore responsiveness fix are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `9dc4cf842ca20d95caa07dfefb51efe856ce80f5`
+- `dbaf8f2f397220a4e9544e44df55a114ea408067`
 
-This commit is the squash merge of PR #13. It repairs the real mobile Agent & Memory Workspace launcher path without changing persistence or orchestration semantics: the Workspace now has explicit measured mobile viewport geometry and sits above host settings drawers. The visible launcher is covered by a real-host mobile regression.
+This commit is the squash merge of PR #14. It removes orphan Memory maintenance help controls, makes archive restore progress visible through the existing NDJSON stream, moves recovery snapshot copying off the event loop, and guards same-mode filesystem restore with the migration lock/read-only gate. The validated merge tree matches the PR head tree exactly.
 
 ## Branch roles
 
@@ -60,6 +60,19 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Workspace maintenance and archive restore responsiveness
+
+- PR #14
+- Baseline: `main@9dc4cf842ca20d95caa07dfefb51efe856ce80f5`
+- Final validated head: `2d0ffd0b6863befd2d851c7b664a345f7fa23642`
+- Squash merge / current `main`: `dbaf8f2f397220a4e9544e44df55a114ea408067`
+- Record: `fixes/workbench-backup-restore-ui.md`
+- Obsolete Memory maintenance actions now hide their whole row, including field-help controls.
+- Backup restore now requests and renders server NDJSON progress; large Android recovery snapshots use async directory copies instead of blocking `cpSync`.
+- Same-mode filesystem restore now holds the migration lock/read-only gate while snapshotting and applying.
+- Final validation passed Workspace UI, Backup & Storage UI, Atria Migration Guard, ESLint, and the complete Node unit suite.
+- Android/Docker builds were not run because they remain opt-in and the task changed no Android/Kotlin or container-delivery code.
 
 ### Atria namespace migration
 
