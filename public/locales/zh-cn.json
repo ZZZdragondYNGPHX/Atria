@@ -6455,4 +6455,7 @@
     ,"No activation path succeeded in the current runtime scan.": "当前运行时扫描中没有成功的激活路径。"
     ,"Would activate": "会激活"
     ,"Would not activate": "不会激活"
+    ,"Critical tier": "关键级"
+    ,"Scene tier": "场景级"
+    ,"Optional tier": "可选级"
 }
