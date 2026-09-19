@@ -33,6 +33,22 @@ describe('Termux update guards', () => {
             .toBeLessThan(source.indexOf('prebuild_frontend_cache || return 1'));
     });
 
+    test('toolbox prebuild targets the active instance data root', () => {
+        const source = fs.readFileSync(toolboxPath, 'utf8');
+        expect(source).toContain('data_root=$(resolve_config_data_dir');
+        expect(source).toContain('npm run frontend:prebuild-cache -- --dataRoot "$data_root"');
+    });
+
+    test('already-current main still repairs a missing frontend cache', () => {
+        const source = fs.readFileSync(toolboxPath, 'utf8');
+        const currentBranchGuard = source.indexOf('if [ "$branch" = "main" ] && [ "$old_sha" = "$remote_sha" ]');
+        const prebuildCall = source.indexOf('prebuild_frontend_cache || return 1', currentBranchGuard);
+        const earlyReturn = source.indexOf('return 0', currentBranchGuard);
+        expect(currentBranchGuard).toBeGreaterThan(-1);
+        expect(prebuildCall).toBeGreaterThan(currentBranchGuard);
+        expect(prebuildCall).toBeLessThan(earlyReturn);
+    });
+
     test('warm startup readiness is detected at sub-second cadence', () => {
         const toolboxSource = fs.readFileSync(toolboxPath, 'utf8');
         const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
