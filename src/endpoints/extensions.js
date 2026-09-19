@@ -528,9 +528,9 @@ async function checkIfRepoIsUpToDate(extensionPath) {
 export const router = express.Router();
 
 // Startup can request discovery several times across settings/extension phases.
- // Keep one filesystem snapshot for that short boot window; all supported
- // extension mutations explicitly invalidate it below.
- const EXTENSION_DISCOVERY_CACHE_TTL_MS = 10_000;
+// Keep one filesystem snapshot for that short boot window; all supported
+// extension mutations explicitly invalidate it below.
+const EXTENSION_DISCOVERY_CACHE_TTL_MS = 10_000;
 const extensionDiscoveryCache = new Map();
 
 function getExtensionDiscoveryCacheKey(request) {
