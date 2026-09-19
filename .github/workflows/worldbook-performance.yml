@@ -40,6 +40,8 @@ on:
       - "tests/storage/engines/sqlite-engine-chat.test.js"
       - "tests/storage/repositories/chat-repo-append.test.js"
       - "src/storage/engines/sqlite-engine-transaction.js"
+      - "src/storage/engines/postgres-engine-transaction.js"
+      - "src/storage/engines/mysql-engine-transaction.js"
       - "tests/e2e/_lib/fixtures.js"
       - "tests/e2e/worldinfo/_helpers.js"
       - "tests/e2e/worldinfo/25-activation-strategies.e2e.js"
