@@ -21,6 +21,21 @@ export async function openWorldInfoDrawer(page) {
 }
 
 /**
+ * Enable the explicit Continuous Cards compatibility view.
+ *
+ * New Workspace tests should stay in the default list + Inspector mode.
+ * Older behavioral tests that intentionally inspect the legacy card DOM can
+ * call this helper so the compatibility requirement is explicit.
+ */
+export async function enableWorldInfoContinuousCards(page) {
+    await openWorldInfoDrawer(page);
+    const button = page.locator('#wi_workspace_continuous_cards');
+    if (await button.count() === 0) return;
+    const active = await button.evaluate(el => el.classList.contains('is-active'));
+    if (!active) await button.click();
+}
+
+/**
  * Select a world book by name from the editor select (#world_editor_select).
  * Triggers the real change event so the entries panel populates.
  */
@@ -29,8 +44,12 @@ export async function selectWorldBook(page, name) {
     const sel = page.locator('#world_editor_select');
     await sel.waitFor({ state: 'visible', timeout: 5000 });
     await sel.selectOption({ label: name });
-    // Wait for entries list to render.
-    await page.waitForTimeout(400);
+    await page.locator('#wi_workspace_entries.wi-workspace-pane.is-active').waitFor({ state: 'visible', timeout: 5000 });
+    // Small/normal books render their first virtual rows immediately. Empty
+    // books legitimately have none, so this is a best-effort settle.
+    await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first()
+        .waitFor({ state: 'visible', timeout: 1500 })
+        .catch(() => {});
 }
 
 /**
@@ -60,7 +79,13 @@ export async function importWorldBook(page, { filePath, expectedName, timeoutMs 
 export async function exportSelectedWorldBook(page, { timeoutMs = 15_000 } = {}) {
     await openWorldInfoDrawer(page);
     const downloadPromise = page.waitForEvent('download', { timeout: timeoutMs });
-    await page.locator('#world_popup_export').click();
+    const menu = page.locator('.wi-workspace-book-actions');
+    if (await menu.count()) {
+        await menu.locator('summary').click();
+        await menu.locator('[data-forward="#world_popup_export"]').click();
+    } else {
+        await page.locator('#world_popup_export').click();
+    }
     return downloadPromise;
 }
 
@@ -70,7 +95,13 @@ export async function exportSelectedWorldBook(page, { timeoutMs = 15_000 } = {})
  */
 export async function deleteSelectedWorldBook(page, { timeoutMs = 10_000 } = {}) {
     await openWorldInfoDrawer(page);
-    await page.locator('#world_popup_delete').click();
+    const menu = page.locator('.wi-workspace-book-actions');
+    if (await menu.count()) {
+        await menu.locator('summary').click();
+        await menu.locator('[data-forward="#world_popup_delete"]').click();
+    } else {
+        await page.locator('#world_popup_delete').click();
+    }
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 5000 });
     await popup.locator('.popup-button-ok').first().click();
@@ -102,8 +133,8 @@ export async function createWorldBook(page, name, { timeoutMs = 10_000 } = {}) {
 export async function addWorldEntry(page, fields = {}) {
     await openWorldInfoDrawer(page);
     await page.locator('#world_popup_new').click();
-    // Wait for the new entry row to render — it's the last .world_entry.
-    const entryRow = page.locator('.world_entry').last();
+    // The workspace focuses the newly-created UID in its single Inspector.
+    const entryRow = page.locator('#wi_workspace_inspector_body .world_entry').first();
     await entryRow.waitFor({ state: 'visible', timeout: 5000 });
     if (fields.key) {
         const keyInput = entryRow.locator('.keyprimary input, .keyprimary textarea, [name="key"]').first();
@@ -135,16 +166,22 @@ export async function addWorldEntry(page, fields = {}) {
  * their rendered key + content. Useful as a DOM-side assertion.
  */
 export async function getRenderedWorldEntries(page) {
-    return page.evaluate(() => {
-        const rows = Array.from(document.querySelectorAll('.world_entry'));
-        return rows.map(r => {
-            const keyEl = r.querySelector('.keyprimary input, .keyprimary textarea, [name="key"]');
-            const contentEl = r.querySelector('textarea[name="content"], .world_entry_form_content textarea');
-            const commentEl = r.querySelector('input[name="comment"], textarea[name="comment"]');
+    return page.evaluate(async () => {
+        const rows = Array.from(document.querySelectorAll('#wi_workspace_entry_list_canvas .wi-workspace-entry-row'));
+        const select = document.querySelector('#world_editor_select');
+        const worldName = select?.selectedOptions?.[0]?.textContent?.trim() || '';
+        if (!worldName) return [];
+
+        const wi = await import('/scripts/world-info.js');
+        const data = await wi.loadWorldInfo(worldName);
+        return rows.map(row => {
+            const uid = String(row.getAttribute('data-uid') || '');
+            const entry = data?.entries?.[uid] || {};
             return {
-                key: keyEl?.value || '',
-                content: contentEl?.value || '',
-                comment: commentEl?.value || '',
+                uid,
+                key: Array.isArray(entry.key) ? entry.key.join(', ') : '',
+                content: String(entry.content || ''),
+                comment: String(entry.comment || row.querySelector('.wi-workspace-entry-title')?.textContent || ''),
             };
         });
     });

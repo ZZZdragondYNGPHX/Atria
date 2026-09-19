@@ -37,7 +37,7 @@ import {
     bootstrapVectorsBackend, markOnboarded, writeWorldBook,
 } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply, openExtensionsDrawer } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { enableWorldInfoContinuousCards, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { writeCharacterWithBinding, startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -135,6 +135,7 @@ async function sendAndCaptureBody(page, text) {
 
 async function openBookInEditor(page, bookName) {
     await openWorldInfoDrawer(page);
+    await enableWorldInfoContinuousCards(page);
     await page.locator('#world_editor_select').waitFor({ state: 'visible', timeout: 5000 });
     await page.waitForFunction((wanted) => {
         const select = document.querySelector('#world_editor_select');
