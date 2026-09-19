@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, and the adaptive fallback / manual interrupt rollback fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, and the yauzl 3.4 primary-path validation are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `c51d8b779a741f0cf87758b5f8565be581f17556`
+- `aebd6ada8760fea3b07b65ba0f05b5b278b3f471`
 
-This commit is the squash merge of PR #18. Repeated ZIP stalls switch to a 1-second primary probe after the first confirmed stall, and Backup Center now provides a server-backed `中断并回退` action that aborts an active restore and reapplies the pre-restore recovery point when writes have begun. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #19. Atria now resolves yauzl 3.4.0 instead of 3.3.0, retains all existing fallback/rollback protections, and permanently tests an archiver-generated large Unicode JSON plus binary ZIP through the primary yauzl restore path. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,21 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### yauzl 3.4 primary restore validation
+
+- PR #19
+- Baseline: `main@c51d8b779a741f0cf87758b5f8565be581f17556`
+- Final validated head: `b2880dfb84cc2441fa3d2c55dc637132f3aac819`
+- Squash merge / current `main`: `aebd6ada8760fea3b07b65ba0f05b5b278b3f471`
+- Final task tree and merged-main tree: `5105973901122b21eaf33bbca8987d1d31ce69dd`
+- Record: `fixes/yauzl-3-4-restore-validation.md`
+- `yauzl` is upgraded from the lockfile's 3.3.0 to 3.4.0; 3.3.1 upstream fixed interrupted/destroyed read-stream bugs relevant to the field symptom.
+- The old yauzl-local `buffer-crc32` lock entry was removed because 3.4.0 no longer depends on it.
+- A permanent regression builds an Atria-style ZIP with `archiver`, then extracts a >1 MiB Unicode worldbook JSON and a 2 MiB binary entry through the primary yauzl stream helper and verifies exact bytes.
+- Existing Android staging, watchdog, adaptive fallback, bounded `adm-zip` fallback, manual cancel, and rollback protections remain in place.
+- Final validation passed Atria Migration Guard, ESLint, and the complete Node unit suite. The Backup & Storage browser workflow was not path-triggered by this dependency/test-only PR.
+- The decisive field check is whether the same Android archive still emits `Entry stream stalled` after updating to this main revision.
 
 ### Adaptive restore fallback and manual interrupt rollback
 
