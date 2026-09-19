@@ -30,6 +30,9 @@
  * @property {(resource: ResourceKey, messages: object[], options: {expectedIntegrity?: string|null, newIntegrity: string, updatedAt?: number}) => Promise<ChatAppendResult>} [appendChatMessages]
  *   Optional chat-specialized append primitive. Engines return unsupported when
  *   they cannot safely append without materializing/replacing the whole body.
+ * @property {(resource: ResourceKey, operations: object[], options: {expectedIntegrity?: string|null, newIntegrity: string, updatedAt?: number, chatMetadata?: object}) => Promise<ChatPatchResult>} [patchChatMessages]
+ *   Optional whole-message JSON-patch primitive for test/replace/remove paths.
+ *   Unsupported operation shapes must return unsupported before mutating data.
  * @property {(resource: ResourceKey, record: ResourceRecord) => Promise<void>} putResource
  *   Write or replace a single resource. Caller must do OCC checks via getResource first if needed.
  * @property {(resource: ResourceKey, expectedIntegrity: string | null, record: ResourceRecord) => Promise<{updated: boolean}>} putResourceIfMatch
