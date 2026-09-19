@@ -6294,4 +6294,7 @@
     ,"No activation path succeeded in the current runtime scan.": "目前執行期掃描中沒有成功的啟用路徑。"
     ,"Would activate": "會啟用"
     ,"Would not activate": "不會啟用"
+    ,"Critical tier": "關鍵級"
+    ,"Scene tier": "場景級"
+    ,"Optional tier": "可選級"
 }
