@@ -30,6 +30,12 @@ export class SqliteTransaction {
         }
         return this._h(key.kind, 'getChatRange').range(key, options);
     }
+    async getChatInfo(key) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.getChatInfo: chat resource required');
+        }
+        return this._h(key.kind, 'getChatInfo').info(key);
+    }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
@@ -91,6 +97,17 @@ export function registerChatHandler(tx) {
                                 integrity, updated_at, created_at
                             FROM chats
                             WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        info: db.prepare(`SELECT
+                                json_extract(doc, '$.header') AS header_value,
+                                json_type(doc, '$.header') AS header_type,
+                                json_type(doc, '$.body') AS body_type,
+                                json_array_length(doc, '$.body') AS message_count,
+                                json_extract(doc, '$.body[#-1]') AS last_message_value,
+                                json_type(doc, '$.body[#-1]') AS last_message_type,
+                                length(CAST(doc AS BLOB)) AS byte_size,
+                                integrity, updated_at, created_at
+                            FROM chats
+                            WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
         rangeRows: db.prepare(`SELECT
                                 CAST(j.key AS INTEGER) AS message_index,
                                 j.value AS message_value,
@@ -124,6 +141,31 @@ export function registerChatHandler(tx) {
     };
 
     tx._handlers.set('chat', {
+        info(key) {
+            const p = chatKeyToParams(key);
+            const row = stmt.info.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!row || row.header_type !== 'object' || row.body_type !== 'array') return null;
+
+            let header;
+            try { header = JSON.parse(row.header_value); } catch { return null; }
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            let lastMessage = null;
+            if (Number(row.message_count) > 0) {
+                lastMessage = parseJsonEachValue(row.last_message_value, row.last_message_type);
+                if (lastMessage === undefined) return null;
+            }
+
+            return {
+                header,
+                integrity: row.integrity ?? '',
+                updatedAt: row.updated_at,
+                createdAt: row.created_at,
+                messageCount: Math.max(0, Number(row.message_count) || 0),
+                byteSize: Math.max(0, Number(row.byte_size) || 0),
+                lastMessage,
+            };
+        },
         range(key, { fromIndex = 0, limit = 0 } = {}) {
             const p = chatKeyToParams(key);
             const meta = stmt.rangeMeta.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
