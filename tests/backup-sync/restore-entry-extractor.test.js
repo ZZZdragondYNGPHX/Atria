@@ -8,10 +8,27 @@ import AdmZip from 'adm-zip';
 import {
     extractZipEntryWithAdmZip,
     isRestoreEntryIdleTimeoutError,
+    RestoreEntryAdaptivePolicy,
     streamZipEntryWithIdleTimeout,
 } from '../../src/backup-sync/restore-entry-extractor.js';
 
 describe('restore entry extraction fallback', () => {
+    test('adaptive policy shortens later primary probes after the first stall', () => {
+        const policy = new RestoreEntryAdaptivePolicy({
+            normalTimeoutMs: 15_000,
+            degradedTimeoutMs: 1_000,
+        });
+        expect(policy.degraded).toBe(false);
+        expect(policy.timeoutMs).toBe(15_000);
+
+        policy.noteStall();
+
+        expect(policy.degraded).toBe(true);
+        expect(policy.timeoutMs).toBe(1_000);
+        policy.noteStall();
+        expect(policy.timeoutMs).toBe(1_000);
+    });
+
     test('watchdog rejects an entry stream that never produces data', async () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-entry-stall-'));
         const targetPath = path.join(root, 'stalled.bin');
