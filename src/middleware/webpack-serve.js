@@ -29,7 +29,8 @@ export function hasCompleteWebpackOutput(config) {
     return files.every((name) => {
         const filePath = path.join(outputPath, name);
         try {
-            return fs.statSync(filePath).isFile() && fs.statSync(filePath).size > 0;
+            const stat = fs.statSync(filePath);
+            return stat.isFile() && stat.size > 0;
         } catch {
             return false;
         }
