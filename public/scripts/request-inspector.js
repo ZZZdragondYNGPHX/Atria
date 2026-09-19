@@ -913,7 +913,7 @@ function buildDetailHtml(detail) {
     return buildChatDetailHtml(detail);
 }
 
-async function openInspectorPanel() {
+export async function openInspectorPanel() {
     const items = await fetchList();
     const content = $('<div class="ri-container"></div>');
     content.html(buildListHtml(items));
@@ -980,20 +980,3 @@ async function openInspectorPanel() {
     });
 }
 
-jQuery(() => {
-    const $btn = $(`
- <div id="request_inspector_button" class="margin0 menu_button_icon menu_button">
- <i class="fa-fw fa-solid fa-satellite-dish"></i>
- <span data-i18n="Inspector">Inspector</span>
- </div>
- `);
-
-    $btn.on('click', () => openInspectorPanel());
-
-    const $logsBtn = $('#server_logs_button');
-    if ($logsBtn.length) {
-        $logsBtn.after($btn);
-    } else {
-        $('#account_controls').append($btn);
-    }
-});
