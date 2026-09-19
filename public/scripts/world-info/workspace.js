@@ -565,8 +565,10 @@ function syncMobileDrilldown() {
 
 function renderBulkInspector() {
     const host = document.querySelector('#wi_workspace_bulk_inspector');
-    if (!host) return;
+    const inspector = document.querySelector('#wi_workspace_inspector');
+    if (!host || !inspector) return;
     const count = state.selectedUids.size;
+    inspector.classList.toggle('has-bulk-selection', count >= 2);
     if (count < 2) {
         host.classList.add('displayNone');
         return;
@@ -574,6 +576,10 @@ function renderBulkInspector() {
 
     host.classList.remove('displayNone');
     host.querySelector('[data-role="count"]').textContent = String(count);
+    if (isMobileWorkspace()) {
+        state.mobileDetail = true;
+        syncMobileDrilldown();
+    }
 }
 
 function syncSelectionUi() {
@@ -760,7 +766,13 @@ function buildWorkspaceDom() {
                         <button id="wi_workspace_mobile_back" type="button" class="menu_button wi-workspace-mobile-back"><i class="fa-solid fa-chevron-left"></i><span>Entries</span></button>
                         <div id="wi_workspace_bulk_inspector" class="wi-workspace-bulk-inspector displayNone">
                             <div><strong>Bulk Inspector</strong> · <span data-role="count">0</span> selected</div>
-                            <small>All fields default to Keep unchanged. Use Bulk Edit to explicitly choose a field and value.</small>
+                            <small>Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.</small>
+                            <div class="wi-workspace-bulk-defaults">
+                                <span>Enabled <b>Keep unchanged</b></span>
+                                <span>Activation <b>Keep unchanged</b></span>
+                                <span>Placement <b>Keep unchanged</b></span>
+                                <span>Lifecycle <b>Keep unchanged</b></span>
+                            </div>
                             <button type="button" class="menu_button menu_button_icon" data-action="bulk-edit"><i class="fa-solid fa-pen-to-square"></i><span>Bulk Edit…</span></button>
                         </div>
                         <div id="wi_workspace_inspector_header" class="wi-workspace-inspector-header">
@@ -796,7 +808,19 @@ function buildWorkspaceDom() {
     popup.querySelector('hr')?.remove();
     popup.append(shell);
 
-    if (primaryToolbar) shell.querySelector('#wi_workspace_primary_toolbar').append(primaryToolbar);
+    if (primaryToolbar) {
+        shell.querySelector('#wi_workspace_primary_toolbar').append(primaryToolbar);
+        const lowFrequencyActions = primaryToolbar.querySelector('.world_popup_primary_actions');
+        if (lowFrequencyActions) {
+            const tools = document.createElement('details');
+            tools.className = 'wi-workspace-tools-menu';
+            const summary = document.createElement('summary');
+            summary.className = 'menu_button menu_button_icon';
+            summary.innerHTML = '<i class="fa-solid fa-ellipsis"></i><span>Tools</span>';
+            lowFrequencyActions.before(tools);
+            tools.append(summary, lowFrequencyActions);
+        }
+    }
     if (editorToolbar) shell.querySelector('#wi_workspace_entries_toolbar').append(editorToolbar);
 
     const bookActionsHost = primaryToolbar?.querySelector('.world_popup_primary_actions');
