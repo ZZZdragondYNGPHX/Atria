@@ -621,6 +621,80 @@ function setContinuousCards(enabled, { notify = true } = {}) {
     if (notify) state.callbacks.onContinuousCardsChange?.(state.continuousCards);
 }
 
+function buildGlobalRulesPanels() {
+    const root = document.querySelector('#wiActivationSettings');
+    if (!(root instanceof HTMLElement) || root.dataset.workspaceGrouped === 'true') return;
+    root.dataset.workspaceGrouped = 'true';
+
+    const take = (id) => {
+        const control = document.getElementById(id);
+        if (!control) return null;
+        if (control.matches('input[type="checkbox"]')) {
+            return control.closest('#wiCheckboxes > label') || control.closest('label');
+        }
+        return control.closest('#wiSliders > div') || control.parentElement;
+    };
+
+    const sections = [
+        {
+            key: 'scanning',
+            title: 'Scanning',
+            description: 'How text is scanned and matched before entry-specific overrides.',
+            ids: ['world_info_depth', 'world_info_include_names', 'world_info_case_sensitive', 'world_info_match_whole_words'],
+        },
+        {
+            key: 'budget',
+            title: 'Budget',
+            description: 'How much prompt context World Info may consume.',
+            ids: ['world_info_budget', 'world_info_budget_cap', 'world_info_overflow_alert'],
+        },
+        {
+            key: 'recursion',
+            title: 'Recursion',
+            description: 'How recursive discovery proceeds and where it stops.',
+            ids: ['world_info_recursive', 'world_info_min_activations', 'world_info_min_activations_depth_max', 'world_info_max_recursion_steps'],
+        },
+        {
+            key: 'selection',
+            title: 'Selection / Priority',
+            description: 'Global ordering and scoring defaults.',
+            ids: ['world_info_character_strategy', 'world_info_use_group_scoring'],
+        },
+    ];
+
+    const grid = document.createElement('div');
+    grid.className = 'wi-global-rules-grid';
+
+    for (const section of sections) {
+        const card = document.createElement('section');
+        card.className = 'wi-global-rule-card';
+        card.dataset.ruleGroup = section.key;
+
+        const header = document.createElement('div');
+        header.className = 'wi-global-rule-card-header';
+        const title = document.createElement('strong');
+        title.textContent = section.title;
+        const description = document.createElement('small');
+        description.className = 'opacity50p';
+        description.textContent = section.description;
+        header.append(title, description);
+
+        const body = document.createElement('div');
+        body.className = 'wi-global-rule-card-body';
+        for (const id of section.ids) {
+            const node = take(id);
+            if (node) body.append(node);
+        }
+
+        card.append(header, body);
+        grid.append(card);
+    }
+
+    root.querySelector('#wiSliders')?.remove();
+    root.querySelector('#wiCheckboxes')?.remove();
+    root.append(grid);
+}
+
 function buildWorkspaceDom() {
     const popup = document.querySelector('#world_popup');
     const topBlock = document.querySelector('#wiTopBlock');
@@ -719,6 +793,7 @@ function buildWorkspaceDom() {
     if (managerBlock) shell.querySelector('#wi_workspace_library').append(managerBlock);
     if (globalBlock) shell.querySelector('#wi_workspace_global').append(globalBlock);
 
+    buildGlobalRulesPanels();
     topBlock.classList.add('displayNone');
 
     const managerHeader = managerBlock?.querySelector('.world_info_manager_drawer_header');
