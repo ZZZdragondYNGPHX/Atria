@@ -797,18 +797,6 @@ export function getRegexScriptDiagnostics(scripts = getRegexScripts({ allowedOnl
     const normalizedPlacements = script => Array.isArray(script.placement)
         ? [...new Set(script.placement)]
         : [];
-    const placementsOverlap = (left, right) => {
-        const rightPlacements = new Set(normalizedPlacements(right));
-        return normalizedPlacements(left).some(placement => rightPlacements.has(placement));
-    };
-    const scopesOverlap = (left, right) => {
-        const leftMask = getRegexScriptScopeMask(left);
-        const rightMask = getRegexScriptScopeMask(right);
-        if (leftMask === 0 || rightMask === 0) {
-            return leftMask === rightMask;
-        }
-        return (leftMask & rightMask) !== 0;
-    };
     const behaviorSignature = script => JSON.stringify({
         replaceString: script.replaceString ?? '',
         trimStrings: Array.isArray(script.trimStrings) ? script.trimStrings : [],
@@ -853,21 +841,39 @@ export function getRegexScriptDiagnostics(scripts = getRegexScripts({ allowedOnl
     const conflicts = [];
     for (const [pattern, group] of patternGroups.entries()) {
         if (group.length < 2) continue;
-        const involved = new Set();
-        for (let i = 0; i < group.length; i++) {
-            for (let j = i + 1; j < group.length; j++) {
-                const left = group[i];
-                const right = group[j];
-                if (!placementsOverlap(left, right) || !scopesOverlap(left, right)) {
-                    continue;
+
+        // Bucket by atomic execution domain instead of comparing every pair.
+        // This stays close to O(n) even when hundreds of rules share one
+        // pattern, which is exactly the pathological case this diagnostic is
+        // meant to surface.
+        const domainBuckets = new Map();
+        for (const script of group) {
+            const scopeMask = getRegexScriptScopeMask(script);
+            const scopes = scopeMask === 0
+                ? [0]
+                : [REGEX_SCOPE_MASK.MARKDOWN, REGEX_SCOPE_MASK.PROMPT, REGEX_SCOPE_MASK.PLUGIN]
+                    .filter(scope => (scopeMask & scope) !== 0);
+            for (const placement of normalizedPlacements(script)) {
+                const placementKey = `${typeof placement}:${String(placement)}`;
+                for (const scope of scopes) {
+                    const domainKey = `${placementKey}|${scope}`;
+                    const bucket = domainBuckets.get(domainKey);
+                    if (bucket) bucket.push(script);
+                    else domainBuckets.set(domainKey, [script]);
                 }
-                if (behaviorSignature(left) === behaviorSignature(right)) {
-                    continue;
-                }
-                involved.add(left);
-                involved.add(right);
             }
         }
+
+        const involved = new Set();
+        for (const bucket of domainBuckets.values()) {
+            if (bucket.length < 2) continue;
+            const behaviors = new Set(bucket.map(behaviorSignature));
+            if (behaviors.size < 2) continue;
+            for (const script of bucket) {
+                involved.add(script);
+            }
+        }
+
         if (involved.size > 1) {
             conflicts.push({
                 pattern,
