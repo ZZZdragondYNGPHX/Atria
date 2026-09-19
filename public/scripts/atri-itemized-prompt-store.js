@@ -49,6 +49,37 @@ export function normalizeItemizedPromptIndex(entries) {
     return [...byMessage.values()].sort((a, b) => a.mesId - b.mesId);
 }
 
+export function swapItemizedPromptIndexMessageIds(entries, sourceMessageId, targetMessageId) {
+    const source = safeMesId(sourceMessageId);
+    const target = safeMesId(targetMessageId);
+    const next = normalizeItemizedPromptIndex(entries);
+    if (source === null || target === null || source === target) return next;
+    for (const entry of next) {
+        if (entry.mesId === source) entry.mesId = target;
+        else if (entry.mesId === target) entry.mesId = source;
+    }
+    return normalizeItemizedPromptIndex(next);
+}
+
+export function deleteItemizedPromptIndexMessage(entries, messageId) {
+    const deleted = safeMesId(messageId);
+    const current = normalizeItemizedPromptIndex(entries);
+    if (deleted === null) return { entries: current, removedRecordIds: [] };
+    const removedRecordIds = current
+        .filter(entry => entry.mesId === deleted)
+        .map(entry => entry.recordId);
+    const next = current
+        .filter(entry => entry.mesId !== deleted)
+        .map(entry => ({
+            ...entry,
+            mesId: entry.mesId > deleted ? entry.mesId - 1 : entry.mesId,
+        }));
+    return {
+        entries: normalizeItemizedPromptIndex(next),
+        removedRecordIds,
+    };
+}
+
 export class ItemizedPromptStore {
     constructor(storage, {
         now = () => Date.now(),
@@ -258,6 +289,24 @@ export class ItemizedPromptStore {
         if (!id) return;
         await this.deleteCurrentLayout(id);
         await this.storage.removeItem(id);
+    }
+
+    async swapMessageIds(chatId, sourceMessageId, targetMessageId, entries = null) {
+        const index = normalizeItemizedPromptIndex(entries ?? await this.loadIndex(chatId));
+        return await this.persistIndex(
+            chatId,
+            swapItemizedPromptIndexMessageIds(index, sourceMessageId, targetMessageId),
+        );
+    }
+
+    async deleteMessage(chatId, messageId, entries = null) {
+        const id = normalizeChatId(chatId);
+        const index = normalizeItemizedPromptIndex(entries ?? await this.loadIndex(id));
+        const next = deleteItemizedPromptIndexMessage(index, messageId);
+        await Promise.all(next.removedRecordIds.map(recordId => (
+            this.storage.removeItem(getItemizedPromptRecordKey(id, recordId))
+        )));
+        return await this.persistIndex(id, next.entries);
     }
 
     async rollbackToLegacy(chatId, entries = null) {
