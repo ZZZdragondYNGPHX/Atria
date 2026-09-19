@@ -13,7 +13,8 @@ Fix two user-visible regressions reported from Android:
 - Task branch: `fix/workbench-backup-restore-ui`
 - Final validated task head: `2d0ffd0b6863befd2d851c7b664a345f7fa23642`
 - PR: #14
-- Merge target: `main`
+- Squash merge / resulting `main`: `dbaf8f2f397220a4e9544e44df55a114ea408067`
+- Merged tree: `834345892694a4c58dfc4530a9b55d6616327d4c` (identical to validated task-head tree)
 
 ## Field evidence
 
