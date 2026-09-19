@@ -9,6 +9,126 @@ import { humanFileSize } from './utils.js';
 
 const MiB = 1024 * 1024;
 const PROVIDERS = createBackupSyncProviderRegistry();
+const RESTORE_STREAM_MIME = 'application/x-ndjson';
+
+function setRestoreStartEnabled(root, enabled) {
+    const button = root.querySelector('.backupRestoreStart');
+    if (!button) return;
+    const active = Boolean(enabled);
+    button.disabled = !active;
+    button.classList.toggle('disabled', !active);
+    button.setAttribute('aria-disabled', String(!active));
+}
+
+function setRestoreControlsBusy(root, busy) {
+    const disabled = Boolean(busy);
+    root.querySelectorAll(
+        '.backupArchiveChoose, .backupSelectAll, .backupSelectRecommended, .backupSelectNone, '
+        + 'input[name="backupCategory"], input[name="backupRestoreMode"]',
+    ).forEach(control => {
+        control.disabled = disabled;
+    });
+}
+
+function renderRestoreProgress(root, event = {}) {
+    const box = root.querySelector('.backupRestoreProgress');
+    if (!box) return;
+    box.classList.remove('displayNone');
+    box.dataset.state = 'running';
+
+    const phase = String(event.phase || '');
+    const current = Number(event.current);
+    const total = Number(event.total);
+    const countText = Number.isFinite(current) && Number.isFinite(total) && total > 0
+        ? ` ${Math.max(0, current)}/${Math.max(0, total)}`
+        : '';
+
+    const phaseLabel = phase === 'analyze'
+        ? '正在检查归档'
+        : phase === 'snapshot'
+            ? '正在创建恢复点'
+            : phase === 'extract'
+                ? '正在写入恢复数据'
+                : phase === 'convert'
+                    ? '正在转换存储数据'
+                    : phase === 'finalize'
+                        ? '正在校验并完成恢复'
+                        : '正在恢复';
+
+    const stage = event.stage ? ` · ${String(event.stage)}` : '';
+    box.textContent = `${phaseLabel}${countText}${stage}…`;
+}
+
+function renderRestoreTerminalState(root, text, state = 'ok') {
+    const box = root.querySelector('.backupRestoreProgress');
+    if (!box) return;
+    box.classList.remove('displayNone');
+    box.dataset.state = state;
+    box.textContent = text;
+}
+
+async function readRestoreResponse(response, onProgress = () => {}) {
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    const isProgressStream = contentType.includes(RESTORE_STREAM_MIME);
+
+    if (!isProgressStream || !response.body?.getReader) {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            throw new Error(data?.error || `HTTP ${response.status}`);
+        }
+        return data;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = null;
+    let streamedError = '';
+
+    const consumeLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        let payload;
+        try {
+            payload = JSON.parse(trimmed);
+        } catch {
+            throw new Error('恢复进度流包含无效数据。');
+        }
+        if (payload?.type === 'progress') {
+            onProgress(payload);
+            return;
+        }
+        if (payload?.type === 'error') {
+            streamedError = String(payload.error || '恢复失败');
+            return;
+        }
+        if (payload?.type === 'result') {
+            const { type: _type, ...rest } = payload;
+            result = rest;
+        }
+    };
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (value) {
+            buffer += decoder.decode(value, { stream: !done });
+            let newline;
+            while ((newline = buffer.indexOf('\n')) !== -1) {
+                consumeLine(buffer.slice(0, newline));
+                buffer = buffer.slice(newline + 1);
+            }
+        }
+        if (done) break;
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) consumeLine(buffer);
+
+    if (streamedError) throw new Error(streamedError);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!result) throw new Error('恢复连接已结束，但服务器没有返回完成结果。');
+    return result;
+}
+
 const BACKUP_CATEGORY_KEYS = Object.freeze([
     'settings',
     'secrets',
@@ -208,7 +328,7 @@ async function requestScratchCreds(kind) {
     return kind === 'mysql' ? { scratchMysqlUrl: url } : { scratchPostgresUrl: url };
 }
 
-async function restoreArchive({ handle, file, preflight }) {
+async function restoreArchive({ handle, file, preflight, onProgress = () => {} }) {
     const confirmText = preflight.mode === 'full'
         ? '完整恢复会将所选范围视为归档中的账户状态，并在操作前创建恢复点。继续？'
         : preflight.mode === 'overwrite'
@@ -235,16 +355,16 @@ async function restoreArchive({ handle, file, preflight }) {
     formData.append('selection', JSON.stringify(preflight.selection));
     for (const [key, value] of Object.entries(scratchFields)) formData.append(key, value);
 
+    const headers = {
+        ...getRequestHeaders({ omitContentType: true }),
+        Accept: RESTORE_STREAM_MIME,
+    };
     const response = await fetch('/api/users/restore-backup', {
         method: 'POST',
-        headers: getRequestHeaders({ omitContentType: true }),
+        headers,
         body: formData,
     });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-        throw new Error(data?.error || `HTTP ${response.status}`);
-    }
-    return data;
+    return readRestoreResponse(response, onProgress);
 }
 
 async function previewManagedBackup(name) {
@@ -492,6 +612,8 @@ export async function openBackupSyncCenter({
     let managedRecords = [];
     let selectedArchive = null;
     let preflight = null;
+    let preflightVersion = 0;
+    let restoreBusy = false;
 
     const reloadManaged = async () => {
         const payload = await postJson('/api/backups/managed/list', { type: 'chat' });
@@ -500,15 +622,18 @@ export async function openBackupSyncCenter({
     };
 
     const rerunPreflight = async () => {
+        const version = ++preflightVersion;
         preflight = null;
-        center.querySelector('.backupRestoreStart').classList.add('disabled');
-        if (!selectedArchive) return;
+        setRestoreStartEnabled(center, false);
+        if (!selectedArchive || restoreBusy) return;
         try {
             const result = await runPreflight(center, selectedArchive.file, canManageGlobalExtensions);
+            if (version !== preflightVersion || restoreBusy) return;
             preflight = result;
             renderPreflight(center, result);
-            center.querySelector('.backupRestoreStart').classList.remove('disabled');
+            setRestoreStartEnabled(center, true);
         } catch (error) {
+            if (version !== preflightVersion || restoreBusy) return;
             renderPreflightError(center, error);
         }
     };
@@ -604,19 +729,41 @@ export async function openBackupSyncCenter({
     });
     center.querySelector('.backupRestoreStart').addEventListener('click', async () => {
         const button = center.querySelector('.backupRestoreStart');
-        if (button.classList.contains('disabled') || !selectedArchive || !preflight) return;
-        button.classList.add('disabled');
+        if (button.disabled || restoreBusy || !selectedArchive || !preflight) return;
+
+        restoreBusy = true;
+        preflightVersion++;
+        setRestoreStartEnabled(center, false);
+        setRestoreControlsBusy(center, true);
+        renderRestoreTerminalState(center, '正在准备安全恢复…', 'running');
+
         try {
-            const result = await restoreArchive({ handle, file: selectedArchive.file, preflight });
-            if (!result) return;
+            const result = await restoreArchive({
+                handle,
+                file: selectedArchive.file,
+                preflight,
+                onProgress: event => renderRestoreProgress(center, event),
+            });
+            if (!result) {
+                renderRestoreTerminalState(center, '恢复已取消。', 'idle');
+                return;
+            }
+            renderRestoreTerminalState(
+                center,
+                `恢复完成：${Number(result.restoredCount || 0)} 项；失败 ${Number(result.failedCount || 0)} 项。`,
+                'ok',
+            );
             toastr.success(`恢复完成：${Number(result.restoredCount || 0)} 项；失败 ${Number(result.failedCount || 0)} 项。`);
             await onRestored?.(result);
             await refreshRetention(center);
             await reloadManaged();
         } catch (error) {
+            renderRestoreTerminalState(center, `恢复失败：${error.message}`, 'error');
             toastr.error(`恢复失败：${error.message}`);
         } finally {
-            if (preflight) button.classList.remove('disabled');
+            restoreBusy = false;
+            setRestoreControlsBusy(center, false);
+            setRestoreStartEnabled(center, Boolean(preflight));
         }
     });
 
