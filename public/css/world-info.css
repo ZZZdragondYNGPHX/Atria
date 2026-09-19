@@ -2790,15 +2790,24 @@ select.keyselect+span.select2-container .select2-selection--multiple {
 
 .wi-worldbook-action-sheet-dialog {
     position: fixed;
-    inset: auto 10px calc(72px + env(safe-area-inset-bottom));
-    width: auto;
+    inset: 0;
+    width: 100dvw;
+    height: 100dvh;
     max-width: none;
+    max-height: none;
     margin: 0;
-    padding: 0;
+    padding: 0 10px calc(72px + env(safe-area-inset-bottom));
     border: 0;
     background: transparent;
     color: var(--SmartThemeBodyColor);
-    overflow: visible;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.wi-worldbook-action-sheet-dialog[open] {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
 }
 
 .wi-worldbook-action-sheet-dialog::backdrop {
@@ -2807,7 +2816,9 @@ select.keyselect+span.select2-container .select2-selection--multiple {
 
 .wi-worldbook-action-sheet-header {
     display: flex;
+    width: 100%;
     min-height: 46px;
+    box-sizing: border-box;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
@@ -2836,6 +2847,7 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     position: static;
     display: flex;
     width: 100%;
+    box-sizing: border-box;
     max-height: min(70dvh, 560px);
     flex-direction: column;
     gap: 5px;
