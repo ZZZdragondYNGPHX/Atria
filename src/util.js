@@ -127,13 +127,9 @@ export function getBasicAuthHeader(auth) {
     return `Basic ${encoded}`;
 }
 
-/**
- * Returns the version of the running instance. Get the version from package.json and git metadata.
- * Also returns the agent string for the Horde API.
- * Performs only local reads; use checkRemoteVersion() for the upstream tag comparison.
- * @returns {Promise<{agent: string, compatAgent: string, stCompatVersion: string, pkgVersion: string, gitRevision: string | null, gitBranch: string | null, commitDate: string | null, isDocker: boolean}>} Version info object
- */
-export async function getVersion() {
+let VERSION_INFO_PROMISE = null;
+
+async function loadVersionInfo() {
     let pkgVersion = 'UNKNOWN';
     let gitRevision = null;
     let gitBranch = null;
@@ -161,7 +157,29 @@ export async function getVersion() {
     const agent = `Atria:${pkgVersion}:Cohee#1207`;
     const compatAgent = `Atria:${stCompatVersion}:Cohee#1207`;
     const isDockerRuntime = isDocker();
-    return { agent, compatAgent, stCompatVersion, pkgVersion, gitRevision, gitBranch, commitDate: commitDate?.trim() ?? null, isDocker: isDockerRuntime };
+    return Object.freeze({
+        agent,
+        compatAgent,
+        stCompatVersion,
+        pkgVersion,
+        gitRevision,
+        gitBranch,
+        commitDate: commitDate?.trim() ?? null,
+        isDocker: isDockerRuntime,
+    });
+}
+
+/**
+ * Returns the version of the running instance from package.json and local Git metadata.
+ * The result is immutable for a running process, so cache the in-flight/resolved promise:
+ * startup logging, /version and downstream provider calls all share one metadata read.
+ *
+ * Performs only local reads; use checkRemoteVersion() for the upstream tag comparison.
+ * @returns {Promise<{agent: string, compatAgent: string, stCompatVersion: string, pkgVersion: string, gitRevision: string | null, gitBranch: string | null, commitDate: string | null, isDocker: boolean}>} Version info object
+ */
+export function getVersion() {
+    VERSION_INFO_PROMISE ??= loadVersionInfo();
+    return VERSION_INFO_PROMISE;
 }
 
 /**
