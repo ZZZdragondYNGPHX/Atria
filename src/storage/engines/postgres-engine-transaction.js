@@ -117,6 +117,100 @@ export function registerChatHandler(tx) {
     }
 
     tx._handlers.set('chat', {
+        async append(key, messages, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+        } = {}) {
+            const p = chatKeyToParams(key);
+            const metaQuery = await client.query(
+                `SELECT integrity,
+                        jsonb_typeof(doc->'header') AS header_type,
+                        jsonb_typeof(doc#>'{header,chat_metadata}') AS metadata_type,
+                        jsonb_typeof(doc->'body') AS body_type
+                 FROM chats
+                 WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5
+                 FOR UPDATE`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaQuery.rows[0];
+            if (!meta) return { status: 'missing' };
+            if (meta.header_type !== 'object' || meta.metadata_type !== 'object' || meta.body_type !== 'array') {
+                return { status: 'unsupported' };
+            }
+
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const input = Array.isArray(messages) ? messages : [];
+            const incomingGenIds = [...new Set(input
+                .map(message => message?.extra?.gen_id)
+                .filter(id => typeof id === 'string' && id.length > 0))];
+            const seenGenIds = new Set();
+
+            if (incomingGenIds.length > 0) {
+                const existingIds = await client.query(
+                    `SELECT DISTINCT elem->'extra'->>'gen_id' AS gen_id
+                     FROM chats AS c
+                     CROSS JOIN LATERAL jsonb_array_elements(c.doc->'body') AS elem
+                     WHERE c.handle=$1 AND c.char_dir=$2 AND c.name=$3 AND c.is_group=$4 AND c.group_id=$5
+                       AND elem->'extra'->>'gen_id' = ANY($6::text[])`,
+                    [p.handle, p.char_dir, p.name, p.is_group, p.group_id, incomingGenIds],
+                );
+                for (const row of existingIds.rows) {
+                    if (typeof row.gen_id === 'string') seenGenIds.add(row.gen_id);
+                }
+            }
+
+            const accepted = [];
+            const dedupedGenIds = [];
+            for (const message of input) {
+                const genId = message?.extra?.gen_id;
+                if (typeof genId === 'string' && genId.length > 0 && seenGenIds.has(genId)) {
+                    dedupedGenIds.push(genId);
+                    continue;
+                }
+                if (typeof genId === 'string' && genId.length > 0) seenGenIds.add(genId);
+                accepted.push(message);
+            }
+
+            const update = await client.query(
+                `UPDATE chats
+                 SET doc = jsonb_set(
+                         jsonb_set(
+                             doc,
+                             '{body}',
+                             (doc->'body') || $1::jsonb,
+                             false
+                         ),
+                         '{header,chat_metadata,integrity}',
+                         to_jsonb($2::text),
+                         false
+                     ),
+                     updated_at = $3
+                 WHERE handle=$4 AND char_dir=$5 AND name=$6 AND is_group=$7 AND group_id=$8`,
+                [
+                    JSON.stringify(accepted),
+                    newIntegrity,
+                    updatedAt,
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                ],
+            );
+            if (update.rowCount !== 1) return { status: 'missing' };
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                accepted: accepted.length,
+                dedupedGenIds,
+            };
+        },
         async get(key) {
             const p = chatKeyToParams(key);
             const row = await readRow(p);
