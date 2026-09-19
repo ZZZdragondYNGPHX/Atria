@@ -40,6 +40,10 @@ describe('startup milestone telemetry', () => {
 
         expect(serverMain).toContain("http.root.");
         expect(serverMain).toContain("http.csrf-token");
+        expect(serverMain).toContain("pre-setup.total");
+        expect(serverMain).toContain("pre-setup.parallel-state");
+        expect(serverMain).toContain("pre-setup.plugins");
+        expect(serverMain).toContain("pre-setup.frontend-cache");
         expect(serverMain).toContain("http.asset.");
         expect(bootstrap).toContain("http.bootstrap.start");
         expect(bootstrap).toContain("http.bootstrap.done");
