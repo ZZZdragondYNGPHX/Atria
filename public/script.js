@@ -291,7 +291,6 @@ import { initVariableOpLog, extractMessageById, pushFloorVarOp } from './scripts
 import { extractFromText as extractSideEffectMacrosFromText } from './scripts/variable-op-log/extractor.js';
 import { initVarOpsPanelHandler } from './scripts/variable-op-log/panel.js';
 import { installFrontendLogCapture, setFrontendConsoleDebugLoggingEnabled } from './scripts/frontend-log-manager.js';
-import { initDebugExportButton } from './scripts/debug-export.js';
 import { initAndroidDebugTrail } from './scripts/atria-android-debug-trail.js';
 import { currentUser, getConfigValidationMessage, isAdmin, setUserControls } from './scripts/user.js';
 import { POPUP_RESULT, POPUP_TYPE, Popup, callGenericPopup, fixToastrForDialogs } from './scripts/popup.js';
@@ -301,7 +300,6 @@ import { initCustomSelectedSamplers, validateDisabledSamplers } from './scripts/
 import { DragAndDropHandler } from './scripts/dragdrop.js';
 import { INTERACTABLE_CONTROL_CLASS, initKeyboard } from './scripts/keyboard.js';
 import { initDynamicStyles } from './scripts/dynamic-styles.js';
-import { initInputMarkdown } from './scripts/input-md-formatting.js';
 
 import { AbortReason } from './scripts/util/AbortReason.js';
 import { initSystemPrompts } from './scripts/sysprompt.js';
@@ -310,9 +308,6 @@ import { ToolManager } from './scripts/tool-calling.js';
 import { registerSkillEmbedLifecycle } from './scripts/skills/embed-lifecycle.js';
 import { addShowdownPatch } from './scripts/util/showdown-patch.js';
 import { applyBrowserFixes } from './scripts/browser-fixes.js';
-import { initServerHistory } from './scripts/server-history.js';
-import { initSettingsSearch } from './scripts/setting-search.js';
-import { initBulkEdit } from './scripts/bulk-edit.js';
 import { getContext } from './scripts/st-context.js';
 // Publish `globalThis.atriaContext = getContext()` for third-party plugins
 // that consume ctx off the global.  Must import AFTER st-context.js so
@@ -321,14 +316,12 @@ import './scripts/atriaContext.js';
 import { extractReasoningBlocksFromData, extractReasoningDetailsFromData, extractReasoningFromData, extractReasoningSignatureFromData, initReasoning, parseReasoningInSwipes, PromptReasoning, ReasoningHandler, ReasoningType, registerReasoningSlashCommands, removeReasoningFromString, updateReasoningUI } from './scripts/reasoning.js';
 import { accountStorage } from './scripts/util/AccountStorage.js';
 import { fetchRecentChatsSnapshot, initWelcomeScreen, openPermanentAssistantChat, openPermanentAssistantCard, getPermanentAssistantAvatar, openWelcomeScreen, primeRecentChatsSnapshotPromise } from './scripts/welcome-screen.js';
-import { initDataMaid } from './scripts/data-maid.js';
 import { clearItemizedPrompts, deleteItemizedPromptForMessage, deleteItemizedPrompts, findItemizedPromptSet, flushItemizedPromptsSave, initItemizedPrompts, itemizedParams, itemizedPrompts, loadItemizedPrompts, promptItemize, replaceItemizedPromptText, saveItemizedPrompts, saveItemizedPromptsDebounced, swapItemizedPrompts, upsertItemizedPrompt } from './scripts/itemized-prompts.js';
 import { getMessageDepthFromTail } from './scripts/atri-message-depth.js';
 import { getSystemMessageByType, initSystemMessages, SAFETY_CHAT, sendSystemMessage, system_message_types, system_messages } from './scripts/system-messages.js';
 import { initAnnouncements } from './scripts/announcements.js';
 import { event_types, eventSource } from './scripts/events.js';
 import { settleChatChanged, settleMessageDeleted, settleMessageSwipeDeleted, settleMessageSwiped } from './scripts/floor-state.js';
-import { initAccessibility } from './scripts/a11y.js';
 import { applyStreamFadeIn } from './scripts/util/stream-fadein.js';
 import { initDomHandlers } from './scripts/dom-handlers.js';
 import { SimpleMutex } from './scripts/util/SimpleMutex.js';
@@ -2140,6 +2133,14 @@ async function firstLoadInit() {
     }
     await fixViewport();
     await yieldToBrowser();
+
+    // These modules are not needed to make the UI interactive. Start loading
+    // them only after the loader is gone, and overlap their fetch/parse work
+    // with the remaining startup batches.
+    void loadPostVisibleStartupModules().catch((error) => {
+        console.warn('[init] deferred startup modules failed to preload', error);
+    });
+
     console.debug('[init] initPresetManager start');
     await initPresetManager();
     console.debug('[init] initPresetManager done');
@@ -2199,16 +2200,16 @@ async function firstLoadInit() {
         () => initStats(),
         () => initCfg(),
         () => initLogprobs(),
-        () => initInputMarkdown(),
-        () => initServerHistory(),
-        () => initSettingsSearch(),
-        () => initBulkEdit(),
+        () => loadPostVisibleStartupModules().then(({ initInputMarkdown }) => initInputMarkdown()),
+        () => loadPostVisibleStartupModules().then(({ initServerHistory }) => initServerHistory()),
+        () => loadPostVisibleStartupModules().then(({ initSettingsSearch }) => initSettingsSearch()),
+        () => loadPostVisibleStartupModules().then(({ initBulkEdit }) => initBulkEdit()),
         () => initReasoning(),
         () => initScrapers(),
         () => initCustomSelectedSamplers(),
-        () => initDataMaid(),
+        () => loadPostVisibleStartupModules().then(({ initDataMaid }) => initDataMaid()),
         () => initItemizedPrompts(),
-        () => initAccessibility(),
+        () => loadPostVisibleStartupModules().then(({ initAccessibility }) => initAccessibility()),
         () => initSwipePicker(),
         () => addDebugFunctions(),
         () => doDailyExtensionUpdatesCheck(),
@@ -2241,7 +2242,9 @@ async function firstLoadInit() {
     markClientStartupTiming('appReady');
     performance.mark('[init] complete');
     reportClientStartupTiming();
-    initDebugExportButton();
+    void loadPostVisibleStartupModules()
+        .then(({ initDebugExportButton }) => initDebugExportButton())
+        .catch((error) => console.warn('[init] debug export module failed to load', error));
 }
 
 async function fixViewport() {
@@ -2266,6 +2269,36 @@ let macroAutoCompleteModulePromise;
 
 function loadMacroAutoCompleteModule() {
     return macroAutoCompleteModulePromise ??= import('./scripts/autocomplete/MacroAutoComplete.js');
+}
+
+let postVisibleStartupModulesPromise;
+
+function loadPostVisibleStartupModules() {
+    return postVisibleStartupModulesPromise ??= Promise.all([
+        import('./scripts/input-md-formatting.js'),
+        import('./scripts/server-history.js'),
+        import('./scripts/setting-search.js'),
+        import('./scripts/bulk-edit.js'),
+        import('./scripts/data-maid.js'),
+        import('./scripts/a11y.js'),
+        import('./scripts/debug-export.js'),
+    ]).then(([
+        inputMarkdown,
+        serverHistory,
+        settingsSearch,
+        bulkEdit,
+        dataMaid,
+        accessibility,
+        debugExport,
+    ]) => ({
+        initInputMarkdown: inputMarkdown.initInputMarkdown,
+        initServerHistory: serverHistory.initServerHistory,
+        initSettingsSearch: settingsSearch.initSettingsSearch,
+        initBulkEdit: bulkEdit.initBulkEdit,
+        initDataMaid: dataMaid.initDataMaid,
+        initAccessibility: accessibility.initAccessibility,
+        initDebugExportButton: debugExport.initDebugExportButton,
+    }));
 }
 
 function initStandaloneMode() {
