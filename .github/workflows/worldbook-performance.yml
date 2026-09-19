@@ -39,6 +39,7 @@ on:
       - "tests/storage/endpoints/chat-incremental-backup.parity.test.js"
       - "tests/storage/engines/sqlite-engine-chat.test.js"
       - "tests/storage/repositories/chat-repo-append.test.js"
+      - "tests/storage/repositories/chat-repo-patch.test.js"
       - "src/storage/engines/sqlite-engine-transaction.js"
       - "src/storage/engines/postgres-engine-transaction.js"
       - "src/storage/engines/mysql-engine-transaction.js"
@@ -93,6 +94,7 @@ jobs:
           storage/repositories/chat-repo.test.js
           storage/engines/sqlite-engine-chat.test.js
           storage/repositories/chat-repo-append.test.js
+          storage/repositories/chat-repo-patch.test.js
           memory-graph/temporal-graph.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
