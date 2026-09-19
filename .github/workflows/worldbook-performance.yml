@@ -25,6 +25,7 @@ on:
       - "public/scripts/extensions/orchestrator/lorebook-filter.js"
       - "public/scripts/extensions/orchestrator/main.js"
       - "tests/memory-graph/temporal-graph.test.js"
+      - "tests/memory-graph/hybrid-retrieval.test.js"
       - "public/scripts/extensions/memory-graph/temporal-graph.js"
       - "public/scripts/extensions/memory-graph/hybrid-retrieval.js"
       - "src/endpoints/characters.js"
@@ -96,6 +97,7 @@ jobs:
           storage/repositories/chat-repo-append.test.js
           storage/repositories/chat-repo-patch.test.js
           memory-graph/temporal-graph.test.js
+          memory-graph/hybrid-retrieval.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
           world-info/state-conditions.test.js
