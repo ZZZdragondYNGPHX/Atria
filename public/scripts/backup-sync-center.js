@@ -200,7 +200,10 @@ async function readRestoreResponse(response, onProgress = () => {}) {
     if (!isProgressStream || !response.body?.getReader) {
         const data = await response.json().catch(() => null);
         if (!response.ok) {
-            throw new Error(data?.error || `HTTP ${response.status}`);
+            const error = new Error(data?.error || `HTTP ${response.status}`);
+            error.code = data?.code || null;
+            error.rolledBack = Boolean(data?.rolledBack);
+            throw error;
         }
         return data;
     }
