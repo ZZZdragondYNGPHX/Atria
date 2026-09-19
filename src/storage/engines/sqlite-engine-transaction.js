@@ -36,6 +36,12 @@ export class SqliteTransaction {
         }
         return this._h(key.kind, 'getChatInfo').info(key);
     }
+    async appendChatMessages(key, messages, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('SqliteTransaction.appendChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
@@ -89,6 +95,12 @@ export function registerChatHandler(tx) {
     const stmt = {
         get: db.prepare(`SELECT doc, integrity, updated_at, created_at
                          FROM chats WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
+        appendMeta: db.prepare(`SELECT integrity,
+                                json_type(doc, '$.header') AS header_type,
+                                json_type(doc, '$.header.chat_metadata') AS metadata_type,
+                                json_type(doc, '$.body') AS body_type
+                            FROM chats
+                            WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`),
         rangeMeta: db.prepare(`SELECT
                                 json_extract(doc, '$.header') AS header_value,
                                 json_type(doc, '$.header') AS header_type,
@@ -141,6 +153,87 @@ export function registerChatHandler(tx) {
     };
 
     tx._handlers.set('chat', {
+        append(key, messages, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+        } = {}) {
+            const p = chatKeyToParams(key);
+            const meta = stmt.appendMeta.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
+            if (!meta) return { status: 'missing' };
+            if (meta.header_type !== 'object' || meta.metadata_type !== 'object' || meta.body_type !== 'array') {
+                return { status: 'unsupported' };
+            }
+
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const input = Array.isArray(messages) ? messages : [];
+            const incomingGenIds = [...new Set(input
+                .map(message => message?.extra?.gen_id)
+                .filter(id => typeof id === 'string' && id.length > 0))];
+            const seenGenIds = new Set();
+
+            if (incomingGenIds.length > 0) {
+                const placeholders = incomingGenIds.map(() => '?').join(',');
+                const rows = db.prepare(`SELECT DISTINCT json_extract(j.value, '$.extra.gen_id') AS gen_id
+                    FROM chats AS c, json_each(c.doc, '$.body') AS j
+                    WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                      AND json_extract(j.value, '$.extra.gen_id') IN (${placeholders})`)
+                    .all(
+                        p.handle,
+                        p.char_dir,
+                        p.name,
+                        p.is_group,
+                        p.group_id,
+                        ...incomingGenIds,
+                    );
+                for (const row of rows) {
+                    if (typeof row.gen_id === 'string') seenGenIds.add(row.gen_id);
+                }
+            }
+
+            const accepted = [];
+            const dedupedGenIds = [];
+            for (const message of input) {
+                const genId = message?.extra?.gen_id;
+                if (typeof genId === 'string' && genId.length > 0 && seenGenIds.has(genId)) {
+                    dedupedGenIds.push(genId);
+                    continue;
+                }
+                if (typeof genId === 'string' && genId.length > 0) seenGenIds.add(genId);
+                accepted.push(message);
+            }
+
+            const appendPairs = accepted.map(() => `'$.body[#]', json(?)`).join(', ');
+            const documentExpr = appendPairs ? `json_insert(doc, ${appendPairs})` : 'doc';
+            const sql = `UPDATE chats
+                SET doc = json_set(${documentExpr}, '$.header.chat_metadata.integrity', ?),
+                    updated_at = ?
+                WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`;
+            const args = [
+                ...accepted.map(message => JSON.stringify(message)),
+                newIntegrity,
+                updatedAt,
+                p.handle,
+                p.char_dir,
+                p.name,
+                p.is_group,
+                p.group_id,
+            ];
+            const result = db.prepare(sql).run(...args);
+            if (result.changes !== 1) return { status: 'missing' };
+
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                accepted: accepted.length,
+                dedupedGenIds,
+            };
+        },
         info(key) {
             const p = chatKeyToParams(key);
             const row = stmt.info.get(p.handle, p.char_dir, p.name, p.is_group, p.group_id);
