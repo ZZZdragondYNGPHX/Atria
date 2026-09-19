@@ -19,6 +19,8 @@ describe('Webpack warm-start output detection', () => {
         expect(configSource).toContain("public/lib-bundle-codemirror.js");
         expect(configSource).not.toContain('gitRevision');
         expect(configSource).not.toContain('readLocalGitRevision');
+        expect(configSource).toContain('if (cachedWebpackCacheVersion)');
+        expect(configSource).toContain('cachedWebpackCacheVersion = hash.digest');
     });
 
 
