@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, and the final W-03/W-04 World Info Chinese-localization cleanup are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, and the mobile Atria Workspace launcher repair are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `2c8141a532338eba0756805b741bb258a113043d`
+- `9dc4cf842ca20d95caa07dfefb51efe856ce80f5`
 
-This commit is the squash merge of PR #12. It keeps the completed World Info/P-02–P-05/P-04 runtime behavior unchanged and finishes the Atria World Info author UI localization for Simplified and Traditional Chinese, including native state conditions, state change events, selection/dependencies and their dynamic controls. The merged tree exactly matches the final validated PR #12 task tree.
+This commit is the squash merge of PR #13. It repairs the real mobile Agent & Memory Workspace launcher path without changing persistence or orchestration semantics: the Workspace now has explicit measured mobile viewport geometry and sits above host settings drawers. The visible launcher is covered by a real-host mobile regression.
 
 ## Branch roles
 
@@ -194,6 +194,24 @@ Final validation for PR #4 passed:
 - Final validation passed Worldbook Performance Foundation #200 and Atria PR Checks #447 with 591 suites / 7,930 tests.
 - Cleanup workflow #12 succeeded and removed `fix/worldbook-zh-localization` after merge.
 - Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in.
+
+
+### Mobile Atria Workspace launcher repair
+
+- PR #13
+- Baseline: `main@2c8141a532338eba0756805b741bb258a113043d`
+- Final validated head: `e8a1ccdedb8925ac1e301eccef7e119d1deef8b5`
+- Squash merge / current `main`: `9dc4cf842ca20d95caa07dfefb51efe856ce80f5`
+- Record: `fixes/atria-workspace-mobile-launcher.md`
+- Root cause: on the real mobile host the Workspace mounted with `hidden=false` and visible computed styles but had a 0px bounding-box height because the host combines transformed `html` with fixed-position mobile `body`; `position: fixed; inset: 0` therefore resolved against a zero-height containing block.
+- The Workspace now uses explicit mobile viewport geometry, with JS-measured `--doc-height` as the final height authority and viewport units as fallback.
+- Workspace overlay z-index is 4100 so it remains above settings drawers at 4000/4005 while native `<dialog>` top-layer surfaces remain above it.
+- The real launcher stays direct; no drawer-closing workaround is retained.
+- Final validation passed Workspace UI #150, Atria PR Checks #453, and Worldbook Performance Foundation #204.
+- The new real-host mobile regression opens Extensions, expands Agent & Memory, clicks the visible Workspace launcher, verifies non-zero geometry, and confirms hit-testing lands on the Workspace.
+- No persisted settings, namespaces, memory data, chat data, or storage formats changed.
+- Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in.
+
 
 ## Long-lived references
 
