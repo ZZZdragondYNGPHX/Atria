@@ -59,9 +59,11 @@ function collectLineSpans(filePath, stat, chunkSize = DEFAULT_CHUNK_SIZE) {
         if (spans.length === 0) return null;
 
         // Preserve the old full-read corruption contract when an index is
-        // first built or invalidated: every non-empty JSONL line is validated,
-        // but parsed message objects are not retained in memory.
+        // first built or invalidated: every non-empty JSONL line is validated.
+        // While validating, retain only small dedup metadata (generation IDs),
+        // never the parsed message bodies.
         let header = null;
+        const genIds = new Set();
         for (let i = 0; i < spans.length; i++) {
             let parsed;
             try {
@@ -72,6 +74,11 @@ function collectLineSpans(filePath, stat, chunkSize = DEFAULT_CHUNK_SIZE) {
             if (i === 0) {
                 if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
                 header = parsed;
+            } else {
+                const genId = parsed?.extra?.gen_id;
+                if (typeof genId === 'string' && genId.length > 0) {
+                    genIds.add(genId);
+                }
             }
         }
 
@@ -84,6 +91,7 @@ function collectLineSpans(filePath, stat, chunkSize = DEFAULT_CHUNK_SIZE) {
             header,
             headerSpan: spans[0],
             bodySpans: spans.slice(1),
+            genIds,
         };
     } finally {
         fs.closeSync(fd);
@@ -213,7 +221,7 @@ export function readFsChatRange(filePath, { fromIndex = 0, limit = 0 } = {}) {
  * @param {string} filePath
  * @param {object[]} messages
  * @param {{expectedIntegrity?: string|null, newIntegrity: string, updatedAt?: number}} options
- * @returns {{status:'ok',integrity:string,accepted:number}|{status:'conflict',actualIntegrity:string}|{status:'missing'}|{status:'unsupported'}}
+ * @returns {{status:'ok',integrity:string,accepted:number,dedupedGenIds:string[]}|{status:'conflict',actualIntegrity:string}|{status:'missing'}|{status:'unsupported'}}
  */
 export function appendFsChatMessages(filePath, messages, {
     expectedIntegrity = null,
@@ -230,8 +238,17 @@ export function appendFsChatMessages(filePath, messages, {
     }
 
     const nextMessages = Array.isArray(messages) ? messages : [];
-    if (nextMessages.length === 0) {
-        return { status: 'ok', integrity: currentIntegrity, accepted: 0 };
+    const seenGenIds = new Set(index.genIds || []);
+    const acceptedMessages = [];
+    const dedupedGenIds = [];
+    for (const message of nextMessages) {
+        const genId = message?.extra?.gen_id;
+        if (typeof genId === 'string' && genId.length > 0 && seenGenIds.has(genId)) {
+            dedupedGenIds.push(genId);
+            continue;
+        }
+        if (typeof genId === 'string' && genId.length > 0) seenGenIds.add(genId);
+        acceptedMessages.push(message);
     }
 
     const nextHeader = {
@@ -254,7 +271,9 @@ export function appendFsChatMessages(filePath, messages, {
         return { status: 'unsupported' };
     }
 
-    const messageText = nextMessages.map(message => JSON.stringify(message)).join('\n') + '\n';
+    const messageText = acceptedMessages.length
+        ? acceptedMessages.map(message => JSON.stringify(message)).join('\n') + '\n'
+        : '';
     const messageBytes = Buffer.from(messageText, 'utf8');
     const fd = fs.openSync(filePath, 'r+');
     try {
@@ -268,10 +287,12 @@ export function appendFsChatMessages(filePath, messages, {
         // Append first. If a process failure happens before the header rotate,
         // the old integrity remains and the retry path can deduplicate against
         // the newly landed tail instead of rejecting the retry as stale.
-        if (prefix.length) fs.writeSync(fd, prefix, 0, prefix.length, before.size);
-        const appendAt = before.size + prefix.length;
-        fs.writeSync(fd, messageBytes, 0, messageBytes.length, appendAt);
-        fs.fsyncSync(fd);
+        if (messageBytes.length > 0) {
+            if (prefix.length) fs.writeSync(fd, prefix, 0, prefix.length, before.size);
+            const appendAt = before.size + prefix.length;
+            fs.writeSync(fd, messageBytes, 0, messageBytes.length, appendAt);
+            fs.fsyncSync(fd);
+        }
 
         fs.writeSync(fd, headerBytes, 0, headerBytes.length, index.headerSpan.start);
         fs.fsyncSync(fd);
@@ -284,7 +305,12 @@ export function appendFsChatMessages(filePath, messages, {
         try { fs.utimesSync(filePath, seconds, seconds); } catch { /* best-effort */ }
     }
     rangeIndexCache.delete(filePath);
-    return { status: 'ok', integrity: newIntegrity, accepted: nextMessages.length };
+    return {
+        status: 'ok',
+        integrity: newIntegrity,
+        accepted: acceptedMessages.length,
+        dedupedGenIds,
+    };
 }
 
 export function invalidateFsChatRangeIndex(filePath) {
