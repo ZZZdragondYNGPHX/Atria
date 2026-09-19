@@ -52,6 +52,7 @@ import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-ta
 import {
     extractZipEntryWithAdmZip,
     isRestoreEntryIdleTimeoutError,
+    RestoreEntryAdaptivePolicy,
     streamZipEntryWithIdleTimeout,
 } from '../backup-sync/restore-entry-extractor.js';
 
@@ -766,6 +767,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         reportProgress({ phase: 'extract', current: 0, total: extractTotal });
         let lastExtractProgressAt = 0;
         let lastExtractLogAt = 0;
+        const entryExtractionPolicy = new RestoreEntryAdaptivePolicy();
         const reportExtractProgress = (force) => {
             const now = Date.now();
             const current = result.restoredCount + result.failedCount;
@@ -895,6 +897,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                         zipfile,
                                         entry,
                                         targetPath,
+                                        timeoutMs: entryExtractionPolicy.timeoutMs,
                                         onChunk: (_chunkBytes, totalBytes) => {
                                             entryBytes = totalBytes;
                                             reportEntryProgress(false);
@@ -905,10 +908,18 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                         throw error;
                                     }
 
+                                    const wasDegraded = entryExtractionPolicy.degraded;
+                                    entryExtractionPolicy.noteStall();
                                     console.warn(
                                         '[user-backup] Entry stream stalled; retrying with fallback extractor: '
-                                        + `name=${normalized} size=${entryTotalBytes}`,
+                                        + `name=${normalized} size=${entryTotalBytes} timeout=${error.timeoutMs}ms`,
                                     );
+                                    if (!wasDegraded) {
+                                        console.warn(
+                                            '[user-backup] Adaptive fallback enabled for remaining entries: '
+                                            + `primary idle probe=${entryExtractionPolicy.timeoutMs}ms`,
+                                        );
+                                    }
                                     await fsPromises.rm(targetPath, { force: true });
                                     entryBytes = 0;
                                     reportEntryProgress(true);
