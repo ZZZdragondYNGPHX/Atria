@@ -11,6 +11,93 @@ const MiB = 1024 * 1024;
 const PROVIDERS = createBackupSyncProviderRegistry();
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
 
+let activeArchiveRestore = null;
+const archiveRestoreViews = new Set();
+
+function archiveRestoreRunning() {
+    return activeArchiveRestore?.state === 'running';
+}
+
+function activateArchivePanel(root) {
+    const tab = root.querySelector('.backupSyncTab[data-tab="archive"]');
+    if (!tab) return;
+    root.querySelectorAll('.backupSyncTab').forEach(item => item.classList.toggle('active', item === tab));
+    root.querySelectorAll('.backupSyncPanel').forEach(panel => {
+        panel.classList.toggle('displayNone', panel.dataset.panel !== 'archive');
+    });
+}
+
+function syncArchiveRestoreView(root) {
+    const session = activeArchiveRestore;
+    if (!root || !session) return;
+
+    if (session.fileName) {
+        const label = root.querySelector('.backupArchiveFileLabel');
+        if (label && session.state === 'running') label.textContent = `恢复中：${session.fileName}`;
+    }
+
+    if (session.state === 'running') {
+        activateArchivePanel(root);
+        setRestoreControlsBusy(root, true);
+        setRestoreStartEnabled(root, false);
+        if (session.progress) {
+            renderRestoreProgress(root, session.progress);
+        } else {
+            renderRestoreTerminalState(root, '恢复任务仍在后台运行…', 'running');
+        }
+        return;
+    }
+
+    setRestoreControlsBusy(root, false);
+
+    if (session.state === 'completed') {
+        renderRestoreTerminalState(
+            root,
+            `上次恢复完成：${Number(session.result?.restoredCount || 0)} 项；失败 ${Number(session.result?.failedCount || 0)} 项。`,
+            'ok',
+        );
+    } else if (session.state === 'failed') {
+        renderRestoreTerminalState(root, `上次恢复失败：${session.error || '未知错误'}`, 'error');
+    } else if (session.state === 'cancelled') {
+        renderRestoreTerminalState(root, '上次恢复已取消。', 'idle');
+    }
+}
+
+function broadcastArchiveRestoreState() {
+    for (const view of archiveRestoreViews) {
+        syncArchiveRestoreView(view);
+    }
+}
+
+function beginArchiveRestoreSession({ fileName, mode }) {
+    const session = {
+        state: 'running',
+        fileName: String(fileName || ''),
+        mode: String(mode || ''),
+        progress: null,
+        result: null,
+        error: '',
+        startedAt: Date.now(),
+    };
+    activeArchiveRestore = session;
+    broadcastArchiveRestoreState();
+    return session;
+}
+
+function updateArchiveRestoreProgress(session, event) {
+    if (activeArchiveRestore !== session || session.state !== 'running') return;
+    session.progress = { ...event };
+    broadcastArchiveRestoreState();
+}
+
+function finishArchiveRestoreSession(session, state, payload = null) {
+    if (activeArchiveRestore !== session) return;
+    session.state = state;
+    if (state === 'completed') session.result = payload;
+    if (state === 'failed') session.error = String(payload?.message || payload || '恢复失败');
+    broadcastArchiveRestoreState();
+}
+
 function setRestoreStartEnabled(root, enabled) {
     const button = root.querySelector('.backupRestoreStart');
     if (!button) return;
@@ -624,7 +711,7 @@ export async function openBackupSyncCenter({
     let selectedArchive = null;
     let preflight = null;
     let preflightVersion = 0;
-    let restoreBusy = false;
+    archiveRestoreViews.add(center);
 
     const reloadManaged = async () => {
         const payload = await postJson('/api/backups/managed/list', { type: 'chat' });
@@ -636,15 +723,15 @@ export async function openBackupSyncCenter({
         const version = ++preflightVersion;
         preflight = null;
         setRestoreStartEnabled(center, false);
-        if (!selectedArchive || restoreBusy) return;
+        if (!selectedArchive || archiveRestoreRunning()) return;
         try {
             const result = await runPreflight(center, selectedArchive.file, canManageGlobalExtensions);
-            if (version !== preflightVersion || restoreBusy) return;
+            if (version !== preflightVersion || archiveRestoreRunning()) return;
             preflight = result;
             renderPreflight(center, result);
             setRestoreStartEnabled(center, true);
         } catch (error) {
-            if (version !== preflightVersion || restoreBusy) return;
+            if (version !== preflightVersion || archiveRestoreRunning()) return;
             renderPreflightError(center, error);
         }
     };
@@ -735,15 +822,19 @@ export async function openBackupSyncCenter({
         selectedArchive = file
             ? await PROVIDERS.get('local-file').openArtifact(file)
             : null;
+        if (!archiveRestoreRunning()) activeArchiveRestore = null;
         center.querySelector('.backupArchiveFileLabel').textContent = selectedArchive?.name || '未选择文件';
         await rerunPreflight();
     });
     center.querySelector('.backupRestoreStart').addEventListener('click', async () => {
         const button = center.querySelector('.backupRestoreStart');
-        if (button.disabled || restoreBusy || !selectedArchive || !preflight) return;
+        if (button.disabled || archiveRestoreRunning() || !selectedArchive || !preflight) return;
 
-        restoreBusy = true;
         preflightVersion++;
+        const session = beginArchiveRestoreSession({
+            fileName: selectedArchive.name,
+            mode: preflight.mode,
+        });
         setRestoreStartEnabled(center, false);
         setRestoreControlsBusy(center, true);
         renderRestoreTerminalState(center, '正在准备安全恢复…', 'running');
@@ -753,28 +844,27 @@ export async function openBackupSyncCenter({
                 handle,
                 file: selectedArchive.file,
                 preflight,
-                onProgress: event => renderRestoreProgress(center, event),
+                onProgress: event => updateArchiveRestoreProgress(session, event),
             });
             if (!result) {
-                renderRestoreTerminalState(center, '恢复已取消。', 'idle');
+                finishArchiveRestoreSession(session, 'cancelled');
                 return;
             }
-            renderRestoreTerminalState(
-                center,
-                `恢复完成：${Number(result.restoredCount || 0)} 项；失败 ${Number(result.failedCount || 0)} 项。`,
-                'ok',
-            );
+            finishArchiveRestoreSession(session, 'completed', result);
             toastr.success(`恢复完成：${Number(result.restoredCount || 0)} 项；失败 ${Number(result.failedCount || 0)} 项。`);
             await onRestored?.(result);
-            await refreshRetention(center);
-            await reloadManaged();
+            if (center.isConnected) {
+                await refreshRetention(center);
+                await reloadManaged();
+            }
         } catch (error) {
-            renderRestoreTerminalState(center, `恢复失败：${error.message}`, 'error');
+            finishArchiveRestoreSession(session, 'failed', error);
             toastr.error(`恢复失败：${error.message}`);
         } finally {
-            restoreBusy = false;
-            setRestoreControlsBusy(center, false);
-            setRestoreStartEnabled(center, Boolean(preflight));
+            if (center.isConnected) {
+                setRestoreControlsBusy(center, false);
+                setRestoreStartEnabled(center, Boolean(preflight) && !archiveRestoreRunning());
+            }
         }
     });
 
@@ -788,12 +878,17 @@ export async function openBackupSyncCenter({
         loadProviders(center).catch(error => toastr.error(`读取 Provider 失败：${error.message}`)),
         loadRestoreRecoveryPoints(center).catch(error => toastr.error(`读取恢复点失败：${error.message}`)),
     ]);
+    syncArchiveRestoreView(center);
 
-    return callGenericPopup(center, POPUP_TYPE.DISPLAY, '', {
-        wide: true,
-        wider: true,
-        large: true,
-        allowVerticalScrolling: true,
-        okButton: t`Close`,
-    });
+    try {
+        return await callGenericPopup(center, POPUP_TYPE.DISPLAY, '', {
+            wide: true,
+            wider: true,
+            large: true,
+            allowVerticalScrolling: true,
+            okButton: t`Close`,
+        });
+    } finally {
+        archiveRestoreViews.delete(center);
+    }
 }
