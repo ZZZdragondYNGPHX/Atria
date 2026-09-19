@@ -2638,12 +2638,16 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     gap: 6px;
 }
 
-#WorldInfo .wi-library-mobile-search-options {
-    display: none;
+#WorldInfo .wi-library-mobile-search-options,
+#WorldInfo .wi-entry-mobile-search-options {
+    display: block;
 }
 
-#WorldInfo .wi-entry-mobile-search-options {
-    display: none;
+@media screen and (min-width: 1000.01px) {
+    #WorldInfo .wi-library-mobile-search-options,
+    #WorldInfo .wi-entry-mobile-search-options {
+        display: none;
+    }
 }
 
 #WorldInfo #wi_workspace_library .world_info_manager_toggle {
