@@ -10728,8 +10728,6 @@ export function initOpenAI() {
         });
     }
 
-
-
     $('#openrouter_providers_chat').on('change', function () {
         const selectedProviders = $(this).val();
 
