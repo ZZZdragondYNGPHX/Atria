@@ -106,7 +106,12 @@ test.describe('Backup & Sync Center', () => {
         });
 
         await awaitMainUI(page, server.baseURL);
-        const center = await openBackupSyncCenter(page);
+        await page.evaluate(async () => {
+            const mod = await import('/scripts/backup-sync-center.js');
+            void mod.openBackupSyncCenter({ handle: 'default-user' });
+        });
+        const center = page.locator('.backupSyncCenter').last();
+        await center.waitFor({ state: 'visible', timeout: 10_000 });
         await center.locator('.backupSyncTab[data-tab="archive"]').click();
         await center.locator('input[name="backupRestoreMode"][value="full"]').check();
 
