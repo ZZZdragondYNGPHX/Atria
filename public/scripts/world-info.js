@@ -6426,6 +6426,7 @@ async function displayWorldEntries(name, data, navigation = navigation_option.no
         name,
         data,
         entries: entriesArray,
+        focusUid: typeof navigation === 'number' && Number(navigation) >= 0 ? navigation : null,
         callbacks: {
             renderInspector: (entry, host) => renderWorldInfoWorkspaceInspector(name, data, entry, host),
             onSelectionChange: (entry, selected, options) => setWorldInfoEntrySelected(name, entry.uid, selected, data, options),
