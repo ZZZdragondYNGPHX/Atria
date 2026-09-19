@@ -3085,18 +3085,19 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         display: block;
     }
 
-    #WorldInfo #wi_workspace_library .wi-library-mobile-search-options > summary {
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-trigger {
         display: grid;
         width: 40px;
         min-width: 40px;
         height: 40px;
         place-items: center;
-        list-style: none;
+        padding: 0;
         cursor: pointer;
     }
 
-    #WorldInfo #wi_workspace_library .wi-library-mobile-search-options > summary::-webkit-details-marker {
-        display: none;
+    #WorldInfo #wi_workspace_library .wi-library-mobile-search-trigger[aria-expanded="true"] {
+        color: var(--SmartThemeQuoteColor);
+        background: color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent);
     }
 
     #WorldInfo #wi_workspace_library .wi-library-mobile-search-menu {
@@ -3324,18 +3325,19 @@ select.keyselect+span.select2-container .select2-selection--multiple {
         display: block;
     }
 
-    #WorldInfo .wi-entry-mobile-search-options > summary {
+    #WorldInfo .wi-entry-mobile-search-trigger {
         display: grid;
         width: 36px;
         min-width: 36px;
         height: 36px;
         place-items: center;
-        list-style: none;
+        padding: 0;
         cursor: pointer;
     }
 
-    #WorldInfo .wi-entry-mobile-search-options > summary::-webkit-details-marker {
-        display: none;
+    #WorldInfo .wi-entry-mobile-search-trigger[aria-expanded="true"] {
+        color: var(--SmartThemeQuoteColor);
+        background: color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent);
     }
 
     #WorldInfo .wi-entry-mobile-search-menu {
