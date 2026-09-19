@@ -8,7 +8,7 @@ import { commonEnumProviders, enumIcons } from '../../slash-commands/SlashComman
 import { SlashCommandEnumValue, enumTypes } from '../../slash-commands/SlashCommandEnumValue.js';
 import { SlashCommandParser } from '../../slash-commands/SlashCommandParser.js';
 import { download, equalsIgnoreCaseAndAccents, escapeHtml, getFileText, getSortableDelay, isFalseBoolean, isTrueBoolean, regexFromString, setInfoBlock, uuidv4 } from '../../utils.js';
-import { allowPresetScripts, allowScopedScripts, disallowPresetScripts, disallowScopedScripts, getCurrentPresetAPI, getCurrentPresetName, getRegexScripts, getRegexScriptDiagnostics, getRuntimeRegexScripts, getScriptsByType, isPresetScriptsAllowed, isScopedScriptsAllowed, regex_placement, RegexProvider, REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT, runRegexScript, saveScriptsByType, SCRIPT_TYPE_UNKNOWN, SCRIPT_TYPES, substitute_find_regex } from './engine.js';
+import { allowPresetScripts, allowScopedScripts, disallowPresetScripts, disallowScopedScripts, getCurrentPresetAPI, getCurrentPresetName, getRegexScripts, getRegexScriptDiagnostics, getRuntimeRegexScripts, getScriptsByType, invalidateRegexExecutionPlans, isPresetScriptsAllowed, isScopedScriptsAllowed, regex_placement, RegexProvider, REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT, runRegexScript, saveScriptsByType, SCRIPT_TYPE_UNKNOWN, SCRIPT_TYPES, substitute_find_regex } from './engine.js';
 import { REGEX_OPEN_SCRIPT_EVENT, resetRegexScriptState } from './redos-reporter.js';
 import { t } from '../../i18n.js';
 import { accountStorage } from '../../util/AccountStorage.js';
@@ -2626,6 +2626,7 @@ export async function reimportPresetEmbeddedRegexScripts(apiId = getCurrentPrese
         path: 'regex_scripts',
         value: [...currentScripts, ...importedScripts],
     });
+    invalidateRegexExecutionPlans();
     allowPresetScripts(apiId, presetName);
     await loadRegexScripts();
     if (getCurrentChatId()) {
@@ -2690,12 +2691,14 @@ async function checkPresetEmbeddedRegexScripts(event = {}) {
 
                 if (selectedScripts) {
                     await presetManager.writePresetExtensionField({ name, path: 'regex_scripts', value: selectedScripts });
+                    invalidateRegexExecutionPlans();
                     allowPresetScripts(apiId, name);
                     if (getCurrentChatId()) {
                         await requestRegexChatReload();
                     }
                 } else {
                     await presetManager.writePresetExtensionField({ name, path: 'regex_scripts', value: [] });
+                    invalidateRegexExecutionPlans();
                 }
             }
         } else if (getCurrentChatId() && scripts.filter(script => !script.disabled).length > 0) {
