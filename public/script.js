@@ -129,6 +129,7 @@ import {
     bindCurrentChatCompletionPresetToCharacter,
     clearCharacterBoundChatCompletionPreset,
     initOpenAI,
+    initOpenAIModelSelects,
 } from './scripts/openai.js';
 
 
@@ -2134,6 +2135,10 @@ async function firstLoadInit() {
     await fixViewport();
     await yieldToBrowser();
 
+    // The UI has painted. Start classic Select2 loading now so its parse/eval
+    // work is no longer on the pre-visible critical path.
+    const select2LibrariesReady = loadSelect2Libraries();
+
     // These modules are not needed to make the UI interactive. Start loading
     // them only after the loader is gone, and overlap their fetch/parse work
     // with the remaining startup batches.
@@ -2145,6 +2150,8 @@ async function firstLoadInit() {
         .catch((error) => console.warn('[init] variable-op panel failed to load', error));
 
     console.debug('[init] initPresetManager start');
+    await select2LibrariesReady;
+    initOpenAIModelSelects();
     await initPresetManager();
     console.debug('[init] initPresetManager done');
 
@@ -2268,6 +2275,60 @@ function runStartupTasks(tasks) {
 async function yieldToBrowser() {
     await new Promise(resolve => requestAnimationFrame(resolve));
     await delay(0);
+}
+
+let select2LibrariesPromise;
+
+function loadStartupClassicScript(src) {
+    const selector = `script[data-atria-startup-lazy-src="${src}"]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+        if (existing.dataset.atriaStartupLazyLoaded === 'true') {
+            return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+            existing.addEventListener('load', resolve, { once: true });
+            existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+        });
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = false;
+        script.dataset.atriaStartupLazySrc = src;
+        script.addEventListener('load', () => {
+            script.dataset.atriaStartupLazyLoaded = 'true';
+            resolve();
+        }, { once: true });
+        script.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+        document.head.append(script);
+    });
+}
+
+function loadSelect2Libraries() {
+    if (typeof $.fn?.select2 === 'function' && globalThis.__atriaSelect2SearchPatchLoaded === true) {
+        return Promise.resolve();
+    }
+
+    if (!select2LibrariesPromise) {
+        select2LibrariesPromise = (async () => {
+            if (typeof $.fn?.select2 !== 'function') {
+                await loadStartupClassicScript('/lib/select2.min.js');
+            }
+            if (globalThis.__atriaSelect2SearchPatchLoaded !== true) {
+                await loadStartupClassicScript('/lib/select2-search-placeholder.js');
+            }
+            if (typeof $.fn?.select2 !== 'function') {
+                throw new Error('Select2 library failed to initialize');
+            }
+        })().catch((error) => {
+            select2LibrariesPromise = null;
+            throw error;
+        });
+    }
+
+    return select2LibrariesPromise;
 }
 
 let macroAutoCompleteModulePromise;
