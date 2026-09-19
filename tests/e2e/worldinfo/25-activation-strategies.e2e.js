@@ -187,7 +187,7 @@ async function openBookInEditor(page, bookName) {
             jq('#world_editor_select').val(value).trigger('change');
         }, optionValue);
         try {
-            await page.locator('#world_popup_entries_list .world_entry').first().waitFor({ state: 'visible', timeout: 6_000 });
+            await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first().waitFor({ state: 'visible', timeout: 6_000 });
             rendered = true;
         } catch { /* retry */ }
     }
@@ -221,7 +221,7 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         // the hood. We then close the drawer so the chat composer is
         // unobstructed for the send turns below.
         await openBookInEditor(page, 'activation-strategies-book');
-        const editorEntryCount = page.locator('#world_popup_entries_list .world_entry');
+        const editorEntryCount = page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row');
         await expect(editorEntryCount, 'expected the editor to render all 7 strategy entries on open').toHaveCount(7);
 
         // Helper: send a turn and return the body of the resulting chat-completion request.
@@ -290,20 +290,11 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         // the entry HEADER (visible even before the inline drawer body
         // expands), so we don't need to expand the entry first.
         await openBookInEditor(page, 'activation-strategies-book');
-        const states = await page.evaluate(() => {
-            const rows = Array.from(document.querySelectorAll('#world_popup_entries_list .world_entry'));
-            return rows.map(r => {
-                const commentEl = r.querySelector('input[name="comment"], textarea[name="comment"]');
-                const stateEl = r.querySelector('select[name="entryStateSelector"]');
-                return {
-                    comment: commentEl?.value || '',
-                    state: stateEl?.value || '',
-                };
-            });
-        });
-        const vectorRow = states.find(s => s.comment === 'vectorized-flag');
-        expect(vectorRow, 'vectorized entry should be present in the editor').toBeTruthy();
-        expect(vectorRow.state, 'vectorized entry should expose the "vectorized" state in the entry selector').toBe('vectorized');
+        const vectorListRow = page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row', { hasText: 'vectorized-flag' });
+        await vectorListRow.click();
+        const vectorState = page.locator('#wi_workspace_inspector_body select[name="entryStateSelector"]');
+        await vectorState.waitFor({ state: 'visible', timeout: 5000 });
+        expect(await vectorState.inputValue(), 'vectorized entry should expose the "vectorized" state in the Inspector').toBe('vectorized');
 
         // Now drive a real send turn whose user text mentions the
         // vectorized entry's primary key ("kelp"). VECTOR_LORE must
