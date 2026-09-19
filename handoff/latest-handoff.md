@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, and the Workspace maintenance / archive-restore responsiveness fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, and the Android shared-storage archive extraction stall fix are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `dbaf8f2f397220a4e9544e44df55a114ea408067`
+- `43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
 
-This commit is the squash merge of PR #14. It removes orphan Memory maintenance help controls, makes archive restore progress visible through the existing NDJSON stream, moves recovery snapshot copying off the event loop, and guards same-mode filesystem restore with the migration lock/read-only gate. The validated merge tree matches the PR head tree exactly.
+This commit is the squash merge of PR #15. Android/shared-storage restore ZIPs are now staged onto Termux/internal temporary storage before `yauzl` random-access extraction; extraction reports per-entry byte progress, and recovery controls stay locked while restore owns the migration lock. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,22 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Android archive restore stall
+
+- PR #15
+- Baseline: `main@dbaf8f2f397220a4e9544e44df55a114ea408067`
+- Final validated head: `c6b143f7d9b55ada9be194a4587e053bc54867dd`
+- Squash merge / current `main`: `43caed0c7d2d27a18b5de3f851bdfefcafb26dd2`
+- Final merged tree: `5e73acc167d1de065f975b9b43cc3bbdbf93bbea`, identical to the validated task-head tree.
+- Record: `fixes/android-archive-restore-stall.md`
+- Android/shared-storage ZIPs under paths such as `/storage/emulated/0/.../_uploads` are staged to internal temporary storage before random-access extraction.
+- Local archive restore, LAN migration import, and legacy Data ZIP import share the staging protection.
+- Backup Center now exposes the current entry and byte-level extraction progress, so a large file is distinguishable from a stalled restore.
+- Recovery-point controls are disabled while an archive restore holds the migration lock; server-side lock rejection remains the safety backstop.
+- Final validation passed Atria Migration Guard, ESLint, the complete Node unit suite, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
+- Android JVM tests and Android/Docker builds were not run because they remain opt-in and this task changes no Kotlin or container-delivery code.
+- The temporary `fix/android-archive-restore-stall` branch was removed after merge.
 
 ### Workspace maintenance and archive restore responsiveness
 
