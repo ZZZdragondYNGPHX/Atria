@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, and the World Info Workspace UI refactor are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, the adaptive fallback / manual interrupt rollback fix, the yauzl 3.4 primary-path validation, the restore UI / five-point recovery retention fix, native orchestrator preset protection, the regex engine performance refactor, the World Info Workspace UI refactor, and the World Info Workspace Chinese-localization fix are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `5645020e68c95d37c1ee44a375b22328173948b8`
+- `59bc6862487331d12378e4fdd1da403a248e12a5`
 
-This commit is the squash merge of PR #23. World Info now opens as a responsive Library / Entries / Global Rules workspace. The default Entries surface uses a bounded virtual list plus one six-section Inspector; mobile uses full-screen drill-down. Deterministic Issues diagnostics, searchable relationship picking, contextual bulk editing, display modes, runtime-backed Test Activation and Continuous Cards compatibility are integrated through thin adapters around the existing World Info runtime. No World Info persistence/API/import-export/state protocol migration was introduced. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #24. The World Info Workspace introduced by PR #23 now routes its Workspace-owned navigation, Inspector, Issues diagnostics, relationship picker, bulk UI, Global Rules and Test Activation text through the existing i18n system, with complete Simplified Chinese and Traditional Chinese coverage. The deterministic diagnostics module remains Node/Jest-safe through the optional runtime i18n bridge. No World Info persistence/API/import-export/activation/state/selection/storage semantics changed. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,22 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### World Info Workspace Chinese localization
+
+- PR #24
+- Baseline: `main@5645020e68c95d37c1ee44a375b22328173948b8`
+- Final validated head: `fe91c5692e6fe03d2f6a953ca3d41b8e4264812e`
+- Squash merge / current `main`: `59bc6862487331d12378e4fdd1da403a248e12a5`
+- Final task tree and merged-main tree are identical.
+- Record: `fixes/world-info-workspace-zh-localization.md`
+- Workspace-owned navigation, six-section Inspector, summaries/badges, filters, bulk UI, Global Rules, relationship picker, Issues messages, menus and Test Activation now use the existing i18n system.
+- Simplified Chinese and Traditional Chinese locale coverage was audited across 124 Workspace / Issues / Test Activation keys with zero missing keys in either locale.
+- Deterministic diagnostics stay DOM-independent for Node/Jest by using `globalThis.__i18n.t` only when the browser runtime exposes it and retaining English fallback templates otherwise.
+- English fallback behavior retains the existing singular/plural contract (`1 entry` / `N entries`); visible budget-tier enum labels are localized without changing persisted values.
+- World Info #34 includes a real zh-CN browser regression for navigation, all six Inspector headings, filters, Issues messages, relationship-picker placeholders and Global Rules.
+- Final validation passed Atria PR Checks #547 and Worldbook Performance Foundation #232, including ESLint, frontend libraries build, complete Node unit tests, Atria Migration Guard, focused regressions, benchmark, real-host Chromium smoke and complete World Info browser acceptance.
+- Android JVM/APK and Docker builds were intentionally not run because they remain opt-in and this task changes browser JavaScript/locales/tests only.
 
 ### World Info Workspace UI refactor
 
