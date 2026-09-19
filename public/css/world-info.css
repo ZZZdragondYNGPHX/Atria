@@ -2843,8 +2843,12 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     padding: 0;
 }
 
-.wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal {
+#WorldInfo .wi-worldbook-action-sheet-dialog .world_info_manager_item_menu.wi-worldbook-action-sheet-portal {
     position: static;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     display: flex;
     width: 100%;
     box-sizing: border-box;
@@ -2860,13 +2864,13 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     pointer-events: auto;
 }
 
-.wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal .menu_button {
+#WorldInfo .wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal .menu_button {
     justify-content: flex-start;
     width: 100%;
     min-height: 42px;
 }
 
-.wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal .is-destructive {
+#WorldInfo .wi-worldbook-action-sheet-dialog .wi-worldbook-action-sheet-portal .is-destructive {
     color: var(--crimson70a);
 }
 
