@@ -6,87 +6,105 @@ import { Popup, POPUP_TYPE } from './popup.js';
 import { power_user, registerDebugFunction } from './power-user.js';
 import { isMobile } from './RossAscends-mods.js';
 import { renderTemplateAsync } from './templates.js';
+import { deleteItemizedPromptIndexMessage, ItemizedPromptStore, swapItemizedPromptIndexMessageIds } from './atri-itemized-prompt-store.js';
 import { getFriendlyTokenizerName, getTokenCountsAsync } from './tokenizers.js';
 import { copyText } from './utils.js';
 
-let PromptArrayItemForRawPromptDisplay;
-let priorPromptArrayItemForRawPromptDisplay;
-
 const promptStorage = localforage.createInstance({ name: 'SillyTavern_Prompts' });
+const promptStore = new ItemizedPromptStore(promptStorage);
 export let itemizedPrompts = [];
 
+let activePromptChatId = '';
+let itemizedFlushTimer = null;
+let itemizedPendingChatId = null;
+let itemizedMutationQueue = Promise.resolve();
+
+function replacePromptSummaries(entries) {
+    itemizedPrompts.length = 0;
+    itemizedPrompts.push(...(Array.isArray(entries) ? entries : []));
+}
+
+function queuePromptMutation(task) {
+    itemizedMutationQueue = itemizedMutationQueue
+        .catch(() => undefined)
+        .then(task);
+    return itemizedMutationQueue;
+}
+
+async function waitForPromptMutations() {
+    await itemizedMutationQueue.catch(() => undefined);
+}
+
 /**
- * Gets the itemized prompts for a chat.
+ * Gets the lightweight itemized-prompt index for a chat.
+ * Prompt bodies stay in independent records and are read only when requested.
+ * Legacy full-array records are migrated lazily on first access and preserved.
  * @param {string} chatId Chat ID to load
  */
 export async function loadItemizedPrompts(chatId) {
-    // Pending writes target the previous chat — flush so the entry isn't
-    // overwritten with the next chat's prompts after `itemizedPrompts` is
-    // replaced below.
     await flushItemizedPromptsSave();
+    const targetChatId = String(chatId || '').trim();
+    activePromptChatId = targetChatId;
+    if (!targetChatId) {
+        replacePromptSummaries([]);
+        return;
+    }
+
     try {
-        if (!chatId) {
-            itemizedPrompts = [];
-            return;
-        }
-
-        itemizedPrompts = await promptStorage.getItem(chatId);
-
-        if (!itemizedPrompts) {
-            itemizedPrompts = [];
-        }
-
-        await eventSource.emit(event_types.ITEMIZED_PROMPTS_LOADED, { chatId: chatId });
+        const index = await promptStore.loadIndex(targetChatId);
+        replacePromptSummaries(index);
+        await eventSource.emit(event_types.ITEMIZED_PROMPTS_LOADED, { chatId: targetChatId });
     } catch {
-        console.log('Error loading itemized prompts for chat', chatId);
-        itemizedPrompts = [];
+        console.log('Error loading itemized prompt index for chat', targetChatId);
+        replacePromptSummaries([]);
     }
 }
 
 /**
- * Saves the itemized prompts for a chat.
- *
- * `prompts` defaults to the live module-level `itemizedPrompts`. localforage's
- * IDB driver structured-clones the value during the put transaction, so any
- * defensive clone here would be redundant work on the main thread.
+ * Persists the current lightweight index, copies diagnostics to a branch /
+ * checkpoint target, or imports a caller-supplied full prompt array.
  * @param {string} chatId Chat ID to save itemized prompts for
+ * @param {Array} prompts Prompt summaries or full prompt records
  */
 export async function saveItemizedPrompts(chatId, prompts = itemizedPrompts) {
+    const targetChatId = String(chatId || '').trim();
+    if (!targetChatId) return;
+
     try {
-        if (!chatId) {
-            return;
+        await waitForPromptMutations();
+        const list = Array.isArray(prompts) ? prompts : [];
+        const containsFullRecords = list.some(item => item && typeof item === 'object' && !item.recordId && (
+            Object.hasOwn(item, 'rawPrompt')
+            || Object.hasOwn(item, 'worldInfoString')
+            || Object.hasOwn(item, 'finalPrompt')
+        ));
+
+        if (containsFullRecords) {
+            const index = await promptStore.replaceChatFromRecords(targetChatId, list);
+            if (targetChatId === activePromptChatId) replacePromptSummaries(index);
+        } else if (activePromptChatId && targetChatId !== activePromptChatId) {
+            await promptStore.copyChat(activePromptChatId, targetChatId, itemizedPrompts);
+        } else {
+            await promptStore.persistIndex(targetChatId, list);
         }
 
-        const nextPrompts = Array.isArray(prompts) ? prompts : [];
-        await promptStorage.setItem(chatId, nextPrompts);
-        await eventSource.emit(event_types.ITEMIZED_PROMPTS_SAVED, { chatId: chatId });
+        await eventSource.emit(event_types.ITEMIZED_PROMPTS_SAVED, { chatId: targetChatId });
     } catch {
-        console.log('Error saving itemized prompts for chat', chatId);
+        console.log('Error saving itemized prompts for chat', targetChatId);
     }
 }
 
 const ITEMIZED_FLUSH_DELAY_MS = 1000;
-let itemizedFlushTimer = null;
-let itemizedPendingChatId = null;
 
 /**
- * Coalesces itemized-prompts writes per chat. Each call marks `chatId` as
- * pending; the IDB put runs at most once per ITEMIZED_FLUSH_DELAY_MS and reads
- * the current `itemizedPrompts` at flush time. If a different chat becomes
- * pending while a write is queued, the previous chat's write is flushed
- * synchronously first — the live `itemizedPrompts` only matches one chat at a
- * time.
+ * Coalesces lightweight index writes. Full diagnostic bodies are persisted by
+ * upsertItemizedPrompt() one record at a time, so normal chat saves no longer
+ * rewrite the full diagnostic history.
  * @param {string} chatId
  */
 export function saveItemizedPromptsDebounced(chatId) {
     const targetChatId = String(chatId || '').trim();
     if (!targetChatId) return;
-
-    if (itemizedPendingChatId && itemizedPendingChatId !== targetChatId) {
-        // Different chat now owns `itemizedPrompts` — persist the previous
-        // one's content before it gets overwritten by the new chat's data.
-        flushItemizedPromptsSave();
-    }
 
     itemizedPendingChatId = targetChatId;
     if (itemizedFlushTimer) return;
@@ -95,9 +113,9 @@ export function saveItemizedPromptsDebounced(chatId) {
         const flushChatId = itemizedPendingChatId;
         itemizedPendingChatId = null;
         if (!flushChatId) return;
-        saveItemizedPrompts(flushChatId, itemizedPrompts).catch(
-            (e) => console.warn('saveItemizedPromptsDebounced: flush failed', e),
-        );
+        const snapshot = itemizedPrompts.map(entry => ({ ...entry }));
+        queuePromptMutation(() => promptStore.persistIndex(flushChatId, snapshot))
+            .catch((error) => console.warn('saveItemizedPromptsDebounced: flush failed', error));
     }, ITEMIZED_FLUSH_DELAY_MS);
 }
 
@@ -106,10 +124,14 @@ export async function flushItemizedPromptsSave() {
         clearTimeout(itemizedFlushTimer);
         itemizedFlushTimer = null;
     }
-    if (!itemizedPendingChatId) return;
+
     const flushChatId = itemizedPendingChatId;
     itemizedPendingChatId = null;
-    await saveItemizedPrompts(flushChatId, itemizedPrompts);
+    if (flushChatId) {
+        const snapshot = itemizedPrompts.map(entry => ({ ...entry }));
+        await queuePromptMutation(() => promptStore.persistIndex(flushChatId, snapshot));
+    }
+    await waitForPromptMutations();
 }
 
 function cancelItemizedPromptsDebounced() {
@@ -121,63 +143,84 @@ function cancelItemizedPromptsDebounced() {
 }
 
 /**
- * Replaces the itemized prompt text for a message.
- * @param {number} mesId Message ID to get itemized prompt for
+ * Persists one prompt diagnostic and updates only the lightweight index.
+ * @param {object} promptRecord Full prompt diagnostic record
+ * @param {string} [chatId] Target chat; defaults to the active prompt chat
+ * @returns {Promise<void>}
+ */
+export async function upsertItemizedPrompt(promptRecord, chatId = activePromptChatId || getCurrentChatId()) {
+    const targetChatId = String(chatId || '').trim();
+    if (!targetChatId || !promptRecord || typeof promptRecord !== 'object') return;
+    const baseIndex = targetChatId === activePromptChatId
+        ? itemizedPrompts.map(entry => ({ ...entry }))
+        : null;
+    const next = await queuePromptMutation(() => promptStore.upsert(targetChatId, promptRecord, baseIndex));
+    if (targetChatId === activePromptChatId) replacePromptSummaries(next);
+}
+
+/**
+ * Replaces the raw prompt text for a single message without loading or writing
+ * the chat's other prompt diagnostics.
+ * @param {number} mesId Message ID
  * @param {string} promptText New raw prompt text
- * @returns
  */
 export async function replaceItemizedPromptText(mesId, promptText) {
-    if (!Array.isArray(itemizedPrompts)) {
-        itemizedPrompts = [];
-    }
-
-    const itemizedPrompt = itemizedPrompts.find(x => x.mesId === mesId);
-
-    if (!itemizedPrompt) {
-        return;
-    }
-
-    itemizedPrompt.rawPrompt = promptText;
+    if (!activePromptChatId) return;
+    const baseIndex = itemizedPrompts.map(entry => ({ ...entry }));
+    const next = await queuePromptMutation(() => (
+        promptStore.replaceRawPrompt(activePromptChatId, mesId, promptText, baseIndex)
+    ));
+    replacePromptSummaries(next);
 }
 
 /**
- * Deletes itemized prompt data for a specific message id from in-memory cache.
- * The caller should persist using saveItemizedPrompts(chatId) at an appropriate time.
- * @param {number} mesId Message ID to remove
- */
-
-/**
- * Deletes the itemized prompts for a chat.
- * @param {string} chatId Chat ID to delete itemized prompts for
+ * Deletes all prompt diagnostics for a chat, including both the P-02 layout
+ * and the preserved legacy array.
+ * @param {string} chatId Chat ID to delete
  */
 export async function deleteItemizedPrompts(chatId) {
+    const targetChatId = String(chatId || '').trim();
+    if (!targetChatId) return;
     try {
-        if (!chatId) {
-            return;
-        }
-
-        if (itemizedPendingChatId === String(chatId).trim()) {
-            cancelItemizedPromptsDebounced();
-        }
-        await promptStorage.removeItem(chatId);
-        await eventSource.emit(event_types.ITEMIZED_PROMPTS_DELETED, { chatId: chatId, all: false });
+        if (itemizedPendingChatId === targetChatId) cancelItemizedPromptsDebounced();
+        await waitForPromptMutations();
+        await promptStore.deleteChat(targetChatId);
+        if (activePromptChatId === targetChatId) replacePromptSummaries([]);
+        await eventSource.emit(event_types.ITEMIZED_PROMPTS_DELETED, { chatId: targetChatId, all: false });
     } catch {
-        console.log('Error deleting itemized prompts for chat', chatId);
+        console.log('Error deleting itemized prompts for chat', targetChatId);
     }
 }
 
 /**
- * Empties the itemized prompts array and caches.
+ * Empties all prompt diagnostics and caches.
  */
 export async function clearItemizedPrompts() {
     try {
         cancelItemizedPromptsDebounced();
-        await promptStorage.clear();
-        itemizedPrompts = [];
+        await waitForPromptMutations();
+        await promptStore.clear();
+        replacePromptSummaries([]);
         await eventSource.emit(event_types.ITEMIZED_PROMPTS_DELETED, { all: true });
     } catch {
         console.log('Error clearing itemized prompts');
     }
+}
+
+/**
+ * Explicit rollback aid for P-02. Rebuilds the old per-chat full-array key
+ * from the current per-record layout without deleting the new layout.
+ * @param {string} [chatId] Chat ID
+ * @returns {Promise<Array>}
+ */
+export async function rollbackItemizedPromptsStorage(chatId = activePromptChatId || getCurrentChatId()) {
+    const targetChatId = String(chatId || '').trim();
+    if (!targetChatId) return [];
+    await waitForPromptMutations();
+    return await promptStore.rollbackToLegacy(
+        targetChatId,
+        targetChatId === activePromptChatId ? itemizedPrompts : null,
+    );
 }
 
 export async function itemizedParams(itemizedPrompts, thisPromptSet, incomingMesId) {
