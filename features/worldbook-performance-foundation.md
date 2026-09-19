@@ -17,7 +17,7 @@
 
 Establish a measured foundation for long-chat / World Info work without replacing the existing SillyTavern-compatible World Info engine or creating a second writable gameplay-state system.
 
-The merged scope now covers P-00/P-01 and W-00 through W-05. P-02 through P-05 remain follow-up work.
+The merged scope covers P-00/P-01 and W-00 through W-05. PR #10 continues the performance content block with P-02 through P-05 under the explicit no-storage-migration boundary described below.
 
 ## Implementation
 
@@ -179,12 +179,125 @@ Android JVM tests and Android / Docker builds were intentionally not run for thi
 - W-05 performs no automatic migration rewrite; compatibility is selected at runtime and unknown fields are preserved.
 - MVU / LoreState remain state owners; World Info reads snapshots only.
 
+## P-02–P-05 continuation · PR #10
+
+- Continuation baseline: `main@03d97d655370b31c2a27dd1235f917deadd6246e`
+- Temporary branch: `feat/worldbook-performance-foundation`
+- Pull request: #10 — `perf: continue worldbook performance P02-P05`
+- Current implementation head while final validation is running: `f752e0e1f532d2796b5b476acc2c57149973ef5a`
+- Android and Docker remain opt-in and are intentionally not part of the default validation.
+
+### P-02 diagnostics on demand
+
+Prompt diagnostics no longer require loading and rewriting one complete per-chat diagnostic array on ordinary access.
+
+- Added a lightweight per-chat diagnostic index plus independent per-message records.
+- Opening a chat loads the index only; opening one diagnostic fetches that record on demand.
+- Prompt-diff UI reads only the selected record plus the nearest prior record with a raw prompt.
+- New diagnostic writes update one record and the lightweight index rather than rewriting the complete diagnostic history.
+- Legacy `SillyTavern_Prompts` arrays migrate lazily on first access.
+- The legacy array is retained as a rollback copy; an explicit rollback helper can rematerialize it from current records.
+- Checkpoint copy, message reorder and message deletion keep diagnostics aligned with chat message IDs.
+- Focused coverage includes a 10,000-entry index load proving that current-layout chat open does not fetch diagnostic bodies.
+
+### P-03 rendering hot path: bounded depth scan
+
+The previously measured message-depth cost was removed from the streaming/latest-message hot path without changing formatting semantics.
+
+- Added `getMessageDepthFromTail()`.
+- Message regex depth no longer allocates a mapped/filtered copy of the full chat on every format pass.
+- The latest non-system message is constant-time; an older visible message scans only its suffix.
+- Regression tests compare the new helper against the previous whole-chat algorithm across mixed system/non-system histories.
+
+Synthetic CI evidence from Worldbook Performance #183 (`Intel Xeon 6973P`, Node `24.20.0`, seven measured samples after warmup):
+
+- 10,000-message latest-message depth: 1,000 calls median `0.013 ms`.
+- 10,000-message recent 100-message window depth pass: median `0.023 ms`.
+
+These numbers are synthetic process-level evidence, not a browser/device SLA.
+
+A completed-message HTML cache and partial Markdown/HTML stream renderer are deliberately **not** enabled in this continuation. The current renderer permits dynamic Regex providers, macros, arbitrary synchronous `MessageFormatter` hooks, rebuildable Showdown configuration and DOMPurify hooks. A cache without a unified formatting revision would risk stale or incorrect output and would violate the P-03 correctness exit condition.
+
+### P-04 message-granular storage foundation
+
+P-04 now has real repository/engine capabilities instead of HTTP endpoints that still unconditionally materialize the complete chat.
+
+#### Common storage contract
+
+The storage transaction surface now supports optional chat-specific capabilities:
+
+- `getChatRange`
+- `getChatInfo`
+- `appendChatMessages`
+- `patchChatMessages`
+
+`ChatRepo` uses these capabilities when available and preserves the established full-resource fallback for unsupported engine/file/operation shapes.
+
+#### Range reads and chat summaries
+
+- Character and group `/get-delta` route through `ChatRepo.getRange()`.
+- List/recent-chat metadata can use `ChatRepo.getInfo()` rather than pulling the whole body into Node.
+- FS uses a bounded process-local JSONL byte-offset index. Cold index construction validates all JSONL lines; warm reads parse only the requested message spans.
+- SQLite uses JSON1.
+- MySQL uses native JSON/JSON_TABLE.
+- PostgreSQL uses JSONB array operations.
+
+The FS performance regression demonstrates that a warm one-message read from a 5,000-message chat reads less than one percent of the original chat bytes.
+
+#### Native append
+
+- FS appends only new JSONL rows and rotates a same-length header integrity value in place with fsync; generation-ID dedup is retained in the lightweight range index.
+- Old/incompatible FS headers return `unsupported` and automatically fall back to the established full rewrite.
+- SQLite, MySQL and PostgreSQL update their JSON document inside the database and preserve OCC/integrity checks plus generation-ID dedup.
+- Character/group append and generation-persistence paths use the common Repo append capability.
+- Backup payload creation is lazy: a throttled backup materializes the complete chat only when the throttle actually executes, instead of serializing a complete chat for calls that the throttle discards.
+
+#### Native whole-message patch
+
+SQLite, MySQL and PostgreSQL support the high-frequency whole-message JSON Patch subset:
+
+- `test /N`
+- `replace /N`
+- `remove /N`
+
+Nested paths and other operation shapes return `unsupported` before mutation and fall back to the established path. Character and group patch endpoints prefer the native path and retain the existing integrity/test conflict behavior.
+
+FS variable-length replace/remove intentionally remains on the atomic full-rewrite fallback. A crash-safe truly local replace/remove for canonical JSONL requires a journal, physical record layer or another storage-format migration. The master plan explicitly treats that expansion as a separate approval boundary, so this continuation does not introduce a hidden storage migration.
+
+### P-05 measured Memory hot paths
+
+World Info W-04/W-05 semantics remain unchanged. P-05 removes repeated Memory OS preparation work that was measurable in the existing synthetic fixture:
+
+- Memory corpus construction reuses the already-projected fact/support view instead of projecting the same facts again inside Temporal Graph.
+- Relation-derived fact status and provider authoritative slots are indexed once.
+- Ranking builds document lookup maps and relation adjacency once; graph expansion no longer filters the complete corpus at each BFS depth.
+- Stable relation-lane ordering is explicitly regression-tested.
+- No default provider/model call was added.
+
+Synthetic CI evidence from Worldbook Performance #183:
+
+| Fixture | Corpus docs | Corpus median | Ranking median |
+| ---: | ---: | ---: | ---: |
+| 500 relations | 1,500 | 8.686 ms | 4.507 ms |
+| 1,500 relations | 4,500 | 24.908 ms | 11.612 ms |
+| 3,000 relations | 9,000 | 57.367 ms | 23.755 ms |
+
+The expected top result remained `relation:r42` for every measured fixture. These values describe the CI synthetic fixture only and do not include embedding, rerank network calls or model generation.
+
+### Continuation validation
+
+The continuation validation matrix is intentionally split:
+
+- **Worldbook Performance Foundation:** P-02/P-03/P-04/P-05 focused regressions, synthetic benchmark artifact, isolated real-host Chromium smoke, and W-04/W-05 real-request/import-export E2E.
+- **Atria PR Checks:** ESLint, Atria Migration Guard and the complete Node unit suite with real MySQL 8.4 and PostgreSQL 16 service containers.
+
+The final validated head and resulting `main` merge are recorded after the latest PR #10 runs complete.
+
+
 ## Follow-up
 
 W-04/W-05 are complete in PR #9 and merged to `main@03d97d655370b31c2a27dd1235f917deadd6246e`.
 
-Remaining master-plan slices:
+PR #10 implements the no-migration P-02–P-05 continuation described above. Remaining deeper work is limited to boundaries that require a new contract or explicit architectural approval, notably exact formatter-cache invalidation / partial Markdown streaming and crash-safe FS local replace/remove storage representation.
 
-- P-02 through P-05 long-chat / storage / frontend performance work.
-
-Future slices should start from the live `main` in new temporary task branches. W-04/W-05 should not be reopened as a compatibility migration unless a new measured requirement justifies it.
+W-04/W-05 should not be reopened as a compatibility migration unless a new measured requirement justifies it.
