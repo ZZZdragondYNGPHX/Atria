@@ -6,7 +6,7 @@
 - Baseline: `main@21f11b93f0e165485488236b74072a12c7df0c4e`
 - Working branch: `refactor/world-info-workspace-ui`
 - Design status: approved after multi-round discussion
-- Implementation status: not started
+- Implementation status: implemented and validated
 - This document is the authoritative implementation plan for the task. Do not restart product design from scratch unless current code proves a specific item infeasible.
 
 ## 1. Background
