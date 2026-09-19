@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { jest } from '@jest/globals';
 
 import { ChatRepo } from '../../../src/storage/repositories/chat-repo.js';
 import { recoverFsChatPatchJournal } from '../../../src/storage/engines/fs-chat-range.js';
@@ -51,6 +52,7 @@ describe('FS native whole-message patch journal', () => {
     });
 
     afterEach(async () => {
+        jest.restoreAllMocks();
         if (h) await h.cleanup();
     });
 
@@ -144,6 +146,44 @@ describe('FS native whole-message patch journal', () => {
 
         expect(result).toEqual({ status: 'unsupported' });
         expect(fs.readFileSync(filePath).equals(before)).toBe(true);
+        expect(fs.existsSync(filePath + JOURNAL_SUFFIX)).toBe(false);
+    });
+
+    test('commit-marker fsync failure rolls back instead of exposing an uncertain commit', async () => {
+        const { integrity } = await seed([{ mes: 'a' }, { mes: 'b' }]);
+        const filePath = chatPath(h);
+        const original = fs.readFileSync(filePath);
+        const realWriteSync = fs.writeSync.bind(fs);
+        const realFsyncSync = fs.fsyncSync.bind(fs);
+        let failNextFsync = false;
+
+        jest.spyOn(fs, 'writeSync').mockImplementation((...args) => {
+            const buffer = args[1];
+            const length = Number(args[3] || 0);
+            if (Buffer.isBuffer(buffer)
+                && length === 1
+                && buffer.subarray(Number(args[2] || 0), Number(args[2] || 0) + 1).toString('utf8') === 'C') {
+                failNextFsync = true;
+            }
+            return realWriteSync(...args);
+        });
+        jest.spyOn(fs, 'fsyncSync').mockImplementation((fd) => {
+            if (failNextFsync) {
+                failNextFsync = false;
+                throw new Error('simulated commit-marker fsync failure');
+            }
+            return realFsyncSync(fd);
+        });
+
+        await expect(repo.patchMessages(
+            h.handle,
+            'A',
+            'c',
+            [{ op: 'replace', path: '/1', value: { mes: 'replacement-with-different-size' } }],
+            integrity,
+        )).rejects.toThrow('simulated commit-marker fsync failure');
+
+        expect(fs.readFileSync(filePath).equals(original)).toBe(true);
         expect(fs.existsSync(filePath + JOURNAL_SUFFIX)).toBe(false);
     });
 
