@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, and the restore-lifecycle / Git-sentinel fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, and the per-entry restore fallback fix are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `c2f2cf9f2e9da8cc7d591dc4d862dcbe888a8baf`
+- `ea757892a2b0e7caf1e8d81cdf0e636a91d35cf5`
 
-This commit is the squash merge of PR #16. Full restore now preserves the tracked third-party extension `.gitkeep`, both Termux update entry points can self-heal that exact interrupted-restore deletion, and Backup Center can reattach to an archive restore after the popup is closed and reopened. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #17. Archive restore now detects a ZIP entry that produces no data for 15 seconds, aborts the stalled yauzl stream, retries that entry with a bounded independent extractor, and preserves the existing rollback path if both extractors fail. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,21 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Restore ZIP entry stream fallback
+
+- PR #17
+- Baseline: `main@c2f2cf9f2e9da8cc7d591dc4d862dcbe888a8baf`
+- Final validated head: `bfb2d9623a8997963026c678cd3955141dfbacea`
+- Squash merge / current `main`: `ea757892a2b0e7caf1e8d81cdf0e636a91d35cf5`
+- Final task tree and merged-main tree: `6ba8e02085d137df95e74e7e77962cfbe5499d50`
+- Record: `fixes/restore-entry-stream-fallback.md`
+- A selected ZIP entry that produces no data for 15 seconds is actively aborted instead of hanging restore indefinitely.
+- The stalled entry is retried through an independent `adm-zip` fallback, bounded to 128 MiB decoded size per entry.
+- If fallback also fails, the existing restore failure/rollback path receives the error.
+- The reported `为美好的世界献上祝福 - 沙盒 - 1.3.0.json` case was confirmed to stall before JSON parsing, so no worldbook format change was required.
+- Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
+- The temporary `fix/restore-entry-stream-fallback` branch is expected to be removed by the merged-branch cleanup workflow.
 
 ### Restore lifecycle and repository sentinel preservation
 
