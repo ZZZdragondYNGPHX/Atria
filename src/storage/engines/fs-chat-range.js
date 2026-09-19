@@ -82,6 +82,7 @@ function collectLineSpans(filePath, stat, chunkSize = DEFAULT_CHUNK_SIZE) {
             updatedAt: Math.floor(stat.mtimeMs),
             createdAt: Math.floor(stat.birthtimeMs || stat.ctimeMs),
             header,
+            headerSpan: spans[0],
             bodySpans: spans.slice(1),
         };
     } finally {
@@ -201,6 +202,89 @@ export function readFsChatRange(filePath, { fromIndex = 0, limit = 0 } = {}) {
         };
     }
     return null;
+}
+
+/**
+ * Appends messages to a canonical FS chat without rewriting existing body
+ * lines. Returns unsupported when the header cannot be rotated in place
+ * (for example an old file with no fixed-length integrity field), allowing
+ * ChatRepo to fall back to the full-resource path.
+ *
+ * @param {string} filePath
+ * @param {object[]} messages
+ * @param {{expectedIntegrity?: string|null, newIntegrity: string, updatedAt?: number}} options
+ * @returns {{status:'ok',integrity:string,accepted:number}|{status:'conflict',actualIntegrity:string}|{status:'missing'}|{status:'unsupported'}}
+ */
+export function appendFsChatMessages(filePath, messages, {
+    expectedIntegrity = null,
+    newIntegrity,
+    updatedAt,
+} = {}) {
+    const index = getRangeIndex(filePath);
+    if (!index) return { status: 'missing' };
+
+    const currentIntegrity = String(index.header?.chat_metadata?.integrity ?? '');
+    if (expectedIntegrity !== null && expectedIntegrity !== undefined
+        && currentIntegrity !== expectedIntegrity) {
+        return { status: 'conflict', actualIntegrity: currentIntegrity };
+    }
+
+    const nextMessages = Array.isArray(messages) ? messages : [];
+    if (nextMessages.length === 0) {
+        return { status: 'ok', integrity: currentIntegrity, accepted: 0 };
+    }
+
+    const nextHeader = {
+        ...index.header,
+        chat_metadata: {
+            ...(index.header?.chat_metadata ?? {}),
+            integrity: newIntegrity,
+        },
+    };
+    const headerText = JSON.stringify(nextHeader);
+    const headerBytes = Buffer.from(headerText, 'utf8');
+    const headerLength = index.headerSpan.end - index.headerSpan.start;
+    if (headerBytes.length !== headerLength) {
+        return { status: 'unsupported' };
+    }
+
+    const before = fs.statSync(filePath);
+    if (!sameFileVersion(index, before)) {
+        rangeIndexCache.delete(filePath);
+        return { status: 'unsupported' };
+    }
+
+    const messageText = nextMessages.map(message => JSON.stringify(message)).join('\n') + '\n';
+    const messageBytes = Buffer.from(messageText, 'utf8');
+    const fd = fs.openSync(filePath, 'r+');
+    try {
+        let prefix = Buffer.alloc(0);
+        if (before.size > 0) {
+            const lastByte = Buffer.allocUnsafe(1);
+            fs.readSync(fd, lastByte, 0, 1, before.size - 1);
+            if (lastByte[0] !== 0x0a) prefix = Buffer.from('\n');
+        }
+
+        // Append first. If a process failure happens before the header rotate,
+        // the old integrity remains and the retry path can deduplicate against
+        // the newly landed tail instead of rejecting the retry as stale.
+        if (prefix.length) fs.writeSync(fd, prefix, 0, prefix.length, before.size);
+        const appendAt = before.size + prefix.length;
+        fs.writeSync(fd, messageBytes, 0, messageBytes.length, appendAt);
+        fs.fsyncSync(fd);
+
+        fs.writeSync(fd, headerBytes, 0, headerBytes.length, index.headerSpan.start);
+        fs.fsyncSync(fd);
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    if (typeof updatedAt === 'number' && Number.isFinite(updatedAt)) {
+        const seconds = updatedAt / 1000;
+        try { fs.utimesSync(filePath, seconds, seconds); } catch { /* best-effort */ }
+    }
+    rangeIndexCache.delete(filePath);
+    return { status: 'ok', integrity: newIntegrity, accepted: nextMessages.length };
 }
 
 export function invalidateFsChatRangeIndex(filePath) {
