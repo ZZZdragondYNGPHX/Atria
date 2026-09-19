@@ -172,7 +172,7 @@ export function hasSpecialWorldInfoBehavior(entry) {
         || entry.delay != null
         || entry.excludeRecursion
         || entry.preventRecursion
-        || entry.delayUntilRecursion
+        || entry.delayUntilRecursion,
     );
 }
 
