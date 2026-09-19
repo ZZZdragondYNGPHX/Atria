@@ -709,6 +709,19 @@ async function preSetupTasks() {
     markStartupMilestone('pre-setup.start');
     const finishPreSetup = startStartupPhase('pre-setup.total');
 
+    // Frontend bundle validation/compilation touches only disposable Webpack
+    // output and source inputs, so it can overlap the user-data/storage/plugin
+    // startup work below. Convert rejection into a handled result immediately
+    // to avoid an unhandled-rejection window before the final join.
+    const finishFrontendCache = startStartupPhase('pre-setup.frontend-cache');
+    const frontendCacheReady = webpackMiddleware.runWebpackCompiler({ pruneCache: true }).then(
+        () => {
+            finishFrontendCache();
+            return { ok: true };
+        },
+        error => ({ ok: false, error }),
+    );
+
     const finishVersion = startStartupPhase('pre-setup.version');
     const version = await getVersion();
     finishVersion();
@@ -861,10 +874,12 @@ async function preSetupTasks() {
     initRequestProxy({ enabled: cliArgs.requestProxyEnabled, url: cliArgs.requestProxyUrl, bypass: cliArgs.requestProxyBypass, enableKeepAlive: cliArgs.enableKeepAlive, privateRequestFilterEnabled: requestFilterOptions.enabled });
     finishNetworkPolicy();
 
-    // Wait for frontend libs to compile
-    const finishFrontendCache = startStartupPhase('pre-setup.frontend-cache');
-    await webpackMiddleware.runWebpackCompiler({ pruneCache: true });
-    finishFrontendCache();
+    // Join the frontend cache task before listen. A compile/check failure keeps
+    // the existing fail-fast behavior; only the waiting time is overlapped.
+    const frontendCacheResult = await frontendCacheReady;
+    if (!frontendCacheResult.ok) {
+        throw frontendCacheResult.error;
+    }
 
     finishPreSetup();
     markStartupMilestone('pre-setup.done');
