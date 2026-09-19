@@ -336,6 +336,12 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             },
         };
     } catch (err) {
+        if (isRestoreCancelledError(err) && !snapshotPath) {
+            if (transient) {
+                try { await transient.cleanup(); } catch { /* best-effort */ }
+            }
+            throw err;
+        }
         if (isRestoreCancelledError(err) && snapshotPath) {
             try {
                 await restoreFromSnapshot({
@@ -560,6 +566,10 @@ export async function extractFsTreeCategories(zipPath, dirs, selection, opts = {
                         } catch (writeErr) {
                             failedCount += 1;
                             reportProgress(restoredCount + failedCount, extractTotal, true);
+                            if (signal?.aborted && signal.reason) {
+                                finish(signal.reason);
+                                return;
+                            }
                             finish(writeErr);
                         }
                     });
