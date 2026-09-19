@@ -1186,13 +1186,13 @@ function resolveRestoreRecoveryPath(handle, id) {
 
 async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
     const { recoveryPath, meta } = resolveRestoreRecoveryPath(handle, recoveryId);
-    activeRecoveryPointPaths.add(recoveryPath);
     const includeGlobalExtensions = meta?.includeGlobalExtensions === true
         || fs.existsSync(path.join(recoveryPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY));
     const engine = getStorageEngine();
     const holderId = makeHolderId();
     let heartbeat = null;
     await acquireMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    activeRecoveryPointPaths.add(recoveryPath);
     heartbeat = startHeartbeat({ dataRoot: globalThis.DATA_ROOT, holderId });
     setReadOnly(true);
 
