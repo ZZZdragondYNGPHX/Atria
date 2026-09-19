@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, and the per-entry restore fallback fix are complete and merged into `main`.
+Atria is an independent SillyTavern-based modified product. The product bootstrap, Atria hard-cutover namespace migration, Agent & Memory Workspace redesign, Termux main-branch pinning, agent-native Web Access / API fallback integration, the Worldbook Performance Foundation, its P-02–P-05 continuation, the approved P-04 FS crash-safe local patch continuation, the final W-03/W-04 World Info Chinese-localization cleanup, the mobile Atria Workspace launcher repair, the Workspace maintenance / archive-restore responsiveness fix, the Android shared-storage archive extraction stall fix, the restore-lifecycle / Git-sentinel fix, the per-entry restore fallback fix, and the adaptive fallback / manual interrupt rollback fix are complete and merged into `main`.
 
 Current authoritative `main`:
 
-- `ea757892a2b0e7caf1e8d81cdf0e636a91d35cf5`
+- `c51d8b779a741f0cf87758b5f8565be581f17556`
 
-This commit is the squash merge of PR #17. Archive restore now detects a ZIP entry that produces no data for 15 seconds, aborts the stalled yauzl stream, retries that entry with a bounded independent extractor, and preserves the existing rollback path if both extractors fail. The merged tree is identical to the validated PR-head tree.
+This commit is the squash merge of PR #18. Repeated ZIP stalls switch to a 1-second primary probe after the first confirmed stall, and Backup Center now provides a server-backed `中断并回退` action that aborts an active restore and reapplies the pre-restore recovery point when writes have begun. The merged tree is identical to the validated PR-head tree.
 
 ## Branch roles
 
@@ -60,6 +60,22 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Adaptive restore fallback and manual interrupt rollback
+
+- PR #18
+- Baseline: `main@ea757892a2b0e7caf1e8d81cdf0e636a91d35cf5`
+- Final validated head: `fd75188f261351db34255aba994757bb6e92e949`
+- Squash merge / current `main`: `c51d8b779a741f0cf87758b5f8565be581f17556`
+- Final task tree and merged-main tree: `e6407588da5c13a0ba31a425a4b6e1841e562df3`
+- Record: `fixes/restore-adaptive-fallback-and-cancel.md`
+- The first silent yauzl entry keeps the 15-second diagnostic watchdog; after that first confirmed stall, later primary probes use 1 second before falling back.
+- Backup Center exposes a confirmed `中断并回退` action while a restore is active.
+- The server owns an AbortController per account restore and exposes `POST /api/users/restore-backup/cancel`.
+- Cancellation aborts staging and active entry streams; once mutations have started, the pre-restore recovery point is applied before terminal cancellation is reported.
+- Administrator full-restore recovery points include the global third-party extension scope so rollback matches the destructive restore scope.
+- Final validation passed Atria Migration Guard, ESLint, complete Node unit tests, Backup Center Chromium, Browser Storage Chromium, and Server Storage Chromium.
+- The temporary `fix/restore-adaptive-fallback` branch is expected to be removed by the merged-branch cleanup workflow.
 
 ### Restore ZIP entry stream fallback
 
