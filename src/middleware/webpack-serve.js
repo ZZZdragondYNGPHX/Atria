@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import getPublicLibConfig from '../../webpack.config.js';
+import { markStartupMilestone } from '../startup-timing.js';
 
 // Pre-built bundles shipped by the packager (Android APK, etc.) skip the
 // in-process Webpack compile entirely. The directory must contain the three
@@ -93,13 +94,24 @@ export default function getWebpackServeMiddleware() {
     devMiddleware.runWebpackCompiler = async ({ forceDist = false, pruneCache = false, forceCompile = false } = {}) => {
         if (prebuiltBundleDir && !forceCompile) {
             console.log();
+            console.log(`[startup] frontend-cache source=prebuilt root=${prebuiltBundleDir} hit=true`);
             console.log(`Using pre-built frontend bundles from ${prebuiltBundleDir}`);
+            markStartupMilestone('frontend.cache.ready', 'source=prebuilt');
             return;
         }
 
         const publicLibConfig = getPublicLibConfig({ forceDist, pruneCache });
-        if (!forceCompile && hasCompleteWebpackOutput(publicLibConfig)) {
-            console.log();
+        const outputPath = publicLibConfig.output?.path || '';
+        const cacheVersionDir = outputPath ? path.dirname(outputPath) : '';
+        const cacheKey = cacheVersionDir ? path.basename(cacheVersionDir) : 'unknown';
+        const cacheRoot = cacheVersionDir ? path.dirname(cacheVersionDir) : 'unknown';
+        const cacheSource = process.env.ATRIA_WEBPACK_CACHE_ROOT ? 'env' : (forceDist ? 'dist' : 'dataRoot');
+        const cacheHit = !forceCompile && hasCompleteWebpackOutput(publicLibConfig);
+        console.log();
+        console.log(`[startup] frontend-cache source=${cacheSource} root=${cacheRoot} key=${cacheKey} hit=${cacheHit}`);
+        markStartupMilestone('frontend.cache.checked', `source=${cacheSource} hit=${cacheHit}`);
+
+        if (cacheHit) {
             console.log(`Using cached frontend bundles from ${publicLibConfig.output.path}`);
             return;
         }
@@ -110,17 +122,24 @@ export default function getWebpackServeMiddleware() {
         // Webpack pulls in ~7 MB of code at parse time. Defer to here so warm
         // starts that already have version-matched bundles never pay for the
         // compiler import or compilation itself.
+        const importStartedAt = Date.now();
         const { default: webpack } = await import('webpack');
+        console.log(`[startup] phase webpack.import ${Date.now() - importStartedAt}ms`);
         const compiler = webpack(publicLibConfig);
+        const compilerRunStartedAt = Date.now();
 
         return new Promise((resolve) => {
             compiler.run((_error, stats) => {
+                console.log(`[startup] phase webpack.compiler-run ${Date.now() - compilerRunStartedAt}ms`);
                 const output = stats?.toString(publicLibConfig.stats);
                 if (output) {
                     console.log(output);
                     console.log();
                 }
+                const compilerCloseStartedAt = Date.now();
                 compiler.close(() => {
+                    console.log(`[startup] phase webpack.compiler-close ${Date.now() - compilerCloseStartedAt}ms`);
+                    markStartupMilestone('frontend.cache.ready', 'source=compiled');
                     resolve();
                 });
             });
