@@ -323,7 +323,9 @@ W-04/W-05 should not be reopened as a compatibility migration unless a new measu
 - Temporary branch: `feat/p04-fs-message-storage`
 - Pull request: #11 — `feat: deepen P04 filesystem chat patch storage`
 - Validated implementation tree before the master-plan-only status commit: `a11bf58d94ef7351676d6af3b901b4db999412b0`
-- Final task-head candidate: `0c8e18964acf8b1c85ee41feea4b8c1232994204`
+- Final validated task head: `0c8e18964acf8b1c85ee41feea4b8c1232994204`
+- Squash merge / resulting main: `32227e997c136228477bb4571e828f3852fe8eb1`
+- Final merged tree: `7e6dd92fc4cc6943ecded805667c8b3512c6725c`, identical to the final task-head tree.
 - Master plan: `docs/plans/worldbook-performance-master-plan.md`
 
 ### Goal
@@ -378,7 +380,7 @@ The implementation code tree `a11bf58d94ef7351676d6af3b901b4db999412b0` passed:
 
 The immediately preceding safety head `d7e02c77f1c23f61951b732a3eda2c3a546a1730` also passed Worldbook Performance Foundation #195 and Atria PR Checks #442. #195 explicitly passed the P-04 focused suites, synthetic benchmark, isolated real-host Chromium smoke, and W-04/W-05 E2E.
 
-The final task head adds only the master-plan status update on top of the validated implementation tree. Its final CI result and resulting `main` SHA are recorded when PR #11 is merged.
+The final task head adds only the master-plan status update on top of the validated implementation tree. It passed Worldbook Performance Foundation #199 and Atria PR Checks #446, then was squash-merged as `main@32227e997c136228477bb4571e828f3852fe8eb1`.
 
 Android JVM tests and Android/Docker builds were intentionally not run because they remain opt-in and this task did not touch Android delivery code.
 
