@@ -188,6 +188,32 @@ try {
     assert.equal(await workspace.getByRole('button', { name: 'Knowledge', exact: true }).count(), 1);
     assert.equal(await workspace.getByRole('button', { name: 'Sources', exact: true }).count(), 1);
     assert.equal(await workspace.getByRole('button', { name: 'Maintenance', exact: true }).count(), 1);
+    await page.evaluate(() => {
+        const host = document.createElement('div');
+        host.className = 'workspace-memory-advanced-host';
+        for (const id of [
+            'atria_rpg_memory_manual_compress',
+            'atria_rpg_memory_recompute_vectors',
+            'atria_rpg_memory_export',
+            'atria_rpg_memory_import',
+            'atria_rpg_memory_reset',
+        ]) {
+            const row = document.createElement('div');
+            row.className = 'memory-maintenance-action';
+            row.dataset.hiddenMaintenanceRow = id;
+            const action = document.createElement('button');
+            action.id = id;
+            const help = document.createElement('button');
+            help.className = 'atria-field-help';
+            help.textContent = '?';
+            row.append(action, help);
+            host.append(row);
+        }
+        document.querySelector('#agent-memory-workspace').append(host);
+    });
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-hidden-maintenance-row]')]
+        .every(row => getComputedStyle(row).display === 'none'));
+    assert.equal(await workspace.locator('[data-hidden-maintenance-row]:visible').count(), 0);
     await workspace.getByRole('button', { name: 'Knowledge', exact: true }).click();
     await workspace.getByRole('button', { name: /Memory One/ }).click();
     const memoryInspector = workspace.locator('.atria-workspace-inspector');

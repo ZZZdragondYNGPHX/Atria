@@ -61,6 +61,76 @@ test.describe('Backup & Sync Center', () => {
         await expect(center.locator('.backupRestoreStart')).toHaveClass(/disabled/);
     });
 
+    test('successful preflight enables restore and streams visible phase progress', async ({ page }) => {
+        await page.route('**/api/users/restore-backup/probe', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    compatible: true,
+                    engineKind: 'fs',
+                    destinationEngineKind: 'fs',
+                    restorePlan: {
+                        mode: 'full',
+                        stagedEngineRestore: false,
+                        crossModeRequired: false,
+                        recoveryPoint: 'required',
+                        verification: 'required',
+                    },
+                    preflight: {
+                        totalEntries: 3,
+                        targetableEntries: 3,
+                        skippedEntries: 0,
+                        rejectedEntries: 0,
+                        categoryStats: {
+                            settings: { targetableEntries: 1 },
+                            chats: { targetableEntries: 2 },
+                        },
+                        warnings: [],
+                    },
+                }),
+            });
+        });
+        await page.route('**/api/users/restore-backup', async route => {
+            expect(route.request().headers().accept).toContain('application/x-ndjson');
+            await route.fulfill({
+                status: 200,
+                headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
+                body: [
+                    JSON.stringify({ type: 'progress', phase: 'snapshot', current: 0, total: 1 }),
+                    JSON.stringify({ type: 'progress', phase: 'extract', current: 2, total: 3 }),
+                    JSON.stringify({ type: 'result', restoredCount: 3, failedCount: 0 }),
+                    '',
+                ].join('\n'),
+            });
+        });
+
+        await awaitMainUI(page, server.baseURL);
+        await page.evaluate(async () => {
+            const mod = await import('/scripts/backup-sync-center.js');
+            void mod.openBackupSyncCenter({ handle: 'default-user' });
+        });
+        const center = page.locator('.backupSyncCenter').last();
+        await center.waitFor({ state: 'visible', timeout: 10_000 });
+        await center.locator('.backupSyncTab[data-tab="archive"]').click();
+        await center.locator('input[name="backupRestoreMode"][value="full"]').check();
+
+        const zipPath = path.join(tempDir, 'streaming.zip');
+        writeFileSync(zipPath, 'PK\u0003\u0004mock');
+        await center.locator('.backupArchiveInput').setInputFiles(zipPath);
+
+        await expect(center.locator('.backupPreflightReport')).toHaveAttribute('data-state', 'ok');
+        await expect(center.locator('.backupRestoreStart')).toBeEnabled();
+
+        await center.locator('.backupRestoreStart').click();
+        const confirm = page.locator('dialog.popup[open]').last();
+        await confirm.locator('.popup-button-ok').click();
+
+        await expect(center.locator('.backupRestoreProgress')).toHaveAttribute('data-state', 'ok');
+        await expect(center.locator('.backupRestoreProgress')).toContainText('恢复完成：3 项；失败 0 项。');
+        await expect(center.locator('.backupRestoreStart')).toBeEnabled();
+    });
+
     test('archive recovery history section is present and refreshable', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
         const center = await openBackupSyncCenter(page);

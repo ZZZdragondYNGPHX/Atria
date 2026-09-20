@@ -636,6 +636,10 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     const tAnalyze = Date.now();
     const analysis = await analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, targetDirectories, categoryTargets, reportProgress);
     const analyzeMs = Date.now() - tAnalyze;
+    console.info(
+        `[user-backup] Analyze done: entries=${analysis.report.totalEntries} targetable=${analysis.report.targetableEntries} `
+        + `skipped=${analysis.report.skippedEntries} rejected=${analysis.report.rejectedEntries} analyze=${analyzeMs}ms`,
+    );
 
     // When the archive carries an engine dump, validate that the
     // recorded engineKind matches the server's current engine. If kinds
@@ -685,260 +689,283 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // type is kept exported for defensive backward compat with consumers that
     // still match on it, but the throw site has been removed.
 
-    if (isReplacingRestoreMode(mode) && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
-        throw new Error('Archive does not match selected restore categories. Overwrite was cancelled to protect existing data.');
-    }
+    // Same-mode fs restore mutates the live user tree directly. Hold the same
+    // migration lock/read-only gate used by cross-mode restore so the
+    // asynchronous recovery snapshot cannot race normal writes.
+    const holderId = makeHolderId();
+    let heartbeat = null;
+    await acquireMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    heartbeat = startHeartbeat({ dataRoot: globalThis.DATA_ROOT, holderId });
+    setReadOnly(true);
 
-    let recoveryPath = null;
-    let snapshotMs = 0;
-    const tSnap = Date.now();
     try {
-        recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress, {
-            restoreMode: mode,
-        });
-    } catch (snapshotError) {
-        throw new Error(`Failed to create recovery point before restore: ${snapshotError?.message || snapshotError}`);
-    }
-    snapshotMs = Date.now() - tSnap;
+        if (isReplacingRestoreMode(mode) && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
+            throw new Error('Archive does not match selected restore categories. Overwrite was cancelled to protect existing data.');
+        }
 
-    if (isReplacingRestoreMode(mode)) {
+        let recoveryPath = null;
+        let snapshotMs = 0;
+        const tSnap = Date.now();
+        console.info('[user-backup] Recovery snapshot start');
         try {
-            for (const filePath of targetFiles) {
-                await fsPromises.rm(filePath, { force: true });
-            }
-            for (const directoryPath of targetDirectories) {
-                await fsPromises.rm(directoryPath, { recursive: true, force: true });
-                ensureDirectory(directoryPath);
-            }
-        } catch (clearError) {
+            recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress, {
+                restoreMode: mode,
+            });
+        } catch (snapshotError) {
+            throw new Error(`Failed to create recovery point before restore: ${snapshotError?.message || snapshotError}`);
+        }
+        snapshotMs = Date.now() - tSnap;
+        console.info(`[user-backup] Recovery snapshot done: ${snapshotMs}ms path=${path.basename(recoveryPath)}`);
+
+        if (isReplacingRestoreMode(mode)) {
             try {
-                await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
-            } catch (rollbackError) {
-                throw new Error(
-                    `Failed to prepare overwrite restore and rollback also failed. Recovery point: ${recoveryPath}. `
-                    + `Prepare error: ${clearError?.message || clearError}. Rollback error: ${rollbackError?.message || rollbackError}`,
-                );
-            }
-            throw new Error(`Failed to prepare overwrite restore; previous data restored. ${clearError?.message || clearError}`);
-        }
-    }
-
-    const result = {
-        restoredCount: 0,
-        failedCount: 0,
-        skippedCount: analysis.report.skippedEntries,
-        rejectedCount: analysis.report.rejectedEntries,
-        preflight: analysis.report,
-    };
-
-    const tExtract = Date.now();
-    let extractMs = 0;
-    const extractTotal = analysis.report.targetableEntries;
-    reportProgress({ phase: 'extract', current: 0, total: extractTotal });
-    let lastExtractProgressAt = 0;
-    const reportExtractProgress = (force) => {
-        const now = Date.now();
-        if (!force && now - lastExtractProgressAt < 200) {
-            return;
-        }
-        lastExtractProgressAt = now;
-        reportProgress({ phase: 'extract', current: result.restoredCount + result.failedCount, total: extractTotal });
-    };
-    try {
-        await new Promise((resolve, reject) => {
-            yauzl.open(uploadPath, { lazyEntries: true, decodeStrings: true }, (openError, zipfile) => {
-                if (openError) {
-                    reject(openError);
-                    return;
+                for (const filePath of targetFiles) {
+                    await fsPromises.rm(filePath, { force: true });
                 }
+                for (const directoryPath of targetDirectories) {
+                    await fsPromises.rm(directoryPath, { recursive: true, force: true });
+                    ensureDirectory(directoryPath);
+                }
+            } catch (clearError) {
+                try {
+                    await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
+                } catch (rollbackError) {
+                    throw new Error(
+                        `Failed to prepare overwrite restore and rollback also failed. Recovery point: ${recoveryPath}. `
+                        + `Prepare error: ${clearError?.message || clearError}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                    );
+                }
+                throw new Error(`Failed to prepare overwrite restore; previous data restored. ${clearError?.message || clearError}`);
+            }
+        }
 
-                let finished = false;
-                const finish = (error) => {
-                    if (finished) {
+        const result = {
+            restoredCount: 0,
+            failedCount: 0,
+            skippedCount: analysis.report.skippedEntries,
+            rejectedCount: analysis.report.rejectedEntries,
+            preflight: analysis.report,
+        };
+
+        const tExtract = Date.now();
+        let extractMs = 0;
+        const extractTotal = analysis.report.targetableEntries;
+        console.info(`[user-backup] Extract start: targetable=${extractTotal}`);
+        reportProgress({ phase: 'extract', current: 0, total: extractTotal });
+        let lastExtractProgressAt = 0;
+        let lastExtractLogAt = 0;
+        const reportExtractProgress = (force) => {
+            const now = Date.now();
+            const current = result.restoredCount + result.failedCount;
+            if (force || now - lastExtractProgressAt >= 200) {
+                lastExtractProgressAt = now;
+                reportProgress({ phase: 'extract', current, total: extractTotal });
+            }
+            if (force || now - lastExtractLogAt >= 5000) {
+                lastExtractLogAt = now;
+                console.info(`[user-backup] Extract progress: ${current}/${extractTotal} failed=${result.failedCount}`);
+            }
+        };
+        try {
+            await new Promise((resolve, reject) => {
+                yauzl.open(uploadPath, { lazyEntries: true, decodeStrings: true }, (openError, zipfile) => {
+                    if (openError) {
+                        reject(openError);
                         return;
                     }
-                    finished = true;
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve();
-                    }
-                };
 
-                zipfile.readEntry();
-
-                zipfile.on('entry', (entry) => {
-                    (async () => {
-                        // Engine sentinel entries (spec §5.2). _engine_meta.json
-                        // was already consumed during analyze for kind
-                        // validation, so skip it on disk. _engine_dump.bin is
-                        // routed to engine.restoreUser(handle, stream) and
-                        // never lands as a file under the user's data root —
-                        // it's the opaque payload the engine ingests itself.
-                        if (entry.fileName === ENGINE_META_ENTRY) {
-                            zipfile.readEntry();
+                    let finished = false;
+                    const finish = (error) => {
+                        if (finished) {
                             return;
                         }
-                        if (entry.fileName === ENGINE_DUMP_ENTRY) {
-                            if (!analysis.engineMeta) {
-                                // Defensive: dump without meta is a malformed
-                                // archive — discard the bytes and move on
-                                // rather than risk a half-restore.
+                        finished = true;
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve();
+                        }
+                    };
+
+                    zipfile.readEntry();
+
+                    zipfile.on('entry', (entry) => {
+                        (async () => {
+                            // Engine sentinel entries (spec §5.2). _engine_meta.json
+                            // was already consumed during analyze for kind
+                            // validation, so skip it on disk. _engine_dump.bin is
+                            // routed to engine.restoreUser(handle, stream) and
+                            // never lands as a file under the user's data root —
+                            // it's the opaque payload the engine ingests itself.
+                            if (entry.fileName === ENGINE_META_ENTRY) {
                                 zipfile.readEntry();
                                 return;
                             }
+                            if (entry.fileName === ENGINE_DUMP_ENTRY) {
+                                if (!analysis.engineMeta) {
+                                    // Defensive: dump without meta is a malformed
+                                    // archive — discard the bytes and move on
+                                    // rather than risk a half-restore.
+                                    zipfile.readEntry();
+                                    return;
+                                }
+                                zipfile.openReadStream(entry, async (streamError, readStream) => {
+                                    if (streamError) {
+                                        finish(streamError);
+                                        return;
+                                    }
+                                    try {
+                                        await currentEngine.restoreUser(handle, readStream);
+                                        zipfile.readEntry();
+                                    } catch (error) {
+                                        finish(error);
+                                    }
+                                });
+                                return;
+                            }
+
+                            const normalized = normalizeRestoreArchiveEntryPath(entry.fileName);
+                            if (!normalized) {
+                                zipfile.readEntry();
+                                return;
+                            }
+
+                            if (entry.fileName.endsWith('/')) {
+                                zipfile.readEntry();
+                                return;
+                            }
+
+                            const unixFileType = (entry.externalFileAttributes >> 16) & 0o170000;
+                            if (unixFileType === 0o120000) {
+                                zipfile.readEntry();
+                                return;
+                            }
+
+                            const targetMapping = analysis.targetByNormalizedEntry.get(normalized);
+                            if (!targetMapping) {
+                                zipfile.readEntry();
+                                return;
+                            }
+
+                            const targetPath = targetMapping.targetPath;
+                            ensureDirectory(path.dirname(targetPath));
+
                             zipfile.openReadStream(entry, async (streamError, readStream) => {
                                 if (streamError) {
                                     finish(streamError);
                                     return;
                                 }
+
                                 try {
-                                    await currentEngine.restoreUser(handle, readStream);
+                                    await pipeline(readStream, fs.createWriteStream(targetPath, { mode: 0o644 }));
+                                    const zipLastModified = typeof entry.getLastModDate === 'function'
+                                        ? entry.getLastModDate()
+                                        : null;
+                                    if (zipLastModified instanceof Date && !Number.isNaN(zipLastModified.getTime())) {
+                                        try {
+                                            await fsPromises.utimes(targetPath, zipLastModified, zipLastModified);
+                                        } catch {
+                                            // Non-fatal: keep restored content even if timestamp restore fails.
+                                        }
+                                    }
+                                    result.restoredCount += 1;
+                                    if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
+                                        result.preflight.categoryStats[targetMapping.category].restoredEntries += 1;
+                                    }
+                                    reportExtractProgress(false);
                                     zipfile.readEntry();
                                 } catch (error) {
+                                    result.failedCount += 1;
+                                    if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
+                                        result.preflight.categoryStats[targetMapping.category].failedEntries += 1;
+                                    }
+                                    addRestoreReportSample(result.preflight, normalized, `write_failed:${error instanceof Error ? error.message : String(error)}`);
+                                    reportExtractProgress(true);
                                     finish(error);
                                 }
                             });
-                            return;
-                        }
+                        })().catch(finish);
+                    });
 
-                        const normalized = normalizeRestoreArchiveEntryPath(entry.fileName);
-                        if (!normalized) {
-                            zipfile.readEntry();
-                            return;
-                        }
-
-                        if (entry.fileName.endsWith('/')) {
-                            zipfile.readEntry();
-                            return;
-                        }
-
-                        const unixFileType = (entry.externalFileAttributes >> 16) & 0o170000;
-                        if (unixFileType === 0o120000) {
-                            zipfile.readEntry();
-                            return;
-                        }
-
-                        const targetMapping = analysis.targetByNormalizedEntry.get(normalized);
-                        if (!targetMapping) {
-                            zipfile.readEntry();
-                            return;
-                        }
-
-                        const targetPath = targetMapping.targetPath;
-                        ensureDirectory(path.dirname(targetPath));
-
-                        zipfile.openReadStream(entry, async (streamError, readStream) => {
-                            if (streamError) {
-                                finish(streamError);
-                                return;
-                            }
-
-                            try {
-                                await pipeline(readStream, fs.createWriteStream(targetPath, { mode: 0o644 }));
-                                const zipLastModified = typeof entry.getLastModDate === 'function'
-                                    ? entry.getLastModDate()
-                                    : null;
-                                if (zipLastModified instanceof Date && !Number.isNaN(zipLastModified.getTime())) {
-                                    try {
-                                        await fsPromises.utimes(targetPath, zipLastModified, zipLastModified);
-                                    } catch {
-                                        // Non-fatal: keep restored content even if timestamp restore fails.
-                                    }
-                                }
-                                result.restoredCount += 1;
-                                if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
-                                    result.preflight.categoryStats[targetMapping.category].restoredEntries += 1;
-                                }
-                                reportExtractProgress(false);
-                                zipfile.readEntry();
-                            } catch (error) {
-                                result.failedCount += 1;
-                                if (targetMapping.category && result.preflight.categoryStats[targetMapping.category]) {
-                                    result.preflight.categoryStats[targetMapping.category].failedEntries += 1;
-                                }
-                                addRestoreReportSample(result.preflight, normalized, `write_failed:${error instanceof Error ? error.message : String(error)}`);
-                                reportExtractProgress(true);
-                                finish(error);
-                            }
-                        });
-                    })().catch(finish);
+                    zipfile.on('end', () => finish());
+                    zipfile.on('close', () => finish());
+                    zipfile.on('error', finish);
                 });
-
-                zipfile.on('end', () => finish());
-                zipfile.on('close', () => finish());
-                zipfile.on('error', finish);
             });
-        });
-        extractMs = Date.now() - tExtract;
-        reportExtractProgress(true);
+            extractMs = Date.now() - tExtract;
+            reportExtractProgress(true);
 
-        const verification = {
-            ok: true,
-            checkedFiles: 0,
-            missingFiles: [],
-            enginePing: null,
-        };
-        for (const mapping of analysis.targetByNormalizedEntry.values()) {
-            verification.checkedFiles += 1;
-            if (!fs.existsSync(mapping.targetPath)) {
-                verification.ok = false;
-                verification.missingFiles.push(path.relative(targetRoot, mapping.targetPath));
-            }
-        }
-        if (analysis.engineMeta && currentEngine.kind !== 'fs') {
-            try {
-                await currentEngine.ping();
-                verification.enginePing = true;
-            } catch (verifyError) {
-                verification.ok = false;
-                verification.enginePing = false;
-                addRestoreReportSample(
-                    result.preflight,
-                    ENGINE_DUMP_ENTRY,
-                    `engine_verify_failed:${verifyError?.message || verifyError}`,
-                );
-            }
-        }
-        if (!verification.ok) {
-            throw new Error(
-                `Restore verification failed: ${verification.missingFiles.length} restored file(s) missing`
-                + (verification.enginePing === false ? '; storage engine verification failed' : ''),
-            );
-        }
-        result.verification = verification;
-
-        reportProgress({ phase: 'finalize' });
-        result.recoveryPoint = path.basename(recoveryPath);
-    } catch (extractError) {
-        extractMs = Date.now() - tExtract;
-        const totalMs = Date.now() - restoreStart;
-        console.warn(`[user-backup] Restore failed after ${totalMs}ms (analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms): ${extractError?.message || extractError}`);
-        const baseMessage = extractError instanceof Error ? extractError.message : String(extractError);
-        if (recoveryPath) {
-            try {
-                await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
-                throw new Error(`Restore failed; previous data restored from recovery point. Original error: ${baseMessage}`);
-            } catch (rollbackError) {
-                if (String(rollbackError?.message || '').startsWith('Restore failed; previous data restored')) {
-                    throw rollbackError;
+            const verification = {
+                ok: true,
+                checkedFiles: 0,
+                missingFiles: [],
+                enginePing: null,
+            };
+            for (const mapping of analysis.targetByNormalizedEntry.values()) {
+                verification.checkedFiles += 1;
+                if (!fs.existsSync(mapping.targetPath)) {
+                    verification.ok = false;
+                    verification.missingFiles.push(path.relative(targetRoot, mapping.targetPath));
                 }
+            }
+            if (analysis.engineMeta && currentEngine.kind !== 'fs') {
+                try {
+                    await currentEngine.ping();
+                    verification.enginePing = true;
+                } catch (verifyError) {
+                    verification.ok = false;
+                    verification.enginePing = false;
+                    addRestoreReportSample(
+                        result.preflight,
+                        ENGINE_DUMP_ENTRY,
+                        `engine_verify_failed:${verifyError?.message || verifyError}`,
+                    );
+                }
+            }
+            if (!verification.ok) {
                 throw new Error(
-                    `Restore failed and automatic rollback failed. Recovery point: ${recoveryPath}. `
-                    + `Original error: ${baseMessage}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                    `Restore verification failed: ${verification.missingFiles.length} restored file(s) missing`
+                    + (verification.enginePing === false ? '; storage engine verification failed' : ''),
                 );
             }
+            result.verification = verification;
+
+            reportProgress({ phase: 'finalize' });
+            result.recoveryPoint = path.basename(recoveryPath);
+        } catch (extractError) {
+            extractMs = Date.now() - tExtract;
+            const totalMs = Date.now() - restoreStart;
+            console.warn(`[user-backup] Restore failed after ${totalMs}ms (analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms): ${extractError?.message || extractError}`);
+            const baseMessage = extractError instanceof Error ? extractError.message : String(extractError);
+            if (recoveryPath) {
+                try {
+                    await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
+                    throw new Error(`Restore failed; previous data restored from recovery point. Original error: ${baseMessage}`);
+                } catch (rollbackError) {
+                    if (String(rollbackError?.message || '').startsWith('Restore failed; previous data restored')) {
+                        throw rollbackError;
+                    }
+                    throw new Error(
+                        `Restore failed and automatic rollback failed. Recovery point: ${recoveryPath}. `
+                        + `Original error: ${baseMessage}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                    );
+                }
+            }
+            throw extractError;
         }
-        throw extractError;
-    }
 
-    if (result.preflight.targetableEntries === 0 && mode !== 'overwrite') {
-        addRestoreReportSample(result.preflight, '(archive)', 'no_restorable_entries_detected');
-    }
+        if (result.preflight.targetableEntries === 0 && mode !== 'overwrite') {
+            addRestoreReportSample(result.preflight, '(archive)', 'no_restorable_entries_detected');
+        }
 
-    const totalMs = Date.now() - restoreStart;
-    console.info(`[user-backup] Restore done: mode=${mode} entries=${result.restoredCount}/${analysis.report.totalEntries} failed=${result.failedCount} analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms total=${totalMs}ms recovery=${result.recoveryPoint}`);
-    return result;
+        const totalMs = Date.now() - restoreStart;
+        console.info(`[user-backup] Restore done: mode=${mode} entries=${result.restoredCount}/${analysis.report.totalEntries} failed=${result.failedCount} analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms total=${totalMs}ms recovery=${result.recoveryPoint}`);
+        return result;
+    } finally {
+        try { setReadOnly(false); } catch { /* best effort */ }
+        try { stopHeartbeat(heartbeat); } catch { /* best effort */ }
+        try { await releaseMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId }); } catch { /* best effort */ }
+    }
 }
 
 
