@@ -74,7 +74,7 @@ describe('incident aggregation', () => {
             'schema validation failed',
             'tool payload invalid',
         ]);
-        expect(incident.recentActions[0].action).toBe('switch_model');
+        expect(incident.recentActions[0]).toMatchObject({ action: 'switch_model', module: 'generation' });
         expect(incident.safeConfigSnapshot.model).toBe('m2');
     });
 

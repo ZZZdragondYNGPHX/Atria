@@ -190,8 +190,22 @@ function getDurationMs(startTime) {
     return Math.max(0, Math.round(end - startTime));
 }
 
-function requestCorrelation(summary) {
-    const jobId = summary?.body?.atria_generation?.job_id || summary?.body?.atri_generation_ids?.[0];
+function requestCorrelation(summary, body) {
+    let jobId = summary?.body?.atria_generation?.job_id || summary?.body?.atri_generation_ids?.[0] || '';
+    if (!jobId && body && typeof body === 'object' && !Array.isArray(body)) {
+        jobId = body?.atri_generation?.job_id || body?.atri_generation_id || '';
+    }
+    if (!jobId && typeof body === 'string') {
+        const trimmed = body.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                jobId = parsed?.atri_generation?.job_id || parsed?.atri_generation_id || '';
+            } catch {
+                // Body summary already records only shape/size; correlation extraction is best-effort.
+            }
+        }
+    }
     return jobId ? { requestId: String(jobId), generationId: String(jobId) } : {};
 }
 
@@ -216,7 +230,7 @@ export function installFrontendFetchAdapter({
                 event: 'fetch.request',
                 message: `${summary.method} ${summary.path}`,
                 data: summary,
-                correlation: requestCorrelation(summary),
+                correlation: requestCorrelation(summary, init?.body),
                 source: 'fetch',
             });
             if (isFrontendConsoleDebugLoggingEnabled()) {
@@ -228,7 +242,7 @@ export function installFrontendFetchAdapter({
             if (summary) {
                 const headers = summarizeHeaders(response.headers, { response: true });
                 const correlation = {
-                    ...requestCorrelation(summary),
+                    ...requestCorrelation(summary, init?.body),
                     ...(headers?.atri_generation_id ? {
                         requestId: headers.atri_generation_id,
                         generationId: headers.atri_generation_id,
@@ -276,7 +290,7 @@ export function installFrontendFetchAdapter({
                     event: 'fetch.error',
                     message: `${summary.method} ${summary.path} failed: ${data.error_message}`,
                     data,
-                    correlation: requestCorrelation(summary),
+                    correlation: requestCorrelation(summary, init?.body),
                     source: 'fetch',
                 });
                 if (isFrontendConsoleDebugLoggingEnabled()) {

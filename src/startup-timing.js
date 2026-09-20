@@ -17,7 +17,7 @@ export function markStartupMilestone(name, details = '') {
     emittedMilestones.add(key);
     const elapsedMs = getStartupElapsedMs();
     const suffix = details ? ` ${details}` : '';
-    startupLogger.info(key, `[startup] +${elapsedMs}ms ${key}${suffix}`, {
+    startupLogger.log(key, `[startup] +${elapsedMs}ms ${key}${suffix}`, {
         elapsedMs,
         ...(details ? { details: String(details) } : {}),
     }, {
@@ -31,7 +31,7 @@ export function startStartupPhase(name) {
     return (details = '') => {
         const elapsedMs = Math.max(0, Date.now() - startedAt);
         const suffix = details ? ` ${details}` : '';
-        startupLogger.info(`phase.${phase}`, `[startup] phase ${phase} ${elapsedMs}ms${suffix}`, {
+        startupLogger.log(`phase.${phase}`, `[startup] phase ${phase} ${elapsedMs}ms${suffix}`, {
             phase,
             elapsedMs,
             ...(details ? { details: String(details) } : {}),

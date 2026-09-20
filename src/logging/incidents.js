@@ -88,6 +88,21 @@ function buildEvidence(input, ownership, logs) {
     return [...new Set(evidence)].slice(0, 40);
 }
 
+function normalizeRecentActions(actions) {
+    if (!Array.isArray(actions)) return [];
+    return actions.slice(0, 50).map((action) => {
+        const source = action && typeof action === 'object' ? action : {};
+        return {
+            ...(Number.isFinite(Number(source.id)) ? { id: Number(source.id) } : {}),
+            timestamp: Number.isFinite(Number(source.timestamp)) ? Math.max(0, Math.floor(Number(source.timestamp))) : 0,
+            module: redactText(String(source.module || 'uncategorized')).slice(0, 128),
+            action: redactText(String(source.action || 'unknown')).slice(0, 160),
+            label: redactText(String(source.label || '')).slice(0, 240),
+            data: redactValue(source.data ?? {}, { maxDepth: 5, maxArrayLength: 30, maxObjectKeys: 50, maxStringLength: 2000 }),
+        };
+    });
+}
+
 export function createIncident(input = {}) {
     const logs = Array.isArray(input.relatedLogs) ? input.relatedLogs : [];
     const error = input.failure instanceof Error ? input.failure : null;
@@ -127,7 +142,7 @@ export function createIncident(input = {}) {
         startupSessionId: String(input.startupSessionId || correlation.startupSessionId || ''),
         environment: redactValue(input.environment ?? {}, { maxDepth: 5, maxStringLength: 2000 }),
         provenance: redactValue(input.provenance ?? {}, { maxDepth: 6, maxStringLength: 2000 }),
-        recentActions: redactValue(input.recentActions ?? [], { maxDepth: 6, maxArrayLength: 50, maxStringLength: 2000 }),
+        recentActions: normalizeRecentActions(input.recentActions),
         safeConfigSnapshot: redactValue(input.safeConfigSnapshot ?? {}, { maxDepth: 6, maxArrayLength: 100, maxStringLength: 2000 }),
         ownership,
         evidence: buildEvidence(input, ownership, logs),
