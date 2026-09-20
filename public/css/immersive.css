@@ -476,3 +476,100 @@ body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersiv
 body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-hud-ambient-list {
     display: none;
 }
+
+
+/* Provider-driven stage. No image heuristic promotes a normal image to portrait. */
+.atria-immersive-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--SmartThemeBlurTintColor, #18181b);
+}
+
+.atria-immersive-stage[hidden] {
+    display: none !important;
+}
+
+body.atria-immersive-mode #sheld {
+    position: relative;
+    z-index: 2;
+    background: transparent;
+}
+
+body.atria-immersive-mode #bg1 {
+    opacity: 0.22;
+}
+
+.atria-immersive-scene-background,
+.atria-immersive-scene-wash {
+    position: absolute;
+    inset: 0;
+}
+
+.atria-immersive-scene-background {
+    background-position: center;
+    background-size: cover;
+    opacity: 0.64;
+    transform: scale(1.01);
+}
+
+.atria-immersive-scene-wash {
+    background:
+        linear-gradient(180deg, rgba(10, 10, 12, 0.24), rgba(10, 10, 12, 0.48)),
+        radial-gradient(circle at center, transparent 0 40%, rgba(10, 10, 12, 0.24) 100%);
+}
+
+.atria-immersive-portrait {
+    position: absolute;
+    right: max(2vw, calc((100vw - 86rem) / 2));
+    bottom: 0;
+    width: auto;
+    max-width: min(34vw, 30rem);
+    height: min(82vh, 54rem);
+    object-fit: contain;
+    object-position: right bottom;
+    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.34));
+}
+
+.atria-immersive-stage.atria-immersive-scene-changing .atria-immersive-scene-background {
+    animation: atria-immersive-scene-in 220ms ease-out;
+}
+
+@keyframes atria-immersive-scene-in {
+    from { opacity: 0.28; }
+    to { opacity: 0.64; }
+}
+
+body.atria-immersive-mode[data-atria-immersive-adaptation="portrait"][data-atria-immersive-profile="desktop"] .mes_block {
+    position: relative;
+    z-index: 1;
+}
+
+body.atria-immersive-mode[data-atria-immersive-adaptation="portrait"][data-atria-immersive-profile="mobile"] .atria-immersive-portrait {
+    right: -5vw;
+    bottom: max(5.5rem, calc(var(--bottomFormBlockSize) + env(safe-area-inset-bottom, 0px)));
+    width: min(58vw, 22rem);
+    height: min(48vh, 30rem);
+    opacity: 0.42;
+    filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.24));
+}
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-scene-background {
+    transform: none;
+}
+
+.atria-immersive-reduced-motion .atria-immersive-scene-background,
+.atria-immersive-reduced-motion .atria-immersive-portrait {
+    animation: none !important;
+    transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .atria-immersive-scene-background,
+    .atria-immersive-portrait {
+        animation: none !important;
+        transition: none !important;
+    }
+}
