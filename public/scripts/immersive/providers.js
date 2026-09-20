@@ -80,6 +80,14 @@ export function createImmersiveProviderRegistry({
     const providers = new Map();
     let sequence = 0;
 
+    const reportError = (error, providerId) => {
+        try {
+            onError(error, providerId);
+        } catch (reportingError) {
+            console.warn('[immersive] provider error reporter failed', reportingError);
+        }
+    };
+
     const sortedEntries = () => [...providers.values()].sort((a, b) => (
         b.priority - a.priority || a.sequence - b.sequence
     ));
@@ -141,7 +149,7 @@ export function createImmersiveProviderRegistry({
             entry.error = null;
         } catch (error) {
             entry.error = error;
-            onError(error, entry.id);
+            reportError(error, entry.id);
         }
     };
 
@@ -152,7 +160,7 @@ export function createImmersiveProviderRegistry({
         try {
             entry.provider.dispose?.();
         } catch (error) {
-            onError(error, entry.id);
+            reportError(error, entry.id);
         }
         emit();
         return true;
@@ -216,7 +224,7 @@ export function createImmersiveProviderRegistry({
             }
             return false;
         } catch (error) {
-            onError(error, entry.id);
+            reportError(error, entry.id);
             return false;
         }
     };
