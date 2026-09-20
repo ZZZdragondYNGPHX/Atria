@@ -131,7 +131,6 @@ import {
     initOpenAI,
 } from './scripts/openai.js';
 
-import { openManageBoundPresetsDialog } from './scripts/character/manage-bound-presets-dialog.js';
 
 import {
     generateNovelWithStreaming,
@@ -303,7 +302,6 @@ import { initDynamicStyles } from './scripts/dynamic-styles.js';
 
 import { AbortReason } from './scripts/util/AbortReason.js';
 import { initSystemPrompts } from './scripts/sysprompt.js';
-import { registerExtensionSlashCommands as initExtensionSlashCommands } from './scripts/extensions-slashcommands.js';
 import { ToolManager } from './scripts/tool-calling.js';
 import { registerSkillEmbedLifecycle } from './scripts/skills/embed-lifecycle.js';
 import { addShowdownPatch } from './scripts/util/showdown-patch.js';
@@ -331,8 +329,6 @@ import { AudioPlayer } from './scripts/audio-player.js';
 import { MacroEnvBuilder } from './scripts/macros/engine/MacroEnvBuilder.js';
 import { MessageFormatter } from './scripts/message-formatter.js';
 import { MacroEngine } from './scripts/macros/engine/MacroEngine.js';
-import { addChatBackupsBrowser } from './scripts/chat-backups.js';
-import { onboardingExperimentalMacroEngine } from './scripts/macros/engine/MacroDiagnostics.js';
 import { showUndoToast } from './scripts/undo-toast.js';
 import { setRequestCompressionConfig } from './scripts/request-compression.js';
 import { canJumpToSwipeForMessage, canOpenSwipePickerForMessage, initSwipePicker } from './scripts/swipe-picker.js';
@@ -2180,7 +2176,8 @@ async function firstLoadInit() {
         () => initAnnouncements(),
         () => initExtensions(),
         () => bootstrapExtensions(),
-        () => initExtensionSlashCommands(),
+        () => import('./scripts/extensions-slashcommands.js')
+            .then(({ registerExtensionSlashCommands }) => registerExtensionSlashCommands()),
         () => ToolManager.initToolSlashCommands(),
         () => initTokenizers(),
         () => initPersonas(),
@@ -5576,7 +5573,11 @@ export function substituteParamsLegacy(content, _name1, _name2, _original, _grou
         else if (/\{\{(?:(?!\}\}).)*\{\{(?=[\s\S]*?\}\}[\s\S]*?\}\})/.test(content)) feature = 'nested macro';
         else if (/{{(?:greeting|charFirstMessage)(?:::\d+)?}}/i.test(content)) feature = 'greeting macro';
 
-        if (feature) void onboardingExperimentalMacroEngine(feature);
+        if (feature) {
+            void import('./scripts/macros/engine/MacroDiagnostics.js')
+                .then(({ onboardingExperimentalMacroEngine }) => onboardingExperimentalMacroEngine(feature))
+                .catch((error) => console.warn('[macros] failed to load macro diagnostics', error));
+        }
     }
 
     const environment = {};
@@ -16453,6 +16454,7 @@ export async function displayPastChats(hightlightNames = []) {
         textSearchElement.trigger('click').trigger('focus').trigger('select');
     }, 200);
 
+    const { addChatBackupsBrowser } = await import('./scripts/chat-backups.js');
     addChatBackupsBrowser();
 }
 
@@ -21841,6 +21843,7 @@ jQuery(async function () {
                 // syncCharacterBoundPresetFromSettings). A raw `characters[this_chid]`
                 // reference misses that indexOf and Layer 1 throws.
                 const ctx = getContext();
+                const { openManageBoundPresetsDialog } = await import('./scripts/character/manage-bound-presets-dialog.js');
                 await openManageBoundPresetsDialog(ctx.characters?.[this_chid]);
             } break;
             case 'clear_character_chat_completion_preset': {
