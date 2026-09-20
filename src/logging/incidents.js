@@ -123,6 +123,7 @@ export function createIncident(input = {}) {
 
     return {
         incidentId: String(input.incidentId || randomUUID()),
+        subjectUser: redactText(String(input.subjectUser || '')).slice(0, 160),
         createdAt,
         updatedAt: createdAt,
         type: normalizeEnum(input.type, INCIDENT_TYPES, 'unhandled_backend_error'),
@@ -139,6 +140,10 @@ export function createIncident(input = {}) {
             ...logs.map(entry => Number(entry?.id)).filter(Number.isFinite),
         ])],
         requestInspectorEntryIds: [...new Set((input.requestInspectorEntryIds || []).map(String))],
+        embeddedLogEntries: redactValue(input.embeddedLogEntries ?? [], { maxDepth: 7, maxArrayLength: 120, maxObjectKeys: 80, maxStringLength: 12000 }),
+        retryHistory: redactValue(input.retryHistory ?? [], { maxDepth: 6, maxArrayLength: 50, maxStringLength: 3000 }),
+        fallbackHistory: redactValue(input.fallbackHistory ?? [], { maxDepth: 6, maxArrayLength: 50, maxStringLength: 3000 }),
+        timeline: redactValue(input.timeline ?? [], { maxDepth: 6, maxArrayLength: 100, maxStringLength: 3000 }),
         startupSessionId: String(input.startupSessionId || correlation.startupSessionId || ''),
         environment: redactValue(input.environment ?? {}, { maxDepth: 5, maxStringLength: 2000 }),
         provenance: redactValue(input.provenance ?? {}, { maxDepth: 6, maxStringLength: 2000 }),
@@ -192,18 +197,20 @@ export class IncidentStore {
         return structuredClone(next);
     }
 
-    findOpenByFingerprint({ type, primaryModule, correlation = {} } = {}) {
+    findOpenByFingerprint({ type, primaryModule, correlation = {}, subjectUser = '' } = {}) {
         const key = fingerprint(correlation);
         const entry = this.#entries.find(item => item.status === 'open'
+            && item.subjectUser === String(subjectUser || '')
             && item.type === type
             && item.primaryModule === primaryModule
             && fingerprint(item.correlation) === key);
         return entry ? structuredClone(entry) : null;
     }
 
-    list({ status, limit = 100 } = {}) {
+    list({ status, subjectUser = null, limit = 100 } = {}) {
         let entries = this.#entries;
         if (status) entries = entries.filter(entry => entry.status === status);
+        if (subjectUser !== null) entries = entries.filter(entry => entry.subjectUser === String(subjectUser));
         return entries
             .slice(-Math.max(1, Math.floor(Number(limit) || 100)))
             .map(entry => structuredClone(entry))
@@ -260,6 +267,10 @@ export class IncidentAggregator {
                 causeChain: candidate.causeChain,
                 correlation: mergeCorrelation(existing.correlation, candidate.correlation),
                 relatedLogEntryIds: [...new Set([...existing.relatedLogEntryIds, ...candidate.relatedLogEntryIds])],
+                embeddedLogEntries: candidate.embeddedLogEntries,
+                retryHistory: candidate.retryHistory,
+                fallbackHistory: candidate.fallbackHistory,
+                timeline: candidate.timeline,
                 recentActions: candidate.recentActions,
                 safeConfigSnapshot: candidate.safeConfigSnapshot,
                 ownership: candidate.ownership,

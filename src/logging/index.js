@@ -9,3 +9,6 @@ export * from './incidents.js';
 export * from './recent-actions.js';
 export * from './safe-config.js';
 export * from './startup-store.js';
+export * from './runtime.js';
+export * from './provenance.js';
+export * from './incident-export.js';

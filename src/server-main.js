@@ -40,7 +40,7 @@ import './fetch-patch.js';
 import { serverDirectory } from './server-directory.js';
 
 import { serverEvents, EVENT_NAMES } from './server-events.js';
-import { loadPlugins } from './plugin-loader.js';
+import { loadPlugins, listInstalledServerPlugins } from './plugin-loader.js';
 import {
     initUserStorage,
     getCookieSecret,
@@ -96,6 +96,7 @@ import { installConsoleAdapter } from './logging/console-adapter.js';
 import { backendLogStore } from './logging/store.js';
 import { redactValue } from './logging/redact.js';
 import { createLogger } from './logging/logger.js';
+import { runtimeProvenanceRegistry } from './logging/provenance.js';
 import {
     normalizeStartupClientReport,
     startupSessionStore,
@@ -794,6 +795,17 @@ async function preSetupTasks() {
 
     const finishPlugins = startStartupPhase('pre-setup.plugins');
     const cleanupPlugins = await loadPlugins(app, SERVER_PLUGINS_DIRECTORY);
+    void listInstalledServerPlugins(SERVER_PLUGINS_DIRECTORY)
+        .then((plugins) => runtimeProvenanceRegistry.registerMany(plugins.map(plugin => ({
+            type: 'server-plugin',
+            name: plugin.directory,
+            displayName: plugin.packageName || plugin.directory,
+            version: plugin.version,
+            origin: plugin.remoteUrl,
+            enabled: null,
+            metadata: { description: plugin.description },
+        }))))
+        .catch((error) => console.warn('[diagnostics] server-plugin provenance refresh failed:', error?.message || error));
     finishPlugins();
     const consoleTitle = process.title;
 
