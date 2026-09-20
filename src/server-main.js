@@ -96,6 +96,12 @@ import { installConsoleAdapter } from './logging/console-adapter.js';
 import { backendLogStore } from './logging/store.js';
 import { redactValue } from './logging/redact.js';
 import { createLogger } from './logging/logger.js';
+import {
+    normalizeStartupClientReport,
+    startupSessionStore,
+    summarizeExtensionActivationTimings,
+    summarizeClientStartupTimings,
+} from './logging/startup-store.js';
 import { getBufferForHandle as getInspectorBufferForHandle } from './request-inspector.js';
 import {
     UPLOADS_DIRECTORY,
@@ -121,6 +127,7 @@ import { initializeAllUserMetadata } from './endpoints/image-metadata.js';
 import { applyPendingSafeMode } from './safe-mode.js';
 
 const httpLogger = createLogger('http');
+const startupDiagnosticsLogger = createLogger('startup');
 
 // Work around a node v20.0.0, v20.1.0, and v20.2.0 bug. The issue was fixed in v20.3.0.
 // https://github.com/nodejs/node/issues/47822#issuecomment-1564708870
@@ -572,50 +579,6 @@ app.post('/api/ping', (request, response) => {
     response.sendStatus(204);
 });
 
-function normalizeClientTiming(value) {
-    const number = Number(value);
-    return Number.isFinite(number) && number >= 0
-        ? Math.round(number * 10) / 10
-        : null;
-}
-
-function diffClientTiming(timings, start, end) {
-    const a = normalizeClientTiming(timings?.[start]);
-    const b = normalizeClientTiming(timings?.[end]);
-    return a !== null && b !== null && b >= a
-        ? Math.round((b - a) * 10) / 10
-        : null;
-}
-
-function summarizeExtensionActivationTimings(durations) {
-    const totalPrefix = 'extensionActivate:';
-    const phasePrefixes = {
-        localeMs: 'extensionLocale:',
-        scriptMs: 'extensionScript:',
-        styleMs: 'extensionStyle:',
-        hookMs: 'extensionHook:',
-    };
-
-    return Object.entries(durations || {})
-        .filter(([name]) => name.startsWith(totalPrefix))
-        .map(([name, value]) => {
-            const extensionName = name.slice(totalPrefix.length, totalPrefix.length + 120);
-            const item = {
-                name: extensionName,
-                ms: normalizeClientTiming(value),
-            };
-
-            for (const [field, prefix] of Object.entries(phasePrefixes)) {
-                item[field] = normalizeClientTiming(durations[`${prefix}${extensionName}`]);
-            }
-
-            return item;
-        })
-        .filter(item => item.name && item.ms !== null)
-        .sort((a, b) => b.ms - a.ms)
-        .slice(0, 8);
-}
-
 app.post('/api/startup/client-timing', (request, response) => {
     const timings = request.body?.timings && typeof request.body.timings === 'object'
         ? request.body.timings
@@ -641,39 +604,36 @@ app.post('/api/startup/client-timing', (request, response) => {
         initModuleMs: diffClientTiming(timings, 'initJsStart', 'initModuleEnd'),
         initToFirstLoadMs: diffClientTiming(timings, 'initJsStart', 'firstLoadStart'),
         csrfMs: diffClientTiming(timings, 'firstLoadStart', 'csrfDone'),
-        bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettingsDone'),
-        settingsToVisibleMs: diffClientTiming(timings, 'getSettingsDone', 'loaderHidden'),
-        visibleTotalMs: diffClientTiming(timings, 'firstLoadStart', 'loaderHidden'),
-        visibleToBatch1Ms: diffClientTiming(timings, 'loaderHidden', 'batch1Done'),
-        welcomeScreenMs: normalizeClientTiming(durations.welcomeScreen),
-        batch2Ms: diffClientTiming(timings, 'batch1Done', 'batch2Done'),
-        batch2TasksMs: diffClientTiming(timings, 'batch2TasksStart', 'batch2TasksDone'),
-        b2TextGenModelSelectsMs: normalizeClientTiming(durations.batch2TextGenModelSelects),
-        b2SystemMessagesMs: normalizeClientTiming(durations.batch2SystemMessages),
-        b2AnnouncementsMs: normalizeClientTiming(durations.batch2Announcements),
-        b2InitExtensionsMs: normalizeClientTiming(durations.batch2InitExtensions),
-        b2BootstrapExtensionsMs: normalizeClientTiming(durations.batch2BootstrapExtensions),
-        b2ExtensionSlashCommandsMs: normalizeClientTiming(durations.batch2ExtensionSlashCommands),
-        b2ToolSlashCommandsMs: normalizeClientTiming(durations.batch2ToolSlashCommands),
-        b2TokenizersMs: normalizeClientTiming(durations.batch2Tokenizers),
-        b2PersonasMs: normalizeClientTiming(durations.batch2Personas),
-        b2SlashCommandAutocompleteMs: normalizeClientTiming(durations.batch2SlashCommandAutocomplete),
-        b2MacroAutocompleteMs: normalizeClientTiming(durations.batch2MacroAutocomplete),
-        extFirstLoadEventMs: normalizeClientTiming(durations.extensionsFirstLoadEvent),
-        extDiscoverMs: normalizeClientTiming(durations.extensionsDiscover),
-        extManifestsMs: normalizeClientTiming(durations.extensionsManifests),
-        extAutoUpdateMs: normalizeClientTiming(durations.extensionsAutoUpdate),
-        extPrewarmMs: normalizeClientTiming(durations.extensionsPrewarm),
-        extActivateMs: normalizeClientTiming(durations.extensionsActivate),
-        extSlow: summarizeExtensionActivationTimings(durations),
-        extSettingsLoadedEventMs: normalizeClientTiming(durations.extensionsSettingsLoadedEvent),
-        batch3Ms: diffClientTiming(timings, 'batch2Done', 'batch3Done'),
-        firstLoadTotalMs: diffClientTiming(timings, 'firstLoadStart', 'appReady'),
-        domInteractiveMs: normalizeClientTiming(navigation.domInteractive),
-        loadEventEndMs: normalizeClientTiming(navigation.loadEventEnd),
-    };
+        bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettingsapp.post('/api/startup/client-timing', async (request, response) => {
+    const report = normalizeStartupClientReport(request.body || {});
+    const summary = summarizeClientStartupTimings(report);
+    const version = await getVersion().catch(() => ({}));
+    const user = String(request?.user?.profile?.handle || '');
+    const session = startupSessionStore.recordClientReport({
+        report,
+        user,
+        version,
+    });
 
-    console.log(stage === 'visible' ? '[startup-client-visible]' : '[startup-client]', JSON.stringify(summary));
+    startupDiagnosticsLogger.info(
+        report.stage === 'visible' ? 'client.visible' : 'client.ready',
+        report.stage === 'visible' ? 'Client startup reached first visible UI' : 'Client startup reached APP_READY',
+        {
+            serverBootId: session.serverBootId,
+            appVersion: session.appVersion,
+            revision: session.revision,
+            branch: session.branch,
+            summary,
+            extensionCount: session.extensions.length,
+            linkedLogWindow: session.linkedLogWindow,
+        },
+        {
+            category: 'session',
+            correlation: { startupSessionId: session.id },
+        },
+    );
+
+    console.log(report.stage === 'visible' ? '[startup-client-visible]' : '[startup-client]', JSON.stringify(summary));
     response.sendStatus(204);
 });
 

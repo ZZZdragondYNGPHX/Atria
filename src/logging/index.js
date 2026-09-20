@@ -8,3 +8,4 @@ export * from './ownership.js';
 export * from './incidents.js';
 export * from './recent-actions.js';
 export * from './safe-config.js';
+export * from './startup-store.js';
