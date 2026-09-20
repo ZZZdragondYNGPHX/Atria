@@ -12,8 +12,12 @@ const LONG_TOKEN_PATTERN = /\b(?=[A-Za-z0-9_+/-]{48,}\b)(?=[A-Za-z0-9_+/-]*[A-Za
 
 function isPlainObject(value) {
     if (!value || typeof value !== 'object') return false;
-    const proto = Object.getPrototypeOf(value);
-    return proto === Object.prototype || proto === null;
+    if (Object.getPrototypeOf(value) === null) return true;
+    // structuredClone/Jest VM/connector payloads can carry plain objects whose
+    // Object prototype belongs to another realm. Object.prototype identity is
+    // therefore too strict and would stringify safe structured diagnostics as
+    // "[object Object]". The intrinsic tag stays stable across realms.
+    return Object.prototype.toString.call(value) === '[object Object]';
 }
 
 export function isSensitiveKey(key) {

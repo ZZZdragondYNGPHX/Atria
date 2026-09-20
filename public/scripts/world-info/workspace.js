@@ -1279,11 +1279,16 @@ export function syncWorldInfoWorkspace({
         ? ''
         : String(focusUid);
 
+    if (bookChanged || openingEntriesFromAnotherView) {
+        // Entering Entries from Library/Global must start from the top of the
+        // virtual list. A hidden list can retain a large scrollTop from an
+        // earlier render; reusing it can render only off-screen tail rows.
+        const viewport = document.querySelector('#wi_workspace_entry_list');
+        if (viewport) viewport.scrollTop = 0;
+    }
     if (bookChanged) {
         state.selectedUid = '';
         state.mobileDetail = false;
-        const viewport = document.querySelector('#wi_workspace_entry_list');
-        if (viewport) viewport.scrollTop = 0;
     }
 
     if (!nextName || !data) {
