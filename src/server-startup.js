@@ -35,7 +35,6 @@ import { router as bootstrapRouter } from './endpoints/bootstrap.js';
 import { router as settingsRouter } from './endpoints/settings.js';
 import { router as backgroundsRouter } from './endpoints/backgrounds.js';
 import { router as spritesRouter } from './endpoints/sprites.js';
-import { router as hordeRouter } from './endpoints/horde.js';
 import { router as vectorsRouter } from './endpoints/vectors.js';
 import { router as translateRouter } from './endpoints/translate.js';
 import { router as classifyRouter } from './endpoints/classify.js';
@@ -111,7 +110,10 @@ export function setupPrivateEndpoints(app) {
         () => import('./endpoints/stable-diffusion.js'),
         { exportName: 'router', label: 'sd' },
     ));
-    app.use('/api/horde', hordeRouter);
+    app.use('/api/horde', createLazyRouter(
+        () => import('./endpoints/horde.js'),
+        { exportName: 'router', label: 'horde' },
+    ));
     app.use('/api/vector', vectorsRouter);
     app.use('/api/translate', translateRouter);
     app.use('/api/extra/classify', classifyRouter);
