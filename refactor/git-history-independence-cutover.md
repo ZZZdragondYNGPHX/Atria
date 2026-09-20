@@ -44,3 +44,22 @@ The current Atria `main` is a descendant of the imported Luker history. GitHub t
 - `main` vs `luker` reports no common ancestor.
 - `main` branch points at the reconstructed tip.
 - `luker`, `vanilla`, and `docs` HEADs remain unchanged by the cutover.
+
+
+## Result
+
+Completed on 2026-09-20.
+
+- Pre-cutover authoritative main: `5c52ab839e14d478ce41d976d5afab027578ac03`
+- Independent Atria baseline commit: `88c8b296547f1def9c8f00261d0510c2d015f1d7`
+- Replayed candidate head: `6f2b75362f014162ff4371b41feb98300bf38657`
+- Final authoritative main: `c407f9e97530f587362c2150f7a0c2601598f75e`
+- Pre-cutover tree: `d709cf1b600ff6f951f19b4be604b29417859703`
+- Final tree: `d709cf1b600ff6f951f19b4be604b29417859703`
+- Mainline snapshots replayed: 70 first-parent Atria commits after the Luker baseline.
+- GitHub comparison of `luker` and the reconstructed `main` reports no common ancestor.
+- `luker` remained at `91ae97aed557be9439317a67d0ec516f7512fe2e`.
+- `vanilla` remained at `e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc`.
+- Product files, runtime behavior, data formats, and configuration are unchanged by the cutover.
+- The temporary `refactor/git-history-independence-cutover` safety branch was retargeted to the final main so the repository cleanup workflow can remove it as a completed temporary branch.
+- GitHub contributor statistics are expected to refresh asynchronously after the default-branch history rewrite.
