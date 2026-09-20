@@ -120,7 +120,11 @@ Runtime integration:
 7. World history does not use FloorState's incremental patch log as its authoritative event model.
 8. World mutation is not exposed publicly yet. `commitEventsInternal` exists only to bridge R2 into R3.
 9. The next normal mutation surface must be the typed Command Bus.
-10. No Master Plan architecture change occurred in this midpoint, so `docs:refactor/game-runtime-architecture.md` did not require revision.
+10. The Master Plan was subsequently amended after the midpoint:
+    - added **Event Interpreter** as an optional semantic-analysis LLM role (not a state updater and never a direct World writer);
+    - added **Connection Profile + Runtime Role** as the model-routing architecture, with primary/fallback queues and role-specific policies;
+    - expanded R5 into **LLM Runtime & Model Roles**;
+    - added **R7 — Atria Game-first Shell Redesign**, including a role-oriented Model & Runtime configuration UI and a host design-system/UI refactor so Atria 1.0 does not inherit the old pure-text-chat information architecture.
 
 ## Validation completed
 
@@ -173,8 +177,10 @@ Not yet implemented:
 - Simulation;
 - transaction/rule trace;
 - Card UI Runtime/Surfaces/Selectors;
-- LLM Bridge;
-- Game Studio upgrades.
+- LLM Runtime roles (Intent Resolver / Event Interpreter / Narrator);
+- Connection Profile + Runtime Role routing and fallback queues;
+- Game Studio upgrades;
+- R7 Atria Game-first Shell redesign.
 
 The production Game Runtime currently starts a World Session with an empty reducer registry. That is safe because no public mutation API exists yet. R3 must establish the reducer/command registry before exposing any package/UI/LLM write path.
 
@@ -208,3 +214,6 @@ Recommended first R3 slice:
 Do not expose arbitrary `set_state(path,value)`.
 Do not give Game Logic the broad CardApp/Atria context.
 Do not begin R4 UI takeover before the R3 mutation contract is stable.
+Do not treat Event Interpreter as a mandatory per-turn state updater.
+Do not extend Connection Profile mode with a new `state` mode; implement the Runtime Role layer described by the Master Plan.
+Do not start R7 host-shell visual redesign until R3-R6 contracts are stable.
