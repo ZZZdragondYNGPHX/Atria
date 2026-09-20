@@ -1,5 +1,7 @@
 import { frontendLogStore } from './logger.js';
 import { redactText } from './redact.js';
+import { attributeFrontendOwnership } from './ownership.js';
+import { captureFrontendIncident } from './incident-reporter.js';
 
 let installedWindow = null;
 
@@ -22,9 +24,11 @@ export function installFrontendErrorAdapter({ store = frontendLogStore, windowOb
         try {
             const filename = String(event.filename || '');
             const message = redactText(event.message || event.error?.message || 'Unhandled frontend error');
-            store.append({
+            const module = inferModuleFromFilename(filename);
+            const stack = event.error?.stack || '';
+            const entry = store.append({
                 level: 'error',
-                module: inferModuleFromFilename(filename),
+                module,
                 category: 'exception',
                 event: 'global.error',
                 message,
@@ -32,9 +36,22 @@ export function installFrontendErrorAdapter({ store = frontendLogStore, windowOb
                     filename,
                     line: Number(event.lineno || 0),
                     column: Number(event.colno || 0),
-                    stack: event.error?.stack || '',
+                    stack,
                 },
                 source: 'window-error',
+            });
+            const ownership = attributeFrontendOwnership({ stack });
+            void captureFrontendIncident({
+                type: ownership.probableOwner === 'third-party-extension' ? 'extension_runtime_failure' : 'unhandled_frontend_error',
+                primaryModule: module,
+                stage: 'global.error',
+                summary: message,
+                failure: event.error || { message, stack },
+                ownership,
+                correlation: entry?.correlation || {},
+                provenance: ownership.probableOwner === 'third-party-extension'
+                    ? { type: 'extension', name: ownership.ownerName, displayName: ownership.ownerName }
+                    : {},
             });
         } catch {
             // Diagnostics must not interfere with the browser error path.
@@ -44,17 +61,32 @@ export function installFrontendErrorAdapter({ store = frontendLogStore, windowOb
         try {
             const reason = event.reason;
             const message = redactText(reason?.message || reason || 'Unhandled promise rejection');
-            store.append({
+            const stack = reason?.stack || '';
+            const ownership = attributeFrontendOwnership({ stack });
+            const module = ownership.probableOwner === 'third-party-extension' ? 'extensions' : 'system';
+            const entry = store.append({
                 level: 'error',
-                module: 'system',
+                module,
                 category: 'promise',
                 event: 'global.unhandled-rejection',
                 message: `Unhandled promise rejection: ${message}`,
                 data: {
                     name: String(reason?.name || ''),
-                    stack: reason?.stack || '',
+                    stack,
                 },
                 source: 'promise-rejection',
+            });
+            void captureFrontendIncident({
+                type: ownership.probableOwner === 'third-party-extension' ? 'extension_runtime_failure' : 'unhandled_frontend_error',
+                primaryModule: module,
+                stage: 'global.unhandled-rejection',
+                summary: message,
+                failure: reason instanceof Error ? reason : { message, stack },
+                ownership,
+                correlation: entry?.correlation || {},
+                provenance: ownership.probableOwner === 'third-party-extension'
+                    ? { type: 'extension', name: ownership.ownerName, displayName: ownership.ownerName }
+                    : {},
             });
         } catch {
             // Diagnostics must not interfere with rejection handling.

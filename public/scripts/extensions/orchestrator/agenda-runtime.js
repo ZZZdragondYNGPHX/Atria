@@ -114,6 +114,7 @@ import {
 import { attachToolContext, attachNotesFloorState, isStructuredToolError } from './loop-runtime.js';
 import { loadOpenNotesBlock } from './open-notes-injection.js';
 import { buildPerRunCustomToolRegistry } from './per-run-custom-tools.js';
+import { reportOrchestrationFailure } from './diagnostics.js';
 
 // Skill-resolution helpers are loaded lazily (script.js → lib.js dep makes
 // eager import unfriendly to Node tests). Same pattern as director / loop /
@@ -1216,9 +1217,23 @@ export async function runAgendaOrchestration(context, payload, messages, profile
     let finalizeReason = '';
     let budgetReason = '';
 
-    if (payload?.agentRuntimeV2 !== false) return runAgendaEngine({ context: contextForNotes, payload, messages, profile, settings, runId, trace, customToolRegistry,
-        activeOrchPresetName, onRuntimeEvent, runAgendaPlannerStep, runAgendaTextAgent, applyAgendaPlannerOps, normalizeAgendaDispatches,
-        syncTrace: next => syncAgendaTrace(trace, next), finalizeTrace: (status, details) => finalizeRuntimeTrace(trace, status, details) });
+    if (payload?.agentRuntimeV2 !== false) {
+        try {
+            return await runAgendaEngine({ context: contextForNotes, payload, messages, profile, settings, runId, trace, customToolRegistry,
+                activeOrchPresetName, onRuntimeEvent, runAgendaPlannerStep, runAgendaTextAgent, applyAgendaPlannerOps, normalizeAgendaDispatches,
+                syncTrace: next => syncAgendaTrace(trace, next), finalizeTrace: (status, details) => finalizeRuntimeTrace(trace, status, details) });
+        } catch (error) {
+            reportOrchestrationFailure({
+                mode: 'agenda',
+                trace,
+                payload,
+                error,
+                panelRunId: runId,
+                profileName: activeOrchPresetName || profile?.name || '',
+            });
+            throw error;
+        }
+    }
 
     try {
         for (let round = 1; round <= plannerMaxRounds; round++) {
@@ -1450,6 +1465,16 @@ export async function runAgendaOrchestration(context, payload, messages, profile
         try {
             finishRun({ runId, status: cancelled ? 'aborted' : 'error', error: String(error?.message || error) });
         } catch (_) { /* run may already be cleared */ }
+        if (!cancelled) {
+            reportOrchestrationFailure({
+                mode: 'agenda',
+                trace,
+                payload,
+                error,
+                panelRunId: runId,
+                profileName: activeOrchPresetName || profile?.name || '',
+            });
+        }
         throw error;
     }
 }
