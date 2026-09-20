@@ -6569,5 +6569,7 @@
     "Activate": "激活",
     "Settings-loaded event": "设置加载完成事件",
     "Server phase": "服务端阶段",
-    "Unknown extension": "未知扩展"
+    "Unknown extension": "未知扩展",
+    "Unknown time": "未知时间",
+    "Unknown version": "未知版本"
 }
