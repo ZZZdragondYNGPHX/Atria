@@ -45,6 +45,13 @@ describe('immersive experience host integration', () => {
         expect(index).toContain('id="immersiveHudMode"');
     });
 
+    test('Android Back dismisses input before overlays and leaves immersive HUD to its controller', () => {
+        const script = read('public/script.js');
+        expect(script).toContain("activeElement?.matches?.('input, textarea, select, [contenteditable=\"true\"]')");
+        expect(script).toContain("dialog[open]:not(#atriaImmersiveHudDetails)");
+        expect(script).toContain('immersiveController.dismissTransientLayer?.()');
+    });
+
     test('presentation reuses the live chat DOM rather than cloning history', () => {
         const sources = [
             read('public/scripts/immersive/presentation.js'),
