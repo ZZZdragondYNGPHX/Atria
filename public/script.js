@@ -920,13 +920,22 @@ let exportPopper = Popper.createPopper(document.getElementById('export_button'),
     placement: 'left',
 });
 let isExportPopupOpen = false;
+const translateImmersiveText = value => {
+    try {
+        return translateText(value);
+    } catch {
+        // i18n participates in a circular ESM graph during early startup.
+        // Dynamic immersive nodes carry data-i18n markers and are translated by initLocales().
+        return String(value ?? '');
+    }
+};
 const immersiveController = createImmersiveController({
     document,
     window,
     getSettings: () => power_user,
     saveSettings: () => saveSettingsDebounced(),
     isMobile,
-    translate: value => translateText(value),
+    translate: translateImmersiveText,
     eventSource,
     eventTypes: event_types,
     hostActions: {
