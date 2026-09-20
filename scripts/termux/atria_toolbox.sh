@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.6
-# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧 Luker origin。
+# Atria Toolbox launcher - v0.3.7
+# v0.3.7：适配 Atria 独立 Git 历史切割；旧本地主线自动保留安全分支后对齐新 main。\n# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧 Luker origin。
 # v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。\n# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。\n# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
 # v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
 # v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
@@ -8,7 +8,7 @@
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.6"
+SCRIPT_VERSION="v0.3.7"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
@@ -302,12 +302,10 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.6"
+SCRIPT_VERSION="v0.3.7"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
-CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
-
-ensure_atria_origin() {
+CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"\nHISTORY_CUTOVER_LEGACY_ANCHOR="91ae97aed557be9439317a67d0ec516f7512fe2e"\n\nensure_atria_origin() {
     if ! git -C "$ATRIA_DIR" rev-parse --git-dir >/dev/null 2>&1; then
         return 0
     fi
@@ -326,6 +324,37 @@ ensure_atria_origin() {
     info "已校正 Atria 项目地址：$CANONICAL_REPO_URL"
 }
 
+history_cutover_required() {
+    local local_sha="$1"
+    local remote_sha="$2"
+
+    # The 2026-09-20 Atria history cutover intentionally severed main from the
+    # legacy Luker ancestry. Only auto-realign a clean checkout when its current
+    # HEAD still descends from that known legacy anchor and has no merge-base
+    # with the canonical origin/main.
+    git -C "$ATRIA_DIR" merge-base "$local_sha" "$remote_sha" >/dev/null 2>&1 && return 1
+    git -C "$ATRIA_DIR" cat-file -e "$HISTORY_CUTOVER_LEGACY_ANCHOR^{commit}" 2>/dev/null || return 1
+    git -C "$ATRIA_DIR" merge-base --is-ancestor "$HISTORY_CUTOVER_LEGACY_ANCHOR" "$local_sha"
+}
+
+align_main_after_history_cutover() {
+    local old_sha="$1"
+    local stamp backup_branch suffix=0
+
+    stamp=$(date +%Y%m%d-%H%M%S)
+    backup_branch="history-cutover-backup-$stamp"
+    while git -C "$ATRIA_DIR" show-ref --verify --quiet "refs/heads/$backup_branch"; do
+        suffix=$((suffix + 1))
+        backup_branch="history-cutover-backup-${stamp}-${suffix}"
+    done
+
+    git -C "$ATRIA_DIR" branch "$backup_branch" "$old_sha" || return 1
+    info "检测到 Atria 独立历史切割；旧代码历史已保留为本地安全分支：$backup_branch"
+
+    git -C "$ATRIA_DIR" switch -C main origin/main || return 1
+    git -C "$ATRIA_DIR" branch --set-upstream-to=origin/main main >/dev/null 2>&1 || true
+    info "main 已安全对齐新的 Atria 独立历史。"
+}
 # All tag/commit/main fetch paths pass through this runtime helper. Wrapping it
 # prevents an old Luker clone from ever fetching updates from the legacy repo.
 if declare -F fetch_repo_refs >/dev/null 2>&1; then
@@ -418,9 +447,7 @@ update_main_branch() {
         backup_data || { error "备份失败，操作已停止。"; return 1; }
     fi
 
-    switch_to_remote_branch "main" || return 1
-    post_code_change
-}
+    if history_cutover_required "$old_sha" "$remote_sha"; then\n        align_main_after_history_cutover "$old_sha" || return 1\n    else\n        switch_to_remote_branch "main" || return 1\n    fi\n    post_code_change\n}
 
 update_current_branch() {
     update_main_branch
@@ -454,8 +481,7 @@ version_menu() {
     done
 }
 
-main_menu
-ATRIA_V031_READY_FIX
+ensure_atria_origin || {\n    error "无法校正 Atria 项目地址：$CANONICAL_REPO_URL"\n    exit 1\n}\nmain_menu\nATRIA_V031_READY_FIX
 
 bash -n "$RUNTIME_FILE" || {
     echo "[ERROR] 工具箱运行时语法检查失败。" >&2
