@@ -96,9 +96,12 @@ export function createImmersiveComposer({
         label: translate('Keep'),
         title: translate('Keep partial response'),
     });
-    continueButton.setAttribute('data-i18n', 'Continue;[title]Continue response;[aria-label]Continue response');
-    rewriteButton.setAttribute('data-i18n', 'Rewrite;[title]Rewrite response;[aria-label]Rewrite response');
-    keepButton.setAttribute('data-i18n', 'Keep;[title]Keep partial response;[aria-label]Keep partial response');
+    continueButton.setAttribute('data-i18n', '[title]Continue response;[aria-label]Continue response');
+    continueButton.querySelector('.atria-immersive-button-label')?.setAttribute('data-i18n', 'Continue');
+    rewriteButton.setAttribute('data-i18n', '[title]Rewrite response;[aria-label]Rewrite response');
+    rewriteButton.querySelector('.atria-immersive-button-label')?.setAttribute('data-i18n', 'Rewrite');
+    keepButton.setAttribute('data-i18n', '[title]Keep partial response;[aria-label]Keep partial response');
+    keepButton.querySelector('.atria-immersive-button-label')?.setAttribute('data-i18n', 'Keep');
     interrupt.append(interruptText, continueButton, rewriteButton, keepButton);
     form.prepend(interrupt);
 
