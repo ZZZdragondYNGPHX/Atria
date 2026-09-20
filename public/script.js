@@ -56,6 +56,7 @@ import {
     charSetAuxWorlds,
     deleteWorldInfoWithUndo,
 } from './scripts/world-info.js';
+import { initWorldInfoWorkspace } from './scripts/world-info/workspace.js';
 
 import {
     groups,
@@ -2068,6 +2069,12 @@ async function firstLoadInit() {
     initNavPanelPins();
     initSendTextareaState();
     restoreCharacterSearchVisibility();
+
+    // Mount the Atria World Info Workspace before the loader is removed.
+    // The full World Info runtime still initializes later in startup batch 3;
+    // this early, DOM-only mount prevents the legacy drawer layout from
+    // flashing briefly while extension bootstrap is still running.
+    initWorldInfoWorkspace();
 
     if (isLoaderVisible()) {
         console.debug('[init] hiding loader');
