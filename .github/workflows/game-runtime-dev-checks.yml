@@ -31,6 +31,7 @@ jobs:
           --runInBand
           game-runtime/package-manifest.test.js
           game-runtime/package-loader.test.js
+          game-runtime/package-transport.test.js
           regex-engine/game-runtime-boundary.test.js
           regex-engine/lane-semantics.test.js
           card-app.test.js
