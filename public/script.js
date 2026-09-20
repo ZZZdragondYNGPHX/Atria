@@ -2086,7 +2086,7 @@ async function firstLoadInit() {
 
     if (isLoaderVisible()) {
         console.debug('[init] hiding loader');
-        await hideLoader();
+        await hideLoader({ immediate: true });
         console.debug('[init] loader hidden');
         performance.mark('[init] loader hidden');
     }
