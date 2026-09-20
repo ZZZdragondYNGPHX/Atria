@@ -1,0 +1,89 @@
+name: Build Atria Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: Build type
+        required: true
+        default: debug
+        type: choice
+        options: [debug, release]
+  push:
+    branches: [main]
+    tags: ['*']
+
+permissions:
+  contents: write
+
+env:
+  NODEJS_MOBILE_ASSET_URL: https://github.com/funnycups/nodejs-mobile/releases/latest/download/nodejs-mobile-android.zip
+  NODEJS_MOBILE_ASSET_NAME: nodejs-mobile-android.zip
+  NODEJS_MOBILE_RUNTIME_MAJOR: "24"
+  NODEJS_MOBILE_MIN_MAJOR: "24"
+  NODEJS_MOBILE_ENFORCE_MIN_MAJOR: "1"
+
+jobs:
+  debug:
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'debug'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK
+        run: bash android-app/scripts/build-android-apk.sh debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atria-android-debug-apk-${{ github.sha }}
+          path: android-app/app/build/outputs/apk/debug/*.apk
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Validate signing secrets
+        run: |
+          test -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}"
+          test -n "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+          test -n "${{ secrets.ANDROID_KEY_ALIAS }}"
+          test -n "${{ secrets.ANDROID_KEY_PASSWORD }}"
+      - name: Decode Android keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android-app/release.keystore
+      - name: Build signed release APK
+        run: bash android-app/scripts/build-android-apk.sh release
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ github.workspace }}/android-app/release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atria-android-release-apk-${{ github.sha }}
+          path: android-app/app/build/outputs/apk/release/*.apk
+      - name: Publish release assets
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: android-app/app/build/outputs/apk/release/*.apk

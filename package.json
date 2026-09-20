@@ -130,12 +130,12 @@
             "whatwg-url": "^14.0.0"
         }
     },
-    "name": "luker",
+    "name": "atria",
     "type": "module",
     "license": "AGPL-3.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/funnycups/Luker.git"
+        "url": "https://github.com/ZZZdragondYNGPHX/Atria.git"
     },
     "version": "2.7.0",
     "scripts": {
@@ -156,7 +156,7 @@
         "storage:audit-names": "node scripts/audit-storage-names.js"
     },
     "bin": {
-        "luker": "./src/server-global.js"
+        "atria": "./src/server-global.js"
     },
     "rules": {
         "no-path-concat": "off",

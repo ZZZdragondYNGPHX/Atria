@@ -9,11 +9,11 @@
 #include "node.h"
 
 static std::atomic<bool> g_node_running(false);
-static constexpr const char* LOG_TAG = "LukerNative";
+static constexpr const char* LOG_TAG = "AtriaNative";
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_luker_app_LukerRuntimeManager_startNodeWithArguments(JNIEnv *env, jobject /* this */, jobjectArray arguments) {
+Java_com_atria_app_AtriaRuntimeManager_startNodeWithArguments(JNIEnv *env, jobject /* this */, jobjectArray arguments) {
     if (g_node_running.exchange(true)) {
         __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Node runtime already running, skip duplicate start.");
         return 0;
@@ -57,6 +57,6 @@ Java_com_luker_app_LukerRuntimeManager_startNodeWithArguments(JNIEnv *env, jobje
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_luker_app_LukerRuntimeManager_isNodeProcessRunning(JNIEnv* /* env */, jobject /* this */) {
+Java_com_atria_app_AtriaRuntimeManager_isNodeProcessRunning(JNIEnv* /* env */, jobject /* this */) {
     return g_node_running.load() ? JNI_TRUE : JNI_FALSE;
 }

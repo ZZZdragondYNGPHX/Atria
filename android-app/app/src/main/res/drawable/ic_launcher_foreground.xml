@@ -8,5 +8,5 @@
     android:insetTop="18dp">
     <bitmap
         android:gravity="center"
-        android:src="@drawable/luker_logo" />
+        android:src="@drawable/atria_logo" />
 </inset>
