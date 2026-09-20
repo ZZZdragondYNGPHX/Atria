@@ -1814,6 +1814,31 @@ export function primeExtensionSettings(settings, versionChanged, enableAutoUpdat
     };
 }
 
+function recordExtensionStartupDuration(name, value) {
+    try {
+        const state = globalThis.__atriaStartupTiming;
+        if (!state || typeof state !== 'object') return;
+        if (!state.durations || typeof state.durations !== 'object') {
+            state.durations = {};
+        }
+        const duration = Number(value);
+        if (Number.isFinite(duration) && duration >= 0) {
+            state.durations[name] = duration;
+        }
+    } catch {
+        // Startup diagnostics must never affect extension loading.
+    }
+}
+
+async function measureExtensionStartupPhase(name, task) {
+    const startedAt = performance.now();
+    try {
+        return await task();
+    } finally {
+        recordExtensionStartupDuration(name, performance.now() - startedAt);
+    }
+}
+
 export async function bootstrapExtensions(options = null) {
     const bootstrapOptions = options ?? pendingExtensionBootstrap;
     if (!bootstrapOptions) {
@@ -1827,19 +1852,26 @@ export async function bootstrapExtensions(options = null) {
     extensionBootstrapPromise = (async () => {
         const { enableAutoUpdate, versionChanged } = bootstrapOptions;
 
-        // Activate offline extensions
-        await eventSource.emit(event_types.EXTENSIONS_FIRST_LOAD);
-        const extensions = await discoverExtensions();
+        // Activate offline extensions. These timings are diagnostics only;
+        // phase order and extension loading semantics remain unchanged.
+        await measureExtensionStartupPhase('extensionsFirstLoadEvent', () =>
+            eventSource.emit(event_types.EXTENSIONS_FIRST_LOAD));
+        const extensions = await measureExtensionStartupPhase('extensionsDiscover', () =>
+            discoverExtensions());
         extensionNames = extensions.map(x => x.name);
         extensionTypes = Object.fromEntries(extensions.map(x => [x.name, x.type]));
-        manifests = await getManifests(extensionNames);
+        manifests = await measureExtensionStartupPhase('extensionsManifests', () =>
+            getManifests(extensionNames));
 
         if (versionChanged && enableAutoUpdate) {
-            await autoUpdateExtensions(false);
+            await measureExtensionStartupPhase('extensionsAutoUpdate', () =>
+                autoUpdateExtensions(false));
         }
 
-        await activateExtensions();
-        await eventSource.emit(event_types.EXTENSION_SETTINGS_LOADED);
+        await measureExtensionStartupPhase('extensionsActivate', () =>
+            activateExtensions());
+        await measureExtensionStartupPhase('extensionsSettingsLoadedEvent', () =>
+            eventSource.emit(event_types.EXTENSION_SETTINGS_LOADED));
     })();
 
     try {

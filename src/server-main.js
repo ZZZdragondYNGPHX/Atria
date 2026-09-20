@@ -553,6 +553,9 @@ app.post('/api/startup/client-timing', (request, response) => {
     const timings = request.body?.timings && typeof request.body.timings === 'object'
         ? request.body.timings
         : {};
+    const durations = request.body?.durations && typeof request.body.durations === 'object'
+        ? request.body.durations
+        : {};
     const navigation = request.body?.navigation && typeof request.body.navigation === 'object'
         ? request.body.navigation
         : {};
@@ -575,7 +578,26 @@ app.post('/api/startup/client-timing', (request, response) => {
         settingsToVisibleMs: diffClientTiming(timings, 'getSettingsDone', 'loaderHidden'),
         visibleTotalMs: diffClientTiming(timings, 'firstLoadStart', 'loaderHidden'),
         visibleToBatch1Ms: diffClientTiming(timings, 'loaderHidden', 'batch1Done'),
+        welcomeScreenMs: normalizeClientTiming(durations.welcomeScreen),
         batch2Ms: diffClientTiming(timings, 'batch1Done', 'batch2Done'),
+        batch2TasksMs: diffClientTiming(timings, 'batch2TasksStart', 'batch2TasksDone'),
+        b2TextGenModelSelectsMs: normalizeClientTiming(durations.batch2TextGenModelSelects),
+        b2SystemMessagesMs: normalizeClientTiming(durations.batch2SystemMessages),
+        b2AnnouncementsMs: normalizeClientTiming(durations.batch2Announcements),
+        b2InitExtensionsMs: normalizeClientTiming(durations.batch2InitExtensions),
+        b2BootstrapExtensionsMs: normalizeClientTiming(durations.batch2BootstrapExtensions),
+        b2ExtensionSlashCommandsMs: normalizeClientTiming(durations.batch2ExtensionSlashCommands),
+        b2ToolSlashCommandsMs: normalizeClientTiming(durations.batch2ToolSlashCommands),
+        b2TokenizersMs: normalizeClientTiming(durations.batch2Tokenizers),
+        b2PersonasMs: normalizeClientTiming(durations.batch2Personas),
+        b2SlashCommandAutocompleteMs: normalizeClientTiming(durations.batch2SlashCommandAutocomplete),
+        b2MacroAutocompleteMs: normalizeClientTiming(durations.batch2MacroAutocomplete),
+        extFirstLoadEventMs: normalizeClientTiming(durations.extensionsFirstLoadEvent),
+        extDiscoverMs: normalizeClientTiming(durations.extensionsDiscover),
+        extManifestsMs: normalizeClientTiming(durations.extensionsManifests),
+        extAutoUpdateMs: normalizeClientTiming(durations.extensionsAutoUpdate),
+        extActivateMs: normalizeClientTiming(durations.extensionsActivate),
+        extSettingsLoadedEventMs: normalizeClientTiming(durations.extensionsSettingsLoadedEvent),
         batch3Ms: diffClientTiming(timings, 'batch2Done', 'batch3Done'),
         firstLoadTotalMs: diffClientTiming(timings, 'firstLoadStart', 'appReady'),
         domInteractiveMs: normalizeClientTiming(navigation.domInteractive),

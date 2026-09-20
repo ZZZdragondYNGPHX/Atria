@@ -8,6 +8,7 @@ const STARTUP_TIMING_STATE_KEY = '__atriaStartupTiming';
 
 const startupTimingState = {
     initJsStart: performance.now(),
+    durations: {},
 };
 globalThis[STARTUP_TIMING_STATE_KEY] = startupTimingState;
 
