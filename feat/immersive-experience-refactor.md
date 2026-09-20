@@ -6,7 +6,7 @@
 - 类型：`feat/*`
 - 工作分支：`feat/immersive-experience-refactor`
 - 基线：`main@fad1dd44c11854861db0a5b2d92335792def8ecc`
-- 状态：已实现并完成 CI 验证，PR #74 待合并
+- 状态：已实现、已完成 CI 验证，并通过 PR #74 squash 合并到 main
 - 产品原则：沉浸模式不是“把酒馆放全屏”，而是建立在现有聊天运行时之上的自适应剧情呈现系统。
 
 ## 一、背景与现状
@@ -656,7 +656,8 @@ Provider 必须受到预算、优先级、隔离和 dispose 生命周期约束�
 
 对应 PR：
 
-- #74 `feat: immersive experience refactor`
+- #74 `feat: immersive experience refactor` — 已合并
+- main 合并提交：`9767257e3ecce049936c68072d9328c14bab3243`
 
 最终代码保持“Presentation Layer over existing runtime”的边界，没有创建第二套 chat/message/swipe/generation/World Info/Memory/Orchestrator/LoreState 运行时。
 
@@ -751,6 +752,8 @@ CI/真实浏览器验证实际暴露并修复了以下问题：
 本任务没有构建 APK，也没有构建 Docker image。
 
 ### 结论
+
+PR #74 已通过 squash merge 合入 `main@9767257e3ecce049936c68072d9328c14bab3243`，并已验证主线可读取沉浸 controller/provider/CSS 与 Android Back policy 等关键文件。
 
 首版“真正的沉浸模式”已从原来的“隐藏顶栏 + fullscreen”升级为独立剧情呈现层，同时保持现有 Atria 运行时为唯一事实源。
 
