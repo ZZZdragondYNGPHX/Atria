@@ -49,6 +49,16 @@ async function openEntries(page) {
         .waitFor({ state: 'visible', timeout: 10_000 });
 }
 
+async function openBookFromLibrary(page) {
+    await page.locator('[data-wi-workspace-view="library"]').click();
+    const item = page.locator('.world_info_manager_item', { hasText: BOOK_NAME }).first();
+    await item.waitFor({ state: 'visible', timeout: 10_000 });
+    await item.locator('.world_info_manager_book_icon').click();
+    await page.locator('#wi_workspace_entries.is-active').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first()
+        .waitFor({ state: 'visible', timeout: 10_000 });
+}
+
 test.beforeAll(async () => {
     mock = await startMockLLM();
     server = await startWorldInfoServer({ specBaseName: '34-workspace-ui', scenarioId: 'workspace' });
@@ -75,6 +85,16 @@ test('desktop workspace uses Library / Entries / Global Rules and bounded list r
     await expect(page.locator('[data-wi-workspace-view="global"]')).toBeVisible();
 
     await activateBookFromLibrary(page);
+
+    // Library is a book catalogue: the duplicated active-book strip is
+    // demoted, and clicking the book card itself drills into its Entries.
+    await expect(page.locator('#wi_workspace_library #world_info_manager_active_panel')).toBeHidden();
+    const libraryCard = page.locator('#wi_workspace_library .world_info_manager_item', { hasText: BOOK_NAME }).first();
+    await expect(libraryCard).toBeVisible();
+    await libraryCard.locator('.world_info_manager_book_icon').click();
+    await expect(page.locator('#wi_workspace_entries')).toHaveClass(/is-active/);
+    await page.locator('[data-wi-workspace-view="library"]').click();
+
     await page.locator('[data-wi-workspace-view="global"]').click();
     await expect(page.locator('#wi_workspace_global')).toBeVisible();
     await expect(page.locator('.wi-global-rule-card')).toHaveCount(4);
@@ -186,14 +206,49 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     expect(drawerBox?.width || 0).toBeGreaterThanOrEqual(380);
     expect(drawerBox?.height || 0).toBeGreaterThanOrEqual(800);
 
-    await openEntries(page);
+    // Mobile starts as a real catalogue. The native book picker is not part
+    // of the product navigation; selecting a book card opens its Entries.
+    await page.locator('[data-wi-workspace-view="library"]').click();
+    await expect(page.locator('#wi_workspace_library #world_info_manager_active_panel')).toBeHidden();
+    await expect(page.locator('.wi-workspace-primary-toolbar .world_popup_primary_select')).toBeHidden();
+
+    // Advanced cross-book search survives the visual simplification behind
+    // one compact filter menu instead of occupying a permanent second row.
+    const librarySearchOptions = page.locator('.wi-library-mobile-search-options');
+    await expect(librarySearchOptions).toBeVisible();
+    await librarySearchOptions.locator('summary').click();
+    await librarySearchOptions.locator('[data-control="entries"]').click();
+    await expect(page.locator('#world_info_manager_search_entries')).toBeChecked();
+    await librarySearchOptions.locator('[data-control="entries"]').click();
+    await expect(page.locator('#world_info_manager_search_entries')).not.toBeChecked();
+
+    await openBookFromLibrary(page);
+
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();
     await expect(page.locator('#wi_workspace_inspector')).toBeHidden();
+    await expect(page.locator('.wi-workspace-primary-toolbar')).toBeHidden();
+
+    const [headerBox, listBox, navBox] = await Promise.all([
+        page.locator('.wi-workspace-header').boundingBox(),
+        page.locator('.wi-workspace-entry-list-pane').boundingBox(),
+        page.locator('.wi-workspace-nav').boundingBox(),
+    ]);
+    expect(headerBox?.height || 0).toBeLessThan(70);
+    expect(listBox?.height || 0).toBeGreaterThan(430);
+    expect(navBox?.y || 0).toBeGreaterThan(760);
 
     await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first().click();
     await expect(page.locator('#wi_workspace_inspector')).toBeVisible();
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeHidden();
     await expect(page.locator('#wi_workspace_mobile_back')).toBeVisible();
+    await expect(page.locator('.wi-workspace-nav')).toBeHidden();
+    await expect(page.locator('.wi-workspace-entries-toolbar')).toBeHidden();
+    await expect(page.locator('.wi-workspace-entry-filterbar')).toBeHidden();
+
+    const contentEditor = page.locator('#wi_workspace_inspector_body textarea[name="content"]');
+    await expect(contentEditor).toBeVisible();
+    const contentBox = await contentEditor.boundingBox();
+    expect(contentBox?.height || 0).toBeGreaterThan(300);
 
     await page.locator('#wi_workspace_mobile_back').click();
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();

@@ -43,6 +43,45 @@ function normalizeView(value) {
     return WORKSPACE_VIEWS.has(String(value)) ? String(value) : 'library';
 }
 
+function getWorkspaceContextTitle() {
+    if (state.activeView === 'entries') {
+        return state.worldName || t`Entries`;
+    }
+    if (state.activeView === 'global') {
+        return t`Global Rules`;
+    }
+    return t`Library`;
+}
+
+function syncWorkspaceChrome() {
+    const root = document.querySelector('#wi_workspace_shell');
+    if (!(root instanceof HTMLElement)) return;
+
+    const mobile = isMobileWorkspace();
+    root.dataset.activeView = state.activeView;
+    root.classList.toggle('has-open-book', Boolean(state.worldName));
+    root.classList.toggle('is-mobile-detail', mobile && state.mobileDetail);
+
+    // Mobile bottom navigation must be a direct child of the full-screen
+    // workspace. Keeping it inside the top header creates a containing block
+    // that can place an otherwise fixed/absolute nav outside the viewport.
+    // Reparenting preserves the same buttons/listeners and restores the
+    // desktop header structure when the viewport grows again.
+    const header = root.querySelector('.wi-workspace-header');
+    const nav = root.querySelector('.wi-workspace-nav');
+    const controls = header?.querySelector('.wi-workspace-mode-controls');
+    if (nav instanceof HTMLElement && header instanceof HTMLElement) {
+        if (mobile) {
+            if (nav.parentElement !== root) root.append(nav);
+        } else if (nav.parentElement !== header) {
+            header.insertBefore(nav, controls || null);
+        }
+    }
+
+    const contextTitle = root.querySelector('#wi_workspace_context_title');
+    if (contextTitle) contextTitle.textContent = getWorkspaceContextTitle();
+}
+
 function escapeText(value) {
     return String(value ?? '');
 }
@@ -599,9 +638,7 @@ function selectWorkspaceEntry(entry, { render = true } = {}) {
 }
 
 function syncMobileDrilldown() {
-    const root = document.querySelector('#wi_workspace_shell');
-    if (!root) return;
-    root.classList.toggle('is-mobile-detail', isMobileWorkspace() && state.mobileDetail);
+    syncWorkspaceChrome();
 }
 
 function renderBulkInspector() {
@@ -645,8 +682,8 @@ function setView(view, { persist = true } = {}) {
 
     if (next !== 'entries') {
         state.mobileDetail = false;
-        syncMobileDrilldown();
     }
+    syncWorkspaceChrome();
 }
 
 function setDisplayMode(mode) {
@@ -654,6 +691,8 @@ function setDisplayMode(mode) {
     accountStorage.setItem(DISPLAY_MODE_KEY, state.displayMode);
     const select = document.querySelector('#wi_workspace_display_mode');
     if (select) select.value = state.displayMode;
+    const mobileSelect = document.querySelector('#wi_workspace_mobile_display_mode');
+    if (mobileSelect) mobileSelect.value = state.displayMode;
     applyDisplayModeToInspector();
 }
 
@@ -664,6 +703,8 @@ function setContinuousCards(enabled, { notify = true } = {}) {
     document.querySelector('#wi_workspace_entries_split')?.classList.toggle('displayNone', state.continuousCards);
     document.querySelector('#wi_workspace_cards')?.classList.toggle('displayNone', !state.continuousCards);
     document.querySelector('#wi_workspace_continuous_cards')?.classList.toggle('is-active', state.continuousCards);
+    document.querySelector('#wi_workspace_mobile_continuous_cards')?.classList.toggle('is-active', state.continuousCards);
+    document.querySelector('#wi_workspace_shell')?.classList.toggle('is-continuous-cards', state.continuousCards);
     document.querySelector('#world_info_pagination')?.classList.toggle('displayNone', !state.continuousCards);
     document.querySelectorAll('[data-cards-only="true"]').forEach(button => {
         button.classList.toggle('displayNone', !state.continuousCards);
@@ -764,20 +805,47 @@ function buildWorkspaceDom() {
     shell.className = 'wi-workspace-shell';
     shell.innerHTML = `
         <div class="wi-workspace-header">
+            <div class="wi-workspace-mobile-context">
+                <span class="wi-workspace-mobile-context-icon"><i class="fa-solid fa-book-open"></i></span>
+                <strong id="wi_workspace_context_title">${t`Library`}</strong>
+            </div>
             <div class="wi-workspace-nav" role="tablist" aria-label="${t`World Info workspace`}">
                 <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="library"><i class="fa-solid fa-book"></i><span>${t`Library`}</span></button>
                 <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="entries"><i class="fa-solid fa-list"></i><span>${t`Entries`}</span></button>
                 <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="global"><i class="fa-solid fa-sliders"></i><span>${t`Global Rules`}</span></button>
             </div>
             <div class="wi-workspace-mode-controls">
-                <select id="wi_workspace_display_mode" class="text_pole textarea_compact" title="${t`Entry display mode`}">
-                    <option value="compact">${t`Compact`}</option>
-                    <option value="standard">${t`Standard`}</option>
-                    <option value="full">${t`Full`}</option>
-                    <option value="custom">${t`Custom`}</option>
-                </select>
-                <button id="wi_workspace_custom_fields" type="button" class="menu_button menu_button_icon displayNone"><i class="fa-solid fa-sliders"></i><span>${t`Custom fields`}</span></button>
-                <button id="wi_workspace_continuous_cards" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-table-columns"></i><span>${t`Continuous Cards`}</span></button>
+                <div class="wi-workspace-desktop-mode-controls">
+                    <select id="wi_workspace_display_mode" class="text_pole textarea_compact" title="${t`Entry display mode`}">
+                        <option value="compact">${t`Compact`}</option>
+                        <option value="standard">${t`Standard`}</option>
+                        <option value="full">${t`Full`}</option>
+                        <option value="custom">${t`Custom`}</option>
+                    </select>
+                    <button id="wi_workspace_custom_fields" type="button" class="menu_button menu_button_icon displayNone"><i class="fa-solid fa-sliders"></i><span>${t`Custom fields`}</span></button>
+                    <button id="wi_workspace_continuous_cards" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-table-columns"></i><span>${t`Continuous Cards`}</span></button>
+                </div>
+                <details class="wi-workspace-mobile-options">
+                    <summary class="menu_button" title="${t`Tools`}" aria-label="${t`Tools`}"><i class="fa-solid fa-ellipsis-vertical"></i></summary>
+                    <div class="wi-workspace-mobile-menu">
+                        <label class="wi-workspace-mobile-mode-field">
+                            <span>${t`Entry display mode`}</span>
+                            <select id="wi_workspace_mobile_display_mode" class="text_pole textarea_compact">
+                                <option value="compact">${t`Compact`}</option>
+                                <option value="standard">${t`Standard`}</option>
+                                <option value="full">${t`Full`}</option>
+                                <option value="custom">${t`Custom`}</option>
+                            </select>
+                        </label>
+                        <button id="wi_workspace_mobile_custom_fields" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-sliders"></i><span>${t`Custom fields`}</span></button>
+                        <button id="wi_workspace_mobile_continuous_cards" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-table-columns"></i><span>${t`Continuous Cards`}</span></button>
+                        <div class="wi-workspace-mobile-menu-separator"></div>
+                        <button type="button" class="menu_button menu_button_icon wi-workspace-mobile-book-action" data-forward="#world_popup_export"><i class="fa-solid fa-file-export"></i><span>${t`Export`}</span></button>
+                        <button type="button" class="menu_button menu_button_icon wi-workspace-mobile-book-action" data-forward="#world_popup_name_button"><i class="fa-solid fa-pen"></i><span>${t`Rename`}</span></button>
+                        <button type="button" class="menu_button menu_button_icon wi-workspace-mobile-book-action" data-forward="#world_duplicate"><i class="fa-solid fa-copy"></i><span>${t`Duplicate`}</span></button>
+                        <button type="button" class="menu_button menu_button_icon wi-workspace-mobile-book-action is-destructive" data-forward="#world_popup_delete"><i class="fa-solid fa-trash-can"></i><span>${t`Delete`}</span></button>
+                    </div>
+                </details>
                 <button id="wi_workspace_close" type="button" class="menu_button" title="${t`Close World Info Workspace`}" aria-label="${t`Close World Info Workspace`}"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
@@ -806,7 +874,6 @@ function buildWorkspaceDom() {
                         </div>
                     </aside>
                     <main id="wi_workspace_inspector" class="wi-workspace-inspector">
-                        <button id="wi_workspace_mobile_back" type="button" class="menu_button wi-workspace-mobile-back"><i class="fa-solid fa-chevron-left"></i><span>${t`Entries`}</span></button>
                         <div id="wi_workspace_bulk_inspector" class="wi-workspace-bulk-inspector displayNone">
                             <div><strong>${t`Bulk Inspector`}</strong> · <span data-role="count">0</span> ${t`selected`}</div>
                             <small>${t`Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.`}</small>
@@ -819,6 +886,7 @@ function buildWorkspaceDom() {
                             <button type="button" class="menu_button menu_button_icon" data-action="bulk-edit"><i class="fa-solid fa-pen-to-square"></i><span>${t`Bulk Edit…`}</span></button>
                         </div>
                         <div id="wi_workspace_inspector_header" class="wi-workspace-inspector-header">
+                            <button id="wi_workspace_mobile_back" type="button" class="menu_button wi-workspace-mobile-back" title="${t`Entries`}" aria-label="${t`Entries`}"><i class="fa-solid fa-chevron-left"></i></button>
                             <div class="wi-workspace-inspector-heading">
                                 <strong id="wi_workspace_inspector_title">${t`Select an entry`}</strong>
                                 <small id="wi_workspace_inspector_meta" class="opacity50p"></small>
@@ -907,6 +975,36 @@ function buildWorkspaceDom() {
     if (managerBlock) shell.querySelector('#wi_workspace_library').append(managerBlock);
     if (globalBlock) shell.querySelector('#wi_workspace_global').append(globalBlock);
 
+    const managerFilters = managerBlock?.querySelector('.world_info_manager_filter_controls');
+    if (managerFilters && !managerFilters.querySelector('.wi-library-mobile-search-options')) {
+        const options = document.createElement('details');
+        options.className = 'wi-library-mobile-search-options';
+        options.innerHTML = `
+            <summary class="menu_button" title="${t`Search`}" aria-label="${t`Search`}"><i class="fa-solid fa-filter"></i></summary>
+            <div class="wi-library-mobile-search-menu">
+                <label for="world_info_manager_search_entries" data-control="entries">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span>${t`Search entries/content`}</span>
+                </label>
+                <label for="world_info_manager_search_advanced" data-control="advanced">
+                    <i class="fa-solid fa-code"></i>
+                    <span>${t`Advanced syntax`}</span>
+                </label>
+            </div>
+        `;
+        managerFilters.append(options);
+
+        const syncOptionState = () => {
+            const entrySearch = document.querySelector('#world_info_manager_search_entries');
+            const advanced = document.querySelector('#world_info_manager_search_advanced');
+            options.querySelector('[data-control="entries"]')?.classList.toggle('is-active', Boolean(entrySearch?.checked));
+            options.querySelector('[data-control="advanced"]')?.classList.toggle('is-active', Boolean(advanced?.checked));
+        };
+        document.querySelector('#world_info_manager_search_entries')?.addEventListener('change', syncOptionState);
+        document.querySelector('#world_info_manager_search_advanced')?.addEventListener('change', syncOptionState);
+        syncOptionState();
+    }
+
     buildGlobalRulesPanels();
     topBlock.classList.add('displayNone');
 
@@ -958,11 +1056,24 @@ function buildWorkspaceDom() {
     shell.querySelector('#wi_workspace_display_mode')?.addEventListener('change', event => {
         setDisplayMode(event.target.value);
     });
+    shell.querySelector('#wi_workspace_mobile_display_mode')?.addEventListener('change', event => {
+        setDisplayMode(event.target.value);
+    });
     shell.querySelector('#wi_workspace_custom_fields')?.addEventListener('click', () => {
         document.querySelector('#world_entry_display_settings')?.click();
     });
+    shell.querySelector('#wi_workspace_mobile_custom_fields')?.addEventListener('click', () => {
+        document.querySelector('#world_entry_display_settings')?.click();
+        const details = shell.querySelector('.wi-workspace-mobile-options');
+        if (details instanceof HTMLDetailsElement) details.open = false;
+    });
     shell.querySelector('#wi_workspace_continuous_cards')?.addEventListener('click', () => {
         setContinuousCards(!state.continuousCards);
+    });
+    shell.querySelector('#wi_workspace_mobile_continuous_cards')?.addEventListener('click', () => {
+        setContinuousCards(!state.continuousCards);
+        const details = shell.querySelector('.wi-workspace-mobile-options');
+        if (details instanceof HTMLDetailsElement) details.open = false;
     });
     shell.querySelector('#wi_workspace_close')?.addEventListener('click', () => {
         document.querySelector('#WIDrawerIcon')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -1008,7 +1119,7 @@ function buildWorkspaceDom() {
 
     window.addEventListener('resize', () => {
         if (!isMobileWorkspace()) state.mobileDetail = false;
-        syncMobileDrilldown();
+        syncWorkspaceChrome();
         scheduleVirtualRows();
     });
 
@@ -1044,6 +1155,7 @@ export function syncWorldInfoWorkspace({
     state.data = data;
     state.entries = Array.isArray(entries) ? entries : [];
     state.callbacks = callbacks || {};
+    syncWorkspaceChrome();
     const requestedUid = focusUid === null || focusUid === undefined
         ? ''
         : String(focusUid);
