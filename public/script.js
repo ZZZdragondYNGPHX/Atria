@@ -263,7 +263,7 @@ import {
     formatInstructModeStoryString,
     getInstructStoppingSequences,
 } from './scripts/instruct-mode.js';
-import { initLocales, t } from './scripts/i18n.js';
+import { initLocales, t, translate as translateText } from './scripts/i18n.js';
 import { getFriendlyTokenizerName, getTokenCount, getTokenCountAsync, initTokenizers, saveTokenCacheDebounced, flushTokenCacheSave } from './scripts/tokenizers.js';
 import { consumeLastUsage } from './scripts/last-usage.js';
 import {
@@ -926,7 +926,7 @@ const immersiveController = createImmersiveController({
     getSettings: () => power_user,
     saveSettings: () => saveSettingsDebounced(),
     isMobile,
-    translate: value => t(value),
+    translate: value => translateText(value),
     eventSource,
     eventTypes: event_types,
     hostActions: {
