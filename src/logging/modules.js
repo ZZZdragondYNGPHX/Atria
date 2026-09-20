@@ -8,8 +8,8 @@ export const BACKEND_LOG_MODULES = Object.freeze([
 
 export const FRONTEND_LOG_MODULES = Object.freeze([
     'startup', 'ui', 'network', 'generation', 'extensions', 'orchestrator',
-    'memory', 'worldbook', 'regex', 'editor', 'studio', 'storage',
-    'settings', 'system', 'uncategorized',
+    'memory', 'worldbook', 'regex', 'editor', 'studio', 'storage', 'sync',
+    'backup', 'settings', 'system', 'uncategorized',
 ]);
 
 const MODULES_BY_SIDE = Object.freeze({

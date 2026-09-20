@@ -1,4 +1,8 @@
 import { renderPresetHelpButton } from '../preset-help.js';
+import { createLogger } from '../../logging/logger.js';
+import { captureFrontendIncident } from '../../logging/incident-reporter.js';
+
+const studioEntryLogger = createLogger('studio');
 
 export function createCharacterEditorUi(deps) {
     const {
@@ -429,7 +433,19 @@ export function createCharacterEditorUi(deps) {
                 const { openCardAppStudio } = await import('./studio/studio.js');
                 await openCardAppStudio(charId);
             } catch (err) {
-                console.error('[CEA] Failed to open CardApp Studio:', err);
+                studioEntryLogger.error('open.failed', '[CEA] Failed to open CardApp Studio', {
+                    charId: String(charId || ''),
+                    message: err?.message || String(err),
+                }, { category: 'studio' });
+                void captureFrontendIncident({
+                    type: 'tool_failure',
+                    severity: 'error',
+                    primaryModule: 'studio',
+                    stage: 'cardapp-studio.open',
+                    summary: err?.message || String(err),
+                    failure: err,
+                    environment: { charId: String(charId || '') },
+                });
                 toastr.error(String(err?.message || err));
             }
         });

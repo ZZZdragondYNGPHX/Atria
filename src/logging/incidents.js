@@ -16,6 +16,7 @@ export const INCIDENT_TYPES = Object.freeze([
     'plugin_runtime_failure',
     'storage_failure',
     'sync_failure',
+    'backup_failure',
     'websocket_failure',
     'unhandled_frontend_error',
     'unhandled_backend_error',
