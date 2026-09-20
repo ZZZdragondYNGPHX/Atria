@@ -578,32 +578,6 @@ app.post('/api/ping', (request, response) => {
     response.sendStatus(204);
 });
 
-app.post('/api/startup/client-timing', (request, response) => {
-    const timings = request.body?.timings && typeof request.body.timings === 'object'
-        ? request.body.timings
-        : {};
-    const durations = request.body?.durations && typeof request.body.durations === 'object'
-        ? request.body.durations
-        : {};
-    const navigation = request.body?.navigation && typeof request.body.navigation === 'object'
-        ? request.body.navigation
-        : {};
-
-    const stage = request.body?.stage === 'visible' ? 'visible' : 'ready';
-
-    const initJsStart = normalizeClientTiming(timings.initJsStart);
-    const responseEnd = normalizeClientTiming(navigation.responseEnd);
-    const summary = {
-        navResponseEndMs: responseEnd,
-        htmlToInitJsMs: initJsStart !== null && responseEnd !== null && initJsStart >= responseEnd
-            ? Math.round((initJsStart - responseEnd) * 10) / 10
-            : null,
-        libImportMs: diffClientTiming(timings, 'libImportStart', 'libImportEnd'),
-        appImportMs: diffClientTiming(timings, 'appImportStart', 'appImportEnd'),
-        initModuleMs: diffClientTiming(timings, 'initJsStart', 'initModuleEnd'),
-        initToFirstLoadMs: diffClientTiming(timings, 'initJsStart', 'firstLoadStart'),
-        csrfMs: diffClientTiming(timings, 'firstLoadStart', 'csrfDone'),
-        bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettings// summarizeExtensionActivationTimings lives in startup-store and feeds the persisted extSlow summary.
 app.post('/api/startup/client-timing', async (request, response) => {
     const report = normalizeStartupClientReport(request.body || {});
     const summary = summarizeClientStartupTimings(report);
