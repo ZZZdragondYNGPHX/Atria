@@ -28,7 +28,7 @@ import { resolve } from 'node:path';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { enableWorldInfoContinuousCards, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 /**
@@ -154,6 +154,7 @@ function writeBookWithTrailingSpaceFilename(dataRoot) {
  */
 async function selectBookByTrimmedLabel(page, wantedTrimmed) {
     await openWorldInfoDrawer(page);
+    await enableWorldInfoContinuousCards(page);
     const sel = page.locator('#world_editor_select');
     await sel.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for the dropdown to actually have our book as an option —

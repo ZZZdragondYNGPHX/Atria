@@ -162,6 +162,7 @@ async function settleFirstMes(page) {
  */
 async function openWIActivationSettings(page) {
     await openWorldInfoDrawer(page);
+    await page.locator('[data-wi-workspace-view="global"]').click();
     await page.waitForFunction(() => !!document.querySelector('#world_info_recursive'), { timeout: 5000 });
     // Expand the activation-settings inline drawer if its content is hidden.
     await page.evaluate(() => {

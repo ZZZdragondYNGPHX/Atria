@@ -190,7 +190,7 @@ try {
     }, authorBookName);
     assert.ok(authorBookOptionValue, 'author UI book option not found');
 
-    const authorUiEntry = page.locator('#world_popup_entries_list > .world_entry[uid="0"]');
+    const authorUiEntry = page.locator('#wi_workspace_inspector_body .world_entry[uid="0"]');
     let authorBookRendered = false;
     for (let attempt = 0; attempt < 3 && !authorBookRendered; attempt++) {
         await page.evaluate((value) => {
@@ -203,9 +203,10 @@ try {
             authorBookRendered = true;
         } catch { /* retry async editor bootstrap */ }
     }
-    assert.equal(authorBookRendered, true, 'author UI book entries did not render');
-    await authorUiEntry.locator('.wi-entry-toggle').click();
-    const conditionEditor = authorUiEntry.locator('.wi-entry-state-conditions');
+    assert.equal(authorBookRendered, true, 'author UI book Inspector did not render');
+    const stateSection = authorUiEntry.locator('.wi-inspector-section-state');
+    await stateSection.locator('> summary').click();
+    const conditionEditor = stateSection.locator('.wi-entry-state-conditions');
     await conditionEditor.waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await conditionEditor.count(), 1);
     assert.equal(await authorUiEntry.locator('textarea[name="stateConditionsJson"]').count(), 0);
@@ -294,7 +295,7 @@ try {
         const wi = await import('/scripts/world-info.js');
         const core = await import('/script.js');
         const { extension_settings } = await import('/scripts/extensions.js');
-        const { regex_placement } = await import('/scripts/extensions/regex/engine.js');
+        const { invalidateRegexExecutionPlans, regex_placement } = await import('/scripts/extensions/regex/engine.js');
         const { applyProfileWorldInfoFilter } = await import('/scripts/extensions/orchestrator/lorebook-filter.js');
         const { createWorldInfoDispatchAttribution, markWorldInfoDispatch } = await import('/scripts/atri-world-info-provenance.js');
         wi.updateWorldInfoSettings(
@@ -306,6 +307,9 @@ try {
             replaceString: 'RENDERED_FIXTURE_BODY', trimStrings: [], placement: [regex_placement.WORLD_INFO],
             disabled: false, markdownOnly: false, promptOnly: true, runOnEdit: false, substituteRegex: 0,
         }];
+        // This smoke injects settings directly instead of using the Regex UI,
+        // so explicitly mirror the UI's cache invalidation contract.
+        invalidateRegexExecutionPlans();
         let activationEvents = 0;
         let lastActivatedCount = 0;
         const onActivated = entries => {

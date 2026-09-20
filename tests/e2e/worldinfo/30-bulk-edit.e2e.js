@@ -6,9 +6,8 @@
 // restoreEntriesFromSnapshot). This e2e exercises the user-visible
 // chain:
 //   1. Open the WI editor on a book with 5 mixed-depth entries.
-//   2. Click .world_entry_select on each entry (real checkbox click);
-//      the toolbar's #world_entries_select_page button is the canonical
-//      "select all on page" gesture so we use it for parity.
+//   2. Use the Workspace's normal-state Select filtered action to enter
+//      multi-select. The contextual bulk toolbar appears only after selection.
 //   3. Click #world_entries_bulk_set_field → the menu builds in the
 //      DOM as #world_bulk_set_field_menu with one .world_bulk_field_menu_item
 //      per BULK_EDITABLE_FIELDS entry. Click the "Injection Depth" leaf.
@@ -22,7 +21,7 @@ import { resolve } from 'node:path';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded, writeWorldBook } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { enableWorldInfoContinuousCards, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -41,6 +40,7 @@ const BOOK_NAME = 'bulk-edit-routes';
 
 async function openBookInEditor(page, bookName) {
     await openWorldInfoDrawer(page);
+    await enableWorldInfoContinuousCards(page);
     await page.locator('#world_editor_select').waitFor({ state: 'visible', timeout: 5000 });
     // Wait for world_names to be populated — without this, the change
     // handler may run before the editor wiring is fully bound, leaving
@@ -116,11 +116,10 @@ test.describe('#30 — WI bulk edit via the real toolbar', () => {
         const originalDepths = Object.values(original.entries).map(e => e.depth).sort((a, b) => a - b);
         expect(originalDepths).toEqual([0, 0, 4, 4, 4]);
 
-        // 1. Select all entries on the current page via the real
-        //    "Select Page" toolbar button. This drives the same path the
-        //    user clicks — toggles every visible .world_entry_select
-        //    checkbox at once.
-        const selectPageBtn = page.locator('#world_entries_select_page');
+        // 1. Select the currently filtered entries via the Workspace's
+        //    normal-state selection action. The bulk toolbar is contextual
+        //    and becomes visible only after this gesture.
+        const selectPageBtn = page.locator('#wi_workspace_select_visible');
         await selectPageBtn.waitFor({ state: 'visible', timeout: 5000 });
         await selectPageBtn.click();
         // Wait for the bulk status text to show "5 entries selected".
