@@ -3,8 +3,25 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { hasCompleteWebpackOutput } from '../src/middleware/webpack-serve.js';
+import { getWebpackCacheVersion } from '../webpack.config.js';
 
 describe('Webpack warm-start output detection', () => {
+    test('bundle cache key is stable and based on bundle inputs rather than Git HEAD', () => {
+        const first = getWebpackCacheVersion();
+        const second = getWebpackCacheVersion();
+        expect(first).toMatch(/^[0-9a-f]{16}$/);
+        expect(second).toBe(first);
+
+        const configSource = fs.readFileSync(new URL('../webpack.config.js', import.meta.url), 'utf8');
+        expect(configSource).toContain("package-lock.json");
+        expect(configSource).toContain("public/lib-bundle-core.js");
+        expect(configSource).toContain("public/lib-bundle-optional.js");
+        expect(configSource).toContain("public/lib-bundle-codemirror.js");
+        expect(configSource).not.toContain('gitRevision');
+        expect(configSource).not.toContain('readLocalGitRevision');
+    });
+
+
     test('requires every current bundle to exist and be non-empty', () => {
         const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-webpack-output-'));
         const config = {
