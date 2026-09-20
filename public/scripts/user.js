@@ -1,5 +1,5 @@
 import { getRequestHeaders } from '../script.js';
-import { installFrontendLogCapture } from './frontend-log-manager.js';
+import { installFrontendLogging } from './logging/bootstrap.js';
 import { t } from './i18n.js';
 import { POPUP_RESULT, POPUP_TYPE, callGenericPopup } from './popup.js';
 import { renderTemplateAsync } from './templates.js';
@@ -31,7 +31,7 @@ function loadStorageManagementModule() {
  */
 export async function setUserControls(isEnabled) {
     accountsEnabled = isEnabled;
-    installFrontendLogCapture();
+    installFrontendLogging();
 
     if (!isEnabled) {
         $('#logout_button').hide();

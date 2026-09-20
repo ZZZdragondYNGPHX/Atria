@@ -97,6 +97,8 @@ import { backendLogStore } from './logging/store.js';
 import { redactValue } from './logging/redact.js';
 import { createLogger } from './logging/logger.js';
 import { runtimeProvenanceRegistry } from './logging/provenance.js';
+import { diagnosticIncidentStore } from './logging/runtime.js';
+import { sanitizeRequestInspectorEntry } from './logging/incident-export.js';
 import {
     normalizeStartupClientReport,
     startupSessionStore,
@@ -639,7 +641,19 @@ app.post('/api/debug/export', (request, response) => {
         frontendLogs: Array.isArray(client.frontendLogs) ? client.frontendLogs : [],
         performanceMarks: Array.isArray(client.performanceMarks) ? client.performanceMarks : [],
         performanceMeasures: Array.isArray(client.performanceMeasures) ? client.performanceMeasures : [],
-        requestInspector: handle ? getInspectorBufferForHandle(handle) : [],
+        requestInspector: handle
+            ? getInspectorBufferForHandle(handle).map(sanitizeRequestInspectorEntry)
+            : [],
+        diagnostics: {
+            incidents: isAdmin
+                ? diagnosticIncidentStore.list({ limit: 200 })
+                : handle ? diagnosticIncidentStore.list({ subjectUser: handle, limit: 200 }) : [],
+            startupSessions: startupSessionStore.list({
+                user: isAdmin ? null : handle,
+                limit: 20,
+            }),
+            provenance: isAdmin ? runtimeProvenanceRegistry.list() : [],
+        },
     };
 
     if (isAdmin) {

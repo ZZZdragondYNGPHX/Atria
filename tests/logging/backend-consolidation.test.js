@@ -1,5 +1,5 @@
 import { describe, expect, jest, test } from '@jest/globals';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import { installConsoleAdapter } from '../../src/logging/console-adapter.js';
 import { LogStore } from '../../src/logging/store.js';
@@ -56,11 +56,7 @@ describe('backend logging consolidation', () => {
         expect(usersAdmin).not.toContain('../log-capture.js');
     });
 
-    test('legacy log-capture facade owns no storage', () => {
-        const source = readFileSync(new URL('../../src/log-capture.js', import.meta.url), 'utf8');
-        expect(source).toContain("from './logging/store.js'");
-        expect(source).not.toContain('const entries =');
-        expect(source).not.toContain('DEFAULT_CAPACITY');
-        expect(source).not.toContain('nextId');
+    test('legacy backend log-capture facade is removed after diagnostics cutover', () => {
+        expect(existsSync(new URL('../../src/log-capture.js', import.meta.url))).toBe(false);
     });
 });

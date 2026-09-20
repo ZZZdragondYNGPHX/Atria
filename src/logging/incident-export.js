@@ -15,7 +15,7 @@ function selectKeyLogs(entries = [], limit = 20) {
     return [...map.values()].slice(-Math.max(5, Math.min(20, limit)));
 }
 
-function sanitizeInspectorEntry(entry) {
+export function sanitizeRequestInspectorEntry(entry) {
     const source = entry && typeof entry === 'object' ? entry : {};
     const output = {};
     for (const key of [
@@ -52,7 +52,7 @@ function selectInspectorEntries(entries, incident) {
             entry?.generation_id,
         ].map(String);
         return values.some(value => haystack.includes(value));
-    }).slice(-20).map(sanitizeInspectorEntry);
+    }).slice(-20).map(sanitizeRequestInspectorEntry);
 }
 
 function formatLogLine(entry) {

@@ -1,10 +1,7 @@
 import { getRequestHeaders } from '../../script.js';
-import {
-    clearFrontendLogs,
-    getFrontendLogsSnapshot,
-    installFrontendLogCapture,
-    isFrontendConsoleDebugLoggingEnabled,
-} from '../frontend-log-manager.js';
+import { isFrontendConsoleDebugLoggingEnabled } from './console-adapter.js';
+import { installFrontendLogging } from './bootstrap.js';
+import { frontendLogStore } from './logger.js';
 import { t } from '../i18n.js';
 import { POPUP_TYPE, callGenericPopup } from '../popup.js';
 import { recentUserActionStore } from './recent-actions.js';
@@ -290,7 +287,7 @@ function renderVirtualLogs(root, entries, onSelect) {
 
 async function getFrontendEvidence() {
     const now = Date.now();
-    const logs = getFrontendLogsSnapshot({ limit: 120 }).entries;
+    const logs = frontendLogStore.query({ limit: 120 }).entries;
     const actions = recentUserActionStore.queryWindow({ before: now, beforeCount: 20, afterCount: 0 });
     const version = await getVersionSnapshot();
     const safeConfigSnapshot = createSafeConfigSnapshot({
@@ -306,7 +303,7 @@ async function getFrontendEvidence() {
 }
 
 export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
-    installFrontendLogCapture();
+    installFrontendLogging();
     const wrapper = document.createElement('div');
     wrapper.innerHTML = buildWorkspaceMarkup({ canViewServerLogs });
     const root = wrapper.firstElementChild;
@@ -353,7 +350,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
     const loadGuided = async () => {
         const [incidentPayload, frontendPayload] = await Promise.all([
             api('/incidents/list', { method: 'POST', body: { limit: 200 } }),
-            Promise.resolve(getFrontendLogsSnapshot({ limit: 500 })),
+            Promise.resolve(frontendLogStore.query({ limit: 500 })),
         ]);
         state.incidents = Array.isArray(incidentPayload?.incidents) ? incidentPayload.incidents : [];
         state.healthLogs = frontendPayload.entries || [];
@@ -408,7 +405,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
             if (!canViewServerLogs) return;
             payload = await api('/logs/query', { method: 'POST', body: query });
         } else {
-            payload = getFrontendLogsSnapshot(query);
+            payload = frontendLogStore.query(query);
             if (query.text) {
                 const needle = query.text.toLowerCase();
                 payload.entries = payload.entries.filter(entry => formatWorkspaceLogEntry(entry).toLowerCase().includes(needle));
@@ -535,7 +532,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
                 if (!canViewServerLogs) return;
                 await api('/logs/clear', { method: 'POST', body: {} });
             } else {
-                clearFrontendLogs();
+                frontendLogStore.clear();
             }
             state.expertEntries = [];
             state.latestId = 0;

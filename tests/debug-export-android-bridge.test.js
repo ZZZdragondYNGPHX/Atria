@@ -25,8 +25,8 @@ describe('debug-export Android bridge routing', () => {
         jest.unstable_mockModule('../public/scripts/i18n.js', () => ({
             t: (strings) => strings[0],
         }));
-        jest.unstable_mockModule('../public/scripts/frontend-log-manager.js', () => ({
-            getFrontendLogsSnapshot: () => ({ entries: [], latestId: 0 }),
+        jest.unstable_mockModule('../public/scripts/logging/logger.js', () => ({
+            frontendLogStore: { query: () => ({ entries: [], latestId: 0 }) },
         }));
 
         const mod = await import('../public/scripts/debug-export.js');
@@ -63,8 +63,8 @@ describe('debug-export Android bridge routing', () => {
         jest.unstable_mockModule('../public/scripts/i18n.js', () => ({
             t: (strings) => strings[0],
         }));
-        jest.unstable_mockModule('../public/scripts/frontend-log-manager.js', () => ({
-            getFrontendLogsSnapshot: () => ({ entries: [], latestId: 0 }),
+        jest.unstable_mockModule('../public/scripts/logging/logger.js', () => ({
+            frontendLogStore: { query: () => ({ entries: [], latestId: 0 }) },
         }));
 
         const mod = await import('../public/scripts/debug-export.js');

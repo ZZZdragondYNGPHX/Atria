@@ -1,24 +1,16 @@
 import {
-    installFrontendConsoleAdapter,
     isFrontendConsoleDebugLoggingEnabled,
     setFrontendConsoleDebugLoggingEnabled,
 } from './logging/console-adapter.js';
-import { installFrontendErrorAdapter } from './logging/error-adapter.js';
-import { installFrontendFetchAdapter } from './logging/fetch-adapter.js';
+import { installFrontendLogging } from './logging/bootstrap.js';
 import { frontendLogStore } from './logging/logger.js';
 
-let installed = false;
-
 /**
- * Compatibility facade for callers that still import frontend-log-manager.
- * Storage and adapters live under public/scripts/logging/.
+ * Stable compatibility shim for third-party/upstream imports.
+ * Atria-owned code imports modules under scripts/logging/ directly.
  */
 export function installFrontendLogCapture() {
-    if (installed || typeof window === 'undefined') return;
-    installed = true;
-    installFrontendConsoleAdapter();
-    installFrontendFetchAdapter();
-    installFrontendErrorAdapter();
+    installFrontendLogging();
 }
 
 export { setFrontendConsoleDebugLoggingEnabled, isFrontendConsoleDebugLoggingEnabled };

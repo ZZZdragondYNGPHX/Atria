@@ -6,3 +6,7 @@ export * from './store.js';
 export * from './logger.js';
 export * from './recent-actions.js';
 export * from './safe-config.js';
+export * from './bootstrap.js';
+export * from './console-adapter.js';
+export * from './fetch-adapter.js';
+export * from './error-adapter.js';
