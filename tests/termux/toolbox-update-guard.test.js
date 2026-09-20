@@ -13,6 +13,21 @@ describe('Termux update guards', () => {
         execFileSync('bash', ['-n', termuxCliPath], { stdio: 'pipe' });
     });
 
+    test('toolbox pins install and fetch paths to the standalone Atria repository', () => {
+        const source = fs.readFileSync(toolboxPath, 'utf8');
+
+        expect(source).toContain('CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"');
+        expect(source).toContain('LEGACY_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Luker"');
+        expect(source).toContain('LEGACY_REPO_SSH="git@github.com:ZZZdragondYNGPHX/Luker.git"');
+        expect(source).toContain('LEGACY_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Luker"');
+        expect(source).toContain('normalize_runtime_repository_urls');
+        expect(source).toContain('grep -Fq "ZZZdragondYNGPHX/Luker" "$BASE_FILE"');
+        expect(source).toContain('git -C "$ATRIA_DIR" remote set-url origin "$CANONICAL_REPO_URL"');
+        expect(source).toContain('git -C "$ATRIA_DIR" remote add origin "$CANONICAL_REPO_URL"');
+        expect(source).toContain('ensure_atria_origin || return 1');
+        expect(source).toContain('fetch_repo_refs_base "$@"');
+    });
+
     test('known restore-deleted .gitkeep is healed before dirty-worktree refusal', () => {
         const source = fs.readFileSync(toolboxPath, 'utf8');
         const healCall = source.indexOf('heal_known_restore_sentinel_dirty_state || return 1');
