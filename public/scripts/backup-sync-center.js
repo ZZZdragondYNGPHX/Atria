@@ -6,8 +6,11 @@ import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
 import { createBackupSyncProviderRegistry } from './backup-sync/providers.js';
 import { renderTemplateAsync } from './templates.js';
 import { humanFileSize } from './utils.js';
+import { createLogger } from './logging/logger.js';
+import { captureFrontendIncident } from './logging/incident-reporter.js';
 
 const MiB = 1024 * 1024;
+const backupLogger = createLogger('backup');
 const PROVIDERS = createBackupSyncProviderRegistry();
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
 
@@ -106,6 +109,7 @@ function beginArchiveRestoreSession({ fileName, mode }) {
         progress: null,
         result: null,
         error: '',
+        operationId: globalThis.crypto?.randomUUID?.() || `restore-${Date.now().toString(36)}`,
         startedAt: Date.now(),
     };
     activeArchiveRestore = session;
@@ -123,7 +127,32 @@ function finishArchiveRestoreSession(session, state, payload = null) {
     if (activeArchiveRestore !== session) return;
     session.state = state;
     if (state === 'completed' || state === 'cancelled') session.result = payload;
-    if (state === 'failed') session.error = String(payload?.message || payload || '恢复失败');
+    if (state === 'failed') {
+        session.error = String(payload?.message || payload || '恢复失败');
+        const stage = `restore.${String(session.progress?.phase || 'terminal')}`;
+        const failure = payload instanceof Error ? payload : new Error(session.error);
+        const correlation = { operationId: String(session.operationId || '') };
+        backupLogger.error('restore.failed', '[Backup] archive restore failed', {
+            stage,
+            fileName: session.fileName,
+            mode: session.mode,
+            message: session.error,
+        }, { category: 'restore', correlation });
+        void captureFrontendIncident({
+            type: 'backup_failure',
+            severity: 'error',
+            primaryModule: 'backup',
+            stage,
+            summary: session.error,
+            failure,
+            correlation,
+            environment: {
+                fileName: session.fileName,
+                mode: session.mode,
+                progress: session.progress || null,
+            },
+        });
+    }
     broadcastArchiveRestoreState();
 }
 

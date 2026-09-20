@@ -18,40 +18,6 @@ import responseTime from 'response-time';
 import helmet from 'helmet';
 import bodyParser from 'body-parser';
 
-// Timestamp all console output and capture to circular log buffer.
-// JSON.stringify throws on circular references / BigInt — if the wrapper ever
-// throws, callers see a TypeError from console.error and (worst case) the
-// uncaughtException handler re-enters the same wrapper, re-throws, and Node
-// aborts with an empty stderr. So: serialize defensively, and never let buffer
-// bookkeeping interfere with the underlying console call.
-const BACKEND_LOG_MAX = 500;
-export const backendLogBuffer = [];
-let backendLogCounter = 0;
-function serializeLogArg(value) {
-    if (typeof value === 'string') return value;
-    try {
-        const serialized = JSON.stringify(value);
-        if (serialized !== undefined) return serialized;
-    } catch { /* fall through */ }
-    try {
-        return util.inspect(value, { depth: 4, maxArrayLength: 100, breakLength: 140 });
-    } catch {
-        return String(value);
-    }
-}
-['log', 'warn', 'error'].forEach((level) => {
-    const original = console[level].bind(console);
-    console[level] = (...args) => {
-        const ts = new Date().toISOString();
-        try {
-            const entry = { id: ++backendLogCounter, ts, level, message: args.map(serializeLogArg).join(' ') };
-            if (backendLogBuffer.length >= BACKEND_LOG_MAX) backendLogBuffer.shift();
-            backendLogBuffer.push(entry);
-        } catch { /* never let log capture wreck the underlying console call */ }
-        original(`[${ts}]`, ...args);
-    };
-});
-
 // Node diagnostic reports — written on fatal V8 errors, uncaught exceptions,
 // and OS signals. These are the only artefact left behind when a native
 // module SEGVs and the process aborts without flushing stderr (the rename
@@ -74,7 +40,7 @@ import './fetch-patch.js';
 import { serverDirectory } from './server-directory.js';
 
 import { serverEvents, EVENT_NAMES } from './server-events.js';
-import { loadPlugins } from './plugin-loader.js';
+import { loadPlugins, listInstalledServerPlugins } from './plugin-loader.js';
 import {
     initUserStorage,
     getCookieSecret,
@@ -126,7 +92,18 @@ import {
     getConfigValue,
     ensureDirectory,
 } from './util.js';
-import { installLogCapture } from './log-capture.js';
+import { installConsoleAdapter } from './logging/console-adapter.js';
+import { backendLogStore } from './logging/store.js';
+import { redactValue } from './logging/redact.js';
+import { createLogger } from './logging/logger.js';
+import { runtimeProvenanceRegistry } from './logging/provenance.js';
+import { diagnosticIncidentStore } from './logging/runtime.js';
+import { sanitizeRequestInspectorEntry } from './logging/incident-export.js';
+import {
+    normalizeStartupClientReport,
+    startupSessionStore,
+    summarizeClientStartupTimings,
+} from './logging/startup-store.js';
 import { getBufferForHandle as getInspectorBufferForHandle } from './request-inspector.js';
 import {
     UPLOADS_DIRECTORY,
@@ -151,6 +128,9 @@ import { migrateGroupChatsMetadataFormat } from './endpoints/groups.js';
 import { initializeAllUserMetadata } from './endpoints/image-metadata.js';
 import { applyPendingSafeMode } from './safe-mode.js';
 
+const httpLogger = createLogger('http');
+const startupDiagnosticsLogger = createLogger('startup');
+
 // Work around a node v20.0.0, v20.1.0, and v20.2.0 bug. The issue was fixed in v20.3.0.
 // https://github.com/nodejs/node/issues/47822#issuecomment-1564708870
 // Safe to remove once support for Node v20 is dropped.
@@ -163,7 +143,7 @@ if (process.versions && process.versions.node && process.versions.node.match(/20
 util.inspect.defaultOptions.maxArrayLength = null;
 util.inspect.defaultOptions.maxStringLength = null;
 util.inspect.defaultOptions.depth = 4;
-installLogCapture();
+installConsoleAdapter();
 markStartupMilestone('server-main.module-evaluated');
 
 /** @type {import('./command-line.js').CommandLineArguments} */
@@ -380,6 +360,7 @@ if (!cliArgs.disableCsrf) {
 
     app.get('/csrf-token', (req, res) => {
         markStartupMilestone('http.csrf-token');
+        httpLogger.info('csrf-token.request', 'CSRF token requested', { enabled: true, method: req.method }, { category: 'request' });
         res.json({
             'token': csrfSyncProtection.generateToken(req),
         });
@@ -394,6 +375,7 @@ if (!cliArgs.disableCsrf) {
     console.warn('\nCSRF protection is disabled. This will make your server vulnerable to CSRF attacks.\n');
     app.get('/csrf-token', (req, res) => {
         markStartupMilestone('http.csrf-token');
+        httpLogger.info('csrf-token.request', 'CSRF token requested', { enabled: false, method: req.method }, { category: 'request' });
         res.json({
             'token': 'disabled',
         });
@@ -404,6 +386,7 @@ if (!cliArgs.disableCsrf) {
 // Host index page
 app.get('/', cacheBuster.middleware, (request, response) => {
     markStartupMilestone(`http.root.${request.method.toLowerCase()}`);
+    httpLogger.info('root.request', 'Root document requested', { method: request.method }, { category: 'request' });
     if (request.method === 'GET' && (startupLauncherReadyAt !== null || startupBrowserOpen)) {
         const now = Date.now();
         const summary = {
@@ -598,108 +581,36 @@ app.post('/api/ping', (request, response) => {
     response.sendStatus(204);
 });
 
-function normalizeClientTiming(value) {
-    const number = Number(value);
-    return Number.isFinite(number) && number >= 0
-        ? Math.round(number * 10) / 10
-        : null;
-}
+app.post('/api/startup/client-timing', async (request, response) => {
+    const report = normalizeStartupClientReport(request.body || {});
+    const summary = summarizeClientStartupTimings(report);
+    const version = await getVersion().catch(() => ({}));
+    const user = String(request?.user?.profile?.handle || '');
+    const session = startupSessionStore.recordClientReport({
+        report,
+        user,
+        version,
+    });
 
-function diffClientTiming(timings, start, end) {
-    const a = normalizeClientTiming(timings?.[start]);
-    const b = normalizeClientTiming(timings?.[end]);
-    return a !== null && b !== null && b >= a
-        ? Math.round((b - a) * 10) / 10
-        : null;
-}
+    startupDiagnosticsLogger.info(
+        report.stage === 'visible' ? 'client.visible' : 'client.ready',
+        report.stage === 'visible' ? 'Client startup reached first visible UI' : 'Client startup reached APP_READY',
+        {
+            serverBootId: session.serverBootId,
+            appVersion: session.appVersion,
+            revision: session.revision,
+            branch: session.branch,
+            summary,
+            extensionCount: session.extensions.length,
+            linkedLogWindow: session.linkedLogWindow,
+        },
+        {
+            category: 'session',
+            correlation: { startupSessionId: session.id },
+        },
+    );
 
-function summarizeExtensionActivationTimings(durations) {
-    const totalPrefix = 'extensionActivate:';
-    const phasePrefixes = {
-        localeMs: 'extensionLocale:',
-        scriptMs: 'extensionScript:',
-        styleMs: 'extensionStyle:',
-        hookMs: 'extensionHook:',
-    };
-
-    return Object.entries(durations || {})
-        .filter(([name]) => name.startsWith(totalPrefix))
-        .map(([name, value]) => {
-            const extensionName = name.slice(totalPrefix.length, totalPrefix.length + 120);
-            const item = {
-                name: extensionName,
-                ms: normalizeClientTiming(value),
-            };
-
-            for (const [field, prefix] of Object.entries(phasePrefixes)) {
-                item[field] = normalizeClientTiming(durations[`${prefix}${extensionName}`]);
-            }
-
-            return item;
-        })
-        .filter(item => item.name && item.ms !== null)
-        .sort((a, b) => b.ms - a.ms)
-        .slice(0, 8);
-}
-
-app.post('/api/startup/client-timing', (request, response) => {
-    const timings = request.body?.timings && typeof request.body.timings === 'object'
-        ? request.body.timings
-        : {};
-    const durations = request.body?.durations && typeof request.body.durations === 'object'
-        ? request.body.durations
-        : {};
-    const navigation = request.body?.navigation && typeof request.body.navigation === 'object'
-        ? request.body.navigation
-        : {};
-
-    const stage = request.body?.stage === 'visible' ? 'visible' : 'ready';
-
-    const initJsStart = normalizeClientTiming(timings.initJsStart);
-    const responseEnd = normalizeClientTiming(navigation.responseEnd);
-    const summary = {
-        navResponseEndMs: responseEnd,
-        htmlToInitJsMs: initJsStart !== null && responseEnd !== null && initJsStart >= responseEnd
-            ? Math.round((initJsStart - responseEnd) * 10) / 10
-            : null,
-        libImportMs: diffClientTiming(timings, 'libImportStart', 'libImportEnd'),
-        appImportMs: diffClientTiming(timings, 'appImportStart', 'appImportEnd'),
-        initModuleMs: diffClientTiming(timings, 'initJsStart', 'initModuleEnd'),
-        initToFirstLoadMs: diffClientTiming(timings, 'initJsStart', 'firstLoadStart'),
-        csrfMs: diffClientTiming(timings, 'firstLoadStart', 'csrfDone'),
-        bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettingsDone'),
-        settingsToVisibleMs: diffClientTiming(timings, 'getSettingsDone', 'loaderHidden'),
-        visibleTotalMs: diffClientTiming(timings, 'firstLoadStart', 'loaderHidden'),
-        visibleToBatch1Ms: diffClientTiming(timings, 'loaderHidden', 'batch1Done'),
-        welcomeScreenMs: normalizeClientTiming(durations.welcomeScreen),
-        batch2Ms: diffClientTiming(timings, 'batch1Done', 'batch2Done'),
-        batch2TasksMs: diffClientTiming(timings, 'batch2TasksStart', 'batch2TasksDone'),
-        b2TextGenModelSelectsMs: normalizeClientTiming(durations.batch2TextGenModelSelects),
-        b2SystemMessagesMs: normalizeClientTiming(durations.batch2SystemMessages),
-        b2AnnouncementsMs: normalizeClientTiming(durations.batch2Announcements),
-        b2InitExtensionsMs: normalizeClientTiming(durations.batch2InitExtensions),
-        b2BootstrapExtensionsMs: normalizeClientTiming(durations.batch2BootstrapExtensions),
-        b2ExtensionSlashCommandsMs: normalizeClientTiming(durations.batch2ExtensionSlashCommands),
-        b2ToolSlashCommandsMs: normalizeClientTiming(durations.batch2ToolSlashCommands),
-        b2TokenizersMs: normalizeClientTiming(durations.batch2Tokenizers),
-        b2PersonasMs: normalizeClientTiming(durations.batch2Personas),
-        b2SlashCommandAutocompleteMs: normalizeClientTiming(durations.batch2SlashCommandAutocomplete),
-        b2MacroAutocompleteMs: normalizeClientTiming(durations.batch2MacroAutocomplete),
-        extFirstLoadEventMs: normalizeClientTiming(durations.extensionsFirstLoadEvent),
-        extDiscoverMs: normalizeClientTiming(durations.extensionsDiscover),
-        extManifestsMs: normalizeClientTiming(durations.extensionsManifests),
-        extAutoUpdateMs: normalizeClientTiming(durations.extensionsAutoUpdate),
-        extPrewarmMs: normalizeClientTiming(durations.extensionsPrewarm),
-        extActivateMs: normalizeClientTiming(durations.extensionsActivate),
-        extSlow: summarizeExtensionActivationTimings(durations),
-        extSettingsLoadedEventMs: normalizeClientTiming(durations.extensionsSettingsLoadedEvent),
-        batch3Ms: diffClientTiming(timings, 'batch2Done', 'batch3Done'),
-        firstLoadTotalMs: diffClientTiming(timings, 'firstLoadStart', 'appReady'),
-        domInteractiveMs: normalizeClientTiming(navigation.domInteractive),
-        loadEventEndMs: normalizeClientTiming(navigation.loadEventEnd),
-    };
-
-    console.log(stage === 'visible' ? '[startup-client-visible]' : '[startup-client]', JSON.stringify(summary));
+    console.log(report.stage === 'visible' ? '[startup-client-visible]' : '[startup-client]', JSON.stringify(summary));
     response.sendStatus(204);
 });
 
@@ -709,33 +620,6 @@ app.post('/api/startup/client-timing', (request, response) => {
 // posts its frontend-only fields (console logs, perf marks, UA/viewport, etc.)
 // and gets back a single attachment combining everything below, with secrets
 // redacted in one place.
-const DEBUG_EXPORT_REDACT_PATTERNS = [
-    { pattern: /sk-[a-zA-Z0-9]{20,}/g, replacement: 'sk-***REDACTED***' },
-    { pattern: /Bearer\s+[a-zA-Z0-9\-_.]{20,}/g, replacement: 'Bearer ***REDACTED***' },
-    { pattern: /(api[_-]?key|apikey|token|secret|password|passwd)\s*[=:]\s*["']?[^\s"',&]+/gi, replacement: '$1=***REDACTED***' },
-    { pattern: /eyJ[a-zA-Z0-9\-_]{20,}\.[a-zA-Z0-9\-_]{20,}\.[a-zA-Z0-9\-_]{20,}/g, replacement: '***JWT-REDACTED***' },
-    { pattern: /\b[a-f0-9]{40,}\b/gi, replacement: '***HEX-TOKEN-REDACTED***' },
-];
-
-function redactDebugExportString(input) {
-    let out = String(input);
-    for (const { pattern, replacement } of DEBUG_EXPORT_REDACT_PATTERNS) {
-        out = out.replace(pattern, replacement);
-    }
-    return out;
-}
-
-function redactDebugExportValue(value) {
-    if (typeof value === 'string') return redactDebugExportString(value);
-    if (Array.isArray(value)) return value.map(redactDebugExportValue);
-    if (value && typeof value === 'object') {
-        const cleaned = {};
-        for (const [k, v] of Object.entries(value)) cleaned[k] = redactDebugExportValue(v);
-        return cleaned;
-    }
-    return value;
-}
-
 app.post('/api/debug/export', (request, response) => {
     const handle = String(request?.user?.profile?.handle || '');
     const isAdmin = isRequestAdmin(request);
@@ -757,11 +641,23 @@ app.post('/api/debug/export', (request, response) => {
         frontendLogs: Array.isArray(client.frontendLogs) ? client.frontendLogs : [],
         performanceMarks: Array.isArray(client.performanceMarks) ? client.performanceMarks : [],
         performanceMeasures: Array.isArray(client.performanceMeasures) ? client.performanceMeasures : [],
-        requestInspector: handle ? getInspectorBufferForHandle(handle) : [],
+        requestInspector: handle
+            ? getInspectorBufferForHandle(handle).map(sanitizeRequestInspectorEntry)
+            : [],
+        diagnostics: {
+            incidents: isAdmin
+                ? diagnosticIncidentStore.list({ limit: 200 })
+                : handle ? diagnosticIncidentStore.list({ subjectUser: handle, limit: 200 }) : [],
+            startupSessions: startupSessionStore.list({
+                user: isAdmin ? null : handle,
+                limit: 20,
+            }),
+            provenance: isAdmin ? runtimeProvenanceRegistry.list() : [],
+        },
     };
 
     if (isAdmin) {
-        bundle.backendLogs = backendLogBuffer;
+        bundle.backendLogs = backendLogStore.query({ limit: 5000 }).entries;
         bundle.runtime = {
             node: process.version,
             platform: process.platform,
@@ -772,7 +668,7 @@ app.post('/api/debug/export', (request, response) => {
         };
     }
 
-    const redacted = redactDebugExportValue(bundle);
+    const redacted = redactValue(bundle, { maxDepth: 10, maxArrayLength: 6000, maxObjectKeys: 500, maxStringLength: 12000 });
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.setHeader('Content-Disposition', `attachment; filename="atria-debug-${ts}.json"`);
@@ -913,6 +809,17 @@ async function preSetupTasks() {
 
     const finishPlugins = startStartupPhase('pre-setup.plugins');
     const cleanupPlugins = await loadPlugins(app, SERVER_PLUGINS_DIRECTORY);
+    void listInstalledServerPlugins(SERVER_PLUGINS_DIRECTORY)
+        .then((plugins) => runtimeProvenanceRegistry.registerMany(plugins.map(plugin => ({
+            type: 'server-plugin',
+            name: plugin.directory,
+            displayName: plugin.packageName || plugin.directory,
+            version: plugin.version,
+            origin: plugin.remoteUrl,
+            enabled: null,
+            metadata: { description: plugin.description },
+        }))))
+        .catch((error) => console.warn('[diagnostics] server-plugin provenance refresh failed:', error?.message || error));
     finishPlugins();
     const consoleTitle = process.title;
 
@@ -1097,7 +1004,6 @@ async function postSetupTasks(result) {
     console.log('\n' + getSeparator(plainGoToLog.length) + '\n');
 
     setupLogLevel();
-    installLogCapture();
     serverEvents.emit(EVENT_NAMES.SERVER_STARTED, { url: browserLaunchUrl });
 }
 

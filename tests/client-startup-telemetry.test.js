@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const INIT_URL = new URL('../public/init.js', import.meta.url);
 const SCRIPT_URL = new URL('../public/script.js', import.meta.url);
 const SERVER_URL = new URL('../src/server-main.js', import.meta.url);
+const STARTUP_STORE_URL = new URL('../src/logging/startup-store.js', import.meta.url);
 const EXTENSIONS_URL = new URL('../public/scripts/extensions.js', import.meta.url);
 
 describe('client startup telemetry', () => {
@@ -64,27 +65,30 @@ describe('client startup telemetry', () => {
         expect(source).toContain('extensionHook:');
     });
 
-    test('backend logs startup timing summary and bounded slow-extension diagnostics', () => {
-        const source = readFileSync(SERVER_URL, 'utf8');
-        expect(source).toContain("app.post('/api/startup/client-timing'");
-        expect(source).toContain("'[startup-client-visible]'");
-        expect(source).toContain("'[startup-client]'");
-        expect(source).toContain('visibleTotalMs');
-        expect(source).toContain('appImportMs');
-        expect(source).toContain('firstLoadTotalMs');
-        expect(source).toContain('htmlToInitJsMs');
-        expect(source).toContain('welcomeScreenMs');
-        expect(source).toContain('batch2TasksMs');
-        expect(source).toContain('b2BootstrapExtensionsMs');
-        expect(source).toContain('b2TokenizersMs');
-        expect(source).toContain('extDiscoverMs');
-        expect(source).toContain('extManifestsMs');
-        expect(source).toContain('extPrewarmMs');
-        expect(source).toContain('extActivateMs');
-        expect(source).toContain('extSlow');
-        expect(source).toContain('summarizeExtensionActivationTimings');
-        expect(source).toContain('scriptMs');
-        expect(source).toContain('styleMs');
-        expect(source).toContain('hookMs');
+    test('backend stores startup timing summary and bounded slow-extension diagnostics', () => {
+        const server = readFileSync(SERVER_URL, 'utf8');
+        const store = readFileSync(STARTUP_STORE_URL, 'utf8');
+        expect(server).toContain("app.post('/api/startup/client-timing'");
+        expect(server).toContain("'[startup-client-visible]'");
+        expect(server).toContain("'[startup-client]'");
+        expect(server).toContain('startupSessionStore.recordClientReport');
+
+        expect(store).toContain('visibleTotalMs');
+        expect(store).toContain('appImportMs');
+        expect(store).toContain('firstLoadTotalMs');
+        expect(store).toContain('htmlToInitJsMs');
+        expect(store).toContain('welcomeScreenMs');
+        expect(store).toContain('batch2TasksMs');
+        expect(store).toContain('b2BootstrapExtensionsMs');
+        expect(store).toContain('b2TokenizersMs');
+        expect(store).toContain('extDiscoverMs');
+        expect(store).toContain('extManifestsMs');
+        expect(store).toContain('extPrewarmMs');
+        expect(store).toContain('extActivateMs');
+        expect(store).toContain('extSlow');
+        expect(store).toContain('summarizeExtensionActivationTimings');
+        expect(store).toContain('scriptMs');
+        expect(store).toContain('styleMs');
+        expect(store).toContain('hookMs');
     });
 });

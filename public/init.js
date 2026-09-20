@@ -6,7 +6,17 @@ const SELF_PROFILING_MAX_BUFFER_SIZE = 50000;
 const SELF_PROFILING_STATE_KEY = '__atriaSelfProfilerState';
 const STARTUP_TIMING_STATE_KEY = '__atriaStartupTiming';
 
+function createStartupSessionId() {
+    try {
+        if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+    } catch {
+        // Fall through to a non-secret unique-enough diagnostic ID.
+    }
+    return `startup-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const startupTimingState = {
+    startupSessionId: createStartupSessionId(),
     initJsStart: performance.now(),
     durations: {},
 };

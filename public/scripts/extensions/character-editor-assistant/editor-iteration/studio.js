@@ -100,8 +100,11 @@ import {
     makeMessageId,
     normalizeMessageShape,
 } from './session-store.js';
+import { createLogger } from '../../../logging/logger.js';
+import { captureFrontendIncident } from '../../../logging/incident-reporter.js';
 
 const MODULE = 'cea-editor-unified';
+const editorIncidentLogger = createLogger('editor');
 const STYLESHEET_ID = 'cea_editor_studio_stylesheet';
 const STYLESHEET_HREF = '/scripts/extensions/character-editor-assistant/editor-iteration/studio.css';
 const PROPOSAL_BUS_STYLESHEET_ID = 'cea_editor_proposal_bus_stylesheet';
@@ -1099,6 +1102,31 @@ function resolveLiveForEdit(edit, live) {
  * `appliedAt + appliedTarget`. The label enumerates the committed groups
  * (e.g. `character + lorebook:BookA + lorebook:BookB`).
  */
+function reportEditorCommitFailures(stage, errors = []) {
+    if (!Array.isArray(errors) || errors.length === 0) return;
+    const first = errors[0]?.err;
+    const summary = `${stage} failed for ${errors.length} target(s): ${first?.message || first || 'Unknown failure'}`;
+    editorIncidentLogger.error('commit.failed', '[CEA Editor] commit failed', {
+        stage,
+        targets: errors.map(item => String(item?.target || 'unknown')).slice(0, 30),
+        message: first?.message || String(first || ''),
+    }, { category: 'commit' });
+    void captureFrontendIncident({
+        type: 'tool_failure',
+        severity: 'error',
+        primaryModule: 'editor',
+        stage,
+        summary,
+        failure: first || new Error(summary),
+        environment: {
+            targets: errors.map(item => ({
+                target: String(item?.target || 'unknown'),
+                message: String(item?.err?.message || item?.err || ''),
+            })).slice(0, 30),
+        },
+    });
+}
+
 async function applyPendingEdits(state, { persistSession, render, i18n, context, settings, avatar } = {}) {
     if (!Array.isArray(state.pendingEdits) || state.pendingEdits.length === 0) {
         return { proposed: 0, applied: 0, conflicts: [], alreadyDone: [] };
@@ -1184,6 +1212,7 @@ async function applyPendingEdits(state, { persistSession, render, i18n, context,
     // failures, distinct from per-edit conflicts which now flow back
     // through the synthetic feedback message.
     if (errors.length > 0) {
+        reportEditorCommitFailures('apply.commit', errors);
         for (const { target, err } of errors) {
             state.session.messages.push({
                 id: makeMessageId(),
@@ -1423,6 +1452,7 @@ async function rollbackBatch(state, messageId, opts = {}) {
     }
 
     if (errors.length > 0) {
+        reportEditorCommitFailures('rollback.commit', errors);
         for (const { target, err } of errors) {
             state.session.messages.push({
                 id: makeMessageId(),

@@ -1,7 +1,11 @@
 import { validateParsedToolCalls } from '../function-call-runtime.js';
 import { FACT_TOOL_NAME } from './fact-extraction.js';
+import { createLogger } from '../../logging/logger.js';
+import { captureFrontendIncident } from '../../logging/incident-reporter.js';
 
 export const EXTRACT_DONE = 'atria_rpg_extract_done';
+
+const memoryExtractLogger = createLogger('memory');
 
 const RELATION_TARGET_SEMANTIC_TYPE = Object.freeze({
     occurred_at: 'location_state',
@@ -163,7 +167,7 @@ export function validateExtractTransaction({ calls = [], tools = [], requiredTyp
 }
 
 /** Calls are staged only. The caller validates semantic effects and commits once. */
-export async function collectExtractTransaction({ send, tools, requiredTypes, memoryOsEnabled, nodeIds, taskMessages, repairContext, maxRepairs = 1, signal, initialCalls = [], toolTypes = {} }) {
+async function collectExtractTransactionInternal({ send, tools, requiredTypes, memoryOsEnabled, nodeIds, taskMessages, repairContext, maxRepairs = 1, signal, initialCalls = [], toolTypes = {} }) {
     const calls = [...initialCalls];
     repairUnambiguousMissingSemanticRefs(calls, toolTypes);
     let state = validateExtractTransaction({ calls, tools, requiredTypes, memoryOsEnabled, nodeIds, toolTypes });
@@ -305,6 +309,39 @@ export async function collectExtractTransaction({ send, tools, requiredTypes, me
     error.code = 'memory_extract_protocol';
     error.details = { ...state, ...(validationErrors.length ? { validation_errors: validationErrors } : {}) };
     throw error;
+}
+
+export async function collectExtractTransaction(options = {}) {
+    try {
+        return await collectExtractTransactionInternal(options);
+    } catch (error) {
+        if (options?.signal?.aborted || error?.name === 'AbortError') throw error;
+        const protocolFailure = String(error?.code || '') === 'memory_extract_protocol';
+        const stage = protocolFailure ? 'extract.transaction.validation' : 'extract.transaction.request';
+        memoryExtractLogger.error('extract.failed', '[Memory] extraction transaction failed', {
+            stage,
+            code: String(error?.code || ''),
+            message: error?.message || String(error),
+            requiredTypes: Array.isArray(options?.requiredTypes) ? options.requiredTypes : [],
+            memoryOsEnabled: Boolean(options?.memoryOsEnabled),
+        }, { category: 'extraction' });
+        void captureFrontendIncident({
+            type: 'tool_failure',
+            severity: 'error',
+            primaryModule: 'memory',
+            stage,
+            summary: error?.message || String(error),
+            failure: error,
+            environment: {
+                code: String(error?.code || ''),
+                requiredTypes: Array.isArray(options?.requiredTypes) ? options.requiredTypes : [],
+                memoryOsEnabled: Boolean(options?.memoryOsEnabled),
+                validation: error?.details || null,
+            },
+            retryHistory: Array.isArray(error?.details?.validation_errors) ? error.details.validation_errors : [],
+        });
+        throw error;
+    }
 }
 
 export function logExtractResponse(result, request) {

@@ -6,7 +6,7 @@
  * the browser having to stringify the whole thing. The response is streamed
  * straight to disk as the download.
  */
-import { getFrontendLogsSnapshot } from './frontend-log-manager.js';
+import { frontendLogStore } from './logging/logger.js';
 import { getRequestHeaders } from '../script.js';
 import { t } from './i18n.js';
 
@@ -20,7 +20,7 @@ function collectClientPayload() {
         online: navigator.onLine,
         connectionType: navigator.connection?.effectiveType ?? 'unknown',
         memoryGB: navigator.deviceMemory ?? 'unknown',
-        frontendLogs: getFrontendLogsSnapshot().entries,
+        frontendLogs: frontendLogStore.query({ limit: 3000 }).entries,
         performanceMarks: performance.getEntriesByType('mark').map(m => ({
             name: m.name,
             startTime: m.startTime,
