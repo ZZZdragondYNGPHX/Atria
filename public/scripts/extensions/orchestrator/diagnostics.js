@@ -45,7 +45,9 @@ function projectEvent(event) {
     const output = {};
     for (const key of [
         'seq', 'at', 'type', 'status', 'stageIndex', 'stageId', 'nodeIndex', 'nodeId',
-        'agentId', 'round', 'action', 'reason', 'error', 'toolName', 'name',
+        'agentId', 'round', 'action', 'reason', 'error', 'toolName', 'tool', 'name',
+        'provider', 'model', 'apiPresetName', 'llmPresetName', 'schema', 'schemaError',
+        'code', 'httpStatus', 'retry', 'attempt', 'maxAttempts',
         'primaryApiPresetName', 'fallbackApiPresetName', 'runId',
     ]) {
         if (event[key] !== undefined) output[key] = event[key];
@@ -60,6 +62,19 @@ export function buildOrchestrationFailureDiagnostic({ mode, trace, payload, erro
     const fallbackHistory = events.filter(event => /fallback/i.test(String(event.type || '')));
     const correlation = extractCorrelation(payload, trace, panelRunId);
     const stageParts = [String(mode || 'orchestration'), failedAttempt?.stageId, failedAttempt?.nodeId].filter(Boolean);
+    const lastValue = (...keys) => {
+        for (let index = events.length - 1; index >= 0; index--) {
+            for (const key of keys) {
+                const value = events[index]?.[key];
+                if (value !== undefined && value !== null && value !== '') return value;
+            }
+        }
+        for (const key of keys) {
+            const value = failedAttempt?.[key];
+            if (value !== undefined && value !== null && value !== '') return value;
+        }
+        return '';
+    };
 
     return {
         type: 'orchestration_failure',
@@ -81,6 +96,13 @@ export function buildOrchestrationFailureDiagnostic({ mode, trace, payload, erro
             panelRunId: String(panelRunId || ''),
             runtimeRunId: String(trace?.runId || ''),
             reviewRerunCount: Number(trace?.reviewRerunCount || 0),
+            provider: String(lastValue('provider') || ''),
+            model: String(lastValue('model') || ''),
+            apiPresetName: String(lastValue('apiPresetName', 'primaryApiPresetName') || ''),
+            llmPresetName: String(lastValue('llmPresetName') || ''),
+            toolName: String(lastValue('toolName', 'tool', 'name') || ''),
+            schemaError: String(lastValue('schemaError', 'schema') || ''),
+            httpStatus: lastValue('httpStatus'),
             failedAttempt,
         },
     };
