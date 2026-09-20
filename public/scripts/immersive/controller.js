@@ -1,4 +1,6 @@
 import { createImmersivePresentation, normalizeImmersiveSettings } from './presentation.js';
+import { createImmersiveComposer } from './composer.js';
+import { createImmersiveMessageActions } from './message-actions.js';
 
 function callSafely(fn, ...args) {
     try {
@@ -40,6 +42,9 @@ export function createImmersiveController({
     translate = value => value,
     shouldDeferEscape = () => false,
     onBeforeExit = () => false,
+    eventSource = null,
+    eventTypes = {},
+    hostActions = {},
 } = {}) {
     if (!documentRef?.body) {
         throw new Error('Immersive controller requires a document with a body.');
@@ -50,6 +55,75 @@ export function createImmersiveController({
         window: windowRef,
         isMobile,
     });
+
+    const wake = () => documentRef.body.classList.remove('atria-immersive-resting');
+    const composer = createImmersiveComposer({
+        document: documentRef,
+        translate,
+        actions: {
+            openTools: () => callSafely(hostActions.openTools),
+            send: () => callSafely(hostActions.send),
+            stop: () => callSafely(hostActions.stop),
+            continue: () => callSafely(hostActions.continue),
+            rewrite: () => callSafely(hostActions.rewrite),
+            keep: () => callSafely(hostActions.keep),
+        },
+        onWake: wake,
+    });
+    const messageActions = createImmersiveMessageActions({
+        document: documentRef,
+        window: windowRef,
+        translate,
+        rewrite: () => callSafely(hostActions.rewrite),
+        onWake: wake,
+    });
+    const subscriptions = [];
+
+    const bindEvent = (name, handler) => {
+        const eventName = eventTypes?.[name];
+        if (!eventName || typeof eventSource?.on !== 'function') return;
+        eventSource.on(eventName, handler);
+        subscriptions.push([eventName, handler]);
+    };
+
+    bindEvent('GENERATION_STARTED', (type, _params, isDryRun) => {
+        if (isDryRun) return;
+        composer.generationStarted(type);
+        wake();
+    });
+    bindEvent('GENERATION_STOPPED', () => {
+        composer.generationStopped();
+        presentation.refreshNarrative();
+        messageActions.refresh();
+    });
+    bindEvent('GENERATION_ENDED', () => {
+        composer.generationEnded();
+        presentation.refreshNarrative();
+        messageActions.refresh();
+    });
+    for (const name of [
+        'MESSAGE_SENT',
+        'MESSAGE_RECEIVED',
+        'MESSAGE_EDITED',
+        'MESSAGE_UPDATED',
+        'MESSAGE_DELETED',
+        'MESSAGE_SWIPED',
+        'MORE_MESSAGES_LOADED',
+        'USER_MESSAGE_RENDERED',
+        'CHARACTER_MESSAGE_RENDERED',
+    ]) {
+        bindEvent(name, () => {
+            presentation.refreshNarrative();
+            messageActions.refresh();
+        });
+    }
+    for (const name of ['CHAT_CHANGED', 'CHAT_LOADED']) {
+        bindEvent(name, () => {
+            messageActions.close();
+            presentation.refreshNarrative();
+            messageActions.refresh();
+        });
+    }
 
     let enabled = false;
     let fullscreenOwned = false;
@@ -181,6 +255,8 @@ export function createImmersiveController({
         const settings = refreshSettings();
         enabled = shouldEnable;
         presentation.setEnabled(shouldEnable);
+        composer.setEnabled(shouldEnable);
+        messageActions.setEnabled(shouldEnable);
 
         if (syncNative) {
             syncNativeImmersive(shouldEnable, source === 'fullscreen_api' ? source : 'immersive');
@@ -271,6 +347,8 @@ export function createImmersiveController({
     const handleEscape = () => {
         if (!enabled) return false;
         if (callSafely(shouldDeferEscape)) return false;
+        if (messageActions.close({ restoreFocus: true })) return true;
+        if (composer.dismissInterrupt()) return true;
         if (callSafely(onBeforeExit) === true) return true;
         void setEnabled(false, { useFullscreen: true, source: 'escape' });
         return true;
@@ -293,6 +371,11 @@ export function createImmersiveController({
         documentRef.removeEventListener('fullscreenchange', onFullscreenChanged);
         documentRef.removeEventListener('webkitfullscreenchange', onFullscreenChanged);
         documentRef.removeEventListener('keydown', keydownHandler, true);
+        for (const [eventName, handler] of subscriptions) {
+            eventSource?.off?.(eventName, handler);
+        }
+        messageActions.dispose();
+        composer.dispose();
         presentation.dispose();
     };
 
@@ -310,6 +393,8 @@ export function createImmersiveController({
             fullscreenOwned,
             profile: presentation.getProfile(),
             settings: presentation.getSettings(),
+            composer: composer.getState(),
+            messageActionsOpen: messageActions.hasOpen(),
         }),
     };
 }
