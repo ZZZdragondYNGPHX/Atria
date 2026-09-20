@@ -34,8 +34,8 @@ describe('Termux launcher to root startup timing', () => {
             const source = readFileSync(path, 'utf8');
             const mirror = source.indexOf('/api/startup/launcher-event?event=');
             const startEvent = source.indexOf('log_launcher_event "browser-open-start"');
-            const openViaTermux = source.indexOf('termux-open-url');
-            const openViaAm = source.indexOf('am start -a android.intent.action.VIEW');
+            const openViaTermux = source.indexOf('termux-open-url', startEvent);
+            const openViaAm = source.indexOf('am start -a android.intent.action.VIEW', startEvent);
 
             expect(mirror).toBeGreaterThanOrEqual(0);
             expect(startEvent).toBeGreaterThanOrEqual(0);
