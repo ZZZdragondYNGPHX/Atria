@@ -1,3 +1,18 @@
+# Pending implementation: Atria Game Runtime Architecture Refactor
+
+A new architecture task has been approved and prepared for a fresh implementation conversation.
+
+- Working branch: `refactor/game-runtime-architecture`
+- Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
+- Formal plan: `refactor/game-runtime-architecture.md`
+- Task handoff: `handoff/game-runtime-architecture.md`
+- Status: planning complete; branch created; no feature-code changes yet.
+- Architecture direction: Regex returns to text transformation; new Atria-native Game Package / World-Event / Command-Logic / Card UI / LLM Bridge / Game Studio architecture; MVU/LoreState/legacy Regex status-bar compatibility is not a design constraint.
+
+Implementation should read the plan and task handoff, verify live `main`, and begin R0/R1 without reopening product design.
+
+---
+
 # Latest Handoff
 
 ## Current state
