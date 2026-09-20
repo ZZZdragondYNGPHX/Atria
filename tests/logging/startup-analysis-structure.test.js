@@ -19,6 +19,7 @@ describe('L07 startup analysis UI structure', () => {
         expect(source).toContain('stroke-dasharray');
         expect(source).toContain('Extension activation breakdown');
         expect(source).toContain('Startup timeline');
+        expect(source).toContain('Session comparison');
         expect(source).not.toContain('Chart.js');
         expect(source).not.toContain('echarts');
     });

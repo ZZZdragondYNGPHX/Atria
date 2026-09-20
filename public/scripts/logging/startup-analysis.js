@@ -23,8 +23,10 @@ function formatMs(value) {
 }
 
 function formatDelta(value) {
+    if (value === null || value === undefined || value === '') return '—';
     const numeric = Number(value);
-    if (!Number.isFinite(numeric) || numeric === 0) return '±0ms';
+    if (!Number.isFinite(numeric)) return '—';
+    if (numeric === 0) return '±0ms';
     return `${numeric > 0 ? '+' : ''}${formatMs(numeric)}`;
 }
 
@@ -75,7 +77,7 @@ function shellMarkup() {
                             </article>
                         </section>
                         <section class="atriaStartupCard atriaStartupCompareCard">
-                            <div class="atriaStartupCardTitle"><span>${t`Compared with previous session`}</span><span class="atriaStartupCompareLabel"></span></div>
+                            <div class="atriaStartupCardTitle"><span>${t`Session comparison`}</span><span class="atriaStartupCompareLabel"></span></div>
                             <div class="atriaStartupCompareMetrics"></div>
                         </section>
                         <section class="atriaStartupCard">
