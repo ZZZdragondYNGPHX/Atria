@@ -645,7 +645,7 @@ function syncMobileDrilldown() {
     syncWorkspaceChrome();
 }
 
-function renderBulkInspector() {
+function renderBulkInspector({ enterMobileDetail = true } = {}) {
     const host = document.querySelector('#wi_workspace_bulk_inspector');
     const inspector = document.querySelector('#wi_workspace_inspector');
     if (!host || !inspector) return;
@@ -658,14 +658,14 @@ function renderBulkInspector() {
 
     host.classList.remove('displayNone');
     host.querySelector('[data-role="count"]').textContent = String(count);
-    if (isMobileWorkspace()) {
+    if (enterMobileDetail && isMobileWorkspace()) {
         state.mobileDetail = true;
         syncMobileDrilldown();
     }
 }
 
-function syncSelectionUi() {
-    renderBulkInspector();
+function syncSelectionUi({ enterMobileDetail = true } = {}) {
+    renderBulkInspector({ enterMobileDetail });
     renderVirtualRows();
     const toolbar = document.querySelector('#world_entry_bulk_toolbar');
     toolbar?.classList.toggle('wi-workspace-bulk-active', state.selectedUids.size > 0);
@@ -1330,7 +1330,7 @@ export function syncWorldInfoWorkspace({
         }
     }
 
-    syncSelectionUi();
+    syncSelectionUi({ enterMobileDetail: !openingEntriesFromAnotherView });
 }
 
 export function syncWorldInfoWorkspaceSelection(selectedUids = []) {
