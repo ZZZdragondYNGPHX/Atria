@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from '@jest/globals';
 
-const repoRoot = path.resolve(import.meta.dirname, '..', '..');
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(testDir, '..', '..');
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
 
 describe('Regex/Game Runtime architecture boundary', () => {
