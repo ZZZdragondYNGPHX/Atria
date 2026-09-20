@@ -48,3 +48,5 @@ export class LogStore {
         return this.#entries.length ? this.#entries[this.#entries.length - 1].id : 0;
     }
 }
+
+export const backendLogStore = new LogStore({ side: 'backend' });
