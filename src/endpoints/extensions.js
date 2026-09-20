@@ -527,6 +527,43 @@ async function checkIfRepoIsUpToDate(extensionPath) {
 
 export const router = express.Router();
 
+const EXTENSION_DISCOVERY_CACHE_TTL_MS = 1000;
+const extensionDiscoveryCache = new Map();
+
+function getExtensionDiscoveryCacheKey(request) {
+    return [
+        String(request.user?.profile?.handle || ''),
+        String(request.user?.directories?.extensions || ''),
+        String(PUBLIC_DIRECTORIES.globalExtensions || ''),
+    ].join('\0');
+}
+
+function readExtensionDiscoveryCache(request) {
+    const key = getExtensionDiscoveryCacheKey(request);
+    const cached = extensionDiscoveryCache.get(key);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+        extensionDiscoveryCache.delete(key);
+        return null;
+    }
+    return cached.value;
+}
+
+function writeExtensionDiscoveryCache(request, value) {
+    const now = Date.now();
+    for (const [key, cached] of extensionDiscoveryCache) {
+        if (cached.expiresAt <= now) extensionDiscoveryCache.delete(key);
+    }
+    extensionDiscoveryCache.set(getExtensionDiscoveryCacheKey(request), {
+        expiresAt: now + EXTENSION_DISCOVERY_CACHE_TTL_MS,
+        value,
+    });
+}
+
+function invalidateExtensionDiscoveryCache() {
+    extensionDiscoveryCache.clear();
+}
+
 /**
  * Feature flag guard: don't allow calling any of the endpoints if extensions are disabled
  * @type {import('express').RequestHandler}
@@ -541,6 +578,23 @@ export const extensionsEnabledFeatureGuard = (_, response, next) => {
 };
 
 router.use(extensionsEnabledFeatureGuard);
+
+// Only operations that can change extension folders or their precedence
+// invalidate discovery. Read-only POST endpoints such as /version and
+// /branches must not erase a cache that was built milliseconds earlier.
+const EXTENSION_DISCOVERY_MUTATION_PATHS = new Set([
+    '/install',
+    '/update',
+    '/switch',
+    '/move',
+    '/delete',
+]);
+router.use((request, _response, next) => {
+    if (request.method === 'POST' && EXTENSION_DISCOVERY_MUTATION_PATHS.has(request.path)) {
+        invalidateExtensionDiscoveryCache();
+    }
+    next();
+});
 
 /**
  * HTTP POST handler function to clone a git repository from a provided URL, read the extension manifest,
@@ -1036,6 +1090,12 @@ router.post('/delete', async (request, response) => {
  * If the folder is called third-party, search for subfolders instead
  */
 router.get('/discover', function (request, response) {
+    const cached = readExtensionDiscoveryCache(request);
+    if (cached) {
+        console.debug('Extensions discovery cache hit for', request.user.profile.handle);
+        return response.send(cached);
+    }
+
     if (!fs.existsSync(path.join(request.user.directories.extensions))) {
         fs.mkdirSync(path.join(request.user.directories.extensions));
     }
@@ -1086,6 +1146,7 @@ router.get('/discover', function (request, response) {
 
     // Combine all extensions
     const allExtensions = [...builtInExtensions, ...userExtensions, ...globalExtensions];
+    writeExtensionDiscoveryCache(request, allExtensions);
     console.debug('Extensions available for', request.user.profile.handle, allExtensions);
 
     return response.send(allExtensions);

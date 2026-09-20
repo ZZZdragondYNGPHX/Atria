@@ -153,7 +153,8 @@
         "plugins:update": "node plugins update",
         "plugins:install": "node plugins install",
         "storage:migrate": "node scripts/storage-migrate.js",
-        "storage:audit-names": "node scripts/audit-storage-names.js"
+        "storage:audit-names": "node scripts/audit-storage-names.js",
+        "frontend:prebuild-cache": "node scripts/prebuild-frontend-cache.js"
     },
     "bin": {
         "atria": "./src/server-global.js"

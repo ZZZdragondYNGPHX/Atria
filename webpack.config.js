@@ -5,21 +5,92 @@ import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import isDocker from 'is-docker';
 import { serverDirectory } from './src/server-directory.js';
-import { getVersion, color } from './src/util.js';
+import { color } from './src/util.js';
 
-// Read webpack's version straight from its package.json instead of `import webpack`
-// so this module — statically imported via the request path — never drags the
-// ~7 MB webpack runtime into Node startup. The actual compiler is loaded on
-// demand inside webpack-serve.js's runWebpackCompiler.
-const webpackVersion = createRequire(import.meta.url)('webpack/package.json').version;
+const require = createRequire(import.meta.url);
+
+// Keep cache-version calculation on the startup fast path: reading package
+// metadata and Git refs from disk is much cheaper than spawning several `git`
+// subprocesses on every Termux launch.
+const webpackVersion = require('webpack/package.json').version;
+const packageVersion = require('./package.json').version;
+
+function resolveGitDirectory() {
+    const dotGit = path.join(serverDirectory, '.git');
+    try {
+        const stat = fs.statSync(dotGit);
+        if (stat.isDirectory()) return dotGit;
+        if (!stat.isFile()) return null;
+        const pointer = fs.readFileSync(dotGit, 'utf8').trim();
+        if (!pointer.startsWith('gitdir:')) return null;
+        return path.resolve(serverDirectory, pointer.slice('gitdir:'.length).trim());
+    } catch {
+        return null;
+    }
+}
+
+function readRefFromGitDirectory(gitDirectory, refName) {
+    const candidates = [gitDirectory];
+    try {
+        const commonDir = fs.readFileSync(path.join(gitDirectory, 'commondir'), 'utf8').trim();
+        if (commonDir) candidates.push(path.resolve(gitDirectory, commonDir));
+    } catch {
+        // Ordinary repositories do not have a commondir file.
+    }
+
+    for (const root of candidates) {
+        try {
+            const value = fs.readFileSync(path.join(root, refName), 'utf8').trim();
+            if (value) return value;
+        } catch {
+            // Fall through to packed-refs.
+        }
+
+        try {
+            const packed = fs.readFileSync(path.join(root, 'packed-refs'), 'utf8');
+            for (const line of packed.split(/\r?\n/)) {
+                if (!line || line.startsWith('#') || line.startsWith('^')) continue;
+                const [sha, name] = line.trim().split(/\s+/, 2);
+                if (name === refName && sha) return sha;
+            }
+        } catch {
+            // No packed refs in this git directory.
+        }
+    }
+
+    return null;
+}
 
 /**
- * Generate a cache version string based on the application version, Git revision, and Webpack version.
+ * Resolve the checkout HEAD without spawning Git.
+ * Supports ordinary repositories, detached HEADs, packed refs, and worktrees.
+ *
+ * @returns {string | null} Full local commit SHA when available.
+ */
+export function readLocalGitRevision() {
+    const gitDirectory = resolveGitDirectory();
+    if (!gitDirectory) return null;
+
+    try {
+        const head = fs.readFileSync(path.join(gitDirectory, 'HEAD'), 'utf8').trim();
+        if (/^[0-9a-f]{40}$/i.test(head)) return head;
+        if (!head.startsWith('ref:')) return null;
+        return readRefFromGitDirectory(gitDirectory, head.slice('ref:'.length).trim());
+    } catch {
+        return null;
+    }
+}
+
+const gitRevision = readLocalGitRevision();
+
+/**
+ * Generate a cache version string based on the application version, local Git
+ * revision, and Webpack version.
  * @returns {string} The cache version string.
  */
 function getWebpackCacheVersion() {
     return crypto.createHash('shake256', { outputLength: 8 })
-        .update(JSON.stringify([appVersion.pkgVersion, appVersion.gitRevision, webpackVersion]))
+        .update(JSON.stringify([packageVersion, gitRevision, webpackVersion]))
         .digest('hex');
 }
 
@@ -54,7 +125,6 @@ function pruneWebpackCache(webpackRoot, currentCacheVersion) {
     }
 }
 
-const appVersion = await getVersion();
 
 /**
  * Get the Webpack configuration for the bundled frontend library chunks.

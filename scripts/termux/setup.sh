@@ -51,6 +51,9 @@ npm run init
 log "Verifying/repairing native SQLite binding for Termux..."
 bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
 
+log "Prebuilding frontend bundles so normal startup can skip Webpack..."
+npm run frontend:prebuild-cache
+
 # Install an executable wrapper outside the Git worktree. Do not chmod tracked
 # scripts: changing their file mode would make future `git pull` updates dirty.
 {
