@@ -48,6 +48,23 @@ describe('immersive provider registry', () => {
         expect(onError).toHaveBeenCalledTimes(1);
     });
 
+    test('a broken error reporter is also isolated', async () => {
+        const registry = createImmersiveProviderRegistry({
+            onError() {
+                throw new Error('reporter failed');
+            },
+        });
+        registry.register({
+            id: 'broken-reporter-case',
+            async getState() {
+                throw new Error('provider failed');
+            },
+        });
+
+        await expect(registry.refresh()).resolves.toBeDefined();
+        expect(registry.getSnapshot().providers).toEqual([{ id: 'broken-reporter-case', priority: 0 }]);
+    });
+
     test('unregister disposes provider resources', () => {
         const dispose = jest.fn();
         const registry = createImmersiveProviderRegistry();
@@ -58,6 +75,41 @@ describe('immersive provider registry', () => {
 });
 
 describe('immersive HUD', () => {
+    test('details dialog traps focus and restores it to the trigger', () => {
+        if (typeof HTMLDialogElement !== 'undefined') {
+            HTMLDialogElement.prototype.showModal ??= function () {
+                this.setAttribute('open', '');
+            };
+            HTMLDialogElement.prototype.close ??= function () {
+                this.removeAttribute('open');
+            };
+        }
+        const hud = createImmersiveHud({ document });
+        hud.setEnabled(true);
+        hud.render({
+            hud: applyHudBudget({
+                primary: ['Scene'],
+                details: [
+                    { label: 'Quest', value: 'Find the key' },
+                    { label: 'Status', value: 'Ready' },
+                ],
+            }),
+            actions: [],
+        });
+
+        const trigger = document.querySelector('.atria-immersive-hud-details-button');
+        trigger.focus();
+        trigger.click();
+        const dialog = document.getElementById('atriaImmersiveHudDetails');
+        expect(dialog.open || dialog.hasAttribute('open')).toBe(true);
+        expect(dialog.contains(document.activeElement)).toBe(true);
+
+        dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        expect(dialog.open || dialog.hasAttribute('open')).toBe(false);
+        expect(document.activeElement).toBe(trigger);
+        hud.dispose();
+    });
+
     test('renders only budgeted summary items and exposes overflow details', () => {
         const hud = createImmersiveHud({ document });
         hud.setEnabled(true);
