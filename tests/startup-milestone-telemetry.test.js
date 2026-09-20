@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
+import { backendLogStore } from '../src/logging/store.js';
 
 import {
     __startupTimingTestUtils,
@@ -10,6 +11,7 @@ import {
 describe('startup milestone telemetry', () => {
     afterEach(() => {
         __startupTimingTestUtils.clear();
+        backendLogStore.clear();
         jest.restoreAllMocks();
     });
 
@@ -18,8 +20,14 @@ describe('startup milestone telemetry', () => {
         markStartupMilestone('test.once');
         markStartupMilestone('test.once');
         expect(log).toHaveBeenCalledTimes(1);
-        expect(String(log.mock.calls[0][0])).toContain('[startup]');
-        expect(String(log.mock.calls[0][0])).toContain('test.once');
+        const rendered = log.mock.calls[0].map(String).join(' ');
+        expect(rendered).toContain('[startup]');
+        expect(rendered).toContain('test.once');
+        expect(backendLogStore.query({ modules: ['startup'] }).entries[0]).toMatchObject({
+            category: 'milestone',
+            event: 'test.once',
+            source: 'structured',
+        });
     });
 
     test('phase timer reports elapsed time', () => {
@@ -27,8 +35,14 @@ describe('startup milestone telemetry', () => {
         const finish = startStartupPhase('test.phase');
         const elapsed = finish('done');
         expect(elapsed).toBeGreaterThanOrEqual(0);
-        expect(String(log.mock.calls[0][0])).toContain('phase test.phase');
-        expect(String(log.mock.calls[0][0])).toContain('done');
+        const rendered = log.mock.calls[0].map(String).join(' ');
+        expect(rendered).toContain('phase test.phase');
+        expect(rendered).toContain('done');
+        expect(backendLogStore.query({ events: ['phase.test.phase'] }).entries[0]).toMatchObject({
+            module: 'startup',
+            category: 'phase',
+            source: 'structured',
+        });
     });
 
     test('critical startup path is instrumented end to end', () => {
