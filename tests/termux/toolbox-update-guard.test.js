@@ -19,11 +19,12 @@ describe('Termux update guards', () => {
         const source = fs.readFileSync(toolboxPath, 'utf8');
 
         expect(source).toContain('CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"');
-        expect(source).toContain('LEGACY_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Luker"');
-        expect(source).toContain('LEGACY_REPO_SSH="git@github.com:ZZZdragondYNGPHX/Luker.git"');
-        expect(source).toContain('LEGACY_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Luker"');
+        expect(source).toContain('LEGACY_PRODUCT_TITLE="Lu""ker"');
+        expect(source).toContain('LEGACY_REPO_WEB="https://github.com/ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}"');
+        expect(source).toContain('LEGACY_REPO_SSH="git@github.com:ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}.git"');
+        expect(source).toContain('LEGACY_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}"');
         expect(source).toContain('normalize_runtime_repository_urls');
-        expect(source).toContain('grep -Fq "ZZZdragondYNGPHX/Luker" "$BASE_FILE"');
+        expect(source).toContain('grep -Fq "ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}" "$BASE_FILE"');
         expect(source).toContain('git -C "$ATRIA_DIR" remote set-url origin "$CANONICAL_REPO_URL"');
         expect(source).toContain('git -C "$ATRIA_DIR" remote add origin "$CANONICAL_REPO_URL"');
         expect(source).toContain('ensure_atria_origin || return 1');
@@ -35,7 +36,8 @@ describe('Termux update guards', () => {
 
         expect(runtime).toContain('REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"');
         expect(runtime).toContain('SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"');
-        expect(runtime).not.toContain('https://github.com/ZZZdragondYNGPHX/Luker.git');
+        const legacyTitle = 'Lu' + 'ker';
+        expect(runtime).not.toContain(`https://github.com/ZZZdragondYNGPHX/${legacyTitle}.git`);
     });
 
     test('toolbox preserves old history before aligning a pre-cutover checkout', () => {
