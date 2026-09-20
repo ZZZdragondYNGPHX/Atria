@@ -4,6 +4,7 @@ import { createImmersiveMessageActions } from './message-actions.js';
 import { createImmersiveProviderRegistry } from './providers.js';
 import { createImmersiveHud } from './hud.js';
 import { createImmersiveVisuals } from './visuals.js';
+import { createImmersiveDiagnostics } from './diagnostics.js';
 
 function callSafely(fn, ...args) {
     try {
@@ -85,6 +86,14 @@ export function createImmersiveController({
         document: documentRef,
         window: windowRef,
     });
+    const diagnostics = createImmersiveDiagnostics({
+        document: documentRef,
+        translate,
+        retry: () => callSafely(hostActions.rewrite),
+        openDiagnostics: failure => callSafely(hostActions.openDiagnostics, failure),
+        onWake: wake,
+    });
+    let suppressStoppedOnce = false;
     let hud = null;
     const providers = createImmersiveProviderRegistry({
         onChange: snapshot => {
@@ -115,15 +124,24 @@ export function createImmersiveController({
 
     bindEvent('GENERATION_STARTED', (type, _params, isDryRun) => {
         if (isDryRun) return;
+        suppressStoppedOnce = false;
+        diagnostics.clear();
         composer.generationStarted(type);
         wake();
     });
     bindEvent('GENERATION_STOPPED', () => {
-        composer.generationStopped();
+        if (suppressStoppedOnce) {
+            suppressStoppedOnce = false;
+            composer.generationEnded();
+        } else {
+            composer.generationStopped();
+        }
         presentation.refreshNarrative();
         messageActions.refresh();
     });
     bindEvent('GENERATION_ENDED', () => {
+        suppressStoppedOnce = false;
+        diagnostics.clear();
         composer.generationEnded();
         presentation.refreshNarrative();
         messageActions.refresh();
@@ -291,6 +309,7 @@ export function createImmersiveController({
         presentation.setEnabled(shouldEnable);
         composer.setEnabled(shouldEnable);
         messageActions.setEnabled(shouldEnable);
+        diagnostics.setEnabled(shouldEnable);
         visuals.setEnabled(shouldEnable);
         visuals.render(providers.getSnapshot(), settings);
         hud.setEnabled(shouldEnable && settings.extensionsEnabled);
@@ -388,6 +407,7 @@ export function createImmersiveController({
     const dismissTransientLayer = () => {
         if (messageActions.close({ restoreFocus: true })) return true;
         if (hud.closeDetails()) return true;
+        if (diagnostics.close()) return true;
         if (composer.dismissInterrupt()) return true;
         return false;
     };
@@ -423,6 +443,7 @@ export function createImmersiveController({
         }
         providers.dispose();
         hud.dispose();
+        diagnostics.dispose();
         visuals.dispose();
         messageActions.dispose();
         composer.dispose();
@@ -436,6 +457,12 @@ export function createImmersiveController({
         refreshSettings,
         installAndroidFullscreenApiShim,
         syncNativeImmersive,
+        reportGenerationFailure(failure = {}) {
+            if (!enabled) return;
+            suppressStoppedOnce = true;
+            composer.dismissInterrupt();
+            diagnostics.reportFailure(failure);
+        },
         registerProvider: provider => providers.register(provider),
         unregisterProvider: id => providers.unregister(id),
         refreshProviders: id => providers.refresh(id),
@@ -457,6 +484,7 @@ export function createImmersiveController({
             composer: composer.getState(),
             messageActionsOpen: messageActions.hasOpen(),
             hudOpen: hud.hasOpen(),
+            failureOpen: diagnostics.hasOpen(),
             providers: providers.getSnapshot().providers,
         }),
     };
