@@ -1,4 +1,4 @@
-import { t } from '../i18n.js';
+import { t, translate } from '../i18n.js';
 import {
     buildSlowStartupItems,
     buildStartupDonut,
@@ -28,6 +28,17 @@ function formatDelta(value) {
     if (!Number.isFinite(numeric)) return '—';
     if (numeric === 0) return '±0ms';
     return `${numeric > 0 ? '+' : ''}${formatMs(numeric)}`;
+}
+
+function localizeStartupLabel(value) {
+    const normalized = String(value ?? '');
+    const scopeLabels = {
+        server: t`Server`,
+        client: t`Client`,
+        extension: t`Extension`,
+        extensions: t`Extensions`,
+    };
+    return scopeLabels[normalized] || translate(normalized);
 }
 
 function sessionLabel(session) {
@@ -129,7 +140,7 @@ function renderLegend(root, donut) {
     root.querySelector('.atriaStartupLegend').innerHTML = donut.slices.map((slice, index) => `
         <div class="atriaStartupLegendRow">
             <span class="atriaStartupLegendSwatch atriaStartupSlice-${index % 6}"></span>
-            <span class="atriaStartupLegendName">${htmlEscape(slice.label)}</span>
+            <span class="atriaStartupLegendName">${htmlEscape(localizeStartupLabel(slice.label))}</span>
             <strong>${htmlEscape(formatMs(slice.durationMs))}</strong>
             <span>${slice.percentage.toFixed(1)}%</span>
         </div>
@@ -142,7 +153,7 @@ function renderSlowList(root, session) {
         ? items.map((item, index) => `
             <div class="atriaStartupSlowRow">
                 <span class="atriaStartupRank">${index + 1}</span>
-                <span><strong>${htmlEscape(item.label)}</strong><small>${htmlEscape(item.scope)}</small></span>
+                <span><strong>${htmlEscape(localizeStartupLabel(item.label))}</strong><small>${htmlEscape(localizeStartupLabel(item.scope))}</small></span>
                 <strong>${htmlEscape(formatMs(item.durationMs))}</strong>
             </div>
         `).join('')
@@ -159,7 +170,7 @@ function renderTimelineGroup(label, rows) {
         const width = Math.max(1.2, Math.min(100 - left, (row.durationMs / extent) * 100));
         return `
             <div class="atriaStartupTimelineRow">
-                <span class="atriaStartupTimelineLabel" title="${htmlEscape(row.label)}">${htmlEscape(row.label)}</span>
+                <span class="atriaStartupTimelineLabel" title="${htmlEscape(localizeStartupLabel(row.label))}">${htmlEscape(localizeStartupLabel(row.label))}</span>
                 <div class="atriaStartupTimelineTrack">
                     <span class="atriaStartupTimelineBar" style="left:${left}%;width:${width}%"></span>
                 </div>
