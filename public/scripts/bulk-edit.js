@@ -1,4 +1,4 @@
-import { characterGroupOverlay } from '../script.js';
+import { characterGroupOverlay, setCharacterGroupOverlay } from '../script.js';
 import { BulkEditOverlay, BulkEditOverlayState, CharacterContextMenu } from './BulkEditOverlay.js';
 import { event_types, eventSource } from './events.js';
 
@@ -113,6 +113,10 @@ function disableBulkSelect() {
  * Entry point that runs on page load.
  */
 export function initBulkEdit() {
+    if (!characterGroupOverlay) {
+        setCharacterGroupOverlay(new BulkEditOverlay());
+    }
+
     characterGroupOverlay.addStateChangeCallback((state) => {
         if (state === BulkEditOverlayState.select) enableBulkEdit();
         if (state === BulkEditOverlayState.browse) disableBulkEdit();

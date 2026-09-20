@@ -279,7 +279,6 @@ import {
 import { initBackgrounds, loadBackgroundSettings, background_settings } from './scripts/backgrounds.js';
 import { hideLoader, isLoaderVisible, showLoader } from './scripts/loader.js';
 import { loader } from './scripts/action-loader.js';
-import { BulkEditOverlay } from './scripts/BulkEditOverlay.js';
 import { initTextGenModels, initTextGenModelSelects } from './scripts/textgen-models.js';
 import { appendFileContent, hasPendingFileAttachment, populateFileAttachment, decodeStyleTags, encodeStyleTags, hideChatMessageRange, isExternalMediaAllowed, preserveNeutralChat, restoreNeutralChat, formatCreatorNotes, initChatUtilities, addDOMPurifyHooks } from './scripts/chats.js';
 import { getPresetManager, initPresetManager } from './scripts/preset-manager.js';
@@ -445,7 +444,17 @@ toastr.subscribe(function (args) {
     }
 });
 
-export const characterGroupOverlay = new BulkEditOverlay();
+export let characterGroupOverlay = null;
+
+/**
+ * Publish the bulk-edit overlay after its post-visible module is loaded.
+ * Keeping the live binding preserves existing internal consumers without
+ * pulling BulkEditOverlay.js into the initial static module graph.
+ * @param {object} overlay
+ */
+export function setCharacterGroupOverlay(overlay) {
+    characterGroupOverlay = overlay;
+}
 
 // Markdown converter
 export let mesForShowdownParse; //intended to be used as a context to compare showdown strings against
