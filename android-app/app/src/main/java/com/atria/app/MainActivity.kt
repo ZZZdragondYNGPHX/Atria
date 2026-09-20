@@ -150,13 +150,7 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            if (this@MainActivity::webView.isInitialized && webView.canGoBack()) {
-                lastBackPressForExitMillis = 0L
-                webView.goBack()
-                return
-            }
-
-            tryWebHandleBackOrConfirmExit()
+            tryWebHandleBackOrNavigateOrConfirmExit()
         }
     }
 
@@ -1166,7 +1160,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun tryWebHandleBackOrConfirmExit() {
+    private fun tryWebHandleBackOrNavigateOrConfirmExit() {
         if (pendingBackCheck) {
             return
         }
@@ -1180,11 +1174,16 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 pendingBackCheck = false
                 val result = (rawResult ?: "").trim('"', ' ', '\n', '\r', '\t').lowercase()
-                if (result == "consumed") {
-                    lastBackPressForExitMillis = 0L
-                    return@runOnUiThread
+                when (resolveAtriaBackAction(result, webView.canGoBack())) {
+                    AtriaBackAction.CONSUMED -> {
+                        lastBackPressForExitMillis = 0L
+                    }
+                    AtriaBackAction.NAVIGATE_HISTORY -> {
+                        lastBackPressForExitMillis = 0L
+                        webView.goBack()
+                    }
+                    AtriaBackAction.CONFIRM_EXIT -> triggerExitOrConfirmToast()
                 }
-                triggerExitOrConfirmToast()
             }
         }
     }
