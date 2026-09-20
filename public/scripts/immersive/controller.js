@@ -1,6 +1,8 @@
 import { createImmersivePresentation, normalizeImmersiveSettings } from './presentation.js';
 import { createImmersiveComposer } from './composer.js';
 import { createImmersiveMessageActions } from './message-actions.js';
+import { createImmersiveProviderRegistry } from './providers.js';
+import { createImmersiveHud } from './hud.js';
 
 function callSafely(fn, ...args) {
     try {
@@ -77,6 +79,22 @@ export function createImmersiveController({
         rewrite: () => callSafely(hostActions.rewrite),
         onWake: wake,
     });
+
+    let hud = null;
+    const providers = createImmersiveProviderRegistry({
+        onChange: snapshot => hud?.render(snapshot),
+        onError: (error, providerId) => {
+            console.warn(`[immersive] provider "${providerId}" failed`, error);
+        },
+    });
+    hud = createImmersiveHud({
+        document: documentRef,
+        translate,
+        invokeAction: actionId => providers.invokeAction(actionId),
+        onWake: wake,
+    });
+    hud.render(providers.getSnapshot());
+
     const subscriptions = [];
 
     const bindEvent = (name, handler) => {
@@ -100,6 +118,7 @@ export function createImmersiveController({
         composer.generationEnded();
         presentation.refreshNarrative();
         messageActions.refresh();
+        void providers.refresh();
     });
     for (const name of [
         'MESSAGE_SENT',
@@ -120,10 +139,13 @@ export function createImmersiveController({
     for (const name of ['CHAT_CHANGED', 'CHAT_LOADED']) {
         bindEvent(name, () => {
             messageActions.close();
+            hud.closeDetails();
             presentation.refreshNarrative();
             messageActions.refresh();
+            void providers.refresh();
         });
     }
+    bindEvent('MESSAGE_RECEIVED', () => void providers.refresh());
 
     let enabled = false;
     let fullscreenOwned = false;
@@ -242,6 +264,8 @@ export function createImmersiveController({
     const refreshSettings = () => {
         const settings = normalizeImmersiveSettings(getSettings());
         presentation.refreshSettings(settings);
+        hud.setMode(settings.hudMode);
+        hud.setEnabled(enabled && settings.extensionsEnabled);
         return settings;
     };
 
@@ -257,6 +281,11 @@ export function createImmersiveController({
         presentation.setEnabled(shouldEnable);
         composer.setEnabled(shouldEnable);
         messageActions.setEnabled(shouldEnable);
+        hud.setEnabled(shouldEnable && settings.extensionsEnabled);
+        hud.setMode(settings.hudMode);
+        if (shouldEnable && settings.extensionsEnabled) {
+            void providers.refresh();
+        }
 
         if (syncNative) {
             syncNativeImmersive(shouldEnable, source === 'fullscreen_api' ? source : 'immersive');
@@ -346,6 +375,7 @@ export function createImmersiveController({
 
     const dismissTransientLayer = () => {
         if (messageActions.close({ restoreFocus: true })) return true;
+        if (hud.closeDetails()) return true;
         if (composer.dismissInterrupt()) return true;
         return false;
     };
@@ -379,6 +409,8 @@ export function createImmersiveController({
         for (const [eventName, handler] of subscriptions) {
             eventSource?.off?.(eventName, handler);
         }
+        providers.dispose();
+        hud.dispose();
         messageActions.dispose();
         composer.dispose();
         presentation.dispose();
@@ -391,6 +423,16 @@ export function createImmersiveController({
         refreshSettings,
         installAndroidFullscreenApiShim,
         syncNativeImmersive,
+        registerProvider: provider => providers.register(provider),
+        unregisterProvider: id => providers.unregister(id),
+        refreshProviders: id => providers.refresh(id),
+        getProviderSnapshot: () => providers.getSnapshot(),
+        providers: {
+            register: provider => providers.register(provider),
+            unregister: id => providers.unregister(id),
+            refresh: id => providers.refresh(id),
+            getSnapshot: () => providers.getSnapshot(),
+        },
         dismissTransientLayer,
         handleEscape,
         dispose,
@@ -401,6 +443,8 @@ export function createImmersiveController({
             settings: presentation.getSettings(),
             composer: composer.getState(),
             messageActionsOpen: messageActions.hasOpen(),
+            hudOpen: hud.hasOpen(),
+            providers: providers.getSnapshot().providers,
         }),
     };
 }
