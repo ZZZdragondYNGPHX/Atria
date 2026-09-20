@@ -1,9 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';\nimport { gunzipSync } from 'node:zlib';\nimport { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { gunzipSync } from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const toolboxPath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.sh');\nconst toolboxRuntimePath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.runtime.sh.gz');\nconst termuxCliPath = path.join(repoRoot, 'scripts', 'termux', 'atria.sh');
+const toolboxPath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.sh');
+const toolboxRuntimePath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.runtime.sh.gz');
+const termuxCliPath = path.join(repoRoot, 'scripts', 'termux', 'atria.sh');
 
 describe('Termux update guards', () => {
     test('launchers remain valid bash', () => {
