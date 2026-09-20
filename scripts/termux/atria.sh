@@ -52,7 +52,9 @@ managed_process_alive() {
 }
 
 http_ready() {
-  curl -fsS --max-time 3 "${URL}/" >/dev/null 2>&1
+  # HEAD proves the HTTP stack is serving without downloading index.html just
+  # to throw it away before opening the real browser.
+  curl -fsSI --max-time 3 "${URL}/" >/dev/null 2>&1
 }
 
 open_browser() {
