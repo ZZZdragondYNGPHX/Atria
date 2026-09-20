@@ -27,10 +27,14 @@ export function createImmersiveDiagnostics({
     const text = documentRef.createElement('span');
     text.className = 'atria-immersive-failure-text';
     text.textContent = translate('Response did not complete');
+    text.setAttribute('data-i18n', 'Response did not complete');
 
     const retryButton = makeButton(documentRef, translate('Retry'), 'atria-immersive-failure-action');
     const reasonButton = makeButton(documentRef, translate('View reason'), 'atria-immersive-failure-action');
     const dismissButton = makeButton(documentRef, translate('Keep'), 'atria-immersive-failure-action atria-immersive-failure-dismiss');
+    retryButton.setAttribute('data-i18n', 'Retry');
+    reasonButton.setAttribute('data-i18n', 'View reason');
+    dismissButton.setAttribute('data-i18n', 'Keep;[aria-label]Dismiss failure notice');
     dismissButton.setAttribute('aria-label', translate('Dismiss failure notice'));
 
     root.append(text, retryButton, reasonButton, dismissButton);
