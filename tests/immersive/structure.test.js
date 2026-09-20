@@ -52,6 +52,19 @@ describe('immersive experience host integration', () => {
         expect(script).toContain('immersiveController.dismissTransientLayer?.()');
     });
 
+    test('immersive tools and extensions menus use stable native menu entrypoints', () => {
+        const script = read('public/script.js');
+        const composer = read('public/scripts/immersive/composer.js');
+        const extensions = read('public/scripts/extensions.js');
+
+        expect(script).toContain("target.closest('#options_button, #atriaImmersiveTools')");
+        expect(script).toContain("Popper.createPopper(immersiveButton, menu.get(0)");
+        expect(composer).toContain("id: 'atriaImmersiveExtensions'");
+        expect(composer).toContain("fa-solid fa-magic-wand-sparkles");
+        expect(extensions).toContain("'#atriaImmersiveExtensions'");
+        expect(extensions).toContain('updatePopperReference(this)');
+    });
+
     test('presentation reuses the live chat DOM rather than cloning history', () => {
         const sources = [
             read('public/scripts/immersive/presentation.js'),
