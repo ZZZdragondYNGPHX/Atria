@@ -611,3 +611,40 @@ body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersiv
     outline: 2px solid var(--SmartThemeQuoteColor, currentColor);
     outline-offset: 2px;
 }
+
+
+/* Reading-state breathing keeps controls discoverable but visually quiet. */
+body.atria-immersive-mode .atria-immersive-hud,
+body.atria-immersive-mode #send_form.atria-immersive-composer,
+body.atria-immersive-mode #immersiveExitButton {
+    transition: opacity 180ms ease;
+}
+
+body.atria-immersive-mode.atria-immersive-resting .atria-immersive-hud {
+    opacity: 0.2;
+}
+
+body.atria-immersive-mode.atria-immersive-resting #send_form.atria-immersive-composer {
+    opacity: 0.48;
+}
+
+body.atria-immersive-mode.atria-immersive-resting #immersiveExitButton {
+    opacity: 0.22;
+}
+
+body.atria-immersive-mode.atria-immersive-resting .atria-immersive-message-actions {
+    opacity: 0;
+    pointer-events: none;
+}
+
+body.atria-immersive-mode.atria-immersive-resting[data-atria-immersive-profile="desktop"] #sheld {
+    cursor: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.atria-immersive-mode .atria-immersive-hud,
+    body.atria-immersive-mode #send_form.atria-immersive-composer,
+    body.atria-immersive-mode #immersiveExitButton {
+        transition: none !important;
+    }
+}
