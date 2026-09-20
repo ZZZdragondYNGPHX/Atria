@@ -28,13 +28,24 @@ test('native effective resolver ignores old libraries and retains one default bi
     expect(getWorkspaceLibrary(settings)).toBe(library);
 });
 
-test('editing a library definition affects the next resolution, never the admitted run snapshot', () => {
+test('editing a user preset affects the next resolution, never the admitted run snapshot', () => {
     const settings = {};
+    let library = getWorkspaceLibrary(settings);
+    library = updatePresetLibrary(library, {
+        type: 'duplicate',
+        id: 'builtin-spec',
+        newId: 'user-spec',
+        name: 'User Spec',
+    });
+    library = updatePresetLibrary(library, { type: 'bind', scope: 'default', presetId: 'user-spec' });
+    settings.agentWorkspace = library;
+
     const admitted = resolveWorkspaceProfile(settings, {});
     const fingerprint = executionConfigText(admitted, settings, admitted.presetId);
-    const edited = structuredClone(getWorkspaceLibrary(settings).presets.find(preset => preset.id === admitted.presetId));
+    const edited = structuredClone(getWorkspaceLibrary(settings).presets.find(preset => preset.id === 'user-spec'));
     edited.planTemplate.agents[0].instructions = 'Changed for next run';
-    settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, { type:'save',preset:edited });
+    settings.agentWorkspace = updatePresetLibrary(settings.agentWorkspace, { type: 'save', preset: edited });
+
     expect(executionConfigText(admitted, settings, admitted.presetId)).toBe(fingerprint);
     expect(executionConfigText(resolveWorkspaceProfile(settings, {}), settings, admitted.presetId)).not.toBe(fingerprint);
 });

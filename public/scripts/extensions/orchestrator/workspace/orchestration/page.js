@@ -1,5 +1,5 @@
 import { i18n, i18nFormat } from '../../i18n.js';
-import { createWorkspaceFactoryPreset, getWorkspaceLibrary, workspaceHostProfile } from '../host-presets.js';
+import { createWorkspaceFactoryPreset, getWorkspaceLibrary, isNativeWorkspacePresetId, prepareImportedWorkspacePreset, restoreNativeWorkspacePresets, uniqueWorkspacePresetName, workspaceHostProfile } from '../host-presets.js';
 import { compileWorkspacePreset, updatePresetLibrary, importWorkspacePreset, exportWorkspacePreset, resolvePresetBinding } from '../../../../lib/agent-workspace/presets.js';
 import { CAPABILITIES, effectiveCapabilities } from '../../../../lib/orchestration-engine/capabilities.js';
 import { renderGraph } from '../../../../lib/agent-workspace/graph-view.js';
@@ -54,6 +54,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
                 inspectorMode = matchMedia('(min-width: 761px)').matches ? 'agent' : 'closed';
             }
         }
+
+        const nativePreset = isNativeWorkspacePresetId(draft.id);
 
         const status = el('p', notice, parent);
         status.className = 'workspace-status';
@@ -131,6 +133,9 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
                 if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) {
                     throw new Error(i18n('Workspace scope changed. Reopen the preset editor.'));
                 }
+                if ((action.type === 'save' || action.type === 'delete') && isNativeWorkspacePresetId(action.type === 'save' ? action.preset?.id : action.id)) {
+                    throw new Error('Native presets are fixed. Duplicate the preset to customize it.');
+                }
                 if (action.type === 'save') validatePreset(action.preset);
                 settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), action);
                 save();
@@ -145,10 +150,13 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
 
         const duplicateDraft = () => {
             try {
-                validatePreset(draft);
-                let next = updatePresetLibrary(getWorkspaceLibrary(settings), { type: 'save', preset: draft });
+                const source = nativePreset ? selected : draft;
+                validatePreset(source);
+                let next = getWorkspaceLibrary(settings);
+                if (!nativePreset) next = updatePresetLibrary(next, { type: 'save', preset: draft });
                 const newId = crypto.randomUUID();
-                next = updatePresetLibrary(next, { type: 'duplicate', id: draft.id, newId, name: `${draft.name} copy` });
+                const name = uniqueWorkspacePresetName(next, `${source.name} copy`, 'copy');
+                next = updatePresetLibrary(next, { type: 'duplicate', id: source.id, newId, name });
                 settings.agentWorkspace = next;
                 save();
                 selectedId = newId;
@@ -528,6 +536,10 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const name = el('strong', preset.name, item);
             name.className = 'workspace-preset-name';
             el('small', modeLabel(preset.mode), item);
+            if (isNativeWorkspacePresetId(preset.id)) {
+                const badge = el('small', i18n('Native · fixed'), item);
+                badge.className = 'workspace-preset-native';
+            }
         }
         search.addEventListener('input', () => {
             searchText = search.value;
@@ -559,6 +571,12 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         const moreCreate = el('details', undefined, sidebar);
         moreCreate.className = 'workspace-library-more';
         el('summary', 'More', moreCreate);
+        button(moreCreate, 'Add / restore native presets', () => {
+            settings.agentWorkspace = restoreNativeWorkspacePresets(settings.agentWorkspace);
+            save();
+            notice = i18n('Native presets restored.');
+            refresh({ resetDraft: true });
+        });
         button(moreCreate, 'Single Agent template', () => {
             const name = askName('New preset name');
             if (!name) return;
@@ -578,8 +596,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         file.addEventListener('change', async () => {
             try {
                 if (!file.files[0]) return;
-                const preset = importWorkspacePreset(await file.files[0].text());
-                preset.id = crypto.randomUUID();
+                const imported = importWorkspacePreset(await file.files[0].text());
+                const preset = prepareImportedWorkspacePreset(getWorkspaceLibrary(settings), imported);
                 selectedId = preset.id;
                 settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), { type: 'save', preset });
                 save();
@@ -599,9 +617,17 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         el('h3', draft.name, heading);
         el('p', draft.editorMetadata?.description || modeDescription(draft.mode), heading).className = 'workspace-hint';
 
+        if (nativePreset) {
+            const nativeNotice = el('p', i18n('Native preset · fixed by Atria. Duplicate it before customizing.'), canvasPane);
+            nativeNotice.className = 'workspace-hint';
+        }
+
         const actions = el('div', undefined, topbar);
         actions.className = 'workspace-actions';
-        button(actions, 'Save', () => saveDraft()).className = 'workspace-primary-action';
+        const saveButton = button(actions, 'Save', () => saveDraft());
+        saveButton.className = 'workspace-primary-action';
+        saveButton.disabled = nativePreset;
+        if (nativePreset) saveButton.title = i18n('Duplicate this native preset to customize it.');
         button(actions, 'Validate', () => {
             try {
                 validatePreset(draft);
@@ -616,7 +642,10 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         const menu = el('details', undefined, actions);
         menu.className = 'workspace-more-menu';
         el('summary', '⋯', menu);
-        button(menu, 'Preset settings', () => renderPresetInspector());
+        button(menu, 'Preset settings', () => {
+            menu.open = false;
+            renderPresetInspector();
+        });
         button(menu, 'Duplicate', duplicateDraft);
         button(menu, 'Export', exportDraft);
         const removePreset = button(menu, 'Delete preset', () => {
@@ -625,6 +654,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             }
         });
         removePreset.className = 'workspace-danger';
+        removePreset.disabled = nativePreset;
+        if (nativePreset) removePreset.title = i18n('Native presets are fixed and restored automatically.');
 
         const defaults = el('details', undefined, canvasPane);
         defaults.className = 'workspace-authoring-defaults';
