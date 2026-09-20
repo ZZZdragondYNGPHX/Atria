@@ -1,7 +1,10 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Atria Toolbox launcher - v0.3.7
-# v0.3.7：适配 Atria 独立 Git 历史切割；旧本地主线自动保留安全分支后对齐新 main。\n# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧 Luker origin。
-# v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。\n# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。\n# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
+# v0.3.7：适配 Atria 独立 Git 历史切割；旧本地主线自动保留安全分支后对齐新 main。
+# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧 Luker origin。
+# v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。
+# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。
+# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
 # v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
 # v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
 
@@ -305,7 +308,10 @@ open_browser() {
 SCRIPT_VERSION="v0.3.7"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
-CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"\nHISTORY_CUTOVER_LEGACY_ANCHOR="91ae97aed557be9439317a67d0ec516f7512fe2e"\n\nensure_atria_origin() {
+CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
+HISTORY_CUTOVER_LEGACY_ANCHOR="91ae97aed557be9439317a67d0ec516f7512fe2e"
+
+ensure_atria_origin() {
     if ! git -C "$ATRIA_DIR" rev-parse --git-dir >/dev/null 2>&1; then
         return 0
     fi
@@ -447,7 +453,13 @@ update_main_branch() {
         backup_data || { error "备份失败，操作已停止。"; return 1; }
     fi
 
-    if history_cutover_required "$old_sha" "$remote_sha"; then\n        align_main_after_history_cutover "$old_sha" || return 1\n    else\n        switch_to_remote_branch "main" || return 1\n    fi\n    post_code_change\n}
+    if history_cutover_required "$old_sha" "$remote_sha"; then
+        align_main_after_history_cutover "$old_sha" || return 1
+    else
+        switch_to_remote_branch "main" || return 1
+    fi
+    post_code_change
+}
 
 update_current_branch() {
     update_main_branch
@@ -481,7 +493,12 @@ version_menu() {
     done
 }
 
-ensure_atria_origin || {\n    error "无法校正 Atria 项目地址：$CANONICAL_REPO_URL"\n    exit 1\n}\nmain_menu\nATRIA_V031_READY_FIX
+ensure_atria_origin || {
+    error "无法校正 Atria 项目地址：$CANONICAL_REPO_URL"
+    exit 1
+}
+main_menu
+ATRIA_V031_READY_FIX
 
 bash -n "$RUNTIME_FILE" || {
     echo "[ERROR] 工具箱运行时语法检查失败。" >&2
