@@ -1,5 +1,6 @@
 import { resolveGamePackageAssetUrl } from './manifest.js';
 import { GAME_PACKAGE_STATUS, loadGamePackage } from './package-loader.js';
+import { createGameWorldSession } from './world/session.js';
 
 const MODULE_NAME = 'game-runtime';
 export const GAME_PACKAGE_CHANGED_EVENT = 'atria:game-package-changed';
@@ -12,6 +13,7 @@ const getContext = Atria.getContext;
 const registerExtensionApi = atriaContext.registerExtensionApi;
 
 let revision = 0;
+let currentWorldSession = null;
 let currentPackage = Object.freeze({
     status: GAME_PACKAGE_STATUS.NONE,
     active: false,
@@ -50,7 +52,7 @@ function publishPackageState(next) {
 export async function reloadGamePackage() {
     const loadRevision = ++revision;
     const charId = getCurrentCharacterPackageId();
-    const next = await loadGamePackage(charId, {
+    let next = await loadGamePackage(charId, {
         headers: getRequestHeaders(),
     });
 
@@ -58,6 +60,34 @@ export async function reloadGamePackage() {
         return currentPackage;
     }
 
+    let nextWorldSession = null;
+    if (next.status === GAME_PACKAGE_STATUS.READY) {
+        try {
+            nextWorldSession = await createGameWorldSession({
+                packageState: next,
+                context: atriaContext,
+                getChat: () => getContext()?.chat || [],
+                headers: getRequestHeaders(),
+                reducers: {},
+            });
+        } catch (error) {
+            next = {
+                status: GAME_PACKAGE_STATUS.INVALID,
+                active: false,
+                charId,
+                manifest: null,
+                errors: [
+                    'World Runtime initialization failed: ' + (error?.message || String(error)),
+                ],
+            };
+        }
+    }
+
+    if (loadRevision !== revision) {
+        return currentPackage;
+    }
+
+    currentWorldSession = nextWorldSession;
     publishPackageState(next);
 
     if (next.status === GAME_PACKAGE_STATUS.INVALID) {
@@ -69,6 +99,28 @@ export async function reloadGamePackage() {
     }
 
     return currentPackage;
+}
+
+async function syncCurrentWorldBranch() {
+    const session = currentWorldSession;
+    if (!session) return null;
+
+    try {
+        return await session.syncBranch();
+    } catch (error) {
+        if (session !== currentWorldSession) return null;
+        currentWorldSession = null;
+        publishPackageState({
+            ...currentPackage,
+            status: GAME_PACKAGE_STATUS.ERROR,
+            active: false,
+            errors: [
+                'World Runtime branch replay failed: ' + (error?.message || String(error)),
+            ],
+        });
+        console.error(`[${MODULE_NAME}] World branch replay failed`, error);
+        return null;
+    }
 }
 
 export function getGamePackageState() {
@@ -90,15 +142,41 @@ export function resolveGameAsset(relativePath) {
     return resolveGamePackageAssetUrl(currentPackage.charId, relativePath);
 }
 
+export function getWorldState() {
+    return currentWorldSession ? currentWorldSession.getState() : null;
+}
+
+export function getWorldJournal() {
+    return currentWorldSession ? currentWorldSession.getJournal() : null;
+}
+
+export function getWorldBranchPath() {
+    return currentWorldSession ? currentWorldSession.getBranchPath() : [];
+}
+
 eventSource.on(eventTypes.CHAT_CHANGED, () => {
     void reloadGamePackage();
 });
+
+for (const structuralEvent of [
+    eventTypes.MESSAGE_SWIPED,
+    eventTypes.MESSAGE_SWIPE_DELETED,
+    eventTypes.MESSAGE_DELETED,
+    eventTypes.CHAT_BRANCH_CREATED,
+].filter(Boolean)) {
+    eventSource.on(structuralEvent, () => {
+        void syncCurrentWorldBranch();
+    });
+}
 
 registerExtensionApi(MODULE_NAME, {
     reloadPackage: reloadGamePackage,
     getPackageState: getGamePackageState,
     isActive: isGamePackageActive,
     resolveAsset: resolveGameAsset,
+    getWorldState,
+    getWorldJournal,
+    getWorldBranchPath,
 });
 
 queueMicrotask(() => {
