@@ -21,6 +21,12 @@ const MAX_RENDERED_INCIDENTS = 200;
 const EXPERT_REFRESH_MS = 1500;
 const GUIDED_REFRESH_MS = 5000;
 
+let startupAnalysisModulePromise;
+
+function loadStartupAnalysisModule() {
+    return startupAnalysisModulePromise ??= import('./startup-analysis.js');
+}
+
 async function api(path, { method = 'GET', body } = {}) {
     const response = await fetch('/api/diagnostics' + path, {
         method,
@@ -89,6 +95,7 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
                 <div class="atriaLogsHeaderActions">
                     <div class="atriaLogsModeSwitch" role="tablist">
                         <button type="button" class="menu_button atriaLogsModeButton is-active" data-mode="guided">${t`Guided`}</button>
+                        <button type="button" class="menu_button atriaLogsModeButton" data-mode="startup">${t`Startup`}</button>
                         <button type="button" class="menu_button atriaLogsModeButton" data-mode="expert">${t`Expert`}</button>
                     </div>
                     <button type="button" class="menu_button menu_button_icon atriaLogsReportNow">
@@ -124,6 +131,10 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
                         </div>
                     </aside>
                 </div>
+            </div>
+
+            <div class="atriaLogsStartupView">
+                <div class="atriaStartupAnalysisMount"></div>
             </div>
 
             <div class="atriaLogsExpertView">
@@ -312,6 +323,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
         busy: false,
         reloadQueued: false,
         modules: { backend: [], frontend: [] },
+        startupAnalysis: null,
     };
 
     const selectedIncident = () => state.incidents.find(item => item.incidentId === state.selectedIncidentId) || null;
@@ -410,6 +422,17 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
         renderVirtualLogs(root, state.expertEntries, selectRawLog);
     };
 
+    const loadStartup = async () => {
+        if (!state.startupAnalysis) {
+            const module = await loadStartupAnalysisModule();
+            state.startupAnalysis = module.createStartupAnalysis({
+                root: root.querySelector('.atriaStartupAnalysisMount'),
+                request: api,
+            });
+        }
+        await state.startupAnalysis.refresh();
+    };
+
     const refresh = async () => {
         if (state.closed) return;
         if (state.busy) {
@@ -420,6 +443,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
         root.classList.add('is-loading');
         try {
             if (state.mode === 'guided') await loadGuided();
+            else if (state.mode === 'startup') await loadStartup();
             else await loadExpert();
         } catch (error) {
             console.error('[diagnostics-workspace] refresh failed', error);
@@ -447,7 +471,8 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
 
     root.querySelectorAll('.atriaLogsModeButton').forEach(button => {
         button.addEventListener('click', () => {
-            state.mode = button.dataset.mode === 'expert' ? 'expert' : 'guided';
+            const nextMode = String(button.dataset.mode || 'guided');
+            state.mode = ['guided', 'startup', 'expert'].includes(nextMode) ? nextMode : 'guided';
             root.dataset.mode = state.mode;
             root.querySelectorAll('.atriaLogsModeButton').forEach(item => item.classList.toggle('is-active', item === button));
             leaveMobileDetail();
@@ -525,7 +550,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
         if (state.closed) return;
         if (state.mode === 'expert') {
             if (root.querySelector('.atriaLogsAutoRefresh')?.checked) void loadExpert({ append: true }).catch(() => {});
-        } else {
+        } else if (state.mode === 'guided') {
             void loadGuided().catch(() => {});
         }
     }, state.mode === 'expert' ? EXPERT_REFRESH_MS : GUIDED_REFRESH_MS);
