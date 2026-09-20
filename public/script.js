@@ -20742,22 +20742,49 @@ jQuery(async function () {
     const button = $('#options_button');
     const menu = $('#options');
     let isOptionsMenuVisible = false;
+    let immersiveOptionsPopper = null;
+
+    function updateOptionsMenuPopper() {
+        const immersiveButton = document.getElementById('atriaImmersiveTools');
+        const useImmersiveAnchor = document.body.classList.contains('atria-immersive-mode')
+            && immersiveButton
+            && !immersiveButton.hidden;
+
+        if (useImmersiveAnchor) {
+            if (!immersiveOptionsPopper) {
+                immersiveOptionsPopper = Popper.createPopper(immersiveButton, menu.get(0), {
+                    placement: 'top-start',
+                });
+            }
+            immersiveOptionsPopper.update();
+            return;
+        }
+
+        immersiveOptionsPopper?.destroy();
+        immersiveOptionsPopper = null;
+        optionsPopper.update();
+    }
 
     function showMenu() {
         showBookmarksButtons();
         menu.fadeIn(animation_duration);
-        optionsPopper.update();
+        updateOptionsMenuPopper();
         isOptionsMenuVisible = true;
     }
 
     function hideMenu() {
         menu.fadeOut(animation_duration);
+        immersiveOptionsPopper?.destroy();
+        immersiveOptionsPopper = null;
         optionsPopper.update();
         isOptionsMenuVisible = false;
     }
 
-    function isMouseOverButtonOrMenu() {
-        return menu.is(':hover, :focus-within') || button.is(':hover, :focus');
+    function isMouseOverButtonOrMenu(event) {
+        const target = $(event?.target);
+        return target.closest('#options_button, #atriaImmersiveTools').length > 0
+            || menu.is(':hover, :focus-within')
+            || button.is(':hover, :focus');
     }
 
     button.on('click', function () {
@@ -20779,9 +20806,9 @@ jQuery(async function () {
             await setImmersiveMode(false);
         }
     });
-    $(document).on('click', function () {
+    $(document).on('click', function (event) {
         if (!isOptionsMenuVisible) return;
-        if (!isMouseOverButtonOrMenu()) { hideMenu(); }
+        if (!isMouseOverButtonOrMenu(event)) { hideMenu(); }
     });
 
     /* $('#set_chat_character_settings').on('click', setScenarioOverride); */
