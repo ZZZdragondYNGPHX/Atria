@@ -149,17 +149,18 @@ export function createImmersiveMessageActions({
         open(block.closest('.mes'));
     });
 
-    chat.addEventListener('pointerdown', event => {
+    const pointerDownHandler = event => {
         if (!enabled || event.pointerType !== 'touch') return;
         const message = event.target.closest('.mes');
         if (!message || interactiveTarget(event.target)) return;
         clearTimeout(longPressTimer);
         suppressTouchClickUntil = Date.now() + 700;
         longPressTimer = setTimeout(() => open(message), 460);
-    }, { passive: true });
-
+    };
+    const pointerCancelHandler = () => clearTimeout(longPressTimer);
+    chat.addEventListener('pointerdown', pointerDownHandler, { passive: true });
     for (const name of ['pointerup', 'pointercancel', 'pointermove']) {
-        chat.addEventListener(name, () => clearTimeout(longPressTimer), { passive: true });
+        chat.addEventListener(name, pointerCancelHandler, { passive: true });
     }
 
     const setEnabled = nextEnabled => {
@@ -175,6 +176,10 @@ export function createImmersiveMessageActions({
         hasOpen: () => Boolean(activeMessage),
         dispose() {
             clearTimeout(longPressTimer);
+            chat.removeEventListener('pointerdown', pointerDownHandler);
+            for (const name of ['pointerup', 'pointercancel', 'pointermove']) {
+                chat.removeEventListener(name, pointerCancelHandler);
+            }
             close();
             toolbar.remove();
         },
