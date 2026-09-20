@@ -291,3 +291,188 @@ body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersiv
         transition: none !important;
     }
 }
+
+
+/* Provider-driven HUD */
+.atria-immersive-hud {
+    position: fixed;
+    z-index: 4100;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    left: 50%;
+    width: min(46rem, calc(100vw - 120px));
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.atria-immersive-hud[hidden] {
+    display: none !important;
+}
+
+.atria-immersive-hud-summary {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--atria-immersive-border);
+    border-radius: 16px;
+    background: var(--atria-immersive-control-bg);
+    pointer-events: auto;
+}
+
+.atria-immersive-hud-primary-list,
+.atria-immersive-hud-secondary-list,
+.atria-immersive-hud-ambient-list {
+    display: flex;
+    min-width: 0;
+    gap: 8px;
+    align-items: center;
+}
+
+.atria-immersive-hud-secondary-list {
+    justify-content: center;
+}
+
+.atria-immersive-hud-ambient-list {
+    justify-content: flex-end;
+}
+
+.atria-immersive-hud-item {
+    display: inline-flex;
+    min-width: 0;
+    gap: 5px;
+    align-items: baseline;
+    white-space: nowrap;
+}
+
+.atria-immersive-hud-label {
+    opacity: 0.62;
+    font-size: 0.78em;
+}
+
+.atria-immersive-hud-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.atria-immersive-hud-primary {
+    font-weight: 700;
+}
+
+.atria-immersive-hud-ambient {
+    opacity: 0.68;
+    font-size: 0.88em;
+}
+
+.atria-immersive-hud-transient {
+    width: fit-content;
+    max-width: 100%;
+    margin: 6px auto 0;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--atria-immersive-control-bg);
+    text-align: center;
+    pointer-events: none;
+}
+
+.atria-immersive-provider-actions {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 6px;
+    pointer-events: auto;
+}
+
+.atria-immersive-provider-action,
+.atria-immersive-hud-details-button,
+.atria-immersive-hud-close {
+    min-height: 38px;
+    border: 1px solid var(--atria-immersive-border);
+    border-radius: 999px;
+    background: var(--atria-immersive-control-bg);
+    color: inherit;
+    cursor: pointer;
+}
+
+.atria-immersive-provider-action,
+.atria-immersive-hud-details-button {
+    padding-inline: 12px;
+}
+
+.atria-immersive-hud-details-button {
+    display: block;
+    margin: 6px auto 0;
+    pointer-events: auto;
+}
+
+body.atria-immersive-mode[data-atria-immersive-hud="minimal"] .atria-immersive-hud-secondary-list,
+body.atria-immersive-mode[data-atria-immersive-hud="minimal"] .atria-immersive-hud-ambient-list,
+body.atria-immersive-mode[data-atria-immersive-hud="minimal"] .atria-immersive-provider-actions {
+    display: none;
+}
+
+.atria-immersive-hud-details {
+    width: min(36rem, calc(100vw - 24px));
+    max-height: min(72vh, 42rem);
+    padding: 0;
+    border: 1px solid var(--atria-immersive-border);
+    border-radius: 20px;
+    background: var(--SmartThemeBlurTintColor, #18181b);
+    color: var(--SmartThemeBodyColor, #fff);
+}
+
+.atria-immersive-hud-details::backdrop {
+    background: rgba(0, 0, 0, 0.46);
+}
+
+.atria-immersive-hud-details > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--atria-immersive-border);
+}
+
+.atria-immersive-hud-details h2 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.atria-immersive-hud-close {
+    width: 40px;
+    padding: 0;
+    font-size: 1.4rem;
+}
+
+.atria-immersive-hud-details-body {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px 18px;
+    overflow: auto;
+}
+
+.atria-immersive-hud-detail-row {
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.7fr) minmax(0, 1.3fr);
+    gap: 10px;
+}
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-hud {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 6px);
+    width: calc(100% - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+}
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-hud-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 6px 9px;
+}
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-hud-secondary-list {
+    justify-content: flex-end;
+}
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-hud-ambient-list {
+    display: none;
+}
