@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. All previously recorded product, storage, orchestration, memory, World Info, restore, mobile UI, and namespace work remains integrated. The latest Android / Termux startup pass used new real-device timing data to move the optimization target from pre-setup work to the pre-listen static Node module graph, while adding launcher/first-visible telemetry for the remaining browser-side gap.
+Atria is an independent SillyTavern-based modified product. All previously recorded product, storage, orchestration, memory, World Info, restore, mobile UI, and namespace work remains integrated. The latest Android / Termux startup pass consumed a second real-device log: optional server-router deferral did not demonstrate a startup win, while first-visible Atria startup is already near two seconds once browser navigation begins. The current focus is therefore measurement of Android browser-launch delay and post-visible batch-2/extension work, not further blind module splitting.
 
 Current authoritative `main`:
 
-- `95644b11837161041048f167f1989ba68869216a`
+- `8fd9fb53af028c6453338ae845827df91898122c`
 
-This commit is the squash merge of PR #65, `perf: lazy-load Horde server router`. The same main also includes PR #62 (Stable Diffusion router deferral), #63 (browser-launch + first-visible telemetry), #64 (Search router deferral), and #66 (LAN Sync router deferral). Final per-PR validation passed Atria PR Checks #657, #658, #662, #664 and #666; PR #63 also passed Worldbook Performance Foundation #317 including real-host Chromium startup smoke and complete World Info acceptance.
+This commit is the squash merge of PR #68, `perf: surface Termux browser-launch timing in backend logs`. It includes PR #67 granular post-visible startup timing on top of the previously merged #62/#63/#64/#65/#66 startup work. PR #67 passed Atria PR Checks #667 and Worldbook Performance Foundation #318; PR #68 final head passed Atria PR Checks #672.
 
 ### Android / Termux startup optimization continuation
 
@@ -65,36 +65,65 @@ Important audit conclusions:
 - PR #61 (remove unused izoomify startup script) was intentionally closed unmerged: the current `vanilla` reference still exposes that global plugin, so the small byte saving did not justify breaking SillyTavern compatibility.
 - The 2026-09-20 real-device baseline at `main@ffc2857b9...` reached `server-main.module-evaluated` at +3252ms and `server.listening` at +3868ms, while `pre-setup.total` was only 548ms and the warm frontend cache check was 3ms. This is why #62/#64/#65/#66 target optional static server routers.
 - Tokenizers/core generation, Transformers-backed vectors/speech/caption/classify, and the extension Git stack remain measurement-gated because truly removing those dependency graphs would require broader core loading-boundary changes.
+- The second 2026-09-20 real-device run on `main@95644b118...` measured `server-main.module-evaluated` at +3546ms and `server.listening` at +4097ms versus +3252ms / +3868ms before router deferral. A single run is not enough to claim regression, but there is no demonstrated win; the router-deferral direction is paused.
+- That same run measured readiness HEAD -> browser `GET /` at 12.921s, which occurs before Atria page JavaScript starts. Browser navigation -> first visible Atria UI was about 2.08s; APP_READY was later mainly because the old mixed `batch2Ms` field reported 4463.8ms.
+- Different extension `loading_order` groups must remain serial: existing comments document real ST-Prompt-Template / JS-Slash-Runner listener-order compatibility. If extension activation proves dominant, prefetch/modulepreload is preferred over changing execution order.
 - Old PR #40 was closed as superseded by already-merged PR #41.
 
 No Android APK/JVM or Docker build was run during this browser/Node startup continuation because those validations are opt-in unless explicitly requested.
 
 ### Measurement gate / next action
 
-The previous measurement gate has been consumed. Real-device data on `main@ffc2857b9...` showed:
+The second real-device measurement has now been consumed.
 
-- `server-main.module-evaluated`: +3252ms;
-- `pre-setup.total`: 548ms;
-- warm `pre-setup.frontend-cache`: 3ms;
-- `server.listening`: +3868ms;
-- readiness HEAD: +4035ms;
-- CSRF: +15754ms;
-- HTTP bootstrap: 330ms.
+On `main@95644b118...`:
 
-Therefore do not return to blind pre-setup/storage tuning. The current `main@95644b11837161041048f167f1989ba68869216a` has deferred SD, Search, Horde and LAN Sync server routers and added launch/visible telemetry.
+- `server-main.module-evaluated`: +3546ms;
+- `pre-setup.total`: 487ms;
+- warm frontend-cache check: 2ms;
+- `server.listening`: +4097ms;
+- readiness HEAD: +4303ms;
+- actual browser `GET /`: +17224ms;
+- readiness HEAD -> browser navigation gap: 12.921s;
+- `GET /` -> CSRF: about 1.020s;
+- navigation -> first visible Atria UI: about 2.08s;
+- `visibleTotalMs`: 1052.2ms;
+- `firstLoadTotalMs`: 6384.5ms;
+- old mixed `batch2Ms`: 4463.8ms.
 
-The next useful action is to update the Termux installation to current `main` and collect one complete startup log containing:
+The current `main@8fd9fb53af028c6453338ae845827df91898122c` adds the diagnostics needed to split those remaining large regions.
+
+Collect the next complete startup log with:
 
 - `server-main.module-evaluated`;
-- all backend `bootstrap.*` and `pre-setup.*` phase lines;
+- all backend `bootstrap.*` and `pre-setup.*` phases;
 - frontend-cache source/root/key/hit;
-- `server.listening`, root HEAD/GET, CSRF, WS ticket/connection and bootstrap timing;
-- all `[atria-termux-launch]` events, especially `ready-detected`, `browser-open-start`, and `browser-open-return`;
+- `server.listening`, root HEAD/GET, critical asset milestones, CSRF, WS ticket/connection and bootstrap timing;
+- every `[startup-launcher] {...}` line, especially:
+  - ready/open events;
+  - `readyToBrowserOpenMs`;
+  - `browserOpenCommandMs`;
+  - root-get `readyToRootGetMs`;
+  - root-get `browserOpenToRootGetMs`;
 - `[startup-client-visible] {...}`;
-- final `[startup-client] {...}` when APP_READY completes;
-- any `lazy-router.*` lines if an optional feature is exercised during startup.
+- final `[startup-client] {...}` including:
+  - `welcomeScreenMs`;
+  - `batch2TasksMs`;
+  - every `b2*Ms` field;
+  - `extDiscoverMs`;
+  - `extManifestsMs`;
+  - `extActivateMs`;
+  - `extSettingsLoadedEventMs`.
 
-Use that measurement to distinguish remaining Node static-import cost from Android browser launch and pre-visible browser execution. Do not claim a real-device speedup for #62/#64/#65/#66 until the post-merge measurement exists.
+Decision rules:
+
+- large ready -> browser-open delay, but small browser-open -> root-GET: optimize Toolbox/launcher flow, likely auto-open immediately on readiness;
+- large browser-open -> root-GET: Android/browser cold-start dominates; investigate safe browser pre-warm rather than Atria JS;
+- dominant `extActivateMs`: keep `loading_order` semantics and investigate parallel asset prefetch/modulepreload only;
+- dominant `welcomeScreenMs` or a specific `b2*Ms`: optimize only that component;
+- no dominant post-visible component: inspect the roughly 0.67s DOM-interactive -> `init.js` queue, especially redundant/side-effect module entries before `init.js`.
+
+Do not resume broad optional-router deferral or high-risk tokenizer/generation/Transformers/Git-stack refactors without new evidence.
 
 ## Branch roles
 
