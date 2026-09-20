@@ -2,7 +2,7 @@ import { getRequestHeaders } from '../../script.js';
 import { isFrontendConsoleDebugLoggingEnabled } from './console-adapter.js';
 import { installFrontendLogging } from './bootstrap.js';
 import { frontendLogStore } from './logger.js';
-import { t } from '../i18n.js';
+import { t, translate } from '../i18n.js';
 import { POPUP_RESULT, POPUP_TYPE, callGenericPopup } from '../popup.js';
 import { recentUserActionStore } from './recent-actions.js';
 import { createSafeConfigSnapshot } from './safe-config.js';
@@ -76,6 +76,33 @@ function severityIcon(severity) {
     if (value === 'critical' || value === 'error') return 'fa-circle-exclamation';
     if (value === 'warning') return 'fa-triangle-exclamation';
     return 'fa-circle-info';
+}
+
+function severityLabel(severity) {
+    const value = String(severity || '').toLowerCase();
+    if (value === 'critical') return t`Critical`;
+    if (value === 'error') return t`Error`;
+    if (value === 'warning' || value === 'warn') return t`Warning`;
+    if (value === 'info') return t`Info`;
+    return severity || t`Unknown`;
+}
+
+function ownershipLabel(ownership) {
+    const type = String(ownership?.probableOwner || 'unknown');
+    const labels = {
+        atria: 'Atria',
+        'sillytavern-upstream': t`SillyTavern upstream`,
+        'third-party-extension': t`Third-party extension`,
+        'server-plugin': t`Server plugin`,
+        'external-service': t`External service`,
+        'network-environment': t`Network environment`,
+        'local-environment': t`Local environment`,
+        'user-configuration': t`User configuration`,
+        unknown: t`Unknown`,
+    };
+    const label = labels[type] || type;
+    const ownerName = String(ownership?.ownerName || '').trim();
+    return ownerName && ownerName !== label && ownerName !== type ? `${label} · ${ownerName}` : label;
 }
 
 function buildWorkspaceMarkup({ canViewServerLogs }) {
@@ -186,7 +213,7 @@ function renderIncidentList(root, incidents, selectedId, onSelect) {
                 <strong>${htmlEscape(incident.summary || incident.type)}</strong>
                 <span>${htmlEscape(incident.primaryModule)} · ${htmlEscape(incident.stage)} · ${new Date(incident.createdAt).toLocaleString()}</span>
             </span>
-            <span class="atriaLogsOwnerBadge">${htmlEscape(incident.ownership?.probableOwner || 'unknown')}</span>
+            <span class="atriaLogsOwnerBadge">${htmlEscape(ownershipLabel(incident.ownership))}</span>
         </button>
     `).join('');
     list.querySelectorAll('.atriaLogsIncidentRow').forEach(button => {
@@ -199,7 +226,7 @@ function renderHealth(root, health, incidents, onIncidentSelect) {
     list.innerHTML = health.map(item => `
         <button type="button" class="atriaLogsHealthRow is-${item.status}" data-health-id="${item.id}">
             <span class="atriaLogsHealthDot"></span>
-            <span class="atriaLogsHealthMain"><strong>${htmlEscape(item.label)}</strong><span>${healthLabel(item.status)}</span></span>
+            <span class="atriaLogsHealthMain"><strong>${htmlEscape(translate(item.label))}</strong><span>${healthLabel(item.status)}</span></span>
             <span class="atriaLogsHealthCounts">${item.errorCount ? `${item.errorCount}E` : ''}${item.warningCount ? ` ${item.warningCount}W` : ''}</span>
         </button>
     `).join('');
@@ -224,12 +251,12 @@ function incidentDetailMarkup(incident) {
         <div class="atriaLogsIncidentDetailCard">
             <div class="atriaLogsIncidentDetailHeader">
                 <div><span class="atriaLogsKicker">${htmlEscape(incident.type)}</span><h4>${htmlEscape(incident.summary)}</h4></div>
-                <span class="atriaLogsSeverity is-${htmlEscape(incident.severity)}">${htmlEscape(incident.severity)}</span>
+                <span class="atriaLogsSeverity is-${htmlEscape(incident.severity)}">${htmlEscape(severityLabel(incident.severity))}</span>
             </div>
             <div class="atriaLogsDetailFacts">
                 <div><span>${t`Module`}</span><strong>${htmlEscape(incident.primaryModule)}</strong></div>
                 <div><span>${t`Stage`}</span><strong>${htmlEscape(incident.stage)}</strong></div>
-                <div><span>${t`Probable owner`}</span><strong>${htmlEscape(incident.ownership?.probableOwner || 'unknown')}</strong></div>
+                <div><span>${t`Probable owner`}</span><strong>${htmlEscape(ownershipLabel(incident.ownership))}</strong></div>
                 <div><span>${t`Confidence`}</span><strong>${Math.round(Number(incident.ownership?.confidence || 0) * 100)}%</strong></div>
             </div>
             <div class="atriaLogsCorrelation">${correlation || `<span>${t`No correlation IDs captured.`}</span>`}</div>
