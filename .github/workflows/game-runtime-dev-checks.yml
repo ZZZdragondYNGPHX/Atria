@@ -1,0 +1,42 @@
+name: Game Runtime Dev Checks
+
+on:
+  push:
+    branches:
+      - refactor/game-runtime-architecture
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    name: R0-R1 Focused
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run focused unit tests
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          game-runtime/package-manifest.test.js
+          game-runtime/package-loader.test.js
+          regex-engine/game-runtime-boundary.test.js
+          regex-engine/lane-semantics.test.js
+          card-app.test.js
+      - name: Run focused ESLint
+        run: >-
+          npx eslint
+          public/scripts/extensions/game-runtime/*.js
+          public/scripts/extensions/regex/engine.js
+          src/endpoints/card-app.js
