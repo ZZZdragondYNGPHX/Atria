@@ -262,6 +262,39 @@ export function validateGameManifest(input, options = {}) {
 }
 
 /**
+ * Return the package-relative files explicitly referenced by a normalized
+ * manifest. Assets that are discovered dynamically are intentionally not
+ * included; R1 uses this list to fail fast on broken declared entrypoints.
+ *
+ * @param {object|null|undefined} manifest
+ * @returns {string[]}
+ */
+export function getGamePackageDeclaredFiles(manifest) {
+    const paths = [
+        manifest?.ui?.entry,
+        manifest?.world?.schema,
+        manifest?.world?.initial,
+        manifest?.logic?.entry,
+    ].filter(path => typeof path === 'string' && path);
+    return [...new Set(paths)];
+}
+
+/**
+ * Build the existing per-character file inventory URL used by Game Package
+ * validation and by CardApp Studio.
+ *
+ * @param {string} charId
+ * @returns {string}
+ */
+export function resolveGamePackageInventoryUrl(charId) {
+    const id = String(charId || '').trim();
+    if (!id || id.includes('/') || id.includes('\\')) {
+        throw new Error('Invalid character package id');
+    }
+    return `/api/card-app/${encodeURIComponent(id)}/files`;
+}
+
+/**
  * Build a safe URL to a package file served by the existing character file
  * transport. This resolver is intentionally independent from CardApp runtime
  * activation.
