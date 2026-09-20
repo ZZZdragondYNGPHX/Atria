@@ -6,7 +6,7 @@ Atria is an independent SillyTavern-based modified product. All previously recor
 
 Current authoritative `main`:
 
-- `d9cf7600d02d9334717e67992930507fe809b305`
+- `1dffedf610e03a51512ec59f12a09cd7b9a23f43`
 
 This commit is the squash merge of PR #73, `fix: localize diagnostics workspace in Chinese`, a localization-only follow-up to the Logging Observability Workspace refactor in PR #71. Its final validated task head `f08032f1c9ecd686e5fc1218f39ec82e4f700ad5` passed Atria PR Checks #717 (ESLint, Atria Migration Guard, and the complete Node unit suite). The underlying logging/diagnostics architecture from PR #71 remains unchanged.
 
@@ -41,6 +41,21 @@ PR #77 is merged.
 - Initial PR Checks #740 exposed active-code predecessor-name literals; the compatibility code was rewritten without weakening the Atria Migration Guard.
 - Final PR Checks #741 passed.
 - Android and Docker builds were not run because this fix is limited to shell/Node update logic.
+
+### Termux Toolbox piped-launch TTY fix
+
+PR #78 is merged.
+
+- Baseline: `main@d9cf7600d02d9334717e67992930507fe809b305`.
+- Validated task HEAD: `ab233220af82517dfd4ab4268c8a5d7c5db00f97`.
+- Squash merge / current `main`: `1dffedf610e03a51512ec59f12a09cd7b9a23f43`.
+- Permanent record: `fix/termux-toolbox-tty-input.md`.
+- Toolbox version is now v0.3.8.
+- Root cause: `curl ... | bash` consumed stdin before the interactive runtime started, so menu `read` calls saw EOF and repeatedly produced empty / invalid selections.
+- Fix: the launcher reconnects the runtime stdin to `/dev/tty`; no-TTY launches fail clearly instead of looping.
+- PR #77 repository-origin repair and history-cutover handling remain unchanged.
+- Final Atria PR Checks #742 passed.
+- Android and Docker builds were not run because this fix is limited to shell/Node launcher behavior.
 
 ### Android / Termux startup optimization continuation
 
