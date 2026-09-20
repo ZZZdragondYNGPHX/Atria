@@ -35,6 +35,7 @@ import { MigrationRunner } from './runner.js';
 import { snapshotUser, restoreFromSnapshot } from './backup.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './lock.js';
 import { materializeTransientSource } from './transient-source.js';
+import { pruneRestoreRecoveryPoints } from '../../backup-sync/restore-recovery-retention.js';
 import { selectionToRunnerCategories, FS_TREE_CATEGORIES } from './selection-mapping.js';
 import {
     CrossModeScratchCredsRequiredError,
@@ -227,6 +228,17 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
                     sourceEngineKind: engineMeta.engineKind,
                 },
             });
+            const retention = await pruneRestoreRecoveryPoints({
+                backupRoot,
+                handle,
+                protectPaths: [snapshotPath],
+            });
+            if (retention.removed.length > 0) {
+                console.info(
+                    `[user-backup] Recovery retention: handle=${handle} kept=${retention.kept} `
+                    + `removed=${retention.removed.length}`,
+                );
+            }
             if (onProgress) {
                 try { onProgress({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
             }

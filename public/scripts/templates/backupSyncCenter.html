@@ -89,7 +89,7 @@
         <div class="backupPreflightReport menu_button_note marginBot10">选择归档后将自动执行预检。</div>
         <div class="flex-container flexGap10 flexWrap alignItemsCenter">
             <button type="button" class="menu_button backupRestoreStart disabled" disabled aria-disabled="true"><i class="fa-fw fa-solid fa-shield-halved"></i>开始安全恢复</button>
-            <button type="button" class="menu_button warning backupRestoreCancel displayNone"><i class="fa-fw fa-solid fa-rotate-left"></i>中断并回退</button>
+            <button type="button" class="menu_button warning backupRestoreCancel" disabled aria-disabled="true" title="仅在恢复进行中可用"><i class="fa-fw fa-solid fa-rotate-left"></i><span>中断并回退</span></button>
         </div>
         <div class="backupRestoreProgress menu_button_note marginTopBot10 displayNone" role="status" aria-live="polite"></div>
         <input type="file" class="backupArchiveInput" accept=".zip,application/zip" hidden>
@@ -99,7 +99,7 @@
             <h4 class="margin0">恢复点</h4>
             <button type="button" class="menu_button backupRecoveryRefresh"><i class="fa-fw fa-solid fa-clock-rotate-left"></i>刷新恢复点</button>
         </div>
-        <div class="menu_button_note marginBot10">每次归档恢复前都会保留完整恢复点；应用旧恢复点前还会再保存当前状态，因此回滚操作本身也可撤销。</div>
+        <div class="menu_button_note marginBot10">每个账户最多保留 5 个恢复点，超过后自动删除最旧项。每次归档恢复前都会保留完整恢复点；应用旧恢复点前还会再保存当前状态，因此回滚操作本身也可撤销。</div>
         <div class="backupRecoveryList"></div>
     </section>
 

@@ -51,6 +51,8 @@ test.describe('Backup & Sync Center', () => {
         await awaitMainUI(page, server.baseURL);
         const center = await openBackupSyncCenter(page);
         await center.locator('.backupSyncTab[data-tab="archive"]').click();
+        await expect(center.locator('.backupRestoreCancel')).toBeVisible();
+        await expect(center.locator('.backupRestoreCancel')).toBeDisabled();
 
         const invalidZip = path.join(tempDir, 'invalid.zip');
         writeFileSync(invalidZip, 'not a zip archive');
@@ -329,7 +331,8 @@ test.describe('Backup & Sync Center', () => {
         releaseRestore();
 
         await expect(center.locator('.backupRestoreProgress')).toContainText('恢复已中断，并已回退到开始前状态。');
-        await expect(cancelButton).toBeHidden();
+        await expect(cancelButton).toBeVisible();
+        await expect(cancelButton).toBeDisabled();
         await expect(center.locator('.backupRecoveryRefresh')).toBeEnabled();
     });
 
