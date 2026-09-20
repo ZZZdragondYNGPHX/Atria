@@ -6,7 +6,7 @@ Atria is an independent SillyTavern-based modified product. All previously recor
 
 Current authoritative `main`:
 
-- `c407f9e97530f587362c2150f7a0c2601598f75e`
+- `d9cf7600d02d9334717e67992930507fe809b305`
 
 This commit is the squash merge of PR #73, `fix: localize diagnostics workspace in Chinese`, a localization-only follow-up to the Logging Observability Workspace refactor in PR #71. Its final validated task head `f08032f1c9ecd686e5fc1218f39ec82e4f700ad5` passed Atria PR Checks #717 (ESLint, Atria Migration Guard, and the complete Node unit suite). The underlying logging/diagnostics architecture from PR #71 remains unchanged.
 
@@ -24,6 +24,23 @@ A one-time repository-history cutover was completed on 2026-09-20.
 - Commit SHAs before the cutover are historical references only; future branches must start from the live post-cutover `main`.
 - Product files, runtime behavior, persistence, configuration, and APIs were unchanged.
 - Permanent record: `refactor/git-history-independence-cutover.md`.
+
+### Termux Toolbox repository-origin repair
+
+PR #77 is merged.
+
+- Baseline: `main@c407f9e97530f587362c2150f7a0c2601598f75e`.
+- Validated task HEAD: `76e37c4a3a30a0cfa01599fde69e7180efab9eef`.
+- Squash merge / current `main`: `d9cf7600d02d9334717e67992930507fe809b305`.
+- Permanent record: `fix/termux-toolbox-repository-url.md`.
+- Termux Toolbox install/fetch paths are pinned to `ZZZdragondYNGPHX/Atria`.
+- Existing checkouts repair `origin` before toolbox or direct `atria-termux update` fetches.
+- The shipped compressed toolbox runtime is regression-checked and already carries the canonical Atria repository URL.
+- Clean pre-cutover checkouts with the known legacy ancestry are migrated safely: the old local HEAD is preserved on a `history-cutover-backup-*` branch before `main` is aligned to the independent `origin/main`.
+- Ordinary unrelated Git divergence is still not force-reset.
+- Initial PR Checks #740 exposed active-code predecessor-name literals; the compatibility code was rewritten without weakening the Atria Migration Guard.
+- Final PR Checks #741 passed.
+- Android and Docker builds were not run because this fix is limited to shell/Node update logic.
 
 ### Android / Termux startup optimization continuation
 
