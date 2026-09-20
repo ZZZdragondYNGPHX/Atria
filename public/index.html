@@ -48,6 +48,7 @@
     <link rel="stylesheet" type="text/css" href="css/atria-manage-bound-presets.css">
     <link rel="stylesheet" type="text/css" href="css/select2-overrides.css">
     <link rel="stylesheet" type="text/css" href="css/mobile-styles.css">
+    <link rel="stylesheet" type="text/css" href="css/immersive.css">
     <link rel="stylesheet" type="text/css" href="css/macros.css">
     <link rel="stylesheet" type="text/css" href="scripts/variable-op-log/panel.css">
     <link rel="stylesheet" type="text/css" href="css/user.css">
@@ -70,10 +71,9 @@
             <li><button id="character_context_menu_delete" data-i18n="Delete">Delete</button></li>
         </ul>
     </div>
-    <!-- Floating exit button shown only when immersive mode hides the top bar (iOS has no Escape/back). -->
-    <div id="immersiveExitButton" class="menu_button_icon menu_button" role="button" tabindex="0" title="Exit immersive mode" aria-label="Exit immersive mode" data-i18n="[title]Exit immersive mode;[aria-label]Exit immersive mode">
-        <i class="fa-fw fa-solid fa-compress"></i>
-    </div>
+    <button id="immersiveExitButton" type="button" class="menu_button_icon menu_button" title="Exit immersive mode" aria-label="Exit immersive mode" data-i18n="[title]Exit immersive mode;[aria-label]Exit immersive mode">
+        <i class="fa-fw fa-solid fa-compress" aria-hidden="true"></i>
+    </button>
     <!-- top bar central settings buttons -->
     <div id="top-bar">
     </div>
@@ -5200,10 +5200,10 @@
                                 <i class="fa-fw fa-solid fa-right-from-bracket"></i>
                                 <span data-i18n="Logout">Logout</span>
                             </div>
-                            <div id="immersive_mode_toggle" class="margin0 menu_button_icon menu_button" title="Enter immersive mode" data-i18n="[title]Enter immersive mode">
-                                <i id="immersiveModeIcon" class="fa-fw fa-solid fa-expand"></i>
+                            <button id="immersive_mode_toggle" type="button" class="margin0 menu_button_icon menu_button" title="Enter immersive mode" aria-pressed="false" data-i18n="[title]Enter immersive mode">
+                                <i id="immersiveModeIcon" class="fa-fw fa-solid fa-expand" aria-hidden="true"></i>
                                 <span id="immersiveModeLabel" data-i18n="Enter immersive mode">Enter immersive mode</span>
-                            </div>
+                            </button>
                         </div>
                         <textarea id="settingsSearch" class="textarea_compact flex1" rows="1" placeholder="Search Settings" data-i18n="[placeholder]Search Settings"></textarea>
                     </div>
@@ -5450,10 +5450,36 @@
                                     <input id="click_to_edit" type="checkbox" />
                                     <small data-i18n="Click to Edit">Click to Edit</small>
                                 </label>
-                                <label for="immersiveKeepTopBar" class="checkbox_label" title="When immersive mode is on, keep the top bar visible instead of hiding it." data-i18n="[title]When immersive mode is on, keep the top bar visible instead of hiding it">
-                                    <input id="immersiveKeepTopBar" type="checkbox" />
-                                    <small data-i18n="Keep top bar in immersive mode">Keep top bar in immersive mode</small>
-                                </label>
+                                <div class="atria-immersive-settings-group">
+                                    <label for="immersiveRememberState" class="checkbox_label">
+                                        <input id="immersiveRememberState" type="checkbox" />
+                                        <small data-i18n="Remember immersive mode">Remember immersive mode</small>
+                                    </label>
+                                    <label for="immersiveStoryFocus" class="checkbox_label">
+                                        <input id="immersiveStoryFocus" type="checkbox" />
+                                        <small data-i18n="Focus current story">Focus current story</small>
+                                    </label>
+                                    <label for="immersiveExtensionsEnabled" class="checkbox_label">
+                                        <input id="immersiveExtensionsEnabled" type="checkbox" />
+                                        <small data-i18n="Immersive extension components">Immersive extension components</small>
+                                    </label>
+                                    <label for="immersiveVisualMode" class="flex-container alignitemscenter">
+                                        <small data-i18n="Immersive visuals">Immersive visuals</small>
+                                        <select id="immersiveVisualMode" class="text_pole widthNatural">
+                                            <option value="text" data-i18n="Text first">Text first</option>
+                                            <option value="auto" data-i18n="Auto">Auto</option>
+                                            <option value="enhanced" data-i18n="Visual enhanced">Visual enhanced</option>
+                                        </select>
+                                    </label>
+                                    <label for="immersiveHudMode" class="flex-container alignitemscenter">
+                                        <small data-i18n="Immersive HUD">Immersive HUD</small>
+                                        <select id="immersiveHudMode" class="text_pole widthNatural">
+                                            <option value="auto" data-i18n="Auto">Auto</option>
+                                            <option value="always" data-i18n="Always visible">Always visible</option>
+                                            <option value="minimal" data-i18n="Minimal">Minimal</option>
+                                        </select>
+                                    </label>
+                                </div>
                                 <label for="atria_mobile_keep_alive" class="checkbox_label" title="Keep AI requests running when the app or browser is in the background on mobile devices." data-i18n="[title]Keep AI requests running when the app or browser is in the background on mobile devices.">
                                     <input id="atria_mobile_keep_alive" type="checkbox" />
                                     <small data-i18n="Background keep-alive on mobile">Background keep-alive on mobile</small>
