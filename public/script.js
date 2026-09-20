@@ -1970,15 +1970,42 @@ function markClientStartupTiming(name) {
     }
 }
 
+function recordClientStartupDuration(name, value) {
+    try {
+        const state = globalThis[CLIENT_STARTUP_TIMING_KEY];
+        if (!state || typeof state !== 'object') return;
+        if (!state.durations || typeof state.durations !== 'object') {
+            state.durations = {};
+        }
+        const duration = Number(value);
+        if (Number.isFinite(duration) && duration >= 0) {
+            state.durations[name] = duration;
+        }
+    } catch {
+        // Startup diagnostics must never affect app boot.
+    }
+}
+
+async function measureClientStartupTask(name, task) {
+    const startedAt = performance.now();
+    try {
+        return await task();
+    } finally {
+        recordClientStartupDuration(name, performance.now() - startedAt);
+    }
+}
+
 function reportClientStartupTiming(stage = 'ready') {
     try {
         const state = globalThis[CLIENT_STARTUP_TIMING_KEY];
         if (!state || typeof state !== 'object') return;
 
         const navigation = performance.getEntriesByType?.('navigation')?.[0];
+        const { durations = {}, ...timings } = state;
         const payload = {
             stage,
-            timings: { ...state },
+            timings,
+            durations: { ...durations },
             navigation: navigation ? {
                 responseStart: navigation.responseStart,
                 responseEnd: navigation.responseEnd,
@@ -2180,26 +2207,29 @@ async function firstLoadInit() {
     const shouldAutoloadCurrentChat = Boolean(power_user.auto_load_chat && (active_character || active_group));
     if (!shouldAutoloadCurrentChat) {
         console.debug('[init] openWelcomeScreen start');
-        await openWelcomeScreen({ force: true });
+        await measureClientStartupTask('welcomeScreen', () => openWelcomeScreen({ force: true }));
         console.debug('[init] openWelcomeScreen done');
         await yieldToBrowser();
     }
 
     console.debug('[init] startup tasks batch 2 start (extensions)');
+    markClientStartupTiming('batch2TasksStart');
     await runStartupTasks([
-        () => initTextGenModelSelects(),
-        () => initSystemMessages(),
-        () => initAnnouncements(),
-        () => initExtensions(),
-        () => bootstrapExtensions(),
-        () => import('./scripts/extensions-slashcommands.js')
-            .then(({ registerExtensionSlashCommands }) => registerExtensionSlashCommands()),
-        () => ToolManager.initToolSlashCommands(),
-        () => initTokenizers(),
-        () => initPersonas(),
-        () => initSlashCommandAutoComplete(),
-        () => loadMacroAutoCompleteModule().then(({ initMacroAutoComplete }) => initMacroAutoComplete()),
+        () => measureClientStartupTask('batch2TextGenModelSelects', () => initTextGenModelSelects()),
+        () => measureClientStartupTask('batch2SystemMessages', () => initSystemMessages()),
+        () => measureClientStartupTask('batch2Announcements', () => initAnnouncements()),
+        () => measureClientStartupTask('batch2InitExtensions', () => initExtensions()),
+        () => measureClientStartupTask('batch2BootstrapExtensions', () => bootstrapExtensions()),
+        () => measureClientStartupTask('batch2ExtensionSlashCommands', () => import('./scripts/extensions-slashcommands.js')
+            .then(({ registerExtensionSlashCommands }) => registerExtensionSlashCommands())),
+        () => measureClientStartupTask('batch2ToolSlashCommands', () => ToolManager.initToolSlashCommands()),
+        () => measureClientStartupTask('batch2Tokenizers', () => initTokenizers()),
+        () => measureClientStartupTask('batch2Personas', () => initPersonas()),
+        () => measureClientStartupTask('batch2SlashCommandAutocomplete', () => initSlashCommandAutoComplete()),
+        () => measureClientStartupTask('batch2MacroAutocomplete', () => loadMacroAutoCompleteModule()
+            .then(({ initMacroAutoComplete }) => initMacroAutoComplete())),
     ]);
+    markClientStartupTiming('batch2TasksDone');
     console.debug('[init] startup tasks batch 2 done');
     markClientStartupTiming('batch2Done');
     performance.mark('[init] batch2 done');
