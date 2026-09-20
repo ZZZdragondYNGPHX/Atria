@@ -11,6 +11,7 @@ export function getFocusableElements(root) {
 }
 
 export function createFocusTrap(root, { onEscape = () => {} } = {}) {
+    const ownerDocument = root?.ownerDocument || globalThis.document;
     let restoreTarget = null;
 
     const keydown = event => {
@@ -28,17 +29,17 @@ export function createFocusTrap(root, { onEscape = () => {} } = {}) {
         }
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
+        if (event.shiftKey && ownerDocument.activeElement === first) {
             event.preventDefault();
             last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
+        } else if (!event.shiftKey && ownerDocument.activeElement === last) {
             event.preventDefault();
             first.focus();
         }
     };
 
     return {
-        activate(opener = document.activeElement) {
+        activate(opener = ownerDocument.activeElement) {
             restoreTarget = opener instanceof HTMLElement ? opener : null;
             root.addEventListener('keydown', keydown);
             const first = getFocusableElements(root)[0];
