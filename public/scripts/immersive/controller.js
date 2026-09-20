@@ -356,23 +356,21 @@ export function createImmersiveController({
         updateToggleUi();
     };
 
+    const setAndroidFullscreenState = (nextEnabled, element = null) => {
+        const next = nextEnabled ? (element || documentRef.documentElement) : null;
+        if (androidFullscreenElement === next) return;
+        androidFullscreenElement = next;
+        for (const name of ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']) {
+            documentRef.dispatchEvent(new Event(name));
+        }
+    };
+
     const installAndroidFullscreenApiShim = () => {
         if (!isAndroidHost() || androidFullscreenShimInstalled) return;
         androidFullscreenShimInstalled = true;
         const doc = documentRef;
         const elementProto = windowRef?.Element?.prototype || globalThis.Element?.prototype;
 
-        const dispatchFullscreenChange = () => {
-            for (const name of ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']) {
-                doc.dispatchEvent(new Event(name));
-            }
-        };
-        const setAndroidFullscreenState = (nextEnabled, element = null) => {
-            const next = nextEnabled ? (element || doc.documentElement) : null;
-            if (androidFullscreenElement === next) return;
-            androidFullscreenElement = next;
-            dispatchFullscreenChange();
-        };
         const requestShim = function () {
             setAndroidFullscreenState(true, this);
             // Generic Fullscreen API consumers only receive native system-bar
@@ -456,6 +454,9 @@ export function createImmersiveController({
         refreshSettings,
         installAndroidFullscreenApiShim,
         syncNativeImmersive,
+        setNativeFullscreenState(enabled) {
+            setAndroidFullscreenState(Boolean(enabled), enabled ? documentRef.documentElement : null);
+        },
         reportGenerationFailure(failure = {}) {
             if (!enabled) return;
             composer.dismissInterrupt();
