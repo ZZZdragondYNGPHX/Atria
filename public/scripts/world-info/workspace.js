@@ -1,3 +1,4 @@
+import { t } from '../i18n.js';
 import { accountStorage } from '../util/AccountStorage.js';
 import {
     filterWorldInfoWorkspaceEntries,
@@ -50,64 +51,77 @@ function entryTitle(entry) {
     const memo = escapeText(entry?.comment).trim();
     if (memo) return memo;
     const keys = Array.isArray(entry?.key) ? entry.key.map(value => escapeText(value).trim()).filter(Boolean) : [];
-    return keys.slice(0, 2).join(', ') || `Entry #${escapeText(entry?.uid)}`;
+    return keys.slice(0, 2).join(', ') || t`Entry #${escapeText(entry?.uid)}`;
 }
 
 function entryType(entry) {
-    if (entry?.constant === true) return 'Constant';
-    if (entry?.vectorized === true) return 'Vector';
-    return 'Normal';
+    if (entry?.constant === true) return t`Constant`;
+    if (entry?.vectorized === true) return t`Vector`;
+    return t`Normal`;
 }
 
 function entryKeywordSummary(entry) {
     const primary = Array.isArray(entry?.key) ? entry.key.map(value => escapeText(value).trim()).filter(Boolean) : [];
-    if (primary.length === 0) return 'No primary keywords';
+    if (primary.length === 0) return t`No primary keywords`;
     const shown = primary.slice(0, 2).join(', ');
     return primary.length > 2 ? `${shown} +${primary.length - 2}` : shown;
 }
 
 function summarizeLifecycle(entry) {
     const parts = [];
-    if (entry?.sticky != null && Number(entry.sticky) > 0) parts.push(`Sticky ${entry.sticky}`);
-    if (entry?.cooldown != null && Number(entry.cooldown) > 0) parts.push(`Cooldown ${entry.cooldown}`);
-    if (entry?.delay != null && Number(entry.delay) > 0) parts.push(`Delay ${entry.delay}`);
-    if (entry?.excludeRecursion) parts.push('Non-recursable');
-    if (entry?.preventRecursion) parts.push('Stops recursion');
-    if (entry?.delayUntilRecursion) parts.push('Recursive only');
-    return parts.join(' · ') || 'Defaults';
+    if (entry?.sticky != null && Number(entry.sticky) > 0) parts.push(t`Sticky ${entry.sticky}`);
+    if (entry?.cooldown != null && Number(entry.cooldown) > 0) parts.push(t`Cooldown ${entry.cooldown}`);
+    if (entry?.delay != null && Number(entry.delay) > 0) parts.push(t`Delay ${entry.delay}`);
+    if (entry?.excludeRecursion) parts.push(t`Non-recursable`);
+    if (entry?.preventRecursion) parts.push(t`Stops recursion`);
+    if (entry?.delayUntilRecursion) parts.push(t`Recursive only`);
+    return parts.join(' · ') || t`Defaults`;
 }
 
 function summarizeState(entry) {
     const conditions = Array.isArray(entry?.stateConditions) ? entry.stateConditions.length : 0;
     const events = Array.isArray(entry?.stateEvents) ? entry.stateEvents.length : 0;
     const parts = [];
-    if (conditions) parts.push(`${conditions} condition${conditions === 1 ? '' : 's'}`);
-    if (events) parts.push(`${events} event${events === 1 ? '' : 's'}`);
-    if (entry?.stateActivation) parts.push('persistent activation');
-    return parts.join(' · ') || 'Not configured';
+    if (conditions) parts.push(t`Conditions ${conditions}`);
+    if (events) parts.push(t`Events ${events}`);
+    if (entry?.stateActivation) parts.push(t`Persistent activation`);
+    return parts.join(' · ') || t`Not configured`;
+}
+
+function budgetTierLabel(value) {
+    switch (String(value || '').toLowerCase()) {
+        case 'critical':
+            return t`Critical tier`;
+        case 'scene':
+            return t`Scene tier`;
+        case 'optional':
+            return t`Optional tier`;
+        default:
+            return String(value || '');
+    }
 }
 
 function summarizeRelationships(entry) {
     const required = Array.isArray(entry?.requiredEntries) ? entry.requiredEntries.length : 0;
     const related = Array.isArray(entry?.relatedEntries) ? entry.relatedEntries.length : 0;
     const parts = [];
-    if (required) parts.push(`${required} required`);
-    if (related) parts.push(`${related} related`);
-    if (entry?.mutualExclusionGroup) parts.push(`Group ${entry.mutualExclusionGroup}`);
-    if (entry?.budgetTier && entry.budgetTier !== 'normal') parts.push(entry.budgetTier);
-    return parts.join(' · ') || 'Not configured';
+    if (required) parts.push(t`Required ${required}`);
+    if (related) parts.push(t`Related ${related}`);
+    if (entry?.mutualExclusionGroup) parts.push(t`Group ${entry.mutualExclusionGroup}`);
+    if (entry?.budgetTier && entry.budgetTier !== 'normal') parts.push(budgetTierLabel(entry.budgetTier));
+    return parts.join(' · ') || t`Not configured`;
 }
 
 function summarizeAdvanced(entry) {
     const parts = [];
-    if (entry?.outletName) parts.push('Outlet');
-    if (entry?.automationId) parts.push('Automation');
-    if (entry?.group) parts.push('Inclusion group');
-    if (entry?.scanDepth != null) parts.push('Scan override');
-    if (entry?.caseSensitive != null) parts.push('Case override');
-    if (entry?.matchWholeWords != null) parts.push('Word override');
-    if (entry?.useGroupScoring != null) parts.push('Group scoring');
-    return parts.length ? `${parts.length} override${parts.length === 1 ? '' : 's'}` : 'Defaults';
+    if (entry?.outletName) parts.push(t`Outlet`);
+    if (entry?.automationId) parts.push(t`Automation`);
+    if (entry?.group) parts.push(t`Inclusion group`);
+    if (entry?.scanDepth != null) parts.push(t`Scan override`);
+    if (entry?.caseSensitive != null) parts.push(t`Case override`);
+    if (entry?.matchWholeWords != null) parts.push(t`Word override`);
+    if (entry?.useGroupScoring != null) parts.push(t`Group scoring`);
+    return parts.length ? t`Overrides ${parts.length}` : t`Defaults`;
 }
 
 function makeSection({ key, title, summary, open = false }) {
@@ -158,7 +172,7 @@ function makeRelationshipPicker(rawTextarea, kind) {
     const input = document.createElement('input');
     input.type = 'search';
     input.className = 'text_pole';
-    input.placeholder = kind === 'required' ? 'Search required entry…' : 'Search related entry…';
+    input.placeholder = kind === 'required' ? t`Search required entry…` : t`Search related entry…`;
 
     const listId = `wi-rel-${kind}-${Math.random().toString(36).slice(2)}`;
     input.setAttribute('list', listId);
@@ -180,7 +194,7 @@ function makeRelationshipPicker(rawTextarea, kind) {
     const add = document.createElement('button');
     add.type = 'button';
     add.className = 'menu_button menu_button_icon';
-    add.innerHTML = '<i class="fa-solid fa-plus"></i><span>Add</span>';
+    add.innerHTML = `<i class="fa-solid fa-plus"></i><span>${t`Add`}</span>`;
 
     const readRefs = () => escapeText(rawTextarea.value)
         .split(/\r?\n/)
@@ -211,8 +225,8 @@ function makeRelationshipPicker(rawTextarea, kind) {
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'wi-relationship-chip-remove';
-            remove.title = 'Remove';
-            remove.setAttribute('aria-label', `Remove ${ref}`);
+            remove.title = t`Remove`;
+            remove.setAttribute('aria-label', t`Remove ${ref}`);
             remove.textContent = '×';
             remove.addEventListener('click', () => {
                 writeRefs(readRefs().filter(value => value !== ref));
@@ -263,34 +277,34 @@ function buildInspectorSections(root, entry) {
 
     const basic = makeSection({
         key: 'basic',
-        title: 'Basic',
+        title: t`Basic`,
         summary: `#${entry?.uid ?? ''} · ${entryType(entry)}`,
         open: true,
     });
     const activation = makeSection({
         key: 'activation',
-        title: 'Activation',
+        title: t`Activation`,
         summary: entryKeywordSummary(entry),
         open: true,
     });
     const lifecycle = makeSection({
         key: 'lifecycle',
-        title: 'Lifecycle',
+        title: t`Lifecycle`,
         summary: summarizeLifecycle(entry),
     });
     const stateDriven = makeSection({
         key: 'state',
-        title: 'State-driven',
+        title: t`State-driven`,
         summary: summarizeState(entry),
     });
     const relationships = makeSection({
         key: 'relationships',
-        title: 'Entry Relationships',
+        title: t`Entry Relationships`,
         summary: summarizeRelationships(entry),
     });
     const advanced = makeSection({
         key: 'advanced',
-        title: 'Advanced',
+        title: t`Advanced`,
         summary: summarizeAdvanced(entry),
     });
 
@@ -379,7 +393,7 @@ function renderInspectorIssues(entry) {
 
     if (!issues.length) return;
     const heading = document.createElement('strong');
-    heading.textContent = `${issues.length} issue${issues.length === 1 ? '' : 's'}`;
+    heading.textContent = t`Issues ${issues.length}`;
     host.append(heading);
     const list = document.createElement('ul');
     for (const issue of issues) {
@@ -434,7 +448,7 @@ async function renderInspector(entry) {
     const meta = document.querySelector('#wi_workspace_inspector_meta');
     if (title) title.textContent = entryTitle(entry);
     if (meta) {
-        meta.textContent = `#${entry.uid} · ${entryType(entry)} · Order ${Number(entry.order ?? 0)}`;
+        meta.textContent = `#${entry.uid} · ${entryType(entry)} · ${t`Order`} ${Number(entry.order ?? 0)}`;
     }
 
     const callback = state.callbacks.renderInspector;
@@ -471,15 +485,15 @@ function getFilteredEntries() {
 function renderBadges(entry, issues) {
     const badges = [];
     badges.push(entryType(entry));
-    if (entry?.disable === true) badges.push('Disabled');
-    if (Array.isArray(entry?.stateConditions) && entry.stateConditions.length) badges.push('State');
-    if (Array.isArray(entry?.stateEvents) && entry.stateEvents.length) badges.push('Event');
+    if (entry?.disable === true) badges.push(t`Disabled`);
+    if (Array.isArray(entry?.stateConditions) && entry.stateConditions.length) badges.push(t`State`);
+    if (Array.isArray(entry?.stateEvents) && entry.stateEvents.length) badges.push(t`Event`);
     if (
         (Array.isArray(entry?.requiredEntries) && entry.requiredEntries.length)
         || (Array.isArray(entry?.relatedEntries) && entry.relatedEntries.length)
-    ) badges.push('Deps');
-    if (entry?.budgetTier && entry.budgetTier !== 'normal') badges.push(entry.budgetTier);
-    if (issues.length) badges.push(`Issues ${issues.length}`);
+    ) badges.push(t`Dependencies`);
+    if (entry?.budgetTier && entry.budgetTier !== 'normal') badges.push(budgetTierLabel(entry.budgetTier));
+    if (issues.length) badges.push(t`Issues ${issues.length}`);
     return badges.slice(0, 5);
 }
 
@@ -520,7 +534,7 @@ function renderVirtualRows() {
         select.type = 'checkbox';
         select.className = 'wi-workspace-entry-select';
         select.checked = state.selectedUids.has(uid);
-        select.setAttribute('aria-label', `Select ${entryTitle(entry)}`);
+        select.setAttribute('aria-label', t`Select ${entryTitle(entry)}`);
         select.addEventListener('click', event => event.stopPropagation());
         select.addEventListener('change', event => {
             event.stopPropagation();
@@ -540,15 +554,15 @@ function renderVirtualRows() {
 
         const meta = document.createElement('span');
         meta.className = 'wi-workspace-entry-meta';
-        meta.textContent = `#${uid} · Order ${Number(entry?.order ?? 0)}`;
+        meta.textContent = `#${uid} · ${t`Order`} ${Number(entry?.order ?? 0)}`;
 
         const badges = document.createElement('span');
         badges.className = 'wi-workspace-entry-badges';
         for (const value of renderBadges(entry, issues)) {
             const badge = document.createElement('span');
             badge.className = 'wi-workspace-badge';
-            if (String(value).startsWith('Issues')) badge.classList.add('is-warning');
-            if (value === 'Disabled') badge.classList.add('is-muted');
+            if (issues.length && value === t`Issues ${issues.length}`) badge.classList.add('is-warning');
+            if (value === t`Disabled`) badge.classList.add('is-muted');
             badge.textContent = value;
             badges.append(badge);
         }
@@ -566,7 +580,7 @@ function renderVirtualRows() {
     }
 
     const count = document.querySelector('#wi_workspace_entry_count');
-    if (count) count.textContent = `${total} entr${total === 1 ? 'y' : 'ies'}`;
+    if (count) count.textContent = total === 1 ? t`${total} entry` : t`${total} entries`;
 }
 
 function scheduleVirtualRows() {
@@ -675,26 +689,26 @@ function buildGlobalRulesPanels() {
     const sections = [
         {
             key: 'scanning',
-            title: 'Scanning',
-            description: 'How text is scanned and matched before entry-specific overrides.',
+            title: t`Scanning`,
+            description: t`How text is scanned and matched before entry-specific overrides.`,
             ids: ['world_info_depth', 'world_info_include_names', 'world_info_case_sensitive', 'world_info_match_whole_words'],
         },
         {
             key: 'budget',
-            title: 'Budget',
-            description: 'How much prompt context World Info may consume.',
+            title: t`Budget`,
+            description: t`How much prompt context World Info may consume.`,
             ids: ['world_info_budget', 'world_info_budget_cap', 'world_info_overflow_alert'],
         },
         {
             key: 'recursion',
-            title: 'Recursion',
-            description: 'How recursive discovery proceeds and where it stops.',
+            title: t`Recursion`,
+            description: t`How recursive discovery proceeds and where it stops.`,
             ids: ['world_info_recursive', 'world_info_min_activations', 'world_info_min_activations_depth_max', 'world_info_max_recursion_steps'],
         },
         {
             key: 'selection',
-            title: 'Selection / Priority',
-            description: 'Global ordering and scoring defaults.',
+            title: t`Selection / Priority`,
+            description: t`Global ordering and scoring defaults.`,
             ids: ['world_info_character_strategy', 'world_info_use_group_scoring'],
         },
     ];
@@ -750,21 +764,21 @@ function buildWorkspaceDom() {
     shell.className = 'wi-workspace-shell';
     shell.innerHTML = `
         <div class="wi-workspace-header">
-            <div class="wi-workspace-nav" role="tablist" aria-label="World Info workspace">
-                <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="library"><i class="fa-solid fa-book"></i><span>Library</span></button>
-                <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="entries"><i class="fa-solid fa-list"></i><span>Entries</span></button>
-                <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="global"><i class="fa-solid fa-sliders"></i><span>Global Rules</span></button>
+            <div class="wi-workspace-nav" role="tablist" aria-label="${t`World Info workspace`}">
+                <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="library"><i class="fa-solid fa-book"></i><span>${t`Library`}</span></button>
+                <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="entries"><i class="fa-solid fa-list"></i><span>${t`Entries`}</span></button>
+                <button type="button" class="wi-workspace-nav-button" data-wi-workspace-view="global"><i class="fa-solid fa-sliders"></i><span>${t`Global Rules`}</span></button>
             </div>
             <div class="wi-workspace-mode-controls">
-                <select id="wi_workspace_display_mode" class="text_pole textarea_compact" title="Entry display mode">
-                    <option value="compact">Compact</option>
-                    <option value="standard">Standard</option>
-                    <option value="full">Full</option>
-                    <option value="custom">Custom</option>
+                <select id="wi_workspace_display_mode" class="text_pole textarea_compact" title="${t`Entry display mode`}">
+                    <option value="compact">${t`Compact`}</option>
+                    <option value="standard">${t`Standard`}</option>
+                    <option value="full">${t`Full`}</option>
+                    <option value="custom">${t`Custom`}</option>
                 </select>
-                <button id="wi_workspace_custom_fields" type="button" class="menu_button menu_button_icon displayNone"><i class="fa-solid fa-sliders"></i><span>Custom fields</span></button>
-                <button id="wi_workspace_continuous_cards" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-table-columns"></i><span>Continuous Cards</span></button>
-                <button id="wi_workspace_close" type="button" class="menu_button" title="Close World Info Workspace" aria-label="Close World Info Workspace"><i class="fa-solid fa-xmark"></i></button>
+                <button id="wi_workspace_custom_fields" type="button" class="menu_button menu_button_icon displayNone"><i class="fa-solid fa-sliders"></i><span>${t`Custom fields`}</span></button>
+                <button id="wi_workspace_continuous_cards" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-table-columns"></i><span>${t`Continuous Cards`}</span></button>
+                <button id="wi_workspace_close" type="button" class="menu_button" title="${t`Close World Info Workspace`}" aria-label="${t`Close World Info Workspace`}"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
         <div id="wi_workspace_primary_toolbar" class="wi-workspace-primary-toolbar"></div>
@@ -773,15 +787,15 @@ function buildWorkspaceDom() {
             <section id="wi_workspace_entries" class="wi-workspace-pane" data-view="entries">
                 <div id="wi_workspace_entries_toolbar" class="wi-workspace-entries-toolbar"></div>
                 <div class="wi-workspace-entry-filterbar">
-                    <div class="wi-workspace-quick-filters" role="group" aria-label="Entry filters">
-                        <button type="button" class="menu_button is-active" data-wi-entry-filter="all">All</button>
-                        <button type="button" class="menu_button" data-wi-entry-filter="enabled">Enabled</button>
-                        <button type="button" class="menu_button" data-wi-entry-filter="special">Special</button>
-                        <button type="button" class="menu_button" data-wi-entry-filter="issues">Issues</button>
+                    <div class="wi-workspace-quick-filters" role="group" aria-label="${t`Entry filters`}">
+                        <button type="button" class="menu_button is-active" data-wi-entry-filter="all">${t`All`}</button>
+                        <button type="button" class="menu_button" data-wi-entry-filter="enabled">${t`Enabled`}</button>
+                        <button type="button" class="menu_button" data-wi-entry-filter="special">${t`Special`}</button>
+                        <button type="button" class="menu_button" data-wi-entry-filter="issues">${t`Issues`}</button>
                     </div>
                     <div class="wi-workspace-list-actions">
                         <small id="wi_workspace_entry_count" class="opacity50p"></small>
-                        <button id="wi_workspace_select_visible" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-check-double"></i><span>Select filtered</span></button>
+                        <button id="wi_workspace_select_visible" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-check-double"></i><span>${t`Select filtered`}</span></button>
                     </div>
                 </div>
                 <div id="wi_workspace_entries_split" class="wi-workspace-entries-split">
@@ -792,39 +806,39 @@ function buildWorkspaceDom() {
                         </div>
                     </aside>
                     <main id="wi_workspace_inspector" class="wi-workspace-inspector">
-                        <button id="wi_workspace_mobile_back" type="button" class="menu_button wi-workspace-mobile-back"><i class="fa-solid fa-chevron-left"></i><span>Entries</span></button>
+                        <button id="wi_workspace_mobile_back" type="button" class="menu_button wi-workspace-mobile-back"><i class="fa-solid fa-chevron-left"></i><span>${t`Entries`}</span></button>
                         <div id="wi_workspace_bulk_inspector" class="wi-workspace-bulk-inspector displayNone">
-                            <div><strong>Bulk Inspector</strong> · <span data-role="count">0</span> selected</div>
-                            <small>Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.</small>
+                            <div><strong>${t`Bulk Inspector`}</strong> · <span data-role="count">0</span> ${t`selected`}</div>
+                            <small>${t`Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.`}</small>
                             <div class="wi-workspace-bulk-defaults">
-                                <span>Enabled <b>Keep unchanged</b></span>
-                                <span>Activation <b>Keep unchanged</b></span>
-                                <span>Placement <b>Keep unchanged</b></span>
-                                <span>Lifecycle <b>Keep unchanged</b></span>
+                                <span>${t`Enabled`} <b>${t`Keep unchanged`}</b></span>
+                                <span>${t`Activation`} <b>${t`Keep unchanged`}</b></span>
+                                <span>${t`Placement`} <b>${t`Keep unchanged`}</b></span>
+                                <span>${t`Lifecycle`} <b>${t`Keep unchanged`}</b></span>
                             </div>
-                            <button type="button" class="menu_button menu_button_icon" data-action="bulk-edit"><i class="fa-solid fa-pen-to-square"></i><span>Bulk Edit…</span></button>
+                            <button type="button" class="menu_button menu_button_icon" data-action="bulk-edit"><i class="fa-solid fa-pen-to-square"></i><span>${t`Bulk Edit…`}</span></button>
                         </div>
                         <div id="wi_workspace_inspector_header" class="wi-workspace-inspector-header">
                             <div class="wi-workspace-inspector-heading">
-                                <strong id="wi_workspace_inspector_title">Select an entry</strong>
+                                <strong id="wi_workspace_inspector_title">${t`Select an entry`}</strong>
                                 <small id="wi_workspace_inspector_meta" class="opacity50p"></small>
                             </div>
                             <div class="wi-workspace-inspector-actions">
-                                <button id="wi_workspace_test_activation" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-flask"></i><span>Test Activation</span></button>
-                                <button id="wi_workspace_activation_trace" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-route"></i><span>Activation Trace</span></button>
+                                <button id="wi_workspace_test_activation" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-flask"></i><span>${t`Test Activation`}</span></button>
+                                <button id="wi_workspace_activation_trace" type="button" class="menu_button menu_button_icon"><i class="fa-solid fa-route"></i><span>${t`Activation Trace`}</span></button>
                                 <details class="wi-workspace-inspector-more">
-                                    <summary class="menu_button" title="More entry actions" aria-label="More entry actions"><i class="fa-solid fa-ellipsis"></i></summary>
+                                    <summary class="menu_button" title="${t`More entry actions`}" aria-label="${t`More entry actions`}"><i class="fa-solid fa-ellipsis"></i></summary>
                                     <div class="wi-workspace-inspector-menu">
-                                        <button type="button" class="menu_button menu_button_icon" data-action="move-entry"><i class="fa-solid fa-right-left"></i><span>Move / Copy</span></button>
-                                        <button type="button" class="menu_button menu_button_icon" data-action="duplicate-entry"><i class="fa-solid fa-copy"></i><span>Duplicate</span></button>
-                                        <button type="button" class="menu_button menu_button_icon is-destructive" data-action="delete-entry"><i class="fa-solid fa-trash-can"></i><span>Delete</span></button>
+                                        <button type="button" class="menu_button menu_button_icon" data-action="move-entry"><i class="fa-solid fa-right-left"></i><span>${t`Move / Copy`}</span></button>
+                                        <button type="button" class="menu_button menu_button_icon" data-action="duplicate-entry"><i class="fa-solid fa-copy"></i><span>${t`Duplicate`}</span></button>
+                                        <button type="button" class="menu_button menu_button_icon is-destructive" data-action="delete-entry"><i class="fa-solid fa-trash-can"></i><span>${t`Delete`}</span></button>
                                     </div>
                                 </details>
                             </div>
                         </div>
                         <div id="wi_workspace_activation_result" class="wi-workspace-activation-result displayNone" aria-live="polite"></div>
                         <div id="wi_workspace_inspector_issues" class="wi-workspace-inspector-issues displayNone"></div>
-                        <div id="wi_workspace_inspector_empty" class="wi-workspace-inspector-empty">Choose an entry from the list to inspect it.</div>
+                        <div id="wi_workspace_inspector_empty" class="wi-workspace-inspector-empty">${t`Choose an entry from the list to inspect it.`}</div>
                         <div id="wi_workspace_inspector_body"></div>
                     </main>
                 </div>
@@ -847,12 +861,12 @@ function buildWorkspaceDom() {
         const details = document.createElement('details');
         details.className = 'wi-workspace-book-actions';
         details.innerHTML = `
-            <summary class="menu_button" title="Lorebook actions" aria-label="Lorebook actions"><i class="fa-solid fa-ellipsis"></i></summary>
+            <summary class="menu_button" title="${t`Lorebook actions`}" aria-label="${t`Lorebook actions`}"><i class="fa-solid fa-ellipsis"></i></summary>
             <div class="wi-workspace-overflow-menu">
-                <button type="button" class="menu_button menu_button_icon" data-forward="#world_popup_export"><i class="fa-solid fa-file-export"></i><span>Export</span></button>
-                <button type="button" class="menu_button menu_button_icon" data-forward="#world_popup_name_button"><i class="fa-solid fa-pen"></i><span>Rename</span></button>
-                <button type="button" class="menu_button menu_button_icon" data-forward="#world_duplicate"><i class="fa-solid fa-copy"></i><span>Duplicate</span></button>
-                <button type="button" class="menu_button menu_button_icon is-destructive" data-forward="#world_popup_delete"><i class="fa-solid fa-trash-can"></i><span>Delete</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_popup_export"><i class="fa-solid fa-file-export"></i><span>${t`Export`}</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_popup_name_button"><i class="fa-solid fa-pen"></i><span>${t`Rename`}</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_duplicate"><i class="fa-solid fa-copy"></i><span>${t`Duplicate`}</span></button>
+                <button type="button" class="menu_button menu_button_icon is-destructive" data-forward="#world_popup_delete"><i class="fa-solid fa-trash-can"></i><span>${t`Delete`}</span></button>
             </div>
         `;
         bookActionsHost.querySelectorAll('#world_popup_export, #world_popup_name_button, #world_duplicate, #world_popup_delete')
@@ -865,14 +879,14 @@ function buildWorkspaceDom() {
         const details = document.createElement('details');
         details.className = 'wi-workspace-entry-tools';
         details.innerHTML = `
-            <summary class="menu_button menu_button_icon"><i class="fa-solid fa-screwdriver-wrench"></i><span>Tools</span></summary>
+            <summary class="menu_button menu_button_icon"><i class="fa-solid fa-screwdriver-wrench"></i><span>${t`Tools`}</span></summary>
             <div class="wi-workspace-overflow-menu">
-                <button type="button" class="menu_button menu_button_icon" data-forward="#world_refresh"><i class="fa-solid fa-arrows-rotate"></i><span>Refresh</span></button>
-                <button type="button" class="menu_button menu_button_icon" data-forward="#world_backfill_memos"><i class="fa-solid fa-notes-medical"></i><span>Fill empty titles</span></button>
-                <button type="button" class="menu_button menu_button_icon" data-forward="#world_apply_current_sorting"><i class="fa-solid fa-arrow-down-9-1"></i><span>Apply sorting as Order</span></button>
-                <button type="button" class="menu_button menu_button_icon" data-forward="#world_entry_display_settings"><i class="fa-solid fa-eye"></i><span>Custom field visibility</span></button>
-                <button type="button" class="menu_button menu_button_icon" data-forward="#OpenAllWIEntries" data-cards-only="true"><i class="fa-solid fa-expand"></i><span>Open all cards</span></button>
-                <button type="button" class="menu_button menu_button_icon" data-forward="#CloseAllWIEntries" data-cards-only="true"><i class="fa-solid fa-compress"></i><span>Close all cards</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_refresh"><i class="fa-solid fa-arrows-rotate"></i><span>${t`Refresh`}</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_backfill_memos"><i class="fa-solid fa-notes-medical"></i><span>${t`Fill empty titles`}</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_apply_current_sorting"><i class="fa-solid fa-arrow-down-9-1"></i><span>${t`Apply sorting as Order`}</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#world_entry_display_settings"><i class="fa-solid fa-eye"></i><span>${t`Custom field visibility`}</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#OpenAllWIEntries" data-cards-only="true"><i class="fa-solid fa-expand"></i><span>${t`Open all cards`}</span></button>
+                <button type="button" class="menu_button menu_button_icon" data-forward="#CloseAllWIEntries" data-cards-only="true"><i class="fa-solid fa-compress"></i><span>${t`Close all cards`}</span></button>
             </div>
         `;
         entryActionsHost.querySelectorAll('#OpenAllWIEntries, #CloseAllWIEntries, #world_backfill_memos, #world_apply_current_sorting, #world_entry_display_settings, #world_refresh')
@@ -962,17 +976,17 @@ function buildWorkspaceDom() {
         const resultHost = shell.querySelector('#wi_workspace_activation_result');
         if (!entry || !resultHost || typeof state.callbacks.onTestActivation !== 'function') return;
         resultHost.classList.remove('displayNone');
-        resultHost.textContent = 'Testing current chat with the existing World Info dry-run…';
+        resultHost.textContent = t`Testing current chat with the existing World Info dry-run…`;
         try {
             const result = await state.callbacks.onTestActivation(entry);
             resultHost.replaceChildren();
             const strong = document.createElement('strong');
-            strong.textContent = result?.label || 'Activation test';
+            strong.textContent = result?.label || t`Activation test`;
             const detail = document.createElement('div');
-            detail.textContent = result?.detail || 'No diagnostic detail is available.';
+            detail.textContent = result?.detail || t`No diagnostic detail is available.`;
             resultHost.append(strong, detail);
         } catch (error) {
-            resultHost.textContent = `Activation test failed: ${error?.message || error}`;
+            resultHost.textContent = t`Activation test failed: ${error?.message || error}`;
         }
     });
 
