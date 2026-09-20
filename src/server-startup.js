@@ -2,6 +2,7 @@ import https from 'node:https';
 import http from 'node:http';
 import fs from 'node:fs';
 import { color, urlHostnameToIPv6, getHasIP } from './util.js';
+import { markStartupMilestone } from './startup-timing.js';
 
 // Express routers
 import { router as userDataRouter } from './users.js';
@@ -470,6 +471,7 @@ export class ServerStartup {
         const [v6Failed, v4Failed, v6Error, v4Error] = await this.#startHTTPorHTTPS(useIPv6, useIPv4);
         const result = { v6Failed, v4Failed, v6Error, v4Error, useIPv6, useIPv4, servers: this.servers };
         this.#handleServerListenFail(result);
+        markStartupMilestone('server.listening');
         return result;
     }
 }
