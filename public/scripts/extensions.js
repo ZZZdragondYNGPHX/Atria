@@ -563,6 +563,46 @@ async function getManifests(names) {
 }
 
 /**
+ * Starts background module-graph fetch/parse for heavy built-in extensions
+ * before their loading-order group is reached. `modulepreload` does not
+ * evaluate the module, so loading-order side effects still begin only from
+ * `activateExtensions()`. Keeping this to high-order system extensions
+ * avoids spending bandwidth on arbitrary third-party modules while the early
+ * built-ins are activating.
+ *
+ * @returns {number} Number of modulepreload hints added.
+ */
+function prewarmDeferredSystemExtensionModules() {
+    const probe = document.createElement('link');
+    if (!probe.relList?.supports?.('modulepreload')) {
+        return 0;
+    }
+
+    let count = 0;
+    for (const [name, manifest] of Object.entries(manifests)) {
+        if (getExtensionType(name) !== 'system') continue;
+        if (!manifest?.js) continue;
+        if (extension_settings.disabledExtensions.includes(name)) continue;
+        if (!canExtensionBeActivated(manifest)) continue;
+
+        const loadingOrder = Number.parseInt(manifest.loading_order);
+        if (!Number.isFinite(loadingOrder) || loadingOrder < 100) continue;
+
+        const id = sanitizeSelector(`extension-modulepreload-${name}`);
+        if (document.getElementById(id)) continue;
+
+        const link = document.createElement('link');
+        link.id = id;
+        link.rel = 'modulepreload';
+        link.href = `/scripts/extensions/${name}/${manifest.js}`;
+        document.head.appendChild(link);
+        count++;
+    }
+
+    return count;
+}
+
+/**
  * Tries to activate all available extensions that are not already active.
  *
  * Extensions are activated in groups by `loading_order` (ascending):
@@ -673,8 +713,8 @@ async function activateExtensions() {
         }
         const groupPromises = extensions
             .slice(groupStart, groupEnd)
-            .map(([name, manifest]) => activateOne(name, manifest))
-            .filter(Boolean);
+            .map(([name, manifest]) =>
+                measureExtensionStartupPhase(`extensionActivate:${name}`, () => activateOne(name, manifest)));
         await Promise.allSettled(groupPromises);
         groupStart = groupEnd;
     }
@@ -1868,6 +1908,10 @@ export async function bootstrapExtensions(options = null) {
                 autoUpdateExtensions(false));
         }
 
+        await measureExtensionStartupPhase('extensionsPrewarm', () => {
+            const count = prewarmDeferredSystemExtensionModules();
+            console.debug(`[startup] prewarmed ${count} deferred system extension module graph(s)`);
+        });
         await measureExtensionStartupPhase('extensionsActivate', () =>
             activateExtensions());
         await measureExtensionStartupPhase('extensionsSettingsLoadedEvent', () =>
