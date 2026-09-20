@@ -573,3 +573,41 @@ body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersiv
         transition: none !important;
     }
 }
+
+
+/* Final-failure surface delegates technical detail to Diagnostics Workspace. */
+.atria-immersive-failure {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--atria-immersive-accent, #d97706) 48%, var(--atria-immersive-border));
+    border-radius: 14px;
+    background: var(--atria-immersive-control-bg);
+}
+
+.atria-immersive-failure[hidden] {
+    display: none !important;
+}
+
+.atria-immersive-failure-text {
+    font-weight: 650;
+}
+
+.atria-immersive-failure-action {
+    min-height: 38px;
+    padding-inline: 12px;
+    border: 1px solid var(--atria-immersive-border);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.atria-immersive-failure-action:focus-visible {
+    outline: 2px solid var(--SmartThemeQuoteColor, currentColor);
+    outline-offset: 2px;
+}
