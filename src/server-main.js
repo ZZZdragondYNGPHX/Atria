@@ -18,40 +18,6 @@ import responseTime from 'response-time';
 import helmet from 'helmet';
 import bodyParser from 'body-parser';
 
-// Timestamp all console output and capture to circular log buffer.
-// JSON.stringify throws on circular references / BigInt — if the wrapper ever
-// throws, callers see a TypeError from console.error and (worst case) the
-// uncaughtException handler re-enters the same wrapper, re-throws, and Node
-// aborts with an empty stderr. So: serialize defensively, and never let buffer
-// bookkeeping interfere with the underlying console call.
-const BACKEND_LOG_MAX = 500;
-export const backendLogBuffer = [];
-let backendLogCounter = 0;
-function serializeLogArg(value) {
-    if (typeof value === 'string') return value;
-    try {
-        const serialized = JSON.stringify(value);
-        if (serialized !== undefined) return serialized;
-    } catch { /* fall through */ }
-    try {
-        return util.inspect(value, { depth: 4, maxArrayLength: 100, breakLength: 140 });
-    } catch {
-        return String(value);
-    }
-}
-['log', 'warn', 'error'].forEach((level) => {
-    const original = console[level].bind(console);
-    console[level] = (...args) => {
-        const ts = new Date().toISOString();
-        try {
-            const entry = { id: ++backendLogCounter, ts, level, message: args.map(serializeLogArg).join(' ') };
-            if (backendLogBuffer.length >= BACKEND_LOG_MAX) backendLogBuffer.shift();
-            backendLogBuffer.push(entry);
-        } catch { /* never let log capture wreck the underlying console call */ }
-        original(`[${ts}]`, ...args);
-    };
-});
-
 // Node diagnostic reports — written on fatal V8 errors, uncaught exceptions,
 // and OS signals. These are the only artefact left behind when a native
 // module SEGVs and the process aborts without flushing stderr (the rename
@@ -126,7 +92,9 @@ import {
     getConfigValue,
     ensureDirectory,
 } from './util.js';
-import { installLogCapture } from './log-capture.js';
+import { installConsoleAdapter } from './logging/console-adapter.js';
+import { backendLogStore } from './logging/store.js';
+import { redactValue } from './logging/redact.js';
 import { getBufferForHandle as getInspectorBufferForHandle } from './request-inspector.js';
 import {
     UPLOADS_DIRECTORY,
@@ -163,7 +131,7 @@ if (process.versions && process.versions.node && process.versions.node.match(/20
 util.inspect.defaultOptions.maxArrayLength = null;
 util.inspect.defaultOptions.maxStringLength = null;
 util.inspect.defaultOptions.depth = 4;
-installLogCapture();
+installConsoleAdapter();
 markStartupMilestone('server-main.module-evaluated');
 
 /** @type {import('./command-line.js').CommandLineArguments} */
@@ -709,33 +677,6 @@ app.post('/api/startup/client-timing', (request, response) => {
 // posts its frontend-only fields (console logs, perf marks, UA/viewport, etc.)
 // and gets back a single attachment combining everything below, with secrets
 // redacted in one place.
-const DEBUG_EXPORT_REDACT_PATTERNS = [
-    { pattern: /sk-[a-zA-Z0-9]{20,}/g, replacement: 'sk-***REDACTED***' },
-    { pattern: /Bearer\s+[a-zA-Z0-9\-_.]{20,}/g, replacement: 'Bearer ***REDACTED***' },
-    { pattern: /(api[_-]?key|apikey|token|secret|password|passwd)\s*[=:]\s*["']?[^\s"',&]+/gi, replacement: '$1=***REDACTED***' },
-    { pattern: /eyJ[a-zA-Z0-9\-_]{20,}\.[a-zA-Z0-9\-_]{20,}\.[a-zA-Z0-9\-_]{20,}/g, replacement: '***JWT-REDACTED***' },
-    { pattern: /\b[a-f0-9]{40,}\b/gi, replacement: '***HEX-TOKEN-REDACTED***' },
-];
-
-function redactDebugExportString(input) {
-    let out = String(input);
-    for (const { pattern, replacement } of DEBUG_EXPORT_REDACT_PATTERNS) {
-        out = out.replace(pattern, replacement);
-    }
-    return out;
-}
-
-function redactDebugExportValue(value) {
-    if (typeof value === 'string') return redactDebugExportString(value);
-    if (Array.isArray(value)) return value.map(redactDebugExportValue);
-    if (value && typeof value === 'object') {
-        const cleaned = {};
-        for (const [k, v] of Object.entries(value)) cleaned[k] = redactDebugExportValue(v);
-        return cleaned;
-    }
-    return value;
-}
-
 app.post('/api/debug/export', (request, response) => {
     const handle = String(request?.user?.profile?.handle || '');
     const isAdmin = isRequestAdmin(request);
@@ -761,7 +702,7 @@ app.post('/api/debug/export', (request, response) => {
     };
 
     if (isAdmin) {
-        bundle.backendLogs = backendLogBuffer;
+        bundle.backendLogs = backendLogStore.query({ limit: 5000 }).entries;
         bundle.runtime = {
             node: process.version,
             platform: process.platform,
@@ -772,7 +713,7 @@ app.post('/api/debug/export', (request, response) => {
         };
     }
 
-    const redacted = redactDebugExportValue(bundle);
+    const redacted = redactValue(bundle, { maxDepth: 10, maxArrayLength: 6000, maxObjectKeys: 500, maxStringLength: 12000 });
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.setHeader('Content-Disposition', `attachment; filename="atria-debug-${ts}.json"`);
@@ -1097,7 +1038,6 @@ async function postSetupTasks(result) {
     console.log('\n' + getSeparator(plainGoToLog.length) + '\n');
 
     setupLogLevel();
-    installLogCapture();
     serverEvents.emit(EVENT_NAMES.SERVER_STARTED, { url: browserLaunchUrl });
 }
 
