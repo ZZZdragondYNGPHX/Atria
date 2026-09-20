@@ -307,3 +307,14 @@ input.enable_scoped {
 .regex-script-label:not(:has(input[name="regex_expand"]:checked)) .regex_script_buttons {
     display: none;
 }
+
+
+.regex-health-summary {
+    margin: 6px 0 8px;
+    padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeQuoteColor) 45%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 10%, transparent);
+    font-size: 0.9em;
+    line-height: 1.35;
+}

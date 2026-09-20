@@ -8,7 +8,7 @@ import { commonEnumProviders, enumIcons } from '../../slash-commands/SlashComman
 import { SlashCommandEnumValue, enumTypes } from '../../slash-commands/SlashCommandEnumValue.js';
 import { SlashCommandParser } from '../../slash-commands/SlashCommandParser.js';
 import { download, equalsIgnoreCaseAndAccents, escapeHtml, getFileText, getSortableDelay, isFalseBoolean, isTrueBoolean, regexFromString, setInfoBlock, uuidv4 } from '../../utils.js';
-import { allowPresetScripts, allowScopedScripts, disallowPresetScripts, disallowScopedScripts, getCurrentPresetAPI, getCurrentPresetName, getRegexScripts, getRuntimeRegexScripts, getScriptsByType, isPresetScriptsAllowed, isScopedScriptsAllowed, regex_placement, RegexProvider, REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT, runRegexScript, saveScriptsByType, SCRIPT_TYPE_UNKNOWN, SCRIPT_TYPES, substitute_find_regex } from './engine.js';
+import { allowPresetScripts, allowScopedScripts, disallowPresetScripts, disallowScopedScripts, getCurrentPresetAPI, getCurrentPresetName, getRegexScripts, getRegexScriptDiagnostics, getRuntimeRegexScripts, getScriptsByType, invalidateRegexExecutionPlans, isPresetScriptsAllowed, isScopedScriptsAllowed, regex_placement, RegexProvider, REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT, runRegexScript, saveScriptsByType, SCRIPT_TYPE_UNKNOWN, SCRIPT_TYPES, substitute_find_regex } from './engine.js';
 import { REGEX_OPEN_SCRIPT_EVENT, resetRegexScriptState } from './redos-reporter.js';
 import { t } from '../../i18n.js';
 import { accountStorage } from '../../util/AccountStorage.js';
@@ -25,6 +25,17 @@ const REGEX_SCRIPT_TYPE_LABELS = Object.freeze({
     [SCRIPT_TYPE_UNKNOWN]: 'runtime',
 });
 const PRESET_EMBEDDED_REGEX_SOURCE_PATH = 'atria.embedded_regex_scripts_source';
+const REGEX_EDITOR_RENDER_CHUNK_SIZE = 80;
+
+function yieldRegexEditorRender() {
+    return new Promise(resolve => {
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => resolve());
+        } else {
+            setTimeout(resolve, 0);
+        }
+    });
+}
 
 function buildRegexDragHelper(item) {
     const itemEl = item?.get?.(0) || item?.[0] || item;
@@ -1066,9 +1077,16 @@ async function loadRegexScripts() {
     $('#saved_plugin_scripts').empty();
     setToggleAllIcon(false);
 
+    const renderFragments = {
+        global: document.createDocumentFragment(),
+        scoped: document.createDocumentFragment(),
+        preset: document.createDocumentFragment(),
+        runtime: document.createDocumentFragment(),
+    };
+
     /**
      * Renders a script to the UI.
-     * @param {string} container Container to render the script to
+     * @param {DocumentFragment} container Detached container to render the script into
      * @param {import('../../char-data.js').RegexScriptData} script Script data
      * @param {SCRIPT_TYPES} scriptType Type of the script
      * @param {number} index Index of the script in the array
@@ -1104,7 +1122,7 @@ async function loadRegexScripts() {
             scriptHtml.find('.regex_script_name').on('click', async function () {
                 await onReadonlyRegexViewOpenClick(script, displayName);
             });
-            $(container).append(scriptHtml);
+            scriptHtml.each((_index, node) => container.appendChild(node));
             return;
         }
 
@@ -1198,7 +1216,7 @@ async function loadRegexScripts() {
             }, 0);
         });
 
-        $(container).append(scriptHtml);
+        scriptHtml.each((_index, node) => container.appendChild(node));
     }
 
     const renderIssues = new Set();
@@ -1207,6 +1225,29 @@ async function loadRegexScripts() {
     const presetScripts = await sanitizeRegexScriptsForEditor(getScriptsByType(SCRIPT_TYPES.PRESET), SCRIPT_TYPES.PRESET, { issues: renderIssues });
     const runtimeScripts = await sanitizeRegexScriptsForEditor(getRuntimeRegexScripts(), SCRIPT_TYPE_UNKNOWN, { readOnly: true, issues: renderIssues });
 
+    const diagnostics = getRegexScriptDiagnostics([
+        ...globalScripts,
+        ...(isPresetScriptsAllowed(getCurrentPresetAPI(), getCurrentPresetName()) ? presetScripts : []),
+        ...(isScopedScriptsAllowed(characters?.[this_chid]) ? scopedScripts : []),
+        ...runtimeScripts,
+    ]);
+    const duplicateCount = diagnostics.duplicates.reduce((count, group) => count + Math.max(0, group.scripts.length - 1), 0);
+    const conflictCount = diagnostics.conflicts.length;
+    const healthSummary = $('#regex_health_summary');
+    if (duplicateCount > 0 || conflictCount > 0) {
+        healthSummary
+            .removeClass('displayNone')
+            .text(`Active duplicate rules: ${duplicateCount} · Same-pattern conflicts: ${conflictCount}. Execution order is preserved; review these rules if regex processing feels slow.`);
+        console.warn('[Regex] Potential duplicate/conflicting rules detected', {
+            duplicateCount,
+            conflictCount,
+            duplicates: diagnostics.duplicates.map(group => group.scripts.map(script => script.scriptName || script.id || '<unnamed>')),
+            conflicts: diagnostics.conflicts.map(group => group.scripts.map(script => script.scriptName || script.id || '<unnamed>')),
+        });
+    } else {
+        healthSummary.addClass('displayNone').empty();
+    }
+
     if (renderIssues.size) {
         toastr.error(Array.from(renderIssues).join('<br>'), t`Regex script error`, {
             escapeHtml: false,
@@ -1214,10 +1255,28 @@ async function loadRegexScripts() {
         });
     }
 
-    globalScripts.forEach((script, index) => renderScript('#saved_regex_scripts', script, SCRIPT_TYPES.GLOBAL, index));
-    scopedScripts.forEach((script, index) => renderScript('#saved_scoped_scripts', script, SCRIPT_TYPES.SCOPED, index));
-    presetScripts.forEach((script, index) => renderScript('#saved_preset_scripts', script, SCRIPT_TYPES.PRESET, index));
-    runtimeScripts.forEach((script, index) => renderScript('#saved_plugin_scripts', script, SCRIPT_TYPE_UNKNOWN, index, { readOnly: true }));
+    const renderBatch = async (scripts, fragment, scriptType, options = {}) => {
+        for (let index = 0; index < scripts.length; index++) {
+            renderScript(fragment, scripts[index], scriptType, index, options);
+            if ((index + 1) % REGEX_EDITOR_RENDER_CHUNK_SIZE === 0) {
+                await yieldRegexEditorRender();
+                if (requestId !== regexScriptsRenderRequestId) {
+                    return false;
+                }
+            }
+        }
+        return requestId === regexScriptsRenderRequestId;
+    };
+
+    if (!await renderBatch(globalScripts, renderFragments.global, SCRIPT_TYPES.GLOBAL)) return;
+    if (!await renderBatch(scopedScripts, renderFragments.scoped, SCRIPT_TYPES.SCOPED)) return;
+    if (!await renderBatch(presetScripts, renderFragments.preset, SCRIPT_TYPES.PRESET)) return;
+    if (!await renderBatch(runtimeScripts, renderFragments.runtime, SCRIPT_TYPE_UNKNOWN, { readOnly: true })) return;
+
+    document.querySelector('#saved_regex_scripts')?.appendChild(renderFragments.global);
+    document.querySelector('#saved_scoped_scripts')?.appendChild(renderFragments.scoped);
+    document.querySelector('#saved_preset_scripts')?.appendChild(renderFragments.preset);
+    document.querySelector('#saved_plugin_scripts')?.appendChild(renderFragments.runtime);
 
     $('#regex_scoped_toggle').prop('checked', isScopedScriptsAllowed(characters?.[this_chid]));
     $('#regex_preset_toggle').prop('checked', isPresetScriptsAllowed(getCurrentPresetAPI(), getCurrentPresetName()));
@@ -1886,7 +1945,7 @@ async function onRegexDebuggerOpenClick() {
         const newScopedScripts = $('#regex_debugger_rules_scoped').children('li').map((_, el) => allKnownScripts.find(s => s.id === $(el).data('id'))).get().filter(Boolean);
         const newPresetScripts = $('#regex_debugger_rules_preset').children('li').map((_, el) => allKnownScripts.find(s => s.id === $(el).data('id'))).get().filter(Boolean);
 
-        extension_settings.regex = newGlobalScripts;
+        await saveScriptsByType(newGlobalScripts, SCRIPT_TYPES.GLOBAL);
         if (this_chid !== undefined) {
             await saveScriptsByType(newScopedScripts, SCRIPT_TYPES.SCOPED);
         }
@@ -2567,6 +2626,7 @@ export async function reimportPresetEmbeddedRegexScripts(apiId = getCurrentPrese
         path: 'regex_scripts',
         value: [...currentScripts, ...importedScripts],
     });
+    invalidateRegexExecutionPlans();
     allowPresetScripts(apiId, presetName);
     await loadRegexScripts();
     if (getCurrentChatId()) {
@@ -2631,12 +2691,14 @@ async function checkPresetEmbeddedRegexScripts(event = {}) {
 
                 if (selectedScripts) {
                     await presetManager.writePresetExtensionField({ name, path: 'regex_scripts', value: selectedScripts });
+                    invalidateRegexExecutionPlans();
                     allowPresetScripts(apiId, name);
                     if (getCurrentChatId()) {
                         await requestRegexChatReload();
                     }
                 } else {
                     await presetManager.writePresetExtensionField({ name, path: 'regex_scripts', value: [] });
+                    invalidateRegexExecutionPlans();
                 }
             }
         } else if (getCurrentChatId() && scripts.filter(script => !script.disabled).length > 0) {
