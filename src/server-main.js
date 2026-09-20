@@ -614,13 +614,29 @@ function diffClientTiming(timings, start, end) {
 }
 
 function summarizeExtensionActivationTimings(durations) {
-    const prefix = 'extensionActivate:';
+    const totalPrefix = 'extensionActivate:';
+    const phasePrefixes = {
+        localeMs: 'extensionLocale:',
+        scriptMs: 'extensionScript:',
+        styleMs: 'extensionStyle:',
+        hookMs: 'extensionHook:',
+    };
+
     return Object.entries(durations || {})
-        .filter(([name]) => name.startsWith(prefix))
-        .map(([name, value]) => ({
-            name: name.slice(prefix.length, prefix.length + 120),
-            ms: normalizeClientTiming(value),
-        }))
+        .filter(([name]) => name.startsWith(totalPrefix))
+        .map(([name, value]) => {
+            const extensionName = name.slice(totalPrefix.length, totalPrefix.length + 120);
+            const item = {
+                name: extensionName,
+                ms: normalizeClientTiming(value),
+            };
+
+            for (const [field, prefix] of Object.entries(phasePrefixes)) {
+                item[field] = normalizeClientTiming(durations[`${prefix}${extensionName}`]);
+            }
+
+            return item;
+        })
         .filter(item => item.name && item.ms !== null)
         .sort((a, b) => b.ms - a.ms)
         .slice(0, 8);
