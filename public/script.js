@@ -263,7 +263,7 @@ import {
     formatInstructModeStoryString,
     getInstructStoppingSequences,
 } from './scripts/instruct-mode.js';
-import { initLocales, t } from './scripts/i18n.js';
+import { initLocales, t, translate as translateText } from './scripts/i18n.js';
 import { getFriendlyTokenizerName, getTokenCount, getTokenCountAsync, initTokenizers, saveTokenCacheDebounced, flushTokenCacheSave } from './scripts/tokenizers.js';
 import { consumeLastUsage } from './scripts/last-usage.js';
 import {
@@ -297,6 +297,7 @@ import { initCustomSelectedSamplers, validateDisabledSamplers } from './scripts/
 import { DragAndDropHandler } from './scripts/dragdrop.js';
 import { INTERACTABLE_CONTROL_CLASS, initKeyboard } from './scripts/keyboard.js';
 import { initDynamicStyles } from './scripts/dynamic-styles.js';
+import { createImmersiveController } from './scripts/immersive/controller.js';
 
 import { AbortReason } from './scripts/util/AbortReason.js';
 import { initSystemPrompts } from './scripts/sysprompt.js';
@@ -919,351 +920,82 @@ let exportPopper = Popper.createPopper(document.getElementById('export_button'),
     placement: 'left',
 });
 let isExportPopupOpen = false;
-let isImmersiveModeEnabled = false;
-let immersiveModeUsesFullscreen = false;
-let androidFullscreenShimInstalled = false;
-let androidFullscreenElement = null;
-
-function setElementStylePriority(element, property, value, priority = '') {
-    if (!(element instanceof HTMLElement)) {
-        return;
-    }
-    if (value === null || value === undefined || value === '') {
-        element.style.removeProperty(property);
-        return;
-    }
-    element.style.setProperty(property, String(value), priority);
-}
-
-function applyImmersiveLayoutOverrides(enabled) {
-    if (!isRunningInAtriaAndroidApp()) {
-        return;
-    }
-    const sheld = document.getElementById('sheld');
-    const chatContainer = document.getElementById('chat');
-    const shouldEnable = Boolean(enabled);
-    if (shouldEnable) {
-        setElementStylePriority(sheld, 'top', '0', 'important');
-        setElementStylePriority(sheld, 'height', 'calc(var(--doc-height) - 1px)', 'important');
-        setElementStylePriority(sheld, 'max-height', 'calc(var(--doc-height) - 1px)', 'important');
-        setElementStylePriority(chatContainer, 'max-height', 'calc(var(--doc-height) - var(--bottomFormBlockSize))', 'important');
-        return;
-    }
-    setElementStylePriority(sheld, 'top', '');
-    setElementStylePriority(sheld, 'height', '');
-    setElementStylePriority(sheld, 'max-height', '');
-    setElementStylePriority(chatContainer, 'max-height', '');
-}
-
-function isRunningInAtriaAndroidApp() {
-    return typeof window !== 'undefined'
-        && typeof window.AtriaAndroid === 'object';
-}
-
-function canUseAndroidImmersiveBridge() {
-    return isRunningInAtriaAndroidApp()
-        && typeof window.AtriaAndroid.setImmersiveModeEnabled === 'function';
-}
-
-function syncAndroidImmersiveMode(enabled, source = 'user') {
-    if (!canUseAndroidImmersiveBridge()) {
-        return;
-    }
+const translateImmersiveText = value => {
     try {
-        const bridge = window.AtriaAndroid;
-        const resolvedSource = String(source || 'user');
-        if (typeof bridge.setImmersiveModeEnabledWithSource === 'function') {
-            bridge.setImmersiveModeEnabledWithSource(Boolean(enabled), resolvedSource);
-            return;
-        }
-        bridge.setImmersiveModeEnabled(Boolean(enabled));
-    } catch (error) {
-        console.warn('Failed to sync Android immersive mode', error);
-    }
-}
-
-function getFullscreenElement() {
-    if (isRunningInAtriaAndroidApp()) {
-        return androidFullscreenElement;
-    }
-    return document.fullscreenElement
-        || document.webkitFullscreenElement
-        || document.mozFullScreenElement
-        || document.msFullscreenElement
-        || null;
-}
-
-function dispatchFullscreenChangeEvent() {
-    const eventNames = [
-        'fullscreenchange',
-        'webkitfullscreenchange',
-        'mozfullscreenchange',
-        'MSFullscreenChange',
-    ];
-    for (const name of eventNames) {
-        document.dispatchEvent(new Event(name));
-    }
-}
-
-function setAndroidFullscreenState(enabled, element = null) {
-    if (!isRunningInAtriaAndroidApp()) {
-        return;
-    }
-    const nextElement = enabled ? (element || document.documentElement) : null;
-    const changed = androidFullscreenElement !== nextElement;
-    androidFullscreenElement = nextElement;
-    if (changed) {
-        dispatchFullscreenChangeEvent();
-    }
-}
-
-function definePropertyIfPossible(target, propertyName, descriptor) {
-    if (!target) {
-        return;
-    }
-    try {
-        Object.defineProperty(target, propertyName, descriptor);
+        return translateText(value);
     } catch {
-        // Ignore non-configurable built-ins on some WebView builds.
+        // i18n participates in a circular ESM graph during early startup.
+        // Dynamic immersive nodes carry data-i18n markers and are translated by initLocales().
+        return String(value ?? '');
     }
-}
+};
+const immersiveController = createImmersiveController({
+    document,
+    window,
+    getSettings: () => power_user,
+    saveSettings: () => saveSettingsDebounced(),
+    isMobile,
+    translate: translateImmersiveText,
+    eventSource,
+    eventTypes: event_types,
+    hostActions: {
+        openTools: () => $('#options_button').trigger('click'),
+        send: () => $('#send_but').trigger('click'),
+        stop: () => $('#mes_stop').trigger('click'),
+        continue: () => $('#option_continue').trigger('click'),
+        rewrite: () => $('#option_regenerate').trigger('click'),
+        openDiagnostics: () => $('#server_logs_button').trigger('click'),
+    },
+    shouldDeferEscape: () => (
+        $('#curEditTextarea').is(':visible')
+        || $('#mes_stop').is(':visible')
+        || !!document.querySelector('dialog[open]')
+        || $('#dialogue_popup, #select_chat_popup, #character_popup, #dialogue_del_mes_cancel').is(':visible')
+        || $('#logprobsViewer, #cfgConfig, #floatingPrompt, #WorldInfo').is(':visible')
+        || $('#movingDivs > div:visible').length > 0
+        || $('.drawer-content.openDrawer:visible').length > 0
+    ),
+});
 
-function overrideMethodIfPossible(target, methodName, replacement) {
-    if (!target || typeof replacement !== 'function') {
-        return;
-    }
-    try {
-        Object.defineProperty(target, methodName, {
-            configurable: true,
-            writable: true,
-            value: replacement,
-        });
-    } catch {
-        // Ignore non-configurable built-ins on some WebView builds.
-    }
-}
-
-function installAndroidFullscreenApiShim() {
-    if (!isRunningInAtriaAndroidApp() || androidFullscreenShimInstalled) {
-        return;
-    }
-
-    androidFullscreenShimInstalled = true;
-    const doc = /** @type {any} */ (document);
-    const elementProto = /** @type {any} */ (Element.prototype);
-
-    const requestShim = function () {
-        setAndroidFullscreenState(true, this);
-        void setImmersiveMode(true, { useFullscreen: false, source: 'fullscreen_api' });
-        return Promise.resolve();
-    };
-
-    const exitShim = function () {
-        setAndroidFullscreenState(false, null);
-        void setImmersiveMode(false, { useFullscreen: false, source: 'fullscreen_api' });
-        return Promise.resolve();
-    };
-
-    overrideMethodIfPossible(elementProto, 'requestFullscreen', requestShim);
-    overrideMethodIfPossible(elementProto, 'webkitRequestFullscreen', requestShim);
-    overrideMethodIfPossible(elementProto, 'mozRequestFullScreen', requestShim);
-    overrideMethodIfPossible(elementProto, 'msRequestFullscreen', requestShim);
-
-    overrideMethodIfPossible(doc, 'exitFullscreen', exitShim);
-    overrideMethodIfPossible(doc, 'webkitExitFullscreen', exitShim);
-    overrideMethodIfPossible(doc, 'mozCancelFullScreen', exitShim);
-    overrideMethodIfPossible(doc, 'msExitFullscreen', exitShim);
-
-    definePropertyIfPossible(doc, 'fullscreenEnabled', {
-        configurable: true,
-        get: () => true,
-    });
-    definePropertyIfPossible(doc, 'webkitFullscreenEnabled', {
-        configurable: true,
-        get: () => true,
-    });
-    definePropertyIfPossible(doc, 'mozFullScreenEnabled', {
-        configurable: true,
-        get: () => true,
-    });
-    definePropertyIfPossible(doc, 'msFullscreenEnabled', {
-        configurable: true,
-        get: () => true,
-    });
-
-    definePropertyIfPossible(doc, 'fullscreenElement', {
-        configurable: true,
-        get: () => androidFullscreenElement,
-    });
-    definePropertyIfPossible(doc, 'webkitFullscreenElement', {
-        configurable: true,
-        get: () => androidFullscreenElement,
-    });
-    definePropertyIfPossible(doc, 'mozFullScreenElement', {
-        configurable: true,
-        get: () => androidFullscreenElement,
-    });
-    definePropertyIfPossible(doc, 'msFullscreenElement', {
-        configurable: true,
-        get: () => androidFullscreenElement,
-    });
-}
-
-function canUseFullscreenApi() {
-    if (isRunningInAtriaAndroidApp()) {
-        return false;
-    }
-
-    const doc = /** @type {any} */ (document);
-    const root = /** @type {any} */ (document.documentElement);
-    return Boolean(
-        doc.fullscreenEnabled
-        || doc.webkitFullscreenEnabled
-        || doc.mozFullScreenEnabled
-        || doc.msFullscreenEnabled
-        || typeof root.requestFullscreen === 'function'
-        || typeof root.webkitRequestFullscreen === 'function'
-        || typeof root.mozRequestFullScreen === 'function'
-        || typeof root.msRequestFullscreen === 'function',
-    );
-}
-
-async function requestImmersiveFullscreen() {
-    if (!canUseFullscreenApi() || getFullscreenElement()) {
-        return;
-    }
-    const root = /** @type {any} */ (document.documentElement);
-    const request =
-        root.requestFullscreen
-        || root.webkitRequestFullscreen
-        || root.mozRequestFullScreen
-        || root.msRequestFullscreen;
-    if (typeof request !== 'function') {
-        return;
-    }
-    try {
-        await request.call(root);
-    } catch (error) {
-        console.debug('Immersive fullscreen request was rejected', error);
-    }
-}
-
-async function exitImmersiveFullscreen() {
-    if (!getFullscreenElement()) {
-        return;
-    }
-    const doc = /** @type {any} */ (document);
-    const exit =
-        doc.exitFullscreen
-        || doc.webkitExitFullscreen
-        || doc.mozCancelFullScreen
-        || doc.msExitFullscreen;
-    if (typeof exit !== 'function') {
-        return;
-    }
-    try {
-        await exit.call(doc);
-    } catch (error) {
-        console.debug('Immersive fullscreen exit was rejected', error);
-    }
-}
-
-function updateImmersiveModeUi() {
-    const toggle = $('#immersive_mode_toggle');
-    const icon = $('#immersiveModeIcon');
-    const label = $('#immersiveModeLabel');
-    const translationKey = isImmersiveModeEnabled ? 'Exit immersive mode' : 'Enter immersive mode';
-    const title = isImmersiveModeEnabled ? t`Exit immersive mode` : t`Enter immersive mode`;
-
-    if (!icon.length && !toggle.length) {
-        return;
-    }
-
-    icon
-        .toggleClass('fa-expand', !isImmersiveModeEnabled)
-        .toggleClass('fa-compress', isImmersiveModeEnabled)
-        .attr('title', title);
-
-    if (icon.hasClass('drawer-icon')) {
-        icon
-            .toggleClass('closedIcon', !isImmersiveModeEnabled)
-            .toggleClass('openIcon', isImmersiveModeEnabled);
-    }
-
-    toggle
-        .attr('data-i18n', `[title]${translationKey}`)
-        .attr('title', title)
-        .attr('aria-pressed', String(isImmersiveModeEnabled));
-
-    if (label.length) {
-        label.attr('data-i18n', translationKey);
-        label.text(title);
-    }
-}
-
-async function onImmersiveFullscreenChanged() {
-    updateImmersiveModeUi();
-    if (!immersiveModeUsesFullscreen) {
-        return;
-    }
-    if (!getFullscreenElement() && isImmersiveModeEnabled) {
-        await setImmersiveMode(false, { useFullscreen: false });
-    }
-}
-
-async function setImmersiveMode(enabled, { useFullscreen = true, persist = true, source = 'user' } = {}) {
-    const shouldEnable = Boolean(enabled);
-    immersiveModeUsesFullscreen = shouldEnable ? Boolean(useFullscreen && canUseFullscreenApi()) : false;
-    isImmersiveModeEnabled = shouldEnable;
-    setAndroidFullscreenState(shouldEnable, document.documentElement);
-    document.body.classList.toggle('atria-immersive-mode', shouldEnable);
-    document.body.classList.toggle(
-        'atria-immersive-keep-top-bar',
-        shouldEnable && Boolean(power_user.immersive_mode_keep_top_bar),
-    );
-    syncAndroidImmersiveMode(shouldEnable, source);
-    applyImmersiveLayoutOverrides(shouldEnable);
-    updateImmersiveModeUi();
-
-    if (persist && power_user.immersive_mode_last_state !== shouldEnable) {
-        power_user.immersive_mode_last_state = shouldEnable;
-        saveSettingsDebounced();
-    }
-
-    if (shouldEnable) {
-        if (useFullscreen) {
-            await requestImmersiveFullscreen();
-        }
-        return;
-    }
-
-    if (useFullscreen) {
-        await exitImmersiveFullscreen();
-    }
+async function setImmersiveMode(enabled, options = {}) {
+    return await immersiveController.setEnabled(enabled, options);
 }
 
 async function toggleImmersiveMode() {
-    await setImmersiveMode(!isImmersiveModeEnabled);
+    return await immersiveController.toggle();
+}
+
+if (globalThis.Atria) {
+    globalThis.Atria.immersive = immersiveController;
 }
 
 if (typeof window !== 'undefined') {
-    installAndroidFullscreenApiShim();
+    immersiveController.installAndroidFullscreenApiShim();
     window.__atriaSetImmersiveModeFromNative = (enabled) => {
-        void setImmersiveMode(Boolean(enabled), { useFullscreen: false, persist: false });
+        void setImmersiveMode(Boolean(enabled), {
+            useFullscreen: false,
+            persist: false,
+            source: 'native',
+            syncNative: false,
+        });
+    };
+    window.__atriaSetNativeFullscreenState = (enabled) => {
+        immersiveController.setNativeFullscreenState?.(Boolean(enabled));
     };
     window.__atriaHandleBack = () => {
         try {
             const $ = window.jQuery;
-            if (typeof $ !== 'function') {
-                return 'noop';
+            if (typeof $ !== 'function') return 'noop';
+
+            const activeElement = document.activeElement;
+            if (activeElement?.matches?.('input, textarea, select, [contenteditable="true"]')) {
+                activeElement.blur();
+                return 'consumed';
             }
 
-            // Anything the existing Escape handler would react to: dispatch Escape and let it run.
-            // Mirrors the priority order in RossAscends-mods.js #handleEscape.
-            const escapeIsActionable =
+            const topUiIsActionable =
                 $('#curEditTextarea').is(':visible')
-                || $('#mes_stop').is(':visible')
-                || !!document.querySelector('dialog[open]')
+                || !!document.querySelector('dialog[open]:not(#atriaImmersiveHudDetails)')
                 || $('#dialogue_popup, #select_chat_popup, #character_popup, #dialogue_del_mes_cancel').is(':visible')
                 || $('#logprobsViewer, #cfgConfig, #floatingPrompt, #WorldInfo').is(':visible')
                 || $('#movingDivs > div:visible').length > 0
@@ -1273,7 +1005,7 @@ if (typeof window !== 'undefined') {
                     .not('#movingDivs > div')
                     .filter(':visible').length > 0;
 
-            if (escapeIsActionable) {
+            if (topUiIsActionable) {
                 document.dispatchEvent(new KeyboardEvent('keydown', {
                     key: 'Escape', code: 'Escape', keyCode: 27, which: 27,
                     bubbles: true, cancelable: true,
@@ -1281,7 +1013,6 @@ if (typeof window !== 'undefined') {
                 return 'consumed';
             }
 
-            // Left/right nav drawers are the primary mobile entry points but Escape does not close them.
             if ($('#left-nav-panel').hasClass('openDrawer')) {
                 $('#leftNavDrawerIcon').trigger('click');
                 return 'consumed';
@@ -1291,9 +1022,20 @@ if (typeof window !== 'undefined') {
                 return 'consumed';
             }
 
-            // In a chat? Closing it returns to the welcome screen. closeCurrentChat()
-            // toasts instead of closing while generation is in flight; we still consume
-            // the press so the exit-confirm toast does not stack on top.
+            if (immersiveController.dismissTransientLayer?.()) {
+                return 'consumed';
+            }
+
+            if ($('#mes_stop').is(':visible')) {
+                $('#mes_stop').trigger('click');
+                return 'consumed';
+            }
+
+            if (immersiveController.isEnabled()) {
+                void setImmersiveMode(false, { useFullscreen: true, source: 'android_back' });
+                return 'consumed';
+            }
+
             if (this_chid !== undefined || selected_group) {
                 void closeCurrentChat();
                 return 'consumed';
@@ -9684,6 +9426,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
 
         if (type !== 'quiet' && !isAbortedError) {
             notifyMessageFailure(errorMessage, String(name2 || chat?.[chat.length - 1]?.name || ''));
+            immersiveController.reportGenerationFailure({ message: errorMessage });
         }
 
         // if the response JSON was thrown (novel|textgenerationwebui|kobold), show the error message
@@ -21036,9 +20779,6 @@ jQuery(async function () {
             await setImmersiveMode(false);
         }
     });
-    document.addEventListener('fullscreenchange', () => { void onImmersiveFullscreenChanged(); });
-    document.addEventListener('webkitfullscreenchange', () => { void onImmersiveFullscreenChanged(); });
-    updateImmersiveModeUi();
     $(document).on('click', function () {
         if (!isOptionsMenuVisible) return;
         if (!isMouseOverButtonOrMenu()) { hideMenu(); }

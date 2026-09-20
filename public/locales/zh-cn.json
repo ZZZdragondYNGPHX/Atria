@@ -636,7 +636,7 @@
     "Sequences as Stop Strings": "将序列用作终止字符串",
     "Skip Example Dialogues Formatting": "跳过示例对话格式化",
     "Include Names": "包括名称",
-    "Never": "永不",
+    "Never": "从未",
     "Groups and Past Personas": "群聊和过去的用户设定",
     "Always": "永远",
     "Instruct Sequences": "指令序列",
@@ -691,7 +691,7 @@
     "JSON serialized array of strings": "JSON序列化的字符串数组",
     "Replace Macro in Stop Strings": "替换自定义停止字符串中的宏",
     "Token Padding": "词符填充",
-    "Reasoning": "推理",
+    "Reasoning": "思考",
     "reasoning_auto_parse": "自动从消息内容中提取由推理块前后缀包裹的推理块。前后缀都必须设置且不为空。",
     "Auto-Parse": "自动解析",
     "reasoning_auto_expand": "自动展开推理内容块。",
@@ -1392,7 +1392,7 @@
     "Prompt": "提示词",
     "This prompt cannot be overridden by character cards, even if overrides are preferred.": "即使选择覆盖，此提示词也不能被角色卡覆盖。",
     "prompt_manager_forbid_overrides": "禁止覆盖",
-    "Source:": "来源：",
+    "Source:": "源：",
     "The prompt to be sent.": "要发送的提示词。",
     "reset": "重置",
     "save": "保存",
@@ -1875,7 +1875,7 @@
     "Enter a video URL to download its transcript.": "输入视频 URL 或 ID 即可下载其文本。",
     "Generate Caption": "生成图片说明",
     "Image Captioning": "图像描述",
-    "Source": "来源",
+    "Source": "源",
     "Local": "本地",
     "Multimodal": "多模态",
     "Extras": "更多",
@@ -3551,8 +3551,8 @@
     "Set your custom avatar.": "设置您的自定义头像。",
     "Remove your custom avatar.": "删除您的自定义头像。",
     "Handle:": "账号：",
-    "This account is password protected.": "此帐户受密码保护。",
-    "This account is not password protected.": "此帐户没有密码保护。",
+    "This account is password protected.": "此账户已设置密码。",
+    "This account is not password protected.": "此账户未设置密码。",
     "Account Actions": "帐户操作",
     "Change Password": "修改密码",
     "Manage your settings snapshots.": "管理您的设置快照。",
@@ -4003,7 +4003,7 @@
     "Recent scans": "最近扫描",
     "Recent simulated scans": "最近模拟扫描",
     "No scan records yet.": "暂无扫描记录。",
-    "Scope": "范围",
+    "Scope": "作用域",
     "Entry": "条目",
     "Bind Current Chat Completion Preset": "绑定当前对话补全预设",
     "Manage Bound Chat Completion Presets": "管理已绑定的对话补全预设",
@@ -5073,7 +5073,7 @@
     "Status": "状态",
     "Back": "返回",
     "Export JSON": "导出 JSON",
-    "Loading...": "加载中...",
+    "Loading...": "加载中……",
     "Request": "请求",
     "Stream": "流式",
     "Messages": "消息",
@@ -5095,13 +5095,11 @@
     "No wire messages.": "无出站消息。",
     "Other Params": "其他参数",
     "Response Body": "响应正文",
-    "(empty)": "（空）",
     "Search source / model / messages / response...": "搜索 来源 / 模型 / 消息 / 响应…",
     "Search in this request...": "在此请求内搜索…",
     "Function Call": "函数调用",
     "function calls": "次函数调用",
     "reasoning parts": "段思考",
-    "Reasoning": "思考",
     "Thinking": "思考块",
     "Redacted Thinking": "隐去的思考",
     "Reasoning Details": "思考详情",
@@ -5184,1288 +5182,1240 @@
     "JS Self-Profiling API support is limited to Chrome/Edge based browsers. Safari and Firefox are not supported.": "JS Self-Profiling API 仅支持基于 Chrome/Edge 的浏览器，Safari 与 Firefox 暂不支持。",
     "Performance profile downloaded.": "性能报告已下载。",
     "Unable to download profile report. Ensure profiling is enabled and browser supports Profiler API.": "无法下载性能报告。请确认已启用采样，并且浏览器支持 Profiler API。",
-    "JS Self-Profiling": "JS 自采样分析"
-    ,"To activate JS Self-Profiling at the earliest page lifecycle stage, reload this page now?": "要让 JS 自采样分析在页面生命周期最早阶段生效，需要立即刷新页面。现在刷新吗？"
-    ,"Reload now": "立即刷新"
-    ,"Later": "稍后"
-    ,"Regex script is slow": "正则脚本运行缓慢"
-    ,"Script \"${0}\" took ${1}ms on a single message and was paused for this session.": "脚本「${0}」在单条消息上耗时 ${1} 毫秒，已暂停至本次会话结束。"
-    ,"This usually indicates catastrophic backtracking. Common causes: leading [\\s\\S]* / .*, nested quantifiers, unbounded lookahead.": "这通常意味着发生了灾难性回溯。常见成因：以 [\\s\\S]* 或 .* 开头、嵌套量词、无边界 lookahead。"
-    ,"Suggestion: review or replace the pattern.": "建议检查或替换该正则。"
-    ,"Pattern preview": "正则预览"
-    ,"Hits this session: ${0} · Total time: ${1}ms": "本会话触发 ${0} 次 · 累计耗时 ${1} 毫秒"
-    ,"Got it": "知道了"
-    ,"Allow anyway": "始终允许"
-    ,"This script will no longer be auto-paused, even if it remains slow.": "该脚本将不再被自动暂停，即使持续缓慢。"
-    ,"This script is provided by a plugin and cannot be edited here.": "该脚本由插件提供，无法在此处编辑。"
-    ,"Regex script not found.": "未找到该正则脚本。"
-    ,"Enable CardApp": "启用 CardApp"
-    ,"Entry file": "入口文件"
-    ,"Injection Depth": "注入深度"
-    ,"Insertion Position": "插入位置"
-    ,"Trigger Probability": "触发概率"
-    ,"Trigger Strategy": "触发策略"
-    ,"Set Trigger Strategy": "设置触发策略"
-    ,"Constant": "常驻"
-    ,"Vectorized": "向量化"
-    ,"Placement": "注入定位"
-    ,"Matching Rules": "匹配规则"
-    ,"Matched Fields": "匹配字段"
-    ,"Set Matched Fields": "设置匹配字段"
-    ,"Recursion & Lifecycle": "递归与生命周期"
-    ,"Group": "分组"
-    ,"Other": "其他"
-    ,"Ignore Budget": "忽略预算"
-    ,"Use Secondary Keys": "启用副关键字"
-    ,"Selective Logic": "选择性逻辑"
-    ,"Match Persona Description": "匹配人设描述"
-    ,"Match Character Description": "匹配角色描述"
-    ,"Match Character Personality": "匹配角色性格"
-    ,"Match Character Depth Prompt": "匹配深度提示"
-    ,"Match Scenario": "匹配场景"
-    ,"Match Creator Notes": "匹配创作者备注"
-    ,"Prevent Recursion": "防止递归"
-    ,"Exclude from Recursion": "排除递归"
-    ,"Delay Until Recursion": "延迟到递归"
-    ,"Group Override": "组覆盖"
-    ,"Use Probability Trigger": "启用概率触发"
-    ,"at Depth": "按深度"
-    ,"On": "开"
-    ,"currently On": "当前：开"
-    ,"currently Off": "当前：关"
-    ,"New value:": "新值："
-    ,"Mixed values across selected entries": "各条目当前值不一致"
-    ,"For each option: choose Keep / On / Off": "每行可选：保持不变 / 开 / 关"
-    ,"Select…": "选择…"
-    ,"Please enter a value": "请输入一个值"
-    ,"Please choose a value": "请选择一个值"
-    ,"Invalid value": "输入无效"
-    ,"Set ${0}": "设置 ${0}"
-    ,"Updated ${0} entries: ${1}": "已更新 ${0} 个条目： ${1}"
-    ,"Reverted ${0} entries": "已撤销 ${0} 个条目"
-    ,"No changes — all selected entries already had this value": "无变化 — 所有选中条目都已是该值"
-    ,"No changes — all options are set to Keep": "无变化 — 所有选项都是保持不变"
-    ,"Failed to update entries": "更新条目失败"
-    ,"Variable operations": "变量操作"
-    ,"Variable operations on message #${0}": "第 ${0} 楼的变量操作"
-    ,"Changes apply when you click Save. The variables cache will be rebuilt from all surviving ops.": "点击「保存」后生效。变量缓存将基于所有保留的操作记录重建。"
-    ,"Add operation": "添加操作"
-    ,"No variable operations on this message.": "该消息没有变量操作。"
-    ,"var_ops_panel.label.op": "操作"
-    ,"var_ops_panel.label.key": "键"
-    ,"var_ops_panel.label.path": "路径"
-    ,"var_ops_panel.label.value": "值"
-    ,"var_ops_panel.placeholder.key": "键"
-    ,"var_ops_panel.placeholder.path": "路径（可选，如 alice.hp）"
-    ,"var_ops_panel.placeholder.value": "值"
-    ,"Fast token preview": "快速 token 预览"
-    ,"fast_token_preview_tooltip": "使用快速的字节估算代替计数分词器。速度更快但精度较低，不影响编码分词器。"
-    ,"Embedding": "嵌入"
-    ,"Rerank": "重排序"
-    ,"Embedding Profile": "嵌入配置"
-    ,"Rerank Profile": "重排序配置"
-    ,"Embedding profiles are used by Vector Storage and Memory Graph for text embeddings. They are not active chat connections.": "嵌入配置供向量存储、记忆图等插件计算文本嵌入，不会作为聊天连接生效。"
-    ,"Rerank profiles are used to re-score candidates after vector retrieval. They are not active chat connections.": "重排序配置用于在向量检索后对候选结果重新打分，不会作为聊天连接生效。"
-    ,"Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "请在 API 连接配置面板的「嵌入」选项卡中管理配置。"
-    ,"Create a new embedding profile": "新建嵌入配置"
-    ,"Edit embedding profile": "编辑嵌入配置"
-    ,"Delete embedding profile": "删除嵌入配置"
-    ,"Create a new rerank profile": "新建重排序配置"
-    ,"Edit rerank profile": "编辑重排序配置"
-    ,"Delete rerank profile": "删除重排序配置"
-    ,"Profile Name": "配置名称"
-    ,"URL Override (optional)": "URL 覆盖（可选）"
-    ,"Server URL (required)": "服务器 URL（必填）"
-    ,"API Key (used with URL Override)": "API 密钥（配合 URL 覆盖使用）"
-    ,"When set, requests are sent to this URL using the API Key below; the saved Secret is ignored.": "设置后，请求将通过下方的 API 密钥发送到此 URL；已保存的 Secret 将被忽略。"
-    ,"Saved Secret": "已保存的密钥"
-    ,"Use active (default)": "使用激活的密钥（默认）"
-    ,"Late Chunking": "Late Chunking"
-    ,"Dimensions (0 = auto)": "维度（0 = 自动）"
-    ,"Task (optional)": "任务（可选）"
-    ,"Keep model loaded between requests": "在请求之间保持模型加载"
-    ,"Endpoint Region": "服务区域"
-    ,"International": "国际"
-    ,"China": "中国"
-    ,"Cloudflare Account ID": "Cloudflare Account ID"
-    ,"Auth Mode": "认证模式"
-    ,"Default (API Key)": "默认（API 密钥）"
-    ,"Express": "Express"
-    ,"Service Account": "服务账号"
-    ,"Express Project ID": "Express 项目 ID"
-    ,"Profile not found.": "未找到该配置。"
-    ,"Embedding profile is shared via the Connection Profile registry — pick one below. Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "嵌入配置共享自 API 连接配置注册表 —— 在下方选择即可。配置请在 API 连接配置面板的「嵌入」选项卡中管理。"
-    ,"Embedding profile": "嵌入配置"
-    ,"Rerank profile": "重排序配置"
-    ,"Vector pre-filter Top-K": "向量预筛 Top-K"
-    ,"Max recall results": "最大召回结果数"
-    ,"Hybrid Pipeline (vector + graph diffusion)": "混合管线（向量 + 图扩散）"
-    ,"Hybrid + Rerank": "混合 + 重排序"
-    ,"Hybrid + LLM Rerank": "混合 + LLM 重排序"
-    ,"Recompute Vector Index": "重建向量索引"
-    ,"New embedding profile": "新建嵌入配置"
-    ,"New rerank profile": "新建重排序配置"
-    ,"A profile with this name already exists.": "已存在同名配置。"
-    ,"Default tools for all agents": "全 agent 默认工具"
-    ,"Default tools for all nodes": "全节点默认工具"
-    ,"Every agent can call these tools across multiple rounds by default. Override per agent on the Agents tab.": "所有 agent 默认可跨多轮调用这些工具。各 agent 可在 Agents 标签页单独覆盖。"
-    ,"No default tools set — every agent runs without tools. Enable defaults here to let agents call tools across multiple rounds; each agent can still override on the Agents tab.": "未设置默认工具——所有 agent 均不启用工具。在此启用默认后 agent 可以跨多轮调用工具；各 agent 仍可在 Agents 标签页单独覆盖。"
-    ,"Every node can call these tools across multiple rounds by default. Override per node on the Agents tab.": "所有节点默认可跨多轮调用这些工具。各节点可在 Agents 标签页单独覆盖。"
-    ,"No default tools set — every node runs without tools. Enable defaults here to let nodes call tools across multiple rounds; each node can still override on the Agents tab.": "未设置默认工具——所有节点均不启用工具。在此启用默认后节点可以跨多轮调用工具；各节点仍可在 Agents 标签页单独覆盖。"
-    ,"Enable all": "全部启用"
-    ,"Clear": "清空"
-    ,"Enable defaults": "启用默认"
-    ,"Tools": "工具"
-    ,"Using the profile default.": "使用 profile 默认。"
-    ,"No tools active. This node runs as a single LLM call.": "不启用工具，该节点会直接出结果（单次 LLM 调用）。"
-    ,"Override": "覆盖"
-    ,"Reset to inherit": "重置为继承"
-    ,"Loop Orchestration": "循环编排"
-    ,"Loop Agent": "循环 Agent"
-    ,"Loop tools": "循环工具"
-    ,"World book filter (applies to all agents in this preset)": "世界书过滤（该预设下所有 agent 生效）"
-    ,"Book name regex (multiline, any line matches → whole book filtered)": "书名正则（多行，任一命中即拦整本书）"
-    ,"Entry name regex (multiline, matched against entry comment)": "条目名正则（多行，匹配 entry comment）"
-    ,"Empty field = no filtering on that dimension; invalid regex lines are skipped with a console warning.": "留空 = 该维度不过滤；非法正则行会跳过并在控制台打 warn。"
-    ,"note (persistent notes)": "note（持久化笔记）"
-    ,"chat (in-chat history)": "chat（聊天历史）"
-    ,"lorebook (world info)": "lorebook（世界书）"
-    ,"custom (extension + profile tools)": "custom（扩展与 profile 工具）"
-    ,"memory (memory-graph)": "memory（记忆图）"
-    ,"search (web search)": "search（联网搜索）"
-    ,"terminator": "终止器"
-    ,"(forced on)": "（强制开启）"
-    ,"Loop API preset (Connection profile, empty = global orchestration API preset)": "循环 API 预设（Connection profile，留空 = 全局编排 API 预设）"
-    ,"Loop preset (params + prompt, empty = global orchestration preset)": "循环预设（参数 + prompt，留空 = 全局编排预设）"
-    ,"Loop system prompt": "循环 system prompt"
-    ,"Loop max rounds": "循环最大轮数"
-    ,"Loop wall-clock budget (seconds)": "循环 wall-clock 预算（秒）"
-    ,"Workflow": "工作流"
-    ,"Agent Presets": "Agent 预设"
-    ,"Identity templates — tools attach to nodes, not to presets.": "身份模板——工具挂在节点上，不挂在预设上。"
-    ,"Used by nodes:": "被节点引用："
-    ,"Not referenced by any node.": "未被任何节点引用。"
-    ,"Add Stage": "加 Stage"
-    ,"Add Node": "加节点"
-    ,"Stage ID": "Stage ID"
-    ,"Node ID": "节点 ID"
-    ,"Node Type": "节点类型"
-    ,"Worker": "Worker"
-    ,"Node Prompt Template (optional)": "节点 Prompt 模板（可选）"
-    ,"Use {{recent_chat}}, {{last_user}}, {{distiller}}, {{previous_outputs}}. Previous orchestration result and approved review feedback are auto-injected.": "可用 {{recent_chat}}、{{last_user}}、{{distiller}}、{{previous_outputs}}；上一轮编排结果与批准的 review 反馈会自动注入。"
-    ,"Serial": "串行"
-    ,"Parallel": "并行"
-    ,"Up": "上移"
-    ,"Down": "下移"
-    ,"No stages yet. Add one stage to start orchestration.": "尚无 stage，先加一个开始编排。"
-    ,"No nodes. Add one to define this stage.": "尚无节点，加一个来定义此 stage。"
-    ,"Agenda Orchestration": "Agenda 编排"
-    ,"Agenda Agents": "Agenda Agents"
-    ,"Planner system prompt": "Planner system prompt"
-    ,"Planner Prompt": "Planner Prompt"
-    ,"Planner API preset (Connection profile, empty = global orchestration API preset)": "Planner API 预设（Connection profile，留空 = 全局编排 API 预设）"
-    ,"Planner preset (params + prompt, empty = global orchestration preset)": "Planner 预设（参数 + prompt，留空 = 全局编排预设）"
-    ,"Final Agent": "终结 Agent"
-    ,"Planner max rounds": "Planner 最大轮数"
-    ,"Max concurrent agents": "最大并发 agent 数"
-    ,"Max total agent runs": "总 agent 运行数上限"
-    ,"Agent API preset (Connection profile, empty = global orchestration API preset)": "Agent API 预设（Connection profile，留空 = 全局编排 API 预设）"
-    ,"Agent preset (params + prompt, empty = global orchestration preset)": "Agent 预设（参数 + prompt，留空 = 全局编排预设）"
-    ,"User Prompt Template": "User Prompt 模板"
-    ,"Add Preset": "加预设"
-    ,"new_preset_id": "new_preset_id"
-    ,"No presets yet.": "尚无预设。"
-    ,"No tools active. This agent runs as a single LLM call.": "不启用工具，该 agent 会直接出结果（单次 LLM 调用）。"
-    ,"Requests per minute (0 = unlimited)": "每分钟请求数（0 = 不限制）"
-    ,"Claude Prompt Caching": "Claude 提示词缓存"
-    ,"Only effective when the prompt prefix is stable across requests (no in-chat lorebook injections or random macros). Cache writes cost 1.25× base (5m) or 2× base (1h); reads cost 0.1×.": "仅在每次请求的前缀稳定时有效（不使用聊天内世界书注入或随机宏）。缓存写入成本为基础价 ×1.25(5m)或 ×2(1h)，读取仅 ×0.1。"
-    ,"Cache system prompt": "缓存 system prompt"
-    ,"Use 1h cache TTL (instead of 5m)": "使用 1 小时 TTL（代替 5 分钟）"
-    ,"Cache message history at depth (-1 to disable)": "在对话历史指定深度缓存（-1 表示禁用）"
-    ,"OpenRouter Gemini Prompt Caching": "OpenRouter Gemini 提示词缓存"
-    ,"Only applied when OpenRouter routes to a Gemini model that supports caching. Same prefix-stability caveat as Claude caching.": "仅在 OpenRouter 路由到支持缓存的 Gemini 模型时生效。与 Claude 缓存同样要求前缀稳定。"
-    ,"Requests per minute": "每分钟请求数"
-    ,"API rate limit": "API 速率限制"
-    ,"Profile ${0} · queued ${1} · next in ${2}s": "配置 ${0} · 队列 ${1} · ${2} 秒后发出"
-    ,"Conversation": "对话记录"
-    ,"Loop Conversation": "Loop 对话"
-    ,"Agent Conversation": "Agent 对话"
-    ,"No agent messages recorded yet.": "暂无 agent 消息记录。"
-    ,"Mode": "模式"
-    ,"Tool Result": "工具结果"
-    ,"System": "系统"
-    ,"User": "用户"
-    ,"Assistant": "助手"
-    ,"round ${0}": "第 ${0} 轮"
-    ,"(empty)": "（空）"
-    ,"Todo Board": "任务看板"
-    ,"Todo board is empty.": "任务看板为空。"
-    ,"Planner Rounds": "Planner 轮次"
-    ,"No planner rounds recorded.": "暂无 planner 轮次记录。"
-    ,"No planner step recorded.": "本轮无 planner 步骤记录。"
-    ,"No agents dispatched this round.": "本轮未派发 agent。"
-    ,"Planner Step": "Planner 步骤"
-    ,"Dispatched Agents": "派发的 Agents"
-    ,"Final Agent": "Final Agent"
-    ,"Round ${0}": "第 ${0} 轮"
-    ,"todo": "待办"
-    ,"doing": "进行中"
-    ,"done": "完成"
-    ,"blocked": "阻塞"
-    ,"dropped": "已丢弃"
-    ,"(none)": "（无）"
-    ,"Director (multi-agent)": "导演模式（多 agent）"
-    ,"Main agent": "主代理"
-    ,"Main agent tools": "主代理工具"
-    ,"Default tools": "默认工具"
-    ,"Inherit": "继承"
-    ,"Every agent can call these tools by default. Override per agent on the Agents tab; the main agent inherits unless it has its own override.": "所有 agent 默认可调用这些工具。各 agent 可在 Agents 标签页单独覆盖；主 agent 若无自身覆盖则继承此默认。"
-    ,"Sub-agents": "子代理"
-    ,"Add sub-agent": "添加子代理"
-    ,"Sub-agent ID": "子代理 ID"
-    ,"Description (shown to main agent)": "描述（主代理可见）"
-    ,"Discard partial message on abort": "中止时丢弃残缺消息"
-    ,"Maximum tool-calling rounds": "最大工具调用轮数"
-    ,"Maximum concurrent sub-agents": "最大并发子代理数"
-    ,"Maximum total sub-agent runs per turn": "本回合最多子代理调用总数"
-    ,"Direct message generation": "直接生成消息"
-    ,"Director mode produces the assistant message directly via a main agent that may dispatch sub-agents.": "导演模式由主代理直接产出助理消息，主代理可派遣子代理协助。"
-    ,"Director Orchestration": "导演编排"
-    ,"System prompt (leave empty for default)": "系统提示词（留空使用默认值）"
-    ,"Reset to default": "重置为默认值"
-    ,"Reset main-agent system prompt to default? This overwrites the current text.": "重置主代理系统提示词为默认值？这会覆盖当前文本。"
-    ,"Reset main-agent system prompt to default": "已重置主代理系统提示词为默认值"
-    ,"Limits": "上限"
-    ,"Save To Global": "保存到全局"
-    ,"Save To Character Override": "保存到角色卡覆写"
-    ,"Clear presets from this card": "清除角色卡上的预设"
-    ,"Manage skills...": "管理技能..."
-    ,"Notes": "笔记"
-    ,"Open notes": "未结清"
-    ,"Closed notes": "已关闭"
-    ,"No open notes yet": "还没有未结清的条目"
-    ,"No closed notes yet": "还没有已关闭的条目"
-    ,"Close this note": "关闭这条"
-    ,"Closure reason (optional)": "关闭原因（可选）"
-    ,"Edit note": "编辑"
-    ,"Delete note (permanent)": "永久删除"
-    ,"Confirm delete (permanent)?": "确认永久删除？"
-    ,"Manage Users": "用户管理"
-    ,"System Overview": "系统概览"
-    ,"Security Status": "安全状态"
-    ,"Auth & Limits": "认证与限额"
-    ,"Server Plugins": "服务端插件"
-    ,"Config": "配置"
-    ,"If a custom avatar is not set, the user's default persona image will be displayed.": "未设置自定义头像时将显示用户的默认人格图像。"
-    ,"Set a custom avatar.": "设置自定义头像。"
-    ,"Remove a custom avatar.": "移除自定义头像。"
-    ,"This account is password protected.": "此账户已设置密码。"
-    ,"This account is not password protected.": "此账户未设置密码。"
-    ,"Quota:": "配额："
-    ,"OAuth:": "OAuth："
-    ,"Change user display name.": "修改用户显示名称。"
-    ,"Set per-user storage quota.": "设置该用户的存储配额。"
-    ,"Enable user account.": "启用用户账户。"
-    ,"Disable user account.": "禁用用户账户。"
-    ,"Promote user to admin.": "提升为管理员。"
-    ,"Demote user to regular user.": "降级为普通用户。"
-    ,"Open backup and restore manager.": "打开备份与恢复管理器。"
-    ,"Change user password.": "修改用户密码。"
-    ,"Delete user account.": "删除用户账户。"
-    ,"Server Snapshot": "服务器快照"
-    ,"User Storage": "用户存储"
-    ,"Security Checks": "安全检查"
-    ,"Storage Quota": "存储配额"
-    ,"Default quota for new users (MB)": "新用户默认配额（MB）"
-    ,"-1 for unlimited": "-1 表示不限制"
-    ,"Account Registration": "账户注册"
-    ,"Allow visitors to register accounts from the login page": "允许访客在登录页自助注册账户"
-    ,"When enabled, the login page shows a \"Create account\" form. New accounts default to non-admin and respect the storage quota above.": "启用后，登录页会显示「创建账户」表单。新账户默认非管理员，并继承上述存储配额。"
-    ,"GitHub OAuth": "GitHub OAuth"
-    ,"Enable GitHub OAuth login": "启用 GitHub OAuth 登录"
-    ,"Auto-create user on first GitHub login": "首次 GitHub 登录时自动创建用户"
-    ,"GitHub Client ID": "GitHub Client ID"
-    ,"GitHub Client Secret": "GitHub Client Secret"
-    ,"Discord OAuth": "Discord OAuth"
-    ,"Enable Discord OAuth login": "启用 Discord OAuth 登录"
-    ,"Auto-create user on first Discord login": "首次 Discord 登录时自动创建用户"
-    ,"Require membership in target server": "要求加入指定服务器"
-    ,"Discord Client ID": "Discord Client ID"
-    ,"Discord Client Secret": "Discord Client Secret"
-    ,"Extra OAuth scopes (optional, comma/space/new line separated; identify is always included)": "额外的 OAuth 权限范围（可选；逗号、空格或换行分隔；identify 始终包含）"
-    ,"Allowed server IDs (comma or new line separated)": "允许的服务器 ID（逗号或换行分隔）"
-    ,"Required role IDs (optional, comma or new line separated)": "要求的身份组 ID（可选，逗号或换行分隔）"
-    ,"When \"Require membership in target server\" is enabled, required Discord scopes for server checks are added automatically.": "启用「要求加入指定服务器」后，会自动添加用于服务器校验的 Discord 权限范围。"
-    ,"Save Auth & Limit Settings": "保存认证与限额设置"
-    ,"Update": "更新"
-    ,"Reload": "重新加载"
-    ,"Path:": "路径："
-    ,"Runtime Config (config.yaml)": "运行时配置（config.yaml）"
-    ,"config.yaml content": "config.yaml 内容"
-    ,"Changes are validated as YAML before save. Some settings may require backend restart.": "保存前会按 YAML 校验。部分设置需重启后端才能生效。"
-    ,"e.g. John Snow": "例如 张三"
-    ,"e.g. john-snow (lowercase letters, numbers, and dashes only)": "例如 john-snow（仅限小写字母、数字与连字符）"
-    ,"[ No password ]": "［无密码］"
-    ,"This will create a new subfolder in the /data/ directory with the user's handle as the folder name.": "这会在 /data/ 目录下以该用户句柄为名创建新的子目录。"
-    ,"Installing a server plugin grants backend code execution. Install only repositories you trust.": "安装服务端插件相当于授予后端代码执行权限，请仅安装可信仓库。"
-    ,"Git repository URL": "Git 仓库地址"
-    ,"New installs are picked up after backend restart.": "新安装的插件需重启后端才会加载。"
-    ,"Set per-user quota in MB. Enter -1 to use default/unlimited.": "以 MB 为单位设置该用户的配额；输入 -1 使用默认值或不限制。"
-    ,"Please enter a valid number.": "请输入有效数字。"
-    ,"Invalid quota": "配额无效"
-    ,"Node.js:": "Node.js："
-    ,"Platform:": "平台："
-    ,"Uptime:": "运行时长："
-    ,"Now:": "当前时间："
-    ,"Total users:": "用户总数："
-    ,"Enabled:": "已启用："
-    ,"Admins:": "管理员："
-    ,"Password protected:": "受密码保护："
-    ,"Total storage:": "总存储占用："
-    ,"Over quota users:": "超配额用户："
-    ,"Default quota:": "默认配额："
-    ,"${0}% of quota": "已用配额 ${0}%"
-    ,"Admin": "管理员"
-    ,"Admins without password:": "无密码的管理员："
-    ,"Disabled admins:": "已禁用的管理员："
-    ,"Disabled users:": "已禁用的用户："
-    ,"Install path:": "安装路径："
-    ,"Installed directories:": "已安装目录数："
-    ,"Server plugins are currently disabled in config.": "服务端插件功能当前在配置中已禁用。"
-    ,"Installed plugins will load after you enable them and restart the backend.": "启用并重启后端后，已安装的插件才会加载。"
-    ,"No server plugins installed.": "暂无已安装的服务端插件。"
-    ,"No package metadata": "无 package 元数据"
-    ,"No git remote detected": "未检测到 git 远端"
-    ,"Remove server plugin \"${0}\"?": "移除服务端插件「${0}」？"
-    ,"Admin settings saved.": "管理员设置已保存。"
-    ,"Announcements": "公告"
-    ,"Announcement": "公告"
-    ,"Critical": "严重"
-    ,"Warning": "警告"
-    ,"Open": "打开"
-    ,"Dismiss": "关闭"
-    ,"Mark all as read": "全部标为已读"
-    ,"No announcements": "暂无公告"
-    ,"No announcements yet": "暂无公告"
-    ,"New announcement": "新建公告"
-    ,"Level": "级别"
-    ,"Body (Markdown)": "正文(Markdown)"
-    ,"Preview": "预览"
-    ,"Failed to load announcements.": "加载公告失败。"
-    ,"Announcement updated.": "公告已更新。"
-    ,"Announcement deleted.": "公告已删除。"
-    ,"Announcement created.": "公告已创建。"
-    ,"Delete failed.": "删除失败。"
-    ,"Create failed.": "创建失败。"
-    ,"Compare with": "对比基准"
-    ,"Clear history": "清空历史"
-    ,"Conversation history": "对话历史"
-    ,"Type what to change...": "描述要修改的内容…"
-    ,"Send": "发送"
-    ,"Stop": "终止"
-    ,"Working...": "处理中…"
-    ,"No saved sessions": "没有已保存的会话"
-    ,"New session": "新建会话"
-    ,"Import chat": "导入对话"
-    ,"Import selected": "导入选中"
-    ,"No chat is currently open": "当前没有打开的聊天"
-    ,"The current chat has no importable messages": "当前聊天没有可导入的消息"
-    ,"No messages selected": "没有选中任何消息"
-    ,"(${0} messages)": "（共 ${0} 条消息）"
-    ,"Imported ${0} message(s)": "已导入 ${0} 条消息"
-    ,"(None)": "（无）"
-    ,"Pending changes": "待应用的修改"
-    ,"Reject": "拒绝"
-    ,"Approve": "批准"
-    ,"Approve file change?": "批准文件修改？"
-    ,"Approve ${0} file changes?": "批准 ${0} 个文件修改？"
-    ,"Clear all session history for this scope?": "清空当前作用域的全部会话历史？"
-    ,"Iteration Studio session format updated; previous sessions cleared.": "迭代工作台会话格式已更新，旧会话已清除。"
-    ,"Iteration failed: ${0}": "迭代失败：${0}"
-    ,"AI suggested changes are waiting for approval.": "AI 提出的修改等待你审核。"
-    ,"Function output is invalid.": "函数输出无效。"
-    ,"Close Studio": "关闭工作室"
-    ,"📂 List files": "📂 列出文件"
-    ,"📖 Read file": "📖 读取文件"
-    ,"✏️ Write file": "✏️ 写入文件"
-    ,"🩹 Patch file": "🩹 补丁文件"
-    ,"🗑️ Delete file": "🗑️ 删除文件"
-    ,"📝 Rename file": "📝 重命名文件"
-    ,"🪪 Get character fields": "🪪 获取角色字段"
-    ,"🖊️ Update character fields": "🖊️ 更新角色字段"
-    ,"📥 Import embedded world": "📥 导入内嵌世界书"
-    ,"📚 List world books": "📚 列出世界书"
-    ,"📖 Get world-info entries": "📖 获取世界信息条目"
-    ,"🔍 Search world-info entries": "🔍 搜索世界信息条目"
-    ,"➕ Create world-info entry": "➕ 创建世界信息条目"
-    ,"✏️ Update world-info entry": "✏️ 更新世界信息条目"
-    ,"🗑️ Delete world-info entry": "🗑️ 删除世界信息条目"
-    ,"📕 Create world book": "📕 创建世界书"
-    ,"♻️ Replace world-info entries": "♻️ 替换世界信息条目"
-    ,"🔢 List regex scripts": "🔢 列出正则脚本"
-    ,"➕ Create regex script": "➕ 创建正则脚本"
-    ,"✏️ Update regex script": "✏️ 更新正则脚本"
-    ,"🗑️ Delete regex script": "🗑️ 删除正则脚本"
-    ,"🎼 Get orchestrator override": "🎼 获取编排器覆盖"
-    ,"🎼 Set orchestrator override": "🎼 设置编排器覆盖"
-    ,"🎼 Clear orchestrator override": "🎼 清除编排器覆盖"
-    ,"🧠 Get memory-graph config": "🧠 获取记忆图谱配置"
-    ,"🧠 Update memory-graph schema": "🧠 更新记忆图谱 schema"
-    ,"🧠 Update memory-graph advanced": "🧠 更新记忆图谱高级设置"
-    ,"⌨️ List slash commands": "⌨️ 列出斜杠命令"
-    ,"❓ Slash command help": "❓ 斜杠命令帮助"
-    ,"🧭 List Atria context keys": "🧭 列出 Atria 上下文键"
-    ,"🧭 Describe Atria context": "🧭 描述 Atria 上下文"
-    ,"📑 List docs": "📑 列出文档"
-    ,"📖 Read doc": "📖 读取文档"
-    ,"🔌 Toggle CardApp": "🔌 启用/停用 CardApp"
-    ,"Max request retries (0 = disabled)": "请求重试次数上限（0 表示关闭）"
-    ,"Applies to both text and image generation. Retries on network errors and rate-limit / server errors. Streaming responses are not retried after the stream begins.": "对文本生成和图像生成请求都生效。遇到网络错误、上游限流或服务器错误时会自动重试。流式响应开始后断开不会重试。"
-    ,"Max request retries": "请求重试次数上限"
-    ,"Retry status whitelist": "重试状态码白名单"
-    ,"Whitelist accepts comma-separated HTTP status codes and ranges (100–599). Examples: 429, 500-599, or 429, 500-504. Leave empty to retry the default set (429 and any 5xx). When non-empty, only listed codes are retried.": "白名单接受用逗号分隔的 HTTP 状态码或范围（100–599）。例如：429、500-599、429, 500-504。留空则重试默认集合（429 与所有 5xx）；非空则只重试列出的状态码。"
-    ,"Auto-continue when the response is truncated": "回复被截断时自动继续"
-    ,"Max auto-continue attempts": "最大自动继续次数"
-    ,"Main-chat only. Fires on output cap or safety cutoff. Stops if the last round produced no new content. Counter resets on user input, chat switch, or a normal-finish reply.": "仅作用于主聊天。在触及输出上限或被安全策略截断时触发。若上一轮未产出任何新内容则停止。计数在用户发送新消息、切换聊天或收到正常结束的回复时重置。"
-    ,"Auto-continue on truncated": "截断时自动继续"
-    ,"Request failed": "请求失败"
-    ,"Image generation failed": "图像生成失败"
-    ,"Retrying request… (${0}/${1})": "正在重试请求……（第 ${0}/${1} 次）"
-    ,"Retrying image generation… (${0}/${1})": "正在重试图像生成……（第 ${0}/${1} 次）"
-    ,"History": "历史"
-    ,"Clear all": "清空全部"
-    ,"Discard": "丢弃"
-    ,"(untitled)": "（未命名）"
-    ,"Delete this session": "删除该会话"
-    ,"Reference preset:": "参考预设："
-    ,"What is a reference preset?": "什么是参考预设？"
-    ,"A reference preset is a separate preset you pick as a comparison baseline. The AI can:": "参考预设是你额外选定的一份预设，用来作为对照基准。AI 可以："
-    ,"Read its fields (prompts, sampler settings, etc.) as context.": "读取它的字段（提示词、采样参数等）作为参考。"
-    ,"Diff your target preset against it to spot differences.": "把目标预设与它进行差异对比，找出不同之处。"
-    ,"Copy specific fields from it into your target preset.": "把它的特定字段复制到目标预设中。"
-    ,"You can merge the strengths of different presets, carrying one preset's ideas and content into another.": "可将不同预设的优点融合起来，将一个预设的思想、内容迁移到另一个预设。"
-    ,"Pick \"(none)\" to skip — the AI will edit your target preset alone.": "选「（无）」即跳过对比，AI 只在目标预设上修改。"
-    ,"Editing mode:": "编辑模式："
-    ,"Completion Preset Assistant — AI iteration": "聊天补全预设助手 — AI 迭代"
-    ,"Describe what to change in the preset...": "描述要修改的预设内容..."
-    ,"Clear all session history for this preset?": "清空该预设的所有会话历史？"
-    ,"Memory Graph Schema Studio": "记忆图谱 Schema 工作台"
-    ,"Describe what to change in the schema...": "描述要修改的 Schema 内容..."
-    ,"AI Iteration Studio": "AI 迭代工作台"
-    ,"AI Iteration Studio — Spec": "AI 迭代工作台 — Spec"
-    ,"AI Iteration Studio — Loop": "AI 迭代工作台 — Loop"
-    ,"AI Iteration Studio — Agenda": "AI 迭代工作台 — Agenda"
-    ,"AI Iteration Studio — Director": "AI 迭代工作台 — Director"
-    ,"Describe what to change in the profile...": "描述要修改的配置内容..."
-    ,"Auto-apply edits": "自动应用变更"
-    ,"Character Editor — AI iteration": "角色卡编辑器 — AI 迭代"
-    ,"Type what to change...": "描述要修改的内容..."
-    ,"Sampling params": "采样参数"
-    ,"Saved presets": "已保存预设"
-    ,"Frequency penalty": "频率惩罚"
-    ,"Presence penalty": "存在惩罚"
-    ,"Reference": "参考"
-    ,"Preview unavailable": "预览不可用"
-    ,"Max context unlocked": "解锁最大上下文"
-    ,"No data": "暂无数据"
-    ,"(was ${0} → now ${1})": "（待修改：${0} → ${1}）"
-    ,"No preset loaded.": "未加载预设。"
-    ,"Live target preview": "实时目标预览"
-    ,"Pending applied (preview):": "应用后（预览）:"
-    ,"Resize columns": "拖动调整宽度"
-    ,"New messages while you were on Preview": "在预览页面时收到的新消息"
-    ,"Schema": "Schema"
-    ,"${0} fields": "${0} 个字段"
-    ,"No schema loaded.": "未加载 Schema。"
-    ,"No profile loaded.": "未加载配置。"
-    ,"Pipeline": "流水线"
-    ,"No stages": "暂无阶段"
-    ,"Loop agent": "循环代理"
-    ,"Prompt preset": "提示词预设"
-    ,"API preset": "API 预设"
-    ,"API preset (Connection profile)": "API 预设（Connection profile）"
-    ,"Max rounds": "最大轮次"
-    ,"Wall-clock budget (s)": "时长预算（秒）"
-    ,"System prompt": "系统提示词"
-    ,"(unset)": "（未设置）"
-    ,"Planner": "规划器"
-    ,"Agents": "代理列表"
-    ,"No agents": "暂无代理"
-    ,"(final)": "（终）"
-    ,"planner rounds": "规划轮次"
-    ,"concurrent agents": "并发代理"
-    ,"total runs": "总执行次数"
-    ,"No sub-agents": "暂无子代理"
-    ,"rounds": "轮次"
-    ,"concurrent subagents": "并发子代理"
-    ,"total subagent runs": "子代理总执行次数"
-    ,"Character fields": "角色字段"
-    ,"Bound lorebook": "绑定世界书"
-    ,"No character loaded.": "未加载角色。"
-    ,"(click to expand)": "（点击展开）"
-    ,"World book: ${0}": "世界书：${0}"
-    ,"Auto-apply AI proposed changes": "自动应用 AI 提议的变更"
-    ,"Draft (not applied)": "草稿（未应用）"
-    ,"Recently applied": "最近应用"
-    ,"Entry UID: ${0}": "条目 UID：${0}"
-    ,"Position: ${0}": "位置：${0}"
-    ,"Keys: ${0}": "关键词：${0}"
-    ,"No entries yet.": "暂无条目。"
-    ,"No world book bound": "未绑定世界书"
-    ,"(new)": "（新建）"
-    ,"${0} references missing entry": "${0} 引用了不存在的条目"
-    ,"AI is thinking...": "AI 正在思考……"
-    ,"Applied to ${0}": "已应用到 ${0}"
-    ,"Apply to ${0}": "应用到 ${0}"
-    ,"global": "全局"
-    ,"current character": "当前角色"
-    ,"Rolled back": "已回退"
-    ,"Roll back this batch? The changes will be reversed in the target.": "回退本批次变更？目标里这些改动会被反向应用。"
-    ,"Tools and edits this round (${0})": "本轮工具调用 + 变更（${0}）"
-    ,"Rolled back at ${0}": "已回退 ${0}"
-    ,"✓ Applied to ${0} at ${1}": "✓ 已应用至 ${0}（${1}）"
-    ,"Rollback": "回退"
-    ,"Cannot rollback edit type: ${0}": "无法回退此类编辑：${0}"
-    ,"preset": "预设"
-    ,"schema": "结构"
-    ,"Apply failed: ${0}": "应用失败：${0}"
-    ,"Applied ${0} edit(s) to ${1}": "已应用 ${0} 条编辑到 ${1}"
-    ,"Applied ${0} of ${1} edit(s) to ${2}; ${3} skipped": "已应用 ${0}/${1} 条编辑到 ${2};${3} 条跳过"
-    ,"Applied ${0} of ${1} change(s); ${2} skipped": "已应用 ${0}/${1} 项变更；${2} 项跳过"
-    ,"No edits applied to ${0}: all ${1} were skipped (conflicts or already in desired state)": "未应用任何编辑到 ${0}：全部 ${1} 条都被跳过（冲突或已是期望状态）"
-    ,"No edits applied: all ${0} were skipped (conflicts or already in desired state)": "未应用任何编辑：全部 ${0} 条都被跳过（冲突或已是期望状态）"
-    ,"Edit error: ${0}": "编辑错误：${0}"
-    ,"Failed to save preset: ${0}": "保存预设失败：${0}"
-    ,"Failed to save schema: ${0}": "保存结构失败：${0}"
-    ,"Failed to save profile: ${0}": "保存配置失败：${0}"
-    ,"Failed to save character: ${0}": "保存角色失败：${0}"
-    ,"Session finalized": "会话已完成"
-    ,"No presets": "暂无预设"
-    ,"Field updated: ${0}": "字段已更新：${0}"
-    ,"Show ${0} more entries": "展开剩余 ${0} 条"
-    ,"Working profile reset to a blank shell — building this card's orchestration from scratch.": "工作中的配置已重置为空白模板，将从零开始为这张角色卡编写编排。"
-    ,"Working profile reset to match the current global profile — adjust from there.": "工作中的配置已重置为当前全局配置——请在此基础上调整。"
-    ,"Schema reset to a blank shell — building from scratch.": "结构已重置为空白模板——从零开始搭建。"
-    ,"Schema reset to match the current global schema — adjust from there.": "结构已重置为当前全局结构——请在此基础上调整。"
-    ,"Reset working profile to blank": "重置工作配置为空白"
-    ,"Reset working profile to global": "重置工作配置为全局"
-    ,"Reset schema to blank": "重置结构为空白"
-    ,"Reset schema to global": "重置结构为全局"
-    ,"✓ Applied at ${0}": "✓ 已应用于 ${0}"
-    ,"Apply ${0}": "应用 ${0}"
-    ,"Rollback this round": "回退本轮"
-    ,"Roll back ${0} change(s) from this round?": "确认回退本轮的 ${0} 项变更？"
-    ,"Rolled back ${0} change(s).": "已回退 ${0} 项变更。"
-    ,"Batch rollback finished with ${0} failure(s).": "批量回退完成，${0} 项失败。"
-    ,"(untitled entry)": "（无标题条目）"
-    ,"${0} entries": "${0} 条"
-    ,"${0} pending": "${0} 项待批准"
-    ,"${0} draft": "${0} 项草稿"
-    ,"Error: ${0}": "错误：${0}"
-    ,"Auto-continue": "自动续轮"
-    ,"AI read the indicated data and is waiting to act on the result next round.": "AI 读取了相关数据，等待下一轮根据结果调整。"
-    ,"Just imported this card — review the baseline and suggest tweaks.": "刚导入这张卡——回顾基础设定并提出调整建议。"
-
-    ,"Continue iteration": "继续迭代"
-    ,"Finalize iteration": "结束迭代"
-
-    ,"Set preset field": "设置预设字段"
-    ,"Replace field text": "替换字段文本"
-    ,"Insert into field": "向字段中插入"
-    ,"Delete inside field": "从字段中删除"
-    ,"Replace text in prompt": "替换条目文本"
-    ,"Insert text in prompt": "向条目中插入文本"
-    ,"Delete text in prompt": "从条目中删除文本"
-    ,"List insert": "列表插入"
-    ,"List remove": "列表移除"
-    ,"List move": "列表移动"
-    ,"Set prompt entry": "设置提示条目"
-    ,"Adjust prompt order": "调整提示顺序"
-    ,"Remove prompt entry": "移除提示条目"
-    ,"Remove prompt order item": "移除提示顺序项"
-    ,"Clone to new preset": "克隆为新预设"
-    ,"Copy from reference": "从参考预设复制"
-    ,"Read preset fields": "读取预设字段"
-    ,"Read reference fields": "读取参考字段"
-    ,"Diff against reference": "与参考预设对比"
-    ,"Simulate prompt assembly": "模拟提示组装"
-
-    ,"Returned ${0} values": "返回 ${0} 个值"
-    ,"${0} paths": "${0} 个路径"
-    ,"${0} fields differ": "${0} 个字段不同"
-    ,"Assembled ${0} chars": "组装 ${0} 个字符"
-
-    ,"Set node type": "设置节点类型"
-    ,"Remove node type": "移除节点类型"
-    ,"Reorder node types": "重新排序节点类型"
-
-    ,"Update director main agent": "更新导演主智能体"
-    ,"Upsert director sub-agent": "设置导演子智能体"
-    ,"Remove director sub-agent": "移除导演子智能体"
-    ,"Update director limits": "更新导演限制"
-    ,"Update director tools": "更新导演工具"
-    ,"main agent": "主智能体"
-    ,"limits": "限制"
-    ,"tools": "工具"
-    ,"Update loop profile": "更新循环配置"
-    ,"loop profile": "循环配置"
-    ,"Update agenda planner": "更新议程规划者"
-    ,"Upsert agenda agent": "设置议程智能体"
-    ,"Remove agenda agent": "移除议程智能体"
-    ,"Set agenda final agent": "设置议程终笔智能体"
-    ,"Update agenda limits": "更新议程限制"
-    ,"planner": "规划者"
-    ,"Upsert pipeline stage": "设置流水线阶段"
-    ,"Remove pipeline stage": "移除流水线阶段"
-    ,"Upsert stage node": "设置阶段节点"
-    ,"Remove stage node": "移除阶段节点"
-    ,"Upsert preset": "设置预设"
-    ,"Remove preset": "移除预设"
-    ,"Simulate orchestration": "模拟编排"
-    ,"Set lorebook book filter": "设置世界书书名过滤"
-    ,"Set lorebook entry filter": "设置世界书条目过滤"
-    ,"Clear lorebook book filter": "清除世界书书名过滤"
-    ,"Clear lorebook entry filter": "清除世界书条目过滤"
-
-    ,"List world books": "列出世界书"
-    ,"List lorebook entries": "列出世界书条目"
-    ,"Search lorebook": "搜索世界书"
-    ,"Read lorebook entries": "读取世界书条目"
-    ,"${0} books": "${0} 本世界书"
-    ,"${0} hits": "${0} 个匹配"
-
-    ,"Set card field": "设置卡片字段"
-    ,"Replace text in card field": "替换卡片字段文本"
-    ,"Add lorebook entry": "新增世界书条目"
-    ,"Update lorebook entry": "更新世界书条目"
-    ,"Remove lorebook entry": "移除世界书条目"
-    ,"Set lorebook metadata": "设置世界书元数据"
-    ,"Web search": "网络搜索"
-    ,"Simulate prompt": "模拟提示"
-    ,"${0} results": "${0} 个结果"
-    ,"${0} chars": "${0} 个字符"
-
-    ,"Arguments": "参数"
-    ,"Result": "结果"
-    ,"Profile updated": "配置已更新"
-    ,"Field updated": "字段已更新"
-    ,"working profile": "当前配置"
-    ,"Line diff": "行级 diff"
-    ,"Line diff (+${0} -${1})": "行级 diff（+${0} -${1}）"
-    ,"Expand diff": "展开 diff"
-    ,"Resize diff columns": "调整 diff 栏宽"
-    ,"Close expanded diff": "关闭展开的 diff"
-    ,"(unknown op)": "（未知操作）"
-    ,"(tool)": "（工具）"
-    ,"(root)": "（根）"
-    ,"(${0}${1} bytes)": "（${0}${1} 字节）"
-    ,"field": "字段"
-
-    ,"General editing": "通用编辑"
-    ,"Adapt for orchestrator": "适配编排器"
-    ,"Jailbreak-only": "仅越狱"
-
-    ,"(no effective change)": "（无实际变更）"
-    ,"Clear all session history?": "清空所有会话历史？"
-    ,"Save failed — close anyway and lose this turn?": "保存失败——仍要关闭并丢弃本轮内容吗？"
-
-    ,"Apply ${0} to \"${1}\"": "将 ${0} 应用到「${1}」"
-    ,"Apply ${0} changes (${1})": "应用 ${0} 项变更（${1}）"
-    ,"${0} to character": "${0} 到角色卡"
-    ,"${0} to \"${1}\"": "${0} 到「${1}」"
-    ,"Apply failed (${0}): ${1}": "应用失败（${0}）：${1}"
-    ,"Apply failed for ${0} target(s).": "${0} 个目标应用失败。"
-    ,"Applied ${0} change(s).": "已应用 ${0} 项变更。"
-    ,"Rollback failed (${0}): ${1}": "回退失败（${0}）：${1}"
-    ,"Rollback failed for ${0} target(s).": "${0} 个目标回退失败。"
-    ,"Rolled back.": "已回退。"
-    ,"Resize chat and preview columns": "调整对话与预览栏宽"
-    ,"Unread assistant messages": "未读 AI 消息"
-    ,"(untitled session)": "（无标题会话）"
-    ,"Delete this session?": "删除此会话？"
-    ,"Clear all saved sessions for this character?": "清空此角色卡的所有保存会话？"
-    ,"Finalized.": "已完成。"
-    ,"No saved sessions yet.": "暂无保存的会话。"
-
-    ,"Cloned to ${0}": "已克隆到 ${0}"
-    ,"Apply to ${0} override": "应用到 ${0} 的角色卡覆盖"
-    ,"Regenerate this turn? Subsequent rounds will be discarded.": "重新生成本轮？后续轮次会被丢弃。"
-    ,"(deleted)": "（已删除）"
-    ,"Reset rejected: reset_to_blank only applies when iterating a character override.": "重置被拒：reset_to_blank 仅在迭代角色卡覆盖时可用。"
-    ,"Reset rejected: reset_to_global only applies when iterating a character override.": "重置被拒：reset_to_global 仅在迭代角色卡覆盖时可用。"
-    ,"Reset rejected: this card already has an override. Use reset_to_global instead, or continue adjusting in place.": "重置被拒：这张卡已有覆盖。请改用 reset_to_global，或者直接在现有基础上调整。"
-    ,"Reset rejected: this card has no character override yet. Use reset_to_blank instead, or continue adjusting the seeded global copy in place.": "重置被拒：这张卡还没有角色卡覆盖。请改用 reset_to_blank，或者直接在播种的全局副本上调整。"
-    ,"Description": "描述"
-    ,"Personality": "性格"
-    ,"Example dialogue": "示例对话"
-    ,"Main prompt": "主提示词"
-    ,"Post-history instructions": "对话历史后指令"
-    ,"Creator notes": "作者注释"
-    ,"pending change": "待审批改动"
-    ,"${0} pending edit(s)": "${0} 处待审批改动"
-    ,"No character bound": "未绑定角色卡"
-    ,"(unnamed character)": "（未命名角色）"
-    ,"All card fields empty.": "角色卡所有字段均为空。"
-    ,"Alternate greetings": "备用问候语"
-    ,"What preset should I use for the Agent?": "Agent 这里该挂什么样的提示词预设？"
-    ,"What preset should I use here?": "这里该挂什么样的提示词预设？"
-    ,"This selector is for the preset the plugin uses to do its own work — editing configs, editing schemas, extracting facts, building recall queries, etc. It is NOT for drafting RP content.": "这一栏选的是插件自己干活时用的预设——改配置、改 Schema、抽事实、构造召回查询等等，不是用来产出 RP 正文的。"
-    ,"A clean preset works best here: one that contains only jailbreak / general unblock prompts, with no RP style instructions, character voice, or narrative format requirements.": "这里最适合挂一份干净预设：只保留越狱/通用破限提示词，不含 RP 文风指令、角色语态、叙事格式要求。"
-    ,"Why? RP presets often force an output format (mandatory schema blocks, forced thinking chains) that conflicts with the structured tool calls these plugins use. Style instructions can also leak into config edits and produce odd results.": "原因：日常 RP 预设常常会强制输出格式（强制 schema 块、强制思维链），与这些插件用的结构化 tool call 互相打架；文风指令也容易渗进配置改写里，结果稀奇古怪。"
-    ,"Two ways to get a clean preset:": "两种拿到干净预设的方式："
-    ,"Click \"Import plugin-only preset\" below — imports a pre-built clean preset bundled with Atria, then selects it here.": "点下面的「导入 plugin-only 预设」——一键导入 Atria 内置的现成干净预设，并自动选中。"
-    ,"Open the Completion Preset Assistant and start a new session in \"Jailbreak-only\" mode — it will derive a clean version from your existing RP preset. Your original preset stays untouched.": "打开「聊天补全预设助手」，新开一个「仅保留破限」模式的会话——它会从你现有的 RP 预设派生一份干净版本，原预设保持不动。"
-    ,"This selector is for the preset an Agent uses to draft content. Unlike iteration-AI presets, the Agent SHOULD use your RP-style instructions — jailbreak, NSFW guidance, style/voice rules, anti-cliché instructions, etc.": "这一栏选的是 Agent 起草正文时用的预设。和插件迭代 AI 不一样，Agent 这里需要你的 RP 类指令——越狱、NSFW 指导、文风/语态规则、反八股指令等等。"
-    ,"But a raw daily RP preset is also not the right fit: instructions that force an output schema or a fixed thinking-chain format will block the agent's tool calls, and character/world-info that the agent framework already injects will get duplicated.": "但是直接挂日常 RP 预设也不合适：强制输出 schema、固定思维链格式之类的指令会顶坏 Agent 的 tool call；角色卡描述、世界书等占位符在 Agent 框架里已经会被注入一次，原样保留会被重复注入。"
-    ,"Recommended: derive an Agent-friendly preset from your RP preset. Open the Completion Preset Assistant, start a new session in \"Adapt for orchestrator\" mode, and ask it to convert. It will keep your style / jailbreak / anti-cliché instructions while disabling format-forcing prompts and duplicate injections. The original preset stays untouched.": "建议：从你的 RP 预设派生一份 Agent 友好版本。打开「聊天补全预设助手」，新开一个「编排器适配」模式的会话，让它帮你改造——它会保留文风 / 越狱 / 反八股指令，同时禁用会强制格式的提示词和重复注入。原预设保持不动。"
-    ,"For the full multi-Agent setup walkthrough, see the multi-Agent onboarding recipe in the documentation.": "完整的多 Agent 配置流程请见文档中的「多 Agent 上手指南」。"
-    ,"Preset manager unavailable.": "预设管理器不可用。"
-    ,"Failed to save the \"{name}\" preset.": "保存「{name}」预设失败。"
-    ,"A preset named \"{name}\" already exists. Overwrite it with the bundled version, or keep your existing copy and just select it?": "已存在名为「{name}」的预设。要用 Atria 内置版本覆盖，还是保留你现有的版本并直接选中？"
-    ,"Overwrite with bundled version": "用内置版本覆盖"
-    ,"Keep existing": "保留现有"
-    ,"Overwrote preset: {name}": "已覆盖预设：{name}"
-    ,"Selecting your existing \"{name}\" preset.": "已为你选中现有的「{name}」预设。"
-    ,"Import plugin-only preset": "导入 plugin-only 预设"
-    ,"Failed to download the \"{name}\" preset.": "下载「{name}」预设失败。"
-    ,"Imported preset: {name}": "已导入预设：{name}"
-    ,"This selector is for the preset a Director-mode Agent uses (main agent or a sub-agent). Director already injects the full RP context (character card, persona, world info, chat history) inside a <story_context> envelope before the agent runs — so the agent's own preset does NOT need any character / world / persona placeholders. Adding them would only re-inject the same content twice and burn tokens.": "这一栏选的是 Director 模式 Agent（主 Agent 或 sub-agent）用的预设。Director 在 Agent 运行前已经把完整 RP 上下文（角色卡、persona、世界书、聊天记录）整段塞进 <story_context> 信封里——所以 Agent 自己这份预设不需要任何角色卡/世界书/persona 占位符，加了只会把同样的内容重复注入一次，白烧 token。"
-    ,"What this slot SHOULD carry: jailbreak / content-permission instructions that wrap the <story_context> block, plus the chatHistory marker so the envelope lands in the right place. Style / voice / anti-cliché rules normally belong in the agent's system prompt, not here.": "这一栏该装的是什么：包在 <story_context> 块外面的越狱/内容许可指令，加上 chatHistory 占位符让信封落到合适的位置。文风/语态/反八股规则正常应该写在 Agent 的系统提示词里，不属于这里。"
-    ,"Two ways to get a Director-friendly preset:": "两种拿到 Director 友好预设的方式："
-    ,"Click \"Import agent-director preset\" below — imports a minimal Atria-bundled preset (marker-free, permission text only) and selects it here. Good as a quick start.": "点下面的「导入 agent-director 预设」——一键导入 Atria 内置的极简预设（不含占位符，只保留许可文本），并自动选中。适合快速起步。"
-    ,"Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a Director-ready version from your existing RP preset, keeping your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts and duplicate injections. Your original preset stays untouched.": "打开「聊天补全预设助手」，新开一个「编排器适配」模式的会话——它会从你现有的 RP 预设派生一份适配 Director 的版本，保留越狱/文风/反八股指令，同时剥掉强制格式的提示词和重复注入。原预设保持不动。"
-    ,"Import agent-director preset": "导入 agent-director 预设"
-    ,"This selector is for the preset a non-Director Agent uses (Single / Spec / Agenda planner / Loop). Unlike Director, these modes do NOT inject the RP context for the agent — so the agent's preset is the only path through which character card, persona, and world info reach the model. Markers (charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory) must stay enabled, and the RP material should be visibly separated from the runtime task instructions so the agent does not mistake them for narrative continuation.": "这一栏选的是非 Director 模式 Agent（Single / Spec / Agenda planner / Loop）用的预设。和 Director 不同，这些模式不会主动给 Agent 注入 RP 上下文——所以 Agent 这份预设是角色卡、persona、世界书到达模型的唯一通道。占位符（charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory）必须保持启用；RP 素材要和运行时下发的任务指令明确隔开，免得 Agent 把它读成叙事延续。"
-    ,"This is the same shape iteration-AI plugins (CPA iter / Memory Graph / CardApp Studio iter) need, just placed in an Agent slot. The bundled preset offered below is identical in structure to the iter-AI plugin-only preset.": "这和插件迭代 AI（预设助手迭代、记忆图、卡片应用工作台迭代等）需要的形态是一样的，只是装在 Agent 的槽位里。下面提供的内置预设结构上和插件迭代 AI 用的 plugin-only 预设一致。"
-    ,"Two ways to get a non-Director-friendly preset:": "两种拿到非 Director 友好预设的方式："
-    ,"Click \"Import agent-non-director preset\" below — imports a Atria-bundled preset (markers enabled, story / user-request envelopes wrap the context) and selects it here. Good as a quick start.": "点下面的「导入 agent-non-director 预设」——一键导入 Atria 内置的预设（占位符启用，story / user-request 信封把上下文包好），并自动选中。适合快速起步。"
-    ,"Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a version from your existing RP preset that preserves your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts. Your original preset stays untouched.": "打开「聊天补全预设助手」，新开一个「编排器适配」模式的会话——它会从你现有的 RP 预设派生一份版本，保留越狱/文风/反八股指令，同时剥掉强制格式的提示词。原预设保持不动。"
-    ,"Import agent-non-director preset": "导入 agent-non-director 预设"
-
-    ,"Update skill file": "更新 skill 文件"
-    ,"Update skill frontmatter": "更新 skill 元数据"
-    ,"Create skill": "创建 skill"
-    ,"Rename skill": "重命名 skill"
-    ,"Move skill scope": "迁移 skill 作用域"
-    ,"Delete skill": "删除 skill"
-    ,"Name": "名称"
-    ,"Scope": "作用域"
-    ,"global": "全局"
-    ,"preset:${0}": "预设：${0}"
-    ,"character:${0}": "角色：${0}"
-    ,"(unknown scope)": "（未知作用域）"
-    ,"No content change": "无内容变更"
-    ,"Plus ${0} additional file(s): ${1}": "另含 ${0} 个附加文件：${1}"
-    ,"Skill \"${0}\" (${1}) will be deleted on Apply. All files removed; this cannot be undone.": "Skill「${0}」（${1}）将在「应用」时删除：所有文件一并移除，且无法撤销。"
-    ,"Committed ${0} skill edit(s)": "已提交 ${0} 项 skill 修改"
-    ,"Skill commit failed at ${0} (${1}): ${2}": "Skill 提交在 ${0}（${1}）处失败：${2}"
-    ,"Skill commit halted: ${0} (${1}) failed (${2}). Remaining approved skill edits left in the pending list for retry.": "Skill 提交已中断：${0}（${1}）失败（${2}）。剩余已批准的 skill 修改保留在待办列表中，可重试。"
-
-    ,"Pending approval": "等待审批"
-    ,"Approve": "批准"
-    ,"Reject": "拒绝"
-    ,"Rollback": "回退"
-    ,"Undo reject": "撤销拒绝"
-    ,"✓ Applied at ${0}": "✓ 已应用 ${0}"
-    ,"✗ Rejected at ${0}": "✗ 已拒绝 ${0}"
-    ,"↺ Rolled back at ${0}": "↺ 已回退 ${0}"
-    ,"⚠ External change": "⚠ 外部已变更"
-    ,"⚠ Write skipped (resource changed)": "⚠ 写入未生效（目标已变更）"
-    ,"The resource changed externally since this proposal was captured. Approve to retry against the current state, or reject.": "自提议生成以来，该资源已被外部修改。点击批准将基于当前状态重新尝试；点击拒绝则放弃。"
-    ,"The AI called this write tool, but the target had been changed in the meantime — the write was NOT applied. The AI has been notified and can decide whether to retry.": "AI 调用了这个写入工具，但目标在期间已被修改——本次写入未生效。AI 已收到通知，可自行决定是否重试。"
-    ,"Validation errors (${0}):": "校验错误（${0}）："
-    ,"Targets missing (${0}):": "目标不存在（${0}）："
-    ,"Payload rejected (${0}):": "载荷被拒（${0}）："
-    ,"State destroyed (${0}):": "状态已销毁（${0}）："
-    ,"Server errors (${0}):": "服务器错误（${0}）："
-    ,"Network errors (${0}):": "网络错误（${0}）："
-    ,"Persistence errors (${0}):": "持久化错误（${0}）："
-    ,"Other errors (${0}):": "其他错误（${0}）："
-    ,"Approve all pending (${0})": "批准全部待审（${0}）"
-    ,"Reject all pending (${0})": "拒绝全部待审（${0}）"
-    ,"Rollback this turn (${0})": "回退本轮（${0}）"
-    ,"Profile change": "档案变更"
-    ,"Preset change": "预设变更"
-    ,"Schema change": "Schema 变更"
-    ,"Character edits": "角色编辑"
-    ,"Lorebook edits": "世界书编辑"
-    ,"Lorebook write": "世界书写入"
-    ,"Lorebook ${0}": "世界书 ${0}"
-    ,"Skill change": "Skill 变更"
-    ,"Skill: ${0}": "Skill: ${0}"
-    ,"Clone preset": "克隆预设"
-    ,"Will fork \"${0}\" into a new preset named \"${1}\" and switch the open session onto it.": "将以「${0}」为模板新建预设「${1}」，并把当前会话切换过去。"
-    ,"Will fork the current preset into a new one and switch the open session onto it.": "将以当前预设为模板新建一个预设，并把当前会话切换过去。"
-    ,"⚠ Cannot be auto-rolled back — the cloned preset stays on disk even after this card is undone.": "⚠ 无法自动回退——即使撤销此条目，已生成的预设也仍会保留在磁盘上。"
-    ,"Storage Backend": "存储后端"
-    ,"Current Mode:": "当前模式："
-    ,"Read-Only:": "只读："
-    ,"Last Migration:": "上次迁移："
-    ,"Switch Backend": "切换后端"
-    ,"Target:": "目标："
-    ,"Filesystem": "文件系统"
-    ,"SQLite": "SQLite"
-    ,"MySQL": "MySQL"
-    ,"PostgreSQL": "PostgreSQL"
-    ,"MySQL connection": "MySQL 连接"
-    ,"PostgreSQL connection": "PostgreSQL 连接"
-    ,"URL:": "连接字符串："
-    ,"Pool size:": "连接池大小："
-    ,"mysql://user:pass@host:3306/atria": "mysql://user:pass@host:3306/atria"
-    ,"postgresql://user:pass@host:5432/atria": "postgresql://user:pass@host:5432/atria"
-    ,"storageBackendDbConfigHint": "若连接字符串留空，将直接使用 config.yaml 中已设置的 storage.mysql.url／storage.postgres.url。"
-    ,"storageBackendSharedDbWarning": "MySQL 与 PostgreSQL 后端会在所有用户间共享同一份数据库 schema（以 handle 字段区分）。切换到或离开共享后端时，另一个后端的数据会原样保留在磁盘上但暂时不可见，直到再次切换回去。"
-    ,"Migrate Now": "立即迁移"
-    ,"storageBackendMigrationWarning": "此操作会将所有用户数据复制到目标后端并将运行中的服务器切换过去。备份会永久保存在 <dataRoot>/_storage-migrations/ 目录下，绝不会自动删除。"
-    ,"Result": "结果"
-    ,"Loading...": "加载中……"
-    ,"yes": "是"
-    ,"no": "否"
-    ,"(none)": "（无）"
-    ,"Failed to load storage backend status.": "加载存储后端状态失败。"
-    ,"A migration is currently in progress on the server. Please wait.": "服务器上当前有迁移正在进行，请稍候。"
-    ,"Select a target backend mode.": "请选择目标后端模式。"
-    ,"Migrate ALL user data to ${targetMode}? A backup will be saved permanently under the data-root _storage-migrations directory. This may take several minutes for large installs and the server will reject writes until it finishes.": "确认将所有用户数据迁移到 ${targetMode} 吗？备份会永久保存在数据根目录下的 _storage-migrations 目录中。大型部署可能需要数分钟，迁移期间服务器会拒绝写入。"
-    ,"Migration in progress, do not refresh...": "迁移进行中，请勿刷新……"
-    ,"Migration in progress. This may take several minutes.": "迁移进行中。可能需要数分钟。"
-    ,"Migration complete.": "迁移完成。"
-    ,"Migration failed for one or more users. Source backend retained.": "一个或多个用户迁移失败。源后端已保留。"
-    ,"Migration failed.": "迁移失败。"
-    ,"Could not save to config.yaml: ${configPersistError}": "写入 config.yaml 失败：${configPersistError}"
-    ,"Duration:": "耗时："
-    ,"Started:": "开始时间："
-    ,"last progress": "最近进度"
-    ,"Progress:": "进度："
-    ,"pending": "等待中"
-    ,"in flight": "进行中"
-    ,"starting": "启动中"
-    ,"so far:": "目前进度："
-    ,"Prompt post-processing is set to Single user message, which collapses every turn into one message. Prompt caching cannot reuse any prefix across requests in this mode — every request is a cache write with no read. Switch to None or Merge consecutive roles for caching to take effect.": "「提示词后处理」当前为「单一用户消息」，该模式会把所有轮次塞进同一条消息。在此模式下提示词缓存无法跨请求复用任何前缀，每次请求都只写不读。请切换到「未选择」或「合并相同角色连续的发言」以使缓存生效。"
-    ,"Prompt post-processing is set to Strict or Semi-strict, which folds every system message after the first into a user turn. Prompt caching still works on the first user message's tail, but the dedicated system-prompt cache breakpoint is unavailable. None or Merge consecutive roles gives the best cache coverage.": "「提示词后处理」当前为「严格」或「半严格」，该模式会把首条之后的所有系统消息并入用户轮次。提示词缓存仍能命中首条用户消息的尾部，但无法单独缓存系统提示。改用「未选择」或「合并相同角色连续的发言」可获得最佳缓存覆盖。"
-    ,"sync.category.characters": "角色卡"
-    ,"sync.category.characters.desc": "角色卡 PNG 文件，每个角色一份独立文件。"
-    ,"sync.category.chats": "聊天与群组"
-    ,"sync.category.chats.desc": "单人聊天、群组聊天与群组元数据。"
-    ,"sync.category.worlds": "世界书（Lorebook）"
-    ,"sync.category.worlds.desc": "世界书 JSON 文件。"
-    ,"sync.category.card-apps": "卡片应用"
-    ,"sync.category.card-apps.desc": "每个角色的 CardApp 工作目录文件，不含其内部 .git 历史记录。"
-    ,"sync.category.skills": "技能（Skills）"
-    ,"sync.category.skills.desc": "已安装的技能知识包。"
-    ,"sync.category.openai-presets": "OpenAI 预设"
-    ,"sync.category.openai-presets.desc": "对话补全预设文件，每个预设一份。"
-    ,"sync.category.novelai-presets": "NovelAI 预设"
-    ,"sync.category.novelai-presets.desc": "NovelAI 预设文件。"
-    ,"sync.category.koboldai-presets": "KoboldAI 预设"
-    ,"sync.category.koboldai-presets.desc": "KoboldAI 预设文件。"
-    ,"sync.category.textgen-presets": "文本补全预设"
-    ,"sync.category.textgen-presets.desc": "TextGen WebUI 及通用文本补全预设文件。"
-    ,"sync.category.instruct": "指令模板"
-    ,"sync.category.instruct.desc": "指令格式模板。"
-    ,"sync.category.context": "上下文模板"
-    ,"sync.category.context.desc": "上下文格式化模板。"
-    ,"sync.category.sysprompt": "系统提示词"
-    ,"sync.category.sysprompt.desc": "系统提示词模板。"
-    ,"sync.category.reasoning": "推理模板"
-    ,"sync.category.reasoning.desc": "推理格式模板。"
-    ,"sync.category.themes": "主题"
-    ,"sync.category.themes.desc": "界面主题文件。"
-    ,"sync.category.movingUI": "可移动界面布局"
-    ,"sync.category.movingUI.desc": "保存的可移动面板布局。"
-    ,"sync.category.quickreplies": "快速回复"
-    ,"sync.category.quickreplies.desc": "快速回复集。"
-    ,"sync.category.assets": "素材"
-    ,"sync.category.assets.desc": "素材文件夹（音效、背景音乐等）。"
-    ,"sync.category.backgrounds": "背景"
-    ,"sync.category.backgrounds.desc": "背景图片文件。"
-    ,"sync.category.avatars": "用户设定头像"
-    ,"sync.category.avatars.desc": "用户设定头像图片文件。"
-    ,"sync.category.user-files": "用户上传文件"
-    ,"sync.category.user-files.desc": "在聊天或脚本中上传的文件。"
-    ,"sync.category.comfy-workflows": "ComfyUI 工作流"
-    ,"sync.category.comfy-workflows.desc": "保存的 ComfyUI 节点工作流 JSON 文件，体积通常很小。"
-    ,"sync.category.user-images": "用户图片"
-    ,"sync.category.user-images.desc": "通过 user/images 目录管理的图片库。"
-    ,"sync.category.image-metadata": "图片元数据索引"
-    ,"sync.category.image-metadata.desc": "image-metadata.json，需与用户图片一起同步。"
-    ,"sync.category.vectors": "向量缓存"
-    ,"sync.category.vectors.desc": "向量嵌入缓存。两端复用同一份向量，避免重复消耗 API 配额。"
-    ,"sync.category.stats": "角色统计"
-    ,"sync.category.stats.desc": "stats.json，由聊天记录派生；冲突时可在本地重新计算。"
-    ,"sync.category.settings": "设置"
-    ,"sync.category.settings.desc": "settings.json，完整的 Atria 配置。"
-    ,"sync.category.secrets": "API 密钥与凭据"
-    ,"sync.category.secrets.desc": "secrets.json，API 密钥、令牌与密码。"
-    ,"sync.category.extensions": "扩展插件"
-    ,"sync.category.extensions.desc": "用户级扩展文件，默认关闭。"
-    ,"sync.warning.settings_single_file_conflict": "单一大文件，冲突时只能按整文件二选一。"
-    ,"sync.warning.secrets_plaintext_transport": "包含 API 密钥；除非传输已加密，否则将以明文方式通过局域网传送。"
-    ,"sync.warning.extensions_version_drift": "第三方插件可能存在本地未完成的改动或版本不兼容的代码。"
-    ,"LAN Sync": "局域网同步"
-    ,"Open LAN Sync": "打开局域网同步"
-    ,"Recommended for two devices in regular use. Repeated, two-way, incremental — only changed data crosses the wire.": "推荐两台经常使用的设备使用。重复、双向、增量——只有变更的数据会通过网络传输。"
-    ,"One-shot full-data transfer for moving to a brand-new device. For ongoing two-way sync use LAN Sync above.": "一次性全量数据传输，适用于迁移到全新设备。如需持续双向同步，请使用上方的局域网同步。"
-    ,"Sync two Atria devices on the same network. Only changed data crosses the wire; full re-uploads aren't needed.": "同步同一网络下的两台 Atria 设备。只有变更的数据会通过网络传输，无需重新上传全量数据。"
-    ,"My devices": "我的设备"
-    ,"Pair new device": "配对新设备"
-    ,"Pair with existing device": "与已有设备配对"
-    ,"Paired devices": "已配对的设备"
-    ,"No paired devices yet. Use the tabs above to pair this device with another.": "尚未配对任何设备。请使用上方的标签页将此设备与另一台配对。"
-    ,"Generate a one-time pairing link to share with another device on the same network. The other device pastes the URL into its own Pair with existing device tab.": "生成一次性的配对链接，分享给同一网络下的另一台设备。另一台设备将链接粘贴到其「与已有设备配对」标签页即可。"
-    ,"Label for the OTHER device (shown in your devices list)": "另一台设备的标签（显示在你的设备列表中）"
-    ,"e.g. Phone, Laptop, Office desktop": "例如：手机、笔记本、办公台式机"
-    ,"Categories to sync:": "要同步的类别："
-    ,"Generate pairing link": "生成配对链接"
-    ,"Share this with the other device": "将此分享给另一台设备"
-    ,"Copy the link and paste it into the OTHER device's Pair with existing device tab.": "复制此链接，粘贴到另一台设备的「与已有设备配对」标签页。"
-    ,"Pairing link": "配对链接"
-    ,"Copy link": "复制链接"
-    ,"Generate another": "重新生成"
-    ,"The other device must enter THIS device's credentials when pairing if you have basic auth enabled. They are sent over LAN only, never stored.": "如果你启用了基本认证，另一台设备在配对时需要输入此设备的凭据。凭据仅通过局域网发送，不会被存储。"
-    ,"Paste the pairing link from the other device, or fill in the fields manually.": "粘贴另一台设备的配对链接，或手动填写各项字段。"
-    ,"Special characters in your handle are normalized to underscores for pairing. Both devices must use the same handle.": "用户名中的特殊字符在配对时会被规范化为下划线。两台设备必须使用相同的用户名。"
-    ,"This pairing link is for ${0}, but you're logged in as ${1}. Pair from the matching account, or use the same handle on both devices.": "此配对链接面向 ${0}，但您当前登录为 ${1}。请用匹配的账户配对，或在两台设备上使用同一用户名。"
-    ,"Paste pairing link here": "在此粘贴配对链接"
-    ,"Other device base URL": "另一台设备的基础 URL"
-    ,"Peer identifier from the other device": "另一台设备给出的标识符"
-    ,"Label for the other device": "另一台设备的标签"
-    ,"e.g. Phone": "例如：手机"
-    ,"Peer ID": "对端 ID"
-    ,"If the other device has basic authentication enabled, enter the credentials it expects. Otherwise leave blank.": "如果另一台设备启用了基本认证，请输入它要求的凭据。否则留空即可。"
-    ,"Basic auth username (optional)": "基本认证用户名（可选）"
-    ,"Basic auth password (optional)": "基本认证密码（可选）"
-    ,"Pair and sync": "配对并同步"
-    ,"Resolve conflicts": "解决冲突"
-    ,"The same file was edited on both devices. Pick which version to keep for each file. There's no line-by-line merge.": "同一文件在两台设备上都被修改了。请为每个文件选择要保留的版本，不支持按行合并。"
-    ,"Apply resolutions": "应用解决方案"
-    ,"Type: ${conflict.kind}": "类型：${conflict.kind}"
-    ,"Local: deleted": "本地：已删除"
-    ,"Local version": "本地版本"
-    ,"Remote: deleted": "远端：已删除"
-    ,"Remote version": "远端版本"
-    ,"Sync now": "立即同步"
-    ,"Undo last sync": "撤销上次同步"
-    ,"Forget": "忘记"
-    ,"Last sync: ${formatRelativeTime(peer.lastSyncAt)}": "上次同步：${formatRelativeTime(peer.lastSyncAt)}"
-    ,"Never": "从未"
-    ,"just now": "刚刚"
-    ,"${minutes} min ago": "${minutes} 分钟前"
-    ,"${hours} hr ago": "${hours} 小时前"
-    ,"${days} day(s) ago": "${days} 天前"
-    ,"Syncing with ${payload.label || payload.remotePeerId}…": "正在与 ${payload.label || payload.remotePeerId} 同步……"
-    ,"Syncing with ${peer.label || peerId}…": "正在与 ${peer.label || peerId} 同步……"
-    ,"Synced with ${payload.label || payload.remotePeerId}.": "已与 ${payload.label || payload.remotePeerId} 同步。"
-    ,"Synced with ${peer.label || peerId}.": "已与 ${peer.label || peerId} 同步。"
-    ,"Sync complete.": "同步完成。"
-    ,"Applying resolutions…": "正在应用解决方案……"
-    ,"Authentication to the other device failed. Check your credentials.": "向另一台设备认证失败。请检查凭据。"
-    ,"Could not reach the other device. Check the base URL and that the device is online.": "无法连接到另一台设备。请检查基础 URL 和设备是否在线。"
-    ,"Could not reach the other device.": "无法连接到另一台设备。"
-    ,"Peer state changed during sync. Retrying once…": "同步过程中对端状态发生变化。即将重试一次……"
-    ,"${body.conflicts.length} file(s) conflict. Pick a version for each below.": "有 ${body.conflicts.length} 个文件存在冲突。请在下方为每个文件选择版本。"
-    ,"Conflict resolution canceled. Re-run sync when you're ready.": "已取消冲突解决。准备好后再重新同步。"
-    ,"This peer was paired in an older version. Click Forget and pair again to record the base URL.": "此对端在旧版本中完成配对。请点击「忘记」后重新配对以记录基础 URL。"
-    ,"Authentication to the other device failed. Forget and re-pair if its credentials changed.": "向另一台设备认证失败。如果其凭据已变更，请忘记并重新配对。"
-    ,"Enter the other device's base URL (e.g. http://192.168.1.42:8000)": "请输入另一台设备的基础 URL（例如 http://192.168.1.42:8000）"
-    ,"Peer's basic auth username (leave blank if disabled)": "对端的基本认证用户名（未启用则留空）"
-    ,"Peer's basic auth password": "对端的基本认证密码"
-    ,"Continue": "继续"
-    ,"Cancel": "取消"
-    ,"Undo the last sync with ${peer.label || peerId}? This rewinds THIS device only; the other device is unaffected.": "确定撤销与 ${peer.label || peerId} 的上次同步吗？这只会回退本设备，另一台设备不受影响。"
-    ,"Undo": "撤销"
-    ,"Undo complete.": "撤销完成。"
-    ,"Reverted to the state before the last sync with ${peer.label || peerId}.": "已回退到与 ${peer.label || peerId} 上次同步之前的状态。"
-    ,"Undo failed": "撤销失败"
-    ,"Nothing to undo — no prior sync recorded.": "无可撤销项——未记录任何先前同步。"
-    ,"Forget ${peer.label || peerId}? Both the registry entry and the on-disk shadow repo will be deleted. The other device is unaffected.": "确定忘记 ${peer.label || peerId} 吗？注册表条目和磁盘上的影子仓库都将被删除。另一台设备不受影响。"
-    ,"Forgotten.": "已忘记。"
-    ,"Forget failed": "忘记失败"
-    ,"Clear credentials": "清除凭据"
-    ,"Credentials cleared.": "凭据已清除。"
-    ,"Credentials saved for this peer. Use 'Clear credentials' on the peer card to remove them.": "已为此对端保存凭据。可在对端卡片上点击「清除凭据」移除。"
-    ,"Failed to clear credentials for ${peer.label || peerId}.": "清除 ${peer.label || peerId} 的凭据失败。"
-    ,"Failed to generate pairing link": "生成配对链接失败"
-    ,"Pairing link copied.": "配对链接已复制。"
-    ,"Copy from the field above.": "请从上方字段中复制。"
-    ,"Enter a label for the other device first.": "请先为另一台设备输入标签。"
-    ,"Select at least one category to sync.": "请至少选择一个要同步的类别。"
-    ,"Paste the pairing link or fill in the base URL and peer ID.": "请粘贴配对链接，或填写基础 URL 与对端 ID。"
-    ,"Failed to open LAN Sync": "打开局域网同步失败"
-    ,"LAN Sync is unavailable. The server reported: ${availability.reason || 'unknown reason'}.": "局域网同步不可用。服务器报告：${availability.reason || 'unknown reason'}。"
-    ,"Cross-mode restore detected. The backup is from a different storage engine than this server.": "检测到跨模式恢复：备份来自与当前服务器不同的存储引擎。"
-    ,"Scratch MySQL connection URL": "临时 MySQL 连接 URL"
-    ,"Scratch PostgreSQL connection URL": "临时 PostgreSQL 连接 URL"
-    ,"A temporary handle is created on this DB and removed when the restore completes.": "将在该数据库中临时创建一个用户句柄，恢复完成后自动删除。"
-    ,"A temporary handle is created on the scratch database and removed when the restore completes.": "将在临时数据库中临时创建一个用户句柄，恢复完成后自动删除。"
-    ,"Use Connection": "使用此连接"
-    ,"Cross-Mode Restore": "跨模式恢复"
-    ,"Cross-mode restore: converting backup into current storage engine.": "跨模式恢复：正在把备份转换为当前存储引擎的格式。"
-    ,"Restore cancelled — scratch DB connection not provided.": "已取消恢复——未提供临时数据库连接。"
-    ,"No connection URL entered; cancel and retry.": "未填写连接 URL，请取消后重试。"
-    ,"Export warning": "导出提示"
-    ,"Linked world book \"${0}\" was not found. The card was exported without an embedded world book.": "未找到绑定的世界书「${0}」。导出的角色卡未携带内嵌世界书。"
-    ,"Linked world book \"${0}\" could not be read. The card was exported without an embedded world book.": "无法读取绑定的世界书「${0}」。导出的角色卡未携带内嵌世界书。"
-    ,"Failed to embed world book \"${0}\". The card was exported without it.": "嵌入世界书「${0}」失败。导出的角色卡未携带它。"
-    ,"Merge chats": "合并聊天"
-    ,"Target name": "目标名称"
-    ,"Drag to reorder": "拖动以重排序"
-    ,"+ Add chat": "+ 添加聊天"
-    ,"The new chat contains only messages. Plugin state (memory graph, orchestrator, search-tools, etc.) does not migrate and must be regenerated.": "新聊天只包含消息本身。插件状态（记忆图谱、编排器、搜索工具等）不会迁移，需要在新聊天里重新生成。"
-    ,"Total: ${0} messages": "总计：${0} 条消息"
-    ,"Merge": "合并"
-    ,"Created ${0}": "已创建 ${0}"
-    ,"Request failed": "请求失败"
-    ,"Remove": "移除"
-    ,"from": "起始"
-    ,"to": "结束"
-    ,"Use all": "全选"
-    ,"Add chat to merge": "添加聊天到合并列表"
-    ,"No other chats available to add.": "没有其他可添加的聊天。"
-    ,"Split chat": "拆分聊天"
-    ,"Source": "源"
-    ,"Source:": "源："
-    ,"+ Add point": "+ 添加切点"
-    ,"Split": "拆分"
-    ,"msgs ${0}–${1}": "消息 ${0}–${1}"
-    ,"Created ${0} new chats": "已创建 ${0} 个新聊天"
-    ,"Chat is too short to split.": "聊天太短，无法拆分。"
-    ,"Split Chat": "拆分聊天"
-    ,"Need at least 2 messages to split.": "至少需要 2 条消息才能拆分。"
-    ,"Start time": "起始时间"
-    ,"End time": "结束时间"
-    ,"Invalid log filter": "无效的日志筛选"
-    ,"Start time must be earlier than end time.": "起始时间必须早于结束时间。"
-    ,"Card-bound": "本卡内嵌"
-    ,"Storage Inspector": "存储审查"
-    ,"Inspect your storage usage.": "查看你的存储使用情况。"
-    ,"Loading…": "加载中……"
-    ,"No data in this category.": "此类别下无数据。"
-    ,"Retry": "重试"
-    ,"Worldbooks": "世界书"
-    ,"Attachments": "附件与工作流"
-    ,"Presets & Settings": "预设与设置"
-    ,"Vector Stores": "向量库"
-    ,"Storage": "存储"
-    ,"Chat Images": "聊天图片"
-    ,"Persona Avatars": "用户头像"
-    ,"ComfyUI Workflows": "ComfyUI 工作流"
-    ,"API Presets": "API 预设"
-    ,"UI Elements": "UI 元素"
-    ,"Instruct Templates": "指令模板"
-    ,"Main Settings": "主设置"
-    ,"Chat Metadata": "聊天元数据"
-    ,"Contains API keys · not inspectable": "含 API 密钥，不可查看内容"
-    ,"Sprites": "表情图"
-    ,"Walk exceeded time limit; refresh to retry.": "目录遍历超时，请刷新重试。"
-    ,"Storage · All Users": "存储 · 全平台聚合"
-    ,"Storage Management": "存储管理"
-    ,"View:": "查看："
-    ,"Search users...": "搜索用户……"
-    ,"* All Users *": "* 全平台聚合 *"
-    ,"(admin)": "（管理员）"
-    ,"(disabled)": "（已停用）"
-    ,"Failed to load users.": "加载用户列表失败。"
-    ,"Browser Storage": "浏览器存储"
-    ,"Inspect this browser's storage.": "查看当前浏览器的存储使用情况。"
-    ,"localStorage": "localStorage"
-    ,"sessionStorage": "sessionStorage"
-    ,"IndexedDB": "IndexedDB"
-    ,"Cache Storage": "Cache Storage"
-    ,"Browser did not report a quota.": "浏览器未上报配额。"
-    ,"Delete %s?": "删除 %s？"
-    ,"This will permanently remove %s from your browser. This action cannot be undone.": "此操作将从浏览器中永久删除 %s，且无法撤销。"
-    ,"Deleted": "已删除"
-    ,"Failed to delete: %s": "删除失败：%s"
-    ,"stores": "存储"
-    ,"records": "条"
-    ,"requests": "请求"
-    ,"Refusing to save: chat is not fully loaded. Reload the page to prevent data loss.": "拒绝保存：聊天尚未完全加载。请重新加载页面以防止数据丢失。"
-    ,"Chat save aborted": "聊天保存已中止"
-    ,"Cache stable chat history": "缓存稳定的聊天历史"
-    ,"Keep recent turns uncached": "不缓存最近几轮"
-    ,"The current input is also kept uncached. Reuses a fixed history prefix for up to five minutes, then advances it. Changed history or summaries rebuild the prefix. Cache hits and savings depend on the provider.": "当前输入也不缓存。固定复用一段历史前缀，最多五分钟后向后推进；历史或总结变化时重建前缀。实际命中与节省取决于提供商。"
-    ,"Uncached turns must be a positive integer.": "不缓存的轮数必须为正整数。"
-    ,"OpenRouter Gemini history cache toggle state": "OpenRouter Gemini 历史缓存开关状态"
-    ,"Sets OpenRouter Gemini stable history caching on/off. Gets current value if no argument is provided.": "设置 OpenRouter Gemini 稳定历史缓存的开启/关闭。如未提供参数，则获取当前值。"
-    ,"Number of recent turns excluded from Gemini history caching": "Gemini 历史缓存不覆盖的最近回合数"
-    ,"Keeps this many completed turns plus the current input outside the cache. Default: 2.": "将最近这么多完整回合连同当前输入留在缓存之外。默认：2。"
-    ,"Import {name} preset": "导入 {name} 预设"
-    ,"Import {name} below to use the bundled plugin-task preset. It keeps reference material separate from the runtime task.": "点击下方按钮导入 {name}，使用内置插件任务预设；参考资料与运行时任务会分别放置。"
-    ,"The bundled Atri analysis preset supports plot planning, character reasoning, pacing and continuity checks. Runtime instructions and available tools determine the assigned task; the preset does not write RP prose.": "内置 Atri 分析预设支持剧情规划、角色推演、节奏和一致性检查。具体职责由运行时任务和可用工具决定，不负责撰写 RP 正文。"
-    ,"Import {name} below to use the bundled analysis preset. For the Agenda planner, select Atri-plugin-only instead.": "点击下方按钮导入 {name}，使用内置分析预设。Agenda 的调度节点应选择 Atri-plugin-only。"
-    ,"Native State Conditions": "原生状态条件"
-    ,"Require committed state from supported providers before this entry can activate.": "仅在支持的状态源存在已提交状态时，此条目才能激活。"
-    ,"Activate this entry directly while the conditions match": "条件匹配时直接激活此条目"
-    ,"Activate while matched": "条件匹配时激活"
-    ,"All conditions": "全部条件"
-    ,"Any condition": "任一条件"
-    ,"Add state condition": "添加状态条件"
-    ,"Save conditions": "保存条件"
-    ,"Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.": "未知、不可用或不完整的状态条件会按失败处理并阻止此条目激活。启用“条件匹配时激活”后，无需反复命中关键词即可维持场景内容生效。"
-    ,"State Change Events": "状态变化事件"
-    ,"Activate this entry only when committed provider state changes from one value to another.": "仅当已提交的状态从一个值变化为另一个值时激活此条目。"
-    ,"All events": "全部事件"
-    ,"Any event": "任一事件"
-    ,"Add state event": "添加状态事件"
-    ,"Save events": "保存事件"
-    ,"From and To are exact scalar values. At least one is required. The first committed observation only seeds the baseline and does not fire an event.": "“原值”和“新值”为精确标量值，至少设置一项。首次已提交观察只建立基线，不触发事件。"
-    ,"Selection & Dependencies": "选择与依赖"
-    ,"Optional": "可选"
-    ,"Optional Atria selection rules. Leave these fields empty to keep legacy World Info selection and budget behavior.": "可选的 Atria 选择规则。保持这些字段为空即可沿用原有世界书选择和预算行为。"
-    ,"Required entries": "必需条目"
-    ,"One UID or Book#UID per line. Required entries are selected atomically with this entry.": "每行一个 UID 或 世界书#UID。必需条目会与当前条目作为一个整体进行原子选择。"
-    ,"Related entries": "相关条目"
-    ,"Related entries gain relevance only when they are already candidates; they are not forced into the prompt.": "相关条目只有在本身已成为候选时才获得相关性加权；不会被强制注入提示词。"
-    ,"Mutual exclusion group": "互斥组"
-    ,"Budget tier": "预算层级"
-    ,"WI Budget Tier Critical": "关键"
-    ,"WI Budget Tier Scene": "当前场景"
-    ,"WI Budget Tier Normal": "普通"
-    ,"WI Budget Tier Optional": "可选背景"
-    ,"Compact content": "精简内容"
-    ,"Compact content is considered only for an atomic dependency bundle. A required bundle is never partially injected.": "仅在原子依赖组合整体无法容纳时才考虑精简内容。必需依赖组合绝不会被部分注入。"
-    ,"Save selection rules": "保存选择规则"
-    ,"WI Required Entries Placeholder": "12\n其他世界书#4"
-    ,"WI Related Entries Placeholder": "18\n其他世界书#9"
-    ,"WI Mutual Exclusion Placeholder": "城堡版本"
-    ,"WI Compact Content Placeholder": "仅在完整依赖组合无法容纳时使用的简短备用内容。"
-    ,"Provider": "状态源"
-    ,"Path": "路径"
-    ,"Operator": "运算符"
-    ,"Value type": "值类型"
-    ,"Value": "值"
-    ,"unsupported": "不支持"
-    ,"Contains": "包含"
-    ,"Any value": "任意值"
-    ,"String value": "字符串"
-    ,"Number value": "数字"
-    ,"Boolean value": "布尔值"
-    ,"Null value": "空值"
-    ,"True": "真"
-    ,"False": "假"
-    ,"Remove condition": "删除条件"
-    ,"Remove event": "删除事件"
-    ,"From": "原值"
-    ,"To": "新值"
-    ,"Unsaved state condition changes": "状态条件有未保存的更改"
-    ,"State conditions saved": "状态条件已保存"
-    ,"Invalid state conditions": "状态条件无效"
-    ,"State conditions are limited to 32 per entry": "每个条目最多可设置 32 个状态条件"
-    ,"Every state condition needs a provider, path, operator, and scalar value": "每个状态条件都需要状态源、路径、运算符和标量值"
-    ,"Condition #${0} is invalid": "条件 #${0} 无效"
-    ,"Unsaved state event changes": "状态事件有未保存的更改"
-    ,"State events saved": "状态事件已保存"
-    ,"Invalid state events": "状态事件无效"
-    ,"State events are limited to 32 per entry": "每个条目最多可设置 32 个状态事件"
-    ,"Every state event needs a provider, path, and at least one From/To value": "每个状态事件都需要状态源、路径，以及至少一个原值/新值"
-    ,"Unsaved selection rule changes": "选择规则有未保存的更改"
-    ,"Selection rules saved": "选择规则已保存"
-    ,"World Info selection rules": "世界书选择规则"
-    ,"${0}: invalid entry reference \"${1}\"": "${0}：条目引用“${1}”无效"
-    ,"${0}: an entry cannot depend on or relate to itself": "${0}：条目不能依赖或关联自身"
-    ,"Entry #${0}": "条目 #${0}"
-    ,"Vector": "向量"
-    ,"No primary keywords": "无主关键词"
-    ,"Sticky ${0}": "粘性 ${0}"
-    ,"Cooldown ${0}": "冷却 ${0}"
-    ,"Delay ${0}": "延迟 ${0}"
-    ,"Stops recursion": "阻止继续递归"
-    ,"Recursive only": "仅递归激活"
-    ,"Defaults": "默认值"
-    ,"Conditions ${0}": "状态条件 ${0}"
-    ,"Events ${0}": "状态事件 ${0}"
-    ,"Persistent activation": "持续激活"
-    ,"Not configured": "未配置"
-    ,"Required ${0}": "必需条目 ${0}"
-    ,"Related ${0}": "关联条目 ${0}"
-    ,"Group ${0}": "分组 ${0}"
-    ,"Automation": "自动化"
-    ,"Scan override": "扫描覆盖"
-    ,"Case override": "大小写覆盖"
-    ,"Word override": "整词匹配覆盖"
-    ,"Group scoring": "分组评分"
-    ,"Overrides ${0}": "覆盖项 ${0}"
-    ,"Search required entry…": "搜索必需条目…"
-    ,"Search related entry…": "搜索关联条目…"
-    ,"Remove ${0}": "移除 ${0}"
-    ,"Basic": "基础"
-    ,"Activation": "激活"
-    ,"Lifecycle": "生命周期"
-    ,"State-driven": "状态驱动"
-    ,"Entry Relationships": "条目关系"
-    ,"Issues ${0}": "问题 ${0}"
-    ,"State": "状态"
-    ,"Event": "事件"
-    ,"Dependencies": "依赖"
-    ,"Select ${0}": "选择 ${0}"
-    ,"Scanning": "扫描"
-    ,"How text is scanned and matched before entry-specific overrides.": "文本在条目级覆盖前如何被扫描和匹配。"
-    ,"How much prompt context World Info may consume.": "世界书可占用多少提示词上下文。"
-    ,"Recursion": "递归"
-    ,"How recursive discovery proceeds and where it stops.": "递归发现如何进行以及在何处停止。"
-    ,"Selection / Priority": "选择 / 优先级"
-    ,"Global ordering and scoring defaults.": "全局排序和评分默认值。"
-    ,"World Info workspace": "世界书工作区"
-    ,"Library": "书库"
-    ,"Entries": "条目"
-    ,"Entry display mode": "条目显示模式"
-    ,"Compact": "紧凑"
-    ,"Full": "完整"
-    ,"Custom fields": "自定义字段"
-    ,"Continuous Cards": "连续卡片"
-    ,"Close World Info Workspace": "关闭世界书工作区"
-    ,"Entry filters": "条目筛选"
-    ,"Special": "特殊"
-    ,"Issues": "问题"
-    ,"Select filtered": "选择筛选结果"
-    ,"Bulk Inspector": "批量检查器"
-    ,"Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.": "安全批量编辑：只有明确选择字段后才会修改，其余字段保持不变。"
-    ,"Keep unchanged": "保持不变"
-    ,"Bulk Edit…": "批量编辑…"
-    ,"Select an entry": "选择一个条目"
-    ,"Test Activation": "测试激活"
-    ,"Activation Trace": "激活追踪"
-    ,"More entry actions": "更多条目操作"
-    ,"Move / Copy": "移动 / 复制"
-    ,"Choose an entry from the list to inspect it.": "从列表中选择一个条目进行检查。"
-    ,"Lorebook actions": "世界书操作"
-    ,"Enable globally": "全局启用"
-    ,"Disable globally": "取消全局"
-    ,"Globally enabled": "已全局启用"
-    ,"Not global": "未全局启用"
-    ,"Search options": "搜索选项"
-    ,"Tags": "标签"
-    ,"Pin": "置顶"
-    ,"Fill empty titles": "填充空标题"
-    ,"Apply sorting as Order": "将当前排序应用为“顺序”"
-    ,"Custom field visibility": "自定义字段可见性"
-    ,"Open all cards": "展开所有卡片"
-    ,"Close all cards": "折叠所有卡片"
-    ,"Testing current chat with the existing World Info dry-run…": "正在使用现有世界书 dry-run 测试当前聊天…"
-    ,"Activation test": "激活测试"
-    ,"No diagnostic detail is available.": "暂无诊断详情。"
-    ,"Activation test failed: ${0}": "激活测试失败：${0}"
-    ,"Content is empty.": "内容为空。"
-    ,"Normal keyword-driven entry has no Primary Keywords.": "普通关键词驱动条目没有主关键词。"
-    ,"Required entry": "必需条目"
-    ,"Related entry": "关联条目"
-    ,"${0} reference \"${1}\" is invalid.": "${0}引用“${1}”无效。"
-    ,"${0} points to this entry.": "${0}指向当前条目。"
-    ,"${0} \"${1}\" does not resolve in this lorebook.": "${0}“${1}”无法在当前世界书中解析。"
-    ,"State condition #${0} is incomplete.": "状态条件 #${0} 不完整。"
-    ,"State change event #${0} is incomplete.": "状态变更事件 #${0} 不完整。"
-    ,"Automation ID \"${0}\" is used by more than one entry.": "自动化 ID “${0}”被多个条目使用。"
-    ,"Compact Content is configured without Required or Related Entries.": "已配置精简内容，但未配置必需条目或关联条目。"
-    ,"Unknown for current chat": "当前聊天结果未知"
-    ,"The existing World Info dry-run produced no trace for this entry. It may not be part of the currently active lorebook scan. No activation result was invented.": "现有世界书 dry-run 未为该条目生成追踪。它可能不在当前激活的世界书扫描中；系统不会臆造激活结果。"
-    ,"Activated by the current runtime scan.": "根据当前运行时扫描会激活。"
-    ,"No activation path succeeded in the current runtime scan.": "当前运行时扫描中没有成功的激活路径。"
-    ,"Would activate": "会激活"
-    ,"Would not activate": "不会激活"
-    ,"Critical tier": "关键级"
-    ,"Scene tier": "场景级"
-    ,"Optional tier": "可选级"
-    ,"${0} entry": "${0} 个条目",
+    "JS Self-Profiling": "JS 自采样分析",
+    "To activate JS Self-Profiling at the earliest page lifecycle stage, reload this page now?": "要让 JS 自采样分析在页面生命周期最早阶段生效，需要立即刷新页面。现在刷新吗？",
+    "Reload now": "立即刷新",
+    "Regex script is slow": "正则脚本运行缓慢",
+    "Script \"${0}\" took ${1}ms on a single message and was paused for this session.": "脚本「${0}」在单条消息上耗时 ${1} 毫秒，已暂停至本次会话结束。",
+    "This usually indicates catastrophic backtracking. Common causes: leading [\\s\\S]* / .*, nested quantifiers, unbounded lookahead.": "这通常意味着发生了灾难性回溯。常见成因：以 [\\s\\S]* 或 .* 开头、嵌套量词、无边界 lookahead。",
+    "Suggestion: review or replace the pattern.": "建议检查或替换该正则。",
+    "Pattern preview": "正则预览",
+    "Hits this session: ${0} · Total time: ${1}ms": "本会话触发 ${0} 次 · 累计耗时 ${1} 毫秒",
+    "Got it": "知道了",
+    "Allow anyway": "始终允许",
+    "This script will no longer be auto-paused, even if it remains slow.": "该脚本将不再被自动暂停，即使持续缓慢。",
+    "This script is provided by a plugin and cannot be edited here.": "该脚本由插件提供，无法在此处编辑。",
+    "Regex script not found.": "未找到该正则脚本。",
+    "Enable CardApp": "启用 CardApp",
+    "Entry file": "入口文件",
+    "Injection Depth": "注入深度",
+    "Insertion Position": "插入位置",
+    "Trigger Probability": "触发概率",
+    "Trigger Strategy": "触发策略",
+    "Set Trigger Strategy": "设置触发策略",
+    "Constant": "常驻",
+    "Vectorized": "向量化",
+    "Placement": "注入定位",
+    "Matching Rules": "匹配规则",
+    "Matched Fields": "匹配字段",
+    "Set Matched Fields": "设置匹配字段",
+    "Recursion & Lifecycle": "递归与生命周期",
+    "Group": "分组",
+    "Other": "其他",
+    "Ignore Budget": "忽略预算",
+    "Use Secondary Keys": "启用副关键字",
+    "Selective Logic": "选择性逻辑",
+    "Match Persona Description": "匹配人设描述",
+    "Match Character Description": "匹配角色描述",
+    "Match Character Personality": "匹配角色性格",
+    "Match Character Depth Prompt": "匹配深度提示",
+    "Match Scenario": "匹配场景",
+    "Match Creator Notes": "匹配创作者备注",
+    "Prevent Recursion": "防止递归",
+    "Exclude from Recursion": "排除递归",
+    "Delay Until Recursion": "延迟到递归",
+    "Group Override": "组覆盖",
+    "Use Probability Trigger": "启用概率触发",
+    "at Depth": "按深度",
+    "On": "开",
+    "currently On": "当前：开",
+    "currently Off": "当前：关",
+    "New value:": "新值：",
+    "Mixed values across selected entries": "各条目当前值不一致",
+    "For each option: choose Keep / On / Off": "每行可选：保持不变 / 开 / 关",
+    "Select…": "选择…",
+    "Please enter a value": "请输入一个值",
+    "Please choose a value": "请选择一个值",
+    "Invalid value": "输入无效",
+    "Set ${0}": "设置 ${0}",
+    "Updated ${0} entries: ${1}": "已更新 ${0} 个条目： ${1}",
+    "Reverted ${0} entries": "已撤销 ${0} 个条目",
+    "No changes — all selected entries already had this value": "无变化 — 所有选中条目都已是该值",
+    "No changes — all options are set to Keep": "无变化 — 所有选项都是保持不变",
+    "Failed to update entries": "更新条目失败",
+    "Variable operations": "变量操作",
+    "Variable operations on message #${0}": "第 ${0} 楼的变量操作",
+    "Changes apply when you click Save. The variables cache will be rebuilt from all surviving ops.": "点击「保存」后生效。变量缓存将基于所有保留的操作记录重建。",
+    "Add operation": "添加操作",
+    "No variable operations on this message.": "该消息没有变量操作。",
+    "var_ops_panel.label.op": "操作",
+    "var_ops_panel.label.key": "键",
+    "var_ops_panel.label.path": "路径",
+    "var_ops_panel.label.value": "值",
+    "var_ops_panel.placeholder.key": "键",
+    "var_ops_panel.placeholder.path": "路径（可选，如 alice.hp）",
+    "var_ops_panel.placeholder.value": "值",
+    "Fast token preview": "快速 token 预览",
+    "fast_token_preview_tooltip": "使用快速的字节估算代替计数分词器。速度更快但精度较低，不影响编码分词器。",
+    "Embedding Profile": "嵌入配置",
+    "Rerank Profile": "重排序配置",
+    "Embedding profiles are used by Vector Storage and Memory Graph for text embeddings. They are not active chat connections.": "嵌入配置供向量存储、记忆图等插件计算文本嵌入，不会作为聊天连接生效。",
+    "Rerank profiles are used to re-score candidates after vector retrieval. They are not active chat connections.": "重排序配置用于在向量检索后对候选结果重新打分，不会作为聊天连接生效。",
+    "Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "请在 API 连接配置面板的「嵌入」选项卡中管理配置。",
+    "Create a new embedding profile": "新建嵌入配置",
+    "Edit embedding profile": "编辑嵌入配置",
+    "Delete embedding profile": "删除嵌入配置",
+    "Create a new rerank profile": "新建重排序配置",
+    "Edit rerank profile": "编辑重排序配置",
+    "Delete rerank profile": "删除重排序配置",
+    "Profile Name": "配置名称",
+    "URL Override (optional)": "URL 覆盖（可选）",
+    "Server URL (required)": "服务器 URL（必填）",
+    "API Key (used with URL Override)": "API 密钥（配合 URL 覆盖使用）",
+    "When set, requests are sent to this URL using the API Key below; the saved Secret is ignored.": "设置后，请求将通过下方的 API 密钥发送到此 URL；已保存的 Secret 将被忽略。",
+    "Saved Secret": "已保存的密钥",
+    "Use active (default)": "使用激活的密钥（默认）",
+    "Late Chunking": "Late Chunking",
+    "Dimensions (0 = auto)": "维度（0 = 自动）",
+    "Task (optional)": "任务（可选）",
+    "Keep model loaded between requests": "在请求之间保持模型加载",
+    "Endpoint Region": "服务区域",
+    "International": "国际",
+    "China": "中国",
+    "Cloudflare Account ID": "Cloudflare Account ID",
+    "Auth Mode": "认证模式",
+    "Default (API Key)": "默认（API 密钥）",
+    "Express": "Express",
+    "Service Account": "服务账号",
+    "Express Project ID": "Express 项目 ID",
+    "Profile not found.": "未找到该配置。",
+    "Embedding profile is shared via the Connection Profile registry — pick one below. Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "嵌入配置共享自 API 连接配置注册表 —— 在下方选择即可。配置请在 API 连接配置面板的「嵌入」选项卡中管理。",
+    "Embedding profile": "嵌入配置",
+    "Rerank profile": "重排序配置",
+    "Vector pre-filter Top-K": "向量预筛 Top-K",
+    "Max recall results": "最大召回结果数",
+    "Hybrid Pipeline (vector + graph diffusion)": "混合管线（向量 + 图扩散）",
+    "Hybrid + Rerank": "混合 + 重排序",
+    "Hybrid + LLM Rerank": "混合 + LLM 重排序",
+    "Recompute Vector Index": "重建向量索引",
+    "New embedding profile": "新建嵌入配置",
+    "New rerank profile": "新建重排序配置",
+    "A profile with this name already exists.": "已存在同名配置。",
+    "Default tools for all agents": "全 agent 默认工具",
+    "Default tools for all nodes": "全节点默认工具",
+    "Every agent can call these tools across multiple rounds by default. Override per agent on the Agents tab.": "所有 agent 默认可跨多轮调用这些工具。各 agent 可在 Agents 标签页单独覆盖。",
+    "No default tools set — every agent runs without tools. Enable defaults here to let agents call tools across multiple rounds; each agent can still override on the Agents tab.": "未设置默认工具——所有 agent 均不启用工具。在此启用默认后 agent 可以跨多轮调用工具；各 agent 仍可在 Agents 标签页单独覆盖。",
+    "Every node can call these tools across multiple rounds by default. Override per node on the Agents tab.": "所有节点默认可跨多轮调用这些工具。各节点可在 Agents 标签页单独覆盖。",
+    "No default tools set — every node runs without tools. Enable defaults here to let nodes call tools across multiple rounds; each node can still override on the Agents tab.": "未设置默认工具——所有节点均不启用工具。在此启用默认后节点可以跨多轮调用工具；各节点仍可在 Agents 标签页单独覆盖。",
+    "Enable all": "全部启用",
+    "Enable defaults": "启用默认",
+    "Tools": "工具",
+    "Using the profile default.": "使用 profile 默认。",
+    "No tools active. This node runs as a single LLM call.": "不启用工具，该节点会直接出结果（单次 LLM 调用）。",
+    "Override": "覆盖",
+    "Reset to inherit": "重置为继承",
+    "Loop Orchestration": "循环编排",
+    "Loop Agent": "循环 Agent",
+    "Loop tools": "循环工具",
+    "World book filter (applies to all agents in this preset)": "世界书过滤（该预设下所有 agent 生效）",
+    "Book name regex (multiline, any line matches → whole book filtered)": "书名正则（多行，任一命中即拦整本书）",
+    "Entry name regex (multiline, matched against entry comment)": "条目名正则（多行，匹配 entry comment）",
+    "Empty field = no filtering on that dimension; invalid regex lines are skipped with a console warning.": "留空 = 该维度不过滤；非法正则行会跳过并在控制台打 warn。",
+    "note (persistent notes)": "note（持久化笔记）",
+    "chat (in-chat history)": "chat（聊天历史）",
+    "lorebook (world info)": "lorebook（世界书）",
+    "custom (extension + profile tools)": "custom（扩展与 profile 工具）",
+    "memory (memory-graph)": "memory（记忆图）",
+    "search (web search)": "search（联网搜索）",
+    "terminator": "终止器",
+    "(forced on)": "（强制开启）",
+    "Loop API preset (Connection profile, empty = global orchestration API preset)": "循环 API 预设（Connection profile，留空 = 全局编排 API 预设）",
+    "Loop preset (params + prompt, empty = global orchestration preset)": "循环预设（参数 + prompt，留空 = 全局编排预设）",
+    "Loop system prompt": "循环 system prompt",
+    "Loop max rounds": "循环最大轮数",
+    "Loop wall-clock budget (seconds)": "循环 wall-clock 预算（秒）",
+    "Workflow": "工作流",
+    "Agent Presets": "Agent 预设",
+    "Identity templates — tools attach to nodes, not to presets.": "身份模板——工具挂在节点上，不挂在预设上。",
+    "Used by nodes:": "被节点引用：",
+    "Not referenced by any node.": "未被任何节点引用。",
+    "Add Stage": "加 Stage",
+    "Add Node": "加节点",
+    "Stage ID": "Stage ID",
+    "Node ID": "节点 ID",
+    "Node Type": "节点类型",
+    "Worker": "Worker",
+    "Node Prompt Template (optional)": "节点 Prompt 模板（可选）",
+    "Use {{recent_chat}}, {{last_user}}, {{distiller}}, {{previous_outputs}}. Previous orchestration result and approved review feedback are auto-injected.": "可用 {{recent_chat}}、{{last_user}}、{{distiller}}、{{previous_outputs}}；上一轮编排结果与批准的 review 反馈会自动注入。",
+    "Serial": "串行",
+    "Parallel": "并行",
+    "Up": "上移",
+    "Down": "下移",
+    "No stages yet. Add one stage to start orchestration.": "尚无 stage，先加一个开始编排。",
+    "No nodes. Add one to define this stage.": "尚无节点，加一个来定义此 stage。",
+    "Agenda Orchestration": "Agenda 编排",
+    "Agenda Agents": "Agenda Agents",
+    "Planner system prompt": "Planner system prompt",
+    "Planner Prompt": "Planner Prompt",
+    "Planner API preset (Connection profile, empty = global orchestration API preset)": "Planner API 预设（Connection profile，留空 = 全局编排 API 预设）",
+    "Planner preset (params + prompt, empty = global orchestration preset)": "Planner 预设（参数 + prompt，留空 = 全局编排预设）",
+    "Final Agent": "Final Agent",
+    "Planner max rounds": "Planner 最大轮数",
+    "Max concurrent agents": "最大并发 agent 数",
+    "Max total agent runs": "总 agent 运行数上限",
+    "Agent API preset (Connection profile, empty = global orchestration API preset)": "Agent API 预设（Connection profile，留空 = 全局编排 API 预设）",
+    "Agent preset (params + prompt, empty = global orchestration preset)": "Agent 预设（参数 + prompt，留空 = 全局编排预设）",
+    "User Prompt Template": "User Prompt 模板",
+    "Add Preset": "加预设",
+    "new_preset_id": "new_preset_id",
+    "No presets yet.": "尚无预设。",
+    "No tools active. This agent runs as a single LLM call.": "不启用工具，该 agent 会直接出结果（单次 LLM 调用）。",
+    "Requests per minute (0 = unlimited)": "每分钟请求数（0 = 不限制）",
+    "Claude Prompt Caching": "Claude 提示词缓存",
+    "Only effective when the prompt prefix is stable across requests (no in-chat lorebook injections or random macros). Cache writes cost 1.25× base (5m) or 2× base (1h); reads cost 0.1×.": "仅在每次请求的前缀稳定时有效（不使用聊天内世界书注入或随机宏）。缓存写入成本为基础价 ×1.25(5m)或 ×2(1h)，读取仅 ×0.1。",
+    "Cache system prompt": "缓存 system prompt",
+    "Use 1h cache TTL (instead of 5m)": "使用 1 小时 TTL（代替 5 分钟）",
+    "Cache message history at depth (-1 to disable)": "在对话历史指定深度缓存（-1 表示禁用）",
+    "OpenRouter Gemini Prompt Caching": "OpenRouter Gemini 提示词缓存",
+    "Only applied when OpenRouter routes to a Gemini model that supports caching. Same prefix-stability caveat as Claude caching.": "仅在 OpenRouter 路由到支持缓存的 Gemini 模型时生效。与 Claude 缓存同样要求前缀稳定。",
+    "Requests per minute": "每分钟请求数",
+    "API rate limit": "API 速率限制",
+    "Profile ${0} · queued ${1} · next in ${2}s": "配置 ${0} · 队列 ${1} · ${2} 秒后发出",
+    "Conversation": "对话记录",
+    "Loop Conversation": "Loop 对话",
+    "Agent Conversation": "Agent 对话",
+    "No agent messages recorded yet.": "暂无 agent 消息记录。",
+    "Tool Result": "工具结果",
+    "round ${0}": "第 ${0} 轮",
+    "Todo Board": "任务看板",
+    "Todo board is empty.": "任务看板为空。",
+    "Planner Rounds": "Planner 轮次",
+    "No planner rounds recorded.": "暂无 planner 轮次记录。",
+    "No planner step recorded.": "本轮无 planner 步骤记录。",
+    "No agents dispatched this round.": "本轮未派发 agent。",
+    "Planner Step": "Planner 步骤",
+    "Dispatched Agents": "派发的 Agents",
+    "Round ${0}": "第 ${0} 轮",
+    "todo": "待办",
+    "doing": "进行中",
+    "done": "完成",
+    "blocked": "阻塞",
+    "dropped": "已丢弃",
+    "(none)": "（无）",
+    "Director (multi-agent)": "导演模式（多 agent）",
+    "Main agent": "主代理",
+    "Main agent tools": "主代理工具",
+    "Default tools": "默认工具",
+    "Inherit": "继承",
+    "Every agent can call these tools by default. Override per agent on the Agents tab; the main agent inherits unless it has its own override.": "所有 agent 默认可调用这些工具。各 agent 可在 Agents 标签页单独覆盖；主 agent 若无自身覆盖则继承此默认。",
+    "Sub-agents": "子代理",
+    "Add sub-agent": "添加子代理",
+    "Sub-agent ID": "子代理 ID",
+    "Description (shown to main agent)": "描述（主代理可见）",
+    "Discard partial message on abort": "中止时丢弃残缺消息",
+    "Maximum tool-calling rounds": "最大工具调用轮数",
+    "Maximum concurrent sub-agents": "最大并发子代理数",
+    "Maximum total sub-agent runs per turn": "本回合最多子代理调用总数",
+    "Direct message generation": "直接生成消息",
+    "Director mode produces the assistant message directly via a main agent that may dispatch sub-agents.": "导演模式由主代理直接产出助理消息，主代理可派遣子代理协助。",
+    "Director Orchestration": "导演编排",
+    "System prompt (leave empty for default)": "系统提示词（留空使用默认值）",
+    "Reset to default": "重置为默认值",
+    "Reset main-agent system prompt to default? This overwrites the current text.": "重置主代理系统提示词为默认值？这会覆盖当前文本。",
+    "Reset main-agent system prompt to default": "已重置主代理系统提示词为默认值",
+    "Limits": "上限",
+    "Save To Global": "保存到全局",
+    "Save To Character Override": "保存到角色卡覆写",
+    "Clear presets from this card": "清除角色卡上的预设",
+    "Manage skills...": "管理技能...",
+    "Notes": "笔记",
+    "Open notes": "未结清",
+    "Closed notes": "已关闭",
+    "No open notes yet": "还没有未结清的条目",
+    "No closed notes yet": "还没有已关闭的条目",
+    "Close this note": "关闭这条",
+    "Closure reason (optional)": "关闭原因（可选）",
+    "Edit note": "编辑",
+    "Delete note (permanent)": "永久删除",
+    "Confirm delete (permanent)?": "确认永久删除？",
+    "Manage Users": "用户管理",
+    "System Overview": "系统概览",
+    "Security Status": "安全状态",
+    "Auth & Limits": "认证与限额",
+    "Server Plugins": "服务端插件",
+    "Config": "配置",
+    "If a custom avatar is not set, the user's default persona image will be displayed.": "未设置自定义头像时将显示用户的默认人格图像。",
+    "Set a custom avatar.": "设置自定义头像。",
+    "Remove a custom avatar.": "移除自定义头像。",
+    "Quota:": "配额：",
+    "OAuth:": "OAuth：",
+    "Change user display name.": "修改用户显示名称。",
+    "Set per-user storage quota.": "设置该用户的存储配额。",
+    "Enable user account.": "启用用户账户。",
+    "Disable user account.": "禁用用户账户。",
+    "Promote user to admin.": "提升为管理员。",
+    "Demote user to regular user.": "降级为普通用户。",
+    "Change user password.": "修改用户密码。",
+    "Delete user account.": "删除用户账户。",
+    "Server Snapshot": "服务器快照",
+    "User Storage": "用户存储",
+    "Security Checks": "安全检查",
+    "Storage Quota": "存储配额",
+    "Default quota for new users (MB)": "新用户默认配额（MB）",
+    "-1 for unlimited": "-1 表示不限制",
+    "Account Registration": "账户注册",
+    "Allow visitors to register accounts from the login page": "允许访客在登录页自助注册账户",
+    "When enabled, the login page shows a \"Create account\" form. New accounts default to non-admin and respect the storage quota above.": "启用后，登录页会显示「创建账户」表单。新账户默认非管理员，并继承上述存储配额。",
+    "GitHub OAuth": "GitHub OAuth",
+    "Enable GitHub OAuth login": "启用 GitHub OAuth 登录",
+    "Auto-create user on first GitHub login": "首次 GitHub 登录时自动创建用户",
+    "GitHub Client ID": "GitHub Client ID",
+    "GitHub Client Secret": "GitHub Client Secret",
+    "Discord OAuth": "Discord OAuth",
+    "Enable Discord OAuth login": "启用 Discord OAuth 登录",
+    "Auto-create user on first Discord login": "首次 Discord 登录时自动创建用户",
+    "Require membership in target server": "要求加入指定服务器",
+    "Discord Client ID": "Discord Client ID",
+    "Discord Client Secret": "Discord Client Secret",
+    "Extra OAuth scopes (optional, comma/space/new line separated; identify is always included)": "额外的 OAuth 权限范围（可选；逗号、空格或换行分隔；identify 始终包含）",
+    "Allowed server IDs (comma or new line separated)": "允许的服务器 ID（逗号或换行分隔）",
+    "Required role IDs (optional, comma or new line separated)": "要求的身份组 ID（可选，逗号或换行分隔）",
+    "When \"Require membership in target server\" is enabled, required Discord scopes for server checks are added automatically.": "启用「要求加入指定服务器」后，会自动添加用于服务器校验的 Discord 权限范围。",
+    "Save Auth & Limit Settings": "保存认证与限额设置",
+    "Update": "更新",
+    "Reload": "重新加载",
+    "Path:": "路径：",
+    "Runtime Config (config.yaml)": "运行时配置（config.yaml）",
+    "config.yaml content": "config.yaml 内容",
+    "Changes are validated as YAML before save. Some settings may require backend restart.": "保存前会按 YAML 校验。部分设置需重启后端才能生效。",
+    "e.g. John Snow": "例如 张三",
+    "e.g. john-snow (lowercase letters, numbers, and dashes only)": "例如 john-snow（仅限小写字母、数字与连字符）",
+    "[ No password ]": "［无密码］",
+    "This will create a new subfolder in the /data/ directory with the user's handle as the folder name.": "这会在 /data/ 目录下以该用户句柄为名创建新的子目录。",
+    "Installing a server plugin grants backend code execution. Install only repositories you trust.": "安装服务端插件相当于授予后端代码执行权限，请仅安装可信仓库。",
+    "Git repository URL": "Git 仓库地址",
+    "New installs are picked up after backend restart.": "新安装的插件需重启后端才会加载。",
+    "Set per-user quota in MB. Enter -1 to use default/unlimited.": "以 MB 为单位设置该用户的配额；输入 -1 使用默认值或不限制。",
+    "Please enter a valid number.": "请输入有效数字。",
+    "Invalid quota": "配额无效",
+    "Node.js:": "Node.js：",
+    "Platform:": "平台：",
+    "Uptime:": "运行时长：",
+    "Now:": "当前时间：",
+    "Total users:": "用户总数：",
+    "Enabled:": "已启用：",
+    "Admins:": "管理员：",
+    "Password protected:": "受密码保护：",
+    "Total storage:": "总存储占用：",
+    "Over quota users:": "超配额用户：",
+    "Default quota:": "默认配额：",
+    "${0}% of quota": "已用配额 ${0}%",
+    "Admin": "管理员",
+    "Admins without password:": "无密码的管理员：",
+    "Disabled admins:": "已禁用的管理员：",
+    "Disabled users:": "已禁用的用户：",
+    "Install path:": "安装路径：",
+    "Installed directories:": "已安装目录数：",
+    "Server plugins are currently disabled in config.": "服务端插件功能当前在配置中已禁用。",
+    "Installed plugins will load after you enable them and restart the backend.": "启用并重启后端后，已安装的插件才会加载。",
+    "No server plugins installed.": "暂无已安装的服务端插件。",
+    "No package metadata": "无 package 元数据",
+    "No git remote detected": "未检测到 git 远端",
+    "Remove server plugin \"${0}\"?": "移除服务端插件「${0}」？",
+    "Admin settings saved.": "管理员设置已保存。",
+    "Announcements": "公告",
+    "Announcement": "公告",
+    "Critical": "严重",
+    "Warning": "警告",
+    "Open": "打开",
+    "Dismiss": "关闭",
+    "Mark all as read": "全部标为已读",
+    "No announcements": "暂无公告",
+    "No announcements yet": "暂无公告",
+    "New announcement": "新建公告",
+    "Level": "级别",
+    "Body (Markdown)": "正文(Markdown)",
+    "Preview": "预览",
+    "Failed to load announcements.": "加载公告失败。",
+    "Announcement updated.": "公告已更新。",
+    "Announcement deleted.": "公告已删除。",
+    "Announcement created.": "公告已创建。",
+    "Delete failed.": "删除失败。",
+    "Create failed.": "创建失败。",
+    "Compare with": "对比基准",
+    "Clear history": "清空历史",
+    "Conversation history": "对话历史",
+    "Type what to change...": "描述要修改的内容...",
+    "Send": "发送",
+    "Stop": "终止",
+    "Working...": "处理中…",
+    "No saved sessions": "没有已保存的会话",
+    "New session": "新建会话",
+    "Import chat": "导入对话",
+    "Import selected": "导入选中",
+    "No chat is currently open": "当前没有打开的聊天",
+    "The current chat has no importable messages": "当前聊天没有可导入的消息",
+    "No messages selected": "没有选中任何消息",
+    "(${0} messages)": "（共 ${0} 条消息）",
+    "Imported ${0} message(s)": "已导入 ${0} 条消息",
+    "(None)": "（无）",
+    "Pending changes": "待应用的修改",
+    "Reject": "拒绝",
+    "Approve": "批准",
+    "Approve file change?": "批准文件修改？",
+    "Approve ${0} file changes?": "批准 ${0} 个文件修改？",
+    "Clear all session history for this scope?": "清空当前作用域的全部会话历史？",
+    "Iteration Studio session format updated; previous sessions cleared.": "迭代工作台会话格式已更新，旧会话已清除。",
+    "Iteration failed: ${0}": "迭代失败：${0}",
+    "AI suggested changes are waiting for approval.": "AI 提出的修改等待你审核。",
+    "Function output is invalid.": "函数输出无效。",
+    "Close Studio": "关闭工作室",
+    "📂 List files": "📂 列出文件",
+    "📖 Read file": "📖 读取文件",
+    "✏️ Write file": "✏️ 写入文件",
+    "🩹 Patch file": "🩹 补丁文件",
+    "🗑️ Delete file": "🗑️ 删除文件",
+    "📝 Rename file": "📝 重命名文件",
+    "🪪 Get character fields": "🪪 获取角色字段",
+    "🖊️ Update character fields": "🖊️ 更新角色字段",
+    "📥 Import embedded world": "📥 导入内嵌世界书",
+    "📚 List world books": "📚 列出世界书",
+    "📖 Get world-info entries": "📖 获取世界信息条目",
+    "🔍 Search world-info entries": "🔍 搜索世界信息条目",
+    "➕ Create world-info entry": "➕ 创建世界信息条目",
+    "✏️ Update world-info entry": "✏️ 更新世界信息条目",
+    "🗑️ Delete world-info entry": "🗑️ 删除世界信息条目",
+    "📕 Create world book": "📕 创建世界书",
+    "♻️ Replace world-info entries": "♻️ 替换世界信息条目",
+    "🔢 List regex scripts": "🔢 列出正则脚本",
+    "➕ Create regex script": "➕ 创建正则脚本",
+    "✏️ Update regex script": "✏️ 更新正则脚本",
+    "🗑️ Delete regex script": "🗑️ 删除正则脚本",
+    "🎼 Get orchestrator override": "🎼 获取编排器覆盖",
+    "🎼 Set orchestrator override": "🎼 设置编排器覆盖",
+    "🎼 Clear orchestrator override": "🎼 清除编排器覆盖",
+    "🧠 Get memory-graph config": "🧠 获取记忆图谱配置",
+    "🧠 Update memory-graph schema": "🧠 更新记忆图谱 schema",
+    "🧠 Update memory-graph advanced": "🧠 更新记忆图谱高级设置",
+    "⌨️ List slash commands": "⌨️ 列出斜杠命令",
+    "❓ Slash command help": "❓ 斜杠命令帮助",
+    "🧭 List Atria context keys": "🧭 列出 Atria 上下文键",
+    "🧭 Describe Atria context": "🧭 描述 Atria 上下文",
+    "📑 List docs": "📑 列出文档",
+    "📖 Read doc": "📖 读取文档",
+    "🔌 Toggle CardApp": "🔌 启用/停用 CardApp",
+    "Max request retries (0 = disabled)": "请求重试次数上限（0 表示关闭）",
+    "Applies to both text and image generation. Retries on network errors and rate-limit / server errors. Streaming responses are not retried after the stream begins.": "对文本生成和图像生成请求都生效。遇到网络错误、上游限流或服务器错误时会自动重试。流式响应开始后断开不会重试。",
+    "Max request retries": "请求重试次数上限",
+    "Retry status whitelist": "重试状态码白名单",
+    "Whitelist accepts comma-separated HTTP status codes and ranges (100–599). Examples: 429, 500-599, or 429, 500-504. Leave empty to retry the default set (429 and any 5xx). When non-empty, only listed codes are retried.": "白名单接受用逗号分隔的 HTTP 状态码或范围（100–599）。例如：429、500-599、429, 500-504。留空则重试默认集合（429 与所有 5xx）；非空则只重试列出的状态码。",
+    "Auto-continue when the response is truncated": "回复被截断时自动继续",
+    "Max auto-continue attempts": "最大自动继续次数",
+    "Main-chat only. Fires on output cap or safety cutoff. Stops if the last round produced no new content. Counter resets on user input, chat switch, or a normal-finish reply.": "仅作用于主聊天。在触及输出上限或被安全策略截断时触发。若上一轮未产出任何新内容则停止。计数在用户发送新消息、切换聊天或收到正常结束的回复时重置。",
+    "Auto-continue on truncated": "截断时自动继续",
+    "Request failed": "请求失败",
+    "Image generation failed": "图像生成失败",
+    "Retrying request… (${0}/${1})": "正在重试请求……（第 ${0}/${1} 次）",
+    "Retrying image generation… (${0}/${1})": "正在重试图像生成……（第 ${0}/${1} 次）",
+    "History": "历史",
+    "Clear all": "清空全部",
+    "(untitled)": "（未命名）",
+    "Delete this session": "删除该会话",
+    "Reference preset:": "参考预设：",
+    "What is a reference preset?": "什么是参考预设？",
+    "A reference preset is a separate preset you pick as a comparison baseline. The AI can:": "参考预设是你额外选定的一份预设，用来作为对照基准。AI 可以：",
+    "Read its fields (prompts, sampler settings, etc.) as context.": "读取它的字段（提示词、采样参数等）作为参考。",
+    "Diff your target preset against it to spot differences.": "把目标预设与它进行差异对比，找出不同之处。",
+    "Copy specific fields from it into your target preset.": "把它的特定字段复制到目标预设中。",
+    "You can merge the strengths of different presets, carrying one preset's ideas and content into another.": "可将不同预设的优点融合起来，将一个预设的思想、内容迁移到另一个预设。",
+    "Pick \"(none)\" to skip — the AI will edit your target preset alone.": "选「（无）」即跳过对比，AI 只在目标预设上修改。",
+    "Editing mode:": "编辑模式：",
+    "Completion Preset Assistant — AI iteration": "聊天补全预设助手 — AI 迭代",
+    "Describe what to change in the preset...": "描述要修改的预设内容...",
+    "Clear all session history for this preset?": "清空该预设的所有会话历史？",
+    "Memory Graph Schema Studio": "记忆图谱 Schema 工作台",
+    "Describe what to change in the schema...": "描述要修改的 Schema 内容...",
+    "AI Iteration Studio": "AI 迭代工作台",
+    "AI Iteration Studio — Spec": "AI 迭代工作台 — Spec",
+    "AI Iteration Studio — Loop": "AI 迭代工作台 — Loop",
+    "AI Iteration Studio — Agenda": "AI 迭代工作台 — Agenda",
+    "AI Iteration Studio — Director": "AI 迭代工作台 — Director",
+    "Describe what to change in the profile...": "描述要修改的配置内容...",
+    "Auto-apply edits": "自动应用变更",
+    "Character Editor — AI iteration": "角色卡编辑器 — AI 迭代",
+    "Sampling params": "采样参数",
+    "Saved presets": "已保存预设",
+    "Frequency penalty": "频率惩罚",
+    "Presence penalty": "存在惩罚",
+    "Reference": "参考",
+    "Preview unavailable": "预览不可用",
+    "Max context unlocked": "解锁最大上下文",
+    "No data": "暂无数据",
+    "(was ${0} → now ${1})": "（待修改：${0} → ${1}）",
+    "No preset loaded.": "未加载预设。",
+    "Live target preview": "实时目标预览",
+    "Pending applied (preview):": "应用后（预览）:",
+    "Resize columns": "拖动调整宽度",
+    "New messages while you were on Preview": "在预览页面时收到的新消息",
+    "Schema": "Schema",
+    "${0} fields": "${0} 个字段",
+    "No schema loaded.": "未加载 Schema。",
+    "No profile loaded.": "未加载配置。",
+    "Pipeline": "流水线",
+    "No stages": "暂无阶段",
+    "Loop agent": "循环代理",
+    "Prompt preset": "提示词预设",
+    "API preset": "API 预设",
+    "API preset (Connection profile)": "API 预设（Connection profile）",
+    "Max rounds": "最大轮次",
+    "Wall-clock budget (s)": "时长预算（秒）",
+    "System prompt": "系统提示词",
+    "(unset)": "（未设置）",
+    "Planner": "规划器",
+    "Agents": "代理列表",
+    "No agents": "暂无代理",
+    "(final)": "（终）",
+    "planner rounds": "规划轮次",
+    "concurrent agents": "并发代理",
+    "total runs": "总执行次数",
+    "No sub-agents": "暂无子代理",
+    "rounds": "轮次",
+    "concurrent subagents": "并发子代理",
+    "total subagent runs": "子代理总执行次数",
+    "Character fields": "角色字段",
+    "Bound lorebook": "绑定世界书",
+    "No character loaded.": "未加载角色。",
+    "(click to expand)": "（点击展开）",
+    "World book: ${0}": "世界书：${0}",
+    "Auto-apply AI proposed changes": "自动应用 AI 提议的变更",
+    "Draft (not applied)": "草稿（未应用）",
+    "Recently applied": "最近应用",
+    "Entry UID: ${0}": "条目 UID：${0}",
+    "Position: ${0}": "位置：${0}",
+    "Keys: ${0}": "关键词：${0}",
+    "No entries yet.": "暂无条目。",
+    "No world book bound": "未绑定世界书",
+    "(new)": "（新建）",
+    "${0} references missing entry": "${0} 引用了不存在的条目",
+    "AI is thinking...": "AI 正在思考……",
+    "Applied to ${0}": "已应用到 ${0}",
+    "Apply to ${0}": "应用到 ${0}",
+    "global": "全局",
+    "current character": "当前角色",
+    "Rolled back": "已回退",
+    "Roll back this batch? The changes will be reversed in the target.": "回退本批次变更？目标里这些改动会被反向应用。",
+    "Tools and edits this round (${0})": "本轮工具调用 + 变更（${0}）",
+    "Rolled back at ${0}": "已回退 ${0}",
+    "✓ Applied to ${0} at ${1}": "✓ 已应用至 ${0}（${1}）",
+    "Rollback": "回退",
+    "Cannot rollback edit type: ${0}": "无法回退此类编辑：${0}",
+    "preset": "预设",
+    "schema": "结构",
+    "Apply failed: ${0}": "应用失败：${0}",
+    "Applied ${0} edit(s) to ${1}": "已应用 ${0} 条编辑到 ${1}",
+    "Applied ${0} of ${1} edit(s) to ${2}; ${3} skipped": "已应用 ${0}/${1} 条编辑到 ${2};${3} 条跳过",
+    "Applied ${0} of ${1} change(s); ${2} skipped": "已应用 ${0}/${1} 项变更；${2} 项跳过",
+    "No edits applied to ${0}: all ${1} were skipped (conflicts or already in desired state)": "未应用任何编辑到 ${0}：全部 ${1} 条都被跳过（冲突或已是期望状态）",
+    "No edits applied: all ${0} were skipped (conflicts or already in desired state)": "未应用任何编辑：全部 ${0} 条都被跳过（冲突或已是期望状态）",
+    "Edit error: ${0}": "编辑错误：${0}",
+    "Failed to save preset: ${0}": "保存预设失败：${0}",
+    "Failed to save schema: ${0}": "保存结构失败：${0}",
+    "Failed to save profile: ${0}": "保存配置失败：${0}",
+    "Failed to save character: ${0}": "保存角色失败：${0}",
+    "Session finalized": "会话已完成",
+    "No presets": "暂无预设",
+    "Field updated: ${0}": "字段已更新：${0}",
+    "Show ${0} more entries": "展开剩余 ${0} 条",
+    "Working profile reset to a blank shell — building this card's orchestration from scratch.": "工作中的配置已重置为空白模板，将从零开始为这张角色卡编写编排。",
+    "Working profile reset to match the current global profile — adjust from there.": "工作中的配置已重置为当前全局配置——请在此基础上调整。",
+    "Schema reset to a blank shell — building from scratch.": "结构已重置为空白模板——从零开始搭建。",
+    "Schema reset to match the current global schema — adjust from there.": "结构已重置为当前全局结构——请在此基础上调整。",
+    "Reset working profile to blank": "重置工作配置为空白",
+    "Reset working profile to global": "重置工作配置为全局",
+    "Reset schema to blank": "重置结构为空白",
+    "Reset schema to global": "重置结构为全局",
+    "✓ Applied at ${0}": "✓ 已应用 ${0}",
+    "Apply ${0}": "应用 ${0}",
+    "Rollback this round": "回退本轮",
+    "Roll back ${0} change(s) from this round?": "确认回退本轮的 ${0} 项变更？",
+    "Rolled back ${0} change(s).": "已回退 ${0} 项变更。",
+    "Batch rollback finished with ${0} failure(s).": "批量回退完成，${0} 项失败。",
+    "(untitled entry)": "（无标题条目）",
+    "${0} entries": "${0} 条",
+    "${0} pending": "${0} 项待批准",
+    "${0} draft": "${0} 项草稿",
+    "Error: ${0}": "错误：${0}",
+    "Auto-continue": "自动续轮",
+    "AI read the indicated data and is waiting to act on the result next round.": "AI 读取了相关数据，等待下一轮根据结果调整。",
+    "Just imported this card — review the baseline and suggest tweaks.": "刚导入这张卡——回顾基础设定并提出调整建议。",
+    "Continue iteration": "继续迭代",
+    "Finalize iteration": "结束迭代",
+    "Set preset field": "设置预设字段",
+    "Replace field text": "替换字段文本",
+    "Insert into field": "向字段中插入",
+    "Delete inside field": "从字段中删除",
+    "Replace text in prompt": "替换条目文本",
+    "Insert text in prompt": "向条目中插入文本",
+    "Delete text in prompt": "从条目中删除文本",
+    "List insert": "列表插入",
+    "List remove": "列表移除",
+    "List move": "列表移动",
+    "Set prompt entry": "设置提示条目",
+    "Adjust prompt order": "调整提示顺序",
+    "Remove prompt entry": "移除提示条目",
+    "Remove prompt order item": "移除提示顺序项",
+    "Clone to new preset": "克隆为新预设",
+    "Copy from reference": "从参考预设复制",
+    "Read preset fields": "读取预设字段",
+    "Read reference fields": "读取参考字段",
+    "Diff against reference": "与参考预设对比",
+    "Simulate prompt assembly": "模拟提示组装",
+    "Returned ${0} values": "返回 ${0} 个值",
+    "${0} paths": "${0} 个路径",
+    "${0} fields differ": "${0} 个字段不同",
+    "Assembled ${0} chars": "组装 ${0} 个字符",
+    "Set node type": "设置节点类型",
+    "Remove node type": "移除节点类型",
+    "Reorder node types": "重新排序节点类型",
+    "Update director main agent": "更新导演主智能体",
+    "Upsert director sub-agent": "设置导演子智能体",
+    "Remove director sub-agent": "移除导演子智能体",
+    "Update director limits": "更新导演限制",
+    "Update director tools": "更新导演工具",
+    "main agent": "主智能体",
+    "limits": "限制",
+    "tools": "工具",
+    "Update loop profile": "更新循环配置",
+    "loop profile": "循环配置",
+    "Update agenda planner": "更新议程规划者",
+    "Upsert agenda agent": "设置议程智能体",
+    "Remove agenda agent": "移除议程智能体",
+    "Set agenda final agent": "设置议程终笔智能体",
+    "Update agenda limits": "更新议程限制",
+    "planner": "规划者",
+    "Upsert pipeline stage": "设置流水线阶段",
+    "Remove pipeline stage": "移除流水线阶段",
+    "Upsert stage node": "设置阶段节点",
+    "Remove stage node": "移除阶段节点",
+    "Upsert preset": "设置预设",
+    "Remove preset": "移除预设",
+    "Simulate orchestration": "模拟编排",
+    "Set lorebook book filter": "设置世界书书名过滤",
+    "Set lorebook entry filter": "设置世界书条目过滤",
+    "Clear lorebook book filter": "清除世界书书名过滤",
+    "Clear lorebook entry filter": "清除世界书条目过滤",
+    "List world books": "列出世界书",
+    "List lorebook entries": "列出世界书条目",
+    "Search lorebook": "搜索世界书",
+    "Read lorebook entries": "读取世界书条目",
+    "${0} books": "${0} 本世界书",
+    "${0} hits": "${0} 个匹配",
+    "Set card field": "设置卡片字段",
+    "Replace text in card field": "替换卡片字段文本",
+    "Add lorebook entry": "新增世界书条目",
+    "Update lorebook entry": "更新世界书条目",
+    "Remove lorebook entry": "移除世界书条目",
+    "Set lorebook metadata": "设置世界书元数据",
+    "Web search": "网络搜索",
+    "Simulate prompt": "模拟提示",
+    "${0} results": "${0} 个结果",
+    "${0} chars": "${0} 个字符",
+    "Arguments": "参数",
+    "Result": "结果",
+    "Profile updated": "配置已更新",
+    "Field updated": "字段已更新",
+    "working profile": "当前配置",
+    "Line diff": "行级 diff",
+    "Line diff (+${0} -${1})": "行级 diff（+${0} -${1}）",
+    "Expand diff": "展开 diff",
+    "Resize diff columns": "调整 diff 栏宽",
+    "Close expanded diff": "关闭展开的 diff",
+    "(unknown op)": "（未知操作）",
+    "(tool)": "（工具）",
+    "(root)": "（根）",
+    "(${0}${1} bytes)": "（${0}${1} 字节）",
+    "field": "字段",
+    "General editing": "通用编辑",
+    "Adapt for orchestrator": "适配编排器",
+    "Jailbreak-only": "仅越狱",
+    "(no effective change)": "（无实际变更）",
+    "Clear all session history?": "清空所有会话历史？",
+    "Save failed — close anyway and lose this turn?": "保存失败——仍要关闭并丢弃本轮内容吗？",
+    "Apply ${0} to \"${1}\"": "将 ${0} 应用到「${1}」",
+    "Apply ${0} changes (${1})": "应用 ${0} 项变更（${1}）",
+    "${0} to character": "${0} 到角色卡",
+    "${0} to \"${1}\"": "${0} 到「${1}」",
+    "Apply failed (${0}): ${1}": "应用失败（${0}）：${1}",
+    "Apply failed for ${0} target(s).": "${0} 个目标应用失败。",
+    "Applied ${0} change(s).": "已应用 ${0} 项变更。",
+    "Rollback failed (${0}): ${1}": "回退失败（${0}）：${1}",
+    "Rollback failed for ${0} target(s).": "${0} 个目标回退失败。",
+    "Rolled back.": "已回退。",
+    "Resize chat and preview columns": "调整对话与预览栏宽",
+    "Unread assistant messages": "未读 AI 消息",
+    "(untitled session)": "（无标题会话）",
+    "Delete this session?": "删除此会话？",
+    "Clear all saved sessions for this character?": "清空此角色卡的所有保存会话？",
+    "Finalized.": "已完成。",
+    "No saved sessions yet.": "暂无保存的会话。",
+    "Cloned to ${0}": "已克隆到 ${0}",
+    "Apply to ${0} override": "应用到 ${0} 的角色卡覆盖",
+    "Regenerate this turn? Subsequent rounds will be discarded.": "重新生成本轮？后续轮次会被丢弃。",
+    "(deleted)": "（已删除）",
+    "Reset rejected: reset_to_blank only applies when iterating a character override.": "重置被拒：reset_to_blank 仅在迭代角色卡覆盖时可用。",
+    "Reset rejected: reset_to_global only applies when iterating a character override.": "重置被拒：reset_to_global 仅在迭代角色卡覆盖时可用。",
+    "Reset rejected: this card already has an override. Use reset_to_global instead, or continue adjusting in place.": "重置被拒：这张卡已有覆盖。请改用 reset_to_global，或者直接在现有基础上调整。",
+    "Reset rejected: this card has no character override yet. Use reset_to_blank instead, or continue adjusting the seeded global copy in place.": "重置被拒：这张卡还没有角色卡覆盖。请改用 reset_to_blank，或者直接在播种的全局副本上调整。",
+    "Description": "描述",
+    "Personality": "性格",
+    "Example dialogue": "示例对话",
+    "Main prompt": "主提示词",
+    "Post-history instructions": "对话历史后指令",
+    "Creator notes": "作者注释",
+    "pending change": "待审批改动",
+    "${0} pending edit(s)": "${0} 处待审批改动",
+    "No character bound": "未绑定角色卡",
+    "(unnamed character)": "（未命名角色）",
+    "All card fields empty.": "角色卡所有字段均为空。",
+    "Alternate greetings": "备用问候语",
+    "What preset should I use for the Agent?": "Agent 这里该挂什么样的提示词预设？",
+    "What preset should I use here?": "这里该挂什么样的提示词预设？",
+    "This selector is for the preset the plugin uses to do its own work — editing configs, editing schemas, extracting facts, building recall queries, etc. It is NOT for drafting RP content.": "这一栏选的是插件自己干活时用的预设——改配置、改 Schema、抽事实、构造召回查询等等，不是用来产出 RP 正文的。",
+    "A clean preset works best here: one that contains only jailbreak / general unblock prompts, with no RP style instructions, character voice, or narrative format requirements.": "这里最适合挂一份干净预设：只保留越狱/通用破限提示词，不含 RP 文风指令、角色语态、叙事格式要求。",
+    "Why? RP presets often force an output format (mandatory schema blocks, forced thinking chains) that conflicts with the structured tool calls these plugins use. Style instructions can also leak into config edits and produce odd results.": "原因：日常 RP 预设常常会强制输出格式（强制 schema 块、强制思维链），与这些插件用的结构化 tool call 互相打架；文风指令也容易渗进配置改写里，结果稀奇古怪。",
+    "Two ways to get a clean preset:": "两种拿到干净预设的方式：",
+    "Click \"Import plugin-only preset\" below — imports a pre-built clean preset bundled with Atria, then selects it here.": "点下面的「导入 plugin-only 预设」——一键导入 Atria 内置的现成干净预设，并自动选中。",
+    "Open the Completion Preset Assistant and start a new session in \"Jailbreak-only\" mode — it will derive a clean version from your existing RP preset. Your original preset stays untouched.": "打开「聊天补全预设助手」，新开一个「仅保留破限」模式的会话——它会从你现有的 RP 预设派生一份干净版本，原预设保持不动。",
+    "This selector is for the preset an Agent uses to draft content. Unlike iteration-AI presets, the Agent SHOULD use your RP-style instructions — jailbreak, NSFW guidance, style/voice rules, anti-cliché instructions, etc.": "这一栏选的是 Agent 起草正文时用的预设。和插件迭代 AI 不一样，Agent 这里需要你的 RP 类指令——越狱、NSFW 指导、文风/语态规则、反八股指令等等。",
+    "But a raw daily RP preset is also not the right fit: instructions that force an output schema or a fixed thinking-chain format will block the agent's tool calls, and character/world-info that the agent framework already injects will get duplicated.": "但是直接挂日常 RP 预设也不合适：强制输出 schema、固定思维链格式之类的指令会顶坏 Agent 的 tool call；角色卡描述、世界书等占位符在 Agent 框架里已经会被注入一次，原样保留会被重复注入。",
+    "Recommended: derive an Agent-friendly preset from your RP preset. Open the Completion Preset Assistant, start a new session in \"Adapt for orchestrator\" mode, and ask it to convert. It will keep your style / jailbreak / anti-cliché instructions while disabling format-forcing prompts and duplicate injections. The original preset stays untouched.": "建议：从你的 RP 预设派生一份 Agent 友好版本。打开「聊天补全预设助手」，新开一个「编排器适配」模式的会话，让它帮你改造——它会保留文风 / 越狱 / 反八股指令，同时禁用会强制格式的提示词和重复注入。原预设保持不动。",
+    "For the full multi-Agent setup walkthrough, see the multi-Agent onboarding recipe in the documentation.": "完整的多 Agent 配置流程请见文档中的「多 Agent 上手指南」。",
+    "Failed to save the \"{name}\" preset.": "保存「{name}」预设失败。",
+    "A preset named \"{name}\" already exists. Overwrite it with the bundled version, or keep your existing copy and just select it?": "已存在名为「{name}」的预设。要用 Atria 内置版本覆盖，还是保留你现有的版本并直接选中？",
+    "Overwrite with bundled version": "用内置版本覆盖",
+    "Keep existing": "保留现有",
+    "Overwrote preset: {name}": "已覆盖预设：{name}",
+    "Selecting your existing \"{name}\" preset.": "已为你选中现有的「{name}」预设。",
+    "Import plugin-only preset": "导入 plugin-only 预设",
+    "Failed to download the \"{name}\" preset.": "下载「{name}」预设失败。",
+    "Imported preset: {name}": "已导入预设：{name}",
+    "This selector is for the preset a Director-mode Agent uses (main agent or a sub-agent). Director already injects the full RP context (character card, persona, world info, chat history) inside a <story_context> envelope before the agent runs — so the agent's own preset does NOT need any character / world / persona placeholders. Adding them would only re-inject the same content twice and burn tokens.": "这一栏选的是 Director 模式 Agent（主 Agent 或 sub-agent）用的预设。Director 在 Agent 运行前已经把完整 RP 上下文（角色卡、persona、世界书、聊天记录）整段塞进 <story_context> 信封里——所以 Agent 自己这份预设不需要任何角色卡/世界书/persona 占位符，加了只会把同样的内容重复注入一次，白烧 token。",
+    "What this slot SHOULD carry: jailbreak / content-permission instructions that wrap the <story_context> block, plus the chatHistory marker so the envelope lands in the right place. Style / voice / anti-cliché rules normally belong in the agent's system prompt, not here.": "这一栏该装的是什么：包在 <story_context> 块外面的越狱/内容许可指令，加上 chatHistory 占位符让信封落到合适的位置。文风/语态/反八股规则正常应该写在 Agent 的系统提示词里，不属于这里。",
+    "Two ways to get a Director-friendly preset:": "两种拿到 Director 友好预设的方式：",
+    "Click \"Import agent-director preset\" below — imports a minimal Atria-bundled preset (marker-free, permission text only) and selects it here. Good as a quick start.": "点下面的「导入 agent-director 预设」——一键导入 Atria 内置的极简预设（不含占位符，只保留许可文本），并自动选中。适合快速起步。",
+    "Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a Director-ready version from your existing RP preset, keeping your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts and duplicate injections. Your original preset stays untouched.": "打开「聊天补全预设助手」，新开一个「编排器适配」模式的会话——它会从你现有的 RP 预设派生一份适配 Director 的版本，保留越狱/文风/反八股指令，同时剥掉强制格式的提示词和重复注入。原预设保持不动。",
+    "Import agent-director preset": "导入 agent-director 预设",
+    "This selector is for the preset a non-Director Agent uses (Single / Spec / Agenda planner / Loop). Unlike Director, these modes do NOT inject the RP context for the agent — so the agent's preset is the only path through which character card, persona, and world info reach the model. Markers (charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory) must stay enabled, and the RP material should be visibly separated from the runtime task instructions so the agent does not mistake them for narrative continuation.": "这一栏选的是非 Director 模式 Agent（Single / Spec / Agenda planner / Loop）用的预设。和 Director 不同，这些模式不会主动给 Agent 注入 RP 上下文——所以 Agent 这份预设是角色卡、persona、世界书到达模型的唯一通道。占位符（charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory）必须保持启用；RP 素材要和运行时下发的任务指令明确隔开，免得 Agent 把它读成叙事延续。",
+    "This is the same shape iteration-AI plugins (CPA iter / Memory Graph / CardApp Studio iter) need, just placed in an Agent slot. The bundled preset offered below is identical in structure to the iter-AI plugin-only preset.": "这和插件迭代 AI（预设助手迭代、记忆图、卡片应用工作台迭代等）需要的形态是一样的，只是装在 Agent 的槽位里。下面提供的内置预设结构上和插件迭代 AI 用的 plugin-only 预设一致。",
+    "Two ways to get a non-Director-friendly preset:": "两种拿到非 Director 友好预设的方式：",
+    "Click \"Import agent-non-director preset\" below — imports a Atria-bundled preset (markers enabled, story / user-request envelopes wrap the context) and selects it here. Good as a quick start.": "点下面的「导入 agent-non-director 预设」——一键导入 Atria 内置的预设（占位符启用，story / user-request 信封把上下文包好），并自动选中。适合快速起步。",
+    "Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a version from your existing RP preset that preserves your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts. Your original preset stays untouched.": "打开「聊天补全预设助手」，新开一个「编排器适配」模式的会话——它会从你现有的 RP 预设派生一份版本，保留越狱/文风/反八股指令，同时剥掉强制格式的提示词。原预设保持不动。",
+    "Import agent-non-director preset": "导入 agent-non-director 预设",
+    "Update skill file": "更新 skill 文件",
+    "Update skill frontmatter": "更新 skill 元数据",
+    "Create skill": "创建 skill",
+    "Rename skill": "重命名 skill",
+    "Move skill scope": "迁移 skill 作用域",
+    "Delete skill": "删除 skill",
+    "preset:${0}": "预设：${0}",
+    "character:${0}": "角色：${0}",
+    "(unknown scope)": "（未知作用域）",
+    "No content change": "无内容变更",
+    "Plus ${0} additional file(s): ${1}": "另含 ${0} 个附加文件：${1}",
+    "Skill \"${0}\" (${1}) will be deleted on Apply. All files removed; this cannot be undone.": "Skill「${0}」（${1}）将在「应用」时删除：所有文件一并移除，且无法撤销。",
+    "Committed ${0} skill edit(s)": "已提交 ${0} 项 skill 修改",
+    "Skill commit failed at ${0} (${1}): ${2}": "Skill 提交在 ${0}（${1}）处失败：${2}",
+    "Skill commit halted: ${0} (${1}) failed (${2}). Remaining approved skill edits left in the pending list for retry.": "Skill 提交已中断：${0}（${1}）失败（${2}）。剩余已批准的 skill 修改保留在待办列表中，可重试。",
+    "Pending approval": "等待审批",
+    "Undo reject": "撤销拒绝",
+    "✗ Rejected at ${0}": "✗ 已拒绝 ${0}",
+    "↺ Rolled back at ${0}": "↺ 已回退 ${0}",
+    "⚠ External change": "⚠ 外部已变更",
+    "⚠ Write skipped (resource changed)": "⚠ 写入未生效（目标已变更）",
+    "The resource changed externally since this proposal was captured. Approve to retry against the current state, or reject.": "自提议生成以来，该资源已被外部修改。点击批准将基于当前状态重新尝试；点击拒绝则放弃。",
+    "The AI called this write tool, but the target had been changed in the meantime — the write was NOT applied. The AI has been notified and can decide whether to retry.": "AI 调用了这个写入工具，但目标在期间已被修改——本次写入未生效。AI 已收到通知，可自行决定是否重试。",
+    "Validation errors (${0}):": "校验错误（${0}）：",
+    "Targets missing (${0}):": "目标不存在（${0}）：",
+    "Payload rejected (${0}):": "载荷被拒（${0}）：",
+    "State destroyed (${0}):": "状态已销毁（${0}）：",
+    "Server errors (${0}):": "服务器错误（${0}）：",
+    "Network errors (${0}):": "网络错误（${0}）：",
+    "Persistence errors (${0}):": "持久化错误（${0}）：",
+    "Other errors (${0}):": "其他错误（${0}）：",
+    "Approve all pending (${0})": "批准全部待审（${0}）",
+    "Reject all pending (${0})": "拒绝全部待审（${0}）",
+    "Rollback this turn (${0})": "回退本轮（${0}）",
+    "Profile change": "档案变更",
+    "Preset change": "预设变更",
+    "Schema change": "Schema 变更",
+    "Character edits": "角色编辑",
+    "Lorebook edits": "世界书编辑",
+    "Lorebook write": "世界书写入",
+    "Lorebook ${0}": "世界书 ${0}",
+    "Skill change": "Skill 变更",
+    "Skill: ${0}": "Skill: ${0}",
+    "Clone preset": "克隆预设",
+    "Will fork \"${0}\" into a new preset named \"${1}\" and switch the open session onto it.": "将以「${0}」为模板新建预设「${1}」，并把当前会话切换过去。",
+    "Will fork the current preset into a new one and switch the open session onto it.": "将以当前预设为模板新建一个预设，并把当前会话切换过去。",
+    "⚠ Cannot be auto-rolled back — the cloned preset stays on disk even after this card is undone.": "⚠ 无法自动回退——即使撤销此条目，已生成的预设也仍会保留在磁盘上。",
+    "Storage Backend": "存储后端",
+    "Current Mode:": "当前模式：",
+    "Read-Only:": "只读：",
+    "Last Migration:": "上次迁移：",
+    "Switch Backend": "切换后端",
+    "Target:": "目标：",
+    "Filesystem": "文件系统",
+    "SQLite": "SQLite",
+    "MySQL": "MySQL",
+    "PostgreSQL": "PostgreSQL",
+    "MySQL connection": "MySQL 连接",
+    "PostgreSQL connection": "PostgreSQL 连接",
+    "URL:": "连接字符串：",
+    "Pool size:": "连接池大小：",
+    "mysql://user:pass@host:3306/atria": "mysql://user:pass@host:3306/atria",
+    "postgresql://user:pass@host:5432/atria": "postgresql://user:pass@host:5432/atria",
+    "storageBackendDbConfigHint": "若连接字符串留空，将直接使用 config.yaml 中已设置的 storage.mysql.url／storage.postgres.url。",
+    "storageBackendSharedDbWarning": "MySQL 与 PostgreSQL 后端会在所有用户间共享同一份数据库 schema（以 handle 字段区分）。切换到或离开共享后端时，另一个后端的数据会原样保留在磁盘上但暂时不可见，直到再次切换回去。",
+    "Migrate Now": "立即迁移",
+    "storageBackendMigrationWarning": "此操作会将所有用户数据复制到目标后端并将运行中的服务器切换过去。备份会永久保存在 <dataRoot>/_storage-migrations/ 目录下，绝不会自动删除。",
+    "yes": "是",
+    "no": "否",
+    "Failed to load storage backend status.": "加载存储后端状态失败。",
+    "A migration is currently in progress on the server. Please wait.": "服务器上当前有迁移正在进行，请稍候。",
+    "Select a target backend mode.": "请选择目标后端模式。",
+    "Migrate ALL user data to ${targetMode}? A backup will be saved permanently under the data-root _storage-migrations directory. This may take several minutes for large installs and the server will reject writes until it finishes.": "确认将所有用户数据迁移到 ${targetMode} 吗？备份会永久保存在数据根目录下的 _storage-migrations 目录中。大型部署可能需要数分钟，迁移期间服务器会拒绝写入。",
+    "Migration in progress, do not refresh...": "迁移进行中，请勿刷新……",
+    "Migration in progress. This may take several minutes.": "迁移进行中。可能需要数分钟。",
+    "Migration complete.": "迁移完成。",
+    "Migration failed for one or more users. Source backend retained.": "一个或多个用户迁移失败。源后端已保留。",
+    "Migration failed.": "迁移失败。",
+    "Could not save to config.yaml: ${configPersistError}": "写入 config.yaml 失败：${configPersistError}",
+    "Duration:": "耗时：",
+    "Started:": "开始时间：",
+    "last progress": "最近进度",
+    "Progress:": "进度：",
+    "pending": "等待中",
+    "in flight": "进行中",
+    "starting": "启动中",
+    "so far:": "目前进度：",
+    "Prompt post-processing is set to Single user message, which collapses every turn into one message. Prompt caching cannot reuse any prefix across requests in this mode — every request is a cache write with no read. Switch to None or Merge consecutive roles for caching to take effect.": "「提示词后处理」当前为「单一用户消息」，该模式会把所有轮次塞进同一条消息。在此模式下提示词缓存无法跨请求复用任何前缀，每次请求都只写不读。请切换到「未选择」或「合并相同角色连续的发言」以使缓存生效。",
+    "Prompt post-processing is set to Strict or Semi-strict, which folds every system message after the first into a user turn. Prompt caching still works on the first user message's tail, but the dedicated system-prompt cache breakpoint is unavailable. None or Merge consecutive roles gives the best cache coverage.": "「提示词后处理」当前为「严格」或「半严格」，该模式会把首条之后的所有系统消息并入用户轮次。提示词缓存仍能命中首条用户消息的尾部，但无法单独缓存系统提示。改用「未选择」或「合并相同角色连续的发言」可获得最佳缓存覆盖。",
+    "sync.category.characters": "角色卡",
+    "sync.category.characters.desc": "角色卡 PNG 文件，每个角色一份独立文件。",
+    "sync.category.chats": "聊天与群组",
+    "sync.category.chats.desc": "单人聊天、群组聊天与群组元数据。",
+    "sync.category.worlds": "世界书（Lorebook）",
+    "sync.category.worlds.desc": "世界书 JSON 文件。",
+    "sync.category.card-apps": "卡片应用",
+    "sync.category.card-apps.desc": "每个角色的 CardApp 工作目录文件，不含其内部 .git 历史记录。",
+    "sync.category.skills": "技能（Skills）",
+    "sync.category.skills.desc": "已安装的技能知识包。",
+    "sync.category.openai-presets": "OpenAI 预设",
+    "sync.category.openai-presets.desc": "对话补全预设文件，每个预设一份。",
+    "sync.category.novelai-presets": "NovelAI 预设",
+    "sync.category.novelai-presets.desc": "NovelAI 预设文件。",
+    "sync.category.koboldai-presets": "KoboldAI 预设",
+    "sync.category.koboldai-presets.desc": "KoboldAI 预设文件。",
+    "sync.category.textgen-presets": "文本补全预设",
+    "sync.category.textgen-presets.desc": "TextGen WebUI 及通用文本补全预设文件。",
+    "sync.category.instruct": "指令模板",
+    "sync.category.instruct.desc": "指令格式模板。",
+    "sync.category.context": "上下文模板",
+    "sync.category.context.desc": "上下文格式化模板。",
+    "sync.category.sysprompt": "系统提示词",
+    "sync.category.sysprompt.desc": "系统提示词模板。",
+    "sync.category.reasoning": "推理模板",
+    "sync.category.reasoning.desc": "推理格式模板。",
+    "sync.category.themes": "主题",
+    "sync.category.themes.desc": "界面主题文件。",
+    "sync.category.movingUI": "可移动界面布局",
+    "sync.category.movingUI.desc": "保存的可移动面板布局。",
+    "sync.category.quickreplies": "快速回复",
+    "sync.category.quickreplies.desc": "快速回复集。",
+    "sync.category.assets": "素材",
+    "sync.category.assets.desc": "素材文件夹（音效、背景音乐等）。",
+    "sync.category.backgrounds": "背景",
+    "sync.category.backgrounds.desc": "背景图片文件。",
+    "sync.category.avatars": "用户设定头像",
+    "sync.category.avatars.desc": "用户设定头像图片文件。",
+    "sync.category.user-files": "用户上传文件",
+    "sync.category.user-files.desc": "在聊天或脚本中上传的文件。",
+    "sync.category.comfy-workflows": "ComfyUI 工作流",
+    "sync.category.comfy-workflows.desc": "保存的 ComfyUI 节点工作流 JSON 文件，体积通常很小。",
+    "sync.category.user-images": "用户图片",
+    "sync.category.user-images.desc": "通过 user/images 目录管理的图片库。",
+    "sync.category.image-metadata": "图片元数据索引",
+    "sync.category.image-metadata.desc": "image-metadata.json，需与用户图片一起同步。",
+    "sync.category.vectors": "向量缓存",
+    "sync.category.vectors.desc": "向量嵌入缓存。两端复用同一份向量，避免重复消耗 API 配额。",
+    "sync.category.stats": "角色统计",
+    "sync.category.stats.desc": "stats.json，由聊天记录派生；冲突时可在本地重新计算。",
+    "sync.category.settings": "设置",
+    "sync.category.settings.desc": "settings.json，完整的 Atria 配置。",
+    "sync.category.secrets": "API 密钥与凭据",
+    "sync.category.secrets.desc": "secrets.json，API 密钥、令牌与密码。",
+    "sync.category.extensions": "扩展插件",
+    "sync.category.extensions.desc": "用户级扩展文件，默认关闭。",
+    "sync.warning.settings_single_file_conflict": "单一大文件，冲突时只能按整文件二选一。",
+    "sync.warning.secrets_plaintext_transport": "包含 API 密钥；除非传输已加密，否则将以明文方式通过局域网传送。",
+    "sync.warning.extensions_version_drift": "第三方插件可能存在本地未完成的改动或版本不兼容的代码。",
+    "LAN Sync": "局域网同步",
+    "Open LAN Sync": "打开局域网同步",
+    "Recommended for two devices in regular use. Repeated, two-way, incremental — only changed data crosses the wire.": "推荐两台经常使用的设备使用。重复、双向、增量——只有变更的数据会通过网络传输。",
+    "One-shot full-data transfer for moving to a brand-new device. For ongoing two-way sync use LAN Sync above.": "一次性全量数据传输，适用于迁移到全新设备。如需持续双向同步，请使用上方的局域网同步。",
+    "Sync two Atria devices on the same network. Only changed data crosses the wire; full re-uploads aren't needed.": "同步同一网络下的两台 Atria 设备。只有变更的数据会通过网络传输，无需重新上传全量数据。",
+    "My devices": "我的设备",
+    "Pair new device": "配对新设备",
+    "Pair with existing device": "与已有设备配对",
+    "Paired devices": "已配对的设备",
+    "No paired devices yet. Use the tabs above to pair this device with another.": "尚未配对任何设备。请使用上方的标签页将此设备与另一台配对。",
+    "Generate a one-time pairing link to share with another device on the same network. The other device pastes the URL into its own Pair with existing device tab.": "生成一次性的配对链接，分享给同一网络下的另一台设备。另一台设备将链接粘贴到其「与已有设备配对」标签页即可。",
+    "Label for the OTHER device (shown in your devices list)": "另一台设备的标签（显示在你的设备列表中）",
+    "e.g. Phone, Laptop, Office desktop": "例如：手机、笔记本、办公台式机",
+    "Categories to sync:": "要同步的类别：",
+    "Generate pairing link": "生成配对链接",
+    "Share this with the other device": "将此分享给另一台设备",
+    "Copy the link and paste it into the OTHER device's Pair with existing device tab.": "复制此链接，粘贴到另一台设备的「与已有设备配对」标签页。",
+    "Pairing link": "配对链接",
+    "Copy link": "复制链接",
+    "Generate another": "重新生成",
+    "The other device must enter THIS device's credentials when pairing if you have basic auth enabled. They are sent over LAN only, never stored.": "如果你启用了基本认证，另一台设备在配对时需要输入此设备的凭据。凭据仅通过局域网发送，不会被存储。",
+    "Paste the pairing link from the other device, or fill in the fields manually.": "粘贴另一台设备的配对链接，或手动填写各项字段。",
+    "Special characters in your handle are normalized to underscores for pairing. Both devices must use the same handle.": "用户名中的特殊字符在配对时会被规范化为下划线。两台设备必须使用相同的用户名。",
+    "This pairing link is for ${0}, but you're logged in as ${1}. Pair from the matching account, or use the same handle on both devices.": "此配对链接面向 ${0}，但您当前登录为 ${1}。请用匹配的账户配对，或在两台设备上使用同一用户名。",
+    "Paste pairing link here": "在此粘贴配对链接",
+    "Other device base URL": "另一台设备的基础 URL",
+    "Peer identifier from the other device": "另一台设备给出的标识符",
+    "Label for the other device": "另一台设备的标签",
+    "e.g. Phone": "例如：手机",
+    "Peer ID": "对端 ID",
+    "If the other device has basic authentication enabled, enter the credentials it expects. Otherwise leave blank.": "如果另一台设备启用了基本认证，请输入它要求的凭据。否则留空即可。",
+    "Basic auth username (optional)": "基本认证用户名（可选）",
+    "Basic auth password (optional)": "基本认证密码（可选）",
+    "Pair and sync": "配对并同步",
+    "Resolve conflicts": "解决冲突",
+    "The same file was edited on both devices. Pick which version to keep for each file. There's no line-by-line merge.": "同一文件在两台设备上都被修改了。请为每个文件选择要保留的版本，不支持按行合并。",
+    "Apply resolutions": "应用解决方案",
+    "Type: ${conflict.kind}": "类型：${conflict.kind}",
+    "Local: deleted": "本地：已删除",
+    "Local version": "本地版本",
+    "Remote: deleted": "远端：已删除",
+    "Remote version": "远端版本",
+    "Sync now": "立即同步",
+    "Undo last sync": "撤销上次同步",
+    "Forget": "忘记",
+    "Last sync: ${formatRelativeTime(peer.lastSyncAt)}": "上次同步：${formatRelativeTime(peer.lastSyncAt)}",
+    "just now": "刚刚",
+    "${minutes} min ago": "${minutes} 分钟前",
+    "${hours} hr ago": "${hours} 小时前",
+    "${days} day(s) ago": "${days} 天前",
+    "Syncing with ${payload.label || payload.remotePeerId}…": "正在与 ${payload.label || payload.remotePeerId} 同步……",
+    "Syncing with ${peer.label || peerId}…": "正在与 ${peer.label || peerId} 同步……",
+    "Synced with ${payload.label || payload.remotePeerId}.": "已与 ${payload.label || payload.remotePeerId} 同步。",
+    "Synced with ${peer.label || peerId}.": "已与 ${peer.label || peerId} 同步。",
+    "Sync complete.": "同步完成。",
+    "Applying resolutions…": "正在应用解决方案……",
+    "Authentication to the other device failed. Check your credentials.": "向另一台设备认证失败。请检查凭据。",
+    "Could not reach the other device. Check the base URL and that the device is online.": "无法连接到另一台设备。请检查基础 URL 和设备是否在线。",
+    "Could not reach the other device.": "无法连接到另一台设备。",
+    "Peer state changed during sync. Retrying once…": "同步过程中对端状态发生变化。即将重试一次……",
+    "${body.conflicts.length} file(s) conflict. Pick a version for each below.": "有 ${body.conflicts.length} 个文件存在冲突。请在下方为每个文件选择版本。",
+    "Conflict resolution canceled. Re-run sync when you're ready.": "已取消冲突解决。准备好后再重新同步。",
+    "This peer was paired in an older version. Click Forget and pair again to record the base URL.": "此对端在旧版本中完成配对。请点击「忘记」后重新配对以记录基础 URL。",
+    "Authentication to the other device failed. Forget and re-pair if its credentials changed.": "向另一台设备认证失败。如果其凭据已变更，请忘记并重新配对。",
+    "Enter the other device's base URL (e.g. http://192.168.1.42:8000)": "请输入另一台设备的基础 URL（例如 http://192.168.1.42:8000）",
+    "Peer's basic auth username (leave blank if disabled)": "对端的基本认证用户名（未启用则留空）",
+    "Peer's basic auth password": "对端的基本认证密码",
+    "Undo the last sync with ${peer.label || peerId}? This rewinds THIS device only; the other device is unaffected.": "确定撤销与 ${peer.label || peerId} 的上次同步吗？这只会回退本设备，另一台设备不受影响。",
+    "Undo complete.": "撤销完成。",
+    "Reverted to the state before the last sync with ${peer.label || peerId}.": "已回退到与 ${peer.label || peerId} 上次同步之前的状态。",
+    "Undo failed": "撤销失败",
+    "Nothing to undo — no prior sync recorded.": "无可撤销项——未记录任何先前同步。",
+    "Forget ${peer.label || peerId}? Both the registry entry and the on-disk shadow repo will be deleted. The other device is unaffected.": "确定忘记 ${peer.label || peerId} 吗？注册表条目和磁盘上的影子仓库都将被删除。另一台设备不受影响。",
+    "Forgotten.": "已忘记。",
+    "Forget failed": "忘记失败",
+    "Clear credentials": "清除凭据",
+    "Credentials cleared.": "凭据已清除。",
+    "Credentials saved for this peer. Use 'Clear credentials' on the peer card to remove them.": "已为此对端保存凭据。可在对端卡片上点击「清除凭据」移除。",
+    "Failed to clear credentials for ${peer.label || peerId}.": "清除 ${peer.label || peerId} 的凭据失败。",
+    "Failed to generate pairing link": "生成配对链接失败",
+    "Pairing link copied.": "配对链接已复制。",
+    "Copy from the field above.": "请从上方字段中复制。",
+    "Enter a label for the other device first.": "请先为另一台设备输入标签。",
+    "Select at least one category to sync.": "请至少选择一个要同步的类别。",
+    "Paste the pairing link or fill in the base URL and peer ID.": "请粘贴配对链接，或填写基础 URL 与对端 ID。",
+    "Failed to open LAN Sync": "打开局域网同步失败",
+    "LAN Sync is unavailable. The server reported: ${availability.reason || 'unknown reason'}.": "局域网同步不可用。服务器报告：${availability.reason || 'unknown reason'}。",
+    "Cross-mode restore detected. The backup is from a different storage engine than this server.": "检测到跨模式恢复：备份来自与当前服务器不同的存储引擎。",
+    "Scratch MySQL connection URL": "临时 MySQL 连接 URL",
+    "Scratch PostgreSQL connection URL": "临时 PostgreSQL 连接 URL",
+    "A temporary handle is created on this DB and removed when the restore completes.": "将在该数据库中临时创建一个用户句柄，恢复完成后自动删除。",
+    "A temporary handle is created on the scratch database and removed when the restore completes.": "将在临时数据库中临时创建一个用户句柄，恢复完成后自动删除。",
+    "Use Connection": "使用此连接",
+    "Cross-Mode Restore": "跨模式恢复",
+    "Cross-mode restore: converting backup into current storage engine.": "跨模式恢复：正在把备份转换为当前存储引擎的格式。",
+    "Restore cancelled — scratch DB connection not provided.": "已取消恢复——未提供临时数据库连接。",
+    "No connection URL entered; cancel and retry.": "未填写连接 URL，请取消后重试。",
+    "Export warning": "导出提示",
+    "Linked world book \"${0}\" was not found. The card was exported without an embedded world book.": "未找到绑定的世界书「${0}」。导出的角色卡未携带内嵌世界书。",
+    "Linked world book \"${0}\" could not be read. The card was exported without an embedded world book.": "无法读取绑定的世界书「${0}」。导出的角色卡未携带内嵌世界书。",
+    "Failed to embed world book \"${0}\". The card was exported without it.": "嵌入世界书「${0}」失败。导出的角色卡未携带它。",
+    "Merge chats": "合并聊天",
+    "Target name": "目标名称",
+    "Drag to reorder": "拖动以重排序",
+    "+ Add chat": "+ 添加聊天",
+    "The new chat contains only messages. Plugin state (memory graph, orchestrator, search-tools, etc.) does not migrate and must be regenerated.": "新聊天只包含消息本身。插件状态（记忆图谱、编排器、搜索工具等）不会迁移，需要在新聊天里重新生成。",
+    "Total: ${0} messages": "总计：${0} 条消息",
+    "Merge": "合并",
+    "Created ${0}": "已创建 ${0}",
+    "from": "起始",
+    "to": "结束",
+    "Use all": "全选",
+    "Add chat to merge": "添加聊天到合并列表",
+    "No other chats available to add.": "没有其他可添加的聊天。",
+    "Split chat": "拆分聊天",
+    "+ Add point": "+ 添加切点",
+    "Split": "拆分",
+    "msgs ${0}–${1}": "消息 ${0}–${1}",
+    "Created ${0} new chats": "已创建 ${0} 个新聊天",
+    "Chat is too short to split.": "聊天太短，无法拆分。",
+    "Split Chat": "拆分聊天",
+    "Need at least 2 messages to split.": "至少需要 2 条消息才能拆分。",
+    "Start time": "起始时间",
+    "End time": "结束时间",
+    "Invalid log filter": "无效的日志筛选",
+    "Start time must be earlier than end time.": "起始时间必须早于结束时间。",
+    "Card-bound": "本卡内嵌",
+    "Storage Inspector": "存储审查",
+    "Inspect your storage usage.": "查看你的存储使用情况。",
+    "Loading…": "加载中……",
+    "No data in this category.": "此类别下无数据。",
+    "Retry": "重试",
+    "Worldbooks": "世界书",
+    "Attachments": "附件与工作流",
+    "Presets & Settings": "预设与设置",
+    "Vector Stores": "向量库",
+    "Storage": "存储",
+    "Chat Images": "聊天图片",
+    "Persona Avatars": "用户头像",
+    "ComfyUI Workflows": "ComfyUI 工作流",
+    "API Presets": "API 预设",
+    "UI Elements": "UI 元素",
+    "Instruct Templates": "指令模板",
+    "Main Settings": "主设置",
+    "Chat Metadata": "聊天元数据",
+    "Contains API keys · not inspectable": "含 API 密钥，不可查看内容",
+    "Sprites": "表情图",
+    "Walk exceeded time limit; refresh to retry.": "目录遍历超时，请刷新重试。",
+    "Storage · All Users": "存储 · 全平台聚合",
+    "Storage Management": "存储管理",
+    "View:": "查看：",
+    "Search users...": "搜索用户……",
+    "* All Users *": "* 全平台聚合 *",
+    "(admin)": "（管理员）",
+    "(disabled)": "（已停用）",
+    "Failed to load users.": "加载用户列表失败。",
+    "Browser Storage": "浏览器存储",
+    "Inspect this browser's storage.": "查看当前浏览器的存储使用情况。",
+    "localStorage": "localStorage",
+    "sessionStorage": "sessionStorage",
+    "IndexedDB": "IndexedDB",
+    "Cache Storage": "Cache Storage",
+    "Browser did not report a quota.": "浏览器未上报配额。",
+    "Delete %s?": "删除 %s？",
+    "This will permanently remove %s from your browser. This action cannot be undone.": "此操作将从浏览器中永久删除 %s，且无法撤销。",
+    "Deleted": "已删除",
+    "Failed to delete: %s": "删除失败：%s",
+    "stores": "存储",
+    "records": "条",
+    "requests": "请求",
+    "Refusing to save: chat is not fully loaded. Reload the page to prevent data loss.": "拒绝保存：聊天尚未完全加载。请重新加载页面以防止数据丢失。",
+    "Chat save aborted": "聊天保存已中止",
+    "Cache stable chat history": "缓存稳定的聊天历史",
+    "Keep recent turns uncached": "不缓存最近几轮",
+    "The current input is also kept uncached. Reuses a fixed history prefix for up to five minutes, then advances it. Changed history or summaries rebuild the prefix. Cache hits and savings depend on the provider.": "当前输入也不缓存。固定复用一段历史前缀，最多五分钟后向后推进；历史或总结变化时重建前缀。实际命中与节省取决于提供商。",
+    "Uncached turns must be a positive integer.": "不缓存的轮数必须为正整数。",
+    "OpenRouter Gemini history cache toggle state": "OpenRouter Gemini 历史缓存开关状态",
+    "Sets OpenRouter Gemini stable history caching on/off. Gets current value if no argument is provided.": "设置 OpenRouter Gemini 稳定历史缓存的开启/关闭。如未提供参数，则获取当前值。",
+    "Number of recent turns excluded from Gemini history caching": "Gemini 历史缓存不覆盖的最近回合数",
+    "Keeps this many completed turns plus the current input outside the cache. Default: 2.": "将最近这么多完整回合连同当前输入留在缓存之外。默认：2。",
+    "Import {name} preset": "导入 {name} 预设",
+    "Import {name} below to use the bundled plugin-task preset. It keeps reference material separate from the runtime task.": "点击下方按钮导入 {name}，使用内置插件任务预设；参考资料与运行时任务会分别放置。",
+    "The bundled Atri analysis preset supports plot planning, character reasoning, pacing and continuity checks. Runtime instructions and available tools determine the assigned task; the preset does not write RP prose.": "内置 Atri 分析预设支持剧情规划、角色推演、节奏和一致性检查。具体职责由运行时任务和可用工具决定，不负责撰写 RP 正文。",
+    "Import {name} below to use the bundled analysis preset. For the Agenda planner, select Atri-plugin-only instead.": "点击下方按钮导入 {name}，使用内置分析预设。Agenda 的调度节点应选择 Atri-plugin-only。",
+    "Native State Conditions": "原生状态条件",
+    "Require committed state from supported providers before this entry can activate.": "仅在支持的状态源存在已提交状态时，此条目才能激活。",
+    "Activate this entry directly while the conditions match": "条件匹配时直接激活此条目",
+    "Activate while matched": "条件匹配时激活",
+    "All conditions": "全部条件",
+    "Any condition": "任一条件",
+    "Add state condition": "添加状态条件",
+    "Save conditions": "保存条件",
+    "Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.": "未知、不可用或不完整的状态条件会按失败处理并阻止此条目激活。启用“条件匹配时激活”后，无需反复命中关键词即可维持场景内容生效。",
+    "State Change Events": "状态变化事件",
+    "Activate this entry only when committed provider state changes from one value to another.": "仅当已提交的状态从一个值变化为另一个值时激活此条目。",
+    "All events": "全部事件",
+    "Any event": "任一事件",
+    "Add state event": "添加状态事件",
+    "Save events": "保存事件",
+    "From and To are exact scalar values. At least one is required. The first committed observation only seeds the baseline and does not fire an event.": "“原值”和“新值”为精确标量值，至少设置一项。首次已提交观察只建立基线，不触发事件。",
+    "Selection & Dependencies": "选择与依赖",
+    "Optional": "可选",
+    "Optional Atria selection rules. Leave these fields empty to keep legacy World Info selection and budget behavior.": "可选的 Atria 选择规则。保持这些字段为空即可沿用原有世界书选择和预算行为。",
+    "Required entries": "必需条目",
+    "One UID or Book#UID per line. Required entries are selected atomically with this entry.": "每行一个 UID 或 世界书#UID。必需条目会与当前条目作为一个整体进行原子选择。",
+    "Related entries": "相关条目",
+    "Related entries gain relevance only when they are already candidates; they are not forced into the prompt.": "相关条目只有在本身已成为候选时才获得相关性加权；不会被强制注入提示词。",
+    "Mutual exclusion group": "互斥组",
+    "Budget tier": "预算层级",
+    "WI Budget Tier Critical": "关键",
+    "WI Budget Tier Scene": "当前场景",
+    "WI Budget Tier Normal": "普通",
+    "WI Budget Tier Optional": "可选背景",
+    "Compact content": "精简内容",
+    "Compact content is considered only for an atomic dependency bundle. A required bundle is never partially injected.": "仅在原子依赖组合整体无法容纳时才考虑精简内容。必需依赖组合绝不会被部分注入。",
+    "Save selection rules": "保存选择规则",
+    "WI Required Entries Placeholder": "12\n其他世界书#4",
+    "WI Related Entries Placeholder": "18\n其他世界书#9",
+    "WI Mutual Exclusion Placeholder": "城堡版本",
+    "WI Compact Content Placeholder": "仅在完整依赖组合无法容纳时使用的简短备用内容。",
+    "Provider": "状态源",
+    "Path": "路径",
+    "Operator": "运算符",
+    "Value type": "值类型",
+    "Value": "值",
+    "unsupported": "不支持",
+    "Contains": "包含",
+    "Any value": "任意值",
+    "String value": "字符串",
+    "Number value": "数字",
+    "Boolean value": "布尔值",
+    "Null value": "空值",
+    "True": "真",
+    "False": "假",
+    "Remove condition": "删除条件",
+    "Remove event": "删除事件",
+    "From": "原值",
+    "To": "新值",
+    "Unsaved state condition changes": "状态条件有未保存的更改",
+    "State conditions saved": "状态条件已保存",
+    "Invalid state conditions": "状态条件无效",
+    "State conditions are limited to 32 per entry": "每个条目最多可设置 32 个状态条件",
+    "Every state condition needs a provider, path, operator, and scalar value": "每个状态条件都需要状态源、路径、运算符和标量值",
+    "Condition #${0} is invalid": "条件 #${0} 无效",
+    "Unsaved state event changes": "状态事件有未保存的更改",
+    "State events saved": "状态事件已保存",
+    "Invalid state events": "状态事件无效",
+    "State events are limited to 32 per entry": "每个条目最多可设置 32 个状态事件",
+    "Every state event needs a provider, path, and at least one From/To value": "每个状态事件都需要状态源、路径，以及至少一个原值/新值",
+    "Unsaved selection rule changes": "选择规则有未保存的更改",
+    "Selection rules saved": "选择规则已保存",
+    "World Info selection rules": "世界书选择规则",
+    "${0}: invalid entry reference \"${1}\"": "${0}：条目引用“${1}”无效",
+    "${0}: an entry cannot depend on or relate to itself": "${0}：条目不能依赖或关联自身",
+    "Entry #${0}": "条目 #${0}",
+    "Vector": "向量",
+    "No primary keywords": "无主关键词",
+    "Sticky ${0}": "粘性 ${0}",
+    "Cooldown ${0}": "冷却 ${0}",
+    "Delay ${0}": "延迟 ${0}",
+    "Stops recursion": "阻止继续递归",
+    "Recursive only": "仅递归激活",
+    "Defaults": "默认值",
+    "Conditions ${0}": "状态条件 ${0}",
+    "Events ${0}": "状态事件 ${0}",
+    "Persistent activation": "持续激活",
+    "Not configured": "未配置",
+    "Required ${0}": "必需条目 ${0}",
+    "Related ${0}": "关联条目 ${0}",
+    "Group ${0}": "分组 ${0}",
+    "Automation": "自动化",
+    "Scan override": "扫描覆盖",
+    "Case override": "大小写覆盖",
+    "Word override": "整词匹配覆盖",
+    "Group scoring": "分组评分",
+    "Overrides ${0}": "覆盖项 ${0}",
+    "Search required entry…": "搜索必需条目…",
+    "Search related entry…": "搜索关联条目…",
+    "Remove ${0}": "移除 ${0}",
+    "Basic": "基础",
+    "Activation": "激活",
+    "Lifecycle": "生命周期",
+    "State-driven": "状态驱动",
+    "Entry Relationships": "条目关系",
+    "Issues ${0}": "问题 ${0}",
+    "State": "状态",
+    "Event": "事件",
+    "Dependencies": "依赖",
+    "Select ${0}": "选择 ${0}",
+    "Scanning": "扫描",
+    "How text is scanned and matched before entry-specific overrides.": "文本在条目级覆盖前如何被扫描和匹配。",
+    "How much prompt context World Info may consume.": "世界书可占用多少提示词上下文。",
+    "Recursion": "递归",
+    "How recursive discovery proceeds and where it stops.": "递归发现如何进行以及在何处停止。",
+    "Selection / Priority": "选择 / 优先级",
+    "Global ordering and scoring defaults.": "全局排序和评分默认值。",
+    "World Info workspace": "世界书工作区",
+    "Library": "书库",
+    "Entries": "条目",
+    "Entry display mode": "条目显示模式",
+    "Compact": "紧凑",
+    "Full": "完整",
+    "Custom fields": "自定义字段",
+    "Continuous Cards": "连续卡片",
+    "Close World Info Workspace": "关闭世界书工作区",
+    "Entry filters": "条目筛选",
+    "Special": "特殊",
+    "Issues": "问题",
+    "Select filtered": "选择筛选结果",
+    "Bulk Inspector": "批量检查器",
+    "Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.": "安全批量编辑：只有明确选择字段后才会修改，其余字段保持不变。",
+    "Keep unchanged": "保持不变",
+    "Bulk Edit…": "批量编辑…",
+    "Select an entry": "选择一个条目",
+    "Test Activation": "测试激活",
+    "Activation Trace": "激活追踪",
+    "More entry actions": "更多条目操作",
+    "Move / Copy": "移动 / 复制",
+    "Choose an entry from the list to inspect it.": "从列表中选择一个条目进行检查。",
+    "Lorebook actions": "世界书操作",
+    "Enable globally": "全局启用",
+    "Disable globally": "取消全局",
+    "Globally enabled": "已全局启用",
+    "Not global": "未全局启用",
+    "Search options": "搜索选项",
+    "Tags": "标签",
+    "Pin": "置顶",
+    "Fill empty titles": "填充空标题",
+    "Apply sorting as Order": "将当前排序应用为“顺序”",
+    "Custom field visibility": "自定义字段可见性",
+    "Open all cards": "展开所有卡片",
+    "Close all cards": "折叠所有卡片",
+    "Testing current chat with the existing World Info dry-run…": "正在使用现有世界书 dry-run 测试当前聊天…",
+    "Activation test": "激活测试",
+    "No diagnostic detail is available.": "暂无诊断详情。",
+    "Activation test failed: ${0}": "激活测试失败：${0}",
+    "Content is empty.": "内容为空。",
+    "Normal keyword-driven entry has no Primary Keywords.": "普通关键词驱动条目没有主关键词。",
+    "Required entry": "必需条目",
+    "Related entry": "关联条目",
+    "${0} reference \"${1}\" is invalid.": "${0}引用“${1}”无效。",
+    "${0} points to this entry.": "${0}指向当前条目。",
+    "${0} \"${1}\" does not resolve in this lorebook.": "${0}“${1}”无法在当前世界书中解析。",
+    "State condition #${0} is incomplete.": "状态条件 #${0} 不完整。",
+    "State change event #${0} is incomplete.": "状态变更事件 #${0} 不完整。",
+    "Automation ID \"${0}\" is used by more than one entry.": "自动化 ID “${0}”被多个条目使用。",
+    "Compact Content is configured without Required or Related Entries.": "已配置精简内容，但未配置必需条目或关联条目。",
+    "Unknown for current chat": "当前聊天结果未知",
+    "The existing World Info dry-run produced no trace for this entry. It may not be part of the currently active lorebook scan. No activation result was invented.": "现有世界书 dry-run 未为该条目生成追踪。它可能不在当前激活的世界书扫描中；系统不会臆造激活结果。",
+    "Activated by the current runtime scan.": "根据当前运行时扫描会激活。",
+    "No activation path succeeded in the current runtime scan.": "当前运行时扫描中没有成功的激活路径。",
+    "Would activate": "会激活",
+    "Would not activate": "不会激活",
+    "Critical tier": "关键级",
+    "Scene tier": "场景级",
+    "Optional tier": "可选级",
+    "${0} entry": "${0} 个条目",
     "Diagnostics": "诊断",
     "[title]Open diagnostics workspace": "打开诊断工作台",
     "Healthy": "正常",
@@ -6571,5 +6521,35 @@
     "Server phase": "服务端阶段",
     "Unknown extension": "未知扩展",
     "Unknown time": "未知时间",
-    "Unknown version": "未知版本"
+    "Unknown version": "未知版本",
+    "Remember immersive mode": "记住沉浸模式状态",
+    "Focus current story": "聚焦当前剧情",
+    "Immersive extension components": "沉浸扩展组件",
+    "Immersive visuals": "沉浸视觉呈现",
+    "Text first": "纯文本优先",
+    "Visual enhanced": "视觉增强",
+    "Immersive HUD": "沉浸 HUD",
+    "Always visible": "常显",
+    "Minimal": "极简",
+    "More tools": "更多工具",
+    "Send message": "发送消息",
+    "Stop response": "停止回应",
+    "Response stopped": "回应已停止",
+    "Continue response": "继续回应",
+    "Rewrite response": "重写回应",
+    "Keep partial response": "保留当前回应",
+    "Say something…": "说点什么……",
+    "Message input": "消息输入",
+    "The scene is continuing…": "场景正在继续……",
+    "The character is responding…": "角色正在回应……",
+    "Message actions": "消息操作",
+    "Message from": "来自",
+    "Immersive status": "沉浸状态",
+    "Details": "详情",
+    "Immersive details": "沉浸详情",
+    "Story details": "剧情详情",
+    "Close details": "关闭详情",
+    "Response did not complete": "回应没有完成",
+    "View reason": "查看原因",
+    "Dismiss failure notice": "关闭失败提示"
 }

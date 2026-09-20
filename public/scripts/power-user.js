@@ -231,7 +231,11 @@ export const power_user = {
     allow_name1_display: false,
     allow_name2_display: false,
     immersive_mode_last_state: false,
-    immersive_mode_keep_top_bar: false,
+    immersive_mode_remember_state: true,
+    immersive_mode_story_focus: true,
+    immersive_mode_extensions_enabled: true,
+    immersive_mode_visual_mode: 'auto',
+    immersive_mode_hud_mode: 'auto',
     atria_mobile_keep_alive_android_enabled: false,
     atria_mobile_keep_alive_web_audio_enabled: false,
     hotswap_enabled: true,
@@ -2358,7 +2362,11 @@ export async function loadPowerUserSettings(settings, data) {
     $('#allow_name2_display').prop('checked', power_user.allow_name2_display);
     //$("#removeXML").prop("checked", power_user.removeXML);
     $('#hotswapEnabled').prop('checked', power_user.hotswap_enabled);
-    $('#immersiveKeepTopBar').prop('checked', power_user.immersive_mode_keep_top_bar);
+    $('#immersiveRememberState').prop('checked', power_user.immersive_mode_remember_state !== false);
+    $('#immersiveStoryFocus').prop('checked', power_user.immersive_mode_story_focus !== false);
+    $('#immersiveExtensionsEnabled').prop('checked', power_user.immersive_mode_extensions_enabled !== false);
+    $('#immersiveVisualMode').val(power_user.immersive_mode_visual_mode || 'auto');
+    $('#immersiveHudMode').val(power_user.immersive_mode_hud_mode || 'auto');
     syncMobileKeepAliveUi();
     $('#messageTimerEnabled').prop('checked', power_user.timer_enabled);
     $('#messageTimestampsEnabled').prop('checked', power_user.timestamps_enabled);
@@ -2472,7 +2480,7 @@ export async function loadPowerUserSettings(settings, data) {
     toggleMDHotkeyIconDisplay();
     applyToastrPosition();
 
-    if (power_user.immersive_mode_last_state) {
+    if (power_user.immersive_mode_remember_state !== false && power_user.immersive_mode_last_state) {
         const alreadyOn = document.body.classList.contains('atria-immersive-mode');
         if (!alreadyOn) {
             void setImmersiveMode(true, { useFullscreen: false, persist: false });
@@ -4521,12 +4529,32 @@ jQuery(() => {
         saveSettingsDebounced();
     });
 
-    $('#immersiveKeepTopBar').on('input', function () {
-        const value = !!$(this).prop('checked');
-        power_user.immersive_mode_keep_top_bar = value;
-        if (document.body.classList.contains('atria-immersive-mode')) {
-            document.body.classList.toggle('atria-immersive-keep-top-bar', value);
+    $('#immersiveRememberState').on('input', function () {
+        power_user.immersive_mode_remember_state = !!$(this).prop('checked');
+        if (!power_user.immersive_mode_remember_state) {
+            power_user.immersive_mode_last_state = false;
         }
+        globalThis.Atria?.immersive?.refreshSettings?.();
+        saveSettingsDebounced();
+    });
+    $('#immersiveStoryFocus').on('input', function () {
+        power_user.immersive_mode_story_focus = !!$(this).prop('checked');
+        globalThis.Atria?.immersive?.refreshSettings?.();
+        saveSettingsDebounced();
+    });
+    $('#immersiveExtensionsEnabled').on('input', function () {
+        power_user.immersive_mode_extensions_enabled = !!$(this).prop('checked');
+        globalThis.Atria?.immersive?.refreshSettings?.();
+        saveSettingsDebounced();
+    });
+    $('#immersiveVisualMode').on('change', function () {
+        power_user.immersive_mode_visual_mode = String($(this).val() || 'auto');
+        globalThis.Atria?.immersive?.refreshSettings?.();
+        saveSettingsDebounced();
+    });
+    $('#immersiveHudMode').on('change', function () {
+        power_user.immersive_mode_hud_mode = String($(this).val() || 'auto');
+        globalThis.Atria?.immersive?.refreshSettings?.();
         saveSettingsDebounced();
     });
 

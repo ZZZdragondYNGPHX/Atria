@@ -1,0 +1,55 @@
+name: Immersive Experience
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "public/index.html"
+      - "public/script.js"
+      - "public/scripts/power-user.js"
+      - "public/scripts/immersive/**"
+      - "public/css/immersive.css"
+      - "public/style.css"
+      - "public/css/mobile-styles.css"
+      - "tests/immersive/**"
+      - "tests/frontend/immersive-experience.smoke.mjs"
+      - "android-app/app/src/main/java/com/atria/app/MainActivity.kt"
+      - "android-app/app/src/main/java/com/atria/app/BackNavigationPolicy.kt"
+      - "android-app/app/src/test/kotlin/com/atria/app/BackNavigationPolicyTest.kt"
+      - ".github/workflows/immersive-experience.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Immersive Web Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Lint immersive production modules
+        run: npx eslint public/script.js public/scripts/power-user.js "public/scripts/immersive/*.js"
+      - name: Run immersive unit and regression tests
+        run: npm run test:unit --prefix tests -- immersive --runInBand
+      - name: Verify Atria namespace guard
+        run: bash scripts/check-atria-namespace.sh
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Run desktop and mobile Chromium acceptance
+        env:
+          ENGINE_BROWSER: chromium
+        run: node tests/frontend/immersive-experience.smoke.mjs

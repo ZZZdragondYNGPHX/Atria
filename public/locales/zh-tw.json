@@ -300,7 +300,7 @@
     "API url": "API URL",
     "Example: http://127.0.0.1:5000/api ": "範例：http://127.0.0.1:5000/api ",
     "Connect": "連線",
-    "Cancel": "關閉",
+    "Cancel": "取消",
     "Novel API key": "NovelAI API 金鑰",
     "Get your NovelAI API Key": "取得您的 NovelAI API 金鑰",
     "Enter it in the box below": "請在下面的框中輸入",
@@ -805,7 +805,7 @@
     "Role:": "角色：",
     "System": "系統",
     "User": "使用者",
-    "Assistant": "助理",
+    "Assistant": "助手",
     "Show notifications on switching personas": "切換角色時顯示通知",
     "Character Management": "角色管理",
     "Locked = Character Management panel will stay open": "上鎖 = 角色管理面板將保持開啟",
@@ -942,7 +942,7 @@
     "Unlock": "解鎖",
     "Delete background": "刪除背景圖片",
     "Chat Scenario Override": "聊天場景覆寫",
-    "Remove": "刪除",
+    "Remove": "移除",
     "Type here...": "在此輸入⋯",
     "Chat Lorebook": "聊天知識書",
     "Chat Lorebook for": "聊天知識書",
@@ -1436,8 +1436,8 @@
     "Set your custom avatar.": "設定您的頭像。",
     "Remove your custom avatar.": "移除您的頭像。",
     "Handle:": "使用者名稱：",
-    "This account is password protected.": "這個帳號受到密碼保護。",
-    "This account is not password protected.": "這個帳號並未受到密碼保護。",
+    "This account is password protected.": "此帳號已設定密碼。",
+    "This account is not password protected.": "此帳號未設定密碼。",
     "Account Actions": "帳號動作",
     "Change Password": "變更密碼",
     "Manage your settings snapshots.": "管理您的設定值快照。",
@@ -1711,7 +1711,7 @@
     "Multimodal": "多模態",
     "must be set in Tabby's config.yml to switch models.": "須在 Tabby's config.yml 中設定以切換模型。",
     "Names as Stop Strings": "將名稱用作停止字串",
-    "Never": "從不",
+    "Never": "從未",
     "NomicAI API Key": "NomicAI API 金鑰",
     "Non-recursable": "不可遞迴",
     "None (disabled)": "無（已停用）",
@@ -2499,7 +2499,7 @@
     "openai_reasoning_effort_low": "低",
     "openai_reasoning_effort_medium": "中",
     "openai_reasoning_effort_high": "高",
-    "Reasoning": "推理",
+    "Reasoning": "思考",
     "reasoning_auto_parse": "自動解析主要內容中推理區塊，需定義且不為空的前綴與後綴欄位。",
     "Auto-Parse": "自動解析",
     "reasoning_auto_expand": "自動展開推理區塊。",
@@ -2853,7 +2853,7 @@
     "This selection applies to every action below: ZIP download, ZIP restore, and LAN migration link.": "下方所有動作都會使用這組選擇：下載 ZIP、從 ZIP 還原、產生區域網路遷移連結。",
     "Use Defaults": "使用預設選項",
     "Use recommended defaults": "使用建議預設值",
-    "Clear": "清除",
+    "Clear": "清空",
     "Select all categories": "全選所有類別",
     "Clear all categories": "清空所有類別",
     "Characters / Avatars": "角色 / 頭像",
@@ -2946,7 +2946,7 @@
     "Recent scans": "最近掃描",
     "Recent simulated scans": "最近模擬掃描",
     "No scan records yet.": "尚無掃描記錄。",
-    "Scope": "範圍",
+    "Scope": "作用域",
     "Entry": "條目",
     "Character Card Bound": "角色卡綁定",
     "Preset from current character card": "目前預設來自角色卡內嵌綁定",
@@ -4138,7 +4138,7 @@
     "Delete Bound Preset": "刪除繫結預設",
     "Delete card-bound preset '${0}'. What should happen to its current contents?": "刪除角色卡繫結預設“${0}”。要如何處理它當前的內容？",
     "Save to global preset": "儲存為全域預設",
-    "Discard": "丟棄",
+    "Discard": "捨棄",
     "Save to Global Preset": "儲存為全域預設",
     "Enter a name for the global preset. The card-bound slot will be removed after saving.": "為全域預設輸入名稱。儲存後角色卡繫結槽位將被移除。",
     "Preset name already exists": "預設名稱已存在",
@@ -4908,7 +4908,7 @@
     "Status": "狀態",
     "Back": "返回",
     "Export JSON": "匯出 JSON",
-    "Loading...": "載入中...",
+    "Loading...": "載入中……",
     "Request": "請求",
     "Stream": "串流",
     "Messages": "訊息",
@@ -4930,13 +4930,11 @@
     "No wire messages.": "無出站訊息。",
     "Other Params": "其他參數",
     "Response Body": "回應正文",
-    "(empty)": "（空）",
     "Search source / model / messages / response...": "搜尋 來源 / 模型 / 訊息 / 回應…",
     "Search in this request...": "在此請求內搜尋…",
     "Function Call": "函式呼叫",
     "function calls": "次函式呼叫",
     "reasoning parts": "段思考",
-    "Reasoning": "思考",
     "Thinking": "思考塊",
     "Redacted Thinking": "隱去的思考",
     "Reasoning Details": "思考詳情",
@@ -5019,1294 +5017,1246 @@
     "JS Self-Profiling API support is limited to Chrome/Edge based browsers. Safari and Firefox are not supported.": "JS Self-Profiling API 僅支援基於 Chrome/Edge 的瀏覽器，Safari 與 Firefox 目前不支援。",
     "Performance profile downloaded.": "效能報告已下載。",
     "Unable to download profile report. Ensure profiling is enabled and browser supports Profiler API.": "無法下載效能報告。請確認已啟用取樣，且瀏覽器支援 Profiler API。",
-    "JS Self-Profiling": "JS 自我取樣分析"
-    ,"To activate JS Self-Profiling at the earliest page lifecycle stage, reload this page now?": "若要讓 JS 自我取樣分析在頁面生命週期最早階段生效，需要立即重新整理頁面。現在要重新整理嗎？"
-    ,"Reload now": "立即重新整理"
-    ,"Later": "稍後"
-    ,"Regex script is slow": "正則腳本執行緩慢"
-    ,"Script \"${0}\" took ${1}ms on a single message and was paused for this session.": "腳本「${0}」在單則訊息上耗時 ${1} 毫秒，已暫停至本工作階段結束。"
-    ,"This usually indicates catastrophic backtracking. Common causes: leading [\\s\\S]* / .*, nested quantifiers, unbounded lookahead.": "這通常意味著發生了災難性回溯。常見成因：以 [\\s\\S]* 或 .* 開頭、巢狀量詞、無邊界 lookahead。"
-    ,"Suggestion: review or replace the pattern.": "建議檢查或替換該正則。"
-    ,"Pattern preview": "正則預覽"
-    ,"Hits this session: ${0} · Total time: ${1}ms": "本工作階段觸發 ${0} 次 · 累計耗時 ${1} 毫秒"
-    ,"Got it": "知道了"
-    ,"Allow anyway": "始終允許"
-    ,"This script will no longer be auto-paused, even if it remains slow.": "此腳本將不再被自動暫停，即使持續緩慢。"
-    ,"This script is provided by a plugin and cannot be edited here.": "此腳本由外掛提供，無法在此處編輯。"
-    ,"Regex script not found.": "找不到此正則腳本。"
-    ,"Enable CardApp": "啟用 CardApp"
-    ,"Entry file": "入口檔案"
-    ,"Bulk Set Field…": "批次設定欄位…"
-    ,"Bulk-edit a field across selected entries": "對選取條目批次設定某個欄位"
-    ,"Injection Depth": "注入深度"
-    ,"Insertion Position": "插入位置"
-    ,"Trigger Probability": "觸發機率"
-    ,"Trigger Strategy": "觸發策略"
-    ,"Set Trigger Strategy": "設定觸發策略"
-    ,"Constant": "常駐"
-    ,"Vectorized": "向量化"
-    ,"Placement": "注入定位"
-    ,"Matching Rules": "匹配規則"
-    ,"Matched Fields": "匹配欄位"
-    ,"Set Matched Fields": "設定匹配欄位"
-    ,"Recursion & Lifecycle": "遞迴與生命週期"
-    ,"Group": "分組"
-    ,"Other": "其他"
-    ,"Ignore Budget": "忽略預算"
-    ,"Use Secondary Keys": "啟用副關鍵字"
-    ,"Selective Logic": "選擇性邏輯"
-    ,"Match Persona Description": "匹配人設描述"
-    ,"Match Character Description": "匹配角色描述"
-    ,"Match Character Personality": "匹配角色性格"
-    ,"Match Character Depth Prompt": "匹配深度提示"
-    ,"Match Scenario": "匹配場景"
-    ,"Match Creator Notes": "匹配作者備註"
-    ,"Prevent Recursion": "防止遞迴"
-    ,"Exclude from Recursion": "排除遞迴"
-    ,"Delay Until Recursion": "延遲到遞迴"
-    ,"Group Override": "組覆蓋"
-    ,"Use Probability Trigger": "啟用機率觸發"
-    ,"at Depth": "按深度"
-    ,"On": "開"
-    ,"currently On": "目前：開"
-    ,"currently Off": "目前：關"
-    ,"New value:": "新值："
-    ,"Mixed values across selected entries": "各條目目前值不一致"
-    ,"For each option: choose Keep / On / Off": "每列可選：保持不變 / 開 / 關"
-    ,"Select…": "選擇…"
-    ,"Please enter a value": "請輸入一個值"
-    ,"Please choose a value": "請選擇一個值"
-    ,"Invalid value": "輸入無效"
-    ,"Set ${0}": "設定 ${0}"
-    ,"${0} entries selected": "已選 ${0} 個條目"
-    ,"Updated ${0} entries: ${1}": "已更新 ${0} 個條目： ${1}"
-    ,"Reverted ${0} entries": "已撤銷 ${0} 個條目"
-    ,"No changes — all selected entries already had this value": "無變化 — 所有選取條目都已是該值"
-    ,"No changes — all options are set to Keep": "無變化 — 所有選項都是保持不變"
-    ,"Failed to update entries": "更新條目失敗"
-    ,"Variable operations": "變數操作"
-    ,"Variable operations on message #${0}": "第 ${0} 樓的變數操作"
-    ,"Changes apply when you click Save. The variables cache will be rebuilt from all surviving ops.": "點擊「儲存」後生效。變數快取將根據所有保留的操作記錄重建。"
-    ,"Add operation": "新增操作"
-    ,"No variable operations on this message.": "此訊息沒有變數操作。"
-    ,"var_ops_panel.label.op": "操作"
-    ,"var_ops_panel.label.key": "鍵"
-    ,"var_ops_panel.label.path": "路徑"
-    ,"var_ops_panel.label.value": "值"
-    ,"var_ops_panel.placeholder.key": "鍵"
-    ,"var_ops_panel.placeholder.path": "路徑（可選，如 alice.hp）"
-    ,"var_ops_panel.placeholder.value": "值"
-    ,"Fast token preview": "快速 token 預覽"
-    ,"fast_token_preview_tooltip": "使用快速的位元組估算取代計數分詞器。速度更快但精確度較低，不影響編碼分詞器。"
-    ,"Embedding": "嵌入"
-    ,"Rerank": "重排序"
-    ,"Embedding Profile": "嵌入設定檔"
-    ,"Rerank Profile": "重排序設定檔"
-    ,"Embedding profiles are used by Vector Storage and Memory Graph for text embeddings. They are not active chat connections.": "嵌入設定檔供向量儲存、記憶圖等外掛運算文字嵌入，不會作為聊天連線生效。"
-    ,"Rerank profiles are used to re-score candidates after vector retrieval. They are not active chat connections.": "重排序設定檔用於在向量檢索後對候選結果重新評分，不會作為聊天連線生效。"
-    ,"Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "請在 API 連線設定面板的「嵌入」分頁中管理設定檔。"
-    ,"Create a new embedding profile": "新增嵌入設定檔"
-    ,"Edit embedding profile": "編輯嵌入設定檔"
-    ,"Delete embedding profile": "刪除嵌入設定檔"
-    ,"Create a new rerank profile": "新增重排序設定檔"
-    ,"Edit rerank profile": "編輯重排序設定檔"
-    ,"Delete rerank profile": "刪除重排序設定檔"
-    ,"Profile Name": "設定檔名稱"
-    ,"URL Override (optional)": "URL 覆寫（選填）"
-    ,"Server URL (required)": "伺服器 URL（必填）"
-    ,"API Key (used with URL Override)": "API 金鑰（搭配 URL 覆寫使用）"
-    ,"When set, requests are sent to this URL using the API Key below; the saved Secret is ignored.": "設定後，請求將透過下方的 API 金鑰送往此 URL；已儲存的 Secret 將被忽略。"
-    ,"Saved Secret": "已儲存的金鑰"
-    ,"Use active (default)": "使用啟用中的金鑰（預設）"
-    ,"Late Chunking": "Late Chunking"
-    ,"Dimensions (0 = auto)": "維度（0 = 自動）"
-    ,"Task (optional)": "任務（選填）"
-    ,"Keep model loaded between requests": "在請求之間保留模型載入狀態"
-    ,"Endpoint Region": "服務區域"
-    ,"International": "國際"
-    ,"China": "中國"
-    ,"Cloudflare Account ID": "Cloudflare Account ID"
-    ,"Auth Mode": "認證模式"
-    ,"Default (API Key)": "預設（API 金鑰）"
-    ,"Express": "Express"
-    ,"Service Account": "服務帳號"
-    ,"Express Project ID": "Express 專案 ID"
-    ,"Profile not found.": "找不到此設定檔。"
-    ,"Embedding profile is shared via the Connection Profile registry — pick one below. Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "嵌入設定檔透過 API 連線設定註冊表共享 —— 於下方選擇即可。請在 API 連線設定面板的「嵌入」分頁中管理設定檔。"
-    ,"Embedding profile": "嵌入設定檔"
-    ,"Rerank profile": "重排序設定檔"
-    ,"Vector pre-filter Top-K": "向量預篩 Top-K"
-    ,"Max recall results": "最大召回結果數"
-    ,"Hybrid Pipeline (vector + graph diffusion)": "混合管線（向量 + 圖擴散）"
-    ,"Hybrid + Rerank": "混合 + 重排序"
-    ,"Hybrid + LLM Rerank": "混合 + LLM 重排序"
-    ,"Recompute Vector Index": "重建向量索引"
-    ,"New embedding profile": "新建嵌入設定檔"
-    ,"New rerank profile": "新建重排序設定檔"
-    ,"A profile with this name already exists.": "已存在同名設定檔。"
-    ,"Default tools for all agents": "全 agent 預設工具"
-    ,"Default tools for all nodes": "全節點預設工具"
-    ,"Every agent can call these tools across multiple rounds by default. Override per agent on the Agents tab.": "所有 agent 預設可跨多輪呼叫這些工具。各 agent 可在 Agents 標籤頁單獨覆寫。"
-    ,"No default tools set — every agent runs without tools. Enable defaults here to let agents call tools across multiple rounds; each agent can still override on the Agents tab.": "未設定預設工具——所有 agent 均不啟用工具。在此啟用預設後 agent 可以跨多輪呼叫工具；各 agent 仍可在 Agents 標籤頁單獨覆寫。"
-    ,"Every node can call these tools across multiple rounds by default. Override per node on the Agents tab.": "所有節點預設可跨多輪呼叫這些工具。各節點可在 Agents 標籤頁單獨覆寫。"
-    ,"No default tools set — every node runs without tools. Enable defaults here to let nodes call tools across multiple rounds; each node can still override on the Agents tab.": "未設定預設工具——所有節點均不啟用工具。在此啟用預設後節點可以跨多輪呼叫工具；各節點仍可在 Agents 標籤頁單獨覆寫。"
-    ,"Enable all": "全部啟用"
-    ,"Clear": "清空"
-    ,"Enable defaults": "啟用預設"
-    ,"Tools": "工具"
-    ,"Using the profile default.": "使用 profile 預設。"
-    ,"No tools active. This node runs as a single LLM call.": "不啟用工具，該節點會直接出結果（單次 LLM 呼叫）。"
-    ,"Override": "覆寫"
-    ,"Reset to inherit": "重設為繼承"
-    ,"Loop Orchestration": "迴圈編排"
-    ,"Loop Agent": "迴圈 Agent"
-    ,"Loop tools": "迴圈工具"
-    ,"World book filter (applies to all agents in this preset)": "世界書過濾（該預設下所有 agent 生效）"
-    ,"Book name regex (multiline, any line matches → whole book filtered)": "書名正規表示式（多行，任一命中即攔整本書）"
-    ,"Entry name regex (multiline, matched against entry comment)": "條目名正規表示式（多行，比對 entry comment）"
-    ,"Empty field = no filtering on that dimension; invalid regex lines are skipped with a console warning.": "留空 = 該維度不過濾；非法正規表示式行會略過並在主控台印 warn。"
-    ,"note (persistent notes)": "note（持久化便箋）"
-    ,"chat (in-chat history)": "chat（聊天歷史）"
-    ,"lorebook (world info)": "lorebook（世界書）"
-    ,"custom (extension + profile tools)": "custom（擴充功能與 profile 工具）"
-    ,"memory (memory-graph)": "memory（記憶圖）"
-    ,"search (web search)": "search（聯網搜尋）"
-    ,"terminator": "終止器"
-    ,"(forced on)": "（強制開啟）"
-    ,"Loop API preset (Connection profile, empty = global orchestration API preset)": "迴圈 API 預設（Connection profile，留空 = 全域編排 API 預設）"
-    ,"Loop preset (params + prompt, empty = global orchestration preset)": "迴圈預設（參數 + prompt，留空 = 全域編排預設）"
-    ,"Loop system prompt": "迴圈 system prompt"
-    ,"Loop max rounds": "迴圈最大輪數"
-    ,"Loop wall-clock budget (seconds)": "迴圈 wall-clock 預算（秒）"
-    ,"Workflow": "工作流"
-    ,"Agent Presets": "Agent 預設"
-    ,"Identity templates — tools attach to nodes, not to presets.": "身分範本——工具掛在節點上，不掛在預設上。"
-    ,"Used by nodes:": "被節點引用："
-    ,"Not referenced by any node.": "未被任何節點引用。"
-    ,"Add Stage": "加 Stage"
-    ,"Add Node": "加節點"
-    ,"Stage ID": "Stage ID"
-    ,"Node ID": "節點 ID"
-    ,"Node Type": "節點類型"
-    ,"Worker": "Worker"
-    ,"Node Prompt Template (optional)": "節點 Prompt 模板（可選）"
-    ,"Use {{recent_chat}}, {{last_user}}, {{distiller}}, {{previous_outputs}}. Previous orchestration result and approved review feedback are auto-injected.": "可用 {{recent_chat}}、{{last_user}}、{{distiller}}、{{previous_outputs}}；上一輪編排結果與已批准的 review 回饋會自動注入。"
-    ,"Serial": "串行"
-    ,"Parallel": "並行"
-    ,"Up": "上移"
-    ,"Down": "下移"
-    ,"No stages yet. Add one stage to start orchestration.": "尚無 stage，先加一個開始編排。"
-    ,"No nodes. Add one to define this stage.": "尚無節點，加一個來定義此 stage。"
-    ,"Agenda Orchestration": "Agenda 編排"
-    ,"Agenda Agents": "Agenda Agents"
-    ,"Planner system prompt": "Planner system prompt"
-    ,"Planner Prompt": "Planner Prompt"
-    ,"Planner API preset (Connection profile, empty = global orchestration API preset)": "Planner API 預設（Connection profile，留空 = 全域編排 API 預設）"
-    ,"Planner preset (params + prompt, empty = global orchestration preset)": "Planner 預設（參數 + prompt，留空 = 全域編排預設）"
-    ,"Final Agent": "終結 Agent"
-    ,"Planner max rounds": "Planner 最大輪數"
-    ,"Max concurrent agents": "最大並發 agent 數"
-    ,"Max total agent runs": "總 agent 運行數上限"
-    ,"Agent API preset (Connection profile, empty = global orchestration API preset)": "Agent API 預設（Connection profile，留空 = 全域編排 API 預設）"
-    ,"Agent preset (params + prompt, empty = global orchestration preset)": "Agent 預設（參數 + prompt，留空 = 全域編排預設）"
-    ,"User Prompt Template": "User Prompt 模板"
-    ,"Add Preset": "加預設"
-    ,"new_preset_id": "new_preset_id"
-    ,"No presets yet.": "尚無預設。"
-    ,"No tools active. This agent runs as a single LLM call.": "不啟用工具，該 agent 會直接出結果（單次 LLM 呼叫）。"
-    ,"Requests per minute (0 = unlimited)": "每分鐘請求數（0 = 不限制）"
-    ,"Claude Prompt Caching": "Claude 提示詞快取"
-    ,"Only effective when the prompt prefix is stable across requests (no in-chat lorebook injections or random macros). Cache writes cost 1.25× base (5m) or 2× base (1h); reads cost 0.1×.": "僅在每次請求的前綴穩定時有效（不使用聊天內世界書注入或隨機巨集）。快取寫入成本為基礎價 ×1.25(5m)或 ×2(1h)，讀取僅 ×0.1。"
-    ,"Cache system prompt": "快取 system prompt"
-    ,"Use 1h cache TTL (instead of 5m)": "使用 1 小時 TTL（代替 5 分鐘）"
-    ,"Cache message history at depth (-1 to disable)": "在對話歷史指定深度快取（-1 表示停用）"
-    ,"OpenRouter Gemini Prompt Caching": "OpenRouter Gemini 提示詞快取"
-    ,"Only applied when OpenRouter routes to a Gemini model that supports caching. Same prefix-stability caveat as Claude caching.": "僅在 OpenRouter 路由到支援快取的 Gemini 模型時生效。與 Claude 快取同樣要求前綴穩定。"
-    ,"Requests per minute": "每分鐘請求數"
-    ,"API rate limit": "API 速率限制"
-    ,"Profile ${0} · queued ${1} · next in ${2}s": "設定檔 ${0} · 佇列 ${1} · ${2} 秒後發出"
-    ,"Conversation": "對話記錄"
-    ,"Loop Conversation": "Loop 對話"
-    ,"Agent Conversation": "Agent 對話"
-    ,"No agent messages recorded yet.": "暫無 agent 訊息記錄。"
-    ,"Mode": "模式"
-    ,"Tool Result": "工具結果"
-    ,"System": "系統"
-    ,"User": "使用者"
-    ,"Assistant": "助手"
-    ,"round ${0}": "第 ${0} 輪"
-    ,"(empty)": "（空）"
-    ,"Todo Board": "任務看板"
-    ,"Todo board is empty.": "任務看板為空。"
-    ,"Planner Rounds": "Planner 輪次"
-    ,"No planner rounds recorded.": "暫無 planner 輪次記錄。"
-    ,"No planner step recorded.": "本輪無 planner 步驟記錄。"
-    ,"No agents dispatched this round.": "本輪未派發 agent。"
-    ,"Planner Step": "Planner 步驟"
-    ,"Dispatched Agents": "派發的 Agents"
-    ,"Final Agent": "Final Agent"
-    ,"Round ${0}": "第 ${0} 輪"
-    ,"todo": "待辦"
-    ,"doing": "進行中"
-    ,"done": "完成"
-    ,"blocked": "阻塞"
-    ,"dropped": "已丟棄"
-    ,"(none)": "（無）"
-    ,"Director (multi-agent)": "導演模式（多 agent）"
-    ,"Main agent": "主代理"
-    ,"Main agent tools": "主代理工具"
-    ,"Default tools": "預設工具"
-    ,"Inherit": "繼承"
-    ,"Every agent can call these tools by default. Override per agent on the Agents tab; the main agent inherits unless it has its own override.": "所有 agent 預設可呼叫這些工具。各 agent 可在 Agents 標籤頁單獨覆寫；主 agent 若無自身覆寫則繼承此預設。"
-    ,"Sub-agents": "子代理"
-    ,"Add sub-agent": "新增子代理"
-    ,"Sub-agent ID": "子代理 ID"
-    ,"Description (shown to main agent)": "描述（主代理可見）"
-    ,"Discard partial message on abort": "中止時丟棄殘缺訊息"
-    ,"Maximum tool-calling rounds": "最大工具呼叫輪數"
-    ,"Maximum concurrent sub-agents": "最大並行子代理數"
-    ,"Maximum total sub-agent runs per turn": "本回合最多子代理呼叫總數"
-    ,"Direct message generation": "直接生成訊息"
-    ,"Director mode produces the assistant message directly via a main agent that may dispatch sub-agents.": "導演模式由主代理直接產出助理訊息，主代理可派遣子代理協助。"
-    ,"Director Orchestration": "導演編排"
-    ,"System prompt (leave empty for default)": "系統提示詞（留空使用預設值）"
-    ,"Reset to default": "重設為預設值"
-    ,"Reset main-agent system prompt to default? This overwrites the current text.": "重設主代理系統提示詞為預設值？這會覆蓋目前文字。"
-    ,"Reset main-agent system prompt to default": "已重設主代理系統提示詞為預設值"
-    ,"Limits": "上限"
-    ,"Save To Global": "保存到全局"
-    ,"Save To Character Override": "保存到角色卡覆寫"
-    ,"Clear presets from this card": "清除角色卡上的預設"
-    ,"Manage skills...": "管理技能..."
-    ,"Notes": "筆記"
-    ,"Open notes": "進行中"
-    ,"Closed notes": "已關閉"
-    ,"No open notes yet": "還沒有進行中的條目"
-    ,"No closed notes yet": "還沒有已關閉的條目"
-    ,"Close this note": "關閉這條"
-    ,"Closure reason (optional)": "關閉原因（可選）"
-    ,"Edit note": "編輯"
-    ,"Delete note (permanent)": "永久刪除"
-    ,"Confirm delete (permanent)?": "確認永久刪除？"
-    ,"Manage Users": "使用者管理"
-    ,"System Overview": "系統概覽"
-    ,"Security Status": "安全狀態"
-    ,"Auth & Limits": "認證與限額"
-    ,"Server Plugins": "伺服端外掛"
-    ,"Config": "設定"
-    ,"If a custom avatar is not set, the user's default persona image will be displayed.": "未設定自訂頭像時將顯示使用者的預設人格圖像。"
-    ,"Set a custom avatar.": "設定自訂頭像。"
-    ,"Remove a custom avatar.": "移除自訂頭像。"
-    ,"This account is password protected.": "此帳號已設定密碼。"
-    ,"This account is not password protected.": "此帳號未設定密碼。"
-    ,"Quota:": "配額："
-    ,"OAuth:": "OAuth："
-    ,"Change user display name.": "修改使用者顯示名稱。"
-    ,"Set per-user storage quota.": "設定該使用者的儲存配額。"
-    ,"Enable user account.": "啟用使用者帳號。"
-    ,"Disable user account.": "停用使用者帳號。"
-    ,"Promote user to admin.": "提升為管理員。"
-    ,"Demote user to regular user.": "降級為一般使用者。"
-    ,"Open backup and restore manager.": "開啟備份與還原管理器。"
-    ,"Change user password.": "修改使用者密碼。"
-    ,"Delete user account.": "刪除使用者帳號。"
-    ,"Server Snapshot": "伺服器快照"
-    ,"User Storage": "使用者儲存"
-    ,"Security Checks": "安全檢查"
-    ,"Storage Quota": "儲存配額"
-    ,"Default quota for new users (MB)": "新使用者預設配額（MB）"
-    ,"-1 for unlimited": "-1 表示不限制"
-    ,"Account Registration": "帳號註冊"
-    ,"Allow visitors to register accounts from the login page": "允許訪客在登入頁自助註冊帳號"
-    ,"When enabled, the login page shows a \"Create account\" form. New accounts default to non-admin and respect the storage quota above.": "啟用後，登入頁會顯示「建立帳號」表單。新帳號預設非管理員，並繼承上述儲存配額。"
-    ,"GitHub OAuth": "GitHub OAuth"
-    ,"Enable GitHub OAuth login": "啟用 GitHub OAuth 登入"
-    ,"Auto-create user on first GitHub login": "首次 GitHub 登入時自動建立使用者"
-    ,"GitHub Client ID": "GitHub Client ID"
-    ,"GitHub Client Secret": "GitHub Client Secret"
-    ,"Discord OAuth": "Discord OAuth"
-    ,"Enable Discord OAuth login": "啟用 Discord OAuth 登入"
-    ,"Auto-create user on first Discord login": "首次 Discord 登入時自動建立使用者"
-    ,"Require membership in target server": "要求加入指定伺服器"
-    ,"Discord Client ID": "Discord Client ID"
-    ,"Discord Client Secret": "Discord Client Secret"
-    ,"Extra OAuth scopes (optional, comma/space/new line separated; identify is always included)": "額外的 OAuth 權限範圍（可選；逗號、空格或換行分隔；identify 一律包含）"
-    ,"Allowed server IDs (comma or new line separated)": "允許的伺服器 ID（逗號或換行分隔）"
-    ,"Required role IDs (optional, comma or new line separated)": "要求的身分組 ID（可選，逗號或換行分隔）"
-    ,"When \"Require membership in target server\" is enabled, required Discord scopes for server checks are added automatically.": "啟用「要求加入指定伺服器」後，會自動加入用於伺服器校驗的 Discord 權限範圍。"
-    ,"Save Auth & Limit Settings": "儲存認證與限額設定"
-    ,"Update": "更新"
-    ,"Reload": "重新載入"
-    ,"Path:": "路徑："
-    ,"Runtime Config (config.yaml)": "執行時設定（config.yaml）"
-    ,"config.yaml content": "config.yaml 內容"
-    ,"Changes are validated as YAML before save. Some settings may require backend restart.": "儲存前會以 YAML 進行校驗。部分設定需要重啟後端才能生效。"
-    ,"e.g. John Snow": "例如 王小明"
-    ,"e.g. john-snow (lowercase letters, numbers, and dashes only)": "例如 john-snow（僅限小寫字母、數字與連字號）"
-    ,"[ No password ]": "［無密碼］"
-    ,"This will create a new subfolder in the /data/ directory with the user's handle as the folder name.": "這會在 /data/ 目錄下以該使用者句柄為名建立新的子目錄。"
-    ,"Installing a server plugin grants backend code execution. Install only repositories you trust.": "安裝伺服端外掛等同於授予後端程式碼執行權限，請僅安裝可信任的儲存庫。"
-    ,"Git repository URL": "Git 儲存庫位址"
-    ,"New installs are picked up after backend restart.": "新安裝的外掛需重啟後端才會載入。"
-    ,"Set per-user quota in MB. Enter -1 to use default/unlimited.": "以 MB 為單位設定該使用者的配額；輸入 -1 使用預設值或不限制。"
-    ,"Please enter a valid number.": "請輸入有效數字。"
-    ,"Invalid quota": "配額無效"
-    ,"Node.js:": "Node.js："
-    ,"Platform:": "平台："
-    ,"Uptime:": "執行時長："
-    ,"Now:": "目前時間："
-    ,"Total users:": "使用者總數："
-    ,"Enabled:": "已啟用："
-    ,"Admins:": "管理員："
-    ,"Password protected:": "受密碼保護："
-    ,"Total storage:": "總儲存佔用："
-    ,"Over quota users:": "超配額使用者："
-    ,"Default quota:": "預設配額："
-    ,"${0}% of quota": "已用配額 ${0}%"
-    ,"Admin": "管理員"
-    ,"Admins without password:": "未設密碼的管理員："
-    ,"Disabled admins:": "已停用的管理員："
-    ,"Disabled users:": "已停用的使用者："
-    ,"Install path:": "安裝路徑："
-    ,"Installed directories:": "已安裝目錄數："
-    ,"Server plugins are currently disabled in config.": "伺服端外掛功能目前在設定中已停用。"
-    ,"Installed plugins will load after you enable them and restart the backend.": "啟用並重啟後端後，已安裝的外掛才會載入。"
-    ,"No server plugins installed.": "尚未安裝任何伺服端外掛。"
-    ,"No package metadata": "無 package 中繼資料"
-    ,"No git remote detected": "未偵測到 git 遠端"
-    ,"Remove server plugin \"${0}\"?": "移除伺服端外掛「${0}」？"
-    ,"Admin settings saved.": "管理員設定已儲存。"
-    ,"Unlimited": "無限制"
-    ,"Announcements": "公告"
-    ,"Announcement": "公告"
-    ,"Critical": "嚴重"
-    ,"Warning": "警告"
-    ,"Open": "開啟"
-    ,"Dismiss": "關閉"
-    ,"Mark all as read": "全部標為已讀"
-    ,"No announcements": "暫無公告"
-    ,"No announcements yet": "暫無公告"
-    ,"New announcement": "新增公告"
-    ,"Level": "級別"
-    ,"Body (Markdown)": "內容(Markdown)"
-    ,"Preview": "預覽"
-    ,"Failed to load announcements.": "載入公告失敗。"
-    ,"Announcement updated.": "公告已更新。"
-    ,"Announcement deleted.": "公告已刪除。"
-    ,"Announcement created.": "公告已建立。"
-    ,"Delete failed.": "刪除失敗。"
-    ,"Create failed.": "建立失敗。"
-    ,"Compare with": "對比基準"
-    ,"Clear history": "清空歷史"
-    ,"Conversation history": "對話歷史"
-    ,"Type what to change...": "描述要修改的內容…"
-    ,"Send": "發送"
-    ,"Stop": "終止"
-    ,"Working...": "處理中…"
-    ,"No saved sessions": "沒有已保存的會話"
-    ,"New session": "新建會話"
-    ,"Import chat": "導入對話"
-    ,"Import selected": "導入選中"
-    ,"No chat is currently open": "當前沒有打開的聊天"
-    ,"The current chat has no importable messages": "當前聊天沒有可導入的消息"
-    ,"No messages selected": "沒有選中任何消息"
-    ,"(${0} messages)": "（共 ${0} 條消息）"
-    ,"Imported ${0} message(s)": "已導入 ${0} 條消息"
-    ,"(None)": "（無）"
-    ,"Pending changes": "待應用的修改"
-    ,"Reject": "拒絕"
-    ,"Approve": "批准"
-    ,"Approve file change?": "批准檔案修改？"
-    ,"Approve ${0} file changes?": "批准 ${0} 個檔案修改？"
-    ,"Clear all session history for this scope?": "清空當前作用域的全部會話歷史？"
-    ,"Iteration Studio session format updated; previous sessions cleared.": "迭代工作台會話格式已更新，舊會話已清除。"
-    ,"Iteration failed: ${0}": "迭代失敗：${0}"
-    ,"AI suggested changes are waiting for approval.": "AI 提出的修改等待你審核。"
-    ,"Function output is invalid.": "函式輸出無效。"
-    ,"Close Studio": "關閉工作室"
-    ,"📂 List files": "📂 列出檔案"
-    ,"📖 Read file": "📖 讀取檔案"
-    ,"✏️ Write file": "✏️ 寫入檔案"
-    ,"🩹 Patch file": "🩹 修補檔案"
-    ,"🗑️ Delete file": "🗑️ 刪除檔案"
-    ,"📝 Rename file": "📝 重新命名檔案"
-    ,"🪪 Get character fields": "🪪 取得角色欄位"
-    ,"🖊️ Update character fields": "🖊️ 更新角色欄位"
-    ,"📥 Import embedded world": "📥 匯入內嵌世界書"
-    ,"📚 List world books": "📚 列出世界書"
-    ,"📖 Get world-info entries": "📖 取得世界資訊條目"
-    ,"🔍 Search world-info entries": "🔍 搜尋世界資訊條目"
-    ,"➕ Create world-info entry": "➕ 建立世界資訊條目"
-    ,"✏️ Update world-info entry": "✏️ 更新世界資訊條目"
-    ,"🗑️ Delete world-info entry": "🗑️ 刪除世界資訊條目"
-    ,"📕 Create world book": "📕 建立世界書"
-    ,"♻️ Replace world-info entries": "♻️ 取代世界資訊條目"
-    ,"🔢 List regex scripts": "🔢 列出正規表示式指令稿"
-    ,"➕ Create regex script": "➕ 建立正規表示式指令稿"
-    ,"✏️ Update regex script": "✏️ 更新正規表示式指令稿"
-    ,"🗑️ Delete regex script": "🗑️ 刪除正規表示式指令稿"
-    ,"🎼 Get orchestrator override": "🎼 取得編排器覆寫"
-    ,"🎼 Set orchestrator override": "🎼 設定編排器覆寫"
-    ,"🎼 Clear orchestrator override": "🎼 清除編排器覆寫"
-    ,"🧠 Get memory-graph config": "🧠 取得記憶圖譜設定"
-    ,"🧠 Update memory-graph schema": "🧠 更新記憶圖譜 schema"
-    ,"🧠 Update memory-graph advanced": "🧠 更新記憶圖譜進階設定"
-    ,"⌨️ List slash commands": "⌨️ 列出斜線指令"
-    ,"❓ Slash command help": "❓ 斜線指令說明"
-    ,"🧭 List Atria context keys": "🧭 列出 Atria 上下文鍵"
-    ,"🧭 Describe Atria context": "🧭 描述 Atria 上下文"
-    ,"📑 List docs": "📑 列出文件"
-    ,"📖 Read doc": "📖 讀取文件"
-    ,"🔌 Toggle CardApp": "🔌 啟用/停用 CardApp"
-    ,"Max request retries (0 = disabled)": "請求重試次數上限（0 表示關閉）"
-    ,"Applies to both text and image generation. Retries on network errors and rate-limit / server errors. Streaming responses are not retried after the stream begins.": "對文字生成和影像生成請求都生效。遇到網路錯誤、上游限流或伺服器錯誤時會自動重試。串流回應開始後斷開不會重試。"
-    ,"Max request retries": "請求重試次數上限"
-    ,"Retry status whitelist": "重試狀態碼白名單"
-    ,"Whitelist accepts comma-separated HTTP status codes and ranges (100–599). Examples: 429, 500-599, or 429, 500-504. Leave empty to retry the default set (429 and any 5xx). When non-empty, only listed codes are retried.": "白名單接受以逗號分隔的 HTTP 狀態碼或範圍（100–599）。例如：429、500-599、429, 500-504。留空則重試預設集合（429 與所有 5xx）；非空則只重試列出的狀態碼。"
-    ,"Auto-continue when the response is truncated": "回覆被截斷時自動繼續"
-    ,"Max auto-continue attempts": "最大自動繼續次數"
-    ,"Main-chat only. Fires on output cap or safety cutoff. Stops if the last round produced no new content. Counter resets on user input, chat switch, or a normal-finish reply.": "僅作用於主聊天。在觸及輸出上限或被安全策略截斷時觸發。若上一輪未產出任何新內容則停止。計數在使用者發送新訊息、切換聊天或收到正常結束的回覆時重置。"
-    ,"Auto-continue on truncated": "截斷時自動繼續"
-    ,"Request failed": "請求失敗"
-    ,"Image generation failed": "圖像生成失敗"
-    ,"Retrying request… (${0}/${1})": "正在重試請求……（第 ${0}/${1} 次）"
-    ,"Retrying image generation… (${0}/${1})": "正在重試圖像生成……（第 ${0}/${1} 次）"
-    ,"History": "歷史"
-    ,"Clear all": "清空全部"
-    ,"Discard": "捨棄"
-    ,"(untitled)": "（未命名）"
-    ,"Delete this session": "刪除該會話"
-    ,"Reference preset:": "參考預設："
-    ,"What is a reference preset?": "什麼是參考預設？"
-    ,"A reference preset is a separate preset you pick as a comparison baseline. The AI can:": "參考預設是你額外選定的一份預設，用來作為對照基準。AI 可以："
-    ,"Read its fields (prompts, sampler settings, etc.) as context.": "讀取它的欄位（提示詞、取樣參數等）作為參考。"
-    ,"Diff your target preset against it to spot differences.": "把目標預設與它進行差異比對，找出不同之處。"
-    ,"Copy specific fields from it into your target preset.": "把它的特定欄位複製到目標預設中。"
-    ,"You can merge the strengths of different presets, carrying one preset's ideas and content into another.": "可將不同預設的優點融合起來，將一個預設的思想、內容遷移到另一個預設。"
-    ,"Pick \"(none)\" to skip — the AI will edit your target preset alone.": "選「（無）」即跳過比對，AI 只在目標預設上修改。"
-    ,"Editing mode:": "編輯模式："
-    ,"Completion Preset Assistant — AI iteration": "聊天補全預設助手 — AI 迭代"
-    ,"Describe what to change in the preset...": "描述要修改的預設內容..."
-    ,"Clear all session history for this preset?": "清空該預設的所有會話歷史？"
-    ,"Memory Graph Schema Studio": "記憶圖譜 Schema 工作台"
-    ,"Describe what to change in the schema...": "描述要修改的 Schema 內容..."
-    ,"AI Iteration Studio": "AI 迭代工作台"
-    ,"AI Iteration Studio — Spec": "AI 迭代工作台 — Spec"
-    ,"AI Iteration Studio — Loop": "AI 迭代工作台 — Loop"
-    ,"AI Iteration Studio — Agenda": "AI 迭代工作台 — Agenda"
-    ,"AI Iteration Studio — Director": "AI 迭代工作台 — Director"
-    ,"Describe what to change in the profile...": "描述要修改的設定內容..."
-    ,"Auto-apply edits": "自動套用變更"
-    ,"Character Editor — AI iteration": "角色卡編輯器 — AI 迭代"
-    ,"Type what to change...": "描述要修改的內容..."
-    ,"Sampling params": "取樣參數"
-    ,"Saved presets": "已儲存預設"
-    ,"Frequency penalty": "頻率懲罰"
-    ,"Presence penalty": "存在懲罰"
-    ,"Reference": "參考"
-    ,"Preview unavailable": "預覽不可用"
-    ,"Max context unlocked": "解鎖最大上下文"
-    ,"No data": "暫無資料"
-    ,"(was ${0} → now ${1})": "（待修改：${0} → ${1}）"
-    ,"No preset loaded.": "未載入預設。"
-    ,"Live target preview": "即時目標預覽"
-    ,"Pending applied (preview):": "套用後（預覽）:"
-    ,"Resize columns": "拖動調整寬度"
-    ,"New messages while you were on Preview": "在預覽頁面時收到的新訊息"
-    ,"Schema": "Schema"
-    ,"${0} fields": "${0} 個欄位"
-    ,"No schema loaded.": "未載入 Schema。"
-    ,"No profile loaded.": "未載入設定。"
-    ,"Pipeline": "流水線"
-    ,"No stages": "暫無階段"
-    ,"Loop agent": "循環代理"
-    ,"Prompt preset": "提示詞預設"
-    ,"API preset": "API 預設"
-    ,"API preset (Connection profile)": "API 預設（Connection profile）"
-    ,"Max rounds": "最大輪次"
-    ,"Wall-clock budget (s)": "時長預算（秒）"
-    ,"System prompt": "系統提示詞"
-    ,"(unset)": "（未設定）"
-    ,"Planner": "規劃器"
-    ,"Agents": "代理清單"
-    ,"No agents": "暫無代理"
-    ,"(final)": "（終）"
-    ,"planner rounds": "規劃輪次"
-    ,"concurrent agents": "並發代理"
-    ,"total runs": "總執行次數"
-    ,"No sub-agents": "暫無子代理"
-    ,"rounds": "輪次"
-    ,"concurrent subagents": "並發子代理"
-    ,"total subagent runs": "子代理總執行次數"
-    ,"Character fields": "角色欄位"
-    ,"Bound lorebook": "綁定世界書"
-    ,"No character loaded.": "未載入角色。"
-    ,"(click to expand)": "（點擊展開）"
-    ,"World book: ${0}": "世界書：${0}"
-    ,"Auto-apply AI proposed changes": "自動套用 AI 提議的變更"
-    ,"Draft (not applied)": "草稿（未套用）"
-    ,"Recently applied": "最近套用"
-    ,"Entry UID: ${0}": "條目 UID：${0}"
-    ,"Position: ${0}": "位置：${0}"
-    ,"Keys: ${0}": "關鍵詞：${0}"
-    ,"No entries yet.": "暫無條目。"
-    ,"No world book bound": "未綁定世界書"
-    ,"(new)": "（新建）"
-    ,"${0} references missing entry": "${0} 參照了不存在的條目"
-    ,"AI is thinking...": "AI 正在思考……"
-    ,"Applied to ${0}": "已套用至 ${0}"
-    ,"Apply to ${0}": "套用至 ${0}"
-    ,"global": "全域"
-    ,"current character": "目前角色"
-    ,"Rolled back": "已回退"
-    ,"Roll back this batch? The changes will be reversed in the target.": "回退本批次變更？目標裡這些改動會被反向套用。"
-    ,"Tools and edits this round (${0})": "本輪工具呼叫 + 變更（${0}）"
-    ,"Rolled back at ${0}": "已回退 ${0}"
-    ,"✓ Applied to ${0} at ${1}": "✓ 已套用至 ${0}（${1}）"
-    ,"Rollback": "回退"
-    ,"Cannot rollback edit type: ${0}": "無法回退此類編輯：${0}"
-    ,"preset": "預設"
-    ,"schema": "結構"
-    ,"Apply failed: ${0}": "套用失敗：${0}"
-    ,"Applied ${0} edit(s) to ${1}": "已套用 ${0} 條編輯到 ${1}"
-    ,"Applied ${0} of ${1} edit(s) to ${2}; ${3} skipped": "已套用 ${0}/${1} 條編輯到 ${2};${3} 條跳過"
-    ,"Applied ${0} of ${1} change(s); ${2} skipped": "已套用 ${0}/${1} 項變更；${2} 項跳過"
-    ,"No edits applied to ${0}: all ${1} were skipped (conflicts or already in desired state)": "未套用任何編輯到 ${0}：全部 ${1} 條都被跳過（衝突或已是期望狀態）"
-    ,"No edits applied: all ${0} were skipped (conflicts or already in desired state)": "未套用任何編輯：全部 ${0} 條都被跳過（衝突或已是期望狀態）"
-    ,"Edit error: ${0}": "編輯錯誤：${0}"
-    ,"Failed to save preset: ${0}": "儲存預設失敗：${0}"
-    ,"Failed to save schema: ${0}": "儲存結構失敗：${0}"
-    ,"Failed to save profile: ${0}": "儲存設定失敗：${0}"
-    ,"Failed to save character: ${0}": "儲存角色失敗：${0}"
-    ,"Session finalized": "會話已完成"
-    ,"No presets": "暫無預設"
-    ,"Field updated: ${0}": "欄位已更新：${0}"
-    ,"Show ${0} more entries": "展開剩餘 ${0} 條"
-    ,"Working profile reset to a blank shell — building this card's orchestration from scratch.": "工作中的設定已重置為空白範本，將從零開始為這張角色卡編寫編排。"
-    ,"Working profile reset to match the current global profile — adjust from there.": "工作中的設定已重置為當前全域設定——請在此基礎上調整。"
-    ,"Schema reset to a blank shell — building from scratch.": "結構已重置為空白範本——從零開始搭建。"
-    ,"Schema reset to match the current global schema — adjust from there.": "結構已重置為當前全域結構——請在此基礎上調整。"
-    ,"Reset working profile to blank": "重置工作設定為空白"
-    ,"Reset working profile to global": "重置工作設定為全域"
-    ,"Reset schema to blank": "重置結構為空白"
-    ,"Reset schema to global": "重置結構為全域"
-    ,"✓ Applied at ${0}": "✓ 已套用於 ${0}"
-    ,"Apply ${0}": "套用 ${0}"
-    ,"Rollback this round": "回退本輪"
-    ,"Roll back ${0} change(s) from this round?": "確認回退本輪的 ${0} 項變更？"
-    ,"Rolled back ${0} change(s).": "已回退 ${0} 項變更。"
-    ,"Batch rollback finished with ${0} failure(s).": "批次回退完成，${0} 項失敗。"
-    ,"(untitled entry)": "（無標題條目）"
-    ,"${0} entries": "${0} 條"
-    ,"${0} pending": "${0} 項待批准"
-    ,"${0} draft": "${0} 項草稿"
-    ,"Error: ${0}": "錯誤：${0}"
-    ,"Auto-continue": "自動續輪"
-    ,"AI read the indicated data and is waiting to act on the result next round.": "AI 讀取了相關資料，等待下一輪根據結果調整。"
-    ,"Just imported this card — review the baseline and suggest tweaks.": "剛匯入這張卡——回顧基礎設定並提出調整建議。"
-
-    ,"Continue iteration": "繼續迭代"
-    ,"Finalize iteration": "結束迭代"
-
-    ,"Set preset field": "設定預設欄位"
-    ,"Replace field text": "替換欄位文字"
-    ,"Insert into field": "向欄位中插入"
-    ,"Delete inside field": "從欄位中刪除"
-    ,"Replace text in prompt": "替換條目文字"
-    ,"Insert text in prompt": "向條目中插入文字"
-    ,"Delete text in prompt": "從條目中刪除文字"
-    ,"List insert": "清單插入"
-    ,"List remove": "清單移除"
-    ,"List move": "清單移動"
-    ,"Set prompt entry": "設定提示條目"
-    ,"Adjust prompt order": "調整提示順序"
-    ,"Remove prompt entry": "移除提示條目"
-    ,"Remove prompt order item": "移除提示順序項"
-    ,"Clone to new preset": "複製為新預設"
-    ,"Copy from reference": "從參考預設複製"
-    ,"Read preset fields": "讀取預設欄位"
-    ,"Read reference fields": "讀取參考欄位"
-    ,"Diff against reference": "與參考預設對比"
-    ,"Simulate prompt assembly": "模擬提示組裝"
-
-    ,"Returned ${0} values": "返回 ${0} 個值"
-    ,"${0} paths": "${0} 個路徑"
-    ,"${0} fields differ": "${0} 個欄位不同"
-    ,"Assembled ${0} chars": "組裝 ${0} 個字元"
-
-    ,"Set node type": "設定節點類型"
-    ,"Remove node type": "移除節點類型"
-    ,"Reorder node types": "重新排序節點類型"
-
-    ,"Update director main agent": "更新導演主智慧體"
-    ,"Upsert director sub-agent": "設定導演子智慧體"
-    ,"Remove director sub-agent": "移除導演子智慧體"
-    ,"Update director limits": "更新導演限制"
-    ,"Update director tools": "更新導演工具"
-    ,"main agent": "主智慧體"
-    ,"limits": "限制"
-    ,"tools": "工具"
-    ,"Update loop profile": "更新循環設定"
-    ,"loop profile": "循環設定"
-    ,"Update agenda planner": "更新議程規劃者"
-    ,"Upsert agenda agent": "設定議程智慧體"
-    ,"Remove agenda agent": "移除議程智慧體"
-    ,"Set agenda final agent": "設定議程終筆智慧體"
-    ,"Update agenda limits": "更新議程限制"
-    ,"planner": "規劃者"
-    ,"Upsert pipeline stage": "設定流程階段"
-    ,"Remove pipeline stage": "移除流程階段"
-    ,"Upsert stage node": "設定階段節點"
-    ,"Remove stage node": "移除階段節點"
-    ,"Upsert preset": "設定預設"
-    ,"Remove preset": "移除預設"
-    ,"Simulate orchestration": "模擬編排"
-    ,"Set lorebook book filter": "設定世界書書名過濾"
-    ,"Set lorebook entry filter": "設定世界書條目過濾"
-    ,"Clear lorebook book filter": "清除世界書書名過濾"
-    ,"Clear lorebook entry filter": "清除世界書條目過濾"
-
-    ,"List world books": "列出世界書"
-    ,"List lorebook entries": "列出世界書條目"
-    ,"Search lorebook": "搜尋世界書"
-    ,"Read lorebook entries": "讀取世界書條目"
-    ,"${0} books": "${0} 本世界書"
-    ,"${0} hits": "${0} 個匹配"
-
-    ,"Set card field": "設定卡片欄位"
-    ,"Replace text in card field": "替換卡片欄位文字"
-    ,"Add lorebook entry": "新增世界書條目"
-    ,"Update lorebook entry": "更新世界書條目"
-    ,"Remove lorebook entry": "移除世界書條目"
-    ,"Set lorebook metadata": "設定世界書中繼資料"
-    ,"Web search": "網路搜尋"
-    ,"Simulate prompt": "模擬提示"
-    ,"${0} results": "${0} 個結果"
-    ,"${0} chars": "${0} 個字元"
-
-    ,"Arguments": "參數"
-    ,"Result": "結果"
-    ,"Profile updated": "設定已更新"
-    ,"Field updated": "欄位已更新"
-    ,"working profile": "目前設定"
-    ,"Line diff": "行級 diff"
-    ,"Line diff (+${0} -${1})": "行級 diff（+${0} -${1}）"
-    ,"Expand diff": "展開 diff"
-    ,"Resize diff columns": "調整 diff 欄寬"
-    ,"Close expanded diff": "關閉展開的 diff"
-    ,"(unknown op)": "（未知操作）"
-    ,"(tool)": "（工具）"
-    ,"(root)": "（根）"
-    ,"(${0}${1} bytes)": "（${0}${1} 位元組）"
-    ,"field": "欄位"
-
-    ,"General editing": "通用編輯"
-    ,"Adapt for orchestrator": "適配編排器"
-    ,"Jailbreak-only": "僅越獄"
-
-    ,"(no effective change)": "（無實際變更）"
-    ,"Clear all session history?": "清空所有會話歷史？"
-    ,"Save failed — close anyway and lose this turn?": "儲存失敗——仍要關閉並捨棄本輪內容嗎？"
-
-    ,"Apply ${0} to \"${1}\"": "將 ${0} 套用到「${1}」"
-    ,"Apply ${0} changes (${1})": "套用 ${0} 項變更（${1}）"
-    ,"${0} to character": "${0} 到角色卡"
-    ,"${0} to \"${1}\"": "${0} 到「${1}」"
-    ,"Apply failed (${0}): ${1}": "套用失敗（${0}）：${1}"
-    ,"Apply failed for ${0} target(s).": "${0} 個目標套用失敗。"
-    ,"Applied ${0} change(s).": "已套用 ${0} 項變更。"
-    ,"Rollback failed (${0}): ${1}": "回退失敗（${0}）：${1}"
-    ,"Rollback failed for ${0} target(s).": "${0} 個目標回退失敗。"
-    ,"Rolled back.": "已回退。"
-    ,"Resize chat and preview columns": "調整對話與預覽欄寬"
-    ,"Unread assistant messages": "未讀 AI 訊息"
-    ,"(untitled session)": "（無標題會話）"
-    ,"Delete this session?": "刪除此會話？"
-    ,"Clear all saved sessions for this character?": "清空此角色卡的所有儲存會話？"
-    ,"Finalized.": "已完成。"
-    ,"No saved sessions yet.": "尚無儲存的會話。"
-
-    ,"Cloned to ${0}": "已複製到 ${0}"
-    ,"Apply to ${0} override": "套用到 ${0} 的角色卡覆寫"
-    ,"Regenerate this turn? Subsequent rounds will be discarded.": "重新產生本輪？後續輪次會被丟棄。"
-    ,"(deleted)": "（已刪除）"
-    ,"Reset rejected: reset_to_blank only applies when iterating a character override.": "重設被拒：reset_to_blank 僅在疊代角色卡覆寫時可用。"
-    ,"Reset rejected: reset_to_global only applies when iterating a character override.": "重設被拒：reset_to_global 僅在疊代角色卡覆寫時可用。"
-    ,"Reset rejected: this card already has an override. Use reset_to_global instead, or continue adjusting in place.": "重設被拒：這張卡已有覆寫。請改用 reset_to_global，或直接在現有基礎上調整。"
-    ,"Reset rejected: this card has no character override yet. Use reset_to_blank instead, or continue adjusting the seeded global copy in place.": "重設被拒：這張卡還沒有角色卡覆寫。請改用 reset_to_blank，或直接在播種的全域副本上調整。"
-    ,"Description": "描述"
-    ,"Personality": "性格"
-    ,"Example dialogue": "範例對話"
-    ,"Main prompt": "主提示詞"
-    ,"Post-history instructions": "對話歷史後指令"
-    ,"Creator notes": "作者註釋"
-    ,"pending change": "待審批改動"
-    ,"${0} pending edit(s)": "${0} 處待審批改動"
-    ,"No character bound": "未繫結角色卡"
-    ,"(unnamed character)": "（未命名角色）"
-    ,"All card fields empty.": "角色卡所有欄位均為空。"
-    ,"Alternate greetings": "備用問候語"
-    ,"What preset should I use for the Agent?": "Agent 這裡該掛什麼樣的提示詞預設？"
-    ,"What preset should I use here?": "這裡該掛什麼樣的提示詞預設？"
-    ,"This selector is for the preset the plugin uses to do its own work — editing configs, editing schemas, extracting facts, building recall queries, etc. It is NOT for drafting RP content.": "這一欄選的是外掛自己幹活時用的預設——改設定、改 Schema、抽取事實、建構召回查詢等等，不是用來產出 RP 正文的。"
-    ,"A clean preset works best here: one that contains only jailbreak / general unblock prompts, with no RP style instructions, character voice, or narrative format requirements.": "這裡最適合掛一份乾淨預設：只保留越獄/通用破限提示詞，不含 RP 文風指令、角色語態、敘事格式要求。"
-    ,"Why? RP presets often force an output format (mandatory schema blocks, forced thinking chains) that conflicts with the structured tool calls these plugins use. Style instructions can also leak into config edits and produce odd results.": "原因：日常 RP 預設常常會強制輸出格式（強制 schema 區塊、強制思維鏈），與這些外掛用的結構化 tool call 互相打架；文風指令也容易滲進設定改寫裡，結果稀奇古怪。"
-    ,"Two ways to get a clean preset:": "兩種拿到乾淨預設的方式："
-    ,"Click \"Import plugin-only preset\" below — imports a pre-built clean preset bundled with Atria, then selects it here.": "點下面的「匯入 plugin-only 預設」——一鍵匯入 Atria 內建的現成乾淨預設，並自動選中。"
-    ,"Open the Completion Preset Assistant and start a new session in \"Jailbreak-only\" mode — it will derive a clean version from your existing RP preset. Your original preset stays untouched.": "打開「聊天補全預設助手」，新開一個「僅保留破限」模式的會話——它會從你現有的 RP 預設派生一份乾淨版本，原預設保持不動。"
-    ,"This selector is for the preset an Agent uses to draft content. Unlike iteration-AI presets, the Agent SHOULD use your RP-style instructions — jailbreak, NSFW guidance, style/voice rules, anti-cliché instructions, etc.": "這一欄選的是 Agent 起草正文時用的預設。和外掛迭代 AI 不一樣，Agent 這裡需要你的 RP 類指令——越獄、NSFW 指導、文風/語態規則、反八股指令等等。"
-    ,"But a raw daily RP preset is also not the right fit: instructions that force an output schema or a fixed thinking-chain format will block the agent's tool calls, and character/world-info that the agent framework already injects will get duplicated.": "但是直接掛日常 RP 預設也不合適：強制輸出 schema、固定思維鏈格式之類的指令會頂壞 Agent 的 tool call；角色卡描述、世界書等占位符在 Agent 框架裡已經會被注入一次，原樣保留會被重複注入。"
-    ,"Recommended: derive an Agent-friendly preset from your RP preset. Open the Completion Preset Assistant, start a new session in \"Adapt for orchestrator\" mode, and ask it to convert. It will keep your style / jailbreak / anti-cliché instructions while disabling format-forcing prompts and duplicate injections. The original preset stays untouched.": "建議：從你的 RP 預設派生一份 Agent 友善版本。打開「聊天補全預設助手」，新開一個「編排器適配」模式的會話，讓它幫你改造——它會保留文風 / 越獄 / 反八股指令，同時停用會強制格式的提示詞和重複注入。原預設保持不動。"
-    ,"For the full multi-Agent setup walkthrough, see the multi-Agent onboarding recipe in the documentation.": "完整的多 Agent 設定流程請見文件中的「多 Agent 上手指南」。"
-    ,"Preset manager unavailable.": "預設管理器不可用。"
-    ,"Failed to save the \"{name}\" preset.": "儲存「{name}」預設失敗。"
-    ,"A preset named \"{name}\" already exists. Overwrite it with the bundled version, or keep your existing copy and just select it?": "已存在名為「{name}」的預設。要用 Atria 內建版本覆蓋，還是保留你現有的版本並直接選中？"
-    ,"Overwrite with bundled version": "用內建版本覆蓋"
-    ,"Keep existing": "保留現有"
-    ,"Overwrote preset: {name}": "已覆蓋預設：{name}"
-    ,"Selecting your existing \"{name}\" preset.": "已為你選中現有的「{name}」預設。"
-    ,"Import plugin-only preset": "匯入 plugin-only 預設"
-    ,"Failed to download the \"{name}\" preset.": "下載「{name}」預設失敗。"
-    ,"Imported preset: {name}": "已匯入預設：{name}"
-    ,"This selector is for the preset a Director-mode Agent uses (main agent or a sub-agent). Director already injects the full RP context (character card, persona, world info, chat history) inside a <story_context> envelope before the agent runs — so the agent's own preset does NOT need any character / world / persona placeholders. Adding them would only re-inject the same content twice and burn tokens.": "這一欄選的是 Director 模式 Agent（主 Agent 或 sub-agent）用的預設。Director 在 Agent 執行前已經把完整 RP 上下文（角色卡、persona、世界書、聊天記錄）整段塞進 <story_context> 信封裡——所以 Agent 自己這份預設不需要任何角色卡/世界書/persona 占位符，加了只會把同樣的內容重複注入一次，白燒 token。"
-    ,"What this slot SHOULD carry: jailbreak / content-permission instructions that wrap the <story_context> block, plus the chatHistory marker so the envelope lands in the right place. Style / voice / anti-cliché rules normally belong in the agent's system prompt, not here.": "這一欄該裝的是什麼：包在 <story_context> 區塊外面的越獄/內容許可指令，加上 chatHistory 占位符讓信封落到合適的位置。文風/語態/反八股規則正常應該寫在 Agent 的系統提示詞裡，不屬於這裡。"
-    ,"Two ways to get a Director-friendly preset:": "兩種拿到 Director 友善預設的方式："
-    ,"Click \"Import agent-director preset\" below — imports a minimal Atria-bundled preset (marker-free, permission text only) and selects it here. Good as a quick start.": "點下面的「匯入 agent-director 預設」——一鍵匯入 Atria 內建的極簡預設（不含占位符，只保留許可文字），並自動選中。適合快速起步。"
-    ,"Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a Director-ready version from your existing RP preset, keeping your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts and duplicate injections. Your original preset stays untouched.": "打開「聊天補全預設助手」，新開一個「編排器適配」模式的會話——它會從你現有的 RP 預設派生一份適配 Director 的版本，保留越獄/文風/反八股指令，同時剝掉強制格式的提示詞和重複注入。原預設保持不動。"
-    ,"Import agent-director preset": "匯入 agent-director 預設"
-    ,"This selector is for the preset a non-Director Agent uses (Single / Spec / Agenda planner / Loop). Unlike Director, these modes do NOT inject the RP context for the agent — so the agent's preset is the only path through which character card, persona, and world info reach the model. Markers (charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory) must stay enabled, and the RP material should be visibly separated from the runtime task instructions so the agent does not mistake them for narrative continuation.": "這一欄選的是非 Director 模式 Agent（Single / Spec / Agenda planner / Loop）用的預設。和 Director 不同，這些模式不會主動給 Agent 注入 RP 上下文——所以 Agent 這份預設是角色卡、persona、世界書到達模型的唯一通道。占位符（charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory）必須保持啟用；RP 素材要和執行時下發的任務指令明確隔開，免得 Agent 把它讀成敘事延續。"
-    ,"This is the same shape iteration-AI plugins (CPA iter / Memory Graph / CardApp Studio iter) need, just placed in an Agent slot. The bundled preset offered below is identical in structure to the iter-AI plugin-only preset.": "這和外掛迭代 AI（預設助手迭代、記憶圖、卡片應用工作台迭代等）需要的形態是一樣的，只是裝在 Agent 的槽位裡。下面提供的內建預設結構上和外掛迭代 AI 用的 plugin-only 預設一致。"
-    ,"Two ways to get a non-Director-friendly preset:": "兩種拿到非 Director 友善預設的方式："
-    ,"Click \"Import agent-non-director preset\" below — imports a Atria-bundled preset (markers enabled, story / user-request envelopes wrap the context) and selects it here. Good as a quick start.": "點下面的「匯入 agent-non-director 預設」——一鍵匯入 Atria 內建的預設（占位符啟用，story / user-request 信封把上下文包好），並自動選中。適合快速起步。"
-    ,"Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a version from your existing RP preset that preserves your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts. Your original preset stays untouched.": "打開「聊天補全預設助手」，新開一個「編排器適配」模式的會話——它會從你現有的 RP 預設派生一份版本，保留越獄/文風/反八股指令，同時剝掉強制格式的提示詞。原預設保持不動。"
-    ,"Import agent-non-director preset": "匯入 agent-non-director 預設"
-
-    ,"Update skill file": "更新 skill 檔案"
-    ,"Update skill frontmatter": "更新 skill metadata"
-    ,"Create skill": "建立 skill"
-    ,"Rename skill": "重新命名 skill"
-    ,"Move skill scope": "遷移 skill 作用域"
-    ,"Delete skill": "刪除 skill"
-    ,"Name": "名稱"
-    ,"Scope": "作用域"
-    ,"global": "全域"
-    ,"preset:${0}": "預設：${0}"
-    ,"character:${0}": "角色：${0}"
-    ,"(unknown scope)": "（未知作用域）"
-    ,"No content change": "無內容變更"
-    ,"Plus ${0} additional file(s): ${1}": "另含 ${0} 個附加檔案：${1}"
-    ,"Skill \"${0}\" (${1}) will be deleted on Apply. All files removed; this cannot be undone.": "Skill「${0}」（${1}）將在「套用」時刪除：所有檔案一併移除，且無法復原。"
-    ,"Committed ${0} skill edit(s)": "已提交 ${0} 項 skill 修改"
-    ,"Skill commit failed at ${0} (${1}): ${2}": "Skill 提交在 ${0}（${1}）處失敗：${2}"
-    ,"Skill commit halted: ${0} (${1}) failed (${2}). Remaining approved skill edits left in the pending list for retry.": "Skill 提交已中斷：${0}（${1}）失敗（${2}）。剩餘已批准的 skill 修改保留在待辦清單中，可重試。"
-
-    ,"Pending approval": "等待審批"
-    ,"Approve": "批准"
-    ,"Reject": "拒絕"
-    ,"Rollback": "回退"
-    ,"Undo reject": "撤銷拒絕"
-    ,"✓ Applied at ${0}": "✓ 已套用 ${0}"
-    ,"✗ Rejected at ${0}": "✗ 已拒絕 ${0}"
-    ,"↺ Rolled back at ${0}": "↺ 已回退 ${0}"
-    ,"⚠ External change": "⚠ 外部已變更"
-    ,"⚠ Write skipped (resource changed)": "⚠ 寫入未生效（目標已變更）"
-    ,"The resource changed externally since this proposal was captured. Approve to retry against the current state, or reject.": "自提議產生以來，該資源已被外部修改。點擊批准將基於當前狀態重新嘗試；點擊拒絕則放棄。"
-    ,"The AI called this write tool, but the target had been changed in the meantime — the write was NOT applied. The AI has been notified and can decide whether to retry.": "AI 呼叫了這個寫入工具，但目標在期間已被修改——本次寫入未生效。AI 已收到通知，可自行決定是否重試。"
-    ,"Validation errors (${0}):": "驗證錯誤（${0}）："
-    ,"Targets missing (${0}):": "目標不存在（${0}）："
-    ,"Payload rejected (${0}):": "酬載被拒（${0}）："
-    ,"State destroyed (${0}):": "狀態已銷毀（${0}）："
-    ,"Server errors (${0}):": "伺服器錯誤（${0}）："
-    ,"Network errors (${0}):": "網路錯誤（${0}）："
-    ,"Persistence errors (${0}):": "持久化錯誤（${0}）："
-    ,"Other errors (${0}):": "其他錯誤（${0}）："
-    ,"Approve all pending (${0})": "批准全部待審（${0}）"
-    ,"Reject all pending (${0})": "拒絕全部待審（${0}）"
-    ,"Rollback this turn (${0})": "回退本輪（${0}）"
-    ,"Profile change": "檔案變更"
-    ,"Preset change": "預設變更"
-    ,"Schema change": "Schema 變更"
-    ,"Character edits": "角色編輯"
-    ,"Lorebook edits": "世界書編輯"
-    ,"Lorebook write": "世界書寫入"
-    ,"Lorebook ${0}": "世界書 ${0}"
-    ,"Skill change": "Skill 變更"
-    ,"Skill: ${0}": "Skill: ${0}"
-    ,"Clone preset": "複製預設"
-    ,"Will fork \"${0}\" into a new preset named \"${1}\" and switch the open session onto it.": "將以「${0}」為模板新建預設「${1}」，並把目前工作階段切換過去。"
-    ,"Will fork the current preset into a new one and switch the open session onto it.": "將以目前預設為模板新建一個預設，並把目前工作階段切換過去。"
-    ,"⚠ Cannot be auto-rolled back — the cloned preset stays on disk even after this card is undone.": "⚠ 無法自動回退——即使撤銷此條目，已生成的預設也仍會保留在磁碟上。"
-    ,"Storage Backend": "儲存後端"
-    ,"Current Mode:": "目前模式："
-    ,"Read-Only:": "唯讀："
-    ,"Last Migration:": "上次遷移："
-    ,"Switch Backend": "切換後端"
-    ,"Target:": "目標："
-    ,"Filesystem": "檔案系統"
-    ,"SQLite": "SQLite"
-    ,"MySQL": "MySQL"
-    ,"PostgreSQL": "PostgreSQL"
-    ,"MySQL connection": "MySQL 連線"
-    ,"PostgreSQL connection": "PostgreSQL 連線"
-    ,"URL:": "連線字串："
-    ,"Pool size:": "連線池大小："
-    ,"mysql://user:pass@host:3306/atria": "mysql://user:pass@host:3306/atria"
-    ,"postgresql://user:pass@host:5432/atria": "postgresql://user:pass@host:5432/atria"
-    ,"storageBackendDbConfigHint": "若連線字串留空，將直接使用 config.yaml 中已設定的 storage.mysql.url／storage.postgres.url。"
-    ,"storageBackendSharedDbWarning": "MySQL 與 PostgreSQL 後端會在所有使用者間共用單一資料庫綱要（以 handle 欄位區分）。切換到或離開共用後端時，另一個後端的資料會原樣保留在磁碟上但暫時不可見，直到再次切換回去。"
-    ,"Migrate Now": "立即遷移"
-    ,"storageBackendMigrationWarning": "此操作會將所有使用者資料複製到目標後端，並把執行中的伺服器切換過去。備份會永久保存在 <dataRoot>/_storage-migrations/ 目錄下，絕不會自動刪除。"
-    ,"Result": "結果"
-    ,"Loading...": "載入中……"
-    ,"yes": "是"
-    ,"no": "否"
-    ,"(none)": "（無）"
-    ,"Failed to load storage backend status.": "載入儲存後端狀態失敗。"
-    ,"A migration is currently in progress on the server. Please wait.": "伺服器上目前有遷移正在進行，請稍候。"
-    ,"Select a target backend mode.": "請選擇目標後端模式。"
-    ,"Migrate ALL user data to ${targetMode}? A backup will be saved permanently under the data-root _storage-migrations directory. This may take several minutes for large installs and the server will reject writes until it finishes.": "確認將所有使用者資料遷移到 ${targetMode} 嗎？備份會永久保存在資料根目錄下的 _storage-migrations 目錄中。大型部署可能需要數分鐘，遷移期間伺服器會拒絕寫入。"
-    ,"Migration in progress, do not refresh...": "遷移進行中，請勿重新整理……"
-    ,"Migration in progress. This may take several minutes.": "遷移進行中。可能需要數分鐘。"
-    ,"Migration complete.": "遷移完成。"
-    ,"Migration failed for one or more users. Source backend retained.": "一個或多個使用者遷移失敗。來源後端已保留。"
-    ,"Migration failed.": "遷移失敗。"
-    ,"Could not save to config.yaml: ${configPersistError}": "寫入 config.yaml 失敗：${configPersistError}"
-    ,"Duration:": "耗時："
-    ,"Started:": "開始時間："
-    ,"last progress": "最近進度"
-    ,"Progress:": "進度："
-    ,"pending": "等待中"
-    ,"in flight": "進行中"
-    ,"starting": "啟動中"
-    ,"so far:": "目前進度："
-    ,"Prompt post-processing is set to Single user message, which collapses every turn into one message. Prompt caching cannot reuse any prefix across requests in this mode — every request is a cache write with no read. Switch to None or Merge consecutive roles for caching to take effect.": "「提示詞後處理」目前為「單一使用者訊息」，此模式會把所有輪次塞進同一則訊息。在此模式下提示詞快取無法跨請求重用任何前綴，每次請求都只寫不讀。請切換為「無」或「合併連續角色」以使快取生效。"
-    ,"Prompt post-processing is set to Strict or Semi-strict, which folds every system message after the first into a user turn. Prompt caching still works on the first user message's tail, but the dedicated system-prompt cache breakpoint is unavailable. None or Merge consecutive roles gives the best cache coverage.": "「提示詞後處理」目前為「嚴格」或「半嚴格」，此模式會把首則之後的所有系統訊息併入使用者輪次。提示詞快取仍能命中首則使用者訊息的尾部，但無法單獨快取系統提示。改用「無」或「合併連續角色」可獲得最佳快取覆蓋。"
-    ,"sync.category.characters": "角色卡"
-    ,"sync.category.characters.desc": "角色卡 PNG 檔案，每個角色一份獨立檔案。"
-    ,"sync.category.chats": "聊天與群組"
-    ,"sync.category.chats.desc": "單人聊天、群組聊天與群組中繼資料。"
-    ,"sync.category.worlds": "世界書（Lorebook）"
-    ,"sync.category.worlds.desc": "世界書 JSON 檔案。"
-    ,"sync.category.card-apps": "卡片應用"
-    ,"sync.category.card-apps.desc": "每個角色的 CardApp 工作目錄檔案，不含其內部 .git 歷史記錄。"
-    ,"sync.category.skills": "技能（Skills）"
-    ,"sync.category.skills.desc": "已安裝的技能知識包。"
-    ,"sync.category.openai-presets": "OpenAI 預設"
-    ,"sync.category.openai-presets.desc": "對話補全預設檔案，每個預設一份。"
-    ,"sync.category.novelai-presets": "NovelAI 預設"
-    ,"sync.category.novelai-presets.desc": "NovelAI 預設檔案。"
-    ,"sync.category.koboldai-presets": "KoboldAI 預設"
-    ,"sync.category.koboldai-presets.desc": "KoboldAI 預設檔案。"
-    ,"sync.category.textgen-presets": "文本補全預設"
-    ,"sync.category.textgen-presets.desc": "TextGen WebUI 及通用文本補全預設檔案。"
-    ,"sync.category.instruct": "指令範本"
-    ,"sync.category.instruct.desc": "指令格式範本。"
-    ,"sync.category.context": "上下文範本"
-    ,"sync.category.context.desc": "上下文格式化範本。"
-    ,"sync.category.sysprompt": "系統提示詞"
-    ,"sync.category.sysprompt.desc": "系統提示詞範本。"
-    ,"sync.category.reasoning": "推理範本"
-    ,"sync.category.reasoning.desc": "推理格式範本。"
-    ,"sync.category.themes": "主題"
-    ,"sync.category.themes.desc": "介面主題檔案。"
-    ,"sync.category.movingUI": "可移動介面佈局"
-    ,"sync.category.movingUI.desc": "已儲存的可移動面板佈局。"
-    ,"sync.category.quickreplies": "快速回覆"
-    ,"sync.category.quickreplies.desc": "快速回覆集。"
-    ,"sync.category.assets": "素材"
-    ,"sync.category.assets.desc": "素材資料夾（音效、背景音樂等）。"
-    ,"sync.category.backgrounds": "背景"
-    ,"sync.category.backgrounds.desc": "背景圖片檔案。"
-    ,"sync.category.avatars": "使用者設定頭像"
-    ,"sync.category.avatars.desc": "使用者設定頭像圖片檔案。"
-    ,"sync.category.user-files": "使用者上傳檔案"
-    ,"sync.category.user-files.desc": "在聊天或腳本中上傳的檔案。"
-    ,"sync.category.comfy-workflows": "ComfyUI 工作流程"
-    ,"sync.category.comfy-workflows.desc": "已儲存的 ComfyUI 節點工作流程 JSON 檔案，體積通常很小。"
-    ,"sync.category.user-images": "使用者圖片"
-    ,"sync.category.user-images.desc": "透過 user/images 目錄管理的圖片庫。"
-    ,"sync.category.image-metadata": "圖片中繼資料索引"
-    ,"sync.category.image-metadata.desc": "image-metadata.json，需與使用者圖片一起同步。"
-    ,"sync.category.vectors": "向量快取"
-    ,"sync.category.vectors.desc": "向量嵌入快取。兩端共用同一份向量，避免重複消耗 API 配額。"
-    ,"sync.category.stats": "角色統計"
-    ,"sync.category.stats.desc": "stats.json，由聊天記錄派生；衝突時可在本機重新計算。"
-    ,"sync.category.settings": "設定"
-    ,"sync.category.settings.desc": "settings.json，完整的 Atria 設定。"
-    ,"sync.category.secrets": "API 金鑰與憑證"
-    ,"sync.category.secrets.desc": "secrets.json，API 金鑰、權杖與密碼。"
-    ,"sync.category.extensions": "擴充功能"
-    ,"sync.category.extensions.desc": "使用者層級擴充檔案，預設關閉。"
-    ,"sync.warning.settings_single_file_conflict": "單一大檔，衝突時只能按整檔二選一。"
-    ,"sync.warning.secrets_plaintext_transport": "包含 API 金鑰；除非傳輸已加密，否則將以明文方式透過區域網路傳送。"
-    ,"sync.warning.extensions_version_drift": "第三方擴充功能可能存在本機未完成的改動或版本不相容的程式碼。"
-    ,"LAN Sync": "區域網路同步"
-    ,"Open LAN Sync": "開啟區域網路同步"
-    ,"Recommended for two devices in regular use. Repeated, two-way, incremental — only changed data crosses the wire.": "推薦兩台經常使用的裝置使用。重複、雙向、增量——只有變更的資料會透過網路傳輸。"
-    ,"One-shot full-data transfer for moving to a brand-new device. For ongoing two-way sync use LAN Sync above.": "一次性全量資料傳輸，適用於遷移到全新裝置。如需持續雙向同步，請使用上方的區域網路同步。"
-    ,"Sync two Atria devices on the same network. Only changed data crosses the wire; full re-uploads aren't needed.": "同步同一網路下的兩台 Atria 裝置。只有變更的資料會透過網路傳輸，無需重新上傳全量資料。"
-    ,"My devices": "我的裝置"
-    ,"Pair new device": "配對新裝置"
-    ,"Pair with existing device": "與已有裝置配對"
-    ,"Paired devices": "已配對的裝置"
-    ,"No paired devices yet. Use the tabs above to pair this device with another.": "尚未配對任何裝置。請使用上方的標籤頁將此裝置與另一台配對。"
-    ,"Generate a one-time pairing link to share with another device on the same network. The other device pastes the URL into its own Pair with existing device tab.": "產生一次性的配對連結，分享給同一網路下的另一台裝置。另一台裝置將連結貼到其「與已有裝置配對」標籤頁即可。"
-    ,"Label for the OTHER device (shown in your devices list)": "另一台裝置的標籤（顯示在你的裝置清單中）"
-    ,"e.g. Phone, Laptop, Office desktop": "例如：手機、筆電、辦公桌機"
-    ,"Categories to sync:": "要同步的類別："
-    ,"Generate pairing link": "產生配對連結"
-    ,"Share this with the other device": "將此分享給另一台裝置"
-    ,"Copy the link and paste it into the OTHER device's Pair with existing device tab.": "複製此連結，貼到另一台裝置的「與已有裝置配對」標籤頁。"
-    ,"Pairing link": "配對連結"
-    ,"Copy link": "複製連結"
-    ,"Generate another": "重新產生"
-    ,"The other device must enter THIS device's credentials when pairing if you have basic auth enabled. They are sent over LAN only, never stored.": "如果你啟用了基本驗證，另一台裝置在配對時需要輸入此裝置的憑證。憑證僅透過區域網路傳送，不會被儲存。"
-    ,"Paste the pairing link from the other device, or fill in the fields manually.": "貼上另一台裝置的配對連結，或手動填寫各項欄位。"
-    ,"Special characters in your handle are normalized to underscores for pairing. Both devices must use the same handle.": "使用者名稱中的特殊字元在配對時會被正規化為底線。兩台裝置必須使用相同的使用者名稱。"
-    ,"This pairing link is for ${0}, but you're logged in as ${1}. Pair from the matching account, or use the same handle on both devices.": "此配對連結面向 ${0}，但您目前登入為 ${1}。請使用相符的帳戶配對，或在兩台裝置上使用同一使用者名稱。"
-    ,"Paste pairing link here": "在此貼上配對連結"
-    ,"Other device base URL": "另一台裝置的基礎 URL"
-    ,"Peer identifier from the other device": "另一台裝置給出的識別碼"
-    ,"Label for the other device": "另一台裝置的標籤"
-    ,"e.g. Phone": "例如：手機"
-    ,"Peer ID": "對端 ID"
-    ,"If the other device has basic authentication enabled, enter the credentials it expects. Otherwise leave blank.": "如果另一台裝置啟用了基本驗證，請輸入它要求的憑證。否則留空即可。"
-    ,"Basic auth username (optional)": "基本驗證使用者名稱（選填）"
-    ,"Basic auth password (optional)": "基本驗證密碼（選填）"
-    ,"Pair and sync": "配對並同步"
-    ,"Resolve conflicts": "解決衝突"
-    ,"The same file was edited on both devices. Pick which version to keep for each file. There's no line-by-line merge.": "同一檔案在兩台裝置上都被修改了。請為每個檔案選擇要保留的版本，不支援按行合併。"
-    ,"Apply resolutions": "套用解決方案"
-    ,"Type: ${conflict.kind}": "類型：${conflict.kind}"
-    ,"Local: deleted": "本機：已刪除"
-    ,"Local version": "本機版本"
-    ,"Remote: deleted": "遠端：已刪除"
-    ,"Remote version": "遠端版本"
-    ,"Sync now": "立即同步"
-    ,"Undo last sync": "撤銷上次同步"
-    ,"Forget": "忘記"
-    ,"Last sync: ${formatRelativeTime(peer.lastSyncAt)}": "上次同步：${formatRelativeTime(peer.lastSyncAt)}"
-    ,"Never": "從未"
-    ,"just now": "剛剛"
-    ,"${minutes} min ago": "${minutes} 分鐘前"
-    ,"${hours} hr ago": "${hours} 小時前"
-    ,"${days} day(s) ago": "${days} 天前"
-    ,"Syncing with ${payload.label || payload.remotePeerId}…": "正在與 ${payload.label || payload.remotePeerId} 同步……"
-    ,"Syncing with ${peer.label || peerId}…": "正在與 ${peer.label || peerId} 同步……"
-    ,"Synced with ${payload.label || payload.remotePeerId}.": "已與 ${payload.label || payload.remotePeerId} 同步。"
-    ,"Synced with ${peer.label || peerId}.": "已與 ${peer.label || peerId} 同步。"
-    ,"Sync complete.": "同步完成。"
-    ,"Applying resolutions…": "正在套用解決方案……"
-    ,"Authentication to the other device failed. Check your credentials.": "向另一台裝置驗證失敗。請檢查憑證。"
-    ,"Could not reach the other device. Check the base URL and that the device is online.": "無法連線到另一台裝置。請檢查基礎 URL 與裝置是否在線。"
-    ,"Could not reach the other device.": "無法連線到另一台裝置。"
-    ,"Peer state changed during sync. Retrying once…": "同步過程中對端狀態發生變化。即將重試一次……"
-    ,"${body.conflicts.length} file(s) conflict. Pick a version for each below.": "有 ${body.conflicts.length} 個檔案存在衝突。請在下方為每個檔案選擇版本。"
-    ,"Conflict resolution canceled. Re-run sync when you're ready.": "已取消衝突解決。準備好後再重新同步。"
-    ,"This peer was paired in an older version. Click Forget and pair again to record the base URL.": "此對端在舊版本中完成配對。請點擊「忘記」後重新配對以記錄基礎 URL。"
-    ,"Authentication to the other device failed. Forget and re-pair if its credentials changed.": "向另一台裝置驗證失敗。如果其憑證已變更，請忘記並重新配對。"
-    ,"Enter the other device's base URL (e.g. http://192.168.1.42:8000)": "請輸入另一台裝置的基礎 URL（例如 http://192.168.1.42:8000）"
-    ,"Peer's basic auth username (leave blank if disabled)": "對端的基本驗證使用者名稱（未啟用則留空）"
-    ,"Peer's basic auth password": "對端的基本驗證密碼"
-    ,"Continue": "繼續"
-    ,"Cancel": "取消"
-    ,"Undo the last sync with ${peer.label || peerId}? This rewinds THIS device only; the other device is unaffected.": "確定撤銷與 ${peer.label || peerId} 的上次同步嗎？這只會回退本裝置，另一台裝置不受影響。"
-    ,"Undo": "撤銷"
-    ,"Undo complete.": "撤銷完成。"
-    ,"Reverted to the state before the last sync with ${peer.label || peerId}.": "已回退到與 ${peer.label || peerId} 上次同步之前的狀態。"
-    ,"Undo failed": "撤銷失敗"
-    ,"Nothing to undo — no prior sync recorded.": "無可撤銷項——未記錄任何先前同步。"
-    ,"Forget ${peer.label || peerId}? Both the registry entry and the on-disk shadow repo will be deleted. The other device is unaffected.": "確定忘記 ${peer.label || peerId} 嗎？註冊表條目和磁碟上的影子倉庫都將被刪除。另一台裝置不受影響。"
-    ,"Forgotten.": "已忘記。"
-    ,"Forget failed": "忘記失敗"
-    ,"Clear credentials": "清除憑證"
-    ,"Credentials cleared.": "憑證已清除。"
-    ,"Credentials saved for this peer. Use 'Clear credentials' on the peer card to remove them.": "已為此對端儲存憑證。可在對端卡片上點擊「清除憑證」移除。"
-    ,"Failed to clear credentials for ${peer.label || peerId}.": "清除 ${peer.label || peerId} 的憑證失敗。"
-    ,"Failed to generate pairing link": "產生配對連結失敗"
-    ,"Pairing link copied.": "配對連結已複製。"
-    ,"Copy from the field above.": "請從上方欄位中複製。"
-    ,"Enter a label for the other device first.": "請先為另一台裝置輸入標籤。"
-    ,"Select at least one category to sync.": "請至少選擇一個要同步的類別。"
-    ,"Paste the pairing link or fill in the base URL and peer ID.": "請貼上配對連結，或填寫基礎 URL 與對端 ID。"
-    ,"Failed to open LAN Sync": "開啟區域網路同步失敗"
-    ,"LAN Sync is unavailable. The server reported: ${availability.reason || 'unknown reason'}.": "區域網路同步不可用。伺服器回報：${availability.reason || 'unknown reason'}。"
-    ,"Cross-mode restore detected. The backup is from a different storage engine than this server.": "偵測到跨模式還原：備份來自與目前伺服器不同的儲存引擎。"
-    ,"Scratch MySQL connection URL": "暫存 MySQL 連線 URL"
-    ,"Scratch PostgreSQL connection URL": "暫存 PostgreSQL 連線 URL"
-    ,"A temporary handle is created on this DB and removed when the restore completes.": "將在該資料庫中暫時建立一個使用者代號，還原完成後自動移除。"
-    ,"A temporary handle is created on the scratch database and removed when the restore completes.": "將在暫存資料庫中暫時建立一個使用者代號，還原完成後自動移除。"
-    ,"Use Connection": "使用此連線"
-    ,"Cross-Mode Restore": "跨模式還原"
-    ,"Cross-mode restore: converting backup into current storage engine.": "跨模式還原：正在將備份轉換為目前儲存引擎的格式。"
-    ,"Restore cancelled — scratch DB connection not provided.": "已取消還原——未提供暫存資料庫連線。"
-    ,"No connection URL entered; cancel and retry.": "未填寫連線 URL，請取消後再試。"
-    ,"Export warning": "匯出提示"
-    ,"Linked world book \"${0}\" was not found. The card was exported without an embedded world book.": "找不到綁定的世界書「${0}」。匯出的角色卡未攜帶內嵌世界書。"
-    ,"Linked world book \"${0}\" could not be read. The card was exported without an embedded world book.": "無法讀取綁定的世界書「${0}」。匯出的角色卡未攜帶內嵌世界書。"
-    ,"Failed to embed world book \"${0}\". The card was exported without it.": "嵌入世界書「${0}」失敗。匯出的角色卡未攜帶它。"
-    ,"Merge chats": "合併聊天"
-    ,"Target name": "目標名稱"
-    ,"Drag to reorder": "拖動以重排序"
-    ,"+ Add chat": "+ 新增聊天"
-    ,"The new chat contains only messages. Plugin state (memory graph, orchestrator, search-tools, etc.) does not migrate and must be regenerated.": "新聊天只包含訊息本身。外掛狀態（記憶圖譜、編排器、搜尋工具等）不會遷移，需要在新聊天裡重新生成。"
-    ,"Total: ${0} messages": "總計：${0} 則訊息"
-    ,"Merge": "合併"
-    ,"Created ${0}": "已建立 ${0}"
-    ,"Request failed": "請求失敗"
-    ,"Remove": "移除"
-    ,"from": "起始"
-    ,"to": "結束"
-    ,"Use all": "全選"
-    ,"Add chat to merge": "新增聊天到合併列表"
-    ,"No other chats available to add.": "沒有其他可新增的聊天。"
-    ,"Split chat": "拆分聊天"
-    ,"Source": "來源"
-    ,"Source:": "來源："
-    ,"+ Add point": "+ 新增切點"
-    ,"Split": "拆分"
-    ,"msgs ${0}–${1}": "訊息 ${0}–${1}"
-    ,"Created ${0} new chats": "已建立 ${0} 個新聊天"
-    ,"Chat is too short to split.": "聊天太短，無法拆分。"
-    ,"Split Chat": "拆分聊天"
-    ,"Need at least 2 messages to split.": "至少需要 2 條訊息才能拆分。"
-    ,"Start time": "起始時間"
-    ,"End time": "結束時間"
-    ,"Invalid log filter": "無效的日誌篩選"
-    ,"Start time must be earlier than end time.": "起始時間必須早於結束時間。"
-    ,"Card-bound": "本卡內嵌"
-    ,"Storage Inspector": "儲存審查"
-    ,"Inspect your storage usage.": "查看你的儲存使用情況。"
-    ,"Loading…": "載入中……"
-    ,"No data in this category.": "此類別下無資料。"
-    ,"Retry": "重試"
-    ,"Worldbooks": "世界書"
-    ,"Attachments": "附件與工作流"
-    ,"Presets & Settings": "預設與設定"
-    ,"Vector Stores": "向量庫"
-    ,"Storage": "儲存"
-    ,"Chat Images": "聊天圖片"
-    ,"Persona Avatars": "使用者頭像"
-    ,"ComfyUI Workflows": "ComfyUI 工作流"
-    ,"API Presets": "API 預設"
-    ,"UI Elements": "UI 元素"
-    ,"Instruct Templates": "指令範本"
-    ,"Main Settings": "主設定"
-    ,"Chat Metadata": "聊天元資料"
-    ,"Contains API keys · not inspectable": "含 API 金鑰，不可檢視內容"
-    ,"Sprites": "表情圖"
-    ,"Walk exceeded time limit; refresh to retry.": "目錄遍歷逾時，請重新整理重試。"
-    ,"Storage · All Users": "儲存 · 全平台彙總"
-    ,"Storage Management": "儲存管理"
-    ,"View:": "檢視："
-    ,"Search users...": "搜尋使用者……"
-    ,"* All Users *": "* 全平台彙總 *"
-    ,"(admin)": "（管理員）"
-    ,"(disabled)": "（已停用）"
-    ,"Failed to load users.": "載入使用者清單失敗。"
-    ,"Browser Storage": "瀏覽器儲存"
-    ,"Inspect this browser's storage.": "查看目前瀏覽器的儲存使用情況。"
-    ,"localStorage": "localStorage"
-    ,"sessionStorage": "sessionStorage"
-    ,"IndexedDB": "IndexedDB"
-    ,"Cache Storage": "Cache Storage"
-    ,"Browser did not report a quota.": "瀏覽器未上報配額。"
-    ,"Delete %s?": "刪除 %s？"
-    ,"This will permanently remove %s from your browser. This action cannot be undone.": "此操作將從瀏覽器中永久刪除 %s，且無法復原。"
-    ,"Deleted": "已刪除"
-    ,"Failed to delete: %s": "刪除失敗：%s"
-    ,"stores": "儲存"
-    ,"records": "條"
-    ,"requests": "請求"
-    ,"Refusing to save: chat is not fully loaded. Reload the page to prevent data loss.": "拒絕儲存：聊天尚未完全載入。請重新載入頁面以防止資料遺失。"
-    ,"Chat save aborted": "聊天儲存已中止"
-    ,"Cache stable chat history": "快取穩定的聊天歷史"
-    ,"Keep recent turns uncached": "不快取最近幾輪"
-    ,"The current input is also kept uncached. Reuses a fixed history prefix for up to five minutes, then advances it. Changed history or summaries rebuild the prefix. Cache hits and savings depend on the provider.": "目前輸入也不快取。固定重用一段歷史前綴，最多五分鐘後向後推進；歷史或摘要變更時重建前綴。實際命中與節省取決於提供商。"
-    ,"Uncached turns must be a positive integer.": "不快取的輪數必須為正整數。"
-    ,"OpenRouter Gemini history cache toggle state": "OpenRouter Gemini 歷史快取開關狀態"
-    ,"Sets OpenRouter Gemini stable history caching on/off. Gets current value if no argument is provided.": "設定 OpenRouter Gemini 穩定歷史快取的開啟/關閉。如未提供參數，則取得目前值。"
-    ,"Number of recent turns excluded from Gemini history caching": "Gemini 歷史快取不涵蓋的最近回合數"
-    ,"Keeps this many completed turns plus the current input outside the cache. Default: 2.": "將最近這麼多完整回合連同目前輸入留在快取之外。預設：2。"
-    ,"Import {name} preset": "匯入 {name} 預設"
-    ,"Import {name} below to use the bundled plugin-task preset. It keeps reference material separate from the runtime task.": "點擊下方按鈕匯入 {name}，使用內建外掛任務預設；參考資料與執行期任務會分別放置。"
-    ,"The bundled Atri analysis preset supports plot planning, character reasoning, pacing and continuity checks. Runtime instructions and available tools determine the assigned task; the preset does not write RP prose.": "內建 Atri 分析預設支援劇情規劃、角色推演、節奏與一致性檢查。具體職責由執行期任務與可用工具決定，不負責撰寫 RP 正文。"
-    ,"Import {name} below to use the bundled analysis preset. For the Agenda planner, select Atri-plugin-only instead.": "點擊下方按鈕匯入 {name}，使用內建分析預設。Agenda 的調度節點應選擇 Atri-plugin-only。"
-    ,"Native State Conditions": "原生狀態條件"
-    ,"Require committed state from supported providers before this entry can activate.": "僅在支援的狀態來源存在已提交狀態時，此條目才能啟用。"
-    ,"Activate this entry directly while the conditions match": "條件符合時直接啟用此條目"
-    ,"Activate while matched": "條件符合時啟用"
-    ,"All conditions": "全部條件"
-    ,"Any condition": "任一條件"
-    ,"Add state condition": "新增狀態條件"
-    ,"Save conditions": "儲存條件"
-    ,"Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.": "未知、不可用或不完整的狀態條件會按失敗處理並阻止此條目啟用。啟用「條件符合時啟用」後，無需反覆命中關鍵字即可維持場景內容生效。"
-    ,"State Change Events": "狀態變化事件"
-    ,"Activate this entry only when committed provider state changes from one value to another.": "僅當已提交的狀態從一個值變化為另一個值時啟用此條目。"
-    ,"All events": "全部事件"
-    ,"Any event": "任一事件"
-    ,"Add state event": "新增狀態事件"
-    ,"Save events": "儲存事件"
-    ,"From and To are exact scalar values. At least one is required. The first committed observation only seeds the baseline and does not fire an event.": "「原值」與「新值」為精確純量值，至少設定一項。首次已提交觀察只建立基線，不觸發事件。"
-    ,"Selection & Dependencies": "選擇與依賴"
-    ,"Optional": "可選"
-    ,"Optional Atria selection rules. Leave these fields empty to keep legacy World Info selection and budget behavior.": "可選的 Atria 選擇規則。保持這些欄位為空即可沿用原有世界書選擇與預算行為。"
-    ,"Required entries": "必要條目"
-    ,"One UID or Book#UID per line. Required entries are selected atomically with this entry.": "每行一個 UID 或 世界書#UID。必要條目會與目前條目作為一個整體進行原子選擇。"
-    ,"Related entries": "相關條目"
-    ,"Related entries gain relevance only when they are already candidates; they are not forced into the prompt.": "相關條目只有在本身已成為候選時才獲得相關性加權；不會被強制注入提示詞。"
-    ,"Mutual exclusion group": "互斥群組"
-    ,"Budget tier": "預算層級"
-    ,"WI Budget Tier Critical": "關鍵"
-    ,"WI Budget Tier Scene": "目前場景"
-    ,"WI Budget Tier Normal": "一般"
-    ,"WI Budget Tier Optional": "可選背景"
-    ,"Compact content": "精簡內容"
-    ,"Compact content is considered only for an atomic dependency bundle. A required bundle is never partially injected.": "僅在原子依賴組合整體無法容納時才考慮精簡內容。必要依賴組合絕不會被部分注入。"
-    ,"Save selection rules": "儲存選擇規則"
-    ,"WI Required Entries Placeholder": "12\n其他世界書#4"
-    ,"WI Related Entries Placeholder": "18\n其他世界書#9"
-    ,"WI Mutual Exclusion Placeholder": "城堡版本"
-    ,"WI Compact Content Placeholder": "僅在完整依賴組合無法容納時使用的簡短備用內容。"
-    ,"Provider": "狀態來源"
-    ,"Path": "路徑"
-    ,"Operator": "運算子"
-    ,"Value type": "值類型"
-    ,"Value": "值"
-    ,"unsupported": "不支援"
-    ,"Contains": "包含"
-    ,"Any value": "任意值"
-    ,"String value": "字串"
-    ,"Number value": "數字"
-    ,"Boolean value": "布林值"
-    ,"Null value": "空值"
-    ,"True": "真"
-    ,"False": "假"
-    ,"Remove condition": "刪除條件"
-    ,"Remove event": "刪除事件"
-    ,"From": "原值"
-    ,"To": "新值"
-    ,"Unsaved state condition changes": "狀態條件有尚未儲存的變更"
-    ,"State conditions saved": "狀態條件已儲存"
-    ,"Invalid state conditions": "狀態條件無效"
-    ,"State conditions are limited to 32 per entry": "每個條目最多可設定 32 個狀態條件"
-    ,"Every state condition needs a provider, path, operator, and scalar value": "每個狀態條件都需要狀態來源、路徑、運算子與純量值"
-    ,"Condition #${0} is invalid": "條件 #${0} 無效"
-    ,"Unsaved state event changes": "狀態事件有尚未儲存的變更"
-    ,"State events saved": "狀態事件已儲存"
-    ,"Invalid state events": "狀態事件無效"
-    ,"State events are limited to 32 per entry": "每個條目最多可設定 32 個狀態事件"
-    ,"Every state event needs a provider, path, and at least one From/To value": "每個狀態事件都需要狀態來源、路徑，以及至少一個原值/新值"
-    ,"Unsaved selection rule changes": "選擇規則有尚未儲存的變更"
-    ,"Selection rules saved": "選擇規則已儲存"
-    ,"World Info selection rules": "世界書選擇規則"
-    ,"${0}: invalid entry reference \"${1}\"": "${0}：條目引用「${1}」無效"
-    ,"${0}: an entry cannot depend on or relate to itself": "${0}：條目不能依賴或關聯自身"
-    ,"Entry #${0}": "條目 #${0}"
-    ,"Vector": "向量"
-    ,"No primary keywords": "無主要關鍵字"
-    ,"Sticky ${0}": "黏著 ${0}"
-    ,"Cooldown ${0}": "冷卻 ${0}"
-    ,"Delay ${0}": "延遲 ${0}"
-    ,"Stops recursion": "阻止繼續遞迴"
-    ,"Recursive only": "僅遞迴啟用"
-    ,"Defaults": "預設值"
-    ,"Conditions ${0}": "狀態條件 ${0}"
-    ,"Events ${0}": "狀態事件 ${0}"
-    ,"Persistent activation": "持續啟用"
-    ,"Not configured": "未設定"
-    ,"Required ${0}": "必要條目 ${0}"
-    ,"Related ${0}": "關聯條目 ${0}"
-    ,"Group ${0}": "群組 ${0}"
-    ,"Automation": "自動化"
-    ,"Scan override": "掃描覆寫"
-    ,"Case override": "大小寫覆寫"
-    ,"Word override": "完整單字覆寫"
-    ,"Group scoring": "群組評分"
-    ,"Overrides ${0}": "覆寫項目 ${0}"
-    ,"Search required entry…": "搜尋必要條目…"
-    ,"Search related entry…": "搜尋關聯條目…"
-    ,"Remove ${0}": "移除 ${0}"
-    ,"Basic": "基本"
-    ,"Activation": "啟用"
-    ,"Lifecycle": "生命週期"
-    ,"State-driven": "狀態驅動"
-    ,"Entry Relationships": "條目關係"
-    ,"Issues ${0}": "問題 ${0}"
-    ,"State": "狀態"
-    ,"Event": "事件"
-    ,"Dependencies": "依賴"
-    ,"Select ${0}": "選擇 ${0}"
-    ,"Scanning": "掃描"
-    ,"How text is scanned and matched before entry-specific overrides.": "文字在條目級覆寫前如何被掃描與配對。"
-    ,"How much prompt context World Info may consume.": "世界書可使用多少提示詞上下文。"
-    ,"Recursion": "遞迴"
-    ,"How recursive discovery proceeds and where it stops.": "遞迴探索如何進行以及在何處停止。"
-    ,"Selection / Priority": "選擇 / 優先級"
-    ,"Global ordering and scoring defaults.": "全域排序與評分預設值。"
-    ,"World Info workspace": "世界書工作區"
-    ,"Library": "書庫"
-    ,"Entries": "條目"
-    ,"Entry display mode": "條目顯示模式"
-    ,"Compact": "精簡"
-    ,"Full": "完整"
-    ,"Custom fields": "自訂欄位"
-    ,"Continuous Cards": "連續卡片"
-    ,"Close World Info Workspace": "關閉世界書工作區"
-    ,"Entry filters": "條目篩選"
-    ,"Special": "特殊"
-    ,"Issues": "問題"
-    ,"Select filtered": "選擇篩選結果"
-    ,"Bulk Inspector": "批次檢查器"
-    ,"Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.": "安全批次編輯：只有明確選擇欄位後才會修改，其餘欄位保持不變。"
-    ,"Keep unchanged": "保持不變"
-    ,"Bulk Edit…": "批次編輯…"
-    ,"Select an entry": "選擇一個條目"
-    ,"Test Activation": "測試啟用"
-    ,"Activation Trace": "啟用追蹤"
-    ,"More entry actions": "更多條目操作"
-    ,"Move / Copy": "移動 / 複製"
-    ,"Choose an entry from the list to inspect it.": "從清單選擇一個條目進行檢查。"
-    ,"Lorebook actions": "世界書操作"
-    ,"Enable globally": "全局啟用"
-    ,"Disable globally": "取消全局"
-    ,"Globally enabled": "已全局啟用"
-    ,"Not global": "未全局啟用"
-    ,"Search options": "搜尋選項"
-    ,"Tags": "標籤"
-    ,"Pin": "置頂"
-    ,"Pin lorebook": "置頂世界書"
-    ,"Unpin lorebook": "取消置頂世界書"
-    ,"Fill empty titles": "填入空白標題"
-    ,"Apply sorting as Order": "將目前排序套用為「順序」"
-    ,"Custom field visibility": "自訂欄位可見性"
-    ,"Open all cards": "展開所有卡片"
-    ,"Close all cards": "收合所有卡片"
-    ,"Testing current chat with the existing World Info dry-run…": "正在使用現有世界書 dry-run 測試目前聊天…"
-    ,"Activation test": "啟用測試"
-    ,"No diagnostic detail is available.": "暫無診斷詳情。"
-    ,"Activation test failed: ${0}": "啟用測試失敗：${0}"
-    ,"Content is empty.": "內容為空。"
-    ,"Normal keyword-driven entry has no Primary Keywords.": "一般關鍵字驅動條目沒有主要關鍵字。"
-    ,"Required entry": "必要條目"
-    ,"Related entry": "關聯條目"
-    ,"${0} reference \"${1}\" is invalid.": "${0}引用「${1}」無效。"
-    ,"${0} points to this entry.": "${0}指向目前條目。"
-    ,"${0} \"${1}\" does not resolve in this lorebook.": "${0}「${1}」無法在目前世界書中解析。"
-    ,"State condition #${0} is incomplete.": "狀態條件 #${0} 不完整。"
-    ,"State change event #${0} is incomplete.": "狀態變更事件 #${0} 不完整。"
-    ,"Automation ID \"${0}\" is used by more than one entry.": "自動化 ID「${0}」被多個條目使用。"
-    ,"Compact Content is configured without Required or Related Entries.": "已設定精簡內容，但未設定必要條目或關聯條目。"
-    ,"Unknown for current chat": "目前聊天結果未知"
-    ,"The existing World Info dry-run produced no trace for this entry. It may not be part of the currently active lorebook scan. No activation result was invented.": "現有世界書 dry-run 未為此條目產生追蹤。它可能不在目前啟用的世界書掃描中；系統不會臆造啟用結果。"
-    ,"Activated by the current runtime scan.": "依目前執行期掃描會啟用。"
-    ,"No activation path succeeded in the current runtime scan.": "目前執行期掃描中沒有成功的啟用路徑。"
-    ,"Would activate": "會啟用"
-    ,"Would not activate": "不會啟用"
-    ,"Critical tier": "關鍵級"
-    ,"Scene tier": "場景級"
-    ,"Optional tier": "可選級"
-    ,"${0} entry": "${0} 個條目",
+    "JS Self-Profiling": "JS 自我取樣分析",
+    "To activate JS Self-Profiling at the earliest page lifecycle stage, reload this page now?": "若要讓 JS 自我取樣分析在頁面生命週期最早階段生效，需要立即重新整理頁面。現在要重新整理嗎？",
+    "Reload now": "立即重新整理",
+    "Regex script is slow": "正則腳本執行緩慢",
+    "Script \"${0}\" took ${1}ms on a single message and was paused for this session.": "腳本「${0}」在單則訊息上耗時 ${1} 毫秒，已暫停至本工作階段結束。",
+    "This usually indicates catastrophic backtracking. Common causes: leading [\\s\\S]* / .*, nested quantifiers, unbounded lookahead.": "這通常意味著發生了災難性回溯。常見成因：以 [\\s\\S]* 或 .* 開頭、巢狀量詞、無邊界 lookahead。",
+    "Suggestion: review or replace the pattern.": "建議檢查或替換該正則。",
+    "Pattern preview": "正則預覽",
+    "Hits this session: ${0} · Total time: ${1}ms": "本工作階段觸發 ${0} 次 · 累計耗時 ${1} 毫秒",
+    "Got it": "知道了",
+    "Allow anyway": "始終允許",
+    "This script will no longer be auto-paused, even if it remains slow.": "此腳本將不再被自動暫停，即使持續緩慢。",
+    "This script is provided by a plugin and cannot be edited here.": "此腳本由外掛提供，無法在此處編輯。",
+    "Regex script not found.": "找不到此正則腳本。",
+    "Enable CardApp": "啟用 CardApp",
+    "Entry file": "入口檔案",
+    "Bulk Set Field…": "批次設定欄位…",
+    "Bulk-edit a field across selected entries": "對選取條目批次設定某個欄位",
+    "Injection Depth": "注入深度",
+    "Insertion Position": "插入位置",
+    "Trigger Probability": "觸發機率",
+    "Trigger Strategy": "觸發策略",
+    "Set Trigger Strategy": "設定觸發策略",
+    "Constant": "常駐",
+    "Vectorized": "向量化",
+    "Placement": "注入定位",
+    "Matching Rules": "匹配規則",
+    "Matched Fields": "匹配欄位",
+    "Set Matched Fields": "設定匹配欄位",
+    "Recursion & Lifecycle": "遞迴與生命週期",
+    "Group": "分組",
+    "Other": "其他",
+    "Ignore Budget": "忽略預算",
+    "Use Secondary Keys": "啟用副關鍵字",
+    "Selective Logic": "選擇性邏輯",
+    "Match Persona Description": "匹配人設描述",
+    "Match Character Description": "匹配角色描述",
+    "Match Character Personality": "匹配角色性格",
+    "Match Character Depth Prompt": "匹配深度提示",
+    "Match Scenario": "匹配場景",
+    "Match Creator Notes": "匹配作者備註",
+    "Prevent Recursion": "防止遞迴",
+    "Exclude from Recursion": "排除遞迴",
+    "Delay Until Recursion": "延遲到遞迴",
+    "Group Override": "組覆蓋",
+    "Use Probability Trigger": "啟用機率觸發",
+    "at Depth": "按深度",
+    "On": "開",
+    "currently On": "目前：開",
+    "currently Off": "目前：關",
+    "New value:": "新值：",
+    "Mixed values across selected entries": "各條目目前值不一致",
+    "For each option: choose Keep / On / Off": "每列可選：保持不變 / 開 / 關",
+    "Select…": "選擇…",
+    "Please enter a value": "請輸入一個值",
+    "Please choose a value": "請選擇一個值",
+    "Invalid value": "輸入無效",
+    "Set ${0}": "設定 ${0}",
+    "${0} entries selected": "已選 ${0} 個條目",
+    "Updated ${0} entries: ${1}": "已更新 ${0} 個條目： ${1}",
+    "Reverted ${0} entries": "已撤銷 ${0} 個條目",
+    "No changes — all selected entries already had this value": "無變化 — 所有選取條目都已是該值",
+    "No changes — all options are set to Keep": "無變化 — 所有選項都是保持不變",
+    "Failed to update entries": "更新條目失敗",
+    "Variable operations": "變數操作",
+    "Variable operations on message #${0}": "第 ${0} 樓的變數操作",
+    "Changes apply when you click Save. The variables cache will be rebuilt from all surviving ops.": "點擊「儲存」後生效。變數快取將根據所有保留的操作記錄重建。",
+    "Add operation": "新增操作",
+    "No variable operations on this message.": "此訊息沒有變數操作。",
+    "var_ops_panel.label.op": "操作",
+    "var_ops_panel.label.key": "鍵",
+    "var_ops_panel.label.path": "路徑",
+    "var_ops_panel.label.value": "值",
+    "var_ops_panel.placeholder.key": "鍵",
+    "var_ops_panel.placeholder.path": "路徑（可選，如 alice.hp）",
+    "var_ops_panel.placeholder.value": "值",
+    "Fast token preview": "快速 token 預覽",
+    "fast_token_preview_tooltip": "使用快速的位元組估算取代計數分詞器。速度更快但精確度較低，不影響編碼分詞器。",
+    "Embedding Profile": "嵌入設定檔",
+    "Rerank Profile": "重排序設定檔",
+    "Embedding profiles are used by Vector Storage and Memory Graph for text embeddings. They are not active chat connections.": "嵌入設定檔供向量儲存、記憶圖等外掛運算文字嵌入，不會作為聊天連線生效。",
+    "Rerank profiles are used to re-score candidates after vector retrieval. They are not active chat connections.": "重排序設定檔用於在向量檢索後對候選結果重新評分，不會作為聊天連線生效。",
+    "Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "請在 API 連線設定面板的「嵌入」分頁中管理設定檔。",
+    "Create a new embedding profile": "新增嵌入設定檔",
+    "Edit embedding profile": "編輯嵌入設定檔",
+    "Delete embedding profile": "刪除嵌入設定檔",
+    "Create a new rerank profile": "新增重排序設定檔",
+    "Edit rerank profile": "編輯重排序設定檔",
+    "Delete rerank profile": "刪除重排序設定檔",
+    "Profile Name": "設定檔名稱",
+    "URL Override (optional)": "URL 覆寫（選填）",
+    "Server URL (required)": "伺服器 URL（必填）",
+    "API Key (used with URL Override)": "API 金鑰（搭配 URL 覆寫使用）",
+    "When set, requests are sent to this URL using the API Key below; the saved Secret is ignored.": "設定後，請求將透過下方的 API 金鑰送往此 URL；已儲存的 Secret 將被忽略。",
+    "Saved Secret": "已儲存的金鑰",
+    "Use active (default)": "使用啟用中的金鑰（預設）",
+    "Late Chunking": "Late Chunking",
+    "Dimensions (0 = auto)": "維度（0 = 自動）",
+    "Task (optional)": "任務（選填）",
+    "Keep model loaded between requests": "在請求之間保留模型載入狀態",
+    "Endpoint Region": "服務區域",
+    "International": "國際",
+    "China": "中國",
+    "Cloudflare Account ID": "Cloudflare Account ID",
+    "Auth Mode": "認證模式",
+    "Default (API Key)": "預設（API 金鑰）",
+    "Express": "Express",
+    "Service Account": "服務帳號",
+    "Express Project ID": "Express 專案 ID",
+    "Profile not found.": "找不到此設定檔。",
+    "Embedding profile is shared via the Connection Profile registry — pick one below. Manage profiles in the Connection Profile panel (Embedding tab) under API Connections.": "嵌入設定檔透過 API 連線設定註冊表共享 —— 於下方選擇即可。請在 API 連線設定面板的「嵌入」分頁中管理設定檔。",
+    "Embedding profile": "嵌入設定檔",
+    "Rerank profile": "重排序設定檔",
+    "Vector pre-filter Top-K": "向量預篩 Top-K",
+    "Max recall results": "最大召回結果數",
+    "Hybrid Pipeline (vector + graph diffusion)": "混合管線（向量 + 圖擴散）",
+    "Hybrid + Rerank": "混合 + 重排序",
+    "Hybrid + LLM Rerank": "混合 + LLM 重排序",
+    "Recompute Vector Index": "重建向量索引",
+    "New embedding profile": "新建嵌入設定檔",
+    "New rerank profile": "新建重排序設定檔",
+    "A profile with this name already exists.": "已存在同名設定檔。",
+    "Default tools for all agents": "全 agent 預設工具",
+    "Default tools for all nodes": "全節點預設工具",
+    "Every agent can call these tools across multiple rounds by default. Override per agent on the Agents tab.": "所有 agent 預設可跨多輪呼叫這些工具。各 agent 可在 Agents 標籤頁單獨覆寫。",
+    "No default tools set — every agent runs without tools. Enable defaults here to let agents call tools across multiple rounds; each agent can still override on the Agents tab.": "未設定預設工具——所有 agent 均不啟用工具。在此啟用預設後 agent 可以跨多輪呼叫工具；各 agent 仍可在 Agents 標籤頁單獨覆寫。",
+    "Every node can call these tools across multiple rounds by default. Override per node on the Agents tab.": "所有節點預設可跨多輪呼叫這些工具。各節點可在 Agents 標籤頁單獨覆寫。",
+    "No default tools set — every node runs without tools. Enable defaults here to let nodes call tools across multiple rounds; each node can still override on the Agents tab.": "未設定預設工具——所有節點均不啟用工具。在此啟用預設後節點可以跨多輪呼叫工具；各節點仍可在 Agents 標籤頁單獨覆寫。",
+    "Enable all": "全部啟用",
+    "Enable defaults": "啟用預設",
+    "Tools": "工具",
+    "Using the profile default.": "使用 profile 預設。",
+    "No tools active. This node runs as a single LLM call.": "不啟用工具，該節點會直接出結果（單次 LLM 呼叫）。",
+    "Override": "覆寫",
+    "Reset to inherit": "重設為繼承",
+    "Loop Orchestration": "迴圈編排",
+    "Loop Agent": "迴圈 Agent",
+    "Loop tools": "迴圈工具",
+    "World book filter (applies to all agents in this preset)": "世界書過濾（該預設下所有 agent 生效）",
+    "Book name regex (multiline, any line matches → whole book filtered)": "書名正規表示式（多行，任一命中即攔整本書）",
+    "Entry name regex (multiline, matched against entry comment)": "條目名正規表示式（多行，比對 entry comment）",
+    "Empty field = no filtering on that dimension; invalid regex lines are skipped with a console warning.": "留空 = 該維度不過濾；非法正規表示式行會略過並在主控台印 warn。",
+    "note (persistent notes)": "note（持久化便箋）",
+    "chat (in-chat history)": "chat（聊天歷史）",
+    "lorebook (world info)": "lorebook（世界書）",
+    "custom (extension + profile tools)": "custom（擴充功能與 profile 工具）",
+    "memory (memory-graph)": "memory（記憶圖）",
+    "search (web search)": "search（聯網搜尋）",
+    "terminator": "終止器",
+    "(forced on)": "（強制開啟）",
+    "Loop API preset (Connection profile, empty = global orchestration API preset)": "迴圈 API 預設（Connection profile，留空 = 全域編排 API 預設）",
+    "Loop preset (params + prompt, empty = global orchestration preset)": "迴圈預設（參數 + prompt，留空 = 全域編排預設）",
+    "Loop system prompt": "迴圈 system prompt",
+    "Loop max rounds": "迴圈最大輪數",
+    "Loop wall-clock budget (seconds)": "迴圈 wall-clock 預算（秒）",
+    "Workflow": "工作流",
+    "Agent Presets": "Agent 預設",
+    "Identity templates — tools attach to nodes, not to presets.": "身分範本——工具掛在節點上，不掛在預設上。",
+    "Used by nodes:": "被節點引用：",
+    "Not referenced by any node.": "未被任何節點引用。",
+    "Add Stage": "加 Stage",
+    "Add Node": "加節點",
+    "Stage ID": "Stage ID",
+    "Node ID": "節點 ID",
+    "Node Type": "節點類型",
+    "Worker": "Worker",
+    "Node Prompt Template (optional)": "節點 Prompt 模板（可選）",
+    "Use {{recent_chat}}, {{last_user}}, {{distiller}}, {{previous_outputs}}. Previous orchestration result and approved review feedback are auto-injected.": "可用 {{recent_chat}}、{{last_user}}、{{distiller}}、{{previous_outputs}}；上一輪編排結果與已批准的 review 回饋會自動注入。",
+    "Serial": "串行",
+    "Parallel": "並行",
+    "Up": "上移",
+    "Down": "下移",
+    "No stages yet. Add one stage to start orchestration.": "尚無 stage，先加一個開始編排。",
+    "No nodes. Add one to define this stage.": "尚無節點，加一個來定義此 stage。",
+    "Agenda Orchestration": "Agenda 編排",
+    "Agenda Agents": "Agenda Agents",
+    "Planner system prompt": "Planner system prompt",
+    "Planner Prompt": "Planner Prompt",
+    "Planner API preset (Connection profile, empty = global orchestration API preset)": "Planner API 預設（Connection profile，留空 = 全域編排 API 預設）",
+    "Planner preset (params + prompt, empty = global orchestration preset)": "Planner 預設（參數 + prompt，留空 = 全域編排預設）",
+    "Final Agent": "Final Agent",
+    "Planner max rounds": "Planner 最大輪數",
+    "Max concurrent agents": "最大並發 agent 數",
+    "Max total agent runs": "總 agent 運行數上限",
+    "Agent API preset (Connection profile, empty = global orchestration API preset)": "Agent API 預設（Connection profile，留空 = 全域編排 API 預設）",
+    "Agent preset (params + prompt, empty = global orchestration preset)": "Agent 預設（參數 + prompt，留空 = 全域編排預設）",
+    "User Prompt Template": "User Prompt 模板",
+    "Add Preset": "加預設",
+    "new_preset_id": "new_preset_id",
+    "No presets yet.": "尚無預設。",
+    "No tools active. This agent runs as a single LLM call.": "不啟用工具，該 agent 會直接出結果（單次 LLM 呼叫）。",
+    "Requests per minute (0 = unlimited)": "每分鐘請求數（0 = 不限制）",
+    "Claude Prompt Caching": "Claude 提示詞快取",
+    "Only effective when the prompt prefix is stable across requests (no in-chat lorebook injections or random macros). Cache writes cost 1.25× base (5m) or 2× base (1h); reads cost 0.1×.": "僅在每次請求的前綴穩定時有效（不使用聊天內世界書注入或隨機巨集）。快取寫入成本為基礎價 ×1.25(5m)或 ×2(1h)，讀取僅 ×0.1。",
+    "Cache system prompt": "快取 system prompt",
+    "Use 1h cache TTL (instead of 5m)": "使用 1 小時 TTL（代替 5 分鐘）",
+    "Cache message history at depth (-1 to disable)": "在對話歷史指定深度快取（-1 表示停用）",
+    "OpenRouter Gemini Prompt Caching": "OpenRouter Gemini 提示詞快取",
+    "Only applied when OpenRouter routes to a Gemini model that supports caching. Same prefix-stability caveat as Claude caching.": "僅在 OpenRouter 路由到支援快取的 Gemini 模型時生效。與 Claude 快取同樣要求前綴穩定。",
+    "Requests per minute": "每分鐘請求數",
+    "API rate limit": "API 速率限制",
+    "Profile ${0} · queued ${1} · next in ${2}s": "設定檔 ${0} · 佇列 ${1} · ${2} 秒後發出",
+    "Conversation": "對話記錄",
+    "Loop Conversation": "Loop 對話",
+    "Agent Conversation": "Agent 對話",
+    "No agent messages recorded yet.": "暫無 agent 訊息記錄。",
+    "Tool Result": "工具結果",
+    "round ${0}": "第 ${0} 輪",
+    "Todo Board": "任務看板",
+    "Todo board is empty.": "任務看板為空。",
+    "Planner Rounds": "Planner 輪次",
+    "No planner rounds recorded.": "暫無 planner 輪次記錄。",
+    "No planner step recorded.": "本輪無 planner 步驟記錄。",
+    "No agents dispatched this round.": "本輪未派發 agent。",
+    "Planner Step": "Planner 步驟",
+    "Dispatched Agents": "派發的 Agents",
+    "Round ${0}": "第 ${0} 輪",
+    "todo": "待辦",
+    "doing": "進行中",
+    "done": "完成",
+    "blocked": "阻塞",
+    "dropped": "已丟棄",
+    "(none)": "（無）",
+    "Director (multi-agent)": "導演模式（多 agent）",
+    "Main agent": "主代理",
+    "Main agent tools": "主代理工具",
+    "Default tools": "預設工具",
+    "Inherit": "繼承",
+    "Every agent can call these tools by default. Override per agent on the Agents tab; the main agent inherits unless it has its own override.": "所有 agent 預設可呼叫這些工具。各 agent 可在 Agents 標籤頁單獨覆寫；主 agent 若無自身覆寫則繼承此預設。",
+    "Sub-agents": "子代理",
+    "Add sub-agent": "新增子代理",
+    "Sub-agent ID": "子代理 ID",
+    "Description (shown to main agent)": "描述（主代理可見）",
+    "Discard partial message on abort": "中止時丟棄殘缺訊息",
+    "Maximum tool-calling rounds": "最大工具呼叫輪數",
+    "Maximum concurrent sub-agents": "最大並行子代理數",
+    "Maximum total sub-agent runs per turn": "本回合最多子代理呼叫總數",
+    "Direct message generation": "直接生成訊息",
+    "Director mode produces the assistant message directly via a main agent that may dispatch sub-agents.": "導演模式由主代理直接產出助理訊息，主代理可派遣子代理協助。",
+    "Director Orchestration": "導演編排",
+    "System prompt (leave empty for default)": "系統提示詞（留空使用預設值）",
+    "Reset to default": "重設為預設值",
+    "Reset main-agent system prompt to default? This overwrites the current text.": "重設主代理系統提示詞為預設值？這會覆蓋目前文字。",
+    "Reset main-agent system prompt to default": "已重設主代理系統提示詞為預設值",
+    "Limits": "上限",
+    "Save To Global": "保存到全局",
+    "Save To Character Override": "保存到角色卡覆寫",
+    "Clear presets from this card": "清除角色卡上的預設",
+    "Manage skills...": "管理技能...",
+    "Notes": "筆記",
+    "Open notes": "進行中",
+    "Closed notes": "已關閉",
+    "No open notes yet": "還沒有進行中的條目",
+    "No closed notes yet": "還沒有已關閉的條目",
+    "Close this note": "關閉這條",
+    "Closure reason (optional)": "關閉原因（可選）",
+    "Edit note": "編輯",
+    "Delete note (permanent)": "永久刪除",
+    "Confirm delete (permanent)?": "確認永久刪除？",
+    "Manage Users": "使用者管理",
+    "System Overview": "系統概覽",
+    "Security Status": "安全狀態",
+    "Auth & Limits": "認證與限額",
+    "Server Plugins": "伺服端外掛",
+    "Config": "設定",
+    "If a custom avatar is not set, the user's default persona image will be displayed.": "未設定自訂頭像時將顯示使用者的預設人格圖像。",
+    "Set a custom avatar.": "設定自訂頭像。",
+    "Remove a custom avatar.": "移除自訂頭像。",
+    "Quota:": "配額：",
+    "OAuth:": "OAuth：",
+    "Change user display name.": "修改使用者顯示名稱。",
+    "Set per-user storage quota.": "設定該使用者的儲存配額。",
+    "Enable user account.": "啟用使用者帳號。",
+    "Disable user account.": "停用使用者帳號。",
+    "Promote user to admin.": "提升為管理員。",
+    "Demote user to regular user.": "降級為一般使用者。",
+    "Change user password.": "修改使用者密碼。",
+    "Delete user account.": "刪除使用者帳號。",
+    "Server Snapshot": "伺服器快照",
+    "User Storage": "使用者儲存",
+    "Security Checks": "安全檢查",
+    "Storage Quota": "儲存配額",
+    "Default quota for new users (MB)": "新使用者預設配額（MB）",
+    "-1 for unlimited": "-1 表示不限制",
+    "Account Registration": "帳號註冊",
+    "Allow visitors to register accounts from the login page": "允許訪客在登入頁自助註冊帳號",
+    "When enabled, the login page shows a \"Create account\" form. New accounts default to non-admin and respect the storage quota above.": "啟用後，登入頁會顯示「建立帳號」表單。新帳號預設非管理員，並繼承上述儲存配額。",
+    "GitHub OAuth": "GitHub OAuth",
+    "Enable GitHub OAuth login": "啟用 GitHub OAuth 登入",
+    "Auto-create user on first GitHub login": "首次 GitHub 登入時自動建立使用者",
+    "GitHub Client ID": "GitHub Client ID",
+    "GitHub Client Secret": "GitHub Client Secret",
+    "Discord OAuth": "Discord OAuth",
+    "Enable Discord OAuth login": "啟用 Discord OAuth 登入",
+    "Auto-create user on first Discord login": "首次 Discord 登入時自動建立使用者",
+    "Require membership in target server": "要求加入指定伺服器",
+    "Discord Client ID": "Discord Client ID",
+    "Discord Client Secret": "Discord Client Secret",
+    "Extra OAuth scopes (optional, comma/space/new line separated; identify is always included)": "額外的 OAuth 權限範圍（可選；逗號、空格或換行分隔；identify 一律包含）",
+    "Allowed server IDs (comma or new line separated)": "允許的伺服器 ID（逗號或換行分隔）",
+    "Required role IDs (optional, comma or new line separated)": "要求的身分組 ID（可選，逗號或換行分隔）",
+    "When \"Require membership in target server\" is enabled, required Discord scopes for server checks are added automatically.": "啟用「要求加入指定伺服器」後，會自動加入用於伺服器校驗的 Discord 權限範圍。",
+    "Save Auth & Limit Settings": "儲存認證與限額設定",
+    "Update": "更新",
+    "Reload": "重新載入",
+    "Path:": "路徑：",
+    "Runtime Config (config.yaml)": "執行時設定（config.yaml）",
+    "config.yaml content": "config.yaml 內容",
+    "Changes are validated as YAML before save. Some settings may require backend restart.": "儲存前會以 YAML 進行校驗。部分設定需要重啟後端才能生效。",
+    "e.g. John Snow": "例如 王小明",
+    "e.g. john-snow (lowercase letters, numbers, and dashes only)": "例如 john-snow（僅限小寫字母、數字與連字號）",
+    "[ No password ]": "［無密碼］",
+    "This will create a new subfolder in the /data/ directory with the user's handle as the folder name.": "這會在 /data/ 目錄下以該使用者句柄為名建立新的子目錄。",
+    "Installing a server plugin grants backend code execution. Install only repositories you trust.": "安裝伺服端外掛等同於授予後端程式碼執行權限，請僅安裝可信任的儲存庫。",
+    "Git repository URL": "Git 儲存庫位址",
+    "New installs are picked up after backend restart.": "新安裝的外掛需重啟後端才會載入。",
+    "Set per-user quota in MB. Enter -1 to use default/unlimited.": "以 MB 為單位設定該使用者的配額；輸入 -1 使用預設值或不限制。",
+    "Please enter a valid number.": "請輸入有效數字。",
+    "Invalid quota": "配額無效",
+    "Node.js:": "Node.js：",
+    "Platform:": "平台：",
+    "Uptime:": "執行時長：",
+    "Now:": "目前時間：",
+    "Total users:": "使用者總數：",
+    "Enabled:": "已啟用：",
+    "Admins:": "管理員：",
+    "Password protected:": "受密碼保護：",
+    "Total storage:": "總儲存佔用：",
+    "Over quota users:": "超配額使用者：",
+    "Default quota:": "預設配額：",
+    "${0}% of quota": "已用配額 ${0}%",
+    "Admin": "管理員",
+    "Admins without password:": "未設密碼的管理員：",
+    "Disabled admins:": "已停用的管理員：",
+    "Disabled users:": "已停用的使用者：",
+    "Install path:": "安裝路徑：",
+    "Installed directories:": "已安裝目錄數：",
+    "Server plugins are currently disabled in config.": "伺服端外掛功能目前在設定中已停用。",
+    "Installed plugins will load after you enable them and restart the backend.": "啟用並重啟後端後，已安裝的外掛才會載入。",
+    "No server plugins installed.": "尚未安裝任何伺服端外掛。",
+    "No package metadata": "無 package 中繼資料",
+    "No git remote detected": "未偵測到 git 遠端",
+    "Remove server plugin \"${0}\"?": "移除伺服端外掛「${0}」？",
+    "Admin settings saved.": "管理員設定已儲存。",
+    "Unlimited": "無限制",
+    "Announcements": "公告",
+    "Announcement": "公告",
+    "Critical": "嚴重",
+    "Warning": "警告",
+    "Open": "開啟",
+    "Dismiss": "關閉",
+    "Mark all as read": "全部標為已讀",
+    "No announcements": "暫無公告",
+    "No announcements yet": "暫無公告",
+    "New announcement": "新增公告",
+    "Level": "級別",
+    "Body (Markdown)": "內容(Markdown)",
+    "Preview": "預覽",
+    "Failed to load announcements.": "載入公告失敗。",
+    "Announcement updated.": "公告已更新。",
+    "Announcement deleted.": "公告已刪除。",
+    "Announcement created.": "公告已建立。",
+    "Delete failed.": "刪除失敗。",
+    "Create failed.": "建立失敗。",
+    "Compare with": "對比基準",
+    "Clear history": "清空歷史",
+    "Conversation history": "對話歷史",
+    "Type what to change...": "描述要修改的內容...",
+    "Send": "發送",
+    "Stop": "終止",
+    "Working...": "處理中…",
+    "No saved sessions": "沒有已保存的會話",
+    "New session": "新建會話",
+    "Import chat": "導入對話",
+    "Import selected": "導入選中",
+    "No chat is currently open": "當前沒有打開的聊天",
+    "The current chat has no importable messages": "當前聊天沒有可導入的消息",
+    "No messages selected": "沒有選中任何消息",
+    "(${0} messages)": "（共 ${0} 條消息）",
+    "Imported ${0} message(s)": "已導入 ${0} 條消息",
+    "(None)": "（無）",
+    "Pending changes": "待應用的修改",
+    "Reject": "拒絕",
+    "Approve": "批准",
+    "Approve file change?": "批准檔案修改？",
+    "Approve ${0} file changes?": "批准 ${0} 個檔案修改？",
+    "Clear all session history for this scope?": "清空當前作用域的全部會話歷史？",
+    "Iteration Studio session format updated; previous sessions cleared.": "迭代工作台會話格式已更新，舊會話已清除。",
+    "Iteration failed: ${0}": "迭代失敗：${0}",
+    "AI suggested changes are waiting for approval.": "AI 提出的修改等待你審核。",
+    "Function output is invalid.": "函式輸出無效。",
+    "Close Studio": "關閉工作室",
+    "📂 List files": "📂 列出檔案",
+    "📖 Read file": "📖 讀取檔案",
+    "✏️ Write file": "✏️ 寫入檔案",
+    "🩹 Patch file": "🩹 修補檔案",
+    "🗑️ Delete file": "🗑️ 刪除檔案",
+    "📝 Rename file": "📝 重新命名檔案",
+    "🪪 Get character fields": "🪪 取得角色欄位",
+    "🖊️ Update character fields": "🖊️ 更新角色欄位",
+    "📥 Import embedded world": "📥 匯入內嵌世界書",
+    "📚 List world books": "📚 列出世界書",
+    "📖 Get world-info entries": "📖 取得世界資訊條目",
+    "🔍 Search world-info entries": "🔍 搜尋世界資訊條目",
+    "➕ Create world-info entry": "➕ 建立世界資訊條目",
+    "✏️ Update world-info entry": "✏️ 更新世界資訊條目",
+    "🗑️ Delete world-info entry": "🗑️ 刪除世界資訊條目",
+    "📕 Create world book": "📕 建立世界書",
+    "♻️ Replace world-info entries": "♻️ 取代世界資訊條目",
+    "🔢 List regex scripts": "🔢 列出正規表示式指令稿",
+    "➕ Create regex script": "➕ 建立正規表示式指令稿",
+    "✏️ Update regex script": "✏️ 更新正規表示式指令稿",
+    "🗑️ Delete regex script": "🗑️ 刪除正規表示式指令稿",
+    "🎼 Get orchestrator override": "🎼 取得編排器覆寫",
+    "🎼 Set orchestrator override": "🎼 設定編排器覆寫",
+    "🎼 Clear orchestrator override": "🎼 清除編排器覆寫",
+    "🧠 Get memory-graph config": "🧠 取得記憶圖譜設定",
+    "🧠 Update memory-graph schema": "🧠 更新記憶圖譜 schema",
+    "🧠 Update memory-graph advanced": "🧠 更新記憶圖譜進階設定",
+    "⌨️ List slash commands": "⌨️ 列出斜線指令",
+    "❓ Slash command help": "❓ 斜線指令說明",
+    "🧭 List Atria context keys": "🧭 列出 Atria 上下文鍵",
+    "🧭 Describe Atria context": "🧭 描述 Atria 上下文",
+    "📑 List docs": "📑 列出文件",
+    "📖 Read doc": "📖 讀取文件",
+    "🔌 Toggle CardApp": "🔌 啟用/停用 CardApp",
+    "Max request retries (0 = disabled)": "請求重試次數上限（0 表示關閉）",
+    "Applies to both text and image generation. Retries on network errors and rate-limit / server errors. Streaming responses are not retried after the stream begins.": "對文字生成和影像生成請求都生效。遇到網路錯誤、上游限流或伺服器錯誤時會自動重試。串流回應開始後斷開不會重試。",
+    "Max request retries": "請求重試次數上限",
+    "Retry status whitelist": "重試狀態碼白名單",
+    "Whitelist accepts comma-separated HTTP status codes and ranges (100–599). Examples: 429, 500-599, or 429, 500-504. Leave empty to retry the default set (429 and any 5xx). When non-empty, only listed codes are retried.": "白名單接受以逗號分隔的 HTTP 狀態碼或範圍（100–599）。例如：429、500-599、429, 500-504。留空則重試預設集合（429 與所有 5xx）；非空則只重試列出的狀態碼。",
+    "Auto-continue when the response is truncated": "回覆被截斷時自動繼續",
+    "Max auto-continue attempts": "最大自動繼續次數",
+    "Main-chat only. Fires on output cap or safety cutoff. Stops if the last round produced no new content. Counter resets on user input, chat switch, or a normal-finish reply.": "僅作用於主聊天。在觸及輸出上限或被安全策略截斷時觸發。若上一輪未產出任何新內容則停止。計數在使用者發送新訊息、切換聊天或收到正常結束的回覆時重置。",
+    "Auto-continue on truncated": "截斷時自動繼續",
+    "Request failed": "請求失敗",
+    "Image generation failed": "圖像生成失敗",
+    "Retrying request… (${0}/${1})": "正在重試請求……（第 ${0}/${1} 次）",
+    "Retrying image generation… (${0}/${1})": "正在重試圖像生成……（第 ${0}/${1} 次）",
+    "History": "歷史",
+    "Clear all": "清空全部",
+    "(untitled)": "（未命名）",
+    "Delete this session": "刪除該會話",
+    "Reference preset:": "參考預設：",
+    "What is a reference preset?": "什麼是參考預設？",
+    "A reference preset is a separate preset you pick as a comparison baseline. The AI can:": "參考預設是你額外選定的一份預設，用來作為對照基準。AI 可以：",
+    "Read its fields (prompts, sampler settings, etc.) as context.": "讀取它的欄位（提示詞、取樣參數等）作為參考。",
+    "Diff your target preset against it to spot differences.": "把目標預設與它進行差異比對，找出不同之處。",
+    "Copy specific fields from it into your target preset.": "把它的特定欄位複製到目標預設中。",
+    "You can merge the strengths of different presets, carrying one preset's ideas and content into another.": "可將不同預設的優點融合起來，將一個預設的思想、內容遷移到另一個預設。",
+    "Pick \"(none)\" to skip — the AI will edit your target preset alone.": "選「（無）」即跳過比對，AI 只在目標預設上修改。",
+    "Editing mode:": "編輯模式：",
+    "Completion Preset Assistant — AI iteration": "聊天補全預設助手 — AI 迭代",
+    "Describe what to change in the preset...": "描述要修改的預設內容...",
+    "Clear all session history for this preset?": "清空該預設的所有會話歷史？",
+    "Memory Graph Schema Studio": "記憶圖譜 Schema 工作台",
+    "Describe what to change in the schema...": "描述要修改的 Schema 內容...",
+    "AI Iteration Studio": "AI 迭代工作台",
+    "AI Iteration Studio — Spec": "AI 迭代工作台 — Spec",
+    "AI Iteration Studio — Loop": "AI 迭代工作台 — Loop",
+    "AI Iteration Studio — Agenda": "AI 迭代工作台 — Agenda",
+    "AI Iteration Studio — Director": "AI 迭代工作台 — Director",
+    "Describe what to change in the profile...": "描述要修改的設定內容...",
+    "Auto-apply edits": "自動套用變更",
+    "Character Editor — AI iteration": "角色卡編輯器 — AI 迭代",
+    "Sampling params": "取樣參數",
+    "Saved presets": "已儲存預設",
+    "Frequency penalty": "頻率懲罰",
+    "Presence penalty": "存在懲罰",
+    "Reference": "參考",
+    "Preview unavailable": "預覽不可用",
+    "Max context unlocked": "解鎖最大上下文",
+    "No data": "暫無資料",
+    "(was ${0} → now ${1})": "（待修改：${0} → ${1}）",
+    "No preset loaded.": "未載入預設。",
+    "Live target preview": "即時目標預覽",
+    "Pending applied (preview):": "套用後（預覽）:",
+    "Resize columns": "拖動調整寬度",
+    "New messages while you were on Preview": "在預覽頁面時收到的新訊息",
+    "Schema": "Schema",
+    "${0} fields": "${0} 個欄位",
+    "No schema loaded.": "未載入 Schema。",
+    "No profile loaded.": "未載入設定。",
+    "Pipeline": "流水線",
+    "No stages": "暫無階段",
+    "Loop agent": "循環代理",
+    "Prompt preset": "提示詞預設",
+    "API preset": "API 預設",
+    "API preset (Connection profile)": "API 預設（Connection profile）",
+    "Max rounds": "最大輪次",
+    "Wall-clock budget (s)": "時長預算（秒）",
+    "System prompt": "系統提示詞",
+    "(unset)": "（未設定）",
+    "Planner": "規劃器",
+    "Agents": "代理清單",
+    "No agents": "暫無代理",
+    "(final)": "（終）",
+    "planner rounds": "規劃輪次",
+    "concurrent agents": "並發代理",
+    "total runs": "總執行次數",
+    "No sub-agents": "暫無子代理",
+    "rounds": "輪次",
+    "concurrent subagents": "並發子代理",
+    "total subagent runs": "子代理總執行次數",
+    "Character fields": "角色欄位",
+    "Bound lorebook": "綁定世界書",
+    "No character loaded.": "未載入角色。",
+    "(click to expand)": "（點擊展開）",
+    "World book: ${0}": "世界書：${0}",
+    "Auto-apply AI proposed changes": "自動套用 AI 提議的變更",
+    "Draft (not applied)": "草稿（未套用）",
+    "Recently applied": "最近套用",
+    "Entry UID: ${0}": "條目 UID：${0}",
+    "Position: ${0}": "位置：${0}",
+    "Keys: ${0}": "關鍵詞：${0}",
+    "No entries yet.": "暫無條目。",
+    "No world book bound": "未綁定世界書",
+    "(new)": "（新建）",
+    "${0} references missing entry": "${0} 參照了不存在的條目",
+    "AI is thinking...": "AI 正在思考……",
+    "Applied to ${0}": "已套用至 ${0}",
+    "Apply to ${0}": "套用至 ${0}",
+    "global": "全域",
+    "current character": "目前角色",
+    "Rolled back": "已回退",
+    "Roll back this batch? The changes will be reversed in the target.": "回退本批次變更？目標裡這些改動會被反向套用。",
+    "Tools and edits this round (${0})": "本輪工具呼叫 + 變更（${0}）",
+    "Rolled back at ${0}": "已回退 ${0}",
+    "✓ Applied to ${0} at ${1}": "✓ 已套用至 ${0}（${1}）",
+    "Rollback": "回退",
+    "Cannot rollback edit type: ${0}": "無法回退此類編輯：${0}",
+    "preset": "預設",
+    "schema": "結構",
+    "Apply failed: ${0}": "套用失敗：${0}",
+    "Applied ${0} edit(s) to ${1}": "已套用 ${0} 條編輯到 ${1}",
+    "Applied ${0} of ${1} edit(s) to ${2}; ${3} skipped": "已套用 ${0}/${1} 條編輯到 ${2};${3} 條跳過",
+    "Applied ${0} of ${1} change(s); ${2} skipped": "已套用 ${0}/${1} 項變更；${2} 項跳過",
+    "No edits applied to ${0}: all ${1} were skipped (conflicts or already in desired state)": "未套用任何編輯到 ${0}：全部 ${1} 條都被跳過（衝突或已是期望狀態）",
+    "No edits applied: all ${0} were skipped (conflicts or already in desired state)": "未套用任何編輯：全部 ${0} 條都被跳過（衝突或已是期望狀態）",
+    "Edit error: ${0}": "編輯錯誤：${0}",
+    "Failed to save preset: ${0}": "儲存預設失敗：${0}",
+    "Failed to save schema: ${0}": "儲存結構失敗：${0}",
+    "Failed to save profile: ${0}": "儲存設定失敗：${0}",
+    "Failed to save character: ${0}": "儲存角色失敗：${0}",
+    "Session finalized": "會話已完成",
+    "No presets": "暫無預設",
+    "Field updated: ${0}": "欄位已更新：${0}",
+    "Show ${0} more entries": "展開剩餘 ${0} 條",
+    "Working profile reset to a blank shell — building this card's orchestration from scratch.": "工作中的設定已重置為空白範本，將從零開始為這張角色卡編寫編排。",
+    "Working profile reset to match the current global profile — adjust from there.": "工作中的設定已重置為當前全域設定——請在此基礎上調整。",
+    "Schema reset to a blank shell — building from scratch.": "結構已重置為空白範本——從零開始搭建。",
+    "Schema reset to match the current global schema — adjust from there.": "結構已重置為當前全域結構——請在此基礎上調整。",
+    "Reset working profile to blank": "重置工作設定為空白",
+    "Reset working profile to global": "重置工作設定為全域",
+    "Reset schema to blank": "重置結構為空白",
+    "Reset schema to global": "重置結構為全域",
+    "✓ Applied at ${0}": "✓ 已套用 ${0}",
+    "Apply ${0}": "套用 ${0}",
+    "Rollback this round": "回退本輪",
+    "Roll back ${0} change(s) from this round?": "確認回退本輪的 ${0} 項變更？",
+    "Rolled back ${0} change(s).": "已回退 ${0} 項變更。",
+    "Batch rollback finished with ${0} failure(s).": "批次回退完成，${0} 項失敗。",
+    "(untitled entry)": "（無標題條目）",
+    "${0} entries": "${0} 條",
+    "${0} pending": "${0} 項待批准",
+    "${0} draft": "${0} 項草稿",
+    "Error: ${0}": "錯誤：${0}",
+    "Auto-continue": "自動續輪",
+    "AI read the indicated data and is waiting to act on the result next round.": "AI 讀取了相關資料，等待下一輪根據結果調整。",
+    "Just imported this card — review the baseline and suggest tweaks.": "剛匯入這張卡——回顧基礎設定並提出調整建議。",
+    "Continue iteration": "繼續迭代",
+    "Finalize iteration": "結束迭代",
+    "Set preset field": "設定預設欄位",
+    "Replace field text": "替換欄位文字",
+    "Insert into field": "向欄位中插入",
+    "Delete inside field": "從欄位中刪除",
+    "Replace text in prompt": "替換條目文字",
+    "Insert text in prompt": "向條目中插入文字",
+    "Delete text in prompt": "從條目中刪除文字",
+    "List insert": "清單插入",
+    "List remove": "清單移除",
+    "List move": "清單移動",
+    "Set prompt entry": "設定提示條目",
+    "Adjust prompt order": "調整提示順序",
+    "Remove prompt entry": "移除提示條目",
+    "Remove prompt order item": "移除提示順序項",
+    "Clone to new preset": "複製為新預設",
+    "Copy from reference": "從參考預設複製",
+    "Read preset fields": "讀取預設欄位",
+    "Read reference fields": "讀取參考欄位",
+    "Diff against reference": "與參考預設對比",
+    "Simulate prompt assembly": "模擬提示組裝",
+    "Returned ${0} values": "返回 ${0} 個值",
+    "${0} paths": "${0} 個路徑",
+    "${0} fields differ": "${0} 個欄位不同",
+    "Assembled ${0} chars": "組裝 ${0} 個字元",
+    "Set node type": "設定節點類型",
+    "Remove node type": "移除節點類型",
+    "Reorder node types": "重新排序節點類型",
+    "Update director main agent": "更新導演主智慧體",
+    "Upsert director sub-agent": "設定導演子智慧體",
+    "Remove director sub-agent": "移除導演子智慧體",
+    "Update director limits": "更新導演限制",
+    "Update director tools": "更新導演工具",
+    "main agent": "主智慧體",
+    "limits": "限制",
+    "tools": "工具",
+    "Update loop profile": "更新循環設定",
+    "loop profile": "循環設定",
+    "Update agenda planner": "更新議程規劃者",
+    "Upsert agenda agent": "設定議程智慧體",
+    "Remove agenda agent": "移除議程智慧體",
+    "Set agenda final agent": "設定議程終筆智慧體",
+    "Update agenda limits": "更新議程限制",
+    "planner": "規劃者",
+    "Upsert pipeline stage": "設定流程階段",
+    "Remove pipeline stage": "移除流程階段",
+    "Upsert stage node": "設定階段節點",
+    "Remove stage node": "移除階段節點",
+    "Upsert preset": "設定預設",
+    "Remove preset": "移除預設",
+    "Simulate orchestration": "模擬編排",
+    "Set lorebook book filter": "設定世界書書名過濾",
+    "Set lorebook entry filter": "設定世界書條目過濾",
+    "Clear lorebook book filter": "清除世界書書名過濾",
+    "Clear lorebook entry filter": "清除世界書條目過濾",
+    "List world books": "列出世界書",
+    "List lorebook entries": "列出世界書條目",
+    "Search lorebook": "搜尋世界書",
+    "Read lorebook entries": "讀取世界書條目",
+    "${0} books": "${0} 本世界書",
+    "${0} hits": "${0} 個匹配",
+    "Set card field": "設定卡片欄位",
+    "Replace text in card field": "替換卡片欄位文字",
+    "Add lorebook entry": "新增世界書條目",
+    "Update lorebook entry": "更新世界書條目",
+    "Remove lorebook entry": "移除世界書條目",
+    "Set lorebook metadata": "設定世界書中繼資料",
+    "Web search": "網路搜尋",
+    "Simulate prompt": "模擬提示",
+    "${0} results": "${0} 個結果",
+    "${0} chars": "${0} 個字元",
+    "Arguments": "參數",
+    "Result": "結果",
+    "Profile updated": "設定已更新",
+    "Field updated": "欄位已更新",
+    "working profile": "目前設定",
+    "Line diff": "行級 diff",
+    "Line diff (+${0} -${1})": "行級 diff（+${0} -${1}）",
+    "Expand diff": "展開 diff",
+    "Resize diff columns": "調整 diff 欄寬",
+    "Close expanded diff": "關閉展開的 diff",
+    "(unknown op)": "（未知操作）",
+    "(tool)": "（工具）",
+    "(root)": "（根）",
+    "(${0}${1} bytes)": "（${0}${1} 位元組）",
+    "field": "欄位",
+    "General editing": "通用編輯",
+    "Adapt for orchestrator": "適配編排器",
+    "Jailbreak-only": "僅越獄",
+    "(no effective change)": "（無實際變更）",
+    "Clear all session history?": "清空所有會話歷史？",
+    "Save failed — close anyway and lose this turn?": "儲存失敗——仍要關閉並捨棄本輪內容嗎？",
+    "Apply ${0} to \"${1}\"": "將 ${0} 套用到「${1}」",
+    "Apply ${0} changes (${1})": "套用 ${0} 項變更（${1}）",
+    "${0} to character": "${0} 到角色卡",
+    "${0} to \"${1}\"": "${0} 到「${1}」",
+    "Apply failed (${0}): ${1}": "套用失敗（${0}）：${1}",
+    "Apply failed for ${0} target(s).": "${0} 個目標套用失敗。",
+    "Applied ${0} change(s).": "已套用 ${0} 項變更。",
+    "Rollback failed (${0}): ${1}": "回退失敗（${0}）：${1}",
+    "Rollback failed for ${0} target(s).": "${0} 個目標回退失敗。",
+    "Rolled back.": "已回退。",
+    "Resize chat and preview columns": "調整對話與預覽欄寬",
+    "Unread assistant messages": "未讀 AI 訊息",
+    "(untitled session)": "（無標題會話）",
+    "Delete this session?": "刪除此會話？",
+    "Clear all saved sessions for this character?": "清空此角色卡的所有儲存會話？",
+    "Finalized.": "已完成。",
+    "No saved sessions yet.": "尚無儲存的會話。",
+    "Cloned to ${0}": "已複製到 ${0}",
+    "Apply to ${0} override": "套用到 ${0} 的角色卡覆寫",
+    "Regenerate this turn? Subsequent rounds will be discarded.": "重新產生本輪？後續輪次會被丟棄。",
+    "(deleted)": "（已刪除）",
+    "Reset rejected: reset_to_blank only applies when iterating a character override.": "重設被拒：reset_to_blank 僅在疊代角色卡覆寫時可用。",
+    "Reset rejected: reset_to_global only applies when iterating a character override.": "重設被拒：reset_to_global 僅在疊代角色卡覆寫時可用。",
+    "Reset rejected: this card already has an override. Use reset_to_global instead, or continue adjusting in place.": "重設被拒：這張卡已有覆寫。請改用 reset_to_global，或直接在現有基礎上調整。",
+    "Reset rejected: this card has no character override yet. Use reset_to_blank instead, or continue adjusting the seeded global copy in place.": "重設被拒：這張卡還沒有角色卡覆寫。請改用 reset_to_blank，或直接在播種的全域副本上調整。",
+    "Description": "描述",
+    "Personality": "性格",
+    "Example dialogue": "範例對話",
+    "Main prompt": "主提示詞",
+    "Post-history instructions": "對話歷史後指令",
+    "Creator notes": "作者註釋",
+    "pending change": "待審批改動",
+    "${0} pending edit(s)": "${0} 處待審批改動",
+    "No character bound": "未繫結角色卡",
+    "(unnamed character)": "（未命名角色）",
+    "All card fields empty.": "角色卡所有欄位均為空。",
+    "Alternate greetings": "備用問候語",
+    "What preset should I use for the Agent?": "Agent 這裡該掛什麼樣的提示詞預設？",
+    "What preset should I use here?": "這裡該掛什麼樣的提示詞預設？",
+    "This selector is for the preset the plugin uses to do its own work — editing configs, editing schemas, extracting facts, building recall queries, etc. It is NOT for drafting RP content.": "這一欄選的是外掛自己幹活時用的預設——改設定、改 Schema、抽取事實、建構召回查詢等等，不是用來產出 RP 正文的。",
+    "A clean preset works best here: one that contains only jailbreak / general unblock prompts, with no RP style instructions, character voice, or narrative format requirements.": "這裡最適合掛一份乾淨預設：只保留越獄/通用破限提示詞，不含 RP 文風指令、角色語態、敘事格式要求。",
+    "Why? RP presets often force an output format (mandatory schema blocks, forced thinking chains) that conflicts with the structured tool calls these plugins use. Style instructions can also leak into config edits and produce odd results.": "原因：日常 RP 預設常常會強制輸出格式（強制 schema 區塊、強制思維鏈），與這些外掛用的結構化 tool call 互相打架；文風指令也容易滲進設定改寫裡，結果稀奇古怪。",
+    "Two ways to get a clean preset:": "兩種拿到乾淨預設的方式：",
+    "Click \"Import plugin-only preset\" below — imports a pre-built clean preset bundled with Atria, then selects it here.": "點下面的「匯入 plugin-only 預設」——一鍵匯入 Atria 內建的現成乾淨預設，並自動選中。",
+    "Open the Completion Preset Assistant and start a new session in \"Jailbreak-only\" mode — it will derive a clean version from your existing RP preset. Your original preset stays untouched.": "打開「聊天補全預設助手」，新開一個「僅保留破限」模式的會話——它會從你現有的 RP 預設派生一份乾淨版本，原預設保持不動。",
+    "This selector is for the preset an Agent uses to draft content. Unlike iteration-AI presets, the Agent SHOULD use your RP-style instructions — jailbreak, NSFW guidance, style/voice rules, anti-cliché instructions, etc.": "這一欄選的是 Agent 起草正文時用的預設。和外掛迭代 AI 不一樣，Agent 這裡需要你的 RP 類指令——越獄、NSFW 指導、文風/語態規則、反八股指令等等。",
+    "But a raw daily RP preset is also not the right fit: instructions that force an output schema or a fixed thinking-chain format will block the agent's tool calls, and character/world-info that the agent framework already injects will get duplicated.": "但是直接掛日常 RP 預設也不合適：強制輸出 schema、固定思維鏈格式之類的指令會頂壞 Agent 的 tool call；角色卡描述、世界書等占位符在 Agent 框架裡已經會被注入一次，原樣保留會被重複注入。",
+    "Recommended: derive an Agent-friendly preset from your RP preset. Open the Completion Preset Assistant, start a new session in \"Adapt for orchestrator\" mode, and ask it to convert. It will keep your style / jailbreak / anti-cliché instructions while disabling format-forcing prompts and duplicate injections. The original preset stays untouched.": "建議：從你的 RP 預設派生一份 Agent 友善版本。打開「聊天補全預設助手」，新開一個「編排器適配」模式的會話，讓它幫你改造——它會保留文風 / 越獄 / 反八股指令，同時停用會強制格式的提示詞和重複注入。原預設保持不動。",
+    "For the full multi-Agent setup walkthrough, see the multi-Agent onboarding recipe in the documentation.": "完整的多 Agent 設定流程請見文件中的「多 Agent 上手指南」。",
+    "Failed to save the \"{name}\" preset.": "儲存「{name}」預設失敗。",
+    "A preset named \"{name}\" already exists. Overwrite it with the bundled version, or keep your existing copy and just select it?": "已存在名為「{name}」的預設。要用 Atria 內建版本覆蓋，還是保留你現有的版本並直接選中？",
+    "Overwrite with bundled version": "用內建版本覆蓋",
+    "Keep existing": "保留現有",
+    "Overwrote preset: {name}": "已覆蓋預設：{name}",
+    "Selecting your existing \"{name}\" preset.": "已為你選中現有的「{name}」預設。",
+    "Import plugin-only preset": "匯入 plugin-only 預設",
+    "Failed to download the \"{name}\" preset.": "下載「{name}」預設失敗。",
+    "Imported preset: {name}": "已匯入預設：{name}",
+    "This selector is for the preset a Director-mode Agent uses (main agent or a sub-agent). Director already injects the full RP context (character card, persona, world info, chat history) inside a <story_context> envelope before the agent runs — so the agent's own preset does NOT need any character / world / persona placeholders. Adding them would only re-inject the same content twice and burn tokens.": "這一欄選的是 Director 模式 Agent（主 Agent 或 sub-agent）用的預設。Director 在 Agent 執行前已經把完整 RP 上下文（角色卡、persona、世界書、聊天記錄）整段塞進 <story_context> 信封裡——所以 Agent 自己這份預設不需要任何角色卡/世界書/persona 占位符，加了只會把同樣的內容重複注入一次，白燒 token。",
+    "What this slot SHOULD carry: jailbreak / content-permission instructions that wrap the <story_context> block, plus the chatHistory marker so the envelope lands in the right place. Style / voice / anti-cliché rules normally belong in the agent's system prompt, not here.": "這一欄該裝的是什麼：包在 <story_context> 區塊外面的越獄/內容許可指令，加上 chatHistory 占位符讓信封落到合適的位置。文風/語態/反八股規則正常應該寫在 Agent 的系統提示詞裡，不屬於這裡。",
+    "Two ways to get a Director-friendly preset:": "兩種拿到 Director 友善預設的方式：",
+    "Click \"Import agent-director preset\" below — imports a minimal Atria-bundled preset (marker-free, permission text only) and selects it here. Good as a quick start.": "點下面的「匯入 agent-director 預設」——一鍵匯入 Atria 內建的極簡預設（不含占位符，只保留許可文字），並自動選中。適合快速起步。",
+    "Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a Director-ready version from your existing RP preset, keeping your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts and duplicate injections. Your original preset stays untouched.": "打開「聊天補全預設助手」，新開一個「編排器適配」模式的會話——它會從你現有的 RP 預設派生一份適配 Director 的版本，保留越獄/文風/反八股指令，同時剝掉強制格式的提示詞和重複注入。原預設保持不動。",
+    "Import agent-director preset": "匯入 agent-director 預設",
+    "This selector is for the preset a non-Director Agent uses (Single / Spec / Agenda planner / Loop). Unlike Director, these modes do NOT inject the RP context for the agent — so the agent's preset is the only path through which character card, persona, and world info reach the model. Markers (charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory) must stay enabled, and the RP material should be visibly separated from the runtime task instructions so the agent does not mistake them for narrative continuation.": "這一欄選的是非 Director 模式 Agent（Single / Spec / Agenda planner / Loop）用的預設。和 Director 不同，這些模式不會主動給 Agent 注入 RP 上下文——所以 Agent 這份預設是角色卡、persona、世界書到達模型的唯一通道。占位符（charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory）必須保持啟用；RP 素材要和執行時下發的任務指令明確隔開，免得 Agent 把它讀成敘事延續。",
+    "This is the same shape iteration-AI plugins (CPA iter / Memory Graph / CardApp Studio iter) need, just placed in an Agent slot. The bundled preset offered below is identical in structure to the iter-AI plugin-only preset.": "這和外掛迭代 AI（預設助手迭代、記憶圖、卡片應用工作台迭代等）需要的形態是一樣的，只是裝在 Agent 的槽位裡。下面提供的內建預設結構上和外掛迭代 AI 用的 plugin-only 預設一致。",
+    "Two ways to get a non-Director-friendly preset:": "兩種拿到非 Director 友善預設的方式：",
+    "Click \"Import agent-non-director preset\" below — imports a Atria-bundled preset (markers enabled, story / user-request envelopes wrap the context) and selects it here. Good as a quick start.": "點下面的「匯入 agent-non-director 預設」——一鍵匯入 Atria 內建的預設（占位符啟用，story / user-request 信封把上下文包好），並自動選中。適合快速起步。",
+    "Open the Completion Preset Assistant and start a new session in \"Adapt for orchestrator\" mode — it will derive a version from your existing RP preset that preserves your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts. Your original preset stays untouched.": "打開「聊天補全預設助手」，新開一個「編排器適配」模式的會話——它會從你現有的 RP 預設派生一份版本，保留越獄/文風/反八股指令，同時剝掉強制格式的提示詞。原預設保持不動。",
+    "Import agent-non-director preset": "匯入 agent-non-director 預設",
+    "Update skill file": "更新 skill 檔案",
+    "Update skill frontmatter": "更新 skill metadata",
+    "Create skill": "建立 skill",
+    "Rename skill": "重新命名 skill",
+    "Move skill scope": "遷移 skill 作用域",
+    "Delete skill": "刪除 skill",
+    "preset:${0}": "預設：${0}",
+    "character:${0}": "角色：${0}",
+    "(unknown scope)": "（未知作用域）",
+    "No content change": "無內容變更",
+    "Plus ${0} additional file(s): ${1}": "另含 ${0} 個附加檔案：${1}",
+    "Skill \"${0}\" (${1}) will be deleted on Apply. All files removed; this cannot be undone.": "Skill「${0}」（${1}）將在「套用」時刪除：所有檔案一併移除，且無法復原。",
+    "Committed ${0} skill edit(s)": "已提交 ${0} 項 skill 修改",
+    "Skill commit failed at ${0} (${1}): ${2}": "Skill 提交在 ${0}（${1}）處失敗：${2}",
+    "Skill commit halted: ${0} (${1}) failed (${2}). Remaining approved skill edits left in the pending list for retry.": "Skill 提交已中斷：${0}（${1}）失敗（${2}）。剩餘已批准的 skill 修改保留在待辦清單中，可重試。",
+    "Pending approval": "等待審批",
+    "Undo reject": "撤銷拒絕",
+    "✗ Rejected at ${0}": "✗ 已拒絕 ${0}",
+    "↺ Rolled back at ${0}": "↺ 已回退 ${0}",
+    "⚠ External change": "⚠ 外部已變更",
+    "⚠ Write skipped (resource changed)": "⚠ 寫入未生效（目標已變更）",
+    "The resource changed externally since this proposal was captured. Approve to retry against the current state, or reject.": "自提議產生以來，該資源已被外部修改。點擊批准將基於當前狀態重新嘗試；點擊拒絕則放棄。",
+    "The AI called this write tool, but the target had been changed in the meantime — the write was NOT applied. The AI has been notified and can decide whether to retry.": "AI 呼叫了這個寫入工具，但目標在期間已被修改——本次寫入未生效。AI 已收到通知，可自行決定是否重試。",
+    "Validation errors (${0}):": "驗證錯誤（${0}）：",
+    "Targets missing (${0}):": "目標不存在（${0}）：",
+    "Payload rejected (${0}):": "酬載被拒（${0}）：",
+    "State destroyed (${0}):": "狀態已銷毀（${0}）：",
+    "Server errors (${0}):": "伺服器錯誤（${0}）：",
+    "Network errors (${0}):": "網路錯誤（${0}）：",
+    "Persistence errors (${0}):": "持久化錯誤（${0}）：",
+    "Other errors (${0}):": "其他錯誤（${0}）：",
+    "Approve all pending (${0})": "批准全部待審（${0}）",
+    "Reject all pending (${0})": "拒絕全部待審（${0}）",
+    "Rollback this turn (${0})": "回退本輪（${0}）",
+    "Profile change": "檔案變更",
+    "Preset change": "預設變更",
+    "Schema change": "Schema 變更",
+    "Character edits": "角色編輯",
+    "Lorebook edits": "世界書編輯",
+    "Lorebook write": "世界書寫入",
+    "Lorebook ${0}": "世界書 ${0}",
+    "Skill change": "Skill 變更",
+    "Skill: ${0}": "Skill: ${0}",
+    "Clone preset": "複製預設",
+    "Will fork \"${0}\" into a new preset named \"${1}\" and switch the open session onto it.": "將以「${0}」為模板新建預設「${1}」，並把目前工作階段切換過去。",
+    "Will fork the current preset into a new one and switch the open session onto it.": "將以目前預設為模板新建一個預設，並把目前工作階段切換過去。",
+    "⚠ Cannot be auto-rolled back — the cloned preset stays on disk even after this card is undone.": "⚠ 無法自動回退——即使撤銷此條目，已生成的預設也仍會保留在磁碟上。",
+    "Storage Backend": "儲存後端",
+    "Current Mode:": "目前模式：",
+    "Read-Only:": "唯讀：",
+    "Last Migration:": "上次遷移：",
+    "Switch Backend": "切換後端",
+    "Target:": "目標：",
+    "Filesystem": "檔案系統",
+    "SQLite": "SQLite",
+    "MySQL": "MySQL",
+    "PostgreSQL": "PostgreSQL",
+    "MySQL connection": "MySQL 連線",
+    "PostgreSQL connection": "PostgreSQL 連線",
+    "URL:": "連線字串：",
+    "Pool size:": "連線池大小：",
+    "mysql://user:pass@host:3306/atria": "mysql://user:pass@host:3306/atria",
+    "postgresql://user:pass@host:5432/atria": "postgresql://user:pass@host:5432/atria",
+    "storageBackendDbConfigHint": "若連線字串留空，將直接使用 config.yaml 中已設定的 storage.mysql.url／storage.postgres.url。",
+    "storageBackendSharedDbWarning": "MySQL 與 PostgreSQL 後端會在所有使用者間共用單一資料庫綱要（以 handle 欄位區分）。切換到或離開共用後端時，另一個後端的資料會原樣保留在磁碟上但暫時不可見，直到再次切換回去。",
+    "Migrate Now": "立即遷移",
+    "storageBackendMigrationWarning": "此操作會將所有使用者資料複製到目標後端，並把執行中的伺服器切換過去。備份會永久保存在 <dataRoot>/_storage-migrations/ 目錄下，絕不會自動刪除。",
+    "yes": "是",
+    "no": "否",
+    "Failed to load storage backend status.": "載入儲存後端狀態失敗。",
+    "A migration is currently in progress on the server. Please wait.": "伺服器上目前有遷移正在進行，請稍候。",
+    "Select a target backend mode.": "請選擇目標後端模式。",
+    "Migrate ALL user data to ${targetMode}? A backup will be saved permanently under the data-root _storage-migrations directory. This may take several minutes for large installs and the server will reject writes until it finishes.": "確認將所有使用者資料遷移到 ${targetMode} 嗎？備份會永久保存在資料根目錄下的 _storage-migrations 目錄中。大型部署可能需要數分鐘，遷移期間伺服器會拒絕寫入。",
+    "Migration in progress, do not refresh...": "遷移進行中，請勿重新整理……",
+    "Migration in progress. This may take several minutes.": "遷移進行中。可能需要數分鐘。",
+    "Migration complete.": "遷移完成。",
+    "Migration failed for one or more users. Source backend retained.": "一個或多個使用者遷移失敗。來源後端已保留。",
+    "Migration failed.": "遷移失敗。",
+    "Could not save to config.yaml: ${configPersistError}": "寫入 config.yaml 失敗：${configPersistError}",
+    "Duration:": "耗時：",
+    "Started:": "開始時間：",
+    "last progress": "最近進度",
+    "Progress:": "進度：",
+    "pending": "等待中",
+    "in flight": "進行中",
+    "starting": "啟動中",
+    "so far:": "目前進度：",
+    "Prompt post-processing is set to Single user message, which collapses every turn into one message. Prompt caching cannot reuse any prefix across requests in this mode — every request is a cache write with no read. Switch to None or Merge consecutive roles for caching to take effect.": "「提示詞後處理」目前為「單一使用者訊息」，此模式會把所有輪次塞進同一則訊息。在此模式下提示詞快取無法跨請求重用任何前綴，每次請求都只寫不讀。請切換為「無」或「合併連續角色」以使快取生效。",
+    "Prompt post-processing is set to Strict or Semi-strict, which folds every system message after the first into a user turn. Prompt caching still works on the first user message's tail, but the dedicated system-prompt cache breakpoint is unavailable. None or Merge consecutive roles gives the best cache coverage.": "「提示詞後處理」目前為「嚴格」或「半嚴格」，此模式會把首則之後的所有系統訊息併入使用者輪次。提示詞快取仍能命中首則使用者訊息的尾部，但無法單獨快取系統提示。改用「無」或「合併連續角色」可獲得最佳快取覆蓋。",
+    "sync.category.characters": "角色卡",
+    "sync.category.characters.desc": "角色卡 PNG 檔案，每個角色一份獨立檔案。",
+    "sync.category.chats": "聊天與群組",
+    "sync.category.chats.desc": "單人聊天、群組聊天與群組中繼資料。",
+    "sync.category.worlds": "世界書（Lorebook）",
+    "sync.category.worlds.desc": "世界書 JSON 檔案。",
+    "sync.category.card-apps": "卡片應用",
+    "sync.category.card-apps.desc": "每個角色的 CardApp 工作目錄檔案，不含其內部 .git 歷史記錄。",
+    "sync.category.skills": "技能（Skills）",
+    "sync.category.skills.desc": "已安裝的技能知識包。",
+    "sync.category.openai-presets": "OpenAI 預設",
+    "sync.category.openai-presets.desc": "對話補全預設檔案，每個預設一份。",
+    "sync.category.novelai-presets": "NovelAI 預設",
+    "sync.category.novelai-presets.desc": "NovelAI 預設檔案。",
+    "sync.category.koboldai-presets": "KoboldAI 預設",
+    "sync.category.koboldai-presets.desc": "KoboldAI 預設檔案。",
+    "sync.category.textgen-presets": "文本補全預設",
+    "sync.category.textgen-presets.desc": "TextGen WebUI 及通用文本補全預設檔案。",
+    "sync.category.instruct": "指令範本",
+    "sync.category.instruct.desc": "指令格式範本。",
+    "sync.category.context": "上下文範本",
+    "sync.category.context.desc": "上下文格式化範本。",
+    "sync.category.sysprompt": "系統提示詞",
+    "sync.category.sysprompt.desc": "系統提示詞範本。",
+    "sync.category.reasoning": "推理範本",
+    "sync.category.reasoning.desc": "推理格式範本。",
+    "sync.category.themes": "主題",
+    "sync.category.themes.desc": "介面主題檔案。",
+    "sync.category.movingUI": "可移動介面佈局",
+    "sync.category.movingUI.desc": "已儲存的可移動面板佈局。",
+    "sync.category.quickreplies": "快速回覆",
+    "sync.category.quickreplies.desc": "快速回覆集。",
+    "sync.category.assets": "素材",
+    "sync.category.assets.desc": "素材資料夾（音效、背景音樂等）。",
+    "sync.category.backgrounds": "背景",
+    "sync.category.backgrounds.desc": "背景圖片檔案。",
+    "sync.category.avatars": "使用者設定頭像",
+    "sync.category.avatars.desc": "使用者設定頭像圖片檔案。",
+    "sync.category.user-files": "使用者上傳檔案",
+    "sync.category.user-files.desc": "在聊天或腳本中上傳的檔案。",
+    "sync.category.comfy-workflows": "ComfyUI 工作流程",
+    "sync.category.comfy-workflows.desc": "已儲存的 ComfyUI 節點工作流程 JSON 檔案，體積通常很小。",
+    "sync.category.user-images": "使用者圖片",
+    "sync.category.user-images.desc": "透過 user/images 目錄管理的圖片庫。",
+    "sync.category.image-metadata": "圖片中繼資料索引",
+    "sync.category.image-metadata.desc": "image-metadata.json，需與使用者圖片一起同步。",
+    "sync.category.vectors": "向量快取",
+    "sync.category.vectors.desc": "向量嵌入快取。兩端共用同一份向量，避免重複消耗 API 配額。",
+    "sync.category.stats": "角色統計",
+    "sync.category.stats.desc": "stats.json，由聊天記錄派生；衝突時可在本機重新計算。",
+    "sync.category.settings": "設定",
+    "sync.category.settings.desc": "settings.json，完整的 Atria 設定。",
+    "sync.category.secrets": "API 金鑰與憑證",
+    "sync.category.secrets.desc": "secrets.json，API 金鑰、權杖與密碼。",
+    "sync.category.extensions": "擴充功能",
+    "sync.category.extensions.desc": "使用者層級擴充檔案，預設關閉。",
+    "sync.warning.settings_single_file_conflict": "單一大檔，衝突時只能按整檔二選一。",
+    "sync.warning.secrets_plaintext_transport": "包含 API 金鑰；除非傳輸已加密，否則將以明文方式透過區域網路傳送。",
+    "sync.warning.extensions_version_drift": "第三方擴充功能可能存在本機未完成的改動或版本不相容的程式碼。",
+    "LAN Sync": "區域網路同步",
+    "Open LAN Sync": "開啟區域網路同步",
+    "Recommended for two devices in regular use. Repeated, two-way, incremental — only changed data crosses the wire.": "推薦兩台經常使用的裝置使用。重複、雙向、增量——只有變更的資料會透過網路傳輸。",
+    "One-shot full-data transfer for moving to a brand-new device. For ongoing two-way sync use LAN Sync above.": "一次性全量資料傳輸，適用於遷移到全新裝置。如需持續雙向同步，請使用上方的區域網路同步。",
+    "Sync two Atria devices on the same network. Only changed data crosses the wire; full re-uploads aren't needed.": "同步同一網路下的兩台 Atria 裝置。只有變更的資料會透過網路傳輸，無需重新上傳全量資料。",
+    "My devices": "我的裝置",
+    "Pair new device": "配對新裝置",
+    "Pair with existing device": "與已有裝置配對",
+    "Paired devices": "已配對的裝置",
+    "No paired devices yet. Use the tabs above to pair this device with another.": "尚未配對任何裝置。請使用上方的標籤頁將此裝置與另一台配對。",
+    "Generate a one-time pairing link to share with another device on the same network. The other device pastes the URL into its own Pair with existing device tab.": "產生一次性的配對連結，分享給同一網路下的另一台裝置。另一台裝置將連結貼到其「與已有裝置配對」標籤頁即可。",
+    "Label for the OTHER device (shown in your devices list)": "另一台裝置的標籤（顯示在你的裝置清單中）",
+    "e.g. Phone, Laptop, Office desktop": "例如：手機、筆電、辦公桌機",
+    "Categories to sync:": "要同步的類別：",
+    "Generate pairing link": "產生配對連結",
+    "Share this with the other device": "將此分享給另一台裝置",
+    "Copy the link and paste it into the OTHER device's Pair with existing device tab.": "複製此連結，貼到另一台裝置的「與已有裝置配對」標籤頁。",
+    "Pairing link": "配對連結",
+    "Copy link": "複製連結",
+    "Generate another": "重新產生",
+    "The other device must enter THIS device's credentials when pairing if you have basic auth enabled. They are sent over LAN only, never stored.": "如果你啟用了基本驗證，另一台裝置在配對時需要輸入此裝置的憑證。憑證僅透過區域網路傳送，不會被儲存。",
+    "Paste the pairing link from the other device, or fill in the fields manually.": "貼上另一台裝置的配對連結，或手動填寫各項欄位。",
+    "Special characters in your handle are normalized to underscores for pairing. Both devices must use the same handle.": "使用者名稱中的特殊字元在配對時會被正規化為底線。兩台裝置必須使用相同的使用者名稱。",
+    "This pairing link is for ${0}, but you're logged in as ${1}. Pair from the matching account, or use the same handle on both devices.": "此配對連結面向 ${0}，但您目前登入為 ${1}。請使用相符的帳戶配對，或在兩台裝置上使用同一使用者名稱。",
+    "Paste pairing link here": "在此貼上配對連結",
+    "Other device base URL": "另一台裝置的基礎 URL",
+    "Peer identifier from the other device": "另一台裝置給出的識別碼",
+    "Label for the other device": "另一台裝置的標籤",
+    "e.g. Phone": "例如：手機",
+    "Peer ID": "對端 ID",
+    "If the other device has basic authentication enabled, enter the credentials it expects. Otherwise leave blank.": "如果另一台裝置啟用了基本驗證，請輸入它要求的憑證。否則留空即可。",
+    "Basic auth username (optional)": "基本驗證使用者名稱（選填）",
+    "Basic auth password (optional)": "基本驗證密碼（選填）",
+    "Pair and sync": "配對並同步",
+    "Resolve conflicts": "解決衝突",
+    "The same file was edited on both devices. Pick which version to keep for each file. There's no line-by-line merge.": "同一檔案在兩台裝置上都被修改了。請為每個檔案選擇要保留的版本，不支援按行合併。",
+    "Apply resolutions": "套用解決方案",
+    "Type: ${conflict.kind}": "類型：${conflict.kind}",
+    "Local: deleted": "本機：已刪除",
+    "Local version": "本機版本",
+    "Remote: deleted": "遠端：已刪除",
+    "Remote version": "遠端版本",
+    "Sync now": "立即同步",
+    "Undo last sync": "撤銷上次同步",
+    "Forget": "忘記",
+    "Last sync: ${formatRelativeTime(peer.lastSyncAt)}": "上次同步：${formatRelativeTime(peer.lastSyncAt)}",
+    "just now": "剛剛",
+    "${minutes} min ago": "${minutes} 分鐘前",
+    "${hours} hr ago": "${hours} 小時前",
+    "${days} day(s) ago": "${days} 天前",
+    "Syncing with ${payload.label || payload.remotePeerId}…": "正在與 ${payload.label || payload.remotePeerId} 同步……",
+    "Syncing with ${peer.label || peerId}…": "正在與 ${peer.label || peerId} 同步……",
+    "Synced with ${payload.label || payload.remotePeerId}.": "已與 ${payload.label || payload.remotePeerId} 同步。",
+    "Synced with ${peer.label || peerId}.": "已與 ${peer.label || peerId} 同步。",
+    "Sync complete.": "同步完成。",
+    "Applying resolutions…": "正在套用解決方案……",
+    "Authentication to the other device failed. Check your credentials.": "向另一台裝置驗證失敗。請檢查憑證。",
+    "Could not reach the other device. Check the base URL and that the device is online.": "無法連線到另一台裝置。請檢查基礎 URL 與裝置是否在線。",
+    "Could not reach the other device.": "無法連線到另一台裝置。",
+    "Peer state changed during sync. Retrying once…": "同步過程中對端狀態發生變化。即將重試一次……",
+    "${body.conflicts.length} file(s) conflict. Pick a version for each below.": "有 ${body.conflicts.length} 個檔案存在衝突。請在下方為每個檔案選擇版本。",
+    "Conflict resolution canceled. Re-run sync when you're ready.": "已取消衝突解決。準備好後再重新同步。",
+    "This peer was paired in an older version. Click Forget and pair again to record the base URL.": "此對端在舊版本中完成配對。請點擊「忘記」後重新配對以記錄基礎 URL。",
+    "Authentication to the other device failed. Forget and re-pair if its credentials changed.": "向另一台裝置驗證失敗。如果其憑證已變更，請忘記並重新配對。",
+    "Enter the other device's base URL (e.g. http://192.168.1.42:8000)": "請輸入另一台裝置的基礎 URL（例如 http://192.168.1.42:8000）",
+    "Peer's basic auth username (leave blank if disabled)": "對端的基本驗證使用者名稱（未啟用則留空）",
+    "Peer's basic auth password": "對端的基本驗證密碼",
+    "Undo the last sync with ${peer.label || peerId}? This rewinds THIS device only; the other device is unaffected.": "確定撤銷與 ${peer.label || peerId} 的上次同步嗎？這只會回退本裝置，另一台裝置不受影響。",
+    "Undo complete.": "撤銷完成。",
+    "Reverted to the state before the last sync with ${peer.label || peerId}.": "已回退到與 ${peer.label || peerId} 上次同步之前的狀態。",
+    "Undo failed": "撤銷失敗",
+    "Nothing to undo — no prior sync recorded.": "無可撤銷項——未記錄任何先前同步。",
+    "Forget ${peer.label || peerId}? Both the registry entry and the on-disk shadow repo will be deleted. The other device is unaffected.": "確定忘記 ${peer.label || peerId} 嗎？註冊表條目和磁碟上的影子倉庫都將被刪除。另一台裝置不受影響。",
+    "Forgotten.": "已忘記。",
+    "Forget failed": "忘記失敗",
+    "Clear credentials": "清除憑證",
+    "Credentials cleared.": "憑證已清除。",
+    "Credentials saved for this peer. Use 'Clear credentials' on the peer card to remove them.": "已為此對端儲存憑證。可在對端卡片上點擊「清除憑證」移除。",
+    "Failed to clear credentials for ${peer.label || peerId}.": "清除 ${peer.label || peerId} 的憑證失敗。",
+    "Failed to generate pairing link": "產生配對連結失敗",
+    "Pairing link copied.": "配對連結已複製。",
+    "Copy from the field above.": "請從上方欄位中複製。",
+    "Enter a label for the other device first.": "請先為另一台裝置輸入標籤。",
+    "Select at least one category to sync.": "請至少選擇一個要同步的類別。",
+    "Paste the pairing link or fill in the base URL and peer ID.": "請貼上配對連結，或填寫基礎 URL 與對端 ID。",
+    "Failed to open LAN Sync": "開啟區域網路同步失敗",
+    "LAN Sync is unavailable. The server reported: ${availability.reason || 'unknown reason'}.": "區域網路同步不可用。伺服器回報：${availability.reason || 'unknown reason'}。",
+    "Cross-mode restore detected. The backup is from a different storage engine than this server.": "偵測到跨模式還原：備份來自與目前伺服器不同的儲存引擎。",
+    "Scratch MySQL connection URL": "暫存 MySQL 連線 URL",
+    "Scratch PostgreSQL connection URL": "暫存 PostgreSQL 連線 URL",
+    "A temporary handle is created on this DB and removed when the restore completes.": "將在該資料庫中暫時建立一個使用者代號，還原完成後自動移除。",
+    "A temporary handle is created on the scratch database and removed when the restore completes.": "將在暫存資料庫中暫時建立一個使用者代號，還原完成後自動移除。",
+    "Use Connection": "使用此連線",
+    "Cross-Mode Restore": "跨模式還原",
+    "Cross-mode restore: converting backup into current storage engine.": "跨模式還原：正在將備份轉換為目前儲存引擎的格式。",
+    "Restore cancelled — scratch DB connection not provided.": "已取消還原——未提供暫存資料庫連線。",
+    "No connection URL entered; cancel and retry.": "未填寫連線 URL，請取消後再試。",
+    "Export warning": "匯出提示",
+    "Linked world book \"${0}\" was not found. The card was exported without an embedded world book.": "找不到綁定的世界書「${0}」。匯出的角色卡未攜帶內嵌世界書。",
+    "Linked world book \"${0}\" could not be read. The card was exported without an embedded world book.": "無法讀取綁定的世界書「${0}」。匯出的角色卡未攜帶內嵌世界書。",
+    "Failed to embed world book \"${0}\". The card was exported without it.": "嵌入世界書「${0}」失敗。匯出的角色卡未攜帶它。",
+    "Merge chats": "合併聊天",
+    "Target name": "目標名稱",
+    "Drag to reorder": "拖動以重排序",
+    "+ Add chat": "+ 新增聊天",
+    "The new chat contains only messages. Plugin state (memory graph, orchestrator, search-tools, etc.) does not migrate and must be regenerated.": "新聊天只包含訊息本身。外掛狀態（記憶圖譜、編排器、搜尋工具等）不會遷移，需要在新聊天裡重新生成。",
+    "Total: ${0} messages": "總計：${0} 則訊息",
+    "Merge": "合併",
+    "Created ${0}": "已建立 ${0}",
+    "from": "起始",
+    "to": "結束",
+    "Use all": "全選",
+    "Add chat to merge": "新增聊天到合併列表",
+    "No other chats available to add.": "沒有其他可新增的聊天。",
+    "Split chat": "拆分聊天",
+    "+ Add point": "+ 新增切點",
+    "Split": "拆分",
+    "msgs ${0}–${1}": "訊息 ${0}–${1}",
+    "Created ${0} new chats": "已建立 ${0} 個新聊天",
+    "Chat is too short to split.": "聊天太短，無法拆分。",
+    "Split Chat": "拆分聊天",
+    "Need at least 2 messages to split.": "至少需要 2 條訊息才能拆分。",
+    "Start time": "起始時間",
+    "End time": "結束時間",
+    "Invalid log filter": "無效的日誌篩選",
+    "Start time must be earlier than end time.": "起始時間必須早於結束時間。",
+    "Card-bound": "本卡內嵌",
+    "Storage Inspector": "儲存審查",
+    "Inspect your storage usage.": "查看你的儲存使用情況。",
+    "Loading…": "載入中……",
+    "No data in this category.": "此類別下無資料。",
+    "Retry": "重試",
+    "Worldbooks": "世界書",
+    "Attachments": "附件與工作流",
+    "Presets & Settings": "預設與設定",
+    "Vector Stores": "向量庫",
+    "Storage": "儲存",
+    "Chat Images": "聊天圖片",
+    "Persona Avatars": "使用者頭像",
+    "ComfyUI Workflows": "ComfyUI 工作流",
+    "API Presets": "API 預設",
+    "UI Elements": "UI 元素",
+    "Instruct Templates": "指令範本",
+    "Main Settings": "主設定",
+    "Chat Metadata": "聊天元資料",
+    "Contains API keys · not inspectable": "含 API 金鑰，不可檢視內容",
+    "Sprites": "表情圖",
+    "Walk exceeded time limit; refresh to retry.": "目錄遍歷逾時，請重新整理重試。",
+    "Storage · All Users": "儲存 · 全平台彙總",
+    "Storage Management": "儲存管理",
+    "View:": "檢視：",
+    "Search users...": "搜尋使用者……",
+    "* All Users *": "* 全平台彙總 *",
+    "(admin)": "（管理員）",
+    "(disabled)": "（已停用）",
+    "Failed to load users.": "載入使用者清單失敗。",
+    "Browser Storage": "瀏覽器儲存",
+    "Inspect this browser's storage.": "查看目前瀏覽器的儲存使用情況。",
+    "localStorage": "localStorage",
+    "sessionStorage": "sessionStorage",
+    "IndexedDB": "IndexedDB",
+    "Cache Storage": "Cache Storage",
+    "Browser did not report a quota.": "瀏覽器未上報配額。",
+    "Delete %s?": "刪除 %s？",
+    "This will permanently remove %s from your browser. This action cannot be undone.": "此操作將從瀏覽器中永久刪除 %s，且無法復原。",
+    "Deleted": "已刪除",
+    "Failed to delete: %s": "刪除失敗：%s",
+    "stores": "儲存",
+    "records": "條",
+    "requests": "請求",
+    "Refusing to save: chat is not fully loaded. Reload the page to prevent data loss.": "拒絕儲存：聊天尚未完全載入。請重新載入頁面以防止資料遺失。",
+    "Chat save aborted": "聊天儲存已中止",
+    "Cache stable chat history": "快取穩定的聊天歷史",
+    "Keep recent turns uncached": "不快取最近幾輪",
+    "The current input is also kept uncached. Reuses a fixed history prefix for up to five minutes, then advances it. Changed history or summaries rebuild the prefix. Cache hits and savings depend on the provider.": "目前輸入也不快取。固定重用一段歷史前綴，最多五分鐘後向後推進；歷史或摘要變更時重建前綴。實際命中與節省取決於提供商。",
+    "Uncached turns must be a positive integer.": "不快取的輪數必須為正整數。",
+    "OpenRouter Gemini history cache toggle state": "OpenRouter Gemini 歷史快取開關狀態",
+    "Sets OpenRouter Gemini stable history caching on/off. Gets current value if no argument is provided.": "設定 OpenRouter Gemini 穩定歷史快取的開啟/關閉。如未提供參數，則取得目前值。",
+    "Number of recent turns excluded from Gemini history caching": "Gemini 歷史快取不涵蓋的最近回合數",
+    "Keeps this many completed turns plus the current input outside the cache. Default: 2.": "將最近這麼多完整回合連同目前輸入留在快取之外。預設：2。",
+    "Import {name} preset": "匯入 {name} 預設",
+    "Import {name} below to use the bundled plugin-task preset. It keeps reference material separate from the runtime task.": "點擊下方按鈕匯入 {name}，使用內建外掛任務預設；參考資料與執行期任務會分別放置。",
+    "The bundled Atri analysis preset supports plot planning, character reasoning, pacing and continuity checks. Runtime instructions and available tools determine the assigned task; the preset does not write RP prose.": "內建 Atri 分析預設支援劇情規劃、角色推演、節奏與一致性檢查。具體職責由執行期任務與可用工具決定，不負責撰寫 RP 正文。",
+    "Import {name} below to use the bundled analysis preset. For the Agenda planner, select Atri-plugin-only instead.": "點擊下方按鈕匯入 {name}，使用內建分析預設。Agenda 的調度節點應選擇 Atri-plugin-only。",
+    "Native State Conditions": "原生狀態條件",
+    "Require committed state from supported providers before this entry can activate.": "僅在支援的狀態來源存在已提交狀態時，此條目才能啟用。",
+    "Activate this entry directly while the conditions match": "條件符合時直接啟用此條目",
+    "Activate while matched": "條件符合時啟用",
+    "All conditions": "全部條件",
+    "Any condition": "任一條件",
+    "Add state condition": "新增狀態條件",
+    "Save conditions": "儲存條件",
+    "Unknown, unavailable, or incomplete state conditions fail closed and block this entry. Enable Activate while matched to keep scene content active without repeated keyword mentions.": "未知、不可用或不完整的狀態條件會按失敗處理並阻止此條目啟用。啟用「條件符合時啟用」後，無需反覆命中關鍵字即可維持場景內容生效。",
+    "State Change Events": "狀態變化事件",
+    "Activate this entry only when committed provider state changes from one value to another.": "僅當已提交的狀態從一個值變化為另一個值時啟用此條目。",
+    "All events": "全部事件",
+    "Any event": "任一事件",
+    "Add state event": "新增狀態事件",
+    "Save events": "儲存事件",
+    "From and To are exact scalar values. At least one is required. The first committed observation only seeds the baseline and does not fire an event.": "「原值」與「新值」為精確純量值，至少設定一項。首次已提交觀察只建立基線，不觸發事件。",
+    "Selection & Dependencies": "選擇與依賴",
+    "Optional": "可選",
+    "Optional Atria selection rules. Leave these fields empty to keep legacy World Info selection and budget behavior.": "可選的 Atria 選擇規則。保持這些欄位為空即可沿用原有世界書選擇與預算行為。",
+    "Required entries": "必要條目",
+    "One UID or Book#UID per line. Required entries are selected atomically with this entry.": "每行一個 UID 或 世界書#UID。必要條目會與目前條目作為一個整體進行原子選擇。",
+    "Related entries": "相關條目",
+    "Related entries gain relevance only when they are already candidates; they are not forced into the prompt.": "相關條目只有在本身已成為候選時才獲得相關性加權；不會被強制注入提示詞。",
+    "Mutual exclusion group": "互斥群組",
+    "Budget tier": "預算層級",
+    "WI Budget Tier Critical": "關鍵",
+    "WI Budget Tier Scene": "目前場景",
+    "WI Budget Tier Normal": "一般",
+    "WI Budget Tier Optional": "可選背景",
+    "Compact content": "精簡內容",
+    "Compact content is considered only for an atomic dependency bundle. A required bundle is never partially injected.": "僅在原子依賴組合整體無法容納時才考慮精簡內容。必要依賴組合絕不會被部分注入。",
+    "Save selection rules": "儲存選擇規則",
+    "WI Required Entries Placeholder": "12\n其他世界書#4",
+    "WI Related Entries Placeholder": "18\n其他世界書#9",
+    "WI Mutual Exclusion Placeholder": "城堡版本",
+    "WI Compact Content Placeholder": "僅在完整依賴組合無法容納時使用的簡短備用內容。",
+    "Provider": "狀態來源",
+    "Path": "路徑",
+    "Operator": "運算子",
+    "Value type": "值類型",
+    "Value": "值",
+    "unsupported": "不支援",
+    "Contains": "包含",
+    "Any value": "任意值",
+    "String value": "字串",
+    "Number value": "數字",
+    "Boolean value": "布林值",
+    "Null value": "空值",
+    "True": "真",
+    "False": "假",
+    "Remove condition": "刪除條件",
+    "Remove event": "刪除事件",
+    "From": "原值",
+    "To": "新值",
+    "Unsaved state condition changes": "狀態條件有尚未儲存的變更",
+    "State conditions saved": "狀態條件已儲存",
+    "Invalid state conditions": "狀態條件無效",
+    "State conditions are limited to 32 per entry": "每個條目最多可設定 32 個狀態條件",
+    "Every state condition needs a provider, path, operator, and scalar value": "每個狀態條件都需要狀態來源、路徑、運算子與純量值",
+    "Condition #${0} is invalid": "條件 #${0} 無效",
+    "Unsaved state event changes": "狀態事件有尚未儲存的變更",
+    "State events saved": "狀態事件已儲存",
+    "Invalid state events": "狀態事件無效",
+    "State events are limited to 32 per entry": "每個條目最多可設定 32 個狀態事件",
+    "Every state event needs a provider, path, and at least one From/To value": "每個狀態事件都需要狀態來源、路徑，以及至少一個原值/新值",
+    "Unsaved selection rule changes": "選擇規則有尚未儲存的變更",
+    "Selection rules saved": "選擇規則已儲存",
+    "World Info selection rules": "世界書選擇規則",
+    "${0}: invalid entry reference \"${1}\"": "${0}：條目引用「${1}」無效",
+    "${0}: an entry cannot depend on or relate to itself": "${0}：條目不能依賴或關聯自身",
+    "Entry #${0}": "條目 #${0}",
+    "Vector": "向量",
+    "No primary keywords": "無主要關鍵字",
+    "Sticky ${0}": "黏著 ${0}",
+    "Cooldown ${0}": "冷卻 ${0}",
+    "Delay ${0}": "延遲 ${0}",
+    "Stops recursion": "阻止繼續遞迴",
+    "Recursive only": "僅遞迴啟用",
+    "Defaults": "預設值",
+    "Conditions ${0}": "狀態條件 ${0}",
+    "Events ${0}": "狀態事件 ${0}",
+    "Persistent activation": "持續啟用",
+    "Not configured": "未設定",
+    "Required ${0}": "必要條目 ${0}",
+    "Related ${0}": "關聯條目 ${0}",
+    "Group ${0}": "群組 ${0}",
+    "Automation": "自動化",
+    "Scan override": "掃描覆寫",
+    "Case override": "大小寫覆寫",
+    "Word override": "完整單字覆寫",
+    "Group scoring": "群組評分",
+    "Overrides ${0}": "覆寫項目 ${0}",
+    "Search required entry…": "搜尋必要條目…",
+    "Search related entry…": "搜尋關聯條目…",
+    "Remove ${0}": "移除 ${0}",
+    "Basic": "基本",
+    "Activation": "啟用",
+    "Lifecycle": "生命週期",
+    "State-driven": "狀態驅動",
+    "Entry Relationships": "條目關係",
+    "Issues ${0}": "問題 ${0}",
+    "State": "狀態",
+    "Event": "事件",
+    "Dependencies": "依賴",
+    "Select ${0}": "選擇 ${0}",
+    "Scanning": "掃描",
+    "How text is scanned and matched before entry-specific overrides.": "文字在條目級覆寫前如何被掃描與配對。",
+    "How much prompt context World Info may consume.": "世界書可使用多少提示詞上下文。",
+    "Recursion": "遞迴",
+    "How recursive discovery proceeds and where it stops.": "遞迴探索如何進行以及在何處停止。",
+    "Selection / Priority": "選擇 / 優先級",
+    "Global ordering and scoring defaults.": "全域排序與評分預設值。",
+    "World Info workspace": "世界書工作區",
+    "Library": "書庫",
+    "Entries": "條目",
+    "Entry display mode": "條目顯示模式",
+    "Compact": "精簡",
+    "Full": "完整",
+    "Custom fields": "自訂欄位",
+    "Continuous Cards": "連續卡片",
+    "Close World Info Workspace": "關閉世界書工作區",
+    "Entry filters": "條目篩選",
+    "Special": "特殊",
+    "Issues": "問題",
+    "Select filtered": "選擇篩選結果",
+    "Bulk Inspector": "批次檢查器",
+    "Safe multi-edit: nothing changes until you explicitly choose a field in Bulk Edit.": "安全批次編輯：只有明確選擇欄位後才會修改，其餘欄位保持不變。",
+    "Keep unchanged": "保持不變",
+    "Bulk Edit…": "批次編輯…",
+    "Select an entry": "選擇一個條目",
+    "Test Activation": "測試啟用",
+    "Activation Trace": "啟用追蹤",
+    "More entry actions": "更多條目操作",
+    "Move / Copy": "移動 / 複製",
+    "Choose an entry from the list to inspect it.": "從清單選擇一個條目進行檢查。",
+    "Lorebook actions": "世界書操作",
+    "Enable globally": "全局啟用",
+    "Disable globally": "取消全局",
+    "Globally enabled": "已全局啟用",
+    "Not global": "未全局啟用",
+    "Search options": "搜尋選項",
+    "Tags": "標籤",
+    "Pin": "置頂",
+    "Pin lorebook": "置頂世界書",
+    "Unpin lorebook": "取消置頂世界書",
+    "Fill empty titles": "填入空白標題",
+    "Apply sorting as Order": "將目前排序套用為「順序」",
+    "Custom field visibility": "自訂欄位可見性",
+    "Open all cards": "展開所有卡片",
+    "Close all cards": "收合所有卡片",
+    "Testing current chat with the existing World Info dry-run…": "正在使用現有世界書 dry-run 測試目前聊天…",
+    "Activation test": "啟用測試",
+    "No diagnostic detail is available.": "暫無診斷詳情。",
+    "Activation test failed: ${0}": "啟用測試失敗：${0}",
+    "Content is empty.": "內容為空。",
+    "Normal keyword-driven entry has no Primary Keywords.": "一般關鍵字驅動條目沒有主要關鍵字。",
+    "Required entry": "必要條目",
+    "Related entry": "關聯條目",
+    "${0} reference \"${1}\" is invalid.": "${0}引用「${1}」無效。",
+    "${0} points to this entry.": "${0}指向目前條目。",
+    "${0} \"${1}\" does not resolve in this lorebook.": "${0}「${1}」無法在目前世界書中解析。",
+    "State condition #${0} is incomplete.": "狀態條件 #${0} 不完整。",
+    "State change event #${0} is incomplete.": "狀態變更事件 #${0} 不完整。",
+    "Automation ID \"${0}\" is used by more than one entry.": "自動化 ID「${0}」被多個條目使用。",
+    "Compact Content is configured without Required or Related Entries.": "已設定精簡內容，但未設定必要條目或關聯條目。",
+    "Unknown for current chat": "目前聊天結果未知",
+    "The existing World Info dry-run produced no trace for this entry. It may not be part of the currently active lorebook scan. No activation result was invented.": "現有世界書 dry-run 未為此條目產生追蹤。它可能不在目前啟用的世界書掃描中；系統不會臆造啟用結果。",
+    "Activated by the current runtime scan.": "依目前執行期掃描會啟用。",
+    "No activation path succeeded in the current runtime scan.": "目前執行期掃描中沒有成功的啟用路徑。",
+    "Would activate": "會啟用",
+    "Would not activate": "不會啟用",
+    "Critical tier": "關鍵級",
+    "Scene tier": "場景級",
+    "Optional tier": "可選級",
+    "${0} entry": "${0} 個條目",
     "Diagnostics": "診斷",
     "[title]Open diagnostics workspace": "開啟診斷工作台",
     "Healthy": "正常",
@@ -6412,5 +6362,35 @@
     "Server phase": "伺服器階段",
     "Unknown extension": "未知擴充",
     "Unknown time": "未知時間",
-    "Unknown version": "未知版本"
+    "Unknown version": "未知版本",
+    "Remember immersive mode": "記住沉浸模式狀態",
+    "Focus current story": "聚焦目前劇情",
+    "Immersive extension components": "沉浸擴充元件",
+    "Immersive visuals": "沉浸視覺呈現",
+    "Text first": "純文字優先",
+    "Visual enhanced": "視覺增強",
+    "Immersive HUD": "沉浸 HUD",
+    "Always visible": "常顯",
+    "Minimal": "極簡",
+    "More tools": "更多工具",
+    "Send message": "傳送訊息",
+    "Stop response": "停止回應",
+    "Response stopped": "回應已停止",
+    "Continue response": "繼續回應",
+    "Rewrite response": "重寫回應",
+    "Keep partial response": "保留目前回應",
+    "Say something…": "說點什麼……",
+    "Message input": "訊息輸入",
+    "The scene is continuing…": "場景正在繼續……",
+    "The character is responding…": "角色正在回應……",
+    "Message actions": "訊息操作",
+    "Message from": "來自",
+    "Immersive status": "沉浸狀態",
+    "Details": "詳情",
+    "Immersive details": "沉浸詳情",
+    "Story details": "劇情詳情",
+    "Close details": "關閉詳情",
+    "Response did not complete": "回應沒有完成",
+    "View reason": "查看原因",
+    "Dismiss failure notice": "關閉失敗提示"
 }

@@ -637,22 +637,6 @@
         bottom: unset;
     }
 
-    body.atria-immersive-mode:not(.atria-immersive-keep-top-bar) #sheld {
-        top: 0 !important;
-        height: var(--doc-height) !important;
-        max-height: var(--doc-height) !important;
-    }
-
-    body.atria-immersive-mode.atria-immersive-keep-top-bar #sheld {
-        height: calc(var(--doc-height) - var(--topBarBlockSize)) !important;
-        max-height: calc(var(--doc-height) - var(--topBarBlockSize)) !important;
-    }
-
-    body.atria-immersive-mode #chat {
-        max-height: calc(var(--doc-height) - var(--bottomFormBlockSize)) !important;
-    }
-
-
     #leftSendForm,
     #rightSendForm {
         width: 1.15em;
