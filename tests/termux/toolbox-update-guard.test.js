@@ -15,6 +15,13 @@ describe('Termux update guards', () => {
         execFileSync('bash', ['-n', termuxCliPath], { stdio: 'pipe' });
     });
 
+    test('piped toolbox launch reconnects the interactive runtime to the terminal', () => {
+        const source = fs.readFileSync(toolboxPath, 'utf8');
+
+        expect(source).toContain('if [ ! -r /dev/tty ]; then');
+        expect(source).toContain('exec bash "$RUNTIME_FILE" "$@" </dev/tty');
+    });
+
     test('toolbox pins install and fetch paths to the standalone Atria repository', () => {
         const source = fs.readFileSync(toolboxPath, 'utf8');
 
