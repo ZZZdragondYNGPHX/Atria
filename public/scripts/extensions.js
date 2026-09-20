@@ -563,16 +563,17 @@ async function getManifests(names) {
 }
 
 /**
- * Starts background module-graph fetch/parse for heavy built-in extensions
- * before their loading-order group is reached. `modulepreload` does not
- * evaluate the module, so loading-order side effects still begin only from
- * `activateExtensions()`. Keeping this to high-order system extensions
- * avoids spending bandwidth on arbitrary third-party modules while the early
- * built-ins are activating.
+ * Starts background module-graph fetch/parse for high-order extensions before
+ * their loading-order group is reached. `modulepreload` does not evaluate
+ * the module, so loading-order side effects still begin only from
+ * `activateExtensions()`. This includes third-party extensions because
+ * real-device startup telemetry showed that a high-order local extension can
+ * dominate the entire activation phase; low-order extensions are left alone
+ * to avoid competing with immediately-needed startup work.
  *
  * @returns {number} Number of modulepreload hints added.
  */
-function prewarmDeferredSystemExtensionModules() {
+function prewarmDeferredExtensionModules() {
     const probe = document.createElement('link');
     if (!probe.relList?.supports?.('modulepreload')) {
         return 0;
@@ -580,7 +581,6 @@ function prewarmDeferredSystemExtensionModules() {
 
     let count = 0;
     for (const [name, manifest] of Object.entries(manifests)) {
-        if (getExtensionType(name) !== 'system') continue;
         if (!manifest?.js) continue;
         if (extension_settings.disabledExtensions.includes(name)) continue;
         if (!canExtensionBeActivated(manifest)) continue;
@@ -670,13 +670,18 @@ async function activateExtensions() {
         if (meetsExtensionDeps && meetsClientMinimumVersion && !isDisabled) {
             try {
                 console.debug('Activating extension', name);
-                return addExtensionLocale(name, manifest)
+                return measureExtensionStartupPhase(`extensionLocale:${name}`, () =>
+                    addExtensionLocale(name, manifest))
                     .finally(() =>
-                        Promise.all([addExtensionScript(name, manifest), addExtensionStyle(name, manifest)]),
+                        Promise.all([
+                            measureExtensionStartupPhase(`extensionScript:${name}`, () => addExtensionScript(name, manifest)),
+                            measureExtensionStartupPhase(`extensionStyle:${name}`, () => addExtensionStyle(name, manifest)),
+                        ]),
                     )
                     .then(() => {
                         activeExtensions.add(name);
-                        return callExtensionHook(name, 'activate');
+                        return measureExtensionStartupPhase(`extensionHook:${name}`, () =>
+                            callExtensionHook(name, 'activate'));
                     })
                     .catch(err => {
                         console.log('Could not activate extension', name, err);
@@ -1909,8 +1914,8 @@ export async function bootstrapExtensions(options = null) {
         }
 
         await measureExtensionStartupPhase('extensionsPrewarm', () => {
-            const count = prewarmDeferredSystemExtensionModules();
-            console.debug(`[startup] prewarmed ${count} deferred system extension module graph(s)`);
+            const count = prewarmDeferredExtensionModules();
+            console.debug(`[startup] prewarmed ${count} deferred extension module graph(s)`);
         });
         await measureExtensionStartupPhase('extensionsActivate', () =>
             activateExtensions());
