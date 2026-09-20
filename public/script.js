@@ -935,6 +935,7 @@ const immersiveController = createImmersiveController({
         stop: () => $('#mes_stop').trigger('click'),
         continue: () => $('#option_continue').trigger('click'),
         rewrite: () => $('#option_regenerate').trigger('click'),
+        openDiagnostics: () => $('#server_logs_button').trigger('click'),
     },
     shouldDeferEscape: () => (
         $('#curEditTextarea').is(':visible')
@@ -9407,6 +9408,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
 
         if (type !== 'quiet' && !isAbortedError) {
             notifyMessageFailure(errorMessage, String(name2 || chat?.[chat.length - 1]?.name || ''));
+            immersiveController.reportGenerationFailure({ message: errorMessage });
         }
 
         // if the response JSON was thrown (novel|textgenerationwebui|kobold), show the error message
