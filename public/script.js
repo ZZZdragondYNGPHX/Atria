@@ -927,6 +927,15 @@ const immersiveController = createImmersiveController({
     saveSettings: () => saveSettingsDebounced(),
     isMobile,
     translate: value => t(value),
+    eventSource,
+    eventTypes: event_types,
+    hostActions: {
+        openTools: () => $('#options_button').trigger('click'),
+        send: () => $('#send_but').trigger('click'),
+        stop: () => $('#mes_stop').trigger('click'),
+        continue: () => $('#option_continue').trigger('click'),
+        rewrite: () => $('#option_regenerate').trigger('click'),
+    },
     shouldDeferEscape: () => (
         $('#curEditTextarea').is(':visible')
         || $('#mes_stop').is(':visible')
@@ -965,9 +974,8 @@ if (typeof window !== 'undefined') {
             const $ = window.jQuery;
             if (typeof $ !== 'function') return 'noop';
 
-            const escapeIsActionable =
+            const topUiIsActionable =
                 $('#curEditTextarea').is(':visible')
-                || $('#mes_stop').is(':visible')
                 || !!document.querySelector('dialog[open]')
                 || $('#dialogue_popup, #select_chat_popup, #character_popup, #dialogue_del_mes_cancel').is(':visible')
                 || $('#logprobsViewer, #cfgConfig, #floatingPrompt, #WorldInfo').is(':visible')
@@ -978,7 +986,7 @@ if (typeof window !== 'undefined') {
                     .not('#movingDivs > div')
                     .filter(':visible').length > 0;
 
-            if (escapeIsActionable) {
+            if (topUiIsActionable) {
                 document.dispatchEvent(new KeyboardEvent('keydown', {
                     key: 'Escape', code: 'Escape', keyCode: 27, which: 27,
                     bubbles: true, cancelable: true,
@@ -992,6 +1000,15 @@ if (typeof window !== 'undefined') {
             }
             if ($('#right-nav-panel').hasClass('openDrawer')) {
                 $('#rightNavDrawerIcon').trigger('click');
+                return 'consumed';
+            }
+
+            if (immersiveController.dismissTransientLayer?.()) {
+                return 'consumed';
+            }
+
+            if ($('#mes_stop').is(':visible')) {
+                $('#mes_stop').trigger('click');
                 return 'consumed';
             }
 
