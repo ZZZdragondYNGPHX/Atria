@@ -153,22 +153,25 @@ function renderTimelineGroup(label, rows) {
     if (!rows.length) return '';
     const extent = getTimelineExtent(rows);
     if (!(extent > 0)) return '';
+
+    const rowMarkup = rows.map(row => {
+        const left = Math.max(0, Math.min(100, (row.startMs / extent) * 100));
+        const width = Math.max(1.2, Math.min(100 - left, (row.durationMs / extent) * 100));
+        return `
+            <div class="atriaStartupTimelineRow">
+                <span class="atriaStartupTimelineLabel" title="${htmlEscape(row.label)}">${htmlEscape(row.label)}</span>
+                <div class="atriaStartupTimelineTrack">
+                    <span class="atriaStartupTimelineBar" style="left:${left}%;width:${width}%"></span>
+                </div>
+                <strong>${htmlEscape(formatMs(row.durationMs))}</strong>
+            </div>
+        `;
+    }).join('');
+
     return `
         <div class="atriaStartupTimelineGroup">
             <div class="atriaStartupTimelineGroupTitle">${htmlEscape(label)} <span>${htmlEscape(formatMs(extent))}</span></div>
-            ${rows.map(row => {
-                const left = Math.max(0, Math.min(100, (row.startMs / extent) * 100));
-                const width = Math.max(1.2, Math.min(100 - left, (row.durationMs / extent) * 100));
-                return `
-                    <div class="atriaStartupTimelineRow">
-                        <span class="atriaStartupTimelineLabel" title="${htmlEscape(row.label)}">${htmlEscape(row.label)}</span>
-                        <div class="atriaStartupTimelineTrack">
-                            <span class="atriaStartupTimelineBar" style="left:${left}%;width:${width}%"></span>
-                        </div>
-                        <strong>${htmlEscape(formatMs(row.durationMs))}</strong>
-                    </div>
-                `;
-            }).join('')}
+            ${rowMarkup}
         </div>
     `;
 }
