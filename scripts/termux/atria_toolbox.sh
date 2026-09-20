@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.5
+# Atria Toolbox launcher - v0.3.6
+# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧 Luker origin。
 # v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。\n# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。\n# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
 # v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
 # v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
@@ -7,10 +8,16 @@
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.5"
+SCRIPT_VERSION="v0.3.6"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
+CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
+CANONICAL_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Atria"
+CANONICAL_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria"
+LEGACY_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Luker"
+LEGACY_REPO_SSH="git@github.com:ZZZdragondYNGPHX/Luker.git"
+LEGACY_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Luker"
 BOOT_DIR="${TMPDIR:-${PREFIX:-/data/data/com.termux/files/usr}/tmp}/atria-toolbox-$$"
 GZ_FILE="$BOOT_DIR/runtime.sh.gz"
 BASE_FILE="$BOOT_DIR/runtime.base.sh"
@@ -56,6 +63,23 @@ gzip -dc "$GZ_FILE" > "$BASE_FILE" || {
     echo "[ERROR] 无法解压工具箱运行时。" >&2
     exit 1
 }
+
+# The compressed runtime predates the standalone Atria repository. Normalize
+# every known legacy transport before the runtime can clone or fetch anything.
+normalize_runtime_repository_urls() {
+    sed -i \
+        -e "s#${LEGACY_REPO_WEB}\\.git#${CANONICAL_REPO_URL}#g" \
+        -e "s#${LEGACY_REPO_WEB}#${CANONICAL_REPO_WEB}#g" \
+        -e "s#${LEGACY_REPO_SSH}#${CANONICAL_REPO_URL}#g" \
+        -e "s#${LEGACY_RAW_BASE}#${CANONICAL_RAW_BASE}#g" \
+        "$BASE_FILE"
+
+    if grep -Fq "ZZZdragondYNGPHX/Luker" "$BASE_FILE"; then
+        echo "[ERROR] 工具箱运行时仍包含旧 Luker 仓库地址，已停止执行。" >&2
+        exit 1
+    fi
+}
+normalize_runtime_repository_urls
 
 # v0.3.0 运行时最后一行是 main_menu。先移除入口，再覆盖需要修复的函数。
 if [ "$(tail -n 1 "$BASE_FILE")" != "main_menu" ]; then
@@ -278,9 +302,40 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.5"
+SCRIPT_VERSION="v0.3.6"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
+CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
+
+ensure_atria_origin() {
+    if ! git -C "$ATRIA_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local current_origin
+    current_origin=$(git -C "$ATRIA_DIR" remote get-url origin 2>/dev/null || true)
+    if [ "$current_origin" = "$CANONICAL_REPO_URL" ]; then
+        return 0
+    fi
+
+    if [ -z "$current_origin" ]; then
+        git -C "$ATRIA_DIR" remote add origin "$CANONICAL_REPO_URL" || return 1
+    else
+        git -C "$ATRIA_DIR" remote set-url origin "$CANONICAL_REPO_URL" || return 1
+    fi
+    info "已校正 Atria 项目地址：$CANONICAL_REPO_URL"
+}
+
+# All tag/commit/main fetch paths pass through this runtime helper. Wrapping it
+# prevents an old Luker clone from ever fetching updates from the legacy repo.
+if declare -F fetch_repo_refs >/dev/null 2>&1; then
+    eval "$(declare -f fetch_repo_refs | sed '1s/fetch_repo_refs/fetch_repo_refs_base/')"
+    fetch_repo_refs() {
+        ensure_atria_origin || return 1
+        fetch_repo_refs_base "$@"
+    }
+fi
+
 WEBPACK_CACHE_ROOT="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-${HOME}/.cache/atria-webpack}"
 mkdir -p "$WEBPACK_CACHE_ROOT"
 
