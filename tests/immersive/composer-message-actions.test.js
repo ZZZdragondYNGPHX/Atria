@@ -55,6 +55,11 @@ describe('immersive composer and narrative integration', () => {
         const composer = createImmersiveComposer({ document, actions });
         composer.setEnabled(true);
 
+        const extensionButton = document.getElementById('atriaImmersiveExtensions');
+        expect(extensionButton).not.toBeNull();
+        expect(extensionButton.hidden).toBe(true);
+        expect(extensionButton.querySelector('.fa-magic-wand-sparkles')).not.toBeNull();
+
         document.getElementById('atriaImmersiveSend').click();
         expect(actions.send).toHaveBeenCalledTimes(1);
 
