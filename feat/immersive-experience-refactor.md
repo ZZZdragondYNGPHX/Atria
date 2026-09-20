@@ -6,7 +6,7 @@
 - 类型：`feat/*`
 - 工作分支：`feat/immersive-experience-refactor`
 - 基线：`main@fad1dd44c11854861db0a5b2d92335792def8ecc`
-- 状态：设计已定稿，等待正式实现
+- 状态：已实现并完成 CI 验证，PR #74 待合并
 - 产品原则：沉浸模式不是“把酒馆放全屏”，而是建立在现有聊天运行时之上的自适应剧情呈现系统。
 
 ## 一、背景与现状
@@ -644,3 +644,114 @@ Provider 必须受到预算、优先级、隔离和 dispose 生命周期约束�
 > 用户进入沉浸模式后，感知到的是“进入当前聊天世界”，而不是“把 Atria 的普通界面按 F11 放大”。
 
 纯文本卡像小说；有视觉资源时像视觉叙事；有 LoreState/CardApp 时像轻量 RP 游戏。所有复杂 AI、Memory、Orchestrator、Search、插件和 Diagnostics 能力仍在后台工作，但不会无理由打断剧情。
+
+
+## 二十七、最终实现记录（2026-09-20）
+
+### 实现结果
+
+本任务已按定稿方案完成 Phase 1～6，工作分支最终验证 HEAD：
+
+`feat/immersive-experience-refactor@76a8b894281c0e05b90b5210b385cfa5fb310876`
+
+对应 PR：
+
+- #74 `feat: immersive experience refactor`
+
+最终代码保持“Presentation Layer over existing runtime”的边界，没有创建第二套 chat/message/swipe/generation/World Info/Memory/Orchestrator/LoreState 运行时。
+
+实际落地的沉浸模块为：
+
+```text
+public/scripts/immersive/
+├─ controller.js
+├─ providers.js
+├─ presentation.js
+├─ hud.js
+├─ composer.js
+├─ message-actions.js
+├─ visuals.js
+├─ accessibility.js
+├─ breathing.js
+└─ diagnostics.js
+
+public/css/
+└─ immersive.css
+```
+
+相较最初建议结构，实际增加 `breathing.js` 与 `diagnostics.js`，分别隔离界面呼吸逻辑和最终失败/Diagnostics handoff，避免继续膨胀 controller。
+
+Android 侧实际新增：
+
+- `BackNavigationPolicy.kt`
+- `BackNavigationPolicyTest.kt`
+
+并调整 `MainActivity.kt`，使 Web/沉浸层优先消费 Android Back，再回退到 WebView history / App exit；同时把原生 fullscreen state 与故事沉浸 state 解耦。
+
+### 主要落地能力
+
+已完成：
+
+- immersive state 与浏览器/Android fullscreen 解耦；
+- desktop/mobile 独立 presentation profile；
+- Narrative 当前剧情聚焦与历史阅读恢复；
+- 复用原始 chat DOM，不复制历史消息；
+- 纯文本 / 头像 / Provider 明确 portrait 三档自适应；
+- 原生 textarea 驱动的静默 / 输入 / 生成三级 composer；
+- 中断后的 Continue / Rewrite / Keep；
+- 点击、键盘和移动长按触发的消息操作层；
+- Provider registry、priority、refresh、dispose 与故障隔离；
+- HUD 预算：primary 1、secondary 2、ambient 2，溢出进入 Details；
+- Provider scene/background/portrait/accent/action；
+- Reduced Motion 与 idle breathing；
+- 最终生成失败进入轻量提示，并转交既有 Diagnostics Workspace；
+- 第三方 DOM/运行时保持，不要求 Provider 才能继续运行；
+- Provider API 文档：`docs/development/extension-api/immersive-provider.md`；
+- 简体中文 / 繁体中文沉浸控件本地化；
+- Android Back：输入/IME → 顶层 UI → 沉浸 transient/HUD → generation → 退出沉浸 → WebView history/退出；
+- 移动端 safe-area、`--doc-height` 与触控目标尺寸硬化。
+
+### 实施过程中发现并修复的问题
+
+CI/真实浏览器验证实际暴露并修复了以下问题：
+
+1. `controller.js` 一处 ESLint trailing-comma 错误。
+2. 初版沉浸初始化错误调用 tagged-template `t(value)`，导致真实前端启动失败。
+3. 改用 `translate()` 后进一步暴露循环 ESM TDZ：`trackMissingDynamicTranslate` 尚未初始化。
+4. 将沉浸动态 UI 改为启动期安全 fallback + `data-i18n` locale pass，避免 i18n 循环依赖阻塞启动。
+5. 随后真实 runtime smoke 又暴露 `power_user` TDZ；最终移除 Controller 构造阶段对宿主设置的读取，仅在实际 enable/restore 时安全读取。
+6. Mobile Chromium smoke 初版缺少 viewport meta，导致 390px context 被浏览器按 desktop layout viewport 解释；已修测试夹具，不修改产品 profile 判定。
+7. Worldbook runtime smoke 增加 startup timeout 时的 `pageerror` 与 server log 输出，使前端启动类回归能够直接定位真实异常。
+8. Android Back 对沉浸 HUD dialog 与输入焦点的消费顺序进一步修正。
+
+### 最终验证结果
+
+最终验证 HEAD：
+
+`76a8b894281c0e05b90b5210b385cfa5fb310876`
+
+全部通过：
+
+- Immersive Experience — run `35512227222` — **success**
+- Android JVM Tests — run `35512227176` — **success**
+- Atria PR Checks — run `35512227165` — **success**
+- Worldbook Performance Foundation — run `35512227196` — **success**
+
+其中覆盖：
+
+- ESLint；
+- Node unit/regression；
+- immersive controller/provider/HUD/visuals/diagnostics/breathing tests；
+- Desktop + Mobile Chromium immersive smoke；
+- frontend build；
+- Atria Migration Guard；
+- Worldbook / Performance runtime smoke；
+- Android JVM Back policy tests。
+
+本任务没有构建 APK，也没有构建 Docker image。
+
+### 结论
+
+首版“真正的沉浸模式”已从原来的“隐藏顶栏 + fullscreen”升级为独立剧情呈现层，同时保持现有 Atria 运行时为唯一事实源。
+
+纯文本聊天表现为小说阅读器；普通头像自动进入头像增强；只有显式 Provider portrait 才进入立绘叙事；Provider 可进一步提供 HUD、场景与行动能力。Fullscreen、Android system bars、Diagnostics、World Info、generation、swipe、第三方扩展仍复用现有能力，没有形成第二套运行时。
