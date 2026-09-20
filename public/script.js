@@ -970,6 +970,9 @@ if (typeof window !== 'undefined') {
             syncNative: false,
         });
     };
+    window.__atriaSetNativeFullscreenState = (enabled) => {
+        immersiveController.setNativeFullscreenState?.(Boolean(enabled));
+    };
     window.__atriaHandleBack = () => {
         try {
             const $ = window.jQuery;
