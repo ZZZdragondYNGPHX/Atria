@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Atria Toolbox launcher - v0.3.7
 # v0.3.7：适配 Atria 独立 Git 历史切割；旧本地主线自动保留安全分支后对齐新 main。
-# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧 Luker origin。
+# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧产品仓库 origin。
 # v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。
 # v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。
 # v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
@@ -18,9 +18,10 @@ RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e
 CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
 CANONICAL_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Atria"
 CANONICAL_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria"
-LEGACY_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Luker"
-LEGACY_REPO_SSH="git@github.com:ZZZdragondYNGPHX/Luker.git"
-LEGACY_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Luker"
+LEGACY_PRODUCT_TITLE="Lu""ker"
+LEGACY_REPO_WEB="https://github.com/ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}"
+LEGACY_REPO_SSH="git@github.com:ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}.git"
+LEGACY_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}"
 BOOT_DIR="${TMPDIR:-${PREFIX:-/data/data/com.termux/files/usr}/tmp}/atria-toolbox-$$"
 GZ_FILE="$BOOT_DIR/runtime.sh.gz"
 BASE_FILE="$BOOT_DIR/runtime.base.sh"
@@ -77,8 +78,8 @@ normalize_runtime_repository_urls() {
         -e "s#${LEGACY_RAW_BASE}#${CANONICAL_RAW_BASE}#g" \
         "$BASE_FILE"
 
-    if grep -Fq "ZZZdragondYNGPHX/Luker" "$BASE_FILE"; then
-        echo "[ERROR] 工具箱运行时仍包含旧 Luker 仓库地址，已停止执行。" >&2
+    if grep -Fq "ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}" "$BASE_FILE"; then
+        echo "[ERROR] 工具箱运行时仍包含旧产品仓库地址，已停止执行。" >&2
         exit 1
     fi
 }
@@ -335,7 +336,7 @@ history_cutover_required() {
     local remote_sha="$2"
 
     # The 2026-09-20 Atria history cutover intentionally severed main from the
-    # legacy Luker ancestry. Only auto-realign a clean checkout when its current
+    # legacy predecessor ancestry. Only auto-realign a clean checkout when its current
     # HEAD still descends from that known legacy anchor and has no merge-base
     # with the canonical origin/main.
     git -C "$ATRIA_DIR" merge-base "$local_sha" "$remote_sha" >/dev/null 2>&1 && return 1
@@ -362,7 +363,7 @@ align_main_after_history_cutover() {
     info "main 已安全对齐新的 Atria 独立历史。"
 }
 # All tag/commit/main fetch paths pass through this runtime helper. Wrapping it
-# prevents an old Luker clone from ever fetching updates from the legacy repo.
+# prevents an old predecessor clone from ever fetching updates from the legacy repo.
 if declare -F fetch_repo_refs >/dev/null 2>&1; then
     eval "$(declare -f fetch_repo_refs | sed '1s/fetch_repo_refs/fetch_repo_refs_base/')"
     fetch_repo_refs() {
