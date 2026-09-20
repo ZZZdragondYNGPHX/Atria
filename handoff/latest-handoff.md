@@ -2,13 +2,13 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. All previously recorded product, storage, orchestration, memory, World Info, restore, mobile UI, and namespace work remains integrated. The latest Android / Termux startup pass has now consumed a third real-device log. First-visible Atria startup remains fast once browser navigation begins, while post-visible extension activation is the dominant remaining measured component. PR #69 therefore prewarms high-order built-in extension module graphs without changing loading-order evaluation semantics and adds per-extension backend timing for the next pass.
+Atria is an independent SillyTavern-based modified product. All previously recorded product, storage, orchestration, memory, World Info, restore, mobile UI, namespace, and Android / Termux startup work remains integrated. The logging/diagnostics product layer has now been fully refactored: PR #71 adds canonical structured logging, Incident-first diagnostics, Startup Analysis, evidence-based ownership attribution, safe diagnostic export, and high-value failure instrumentation across orchestration, extensions/plugins, memory, worldbook, storage, sync/backup, and editor/studio.
 
 Current authoritative `main`:
 
-- `9e96c82d01e6291ee469b2834061fd6778a5d235`
+- `b8cd63d0a0f7afd647cd455a7555bf283758fea4`
 
-This commit is the squash merge of PR #68, `perf: surface Termux browser-launch timing in backend logs`. It includes PR #67 granular post-visible startup timing on top of the previously merged #62/#63/#64/#65/#66 startup work. PR #67 passed Atria PR Checks #667 and Worldbook Performance Foundation #318; PR #68 final head passed Atria PR Checks #672.
+This commit is the squash merge of PR #71, `refactor: logging observability workspace`. Its final validated task head `faf9da3a087d59e4560123f9a2db5c15361778b9` passed Atria PR Checks #713, Worldbook Performance Foundation #341, and Backup and Storage UI #89. The immediately preceding startup optimization work remains integrated beneath the PR #71 baseline `main@148950dec7a8ab63229bd1f3c616f82438d165f4`.
 
 ### Android / Termux startup optimization continuation
 
@@ -170,6 +170,26 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Logging Observability Workspace Refactor
+
+- PR #71
+- Baseline: `main@148950dec7a8ab63229bd1f3c616f82438d165f4`
+- Final validated head: `faf9da3a087d59e4560123f9a2db5c15361778b9`
+- Squash merge / current `main`: `b8cd63d0a0f7afd647cd455a7555bf283758fea4`
+- Record: `features/logging-observability-workspace.md`
+- Backend logging now has one canonical bounded store; the legacy backend log-capture facade is removed.
+- Frontend logging is split into structured modules; the old frontend manager remains only as a thin compatibility shim for upstream/third-party imports.
+- Diagnostics Workspace is Incident-first with Guided / Startup / Expert modes, mobile drill-down, bounded raw-log rendering, one-click summary/full context, and “My problem just happened”.
+- Startup Analysis retains up to 20 recent sessions and renders native-SVG scope timing, slow phases, extension breakdown, comparisons and waterfall views.
+- Incident ownership is evidence-based across Atria, upstream, third-party extensions, server plugins, external/network/local environments, user configuration and unknown.
+- High-value Incident triggers cover generation/dispatch, orchestrator, memory, worldbook, storage, sync/backup, extension/plugin, editor/studio and global frontend failures.
+- Extension install/update failure stages distinguish DNS/TLS/connect/timeout/Git/HTTP/manifest/filesystem/conflict rather than collapsing to a generic network error.
+- Debug Export uses canonical stores and only safe Request Inspector metadata; full prompts/messages/responses are excluded and secrets are centrally redacted.
+- Final validation passed Atria PR Checks #713, Worldbook Performance Foundation #341 and Backup and Storage UI #89.
+- The repeated mobile World Info E2E failure was traced to stale bulk-selection state forcing detail mode during Library → Entries transitions; the product-state bug is fixed rather than masked with longer waits.
+- Android JVM/APK and Docker builds were intentionally not run because they remain opt-in.
+
 
 ### Mobile lorebook top-layer action-sheet hardening
 
