@@ -672,3 +672,12 @@ body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersiv
 body.atria-immersive-mode[data-atria-immersive-profile="mobile"] #immersiveExitButton {
     position: absolute;
 }
+
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-composer-button,
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] #immersiveExitButton,
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-provider-action,
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-hud-details-button {
+    min-width: 46px;
+    min-height: 46px;
+}
