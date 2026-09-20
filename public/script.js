@@ -1368,10 +1368,18 @@ export const extension_prompt_roles = {
 
 export const MAX_INJECTION_DEPTH = 10000;
 
-async function getClientVersion() {
+async function getClientVersion(prefetchedVersion = null) {
     try {
-        const response = await fetch('/version');
-        const data = await response.json();
+        let data = prefetchedVersion && typeof prefetchedVersion === 'object'
+            ? prefetchedVersion
+            : null;
+
+        if (!data) {
+            const response = await fetch('/version');
+            if (!response.ok) throw new Error(`version HTTP ${response.status}`);
+            data = await response.json();
+        }
+
         CLIENT_VERSION = data.agent;
         EXTENSIONS_CLIENT_VERSION = data.compatAgent || data.agent || EXTENSIONS_CLIENT_VERSION;
         displayVersion = `Atria ${data.pkgVersion}`;
@@ -2027,8 +2035,8 @@ async function firstLoadInit() {
 
     console.debug('[init] csrf-token done, showing loader');
     showLoader();
-    const clientVersionPromise = getClientVersion();
     const bootstrapPromise = fetchBootstrapSnapshot();
+    const clientVersionPromise = bootstrapPromise.then(snapshot => getClientVersion(snapshot?.version));
     registerPromptManagerMigration();
     initDomHandlers();
     initStandaloneMode();
@@ -2037,11 +2045,13 @@ async function firstLoadInit() {
     addDOMPurifyHooks();
     reloadMarkdownProcessor();
     applyBrowserFixes();
-    const clientVersionData = await clientVersionPromise;
-    await initSecrets();
     console.debug('[init] fetching bootstrap snapshot...');
-    const bootstrapSnapshot = await bootstrapPromise;
+    const [clientVersionData, bootstrapSnapshot] = await Promise.all([
+        clientVersionPromise,
+        bootstrapPromise,
+    ]);
     console.debug('[init] bootstrap snapshot received');
+    await initSecrets();
     if (bootstrapSnapshot?.secret_state) {
         primeSecretStateSnapshot(bootstrapSnapshot.secret_state);
     }
