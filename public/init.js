@@ -90,15 +90,26 @@ async function initializeApplication() {
     safePerfMark('atria:init:start');
 
     try {
+        // Start both module trees immediately. script.js statically imports
+        // lib.js, so the ES module loader still guarantees lib evaluation
+        // happens first; this only removes the network/parse serialization
+        // caused by awaiting lib.js before even requesting the application
+        // graph.
         safePerfMark('atria:init:import:lib:start');
-        await import('./lib.js');
-        safePerfMark('atria:init:import:lib:end');
-        safePerfMeasure('atria:init:import:lib', 'atria:init:import:lib:start', 'atria:init:import:lib:end');
-
         safePerfMark('atria:init:import:app:start');
-        await import('./script.js');
-        safePerfMark('atria:init:import:app:end');
-        safePerfMeasure('atria:init:import:app', 'atria:init:import:app:start', 'atria:init:import:app:end');
+
+        const libImport = import('./lib.js').then((module) => {
+            safePerfMark('atria:init:import:lib:end');
+            safePerfMeasure('atria:init:import:lib', 'atria:init:import:lib:start', 'atria:init:import:lib:end');
+            return module;
+        });
+        const appImport = import('./script.js').then((module) => {
+            safePerfMark('atria:init:import:app:end');
+            safePerfMeasure('atria:init:import:app', 'atria:init:import:app:start', 'atria:init:import:app:end');
+            return module;
+        });
+
+        await Promise.all([libImport, appImport]);
     } catch (error) {
         console.error('Failed to initialize Atria application:', error);
     } finally {
