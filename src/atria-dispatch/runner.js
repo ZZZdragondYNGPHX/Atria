@@ -15,6 +15,10 @@ import {
     findEntry,
 } from '../request-inspector.js';
 import { createDispatchContext } from './context.js';
+import { createLogger } from '../logging/logger.js';
+
+const dispatchLogger = createLogger('dispatch', { emitToConsole: true });
+const generationLogger = createLogger('generation', { emitToConsole: true });
 
 export async function runAtriaDispatch(request, response, { endpoint, select }) {
     // Prefer the client-supplied job_id (from body.atri_generation.job_id)
@@ -24,15 +28,25 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
     const bodyJobId = String(request.body?.atri_generation?.job_id || '').trim();
     const headerId = String(request.headers?.['x-atria-request-id'] || '').trim();
     const requestId = bodyJobId || headerId || randomUUID();
+    const correlation = { requestId, generationId: requestId };
+    dispatchLogger.info('request.accepted', '[Dispatch] request accepted', {
+        endpoint: String(endpoint || ''),
+        model: String(request.body?.model || ''),
+        streaming: Boolean(request.body?.stream || request.body?.streaming),
+    }, { category: 'lifecycle', correlation });
 
     let dispatchFn;
     try {
         dispatchFn = select(request.body || {}, request);
     } catch (err) {
+        dispatchLogger.error('select.failed', '[Dispatch] dispatch selection failed', {
+            message: err?.message || String(err),
+        }, { category: 'selection', correlation });
         response.status(400).json({ error: err.message || 'select failed' });
         return;
     }
     if (typeof dispatchFn !== 'function') {
+        dispatchLogger.error('select.missing-dispatch', '[Dispatch] dispatch function not provided', {}, { category: 'selection', correlation });
         response.status(400).json({ error: 'dispatch function not provided' });
         return;
     }
@@ -43,6 +57,7 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
         persist_target: persistTarget,
     });
     if (!job) {
+        generationLogger.error('job.create-failed', '[Generation] failed to create task', {}, { category: 'job', correlation });
         response.status(500).json({ error: 'failed to create task' });
         return;
     }
@@ -78,7 +93,7 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
     if (request && typeof request.once === 'function') {
         request.once('close', () => {
             for (const handler of onCloseHandlers) {
-                try { handler(); } catch (err) { console.warn('[Dispatch] onRequestClose handler threw:', err); }
+                try { handler(); } catch (err) { dispatchLogger.warn('request-close.handler-failed', '[Dispatch] onRequestClose handler threw', { message: err?.message || String(err) }, { category: 'boundary', correlation }); }
             }
         });
     }
@@ -258,6 +273,7 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
             },
         });
         try {
+            dispatchLogger.info('dispatch.started', '[Dispatch] dispatch started', { model: String(request.body?.model || '') }, { category: 'lifecycle', correlation });
             await dispatchFn(ctx);
             // Advance the generation job to `awaiting_ack` FIRST so the
             // trailer we emit next reports the current `persisted` flag
@@ -318,6 +334,7 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
             // finalizePayloadWithJob→completeInspection semantics so
             // inspector UI shows usage + parts for non-stream Claude / OAI /
             // Gemini / etc.
+            generationLogger.info('dispatch.completed', '[Generation] dispatch completed', { status: job.status, persisted: Boolean(job.persisted), streaming: isStream }, { category: 'dispatch', correlation });
             try {
                 const entry = findEntry(request);
                 // Don't overwrite terminal states set by the dispatch itself:
@@ -374,8 +391,9 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
             // try/catch: any one throwing must not prevent the others (a
             // failInspection throw was previously swallowing the
             // failGenerationJob call above the fix).
-            try { ctx.emit.error(err); } catch (e) { console.warn('[Runner] emit.error threw:', e); }
-            try { failGenerationJob(job, err?.message || String(err)); } catch (e) { console.warn('[Runner] failGenerationJob threw:', e); }
+            generationLogger.error('dispatch.failed', '[Generation] dispatch failed', { message: err?.message || String(err), stack: err?.stack || '' }, { category: 'dispatch', correlation });
+            try { ctx.emit.error(err); } catch (e) { dispatchLogger.warn('emit-error.failed', '[Runner] emit.error threw', { message: e?.message || String(e) }, { category: 'boundary', correlation }); }
+            try { failGenerationJob(job, err?.message || String(err)); } catch (e) { generationLogger.warn('job.fail-transition-failed', '[Runner] failGenerationJob threw', { message: e?.message || String(e) }, { category: 'job', correlation }); }
             try {
                 const entry = findEntry(request);
                 if (entry && entry.type === 'chat') {
@@ -387,7 +405,7 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
                     // see the same call site.
                     ctx.inspection.fail(err, 500);
                 }
-            } catch (e) { console.warn('[Runner] inspection.fail threw:', e); }
+            } catch (e) { dispatchLogger.warn('inspection.fail-transition-failed', '[Runner] inspection.fail threw', { message: e?.message || String(e) }, { category: 'inspection', correlation }); }
         }
     });
 }

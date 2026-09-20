@@ -95,6 +95,7 @@ import {
 import { installConsoleAdapter } from './logging/console-adapter.js';
 import { backendLogStore } from './logging/store.js';
 import { redactValue } from './logging/redact.js';
+import { createLogger } from './logging/logger.js';
 import { getBufferForHandle as getInspectorBufferForHandle } from './request-inspector.js';
 import {
     UPLOADS_DIRECTORY,
@@ -118,6 +119,8 @@ import { migrateFlatSecrets } from './endpoints/secrets.js';
 import { migrateGroupChatsMetadataFormat } from './endpoints/groups.js';
 import { initializeAllUserMetadata } from './endpoints/image-metadata.js';
 import { applyPendingSafeMode } from './safe-mode.js';
+
+const httpLogger = createLogger('http');
 
 // Work around a node v20.0.0, v20.1.0, and v20.2.0 bug. The issue was fixed in v20.3.0.
 // https://github.com/nodejs/node/issues/47822#issuecomment-1564708870
@@ -348,6 +351,7 @@ if (!cliArgs.disableCsrf) {
 
     app.get('/csrf-token', (req, res) => {
         markStartupMilestone('http.csrf-token');
+        httpLogger.info('csrf-token.request', 'CSRF token requested', { enabled: true, method: req.method }, { category: 'request' });
         res.json({
             'token': csrfSyncProtection.generateToken(req),
         });
@@ -362,6 +366,7 @@ if (!cliArgs.disableCsrf) {
     console.warn('\nCSRF protection is disabled. This will make your server vulnerable to CSRF attacks.\n');
     app.get('/csrf-token', (req, res) => {
         markStartupMilestone('http.csrf-token');
+        httpLogger.info('csrf-token.request', 'CSRF token requested', { enabled: false, method: req.method }, { category: 'request' });
         res.json({
             'token': 'disabled',
         });
@@ -372,6 +377,7 @@ if (!cliArgs.disableCsrf) {
 // Host index page
 app.get('/', cacheBuster.middleware, (request, response) => {
     markStartupMilestone(`http.root.${request.method.toLowerCase()}`);
+    httpLogger.info('root.request', 'Root document requested', { method: request.method }, { category: 'request' });
     if (request.method === 'GET' && (startupLauncherReadyAt !== null || startupBrowserOpen)) {
         const now = Date.now();
         const summary = {

@@ -5,6 +5,9 @@ import {
     subscribeToJob,
 } from './endpoints/backends/atria-generation.js';
 import { markStartupMilestone } from './startup-timing.js';
+import { createLogger } from './logging/logger.js';
+
+const websocketLogger = createLogger('websocket', { emitToConsole: true });
 
 const TICKET_PROTOCOL_PREFIX = 'atria-ws-ticket.';
 
@@ -45,7 +48,7 @@ function eventToFrame(requestId, entry) {
         // Log because if it recurs, every WS delivery for this job silently
         // drops frames — exactly the "server dispatched OK, client hangs"
         // regression class we've already been bitten by.
-        console.warn('[ws-delivery] eventToFrame got malformed entry for', requestId, entry);
+        websocketLogger.warn('frame.malformed', '[ws-delivery] eventToFrame got malformed entry', { requestId, entry }, { category: 'delivery', correlation: { requestId } });
         return null;
     }
     if (data.kind === 'head') {
@@ -68,7 +71,7 @@ function eventToFrame(requestId, entry) {
     if (data.kind === 'error') {
         return { type: 'error', request_id: requestId, seq: entry.seq, code: data.data?.code || 'internal', message: data.data?.message || '' };
     }
-    console.warn('[ws-delivery] eventToFrame unknown kind for', requestId, data.kind);
+    websocketLogger.warn('frame.unknown-kind', '[ws-delivery] eventToFrame unknown kind', { requestId, kind: data.kind }, { category: 'delivery', correlation: { requestId } });
     return null;
 }
 
@@ -100,7 +103,7 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
         // exits the whole server. Log the code + peer once and let socket
         // teardown proceed normally.
         socket.on('error', (err) => {
-            console.warn('[ws-delivery] upgrade socket error:', err?.code || err?.message || err);
+            websocketLogger.warn('upgrade.socket-error', '[ws-delivery] upgrade socket error', { code: err?.code, message: err?.message || String(err) }, { category: 'upgrade' });
         });
         let userInfo;
         try { userInfo = verifyTicket(extractTicket(req)); } catch (err) {
@@ -126,7 +129,7 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
     wss.on('connection', (ws, req) => {
         markStartupMilestone('ws.connection');
         const peer = req?.socket?.remoteAddress || '?';
-        console.info(`[ws-delivery] connection user=${ws.userHandle} peer=${peer}`);
+        websocketLogger.info('connection.open', `[ws-delivery] connection user=${ws.userHandle} peer=${peer}`, { userHandle: ws.userHandle, peer }, { category: 'connection' });
         // ws.WebSocket is an EventEmitter; per the `ws` docs an unlistened
         // 'error' event bubbles to process. The most common trigger is a
         // client-side connection RST after upgrade (browser reload, tab
@@ -134,7 +137,7 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
         // client. Without this handler the error takes down the server via
         // the uncaughtException path in server-main.js.
         ws.on('error', (err) => {
-            console.warn('[ws-delivery] ws error for user', ws.userHandle, err?.code || err?.message || err);
+            websocketLogger.warn('connection.error', '[ws-delivery] ws error', { userHandle: ws.userHandle, code: err?.code, message: err?.message || String(err) }, { category: 'connection' });
         });
         ws.on('message', (raw) => {
             let msg;
@@ -153,12 +156,12 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
                 if (!requestId) return;
                 let job;
                 try { job = getTaskByRequestId(requestId, ws.userHandle); } catch (err) {
-                    console.warn(`[ws-delivery] subscribe forbidden user=${ws.userHandle} request_id=${requestId}`);
+                    websocketLogger.warn('subscription.forbidden', `[ws-delivery] subscribe forbidden user=${ws.userHandle} request_id=${requestId}`, { userHandle: ws.userHandle }, { category: 'subscription', correlation: { requestId } });
                     sendJson(ws, { type: 'error', request_id: requestId, code: 'forbidden', message: 'access denied' });
                     return;
                 }
                 if (!job) {
-                    console.warn(`[ws-delivery] subscribe not_found user=${ws.userHandle} request_id=${requestId}`);
+                    websocketLogger.warn('subscription.not-found', `[ws-delivery] subscribe not_found user=${ws.userHandle} request_id=${requestId}`, { userHandle: ws.userHandle }, { category: 'subscription', correlation: { requestId } });
                     sendJson(ws, { type: 'error', request_id: requestId, code: 'not_found', message: 'task not found' });
                     return;
                 }
@@ -170,13 +173,13 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
                 const key = activeSubsKey(ws.userHandle, requestId);
                 const prior = activeSubscriptions.get(key);
                 if (prior && prior.ws !== ws) {
-                    console.info(`[ws-delivery] evicting older subscription user=${ws.userHandle} request_id=${requestId}`);
+                    websocketLogger.info('subscription.evict-older', `[ws-delivery] evicting older subscription user=${ws.userHandle} request_id=${requestId}`, { userHandle: ws.userHandle }, { category: 'subscription', correlation: { requestId } });
                     try { prior.unsub(); } catch { /* subscriber already gone */ }
                     prior.ws.subscriptions.delete(requestId);
                     activeSubscriptions.delete(key);
                 }
                 const fromSeq = msg.type === 'resume' ? Number(msg.from_seq || 0) : 0;
-                console.info(`[ws-delivery] ${msg.type} user=${ws.userHandle} request_id=${requestId} from_seq=${fromSeq}`);
+                websocketLogger.info(`subscription.${msg.type}`, `[ws-delivery] ${msg.type} user=${ws.userHandle} request_id=${requestId} from_seq=${fromSeq}`, { userHandle: ws.userHandle, fromSeq }, { category: 'subscription', correlation: { requestId } });
                 const unsub = subscribeToJob(requestId, (payload) => {
                     if (payload.type !== 'event') return;
                     const frame = eventToFrame(requestId, payload.entry);
@@ -200,7 +203,7 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
         });
 
         ws.on('close', (code, reason) => {
-            console.info(`[ws-delivery] closed user=${ws.userHandle} code=${code} reason="${String(reason || '')}" subs=${ws.subscriptions.size}`);
+            websocketLogger.info('connection.close', `[ws-delivery] closed user=${ws.userHandle} code=${code} reason="${String(reason || '')}" subs=${ws.subscriptions.size}`, { userHandle: ws.userHandle, code, reason: String(reason || ''), subscriptionCount: ws.subscriptions.size }, { category: 'connection' });
             for (const [requestId, unsub] of ws.subscriptions.entries()) {
                 try { unsub(); } catch { /* Preserve the existing best-effort error handling. */ }
                 // Only release the active-subscriptions slot if we still own
@@ -223,7 +226,7 @@ export function createDeliveryServer({ httpServer, verifyTicket, path = '/api/ws
         for (const ws of wss.clients) {
             if (ws.readyState !== ws.OPEN) continue;
             if (now - (ws.lastPongAt || 0) > WS_SERVER_PONG_TIMEOUT_MS) {
-                console.warn(`[ws-delivery] pong timeout user=${ws.userHandle} — terminating`);
+                websocketLogger.warn('connection.pong-timeout', `[ws-delivery] pong timeout user=${ws.userHandle} — terminating`, { userHandle: ws.userHandle }, { category: 'heartbeat' });
                 try { ws.terminate(); } catch { /* already gone */ }
                 continue;
             }
