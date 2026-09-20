@@ -119,7 +119,10 @@ export function createIncident(input = {}) {
         stage: redactText(String(input.stage || 'unknown')).slice(0, 160),
         causeChain,
         correlation,
-        relatedLogEntryIds: [...new Set(logs.map(entry => Number(entry?.id)).filter(Number.isFinite))],
+        relatedLogEntryIds: [...new Set([
+            ...(input.relatedLogEntryIds || []).map(id => Number(id)).filter(Number.isFinite),
+            ...logs.map(entry => Number(entry?.id)).filter(Number.isFinite),
+        ])],
         requestInspectorEntryIds: [...new Set((input.requestInspectorEntryIds || []).map(String))],
         startupSessionId: String(input.startupSessionId || correlation.startupSessionId || ''),
         environment: redactValue(input.environment ?? {}, { maxDepth: 5, maxStringLength: 2000 }),
