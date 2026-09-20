@@ -41,6 +41,11 @@ const FIVE_ENTRIES = [
         comment: 'cliff-path-entry',
         content: 'The cliff path from Bryn town to the lighthouse follows the old goat trail; sheer drop on the seaward side, loose shale underfoot.',
         order: 100,
+        relatedEntries: ['1'],
+        budgetTier: 'optional',
+        compactContent: 'The Bryn cliff path is dangerous.',
+        extensions: { future_selector_note: 'preserve-me' },
+        unsupportedNote: 'future-world-info-field',
     },
     {
         key: ['gull rocks'],
@@ -55,6 +60,9 @@ const FIVE_ENTRIES = [
         content: 'Lantern oil for the Bryn lighthouse comes in 5-gallon casks from the inland refinery; supply lasts roughly six weeks.',
         selectiveLogic: 3, // AND_ALL
         order: 120,
+        requiredEntries: ['0'],
+        mutualExclusionGroup: 'lighthouse-supply-version',
+        budgetTier: 'critical',
     },
     {
         key: [],
@@ -168,6 +176,20 @@ test.describe('#29 — WI import/export round-trip via real toolbar', () => {
         const exportedJson = JSON.parse(readFileSync(exportedPath, 'utf8'));
         const exportedComments = Object.values(exportedJson.entries || {}).map(e => e.comment).sort();
         expect(exportedComments).toEqual(originalComments);
+        const exportedCliff = Object.values(exportedJson.entries || {}).find(e => e.comment === 'cliff-path-entry');
+        const exportedLantern = Object.values(exportedJson.entries || {}).find(e => e.comment === 'lantern-oil-entry');
+        expect(exportedCliff).toMatchObject({
+            relatedEntries: ['1'],
+            budgetTier: 'optional',
+            compactContent: 'The Bryn cliff path is dangerous.',
+            extensions: { future_selector_note: 'preserve-me' },
+            unsupportedNote: 'future-world-info-field',
+        });
+        expect(exportedLantern).toMatchObject({
+            requiredEntries: ['0'],
+            mutualExclusionGroup: 'lighthouse-supply-version',
+            budgetTier: 'critical',
+        });
 
         // 3. Real delete: click #world_popup_delete + popup OK. Wait
         //    for the dropdown to drop the book before re-importing so
@@ -204,6 +226,41 @@ test.describe('#29 — WI import/export round-trip via real toolbar', () => {
         await openBookInEditor(page, BOOK_NAME);
         const reimportedComments = (await readEditorComments(page)).sort();
         expect(reimportedComments).toEqual(originalComments);
+        const reimportedSelectionMetadata = await page.evaluate(async (bookName) => {
+            const wi = await import('/scripts/world-info.js');
+            const data = await wi.loadWorldInfo(bookName);
+            const entries = Object.values(data?.entries || {});
+            const cliff = entries.find(entry => entry.comment === 'cliff-path-entry');
+            const lantern = entries.find(entry => entry.comment === 'lantern-oil-entry');
+            return {
+                cliff: {
+                    relatedEntries: cliff?.relatedEntries,
+                    budgetTier: cliff?.budgetTier,
+                    compactContent: cliff?.compactContent,
+                    extensions: cliff?.extensions,
+                    unsupportedNote: cliff?.unsupportedNote,
+                },
+                lantern: {
+                    requiredEntries: lantern?.requiredEntries,
+                    mutualExclusionGroup: lantern?.mutualExclusionGroup,
+                    budgetTier: lantern?.budgetTier,
+                },
+            };
+        }, BOOK_NAME);
+        expect(reimportedSelectionMetadata).toEqual({
+            cliff: {
+                relatedEntries: ['1'],
+                budgetTier: 'optional',
+                compactContent: 'The Bryn cliff path is dangerous.',
+                extensions: { future_selector_note: 'preserve-me' },
+                unsupportedNote: 'future-world-info-field',
+            },
+            lantern: {
+                requiredEntries: ['0'],
+                mutualExclusionGroup: 'lighthouse-supply-version',
+                budgetTier: 'critical',
+            },
+        });
     });
 
     test('re-imported book survives a server restart', async ({ page }) => {

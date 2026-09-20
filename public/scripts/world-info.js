@@ -7,6 +7,19 @@ import {
     resolveWorldInfoEventComparisonBaseline,
     snapshotWorldInfoStateProviders,
 } from './atri-world-info-state-events.js';
+import {
+    WorldInfoSelectionIndex,
+    buildWorldInfoEntryLookup,
+    buildWorldInfoSelectionMigrationReport,
+    chooseWorldInfoBundleVariant,
+    getRelatedWorldInfoEntryKeys,
+    getWorldInfoBudgetTierScore,
+    getWorldInfoEntryKey,
+    hasWorldInfoSelectionMetadata,
+    normalizeWorldInfoEntryRef,
+    normalizeWorldInfoSelectionMetadata,
+    resolveWorldInfoDependencyBundle,
+} from './atri-world-info-selection.js';
 import { createFloorState } from './floor-state.js';
 import { Fuse } from '../lib.js';
 import { setInfoBlock, clearInfoBlock } from './utils.js';
@@ -951,6 +964,10 @@ const defaultGlobalScanData = Object.freeze({
     creatorNotes: '',
 });
 
+// W-04 incremental candidate index. Unsupported/dynamic entry shapes remain
+// in the compatibility set and therefore retain the established scan path.
+const worldInfoSelectionIndex = new WorldInfoSelectionIndex();
+
 /**
  * Represents a scanning buffer for one evaluation of World Info.
  */
@@ -1265,6 +1282,11 @@ class WorldInfoBuffer {
      */
     getExternallyActivated(entry) {
         return this.#externalActivations.get(`${entry.world}.${entry.uid}`)?.entry;
+    }
+
+    /** @returns {string[]} Keys forced into this evaluation. */
+    getExternalActivationKeys() {
+        return [...this.#externalActivations.keys()];
     }
 
     /**
@@ -6781,6 +6803,11 @@ export const originalWIDataKeyMap = {
     'stateActivation': 'extensions.atria_state_activation',
     'stateEvents': 'extensions.atria_state_events',
     'stateEventLogic': 'extensions.atria_state_event_logic',
+    'requiredEntries': 'extensions.atria_required_entries',
+    'relatedEntries': 'extensions.atria_related_entries',
+    'mutualExclusionGroup': 'extensions.atria_mutual_exclusion_group',
+    'budgetTier': 'extensions.atria_budget_tier',
+    'compactContent': 'extensions.atria_compact_content',
     'ignoreBudget': 'extensions.ignore_budget',
 };
 
@@ -8448,6 +8475,102 @@ export async function getWorldEntry(name, data, entry) {
             ? t`Unsaved state event changes`
             : t`State events saved`);
 
+        // W-04 explicit selection/dependency authoring. These fields are
+        // opt-in; leaving them at defaults keeps the legacy selection/budget
+        // branch for this entry.
+        const selectionRoot = editTemplate.find('.wi-entry-selection-strategy');
+        const requiredEntriesInput = selectionRoot.find('textarea[name="requiredEntriesText"]');
+        const relatedEntriesInput = selectionRoot.find('textarea[name="relatedEntriesText"]');
+        const mutualExclusionGroupInput = selectionRoot.find('input[name="mutualExclusionGroup"]');
+        const budgetTierInput = selectionRoot.find('select[name="budgetTier"]');
+        const compactContentInput = selectionRoot.find('textarea[name="compactContent"]');
+        const selectionSave = selectionRoot.find('.wi-selection-strategy-save');
+        const selectionStatus = selectionRoot.find('.wi-selection-strategy-status');
+        let selectionDirty = false;
+
+        const parseEntryRefs = value => String(value ?? '')
+            .split(/\r?\n/)
+            .map(item => item.trim())
+            .filter(Boolean)
+            .slice(0, 64);
+
+        const markSelectionDirty = () => {
+            selectionDirty = true;
+            selectionStatus.text(t`Unsaved selection rule changes`);
+        };
+
+        requiredEntriesInput.val((Array.isArray(entry.requiredEntries) ? entry.requiredEntries : []).join('\n'));
+        relatedEntriesInput.val((Array.isArray(entry.relatedEntries) ? entry.relatedEntries : []).join('\n'));
+        mutualExclusionGroupInput.val(String(entry.mutualExclusionGroup ?? ''));
+        budgetTierInput.val(['critical', 'scene', 'normal', 'optional'].includes(entry.budgetTier)
+            ? entry.budgetTier
+            : 'normal');
+        compactContentInput.val(typeof entry.compactContent === 'string' ? entry.compactContent : '');
+
+        selectionRoot.find('textarea, input, select').on('input', markSelectionDirty);
+        selectionSave.on('click', async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const uid = entry.uid;
+            const liveEntry = data.entries[uid];
+            if (!liveEntry) return;
+
+            const requiredEntries = parseEntryRefs(requiredEntriesInput.val());
+            const relatedEntries = parseEntryRefs(relatedEntriesInput.val());
+            const currentWorld = String(liveEntry.world || entry.world || name || '').trim();
+            const currentKey = getWorldInfoEntryKey({ world: currentWorld, uid });
+            const validateRefs = (refs, label) => {
+                for (const value of refs) {
+                    const normalized = normalizeWorldInfoEntryRef(value, currentWorld);
+                    if (!normalized) {
+                        throw new TypeError(`${label}: invalid entry reference "${value}"`);
+                    }
+                    if (normalized.key === currentKey) {
+                        throw new TypeError(`${label}: an entry cannot depend on or relate to itself`);
+                    }
+                }
+            };
+
+            try {
+                validateRefs(requiredEntries, 'Required entries');
+                validateRefs(relatedEntries, 'Related entries');
+                const mutualExclusionGroup = String(mutualExclusionGroupInput.val() ?? '').trim().slice(0, 160);
+                const budgetTier = ['critical', 'scene', 'normal', 'optional'].includes(String(budgetTierInput.val()))
+                    ? String(budgetTierInput.val())
+                    : 'normal';
+                const compactContent = String(compactContentInput.val() ?? '');
+
+                Object.assign(liveEntry, {
+                    requiredEntries,
+                    relatedEntries,
+                    mutualExclusionGroup,
+                    budgetTier,
+                    compactContent,
+                });
+                Object.assign(entry, {
+                    requiredEntries: structuredClone(requiredEntries),
+                    relatedEntries: structuredClone(relatedEntries),
+                    mutualExclusionGroup,
+                    budgetTier,
+                    compactContent,
+                });
+                setWIOriginalDataValue(data, uid, 'extensions.atria_required_entries', structuredClone(requiredEntries));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_related_entries', structuredClone(relatedEntries));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_mutual_exclusion_group', mutualExclusionGroup);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_budget_tier', budgetTier);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_compact_content', compactContent);
+                await saveWorldInfo(name, data);
+                selectionDirty = false;
+                selectionStatus.text(t`Selection rules saved`);
+            } catch (error) {
+                console.warn('[WI] Failed to save selection rules', error);
+                toastr.warning(String(error?.message || error), t`World Info selection rules`);
+            }
+        });
+        selectionStatus.text(selectionDirty
+            ? t`Unsaved selection rule changes`
+            : t`Selection rules saved`);
+
         // Content
         const counter = editTemplate.find('.world_entry_form_token_counter');
         const countTokensDebounced = debounce(async function (counter, value) {
@@ -8915,6 +9038,11 @@ export const newWorldInfoEntryDefinition = {
     stateActivation: { default: false, type: 'boolean' },
     stateEvents: { default: [], type: 'array' },
     stateEventLogic: { default: 'all', type: 'enum' },
+    requiredEntries: { default: [], type: 'array' },
+    relatedEntries: { default: [], type: 'array' },
+    mutualExclusionGroup: { default: '', type: 'string' },
+    budgetTier: { default: 'normal', type: 'enum' },
+    compactContent: { default: '', type: 'string' },
 };
 
 export const newWorldInfoEntryTemplate = Object.fromEntries(
@@ -9813,6 +9941,14 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     const loadedEntries = await getSortedEntries();
     const sortedEntries = typeof entryFilter === 'function' ? loadedEntries.filter(entryFilter) : loadedEntries;
     const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries);
+    const worldInfoSelectionDiagnostics = {
+        version: 1,
+        indexUpdate: worldInfoSelectionIndex.update(sortedEntries),
+        migration: buildWorldInfoSelectionMigrationReport(sortedEntries),
+        loops: [],
+    };
+    const worldInfoSelectionEntryLookup = buildWorldInfoEntryLookup(sortedEntries);
+    const activeWorldInfoMutualExclusionGroups = new Map();
 
     const hasConfiguredStateConditions = entry => (
         Object.hasOwn(entry || {}, 'stateConditions')
@@ -9864,6 +10000,57 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         );
     }
 
+    function isWorldInfoDependencyEligible(entry) {
+        if (!entry || entry.disable === true) return false;
+        if (Array.isArray(entry.decorators) && entry.decorators.includes('@@dont_activate')) return false;
+
+        if (hasConfiguredStateConditions(entry)) {
+            if (!Array.isArray(entry.stateConditions)) return false;
+            const result = evaluateWorldInfoStateConditions(
+                entry.stateConditions,
+                worldInfoStateProviders,
+                entry.stateConditionLogic,
+            );
+            if (result.status !== WORLD_INFO_CONDITION_RESULT.TRUE) return false;
+        }
+
+        if (hasConfiguredStateEvents(entry)) {
+            if (!Array.isArray(entry.stateEvents)) return false;
+            const result = evaluateWorldInfoStateEvents(
+                entry.stateEvents,
+                worldInfoEventComparisonBaseline,
+                worldInfoStateProviderSnapshot,
+                entry.stateEventLogic,
+            );
+            if (result.status !== WORLD_INFO_CONDITION_RESULT.TRUE) return false;
+        }
+
+        if (Array.isArray(entry.triggers) && entry.triggers.length > 0
+            && !entry.triggers.includes(globalScanData.trigger)) {
+            return false;
+        }
+
+        if (entry.characterFilter && entry.characterFilter?.names?.length > 0) {
+            const nameIncluded = entry.characterFilter.names.includes(getCharaFilename());
+            const filtered = entry.characterFilter.isExclude ? nameIncluded : !nameIncluded;
+            if (filtered) return false;
+        }
+
+        if (entry.characterFilter && entry.characterFilter?.tags?.length > 0) {
+            const tagKey = getTagKeyForEntity(this_chid);
+            if (tagKey) {
+                const tagMapEntry = context.tagMap[tagKey];
+                if (Array.isArray(tagMapEntry)) {
+                    const includesTag = tagMapEntry.some(tag => entry.characterFilter.tags.includes(tag));
+                    const filtered = entry.characterFilter.isExclude ? includesTag : !includesTag;
+                    if (filtered) return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     timedEffects.checkTimedEffects();
 
     if (sortedEntries.length === 0) {
@@ -9880,6 +10067,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             allActivatedEntries: new Set(),
             timedWorldInfoState: timedEffects.getPendingState(),
             externalActivationCommitToken: buffer.getExternalActivationCommitToken(),
+            worldInfoSelectionDiagnostics,
         };
     }
 
@@ -9979,13 +10167,25 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         console.debug(`[WI] --- LOOP #${count} START ---`);
         console.debug('[WI] Scan state', Object.entries(scan_state).find(x => x[1] === scanState));
 
+        const candidateSelection = worldInfoSelectionIndex.select({
+            getScanText: entry => buffer.get(entry, scanState),
+            forcedEntryKeys: buffer.getExternalActivationKeys(),
+        });
+        worldInfoSelectionDiagnostics.loops.push({
+            loop: count,
+            scanState: getScanStateName(scanState),
+            totalEntries: sortedEntries.length,
+            candidateEntries: candidateSelection.entries.length,
+            ...candidateSelection.diagnostics,
+        });
+
         // Until decided otherwise, we set the loop to stop scanning after this
         let nextScanState = scan_state.NONE;
 
         // Loop and find all entries that can activate here
         let activatedNow = new Set();
 
-        for (const entry of sortedEntries) {
+        for (const entry of candidateSelection.entries) {
             // Logging preparation
             let headerLogged = false;
             function log(...args) {
@@ -10393,11 +10593,19 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         let newEntries;
         if (activatedNow.size > 1) {
             const sortedEntriesIndex = new Map(sortedEntries.map((entry, index) => [entry, index]));
+            const relatedEntryKeys = new Set(
+                [...activatedNow].flatMap(entry => getRelatedWorldInfoEntryKeys(entry)),
+            );
             newEntries = [...activatedNow]
                 .sort((a, b) => {
                     const isASticky = timedEffects.isEffectActive('sticky', a) ? 1 : 0;
                     const isBSticky = timedEffects.isEffectActive('sticky', b) ? 1 : 0;
+                    const tierDelta = getWorldInfoBudgetTierScore(b) - getWorldInfoBudgetTierScore(a);
+                    const relatedDelta = Number(relatedEntryKeys.has(getWorldInfoEntryKey(b)))
+                        - Number(relatedEntryKeys.has(getWorldInfoEntryKey(a)));
                     return isBSticky - isASticky
+                        || tierDelta
+                        || relatedDelta
                         || (sortedEntriesIndex.get(a) ?? -1) - (sortedEntriesIndex.get(b) ?? -1);
                 });
         } else {
@@ -10425,9 +10633,14 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         !newEntries.length && console.debug('[WI] No probability checks to do');
 
         let ignoresBudget = newEntries.filter(e => e.ignoreBudget).length;
+        const dependencyActivatedThisLoop = new Set();
+        const failedAtomicSelectionEntries = new Set();
 
         for (const entry of newEntries) {
             ignoresBudget -= (entry.ignoreBudget ? 1 : 0);
+            if (allActivatedEntries.has(getWorldInfoEntryKey(entry))) {
+                continue;
+            }
             if (token_budget_overflowed && !entry.ignoreBudget) {
                 if (ignoresBudget > 0) {
                     continue;
@@ -10469,6 +10682,96 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                         probability: Number(entry.probability ?? 100),
                     }),
                 );
+                continue;
+            }
+
+            if (hasWorldInfoSelectionMetadata(entry)) {
+                const bundle = resolveWorldInfoDependencyBundle(entry, {
+                    entryLookup: worldInfoSelectionEntryLookup,
+                    activeEntryKeys: new Set(allActivatedEntries.keys()),
+                    activeMutualExclusionGroups: activeWorldInfoMutualExclusionGroups,
+                    isEligible: isWorldInfoDependencyEligible,
+                });
+                if (!bundle.ok) {
+                    failedAtomicSelectionEntries.add(entry);
+                    recordActivationAttempt(
+                        entry,
+                        'selection_dependency_blocked',
+                        withRecursionTraceSources({
+                            reason: bundle.reason,
+                            dependencyKey: bundle.key || '',
+                            dependencyRef: bundle.ref || '',
+                            mutualExclusionGroup: bundle.group || '',
+                            conflictingEntryKey: bundle.conflictingEntryKey || '',
+                        }),
+                    );
+                    continue;
+                }
+
+                const pendingEntries = bundle.entries.filter(
+                    candidate => !allActivatedEntries.has(getWorldInfoEntryKey(candidate)),
+                );
+                const bundleSelection = await chooseWorldInfoBundleVariant(pendingEntries, {
+                    budget,
+                    priorTokens: textToScanTokens,
+                    prefixText: newContent,
+                    tokenCount: getTokenCountAsync,
+                    renderContent: value => String(substituteParams(value) ?? ''),
+                });
+
+                if (!bundleSelection.ok) {
+                    if (!token_budget_overflowed) {
+                        console.debug('[WI] --- ATOMIC DEPENDENCY BUDGET OVERFLOW ---');
+                        if (world_info_overflow_alert) {
+                            toastr.warning(
+                                `World info dependency bundle could not fit within the ${budget} token budget.`,
+                                'World Info',
+                            );
+                        }
+                        token_budget_overflowed = true;
+                    }
+                    failedAtomicSelectionEntries.add(entry);
+                    recordActivationAttempt(
+                        entry,
+                        'dependency_budget_overflow',
+                        withRecursionTraceSources({
+                            budget: Number(budget),
+                            dependencyBundle: bundle.entryKeys,
+                            budgetTier: normalizeWorldInfoSelectionMetadata(entry).budgetTier,
+                            fullTokens: Number(bundleSelection.fullTokens || 0),
+                            compactTokens: bundleSelection.compactTokens === null
+                                ? null
+                                : Number(bundleSelection.compactTokens || 0),
+                        }),
+                    );
+                    continue;
+                }
+
+                const selectedVariant = bundleSelection.items;
+                const selectedVariantName = bundleSelection.variant;
+                if (bundleSelection.text) newContent += bundleSelection.text;
+                const rootKey = getWorldInfoEntryKey(entry);
+                for (const item of selectedVariant) {
+                    const selectedEntry = item.entry;
+                    const selectedKey = getWorldInfoEntryKey(selectedEntry);
+                    selectedEntry.content = item.content;
+                    allActivatedEntries.set(selectedKey, selectedEntry);
+                    dependencyActivatedThisLoop.add(selectedEntry);
+                    const selectedMeta = normalizeWorldInfoSelectionMetadata(selectedEntry);
+                    if (selectedMeta.mutualExclusionGroup) {
+                        activeWorldInfoMutualExclusionGroups.set(selectedMeta.mutualExclusionGroup, selectedKey);
+                    }
+                    recordActivationSuccess(
+                        selectedEntry,
+                        withRecursionTraceSources({
+                            reason: selectedKey === rootKey ? 'added_to_prompt' : 'required_dependency',
+                            dependencyRoot: rootKey,
+                            dependencyBundle: bundle.entryKeys,
+                            budgetVariant: selectedVariantName,
+                            budgetTier: selectedMeta.budgetTier,
+                        }),
+                    );
+                }
                 continue;
             }
 
@@ -10517,7 +10820,10 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             console.debug(`[WI] Entry ${entry.uid} activation successful, adding to prompt`, entry);
         }
 
-        const successfulNewEntries = newEntries.filter(x => !failedProbabilityChecks.has(x));
+        const successfulNewEntries = [...new Set([
+            ...newEntries.filter(x => !failedProbabilityChecks.has(x) && !failedAtomicSelectionEntries.has(x)),
+            ...dependencyActivatedThisLoop,
+        ])];
         const successfulNewEntriesForRecursion = successfulNewEntries.filter(x => !x.preventRecursion);
 
         console.debug(`[WI] --- LOOP #${count} RESULT ---`);
@@ -10708,6 +11014,7 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         worldInfoEventScope,
         worldInfoEventPendingState,
         worldInfoEventReplay,
+        worldInfoSelectionDiagnostics,
     };
 }
 
@@ -11113,6 +11420,19 @@ export function convertCharacterBook(characterBook) {
                 ? structuredClone(entry.extensions.atria_state_events)
                 : [],
             stateEventLogic: entry.extensions?.atria_state_event_logic === 'any' ? 'any' : 'all',
+            requiredEntries: Array.isArray(entry.extensions?.atria_required_entries)
+                ? entry.extensions.atria_required_entries.map(value => String(value ?? '').trim()).filter(Boolean).slice(0, 64)
+                : [],
+            relatedEntries: Array.isArray(entry.extensions?.atria_related_entries)
+                ? entry.extensions.atria_related_entries.map(value => String(value ?? '').trim()).filter(Boolean).slice(0, 64)
+                : [],
+            mutualExclusionGroup: String(entry.extensions?.atria_mutual_exclusion_group ?? '').trim(),
+            budgetTier: ['critical', 'scene', 'normal', 'optional'].includes(entry.extensions?.atria_budget_tier)
+                ? entry.extensions.atria_budget_tier
+                : 'normal',
+            compactContent: typeof entry.extensions?.atria_compact_content === 'string'
+                ? entry.extensions.atria_compact_content
+                : '',
             ignoreBudget: entry.extensions?.ignore_budget ?? false,
         };
     });

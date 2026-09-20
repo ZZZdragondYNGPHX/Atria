@@ -105,6 +105,23 @@ const STRATEGY_ENTRIES = [
         vectorized: true,
         order: 140,
     },
+    {
+        key: [],
+        keysecondary: [],
+        comment: 'dependency-prerequisite',
+        content: 'DEPENDENCY_CONTEXT: The archive seal is only meaningful with the old registry convention recorded here.',
+        order: 145,
+    },
+    {
+        key: ['archive-seal'],
+        keysecondary: [],
+        comment: 'dependency-root',
+        content: 'DEPENDENCY_ROOT: The archive seal identifies the current Bryn registry ledger.',
+        requiredEntries: ['5'],
+        budgetTier: 'critical',
+        compactContent: 'DEPENDENCY_ROOT_COMPACT: Bryn registry seal.',
+        order: 150,
+    },
 ];
 
 test.beforeAll(async () => {
@@ -205,7 +222,7 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         // unobstructed for the send turns below.
         await openBookInEditor(page, 'activation-strategies-book');
         const editorEntryCount = page.locator('#world_popup_entries_list .world_entry');
-        await expect(editorEntryCount, 'expected the editor to render all 5 strategy entries on open').toHaveCount(5);
+        await expect(editorEntryCount, 'expected the editor to render all 7 strategy entries on open').toHaveCount(7);
 
         // Helper: send a turn and return the body of the resulting chat-completion request.
         async function sendAndCaptureBody(text) {
@@ -246,6 +263,13 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         const bodyD2 = await sendAndCaptureBody('The signal from the lantern was clear: three quick raises and a hold.');
         expect(bodyD2).toContain('CONSTANT_LORE');
         expect(bodyD2).toContain('GREEN_LORE'); // both primary + secondary present
+
+        // (e) W-04 required dependency: the prerequisite has no activation
+        // key of its own, so it can only reach the real model request through
+        // the root entry's explicit dependency bundle.
+        const bodyE = await sendAndCaptureBody('I found the archive-seal pressed into the back cover.');
+        expect(bodyE).toContain('DEPENDENCY_ROOT');
+        expect(bodyE).toContain('DEPENDENCY_CONTEXT');
     });
 
     test('vectorized entry exposes the flag in the editor and remains keyword-active', async ({ page }) => {
