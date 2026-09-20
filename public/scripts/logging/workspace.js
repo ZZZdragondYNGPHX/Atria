@@ -2,7 +2,7 @@ import { getRequestHeaders } from '../../script.js';
 import { isFrontendConsoleDebugLoggingEnabled } from './console-adapter.js';
 import { installFrontendLogging } from './bootstrap.js';
 import { frontendLogStore } from './logger.js';
-import { t } from '../i18n.js';
+import { t, translate } from '../i18n.js';
 import { POPUP_RESULT, POPUP_TYPE, callGenericPopup } from '../popup.js';
 import { recentUserActionStore } from './recent-actions.js';
 import { createSafeConfigSnapshot } from './safe-config.js';
@@ -76,6 +76,55 @@ function severityIcon(severity) {
     if (value === 'critical' || value === 'error') return 'fa-circle-exclamation';
     if (value === 'warning') return 'fa-triangle-exclamation';
     return 'fa-circle-info';
+}
+
+const INCIDENT_TYPE_LABELS = Object.freeze({
+    startup_failure: 'Startup failure',
+    generation_failure: 'Generation failure',
+    orchestration_failure: 'Orchestration failure',
+    agent_failure: 'Agent failure',
+    tool_failure: 'Tool failure',
+    network_failure: 'Network failure',
+    extension_install_failure: 'Extension install failure',
+    extension_update_failure: 'Extension update failure',
+    extension_runtime_failure: 'Extension runtime failure',
+    plugin_runtime_failure: 'Plugin runtime failure',
+    storage_failure: 'Storage failure',
+    sync_failure: 'Sync failure',
+    backup_failure: 'Backup failure',
+    websocket_failure: 'WebSocket failure',
+    unhandled_frontend_error: 'Unhandled frontend error',
+    unhandled_backend_error: 'Unhandled backend error',
+});
+
+const OWNER_LABELS = Object.freeze({
+    atria: 'Atria',
+    'sillytavern-upstream': 'SillyTavern upstream',
+    'third-party-extension': 'Third-party extension',
+    'server-plugin': 'Server plugin',
+    'external-service': 'External service',
+    'network-environment': 'Network environment',
+    'local-environment': 'Local environment',
+    'user-configuration': 'User configuration',
+    unknown: 'Unknown',
+});
+
+function translatedValue(value) {
+    return translate(String(value ?? ''));
+}
+
+function incidentTypeLabel(value) {
+    return translate(INCIDENT_TYPE_LABELS[String(value || '')] || String(value || ''));
+}
+
+function ownerLabel(value) {
+    return translate(OWNER_LABELS[String(value || '')] || String(value || 'Unknown'));
+}
+
+function severityLabel(value) {
+    const normalized = String(value || '').toLowerCase();
+    const labels = { critical: 'Critical', error: 'Error', warning: 'Warning', info: 'Info' };
+    return translate(labels[normalized] || String(value || ''));
 }
 
 function buildWorkspaceMarkup({ canViewServerLogs }) {
@@ -186,7 +235,7 @@ function renderIncidentList(root, incidents, selectedId, onSelect) {
                 <strong>${htmlEscape(incident.summary || incident.type)}</strong>
                 <span>${htmlEscape(incident.primaryModule)} · ${htmlEscape(incident.stage)} · ${new Date(incident.createdAt).toLocaleString()}</span>
             </span>
-            <span class="atriaLogsOwnerBadge">${htmlEscape(incident.ownership?.probableOwner || 'unknown')}</span>
+            <span class="atriaLogsOwnerBadge">${htmlEscape(ownerLabel(incident.ownership?.probableOwner || 'unknown'))}</span>
         </button>
     `).join('');
     list.querySelectorAll('.atriaLogsIncidentRow').forEach(button => {
@@ -199,7 +248,7 @@ function renderHealth(root, health, incidents, onIncidentSelect) {
     list.innerHTML = health.map(item => `
         <button type="button" class="atriaLogsHealthRow is-${item.status}" data-health-id="${item.id}">
             <span class="atriaLogsHealthDot"></span>
-            <span class="atriaLogsHealthMain"><strong>${htmlEscape(item.label)}</strong><span>${healthLabel(item.status)}</span></span>
+            <span class="atriaLogsHealthMain"><strong>${htmlEscape(translatedValue(item.label))}</strong><span>${healthLabel(item.status)}</span></span>
             <span class="atriaLogsHealthCounts">${item.errorCount ? `${item.errorCount}E` : ''}${item.warningCount ? ` ${item.warningCount}W` : ''}</span>
         </button>
     `).join('');
@@ -223,13 +272,13 @@ function incidentDetailMarkup(incident) {
     return `
         <div class="atriaLogsIncidentDetailCard">
             <div class="atriaLogsIncidentDetailHeader">
-                <div><span class="atriaLogsKicker">${htmlEscape(incident.type)}</span><h4>${htmlEscape(incident.summary)}</h4></div>
-                <span class="atriaLogsSeverity is-${htmlEscape(incident.severity)}">${htmlEscape(incident.severity)}</span>
+                <div><span class="atriaLogsKicker">${htmlEscape(incidentTypeLabel(incident.type))}</span><h4>${htmlEscape(incident.summary)}</h4></div>
+                <span class="atriaLogsSeverity is-${htmlEscape(incident.severity)}">${htmlEscape(severityLabel(incident.severity))}</span>
             </div>
             <div class="atriaLogsDetailFacts">
                 <div><span>${t`Module`}</span><strong>${htmlEscape(incident.primaryModule)}</strong></div>
                 <div><span>${t`Stage`}</span><strong>${htmlEscape(incident.stage)}</strong></div>
-                <div><span>${t`Probable owner`}</span><strong>${htmlEscape(incident.ownership?.probableOwner || 'unknown')}</strong></div>
+                <div><span>${t`Probable owner`}</span><strong>${htmlEscape(ownerLabel(incident.ownership?.probableOwner || 'unknown'))}</strong></div>
                 <div><span>${t`Confidence`}</span><strong>${Math.round(Number(incident.ownership?.confidence || 0) * 100)}%</strong></div>
             </div>
             <div class="atriaLogsCorrelation">${correlation || `<span>${t`No correlation IDs captured.`}</span>`}</div>
