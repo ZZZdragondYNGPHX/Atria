@@ -16,6 +16,7 @@ import {
 } from '../request-inspector.js';
 import { createDispatchContext } from './context.js';
 import { createLogger } from '../logging/logger.js';
+import { captureBackendIncident } from '../logging/runtime.js';
 
 const dispatchLogger = createLogger('dispatch', { emitToConsole: true });
 const generationLogger = createLogger('generation', { emitToConsole: true });
@@ -392,6 +393,20 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
             // failInspection throw was previously swallowing the
             // failGenerationJob call above the fix).
             generationLogger.error('dispatch.failed', '[Generation] dispatch failed', { message: err?.message || String(err), stack: err?.stack || '' }, { category: 'dispatch', correlation });
+            captureBackendIncident({
+                type: 'generation_failure',
+                severity: 'error',
+                primaryModule: 'generation',
+                stage: 'dispatch.execute',
+                summary: err?.message || String(err),
+                failure: err,
+                correlation,
+                environment: {
+                    endpoint: String(endpoint || ''),
+                    model: String(request.body?.model || ''),
+                    streaming: Boolean(request.body?.stream || request.body?.streaming),
+                },
+            }, { request });
             try { ctx.emit.error(err); } catch (e) { dispatchLogger.warn('emit-error.failed', '[Runner] emit.error threw', { message: e?.message || String(e) }, { category: 'boundary', correlation }); }
             try { failGenerationJob(job, err?.message || String(err)); } catch (e) { generationLogger.warn('job.fail-transition-failed', '[Runner] failGenerationJob threw', { message: e?.message || String(e) }, { category: 'job', correlation }); }
             try {

@@ -1,6 +1,7 @@
 import { IncidentAggregator, IncidentStore } from './incidents.js';
 import { normalizeLogEntry } from './model.js';
 import { backendLogStore } from './store.js';
+import { classifyOperationalFailure } from './failure-classifier.js';
 
 export const diagnosticIncidentStore = new IncidentStore({ capacity: 200 });
 export const diagnosticIncidentAggregator = new IncidentAggregator({
@@ -81,4 +82,30 @@ export function createIncidentFromRecent(input = {}, {
         fallbackHistory: input.fallbackHistory,
         timeline: input.timeline,
     });
+}
+
+export function captureBackendIncident(input = {}, {
+    request = null,
+    incidentAggregator = diagnosticIncidentAggregator,
+} = {}) {
+    try {
+        const failure = input.failure ?? input.error ?? input.primaryFailure;
+        const classification = classifyOperationalFailure(failure, { stage: input.stage });
+        const subjectUser = String(input.subjectUser || request?.user?.profile?.handle || '');
+        return incidentAggregator.capture({
+            ...input,
+            subjectUser,
+            failure,
+            stage: classification.stage,
+            probableOwner: input.probableOwner || classification.probableOwner,
+            ownerName: input.ownerName || classification.ownerName,
+            ownerConfidence: input.ownerConfidence ?? classification.confidence,
+            ownershipEvidence: [
+                ...(input.ownershipEvidence || []),
+                ...classification.evidence,
+            ],
+        });
+    } catch {
+        return null;
+    }
 }

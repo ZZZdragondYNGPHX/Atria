@@ -12,3 +12,4 @@ export * from './startup-store.js';
 export * from './runtime.js';
 export * from './provenance.js';
 export * from './incident-export.js';
+export * from './failure-classifier.js';
