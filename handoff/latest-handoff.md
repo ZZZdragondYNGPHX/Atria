@@ -6,9 +6,9 @@ Atria is an independent SillyTavern-based modified product. All previously recor
 
 Current authoritative `main`:
 
-- `b8cd63d0a0f7afd647cd455a7555bf283758fea4`
+- `fad1dd44c11854861db0a5b2d92335792def8ecc`
 
-This commit is the squash merge of PR #71, `refactor: logging observability workspace`. Its final validated task head `faf9da3a087d59e4560123f9a2db5c15361778b9` passed Atria PR Checks #713, Worldbook Performance Foundation #341, and Backup and Storage UI #89. The immediately preceding startup optimization work remains integrated beneath the PR #71 baseline `main@148950dec7a8ab63229bd1f3c616f82438d165f4`.
+This commit is the squash merge of PR #73, `fix: localize diagnostics workspace in Chinese`, a localization-only follow-up to the Logging Observability Workspace refactor in PR #71. Its final validated task head `f08032f1c9ecd686e5fc1218f39ec82e4f700ad5` passed Atria PR Checks #717 (ESLint, Atria Migration Guard, and the complete Node unit suite). The underlying logging/diagnostics architecture from PR #71 remains unchanged.
 
 ### Android / Termux startup optimization continuation
 
@@ -170,6 +170,20 @@ The old migration-era Presets / Live Run / Graph / Agents split is no longer the
 The permanent Workspace UI guard and Chromium workflow should be treated as architectural tests, not disposable migration CI.
 
 ## Recent completed integrations
+
+### Diagnostics Workspace Chinese localization
+
+- PR #73
+- Baseline: `main@b8cd63d0a0f7afd647cd455a7555bf283758fea4`
+- Final validated head: `f08032f1c9ecd686e5fc1218f39ec82e4f700ad5`
+- Squash merge / current `main`: `fad1dd44c11854861db0a5b2d92335792def8ecc`
+- Record: `fixes/logging-workspace-zh-localization.md`
+- Guided / Startup / Expert diagnostics UI now has complete zh-CN and zh-TW locale coverage.
+- Dynamic module-health, ownership, severity, Startup Analysis phase/scope/timeline labels now pass through i18n instead of bypassing locale dictionaries.
+- Raw log text, diagnostic identifiers, evidence and machine-readable export content remain unmodified for diagnostic accuracy.
+- `tests/logging/workspace-i18n.test.js` guards both Chinese locale dictionaries.
+- Final validation passed Atria PR Checks #717: ESLint, Atria Migration Guard and the complete Node unit suite.
+- Android JVM/APK and Docker builds were not run because this task changes browser localization only.
 
 ### Logging Observability Workspace Refactor
 
