@@ -987,9 +987,15 @@ if (typeof window !== 'undefined') {
             const $ = window.jQuery;
             if (typeof $ !== 'function') return 'noop';
 
+            const activeElement = document.activeElement;
+            if (activeElement?.matches?.('input, textarea, select, [contenteditable="true"]')) {
+                activeElement.blur();
+                return 'consumed';
+            }
+
             const topUiIsActionable =
                 $('#curEditTextarea').is(':visible')
-                || !!document.querySelector('dialog[open]')
+                || !!document.querySelector('dialog[open]:not(#atriaImmersiveHudDetails)')
                 || $('#dialogue_popup, #select_chat_popup, #character_popup, #dialogue_del_mes_cancel').is(':visible')
                 || $('#logprobsViewer, #cfgConfig, #floatingPrompt, #WorldInfo').is(':visible')
                 || $('#movingDivs > div:visible').length > 0
