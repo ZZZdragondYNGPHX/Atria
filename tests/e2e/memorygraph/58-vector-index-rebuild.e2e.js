@@ -7,7 +7,7 @@
 //   2. Send 2 RP turns via the textarea so MG has a real chat to anchor.
 //   3. Import a pre-seeded graph store (5 distinctive nodes) via the real
 //      Import button + file picker.
-//   4. Click the real `#luker_rpg_memory_rebuild` button (via the helper
+//   4. Click the real `#atria_rpg_memory_rebuild` button (via the helper
 //      `rebuildMgIndex`). The rebuild routes through `syncVectorIndex`
 //      under the hood — the same path the auto-extractor uses post-batch.
 //   5. After rebuild, query the graph via the Layer-1 `vectorSearch` read
@@ -135,7 +135,7 @@ async function enableMgViaCheckboxes(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        for (const id of ['luker_rpg_memory_enabled', 'luker_rpg_memory_auto_extraction_enabled']) {
+        for (const id of ['atria_rpg_memory_enabled', 'atria_rpg_memory_auto_extraction_enabled']) {
             const el = document.getElementById(id);
             if (el && !el.checked) {
                 el.checked = true;
@@ -149,8 +149,8 @@ async function enableMgViaCheckboxes(page) {
 async function importBindLatest(page, filePath) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
-    await page.locator('#luker_rpg_memory_import').click();
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click();
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 10_000 });
     await popup.locator('.popup-button-custom', { hasText: /Bind Latest|绑定最新/ }).first().click();
@@ -192,7 +192,7 @@ test.describe('#58 — MG vector-index rebuild via real button → semantic reca
         // post-rebuild click would do once the extractor confirms there's
         // nothing new to extract.
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const settings = ctx.extensionSettings?.memory_graph;
             const main = await import('/scripts/extensions/memory-graph/main.js');
             const vi = await import('/scripts/extensions/memory-graph/vector-index.js');
@@ -212,7 +212,7 @@ test.describe('#58 — MG vector-index rebuild via real button → semantic reca
 
         // Pre-snapshot seed ids by hint for ranking assertions.
         const idsByHint = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return {};
@@ -236,7 +236,7 @@ test.describe('#58 — MG vector-index rebuild via real button → semantic reca
             const expectedId = idsByHint[expectedTitle];
             if (!expectedId) continue;
             const hits = await page.evaluate(async ({ query }) => {
-                const ctx = window.Luker.getContext();
+                const ctx = window.Atria.getContext();
                 const mg = ctx.getExtensionApi?.('memory-graph');
                 const session = await mg?.openSession?.(ctx);
                 if (!session) return [];

@@ -14,7 +14,7 @@ describe('debug-export Android bridge routing', () => {
     test('downloadDebugBundle calls native exportDiagnosticsBundle when bridge present', async () => {
         const exportDiagnosticsBundle = jest.fn();
         globalThis.window = {
-            LukerAndroid: { exportDiagnosticsBundle },
+            AtriaAndroid: { exportDiagnosticsBundle },
         };
         globalThis.toastr = { success: jest.fn(), error: jest.fn() };
         globalThis.fetch = jest.fn(() => { throw new Error('should not call fetch'); });

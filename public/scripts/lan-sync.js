@@ -46,7 +46,7 @@ const ENDPOINTS = {
  * to call `/pair/accept`. Versioned scheme so future fields can be
  * introduced without breaking existing clients.
  */
-const PAIR_LINK_SCHEME = 'luker-sync';
+const PAIR_LINK_SCHEME = 'atria-sync';
 const PAIR_LINK_VERSION = 'v1';
 
 function buildPairLink({ peerBaseUrl, peerId, label, categories }) {
@@ -68,7 +68,7 @@ function parsePairLink(raw) {
     if (!raw || typeof raw !== 'string') return null;
     let trimmed = raw.trim();
     if (!trimmed) return null;
-    // Accept both `luker-sync://pair/v1?...` and the bare query string.
+    // Accept both `atria-sync://pair/v1?...` and the bare query string.
     const queryIdx = trimmed.indexOf('?');
     if (queryIdx < 0) return null;
     const qs = trimmed.slice(queryIdx + 1);

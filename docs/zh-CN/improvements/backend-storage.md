@@ -1,6 +1,6 @@
 # 后端实时存储
 
-Luker 重新设计了数据持久化架构，将数据变更的保存职责从前端转移到后端，实现实时持久化，从根本上消除因浏览器崩溃、网络中断或意外关闭导致的数据丢失风险。
+Atria 重新设计了数据持久化架构，将数据变更的保存职责从前端转移到后端，实现实时持久化，从根本上消除因浏览器崩溃、网络中断或意外关闭导致的数据丢失风险。
 
 ## 问题背景
 
@@ -11,7 +11,7 @@ Luker 重新设计了数据持久化架构，将数据变更的保存职责从�
 - **生成中断** — AI 生成过程中如果连接断开，已生成的内容可能无法保存
 - **竞态条件** — 多个保存请求并发时可能产生数据覆盖
 
-Luker 通过后端实时存储彻底解决了这些问题。
+Atria 通过后端实时存储彻底解决了这些问题。
 
 ## 数据变更实时持久化
 
@@ -35,11 +35,11 @@ DIR: "chats/<角色名>/"
 CHAT: "{chat}.jsonl" {
   style.fill: "#e1f5ff"
 }
-STATE: "{chat}.luker-state.chat_sync.json" {
+STATE: "{chat}.atria-state.chat_sync.json" {
   style.fill: "#fff3e0"
 }
-NS1: "{chat}.luker-state.memory_graph__meta.json"
-NS2: "{chat}.luker-state.luker_orchestrator__schema.json"
+NS1: "{chat}.atria-state.memory_graph__meta.json"
+NS2: "{chat}.atria-state.atri_orchestrator__schema.json"
 
 DIR -> CHAT
 DIR -> STATE
@@ -48,14 +48,14 @@ DIR -> NS2
 ```
 
 - `{chat}.jsonl` — 聊天主文件
-- `{chat}.luker-state.chat_sync.json` — integrity + updated_at（同步元数据）
-- `{chat}.luker-state.<namespace>.json` — 各插件的命名空间状态（每个插件一份独立状态文件）
+- `{chat}.atria-state.chat_sync.json` — integrity + updated_at（同步元数据）
+- `{chat}.atria-state.<namespace>.json` — 各插件的命名空间状态（每个插件一份独立状态文件）
 
 如果状态文件不存在（例如从旧版本迁移的聊天），系统会自动回退处理，并在首次写入时自动创建状态文件。
 
 ## Generation Acknowledge
 
-在 AI 生成场景中，Luker 的统一生成层实现了 Generation Acknowledge 机制。当后端完成一次生成并将结果持久化后，会在响应中确认生成结果已被服务端安全存储。
+在 AI 生成场景中，Atria 的统一生成层实现了 Generation Acknowledge 机制。当后端完成一次生成并将结果持久化后，会在响应中确认生成结果已被服务端安全存储。
 
 ```d2
 shape: sequence_diagram
@@ -79,12 +79,12 @@ BE."即使前端在收到 ack 后崩溃,数据已落盘"
 这意味着即使前端在收到生成结果后立即崩溃，数据也不会丢失——因为后端已经在返回响应之前完成了持久化。前端收到确认后更新本地的 integrity 状态，保持与服务端的同步。
 
 ::: tip 与传统模式的对比
-在 SillyTavern 中，AI 生成的结果先到达前端，由前端决定何时保存。如果前端在保存前崩溃，生成的内容就会丢失。Luker 的 Generation Acknowledge 将保存时机提前到了后端响应之前，从根本上消除了这个窗口期。
+在 SillyTavern 中，AI 生成的结果先到达前端，由前端决定何时保存。如果前端在保存前崩溃，生成的内容就会丢失。Atria 的 Generation Acknowledge 将保存时机提前到了后端响应之前，从根本上消除了这个窗口期。
 :::
 
 ## 序列化聊天写入 {#序列化聊天写入}
 
-为了防止并发写入导致文件损坏，Luker 在前端（通过 `runSerializedChatWrite`）对聊天写入任务做串行化，同时由后端对每次写入执行 integrity 校验。
+为了防止并发写入导致文件损坏，Atria 在前端（通过 `runSerializedChatWrite`）对聊天写入任务做串行化，同时由后端对每次写入执行 integrity 校验。
 
 当多个写入操作短时间内同时触发时（例如用户快速编辑多条消息，或者生成完成与用户编辑同时发生），流程为：
 
@@ -103,7 +103,7 @@ BE."即使前端在收到 ack 后崩溃,数据已落盘"
 - 后端实时存储负责「怎么存」— 确保数据安全持久化
 - 聊天状态文件是两者的桥梁 — 通过 integrity UUID 协调前后端状态
 
-两者共同构成了 Luker 的数据安全基础设施。
+两者共同构成了 Atria 的数据安全基础设施。
 
 ## 相关页面
 

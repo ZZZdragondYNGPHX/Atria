@@ -174,7 +174,7 @@ import * as EDITS_API from './lib/edits/index.js';
 import { applyPluginLaneRegex } from './lib/plugin-prompt-regex.js';
 import { readPluginFloors, floorRecordToTaskMessage } from './lib/plugin-floors.js';
 import * as ITERATION_LIBRARY_API_NS from './iteration-library/index.js';
-import * as LUKER_TABS_API from './extensions/luker-tabs.js';
+import * as ATRIA_TABS_API from './extensions/atria-tabs.js';
 import * as FIELD_HELP_API from './extensions/field-help.js';
 import { skillsApi } from './skills/api.js';
 import { SECRET_KEYS, secret_state } from './secrets.js';
@@ -549,7 +549,7 @@ function syncCharacterMirrorsFromExtensions(character) {
 function warnLegacyCharacterRootWrite(field, canonicalPath) {
     const warningKey = `legacy-character-root-write:${field}`;
     if (!legacyCharacterWriteWarningKeys.has(warningKey)) {
-        console.warn(`Deprecated extension character write: root field "${field}" was written through Luker.getContext().characters. Write to "${canonicalPath}" instead.`);
+        console.warn(`Deprecated extension character write: root field "${field}" was written through Atria.getContext().characters. Write to "${canonicalPath}" instead.`);
         legacyCharacterWriteWarningKeys.add(warningKey);
     }
 
@@ -1019,7 +1019,7 @@ function getLivePresetBody(collection = '') {
 // Client-only composite state key for character-bound presets.
 // Server (`src/endpoints/presets.js`) sees this as an opaque preset name
 // string and stores it byte-for-byte under `{apiId, name}`. The prefix is
-// intentionally distinct from the DOM selector prefix `__luker_card__::`
+// intentionally distinct from the DOM selector prefix `__atria_card__::`
 // (see character/preset-ref-codec.js); mixing them would let a naive server
 // consumer double-decode and corrupt existing state slots.
 const CARD_BOUND_STATE_KEY_PREFIX = '__lc__::';
@@ -1099,7 +1099,7 @@ async function savePresetBody(target, body, options = {}) {
             return { ok: false, ref, mode: 'character', operations: [] };
         }
         // Layer 1 strips OpenAI connection fields, applies read-spread-overlay
-        // to preserve sibling luker.* subkeys, and persists via writeExtensionField.
+        // to preserve sibling atria.* subkeys, and persists via writeExtensionField.
         // Errors bubble up per the no-fallback rule; the caller sees the throw.
         await characterPresets.updateCharacterBoundPreset(character, ref.name, presetBody);
         const savedRef = { collection: ref.collection, name: ref.name, origin: ref.origin };
@@ -1364,7 +1364,7 @@ function getPresetPromptLayout(completionPresetSettings) {
     const source = completionPresetSettings && typeof completionPresetSettings === 'object'
         ? completionPresetSettings
         : {};
-    return normalizePromptLayout(source?.extensions?.luker?.prompt_layout);
+    return normalizePromptLayout(source?.extensions?.atria?.prompt_layout);
 }
 
 function getPromptCatalog(completionPresetSettings) {
@@ -1971,7 +1971,7 @@ function applyWorldInfoPostActivationHook(runtimeWorldInfo = null, postActivatio
         }
         return normalizeRuntimeWorldInfo(payload);
     } catch (error) {
-        console.warn('[LUKER] world-info postActivationHook failed', error);
+        console.warn('[ATRIA] world-info postActivationHook failed', error);
         return normalized;
     }
 }
@@ -2213,7 +2213,7 @@ async function resolveWorldInfoForMessages(messages = [], {
             activatedEntries: Array.isArray(resolution?.activatedEntries) ? resolution.activatedEntries : [],
         }, postActivationHook);
     } catch (error) {
-        console.warn('[LUKER] resolveWorldInfoForMessages failed', error);
+        console.warn('[ATRIA] resolveWorldInfoForMessages failed', error);
         return normalizeRuntimeWorldInfo();
     }
 }
@@ -2314,7 +2314,7 @@ function buildPluginMessagesFromPromptOrder(completionCore, envelope, normalized
     return result;
 }
 
-function formatPromptPresetEnvelope(envelope, { label = 'LUKER_PRESET_ENVELOPE' } = {}) {
+function formatPromptPresetEnvelope(envelope, { label = 'ATRIA_PRESET_ENVELOPE' } = {}) {
     const resolved = envelope && typeof envelope === 'object'
         ? envelope
         : getActivePromptPresetEnvelope();
@@ -2472,7 +2472,7 @@ export function getContext() {
         floorRecordToTaskMessage,
         iterationLibrary: ITERATION_LIBRARY_API,
         edits: EDITS_API,
-        renderLukerTabs: LUKER_TABS_API.renderLukerTabs,
+        renderAtriaTabs: ATRIA_TABS_API.renderAtriaTabs,
         renderFieldHelpButton: FIELD_HELP_API.renderFieldHelpButton,
         skills: skillsApi,
         get onlineStatus() { return online_status; },
@@ -2749,7 +2749,7 @@ export function getContext() {
         getTextGenServer,
         extractMessageFromData,
         getPresetManager,
-        // Preset ↔ lorebook embed pipeline (Luker symmetry with the skills
+        // Preset ↔ lorebook embed pipeline (Atria symmetry with the skills
         // and character-card embed paths). Lazy-loaded to keep the heavy
         // world-info.js import out of the context module's load chain.
         presetLorebook: {

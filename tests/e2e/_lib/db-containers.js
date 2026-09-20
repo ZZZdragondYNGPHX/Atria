@@ -5,20 +5,20 @@
 // Both helpers return `{ url, host, port, stop }`. The URL targets the
 // root user against a chosen database; for two-server specs the caller
 // invokes the helper TWICE per container (or creates two databases up
-// front) so each Luker process has an isolated namespace.
+// front) so each Atria process has an isolated namespace.
 //
 // `Wait.forLogMessage` is preferred over `forSuccessfulCommand`: the
 // official mysql/postgres images print a distinctive "ready for
 // connections" line as the final startup signal. The test harness
 // blocks on that and only then opens the first connection — avoiding
-// races where the schema bootstrap inside Luker hits the engine
+// races where the schema bootstrap inside Atria hits the engine
 // while it's still finishing crash recovery on a cold start.
 
 import { GenericContainer, Wait } from 'testcontainers';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
 
-const ROOT_PASSWORD = 'luker-test-root';
+const ROOT_PASSWORD = 'atria-test-root';
 
 /**
  * @typedef {object} DbContainerHandle
@@ -42,7 +42,7 @@ const ROOT_PASSWORD = 'luker-test-root';
  * @param {DbContainerOpts} opts
  * @returns {Promise<DbContainerHandle & { urlFor: (db: string) => string }>}
  */
-export async function startMysqlContainer({ databases = ['luker'], startupTimeoutMs = 180_000 } = {}) {
+export async function startMysqlContainer({ databases = ['atria'], startupTimeoutMs = 180_000 } = {}) {
     if (!Array.isArray(databases) || databases.length === 0) {
         throw new TypeError('startMysqlContainer: databases must be a non-empty array');
     }
@@ -101,7 +101,7 @@ export async function startMysqlContainer({ databases = ['luker'], startupTimeou
  * @param {DbContainerOpts} opts
  * @returns {Promise<DbContainerHandle & { urlFor: (db: string) => string }>}
  */
-export async function startPostgresContainer({ databases = ['luker'], startupTimeoutMs = 120_000 } = {}) {
+export async function startPostgresContainer({ databases = ['atria'], startupTimeoutMs = 120_000 } = {}) {
     if (!Array.isArray(databases) || databases.length === 0) {
         throw new TypeError('startPostgresContainer: databases must be a non-empty array');
     }

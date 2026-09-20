@@ -357,14 +357,14 @@ describe('lookup name normalization', () => {
 describe('deepMerge', () => {
     test('should preserve explicit null assignments for nested keys', () => {
         const result = deepMerge(
-            { data: { extensions: { luker: { chat_completion_preset: { name: 'Old' } } } } },
-            { data: { extensions: { luker: { chat_completion_preset: null } } } },
+            { data: { extensions: { atria: { chat_completion_preset: { name: 'Old' } } } } },
+            { data: { extensions: { atria: { chat_completion_preset: null } } } },
         );
 
         expect(result).toEqual({
             data: {
                 extensions: {
-                    luker: {
+                    atria: {
                         chat_completion_preset: null,
                     },
                 },
@@ -374,14 +374,14 @@ describe('deepMerge', () => {
 
     test('should replace null targets with incoming objects', () => {
         const result = deepMerge(
-            { data: { extensions: { luker: { chat_completion_preset: null } } } },
-            { data: { extensions: { luker: { chat_completion_preset: { name: 'New' } } } } },
+            { data: { extensions: { atria: { chat_completion_preset: null } } } },
+            { data: { extensions: { atria: { chat_completion_preset: { name: 'New' } } } } },
         );
 
         expect(result).toEqual({
             data: {
                 extensions: {
-                    luker: {
+                    atria: {
                         chat_completion_preset: {
                             name: 'New',
                         },
@@ -394,13 +394,13 @@ describe('deepMerge', () => {
 
 describe('resolvePathWithinParent', () => {
     test('should preserve Android/Linux legal filename characters', () => {
-        const root = path.resolve('/tmp/luker-avatar-root');
+        const root = path.resolve('/tmp/atria-avatar-root');
         const resolved = resolvePathWithinParent(root, 'migrated?avatar:01.png');
         expect(resolved).toBe(path.resolve(root, 'migrated?avatar:01.png'));
     });
 
     test('should reject path traversal outside the parent directory', () => {
-        const root = path.resolve('/tmp/luker-avatar-root');
+        const root = path.resolve('/tmp/atria-avatar-root');
         expect(resolvePathWithinParent(root, '../secrets.json')).toBeNull();
     });
 });

@@ -1,7 +1,7 @@
 /**
  * Skill embed import dialog.
  *
- * Surfaces `extensions.luker.embedded_skills_source` payloads embedded in
+ * Surfaces `extensions.atria.embedded_skills_source` payloads embedded in
  * character cards or presets as a per-skill conflict-resolution table:
  *   - `new`       → auto-install (always replace)
  *   - `same`      → auto-skip silently (server's `already_installed` path)
@@ -14,7 +14,7 @@
  *     are pinned to character scope)
  *
  * Flow:
- *   1. Detect `extensions.luker.embedded_skills_source` on the imported asset.
+ *   1. Detect `extensions.atria.embedded_skills_source` on the imported asset.
  *   2. Call `context.skills.previewExtractEmbed({payload, targetScope})` to
  *      classify each skill as new / same / different.
  *   3. Render a table with per-`different`-row Skip/Replace radios.
@@ -22,7 +22,7 @@
  *      collected per-skill conflictStrategies map.
  *
  * Like the other Unit-{2..4} dialogs, pure helpers are exported for tests
- * without needing a DOM (Luker's Jest runs in node, not jsdom). The
+ * without needing a DOM (Atria's Jest runs in node, not jsdom). The
  * interactive entry point `runEmbedImportFlow` is what callers (card-app /
  * preset-manager hooks) invoke.
  */
@@ -56,8 +56,8 @@ export function formatScopeLabel(scope, t = (s) => s) {
  * object. Returns null if the payload is missing or malformed.
  *
  * Both characters and presets store the payload at the same path:
- * `obj.extensions.luker.embedded_skills_source`. For character cards loaded
- * via the v2/v3 spec, the path is `character.data.extensions.luker.embedded_skills_source`
+ * `obj.extensions.atria.embedded_skills_source`. For character cards loaded
+ * via the v2/v3 spec, the path is `character.data.extensions.atria.embedded_skills_source`
  * (the inner `.data` wrapper is the card-spec envelope). Caller must pass the
  * object containing `.extensions` (i.e. for characters, pass `character.data`).
  *
@@ -65,7 +65,7 @@ export function formatScopeLabel(scope, t = (s) => s) {
  * @returns {object|null} the payload, or null when missing
  */
 export function getEmbeddedSkillsSource(obj) {
-    const payload = obj?.extensions?.luker?.embedded_skills_source;
+    const payload = obj?.extensions?.atria?.embedded_skills_source;
     if (!payload || typeof payload !== 'object') return null;
     if (payload.version !== 1) return null;
     if (!Array.isArray(payload.items)) return null;
@@ -107,36 +107,36 @@ export function buildDefaultConflictStrategies(previewItems) {
 export function buildImportTableHtml(previewItems, t, esc) {
     const items = Array.isArray(previewItems) ? previewItems : [];
     if (items.length === 0) {
-        return `<div class="luker_skill_import_empty">${esc(t('No skills found in the embed payload.'))}</div>`;
+        return `<div class="atria_skill_import_empty">${esc(t('No skills found in the embed payload.'))}</div>`;
     }
     const renderRow = (item, idx) => {
         const safeName = esc(item.name || `(item-${idx})`);
         if (item.conflict === 'new') {
             return `
                 <tr data-skill-import-row data-skill-import-name="${safeName}" data-skill-import-conflict="new">
-                    <td class="luker_skill_import_name">${safeName}</td>
-                    <td class="luker_skill_import_status luker_skill_import_status_new">${esc(t('New (install)'))}</td>
-                    <td class="luker_skill_import_action"></td>
+                    <td class="atria_skill_import_name">${safeName}</td>
+                    <td class="atria_skill_import_status atria_skill_import_status_new">${esc(t('New (install)'))}</td>
+                    <td class="atria_skill_import_action"></td>
                 </tr>
             `;
         }
         if (item.conflict === 'same') {
             return `
                 <tr data-skill-import-row data-skill-import-name="${safeName}" data-skill-import-conflict="same">
-                    <td class="luker_skill_import_name">${safeName}</td>
-                    <td class="luker_skill_import_status luker_skill_import_status_same">${esc(t('Already installed (skip)'))}</td>
-                    <td class="luker_skill_import_action"></td>
+                    <td class="atria_skill_import_name">${safeName}</td>
+                    <td class="atria_skill_import_status atria_skill_import_status_same">${esc(t('Already installed (skip)'))}</td>
+                    <td class="atria_skill_import_action"></td>
                 </tr>
             `;
         }
         if (item.conflict === 'different') {
             // Use unique radio names per row so each row picks independently.
-            const radioGroup = `luker_skill_import_decision_${idx}`;
+            const radioGroup = `atria_skill_import_decision_${idx}`;
             return `
                 <tr data-skill-import-row data-skill-import-name="${safeName}" data-skill-import-conflict="different">
-                    <td class="luker_skill_import_name">${safeName}</td>
-                    <td class="luker_skill_import_status luker_skill_import_status_diff">${esc(t('Different (choose)'))}</td>
-                    <td class="luker_skill_import_action">
+                    <td class="atria_skill_import_name">${safeName}</td>
+                    <td class="atria_skill_import_status atria_skill_import_status_diff">${esc(t('Different (choose)'))}</td>
+                    <td class="atria_skill_import_action">
                         <label><input type="radio" name="${radioGroup}" value="skip" checked data-skill-import-radio="${safeName}"> ${esc(t('Skip'))}</label>
                         <label><input type="radio" name="${radioGroup}" value="replace" data-skill-import-radio="${safeName}"> ${esc(t('Replace'))}</label>
                     </td>
@@ -146,14 +146,14 @@ export function buildImportTableHtml(previewItems, t, esc) {
         // 'invalid' or unknown: surface but don't include in execute.
         return `
             <tr data-skill-import-row data-skill-import-name="${safeName}" data-skill-import-conflict="invalid">
-                <td class="luker_skill_import_name">${safeName}</td>
-                <td class="luker_skill_import_status luker_skill_import_status_invalid">${esc(t('Invalid (will be ignored)'))}</td>
-                <td class="luker_skill_import_action"></td>
+                <td class="atria_skill_import_name">${safeName}</td>
+                <td class="atria_skill_import_status atria_skill_import_status_invalid">${esc(t('Invalid (will be ignored)'))}</td>
+                <td class="atria_skill_import_action"></td>
             </tr>
         `;
     };
     return `
-<table class="luker_skill_import_table">
+<table class="atria_skill_import_table">
     <thead>
         <tr>
             <th>${esc(t('Skill'))}</th>
@@ -179,10 +179,10 @@ export function buildImportTableHtml(previewItems, t, esc) {
  */
 export function buildDialogHtml(targetScope, previewItems, t, esc) {
     return `
-<div class="luker_skill_import_dialog">
-    <div class="luker_skill_import_header">
+<div class="atria_skill_import_dialog">
+    <div class="atria_skill_import_header">
         <div>${esc(t('Skills embedded in this asset will be installed into:'))}</div>
-        <div class="luker_skill_import_target_label"><b>${esc(formatScopeLabel(targetScope, t))}</b></div>
+        <div class="atria_skill_import_target_label"><b>${esc(formatScopeLabel(targetScope, t))}</b></div>
     </div>
     ${buildImportTableHtml(previewItems, t, esc)}
 </div>
@@ -272,7 +272,7 @@ export async function runEmbedImportFlow({ context, payload, targetScope, t = (s
 
     // 2) Show dialog with per-skill decisions (driven by `different` rows).
     //
-    // The dialog uses Luker's `Popup` class for fine-grained access to the
+    // The dialog uses Atria's `Popup` class for fine-grained access to the
     // rendered DOM (so we can read radio state on close). callGenericPopup
     // returns just the result code; Popup gives us `popup.dlg` for DOM scrapes.
     const Popup = context.Popup;

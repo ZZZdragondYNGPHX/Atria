@@ -6,11 +6,11 @@ import { createContainer, destroyContainer, injectScopedCSS, loadEntryModule, sh
 import { buildContext } from './context.js';
 import { activateRendererBridge, deactivateRendererBridge } from './renderer.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const eventSource = __ctx.eventSource;
 const event_types = __ctx.eventTypes;
 const getRequestHeaders = __ctx.getRequestHeaders;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const registerExtensionApi = __ctx.registerExtensionApi;
 void (__ctx.getCharacterState);
 const updateCharacterState = __ctx.updateCharacterState;

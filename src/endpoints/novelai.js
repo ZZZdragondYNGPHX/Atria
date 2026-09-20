@@ -5,8 +5,8 @@ import express from 'express';
 
 import { readSecret, SECRET_KEYS } from './secrets.js';
 import { readAllChunks, extractFileFromZipBuffer } from '../util.js';
-import { runLukerDispatch } from '../luker-dispatch/runner.js';
-import { dispatchNovelAI } from '../luker-dispatch/providers/novelai.js';
+import { runAtriaDispatch } from '../atria-dispatch/runner.js';
+import { dispatchNovelAI } from '../atria-dispatch/providers/novelai.js';
 
 const API_NOVELAI = 'https://api.novelai.net';
 const IMAGE_NOVELAI = 'https://image.novelai.net';
@@ -63,7 +63,7 @@ router.post('/status', async function (req, res) {
     }
 });
 
-router.post('/generate', (req, res) => runLukerDispatch(req, res, {
+router.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'novelai',
     select: () => dispatchNovelAI,
 }));

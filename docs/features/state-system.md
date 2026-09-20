@@ -1,6 +1,6 @@
 # State System
 
-Luker introduces a state system that allows character cards, chats, and presets to carry persistent state data. Extensions and CardApps can use this system to store and read custom data without modifying the character card or chat history itself.
+Atria introduces a state system that allows character cards, chats, and presets to carry persistent state data. Extensions and CardApps can use this system to store and read custom data without modifying the character card or chat history itself.
 
 ## Character State
 
@@ -18,7 +18,7 @@ The lifecycle of character state is bound to the character itself — when a cha
 
 ## Chat State
 
-Each chat has its own state, isolated by namespace. Luker stores chat state in per-namespace files alongside the chat file, following the pattern `<chatFileBase>.luker-state.<namespace>.json`.
+Each chat has its own state, isolated by namespace. Atria stores chat state in per-namespace files alongside the chat file, following the pattern `<chatFileBase>.atria-state.<namespace>.json`.
 
 ### State File Characteristics
 
@@ -36,12 +36,12 @@ Chat state can store various auxiliary information related to the chat, such as:
 - Other metadata not suitable for writing directly into chat history
 
 ::: tip
-Chat state is automatically managed by Luker — you typically don't need to edit it manually. If you're migrating data from SillyTavern, these files will be created automatically on first use.
+Chat state is automatically managed by Atria — you typically don't need to edit it manually. If you're migrating data from SillyTavern, these files will be created automatically on first use.
 :::
 
 ## Preset State
 
-Luker also supports attaching state data to presets. Preset state allows extensions to store configuration or runtime information on specific presets. When users switch presets, the associated state data switches accordingly.
+Atria also supports attaching state data to presets. Preset state allows extensions to store configuration or runtime information on specific presets. When users switch presets, the associated state data switches accordingly.
 
 ## Persistence and Lifecycle
 
@@ -50,8 +50,8 @@ The state system follows these principles:
 | State Type | Storage Location | Lifecycle |
 | --- | --- | --- |
 | Character State | Per-namespace files next to character cards (`<character>.state.<namespace>.json`) | Created on first namespace write; renamed/deleted with the character |
-| Chat State | Per-namespace files next to chat files (`<chat>.luker-state.<namespace>.json`) | Created on first namespace write; renamed/deleted with the chat |
-| Preset State | Per-namespace files next to preset files (`<preset>.luker-state.<namespace>.json`) | Created on first namespace write; renamed/deleted with the preset |
+| Chat State | Per-namespace files next to chat files (`<chat>.atria-state.<namespace>.json`) | Created on first namespace write; renamed/deleted with the chat |
+| Preset State | Per-namespace files next to preset files (`<preset>.atria-state.<namespace>.json`) | Created on first namespace write; renamed/deleted with the preset |
 
 ```d2
 direction: right
@@ -68,16 +68,16 @@ CHAT: "Chat directory" {
   CHAT_MAIN: "Seraphina-2026.jsonl\nChat main file" {
     style.fill: "#e1f5ff"
   }
-  CHAT_S1: "Seraphina-2026.luker-state.chat_sync.json\nintegrity / updated_at"
-  CHAT_S2: "Seraphina-2026.luker-state.luker_orchestrator__schema.json\nOrchestrator state"
-  CHAT_S3: "Seraphina-2026.luker-state.memory_graph__meta.json\nMemory graph metadata"
+  CHAT_S1: "Seraphina-2026.atria-state.chat_sync.json\nintegrity / updated_at"
+  CHAT_S2: "Seraphina-2026.atria-state.atri_orchestrator__schema.json\nOrchestrator state"
+  CHAT_S3: "Seraphina-2026.atria-state.memory_graph__meta.json\nMemory graph metadata"
 }
 
 PRESET: "Preset directory" {
   P_MAIN: "for_my_athena.json\nPreset main file" {
     style.fill: "#e1f5ff"
   }
-  P_S1: "for_my_athena.luker-state.preset_assistant.json\nPreset assistant sessions"
+  P_S1: "for_my_athena.atria-state.preset_assistant.json\nPreset assistant sessions"
 }
 ```
 

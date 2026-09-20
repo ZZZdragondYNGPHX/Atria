@@ -156,7 +156,7 @@ describe('lorebook write proposals: update_entry compute path', () => {
         // the lorebook-write API is the second entry per the factory order.
         const apis = CEA.buildCharacterEditorHelperApis(ctx, { avatar: 'TestCard' });
         const writeApi = apis.find(a => typeof a?.isToolName === 'function'
-            && a.isToolName('luker_card_update_lorebook_entry'));
+            && a.isToolName('lorebook_update_entry'));
         if (!writeApi) throw new Error('lorebook-write helper api not found');
         return writeApi;
     }
@@ -167,7 +167,7 @@ describe('lorebook write proposals: update_entry compute path', () => {
         });
         const api = buildApi(ctx);
         const result = await api.invoke({
-            name: 'luker_card_update_lorebook_entry',
+            name: 'lorebook_update_entry',
             args: { book_name: 'BookA', uid: 5, patch: { disable: true } },
         });
 
@@ -188,7 +188,7 @@ describe('lorebook write proposals: update_entry compute path', () => {
         });
         const api = buildApi(ctx);
         await expect(api.invoke({
-            name: 'luker_card_update_lorebook_entry',
+            name: 'lorebook_update_entry',
             args: { book_name: 'BookA', uid: 99, patch: { disable: true } },
         })).rejects.toThrow(/Entry uid 99 not found/);
         expect(saveSpy).not.toHaveBeenCalled();
@@ -198,7 +198,7 @@ describe('lorebook write proposals: update_entry compute path', () => {
         const { ctx, saveSpy } = makeStubContext({});
         const api = buildApi(ctx);
         await expect(api.invoke({
-            name: 'luker_card_update_lorebook_entry',
+            name: 'lorebook_update_entry',
             args: { book_name: 'GhostBook', uid: 0, patch: { disable: true } },
         })).rejects.toThrow(/World book "GhostBook" not found/);
         expect(saveSpy).not.toHaveBeenCalled();
@@ -210,7 +210,7 @@ describe('lorebook write proposals: update_entry compute path', () => {
         });
         const api = buildApi(ctx);
         await expect(api.invoke({
-            name: 'luker_card_update_lorebook_entry',
+            name: 'lorebook_update_entry',
             args: { book_name: 'BookA', uid: 5, patch: {} },
         })).rejects.toThrow(/patch must contain at least one field/);
     });
@@ -221,7 +221,7 @@ describe('lorebook write proposals: update_entry compute path', () => {
         });
         const api = buildApi(ctx);
         const result = await api.invoke({
-            name: 'luker_card_update_lorebook_entry',
+            name: 'lorebook_update_entry',
             args: { book_name: 'BookA', uid: 5, patch: { uid: 999, content: 'y' } },
         });
         expect(result.after.uid).toBe(5);
@@ -235,7 +235,7 @@ describe('lorebook write proposals: str_replace_in_entry compute path', () => {
     function buildApi(ctx) {
         const apis = CEA.buildCharacterEditorHelperApis(ctx, { avatar: 'TestCard' });
         const writeApi = apis.find(a => typeof a?.isToolName === 'function'
-            && a.isToolName('luker_card_str_replace_in_lorebook_entry'));
+            && a.isToolName('lorebook_str_replace_in_entry'));
         if (!writeApi) throw new Error('lorebook-write helper api not found');
         return writeApi;
     }
@@ -246,7 +246,7 @@ describe('lorebook write proposals: str_replace_in_entry compute path', () => {
         });
         const api = buildApi(ctx);
         const result = await api.invoke({
-            name: 'luker_card_str_replace_in_lorebook_entry',
+            name: 'lorebook_str_replace_in_entry',
             args: { book_name: 'BookA', uid: 5, oldString: 'must speak in poetry', newString: 'prefers a poetic cadence' },
         });
         expect(result.ok).toBe(true);
@@ -264,7 +264,7 @@ describe('lorebook write proposals: str_replace_in_entry compute path', () => {
         });
         const api = buildApi(ctx);
         await expect(api.invoke({
-            name: 'luker_card_str_replace_in_lorebook_entry',
+            name: 'lorebook_str_replace_in_entry',
             args: { book_name: 'BookA', uid: 5, oldString: 'must', newString: 'might' },
         })).rejects.toThrow(/more than once/);
     });
@@ -275,7 +275,7 @@ describe('lorebook write proposals: str_replace_in_entry compute path', () => {
         });
         const api = buildApi(ctx);
         await expect(api.invoke({
-            name: 'luker_card_str_replace_in_lorebook_entry',
+            name: 'lorebook_str_replace_in_entry',
             args: { book_name: 'BookA', uid: 5, oldString: 'must use markdown', newString: '' },
         })).rejects.toThrow(/not found/);
     });
@@ -286,7 +286,7 @@ describe('lorebook write proposals: str_replace_in_entry compute path', () => {
         });
         const api = buildApi(ctx);
         await expect(api.invoke({
-            name: 'luker_card_str_replace_in_lorebook_entry',
+            name: 'lorebook_str_replace_in_entry',
             args: { book_name: 'BookA', uid: 5, oldString: '', newString: 'y' },
         })).rejects.toThrow(/non-empty oldString/);
     });
@@ -297,7 +297,7 @@ describe('lorebook write proposals: str_replace_in_entry compute path', () => {
         });
         const api = buildApi(ctx);
         const result = await api.invoke({
-            name: 'luker_card_str_replace_in_lorebook_entry',
+            name: 'lorebook_str_replace_in_entry',
             args: { book_name: 'BookA', uid: 5, oldString: ' [DROP THIS]', newString: '' },
         });
         expect(result.after.content).toBe('keep tail');

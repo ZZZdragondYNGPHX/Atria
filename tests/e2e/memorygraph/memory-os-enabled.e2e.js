@@ -25,16 +25,16 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const name = 'Memory OS activation regression';
-    const toggle = page.locator('#luker_rpg_memory_os_enabled');
+    const toggle = page.locator('#atria_rpg_memory_os_enabled');
     const inspector = page.locator('.memory-os-inspector');
     const persisted = () => page.evaluate(async () => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const response = await fetch('/api/settings/get', { method: 'POST', headers: ctx.getRequestHeaders(), body: '{}' });
         const payload = await response.json();
         return JSON.parse(payload.settings).extension_settings.memory_graph.memoryOsEnabled;
     });
-    const ready = () => page.waitForFunction(() => window.Luker?.getContext?.().getExtensionApi?.('memory-graph')
-        && window.Luker.getContext().getExtensionApi('orchestrator') && !document.getElementById('preloader'));
+    const ready = () => page.waitForFunction(() => window.Atria?.getContext?.().getExtensionApi?.('memory-graph')
+        && window.Atria.getContext().getExtensionApi('orchestrator') && !document.getElementById('preloader'));
     const openMemory = () => page.evaluate(async () => {
         const { openWorkspace } = await import('/scripts/extensions/orchestrator/workspace/panel.js');
         openWorkspace('Memory');
@@ -53,7 +53,7 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
         await inspector.getByRole('button', { name: '刷新', exact: true }).click();
         await expect(inspector.getByRole('status')).toContainText('显示');
         const live = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const ports = ctx.getExtensionApi('memory-graph').getWorkspacePorts(ctx);
             window.memoryOsSnapshot = await ports.load();
             window.memoryOsSnapshot.assertCurrent();
@@ -72,7 +72,7 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
         await inspector.getByRole('button', { name: '保存修正', exact: true }).click();
         await expect(inspector.getByRole('status')).toContainText('修正已保存');
         await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             window.memoryOsSnapshot = await ctx.getExtensionApi('memory-graph').getWorkspacePorts(ctx).load();
             window.memoryOsSnapshot.assertCurrent();
         });
@@ -80,7 +80,7 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
 
         await toggle.uncheck();
         const disabled = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             let stale;
             try { window.memoryOsSnapshot.assertCurrent(); } catch (error) { stale = error.name; }
             try { await ctx.getExtensionApi('memory-graph').getWorkspacePorts(ctx).load(); }

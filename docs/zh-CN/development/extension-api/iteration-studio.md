@@ -230,14 +230,14 @@ clearObsoleteSessions: async () => {
 
 ## 三层 API 暴露
 
-按 Luker API 约定，外壳每个能力都在三层暴露 —— 与 `edits-lib` 一致：
+按 Atria API 约定，外壳每个能力都在三层暴露 —— 与 `edits-lib` 一致：
 
 ```js
 // Layer 1 —— 直接 ESM import（仓库内扩展）
 import { openIterationStudio, defineAdapter } from '/scripts/iteration-studio/index.js';
 
-// Layer 2 —— lukerContext 属性（持有 context 的 CardApp / 扩展代码）
-const { openIterationStudio, defineAdapter } = lukerContext.iterationStudio;
+// Layer 2 —— atriaContext 属性（持有 context 的 CardApp / 扩展代码）
+const { openIterationStudio, defineAdapter } = atriaContext.iterationStudio;
 
 // Layer 3 —— getContext（第三方扩展）
 const { open, defineAdapter } = SillyTavern.getContext().iterationStudio;

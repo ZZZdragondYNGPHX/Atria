@@ -18,9 +18,8 @@
  *    `<ns>__meta` and is written directly via the chat-state API — those
  *    fields would otherwise be replayed-then-overwritten by the floor-state
  *    rebuild from `{}`.
- *  - One-shot upgrade from the old persisted schema (opLog inside the data
- *    namespace, schemaVersion 1) to the new layout (commits in
- *    `<ns>__floor_log`, metadata in `<ns>__meta`, graph in main namespace).
+ *  - The Atria namespace is a hard cutover. Pre-Atria memory-graph state is
+ *    intentionally not read, copied, replayed, or deleted by this adapter.
  */
 
 import { LEVEL, normalizeText, isExtractableAssistantMessage } from './primitives.js';
@@ -35,11 +34,11 @@ import {
     compareNodesByTimeline,
     getSemanticCoverageSeq,
 } from './graph-ops.js';
-import { runMigrationPipeline } from './migrations/index.js';
 
 const MODULE_NAME = 'memory_graph';
-const META_NAMESPACE = `${MODULE_NAME}__meta`;
-const LOG_NAMESPACE = `${MODULE_NAME}__floor_log`;
+const STATE_NAMESPACE = 'atri_memory_graph';
+const META_NAMESPACE = `${STATE_NAMESPACE}__meta`;
+const LOG_NAMESPACE = `${STATE_NAMESPACE}__floor_log`;
 const FLOOR_STATE_LOG_VERSION = 1;
 const SCHEMA_VERSION = 2;
 
@@ -96,7 +95,7 @@ export async function getFloorStateInstance(context) {
         // Caching a rejected Promise would pin every later call to the same
         // failure even after the underlying issue clears; drop the cache on
         // failure so the next call retries from scratch.
-        floorStatePromise = context.createFloorState({ namespace: MODULE_NAME })
+        floorStatePromise = context.createFloorState({ namespace: STATE_NAMESPACE })
             .catch((err) => {
                 floorStatePromise = null;
                 throw err;
@@ -152,103 +151,9 @@ export async function persistMetaFields(context, meta, target = undefined) {
     return await context.updateChatState(META_NAMESPACE, () => meta, options);
 }
 
-/**
- * One-shot upgrade from any historical chat-state shape to the current
- * v2 floor-state layout. The actual translation logic lives in the
- * `migrations/` registry; this function is the IO wrapper that reads the
- * three chat-state namespaces, runs the pipeline, and writes results
- * back in the (log → data → meta) order required for crash idempotency.
- *
- * @param {object} context
- * @param {object|undefined} target — chat target; default = current chat
- * @param {(message: any) => boolean} isExtractableAssistantMessage
- * @param {(store: object, entry: object) => void} applyMemoryLogEntryToStore
- * @returns {Promise<{migrated: boolean, migrations: string[]}>}
- */
-export async function migrateLegacyMemoryGraphState(
-    context,
-    target,
-    isExtractableAssistantMessage,
-    applyMemoryLogEntryToStore,
-) {
-    const targetOption = target ? { target } : undefined;
-    const targetWriteOption = target
-        ? { target, maxOperations: 16000 }
-        : { maxOperations: 16000 };
-
-    // getChatState now always returns an envelope {ok, state, reason?, hint?}.
-    // The migration detectors operate on raw payload shapes, so unwrap here —
-    // leaking the envelope makes every detector return false, which silently
-    // stamps __meta with a polluted base object and leaves the load path
-    // reading the envelope back as "unrecognized" forever.
-    const [dataRead, metaRead, logRead] = await Promise.all([
-        context.getChatState(MODULE_NAME, targetOption),
-        context.getChatState(META_NAMESPACE, targetOption),
-        context.getChatState(LOG_NAMESPACE, targetOption),
-    ]);
-    const data = dataRead?.ok ? dataRead.state : null;
-    const meta = metaRead?.ok ? metaRead.state : null;
-    const log = logRead?.ok ? logRead.state : null;
-
-    const ctx = {
-        chat: Array.isArray(context?.chat) ? context.chat : [],
-        isExtractableAssistantMessage,
-        applyMemoryLogEntryToStore,
-        buildObjectPatchOperationsAsync: context.buildObjectPatchOperationsAsync,
-        getFloorFromAssistantSeq,
-        buildMemoryLogOpsFromStore,
-        getStoreCoveredSeqTo,
-        FLOOR_STATE_LOG_VERSION,
-        SCHEMA_VERSION,
-    };
-
-    const result = await runMigrationPipeline({ data, meta, log }, ctx);
-
-    if (!result.changed) {
-        // fresh install / 已最新:仅在 meta 缺 schemaVersion 时补 stamp
-        if (!meta || Number(meta?.schemaVersion || 0) < SCHEMA_VERSION) {
-            const baseMeta = meta && typeof meta === 'object' ? meta : {};
-            const stampResult = await context.updateChatState(
-                META_NAMESPACE,
-                () => ({ ...baseMeta, schemaVersion: SCHEMA_VERSION }),
-                targetWriteOption,
-            );
-            if (!stampResult?.ok) {
-                console.warn(`[${MODULE_NAME}] migration: meta stamp failed (reason=${stampResult?.reason}, hint=${stampResult?.hint})`, { target });
-            } else {
-                console.info(`[${MODULE_NAME}] migration: stamped __meta.schemaVersion=${SCHEMA_VERSION} (no shape detected, data was ${data == null ? 'absent' : 'unrecognized'})`);
-            }
-        } else {
-            console.info(`[${MODULE_NAME}] migration: already at schemaVersion=${SCHEMA_VERSION}, no-op`);
-        }
-        return { migrated: false, migrations: result.migrations };
-    }
-
-    // 写顺序:log → data → meta(schemaVersion 最后落,保证 idempotency)。
-    // 任意一步失败立即抛错,wrapper 的 caller 会 catch + 警告;不继续往下写以免
-    // 留下"data 已新但 meta 没 stamp"等中间态(实际上这种中间态下次启动还会
-    // 重跑迁移,但 silent 失败更难定位)。
-    const commitCount = Array.isArray(result.log?.commits) ? result.log.commits.length : 0;
-    console.info(`[${MODULE_NAME}] migration: pipeline=[${result.migrations.join(' → ')}] producing ${commitCount} commits, writing log → data → meta`);
-
-    const logResult = await context.updateChatState(LOG_NAMESPACE, () => result.log, targetWriteOption);
-    if (!logResult?.ok) {
-        throw new Error(`[${MODULE_NAME}] migration: __floor_log write failed (reason=${logResult?.reason}, hint=${logResult?.hint})`);
-    }
-    const dataResult = await context.updateChatState(MODULE_NAME, () => result.data, targetWriteOption);
-    if (!dataResult?.ok) {
-        throw new Error(`[${MODULE_NAME}] migration: data namespace write failed (reason=${dataResult?.reason}, hint=${dataResult?.hint})`);
-    }
-    const metaResult = await context.updateChatState(META_NAMESPACE, () => result.meta, targetWriteOption);
-    if (!metaResult?.ok) {
-        throw new Error(`[${MODULE_NAME}] migration: __meta write failed (reason=${metaResult?.reason}, hint=${metaResult?.hint})`);
-    }
-    console.info(`[${MODULE_NAME}] migration: complete, schemaVersion=${SCHEMA_VERSION} stamped`);
-    return { migrated: true, migrations: result.migrations };
-}
-
 export const constants = Object.freeze({
     MODULE_NAME,
+    STATE_NAMESPACE,
     META_NAMESPACE,
     LOG_NAMESPACE,
     FLOOR_STATE_LOG_VERSION,

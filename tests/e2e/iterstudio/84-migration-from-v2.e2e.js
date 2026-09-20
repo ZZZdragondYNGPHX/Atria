@@ -26,7 +26,7 @@ import { selectPresetByName, normalizeIterStudioSettings } from '../preset/_help
 
 let server;
 
-const CPA_SIDECAR_PATH_SEGMENTS = ['default-user', 'OpenAI Settings', 'Default.luker-state.completion_preset_assistant_session.json'];
+const CPA_SIDECAR_PATH_SEGMENTS = ['default-user', 'OpenAI Settings', 'Default.atria-state.completion_preset_assistant_session.json'];
 
 function cpaSidecarPath(dataRoot) {
     return resolve(dataRoot, ...CPA_SIDECAR_PATH_SEGMENTS);

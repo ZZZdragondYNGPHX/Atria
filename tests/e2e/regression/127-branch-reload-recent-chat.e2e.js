@@ -63,7 +63,7 @@ test.describe('#127 - original chat selection after branching', () => {
             return body.chat && body.chat !== originalChatId;
         });
         await branchFromMessageViaUI(page, branchAt);
-        const branchChatId = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+        const branchChatId = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
         expect(branchChatId).not.toBe(originalChatId);
         expect((await getRenderedChatTexts(page)).some(text => text.includes('Can you still see the northern buoy?'))).toBe(false);
         const persistResponse = await branchPersisted;
@@ -72,7 +72,7 @@ test.describe('#127 - original chat selection after branching', () => {
 
         await page.reload();
         await page.waitForFunction('document.getElementById("preloader") === null', { timeout: 60_000 });
-        await page.waitForFunction(() => !!window.Luker?.getContext, { timeout: 30_000 });
+        await page.waitForFunction(() => !!window.Atria?.getContext, { timeout: 30_000 });
 
         const welcomePanel = page.locator('.welcomePanel');
         await welcomePanel.waitFor({ state: 'visible', timeout: 15_000 });
@@ -81,12 +81,12 @@ test.describe('#127 - original chat selection after branching', () => {
         await originalEntry.click();
 
         await page.waitForFunction((chatId) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.getCurrentChatId() === chatId && Array.from(document.querySelectorAll('#chat .mes_text'))
                 .some(element => element.textContent.includes('Can you still see the northern buoy?'));
         }, originalChatId, { timeout: 15_000 });
 
-        expect(await page.evaluate(() => window.Luker.getContext().getCurrentChatId())).toBe(originalChatId);
+        expect(await page.evaluate(() => window.Atria.getContext().getCurrentChatId())).toBe(originalChatId);
 
         // The pinned chat must also be persisted into the character card so
         // the next reload (auto-load chat, /go, fresh getCharacters) resumes
@@ -129,7 +129,7 @@ test.describe('#127 - original chat selection after branching', () => {
             return body.chat && body.chat !== originalChatId;
         });
         await branchFromMessageViaUI(page, branchAt);
-        const branchChatId = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+        const branchChatId = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
         const persistResponse = await branchPersisted;
         expect(persistResponse.ok()).toBe(true);
         expect(persistResponse.request().postDataJSON().chat).toBe(branchChatId);
@@ -137,22 +137,22 @@ test.describe('#127 - original chat selection after branching', () => {
         // Reload lands on the welcome panel (no auto-load), click original.
         await page.reload();
         await page.waitForFunction('document.getElementById("preloader") === null', { timeout: 60_000 });
-        await page.waitForFunction(() => !!window.Luker?.getContext, { timeout: 30_000 });
+        await page.waitForFunction(() => !!window.Atria?.getContext, { timeout: 30_000 });
         const welcomePanel = page.locator('.welcomePanel');
         await welcomePanel.waitFor({ state: 'visible', timeout: 15_000 });
         const originalEntry = welcomePanel.locator(`.recentChat[data-file=${JSON.stringify(originalChatId)}]`);
         await expect(originalEntry).toHaveCount(1);
         await originalEntry.click();
 
-        await page.waitForFunction((chatId) => window.Luker.getContext().getCurrentChatId() === chatId, originalChatId, { timeout: 15_000 });
+        await page.waitForFunction((chatId) => window.Atria.getContext().getCurrentChatId() === chatId, originalChatId, { timeout: 15_000 });
 
         // After the welcome early-return path, reload once more. The freshly
         // reloaded card must point at the original chat (the healed pointer),
         // not at the branch that was created after it.
         await page.reload();
         await page.waitForFunction('document.getElementById("preloader") === null', { timeout: 60_000 });
-        await page.waitForFunction(() => !!window.Luker?.getContext, { timeout: 30_000 });
+        await page.waitForFunction(() => !!window.Atria?.getContext, { timeout: 30_000 });
         await selectCharacterByName(page, 'Ash the Cartographer');
-        await page.waitForFunction((chatId) => window.Luker.getContext().getCurrentChatId() === chatId, originalChatId, { timeout: 15_000 });
+        await page.waitForFunction((chatId) => window.Atria.getContext().getCurrentChatId() === chatId, originalChatId, { timeout: 15_000 });
     });
 });

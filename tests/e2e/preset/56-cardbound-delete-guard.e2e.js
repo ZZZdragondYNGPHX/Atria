@@ -54,7 +54,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT_NAME, preset: { temperature: SLOT_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -104,7 +104,7 @@ test.describe('#56 — onDeletePresetClick guard 防止误删 stale 全局 prese
         // stale 全局名 —— 这是"guard 拒绝的场景"的现实前提。用 evaluate
         // 得到的名字作为权威,让 stale 文件路径不受硬编码猜测影响。
         const staleName = await page.evaluate(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return ctx?.chatCompletionSettings?.preset_settings_openai;
         });
         expect(typeof staleName).toBe('string');
@@ -181,9 +181,9 @@ test.describe('#56 — onDeletePresetClick guard 防止误删 stale 全局 prese
         // 破坏面:slot 不被删、名字不变、default 指针不变、身份字段
         // (temperature)不被冲掉。
         const slotAfter = await page.evaluate((name) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const char = ctx?.characters?.find(c => c && c.name === name);
-            return char?.data?.extensions?.luker?.chat_completion_preset ?? null;
+            return char?.data?.extensions?.atria?.chat_completion_preset ?? null;
         }, CARD_NAME);
         expect(Array.isArray(slotAfter?.presets)).toBe(true);
         expect(slotAfter.presets).toHaveLength(1);

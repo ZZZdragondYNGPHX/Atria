@@ -107,7 +107,7 @@ describe('MigrationRunner: snapshot GC on successful migration', () => {
     let tmpRoot, src, dst;
 
     beforeEach(() => {
-        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-runner-gc-'));
+        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-runner-gc-'));
         src = buildHarness(path.join(tmpRoot, 'src'));
         dst = buildHarness(path.join(tmpRoot, 'dst'));
     });

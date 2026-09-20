@@ -10,8 +10,8 @@
 // takes the original same-mode path (no crossModeRestore delegation) for
 // fs→fs, sqlite→sqlite, mysql→mysql, postgres→postgres.
 //
-// mysql / pg pairs skip when LUKER_DISABLE_MYSQL_TESTS=1 /
-// LUKER_DISABLE_POSTGRES_TESTS=1 — matching the existing harness skip
+// mysql / pg pairs skip when ATRIA_DISABLE_MYSQL_TESTS=1 /
+// ATRIA_DISABLE_POSTGRES_TESTS=1 — matching the existing harness skip
 // convention for environments without a local test DB.
 
 import fs from 'node:fs';
@@ -53,8 +53,8 @@ const FULL_SELECTION = {
     globalExtensions: false, vectors: true,
 };
 
-const SKIP_MYSQL = !!process.env.LUKER_DISABLE_MYSQL_TESTS;
-const SKIP_PG = !!process.env.LUKER_DISABLE_POSTGRES_TESTS;
+const SKIP_MYSQL = !!process.env.ATRIA_DISABLE_MYSQL_TESTS;
+const SKIP_PG = !!process.env.ATRIA_DISABLE_POSTGRES_TESTS;
 
 const MODES = ['fs', 'sqlite', 'mysql', 'postgres'];
 
@@ -144,7 +144,7 @@ async function buildSourceZip({ srcKind, srcEngine, srcDir, handle, zipPath }) {
         // Add any fs-tree files that exist under the user dir (e.g.
         // secrets.json, characters/, etc. seeded by the harness).
         if (fs.existsSync(srcDir)) {
-            await addDirToZip(arc, srcDir, '', { skipNames: new Set(['luker-storage.sqlite']) });
+            await addDirToZip(arc, srcDir, '', { skipNames: new Set(['atria-storage.sqlite']) });
         }
     }
     arc.finalize();
@@ -188,7 +188,7 @@ async function buildSourceArtifact(srcKind, handle) {
         srcEngine = new SqliteEngine({ directoriesByHandle: () => ({ root: srcDir }) });
     } else if (srcKind === 'mysql') {
         const dbName = `parity_src_${Date.now()}_${randomBytes(3).toString('hex')}`;
-        const rootUrl = process.env.LUKER_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
+        const rootUrl = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
         const mysql = await import('mysql2/promise');
         const root = await mysql.default.createConnection(rootUrl);
         await root.query(`CREATE DATABASE \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`);
@@ -201,7 +201,7 @@ async function buildSourceArtifact(srcKind, handle) {
         };
     } else if (srcKind === 'postgres') {
         const pg = await import('pg');
-        const baseUrl = process.env.LUKER_TEST_POSTGRES_URL || 'postgresql://luker:postgres@127.0.0.1:55432/luker_test';
+        const baseUrl = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
         const schemaName = `parity_src_${Date.now()}_${randomBytes(3).toString('hex')}`;
         const rootClient = new pg.default.Client({ connectionString: baseUrl });
         await rootClient.connect();
@@ -305,7 +305,7 @@ describe.each(pairs())('cross-mode restore: $src → $dst', ({ src, dst, sameMod
         // but the test would be harder to reason about). Create a
         // throwaway namespace per test instead.
         if (src === 'mysql') {
-            const rootUrl = process.env.LUKER_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
+            const rootUrl = process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306';
             const dbName = `parity_scratch_${Date.now()}_${randomBytes(3).toString('hex')}`;
             const mysql = await import('mysql2/promise');
             const root = await mysql.default.createConnection(rootUrl);
@@ -318,7 +318,7 @@ describe.each(pairs())('cross-mode restore: $src → $dst', ({ src, dst, sameMod
             };
         }
         if (src === 'postgres') {
-            const baseUrl = process.env.LUKER_TEST_POSTGRES_URL || 'postgresql://luker:postgres@127.0.0.1:55432/luker_test';
+            const baseUrl = process.env.ATRIA_TEST_POSTGRES_URL || 'postgresql://atria:postgres@127.0.0.1:55432/atria_test';
             const schemaName = `parity_scratch_${Date.now()}_${randomBytes(3).toString('hex')}`;
             const pg = await import('pg');
             const rootClient = new pg.default.Client({ connectionString: baseUrl });

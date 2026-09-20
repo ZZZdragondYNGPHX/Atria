@@ -42,7 +42,7 @@ import { setReadOnly, isReadOnly } from '../../../src/storage/read-only-mode.js'
 import { makeMultiHandleFsEngine } from '../harness/contract-harness.js';
 
 function makeTempRoot() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'luker-cmr-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'atria-cmr-'));
 }
 
 // Build a sqlite-source ZIP from a real engine harness.
@@ -64,7 +64,7 @@ async function buildSqliteSourceZip(zipPath, srcRoot, handle) {
     } finally {
         engine.close();
     }
-    const dumpBytes = fs.readFileSync(path.join(srcRoot, 'luker-storage.sqlite'));
+    const dumpBytes = fs.readFileSync(path.join(srcRoot, 'atria-storage.sqlite'));
     return new Promise((resolve, reject) => {
         const out = fs.createWriteStream(zipPath);
         const arc = archiver('zip');

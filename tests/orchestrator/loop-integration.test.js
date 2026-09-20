@@ -132,7 +132,7 @@ function makeChatContext({ chat = [], notesAdapter = null, sortedEntries = null,
         __setSessionForTest(ctx, memorySession);
     }
     if (activatedEntryKeys !== null) {
-        ctx.__lukerRun = { activatedEntryKeys };
+        ctx.__atriaRun = { activatedEntryKeys };
     }
     if (targetFloorForNote !== null) {
         ctx.__targetFloorForNote = targetFloorForNote;
@@ -143,7 +143,7 @@ function makeChatContext({ chat = [], notesAdapter = null, sortedEntries = null,
 function makePayload({ signal = new AbortController().signal, activatedEntryKeys = null } = {}) {
     const payload = { signal, coreChat: [] };
     if (activatedEntryKeys !== null) {
-        payload.__lukerRun = { activatedEntryKeys };
+        payload.__atriaRun = { activatedEntryKeys };
     }
     return payload;
 }
@@ -396,8 +396,8 @@ describe('loop mode end-to-end: tool failure -> agent self-correction (Task 15b)
 });
 
 describe('loop mode end-to-end: lorebook activated-entry dedup (Task 15c)', () => {
-    test('payload.__lukerRun.activatedEntryKeys propagates to lorebook_search and excludes pre-injected entries', async () => {
-        // The orchestrator main.js seeds payload.__lukerRun with the World
+    test('payload.__atriaRun.activatedEntryKeys propagates to lorebook_search and excludes pre-injected entries', async () => {
+        // The orchestrator main.js seeds payload.__atriaRun with the World
         // Info entries already activated for this turn; the runtime forwards
         // those into toolContext so lorebook_search can dedup. Here we
         // simulate that by passing the activated set on the payload and

@@ -4,13 +4,13 @@
 // the source, re-imports the exported PNG, and asserts every observable
 // property of the card-bound state survived intact:
 //
-//   1. Ghost `<optgroup data-luker-card-bound="1">` renders both slots
+//   1. Ghost `<optgroup data-atria-card-bound="1">` renders both slots
 //      in #settings_preset_openai.
 //   2. The default preset (Slot1) auto-applied to the DOM inputs
 //      (#temp_counter_openai) on character-select.
 //   3. `ctx.character.presets.list(...)` returns both slot entries.
 //   4. On-disk parse of the newly-imported PNG confirms the shape
-//      `data.extensions.luker.chat_completion_preset = { presets:[...],
+//      `data.extensions.atria.chat_completion_preset = { presets:[...],
 //      defaultPresetName:'Slot1' }` survived the round-trip.
 //
 // Real UI throughout — right-drawer + character-edit panel + visible
@@ -58,7 +58,7 @@ test.beforeAll(async () => {
         overrides: {
             name: SRC_CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT1_NAME, preset: { temperature: SLOT1_TEMP, chat_completion_source: 'openai' } },
@@ -101,7 +101,7 @@ async function exportSelectedCharacterAsPng(page) {
  */
 async function readCardBoundStateForActive(page) {
     return page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const chid = ctx?.characterId ?? window.this_chid;
         const c = ctx?.characters?.[chid];
         const listApi = ctx?.character?.presets?.list;
@@ -111,7 +111,7 @@ async function readCardBoundStateForActive(page) {
             presetsFromCtxApi: typeof listApi === 'function'
                 ? listApi(c).map(e => ({ name: e.name, isDefault: !!e.isDefault, hasBody: !!e.preset }))
                 : null,
-            raw: c?.data?.extensions?.luker?.chat_completion_preset ?? null,
+            raw: c?.data?.extensions?.atria?.chat_completion_preset ?? null,
         };
     });
 }
@@ -125,7 +125,7 @@ test.describe('#49 — card-bound preset export/import round-trip preserves shap
         // Card-bound optgroup renders on select; wait for it.
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 15_000 });
         await expect
@@ -147,7 +147,7 @@ test.describe('#49 — card-bound preset export/import round-trip preserves shap
         // block (proves export DOESN'T strip Layer 1 fields).
         const exportedPng = readFileSync(exportedPath);
         const exportedCard = JSON.parse(readPngCard(exportedPng));
-        const exportedBoundState = exportedCard?.data?.extensions?.luker?.chat_completion_preset;
+        const exportedBoundState = exportedCard?.data?.extensions?.atria?.chat_completion_preset;
         expect(exportedBoundState).toBeTruthy();
         expect(exportedBoundState.defaultPresetName).toBe(SLOT1_NAME);
         expect(Array.isArray(exportedBoundState.presets)).toBe(true);
@@ -162,7 +162,7 @@ test.describe('#49 — card-bound preset export/import round-trip preserves shap
         // confirm delete propagated (list reflection is async through
         // getCharacters()).
         await page.waitForFunction((n) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return Array.isArray(ctx?.characters) && !ctx.characters.some(c => c?.name === n);
         }, SRC_CHAR_NAME, { timeout: 15_000 });
 
@@ -179,14 +179,14 @@ test.describe('#49 — card-bound preset export/import round-trip preserves shap
         // autoSelectPreset; wait until the ghost option is selected.
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 20_000 });
 
         // Assertion 1: ghost optgroup carries BOTH slot options.
         const optgroupSlotNames = await page.evaluate(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const group = sel?.querySelector('optgroup[data-luker-card-bound="1"]');
+            const group = sel?.querySelector('optgroup[data-atria-card-bound="1"]');
             if (!group) return null;
             return Array.from(group.querySelectorAll('option')).map(o => o.textContent.trim());
         });
@@ -207,7 +207,7 @@ test.describe('#49 — card-bound preset export/import round-trip preserves shap
         expect(byName[SLOT1_NAME]).toEqual({ name: SLOT1_NAME, isDefault: true, hasBody: true });
         expect(byName[SLOT2_NAME]).toEqual({ name: SLOT2_NAME, isDefault: false, hasBody: true });
 
-        // Assertion 4: on-disk parse of the NEWLY-IMPORTED PNG (Luker's
+        // Assertion 4: on-disk parse of the NEWLY-IMPORTED PNG (Atria's
         // uploader materializes the file back into characters/), confirms
         // the chat_completion_preset shape survived import.
         const importedAvatar = state.avatar;
@@ -215,7 +215,7 @@ test.describe('#49 — card-bound preset export/import round-trip preserves shap
         const importedPath = resolve(server.dataRoot, 'default-user', 'characters', importedAvatar);
         const importedPng = readFileSync(importedPath);
         const importedCard = JSON.parse(readPngCard(importedPng));
-        const importedBound = importedCard?.data?.extensions?.luker?.chat_completion_preset;
+        const importedBound = importedCard?.data?.extensions?.atria?.chat_completion_preset;
         expect(importedBound).toBeTruthy();
         expect(importedBound.defaultPresetName).toBe(SLOT1_NAME);
         expect(Array.isArray(importedBound.presets)).toBe(true);

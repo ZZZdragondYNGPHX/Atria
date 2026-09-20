@@ -54,8 +54,8 @@ One independent task should normally use one temporary branch.
 - Product/UI/package identity: **Atria**.
 - New Atria-owned code should prefer concise `atri_*` namespaces where practical, e.g. `atri_memory`, `atri_agent`, `atri_workspace`.
 - SillyTavern upstream names remain unchanged unless Atria intentionally overrides that behavior.
-- Legacy Luker identifiers may remain when they are compatibility-sensitive persisted keys, protocol fields, migration surfaces, or legacy data paths.
-- Do not introduce new Luker-branded product identity.
+- Active Atria product code must use Atria-owned namespaces; predecessor compatibility aliases and persisted-key fallbacks are not part of the current product contract.
+- The legacy reference branch may retain historical predecessor naming, but active product code must not reintroduce it.
 
 ## Upstream relationship
 

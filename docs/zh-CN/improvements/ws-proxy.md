@@ -1,6 +1,6 @@
 # WebSocket 代理
 
-Luker 提供了 WebSocket（WS）代理功能，通过持久的 WebSocket 隧道传输 AI 生成请求，替代传统的 HTTP 请求方式。这在网络不稳定或受限的环境中尤其有用。
+Atria 提供了 WebSocket（WS）代理功能，通过持久的 WebSocket 隧道传输 AI 生成请求，替代传统的 HTTP 请求方式。这在网络不稳定或受限的环境中尤其有用。
 
 ## 什么是 WS 代理
 
@@ -82,7 +82,7 @@ TICKET_REQ: "客户端 POST /api/ws-ticket\n(走完整 HTTP 中间件栈)"
 TICKET_RESP: "服务端 mintTicket\n32 字节随机 hex,30s TTL,单次使用" {
   style.fill: "#fff3e0"
 }
-UP: "new WebSocket(url, [luker-ws-ticket.<ticket>])\nJS 把 ticket 塞进 Sec-WebSocket-Protocol"
+UP: "new WebSocket(url, [atria-ws-ticket.<ticket>])\nJS 把 ticket 塞进 Sec-WebSocket-Protocol"
 GATE: "server.on('upgrade')\nparse 子协议 → consumeTicket" {
   style.fill: "#fff3e0"
 }
@@ -113,9 +113,9 @@ WS_MSG -> DISPATCH.GOOD_MOCK: "派发请求"
 ### 工作原理
 
 1. **拿 ticket**：客户端 `POST /api/ws-ticket`，该端点挂在 `setupPrivateEndpoints` 里，过完整 HTTP 中间件栈（basicAuth + cookieSession + setUserData + requireLogin + CSRF）。服务端 `crypto.randomBytes(32)` 生成 64 字符 hex，存进进程内 `Map`，返回 `{ ticket }`。
-2. **塞子协议**：客户端 `new WebSocket('/ws/proxy', [`luker-ws-ticket.${ticket}`])`。浏览器把它写进 `Sec-WebSocket-Protocol` 请求头。
+2. **塞子协议**：客户端 `new WebSocket('/ws/proxy', [`atria-ws-ticket.${ticket}`])`。浏览器把它写进 `Sec-WebSocket-Protocol` 请求头。
 3. **升级阶段验证**：服务端 `server.on('upgrade')` 从该头提取 ticket，调 `consumeTicket(ticket)`。校验通过同时**删除 entry**（单次使用）。失败：写 `HTTP/1.1 401`，关 socket。
-4. **echo 子协议**:`wss.handleUpgrade` 内部调 `handleProtocols`，把同一个 `luker-ws-ticket.<ticket>` 字符串选回去，自动写到 101 响应头，握手完成。
+4. **echo 子协议**:`wss.handleUpgrade` 内部调 `handleProtocols`，把同一个 `atria-ws-ticket.<ticket>` 字符串选回去，自动写到 101 响应头，握手完成。
 5. **派发请求**：从 WS 消息提取 URL/方法/头/体，构造 mock `IncomingMessage`（Readable socket，`req.push()` 注入 body）。
 6. **派发标记**：在 mock 请求上挂 `WS_PROXY_AUTH_BYPASS`（模块私有 Symbol，无法通过 header / query / body 伪造）。
 7. **`app.handle(req, res)`**：进入 Express 中间件链——cookieSession 解析 cookie、CSRF 校验 token、setUserData 注入 `request.user`、requireLogin 校验登录态都正常运行；basicAuth 中间件读到 Symbol 后直接放行。
@@ -149,15 +149,15 @@ WS_MSG -> DISPATCH.GOOD_MOCK: "派发请求"
 以下场景特别适合使用 WS 代理：
 
 - **移动设备使用** — 手机网络切换（Wi-Fi ↔ 蜂窝）时保持生成不中断
-- **远程服务器部署** — Luker 部署在远程服务器上，通过不稳定的网络访问
+- **远程服务器部署** — Atria 部署在远程服务器上，通过不稳定的网络访问
 - **长文本生成** — 生成较长的回复时，减少因超时导致的失败
 - **企业网络环境** — 绕过可能干扰长连接的网络设备
 
 ::: tip
-WS 代理是 Luker 的内部传输优化，对用户来说是透明的——你不需要进行额外配置，Luker 会在适当的时候自动使用。
+WS 代理是 Atria 的内部传输优化，对用户来说是透明的——你不需要进行额外配置，Atria 会在适当的时候自动使用。
 :::
 
 ## 相关页面
 
 - [性能优化](/zh-CN/improvements/performance) — 其他性能改进
-- [生成层](/zh-CN/improvements/generation-layer) — Luker 的统一生成架构
+- [生成层](/zh-CN/improvements/generation-layer) — Atria 的统一生成架构

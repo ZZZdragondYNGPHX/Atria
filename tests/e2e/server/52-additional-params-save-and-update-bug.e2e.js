@@ -144,7 +144,7 @@ async function selectProfileFromDropdown(page, profileName) {
     }, profileName);
     // Wait for the manager to register the selection.
     await page.waitForFunction((name) => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const cm = ctx?.extensionSettings?.connectionManager;
         if (!cm) return false;
         const sel = cm.profiles?.find(p => p.id === cm.selectedProfile);
@@ -228,7 +228,7 @@ async function clickSaveAndUpdatePopup(page) {
 
 function readLiveIncludeBody(page) {
     return page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         // Both names exist on ctx depending on init timing; prefer the
         // documented chatCompletionSettings, fall back to the raw
         // oaiSettings / oai_settings surfaces.
@@ -239,7 +239,7 @@ function readLiveIncludeBody(page) {
 
 function readProfileIncludeBody(page, profileName) {
     return page.evaluate((name) => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const p = ctx?.extensionSettings?.connectionManager?.profiles?.find(x => x.name === name);
         return p ? String(p['custom-include-body'] ?? '') : null;
     }, profileName);

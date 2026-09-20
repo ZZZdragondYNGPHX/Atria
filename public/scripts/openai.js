@@ -288,7 +288,7 @@ export async function whenChatCompletionModelListReady() {
     }
 }
 
-function summarizeLukerPersistTargetForDebug(persistTarget) {
+function summarizeAtriaPersistTargetForDebug(persistTarget) {
     if (!persistTarget || typeof persistTarget !== 'object') {
         return null;
     }
@@ -313,8 +313,8 @@ function summarizeLukerPersistTargetForDebug(persistTarget) {
     };
 }
 
-function logOpenAILukerPersistenceDebug(phase, details = {}) {
-    console.debug('[LukerPersist]', {
+function logOpenAIAtriaPersistenceDebug(phase, details = {}) {
+    console.debug('[AtriaPersist]', {
         api: 'openai',
         phase: String(phase || ''),
         ...details,
@@ -335,9 +335,9 @@ const characterBoundPresetState = {
 // assert invariants I / III (characterBoundPresetState.active ≡ ghost DOM-
 // selected; previousPreset preserved across ghost ↔ global toggles) against
 // the live in-memory field the refactor is defined against. The `__` prefix
-// signals "internal, don't consume from third-party extensions" — Luker's
+// signals "internal, don't consume from third-party extensions" — Atria's
 // other preset e2es (39/40/41/42/45/46/49) assert on the DOM signal
-// (`option[data-luker-char-bound="1"]`); this hook only exists because
+// (`option[data-atria-char-bound="1"]`); this hook only exists because
 // Invariant III cannot be observed from the DOM alone.
 if (typeof window !== 'undefined') {
     Object.defineProperty(window, '__characterBoundPresetState', {
@@ -355,9 +355,9 @@ if (typeof window !== 'undefined') {
  * view row for the ghost preset — upstream SillyTavern's implicit
  * contract is that `getPresetList().presets[preset_names[name]]` (and
  * the numeric-index sibling `presets[Number(getSelectedPreset())]`)
- * always resolve to the currently-active preset body. Luker's ghost
+ * always resolve to the currently-active preset body. Atria's ghost
  * `<option>` breaks that contract for card-bound bindings because its
- * `value` is an opaque encoded string (`__luker_card__::…`) rather than
+ * `value` is an opaque encoded string (`__atria_card__::…`) rather than
  * a numeric index into the global `openai_settings` array. Every
  * third-party extension that follows the upstream idiom (JS-Slash-Runner
  * / TavernHelper, etc.) then reads `undefined` and silently drops its
@@ -372,7 +372,7 @@ if (typeof window !== 'undefined') {
 export function getActiveCardBoundGhostSnapshot() {
     if (typeof document === 'undefined') return null;
     const selectedOption = document.querySelector('#settings_preset_openai option:checked');
-    if (!selectedOption || selectedOption.getAttribute('data-luker-char-bound') !== '1') {
+    if (!selectedOption || selectedOption.getAttribute('data-atria-char-bound') !== '1') {
         return null;
     }
     const ghostValue = String(selectedOption.value ?? '');
@@ -434,13 +434,13 @@ export const chat_completion_sources = {
     MINIMAX: 'minimax',
 };
 
-const lukerServerPersistenceUnsupportedSources = new Set();
+const atriaServerPersistenceUnsupportedSources = new Set();
 
-function isLukerServerPersistenceSupported(source) {
-    return !lukerServerPersistenceUnsupportedSources.has(String(source || '').trim().toLowerCase());
+function isAtriaServerPersistenceSupported(source) {
+    return !atriaServerPersistenceUnsupportedSources.has(String(source || '').trim().toLowerCase());
 }
 
-function buildLukerPersistTarget() {
+function buildAtriaPersistTarget() {
     if (selected_group) {
         const group = groups.find(x => x.id == selected_group);
         const groupChatId = group?.chat_id;
@@ -475,8 +475,8 @@ function buildLukerPersistTarget() {
     };
 }
 
-function shouldUseLukerServerPersistence(type, source = oai_settings.chat_completion_source) {
-    return (type === 'normal' || type === 'regenerate') && isLukerServerPersistenceSupported(source);
+function shouldUseAtriaServerPersistence(type, source = oai_settings.chat_completion_source) {
+    return (type === 'normal' || type === 'regenerate') && isAtriaServerPersistenceSupported(source);
 }
 
 function isLastOpenAIReplyPersistedByServer() {
@@ -3846,7 +3846,7 @@ export async function createGenerationParameters(settings, model, type, messages
         generate_data.gemini_enable_history_cache = Boolean(settings.gemini_enable_history_cache);
         generate_data.gemini_cache_keep_recent_turns = Number(settings.gemini_cache_keep_recent_turns ?? 2);
         if (generate_data.gemini_enable_history_cache) {
-            const target = buildLukerPersistTarget();
+            const target = buildAtriaPersistTarget();
             if (target) {
                 // Server-local identity only; never send chat names to OpenRouter.
                 generate_data.gemini_cache_session = JSON.stringify([target.kind, target.id, target.avatar_url, target.file_name]);
@@ -4573,33 +4573,33 @@ async function sendOpenAIRequest(type, messages, signal, {
     if (requestSecretId) {
         requestBody.secret_id = requestSecretId;
     }
-    const shouldTrackLukerGenerationState = shouldUseLukerServerPersistence(type, requestSettings.chat_completion_source);
-    if (shouldTrackLukerGenerationState) {
+    const shouldTrackAtriaGenerationState = shouldUseAtriaServerPersistence(type, requestSettings.chat_completion_source);
+    if (shouldTrackAtriaGenerationState) {
         lastOpenAIReplyPersistedByServer = false;
         lastOpenAIGenerationId = '';
-        const persistTarget = buildLukerPersistTarget();
+        const persistTarget = buildAtriaPersistTarget();
         if (persistTarget) {
             const generationId = uuidv4();
             requestBody = {
                 ...requestBody,
-                luker_generation: {
+                atri_generation: {
                     job_id: generationId,
                     persist_target: persistTarget,
                 },
             };
             lastOpenAIGenerationId = generationId;
-            logOpenAILukerPersistenceDebug('request_init', {
+            logOpenAIAtriaPersistenceDebug('request_init', {
                 type,
                 generation_id: generationId,
-                persist_target: summarizeLukerPersistTargetForDebug(persistTarget),
+                persist_target: summarizeAtriaPersistTargetForDebug(persistTarget),
             });
         }
     }
     const { response, cachedJson } = await postChatCompletionGenerateRequest(requestBody, signal, { apiPresetName });
-    const generationIdHeader = response.headers.get('x-luker-generation-id');
-    if (shouldTrackLukerGenerationState && generationIdHeader) {
+    const generationIdHeader = response.headers.get('x-atria-generation-id');
+    if (shouldTrackAtriaGenerationState && generationIdHeader) {
         lastOpenAIGenerationId = generationIdHeader;
-        logOpenAILukerPersistenceDebug('response_header_meta', {
+        logOpenAIAtriaPersistenceDebug('response_header_meta', {
             generation_id: generationIdHeader,
         });
     }
@@ -4697,19 +4697,19 @@ async function sendOpenAIRequest(type, messages, signal, {
                 }
                 tryParseStreamingError(response, rawData);
                 let parsed = JSON.parse(rawData);
-                if (parsed?.luker && typeof parsed.luker === 'object') {
-                    if (shouldTrackLukerGenerationState) {
+                if (parsed?.atria && typeof parsed.atria === 'object') {
+                    if (shouldTrackAtriaGenerationState) {
                         const logPayload = {};
-                        if (typeof parsed.luker.generation_id === 'string' && parsed.luker.generation_id) {
-                            lastOpenAIGenerationId = parsed.luker.generation_id;
-                            logPayload.generation_id = parsed.luker.generation_id;
+                        if (typeof parsed.atria.generation_id === 'string' && parsed.atria.generation_id) {
+                            lastOpenAIGenerationId = parsed.atria.generation_id;
+                            logPayload.generation_id = parsed.atria.generation_id;
                         }
-                        if (typeof parsed.luker.persisted === 'boolean') {
-                            lastOpenAIReplyPersistedByServer = parsed.luker.persisted;
-                            logPayload.persisted = parsed.luker.persisted;
+                        if (typeof parsed.atria.persisted === 'boolean') {
+                            lastOpenAIReplyPersistedByServer = parsed.atria.persisted;
+                            logPayload.persisted = parsed.atria.persisted;
                         }
                         if (Object.keys(logPayload).length > 0) {
-                            logOpenAILukerPersistenceDebug('stream_meta', logPayload);
+                            logOpenAIAtriaPersistenceDebug('stream_meta', logPayload);
                         }
                     }
                     continue;
@@ -4747,7 +4747,7 @@ async function sendOpenAIRequest(type, messages, signal, {
                 // stop_reason / Gemini finishReason / Cohere finish_reason into
                 // OAI finish_reason before returning, but streaming SSE frames
                 // pass through unchanged (see
-                // src/luker-dispatch/providers/chat-completions/claude.js:346-347
+                // src/atria-dispatch/providers/chat-completions/claude.js:346-347
                 // for the Claude pipe-through). So this loop must locate the
                 // provider-native field AND remap to OAI vocabulary
                 // (stop/length/content_filter/tool_calls) so consumers stay
@@ -4793,9 +4793,9 @@ async function sendOpenAIRequest(type, messages, signal, {
             }
         };
     } else {
-        if (shouldTrackLukerGenerationState) {
-            lastOpenAIReplyPersistedByServer = response.headers.get('x-luker-server-persisted') === '1';
-            logOpenAILukerPersistenceDebug('response_header_meta', {
+        if (shouldTrackAtriaGenerationState) {
+            lastOpenAIReplyPersistedByServer = response.headers.get('x-atria-server-persisted') === '1';
+            logOpenAIAtriaPersistenceDebug('response_header_meta', {
                 generation_id: generationIdHeader || lastOpenAIGenerationId || '',
                 persisted: lastOpenAIReplyPersistedByServer,
             });
@@ -6412,17 +6412,17 @@ export function applyPresetByName(presetName, { forceChange = false } = {}) {
 
 function isCharacterBoundPresetOptionSelected() {
     const selected = $('#settings_preset_openai').find(':selected');
-    return selected.attr('data-luker-char-bound') === '1';
+    return selected.attr('data-atria-char-bound') === '1';
 }
 
 function updateCharacterBoundPresetBadge(forceVisible = null) {
     const visible = typeof forceVisible === 'boolean' ? forceVisible : isCharacterBoundPresetOptionSelected();
-    $('#luker_char_bound_preset_badge').toggleClass('displayNone', !visible);
+    $('#atria_char_bound_preset_badge').toggleClass('displayNone', !visible);
 }
 
 function getSelectedNonCharacterBoundPresetName() {
     const selected = $('#settings_preset_openai').find(':selected');
-    if (selected.attr('data-luker-char-bound') === '1') {
+    if (selected.attr('data-atria-char-bound') === '1') {
         return '';
     }
     return String(selected.text() || '').trim();
@@ -6442,8 +6442,8 @@ function resolveOpenAIPresetRestoreTarget(preferredName = '') {
 }
 
 function removeCharacterBoundRuntimeOptions() {
-    $('#settings_preset_openai option[data-luker-char-bound="1"]').remove();
-    $('#settings_preset_openai optgroup[data-luker-card-bound="1"]').remove();
+    $('#settings_preset_openai option[data-atria-char-bound="1"]').remove();
+    $('#settings_preset_openai optgroup[data-atria-card-bound="1"]').remove();
     characterBoundPresetState.runtimeOptions.clear();
     updateCharacterBoundPresetBadge(false);
 }
@@ -6472,7 +6472,7 @@ function restoreOpenAIPresetAfterCharacterBound(preferredName = '') {
  * option per card-bound preset.
  *
  * The optgroup is prepended so it appears above the global preset list.
- * Each option's value is `__luker_card__::<enc(avatar)>::<enc(name)>` —
+ * Each option's value is `__atria_card__::<enc(avatar)>::<enc(name)>` —
  * decoded on the read side by st-context.js:getSelectedPresetRef and on
  * apply by onSettingsPresetChange via the runtimeOptions map.
  *
@@ -6488,7 +6488,7 @@ function upsertCharacterBoundRuntimeOptions(character, presets) {
     const $sel = $('#settings_preset_openai');
     const optgroup = document.createElement('optgroup');
     optgroup.label = t`Card-bound`;
-    optgroup.setAttribute('data-luker-card-bound', '1');
+    optgroup.setAttribute('data-atria-card-bound', '1');
     for (const p of presets) {
         const name = String(p?.name || '').trim();
         if (!name || !p?.preset || typeof p.preset !== 'object') continue;
@@ -6497,7 +6497,7 @@ function upsertCharacterBoundRuntimeOptions(character, presets) {
         const opt = document.createElement('option');
         opt.value = value;
         opt.textContent = name;
-        opt.setAttribute('data-luker-char-bound', '1');
+        opt.setAttribute('data-atria-char-bound', '1');
         optgroup.appendChild(opt);
         characterBoundPresetState.runtimeOptions.set(value, { name, body });
     }
@@ -7141,8 +7141,8 @@ async function saveOpenAIPreset(name, settings, triggerUi = true) {
         }
         // updateCharacterBoundPreset applies stripOpenAIConnectionFieldsFromPreset
         // internally, so we don't strip again here. It also read-spread-overlays
-        // sibling luker.* fields so writeExtensionField's REPLACE semantics
-        // don't clobber e.g. luker.prompt_groups (see public/scripts/character/
+        // sibling atria.* fields so writeExtensionField's REPLACE semantics
+        // don't clobber e.g. atria.prompt_groups (see public/scripts/character/
         // presets.js:persistCharacterBoundState).
         await updateCharacterBoundPreset(character, decision.name, presetBody);
         // Skip the selector `.trigger('change')` — the card-bound option is
@@ -7741,7 +7741,7 @@ async function onSettingsPresetChange(event) {
     // compared against the single sentinel string.
     const wasCharacterBoundPreset = Boolean(decodeCardBoundOptionValue(previousSelectValue));
     const selectedOption = $('#settings_preset_openai').find(':selected');
-    const usingCharacterBoundPreset = selectedOption.attr('data-luker-char-bound') === '1';
+    const usingCharacterBoundPreset = selectedOption.attr('data-atria-char-bound') === '1';
     const presetName = selectedOption.text();
 
     if (Boolean(event?.originalEvent) && !wasCharacterBoundPreset && !usingCharacterBoundPreset && presetNameBefore && presetName !== presetNameBefore && hasUnsavedOpenAIPresetChanges(presetNameBefore, { selectValue: previousSelectValue })) {
@@ -7811,7 +7811,7 @@ async function onSettingsPresetChange(event) {
                 continue;
             }
             if (isConnection) {
-                // Luker decouples chat-completion presets from API connection/profile state.
+                // Atria decouples chat-completion presets from API connection/profile state.
                 continue;
             }
 

@@ -31,7 +31,7 @@
  *      the editor-only fields (`avatar`, `enabled`).
  */
 
-const extension_settings = Luker.getContext().extensionSettings;
+const extension_settings = Atria.getContext().extensionSettings;
 import {
     ORCH_EXECUTION_MODE_AGENDA,
     defaultAgendaAgents,
@@ -72,7 +72,7 @@ export function toPlannerAgentDescriptor(id, agent = {}) {
         finalizer: 'Summarize completed results into guidance for the main chat model.',
     };
     const purpose = String(agent.purpose || purposes[id] || agent.name || id)
-        .replace(/luker_orch_[a-z_]+/gi, '').replace(/\s+/g, ' ').trim().slice(0, 240);
+        .replace(/atri_orch_[a-z_]+/gi, '').replace(/\s+/g, ' ').trim().slice(0, 240);
     return { id: String(id), purpose };
 }
 

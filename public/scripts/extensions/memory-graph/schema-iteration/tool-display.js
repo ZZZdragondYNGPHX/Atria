@@ -30,6 +30,6 @@ export const MG_SCHEMA_TOOL_DISPLAY = {
         },
     },
 
-    luker_mg_schema_reset_live_to_blank: { icon: '♻️', label: 'Reset schema to blank',     type: 'control' },
-    luker_mg_schema_reset_live_to_global: { icon: '⬇️', label: 'Reset schema to global',    type: 'control' },
+    atri_mg_schema_reset_live_to_blank: { icon: '♻️', label: 'Reset schema to blank',     type: 'control' },
+    atri_mg_schema_reset_live_to_global: { icon: '⬇️', label: 'Reset schema to global',    type: 'control' },
 };

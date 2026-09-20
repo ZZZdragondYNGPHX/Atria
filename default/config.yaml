@@ -8,7 +8,7 @@ globalExtensionsPath: ./public/scripts/extensions/third-party
 # -- STORAGE BACKEND --
 # Choose how user data is persisted.
 # - 'fs' (default): legacy file-system storage; one file per chat/preset/world/etc. under <dataRoot>/<handle>/
-# - 'sqlite': per-user SQLite database at <dataRoot>/<handle>/luker-storage.sqlite
+# - 'sqlite': per-user SQLite database at <dataRoot>/<handle>/atria-storage.sqlite
 # - 'mysql': shared MySQL 8.0+ database; all users live in one schema, keyed by handle column.
 # - 'postgres': shared PostgreSQL 14+ database; all users live in one schema, keyed by handle column.
 #
@@ -39,10 +39,10 @@ storage:
     transient: 3
   # The mysql / postgres sub-blocks are only consulted when `mode` matches.
   mysql:
-    url: mysql://user:pass@host:3306/luker
+    url: mysql://user:pass@host:3306/atria
     poolSize: 10
   postgres:
-    url: postgresql://user:pass@host:5432/luker
+    url: postgresql://user:pass@host:5432/atria
     poolSize: 10
 # -- SERVER CONFIGURATION --
 # Listen for incoming connections

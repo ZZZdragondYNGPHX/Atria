@@ -2,7 +2,7 @@
  * Card-bound preset embedded skills + cleanup.
  *
  * Scope:
- *   - Simulate a character card whose `extensions.luker.bound_preset` block
+ *   - Simulate a character card whose `extensions.atria.bound_preset` block
  *     carries an `embedded_skills_source` payload. That payload's skills
  *     materialize into the CHARACTER's scope (not preset scope), because
  *     the bound-preset's lifecycle is tied to the character.
@@ -16,7 +16,7 @@
  * scope on disk, plus the delete-cascade contract.
  *
  * Prerequisites:
- *   - Luker dev server running.
+ *   - Atria dev server running.
  *
  * Screenshots: docs/public/_screenshots/skills/card-bound-cleanup-*.png.
  *
@@ -62,7 +62,7 @@ test.describe('Skills: card-bound preset materializes to character scope + clean
         await cleanupSkill(page, negativePresetScope, FIXTURE_PRESET_SKILL);
 
         // ── 1. Build a synthetic character object with both payloads ────
-        // Mirrors the real card-spec shape: `character.data.extensions.luker.{
+        // Mirrors the real card-spec shape: `character.data.extensions.atria.{
         //   embedded_skills_source, bound_preset
         // }` — both contribute to extractCharacterPayloads() which then
         // mergePayloads()'s them into a single character-scope install batch.
@@ -83,7 +83,7 @@ test.describe('Skills: card-bound preset materializes to character scope + clean
         // character index. The end-state on disk is the contract we care about.
         const installResult = await page.evaluate(async ({ ownPayload, presetPayload, avatar }) => {
             const mod = await import('/scripts/skills/embed-lifecycle.js');
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
 
             // Build the synthetic character — schema mirrors the real entry
             // in ctx.characters[chid].
@@ -91,11 +91,11 @@ test.describe('Skills: card-bound preset materializes to character scope + clean
                 avatar,
                 data: {
                     extensions: {
-                        luker: {
+                        atria: {
                             embedded_skills_source: ownPayload,
                             bound_preset: {
                                 extensions: {
-                                    luker: {
+                                    atria: {
                                         embedded_skills_source: presetPayload,
                                     },
                                 },
@@ -121,7 +121,7 @@ test.describe('Skills: card-bound preset materializes to character scope + clean
         // ── 3. Both skills must live in character scope. The bound-preset
         //      skill MUST NOT have landed in preset scope (spec §3.3 contract). ─
         const charSkills = await page.evaluate(async (scope) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return await ctx.skills.list({ scope });
         }, characterScope);
         const charNames = (charSkills || []).map(s => s.name).sort();
@@ -130,7 +130,7 @@ test.describe('Skills: card-bound preset materializes to character scope + clean
         );
 
         const negativeScopeContents = await page.evaluate(async (scope) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return await ctx.skills.list({ scope });
         }, negativePresetScope);
         const negativeNames = (negativeScopeContents || []).map(s => s.name);
@@ -152,7 +152,7 @@ test.describe('Skills: card-bound preset materializes to character scope + clean
         //      handler's body), then verify both rows are gone. ──────────
         const cascadeResult = await page.evaluate(async (avatar) => {
             const mod = await import('/scripts/skills/embed-lifecycle.js');
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return await mod.cascadeDeleteSkillsInScope({
                 context: ctx,
                 scope: { kind: 'character', characterFile: avatar },
@@ -162,7 +162,7 @@ test.describe('Skills: card-bound preset materializes to character scope + clean
         expect(cascadeResult.failed, 'cascade had no failures').toBe(0);
 
         const charSkillsAfter = await page.evaluate(async (scope) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return await ctx.skills.list({ scope });
         }, characterScope);
         const namesAfter = (charSkillsAfter || []).map(s => s.name);

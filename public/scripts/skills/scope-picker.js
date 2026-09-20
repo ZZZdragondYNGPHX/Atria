@@ -7,7 +7,7 @@
  *
  * The preset-scope sub-row asks for a single thing: the chat completion
  * preset to bind to. There is no "connection profile" field, because a
- * preset is decoupled from any particular connection profile in Luker —
+ * preset is decoupled from any particular connection profile in Atria —
  * a skill bound to preset X should travel with X regardless of which
  * connection profile is currently routing requests. The runtime matches
  * preset-scope skills by preset name alone (see
@@ -42,7 +42,7 @@ export function listAllPresets(context) {
     // The set of APIs whose preset managers we walk. ST exposes one preset
     // manager per chat-completion-flavored backend; "openai" is the legacy
     // fallback that every install has, and the rest cover the actively-
-    // supported backends in Luker today.
+    // supported backends in Atria today.
     const APIS = ['openai', 'claude', 'textgenerationwebui', 'kobold', 'novel'];
     const seen = new Map(); // name → api (first manager that claimed the name)
     const out = [];
@@ -179,8 +179,8 @@ export function buildScopePickerHtml({
 } = {}) {
     const kindRadio = (value, label) => {
         const checked = suggestKind === value ? ' checked' : '';
-        return `<label class="luker_skill_scope_kind_option">
-            <input type="radio" name="luker_skill_scope_kind" value="${value}"${checked}>
+        return `<label class="atria_skill_scope_kind_option">
+            <input type="radio" name="atria_skill_scope_kind" value="${value}"${checked}>
             ${esc(t(label))}
         </label>`;
     };
@@ -216,29 +216,29 @@ export function buildScopePickerHtml({
     const charHidden = suggestKind !== 'character';
     const orchPresetHidden = suggestKind !== 'orch-preset';
     return `
-<div class="luker_skill_scope_picker">
-    <div class="luker_skill_scope_picker_title">${esc(title)}</div>
-    <div class="luker_skill_scope_picker_kinds">
+<div class="atria_skill_scope_picker">
+    <div class="atria_skill_scope_picker_title">${esc(title)}</div>
+    <div class="atria_skill_scope_picker_kinds">
         ${kindRadio('global', 'Global')}
         ${kindRadio('preset', 'Preset')}
         ${kindRadio('orch-preset', 'Orchestrator preset')}
         ${kindRadio('character', 'Character')}
     </div>
-    <div class="luker_skill_scope_preset_fields"${presetHidden ? ' hidden' : ''} data-skill-scope-row="preset">
-        <label class="luker_skill_scope_field">
-            <span class="luker_skill_scope_field_label">${esc(t('Chat completion preset'))}</span>
+    <div class="atria_skill_scope_preset_fields"${presetHidden ? ' hidden' : ''} data-skill-scope-row="preset">
+        <label class="atria_skill_scope_field">
+            <span class="atria_skill_scope_field_label">${esc(t('Chat completion preset'))}</span>
             <select class="text_pole" data-skill-scope-preset>${presetOptions}</select>
         </label>
     </div>
-    <div class="luker_skill_scope_orch_preset_fields"${orchPresetHidden ? ' hidden' : ''} data-skill-scope-row="orch-preset">
-        <label class="luker_skill_scope_field">
-            <span class="luker_skill_scope_field_label">${esc(t('Orchestrator preset'))}</span>
+    <div class="atria_skill_scope_orch_preset_fields"${orchPresetHidden ? ' hidden' : ''} data-skill-scope-row="orch-preset">
+        <label class="atria_skill_scope_field">
+            <span class="atria_skill_scope_field_label">${esc(t('Orchestrator preset'))}</span>
             <select class="text_pole" data-skill-scope-orch-preset>${orchPresetOptions}</select>
         </label>
     </div>
-    <div class="luker_skill_scope_character_fields"${charHidden ? ' hidden' : ''} data-skill-scope-row="character">
-        <label class="luker_skill_scope_field">
-            <span class="luker_skill_scope_field_label">${esc(t('Character'))}</span>
+    <div class="atria_skill_scope_character_fields"${charHidden ? ' hidden' : ''} data-skill-scope-row="character">
+        <label class="atria_skill_scope_field">
+            <span class="atria_skill_scope_field_label">${esc(t('Character'))}</span>
             <select class="text_pole" data-skill-scope-character>${characterOptions}</select>
         </label>
     </div>
@@ -308,7 +308,7 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
         onClosing: (p) => {
             if (p.result !== POPUP_RESULT.AFFIRMATIVE) return true;
             const dlg = p.dlg;
-            const kind = dlg.querySelector('input[name="luker_skill_scope_kind"]:checked')?.value || 'global';
+            const kind = dlg.querySelector('input[name="atria_skill_scope_kind"]:checked')?.value || 'global';
             if (kind === 'global') {
                 chosen = { kind: 'global' };
                 return true;
@@ -367,7 +367,7 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
             if (orchPresetRow) orchPresetRow.hidden = kind !== 'orch-preset';
             if (charRow) charRow.hidden = kind !== 'character';
         };
-        dlg.querySelectorAll('input[name="luker_skill_scope_kind"]').forEach(radio => {
+        dlg.querySelectorAll('input[name="atria_skill_scope_kind"]').forEach(radio => {
             radio.addEventListener('change', () => {
                 if (radio.checked) applyKindVisibility(radio.value);
             });

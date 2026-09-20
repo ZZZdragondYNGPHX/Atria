@@ -1,6 +1,6 @@
 # WebSocket Proxy
 
-Luker provides a WebSocket (WS) proxy feature that transmits AI generation requests through a persistent WebSocket tunnel, replacing the traditional HTTP request approach. This is especially useful in environments with unstable or restricted networks.
+Atria provides a WebSocket (WS) proxy feature that transmits AI generation requests through a persistent WebSocket tunnel, replacing the traditional HTTP request approach. This is especially useful in environments with unstable or restricted networks.
 
 ## What is WS Proxy
 
@@ -82,7 +82,7 @@ TICKET_REQ: "Client POST /api/ws-ticket\n(runs full HTTP middleware stack)"
 TICKET_RESP: "Server mintTicket\n32-byte random hex, 30s TTL, single use" {
   style.fill: "#fff3e0"
 }
-UP: "new WebSocket(url, [luker-ws-ticket.<ticket>])\nJS puts ticket into Sec-WebSocket-Protocol"
+UP: "new WebSocket(url, [atria-ws-ticket.<ticket>])\nJS puts ticket into Sec-WebSocket-Protocol"
 GATE: "server.on('upgrade')\nparse subprotocol → consumeTicket" {
   style.fill: "#fff3e0"
 }
@@ -113,9 +113,9 @@ Native browser `WebSocket` does not let JavaScript set HTTP headers, so the upgr
 ### How it works
 
 1. **Mint a ticket.** The client `POST`s to `/api/ws-ticket`, which is mounted in `setupPrivateEndpoints` and therefore protected by the full HTTP middleware stack: Basic Auth, cookieSession, setUserData, requireLogin, CSRF. The server returns `{ ticket }` — a 64-character hex string from `crypto.randomBytes(32)`, recorded in an in-process `Map` with a 30-second TTL.
-2. **Carry it on upgrade.** The client opens `new WebSocket('/ws/proxy', [`luker-ws-ticket.${ticket}`])`. The browser writes the value into `Sec-WebSocket-Protocol`.
+2. **Carry it on upgrade.** The client opens `new WebSocket('/ws/proxy', [`atria-ws-ticket.${ticket}`])`. The browser writes the value into `Sec-WebSocket-Protocol`.
 3. **Validate at upgrade.** `server.on('upgrade')` extracts the ticket and calls `consumeTicket()`, which atomically validates and removes it (single-use). On failure the proxy writes `HTTP/1.1 401` and destroys the socket.
-4. **Echo the protocol.** `wss.handleUpgrade` invokes the configured `handleProtocols` callback, which selects the same `luker-ws-ticket.<ticket>` string back; `ws` writes it into the `101 Switching Protocols` response so the handshake completes.
+4. **Echo the protocol.** `wss.handleUpgrade` invokes the configured `handleProtocols` callback, which selects the same `atria-ws-ticket.<ticket>` string back; `ws` writes it into the `101 Switching Protocols` response so the handshake completes.
 5. **Build a mock request.** `startJob` constructs an `IncomingMessage` over a `Readable` socket (Node's internal `_destroy`/`eos` plumbing requires a real Readable), pushes the body, and pushes `null` to signal end-of-body.
 6. **Mark dispatched.** The mock request is tagged with the `WS_PROXY_AUTH_BYPASS` Symbol exported from `basicAuth.js`. The Symbol is module-scoped, so headers / query / body fields can never set a same-keyed property on the request object.
 7. **`app.handle(req, res)`.** The request flows through every Express middleware: cookieSession parses the cookie, setUserData populates `request.user`, CSRF validates the token, requireLogin gates by login state, and basicAuth — seeing the Symbol — short-circuits.
@@ -149,15 +149,15 @@ Native browser `WebSocket` does not let JavaScript set HTTP headers, so the upgr
 The following scenarios are particularly suitable for using the WS proxy:
 
 - **Mobile device usage** — Maintaining uninterrupted generation when switching between networks (Wi-Fi ↔ cellular)
-- **Remote server deployment** — Accessing Luker deployed on a remote server through an unstable network
+- **Remote server deployment** — Accessing Atria deployed on a remote server through an unstable network
 - **Long text generation** — Reducing failures caused by timeouts when generating longer responses
 - **Enterprise network environments** — Bypassing network devices that may interfere with long connections
 
 ::: tip
-The WS proxy is Luker's internal transport optimization, transparent to users — you don't need any additional configuration, Luker will automatically use it when appropriate.
+The WS proxy is Atria's internal transport optimization, transparent to users — you don't need any additional configuration, Atria will automatically use it when appropriate.
 :::
 
 ## Related Pages
 
 - [Performance Optimization](/improvements/performance) — Other performance improvements
-- [Generation Layer](/improvements/generation-layer) — Luker's unified generation architecture
+- [Generation Layer](/improvements/generation-layer) — Atria's unified generation architecture

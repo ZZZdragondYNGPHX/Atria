@@ -70,10 +70,10 @@ if (!fs.existsSync(dataRoot)) {
 // env var and skips its in-process Webpack compile when all three files
 // (lib.core.bundle.js, lib.optional.bundle.js, codemirror.bundle.js) are
 // present, which is the biggest single win on cold start.
-if (!process.env.LUKER_PREBUILT_BUNDLES_DIR) {
+if (!process.env.ATRIA_PREBUILT_BUNDLES_DIR) {
   const candidate = path.join(runtimeRoot, '_prebuilt-bundles');
   if (fs.existsSync(candidate)) {
-    process.env.LUKER_PREBUILT_BUNDLES_DIR = candidate;
+    process.env.ATRIA_PREBUILT_BUNDLES_DIR = candidate;
   }
 }
 

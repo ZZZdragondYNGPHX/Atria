@@ -98,7 +98,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         // Poll for online_status to flip off no_connection — this is read-only
         // state inspection, not mutation.
         await page.waitForFunction(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const v = ctx?.onlineStatus ?? null;
             return Boolean(v) && String(v) !== 'no_connection';
         }, null, { timeout: 30000 });
@@ -130,7 +130,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         await seraphinaTile.click();
         // Wait for ctx.characterId to flip — read-only assertion.
         await page.waitForFunction(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return ctx?.characterId !== null && ctx?.characterId !== undefined
                 && ctx.characters?.[ctx.characterId]?.name === 'Seraphina';
         }, null, { timeout: 15000 });
@@ -157,17 +157,17 @@ test.describe('Skills RP demo (manual user path)', () => {
         //           click "Manage skills..."
         await ensureExtensionsDrawerOpen(page);
         await ensureInlineDrawerOpen(page, 'orchestrator_settings');
-        const manageBtn = page.locator('#orchestrator_settings [data-luker-action="manage-skills"]:visible').first();
+        const manageBtn = page.locator('#orchestrator_settings [data-atria-action="manage-skills"]:visible').first();
         await manageBtn.waitFor({ state: 'visible', timeout: 10000 });
         await manageBtn.click();
-        const skillManagerPopup = page.locator('.popup .luker_skill_manager').first();
+        const skillManagerPopup = page.locator('.popup .atria_skill_manager').first();
         await skillManagerPopup.waitFor({ state: 'visible', timeout: 10000 });
         // Record manager popup data-id so subsequent step-5/6/7 "find next popup"
         // logic can exclude it (otherwise `.last()` may resolve to the manager).
-        const managerPopupId = await page.locator('dialog.popup:has(.luker_skill_manager)').first().getAttribute('data-id');
+        const managerPopupId = await page.locator('dialog.popup:has(.atria_skill_manager)').first().getAttribute('data-id');
         // Wait for the skill list to populate (5 baseline scaffolds + bundled).
         await page.waitForFunction(() => {
-            const rows = document.querySelectorAll('.popup .luker_skill_manager [data-skill-name]');
+            const rows = document.querySelectorAll('.popup .atria_skill_manager [data-skill-name]');
             return rows.length > 0;
         }, null, { timeout: 15000 });
         await page.screenshot({ path: stepPath(4, 'skills-manager-baseline'), fullPage: false });
@@ -188,7 +188,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         const namePopupId = await namePopup.getAttribute('data-id');
         const namePopupById = page.locator(`dialog.popup[data-id="${namePopupId}"]`);
         // Wait for the popup to finish its opening transition before reaching
-        // for its input — Luker popups carry `opening` and `closing` HTML
+        // for its input — Atria popups carry `opening` and `closing` HTML
         // attributes during animation; the input is CSS-hidden in those states.
         await page.waitForFunction((id) => {
             const d = document.querySelector(`dialog.popup[data-id="${id}"]`);
@@ -243,7 +243,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         const scopePopup = page.locator(`dialog.popup[open]:not([data-id="${managerPopupId}"]):not([data-id="${namePopupId}"]):not([data-id="${descPopupId}"])`).last();
         const scopePopupId = await scopePopup.getAttribute('data-id');
         const scopePopupById = page.locator(`dialog.popup[data-id="${scopePopupId}"]`);
-        const globalRadio = scopePopupById.locator('input[name="luker_skill_scope_kind"][value="global"]');
+        const globalRadio = scopePopupById.locator('input[name="atria_skill_scope_kind"][value="global"]');
         await globalRadio.waitFor({ state: 'visible', timeout: 5000 });
         await globalRadio.check({ force: true });
         await page.screenshot({ path: stepPath(7, 'create-scope-global'), fullPage: false });
@@ -255,23 +255,23 @@ test.describe('Skills RP demo (manual user path)', () => {
         //   auto-opens before we get here depends on timing. We probe once:
         //   if it's already open, use it; otherwise click the row's edit
         //   affordance to open it explicitly. Either path is a real user path.
-        const managerPopupBlock = page.locator('.popup .luker_skill_manager').first();
+        const managerPopupBlock = page.locator('.popup .atria_skill_manager').first();
         await managerPopupBlock.waitFor({ state: 'visible', timeout: 5000 });
         await page.waitForFunction((name) => {
-            const rows = document.querySelectorAll('.popup .luker_skill_manager [data-skill-name]');
+            const rows = document.querySelectorAll('.popup .atria_skill_manager [data-skill-name]');
             return Array.from(rows).some(r => r.getAttribute('data-skill-name') === name);
         }, SKILL_NAME, { timeout: 10000 });
         await page.screenshot({ path: stepPath(8, 'skill-row-created'), fullPage: false });
         // Probe: did the auto-open already produce an editor popup?
         // Use a short visibility check so we don't get stuck waiting.
-        const autoEditor = page.locator('dialog.popup .luker_skill_editor');
+        const autoEditor = page.locator('dialog.popup .atria_skill_editor');
         const editorAlreadyOpen = await autoEditor.count() > 0;
         if (!editorAlreadyOpen) {
-            const editBtn = page.locator(`.popup .luker_skill_manager [data-skill-name="${SKILL_NAME}"] [data-skill-action="edit"]`).first();
+            const editBtn = page.locator(`.popup .atria_skill_manager [data-skill-name="${SKILL_NAME}"] [data-skill-action="edit"]`).first();
             await editBtn.waitFor({ state: 'attached', timeout: 5000 });
             await editBtn.dispatchEvent('click');
         }
-        const editorPopup = page.locator('dialog.popup:visible .luker_skill_editor').first();
+        const editorPopup = page.locator('dialog.popup:visible .atria_skill_editor').first();
         await editorPopup.waitFor({ state: 'visible', timeout: 10000 });
         // The editor's left pane lists files; SKILL.md should be the active
         // file by default. The editor textarea is `[data-editor-textarea]`.
@@ -296,34 +296,34 @@ test.describe('Skills RP demo (manual user path)', () => {
         // Close the editor popup. Scope the locator to the editor's dialog,
         // not just any visible popup — manager popup is still open below and
         // also has a popup-button-ok.
-        const editorClose = page.locator('dialog.popup:has(.luker_skill_editor) div.popup-button-ok').first();
+        const editorClose = page.locator('dialog.popup:has(.atria_skill_editor) div.popup-button-ok').first();
         await editorClose.dispatchEvent('click');
-        await page.locator('dialog.popup:has(.luker_skill_editor)').waitFor({ state: 'detached', timeout: 5000 });
+        await page.locator('dialog.popup:has(.atria_skill_editor)').waitFor({ state: 'detached', timeout: 5000 });
 
         // ── Step 9: close the manager popup so the orchestrator editor can
         //   open uncontested in step 10.
         await page.screenshot({ path: stepPath(9, 'skill-installed-global'), fullPage: false });
-        const managerCloseBtn = page.locator('.popup:has(.luker_skill_manager) div.popup-button-ok').first();
+        const managerCloseBtn = page.locator('.popup:has(.atria_skill_manager) div.popup-button-ok').first();
         await managerCloseBtn.dispatchEvent('click');
-        await page.locator('.popup .luker_skill_manager').waitFor({ state: 'hidden', timeout: 5000 });
+        await page.locator('.popup .atria_skill_manager').waitFor({ state: 'hidden', timeout: 5000 });
 
         // ── Step 10: open the Orchestration Editor popup — this contains
         //   the director workspace and the mode-level skill chips editor.
         await ensureExtensionsDrawerOpen(page);
         await ensureInlineDrawerOpen(page, 'orchestrator_settings');
-        const openEditorBtn = page.locator('#orchestrator_settings [data-luker-action="open-orch-editor"]:visible').first();
+        const openEditorBtn = page.locator('#orchestrator_settings [data-atria-action="open-orch-editor"]:visible').first();
         await openEditorBtn.waitFor({ state: 'visible', timeout: 10000 });
         await openEditorBtn.click();
-        const orchEditor = page.locator('.popup .luker_orch_director_block').first();
+        const orchEditor = page.locator('.popup .atri_orch_director_block').first();
         await orchEditor.waitFor({ state: 'visible', timeout: 15000 });
-        // The mode-level chip block is inside <details class="luker_orch_skills_section" open>
+        // The mode-level chip block is inside <details class="atri_orch_skills_section" open>
         // with the summary "Mode-level skills (baseline for every agent)".
-        // Its chips mount has data-luker-chip-target encoding mode=director,
+        // Its chips mount has data-atria-chip-target encoding mode=director,
         // level=mode. We scope the add-select / button to that specific
         // mount to avoid colliding with per-agent chip blocks above/below.
         // CSS attr selector wraps value in single quotes because the value
         // itself (JSON-formatted) contains double quotes.
-        const modeChipSelector = '.popup [data-luker-skill-chips-mount][data-luker-chip-target*=\'"level":"mode"\'][data-luker-chip-target*=\'"mode":"director"\']';
+        const modeChipSelector = '.popup [data-atria-skill-chips-mount][data-atria-chip-target*=\'"level":"mode"\'][data-atria-chip-target*=\'"mode":"director"\']';
         const modeChipMount = page.locator(modeChipSelector).first();
         await modeChipMount.waitFor({ state: 'visible', timeout: 10000 });
         // Wait for the chips inventory hydration — the mount starts with
@@ -351,9 +351,9 @@ test.describe('Skills RP demo (manual user path)', () => {
 
         // ── Close the orchestration editor popup (saves on close via the
         //   debounced settings persister).
-        const orchClose = page.locator('.popup:has(.luker_orch_director_block) div.popup-button-ok').first();
+        const orchClose = page.locator('.popup:has(.atri_orch_director_block) div.popup-button-ok').first();
         await orchClose.click();
-        await page.locator('.popup .luker_orch_director_block').waitFor({ state: 'hidden', timeout: 5000 });
+        await page.locator('.popup .atri_orch_director_block').waitFor({ state: 'hidden', timeout: 5000 });
 
         // ── Step 12: back to the chat. Verify mode === director (it's the
         //   default on a fresh worktree; confirm via the orchestrator status
@@ -363,7 +363,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         await page.locator('#rm_extensions_block').waitFor({ state: 'hidden', timeout: 5000 });
         // Sanity: the orchestrator mode is director.
         const executionMode = await page.evaluate(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return String(ctx?.extensionSettings?.orchestrator?.executionMode || '');
         });
         expect(executionMode, 'orchestrator must be in director mode for the demo').toBe('director');
@@ -387,7 +387,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         const sendTextarea = page.locator('#send_textarea');
         await sendTextarea.waitFor({ state: 'visible', timeout: 10000 });
         await sendTextarea.fill(USER_RP_MESSAGE);
-        // The send button is `#send_but`. In some Luker UI states the top-bar
+        // The send button is `#send_but`. In some Atria UI states the top-bar
         // widgets overlap the send region and intercept clicks; if a normal
         // click fails, fall back to the locator's dispatchEvent — that is
         // legitimate DOM-level interaction, not internal state mutation.
@@ -483,8 +483,8 @@ test.describe('Skills RP demo (manual user path)', () => {
         // (a) Re-open the orchestration editor, find the chip, click its ×.
         await ensureExtensionsDrawerOpen(page);
         await ensureInlineDrawerOpen(page, 'orchestrator_settings');
-        await page.locator('#orchestrator_settings [data-luker-action="open-orch-editor"]:visible').first().click();
-        await page.locator('.popup .luker_orch_director_block').first().waitFor({ state: 'visible', timeout: 15000 });
+        await page.locator('#orchestrator_settings [data-atria-action="open-orch-editor"]:visible').first().click();
+        await page.locator('.popup .atri_orch_director_block').first().waitFor({ state: 'visible', timeout: 15000 });
         const modeChipMountTeardown = page.locator(modeChipSelector).first();
         await modeChipMountTeardown.waitFor({ state: 'visible', timeout: 10000 });
         // Wait for the chip to be rendered, then click its × span.
@@ -498,17 +498,17 @@ test.describe('Skills RP demo (manual user path)', () => {
         await modeChipMountTeardown.locator(`[data-skill-chip-name="${SKILL_NAME}"]`).first().waitFor({ state: 'hidden', timeout: 5000 });
         await page.screenshot({ path: stepPath(15, 'teardown-chip-removed'), fullPage: false });
         // Close the orch editor.
-        await page.locator('.popup:has(.luker_orch_director_block) div.popup-button-ok').first().dispatchEvent('click');
-        await page.locator('.popup .luker_orch_director_block').waitFor({ state: 'hidden', timeout: 5000 });
+        await page.locator('.popup:has(.atri_orch_director_block) div.popup-button-ok').first().dispatchEvent('click');
+        await page.locator('.popup .atri_orch_director_block').waitFor({ state: 'hidden', timeout: 5000 });
 
         // (b) Re-open the Skills Manager, find the row, click Delete, accept
         //     the confirmation popup.
         await ensureInlineDrawerOpen(page, 'orchestrator_settings');
-        await page.locator('#orchestrator_settings [data-luker-action="manage-skills"]:visible').first().click();
-        const mgrPopupTeardown = page.locator('.popup .luker_skill_manager').first();
+        await page.locator('#orchestrator_settings [data-atria-action="manage-skills"]:visible').first().click();
+        const mgrPopupTeardown = page.locator('.popup .atria_skill_manager').first();
         await mgrPopupTeardown.waitFor({ state: 'visible', timeout: 10000 });
         await page.waitForFunction((name) => {
-            const rows = document.querySelectorAll('.popup .luker_skill_manager [data-skill-name]');
+            const rows = document.querySelectorAll('.popup .atria_skill_manager [data-skill-name]');
             return Array.from(rows).some(r => r.getAttribute('data-skill-name') === name);
         }, SKILL_NAME, { timeout: 10000 });
         const row = mgrPopupTeardown.locator(`[data-skill-name="${SKILL_NAME}"]`).first();
@@ -520,13 +520,13 @@ test.describe('Skills RP demo (manual user path)', () => {
         await confirmPopup.locator('div.popup-button-ok, button:has-text("Delete"), button:has-text("OK"), button:has-text("Yes")').first().dispatchEvent('click');
         // Wait for the row to disappear.
         await page.waitForFunction((name) => {
-            const rows = document.querySelectorAll('.popup .luker_skill_manager [data-skill-name]');
+            const rows = document.querySelectorAll('.popup .atria_skill_manager [data-skill-name]');
             return !Array.from(rows).some(r => r.getAttribute('data-skill-name') === name);
         }, SKILL_NAME, { timeout: 10000 });
         await page.screenshot({ path: stepPath(16, 'teardown-skill-deleted'), fullPage: false });
         // Best-effort close: the manager popup may auto-detach after the last
         // row is removed; if so the locator resolves to nothing and we exit.
-        const managerCloseLast = page.locator('.popup:has(.luker_skill_manager) div.popup-button-ok').first();
+        const managerCloseLast = page.locator('.popup:has(.atria_skill_manager) div.popup-button-ok').first();
         if (await managerCloseLast.count() > 0) {
             await managerCloseLast.dispatchEvent('click').catch(() => {});
         }

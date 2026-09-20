@@ -209,11 +209,11 @@ export function createSearchToolsSettingsUi(deps) {
     align-items: center;
     justify-content: center;
 }
-.luker-stm-entries .luker-stm-intro {
+.atria-stm-entries .atria-stm-intro {
     margin-bottom: 8px;
     opacity: 0.75;
 }
-.luker-stm-entries .luker-stm-toolbar {
+.atria-stm-entries .atria-stm-toolbar {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -222,44 +222,44 @@ export function createSearchToolsSettingsUi(deps) {
     border-bottom: 1px solid var(--SmartThemeBorderColor);
     margin-bottom: 10px;
 }
-.luker-stm-entries .luker-stm-toolbar-spacer {
+.atria-stm-entries .atria-stm-toolbar-spacer {
     flex: 1 1 auto;
 }
-.luker-stm-entries .luker-stm-count {
+.atria-stm-entries .atria-stm-count {
     opacity: 0.75;
 }
-.luker-stm-entries .luker-stm-list {
+.atria-stm-entries .atria-stm-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
-.luker-stm-entries .luker-stm-card {
+.atria-stm-entries .atria-stm-card {
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 6px;
     padding: 8px 10px;
     background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 50%, transparent);
 }
-.luker-stm-entries .luker-stm-card-head {
+.atria-stm-entries .atria-stm-card-head {
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.luker-stm-entries .luker-stm-title {
+.atria-stm-entries .atria-stm-title {
     flex: 1 1 auto;
     font-weight: 600;
     overflow-wrap: anywhere;
 }
-.luker-stm-entries .luker-stm-actions {
+.atria-stm-entries .atria-stm-actions {
     display: flex;
     gap: 6px;
 }
-.luker-stm-entries .luker-stm-keys {
+.atria-stm-entries .atria-stm-keys {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 6px;
 }
-.luker-stm-entries .luker-stm-tag {
+.atria-stm-entries .atria-stm-tag {
     display: inline-block;
     padding: 1px 8px;
     border-radius: 12px;
@@ -270,7 +270,7 @@ export function createSearchToolsSettingsUi(deps) {
     line-height: 1.4;
     white-space: nowrap;
 }
-.luker-stm-entries .luker-stm-content {
+.atria-stm-entries .atria-stm-content {
     margin-top: 6px;
     padding-top: 6px;
     border-top: 1px dashed var(--SmartThemeBorderColor);
@@ -281,7 +281,7 @@ export function createSearchToolsSettingsUi(deps) {
     max-height: 8em;
     overflow-y: auto;
 }
-.luker-stm-entries .luker-stm-flag {
+.atria-stm-entries .atria-stm-flag {
     display: inline-block;
     padding: 0 6px;
     margin-left: 6px;
@@ -295,10 +295,10 @@ export function createSearchToolsSettingsUi(deps) {
     text-transform: uppercase;
     vertical-align: middle;
 }
-.luker-stm-entries .luker-stm-caution {
+.atria-stm-entries .atria-stm-caution {
     color: var(--fullred);
 }
-.luker-stm-entries .luker-stm-empty {
+.atria-stm-entries .atria-stm-empty {
     padding: 24px 0;
     text-align: center;
     opacity: 0.6;
@@ -332,7 +332,7 @@ export function createSearchToolsSettingsUi(deps) {
         if (activeAgentRunInfoToast && typeof onStop === 'function') {
             const toastBody = activeAgentRunInfoToast.find('.toast-message');
             if (toastBody.length > 0) {
-                const button = jQuery('<button type="button" class="menu_button menu_button_small luker-toast-stop-button"></button>');
+                const button = jQuery('<button type="button" class="menu_button menu_button_small atria-toast-stop-button"></button>');
                 button.text(String(stopLabel || i18n('Stop')));
                 button.on('click', (event) => {
                     event.preventDefault();
@@ -387,12 +387,12 @@ export function createSearchToolsSettingsUi(deps) {
 
     function renderEntriesList($container, entries) {
         const list = Array.isArray(entries) ? entries : [];
-        const $list = $container.find('.luker-stm-list');
-        const $empty = $container.find('.luker-stm-empty');
-        const $count = $container.find('.luker-stm-count');
-        const $selectAll = $container.find('.luker-stm-select-all');
-        const $deleteSelected = $container.find('.luker-stm-delete-selected');
-        const $resetAll = $container.find('.luker-stm-reset-all');
+        const $list = $container.find('.atria-stm-list');
+        const $empty = $container.find('.atria-stm-empty');
+        const $count = $container.find('.atria-stm-count');
+        const $selectAll = $container.find('.atria-stm-select-all');
+        const $deleteSelected = $container.find('.atria-stm-delete-selected');
+        const $resetAll = $container.find('.atria-stm-reset-all');
 
         $count.text(`${i18n('Total')}: ${list.length}`);
         $selectAll.prop('checked', false);
@@ -412,23 +412,23 @@ export function createSearchToolsSettingsUi(deps) {
                 ? entry.keywords.filter((k) => String(k || '').trim() !== '')
                 : [];
             const keywordsHtml = keywords.length
-                ? `<div class="luker-stm-keys">${keywords.map((k) => `<span class="luker-stm-tag">${escapeHtml(k)}</span>`).join('')}</div>`
+                ? `<div class="atria-stm-keys">${keywords.map((k) => `<span class="atria-stm-tag">${escapeHtml(k)}</span>`).join('')}</div>`
                 : '';
             const previewHtml = entry.content
-                ? `<div class="luker-stm-content">${escapeHtml(buildPreviewText(entry.content))}</div>`
+                ? `<div class="atria-stm-content">${escapeHtml(buildPreviewText(entry.content))}</div>`
                 : '';
             const alwaysFlag = entry.alwaysInject
-                ? `<span class="luker-stm-flag" title="${escapeHtml(i18n('Always inject'))}">${escapeHtml(i18n('Always'))}</span>`
+                ? `<span class="atria-stm-flag" title="${escapeHtml(i18n('Always inject'))}">${escapeHtml(i18n('Always'))}</span>`
                 : '';
             return `
-<div class="luker-stm-card" data-entry-id="${escapeHtml(entry.entryId)}">
-    <div class="luker-stm-card-head">
+<div class="atria-stm-card" data-entry-id="${escapeHtml(entry.entryId)}">
+    <div class="atria-stm-card-head">
         <label class="checkbox_label" style="margin: 0;">
-            <input type="checkbox" class="luker-stm-row-check" />
+            <input type="checkbox" class="atria-stm-row-check" />
         </label>
-        <div class="luker-stm-title">${escapeHtml(entry.title || entry.entryId)}${alwaysFlag}</div>
-        <div class="luker-stm-actions">
-            <div class="menu_button menu_button_small caution luker-stm-row-delete">${escapeHtml(i18n('Delete'))}</div>
+        <div class="atria-stm-title">${escapeHtml(entry.title || entry.entryId)}${alwaysFlag}</div>
+        <div class="atria-stm-actions">
+            <div class="menu_button menu_button_small caution atria-stm-row-delete">${escapeHtml(i18n('Delete'))}</div>
         </div>
     </div>
     ${keywordsHtml}
@@ -439,11 +439,11 @@ export function createSearchToolsSettingsUi(deps) {
     }
 
     function updateBulkButtonsEnabled($container) {
-        const checkedCount = $container.find('.luker-stm-row-check:checked').length;
-        $container.find('.luker-stm-delete-selected').toggleClass('disabled', checkedCount === 0);
-        const totalCount = $container.find('.luker-stm-row-check').length;
+        const checkedCount = $container.find('.atria-stm-row-check:checked').length;
+        $container.find('.atria-stm-delete-selected').toggleClass('disabled', checkedCount === 0);
+        const totalCount = $container.find('.atria-stm-row-check').length;
         const allChecked = totalCount > 0 && checkedCount === totalCount;
-        $container.find('.luker-stm-select-all').prop('checked', allChecked);
+        $container.find('.atria-stm-select-all').prop('checked', allChecked);
     }
 
     async function openManageEntriesDialog() {
@@ -456,21 +456,21 @@ export function createSearchToolsSettingsUi(deps) {
         }
 
         const initialHtml = `
-<div class="luker-stm-entries">
+<div class="atria-stm-entries">
     <h3 style="margin-top: 0;">${escapeHtml(i18n('Manage stored search entries'))}</h3>
-    <div class="luker-stm-intro">${escapeHtml(i18n('Remove entries that are no longer relevant. Changes apply to the current chat.'))}</div>
-    <div class="luker-stm-toolbar">
+    <div class="atria-stm-intro">${escapeHtml(i18n('Remove entries that are no longer relevant. Changes apply to the current chat.'))}</div>
+    <div class="atria-stm-toolbar">
         <label class="checkbox_label" style="margin: 0;">
-            <input type="checkbox" class="luker-stm-select-all" />
+            <input type="checkbox" class="atria-stm-select-all" />
             <span>${escapeHtml(i18n('Select all'))}</span>
         </label>
-        <span class="luker-stm-count"></span>
-        <span class="luker-stm-toolbar-spacer"></span>
-        <div class="menu_button menu_button_small luker-stm-caution luker-stm-delete-selected disabled">${escapeHtml(i18n('Delete selected'))}</div>
-        <div class="menu_button menu_button_small luker-stm-caution luker-stm-reset-all">${escapeHtml(i18n('Reset all'))}</div>
+        <span class="atria-stm-count"></span>
+        <span class="atria-stm-toolbar-spacer"></span>
+        <div class="menu_button menu_button_small atria-stm-caution atria-stm-delete-selected disabled">${escapeHtml(i18n('Delete selected'))}</div>
+        <div class="menu_button menu_button_small atria-stm-caution atria-stm-reset-all">${escapeHtml(i18n('Reset all'))}</div>
     </div>
-    <div class="luker-stm-list"></div>
-    <div class="luker-stm-empty" style="display: none;">${escapeHtml(i18n('No managed search entries in this chat.'))}</div>
+    <div class="atria-stm-list"></div>
+    <div class="atria-stm-empty" style="display: none;">${escapeHtml(i18n('No managed search entries in this chat.'))}</div>
 </div>`;
 
         const popup = new Popup(initialHtml, POPUP_TYPE.DISPLAY, '', {
@@ -484,7 +484,7 @@ export function createSearchToolsSettingsUi(deps) {
         let busy = false;
 
         function getRoot() {
-            return jQuery(popup.content).find('.luker-stm-entries');
+            return jQuery(popup.content).find('.atria-stm-entries');
         }
 
         function refresh() {
@@ -511,28 +511,28 @@ export function createSearchToolsSettingsUi(deps) {
 
         const $root = getRoot();
 
-        $root.on('change', '.luker-stm-select-all', function () {
+        $root.on('change', '.atria-stm-select-all', function () {
             const checked = jQuery(this).prop('checked');
-            $root.find('.luker-stm-row-check').prop('checked', checked);
+            $root.find('.atria-stm-row-check').prop('checked', checked);
             updateBulkButtonsEnabled($root);
         });
 
-        $root.on('change', '.luker-stm-row-check', function () {
+        $root.on('change', '.atria-stm-row-check', function () {
             updateBulkButtonsEnabled($root);
         });
 
-        $root.on('click', '.luker-stm-row-delete', function () {
-            const entryId = jQuery(this).closest('.luker-stm-card').data('entry-id');
+        $root.on('click', '.atria-stm-row-delete', function () {
+            const entryId = jQuery(this).closest('.atria-stm-card').data('entry-id');
             if (!entryId) return;
             void runMutation(async () => {
                 await manuallyDeleteManagedEntries(getContext(), [String(entryId)]);
             });
         });
 
-        $root.on('click', '.luker-stm-delete-selected', function () {
+        $root.on('click', '.atria-stm-delete-selected', function () {
             if (jQuery(this).hasClass('disabled')) return;
-            const ids = $root.find('.luker-stm-row-check:checked')
-                .map((_, el) => jQuery(el).closest('.luker-stm-card').data('entry-id'))
+            const ids = $root.find('.atria-stm-row-check:checked')
+                .map((_, el) => jQuery(el).closest('.atria-stm-card').data('entry-id'))
                 .get()
                 .map((value) => String(value || ''))
                 .filter(Boolean);
@@ -545,7 +545,7 @@ export function createSearchToolsSettingsUi(deps) {
             );
         });
 
-        $root.on('click', '.luker-stm-reset-all', function () {
+        $root.on('click', '.atria-stm-reset-all', function () {
             if (jQuery(this).hasClass('disabled')) return;
             void runMutation(
                 async () => { await manuallyResetManagedEntries(getContext()); },

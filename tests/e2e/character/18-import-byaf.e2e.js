@@ -24,7 +24,7 @@ const MANIFEST = {
     formatVersion: 1,
     characters: ['character/halden.json'],
     scenarios: ['scenario/library-stairwell.json'],
-    author: { name: 'luker-e2e', backyardURL: '' },
+    author: { name: 'atria-e2e', backyardURL: '' },
 };
 
 const CHARACTER = {
@@ -54,7 +54,7 @@ test.beforeAll(async () => {
     bootstrapCustomBackend({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
     appendConnectionProfile({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
 
-    tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-byaf-'));
+    tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-byaf-'));
     const iconPng = readFileSync(resolve(REPO_ROOT, 'default/content/default_Seraphina.png'));
     const zip = new AdmZip();
     zip.addFile('manifest.json', Buffer.from(JSON.stringify(MANIFEST), 'utf8'));
@@ -101,7 +101,7 @@ test.describe('#18 — Import byaf character card via UI file picker', () => {
         //    the saved card — read it via ctx so the test doesn't depend
         //    on the import-popup outcome.
         const embedded = await page.evaluate((name) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const ch = (ctx.characters || []).find(c => c?.name === name);
             const book = ch?.data?.character_book;
             return {

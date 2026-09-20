@@ -108,11 +108,11 @@ test.beforeAll(async () => {
     // to valid tool calls while everything else drains scriptedReplies.
     mock.scriptCompletion((req) => {
         const names = req.toolNames || [];
-        if (names.includes('luker_rpg_extract_event_create')) {
+        if (names.includes('atria_rpg_extract_event_create')) {
             return {
                 toolCalls: [
-                    { name: 'luker_rpg_extract_event_create', arguments: { summary: '时间：潮汐与浮标；Ash 沿礁线留下两枚来历不明的墨记。', links: [], no_link_reason: 'mock' } },
-                    { name: 'luker_rpg_extract_done', arguments: {} },
+                    { name: 'atria_rpg_extract_event_create', arguments: { summary: '时间：潮汐与浮标；Ash 沿礁线留下两枚来历不明的墨记。', links: [], no_link_reason: 'mock' } },
+                    { name: 'atria_rpg_extract_done', arguments: {} },
                 ],
             };
         }
@@ -128,13 +128,13 @@ test.afterAll(async () => {
 async function fillGraphViaUi(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings');
-    await page.locator('#luker_rpg_memory_tabs .luker-tabs-tab[data-luker-tab-key="graph"]').click();
-    await page.locator('#luker_rpg_memory_fill').click();
+    await page.locator('#atria_rpg_memory_tabs .atria-tabs-tab[data-atria-tab-key="graph"]').click();
+    await page.locator('#atria_rpg_memory_fill').click();
 }
 
 function isExtractionBody(body) {
     return Array.isArray(body?.tools)
-        && body.tools.some(t => t?.function?.name === 'luker_rpg_extract_event_create');
+        && body.tools.some(t => t?.function?.name === 'atria_rpg_extract_event_create');
 }
 
 function messageContents(body) {
@@ -157,7 +157,7 @@ test.describe('#66 — plugin lane applied exactly once, lanes never bleed', () 
         await openExtensionsDrawer(page);
         await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
         await page.evaluate(() => {
-            for (const id of ['luker_rpg_memory_enabled', 'luker_rpg_memory_auto_extraction_enabled']) {
+            for (const id of ['atria_rpg_memory_enabled', 'atria_rpg_memory_auto_extraction_enabled']) {
                 const el = document.getElementById(id);
                 if (!el) continue;
                 if (!el.checked) {

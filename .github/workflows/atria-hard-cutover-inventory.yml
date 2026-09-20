@@ -1,0 +1,43 @@
+name: Atria Hard Cutover Inventory
+
+on:
+  push:
+    branches:
+      - refactor/atria-namespace-migration
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory compatibility surfaces
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          roots = [Path('src'), Path('public'), Path('android-app'), Path('default'), Path('tests')]
+          rules = {
+              'legacy_atri': re.compile(r'(?i)(legacy.{0,100}\batri[a-z0-9_.-]*|\batri[a-z0-9_.-]*.{0,100}legacy)'),
+              'migration': re.compile(r'(?i)migrat(e|ion|or)|upgrade|backward.compat|back-compat|compatibility'),
+              'profile_versions': re.compile(r'(?i)(orchestrator|orch).{0,100}(profile|format).{0,80}(v[1-4]|version)|(?:v[1-4]|version).{0,80}(orchestrator|orch).{0,100}(profile|format)'),
+              'legacy_constants': re.compile(r'LEGACY_[A-Z0-9_]+'),
+          }
+          for root in roots:
+              if not root.exists():
+                  continue
+              for p in root.rglob('*'):
+                  if not p.is_file() or any(x in p.parts for x in ('node_modules','build','.gradle')):
+                      continue
+                  try:
+                      lines = p.read_text(encoding='utf-8').splitlines()
+                  except Exception:
+                      continue
+                  for i,line in enumerate(lines,1):
+                      matches=[name for name,rx in rules.items() if rx.search(line)]
+                      if matches:
+                          print(f"{p}:{i}:{','.join(matches)}:{line[:500]}")
+          PY

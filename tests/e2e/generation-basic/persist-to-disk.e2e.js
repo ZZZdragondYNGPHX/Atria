@@ -52,11 +52,11 @@ const STREAM_REPLY = 'This is chunk one. This is chunk two. End of stream reply.
 
 async function resolveChatPath(page, dataRoot) {
     const avatarFolder = await page.evaluate(() => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const c = ctx.characters[ctx.characterId];
         return (c?.avatar || '').replace(/\.png$/, '');
     });
-    const chatId = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+    const chatId = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
     return resolve(dataRoot, 'default-user', 'chats', avatarFolder, `${chatId}.jsonl`);
 }
 

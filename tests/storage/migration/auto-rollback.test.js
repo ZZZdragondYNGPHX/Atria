@@ -118,7 +118,7 @@ describe('MigrationRunner: auto-rollback on copy failure', () => {
     let tmpRoot, src, dst;
 
     beforeEach(() => {
-        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-runner-rollback-'));
+        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-runner-rollback-'));
         src = buildHarness('fs', path.join(tmpRoot, 'src'));
         dst = buildHarness('fs', path.join(tmpRoot, 'dst'));
     });

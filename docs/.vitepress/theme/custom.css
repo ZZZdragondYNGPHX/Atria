@@ -1,5 +1,5 @@
 /**
- * Luker Docs — Editorial Manuscript Theme
+ * Atria Docs — Editorial Manuscript Theme
  * A warm, story-driven aesthetic for a roleplay platform.
  * Deep teal brand with amber accents, textured feel.
  */
@@ -14,8 +14,8 @@
   --vp-c-brand-soft: rgba(13, 115, 119, 0.10);
 
   /* Accent — Warm Amber */
-  --luker-accent: #D97706;
-  --luker-accent-soft: rgba(217, 119, 6, 0.10);
+  --atria-accent: #D97706;
+  --atria-accent-soft: rgba(217, 119, 6, 0.10);
 
   /* Typography */
   --vp-font-family-base: 'DM Sans', -apple-system, BlinkMacSystemFont,
@@ -35,8 +35,8 @@
   --vp-c-brand-3: #0D9488;
   --vp-c-brand-soft: rgba(45, 212, 191, 0.10);
 
-  --luker-accent: #FBBF24;
-  --luker-accent-soft: rgba(251, 191, 36, 0.08);
+  --atria-accent: #FBBF24;
+  --atria-accent-soft: rgba(251, 191, 36, 0.08);
 
   --vp-c-bg: #1A1A1E;
   --vp-c-bg-soft: #222226;
@@ -83,7 +83,7 @@
 .VPHome {
   background-image:
     radial-gradient(ellipse at 20% 50%, var(--vp-c-brand-soft) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, var(--luker-accent-soft) 0%, transparent 40%);
+    radial-gradient(ellipse at 80% 20%, var(--atria-accent-soft) 0%, transparent 40%);
 }
 
 /* ===== Feature Cards ===== */
@@ -96,7 +96,7 @@
 }
 
 .VPFeature:hover {
-  border-left-color: var(--luker-accent) !important;
+  border-left-color: var(--atria-accent) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
   transform: translateY(-1px);
 }
@@ -139,7 +139,7 @@
   display: block;
   width: 60px;
   height: 3px;
-  background: linear-gradient(90deg, var(--vp-c-brand-1), var(--luker-accent));
+  background: linear-gradient(90deg, var(--vp-c-brand-1), var(--atria-accent));
   margin-top: 0.75rem;
   border-radius: 2px;
 }
@@ -258,8 +258,8 @@
 
 /* ===== Blockquote ===== */
 .vp-doc blockquote {
-  border-left: 3px solid var(--luker-accent);
-  background-color: var(--luker-accent-soft);
+  border-left: 3px solid var(--atria-accent);
+  background-color: var(--atria-accent-soft);
   border-radius: 0 4px 4px 0;
   padding: 14px 20px;
   margin: 1.5rem 0;

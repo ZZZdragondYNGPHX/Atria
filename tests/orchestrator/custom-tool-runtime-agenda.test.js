@@ -13,10 +13,10 @@ import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/exte
 import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globals';
 
 // agenda-runtime.js + defaults.js consume core symbols via
-// `Luker.getContext()` after upstream commit 571c529c2. Provide a
+// `Atria.getContext()` after upstream commit 571c529c2. Provide a
 // shim with the constants + the shared `extensionSettings` binding the
 // runtime captures at module-load time. Mutating
-// `globalThis.Luker.__settings.orchestrator` in beforeEach
+// `globalThis.Atria.__settings.orchestrator` in beforeEach
 // propagates because the runtime stores the live object reference.
 const __sillyTavernSettings = {
     orchestrator: {
@@ -26,7 +26,7 @@ const __sillyTavernSettings = {
         nodeIterationMaxRounds: 3,
     },
 };
-globalThis.Luker = {
+globalThis.Atria = {
     __settings: __sillyTavernSettings,
     getContext: () => ({
         constants: {
@@ -178,13 +178,13 @@ describe('agenda runtime Layer-3 dispatch', () => {
             reasoning: '',
         });
         agentResponses.push({
-            toolCalls: [{ id: 'tc2', name: 'luker_orch_submit_result', args: { text: 'agent finished' } }],
+            toolCalls: [{ id: 'tc2', name: 'atri_orch_submit_result', args: { text: 'agent finished' } }],
             assistantText: '',
             reasoning: '',
         });
         // Finalizer dispatch (writer reused). Single round result.
         agentResponses.push({
-            toolCalls: [{ id: 'tc3', name: 'luker_orch_submit_result', args: { text: 'finalized' } }],
+            toolCalls: [{ id: 'tc3', name: 'atri_orch_submit_result', args: { text: 'finalized' } }],
             assistantText: '',
             reasoning: '',
         });
@@ -207,7 +207,7 @@ test.each([['plannerMaxRounds', 1, 12], ['maxTotalRuns', 4, 1]])('budget ending 
         finalAgentId: 'writer', limits: { plannerMaxRounds: rounds, maxConcurrentAgents: 1, maxTotalRuns: runs },
     };
     plannerResponses.push({ dispatches: [{ todo_id: 'main', agent: 'writer', task_brief: 'investigate', input_run_ids: [] }] });
-    for (const text of ['evidence', 'partial summary']) agentResponses.push({ toolCalls: [{ id: text, name: 'luker_orch_submit_result', args: { text } }] });
+    for (const text of ['evidence', 'partial summary']) agentResponses.push({ toolCalls: [{ id: text, name: 'atri_orch_submit_result', args: { text } }] });
     const result = await runAgendaOrchestration({}, { signal: new AbortController().signal }, [], profile);
     expect(result.status).toBe('budget_exhausted');
     expect(result.runtimeTrace.status).toBe('budget_exhausted');
@@ -221,7 +221,7 @@ test('Agenda planner, selected worker and finalizer use parent-owned Runtime bra
         agents: { writer: { systemPrompt: 'write', tools: { chat: { read_range: true } } } }, finalAgentId: 'writer' };
     const before = JSON.stringify(profile), events = [];
     plannerResponses.push({ dispatches: [{ todo_id: 'main', agent: 'writer', task_brief: 'work', input_run_ids: [] }] }, { finalize: 'done' });
-    for (const text of ['evidence', 'final']) agentResponses.push({ toolCalls: [{ name: 'luker_orch_submit_result', args: { text } }] });
+    for (const text of ['evidence', 'final']) agentResponses.push({ toolCalls: [{ name: 'atri_orch_submit_result', args: { text } }] });
     const result = await runAgendaOrchestration({}, {}, [], profile, { onRuntimeEvent: event => events.push(event) });
     const branches = events.filter(e => e.type === 'parallel.branch.started');
     expect(branches.map(e => e.toAgentId)).toEqual(['agent:planner', 'agent:worker:writer', 'agent:planner', 'agent:worker:writer']);
@@ -237,7 +237,7 @@ test('Agenda transfer excludes unselected run output and rejects unknown target/
     const profile = { planner: { systemPrompt: 'plan' }, agents: { writer: { tools: { chat: { read_range: true } } } } };
     const state = { todos: [], runs: [{ runId: 'chosen', outputText: 'selected evidence' }, { runId: 'hidden', outputText: 'do-not-transfer' }] };
     const dispatch = { agent: 'writer', taskBrief: 'work', inputRunIds: ['chosen'] };
-    agentResponses.push({ toolCalls: [{ name: 'luker_orch_submit_result', args: { text: 'done' } }] });
+    agentResponses.push({ toolCalls: [{ name: 'atri_orch_submit_result', args: { text: 'done' } }] });
     await runAgendaTextAgent({}, {}, [], profile, state, dispatch, {});
     expect(JSON.stringify(agentRequests)).toContain('selected evidence');
     expect(JSON.stringify(agentRequests)).not.toContain('do-not-transfer');

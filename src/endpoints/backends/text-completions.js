@@ -7,8 +7,8 @@ import {
 import { trimV1 } from '../../util.js';
 import { setAdditionalHeaders } from '../../additional-headers.js';
 import { createHash } from 'node:crypto';
-import { runLukerDispatch } from '../../luker-dispatch/runner.js';
-import { dispatchTextCompletions } from '../../luker-dispatch/providers/text-completions/dispatch.js';
+import { runAtriaDispatch } from '../../atria-dispatch/runner.js';
+import { dispatchTextCompletions } from '../../atria-dispatch/providers/text-completions/dispatch.js';
 
 export const router = express.Router();
 
@@ -187,17 +187,17 @@ router.post('/props', async function (request, response) {
 
 /**
  * Text-completions `/generate` — delegates all provider-specific work to
- * {@link dispatchTextCompletions} via {@link runLukerDispatch}. The legacy
+ * {@link dispatchTextCompletions} via {@link runAtriaDispatch}. The legacy
  * inline switch/case cascade (URL suffix + per-api_type body pickBy +
  * fetch/stream/error tail + KOBOLDCPP abort side-channel + Ollama NDJSON
  * reshape) now lives in
- * src/luker-dispatch/providers/text-completions/dispatch.js.
+ * src/atria-dispatch/providers/text-completions/dispatch.js.
  *
- * Runner contract: caller must set `x-luker-request-id` header. Runner
+ * Runner contract: caller must set `x-atria-request-id` header. Runner
  * creates the generation job, hands the request to dispatch, and streams
  * emitted chunks/end/error events out via the standard job replay path.
  */
-router.post('/generate', (req, res) => runLukerDispatch(req, res, {
+router.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'text-completions',
     select: () => dispatchTextCompletions,
 }));

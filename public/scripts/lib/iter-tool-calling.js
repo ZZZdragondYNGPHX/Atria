@@ -12,7 +12,7 @@
  *
  *   1. Outbound requests — `requestToolCallWithRetry` (single forced
  *      function) and `requestToolCallsWithRetry` (multi tool, allowed
- *      names list). Both wrap `context.generateTask` from the Luker
+ *      names list). Both wrap `context.generateTask` from the Atria
  *      extension API: the helper resolves the connection profile + LLM
  *      preset internally, so callers pass `apiPresetName` /
  *      `llmPresetName` strings and a pre-resolved `runtimeWorldInfo`
@@ -165,8 +165,8 @@ export async function requestToolCallWithRetry(context, settings, {
 //
 // Detection is delegated to the caller via `opts.isControlCall` because
 // every popup uses its own namespaced control tool names — orchestrator
-// emits `luker_orch_continue_iteration` / `luker_orch_finalize_iteration`,
-// memory-graph schema iteration emits `luker_mg_schema_continue_iteration`
+// emits `atri_orch_continue_iteration` / `atri_orch_finalize_iteration`,
+// memory-graph schema iteration emits `atri_mg_schema_continue_iteration`
 // / `_finalize_iteration`, CPA and CEA popups have none. A single hardcoded
 // allowlist in the shared runner would silently misroute calls. When
 // `isControlCall` is omitted the runner treats every call as non-control,

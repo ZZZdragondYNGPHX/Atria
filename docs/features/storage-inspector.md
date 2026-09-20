@@ -1,12 +1,12 @@
 # Storage Inspector
 
-Luker exposes two complementary storage inspectors — one for the server-side per-user data directory, one for browser-side storage local to the current device. Both live under **User Settings → Account** and share the same visual layout: a quota row, a stacked usage bar, a legend, and a drill-down list.
+Atria exposes two complementary storage inspectors — one for the server-side per-user data directory, one for browser-side storage local to the current device. Both live under **User Settings → Account** and share the same visual layout: a quota row, a stacked usage bar, a legend, and a drill-down list.
 
 ## Server-Side Storage Inspector
 
 **Entry:** User Settings → Account → **Storage Inspector**
 
-**What it shows:** Ten categories of on-disk content that Luker stores for a given user account: Chats, Characters, Worldbooks, Images, Attachments, Presets, Extensions, Vectors, Backups, and Other. The stacked bar reflects total bytes per category and the drill-down list lets you walk into each category to see individual files (chat files, character cards, worldbook JSONs, background images, etc.).
+**What it shows:** Ten categories of on-disk content that Atria stores for a given user account: Chats, Characters, Worldbooks, Images, Attachments, Presets, Extensions, Vectors, Backups, and Other. The stacked bar reflects total bytes per category and the drill-down list lets you walk into each category to see individual files (chat files, character cards, worldbook JSONs, background images, etc.).
 
 **What Admin users can do:** From the Admin Panel → Storage Management tab, admins can inspect any user account's storage individually, or view an aggregate roll-up across every user on the server.
 
@@ -37,16 +37,16 @@ Luker exposes two complementary storage inspectors — one for the server-side p
 ## FAQ
 
 **My Storage Quota shows "unlimited". What does that mean?**
-Some browsers do not report a quota for the origin. Luker shows this as "unlimited"; the actual limit is whatever your browser enforces silently.
+Some browsers do not report a quota for the origin. Atria shows this as "unlimited"; the actual limit is whatever your browser enforces silently.
 
-**Will deleting a `localStorage` key break Luker?**
-It might. Luker stores things like the current UI language override, drafts of unsaved input, and some connection URLs in `localStorage`. If you delete one of those, the corresponding setting reverts to its default the next time the page loads. The confirmation dialog names the exact key so you can decide.
+**Will deleting a `localStorage` key break Atria?**
+It might. Atria stores things like the current UI language override, drafts of unsaved input, and some connection URLs in `localStorage`. If you delete one of those, the corresponding setting reverts to its default the next time the page loads. The confirmation dialog names the exact key so you can decide.
 
 **Why does the size column show `?` for IndexedDB and Cache Storage entries?**
 Browsers do not expose a per-database or per-cache byte total via a fast API. Computing it exactly would require reading every record or every cached response, which can be slow for large stores. The top of the inspector shows the browser's aggregate estimate (`navigator.storage.estimate()`) instead.
 
 **Do the two inspectors see the same data?**
-No. The Server-Side Storage Inspector reads files on the Luker server's disk (shared across all your devices signed into the same account). The Browser Storage Inspector reads storage local to this browser only (per-origin, per-device).
+No. The Server-Side Storage Inspector reads files on the Atria server's disk (shared across all your devices signed into the same account). The Browser Storage Inspector reads storage local to this browser only (per-origin, per-device).
 
 **I deleted an entire IndexedDB database and now some feature seems broken.**
-Some Luker features and third-party libraries (voice synthesis, model caches, offline resources) use IndexedDB and Cache Storage for their state. Deleting those forces the next-load re-fetch or re-initialisation. Reload the page after deletion and the feature should re-populate its storage automatically.
+Some Atria features and third-party libraries (voice synthesis, model caches, offline resources) use IndexedDB and Cache Storage for their state. Deleting those forces the next-load re-fetch or re-initialisation. Reload the page after deletion and the feature should re-populate its storage automatically.

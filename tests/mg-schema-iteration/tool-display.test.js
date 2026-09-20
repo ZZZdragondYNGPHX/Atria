@@ -28,8 +28,8 @@ describe('MG schema tool-display map', () => {
     });
 
     it('excludes the legacy continue and finalize control tools', () => {
-        expect(MG_SCHEMA_TOOL_DISPLAY.luker_mg_schema_continue_iteration).toBeUndefined();
-        expect(MG_SCHEMA_TOOL_DISPLAY.luker_mg_schema_finalize_iteration).toBeUndefined();
+        expect(MG_SCHEMA_TOOL_DISPLAY.atri_mg_schema_continue_iteration).toBeUndefined();
+        expect(MG_SCHEMA_TOOL_DISPLAY.atri_mg_schema_finalize_iteration).toBeUndefined();
     });
 
     it('covers every MG schema tool name listed in schema-iteration/tools.js', async () => {

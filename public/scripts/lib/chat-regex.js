@@ -26,16 +26,16 @@
  *   chat depth; main-pipeline-only rules (promptOnly) never enter it.
  *
  * Regex engine access:
- *   We consume the regex primitives through `Luker.getContext().regex`
+ *   We consume the regex primitives through `Atria.getContext().regex`
  *   (three-layer API). Direct `import` from
  *   `../extensions/regex/engine.js` would transitively pull
  *   `public/script.js` and its DOM bootstrap chain — poison for the
  *   jest module graph. The context surface stays test-friendly because
- *   jest.setup.js already installs a Luker stub.
+ *   jest.setup.js already installs a Atria stub.
  *
  *   Ctx resolution is lazy (first-call, memoized): reading
- *   `Luker.getContext()` at module load would fire before jest.setup.js
- *   finishes wiring `globalThis.Luker`, and in the browser it would
+ *   `Atria.getContext()` at module load would fire before jest.setup.js
+ *   finishes wiring `globalThis.Atria`, and in the browser it would
  *   fire before `st-context.js` finishes exposing the `regex` field.
  *   Lazy avoids both hazards.
  */
@@ -45,7 +45,7 @@ let __regexApiCache = undefined;
 function getRegexApi() {
     if (__regexApiCache !== undefined) return __regexApiCache;
     try {
-        const ctx = globalThis.Luker?.getContext?.();
+        const ctx = globalThis.Atria?.getContext?.();
         const api = ctx?.regex;
         if (api && typeof api.applyRegex === 'function' && api.placement
             && typeof api.placement.USER_INPUT === 'number'
@@ -123,7 +123,7 @@ export function computeDepthsFromEnd(messages) {
  *     `applyPluginLaneRegex` treats an undepthed message.
  *
  * Returns raw text when the regex API isn't reachable (bare unit tests
- * without a Luker stub) so callers degrade gracefully.
+ * without a Atria stub) so callers degrade gracefully.
  *
  * @param {string} text — raw agent output text
  * @returns {string} text after plugin-scoped AI_OUTPUT regex application

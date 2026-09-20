@@ -21,7 +21,7 @@ export function jsonOrText(v) {
 
 function applySectionOpts(sec, opts) {
     if (opts.collapsedByDefault) {
-        sec.classList.add('luker-sim-section--collapsed');
+        sec.classList.add('atria-sim-section--collapsed');
         sec.setAttribute('data-collapsible', 'true');
     }
     if (opts.isFinalOutput) {
@@ -37,7 +37,7 @@ export const appendShared = {
     },
     section(parent, heading, locPath, opts = {}) {
         const sec = document.createElement('section');
-        sec.className = 'luker-sim-section';
+        sec.className = 'atria-sim-section';
         if (locPath) sec.setAttribute('data-loc-path', locPath);
         applySectionOpts(sec, opts);
         const h = document.createElement('h2');
@@ -48,7 +48,7 @@ export const appendShared = {
     },
     subsection(parent, heading, locPath, opts = {}) {
         const sec = document.createElement('section');
-        sec.className = 'luker-sim-subsection';
+        sec.className = 'atria-sim-subsection';
         if (locPath) sec.setAttribute('data-loc-path', locPath);
         applySectionOpts(sec, opts);
         const h = document.createElement('h3');
@@ -59,7 +59,7 @@ export const appendShared = {
     },
     subsubsection(parent, heading, locPath, opts = {}) {
         const sec = document.createElement('section');
-        sec.className = 'luker-sim-subsubsection';
+        sec.className = 'atria-sim-subsubsection';
         if (locPath) sec.setAttribute('data-loc-path', locPath);
         applySectionOpts(sec, opts);
         const h = document.createElement('h4');
@@ -70,14 +70,14 @@ export const appendShared = {
     },
     pre(parent, text) {
         const pre = document.createElement('pre');
-        pre.className = 'luker-sim-pre';
+        pre.className = 'atria-sim-pre';
         pre.textContent = String(text ?? '');
         parent.appendChild(pre);
         return pre;
     },
     note(parent, text) {
         const p = document.createElement('p');
-        p.className = 'luker-sim-note';
+        p.className = 'atria-sim-note';
         p.textContent = String(text ?? '');
         parent.appendChild(p);
         return p;

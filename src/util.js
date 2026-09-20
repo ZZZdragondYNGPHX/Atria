@@ -157,9 +157,9 @@ export async function getVersion() {
         // suppress exception
     }
 
-    const stCompatVersion = String(process.env.LUKER_ST_COMPAT_VERSION || '1.18.0').trim() || '1.18.0';
-    const agent = `Luker:${pkgVersion}:Cohee#1207`;
-    const compatAgent = `Luker:${stCompatVersion}:Cohee#1207`;
+    const stCompatVersion = String(process.env.ATRIA_ST_COMPAT_VERSION || '1.18.0').trim() || '1.18.0';
+    const agent = `Atria:${pkgVersion}:Cohee#1207`;
+    const compatAgent = `Atria:${stCompatVersion}:Cohee#1207`;
     const isDockerRuntime = isDocker();
     return { agent, compatAgent, stCompatVersion, pkgVersion, gitRevision, gitBranch, commitDate: commitDate?.trim() ?? null, isDocker: isDockerRuntime };
 }
@@ -180,7 +180,7 @@ export async function checkRemoteVersion() {
             try {
                 remoteTags = await git.listRemote(['--tags', 'origin']);
             } catch {
-                const remoteUrl = String(process.env.LUKER_UPDATE_REMOTE || 'https://github.com/funnycups/Luker.git').trim();
+                const remoteUrl = String(process.env.ATRIA_UPDATE_REMOTE || 'https://github.com/ZZZdragondYNGPHX/Atria.git').trim();
                 if (remoteUrl) {
                     try {
                         remoteTags = await simpleGit().listRemote(['--tags', remoteUrl]);

@@ -29,7 +29,7 @@
  *     AFTER the WI payload has been joined into the prompt strings.
  *     Calling from director cleanly returns LOREBOOK_FORCE_NO_PAYLOAD
  *     because the takeover handler does not receive the WI payload —
- *     `ctx.__lukerRun.wiFinalizedPayload` is undefined.
+ *     `ctx.__atriaRun.wiFinalizedPayload` is undefined.
  *
  * Sharp edges (also called out in the tool description for the LLM):
  *   - Bypasses token-budget tracking. Forced entries don't pay into the
@@ -87,7 +87,7 @@ function describeRoute(position) {
 }
 
 /**
- * Loader hook — production reads from `Luker.getContext().loadWorldInfo`,
+ * Loader hook — production reads from `Atria.getContext().loadWorldInfo`,
  * tests inject `context.__loadWorldInfoFn` to avoid pulling the build-only
  * `lib.js` bundle into the Jest runner.
  */
@@ -95,7 +95,7 @@ async function loadBookSafe(context, bookName) {
     if (typeof context?.__loadWorldInfoFn === 'function') {
         return context.__loadWorldInfoFn(bookName);
     }
-    const loader = Luker.getContext()?.loadWorldInfo;
+    const loader = Atria.getContext()?.loadWorldInfo;
     if (typeof loader !== 'function') return null;
     return loader(bookName);
 }
@@ -123,7 +123,7 @@ export async function execLorebookForceActivate(args, context) {
         );
     }
 
-    const payload = context?.__lukerRun?.wiFinalizedPayload;
+    const payload = context?.__atriaRun?.wiFinalizedPayload;
     if (!payload || typeof payload !== 'object') {
         throw new ToolError(
             'lorebook_force_activate: no in-flight World Info payload on this run.',
@@ -146,7 +146,7 @@ export async function execLorebookForceActivate(args, context) {
     // An entry-pattern match makes the specific uid invisible — the
     // per-uid loop below reports it as `uid_not_found`, indistinguishable
     // from a uid that never existed in the book. Zero side channel.
-    const compiled = compileLorebookFilter(context?.__lukerRun?.lorebookFilter || { bookPattern: '', entryPattern: '' });
+    const compiled = compileLorebookFilter(context?.__atriaRun?.lorebookFilter || { bookPattern: '', entryPattern: '' });
     if (compiled.test(bookName, '')) {
         throw new ToolError(
             `lorebook_force_activate: world book '${bookName}' not found or empty.`,
@@ -161,8 +161,8 @@ export async function execLorebookForceActivate(args, context) {
 
     const activated = [];
     const skipped = [];
-    const activatedSet = context?.__lukerRun?.activatedEntryKeys instanceof Set
-        ? context.__lukerRun.activatedEntryKeys
+    const activatedSet = context?.__atriaRun?.activatedEntryKeys instanceof Set
+        ? context.__atriaRun.activatedEntryKeys
         : null;
 
     for (const uid of uids) {

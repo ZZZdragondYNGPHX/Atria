@@ -38,7 +38,7 @@ import { resolveAgentToolFlags } from './persistence.js';
 // can import this module without first installing a SillyTavern global —
 // the loop body (`runMainAgentLoop`) and pure helpers do not need it.
 function getCreateMessageEditorHandle() {
-    return Luker.getContext().createMessageEditorHandle;
+    return Atria.getContext().createMessageEditorHandle;
 }
 import {
     buildMainAgentToolSchemas,
@@ -90,7 +90,7 @@ async function loadSkillResolution() {
  * import it transitively.
  */
 function resolveAgentApiPresetName(settings, agentConfig) {
-    const ctx = (typeof Luker !== 'undefined') ? Luker.getContext() : null;
+    const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
     const resolved = resolveCardFirstPresetName({
@@ -109,7 +109,7 @@ function resolveAgentApiPresetName(settings, agentConfig) {
  * `resolveCardFirstPresetName`.
  */
 function resolveAgentPromptPresetName(settings, agentConfig) {
-    const ctx = (typeof Luker !== 'undefined') ? Luker.getContext() : null;
+    const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
     const resolved = resolveCardFirstPresetName({
@@ -746,7 +746,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                 // suppress filtered books/entries at source. Empty
                 // filter default keeps existing behavior for profiles
                 // that never set one.
-                toolCtx.__lukerRun = {
+                toolCtx.__atriaRun = {
                     lorebookFilter: director?.lorebookFilter || { bookPattern: '', entryPattern: '' },
                     activatedEntryKeys: new Set(),
                     wiFinalizedPayload: null,

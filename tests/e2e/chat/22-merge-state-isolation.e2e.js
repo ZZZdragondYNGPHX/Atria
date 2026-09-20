@@ -7,7 +7,7 @@
 //   2. Use the public `ctx.createFloorState` API (the same API the
 //      memory-graph extension uses internally) to deterministically
 //      append one commit on the `memory_graph` namespace. This forces
-//      the `<chatA>.luker-state.memory_graph__floor_log.json` sidecar
+//      the `<chatA>.atria-state.memory_graph__floor_log.json` sidecar
 //      to land on disk regardless of whether MG's own extraction
 //      pipeline managed to commit anything (the mock LLM does not
 //      produce extraction-shaped responses, so MG's extraction would
@@ -66,7 +66,7 @@ test.describe('#22 — merge does not carry over the source memory-graph sidecar
         await selectCharacterByName(page, 'Seraphina');
         await page.waitForFunction(() => document.querySelectorAll('#chat .mes').length >= 1, { timeout: 10_000 }).catch(() => {});
 
-        const idA = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+        const idA = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
         expect(idA).toBeTruthy();
         await sendMessageAndAwaitReply(page, 'hello A');
 
@@ -76,11 +76,11 @@ test.describe('#22 — merge does not carry over the source memory-graph sidecar
         // public/scripts/extensions/memory-graph/persistence.js line
         // 98). Calling `.patch` with a single add-op writes a real
         // commit to the chat-state log namespace, which the server
-        // persists as `<chatA>.luker-state.memory_graph__floor_log.json`.
+        // persists as `<chatA>.atria-state.memory_graph__floor_log.json`.
         // We don't mock anything; this is a legitimate product write
         // path that any plugin (or test) is allowed to invoke.
         const sidecarWriteResult = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const fs = await ctx.createFloorState({ namespace: 'memory_graph' });
             const result = await fs.patch([{ op: 'add', path: '/e2e_test_marker', value: 'iso' }]);
             return result;
@@ -90,17 +90,17 @@ test.describe('#22 — merge does not carry over the source memory-graph sidecar
 
         // Chat B via the real options dropdown.
         await createNewChatViaUI(page);
-        const idB = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+        const idB = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
         expect(idB).toBeTruthy();
         expect(idB).not.toBe(idA);
         await sendMessageAndAwaitReply(page, 'hello B');
 
         const avatarFolder = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.characters[ctx.characterId].avatar.replace(/\.png$/, '');
         });
         const chatsDir = resolve(server.dataRoot, 'default-user', 'chats', avatarFolder);
-        const sourceSidecar = resolve(chatsDir, `${idA}.luker-state.memory_graph__floor_log.json`);
+        const sourceSidecar = resolve(chatsDir, `${idA}.atria-state.memory_graph__floor_log.json`);
 
         // Sanity: the source sidecar we forced must actually be on
         // disk. If it isn't, the merged-side no-sidecar assertion below
@@ -114,7 +114,7 @@ test.describe('#22 — merge does not carry over the source memory-graph sidecar
         const mergedName = 'merged-iso';
         await submitMergeDialog(page, dialog, mergedName);
         await page.waitForFunction(
-            (id) => window.Luker.getContext().getCurrentChatId() === id,
+            (id) => window.Atria.getContext().getCurrentChatId() === id,
             mergedName,
             { timeout: 15_000 },
         );
@@ -122,7 +122,7 @@ test.describe('#22 — merge does not carry over the source memory-graph sidecar
         // Contract: the merge endpoint writes a fresh .jsonl for the
         // target chat and MUST NOT copy any of the source's sidecar
         // state files (memory-graph, orchestrator, search-tools, etc.).
-        const mergedSidecar = resolve(chatsDir, `${mergedName}.luker-state.memory_graph__floor_log.json`);
+        const mergedSidecar = resolve(chatsDir, `${mergedName}.atria-state.memory_graph__floor_log.json`);
         expect(existsSync(mergedSidecar), `merged chat must not inherit a memory-graph sidecar; found ${mergedSidecar}`)
             .toBe(false);
     });

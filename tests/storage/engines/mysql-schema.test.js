@@ -1,7 +1,7 @@
 import { makeTempMysqlEngineHarness } from '../harness/mysql-harness.js';
 import { CURRENT_SCHEMA_VERSION, initSchema } from '../../../src/storage/engines/mysql-schema.js';
 
-const describeMysql = process.env.LUKER_DISABLE_MYSQL_TESTS ? describe.skip : describe;
+const describeMysql = process.env.ATRIA_DISABLE_MYSQL_TESTS ? describe.skip : describe;
 
 describeMysql('MysqlEngine schema bootstrap', () => {
     let harness;

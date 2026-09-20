@@ -1,7 +1,7 @@
 // @ts-nocheck
 
-const STORAGE_KEY = 'luker.selfProfilingEnabled';
-const GLOBAL_STATE_KEY = '__lukerSelfProfilerState';
+const STORAGE_KEY = 'atria.selfProfilingEnabled';
+const GLOBAL_STATE_KEY = '__atriaSelfProfilerState';
 const DEFAULT_SAMPLE_INTERVAL = 10;
 const DEFAULT_MAX_BUFFER_SIZE = 50000;
 
@@ -175,7 +175,7 @@ export async function downloadCurrentSelfProfileReport({ restartAfterDownload = 
 
     const report = buildReport(trace, state);
     const date = new Date().toISOString().replace(/[.:]/g, '-');
-    downloadJsonFile(`luker-self-profile-${date}.json`, report);
+    downloadJsonFile(`atria-self-profile-${date}.json`, report);
 
     if (restartAfterDownload && getSelfProfilerPreference()) {
         startSelfProfiler();

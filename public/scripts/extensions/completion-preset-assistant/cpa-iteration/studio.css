@@ -3,9 +3,9 @@
  *
  * CPA Completion Preset Assistant — AI iteration popup styles.
  *
- * Design language mirrors luker-studio.css (the shared shell stylesheet)
+ * Design language mirrors atria-studio.css (the shared shell stylesheet)
  * via local tokens — kept namespaced (`cpa_it_*`) so the popup remains
- * self-contained without depending on luker-studio class wrappers.
+ * self-contained without depending on atria-studio class wrappers.
  *
  * Theme-aware: all colors flow through color-mix() of --SmartTheme*
  * variables with sensible fallbacks for testbed environments.
@@ -483,20 +483,20 @@
    When the popup is mounted in the new split workspace, the composer
    needs to stack textarea on top of the actions row (auto-apply + Send),
    instead of the old single-row textarea + button layout. The shared
-   `_composer_actions` rule in luker-studio.css §24 styles the inner row
+   `_composer_actions` rule in atria-studio.css §24 styles the inner row
    itself; this stanza only flips the outer composer to column flow.
    --------------------------------------------------------------------- */
 
-.cpa_it_popup.luker-iter-workspace .cpa_it_composer {
+.cpa_it_popup.atria-iter-workspace .cpa_it_composer {
     flex-direction: column;
     align-items: stretch;
 }
 
-.cpa_it_popup.luker-iter-workspace .cpa_it_composer textarea {
+.cpa_it_popup.atria-iter-workspace .cpa_it_composer textarea {
     width: 100%;
 }
 
-.cpa_it_popup.luker-iter-workspace .cpa_it_composer button {
+.cpa_it_popup.atria-iter-workspace .cpa_it_composer button {
     align-self: auto;
 }
 

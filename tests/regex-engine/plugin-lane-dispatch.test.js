@@ -25,9 +25,9 @@ const PLACEMENTS = { USER_INPUT: 1, AI_OUTPUT: 2 };
 
 const restoreFns = [];
 
-function installLuker() {
-    const previous = Object.getOwnPropertyDescriptor(globalThis, 'Luker');
-    globalThis.Luker = {
+function installAtria() {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, 'Atria');
+    globalThis.Atria = {
         getContext: () => ({
             regex: {
                 applyRegex: applyRegexMock,
@@ -37,9 +37,9 @@ function installLuker() {
     };
     return () => {
         if (previous) {
-            Object.defineProperty(globalThis, 'Luker', previous);
+            Object.defineProperty(globalThis, 'Atria', previous);
         } else {
-            delete globalThis.Luker;
+            delete globalThis.Atria;
         }
     };
 }
@@ -47,7 +47,7 @@ function installLuker() {
 let mod;
 
 beforeAll(async () => {
-    restoreFns.push(installLuker());
+    restoreFns.push(installAtria());
     try {
         mod = await import('../../public/scripts/lib/plugin-prompt-regex.js');
     } finally {
@@ -56,7 +56,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-    restoreFns.push(installLuker());
+    restoreFns.push(installAtria());
     applyRegexMock.mockClear();
 });
 
@@ -184,7 +184,7 @@ describe('applyPluginLaneRegex', () => {
 
     test('degrades gracefully without a reachable regex API: raw text, marker still stripped', () => {
         // Overwrite the stub; afterEach's captured restore puts the real one back.
-        globalThis.Luker = { getContext: () => ({}) };
+        globalThis.Atria = { getContext: () => ({}) };
         mod.__resetRegexApiCacheForTests();
 
         const out = mod.applyPluginLaneRegex([

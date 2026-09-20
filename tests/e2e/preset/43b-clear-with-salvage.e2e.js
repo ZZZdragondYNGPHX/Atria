@@ -77,10 +77,10 @@ test.afterAll(async () => {
 /** Read the card-bound state directly from the character in the browser's runtime. */
 async function readCardState(page) {
     return page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const chid = ctx?.characterId ?? window.this_chid;
         const c = ctx?.characters?.[chid];
-        const raw = c?.data?.extensions?.luker?.chat_completion_preset ?? null;
+        const raw = c?.data?.extensions?.atria?.chat_completion_preset ?? null;
         if (!raw) return { presets: [], defaultPresetName: null, isNull: true };
         if (Array.isArray(raw?.presets)) return {
             presets: raw.presets.map(p => ({ name: p.name, temperature: p?.preset?.temperature ?? null })),
@@ -94,7 +94,7 @@ async function readCardState(page) {
 /** Read the stored body of a global (openai) preset by name, or null if missing. */
 async function readGlobalPreset(page, name) {
     return page.evaluate((presetName) => {
-        const mgr = window.Luker?.getContext?.()?.getPresetManager?.('openai');
+        const mgr = window.Atria?.getContext?.()?.getPresetManager?.('openai');
         const body = mgr?.getStoredPreset?.(presetName) ?? null;
         if (!body) return null;
         // Return just the temperature — the rest of the body is a
@@ -108,7 +108,7 @@ async function readAllGlobalPresetNames(page) {
     return page.evaluate(() => {
         const options = Array.from(document.querySelectorAll('#settings_preset_openai option'));
         return options
-            .filter(o => !String(o.value ?? '').startsWith('__luker_card__::'))
+            .filter(o => !String(o.value ?? '').startsWith('__atria_card__::'))
             .map(o => String(o.textContent ?? '').trim())
             .filter(Boolean);
     });
@@ -132,7 +132,7 @@ async function fireDropdownAction(page, optionId) {
 
 /** Wait for the salvage dialog to be visible + return its <dialog> locator. */
 async function waitForSalvageDialog(page) {
-    const dialog = page.locator('dialog.popup[open]:has(#luker_clear_bound_presets_dialog)').last();
+    const dialog = page.locator('dialog.popup[open]:has(#atria_clear_bound_presets_dialog)').last();
     await dialog.waitFor({ state: 'visible', timeout: 10_000 });
     return dialog;
 }
@@ -149,14 +149,14 @@ async function waitForCollisionConfirm(page) {
 
 /** Set a single row in the salvage dialog to 'save' or 'discard'. */
 async function setSalvageRowAction(dialog, slotName, action) {
-    const row = dialog.locator(`.luker-cbp-row[data-slot-name="${slotName}"]`);
-    await row.locator(`.luker-cbp-action[value="${action}"]`).check();
+    const row = dialog.locator(`.atria-cbp-row[data-slot-name="${slotName}"]`);
+    await row.locator(`.atria-cbp-action[value="${action}"]`).check();
 }
 
 /** Set the inline global-preset target name for a specific row. */
 async function setSalvageRowGlobalName(dialog, slotName, name) {
-    const row = dialog.locator(`.luker-cbp-row[data-slot-name="${slotName}"]`);
-    const input = row.locator('.luker-cbp-global-name');
+    const row = dialog.locator(`.atria-cbp-row[data-slot-name="${slotName}"]`);
+    const input = row.locator('.atria-cbp-global-name');
     await input.fill(name);
     // Trigger 'input' so the dialog's picks map updates before OK.
     await input.dispatchEvent('input');
@@ -171,7 +171,7 @@ async function clickSalvageCancel(dialog) {
 }
 
 async function clickBulkDiscard(dialog) {
-    await dialog.locator('.luker-cbp-bulk-discard').click();
+    await dialog.locator('.atria-cbp-bulk-discard').click();
 }
 
 
@@ -186,8 +186,8 @@ async function seedThreeSlots(dataRoot, avatarFile, nameA = SLOT_A, nameB = SLOT
     const card = JSON.parse(readPngCard(png));
     if (!card.data) card.data = {};
     if (!card.data.extensions) card.data.extensions = {};
-    if (!card.data.extensions.luker) card.data.extensions.luker = {};
-    card.data.extensions.luker.chat_completion_preset = {
+    if (!card.data.extensions.atria) card.data.extensions.atria = {};
+    card.data.extensions.atria.chat_completion_preset = {
         presets: [
             { name: nameA, preset: { temperature: SLOT_A_TEMP, chat_completion_source: 'openai' } },
             { name: nameB, preset: { temperature: SLOT_B_TEMP, chat_completion_source: 'openai' } },
@@ -205,8 +205,8 @@ async function resetCardBindings(dataRoot, avatarFile) {
     const path = resolve(dataRoot, 'default-user', 'characters', avatarFile);
     const png = readFileSync(path);
     const card = JSON.parse(readPngCard(png));
-    if (card?.data?.extensions?.luker) delete card.data.extensions.luker.chat_completion_preset;
-    if (card?.extensions?.luker) delete card.extensions.luker.chat_completion_preset;
+    if (card?.data?.extensions?.atria) delete card.data.extensions.atria.chat_completion_preset;
+    if (card?.extensions?.atria) delete card.extensions.atria.chat_completion_preset;
     writeFileSync(path, writePngCard(png, JSON.stringify(card)));
 }
 

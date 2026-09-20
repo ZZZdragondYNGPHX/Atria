@@ -176,7 +176,7 @@ describe('scripts/storage-migrate.js — runMigration goes through migrateAllUse
     let destEngine;
 
     beforeEach(async () => {
-        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-cli-migrate-'));
+        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-cli-migrate-'));
         srcRoot = path.join(tmpRoot, 'src');
         dstRoot = path.join(tmpRoot, 'dst');
         srcUsers = {

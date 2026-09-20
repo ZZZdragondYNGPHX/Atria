@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
  * Embed payload pack / extract.
  *
  * Embed payload is the transport form of one or more skills inside a preset
- * JSON or character card JSON (extensions.luker.embedded_skills_source).
+ * JSON or character card JSON (extensions.atria.embedded_skills_source).
  *
  * Two bundle formats:
  *   - inline-files-v1: pure UTF-8 text, small skill — files[] inlined as strings.

@@ -11,7 +11,7 @@
 //   1. Seed a character + a baseline preset via the visible UI.
 //   2. Bind the preset to the character.
 //   3. Edit the temperature slider via the counter (real input event).
-//   4. Mutate oai_settings.extensions.luker.prompt_groups via the same
+//   4. Mutate oai_settings.extensions.atria.prompt_groups via the same
 //      saveSettingsDebounced path the PromptManager uses (the real
 //      drag-into-group UI requires multi-step Sortable gestures that
 //      are out of scope here; the storage path is identical).
@@ -80,7 +80,7 @@ function readCharacterBoundSnapshot(dataRoot, avatarFile) {
     // new shape and the sync-back path persists it, so pick the slot
     // matching the currently-bound name and return the same
     // `{name, preset}` view the old assertions expect.
-    const raw = card?.data?.extensions?.luker?.chat_completion_preset;
+    const raw = card?.data?.extensions?.atria?.chat_completion_preset;
     if (raw && typeof raw === 'object' && Array.isArray(raw.presets)) {
         const defaultName = String(raw.defaultPresetName || '').trim();
         const hit = defaultName
@@ -107,7 +107,7 @@ test.describe('#39 — character-bound preset edits sync back to the card', () =
         // Confirm the runtime select sees the synthetic char-bound option.
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 10_000 });
 
@@ -115,29 +115,29 @@ test.describe('#39 — character-bound preset edits sync back to the card', () =
         await setCounterInput(page, '#temp_counter_openai', POST_BIND_TEMP);
 
         // Step 3: Mutate prompt_groups via the same path the PromptManager
-        // uses — push directly onto oai_settings.extensions.luker.prompt_groups
+        // uses — push directly onto oai_settings.extensions.atria.prompt_groups
         // then call saveSettingsDebounced. The SETTINGS_UPDATED listener
         // installed by the openai module re-snapshots oai_settings back into
         // the character card.
         const groupId = await page.evaluate(async (groupName) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const oai = ctx?.chatCompletionSettings;
             if (!oai) throw new Error('chatCompletionSettings unavailable');
             oai.extensions = oai.extensions || {};
-            oai.extensions.luker = oai.extensions.luker || {};
-            const groups = Array.isArray(oai.extensions.luker.prompt_groups)
-                ? oai.extensions.luker.prompt_groups
+            oai.extensions.atria = oai.extensions.atria || {};
+            const groups = Array.isArray(oai.extensions.atria.prompt_groups)
+                ? oai.extensions.atria.prompt_groups
                 : [];
             const id = `grp-${Date.now()}`;
             groups.push({ id, name: groupName, collapsed: false, identifiers: [], parentId: null });
-            oai.extensions.luker.prompt_groups = groups;
+            oai.extensions.atria.prompt_groups = groups;
             // Force a synchronous save so the SETTINGS_UPDATED listener
             // fires inside the test window without waiting on the 1s
             // debounce that saveSettingsDebounced uses by default.
             if (typeof ctx.saveSettings === 'function') {
                 await ctx.saveSettings();
             } else {
-                throw new Error('Luker.getContext().saveSettings unavailable');
+                throw new Error('Atria.getContext().saveSettings unavailable');
             }
             return id;
         }, GROUP_NAME);
@@ -153,7 +153,7 @@ test.describe('#39 — character-bound preset edits sync back to the card', () =
 
         await expect.poll(() => {
             const snap = readCharacterBoundSnapshot(server.dataRoot, 'ash-the-cartographer.png');
-            const groups = snap?.preset?.extensions?.luker?.prompt_groups;
+            const groups = snap?.preset?.extensions?.atria?.prompt_groups;
             return Array.isArray(groups) ? groups.find(g => g?.id === groupId)?.name : null;
         }, { timeout: 10_000 }).toBe(GROUP_NAME);
 
@@ -169,8 +169,8 @@ test.describe('#39 — character-bound preset edits sync back to the card', () =
 
         await expect.poll(
             async () => page.evaluate((id) => {
-                const ctx = window.Luker?.getContext?.();
-                const groups = ctx?.chatCompletionSettings?.extensions?.luker?.prompt_groups;
+                const ctx = window.Atria?.getContext?.();
+                const groups = ctx?.chatCompletionSettings?.extensions?.atria?.prompt_groups;
                 if (!Array.isArray(groups)) return null;
                 return groups.find(g => g?.id === id)?.name ?? null;
             }, groupId),

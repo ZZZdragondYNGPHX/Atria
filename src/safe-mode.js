@@ -8,12 +8,12 @@ import { getAllUserHandles, getUserDirectories } from './users.js';
 import { getSettingsRepo } from './storage/index.js';
 import { PUBLIC_DIRECTORIES } from './constants.js';
 
-const SENTINEL_FILE_NAME = '.luker-safe-mode.json';
-const APPLIED_LOG_FILE_NAME = '.luker-safe-mode-applied.log';
+const SENTINEL_FILE_NAME = '.atria-safe-mode.json';
+const APPLIED_LOG_FILE_NAME = '.atria-safe-mode-applied.log';
 
 /**
  * If the native layer (boot watchdog) decided the previous launch died before
- * the server became reachable, it drops a sentinel file at `<dataRoot>/.luker-safe-mode.json`.
+ * the server became reachable, it drops a sentinel file at `<dataRoot>/.atria-safe-mode.json`.
  * On the next launch we expand `disabledExtensions` in every user's settings
  * to cover every third-party extension currently on disk, then remove the
  * sentinel. The user can re-enable extensions one by one from the UI to find

@@ -122,10 +122,10 @@ function summarizeHeadersForLog(headers, { response = false } = {}) {
             summary[normalizedName.replace(/-/g, '_')] = truncateLogString(value, 120);
         } else if (normalizedName === 'x-csrf-token') {
             summary.x_csrf_token = 'present';
-        } else if (response && normalizedName === 'x-luker-generation-id' && value) {
-            summary.luker_generation_id = String(value);
-        } else if (response && normalizedName === 'x-luker-server-persisted' && (value === '0' || value === '1')) {
-            summary.luker_server_persisted = value === '1';
+        } else if (response && normalizedName === 'x-atria-generation-id' && value) {
+            summary.atri_generation_id = String(value);
+        } else if (response && normalizedName === 'x-atria-server-persisted' && (value === '0' || value === '1')) {
+            summary.atria_server_persisted = value === '1';
         }
     }
 
@@ -177,14 +177,14 @@ function summarizeMessageRoles(messages) {
     return roleCounts;
 }
 
-function collectLukerGenerationIdsForLog(value, ids = new Set(), depth = 0) {
+function collectAtriaGenerationIdsForLog(value, ids = new Set(), depth = 0) {
     if (!value || depth > 6 || ids.size >= 8) {
         return ids;
     }
 
     if (Array.isArray(value)) {
         for (const item of value) {
-            collectLukerGenerationIdsForLog(item, ids, depth + 1);
+            collectAtriaGenerationIdsForLog(item, ids, depth + 1);
             if (ids.size >= 8) {
                 break;
             }
@@ -196,13 +196,13 @@ function collectLukerGenerationIdsForLog(value, ids = new Set(), depth = 0) {
         return ids;
     }
 
-    const directId = typeof value?.luker_generation_id === 'string' ? value.luker_generation_id.trim() : '';
+    const directId = typeof value?.atri_generation_id === 'string' ? value.atri_generation_id.trim() : '';
     if (directId) {
         ids.add(directId);
     }
 
     for (const nestedValue of Object.values(value)) {
-        collectLukerGenerationIdsForLog(nestedValue, ids, depth + 1);
+        collectAtriaGenerationIdsForLog(nestedValue, ids, depth + 1);
         if (ids.size >= 8) {
             break;
         }
@@ -266,16 +266,16 @@ function summarizeJsonBodyForLog(payload) {
     }
 
     if (Array.isArray(payload.messages) || Array.isArray(payload.chat) || Array.isArray(payload.operations)) {
-        const generationIds = Array.from(collectLukerGenerationIdsForLog(payload));
+        const generationIds = Array.from(collectAtriaGenerationIdsForLog(payload));
         if (generationIds.length > 0) {
-            summary.luker_generation_ids = generationIds;
+            summary.atri_generation_ids = generationIds;
         }
     }
 
-    if (payload.luker_generation && typeof payload.luker_generation === 'object') {
-        summary.luker_generation = {
-            job_id: String(payload.luker_generation.job_id || ''),
-            persist_target: summarizePersistTargetForLog(payload.luker_generation.persist_target),
+    if (payload.atri_generation && typeof payload.atri_generation === 'object') {
+        summary.atri_generation = {
+            job_id: String(payload.atri_generation.job_id || ''),
+            persist_target: summarizePersistTargetForLog(payload.atri_generation.persist_target),
         };
     }
 

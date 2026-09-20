@@ -22,7 +22,7 @@ export function assertSafePeerId(peerId) {
     }
 }
 
-const SHADOW_AUTHOR = { name: 'Luker Sync', email: 'sync@luker.local' };
+const SHADOW_AUTHOR = { name: 'Atria Sync', email: 'sync@atria.local' };
 
 /**
  * @typedef {Object} ShadowPaths

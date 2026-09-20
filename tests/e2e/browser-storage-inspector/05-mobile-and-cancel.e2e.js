@@ -22,7 +22,7 @@ test.describe('Browser Storage Inspector · mobile + cancel', () => {
         await awaitMainUI(page, server.baseURL);
         await wipeBrowserFixture(page);
         await seedBrowserFixture(page, {
-            localStorage: { 'luker-mobile-test': 'demo', 'luker-second': 'demo2' },
+            localStorage: { 'atria-mobile-test': 'demo', 'atria-second': 'demo2' },
         });
 
         const inspector = await openBrowserStorageInspector(page);
@@ -42,20 +42,20 @@ test.describe('Browser Storage Inspector · mobile + cancel', () => {
         await awaitMainUI(page, server.baseURL);
         await wipeBrowserFixture(page);
         await seedBrowserFixture(page, {
-            localStorage: { 'luker-cancel-test': 'still here' },
+            localStorage: { 'atria-cancel-test': 'still here' },
         });
 
         const inspector = await openBrowserStorageInspector(page);
         await inspector.locator('.storageInspectorEntry[data-key="localStorage"]').click();
         await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached' });
 
-        await inspector.locator('.storageInspectorEntry[data-key="luker-cancel-test"] .storageInspectorEntryDeleteButton').click();
+        await inspector.locator('.storageInspectorEntry[data-key="atria-cancel-test"] .storageInspectorEntryDeleteButton').click();
         const confirmDialog = page.locator('dialog.popup[open]').last();
         await confirmDialog.locator('.popup-button-cancel').click();
 
         // Key still there in UI + in real storage
-        await expect(inspector.locator('.storageInspectorEntry[data-key="luker-cancel-test"]')).toBeVisible();
-        const val = await page.evaluate(() => localStorage.getItem('luker-cancel-test'));
+        await expect(inspector.locator('.storageInspectorEntry[data-key="atria-cancel-test"]')).toBeVisible();
+        const val = await page.evaluate(() => localStorage.getItem('atria-cancel-test'));
         expect(val).toBe('still here');
 
         await wipeBrowserFixture(page);

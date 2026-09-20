@@ -672,7 +672,7 @@ const SCHEMAS = [
             const result = await port.recall({ query: args.query, at: args.at, signal: context.signal || context.abortSignal });
             result.assertCurrent();
             context.__agentRuntimeMemoryGuard?.(result.assertCurrent);
-            Luker.getContext().getExtensionApi?.('orchestrator')?.recordMemoryRecall?.(context, {
+            Atria.getContext().getExtensionApi?.('orchestrator')?.recordMemoryRecall?.(context, {
                 references: result.references, tokens: result.tokens, diagnostics: result.diagnostics,
             });
             return { ok: true, context: result.content, sources: result.references.map(ref => ref.id), tokens: result.tokens,
@@ -1029,7 +1029,7 @@ function wrapExecWithSession(exec) {
  * can no-op without throwing.
  */
 function loadOrchestratorRegistrar() {
-    const orch = Luker.getContext().getExtensionApi('orchestrator');
+    const orch = Atria.getContext().getExtensionApi('orchestrator');
     if (!orch || typeof orch.registerOrchestrationTool !== 'function') return null;
     return orch;
 }

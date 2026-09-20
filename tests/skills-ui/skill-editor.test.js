@@ -9,7 +9,7 @@
  *     optimistic-lock conflict, frontmatter parse error blocks save,
  *     create-new-skill flow, file-tree refresh.
  *
- * Luker's Jest config runs in `testEnvironment: "node"` (no jsdom), so we
+ * Atria's Jest config runs in `testEnvironment: "node"` (no jsdom), so we
  * install minimal DOM stubs on globalThis exactly as the manager-panel test
  * does. The editor module is imported lazily inside each test so the stubs
  * are in scope at module-evaluation time.
@@ -389,12 +389,12 @@ describe('openSkillEditor — integration scenarios', () => {
         const ctx = makeStubContext(ctxOpts);
         const stub = new StubElement('div');
         // The editor module computes a mountId with Date.now(); intercept any
-        // luker_skill_editor_* lookup and return the same stub.
+        // atria_skill_editor_* lookup and return the same stub.
         const origGetById = global.document.getElementById.bind(global.document);
         global.document.getElementById = function (id) {
             const cached = origGetById(id);
             if (cached) return cached;
-            if (String(id).startsWith('luker_skill_editor_')) return stub;
+            if (String(id).startsWith('atria_skill_editor_')) return stub;
             return null;
         };
         const promise = openSkillEditor({ context: ctx, scope, name, mode });
@@ -571,7 +571,7 @@ describe('openSkillEditor — integration scenarios', () => {
                 popupShow: async (popup) => {
                     // Scope picker — default to global.
                     const dlg = popup.dlg;
-                    const radios = dlg.querySelectorAll('[name="luker_skill_scope_kind"]');
+                    const radios = dlg.querySelectorAll('[name="atria_skill_scope_kind"]');
                     for (const r of radios) {
                         r.checked = (r._attrs.get('value') === 'global');
                     }
@@ -609,7 +609,7 @@ describe('openSkillEditor — integration scenarios', () => {
             // eslint-disable-next-line playwright/no-conditional-in-test
             if (cached) return cached;
             // eslint-disable-next-line playwright/no-conditional-in-test
-            if (String(id).startsWith('luker_skill_editor_')) return stub;
+            if (String(id).startsWith('atria_skill_editor_')) return stub;
             return null;
         };
         // Drive an input prompt for the new file path.

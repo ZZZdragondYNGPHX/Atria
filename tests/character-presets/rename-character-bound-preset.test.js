@@ -24,7 +24,7 @@ function makeCharacter(presets, defaultPresetName = null) {
         name: 'Aria',
         data: {
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: { presets: presets.slice(), defaultPresetName },
                 },
             },

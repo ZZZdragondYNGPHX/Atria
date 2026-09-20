@@ -81,7 +81,7 @@ test.describe('#129 - welcome-screen rename keeps the active-chat pointer', () =
             return body.chat && body.chat !== originalChatId;
         });
         await branchFromMessageViaUI(page, 1);
-        const branchChatId = await page.evaluate(() => window.Luker.getContext().getCurrentChatId());
+        const branchChatId = await page.evaluate(() => window.Atria.getContext().getCurrentChatId());
         const persistResponse = await branchPersisted;
         expect(persistResponse.ok()).toBe(true);
         expect(persistResponse.request().postDataJSON().chat).toBe(branchChatId);
@@ -91,7 +91,7 @@ test.describe('#129 - welcome-screen rename keeps the active-chat pointer', () =
         // via the real pencil icon + popup.
         await page.reload();
         await page.waitForFunction('document.getElementById("preloader") === null', { timeout: 60_000 });
-        await page.waitForFunction(() => !!window.Luker?.getContext, { timeout: 30_000 });
+        await page.waitForFunction(() => !!window.Atria?.getContext, { timeout: 30_000 });
         const welcomePanel = page.locator('.welcomePanel');
         await welcomePanel.waitFor({ state: 'visible', timeout: 15_000 });
         const originalEntry = welcomePanel.locator(`.recentChat[data-file=${JSON.stringify(originalChatId)}]`);
@@ -128,7 +128,7 @@ test.describe('#129 - welcome-screen rename keeps the active-chat pointer', () =
         // the renamed original. The character is not selected on the welcome
         // screen, so read the pointer off the character record directly.
         const pointerAfter = await page.evaluate((avatar) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.characters.find(c => c.avatar === avatar)?.chat;
         }, 'ash-the-cartographer.png');
         expect(pointerAfter).toBe(branchChatId);

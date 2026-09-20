@@ -12,7 +12,7 @@ const fixture = (await readFile(new URL('../memory-graph/fixtures/large-memory.j
     .replace('../../../public/scripts/', '/scripts/');
 await page.route('**/__memory_large_fixture.js', route => route.fulfill({ contentType: 'application/javascript', body: fixture }));
 try {
-    await page.goto(baseURL); await page.waitForFunction(() => !!window.Luker?.getContext && !document.getElementById('preloader'));
+    await page.goto(baseURL); await page.waitForFunction(() => !!window.Atria?.getContext && !document.getElementById('preloader'));
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     const result = await page.evaluate(async () => {
@@ -28,7 +28,7 @@ try {
         const controller = new AbortController(); const cancelled = computeInspector(snapshot, { signal: controller.signal }); controller.abort();
         let cancellation;
         try { await cancelled; cancellation = 'incorrectly completed'; } catch (error) { cancellation = error.name; }
-        window.performanceDiagnosticPopup = openMemoryDiagnostics(window.Luker.getContext(), largeMemory(30));
+        window.performanceDiagnosticPopup = openMemoryDiagnostics(window.Atria.getContext(), largeMemory(30));
         return { ticks, elapsedMs, entities: graph.entities.length, relations: graph.relations.length,
             drawn: [visible.entities.length, visible.relations.length], top: diagnostics.candidates[0].id, cancellation };
     });

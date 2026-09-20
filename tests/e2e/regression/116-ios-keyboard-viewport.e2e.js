@@ -40,7 +40,7 @@ async function openApp(page, { ios = true, visualViewport = true } = {}) {
         };
     }, { ios, visualViewport });
     await page.goto(server.baseURL);
-    await page.waitForFunction(() => !document.getElementById('preloader') && !!window.Luker?.getContext);
+    await page.waitForFunction(() => !document.getElementById('preloader') && !!window.Atria?.getContext);
 }
 
 async function expectComposerAtBottom(page, height, offsetTop = 0) {

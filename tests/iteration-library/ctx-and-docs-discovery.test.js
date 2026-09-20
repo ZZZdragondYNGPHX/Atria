@@ -11,7 +11,7 @@
 
 import { describe, test, expect, jest, beforeAll } from '@jest/globals';
 
-globalThis.Luker = {
+globalThis.Atria = {
     getContext: () => ({
         chat: ['msg1', 'msg2'],
         characters: [{ name: 'A' }, { name: 'B' }],
@@ -98,7 +98,7 @@ describe('describeCtxPath', () => {
     });
 });
 
-describe('listLukerDocs', () => {
+describe('listAtriaDocs', () => {
     test('hits /api/docs/list and filters translations by default', async () => {
         const fakeFetch = jest.fn(async () => ({
             ok: true,
@@ -110,7 +110,7 @@ describe('listLukerDocs', () => {
                 ],
             }),
         }));
-        const out = await mod.listLukerDocs({ fetchImpl: fakeFetch });
+        const out = await mod.listAtriaDocs({ fetchImpl: fakeFetch });
         expect(out.ok).toBe(true);
         expect(out.hiddenTranslations).toBe(1);
         expect(out.files.map(f => f.path)).toEqual([
@@ -127,7 +127,7 @@ describe('listLukerDocs', () => {
                 { path: 'a.md' }, { path: 'zh-CN/a.md' }, { path: 'zh-TW/a.md' },
             ] }),
         }));
-        const out = await mod.listLukerDocs({ includeTranslations: true, fetchImpl: fakeFetch });
+        const out = await mod.listAtriaDocs({ includeTranslations: true, fetchImpl: fakeFetch });
         expect(out.files.length).toBe(3);
         expect(out.hiddenTranslations).toBe(0);
     });
@@ -141,7 +141,7 @@ describe('listLukerDocs', () => {
                 { path: 'features/cardapp.md' },
             ] }),
         }));
-        const out = await mod.listLukerDocs({ filter: 'orch', fetchImpl: fakeFetch });
+        const out = await mod.listAtriaDocs({ filter: 'orch', fetchImpl: fakeFetch });
         expect(out.files.map(f => f.path)).toEqual([
             'features/orchestrator/custom-tools.md',
             'development/extension-api/orchestrator-tools.md',
@@ -150,19 +150,19 @@ describe('listLukerDocs', () => {
 
     test('surfaces non-OK as ok:false', async () => {
         const fakeFetch = jest.fn(async () => ({ ok: false, status: 500 }));
-        const out = await mod.listLukerDocs({ fetchImpl: fakeFetch });
+        const out = await mod.listAtriaDocs({ fetchImpl: fakeFetch });
         expect(out.ok).toBe(false);
         expect(out.error).toMatch(/500/);
     });
 });
 
-describe('readLukerDoc', () => {
+describe('readAtriaDoc', () => {
     test('happy path returns content + size', async () => {
         const fakeFetch = jest.fn(async () => ({
             ok: true,
             json: async () => ({ path: 'a.md', size: 5, content: 'hello' }),
         }));
-        const out = await mod.readLukerDoc({ path: 'a.md', fetchImpl: fakeFetch });
+        const out = await mod.readAtriaDoc({ path: 'a.md', fetchImpl: fakeFetch });
         expect(out.ok).toBe(true);
         expect(out.content).toBe('hello');
         const calledUrl = fakeFetch.mock.calls[0][0];
@@ -171,12 +171,12 @@ describe('readLukerDoc', () => {
 
     test('URL-encodes the path argument', async () => {
         const fakeFetch = jest.fn(async () => ({ ok: true, json: async () => ({ path: 'a b.md', content: '' }) }));
-        await mod.readLukerDoc({ path: 'dir with space/a b.md', fetchImpl: fakeFetch });
+        await mod.readAtriaDoc({ path: 'dir with space/a b.md', fetchImpl: fakeFetch });
         expect(fakeFetch.mock.calls[0][0]).toContain('dir%20with%20space%2Fa%20b.md');
     });
 
     test('rejects empty path', async () => {
-        const out = await mod.readLukerDoc({ path: '' });
+        const out = await mod.readAtriaDoc({ path: '' });
         expect(out.ok).toBe(false);
         expect(out.error).toMatch(/required/);
     });
@@ -187,7 +187,7 @@ describe('readLukerDoc', () => {
             status: 404,
             json: async () => ({ error: 'not found' }),
         }));
-        const out = await mod.readLukerDoc({ path: 'nope.md', fetchImpl: fakeFetch });
+        const out = await mod.readAtriaDoc({ path: 'nope.md', fetchImpl: fakeFetch });
         expect(out.ok).toBe(false);
         expect(out.error).toMatch(/404.*not found/);
     });

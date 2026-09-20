@@ -47,13 +47,13 @@ test('openSimulationReview opens popup, submits with no annotations, returns ok+
 test('onRerun re-renders the popup with the new payload and feeds the new worldInfoHits into the tool result', async () => {
     // Drive the popup-host mock to click the re-run button once before
     // submitting. The bar gets prepended at the top of contentRoot, so we
-    // look up `.luker-sim-rerun-btn` and dispatch a click; the re-run
+    // look up `.atria-sim-rerun-btn` and dispatch a click; the re-run
     // path replaces contentRoot's children synchronously after onRerun
     // resolves. The mock awaits a microtask to let the re-mount settle
     // before submitting.
     fakePopupHost.open.mockImplementationOnce(async ({ contentRoot, onSubmit }) => {
         document.body.appendChild(contentRoot);
-        const btn = contentRoot.querySelector('.luker-sim-rerun-btn');
+        const btn = contentRoot.querySelector('.atria-sim-rerun-btn');
         btn.click();
         // Allow the async re-run handler to resolve and re-mount.
         await new Promise(resolve => setTimeout(resolve, 0));
@@ -117,7 +117,7 @@ test('annotation toggle starts off; clicking flips host data-annot-mode and aria
     expect(toggle).toBeTruthy();
     // The host's data-annot-mode flag gates the pointerup listener so
     // selecting text only annotates when the toggle is on.
-    const host = capturedRoot.querySelector('.luker-sim-review');
+    const host = capturedRoot.querySelector('.atria-sim-review');
     expect(host.dataset.annotMode).toBe('off');
     expect(toggle.dataset.state).toBe('off');
     toggle.click();
@@ -138,7 +138,7 @@ test('with annotation mode on, pointerup on a selection wraps the text in <mark[
         const toggle = contentRoot.querySelector('.sim-review-annot-toggle');
         toggle.click();
         // Select a span of text inside the final-output <pre>.
-        const pre = contentRoot.querySelector('.luker-sim-pre');
+        const pre = contentRoot.querySelector('.atria-sim-pre');
         const textNode = pre.firstChild;
         const range = document.createRange();
         range.setStart(textNode, 0);
@@ -148,7 +148,7 @@ test('with annotation mode on, pointerup on a selection wraps the text in <mark[
         sel.addRange(range);
         // Fire pointerup on the host — same listener path that mouse,
         // touch, and pen all share.
-        const host = contentRoot.querySelector('.luker-sim-review');
+        const host = contentRoot.querySelector('.atria-sim-review');
         host.dispatchEvent(new Event('pointerup', { bubbles: true }));
         return onSubmit();
     });
@@ -179,7 +179,7 @@ test('with annotation mode off, pointerup on a selection does NOT create a mark'
         document.body.appendChild(contentRoot);
         capturedRoot = contentRoot;
         // Leave the toggle off — selection alone must NOT annotate.
-        const pre = contentRoot.querySelector('.luker-sim-pre');
+        const pre = contentRoot.querySelector('.atria-sim-pre');
         const textNode = pre.firstChild;
         const range = document.createRange();
         range.setStart(textNode, 0);
@@ -187,7 +187,7 @@ test('with annotation mode off, pointerup on a selection does NOT create a mark'
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        const host = contentRoot.querySelector('.luker-sim-review');
+        const host = contentRoot.querySelector('.atria-sim-review');
         host.dispatchEvent(new Event('pointerup', { bubbles: true }));
         return onSubmit();
     });
@@ -227,14 +227,14 @@ test('process sections are marked data-collapsible="true" and final-output is ma
     // Every collapsible starts collapsed by default so the popup is not
     // an unscrollable wall on open.
     collapsibles.forEach(s => {
-        expect(s.classList.contains('luker-sim-section--collapsed')).toBe(true);
+        expect(s.classList.contains('atria-sim-section--collapsed')).toBe(true);
     });
     // Final Output is the one section the user MUST see — never
     // collapsible, always tagged for autoscroll.
     const finalOutputs = capturedRoot.querySelectorAll('[data-sim-final-output="true"]');
     expect(finalOutputs.length).toBe(1);
     expect(finalOutputs[0].getAttribute('data-collapsible')).toBeNull();
-    expect(finalOutputs[0].classList.contains('luker-sim-section--collapsed')).toBe(false);
+    expect(finalOutputs[0].classList.contains('atria-sim-section--collapsed')).toBe(false);
 });
 
 test('expand/collapse toggle button flips classes on every collapsible', async () => {
@@ -254,18 +254,18 @@ test('expand/collapse toggle button flips classes on every collapsible', async (
         },
         i18n: (k, fb) => fb,
     });
-    const toggle = capturedRoot.querySelector('.luker-sim-toggle-btn');
+    const toggle = capturedRoot.querySelector('.atria-sim-toggle-btn');
     expect(toggle).toBeTruthy();
     // Initially everything is collapsed; clicking expands.
     toggle.click();
     const collapsibles = capturedRoot.querySelectorAll('[data-collapsible="true"]');
     collapsibles.forEach(s => {
-        expect(s.classList.contains('luker-sim-section--collapsed')).toBe(false);
+        expect(s.classList.contains('atria-sim-section--collapsed')).toBe(false);
     });
     // Clicking again re-collapses.
     toggle.click();
     collapsibles.forEach(s => {
-        expect(s.classList.contains('luker-sim-section--collapsed')).toBe(true);
+        expect(s.classList.contains('atria-sim-section--collapsed')).toBe(true);
     });
 });
 
@@ -278,7 +278,7 @@ test('clicking the inline × inside a mark removes the annotation: mark gone, en
         // pointerup path so the wiring matches the production flow.
         const toggle = contentRoot.querySelector('.sim-review-annot-toggle');
         toggle.click();
-        const pre = contentRoot.querySelector('.luker-sim-pre');
+        const pre = contentRoot.querySelector('.atria-sim-pre');
         const textNode = pre.firstChild;
         const range = document.createRange();
         range.setStart(textNode, 0);
@@ -286,7 +286,7 @@ test('clicking the inline × inside a mark removes the annotation: mark gone, en
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        const host = contentRoot.querySelector('.luker-sim-review');
+        const host = contentRoot.querySelector('.atria-sim-review');
         host.dispatchEvent(new Event('pointerup', { bubbles: true }));
         // Click the × — the mark is unwrapped and the chain segments
         // submitted via onSubmit lose the annotationId.
@@ -315,7 +315,7 @@ test('openSimulationReview injects the simulation-review stylesheet exactly once
         payload: { finalOutput: 'x', reasoning: '', assembledPrompt: { systemPrompt: '', messages: [] }, worldInfoHits: [] },
         i18n: (_, fb) => fb,
     });
-    const link = document.getElementById('luker_simulation_review_stylesheet');
+    const link = document.getElementById('atria_simulation_review_stylesheet');
     expect(link).not.toBeNull();
     expect(link.getAttribute('rel')).toBe('stylesheet');
     expect(link.getAttribute('href')).toBe('/scripts/iteration-library/simulation-review/styles.css');
@@ -326,6 +326,6 @@ test('openSimulationReview injects the simulation-review stylesheet exactly once
         payload: { finalOutput: 'x', reasoning: '', assembledPrompt: { systemPrompt: '', messages: [] }, worldInfoHits: [] },
         i18n: (_, fb) => fb,
     });
-    const links = document.querySelectorAll('#luker_simulation_review_stylesheet');
+    const links = document.querySelectorAll('#atria_simulation_review_stylesheet');
     expect(links.length).toBe(1);
 });

@@ -2,7 +2,7 @@
 name: notes-curator-method-zh
 description: notes_curator method — post-draft housekeeping that closes deployed notes and opens new ones only on genuine new obligations (default = do nothing).
 metadata:
-  author: Luker Team
+  author: Atria Team
   version: 1.0.0
 ---
 

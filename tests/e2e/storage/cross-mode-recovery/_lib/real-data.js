@@ -58,18 +58,18 @@ const DEFAULT_OAI_PRESET_PATH = resolve(REPO_ROOT, 'default/content/presets/open
 /**
  * Resolve the path to the developer's live `data/` dir. Default points at
  * the syncthing-mirrored project root the user actually runs from
- * (~/Desktop/projects/open-source/Luker/data). Override via
- * `LUKER_REAL_DATA_ROOT` for CI / alternate setups.
+ * (~/Desktop/projects/open-source/Atria/data). Override via
+ * `ATRIA_REAL_DATA_ROOT` for CI / alternate setups.
  *
  * Returns null if the dir doesn't exist — callers should `test.skip()` so
  * a fresh checkout without a real dataRoot doesn't fail the whole suite.
  */
 export function resolveRealDataRoot() {
-    const envOverride = process.env.LUKER_REAL_DATA_ROOT;
+    const envOverride = process.env.ATRIA_REAL_DATA_ROOT;
     if (envOverride) {
         return existsSync(envOverride) ? resolve(envOverride) : null;
     }
-    const candidate = resolve(process.env.HOME || '~', 'Desktop/projects/open-source/Luker/data');
+    const candidate = resolve(process.env.HOME || '~', 'Desktop/projects/open-source/Atria/data');
     return existsSync(candidate) ? candidate : null;
 }
 
@@ -179,7 +179,7 @@ export function realDataLooksPopulated(dataRoot) {
     // Either fs chats OR a sqlite engine file should be present for the
     // test to have anything meaningful to verify.
     const fsChats = resolve(userRoot, 'chats');
-    const sqliteFile = resolve(userRoot, 'luker-storage.sqlite');
+    const sqliteFile = resolve(userRoot, 'atria-storage.sqlite');
     const hasFsChats = existsSync(fsChats) && statSync(fsChats).isDirectory();
     const hasSqlite = existsSync(sqliteFile) && statSync(sqliteFile).size > 0;
     return hasFsChats || hasSqlite;

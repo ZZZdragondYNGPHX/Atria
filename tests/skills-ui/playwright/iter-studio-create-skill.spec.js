@@ -50,7 +50,7 @@ import {
 
 const SKILL_NAME = 'slowburn-intimacy-zh';
 const SKILL_DISK_PATH = path.resolve(
-    '/Users/funnycups/worktree/luker-skills-foundation',
+    '/Users/funnycups/worktree/atria-skills-foundation',
     'data/default-user/skills/global',
     SKILL_NAME,
     'SKILL.md',
@@ -105,7 +105,7 @@ test.describe('Skills iter-studio: LLM authors a real RP-discipline skill', () =
         const activatedProfile = await activateConnectionProfile(page);
         expect(activatedProfile, 'iter-studio LLM spec needs a usable connection profile').toBeTruthy();
         await page.waitForFunction(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const v = ctx?.onlineStatus ?? null;
             return Boolean(v) && String(v) !== 'no_connection';
         }, null, { timeout: 30000 });
@@ -127,7 +127,7 @@ test.describe('Skills iter-studio: LLM authors a real RP-discipline skill', () =
         await ensureExtensionsDrawerOpen(page);
         await ensureInlineDrawerOpen(page, 'orchestrator_settings');
         const openIterBtn = page.locator(
-            '#orchestrator_settings [data-luker-action="ai-iterate-open"]:visible',
+            '#orchestrator_settings [data-atria-action="ai-iterate-open"]:visible',
         ).first();
         await openIterBtn.waitFor({ state: 'visible', timeout: 10000 });
         await openIterBtn.click();
@@ -190,7 +190,7 @@ test.describe('Skills iter-studio: LLM authors a real RP-discipline skill', () =
 
         // ── Step 6: verify the skill surfaces in the skills API. ────────
         const apiSeen = await page.evaluate(async (name) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const all = await ctx.skills.list({ scope: 'all' });
             return (all || []).some(s => s.name === name && s.scope?.kind === 'global');
         }, SKILL_NAME);

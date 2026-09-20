@@ -61,8 +61,8 @@ describe('CPA — system prompts', () => {
         // with no tool calls ends the iteration. Surface both halves of the
         // contract in the system prompt.
         const out = buildModelSystemPrompt();
-        expect(out).not.toMatch(/luker_cpa_continue_iteration/);
-        expect(out).not.toMatch(/luker_cpa_finalize_iteration/);
+        expect(out).not.toMatch(/atria_cpa_continue_iteration/);
+        expect(out).not.toMatch(/atria_cpa_finalize_iteration/);
         expect(out.toLowerCase()).toMatch(/auto-continue|tool call/);
         expect(out.toLowerCase()).toMatch(/plain text|no tool calls/);
     });

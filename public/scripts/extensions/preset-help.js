@@ -16,7 +16,7 @@
  *                          context is injected by director itself)
  *       - `non-director` — recommends `agent-non-director` (marker-bearing,
  *                          mirrors plugin-only's RP/task separation)
- *       - `dynamic`      — popup reads `#luker_orch_execution_mode` at click
+ *       - `dynamic`      — popup reads `#atri_orch_execution_mode` at click
  *                          time and renders the matching variant. Used by
  *                          the orchestrator inline-drawer's global "LLM node
  *                          preset" slot, which is both single-mode's only
@@ -39,14 +39,14 @@ import { POPUP_TYPE, POPUP_RESULT, Popup } from '../popup.js';
 import { translate, getCurrentLocale } from '../i18n.js';
 import { getContext } from '../st-context.js';
 
-const PRESET_HELP_BUTTON_CLASS = 'luker-preset-help';
+const PRESET_HELP_BUTTON_CLASS = 'atria-preset-help';
 const PLUGIN_ONLY_PRESET_NAME = 'Atri-plugin-only';
 const PLUGIN_ONLY_PRESET_URL = '/presets/plugin-only.json';
 const AGENT_DIRECTOR_PRESET_NAME = 'agent-director';
 const AGENT_DIRECTOR_PRESET_URL = '/presets/agent-director.json';
 const AGENT_NON_DIRECTOR_PRESET_NAME = 'Atri-agenda-agent';
 const AGENT_NON_DIRECTOR_PRESET_URL = '/presets/agent-non-director.json';
-const DOCS_BASE = 'https://luker.cups.moe';
+const DOCS_BASE = 'https://atria.cups.moe';
 
 /**
  * Returns the agent-onboarding recipe URL for the active UI locale.
@@ -94,14 +94,14 @@ export function renderPresetHelpButton({ kind, agentMode = '', targetSelectId = 
         ? t('What preset should I use for the Agent?')
         : t('What preset should I use here?');
     const modeAttr = kind === 'agent' && agentMode
-        ? ` data-luker-preset-help-agent-mode="${escapeAttr(agentMode)}"`
+        ? ` data-atria-preset-help-agent-mode="${escapeAttr(agentMode)}"`
         : '';
-    return `<button type="button" class="${PRESET_HELP_BUTTON_CLASS}" data-luker-preset-help-kind="${escapeAttr(kind)}"${modeAttr} data-luker-preset-help-for="${escapeAttr(targetSelectId)}" title="${escapeAttr(tooltip)}" aria-label="${escapeAttr(tooltip)}"><i class="fa-solid fa-circle-question"></i></button>`;
+    return `<button type="button" class="${PRESET_HELP_BUTTON_CLASS}" data-atria-preset-help-kind="${escapeAttr(kind)}"${modeAttr} data-atria-preset-help-for="${escapeAttr(targetSelectId)}" title="${escapeAttr(tooltip)}" aria-label="${escapeAttr(tooltip)}"><i class="fa-solid fa-circle-question"></i></button>`;
 }
 
 function buildIterationHelpHtml() {
     return `
-        <div class="luker-preset-help-body">
+        <div class="atria-preset-help-body">
             <p>${escapeAttr(t('This selector is for the preset the plugin uses to do its own work — editing configs, editing schemas, extracting facts, building recall queries, etc. It is NOT for drafting RP content.'))}</p>
             <p>${escapeAttr(t('A clean preset works best here: one that contains only jailbreak / general unblock prompts, with no RP style instructions, character voice, or narrative format requirements.'))}</p>
             <p>${escapeAttr(t('Why? RP presets often force an output format (mandatory schema blocks, forced thinking chains) that conflicts with the structured tool calls these plugins use. Style instructions can also leak into config edits and produce odd results.'))}</p>
@@ -116,12 +116,12 @@ function buildIterationHelpHtml() {
 function buildAgentDirectorHelpHtml() {
     const recipeUrl = getAgentOnboardingDocUrl();
     return `
-        <div class="luker-preset-help-body">
+        <div class="atria-preset-help-body">
             <p>${escapeAttr(t('This selector is for the preset a Director-mode Agent uses (main agent or a sub-agent). Director already injects the full RP context (character card, persona, world info, chat history) inside a <story_context> envelope before the agent runs — so the agent\'s own preset does NOT need any character / world / persona placeholders. Adding them would only re-inject the same content twice and burn tokens.'))}</p>
             <p>${escapeAttr(t('What this slot SHOULD carry: jailbreak / content-permission instructions that wrap the <story_context> block, plus the chatHistory marker so the envelope lands in the right place. Style / voice / anti-cliché rules normally belong in the agent\'s system prompt, not here.'))}</p>
             <p><strong>${escapeAttr(t('Two ways to get a Director-friendly preset:'))}</strong></p>
             <ul>
-                <li>${escapeAttr(t('Click "Import agent-director preset" below — imports a minimal Luker-bundled preset (marker-free, permission text only) and selects it here. Good as a quick start.'))}</li>
+                <li>${escapeAttr(t('Click "Import agent-director preset" below — imports a minimal Atria-bundled preset (marker-free, permission text only) and selects it here. Good as a quick start.'))}</li>
                 <li>${escapeAttr(t('Open the Completion Preset Assistant and start a new session in "Adapt for orchestrator" mode — it will derive a Director-ready version from your existing RP preset, keeping your jailbreak / style / anti-cliché instructions while stripping format-forcing prompts and duplicate injections. Your original preset stays untouched.'))}</li>
             </ul>
             <p><a href="${escapeAttr(recipeUrl)}" target="_blank" rel="noopener noreferrer">${escapeAttr(t('For the full multi-Agent setup walkthrough, see the multi-Agent onboarding recipe in the documentation.'))}</a></p>
@@ -131,7 +131,7 @@ function buildAgentDirectorHelpHtml() {
 function buildAgentNonDirectorHelpHtml() {
     const recipeUrl = getAgentOnboardingDocUrl();
     return `
-        <div class="luker-preset-help-body">
+        <div class="atria-preset-help-body">
             <p>${escapeAttr(t('This selector is for the preset a non-Director Agent uses (Single / Spec / Agenda planner / Loop). Unlike Director, these modes do NOT inject the RP context for the agent — so the agent\'s preset is the only path through which character card, persona, and world info reach the model. Markers (charDescription / personaDescription / worldInfoBefore / worldInfoAfter / chatHistory) must stay enabled, and the RP material should be visibly separated from the runtime task instructions so the agent does not mistake them for narrative continuation.'))}</p>
             <p>${escapeAttr(t('The bundled Atri analysis preset supports plot planning, character reasoning, pacing and continuity checks. Runtime instructions and available tools determine the assigned task; the preset does not write RP prose.'))}</p>
             <p><strong>${escapeAttr(t('Two ways to get a non-Director-friendly preset:'))}</strong></p>
@@ -146,7 +146,7 @@ function buildAgentNonDirectorHelpHtml() {
 function buildLegacyAgentHelpHtml() {
     const recipeUrl = getAgentOnboardingDocUrl();
     return `
-        <div class="luker-preset-help-body">
+        <div class="atria-preset-help-body">
             <p>${escapeAttr(t('This selector is for the preset an Agent uses to draft content. Unlike iteration-AI presets, the Agent SHOULD use your RP-style instructions — jailbreak, NSFW guidance, style/voice rules, anti-cliché instructions, etc.'))}</p>
             <p>${escapeAttr(t('But a raw daily RP preset is also not the right fit: instructions that force an output schema or a fixed thinking-chain format will block the agent\'s tool calls, and character/world-info that the agent framework already injects will get duplicated.'))}</p>
             <p>${escapeAttr(t('Recommended: derive an Agent-friendly preset from your RP preset. Open the Completion Preset Assistant, start a new session in "Adapt for orchestrator" mode, and ask it to convert. It will keep your style / jailbreak / anti-cliché instructions while disabling format-forcing prompts and duplicate injections. The original preset stays untouched.'))}</p>
@@ -166,7 +166,7 @@ function buildLegacyAgentHelpHtml() {
 function resolveAgentMode(agentMode) {
     if (agentMode === 'director' || agentMode === 'non-director') return agentMode;
     if (agentMode === 'dynamic') {
-        const $select = window.jQuery && window.jQuery('#luker_orch_execution_mode');
+        const $select = window.jQuery && window.jQuery('#atri_orch_execution_mode');
         const value = String($select && $select.length ? $select.val() || '' : '').trim();
         return value === 'director' ? 'director' : 'non-director';
     }
@@ -337,15 +337,15 @@ function installHandlersOnce() {
     if (handlersInstalled) return;
     if (typeof window === 'undefined' || typeof window.jQuery === 'undefined') return;
     handlersInstalled = true;
-    window.jQuery(document).on('click.lukerPresetHelp', `.${PRESET_HELP_BUTTON_CLASS}`, async function (e) {
+    window.jQuery(document).on('click.atriaPresetHelp', `.${PRESET_HELP_BUTTON_CLASS}`, async function (e) {
         e.preventDefault();
         e.stopPropagation();
         const $btn = window.jQuery(this);
-        const kind = String($btn.attr('data-luker-preset-help-kind') || '');
-        const agentMode = String($btn.attr('data-luker-preset-help-agent-mode') || '');
-        const targetSelectId = String($btn.attr('data-luker-preset-help-for') || '');
+        const kind = String($btn.attr('data-atria-preset-help-kind') || '');
+        const agentMode = String($btn.attr('data-atria-preset-help-agent-mode') || '');
+        const targetSelectId = String($btn.attr('data-atria-preset-help-for') || '');
         // Two ways the popup finds the target <select>:
-        //   1. explicit id passed via data-luker-preset-help-for (preferred
+        //   1. explicit id passed via data-atria-preset-help-for (preferred
         //      when the caller has a stable id; e.g. CPA iter, MG iter, the
         //      orchestrator inline-drawer slots, the agenda/loop preset
         //      slots).

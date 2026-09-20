@@ -31,7 +31,7 @@
  *
  * Regex engine access:
  *   Same lazy-ctx pattern as `chat-regex.js`: the primitives are consumed
- *   via `Luker.getContext().regex` (three-layer API). Direct import from
+ *   via `Atria.getContext().regex` (three-layer API). Direct import from
  *   `../extensions/regex/engine.js` would transitively pull
  *   `public/script.js` and its DOM bootstrap chain — poison for the jest
  *   module graph. Ctx resolution is lazy + memoized for the same reasons
@@ -49,7 +49,7 @@ let __regexApiCache = undefined;
 function getRegexApi() {
     if (__regexApiCache !== undefined) return __regexApiCache;
     try {
-        const ctx = globalThis.Luker?.getContext?.();
+        const ctx = globalThis.Atria?.getContext?.();
         const api = ctx?.regex;
         if (api && typeof api.applyRegex === 'function' && api.placement
             && typeof api.placement.USER_INPUT === 'number'
@@ -131,7 +131,7 @@ function rebuildWithoutProvenance(message) {
  * fields are preserved.
  *
  * When the regex API isn't reachable (no ctx, or bare unit tests without
- * a Luker stub), messages degrade gracefully: text stays raw but markers
+ * a Atria stub), messages degrade gracefully: text stays raw but markers
  * are still stripped.
  *
  * @param {Array} messages — normalized `{ role, content, ... }` messages

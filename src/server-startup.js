@@ -184,7 +184,7 @@ export function setupPrivateEndpoints(app) {
             const handle = req.user?.profile?.handle;
             if (handle && !populatedUsers.has(handle)) {
                 populatedUsers.add(handle);
-                const defaultRoot = app.get('lukerDefaultRoot');
+                const defaultRoot = app.get('atriaDefaultRoot');
                 if (defaultRoot && req.user?.directories?.root) {
                     await ensureFreshInstallPopulate({
                         defaultRoot,

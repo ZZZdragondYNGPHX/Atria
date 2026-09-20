@@ -133,8 +133,8 @@ A review node checks the previous worker stage's outputs and uses two dedicated 
 
 | Tool | Purpose |
 |---|---|
-| `luker_orch_review_approve` | The work is good; advance to the next stage. |
-| `luker_orch_request_rerun` | One or more nodes need to redo their work; suggests changes. |
+| `atri_orch_review_approve` | The work is good; advance to the next stage. |
+| `atri_orch_request_rerun` | One or more nodes need to redo their work; suggests changes. |
 
 Constraints:
 

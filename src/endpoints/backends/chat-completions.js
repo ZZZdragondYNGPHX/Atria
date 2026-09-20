@@ -41,22 +41,22 @@ import {
     getActiveGenerationJobsForRequest,
     getGenerationJobForRequest,
     subscribeToJob,
-} from './luker-generation.js';
-import { runLukerDispatch } from '../../luker-dispatch/runner.js';
-import { dispatchClaude } from '../../luker-dispatch/providers/chat-completions/claude.js';
-import { dispatchAI21 } from '../../luker-dispatch/providers/chat-completions/ai21.js';
-import { dispatchMakerSuite } from '../../luker-dispatch/providers/chat-completions/makersuite.js';
-import { dispatchMistralAI } from '../../luker-dispatch/providers/chat-completions/mistralai.js';
-import { dispatchCohere } from '../../luker-dispatch/providers/chat-completions/cohere.js';
-import { dispatchDeepSeek } from '../../luker-dispatch/providers/chat-completions/deepseek.js';
-import { dispatchXai } from '../../luker-dispatch/providers/chat-completions/xai.js';
-import { dispatchAimlapi } from '../../luker-dispatch/providers/chat-completions/aimlapi.js';
-import { dispatchChutes } from '../../luker-dispatch/providers/chat-completions/chutes.js';
-import { dispatchMinimax } from '../../luker-dispatch/providers/chat-completions/minimax.js';
-import { dispatchElectronHub } from '../../luker-dispatch/providers/chat-completions/electronhub.js';
-import { dispatchAzureOpenAI } from '../../luker-dispatch/providers/chat-completions/azure-openai.js';
-import { dispatchOpenAICompatible } from '../../luker-dispatch/providers/chat-completions/openai-compatible.js';
-import { dispatchOpenAIResponses } from '../../luker-dispatch/providers/chat-completions/openai-responses.js';
+} from './atria-generation.js';
+import { runAtriaDispatch } from '../../atria-dispatch/runner.js';
+import { dispatchClaude } from '../../atria-dispatch/providers/chat-completions/claude.js';
+import { dispatchAI21 } from '../../atria-dispatch/providers/chat-completions/ai21.js';
+import { dispatchMakerSuite } from '../../atria-dispatch/providers/chat-completions/makersuite.js';
+import { dispatchMistralAI } from '../../atria-dispatch/providers/chat-completions/mistralai.js';
+import { dispatchCohere } from '../../atria-dispatch/providers/chat-completions/cohere.js';
+import { dispatchDeepSeek } from '../../atria-dispatch/providers/chat-completions/deepseek.js';
+import { dispatchXai } from '../../atria-dispatch/providers/chat-completions/xai.js';
+import { dispatchAimlapi } from '../../atria-dispatch/providers/chat-completions/aimlapi.js';
+import { dispatchChutes } from '../../atria-dispatch/providers/chat-completions/chutes.js';
+import { dispatchMinimax } from '../../atria-dispatch/providers/chat-completions/minimax.js';
+import { dispatchElectronHub } from '../../atria-dispatch/providers/chat-completions/electronhub.js';
+import { dispatchAzureOpenAI } from '../../atria-dispatch/providers/chat-completions/azure-openai.js';
+import { dispatchOpenAICompatible } from '../../atria-dispatch/providers/chat-completions/openai-compatible.js';
+import { dispatchOpenAIResponses } from '../../atria-dispatch/providers/chat-completions/openai-responses.js';
 
 const API_OPENAI = 'https://api.openai.com/v1';
 const API_CLAUDE = 'https://api.anthropic.com/v1';
@@ -1140,9 +1140,9 @@ const CHAT_COMPLETION_DISPATCH_TABLE = {
 
 /**
  * Resolve the dispatch function for a chat-completion request body.
- * Exported for the handler unit test; consumed by the runLukerDispatch thunk below.
+ * Exported for the handler unit test; consumed by the runAtriaDispatch thunk below.
  * @param {any} body Parsed request body
- * @returns {(ctx: import('../../luker-dispatch/context.js').DispatchContext) => Promise<void>}
+ * @returns {(ctx: import('../../atria-dispatch/context.js').DispatchContext) => Promise<void>}
  */
 export function selectChatCompletionDispatch(body) {
     const source = String(body?.chat_completion_source || '');
@@ -1170,7 +1170,7 @@ router.post('/generate', (req, res) => {
     if (body.json_schema?.value) {
         body.json_schema.value = flattenSchema(body.json_schema.value, body.chat_completion_source);
     }
-    return runLukerDispatch(req, res, {
+    return runAtriaDispatch(req, res, {
         endpoint: 'chat-completions',
         select: (b) => selectChatCompletionDispatch(b),
     });

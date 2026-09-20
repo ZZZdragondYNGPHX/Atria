@@ -4,7 +4,7 @@
 
 import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../regex/engine.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const eventSource = __ctx.eventSource;
 void (__ctx.eventTypes);
 const chat = __ctx.chat;
@@ -14,23 +14,23 @@ const openCharacterChat = __ctx.openCharacterChat;
 const doNewChat = __ctx.doNewChat;
 const closeCurrentChat = __ctx.closeCurrentChat;
 const getPastCharacterChats = __ctx.getPastCharacterChats;
-const lukerDeleteMessage = __ctx.deleteMessage;
+const atriaDeleteMessage = __ctx.deleteMessage;
 const deleteLastMessage = __ctx.deleteLastMessage;
 const swipe_right = __ctx.swipe.right;
 const saveMetadata = __ctx.saveMetadata;
 const messageFormatting = __ctx.messageFormatting;
-const lukerGetChatState = __ctx.getChatState;
-const lukerUpdateChatState = __ctx.updateChatState;
-const lukerPatchChatState = __ctx.patchChatState;
-const lukerDeleteChatState = __ctx.deleteChatState;
+const atriaGetChatState = __ctx.getChatState;
+const atriaUpdateChatState = __ctx.updateChatState;
+const atriaPatchChatState = __ctx.patchChatState;
+const atriaDeleteChatState = __ctx.deleteChatState;
 const deleteCharacterChatByName = __ctx.deleteCharacterChat;
-const lukerRenameChat = __ctx.renameChat;
-const lukerSetVariable = __ctx.setVariable;
-const getContext = Luker.getContext;
-const lukerGetCharacterState = __ctx.getCharacterState;
-const lukerSetCharacterState = __ctx.setCharacterState;
-const lukerUpdateCharacterState = __ctx.updateCharacterState;
-const lukerDeleteCharacterState = __ctx.deleteCharacterState;
+const atriaRenameChat = __ctx.renameChat;
+const atriaSetVariable = __ctx.setVariable;
+const getContext = Atria.getContext;
+const atriaGetCharacterState = __ctx.getCharacterState;
+const atriaSetCharacterState = __ctx.setCharacterState;
+const atriaUpdateCharacterState = __ctx.updateCharacterState;
+const atriaDeleteCharacterState = __ctx.deleteCharacterState;
 const executeSlashCommandsWithOptions = __ctx.executeSlashCommandsWithOptions;
 const removeReasoningFromString = __ctx.removeReasoningFromString;
 const loadWorldInfo = __ctx.loadWorldInfo;
@@ -96,25 +96,25 @@ export function buildContext(container, charId, config) {
         /** @type {string} The character ID */
         charId,
 
-        /** @type {import('../../extensions.js').SillyTavernContext} Luker event bus (direct reference) */
+        /** @type {import('../../extensions.js').SillyTavernContext} Atria event bus (direct reference) */
         eventSource,
 
         /**
-         * Escape hatch: the full Luker/SillyTavern extension API (same object every other
+         * Escape hatch: the full Atria/SillyTavern extension API (same object every other
          * extension gets via getContext()). Use this when ctx doesn't expose what you need.
          * Re-evaluated on each access so it always reflects current state.
          *
-         * Examples: ctx.lukerContext.generate(), ctx.lukerContext.SlashCommandParser,
-         * ctx.lukerContext.eventTypes, ctx.lukerContext.callGenericPopup, ...
+         * Examples: ctx.atriaContext.generate(), ctx.atriaContext.SlashCommandParser,
+         * ctx.atriaContext.eventTypes, ctx.atriaContext.callGenericPopup, ...
          *
          * Prefer ctx.* methods when one exists - they handle lifecycle/cleanup correctly.
          */
-        get lukerContext() { return getContext(); },
+        get atriaContext() { return getContext(); },
 
         /**
          * Skills API namespace. Mirrors `getContext().skills` so CardApp
          * authors can list/read/install/write/transport skills without
-         * reaching for `lukerContext`. Re-evaluated on each access so the
+         * reaching for `atriaContext`. Re-evaluated on each access so the
          * mirror stays in lockstep with the canonical surface in
          * st-context.js. See public/scripts/skills/api.js for the full
          * method list.
@@ -145,7 +145,7 @@ export function buildContext(container, charId, config) {
         // ==================== Messages ====================
 
         /**
-         * Send a message through Luker's message pipeline.
+         * Send a message through Atria's message pipeline.
          *
          * @param {string} text - Message text
          * @param {object} [options] - Options
@@ -206,7 +206,7 @@ export function buildContext(container, charId, config) {
          */
         async deleteMessage(messageId) {
             if (messageId >= 0 && messageId < chat.length) {
-                await lukerDeleteMessage(messageId);
+                await atriaDeleteMessage(messageId);
             }
         },
 
@@ -309,8 +309,8 @@ export function buildContext(container, charId, config) {
                 depth_prompt_role: ['depth_prompt', 'role'],
             };
 
-            const lukerCtx = getContext();
-            const character = lukerCtx.characters[__ctx.characterId];
+            const atriaCtx = getContext();
+            const character = atriaCtx.characters[__ctx.characterId];
             const prevExt = (character?.data?.extensions && typeof character.data.extensions === 'object')
                 ? character.data.extensions
                 : {};
@@ -370,11 +370,11 @@ export function buildContext(container, charId, config) {
             // Apply form-level changes (deep-merge path) first so they're
             // in memory before the extension writes flush.
             if (Object.keys(formPatch).length > 0) {
-                await lukerCtx.updateCharacterData(__ctx.characterId, formPatch);
+                await atriaCtx.updateCharacterData(__ctx.characterId, formPatch);
             }
             // Apply each extension blob via writeExtensionField (replace semantics).
             for (const [topKey, value] of Object.entries(extPatchesByTopKey)) {
-                await lukerCtx.writeExtensionField(__ctx.characterId, topKey, value);
+                await atriaCtx.writeExtensionField(__ctx.characterId, topKey, value);
             }
         },
 
@@ -403,7 +403,7 @@ export function buildContext(container, charId, config) {
          * `{{getvar}}` returns).
          *
          * For per-floor structured state with its own commit log / namespace,
-         * use `ctx.lukerContext.createFloorState({ namespace })` instead.
+         * use `ctx.atriaContext.createFloorState({ namespace })` instead.
          *
          * @param {string} key
          * @param {*} value
@@ -411,12 +411,12 @@ export function buildContext(container, charId, config) {
          * @returns {Promise<*>} the value written
          */
         async setVariable(key, value, options = {}) {
-            return await lukerSetVariable(key, value, options);
+            return await atriaSetVariable(key, value, options);
         },
 
         /**
          * Read chat-bound sidecar state for a namespace. Same data the rest
-         * of Luker reads via `getContext().getChatState` — chat-state is
+         * of Atria reads via `getContext().getChatState` — chat-state is
          * persisted server-side under `/api/chats/state/`, NOT in
          * `chat_metadata`. Use `updateChatState` / `patchChatState` to write.
          *
@@ -438,7 +438,7 @@ export function buildContext(container, charId, config) {
          * @returns {Promise<{ok: true, state: object|null} | {ok: false, state: null, reason: string, hint: string}>}
          */
         async getChatState(namespace, options = {}) {
-            return await lukerGetChatState(namespace, options);
+            return await atriaGetChatState(namespace, options);
         },
 
         /**
@@ -461,7 +461,7 @@ export function buildContext(container, charId, config) {
          * @returns {Promise<{ok: true, state: object|null, updated: boolean} | {ok: false, reason: string, hint: string}>}
          */
         async updateChatState(namespace, updater, options = {}) {
-            return await lukerUpdateChatState(namespace, updater, options);
+            return await atriaUpdateChatState(namespace, updater, options);
         },
 
         /**
@@ -482,7 +482,7 @@ export function buildContext(container, charId, config) {
          * @returns {Promise<{ok: true} | {ok: false, reason: string, hint: string}>}
          */
         async patchChatState(namespace, operations, options = {}) {
-            return await lukerPatchChatState(namespace, operations, options);
+            return await atriaPatchChatState(namespace, operations, options);
         },
 
         /**
@@ -498,7 +498,7 @@ export function buildContext(container, charId, config) {
          * @returns {Promise<{ok: true} | {ok: false, reason: string, hint: string}>}
          */
         async deleteChatState(namespace, options = {}) {
-            return await lukerDeleteChatState(namespace, options);
+            return await atriaDeleteChatState(namespace, options);
         },
 
         /**
@@ -523,7 +523,7 @@ export function buildContext(container, charId, config) {
             const character = characters[__ctx.characterId];
             const avatar = String(character?.avatar || '').trim();
             if (!avatar) throw new Error('[CardApp] No active character');
-            return await lukerGetCharacterState(avatar, namespace);
+            return await atriaGetCharacterState(avatar, namespace);
         },
 
         /**
@@ -545,7 +545,7 @@ export function buildContext(container, charId, config) {
             const character = characters[__ctx.characterId];
             const avatar = String(character?.avatar || '').trim();
             if (!avatar) throw new Error('[CardApp] No active character');
-            return await lukerSetCharacterState(avatar, namespace, data);
+            return await atriaSetCharacterState(avatar, namespace, data);
         },
 
         /**
@@ -570,7 +570,7 @@ export function buildContext(container, charId, config) {
             const character = characters[__ctx.characterId];
             const avatar = String(character?.avatar || '').trim();
             if (!avatar) throw new Error('[CardApp] No active character');
-            return await lukerUpdateCharacterState(avatar, namespace, updater, options);
+            return await atriaUpdateCharacterState(avatar, namespace, updater, options);
         },
 
         /**
@@ -589,7 +589,7 @@ export function buildContext(container, charId, config) {
             const character = characters[__ctx.characterId];
             const avatar = String(character?.avatar || '').trim();
             if (!avatar) throw new Error('[CardApp] No active character');
-            return await lukerDeleteCharacterState(avatar, namespace);
+            return await atriaDeleteCharacterState(avatar, namespace);
         },
 
         // ==================== Chat Management ====================
@@ -675,7 +675,7 @@ export function buildContext(container, charId, config) {
             const oldId = String(oldChatId || '').replace(/\.jsonl$/i, '');
             const newId = String(newChatId || '').replace(/\.jsonl$/i, '');
             if (!oldId || !newId) return;
-            await lukerRenameChat(oldId, newId);
+            await atriaRenameChat(oldId, newId);
         },
 
         // ==================== Slash Commands ====================
@@ -748,7 +748,7 @@ export function buildContext(container, charId, config) {
          * globally activated books, deduped). Pass `{ withSource: true }` to
          * get structured entries that distinguish `'character'` (the card's
          * primary book), `'character_aux'` (auxiliary books bound to this
-         * character via Luker's lorebook editor), `'chat'` (chat-bound books
+         * character via Atria's lorebook editor), `'chat'` (chat-bound books
          * from `chat_metadata.world_info`), and `'global'` (selected world
          * info active for every chat).
          *
@@ -789,7 +789,7 @@ export function buildContext(container, charId, config) {
         /**
          * Get the list of *auxiliary* world book names bound to the current
          * character. These live alongside the primary book (the one stored at
-         * `character.data.extensions.world`) and are managed via Luker's
+         * `character.data.extensions.world`) and are managed via Atria's
          * lorebook editor — they participate in prompt assembly the same way
          * the primary book does, so a CardApp that needs to reason about
          * "what lore does this character pull in?" should consider both.
@@ -821,7 +821,7 @@ export function buildContext(container, charId, config) {
 
         /**
          * Replace the chat-bound world book list. Names that don't match an
-         * existing world book are silently dropped (matches Luker's UI
+         * existing world book are silently dropped (matches Atria's UI
          * behavior). Pass `[]` (or nothing) to clear.
          * @param {string[]} [names]
          * @returns {Promise<string[]>} the resolved list actually written
@@ -1011,7 +1011,7 @@ export function buildContext(container, charId, config) {
          * Create a new card-level regex script.
          *
          * Always writes to `character.data.extensions.regex_scripts` (via
-         * Luker's `writeExtensionField`) — ctx intentionally has no path to
+         * Atria's `writeExtensionField`) — ctx intentionally has no path to
          * mutate the user's global regex list (`extension_settings.regex`),
          * matching the same character-scoped boundary applied to the
          * orchestrator and memory-graph overrides. To create a global
@@ -1026,7 +1026,7 @@ export function buildContext(container, charId, config) {
          * - `scriptName`/`findRegex`/`replaceString`: empty string
          * - `trimStrings`: []
          * - `placement`: [] (script will not fire until at least one
-         *   placement is set — see Luker's `regex_placement` enum:
+         *   placement is set — see Atria's `regex_placement` enum:
          *   1=USER_INPUT, 2=AI_OUTPUT, 3=SLASH_COMMAND, 5=WORLD_INFO,
          *   6=REASONING)
          * - `disabled`/`markdownOnly`/`promptOnly`/`pluginOnly`/`runOnEdit`: false
@@ -1140,10 +1140,10 @@ export function buildContext(container, charId, config) {
          * }}
          */
         getMemoryGraphSchema() {
-            const lukerCtx = getContext();
+            const atriaCtx = getContext();
             const mg = requireExtensionApi('memory-graph');
-            const schemaInfo = mg.getSchemaScopeInfo(lukerCtx);
-            const advancedInfo = mg.getAdvancedScopeInfo(lukerCtx);
+            const schemaInfo = mg.getSchemaScopeInfo(atriaCtx);
+            const advancedInfo = mg.getAdvancedScopeInfo(atriaCtx);
             return {
                 schema: {
                     scope: schemaInfo.scope,
@@ -1169,15 +1169,15 @@ export function buildContext(container, charId, config) {
          * @returns {Promise<boolean>}
          */
         async setMemoryGraphSchema(schema) {
-            const lukerCtx = getContext();
+            const atriaCtx = getContext();
             const charData = characters[__ctx.characterId];
             const avatar = String(charData?.avatar || '').trim();
             if (!avatar) throw new Error('[CardApp] No active character');
             const mg = requireExtensionApi('memory-graph');
             if (schema === null || schema === undefined) {
-                return await mg.removeCharacterSchemaOverride(lukerCtx, avatar);
+                return await mg.removeCharacterSchemaOverride(atriaCtx, avatar);
             }
-            return await mg.persistCharacterSchemaOverride(lukerCtx, avatar, schema);
+            return await mg.persistCharacterSchemaOverride(atriaCtx, avatar, schema);
         },
 
         /**
@@ -1192,15 +1192,15 @@ export function buildContext(container, charId, config) {
          * @returns {Promise<boolean>}
          */
         async setMemoryGraphAdvanced(advanced) {
-            const lukerCtx = getContext();
+            const atriaCtx = getContext();
             const charData = characters[__ctx.characterId];
             const avatar = String(charData?.avatar || '').trim();
             if (!avatar) throw new Error('[CardApp] No active character');
             const mg = requireExtensionApi('memory-graph');
             if (advanced === null || advanced === undefined) {
-                return await mg.removeCharacterAdvancedOverride(lukerCtx, avatar);
+                return await mg.removeCharacterAdvancedOverride(atriaCtx, avatar);
             }
-            return await mg.persistCharacterAdvancedOverride(lukerCtx, avatar, advanced);
+            return await mg.persistCharacterAdvancedOverride(atriaCtx, avatar, advanced);
         },
 
         // ==================== Rendering ====================

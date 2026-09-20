@@ -23,7 +23,7 @@ try {
         await page.goto(`http://127.0.0.1:${server.address().port}/`);
         await page.evaluate(async () => {
             const table = {};
-            window.Luker = { getContext: () => ({ addLocaleData: (locale, values) => { if (locale === 'zh-cn') Object.assign(table, values); }, translate: value => table[value] || value }) };
+            window.Atria = { getContext: () => ({ addLocaleData: (locale, values) => { if (locale === 'zh-cn') Object.assign(table, values); }, translate: value => table[value] || value }) };
             const locale = await import('/scripts/extensions/orchestrator/i18n.js'); locale.registerLocaleData();
             window.store = await import('/scripts/extensions/orchestrator/run-state/store.js');
             window.panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');

@@ -66,9 +66,9 @@ test.describe('Skills: manager panel flow', () => {
         // wiped some, the panel still renders — we assert "at least 1"
         // for resilience but log the actual count so docs stay honest.
         const installedTab = popup.locator('[data-skill-tab="installed"]').first();
-        await expect(installedTab).toHaveClass(/luker_skill_tab_active/);
+        await expect(installedTab).toHaveClass(/atria_skill_tab_active/);
 
-        const rows = popup.locator('.luker_skill_row[data-skill-name]');
+        const rows = popup.locator('.atria_skill_row[data-skill-name]');
         const rowCount = await rows.count();
         // eslint-disable-next-line no-console
         console.log(`[smoke] installed skill rows = ${rowCount}`);
@@ -82,7 +82,7 @@ test.describe('Skills: manager panel flow', () => {
             'director-character-voice-zh',
         ];
         for (const name of knownBundledNames) {
-            const row = popup.locator(`.luker_skill_row[data-skill-name="${name}"]`).first();
+            const row = popup.locator(`.atria_skill_row[data-skill-name="${name}"]`).first();
             await expect(row).toBeVisible();
         }
 
@@ -94,7 +94,7 @@ test.describe('Skills: manager panel flow', () => {
         // ── 3. Switch to Browse bundled tab ──────────────────────────
         const bundledTab = popup.locator('[data-skill-tab="bundled"]').first();
         await bundledTab.click();
-        await expect(bundledTab).toHaveClass(/luker_skill_tab_active/);
+        await expect(bundledTab).toHaveClass(/atria_skill_tab_active/);
 
         // Wait for the bundled-browser mount to paint a row. The mount
         const bundledRows = popup.locator('[data-bundled-row]');

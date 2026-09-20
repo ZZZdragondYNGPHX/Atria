@@ -1,4 +1,4 @@
-.luker-sim-review-wrapper {
+.atria-sim-review-wrapper {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -6,20 +6,20 @@
     overflow: hidden;
 }
 
-.luker-sim-review-title {
+.atria-sim-review-title {
     margin: 0;
     font-size: 1.1rem;
     border-bottom: 1px solid rgba(127, 127, 127, 0.3);
     padding-bottom: 6px;
 }
 
-.luker-sim-review-host {
+.atria-sim-review-host {
     overflow: auto;
     flex: 1 1 auto;
     padding-right: 8px;
 }
 
-.luker-sim-rerun-bar {
+.atria-sim-rerun-bar {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -29,8 +29,8 @@
     margin-bottom: 8px;
 }
 
-.luker-sim-rerun-btn,
-.luker-sim-toggle-btn,
+.atria-sim-rerun-btn,
+.atria-sim-toggle-btn,
 .sim-review-annot-toggle {
     padding: 4px 10px;
     background: var(--SmartThemeBodyColor, #2a2a2a);
@@ -41,14 +41,14 @@
     font-size: 0.85em;
 }
 
-.luker-sim-rerun-btn:hover:not(:disabled),
-.luker-sim-toggle-btn:hover:not(:disabled),
+.atria-sim-rerun-btn:hover:not(:disabled),
+.atria-sim-toggle-btn:hover:not(:disabled),
 .sim-review-annot-toggle:hover:not(:disabled) {
     background: var(--SmartThemeBlurTintColor, #444);
 }
 
-.luker-sim-rerun-btn:disabled,
-.luker-sim-toggle-btn:disabled,
+.atria-sim-rerun-btn:disabled,
+.atria-sim-toggle-btn:disabled,
 .sim-review-annot-toggle:disabled {
     opacity: 0.5;
     cursor: wait;
@@ -71,22 +71,22 @@
     cursor: auto;
 }
 
-.luker-sim-review .luker-sim-section,
-.luker-sim-review .luker-sim-subsection,
-.luker-sim-review .luker-sim-subsubsection {
+.atria-sim-review .atria-sim-section,
+.atria-sim-review .atria-sim-subsection,
+.atria-sim-review .atria-sim-subsubsection {
     border-left: 2px solid rgba(127, 127, 127, 0.25);
     padding-left: 10px;
     margin: 8px 0;
 }
 
-.luker-sim-review h1,
-.luker-sim-review h2,
-.luker-sim-review h3,
-.luker-sim-review h4 {
+.atria-sim-review h1,
+.atria-sim-review h2,
+.atria-sim-review h3,
+.atria-sim-review h4 {
     margin: 6px 0;
 }
 
-.luker-sim-review pre.luker-sim-pre {
+.atria-sim-review pre.atria-sim-pre {
     white-space: pre-wrap;
     word-break: break-word;
     background: rgba(127, 127, 127, 0.08);
@@ -95,13 +95,13 @@
     margin: 4px 0;
 }
 
-.luker-sim-review .luker-sim-note {
+.atria-sim-review .atria-sim-note {
     color: rgba(127, 127, 127, 0.9);
     font-style: italic;
     margin: 2px 0;
 }
 
-mark.luker-sim-annotation,
+mark.atria-sim-annotation,
 mark[data-ann-id] {
     background-color: rgba(255, 220, 100, 0.55);
     padding: 0 2px;
@@ -159,54 +159,54 @@ mark[data-ann-id] {
 .sim-review-tool-chip--source-profile   { background: rgba(170, 130, 220, 0.55); }
 .sim-review-tool-chip--source-st-bridge { background: rgba(200, 200, 200, 0.55); }
 
-.luker-sim-review .luker-sim-section--collapsed > *:not(h1):not(h2):not(h3):not(h4) {
+.atria-sim-review .atria-sim-section--collapsed > *:not(h1):not(h2):not(h3):not(h4) {
     display: none;
 }
 
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h1,
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h2,
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h3,
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h4,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h1,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h2,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h3,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h4,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h1,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h2,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h3,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h4 {
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h1,
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h2,
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h3,
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h4,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h1,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h2,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h3,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h4,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h1,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h2,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h3,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h4 {
     cursor: pointer;
     user-select: none;
 }
 
-.luker-sim-review .luker-sim-section > h1::before,
-.luker-sim-review .luker-sim-section > h2::before,
-.luker-sim-review .luker-sim-section > h3::before,
-.luker-sim-review .luker-sim-section > h4::before,
-.luker-sim-review .luker-sim-subsection > h1::before,
-.luker-sim-review .luker-sim-subsection > h2::before,
-.luker-sim-review .luker-sim-subsection > h3::before,
-.luker-sim-review .luker-sim-subsection > h4::before,
-.luker-sim-review .luker-sim-subsubsection > h1::before,
-.luker-sim-review .luker-sim-subsubsection > h2::before,
-.luker-sim-review .luker-sim-subsubsection > h3::before,
-.luker-sim-review .luker-sim-subsubsection > h4::before {
+.atria-sim-review .atria-sim-section > h1::before,
+.atria-sim-review .atria-sim-section > h2::before,
+.atria-sim-review .atria-sim-section > h3::before,
+.atria-sim-review .atria-sim-section > h4::before,
+.atria-sim-review .atria-sim-subsection > h1::before,
+.atria-sim-review .atria-sim-subsection > h2::before,
+.atria-sim-review .atria-sim-subsection > h3::before,
+.atria-sim-review .atria-sim-subsection > h4::before,
+.atria-sim-review .atria-sim-subsubsection > h1::before,
+.atria-sim-review .atria-sim-subsubsection > h2::before,
+.atria-sim-review .atria-sim-subsubsection > h3::before,
+.atria-sim-review .atria-sim-subsubsection > h4::before {
     content: '▾ ';
     opacity: 0.6;
 }
 
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h1::before,
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h2::before,
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h3::before,
-.luker-sim-review .luker-sim-section.luker-sim-section--collapsed > h4::before,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h1::before,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h2::before,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h3::before,
-.luker-sim-review .luker-sim-subsection.luker-sim-section--collapsed > h4::before,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h1::before,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h2::before,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h3::before,
-.luker-sim-review .luker-sim-subsubsection.luker-sim-section--collapsed > h4::before {
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h1::before,
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h2::before,
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h3::before,
+.atria-sim-review .atria-sim-section.atria-sim-section--collapsed > h4::before,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h1::before,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h2::before,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h3::before,
+.atria-sim-review .atria-sim-subsection.atria-sim-section--collapsed > h4::before,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h1::before,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h2::before,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h3::before,
+.atria-sim-review .atria-sim-subsubsection.atria-sim-section--collapsed > h4::before {
     content: '▸ ';
 }
 

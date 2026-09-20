@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 
 import storage from 'node-persist';
 
-export const ANNOUNCEMENTS_STORAGE_KEY = 'luker:announcements:v1';
+export const ANNOUNCEMENTS_STORAGE_KEY = 'atria:announcements:v1';
 export const ANNOUNCEMENT_LEVELS = Object.freeze(['info', 'warning', 'critical']);
 export const ANNOUNCEMENT_TITLE_MAX = 200;
 export const ANNOUNCEMENT_BODY_MAX = 10000;

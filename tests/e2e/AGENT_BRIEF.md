@@ -1,14 +1,14 @@
 # E2E Expansion — Agent Brief
 
 You are one of ~13 parallel agents writing Playwright e2e tests for the
-Luker (SillyTavern fork) repo. Each agent owns one **batch** of tests
+Atria (SillyTavern fork) repo. Each agent owns one **batch** of tests
 covering one functional area. Other agents are writing other batches at
 the same time.
 
 ## Hard rules — read this first
 
 1. **Worktree-scoped, don't touch main**: cwd is
-   `/Users/funnycups/worktree/luker-e2e-expand`. All new files go under
+   `/Users/funnycups/worktree/atria-e2e-expand`. All new files go under
    `tests/e2e/<your-batch>/`. **Never edit anything outside `tests/e2e/`**
    except adding to `tests/e2e/<your-batch>/`.
 2. **Spec naming**: `tests/e2e/<your-batch>/<NN>-<short-name>.e2e.js`
@@ -18,7 +18,7 @@ the same time.
    `../_lib/fixtures.js`. Read those files to learn the API.
 4. **Port range**: your batch already has a reserved port range in
    `_lib/ports.js`. Just pass your `batchKey` to `startServer()`.
-5. **No mocks where real is feasible** — real Luker server, real Playwright,
+5. **No mocks where real is feasible** — real Atria server, real Playwright,
    real browser, real chat history on disk. Mock the LLM only (already
    provided). Per repo convention `e2e_real_user_flow`.
 6. **RP-immersive fixtures** — never use "say hi" placeholder content.
@@ -140,7 +140,7 @@ Each agent is responsible for running playwright against its own folder
 before reporting done. Commands:
 
 ```bash
-cd /Users/funnycups/worktree/luker-e2e-expand/tests
+cd /Users/funnycups/worktree/atria-e2e-expand/tests
 PW_WORKERS=2 npx playwright test e2e/<your-batch>/ --reporter=list
 ```
 

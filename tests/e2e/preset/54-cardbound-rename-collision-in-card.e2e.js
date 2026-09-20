@@ -39,7 +39,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT_X, preset: { temperature: 0.3, chat_completion_source: 'openai' } },
@@ -87,7 +87,7 @@ test.describe('#54 — card-bound rename 同卡内撞名', () => {
         const cardPresets = await page.evaluate(([cardName]) => {
             const ctx = window.SillyTavern?.getContext();
             const char = ctx?.characters?.find(c => c && c.name === cardName);
-            return char?.data?.extensions?.luker?.chat_completion_preset?.presets?.map(p => p.name);
+            return char?.data?.extensions?.atria?.chat_completion_preset?.presets?.map(p => p.name);
         }, [CARD_NAME]);
         expect(cardPresets).toEqual([SLOT_X, SLOT_Y]);
 

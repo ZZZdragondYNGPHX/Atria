@@ -47,18 +47,18 @@ function makeContext(applyRegex = makeApplyRegex()) {
     };
 }
 
-let previousLuker;
+let previousAtria;
 
 beforeAll(() => {
-    previousLuker = globalThis.Luker;
+    previousAtria = globalThis.Atria;
 });
 
 afterAll(() => {
-    globalThis.Luker = previousLuker;
+    globalThis.Atria = previousAtria;
 });
 
 async function importModule(context) {
-    globalThis.Luker = { getContext: () => context };
+    globalThis.Atria = { getContext: () => context };
     const mod = await import('../../public/scripts/lib/plugin-floors.js');
     mod.__resetPluginFloorsCacheForTests();
     return mod;
@@ -67,7 +67,7 @@ async function importModule(context) {
 describe('readPluginFloors', () => {
     test('returns records with correct seq/sourceIndex/depth and cooked text', async () => {
         const mod = await importModule(makeContext());
-        const records = mod.readPluginFloors(globalThis.Luker.getContext(), {});
+        const records = mod.readPluginFloors(globalThis.Atria.getContext(), {});
         expect(records).toHaveLength(4); // system floor excluded by default roles
 
         expect(records.map(r => r.seq)).toEqual([1, 2, 4, 5]);
@@ -80,7 +80,7 @@ describe('readPluginFloors', () => {
 
     test('mesCooked runs through the isPluginPrompt lane with real depth; mesRaw stays raw', async () => {
         const mod = await importModule(makeContext());
-        const records = mod.readPluginFloors(globalThis.Luker.getContext(), {});
+        const records = mod.readPluginFloors(globalThis.Atria.getContext(), {});
 
         const userFloor = records.find(r => r.sourceIndex === 0);
         expect(userFloor.mesRaw).toBe('hello USERONLY');
@@ -93,7 +93,7 @@ describe('readPluginFloors', () => {
 
     test('fromDepth / toDepth filter by computed depth', async () => {
         const mod = await importModule(makeContext());
-        const context = globalThis.Luker.getContext();
+        const context = globalThis.Atria.getContext();
 
         expect(mod.readPluginFloors(context, { toDepth: 1 }).map(r => r.depth))
             .toEqual([1, 0]);
@@ -105,7 +105,7 @@ describe('readPluginFloors', () => {
 
     test('fromSeq / toSeq filter by 1-based sequence number', async () => {
         const mod = await importModule(makeContext());
-        const context = globalThis.Luker.getContext();
+        const context = globalThis.Atria.getContext();
 
         expect(mod.readPluginFloors(context, { fromSeq: 4 }).map(r => r.seq))
             .toEqual([4, 5]);
@@ -115,7 +115,7 @@ describe('readPluginFloors', () => {
 
     test('roles filter narrows the set; explicit system role re-includes system floors with all fields present', async () => {
         const mod = await importModule(makeContext());
-        const context = globalThis.Luker.getContext();
+        const context = globalThis.Atria.getContext();
 
         const onlyAssistants = mod.readPluginFloors(context, { roles: ['assistant'] });
         expect(onlyAssistants.map(r => r.is_user)).toEqual([false, false]);
@@ -134,7 +134,7 @@ describe('readPluginFloors', () => {
 
     test('context.chat non-array returns [] defensively', async () => {
         const mod = await importModule({ ...makeContext(), chat: undefined });
-        expect(mod.readPluginFloors(globalThis.Luker.getContext(), {})).toEqual([]);
+        expect(mod.readPluginFloors(globalThis.Atria.getContext(), {})).toEqual([]);
         expect(mod.readPluginFloors({}, {})).toEqual([]);
         expect(mod.readPluginFloors(null, {})).toEqual([]);
     });
@@ -152,10 +152,10 @@ describe('readPluginFloors', () => {
     });
 
     test('degrades to raw text when no regex API is reachable', async () => {
-        globalThis.Luker = { getContext: () => ({ chat: [{ mes: 'plain', is_user: true }] }) };
+        globalThis.Atria = { getContext: () => ({ chat: [{ mes: 'plain', is_user: true }] }) };
         const mod = await import('../../public/scripts/lib/plugin-floors.js');
         mod.__resetPluginFloorsCacheForTests();
-        const records = mod.readPluginFloors(globalThis.Luker.getContext(), {});
+        const records = mod.readPluginFloors(globalThis.Atria.getContext(), {});
         expect(records[0].mesCooked).toBe('plain');
     });
 });
@@ -204,7 +204,7 @@ describe('floorRecordToTaskMessage', () => {
 
     test('default roles exclude system floors from task messages produced by readPluginFloors', async () => {
         const mod = await importModule(makeContext());
-        const records = mod.readPluginFloors(globalThis.Luker.getContext(), {});
+        const records = mod.readPluginFloors(globalThis.Atria.getContext(), {});
         const messages = records.map(mod.floorRecordToTaskMessage);
         expect(messages.every(m => m.role !== 'system')).toBe(true);
         expect(messages[messages.length - 1]).toEqual({

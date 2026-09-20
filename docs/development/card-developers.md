@@ -1,10 +1,10 @@
 # Character Card Developer Guide
 
-This guide is for character card creators, covering how to leverage Luker's extension capabilities to create richer, smarter character cards. Luker provides several enhancements while maintaining full compatibility with the SillyTavern character card format.
+This guide is for character card creators, covering how to leverage Atria's extension capabilities to create richer, smarter character cards. Atria provides several enhancements while maintaining full compatibility with the SillyTavern character card format.
 
 ## Character Card Extension Fields
 
-Luker uses multiple namespaces within `data.extensions` to store extension data. These fields do not affect the card's normal usage in SillyTavern — unrecognized fields are simply ignored.
+Atria uses multiple namespaces within `data.extensions` to store extension data. These fields do not affect the card's normal usage in SillyTavern — unrecognized fields are simply ignored.
 
 ### data.extensions Structure
 
@@ -12,7 +12,7 @@ Luker uses multiple namespaces within `data.extensions` to store extension data.
 {
  "data": {
  "extensions": {
- "luker": {
+ "atria": {
  "memoryGraphSchema": {
  "nodeTypes": [
  { "name": "string", "label": "string", "color": "#hex" }
@@ -30,11 +30,11 @@ Luker uses multiple namespaces within `data.extensions` to store extension data.
 
 | Field Path | Type | Description |
 |-----------|------|-------------|
-| `luker.memoryGraphSchema` | object | Custom node type schema for Memory Graph |
-| `luker.memoryGraphSchema.nodeTypes` | array | List of node type definitions |
-| `luker.memoryGraphSchema.nodeTypes[].name` | string | Node type identifier (English, used for internal reference) |
-| `luker.memoryGraphSchema.nodeTypes[].label` | string | Node type display name |
-| `luker.memoryGraphSchema.nodeTypes[].color` | string | Node color (hex color value) |
+| `atria.memoryGraphSchema` | object | Custom node type schema for Memory Graph |
+| `atria.memoryGraphSchema.nodeTypes` | array | List of node type definitions |
+| `atria.memoryGraphSchema.nodeTypes[].name` | string | Node type identifier (English, used for internal reference) |
+| `atria.memoryGraphSchema.nodeTypes[].label` | string | Node type display name |
+| `atria.memoryGraphSchema.nodeTypes[].color` | string | Node color (hex color value) |
 | `card_app.enabled` | boolean | Whether CardApp is enabled |
 | `card_app.entry` | string | Entry module filename relative to the CardApp folder. Defaults to `index.js`. The entry must export an `init(ctx)` function. CSS is auto-loaded by convention from `style.css` in the same folder. |
 
@@ -43,7 +43,7 @@ Luker uses multiple namespaces within `data.extensions` to store extension data.
 
 ## Binding Presets and Personas
 
-Luker supports binding recommended presets and user personas to character cards. When a user loads the card, they can apply the creator's recommended configuration with one click, ensuring the best roleplay experience.
+Atria supports binding recommended presets and user personas to character cards. When a user loads the card, they can apply the creator's recommended configuration with one click, ensuring the best roleplay experience.
 
 Binding information is stored in the character card's state file:
 
@@ -64,7 +64,7 @@ Orchestration workflows can be bound to character cards and automatically activa
 
 ## Custom Memory Graph Schema
 
-The [Memory Graph](/features/memory-graph) supports character card-level node type schema customization. By defining `luker.memoryGraphSchema` in the card's extension data, you can create a memory structure tailored to your character.
+The [Memory Graph](/features/memory-graph) supports character card-level node type schema customization. By defining `atria.memoryGraphSchema` in the card's extension data, you can create a memory structure tailored to your character.
 
 For example, a fantasy world character card might define the following schema:
 
@@ -72,7 +72,7 @@ For example, a fantasy world character card might define the following schema:
 {
  "data": {
  "extensions": {
- "luker": {
+ "atria": {
  "memoryGraphSchema": {
  "nodeTypes": [
  { "name": "character", "label": "Character", "color": "#4A90D9" },
@@ -92,7 +92,7 @@ Custom schemas override the default node type set, making Memory Graph extractio
 
 ## CardApp Development
 
-[CardApp](/features/cardapp) is Luker's character card embedded application system, allowing you to embed interactive JavaScript applications within character cards.
+[CardApp](/features/cardapp) is Atria's character card embedded application system, allowing you to embed interactive JavaScript applications within character cards.
 
 ### Use Cases
 
@@ -181,7 +181,7 @@ The CardApp context object provides the following APIs:
 | `ctx.getCharacterState(namespace)` | **async** Read character-bound state (avatar auto-resolved). Survives across every chat with this character. |
 | `ctx.setCharacterState(namespace, data)` | **async** Write character-bound state (avatar auto-resolved). Pass `null` to delete. |
 | `ctx.getVariable(key)` | Get a chat variable from `chat_metadata.variables` (same bucket <code v-pre>{{getvar::key}}</code> reads). |
-| `ctx.setVariable(key, value, options?)` | **async** Set a chat variable. Default: writes straight to `chat_metadata.variables` (chat-scoped, persists for the rest of the chat). Pass `{ floor: <messageIndex> }` to bind the write to that floor's current swipe via the variable op-log — swipe-out / swipe-back / deletion / branching all reconcile through the rebuilder so the value rolls back the same way an AI-written <code v-pre>{{setvar}}</code> literal would. The floor-bound path coerces value to a string (the op-log format only carries strings). For structured per-floor state with its own commit log / namespace, use `ctx.lukerContext.createFloorState({ namespace })` instead. |
+| `ctx.setVariable(key, value, options?)` | **async** Set a chat variable. Default: writes straight to `chat_metadata.variables` (chat-scoped, persists for the rest of the chat). Pass `{ floor: <messageIndex> }` to bind the write to that floor's current swipe via the variable op-log — swipe-out / swipe-back / deletion / branching all reconcile through the rebuilder so the value rolls back the same way an AI-written <code v-pre>{{setvar}}</code> literal would. The floor-bound path coerces value to a string (the op-log format only carries strings). For structured per-floor state with its own commit log / namespace, use `ctx.atriaContext.createFloorState({ namespace })` instead. |
 
 #### Chat Management
 
@@ -197,7 +197,7 @@ The CardApp context object provides the following APIs:
 | API | Description |
 |-----|-------------|
 | `ctx.getWorldBooks()` | Get the list of world book names visible to the current character (character primary + character auxiliary + chat-bound + globally activated, deduped). Pass `{ withSource: true }` to get tagged entries with `source: 'character' \| 'character_aux' \| 'chat' \| 'global'` |
-| `ctx.getCharacterAuxWorldBooks()` | Get the auxiliary (non-primary) world books bound to the current character. These participate in prompt assembly alongside the primary book but are managed separately via Luker's lorebook editor |
+| `ctx.getCharacterAuxWorldBooks()` | Get the auxiliary (non-primary) world books bound to the current character. These participate in prompt assembly alongside the primary book but are managed separately via Atria's lorebook editor |
 | `ctx.getWorldBookEntries(bookName)` | Get all entries from the specified world book |
 | `ctx.createWorldBookEntry(bookName, fields?)` | Create a world book entry, returns the new entry object (with uid) |
 | `ctx.updateWorldBookEntry(bookName, uid, patch)` | Update a world book entry (shallow merge) |
@@ -207,7 +207,7 @@ The CardApp context object provides the following APIs:
 
 | API | Description |
 |-----|-------------|
-| `ctx.eventSource` | Luker's internal event bus. Subscribe with `ctx.eventSource.on(eventName, handler)` and unsubscribe with `ctx.eventSource.off(eventName, handler)`. Event names live on `ctx.lukerContext.eventTypes` (`CHAT_CHANGED`, `MESSAGE_DELETED`, `MESSAGE_SWIPED`, etc.). Pair every `.on()` with `ctx.onDispose(() => ctx.eventSource.off(eventName, handler))` so listeners are removed when the CardApp unmounts. |
+| `ctx.eventSource` | Atria's internal event bus. Subscribe with `ctx.eventSource.on(eventName, handler)` and unsubscribe with `ctx.eventSource.off(eventName, handler)`. Event names live on `ctx.atriaContext.eventTypes` (`CHAT_CHANGED`, `MESSAGE_DELETED`, `MESSAGE_SWIPED`, etc.). Pair every `.on()` with `ctx.onDispose(() => ctx.eventSource.off(eventName, handler))` so listeners are removed when the CardApp unmounts. |
 | `ctx.addEventListener(target, event, handler, options?)` | Subscribe to a DOM event on a DOM element. `target` is typically `ctx.container` or a `querySelector` result; use this for in-container UI events like click, keydown, scroll. The listener is removed automatically when the CardApp disposes. |
 | `ctx.setInterval(fn, ms)` | `setInterval` whose handle is cleared automatically on dispose. |
 | `ctx.setTimeout(fn, ms)` | `setTimeout` whose handle is cleared automatically on dispose. |
@@ -217,7 +217,7 @@ Example — refresh a panel when the chat or active swipe changes:
 
 ```javascript
 export async function init(ctx) {
-    const { eventTypes } = ctx.lukerContext;
+    const { eventTypes } = ctx.atriaContext;
     const refresh = () => render(ctx);
 
     ctx.eventSource.on(eventTypes.CHAT_CHANGED, refresh);
@@ -248,7 +248,7 @@ When developing CardApp, follow these best practices:
 
 ## World Info Best Practices
 
-World Info (Lorebook) is an important component of character cards. Here are best practices for using World Info in Luker:
+World Info (Lorebook) is an important component of character cards. Here are best practices for using World Info in Atria:
 
 ### 1. Organize Entries Properly
 
@@ -258,7 +258,7 @@ World Info (Lorebook) is an important component of character cards. Here are bes
 
 ### 2. Bind World Info to Presets
 
-Luker supports binding World Info to presets. When users switch presets, the associated World Info is automatically activated. This is useful for scenarios requiring different world settings.
+Atria supports binding World Info to presets. When users switch presets, the associated World Info is automatically activated. This is useful for scenarios requiring different world settings.
 
 ### 3. Search Tools and World Info Integration
 
@@ -266,7 +266,7 @@ The [Search Tools](/features/search-tools) search agent can automatically write 
 
 ### 4. Control Injection Depth and Order
 
-Set appropriate injection depth and order for World Info entries to ensure critical settings are properly positioned in the prompt. Luker's search tools provide `lorebookDepth`, `lorebookRole`, and `lorebookEntryOrder` configuration options for fine-grained control.
+Set appropriate injection depth and order for World Info entries to ensure critical settings are properly positioned in the prompt. Atria's search tools provide `lorebookDepth`, `lorebookRole`, and `lorebookEntryOrder` configuration options for fine-grained control.
 
 ### 5. Complement with Memory Graph
 
@@ -279,15 +279,15 @@ World Info provides static world settings, while Memory Graph provides dynamic c
 
 ### Compatibility
 
-- Fields in `data.extensions.luker` and `data.extensions.card_app` are ignored by SillyTavern and do not affect normal card usage
+- Fields in `data.extensions.atria` and `data.extensions.card_app` are ignored by SillyTavern and do not affect normal card usage
 - Bound presets and personas are stored in state files, not included in the card file itself, and are not carried during distribution
 - Orchestration workflows need to be manually imported or distributed through other means
 
 ### Recommendations
 
-- Note in the card description that Luker is recommended for the full experience
-- If the card depends on CardApp, specify the required Luker version
-- Provide a baseline experience that doesn't depend on Luker extensions, with Luker features as enhancements
+- Note in the card description that Atria is recommended for the full experience
+- If the card depends on CardApp, specify the required Atria version
+- Provide a baseline experience that doesn't depend on Atria extensions, with Atria features as enhancements
 
 ## Related Pages
 

@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 function createTempWorldDir() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-worldinfo-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-worldinfo-'));
     tempDirs.push(dir);
     return dir;
 }

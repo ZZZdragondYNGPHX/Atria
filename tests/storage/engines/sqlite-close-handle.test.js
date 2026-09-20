@@ -37,11 +37,11 @@ describe('SqliteEngine.closeHandle', () => {
     const handle = 'a';
 
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sqlite-close-handle-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sqlite-close-handle-'));
         engine = new SqliteEngine({
             directoriesByHandle: () => ({ root: path.join(tmpDir, handle) }),
         });
-        dbPath = path.join(tmpDir, handle, 'luker-storage.sqlite');
+        dbPath = path.join(tmpDir, handle, 'atria-storage.sqlite');
     });
 
     afterEach(() => {

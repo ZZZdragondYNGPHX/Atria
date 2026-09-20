@@ -3,9 +3,9 @@ import { WebSocketServer } from 'ws';
 import {
     getTaskByRequestId,
     subscribeToJob,
-} from './endpoints/backends/luker-generation.js';
+} from './endpoints/backends/atria-generation.js';
 
-const TICKET_PROTOCOL_PREFIX = 'luker-ws-ticket.';
+const TICKET_PROTOCOL_PREFIX = 'atria-ws-ticket.';
 
 // App-level heartbeat cadence. We don't rely on TCP keepalive (Linux default
 // 2h) or WebSocket protocol ping (browser doesn't expose the pong to JS,

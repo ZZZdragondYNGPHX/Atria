@@ -83,7 +83,7 @@ async function loadSkillResolution() {
  * this module stays Jest-clean.
  */
 function resolveAgentApiPresetName(settings, agentConfig) {
-    const ctx = (typeof Luker !== 'undefined') ? Luker.getContext() : null;
+    const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
     const resolved = resolveCardFirstPresetName({
@@ -102,7 +102,7 @@ function resolveAgentApiPresetName(settings, agentConfig) {
  * `resolveCardFirstPresetName`.
  */
 function resolveAgentPromptPresetName(settings, agentConfig) {
-    const ctx = (typeof Luker !== 'undefined') ? Luker.getContext() : null;
+    const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
     const resolved = resolveCardFirstPresetName({
@@ -1112,7 +1112,7 @@ export function createSubagentDispatcher({
                     // source. wiFinalizedPayload stays null —
                     // director's takeover fires after WI join, so
                     // force_activate cleanly hits NO_PAYLOAD.
-                    toolCtx.__lukerRun = {
+                    toolCtx.__atriaRun = {
                         lorebookFilter: directorProfile?.lorebookFilter || { bookPattern: '', entryPattern: '' },
                         activatedEntryKeys: new Set(),
                         wiFinalizedPayload: null,

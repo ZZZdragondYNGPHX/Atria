@@ -36,7 +36,7 @@ test.each(['Atri-plugin-only', 'Atri-agenda-agent'])('%s injects runtime message
         const enabled = group.order.filter(item => item.enabled).map(item => item.identifier);
         expect(enabled.filter(id => id === 'chatHistory')).toHaveLength(1);
         expect(enabled.at(-1)).toBe('chatHistory');
-        expect(enabled.indexOf('atri-luker-reference-close')).toBeLessThan(enabled.indexOf('chatHistory'));
+        expect(enabled.indexOf('atri-atria-reference-close')).toBeLessThan(enabled.indexOf('chatHistory'));
         for (const id of ['agentSystemPrompt', 'agentTask', 'agentResults']) expect(enabled).not.toContain(id);
     }
 });

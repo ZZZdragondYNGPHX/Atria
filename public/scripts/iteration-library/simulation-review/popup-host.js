@@ -16,9 +16,9 @@ import { Popup, POPUP_TYPE, POPUP_RESULT } from '../../popup.js';
  */
 export async function openHostPopup({ title, contentRoot, onSubmit, onCancel, i18n, abortSignal }) {
     const wrapper = document.createElement('div');
-    wrapper.className = 'luker-sim-review-wrapper';
+    wrapper.className = 'atria-sim-review-wrapper';
     const titleEl = document.createElement('h1');
-    titleEl.className = 'luker-sim-review-title';
+    titleEl.className = 'atria-sim-review-title';
     titleEl.textContent = title;
     wrapper.appendChild(titleEl);
     wrapper.appendChild(contentRoot);

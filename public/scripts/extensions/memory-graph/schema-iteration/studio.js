@@ -54,7 +54,7 @@
  *   - refreshRootUi(uiRoot)            called after each commit to refresh parent UI
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 import { applyEdits, bindIterWorkspaceResizer, createRenderScheduler, render as ITER_RENDER, runner as ITER_RUNNER, tools as ITER_TOOLS, zoomOverlay as ITER_ZOOM_OVERLAY, ui as ITER_UI, proposalBus as ITER_PROPOSAL_BUS } from '../../../iteration-library/index.js';
@@ -65,7 +65,6 @@ import { buildToolCatalog, normalizeToolCallToEdit, CONTROL_TOOL_NAMES, isMgSche
 import { MG_SCHEMA_TOOL_DISPLAY } from './tool-display.js';
 import { DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT } from './system-prompt.js';
 import { createMgSchemaSessionStore, makeMessageId, normalizeMessageShape } from './session-store.js';
-import { migrateMgSchemaSessionsV2ToSidecar } from './session-migration-v2-to-sidecar.js';
 import { dispatchMgSchemaReadFields } from './read-fields-dispatcher.js';
 import {
     isReplayableIterationMessage,
@@ -498,7 +497,7 @@ function truncateForPreview(str, max = 200) {
 function renderMgSchemaPreviewPane(live, pendingEdits, tFn) {
     const t = typeof tFn === 'function' ? tFn : (s) => String(s ?? '');
     if (!live || (Array.isArray(live) && live.length === 0)) {
-        return `<div class="luker-iter-workspace-preview-empty">${escapeHtmlLocal(t('No schema loaded.'))}</div>`;
+        return `<div class="atria-iter-workspace-preview-empty">${escapeHtmlLocal(t('No schema loaded.'))}</div>`;
     }
     const edits = Array.isArray(pendingEdits) ? pendingEdits : [];
     const changed = computeChangedPathSet(live, edits);
@@ -563,26 +562,26 @@ function renderMgSchemaPreviewPane(live, pendingEdits, tFn) {
     const catBlocks = categories.slice(0, 50).map((cat, idx) => {
         const isChanged = categoryChanged(cat, idx);
         const cls = isChanged
-            ? 'luker-iter-workspace-preview-row pending-change'
-            : 'luker-iter-workspace-preview-row';
+            ? 'atria-iter-workspace-preview-row pending-change'
+            : 'atria-iter-workspace-preview-row';
         const fields = fieldEntries(cat);
         const fieldRows = fields.slice(0, 30).map((f) => {
             const fid = typeof f === 'string' ? f : (f?.id || '');
             const label = typeof f === 'string' ? f : (f?.label || '');
             const type = typeof f === 'string' ? 'string' : (f?.type || '');
             const desc = truncateForPreview(typeof f === 'string' ? '' : (f?.description || ''), 80);
-            return `<div class="luker-iter-workspace-preview-row-body" style="margin:2px 0 2px 12px;">${escapeHtmlLocal(fid)} <span class="luker-iter-workspace-preview-row-meta">[${escapeHtmlLocal(type)}]</span> - ${escapeHtmlLocal(label)}${desc ? `<br><span class="luker-iter-workspace-preview-row-meta">${escapeHtmlLocal(desc)}</span>` : ''}</div>`;
+            return `<div class="atria-iter-workspace-preview-row-body" style="margin:2px 0 2px 12px;">${escapeHtmlLocal(fid)} <span class="atria-iter-workspace-preview-row-meta">[${escapeHtmlLocal(type)}]</span> - ${escapeHtmlLocal(label)}${desc ? `<br><span class="atria-iter-workspace-preview-row-meta">${escapeHtmlLocal(desc)}</span>` : ''}</div>`;
         }).join('');
         const catName = cat?.name || cat?.label || cat?.id || '?';
         const fieldCount = fields.length;
         const fieldsTpl = t('${0} fields');
         const fieldsLabel = String(fieldsTpl).replace(/\$\{(\d+)\}/g, (_, i) => Number(i) === 0 ? String(fieldCount) : '');
-        return `<details class="${cls}"${idx < 5 ? ' open' : ''}><summary><span class="luker-iter-workspace-preview-row-label">${escapeHtmlLocal(catName)}</span> <span class="luker-iter-workspace-preview-row-meta">${escapeHtmlLocal(fieldsLabel)}</span></summary>${fieldRows}</details>`;
+        return `<details class="${cls}"${idx < 5 ? ' open' : ''}><summary><span class="atria-iter-workspace-preview-row-label">${escapeHtmlLocal(catName)}</span> <span class="atria-iter-workspace-preview-row-meta">${escapeHtmlLocal(fieldsLabel)}</span></summary>${fieldRows}</details>`;
     }).join('');
 
     return `
-        <div class="luker-iter-workspace-preview-section">
-            <div class="luker-iter-workspace-preview-section-title">${escapeHtmlLocal(t('Schema'))}</div>
+        <div class="atria-iter-workspace-preview-section">
+            <div class="atria-iter-workspace-preview-section-title">${escapeHtmlLocal(t('Schema'))}</div>
             ${catBlocks}
         </div>
     `;
@@ -636,7 +635,7 @@ function buildPopupHtml({
     resizerAriaLabel,
 }) {
     return `
-<div id="${popupId}" class="mg_schema_it_popup luker-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
+<div id="${popupId}" class="mg_schema_it_popup atria-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
     <div class="mg_schema_it_title">${escapeHtmlLocal(title)}</div>
     <details class="mg_schema_it_history" data-mg-schema-it-history${historyOpen ? ' open' : ''}>
         <summary>${escapeHtmlLocal(historyLabel)}</summary>
@@ -647,18 +646,18 @@ function buildPopupHtml({
         </div>
     </details>
 
-    <div class="luker-iter-workspace-tabs" role="tablist">
-        <button type="button" class="luker-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
-            <span class="luker-iter-workspace-tab-label">${escapeHtmlLocal(chatTabLabel)}</span>
-            <span class="luker-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${escapeHtmlLocal(chatBadgeAriaLabel)}"></span>
+    <div class="atria-iter-workspace-tabs" role="tablist">
+        <button type="button" class="atria-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
+            <span class="atria-iter-workspace-tab-label">${escapeHtmlLocal(chatTabLabel)}</span>
+            <span class="atria-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${escapeHtmlLocal(chatBadgeAriaLabel)}"></span>
         </button>
-        <button type="button" class="luker-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
-            <span class="luker-iter-workspace-tab-label">${escapeHtmlLocal(previewTabLabel)}</span>
+        <button type="button" class="atria-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
+            <span class="atria-iter-workspace-tab-label">${escapeHtmlLocal(previewTabLabel)}</span>
         </button>
     </div>
 
-    <div class="luker-iter-workspace-grid">
-        <div class="luker-iter-workspace-chat" data-iter-pane="chat">
+    <div class="atria-iter-workspace-grid">
+        <div class="atria-iter-workspace-chat" data-iter-pane="chat">
             <div class="mg_schema_it_messages" data-mg-schema-it-messages></div>
             <div class="mg_schema_it_composer">
                 <textarea class="text_pole" rows="2" data-mg-schema-it-input data-iter-input placeholder="${escapeHtmlLocal(composerPlaceholder)}"></textarea>
@@ -673,8 +672,8 @@ function buildPopupHtml({
                 </div>
             </div>
         </div>
-        <div class="luker-iter-workspace-resizer" data-iter-resizer aria-label="${escapeHtmlLocal(resizerAriaLabel)}"></div>
-        <div class="luker-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
+        <div class="atria-iter-workspace-resizer" data-iter-resizer aria-label="${escapeHtmlLocal(resizerAriaLabel)}"></div>
+        <div class="atria-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
     </div>
 </div>`;
 }
@@ -726,7 +725,7 @@ export async function openSchemaIterationStudio(deps) {
     ensureStylesheetInjected();
     // Inject the shared iteration-library/ui stylesheet so renderToolCallChip /
     // renderMessageCard / renderDiffCard / renderApplyControls pick up their
-    // `luker_lib_*` styles. Idempotent (id-keyed); shared across all four
+    // `atria_lib_*` styles. Idempotent (id-keyed); shared across all four
     // iter-library popups.
     ITER_UI.ensureUiStylesheetInjected();
 
@@ -761,16 +760,6 @@ export async function openSchemaIterationStudio(deps) {
         },
         ctx: context,
     });
-    try {
-        await migrateMgSchemaSessionsV2ToSidecar({
-            settingsRoot: settings,
-            ctx: context,
-            persistSettings: () => { try { saveSettings(); } catch { /* ignore */ } },
-        });
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn('[memory-graph schema-iteration] V2-to-sidecar migration threw, continuing', err);
-    }
     await sessionStore.clearObsolete();
 
     // Prime markdown deps so the first paint has formatted messages
@@ -1485,12 +1474,12 @@ export async function openSchemaIterationStudio(deps) {
     // wrapper around the shared component, because studio.css's flex-row
     // alignment / accent colors / max-widths key on
     // `.mg_schema_it_msg_user` / `_assistant` / `_system`. The inner
-    // `<div class="luker_lib_message ...">` carries the rest of the
+    // `<div class="atria_lib_message ...">` carries the rest of the
     // structure (markdown body, read-only-round hint when all calls are
     // read-type, tool chips, edit cards via renderPendingEditCard,
     // applied/rolled-back stamp, Regenerate button). Click delegation
     // accepts msgId from either `data-mg-schema-it-msg-id` (outer) or
-    // `data-luker-lib-msg-id` (inner).
+    // `data-atria-lib-msg-id` (inner).
     // ──────────────────────────────────────────────────────────────────
     function renderMessageCard(message, idx, allMessages) {
         if (!message) return '';
@@ -1660,7 +1649,7 @@ export async function openSchemaIterationStudio(deps) {
             // eslint-disable-next-line no-console
             console.warn(`[${MODULE}] preview render failed`, err);
             $root.find('[data-iter-preview-pane]').html(
-                `<div class="luker-iter-workspace-preview-empty">${escapeHtmlLocal(t('Preview unavailable'))}</div>`,
+                `<div class="atria-iter-workspace-preview-empty">${escapeHtmlLocal(t('Preview unavailable'))}</div>`,
             );
         }
     }
@@ -2539,14 +2528,14 @@ export async function openSchemaIterationStudio(deps) {
     // Per-message Regenerate / Rollback. Both buttons are rendered by
     // `iteration-library/ui/message.renderMessageCard`, which emits them
     // with `data-mg-schema-it-action="regenerate"` / `="rollback-batch"`
-    // (via the actionAttribute opt) and `data-luker-lib-msg-id="..."`.
+    // (via the actionAttribute opt) and `data-atria-lib-msg-id="..."`.
     // The msgId resolver accepts both attribute names so a future
     // MG-only override that still tags `data-mg-schema-it-msg-id`
     // keeps working.
     function resolveMsgId(target) {
         if (!target) return '';
-        // dataset is camelCase: mgSchemaItMsgId / lukerLibMsgId
-        return String(target.dataset?.mgSchemaItMsgId || target.dataset?.lukerLibMsgId || '');
+        // dataset is camelCase: mgSchemaItMsgId / atriaLibMsgId
+        return String(target.dataset?.mgSchemaItMsgId || target.dataset?.atriaLibMsgId || '');
     }
     $root.on('click.mgSchemaIt', '[data-mg-schema-it-action="regenerate"]', async (e) => {
         e.preventDefault();

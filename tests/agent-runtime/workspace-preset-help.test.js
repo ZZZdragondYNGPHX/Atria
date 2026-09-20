@@ -7,7 +7,7 @@ import { jest, test, expect, beforeEach } from '@jest/globals';
 globalThis.structuredClone = value => deserialize(serialize(value));
 globalThis.crypto.randomUUID = randomUUID;
 globalThis.matchMedia = () => ({ matches: true });
-globalThis.Luker = { getContext: () => ({ constants: { promptRoles: {}, wiPosition: {} }, translate: text => text, addLocaleData: () => {} }) };
+globalThis.Atria = { getContext: () => ({ constants: { promptRoles: {}, wiPosition: {} }, translate: text => text, addLocaleData: () => {} }) };
 window.eval(fs.readFileSync(new URL('../../public/lib/jquery-3.5.1.min.js', import.meta.url), 'utf8'));
 globalThis.$ = window.jQuery;
 globalThis.toastr = { success: jest.fn(), info: jest.fn(), error: jest.fn() };
@@ -44,7 +44,7 @@ test('Agenda help imports into native draft fields without changing the main RP 
     const settings = { agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: createWorkspaceFactoryPreset('agenda', 'test-agenda') }) };
     const render = createPresetAuthoring({ getSettings: () => settings, save: jest.fn(), getScope: () => ({}), renderPresetHelp: renderPresetHelpButton });
     render(document.body, ui);
-    const buttons = [...document.querySelectorAll('.luker-preset-help')];
+    const buttons = [...document.querySelectorAll('.atria-preset-help')];
     expect(buttons).toHaveLength(8); // global fallback + planner + six workers
     expect(document.querySelector('[aria-label="Default prompt preset"]').value).toBe('');
     for (const [index, name, url] of [[1, 'Atri-plugin-only', '/presets/plugin-only.json'], [2, 'Atri-agenda-agent', '/presets/agent-non-director.json']]) {
@@ -55,7 +55,7 @@ test('Agenda help imports into native draft fields without changing the main RP 
         expect(fetch).toHaveBeenLastCalledWith(url);
         expect(manager.savePreset).toHaveBeenLastCalledWith(name, expect.objectContaining({ name }), { skipUpdate: true });
         expect(manager.updateList).toHaveBeenLastCalledWith(name, expect.objectContaining({ name }), { select: false });
-        expect(document.getElementById(buttons[index].dataset.lukerPresetHelpFor).value).toBe(name);
+        expect(document.getElementById(buttons[index].dataset.atriaPresetHelpFor).value).toBe(name);
     }
     [...document.querySelectorAll('button')].find(b => b.textContent === 'Save definition for future runs').click();
     const agents = settings.agentWorkspace.presets[0].planTemplate.agents;
@@ -68,7 +68,7 @@ test('Agenda help imports into native draft fields without changing the main RP 
 test('Director help retains its separate preset', () => {
     const settings = { agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: createWorkspaceFactoryPreset('director', 'test-director') }) };
     createPresetAuthoring({ getSettings: () => settings, save: jest.fn(), getScope: () => ({}), renderPresetHelp: renderPresetHelpButton })(document.body, ui);
-    const button = document.querySelector('.workspace-agent .luker-preset-help');
+    const button = document.querySelector('.workspace-agent .atria-preset-help');
     button.click();
     expect(popups.at(-1).options.customButtons[0].text).toBe('Import agent-director preset');
 });

@@ -16,7 +16,7 @@ function userRoot(dataRoot, handle = 'default-user') {
 
 /**
  * Write a v2 character card JSON next to a copied avatar PNG.
- * Returns the avatar filename (which is the character's id in Luker).
+ * Returns the avatar filename (which is the character's id in Atria).
  *
  * @param {object} opts
  * @param {string} opts.dataRoot
@@ -28,8 +28,8 @@ export function writeCharacter({ dataRoot, handle = 'default-user', avatarFile =
     const charsDir = resolve(userRoot(dataRoot, handle), 'characters');
     mkdirSync(charsDir, { recursive: true });
     // Use a real PNG byte stream from the bundled Seraphina sample so the
-    // file passes Luker's PNG validation; the embedded card data lives in
-    // a sidecar JSON which Luker honors for non-embedded edits.
+    // file passes Atria's PNG validation; the embedded card data lives in
+    // a sidecar JSON which Atria honors for non-embedded edits.
     const seed = resolve(REPO_ROOT, 'default/content/default_Seraphina.png');
     const target = resolve(charsDir, avatarFile);
     copyFileSync(seed, target);
@@ -51,13 +51,13 @@ export function writeCharacter({ dataRoot, handle = 'default-user', avatarFile =
         ],
         character_book: undefined,
         tags: ['rp', 'fixture'],
-        creator: 'luker-e2e',
+        creator: 'atria-e2e',
         character_version: '1.0',
         extensions: {},
         ...overrides,
     };
 
-    // Luker characters endpoint reads JSON from disk via PNG metadata,
+    // Atria characters endpoint reads JSON from disk via PNG metadata,
     // but for v2 cards a sidecar `<avatar>.json` is also recognized.
     writeFileSync(resolve(charsDir, avatarFile.replace(/\.png$/, '.json')), JSON.stringify(card, null, 2));
     return avatarFile;
@@ -283,7 +283,7 @@ export function bootstrapResponsesBackend({ dataRoot, handle = 'default-user', b
     ext.connectionManager.selectedProfile = null;
     writeFileSync(settingsPath, JSON.stringify(s, null, 4));
 
-    // Seed the provider secret on disk in Luker's multi-secret array shape
+    // Seed the provider secret on disk in Atria's multi-secret array shape
     // ({id,value,label,active}) — the SecretManager only reports a key as
     // "saved" when it finds a non-empty array, which the client's Connect
     // handler gates on before probing /status.
@@ -364,7 +364,7 @@ export function markOnboarded({ dataRoot, handle = 'default-user' }) {
 }
 
 /**
- * Wire the mock LLM's `/v1/embeddings` endpoint into Luker's vector pipeline.
+ * Wire the mock LLM's `/v1/embeddings` endpoint into Atria's vector pipeline.
  *
  * Adds a Connection-Manager embed profile (`source: 'openai'` with
  * `api-url` pointing at the mock) and patches the vectors / memory-graph
@@ -373,7 +373,7 @@ export function markOnboarded({ dataRoot, handle = 'default-user' }) {
  *   - `extension_settings.memory_graph.embeddingProfileId` selects the
  *     same profile (so MG's `vectorSearch` / `syncVectorIndex` resolve it)
  *
- * NB: Luker's settings.json uses `extension_settings` (snake_case) as the
+ * NB: Atria's settings.json uses `extension_settings` (snake_case) as the
  * persisted key — the client hydrates `extension_settings` from
  * `settings.extension_settings` on load and serializes back to the same
  * key on save. Earlier fixtures (`appendConnectionProfile`) wrote to a

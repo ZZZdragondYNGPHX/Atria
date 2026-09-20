@@ -4,7 +4,7 @@
 //   1. Pin executionMode='loop' so the orchestrator panel shows the loop board.
 //   2. Open the orchestrator iter-studio popup (extensions drawer → orch panel
 //      → "Open AI Iteration Studio" — the visible trigger under the loop panel).
-//   3. Script `luker_orch_set_loop_profile` on the mock with a new system_prompt.
+//   3. Script `atri_orch_set_loop_profile` on the mock with a new system_prompt.
 //   4. Click Send via sendIterPrompt; wait for an Approve affordance.
 //   5. Click Apply via applyIterBatch (real click).
 //   6. Close popup. Verify both:
@@ -93,7 +93,7 @@ test.describe('#86 — Orchestrator iter-studio LOOP mode Apply persists across 
         // Only system_prompt is changed; every other loop-profile field is
         // omitted so the patch helper preserves them.
         mock.scriptToolCall({
-            name: 'luker_orch_set_loop_profile',
+            name: 'atri_orch_set_loop_profile',
             arguments: { system_prompt: NEW_LOOP_SYSTEM_PROMPT },
         });
 
@@ -106,7 +106,7 @@ test.describe('#86 — Orchestrator iter-studio LOOP mode Apply persists across 
         // In-memory: active loop preset slot has the new system_prompt.
         await expect.poll(async () => {
             return await page.evaluate(() => {
-                const ctx = window.Luker.getContext();
+                const ctx = window.Atria.getContext();
                 const s = ctx.extensionSettings.orchestrator;
                 const activeId = s?.activePresetIds?.loop || '';
                 return s?.presetLibraries?.loop?.[activeId]?.system_prompt || '';
@@ -125,7 +125,7 @@ test.describe('#86 — Orchestrator iter-studio LOOP mode Apply persists across 
         expect(afterRestart.system_prompt).toBe(NEW_LOOP_SYSTEM_PROMPT);
 
         const inMem = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const s = ctx.extensionSettings.orchestrator;
             const activeId = s?.activePresetIds?.loop || '';
             return s?.presetLibraries?.loop?.[activeId]?.system_prompt || '';

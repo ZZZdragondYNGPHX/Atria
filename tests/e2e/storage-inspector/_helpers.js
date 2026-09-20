@@ -2,7 +2,7 @@
 // enough content to exercise every top-level category (chats + sidecars,
 // worldbooks, backgrounds image, secrets.json, backups, vectors) while
 // staying in-character: chat filenames read as dated user chat history,
-// character names are stock Luker demo names, worldbooks are named after
+// character names are stock Atria demo names, worldbooks are named after
 // the existing `bryn-headland` demo fixture so screenshots don't read as
 // scaffolding.
 //
@@ -34,7 +34,7 @@ export async function seedFixtureUser(dataRoot, handle) {
 
     // chats: 3 characters × 2 dated chats each, each chat carrying a
     // metadata line + 8 message lines, plus two sidecar files per chat
-    // (memory graph + orchestrator anchors — Luker's most common sidecars).
+    // (memory graph + orchestrator anchors — Atria's most common sidecars).
     for (const char of ['default_Seraphina', 'default_Coding', 'default_Alice']) {
         for (const day of ['2024-01-15', '2024-02-20']) {
             const chatName = `Chat ${day}`;
@@ -44,9 +44,9 @@ export async function seedFixtureUser(dataRoot, handle) {
             ).join('\n');
             await w(`chats/${char}/${chatName}.jsonl`,
                 JSON.stringify(meta) + '\n' + msgs + '\n');
-            await w(`chats/${char}/${chatName}.luker-state.memory_graph__floor_log.json`,
+            await w(`chats/${char}/${chatName}.atria-state.memory_graph__floor_log.json`,
                 JSON.stringify({ nodes: Array.from({ length: 15 }) }));
-            await w(`chats/${char}/${chatName}.luker-state.luker_orchestrator_anchors__floor_log.json`,
+            await w(`chats/${char}/${chatName}.atria-state.atri_orchestrator_anchors__floor_log.json`,
                 JSON.stringify({ anchors: Array.from({ length: 50 }) }));
         }
     }

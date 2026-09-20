@@ -3,7 +3,7 @@ import {
     getTaskByRequestId,
     failGenerationJob,
     getActiveGenerationJobsForRequest,
-} from './backends/luker-generation.js';
+} from './backends/atria-generation.js';
 
 /**
  * Router for out-of-band control over in-flight generation jobs. Mounted

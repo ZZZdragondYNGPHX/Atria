@@ -75,7 +75,7 @@ export function writeCharacterWithChunks({
             '*Ash is already at the rail when you arrive, spyglass to her eye.* "Hold. Don\'t speak for a moment."',
         ],
         tags: ['rp', 'fixture'],
-        creator: 'luker-e2e',
+        creator: 'atria-e2e',
         character_version: '1.0',
         extensions: {},
         ...overrides,

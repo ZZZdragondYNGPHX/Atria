@@ -5,7 +5,7 @@
 //   (a) chat-completions.js  — CUSTOM source (OpenAI-compatible)
 //   (b) text-completions.js  — main_api=textgenerationwebui (GENERIC type)
 //   (c) kobold.js            — main_api=kobold
-//   (d) luker-generation.js  — verifies the job-tracking sidecar is reachable
+//   (d) atria-generation.js  — verifies the job-tracking sidecar is reachable
 //                              (status / events queries against a known job)
 //
 // The shared OpenAI mock is reused for (a). Per-spec http mocks are spun up
@@ -131,7 +131,7 @@ test.describe('#41 — four backend sources reachable', () => {
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, 'Seraphina');
         await page.waitForFunction(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return Array.isArray(ctx.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -211,20 +211,20 @@ test.describe('#41 — four backend sources reachable', () => {
         expect(hit, `kobold backend should reach the mock; instead requests=${JSON.stringify(koboldMock.requests.map(r => r.url))} status=${result.status} body=${result.text?.slice(0,200)}`).toBeTruthy();
     });
 
-    test('(d) luker-generation sidecar — job tracker reachable via chat-completions/jobs/active', async ({ page }) => {
-        // luker-generation.js has no router of its own; it surfaces through the
+    test('(d) atria-generation sidecar — job tracker reachable via chat-completions/jobs/active', async ({ page }) => {
+        // atria-generation.js has no router of its own; it surfaces through the
         // chat-completions /jobs/* endpoints (and the equivalents on kobold and
         // text-completions). The "activation" is to mint a generation job by
         // dispatching a normal CC turn, then verify the job lookup endpoint
         // responds and reflects the request.
         //
-        // Investigated: src/endpoints/backends/luker-generation.js exports
+        // Investigated: src/endpoints/backends/atria-generation.js exports
         // create/attach/forward helpers consumed by all three backend routers;
         // its routes live on chat-completions.js line 2045 (/jobs/status),
         // 2074 (/jobs/events), 2106 (/jobs/active), 2126 (/jobs/events-stream).
         await awaitMainUI(page, server.baseURL);
         await selectCharacterByName(page, 'Seraphina');
-        ccMock.scriptReply('*Ash answers — luker-gen path.* "Hold the lantern higher."');
+        ccMock.scriptReply('*Ash answers — atria-gen path.* "Hold the lantern higher."');
 
         await sendMessageAndAwaitReply(page, 'I will hold here until the tide turns.');
 

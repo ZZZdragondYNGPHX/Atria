@@ -1,7 +1,7 @@
 /**
- * Bind a column resizer to a `.luker-iter-workspace-grid` root.
+ * Bind a column resizer to a `.atria-iter-workspace-grid` root.
  * Caller passes the popup root element; we listen for pointerdown on
- * `.luker-iter-workspace-resizer` inside and adjust `--luker-iter-split`
+ * `.atria-iter-workspace-resizer` inside and adjust `--atria-iter-split`
  * inline-style on the grid wrapper.
  *
  * Split state is NOT persisted — every popup open starts at 50%.
@@ -9,8 +9,8 @@
  * Returns an unbind function for cleanup on popup close.
  */
 export function bindIterWorkspaceResizer(workspaceRoot) {
-    const grid = workspaceRoot?.querySelector?.('.luker-iter-workspace-grid');
-    const splitter = workspaceRoot?.querySelector?.('.luker-iter-workspace-resizer');
+    const grid = workspaceRoot?.querySelector?.('.atria-iter-workspace-grid');
+    const splitter = workspaceRoot?.querySelector?.('.atria-iter-workspace-resizer');
     if (!grid || !splitter) return () => {};
 
     let pointerId = null;
@@ -23,7 +23,7 @@ export function bindIterWorkspaceResizer(workspaceRoot) {
         if (!bounds) return;
         const percent = ((clientX - bounds.left) / bounds.width) * 100;
         const clamped = Math.max(minPercent, Math.min(maxPercent, percent));
-        grid.style.setProperty('--luker-iter-split', `${clamped}%`);
+        grid.style.setProperty('--atria-iter-split', `${clamped}%`);
     }
 
     function onPointerMove(e) {

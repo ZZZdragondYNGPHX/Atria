@@ -3,7 +3,7 @@
  * `## Open Notes` block into every orchestration agent's prompt stack.
  *
  * All four orchestration modes (loop / director / spec / agenda) share
- * one persistent notes store per chat (`luker_orch_loop_notes`
+ * one persistent notes store per chat (`atri_orch_loop_notes`
  * floor-state namespace, mounted by `loop-runtime.attachNotesFloorState`
  * onto `context.__floorStateForNotes`). The visibility rule is uniform:
  *

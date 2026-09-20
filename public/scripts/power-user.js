@@ -42,7 +42,7 @@ import {
     isKeepAliveSupported,
     onKeepAliveStateChanged,
     setKeepAliveMode,
-} from './luker-keep-alive.js';
+} from './atria-keep-alive.js';
 import {
     groups,
     resetSelectedGroup,
@@ -78,7 +78,7 @@ import { DEFAULT_REASONING_TEMPLATE, loadReasoningTemplates } from './reasoning.
 import { bindModelTemplates } from './chat-templates.js';
 import { IMAGE_OVERSWIPE, MEDIA_DISPLAY } from './constants.js';
 import { setFrontendConsoleDebugLoggingEnabled } from './frontend-log-manager.js';
-import { setAndroidDebugRecordingEnabled, isAndroidDebugTrailAvailable, getAndroidDebugRecordingActualState } from './luker-android-debug-trail.js';
+import { setAndroidDebugRecordingEnabled, isAndroidDebugTrailAvailable, getAndroidDebugRecordingActualState } from './atria-android-debug-trail.js';
 import { t } from './i18n.js';
 import { getBackgroundPath, isCustomBackgroundUrl } from './backgrounds.js';
 import { downloadCurrentSelfProfileReport, setSelfProfilerPreference, syncSelfProfilerEnabled } from './self-profiler.js';
@@ -232,8 +232,8 @@ export const power_user = {
     allow_name2_display: false,
     immersive_mode_last_state: false,
     immersive_mode_keep_top_bar: false,
-    luker_mobile_keep_alive_android_enabled: false,
-    luker_mobile_keep_alive_web_audio_enabled: false,
+    atria_mobile_keep_alive_android_enabled: false,
+    atria_mobile_keep_alive_web_audio_enabled: false,
     hotswap_enabled: true,
     timer_enabled: true,
     timestamps_enabled: true,
@@ -464,21 +464,21 @@ function canUseBrowserNotifications() {
 
 function canUseAndroidBridgeNotifications() {
     return typeof window !== 'undefined'
-        && typeof window.LukerAndroid === 'object'
-        && typeof window.LukerAndroid.notifyMessageFinished === 'function';
+        && typeof window.AtriaAndroid === 'object'
+        && typeof window.AtriaAndroid.notifyMessageFinished === 'function';
 }
 
 function canUseAndroidBridgeProgressNotifications() {
     return typeof window !== 'undefined'
-        && typeof window.LukerAndroid === 'object'
-        && typeof window.LukerAndroid.notifyMessageProgress === 'function'
-        && typeof window.LukerAndroid.clearMessageProgressNotification === 'function';
+        && typeof window.AtriaAndroid === 'object'
+        && typeof window.AtriaAndroid.notifyMessageProgress === 'function'
+        && typeof window.AtriaAndroid.clearMessageProgressNotification === 'function';
 }
 
 function canUseAndroidSystemBarsColorBridge() {
     return typeof window !== 'undefined'
-        && typeof window.LukerAndroid === 'object'
-        && typeof window.LukerAndroid.setSystemBarsColor === 'function';
+        && typeof window.AtriaAndroid === 'object'
+        && typeof window.AtriaAndroid.setSystemBarsColor === 'function';
 }
 
 function syncAndroidSystemBarsColor() {
@@ -490,7 +490,7 @@ function syncAndroidSystemBarsColor() {
         return;
     }
     try {
-        window.LukerAndroid.setSystemBarsColor(statusBarColor, statusBarColor);
+        window.AtriaAndroid.setSystemBarsColor(statusBarColor, statusBarColor);
     } catch (error) {
         console.warn('Failed to sync Android system bars color via bridge', error);
     }
@@ -502,11 +502,11 @@ function syncMobileKeepAliveCheckbox() {
     // session is only built up during generations, but the checkbox should
     // stay checked across idle gaps.
     const checked = platform === 'android'
-        ? !!power_user.luker_mobile_keep_alive_android_enabled
+        ? !!power_user.atria_mobile_keep_alive_android_enabled
         : platform === 'web'
-            ? !!power_user.luker_mobile_keep_alive_web_audio_enabled || getActiveKeepAliveMode() === 'pip'
+            ? !!power_user.atria_mobile_keep_alive_web_audio_enabled || getActiveKeepAliveMode() === 'pip'
             : false;
-    $('#luker_mobile_keep_alive').prop('checked', checked);
+    $('#atria_mobile_keep_alive').prop('checked', checked);
 }
 
 // Audio keep-alive is event-driven: while the audio setting is enabled,
@@ -522,7 +522,7 @@ let audioDeactivateTimer = null;
 
 function isAudioKeepAliveSettingEnabled() {
     return getKeepAlivePlatform() === 'web'
-        && !!power_user.luker_mobile_keep_alive_web_audio_enabled;
+        && !!power_user.atria_mobile_keep_alive_web_audio_enabled;
 }
 
 function audioActivationSync() {
@@ -534,7 +534,7 @@ function audioActivationSync() {
         }
         if (getActiveKeepAliveMode() !== 'audio') {
             setKeepAliveMode('audio').catch((error) => {
-                console.warn('[Luker] Failed to enter audio keep-alive', error);
+                console.warn('[Atria] Failed to enter audio keep-alive', error);
             });
         }
     } else if (!audioDeactivateTimer) {
@@ -543,7 +543,7 @@ function audioActivationSync() {
             if (audioActivationCount > 0) return;
             if (getActiveKeepAliveMode() === 'audio') {
                 setKeepAliveMode('off').catch((error) => {
-                    console.warn('[Luker] Failed to exit audio keep-alive', error);
+                    console.warn('[Atria] Failed to exit audio keep-alive', error);
                 });
             }
         }, AUDIO_DEACTIVATE_GRACE_MS);
@@ -599,7 +599,7 @@ function syncMobileKeepAliveUi() {
     // and showing a MediaSession card, with no UI to turn it off. Skip init
     // entirely on non-mobile so the persisted flag is inert off-device.
     if (!isMobile()) {
-        $('#luker_mobile_keep_alive').closest('label.checkbox_label').hide();
+        $('#atria_mobile_keep_alive').closest('label.checkbox_label').hide();
         return;
     }
 
@@ -615,7 +615,7 @@ function syncMobileKeepAliveUi() {
             const active = getActiveKeepAliveMode();
             const platform = getKeepAlivePlatform();
             if (platform === 'android') {
-                power_user.luker_mobile_keep_alive_android_enabled = active === 'android';
+                power_user.atria_mobile_keep_alive_android_enabled = active === 'android';
                 saveSettingsDebounced();
             }
             syncMobileKeepAliveCheckbox();
@@ -623,7 +623,7 @@ function syncMobileKeepAliveUi() {
         syncMobileKeepAliveUi._initialized = true;
     }
     const supported = isKeepAliveSupported();
-    const $row = $('#luker_mobile_keep_alive').closest('label.checkbox_label');
+    const $row = $('#atria_mobile_keep_alive').closest('label.checkbox_label');
     $row.toggle(supported);
     syncMobileKeepAliveCheckbox();
 
@@ -634,13 +634,13 @@ function syncMobileKeepAliveUi() {
     // Android bridge accepts toggling without a user gesture: restore immediately.
     if (
         platform === 'android'
-        && power_user.luker_mobile_keep_alive_android_enabled
+        && power_user.atria_mobile_keep_alive_android_enabled
         && getActiveKeepAliveMode() !== 'android'
     ) {
         setKeepAliveMode('android')
             .then(syncMobileKeepAliveCheckbox)
             .catch((error) => {
-                console.warn('[Luker] Failed to restore Android background keep-alive', error);
+                console.warn('[Atria] Failed to restore Android background keep-alive', error);
             });
     }
 }
@@ -681,10 +681,10 @@ async function applyMobileKeepAliveFromUser(checked) {
         try { await setKeepAliveMode('off'); } catch (_) { /* noop */ }
         const platform = getKeepAlivePlatform();
         if (platform === 'android') {
-            power_user.luker_mobile_keep_alive_android_enabled = false;
+            power_user.atria_mobile_keep_alive_android_enabled = false;
             saveSettingsDebounced();
         } else if (platform === 'web') {
-            power_user.luker_mobile_keep_alive_web_audio_enabled = false;
+            power_user.atria_mobile_keep_alive_web_audio_enabled = false;
             saveSettingsDebounced();
         }
         syncMobileKeepAliveCheckbox();
@@ -694,11 +694,11 @@ async function applyMobileKeepAliveFromUser(checked) {
     if (getKeepAlivePlatform() === 'android') {
         try {
             await setKeepAliveMode('android');
-            power_user.luker_mobile_keep_alive_android_enabled = true;
+            power_user.atria_mobile_keep_alive_android_enabled = true;
             saveSettingsDebounced();
         } catch (error) {
-            console.warn('[Luker] Failed to enable Android keep-alive', error);
-            power_user.luker_mobile_keep_alive_android_enabled = false;
+            console.warn('[Atria] Failed to enable Android keep-alive', error);
+            power_user.atria_mobile_keep_alive_android_enabled = false;
             saveSettingsDebounced();
         }
         syncMobileKeepAliveCheckbox();
@@ -717,17 +717,17 @@ async function applyMobileKeepAliveFromUser(checked) {
     if (desired === 'pip') {
         try {
             await setKeepAliveMode('pip');
-            power_user.luker_mobile_keep_alive_web_audio_enabled = false;
+            power_user.atria_mobile_keep_alive_web_audio_enabled = false;
             saveSettingsDebounced();
         } catch (_error) {
-            power_user.luker_mobile_keep_alive_web_audio_enabled = false;
+            power_user.atria_mobile_keep_alive_web_audio_enabled = false;
             saveSettingsDebounced();
             toastr.warning(t`Background keep-alive could not be enabled. Try again from a tap on the page.`);
         }
     } else {
         // audio: just flag the setting on. The next GENERATION_STARTED enters
         // audio mode automatically; nothing should happen right now.
-        power_user.luker_mobile_keep_alive_web_audio_enabled = true;
+        power_user.atria_mobile_keep_alive_web_audio_enabled = true;
         saveSettingsDebounced();
     }
     syncMobileKeepAliveCheckbox();
@@ -835,7 +835,7 @@ function clearDisplayedMessageProgressNotification() {
 
     if (canUseAndroidBridgeProgressNotifications()) {
         try {
-            window.LukerAndroid.clearMessageProgressNotification();
+            window.AtriaAndroid.clearMessageProgressNotification();
         } catch (error) {
             console.warn('Failed to clear Android progress notification via bridge', error);
         }
@@ -853,7 +853,7 @@ function maybeShowMessageProgressNotification() {
         return;
     }
 
-    const title = t`Luker`;
+    const title = t`Atria`;
     const body = buildMessageProgressNotificationBody();
     const speakerName = resolveNotificationSpeakerName(messageProgressSpeakerHint);
     const bodyWithSpeaker = speakerName ? `${speakerName}: ${body}` : body;
@@ -863,7 +863,7 @@ function maybeShowMessageProgressNotification() {
             closeActiveMessageProgressNotification();
             const notification = new Notification(title, {
                 body: bodyWithSpeaker,
-                tag: 'luker-generation-progress',
+                tag: 'atria-generation-progress',
                 renotify: false,
             });
             notification.onclick = () => window.focus();
@@ -875,7 +875,7 @@ function maybeShowMessageProgressNotification() {
 
     if (canUseAndroidBridgeProgressNotifications()) {
         try {
-            window.LukerAndroid.notifyMessageProgress(title, bodyWithSpeaker);
+            window.AtriaAndroid.notifyMessageProgress(title, bodyWithSpeaker);
         } catch (error) {
             console.warn('Failed to show Android progress notification via bridge', error);
         }
@@ -909,7 +909,7 @@ export function notifyMessageComplete(messageText = '', assistantName = '') {
         return;
     }
 
-    const title = t`Luker`;
+    const title = t`Atria`;
     const body = buildMessageNotificationBody(messageText);
     const speakerName = resolveNotificationSpeakerName(assistantName);
     const bodyWithSpeaker = speakerName ? `${speakerName}: ${body}` : body;
@@ -918,7 +918,7 @@ export function notifyMessageComplete(messageText = '', assistantName = '') {
         try {
             const notification = new Notification(title, {
                 body: bodyWithSpeaker,
-                tag: 'luker-generation-complete',
+                tag: 'atria-generation-complete',
                 renotify: true,
             });
             notification.onclick = () => window.focus();
@@ -930,7 +930,7 @@ export function notifyMessageComplete(messageText = '', assistantName = '') {
 
     if (canUseAndroidBridgeNotifications()) {
         try {
-            window.LukerAndroid.notifyMessageFinished(title, bodyWithSpeaker);
+            window.AtriaAndroid.notifyMessageFinished(title, bodyWithSpeaker);
         } catch (error) {
             console.warn('Failed to show Android notification via bridge', error);
         }
@@ -948,7 +948,7 @@ export function notifyMessageFailure(errorText = '', assistantName = '') {
         return;
     }
 
-    const title = t`Luker`;
+    const title = t`Atria`;
     const body = buildMessageFailureNotificationBody(errorText);
     const speakerName = resolveNotificationSpeakerName(assistantName);
     const bodyWithSpeaker = speakerName ? `${speakerName}: ${body}` : body;
@@ -957,7 +957,7 @@ export function notifyMessageFailure(errorText = '', assistantName = '') {
         try {
             const notification = new Notification(title, {
                 body: bodyWithSpeaker,
-                tag: 'luker-generation-failed',
+                tag: 'atria-generation-failed',
                 renotify: true,
             });
             notification.onclick = () => window.focus();
@@ -969,7 +969,7 @@ export function notifyMessageFailure(errorText = '', assistantName = '') {
 
     if (canUseAndroidBridgeNotifications()) {
         try {
-            window.LukerAndroid.notifyMessageFinished(title, bodyWithSpeaker);
+            window.AtriaAndroid.notifyMessageFinished(title, bodyWithSpeaker);
         } catch (error) {
             console.warn('Failed to show Android notification via bridge', error);
         }
@@ -1660,10 +1660,10 @@ function applyToastrPosition() {
 }
 
 function shouldForceAndroidFullWidthChatLayout() {
-    // The LukerAndroid bridge is authoritative: when we're inside the app shell,
+    // The AtriaAndroid bridge is authoritative: when we're inside the app shell,
     // collapse sheld to full width so it doesn't render as a narrow desktop column
     // on WebView builds that mis-report viewport size.
-    return typeof window !== 'undefined' && typeof window.LukerAndroid === 'object';
+    return typeof window !== 'undefined' && typeof window.AtriaAndroid === 'object';
 }
 
 function getAppliedChatWidthValue() {
@@ -2067,7 +2067,7 @@ async function showDebugMenu() {
 export function applyPowerUserSettings() {
     setFrontendConsoleDebugLoggingEnabled(power_user.frontend_debug_logging, { announce: false });
     // Do NOT push power_user.android_debug_recording down to native here.
-    // The native side owns this pref (LukerAndroidDebugConfig) and we
+    // The native side owns this pref (AtriaAndroidDebugConfig) and we
     // read it back to keep the JS setting and checkbox honest — pushing
     // would silently disable recording after a renderer crash that
     // happens before saveSettingsDebounced() flushes the enable action
@@ -2315,7 +2315,7 @@ export async function loadPowerUserSettings(settings, data) {
     $('#frontend_debug_logging').prop('checked', power_user.frontend_debug_logging);
     $('#android_debug_recording').prop('checked', !!power_user.android_debug_recording);
     if (!isAndroidDebugTrailAvailable()) {
-        document.documentElement.classList.add('luker-no-android');
+        document.documentElement.classList.add('atria-no-android');
     }
     $('#self_profiling_enabled').prop('checked', power_user.self_profiling_enabled);
     $('#console_log_prompts').prop('checked', power_user.console_log_prompts);
@@ -2473,7 +2473,7 @@ export async function loadPowerUserSettings(settings, data) {
     applyToastrPosition();
 
     if (power_user.immersive_mode_last_state) {
-        const alreadyOn = document.body.classList.contains('luker-immersive-mode');
+        const alreadyOn = document.body.classList.contains('atria-immersive-mode');
         if (!alreadyOn) {
             void setImmersiveMode(true, { useFullscreen: false, persist: false });
         }
@@ -4524,13 +4524,13 @@ jQuery(() => {
     $('#immersiveKeepTopBar').on('input', function () {
         const value = !!$(this).prop('checked');
         power_user.immersive_mode_keep_top_bar = value;
-        if (document.body.classList.contains('luker-immersive-mode')) {
-            document.body.classList.toggle('luker-immersive-keep-top-bar', value);
+        if (document.body.classList.contains('atria-immersive-mode')) {
+            document.body.classList.toggle('atria-immersive-keep-top-bar', value);
         }
         saveSettingsDebounced();
     });
 
-    $('#luker_mobile_keep_alive').on('change', function () {
+    $('#atria_mobile_keep_alive').on('change', function () {
         const desired = !!$(this).prop('checked');
         applyMobileKeepAliveFromUser(desired);
     });

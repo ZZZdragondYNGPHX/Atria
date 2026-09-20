@@ -49,7 +49,7 @@ export function readSelectedPresetRef({ selectValue, fallbackName } = {}) {
     // Global path. A raw value that starts with the sentinel but failed to
     // decode is malformed and never a valid global preset name — prefer
     // the fallback to avoid surfacing sentinel text as a preset name.
-    const isMalformedSentinel = raw.startsWith('__luker_card__::');
+    const isMalformedSentinel = raw.startsWith('__atria_card__::');
     const globalName = isMalformedSentinel ? fallback : (fallback || raw);
     return { name: globalName, origin: { kind: 'global' } };
 }

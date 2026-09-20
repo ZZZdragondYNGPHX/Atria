@@ -7,10 +7,10 @@ describe('SqliteEngine scaffolding', () => {
     let tmpDir, dbPath, engine;
     const handle = 'u';
     beforeEach(() => {
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sqlite-'));
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sqlite-'));
         const userDir = path.join(tmpDir, handle);
         fs.mkdirSync(userDir, { recursive: true });
-        dbPath = path.join(userDir, 'luker-storage.sqlite');
+        dbPath = path.join(userDir, 'atria-storage.sqlite');
         engine = new SqliteEngine({
             directoriesByHandle: (h) => ({ root: userDir }),
         });

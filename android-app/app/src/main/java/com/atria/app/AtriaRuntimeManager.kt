@@ -482,7 +482,7 @@ object AtriaRuntimeManager {
     /**
      * Releases the prebuilt frontend Webpack bundles that the APK packager
      * generated under `assets/_prebuilt-bundles/` into the runtime root. The
-     * server resolves them via the `LUKER_PREBUILT_BUNDLES_DIR` env var so the
+     * server resolves them via the `ATRIA_PREBUILT_BUNDLES_DIR` env var so the
      * in-process Webpack compile is skipped entirely on Android.
      */
     private fun copyPrebuiltBundlesIfPresent(context: Context, runtimeRoot: File) {

@@ -28,20 +28,20 @@ beforeEach(() => {
     global.location = { host: 'localhost:8000' };
 });
 
-describe('lukerDelivery client', () => {
+describe('atriaDelivery client', () => {
     test('connect opens WS with ticket protocol', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'test-ticket');
         expect(MockWebSocket.instances).toHaveLength(1);
         const ws = MockWebSocket.instances[0];
-        expect(ws.protocols).toEqual(['luker-ws-ticket.test-ticket']);
+        expect(ws.protocols).toEqual(['atria-ws-ticket.test-ticket']);
         expect(delivery.isConnected()).toBe(true);
     });
 
     test('subscribe sends resume-from-1 to avoid race', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const ws = MockWebSocket.instances[0];
         const { stream } = delivery.subscribe('req-1', {});
@@ -53,8 +53,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('incoming chunk enqueued to stream', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const ws = MockWebSocket.instances[0];
         const { stream } = delivery.subscribe('req-2', {});
@@ -69,8 +69,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('error frame before head surfaces as 502 body via headPromise', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const ws = MockWebSocket.instances[0];
         const { stream, headPromise } = delivery.subscribe('req-3', {});
@@ -87,8 +87,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('error frame after head errors the stream', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const ws = MockWebSocket.instances[0];
         const { stream, headPromise } = delivery.subscribe('req-3b', {});
@@ -102,8 +102,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('reconnect after WS close, resume outstanding subs', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery({ reconnectBackoffMs: 5 });
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery({ reconnectBackoffMs: 5 });
         await delivery.connect(async () => 'tik');
         const ws1 = MockWebSocket.instances[0];
         delivery.subscribe('req-4', {});
@@ -119,8 +119,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('unsubscribe with Error reason rejects headPromise if head not yet resolved', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const { headPromise, unsubscribe } = delivery.subscribe('req-abort', {});
         // Abort before any frame arrives — this is the exact scenario that
@@ -132,8 +132,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('unsubscribe without reason rejects headPromise with generic error', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const { headPromise, unsubscribe } = delivery.subscribe('req-cancel', {});
         unsubscribe();
@@ -141,8 +141,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('unsubscribe after head resolved does not re-settle headPromise', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const ws = MockWebSocket.instances[0];
         const { headPromise, unsubscribe } = delivery.subscribe('req-post-head', {});
@@ -155,8 +155,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('close rejects all pending headPromises', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery();
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery();
         await delivery.connect(async () => 'tik');
         const s1 = delivery.subscribe('req-c1', {});
         const s2 = delivery.subscribe('req-c2', {});
@@ -173,8 +173,8 @@ describe('lukerDelivery client', () => {
     // accumulates each chunk N times. Fix must ensure at most ONE reconnect
     // attempt in flight at any time — regardless of how many sources fire.
     test('concurrent reconnect triggers do not open multiple sockets', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery({ reconnectBackoffMs: 5 });
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery({ reconnectBackoffMs: 5 });
         await delivery.connect(async () => 'tik');
         const ws1 = MockWebSocket.instances[0];
         delivery.subscribe('req-race', {});
@@ -195,8 +195,8 @@ describe('lukerDelivery client', () => {
     });
 
     test('reconnect sends resume for each pending request exactly once', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery({ reconnectBackoffMs: 5 });
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery({ reconnectBackoffMs: 5 });
         await delivery.connect(async () => 'tik');
         const ws1 = MockWebSocket.instances[0];
         delivery.subscribe('req-multi-1', {});
@@ -226,8 +226,8 @@ describe('lukerDelivery client', () => {
     // property (single copy of each chunk in the ReadableStream) that the
     // "你你你好好好" bug violates.
     test('chunks after reconnect are enqueued exactly once', async () => {
-        const { createLukerDelivery } = await import('../public/scripts/ws-delivery.js');
-        const delivery = createLukerDelivery({ reconnectBackoffMs: 5 });
+        const { createAtriaDelivery } = await import('../public/scripts/ws-delivery.js');
+        const delivery = createAtriaDelivery({ reconnectBackoffMs: 5 });
         await delivery.connect(async () => 'tik');
         const ws1 = MockWebSocket.instances[0];
         const { stream } = delivery.subscribe('req-once', {});

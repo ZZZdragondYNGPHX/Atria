@@ -24,7 +24,7 @@ const REGEX_SCRIPT_TYPE_LABELS = Object.freeze({
     [SCRIPT_TYPES.PRESET]: 'preset',
     [SCRIPT_TYPE_UNKNOWN]: 'runtime',
 });
-const PRESET_EMBEDDED_REGEX_SOURCE_PATH = 'luker.embedded_regex_scripts_source';
+const PRESET_EMBEDDED_REGEX_SOURCE_PATH = 'atria.embedded_regex_scripts_source';
 
 function buildRegexDragHelper(item) {
     const itemEl = item?.get?.(0) || item?.[0] || item;

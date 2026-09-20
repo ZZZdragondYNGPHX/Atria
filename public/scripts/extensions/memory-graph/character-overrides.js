@@ -35,8 +35,8 @@
  *   - `getSettings`               accessor for the current global settings
  */
 
-const getContext = Luker.getContext;
-const UNSET_VALUE = Luker.getContext().constants.unset;
+const getContext = Atria.getContext;
+const UNSET_VALUE = Atria.getContext().constants.unset;
 
 let deps = {
     MODULE_NAME: 'memory_graph',

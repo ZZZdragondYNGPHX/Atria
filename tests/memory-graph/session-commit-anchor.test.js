@@ -19,7 +19,7 @@ import { describe, test, expect, jest, beforeAll } from '@jest/globals';
 // ---- Browser / jQuery shims ----
 // Chainable jQuery stub so top-level init like
 // `jQuery(document).off('click.foo').on('click.foo', fn)` in
-// public/scripts/extensions/luker-tabs.js (transitively imported via
+// public/scripts/extensions/atria-tabs.js (transitively imported via
 // memory-graph/ui-templates.js) doesn't blow up at module-load time.
 globalThis.jQuery = (cb) => {
     if (typeof cb === 'function') { /* swallow DOM-ready callback */ }

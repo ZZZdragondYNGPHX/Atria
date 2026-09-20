@@ -2,7 +2,7 @@
  * loop-tools/note tests.
  *
  * `note_open` persists per-chat notes through floor-state with namespace
- * `luker_orch_loop_notes`. Notes survive across loop runs and are
+ * `atri_orch_loop_notes`. Notes survive across loop runs and are
  * re-injected into the agent's system prompt as an `## Open Notes` block
  * at the start of each run (so the agent can see what it told itself
  * last turn). `note_close` flips an entry to `status: 'closed'` by id,

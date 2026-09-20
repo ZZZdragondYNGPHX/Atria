@@ -1,6 +1,6 @@
 # Completion Preset Assistant
 
-The Completion Preset Assistant is a Luker-exclusive AI-assisted preset management extension. Chat Completion API presets contain numerous parameters (such as temperature, top_p, frequency_penalty, etc.), and different models respond to these parameters with significant variation. The Completion Preset Assistant helps users understand parameter meanings, compare preset differences, and provides adjustment suggestions through conversational AI interaction.
+The Completion Preset Assistant is a Atria-exclusive AI-assisted preset management extension. Chat Completion API presets contain numerous parameters (such as temperature, top_p, frequency_penalty, etc.), and different models respond to these parameters with significant variation. The Completion Preset Assistant helps users understand parameter meanings, compare preset differences, and provides adjustment suggestions through conversational AI interaction.
 
 This extension includes an AI conversation engine, parameter parser, and preset modification suggestion system, paired with a standalone dialog UI component for a complete interactive experience.
 
@@ -61,7 +61,7 @@ Mode is fixed at session creation. Switching mode from the toolbar prompts for c
 
 In "Agent orchestration preset" and "Jailbreak-only" modes, the assistant defaults to suggesting that you **derive a new preset** (e.g., appending `-orchestrator` / `-jailbreak` to the original name); once you confirm, edits operate on the derived preset and the original stays untouched. Tell the assistant if you'd rather edit the original directly.
 
-After deriving an `-orchestrator` preset, the assistant offers a **Bundle skills with this preset** link in the toolbar. The link opens the orchestrator's [skill manager](/features/skills/management) with multi-select pre-enabled — pick the writing rules, critic methods, or other skills you want to ship alongside the preset, then **Pack selected into preset…** writes them into the preset's `extensions.luker.embedded_skills_source` field. Anyone importing the derived preset later sees the standard embed-extraction dialog and the skills materialize into their `preset` scope automatically. This is the recommended path for distributing an orchestrator preset together with the skills that make it work — the preset stays self-contained.
+After deriving an `-orchestrator` preset, the assistant offers a **Bundle skills with this preset** link in the toolbar. The link opens the orchestrator's [skill manager](/features/skills/management) with multi-select pre-enabled — pick the writing rules, critic methods, or other skills you want to ship alongside the preset, then **Pack selected into preset…** writes them into the preset's `extensions.atria.embedded_skills_source` field. Anyone importing the derived preset later sees the standard embed-extraction dialog and the skills materialize into their `preset` scope automatically. This is the recommended path for distributing an orchestrator preset together with the skills that make it work — the preset stays self-contained.
 
 ### Authoring skills from preset content (Agent orchestration mode)
 
@@ -89,7 +89,7 @@ When the sweep is suppressed:
 - You said `no skills, just adapt the preset` — respected for the rest of the session.
 - You already rejected a candidate in an earlier round — it doesn't get re-proposed.
 
-::: warning Upgrading from a pre-skills Luker version?
+::: warning Upgrading from a pre-skills Atria version?
 If you've customized the **Mode addition — orchestrator-optimize** textarea under the assistant settings panel's *Iteration System Prompts (advanced)* section, your custom content still wins over the new defaults — including the new third disposition that tells the assistant to extract reusable rules to skills. Click **Reset to default** under that textarea to pick up the skill-aware version. (Untouched defaults pick it up automatically on next page load.)
 :::
 

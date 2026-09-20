@@ -1,20 +1,12 @@
-// Director profile load-shape regression (bug fixed 2026-05-28).
+// Director profile hard-cutover shape contract.
 //
-// Memory: known_bug_director_override_load_shape. The director profile
-// JSON used to nest its fields under a `director:` key. Now flattened to
-// match loop/agenda. The sanitizer auto-detects legacy nested input and
-// lifts the fields to the top level.
-//
-// This is a pure data-shape unit test. The original e2e/#69 file drove
-// `sanitizeDirectorProfile` in the browser via page.evaluate, but there
-// is no UI affordance to "load a preset object from JSON" — the editor
-// reads from preset-library, which itself runs sanitization on read.
-// Drive the sanitizer directly here so the regression is locked in
-// without spinning up a browser.
+// Atria accepts the current flat profile and the current bare per-mode body.
+// The former wrapped `director: {...}` representation is intentionally not
+// upgraded after the namespace migration.
 
 import { describe, test, expect } from '@jest/globals';
 
-globalThis.Luker = globalThis.Luker || {
+globalThis.Atria = globalThis.Atria || {
     getContext: () => ({
         translate: (s) => String(s ?? ''),
         addLocaleData: () => {},
@@ -54,14 +46,13 @@ const INNER = {
     discardOnAbort: true,
 };
 
-describe('sanitizeDirectorProfile — flat vs legacy nested vs bare', () => {
-    test('flat input → flat output (no `director:` wrapper)', () => {
+describe('sanitizeDirectorProfile — current flat/bare shapes', () => {
+    test('flat input stays flat', () => {
         const out = sanitizeDirectorProfile({ mode: 'director', ...INNER });
         expect(out).toBeTruthy();
-        expect(Object.prototype.hasOwnProperty.call(out, 'director')).toBe(false);
+        expect(out).not.toHaveProperty('director');
         expect(out.mode).toBe('director');
         expect(out.mainAgent.systemPrompt).toContain('cliff-watch coordinator');
-        expect(out.subAgents.length).toBe(2);
         expect(out.subAgents.map(a => a.id).sort()).toEqual(['scout_north', 'scout_south']);
         expect(out.maxRounds).toBe(12);
         expect(out.maxConcurrentSubagents).toBe(2);
@@ -69,37 +60,33 @@ describe('sanitizeDirectorProfile — flat vs legacy nested vs bare', () => {
         expect(out.discardOnAbort).toBe(true);
     });
 
-    test('legacy nested input (`director:` wrapper) → flat output', () => {
-        const out = sanitizeDirectorProfile({ mode: 'director', director: INNER });
-        expect(Object.prototype.hasOwnProperty.call(out, 'director')).toBe(false);
-        expect(out.mode).toBe('director');
-        expect(out.mainAgent.systemPrompt).toContain('cliff-watch coordinator');
-        expect(out.subAgents.length).toBe(2);
-        expect(out.subAgents.map(a => a.id).sort()).toEqual(['scout_north', 'scout_south']);
-        expect(out.maxRounds).toBe(12);
-    });
-
-    test('bare sub-object (character-card override style) → flat output', () => {
+    test('bare per-mode body is a current supported shape', () => {
         const out = sanitizeDirectorProfile({ ...INNER });
-        expect(Object.prototype.hasOwnProperty.call(out, 'director')).toBe(false);
+        expect(out).not.toHaveProperty('director');
         expect(out.mode).toBe('director');
-        expect(out.subAgents.length).toBe(2);
+        expect(out.subAgents).toHaveLength(2);
         expect(out.mainAgent.systemPrompt).toContain('cliff-watch coordinator');
     });
 
-    test('flat output is deep-equal to nested-lifted output (the core regression contract)', () => {
-        const flatOut = sanitizeDirectorProfile({ mode: 'director', ...INNER });
-        const nestedOut = sanitizeDirectorProfile({ mode: 'director', director: INNER });
-        const norm = (o) => JSON.parse(JSON.stringify(o));
-        expect(norm(flatOut)).toEqual(norm(nestedOut));
+    test('obsolete wrapped input is ignored instead of upgraded', () => {
+        const out = sanitizeDirectorProfile({ mode: 'director', director: INNER });
+        expect(out).not.toHaveProperty('director');
+        expect(out.mainAgent.systemPrompt).not.toContain('cliff-watch coordinator');
+        expect(out.subAgents).toEqual([]);
+        expect(out.maxRounds).not.toBe(12);
+        expect(out.discardOnAbort).toBe(false);
     });
 
-    test('sanitizer is idempotent — re-sanitizing produces the same shape (no director wrapper appears)', () => {
+    test('flat and bare current inputs sanitize equivalently', () => {
+        const flatOut = sanitizeDirectorProfile({ mode: 'director', ...INNER });
+        const bareOut = sanitizeDirectorProfile({ ...INNER });
+        expect(JSON.parse(JSON.stringify(flatOut))).toEqual(JSON.parse(JSON.stringify(bareOut)));
+    });
+
+    test('sanitizer is idempotent on current output', () => {
         const once = sanitizeDirectorProfile({ mode: 'director', ...INNER });
         const twice = sanitizeDirectorProfile(once);
-        expect(twice.mainAgent.systemPrompt).toBe(once.mainAgent.systemPrompt);
-        expect(twice.subAgents.length).toBe(once.subAgents.length);
-        expect(twice.maxRounds).toBe(once.maxRounds);
-        expect(Object.prototype.hasOwnProperty.call(twice, 'director')).toBe(false);
+        expect(twice).toEqual(once);
+        expect(twice).not.toHaveProperty('director');
     });
 });

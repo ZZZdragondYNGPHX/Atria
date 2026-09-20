@@ -34,7 +34,7 @@ function collectClientPayload() {
 }
 
 export async function downloadDebugBundle() {
-    const bridge = typeof window !== 'undefined' ? window.LukerAndroid : null;
+    const bridge = typeof window !== 'undefined' ? window.AtriaAndroid : null;
     if (bridge && typeof bridge.exportDiagnosticsBundle === 'function') {
         try {
             bridge.exportDiagnosticsBundle();
@@ -67,7 +67,7 @@ export async function downloadDebugBundle() {
     const a = document.createElement('a');
     a.href = url;
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    a.download = `luker-debug-${ts}.json`;
+    a.download = `atria-debug-${ts}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -50,7 +50,7 @@ function createDirectories(root) {
 }
 
 function createRequestFixture() {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-settings-test-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-settings-test-'));
     tempRoots.push(root);
     const directories = createDirectories(root);
     const handle = `test-${path.basename(root)}`;
@@ -84,17 +84,17 @@ describe('buildSettingsResponse', () => {
 
         writeJson(path.join(directories.openAI_Settings, 'Default.json'), { temperature: 0.7 });
         writeJson(
-            path.join(directories.openAI_Settings, 'Default.luker-state.completion_preset_assistant_session.json'),
+            path.join(directories.openAI_Settings, 'Default.atria-state.completion_preset_assistant_session.json'),
             { version: 1 },
         );
         writeJson(
-            path.join(directories.openAI_Settings, 'Default.luker-state.completion_preset_assistant_journal.json'),
+            path.join(directories.openAI_Settings, 'Default.atria-state.completion_preset_assistant_journal.json'),
             { version: 1 },
         );
 
         writeJson(path.join(directories.instruct, 'Guide.json'), { name: 'Guide', system_prompt: 'Test prompt' });
         writeJson(
-            path.join(directories.instruct, 'Guide.luker-state.completion_preset_assistant_session.json'),
+            path.join(directories.instruct, 'Guide.atria-state.completion_preset_assistant_session.json'),
             { version: 1 },
         );
 

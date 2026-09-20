@@ -4,8 +4,8 @@
 // real "View Graph" inspector → persist across a server restart.
 //
 // What this case pins (entirely through real-user gestures):
-//   1. Enable MG via the real `#luker_rpg_memory_enabled` checkbox + the
-//      real `#luker_rpg_memory_auto_extraction_enabled` checkbox in the
+//   1. Enable MG via the real `#atria_rpg_memory_enabled` checkbox + the
+//      real `#atria_rpg_memory_auto_extraction_enabled` checkbox in the
 //      MG settings panel.
 //   2. Send 5 user turns via the textarea + send button so there's a real
 //      chat tail for MG to anchor against.
@@ -111,7 +111,7 @@ async function enableMgViaCheckboxes(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        for (const id of ['luker_rpg_memory_enabled', 'luker_rpg_memory_auto_extraction_enabled']) {
+        for (const id of ['atria_rpg_memory_enabled', 'atria_rpg_memory_auto_extraction_enabled']) {
             const el = document.getElementById(id);
             if (!el) continue;
             if (!el.checked) {
@@ -130,8 +130,8 @@ async function enableMgViaCheckboxes(page) {
 async function importMgGraphBindLatest(page, filePath) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
-    await page.locator('#luker_rpg_memory_import').click();
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click();
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     // promptMemoryGraphImportMode uses custom buttons (no OK/Cancel).
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 10_000 });
@@ -168,7 +168,7 @@ test.describe('#52 — Seed via real Import button → View Graph renders cytosc
         // ── Render assertion: View Graph → cytoscape mounts with nodes ─
         await openMgGraphView(page);
         await page.waitForFunction(() => {
-            const cy = document.querySelector('.luker-rpg-memory-graph-cy');
+            const cy = document.querySelector('.atria-rpg-memory-graph-cy');
             if (!cy) return false;
             const inst = window.cy || cy.__cytoscape__ || null;
             if (inst && typeof inst.nodes === 'function') return inst.nodes().length > 0;
@@ -178,7 +178,7 @@ test.describe('#52 — Seed via real Import button → View Graph renders cytosc
 
         // Cross-check via Layer-1 read API: 3 nodes seeded → visible.
         const preRestartNodes = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             return session ? session.listVisibleCandidates({}).map(n => ({ id: n.id, title: n.title })) : [];
@@ -195,7 +195,7 @@ test.describe('#52 — Seed via real Import button → View Graph renders cytosc
 
         await openMgGraphView(page);
         await page.waitForFunction(() => {
-            const cy = document.querySelector('.luker-rpg-memory-graph-cy');
+            const cy = document.querySelector('.atria-rpg-memory-graph-cy');
             if (!cy) return false;
             const inst = window.cy || cy.__cytoscape__ || null;
             if (inst && typeof inst.nodes === 'function') return inst.nodes().length > 0;
@@ -204,7 +204,7 @@ test.describe('#52 — Seed via real Import button → View Graph renders cytosc
         await closeAnyVisiblePopup(page);
 
         const postRestartNodes = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             return session ? session.listVisibleCandidates({}).map(n => ({ id: n.id, title: n.title })) : [];

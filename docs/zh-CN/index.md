@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: Luker
+  name: Atria
   text: 下一代角色扮演聊天平台
   tagline: 基于 SillyTavern 深度重构，融合知识图谱记忆、多Agent编排、AI辅助角色创作等前沿技术
   actions:
@@ -11,7 +11,7 @@ hero:
       link: /zh-CN/guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/funnycups/Luker
+      link: https://github.com/ZZZdragondYNGPHX/Atria
 
 features:
   - icon: 🧠

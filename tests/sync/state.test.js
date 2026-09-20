@@ -7,7 +7,7 @@ import { ensureShadowRepo, getShadowPaths } from '../../src/sync/shadow.js';
 
 describe('sync state file', () => {
     let userRoot;
-    beforeEach(() => { userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-state-')); });
+    beforeEach(() => { userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-state-')); });
     afterEach(() => fs.rmSync(userRoot, { recursive: true, force: true }));
 
     test('readSyncState returns empty when no file exists', () => {

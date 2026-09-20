@@ -1,4 +1,4 @@
-/* Scoped workspace tokens follow the active Luker theme. */
+/* Scoped workspace tokens follow the active Atria theme. */
 #agent-memory-workspace {
     --workspace-border: color-mix(in srgb, var(--SmartThemeBodyColor, #e5e7eb) 16%, transparent);
     --workspace-surface: color-mix(in srgb, var(--SmartThemeBodyColor, #e5e7eb) 4%, transparent);
@@ -124,8 +124,8 @@
     #agent-memory-workspace .memory-settings-fields fieldset { padding: 10px; }
 }
 
-#agent-memory-workspace button:is(.luker-field-help, .luker-preset-help) { min-height: 28px; min-width: 28px; padding: 4px; margin-left: 6px; border: 0; background: transparent; opacity: .65; vertical-align: middle; }
-#agent-memory-workspace .memory-maintenance-action > button.luker-field-help { flex: 0 0 32px; }
+#agent-memory-workspace button:is(.atria-field-help, .atria-preset-help) { min-height: 28px; min-width: 28px; padding: 4px; margin-left: 6px; border: 0; background: transparent; opacity: .65; vertical-align: middle; }
+#agent-memory-workspace .memory-maintenance-action > button.atria-field-help { flex: 0 0 32px; }
 
 #agent-memory-workspace .workspace-call-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 #agent-memory-workspace .workspace-call-counts > div { padding: 12px; border: 1px solid var(--workspace-border); border-radius: 12px; background: var(--workspace-surface); }

@@ -9,7 +9,7 @@ describe('shadow repo paths and init', () => {
     let userRoot;
 
     beforeEach(() => {
-        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-shadow-'));
+        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-shadow-'));
     });
     afterEach(() => {
         fs.rmSync(userRoot, { recursive: true, force: true });

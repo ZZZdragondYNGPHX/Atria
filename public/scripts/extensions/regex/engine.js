@@ -209,7 +209,7 @@ function summarizeRegexScriptForLog(script) {
 
 /** @type {Map<string, { provider: (options?: GetRegexScriptsOptions) => RegexScript[] | null | undefined, reloadOnChange: boolean, managedScripts?: Map<string, RegexScript> }>} */
 const runtimeRegexProviders = new Map();
-export const REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT = 'luker:regex-runtime-scripts-changed';
+export const REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT = 'atria:regex-runtime-scripts-changed';
 
 /**
  * @param {{ requestReload?: boolean }} [options]

@@ -1,10 +1,10 @@
 # Custom Tools
 
-Custom tools let you give orchestrator agents new capabilities — beyond the builtin chat / lorebook / note / memory tools that ship with Luker. Three channels are supported, and all four orchestration modes (loop / spec / agenda / director) see them the same way.
+Custom tools let you give orchestrator agents new capabilities — beyond the builtin chat / lorebook / note / memory tools that ship with Atria. Three channels are supported, and all four orchestration modes (loop / spec / agenda / director) see them the same way.
 
 ## Where custom tools come from
 
-**From other Luker extensions.** Extensions like memory-graph and search-tools register their tools at startup. You don't have to do anything — the tools appear in the orchestration editor under **Custom tools → Extension (from other plugins)**, and they're enabled by default for first-run profiles.
+**From other Atria extensions.** Extensions like memory-graph and search-tools register their tools at startup. You don't have to do anything — the tools appear in the orchestration editor under **Custom tools → Extension (from other plugins)**, and they're enabled by default for first-run profiles.
 
 **From SillyTavern.** SillyTavern has a function-tool system that other plugins use. To make those visible to orchestrator agents, open the orchestration editor and click **Bridge SillyTavern tools…** — pick which ones you want, choose a read/write mode per tool, save. They appear under **Custom tools → From SillyTavern**.
 
@@ -42,10 +42,10 @@ From SillyTavern (use the same way you'd use `getContext()`):
 
 Mounted by the orchestrator runtime (only inside an orchestration call):
 
-- `ctx.__lukerRun` — per-run state. Subfields:
-    - `ctx.__lukerRun.activatedEntryKeys` is a `Set` of `${world}.${uid}` keys for World Info entries already injected this turn (so your tool can dedup if it surfaces lorebook content).
-    - `ctx.__lukerRun.wiFinalizedPayload` is a **mutable reference** to the in-flight `wiFinalizedPayload` object that `script.js` is about to join into the main model's `<world_info>` channel. Push into `wiFinalizedPayload.worldInfoBeforeEntries` / `.worldInfoAfterEntries` / `.worldInfoDepth[i].entries` *during your tool call* and your content lands in the channel for THIS turn, indistinguishable from a naturally-activated entry. Bypasses the WI token budget and does not trigger recursive key scanning. Available in loop / spec / agenda (which run inside the `GENERATION_WORLD_INFO_FINALIZED` frame); **undefined in director** (its main agent runs in the takeover handler, which fires after WI is baked into the prompt). The Layer-1 `lorebook_force_activate` builtin is the supported wrapper around this — prefer it over hand-rolling the push.
-    - `ctx.__lukerRun.abortSignal` is the run's cooperative cancellation signal — check `.aborted` periodically in long tools.
+- `ctx.__atriaRun` — per-run state. Subfields:
+    - `ctx.__atriaRun.activatedEntryKeys` is a `Set` of `${world}.${uid}` keys for World Info entries already injected this turn (so your tool can dedup if it surfaces lorebook content).
+    - `ctx.__atriaRun.wiFinalizedPayload` is a **mutable reference** to the in-flight `wiFinalizedPayload` object that `script.js` is about to join into the main model's `<world_info>` channel. Push into `wiFinalizedPayload.worldInfoBeforeEntries` / `.worldInfoAfterEntries` / `.worldInfoDepth[i].entries` *during your tool call* and your content lands in the channel for THIS turn, indistinguishable from a naturally-activated entry. Bypasses the WI token budget and does not trigger recursive key scanning. Available in loop / spec / agenda (which run inside the `GENERATION_WORLD_INFO_FINALIZED` frame); **undefined in director** (its main agent runs in the takeover handler, which fires after WI is baked into the prompt). The Layer-1 `lorebook_force_activate` builtin is the supported wrapper around this — prefer it over hand-rolling the push.
+    - `ctx.__atriaRun.abortSignal` is the run's cooperative cancellation signal — check `.aborted` periodically in long tools.
 - `ctx.__floorStateForNotes` — the floor-state instance the `note_open` / `note_close` tools use. Read it if your tool wants to coexist with the notes system.
 - `ctx.__customToolRegistry` — the per-run Layer-3 registry your own tool was compiled into. Most tools never need this; it's exposed for advanced cases (e.g. introspecting other handwritten tools).
 - `ctx.__memoryGraphSession` — opened lazily by the first `memory_*` tool call. Available after at least one memory call this run.
@@ -66,16 +66,16 @@ const session = await mg.openSession(ctx);
 ctx.eventSource.emit('my_tool_fired', { args });
 
 // Cooperative cancellation: check the run's abort signal
-if (ctx.__lukerRun?.abortSignal?.aborted) {
+if (ctx.__atriaRun?.abortSignal?.aborted) {
     throw new Error('aborted');
 }
 ```
 
 ### Safety
 
-The function body runs in the page context with the same permissions as any Luker module. It can fetch arbitrary URLs, mutate global state, and read private chat content. **Only paste code from sources you trust.**
+The function body runs in the page context with the same permissions as any Atria module. It can fetch arbitrary URLs, mutate global state, and read private chat content. **Only paste code from sources you trust.**
 
-When a character card you're importing carries custom tools, Luker shows a review dialog with each tool's name, description, mode, and full body before deciding whether to import them. You can choose **Apply with tools** to import everything, **Apply without tools** to import the card but drop the custom tools, or expand each entry to inspect the body first.
+When a character card you're importing carries custom tools, Atria shows a review dialog with each tool's name, description, mode, and full body before deciding whether to import them. You can choose **Apply with tools** to import everything, **Apply without tools** to import the card but drop the custom tools, or expand each entry to inspect the body first.
 
 ## Enabling and disabling
 
@@ -93,18 +93,18 @@ The AI iterator authors and maintains Layer-3 custom tools directly on the worki
 
 Read tools (results returned immediately, no review):
 
-- `luker_orch_list_custom_tools` — list profile-owned entries with mode / description / hasSimulate / a one-line parameter-schema summary.
-- `luker_orch_get_custom_tool` — read one entry verbatim, including the full body.
-- `luker_orch_dry_run_custom_tool` — compile + execute a body in a sandbox with caller-supplied args. Returns `{ok, result, error, logs, durationMs}`; wall-clock cap is 3 seconds; `console.log/warn/error` are captured. Either `name` (run the live profile entry) or `body` (compile inline) is required.
-- `luker_ctx_list_keys` / `luker_ctx_describe` — enumerate / walk into the runtime `ctx` surface (the same object SillyTavern/Luker extensions get via `getContext()`). Returns type, function arity, source preview, sub-keys.
-- `luker_docs_list` / `luker_docs_read` — list and read authoritative markdown under `docs/` (default-hides zh-CN / zh-TW translations). Useful starting points: `features/orchestrator/custom-tools.md`, `development/extension-api/chat-and-state.md`, `development/extension-api/generation.md`, `development/extension-api/world-info.md`, `development/extension-api/orchestrator-tools.md`.
+- `atri_orch_list_custom_tools` — list profile-owned entries with mode / description / hasSimulate / a one-line parameter-schema summary.
+- `atri_orch_get_custom_tool` — read one entry verbatim, including the full body.
+- `atri_orch_dry_run_custom_tool` — compile + execute a body in a sandbox with caller-supplied args. Returns `{ok, result, error, logs, durationMs}`; wall-clock cap is 3 seconds; `console.log/warn/error` are captured. Either `name` (run the live profile entry) or `body` (compile inline) is required.
+- `atri_ctx_list_keys` / `atri_ctx_describe` — enumerate / walk into the runtime `ctx` surface (the same object SillyTavern/Atria extensions get via `getContext()`). Returns type, function arity, source preview, sub-keys.
+- `atri_docs_list` / `atri_docs_read` — list and read authoritative markdown under `docs/` (default-hides zh-CN / zh-TW translations). Useful starting points: `features/orchestrator/custom-tools.md`, `development/extension-api/chat-and-state.md`, `development/extension-api/generation.md`, `development/extension-api/world-info.md`, `development/extension-api/orchestrator-tools.md`.
 
 Write tools (stage a proposal on the iter-studio's ProposalBus; nothing reaches the profile until you approve the card):
 
-- `luker_orch_set_custom_tool` — create or fully overwrite one entry. Body is compile-validated before staging; a syntax error rejects the call immediately with no proposal.
-- `luker_orch_patch_custom_tool_body` — find/replace patch on an existing body (default unique-or-fail; `replaceAll: true` opts into multi-match). Patched body is re-validated for syntax. Avoids re-sending long bodies on small tweaks.
-- `luker_orch_patch_custom_tool_schema` — replace only the parameters JSON-Schema. Body unchanged.
-- `luker_orch_remove_custom_tool` — delete one entry by name. The card shows the body that will be deleted so you can confirm.
+- `atri_orch_set_custom_tool` — create or fully overwrite one entry. Body is compile-validated before staging; a syntax error rejects the call immediately with no proposal.
+- `atri_orch_patch_custom_tool_body` — find/replace patch on an existing body (default unique-or-fail; `replaceAll: true` opts into multi-match). Patched body is re-validated for syntax. Avoids re-sending long bodies on small tweaks.
+- `atri_orch_patch_custom_tool_schema` — replace only the parameters JSON-Schema. Body unchanged.
+- `atri_orch_remove_custom_tool` — delete one entry by name. The card shows the body that will be deleted so you can confirm.
 
 For every accepted `set` proposal, the iter-studio also flips the mode-appropriate enable flag (`tools.custom.<name>` for loop / director, `defaultTools.custom.<name>` for agenda, `spec.defaultTools.custom.<name>` for spec) to `true` so the new tool is immediately offered to the runtime agent.
 

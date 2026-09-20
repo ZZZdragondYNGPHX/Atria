@@ -142,34 +142,34 @@ test('resolveByName: card > global > null', () => {
     });
 });
 
-test('sibling luker.* fields survive add/update/remove/setDefault writes', async () => {
+test('sibling atria.* fields survive add/update/remove/setDefault writes', async () => {
     const c = ctx.characters[0];
-    c.data.extensions.luker = { embedded_skills_source: 'sentinel-value' };
+    c.data.extensions.atria = { embedded_skills_source: 'sentinel-value' };
 
     await addCharacterBoundPreset(c, 'Foo', { temperature: 0.5 });
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
 
     await addCharacterBoundPreset(c, 'Bar', { temperature: 0.7 });
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
 
     await updateCharacterBoundPreset(c, 'Foo', { temperature: 0.8 });
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
 
     await setCharacterBoundDefault(c, 'Bar');
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
 
     await removeCharacterBoundPreset(c, 'Foo');
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
 
     // Even the final "clear entirely" write path (last preset removed) must preserve siblings.
     await removeCharacterBoundPreset(c, 'Bar');
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
-    expect(c.data.extensions.luker.chat_completion_preset).toBeNull();
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.chat_completion_preset).toBeNull();
 });
 
 test('migration: legacy single-binding {name, preset}', async () => {
     const c = mockCharacter();
-    c.data.extensions.luker = { chat_completion_preset: { name: 'Legacy', preset: { temperature: 0.6 } } };
+    c.data.extensions.atria = { chat_completion_preset: { name: 'Legacy', preset: { temperature: 0.6 } } };
     // Register c in the mock ctx so the migration-flush microtask can find
     // it via `context.characters.indexOf` — readCharacterBoundState now
     // schedules a flush on legacy detection (mirrors listCharacterBoundPresets
@@ -191,7 +191,7 @@ test('migration: legacy single-binding {name, preset}', async () => {
 
 test('migration: legacy bare string form', async () => {
     const c = mockCharacter();
-    c.data.extensions.luker = { chat_completion_preset: 'BareName' };
+    c.data.extensions.atria = { chat_completion_preset: 'BareName' };
     ctx.characters = [c];
     const state = readCharacterBoundState(c);
     expect(state.presets).toEqual([]);
@@ -204,7 +204,7 @@ test('migration: legacy bare string form', async () => {
 
 test('migration flush is coalesced per microtask', async () => {
     ctx.characters = [mockCharacter('X.png')];
-    ctx.characters[0].data.extensions.luker = { chat_completion_preset: { name: 'L', preset: { t: 1 } } };
+    ctx.characters[0].data.extensions.atria = { chat_completion_preset: { name: 'L', preset: { t: 1 } } };
     mockGetContext.mockReturnValue(ctx);
     listCharacterBoundPresets(ctx.characters[0]);
     listCharacterBoundPresets(ctx.characters[0]);
@@ -229,7 +229,7 @@ test('readCharacterBoundState on a legacy read-only card triggers persisted new-
     // single raw read schedules a write, and the persisted shape is the
     // new BoundState form.
     ctx.characters = [mockCharacter('ReadOnly.png')];
-    ctx.characters[0].data.extensions.luker = { chat_completion_preset: { name: 'RO', preset: { t: 2 } } };
+    ctx.characters[0].data.extensions.atria = { chat_completion_preset: { name: 'RO', preset: { t: 2 } } };
     mockGetContext.mockReturnValue(ctx);
     // Single raw read — no follow-on list/get/add/update/remove.
     const state = readCharacterBoundState(ctx.characters[0]);
@@ -252,15 +252,15 @@ test('clearAll on empty state writes null', async () => {
     expect(last[2].chat_completion_preset).toBeNull();
 });
 
-test('clearAll preserves sibling luker.* fields', async () => {
+test('clearAll preserves sibling atria.* fields', async () => {
     const c = ctx.characters[0];
-    c.data.extensions.luker = { embedded_skills_source: 'sentinel-value' };
+    c.data.extensions.atria = { embedded_skills_source: 'sentinel-value' };
     await addCharacterBoundPreset(c, 'Foo', { temperature: 0.5 });
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
     await clearAllCharacterBoundPresets(c);
     const last = ctx.writeExtensionField.mock.calls.at(-1);
     expect(last[2].chat_completion_preset).toBeNull();
-    expect(c.data.extensions.luker.embedded_skills_source).toBe('sentinel-value');
+    expect(c.data.extensions.atria.embedded_skills_source).toBe('sentinel-value');
 });
 
 test('clearAll from populated state (2 presets + default) empties everything', async () => {

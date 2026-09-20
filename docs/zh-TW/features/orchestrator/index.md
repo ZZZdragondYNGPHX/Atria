@@ -131,10 +131,10 @@ Spec 與 Agenda 設定以 JSON 匯出。
 
 | 格式 | 標識 | 適用 |
 |---|---|---|
-| V1 | `luker_orchestrator_profile_v1` | Spec 模式 |
-| V2 | `luker_orchestrator_profile_v2` | Agenda 模式 |
+| V1 | `atri_orchestrator_profile_v1` | Spec 模式 |
+| V2 | `atri_orchestrator_profile_v2` | Agenda 模式 |
 
-檔名形如 `luker-orchestrator-[agenda-][global|character-{name}].json`。匯出器同時支援全域和角色卡作用域。
+檔名形如 `atria-orchestrator-[agenda-][global|character-{name}].json`。匯出器同時支援全域和角色卡作用域。
 
 匯入時，檔案的模式（Spec / Agenda）必須和你當前執行模式一致。你選擇套用到全域或某張特定的卡。
 
@@ -182,7 +182,7 @@ Loop 模式當前還沒接入檔案級的 Profile 匯入匯出按鈕，改用 [A
 
 編排器在每次運行結果後會派發一個前端事件，其他程式碼可以消費編排結果而不必讀 UI 內部狀態。
 
-- **事件名：** `luker.orchestrator.result`
+- **事件名：** `atria.orchestrator.result`
 - **頻道：** `getContext().eventSource`
 - **觸發時機：** `completed` / `reused` / `cancelled` / `failed` 時
 
@@ -191,7 +191,7 @@ Loop 模式當前還沒接入檔案級的 Profile 匯入匯出按鈕，改用 [A
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `module` | string | 始終為 `orchestrator` |
-| `event` | string | 始終為 `luker.orchestrator.result` |
+| `event` | string | 始終為 `atria.orchestrator.result` |
 | `status` | string | `completed` / `reused` / `cancelled` / `failed` |
 | `generationType` | string | 觸發的生成類型 |
 | `chatKey` | string | 當前聊天 key |
@@ -209,7 +209,7 @@ Loop 模式當前還沒接入檔案級的 Profile 匯入匯出按鈕，改用 [A
 
 ```js
 const context = getContext();
-context.eventSource.on('luker.orchestrator.result', (evt) => {
+context.eventSource.on('atria.orchestrator.result', (evt) => {
     if (evt.status === 'completed' || evt.status === 'reused') {
         console.log('Orchestrator capsule:', evt.capsuleText);
     }

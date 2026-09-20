@@ -60,14 +60,14 @@ export function renderToolCallChip(call, opts = {}) {
     // matters both for the screenshot-bug regression tests and for grep-ability
     // when inspecting the rendered DOM.
     const summaryParts = [];
-    if (statusIcon) summaryParts.push(`<span class="luker_lib_toolcall_status">${statusIcon}</span>`);
-    summaryParts.push(`<span class="luker_lib_toolcall_icon">${escapeHtml(icon)}</span>`);
-    summaryParts.push(`<span class="luker_lib_toolcall_label">${escapeHtml(label)}</span>`);
-    if (summaryText) summaryParts.push(`<span class="luker_lib_toolcall_summary_text">${escapeHtml(summaryText)}</span>`);
+    if (statusIcon) summaryParts.push(`<span class="atria_lib_toolcall_status">${statusIcon}</span>`);
+    summaryParts.push(`<span class="atria_lib_toolcall_icon">${escapeHtml(icon)}</span>`);
+    summaryParts.push(`<span class="atria_lib_toolcall_label">${escapeHtml(label)}</span>`);
+    if (summaryText) summaryParts.push(`<span class="atria_lib_toolcall_summary_text">${escapeHtml(summaryText)}</span>`);
 
     const lines = [
-        `<div class="luker_lib_toolcall luker_lib_toolcall_${escapeHtmlAttr(type)}">`,
-        '<div class="luker_lib_toolcall_summary">',
+        `<div class="atria_lib_toolcall atria_lib_toolcall_${escapeHtmlAttr(type)}">`,
+        '<div class="atria_lib_toolcall_summary">',
         ...summaryParts,
         '</div>',
     ];
@@ -108,9 +108,9 @@ function renderFieldRows(obj) {
     for (const k of keys) {
         const v = obj[k];
         const valueHtml = renderArgValue(v);
-        rowLines.push('<div class="luker_lib_toolcall_arg_row">');
-        rowLines.push(`<label class="luker_lib_toolcall_arg_key">${escapeHtml(k)}</label>`);
-        rowLines.push('<div class="luker_lib_toolcall_arg_value">');
+        rowLines.push('<div class="atria_lib_toolcall_arg_row">');
+        rowLines.push(`<label class="atria_lib_toolcall_arg_key">${escapeHtml(k)}</label>`);
+        rowLines.push('<div class="atria_lib_toolcall_arg_value">');
         rowLines.push(valueHtml);
         rowLines.push('</div>');
         rowLines.push('</div>');
@@ -141,7 +141,7 @@ function stringEditOpFromToolName(name) {
  * str-edit tool families:
  *   - book_name + uid [+ field]  → lorebook_str_replace_in_entry,
  *                                   cea_str_replace_lorebook_entry_field,
- *                                   luker_card_str_replace_in_lorebook_entry
+ *                                   atria_card_str_replace_in_lorebook_entry
  *   - field                      → cea_str_replace_card_field
  *   - identifier                 → preset_str_*_in_prompt
  *   - path                       → preset_str_replace / _insert / _delete
@@ -202,7 +202,7 @@ function tryRenderArgsDiff(name, args, i18n) {
     }
     const metaRows = renderFieldRows(metaArgs);
     const metaHtml = metaRows
-        ? `<div class="luker_lib_toolcall_arg_rows">${metaRows}</div>`
+        ? `<div class="atria_lib_toolcall_arg_rows">${metaRows}</div>`
         : '';
 
     const diffBlock = renderInlineTextDiffHtml(beforeText, afterText, {
@@ -213,7 +213,7 @@ function tryRenderArgsDiff(name, args, i18n) {
     });
 
     return [
-        '<details class="luker_lib_toolcall_details">',
+        '<details class="atria_lib_toolcall_details">',
         `<summary>${escapeHtml(i18n('Arguments'))}</summary>`,
         metaHtml,
         diffBlock,
@@ -228,9 +228,9 @@ function renderArgsDetails(name, args, i18n) {
     const rows = renderFieldRows(args);
     if (!rows) return '';
     return [
-        '<details class="luker_lib_toolcall_details">',
+        '<details class="atria_lib_toolcall_details">',
         `<summary>${escapeHtml(i18n('Arguments'))}</summary>`,
-        '<div class="luker_lib_toolcall_arg_rows">',
+        '<div class="atria_lib_toolcall_arg_rows">',
         rows,
         '</div>',
         '</details>',
@@ -240,17 +240,17 @@ function renderArgsDetails(name, args, i18n) {
 function renderArgValue(v) {
     if (typeof v === 'string') {
         if (v.length > 120) {
-            return `<pre class="luker_lib_toolcall_long_value">${escapeHtml(v)}</pre>`;
+            return `<pre class="atria_lib_toolcall_long_value">${escapeHtml(v)}</pre>`;
         }
-        return `<span class="luker_lib_toolcall_short_value">${escapeHtml(v)}</span>`;
+        return `<span class="atria_lib_toolcall_short_value">${escapeHtml(v)}</span>`;
     }
     if (v && typeof v === 'object') {
         const inner = Array.isArray(v)
             ? `[ ${v.slice(0, 3).map(formatScalar).join(', ')}${v.length > 3 ? `, … (${v.length - 3} more)` : ''} ]`
             : `{ ${Object.keys(v).slice(0, 3).map(k => `${k}: ${formatScalar(v[k])}`).join(', ')}${Object.keys(v).length > 3 ? `, … (${Object.keys(v).length - 3} more)` : ''} }`;
-        return `<code class="luker_lib_toolcall_obj_value">${escapeHtml(inner)}</code>`;
+        return `<code class="atria_lib_toolcall_obj_value">${escapeHtml(inner)}</code>`;
     }
-    return `<span class="luker_lib_toolcall_scalar_value">${escapeHtml(String(v))}</span>`;
+    return `<span class="atria_lib_toolcall_scalar_value">${escapeHtml(String(v))}</span>`;
 }
 
 function formatScalar(v) {
@@ -270,9 +270,9 @@ function renderResultDetails(result, i18n) {
     const open = false;
     let bodyHtml;
     if (typeof result === 'string') {
-        bodyHtml = `<pre class="luker_lib_toolcall_result_pre">${escapeHtml(result)}</pre>`;
+        bodyHtml = `<pre class="atria_lib_toolcall_result_pre">${escapeHtml(result)}</pre>`;
     } else if (result === null || result === undefined) {
-        bodyHtml = `<pre class="luker_lib_toolcall_result_pre">${escapeHtml(String(result))}</pre>`;
+        bodyHtml = `<pre class="atria_lib_toolcall_result_pre">${escapeHtml(String(result))}</pre>`;
     } else if (typeof result === 'object') {
         let json;
         try {
@@ -283,14 +283,14 @@ function renderResultDetails(result, i18n) {
             // something.
             json = String(result);
         }
-        bodyHtml = `<pre class="luker_lib_toolcall_result_pre">${escapeHtml(json)}</pre>`;
+        bodyHtml = `<pre class="atria_lib_toolcall_result_pre">${escapeHtml(json)}</pre>`;
     } else {
-        bodyHtml = `<pre class="luker_lib_toolcall_result_pre">${escapeHtml(String(result))}</pre>`;
+        bodyHtml = `<pre class="atria_lib_toolcall_result_pre">${escapeHtml(String(result))}</pre>`;
     }
     return [
-        `<details class="luker_lib_toolcall_result"${open ? ' open' : ''}>`,
+        `<details class="atria_lib_toolcall_result"${open ? ' open' : ''}>`,
         `<summary>${escapeHtml(i18n('Result'))}</summary>`,
-        '<div class="luker_lib_toolcall_result_body">',
+        '<div class="atria_lib_toolcall_result_body">',
         bodyHtml,
         '</div>',
         '</details>',

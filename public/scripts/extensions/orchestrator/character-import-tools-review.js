@@ -15,7 +15,7 @@
  * Pure UI; caller does the actual apply.
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 const POPUP_RESULT = __ctx.POPUP_RESULT;
@@ -26,26 +26,26 @@ const RESULT_WITHOUT = POPUP_RESULT?.CUSTOM1 ?? 1001;
 
 function buildHtml(tools, t) {
     const list = tools.map(tool => `
-        <li class="luker_orch_ct_import_item">
-            <div class="luker_orch_ct_import_head">
-                <code class="luker_orch_ct_import_name">${esc(tool?.name || '')}</code>
-                <span class="luker_orch_ct_mode">[${esc(tool?.mode === 'read' ? 'read' : 'write')}]</span>
+        <li class="atri_orch_ct_import_item">
+            <div class="atri_orch_ct_import_head">
+                <code class="atri_orch_ct_import_name">${esc(tool?.name || '')}</code>
+                <span class="atri_orch_ct_mode">[${esc(tool?.mode === 'read' ? 'read' : 'write')}]</span>
             </div>
-            ${tool?.description ? `<div class="luker_orch_ct_import_desc">${esc(tool.description)}</div>` : ''}
-            <details class="luker_orch_ct_import_body">
+            ${tool?.description ? `<div class="atri_orch_ct_import_desc">${esc(tool.description)}</div>` : ''}
+            <details class="atri_orch_ct_import_body">
                 <summary>${esc(t('View body...'))}</summary>
-                <pre class="monospace luker_orch_ct_import_pre">${esc(tool?.body || '')}</pre>
-                ${tool?.simulateBody ? `<pre class="monospace luker_orch_ct_import_pre">${esc(tool.simulateBody)}</pre>` : ''}
+                <pre class="monospace atri_orch_ct_import_pre">${esc(tool?.body || '')}</pre>
+                ${tool?.simulateBody ? `<pre class="monospace atri_orch_ct_import_pre">${esc(tool.simulateBody)}</pre>` : ''}
             </details>
         </li>
     `).join('');
     const warning = t('This character ships ${0} custom tools that will run JavaScript with full access to your SillyTavern session:').replace('${0}', String(tools.length));
     return `
-<div class="luker_orch_ct_import_review">
-    <div class="luker_orch_ct_warning">
+<div class="atri_orch_ct_import_review">
+    <div class="atri_orch_ct_warning">
         ${esc(warning)}
     </div>
-    <ul class="luker_orch_ct_import_list">${list}</ul>
+    <ul class="atri_orch_ct_import_list">${list}</ul>
 </div>
     `;
 }

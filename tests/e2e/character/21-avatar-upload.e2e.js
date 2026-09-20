@@ -1,5 +1,5 @@
 // #21 — Avatar upload for the selected character via the real
-// #add_avatar_button file input (Luker bug: the shared
+// #add_avatar_button file input (Atria bug: the shared
 // `uploadAvatarForSelected` helper in _lib/ui-character.js targets
 // #avatar_upload_file which is the PERSONA input, not the character
 // avatar input — see public/index.html:6111 vs :6292. Inlined here.)
@@ -33,7 +33,7 @@ test.beforeAll(async () => {
 
     // Build a "new avatar" PNG by copying the seed (Jimp re-encoding
     // will make the bytes differ from the original).
-    tmpDir = mkdtempSync(resolve(tmpdir(), 'luker-e2e-avatar-'));
+    tmpDir = mkdtempSync(resolve(tmpdir(), 'atria-e2e-avatar-'));
     newAvatarPath = resolve(tmpDir, 'new-avatar.png');
     writeFileSync(newAvatarPath, readFileSync(resolve(REPO_ROOT, 'default/content/default_Seraphina.png')));
 });

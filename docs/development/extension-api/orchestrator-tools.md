@@ -10,7 +10,7 @@ If the user doesn't have orchestrator loaded, your tool isn't lost — the regis
 
 ## API surface
 
-The orchestrator extension publishes its API through Luker's extension registry. Three equivalent surfaces resolve to the same function references — pick whichever fits your code:
+The orchestrator extension publishes its API through Atria's extension registry. Three equivalent surfaces resolve to the same function references — pick whichever fits your code:
 
 ```js
 import { getExtensionApi } from '/scripts/extensions.js';
@@ -22,7 +22,7 @@ if (orch) orch.registerOrchestrationTool({ /* ... */ });
 // 2. Via the SillyTavern context passed to your extension
 ctx.getExtensionApi('orchestrator')?.registerOrchestrationTool({ /* ... */ });
 
-// 3. Direct ES module import (only sensible inside the Luker tree)
+// 3. Direct ES module import (only sensible inside the Atria tree)
 import { registerOrchestrationTool } from
     '/scripts/extensions/orchestrator/register-custom-tool.js';
 ```
@@ -54,7 +54,7 @@ Always guard against the orchestrator being absent so your extension remains use
 
 ### The `ctx` argument
 
-`ctx` is built from SillyTavern's `getContext()` (via prototype inheritance), with a few orchestration-only fields mounted as own properties. Use it the same way you'd use the context anywhere else in Luker.
+`ctx` is built from SillyTavern's `getContext()` (via prototype inheritance), with a few orchestration-only fields mounted as own properties. Use it the same way you'd use the context anywhere else in Atria.
 
 Inherited from SillyTavern:
 
@@ -67,7 +67,7 @@ Mounted by the orchestration runtime (only present inside an active orchestratio
 
 | Field | Purpose |
 |---|---|
-| `ctx.__lukerRun` | per-run state. `ctx.__lukerRun.activatedEntryKeys` is a `Set` of World Info entry keys already injected this turn (dedup hint for lorebook-flavored tools). `ctx.__lukerRun.abortSignal` is the run's abort signal — honor it for cancellable work. |
+| `ctx.__atriaRun` | per-run state. `ctx.__atriaRun.activatedEntryKeys` is a `Set` of World Info entry keys already injected this turn (dedup hint for lorebook-flavored tools). `ctx.__atriaRun.abortSignal` is the run's abort signal — honor it for cancellable work. |
 | `ctx.__floorStateForNotes` | floor-state instance behind the `note_open` / `note_close` tools. Read it to coexist with the notes system. |
 | `ctx.__customToolRegistry` | per-run Layer-3 (handwritten) tool registry. Most tools won't need this. |
 | `ctx.__memoryGraphSession` | opened lazily by the first `memory_*` tool call this run; absent until then. |

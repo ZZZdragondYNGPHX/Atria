@@ -63,7 +63,7 @@ export const CHARACTER_PRESET_READ_TOOL_DEFS = [
         type: 'function',
         function: {
             name: TOOL_NAMES.INSPECT,
-            description: 'Inspect presets embedded on the active character card. action="list" returns every card-bound preset name with isDefault + hasBody flags. action="get" fetches one preset by name and returns { name, preset } (or null when the name is not on the card). Card-bound presets live on the card at data.extensions.luker.chat_completion_preset — this tool does not read global user presets.',
+            description: 'Inspect presets embedded on the active character card. action="list" returns every card-bound preset name with isDefault + hasBody flags. action="get" fetches one preset by name and returns { name, preset } (or null when the name is not on the card). Card-bound presets live on the card at data.extensions.atria.chat_completion_preset — this tool does not read global user presets.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -102,7 +102,7 @@ function resolveCharacterByAvatar(context, avatar) {
  * @param {{id?: string, name: string, args?: object}} call
  *   Parsed tool-call object as delivered by the iteration-library runner.
  * @param {{context: object, avatar?: string}} env
- *   `context` = SillyTavern context (from `Luker.getContext()`),
+ *   `context` = SillyTavern context (from `Atria.getContext()`),
  *   `avatar`  = character avatar; when omitted, falls back to
  *   `context.characterId`.
  * @returns {Promise<

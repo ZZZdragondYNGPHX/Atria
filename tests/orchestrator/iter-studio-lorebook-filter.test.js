@@ -30,6 +30,6 @@ describe('iter-studio patch helper contract (locks Task 6 dispatch behavior)', (
     test('set entry filter throws with tool name in message', () => {
         expect(() =>
             applyLorebookFilterPatchArgs({ bookPattern: '', entryPattern: '' }, { pattern: '[bad(' }, { dimension: 'entry' }),
-        ).toThrow(/luker_orch_set_lorebook_entry_filter.*invalid_args/);
+        ).toThrow(/atri_orch_set_lorebook_entry_filter.*invalid_args/);
     });
 });

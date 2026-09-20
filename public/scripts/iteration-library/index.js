@@ -3,8 +3,8 @@
  *
  * Three-layer surface:
  *   Layer 1 (direct):       import { ... } from '/scripts/iteration-library/index.js';
- *   Layer 2 (lukerContext): const { ... } = lukerContext.iterationLibrary;
- *   Layer 3 (getContext):   const { ... } = Luker.getContext().iterationLibrary;
+ *   Layer 2 (atriaContext): const { ... } = atriaContext.iterationLibrary;
+ *   Layer 3 (getContext):   const { ... } = Atria.getContext().iterationLibrary;
  */
 
 export {

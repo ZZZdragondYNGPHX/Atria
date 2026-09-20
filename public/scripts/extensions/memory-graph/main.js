@@ -2,7 +2,7 @@
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 import { collectExtractTransaction, logExtractResponse } from './extract-transaction.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const event_types = __ctx.eventTypes;
 const eventSource = __ctx.eventSource;
 const extension_prompt_roles = __ctx.constants.promptRoles;
@@ -11,7 +11,7 @@ const resolveChatStateTarget = __ctx.resolveChatStateTarget;
 const saveSettings = __ctx.saveSettings;
 const saveSettingsDebounced = __ctx.saveSettingsDebounced;
 const extension_settings = __ctx.extensionSettings;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const performFuzzySearch = __ctx.performFuzzySearch;
 const download = __ctx.download;
 const getFileText = __ctx.getFileText;
@@ -91,7 +91,7 @@ const SYMMETRIC_RELATIONS = new Set([
     'family_of',
     'partner_of',
 ]);
-import { getFloorStateInstance, resetFloorStateInstance, loadMetaFields, persistMetaFields, migrateLegacyMemoryGraphState, constants as floorStateAdapterConstants, createEmptyStore, normalizeStoreForRuntime, normalizePersistedMemoryState, applyMemoryLogEntryToStore, buildRuntimeStoreFromPersistedState, graphPayloadFromStore, metaFieldsFromStore, buildRuntimeStoreFromGraphPayloadAndMeta, normalizeVectorIndexState, synthesizePersistedStateFromStoreAndMeta, hasPersistedStoreMetadataChanges, getStoreCoveredSeqTo, getCachedMeta, setCachedMeta, clearCachedMeta, activeSwipeIdAtFloor, resolveInFlightAnchor, seqToFloor } from './persistence.js';
+import { getFloorStateInstance, resetFloorStateInstance, loadMetaFields, persistMetaFields, constants as floorStateAdapterConstants, createEmptyStore, normalizeStoreForRuntime, graphPayloadFromStore, metaFieldsFromStore, buildRuntimeStoreFromGraphPayloadAndMeta, normalizeVectorIndexState, synthesizePersistedStateFromStoreAndMeta, hasPersistedStoreMetadataChanges, getStoreCoveredSeqTo, getCachedMeta, setCachedMeta, clearCachedMeta, activeSwipeIdAtFloor, resolveInFlightAnchor, seqToFloor } from './persistence.js';
 import { STATE_ERROR_REASONS } from '../../state-errors.js';
 import {
     LEVEL,
@@ -114,7 +114,6 @@ const sourceLifecycle = configureSourceLifecycle({
     readProviders: context => readStateProviders(context, getEffectiveSettings(context, getSettings())),
     onInvalidation: () => { latestRecallSnapshot = null; },
 });
-const CHAT_STATE_NAMESPACE = MODULE_NAME;
 const META_NAMESPACE = floorStateAdapterConstants.META_NAMESPACE;
 const META_SCHEMA_VERSION = floorStateAdapterConstants.SCHEMA_VERSION;
 void (floorStateAdapterConstants.PERSISTED_STORE_VERSION);
@@ -1085,14 +1084,14 @@ function renderConnectionProfileOptions(selectedName = '') {
 
 function refreshOpenAIPresetSelectors(root, context, settings) {
     const selectorValues = [
-        ['#luker_rpg_memory_recall_api_preset', settings.recallApiPresetName],
-        ['#luker_rpg_memory_recall_preset', settings.recallPresetName],
-        ['#luker_rpg_memory_extract_api_preset', settings.extractApiPresetName],
-        ['#luker_rpg_memory_extract_preset', settings.extractPresetName],
-        ['#luker_rpg_memory_request_api_preset', settings.requestApiPresetName],
-        ['#luker_rpg_memory_request_llm_preset', settings.requestLlmPresetName],
-        ['#luker_rpg_memory_rag_rewrite_api_preset', settings.ragRewriteApiPresetName],
-        ['#luker_rpg_memory_rag_rewrite_llm_preset', settings.ragRewriteLlmPresetName],
+        ['#atria_rpg_memory_recall_api_preset', settings.recallApiPresetName],
+        ['#atria_rpg_memory_recall_preset', settings.recallPresetName],
+        ['#atria_rpg_memory_extract_api_preset', settings.extractApiPresetName],
+        ['#atria_rpg_memory_extract_preset', settings.extractPresetName],
+        ['#atria_rpg_memory_request_api_preset', settings.requestApiPresetName],
+        ['#atria_rpg_memory_request_llm_preset', settings.requestLlmPresetName],
+        ['#atria_rpg_memory_rag_rewrite_api_preset', settings.ragRewriteApiPresetName],
+        ['#atria_rpg_memory_rag_rewrite_llm_preset', settings.ragRewriteLlmPresetName],
     ];
 
     for (const [selector, value] of selectorValues) {
@@ -1168,7 +1167,7 @@ async function promptMemoryGraphImportMode(context, store) {
     const normalized = normalizeStoreForRuntime(store);
     const latestAssistantFloor = getLatestAssistantFloorFromContext(context);
     const exportedFloor = getImportedStoreBindingFloor(normalized);
-    const specificFloorInputId = 'luker_rpg_memory_import_bind_floor';
+    const specificFloorInputId = 'atria_rpg_memory_import_bind_floor';
     const defaultSpecificFloor = latestAssistantFloor > 0
         ? latestAssistantFloor
         : Math.max(1, exportedFloor || 1);
@@ -1311,15 +1310,13 @@ async function deleteMemoryStoreByTarget(context, target) {
     if (typeof context.deleteChatState !== 'function') {
         throw new Error('Chat state delete API is unavailable in extension context.');
     }
-    // Floor-state owns the log sidecar — ask it to purge that itself.
-    // memory-graph still owns the META sidecar, so we delete that directly.
-    // The legacy CHAT_STATE_NAMESPACE data sidecar should already be gone
-    // post-migration; deleting it here is a no-op guard for chats whose
-    // first fs.get() never ran (e.g. fresh install meeting an old sidecar).
+    // FloorState owns the current Atria data/log namespaces and purges them
+    // together. Memory Graph owns the current Atria meta sidecar, which is
+    // deleted directly below. Pre-Atria namespaces are intentionally ignored.
     //
     // Returns `{ ok, partial }` so the Reset button can surface which step
-    // failed (log / meta / legacy) instead of flashing a green success toast
-    // over a half-deleted state. Each failure is also console-logged.
+    // failed instead of flashing a green success toast over a half-deleted
+    // state. Each failure is also console-logged.
     const partial = {};
     try {
         const fs = await getFloorStateInstance(context);
@@ -1344,16 +1341,6 @@ async function deleteMemoryStoreByTarget(context, target) {
     } catch (error) {
         console.warn(`[${MODULE_NAME}] Failed to delete memory-graph meta sidecar`, { target, error });
         partial.meta = 'EXCEPTION';
-    }
-    try {
-        const legacyResult = await context.deleteChatState(CHAT_STATE_NAMESPACE, { target });
-        if (legacyResult && legacyResult.ok === false) {
-            partial.legacy = legacyResult.reason;
-            console.warn(`[${MODULE_NAME}] legacy data sidecar delete failed (reason=${legacyResult.reason}, hint=${legacyResult.hint})`);
-        }
-    } catch (error) {
-        console.warn(`[${MODULE_NAME}] Failed to delete legacy memory-graph data sidecar`, { target, error });
-        partial.legacy = 'EXCEPTION';
     }
     return { ok: Object.keys(partial).length === 0, partial };
 }
@@ -1507,53 +1494,33 @@ async function loadMemoryStoreByTarget(context, target) {
     if (typeof context.getChatState !== 'function') {
         throw new Error('Chat state API is unavailable in extension context.');
     }
+
     const metaResult = await context.getChatState(META_NAMESPACE, { target });
     const meta = metaResult?.ok ? metaResult.state : null;
-    const isV2 = meta && Number(meta.schemaVersion || 0) >= META_SCHEMA_VERSION;
 
-    if (isV2) {
-        // Floor-state owns the log: replay, swipe-map projection, migration,
-        // and one-shot recovery from a stale data namespace are all centralized
-        // in fs.get(). We never read the log namespace directly here.
-        const fs = await getFloorStateInstance(context);
-        await fs.ready();
-        const payloadResult = await fs.get();
-        if (!payloadResult.ok) {
-            // A read failure (transient HTTP / REPLAY_BROKEN / destroyed) must
-            // NOT degrade to an empty payload — the caller would cache an
-            // empty store, then the next write would diff `realLog → empty`
-            // and persist a graph-wiping commit (or `commitSessionMutation`
-            // would fs.reset([]) the log entirely). Surface the failure and
-            // let the caller decide; the on-disk log stays intact.
-            const isReplayBroken = payloadResult.reason === STATE_ERROR_REASONS.REPLAY_BROKEN;
-            const message = isReplayBroken
-                ? i18n('Memory graph log replay failed, data may be unrecoverable. Use Reset or Import to recover.')
-                : i18nFormat('Memory graph load failed: ${0}', payloadResult.hint || payloadResult.reason || i18n('reason unknown'));
-            notifyError(message);
-            throw new Error(`[${MODULE_NAME}] loadMemoryStoreByTarget read failed (reason=${payloadResult.reason}, hint=${payloadResult.hint})`);
-        }
-        const payload = payloadResult.state || {};
-        const runtimeStore = buildRuntimeStoreFromGraphPayloadAndMeta(payload, meta);
-        return {
-            state: synthesizePersistedStateFromStoreAndMeta(runtimeStore, meta),
-            store: runtimeStore,
-            migrated: false,
-            meta: meta && typeof meta === 'object' ? structuredClone(meta) : null,
-            v2: true,
-        };
+    // Hard cutover: the current Atria FloorState namespace is the only graph
+    // source. Missing current metadata means a fresh Atria graph, not a cue to
+    // inspect or import predecessor namespaces.
+    const fs = await getFloorStateInstance(context);
+    await fs.ready();
+    const payloadResult = await fs.get();
+    if (!payloadResult.ok) {
+        const isReplayBroken = payloadResult.reason === STATE_ERROR_REASONS.REPLAY_BROKEN;
+        const message = isReplayBroken
+            ? i18n('Memory graph log replay failed, data may be unrecoverable. Use Reset or Import to recover.')
+            : i18nFormat('Memory graph load failed: ${0}', payloadResult.hint || payloadResult.reason || i18n('reason unknown'));
+        notifyError(message);
+        throw new Error(`[${MODULE_NAME}] loadMemoryStoreByTarget read failed (reason=${payloadResult.reason}, hint=${payloadResult.hint})`);
     }
 
-    // v1 / legacy raw fallback: opLog inside main namespace, no __meta.
-    // Schema-migration will hoist this to v2 on the next ensureMemoryStoreLoaded.
-    const dataResult = await context.getChatState(CHAT_STATE_NAMESPACE, { target });
-    const data = dataResult?.ok ? dataResult.state : null;
-    const { state, migrated } = normalizePersistedMemoryState(data, context);
+    const payload = payloadResult.state || {};
+    const runtimeStore = buildRuntimeStoreFromGraphPayloadAndMeta(payload, meta);
     return {
-        state,
-        store: buildRuntimeStoreFromPersistedState(state),
-        migrated,
-        meta: null,
-        v2: false,
+        state: synthesizePersistedStateFromStoreAndMeta(runtimeStore, meta),
+        store: runtimeStore,
+        migrated: false,
+        meta: meta && typeof meta === 'object' ? structuredClone(meta) : null,
+        v2: true,
     };
 }
 
@@ -1821,34 +1788,10 @@ export async function ensureMemoryStoreLoaded(context, { force = false } = {}) {
     }
 
     const task = (async () => {
-        // Schema migration runs at init/CHAT_CHANGED for current target.
-        // Bring the target up to v2 before reading so loadMemoryStoreByTarget
-        // always sees the current shape.
-        try {
-            await migrateLegacyMemoryGraphState(
-                context,
-                target,
-                isExtractableAssistantMessage,
-                applyMemoryLogEntryToStore,
-            );
-        } catch (error) {
-            console.warn(`[${MODULE_NAME}] Legacy schema migration failed for target`, { target, error });
-        }
-
         const loaded = await loadMemoryStoreByTarget(context, target);
 
         setCachedMeta(chatKey, loaded.meta || metaFieldsFromStore(loaded.store));
         memoryStoreCache.set(chatKey, loaded.store);
-        if (loaded.migrated) {
-            const migrationSeq = getStoreCoveredSeqTo(loaded.store);
-            await commitMemoryStoreReplaceByChatKey(
-                context,
-                chatKey,
-                loaded.store,
-                migrationSeq,
-                { floor: seqToFloor(context, migrationSeq) },
-            );
-        }
         const current = memoryStoreCache.get(chatKey) || loaded.store;
         await refreshMemorySources(context, current);
         return current;
@@ -2193,33 +2136,33 @@ function isLongFieldValue(value) {
 
 function formatNodeFieldValueHtml(value) {
     if (value === null || value === undefined || value === '') {
-        return '<span class="luker-node-detail-empty">—</span>';
+        return '<span class="atria-node-detail-empty">—</span>';
     }
     if (Array.isArray(value)) {
         if (value.length === 0) {
-            return '<span class="luker-node-detail-empty">—</span>';
+            return '<span class="atria-node-detail-empty">—</span>';
         }
         const allScalar = value.every(item => item === null || typeof item !== 'object');
         if (allScalar) {
             return value
-                .map(item => `<span class="luker-node-detail-tag">${escapeHtml(String(item))}</span>`)
+                .map(item => `<span class="atria-node-detail-tag">${escapeHtml(String(item))}</span>`)
                 .join(' ');
         }
-        return `<pre class="luker-node-detail-pre">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+        return `<pre class="atria-node-detail-pre">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
     }
     if (typeof value === 'object') {
-        return `<pre class="luker-node-detail-pre">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+        return `<pre class="atria-node-detail-pre">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
     }
     if (typeof value === 'boolean') {
         return value
-            ? `<span class="luker-node-detail-bool is-true"><i class="fa-solid fa-check fa-fw"></i>${escapeHtml(i18n('Yes'))}</span>`
-            : `<span class="luker-node-detail-bool is-false"><i class="fa-solid fa-xmark fa-fw"></i>${escapeHtml(i18n('No'))}</span>`;
+            ? `<span class="atria-node-detail-bool is-true"><i class="fa-solid fa-check fa-fw"></i>${escapeHtml(i18n('Yes'))}</span>`
+            : `<span class="atria-node-detail-bool is-false"><i class="fa-solid fa-xmark fa-fw"></i>${escapeHtml(i18n('No'))}</span>`;
     }
     const str = String(value);
     if (isLongFieldValue(str)) {
-        return `<div class="luker-node-detail-text">${escapeHtml(str)}</div>`;
+        return `<div class="atria-node-detail-text">${escapeHtml(str)}</div>`;
     }
-    return `<span class="luker-node-detail-scalar">${escapeHtml(str)}</span>`;
+    return `<span class="atria-node-detail-scalar">${escapeHtml(str)}</span>`;
 }
 
 function renderNodeDetailHtml(node) {
@@ -2251,22 +2194,22 @@ function renderNodeDetailHtml(node) {
 
     const metaItems = [];
     if (parentId) {
-        metaItems.push(`<div class="luker-node-detail-meta-item"><span class="luker-node-detail-meta-key">${escapeHtml(i18n('Parent Node'))}</span><span class="luker-node-detail-meta-val">${escapeHtml(parentId)}</span></div>`);
+        metaItems.push(`<div class="atria-node-detail-meta-item"><span class="atria-node-detail-meta-key">${escapeHtml(i18n('Parent Node'))}</span><span class="atria-node-detail-meta-val">${escapeHtml(parentId)}</span></div>`);
     }
     if (childrenIds.length) {
-        metaItems.push(`<div class="luker-node-detail-meta-item"><span class="luker-node-detail-meta-key">${escapeHtml(i18n('Children'))}</span><span class="luker-node-detail-meta-val">${childrenIds.length}</span></div>`);
+        metaItems.push(`<div class="atria-node-detail-meta-item"><span class="atria-node-detail-meta-key">${escapeHtml(i18n('Children'))}</span><span class="atria-node-detail-meta-val">${childrenIds.length}</span></div>`);
     }
     if (seqLabel) {
-        metaItems.push(`<div class="luker-node-detail-meta-item"><span class="luker-node-detail-meta-key">${escapeHtml(i18n('Sequence'))}</span><span class="luker-node-detail-meta-val">${escapeHtml(seqLabel)}</span></div>`);
+        metaItems.push(`<div class="atria-node-detail-meta-item"><span class="atria-node-detail-meta-key">${escapeHtml(i18n('Sequence'))}</span><span class="atria-node-detail-meta-val">${escapeHtml(seqLabel)}</span></div>`);
     }
     if (semanticDepth !== null && semanticDepth > 0) {
-        metaItems.push(`<div class="luker-node-detail-meta-item"><span class="luker-node-detail-meta-key">${escapeHtml(i18n('Semantic Depth'))}</span><span class="luker-node-detail-meta-val">${escapeHtml(String(semanticDepth))}</span></div>`);
+        metaItems.push(`<div class="atria-node-detail-meta-item"><span class="atria-node-detail-meta-key">${escapeHtml(i18n('Semantic Depth'))}</span><span class="atria-node-detail-meta-val">${escapeHtml(String(semanticDepth))}</span></div>`);
     }
     if (semanticRollup) {
-        metaItems.push(`<div class="luker-node-detail-meta-item"><span class="luker-node-detail-meta-key">${escapeHtml(i18n('Semantic Rollup'))}</span><span class="luker-node-detail-meta-val">${escapeHtml(i18n('Yes'))}</span></div>`);
+        metaItems.push(`<div class="atria-node-detail-meta-item"><span class="atria-node-detail-meta-key">${escapeHtml(i18n('Semantic Rollup'))}</span><span class="atria-node-detail-meta-val">${escapeHtml(i18n('Yes'))}</span></div>`);
     }
     if (archived) {
-        metaItems.push(`<div class="luker-node-detail-meta-item is-warn"><span class="luker-node-detail-meta-key">${escapeHtml(i18n('Archived'))}</span><span class="luker-node-detail-meta-val">${escapeHtml(i18n('Yes'))}</span></div>`);
+        metaItems.push(`<div class="atria-node-detail-meta-item is-warn"><span class="atria-node-detail-meta-key">${escapeHtml(i18n('Archived'))}</span><span class="atria-node-detail-meta-val">${escapeHtml(i18n('Yes'))}</span></div>`);
     }
 
     const summaryText = getNodeSummary(node);
@@ -2277,42 +2220,42 @@ function renderNodeDetailHtml(node) {
             || (Array.isArray(value) && value.some(item => item !== null && typeof item === 'object'))
             || (value !== null && typeof value === 'object' && !Array.isArray(value));
         return `
-<div class="luker-node-detail-row${isLong ? ' is-block' : ''}">
-    <div class="luker-node-detail-key">${escapeHtml(String(key))}</div>
-    <div class="luker-node-detail-value">${formatNodeFieldValueHtml(value)}</div>
+<div class="atria-node-detail-row${isLong ? ' is-block' : ''}">
+    <div class="atria-node-detail-key">${escapeHtml(String(key))}</div>
+    <div class="atria-node-detail-value">${formatNodeFieldValueHtml(value)}</div>
 </div>`;
     }).join('');
 
     const childrenChipsHtml = childrenIds.length
-        ? childrenIds.map(c => `<span class="luker-node-detail-tag">${escapeHtml(String(c))}</span>`).join(' ')
+        ? childrenIds.map(c => `<span class="atria-node-detail-tag">${escapeHtml(String(c))}</span>`).join(' ')
         : '';
 
     return `
-<div class="luker-node-detail">
-    <div class="luker-node-detail-header">
-        <div class="luker-node-detail-title-row">
-            <span class="luker-node-detail-title">${escapeHtml(title)}</span>
-            ${type ? `<span class="luker-node-detail-badge is-type">${escapeHtml(type)}</span>` : ''}
-            ${level ? `<span class="luker-node-detail-badge is-level">${escapeHtml(level)}</span>` : ''}
+<div class="atria-node-detail">
+    <div class="atria-node-detail-header">
+        <div class="atria-node-detail-title-row">
+            <span class="atria-node-detail-title">${escapeHtml(title)}</span>
+            ${type ? `<span class="atria-node-detail-badge is-type">${escapeHtml(type)}</span>` : ''}
+            ${level ? `<span class="atria-node-detail-badge is-level">${escapeHtml(level)}</span>` : ''}
         </div>
-        <div class="luker-node-detail-id">#${escapeHtml(id)}</div>
+        <div class="atria-node-detail-id">#${escapeHtml(id)}</div>
     </div>
-    ${summaryText ? `<div class="luker-node-detail-summary">${escapeHtml(summaryText)}</div>` : ''}
-    ${metaItems.length ? `<div class="luker-node-detail-meta">${metaItems.join('')}</div>` : ''}
+    ${summaryText ? `<div class="atria-node-detail-summary">${escapeHtml(summaryText)}</div>` : ''}
+    ${metaItems.length ? `<div class="atria-node-detail-meta">${metaItems.join('')}</div>` : ''}
     ${fieldRowsHtml ? `
-    <div class="luker-node-detail-section">
-        <div class="luker-node-detail-section-title">${escapeHtml(i18n('Fields'))}</div>
-        <div class="luker-node-detail-rows">${fieldRowsHtml}</div>
+    <div class="atria-node-detail-section">
+        <div class="atria-node-detail-section-title">${escapeHtml(i18n('Fields'))}</div>
+        <div class="atria-node-detail-rows">${fieldRowsHtml}</div>
     </div>` : `
-    <div class="luker-node-detail-section">
-        <div class="luker-node-detail-empty-block">${escapeHtml(i18n('No fields.'))}</div>
+    <div class="atria-node-detail-section">
+        <div class="atria-node-detail-empty-block">${escapeHtml(i18n('No fields.'))}</div>
     </div>`}
     ${childrenChipsHtml ? `
-    <div class="luker-node-detail-section">
-        <div class="luker-node-detail-section-title">${escapeHtml(i18n('Children'))}</div>
-        <div class="luker-node-detail-tags">${childrenChipsHtml}</div>
+    <div class="atria-node-detail-section">
+        <div class="atria-node-detail-section-title">${escapeHtml(i18n('Children'))}</div>
+        <div class="atria-node-detail-tags">${childrenChipsHtml}</div>
     </div>` : ''}
-    <details class="luker-node-detail-raw">
+    <details class="atria-node-detail-raw">
         <summary>${escapeHtml(i18n('View Raw JSON'))}</summary>
         <pre>${escapeHtml(JSON.stringify(node, null, 2))}</pre>
     </details>
@@ -3035,7 +2978,7 @@ async function summarizeTextWithLLM(context, settings, instruction, lines, abort
             userPrompt: joined,
             apiPresetName: settings.extractApiPresetName || '',
             promptPresetName: settings.extractPresetName || '',
-            functionName: 'luker_rpg_summary',
+            functionName: 'atria_rpg_summary',
             functionDescription: 'Return compressed memory summary text.',
             parameters: {
                 type: 'object',
@@ -3087,7 +3030,7 @@ async function summarizeRollupFieldsWithLLM(context, settings, spec, instruction
             userPrompt,
             apiPresetName: settings.extractApiPresetName || '',
             promptPresetName: settings.extractPresetName || '',
-            functionName: 'luker_rpg_summary_fields',
+            functionName: 'atria_rpg_summary_fields',
             functionDescription: 'Return compressed rollup fields for the higher-level memory node.',
             parameters: {
                 type: 'object',
@@ -3671,7 +3614,7 @@ function buildDynamicExtractTools(schema = [], options = {}) {
         if (activeTypes && !activeTypes.has(typeId)) {
             continue;
         }
-        const baseName = `luker_rpg_extract_${sanitizeExtractToolNameSuffix(typeId)}`;
+        const baseName = `atria_rpg_extract_${sanitizeExtractToolNameSuffix(typeId)}`;
         const isEditableType = Boolean(spec?.editable);
         let createToolName = `${baseName}_create`;
         let suffix = 2;
@@ -3858,7 +3801,7 @@ function buildDynamicExtractTools(schema = [], options = {}) {
         }
     }
 
-    const linkUpsertToolName = 'luker_rpg_extract_link_upsert';
+    const linkUpsertToolName = 'atria_rpg_extract_link_upsert';
     tools.push({
         type: 'function',
         function: {
@@ -3899,7 +3842,7 @@ function buildDynamicExtractTools(schema = [], options = {}) {
         toolName: linkUpsertToolName,
     });
 
-    const linkDeleteToolName = 'luker_rpg_extract_link_delete';
+    const linkDeleteToolName = 'atria_rpg_extract_link_delete';
     tools.push({
         type: 'function',
         function: {
@@ -3932,7 +3875,7 @@ function buildDynamicExtractTools(schema = [], options = {}) {
     tools.push({
         type: 'function',
         function: {
-            name: 'luker_rpg_extract_done',
+            name: 'atria_rpg_extract_done',
             description: 'Signal extraction completion.',
             parameters: {
                 type: 'object',
@@ -4606,7 +4549,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
         allowEditDelete: !rebuildCreateOnly,
         activeTypes,
     });
-    const allowedNames = new Set(['luker_rpg_extract_done', ...specByToolName.keys()]);
+    const allowedNames = new Set(['atria_rpg_extract_done', ...specByToolName.keys()]);
     let factContext = '';
     if (options.sourceTicket) {
         tools.push(factExtractionTool());
@@ -4783,7 +4726,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
                 ops.push({ op: 'memory_facts', operations: factOps, graphOperations: graphOps });
             } catch (error) {
                 retryReason = `Invalid atomic facts: ${error.message}`;
-                stagedCalls = calls.filter(call => call.name !== FACT_TOOL_NAME && call.name !== 'luker_rpg_extract_done');
+                stagedCalls = calls.filter(call => call.name !== FACT_TOOL_NAME && call.name !== 'atria_rpg_extract_done');
                 continue;
             }
         }
@@ -5670,10 +5613,10 @@ function buildExtractBatchFromFrames(frames, batchStartIndex, batchEndIndex, con
 }
 
 const CRAWL_READ_TOOL_NAMES = new Set([
-    'luker_rpg_extract_crawl_inspect',
-    'luker_rpg_extract_crawl_neighbors',
-    'luker_rpg_extract_crawl_search',
-    'luker_rpg_extract_crawl_done',
+    'atria_rpg_extract_crawl_inspect',
+    'atria_rpg_extract_crawl_neighbors',
+    'atria_rpg_extract_crawl_search',
+    'atria_rpg_extract_crawl_done',
 ]);
 
 function buildExtractionCrawlTools() {
@@ -5681,7 +5624,7 @@ function buildExtractionCrawlTools() {
         {
             type: 'function',
             function: {
-                name: 'luker_rpg_extract_crawl_inspect',
+                name: 'atria_rpg_extract_crawl_inspect',
                 description: 'Inspect one existing memory node in full. Use before editing or when its current fields are needed.',
                 parameters: { type: 'object', properties: { node_id: { type: 'string' } }, required: ['node_id'], additionalProperties: false },
             },
@@ -5689,7 +5632,7 @@ function buildExtractionCrawlTools() {
         {
             type: 'function',
             function: {
-                name: 'luker_rpg_extract_crawl_neighbors',
+                name: 'atria_rpg_extract_crawl_neighbors',
                 description: 'Crawl from a known node through semantic graph edges. Returns bounded neighbor briefs; use for historical continuity or related events.',
                 parameters: {
                     type: 'object',
@@ -5706,7 +5649,7 @@ function buildExtractionCrawlTools() {
         {
             type: 'function',
             function: {
-                name: 'luker_rpg_extract_crawl_search',
+                name: 'atria_rpg_extract_crawl_search',
                 description: 'Search the complete graph for a named entity or topic, useful when a relevant old node is not in the initial candidate list.',
                 parameters: {
                     type: 'object',
@@ -5723,7 +5666,7 @@ function buildExtractionCrawlTools() {
         {
             type: 'function',
             function: {
-                name: 'luker_rpg_extract_crawl_done',
+                name: 'atria_rpg_extract_crawl_done',
                 description: 'Finish graph exploration. Call this when the local graph slice is sufficient for extraction.',
                 parameters: { type: 'object', properties: { reason: { type: 'string' } }, additionalProperties: false },
             },
@@ -5801,7 +5744,7 @@ async function buildExtractionCrawlGraph(context, store, settings, schema, messa
             buildJsonXmlSection('candidate_nodes', candidates),
             observations.length > 0 ? buildJsonXmlSection('crawl_observations', observations) : '',
             `Exploration round ${round}/${maxRounds}. Reads used: ${readKeys.size}/${maxReads}.`,
-            'Call one or more read tools, or call luker_rpg_extract_crawl_done.',
+            'Call one or more read tools, or call atria_rpg_extract_crawl_done.',
         ].filter(Boolean).join('\n\n');
         const calls = await requestToolCallsWithRetry(context, settings, {
             taskMessages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
@@ -5820,7 +5763,7 @@ async function buildExtractionCrawlGraph(context, store, settings, schema, messa
         for (const call of calls) {
             const name = String(call?.name || '');
             const args = call?.args && typeof call.args === 'object' ? call.args : {};
-            if (name === 'luker_rpg_extract_crawl_done') {
+            if (name === 'atria_rpg_extract_crawl_done') {
                 done = true;
                 continue;
             }
@@ -5834,7 +5777,7 @@ async function buildExtractionCrawlGraph(context, store, settings, schema, messa
             // model loops (see iter-studio noop/error contract).
             let result = null;
             let error = null;
-            if (name === 'luker_rpg_extract_crawl_inspect') {
+            if (name === 'atria_rpg_extract_crawl_inspect') {
                 const id = String(args.node_id || '').trim();
                 if (!id) {
                     error = 'invalid_args: node_id is required.';
@@ -5862,7 +5805,7 @@ async function buildExtractionCrawlGraph(context, store, settings, schema, messa
                         readKeys.add(`inspect:${id}`);
                     }
                 }
-            } else if (name === 'luker_rpg_extract_crawl_neighbors') {
+            } else if (name === 'atria_rpg_extract_crawl_neighbors') {
                 const id = String(args.node_id || '').trim();
                 if (!id) {
                     error = 'invalid_args: node_id is required.';
@@ -5881,7 +5824,7 @@ async function buildExtractionCrawlGraph(context, store, settings, schema, messa
                         readKeys.add(`neighbors:${id}`);
                     }
                 }
-            } else if (name === 'luker_rpg_extract_crawl_search') {
+            } else if (name === 'atria_rpg_extract_crawl_search') {
                 const query = String(args.query || '').trim();
                 if (!query) {
                     error = 'invalid_args: query is required.';
@@ -7113,7 +7056,7 @@ async function chooseRecallRoute(context, settings, recallState) {
                 : null,
             forceWorldInfoResimulate: Boolean(recallState?.forceWorldInfoResimulate),
             worldInfoType: 'quiet',
-            functionName: 'luker_rpg_recall_plan',
+            functionName: 'atria_rpg_recall_plan',
             functionDescription: 'Plan recall as finalize or drill with optional expansion plan.',
             parameters: {
                 type: 'object',
@@ -7324,7 +7267,7 @@ async function chooseFocusNodes(context, settings, recallState) {
                 : null,
             forceWorldInfoResimulate: Boolean(recallState?.forceWorldInfoResimulate),
             worldInfoType: 'quiet',
-            functionName: 'luker_rpg_recall_finalize',
+            functionName: 'atria_rpg_recall_finalize',
             functionDescription: 'Finalize memory node IDs to inject.',
             parameters: {
                 type: 'object',
@@ -7854,8 +7797,8 @@ function syncMutableGenerationPayloadState(target, source) {
 
     const mutableKeys = [
         'requestRescan',
-        '__lukerRpgMemoryNeedRescan',
-        '__lukerRpgMemoryInjected',
+        '__atriaRpgMemoryNeedRescan',
+        '__atriaRpgMemoryInjected',
         'worldInfoResolution',
         'worldInfoResolutionOverride',
         'worldInfoBeforeEntries',
@@ -8197,7 +8140,7 @@ async function runLLMDrivenRecall(context, store, payload) {
         return { selectedNodes: [], alwaysInjectNodes: [], trace: [], query: '' };
     }
     const abortSignal = isAbortSignalLike(payload?.signal) ? payload.signal : null;
-    const recallRunToken = Number(payload?.__lukerRpgMemoryRecallRunToken || 0);
+    const recallRunToken = Number(payload?.__atriaRpgMemoryRecallRunToken || 0);
     throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
 
     const queryBundle = getRecallQueryBundle(payload, context, settings);
@@ -8606,12 +8549,12 @@ async function injectMemoryPrompts(context, payload) {
     const generationType = String(payload?.type || '').trim().toLowerCase();
     context = Object.assign(Object.create(context), { memoryOsGenerationType: generationType });
     const isDryRun = payload?.dryRun === true;
-    const generationAbortSignal = isAbortSignalLike(payload?.__lukerRpgMemoryGenerationSignal)
-        ? payload.__lukerRpgMemoryGenerationSignal
+    const generationAbortSignal = isAbortSignalLike(payload?.__atriaRpgMemoryGenerationSignal)
+        ? payload.__atriaRpgMemoryGenerationSignal
         : payload?.signal;
-    const recallRunToken = Number(payload?.__lukerRpgMemoryRecallRunToken || 0);
+    const recallRunToken = Number(payload?.__atriaRpgMemoryRecallRunToken || 0);
     if (payload && typeof payload === 'object') {
-        payload.__lukerRpgMemoryNeedRescan = false;
+        payload.__atriaRpgMemoryNeedRescan = false;
     }
     if (isDryRun || generationType === 'quiet') {
         return false;
@@ -8684,7 +8627,7 @@ async function injectMemoryPrompts(context, payload) {
         const runtimeSync = await syncRuntimeLorebookProjection(context, settings, store);
         throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
         if (payload && typeof payload === 'object') {
-            payload.__lukerRpgMemoryNeedRescan = Boolean(persistentSync.changed || runtimeSync.changed);
+            payload.__atriaRpgMemoryNeedRescan = Boolean(persistentSync.changed || runtimeSync.changed);
         }
         updateUiStatus(i18nFormat('Recall ready. selected=${0}', Math.max(0, Number(latestRecallSnapshot.selectedCount || 0))));
         return Boolean(persistentSync.changed || runtimeSync.changed);
@@ -8902,7 +8845,7 @@ async function injectMemoryPrompts(context, payload) {
     hybrid?.assertCurrent();
     throwIfRecallRunInvalid(recallRunToken, payload?.signal, 'Memory recall aborted.');
     if (payload && typeof payload === 'object') {
-        payload.__lukerRpgMemoryNeedRescan = Boolean(persistentSync.changed || runtimeSync.changed);
+        payload.__atriaRpgMemoryNeedRescan = Boolean(persistentSync.changed || runtimeSync.changed);
     }
     latestRecallSnapshot = anchor
         ? {
@@ -8943,12 +8886,12 @@ async function safeInjectMemoryPrompts(context, payload, trigger = 'after_world_
         ? {
             ...payload,
             signal: linkedAbort.signal,
-            __lukerRpgMemoryGenerationSignal: payload?.signal || null,
-            __lukerRpgMemoryRecallRunToken: recallRunToken,
+            __atriaRpgMemoryGenerationSignal: payload?.signal || null,
+            __atriaRpgMemoryRecallRunToken: recallRunToken,
         }
         : {
             ...payload,
-            __lukerRpgMemoryRecallRunToken: recallRunToken,
+            __atriaRpgMemoryRecallRunToken: recallRunToken,
         };
     let stopRequestedByUser = false;
     let resolveStopRequest = null;
@@ -9002,7 +8945,7 @@ async function safeInjectMemoryPrompts(context, payload, trigger = 'after_world_
         if (result?.stopped) {
             syncMutableGenerationPayloadState(payload, effectivePayload);
             if (payload && typeof payload === 'object') {
-                payload.__lukerRpgMemoryNeedRescan = false;
+                payload.__atriaRpgMemoryNeedRescan = false;
                 payload.requestRescan = false;
             }
             updateUiStatus(i18n('Memory recall cancelled by user.'));
@@ -9012,7 +8955,7 @@ async function safeInjectMemoryPrompts(context, payload, trigger = 'after_world_
         syncMutableGenerationPayloadState(payload, effectivePayload);
         const injected = Boolean(result?.injected);
         if (injected && payload && typeof payload === 'object') {
-            payload.__lukerRpgMemoryInjected = true;
+            payload.__atriaRpgMemoryInjected = true;
         }
         clearPersistentRuntimeNotice();
         return Boolean(injected);
@@ -9020,7 +8963,7 @@ async function safeInjectMemoryPrompts(context, payload, trigger = 'after_world_
         syncMutableGenerationPayloadState(payload, effectivePayload);
         if (isAbortError(error, effectivePayload?.signal)) {
             if (payload && typeof payload === 'object') {
-                payload.__lukerRpgMemoryNeedRescan = false;
+                payload.__atriaRpgMemoryNeedRescan = false;
                 payload.requestRescan = false;
             }
             const generationAborted = Boolean(isAbortSignalLike(payload?.signal) && payload.signal.aborted);
@@ -9504,14 +9447,14 @@ function renderGraphInspectorHtml(store, options = {}) {
 <td>${escapeHtml(String(node.id || ''))}</td>
 <td>${escapeHtml(String(node.type || ''))}</td>
 <td>${escapeHtml(String(node.title || ''))}</td>
-<td class="luker-graph-td-summary">${escapeHtml(clipMemoryGraphText(getNodeSummary(node), 120))}</td>
+<td class="atria-graph-td-summary">${escapeHtml(clipMemoryGraphText(getNodeSummary(node), 120))}</td>
 <td>${node.seqTo ?? ''}</td>
 <td>
-    <div class="luker-graph-row-actions">
-        <div class="menu_button menu_button_small luker-graph-locate-node" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-view" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('View'))}"><i class="fa-solid fa-eye fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-edit" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('Form Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-delete" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('Delete'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
+    <div class="atria-graph-row-actions">
+        <div class="menu_button menu_button_small atria-graph-locate-node" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-view" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('View'))}"><i class="fa-solid fa-eye fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-edit" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('Form Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-delete" data-node-id="${escapeHtml(node.id)}" title="${escapeHtml(i18n('Delete'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
     </div>
 </td>
 </tr>`).join('');
@@ -9521,18 +9464,18 @@ function renderGraphInspectorHtml(store, options = {}) {
         const nodeId = escapeHtml(String(node.id || ''));
         const summary = clipMemoryGraphText(getNodeSummary(node), 140);
         return `
-<div class="luker-graph-card" data-node-id="${nodeId}">
-    <div class="luker-graph-card-head">
-        <span class="luker-graph-card-title">${escapeHtml(String(node.title || node.id || ''))}</span>
-        <span class="luker-graph-card-type">${escapeHtml(String(node.type || ''))}</span>
+<div class="atria-graph-card" data-node-id="${nodeId}">
+    <div class="atria-graph-card-head">
+        <span class="atria-graph-card-title">${escapeHtml(String(node.title || node.id || ''))}</span>
+        <span class="atria-graph-card-type">${escapeHtml(String(node.type || ''))}</span>
     </div>
-    <div class="luker-graph-card-meta">#${nodeId} · seq ${escapeHtml(String(node.seqTo ?? ''))}</div>
-    ${summary ? `<div class="luker-graph-card-body">${escapeHtml(summary)}</div>` : ''}
-    <div class="luker-graph-card-actions">
-        <div class="menu_button menu_button_small luker-graph-locate-node" data-node-id="${nodeId}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-view" data-node-id="${nodeId}" title="${escapeHtml(i18n('View'))}"><i class="fa-solid fa-eye fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-edit" data-node-id="${nodeId}" title="${escapeHtml(i18n('Form Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-delete" data-node-id="${nodeId}" title="${escapeHtml(i18n('Delete'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
+    <div class="atria-graph-card-meta">#${nodeId} · seq ${escapeHtml(String(node.seqTo ?? ''))}</div>
+    ${summary ? `<div class="atria-graph-card-body">${escapeHtml(summary)}</div>` : ''}
+    <div class="atria-graph-card-actions">
+        <div class="menu_button menu_button_small atria-graph-locate-node" data-node-id="${nodeId}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-view" data-node-id="${nodeId}" title="${escapeHtml(i18n('View'))}"><i class="fa-solid fa-eye fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-edit" data-node-id="${nodeId}" title="${escapeHtml(i18n('Form Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-delete" data-node-id="${nodeId}" title="${escapeHtml(i18n('Delete'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
     </div>
 </div>`;
     }).join('');
@@ -9545,24 +9488,24 @@ function renderGraphInspectorHtml(store, options = {}) {
 <td>${escapeHtml(String(edge.type || ''))}</td>
 <td>${Number(edge._index)}</td>
 <td>
-    <div class="luker-graph-row-actions">
-        <div class="menu_button menu_button_small luker-graph-locate-edge" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-edge-edit-row" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
+    <div class="atria-graph-row-actions">
+        <div class="menu_button menu_button_small atria-graph-locate-edge" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-edge-edit-row" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
     </div>
 </td>
 </tr>`).join('');
 
     // --- Edge card list (mobile) ---
     const edgeCardList = edges.map(edge => `
-<div class="luker-graph-card">
-    <div class="luker-graph-card-head">
-        <span class="luker-graph-card-title">${escapeHtml(String(edge.from || ''))} → ${escapeHtml(String(edge.to || ''))}</span>
-        <span class="luker-graph-card-type">${escapeHtml(String(edge.type || ''))}</span>
+<div class="atria-graph-card">
+    <div class="atria-graph-card-head">
+        <span class="atria-graph-card-title">${escapeHtml(String(edge.from || ''))} → ${escapeHtml(String(edge.to || ''))}</span>
+        <span class="atria-graph-card-type">${escapeHtml(String(edge.type || ''))}</span>
     </div>
-    <div class="luker-graph-card-meta">#${Number(edge._index)}</div>
-    <div class="luker-graph-card-actions">
-        <div class="menu_button menu_button_small luker-graph-locate-edge" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-edge-edit-row" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
+    <div class="atria-graph-card-meta">#${Number(edge._index)}</div>
+    <div class="atria-graph-card-actions">
+        <div class="menu_button menu_button_small atria-graph-locate-edge" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-edge-edit-row" data-edge-index="${Number(edge._index)}" title="${escapeHtml(i18n('Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
     </div>
 </div>`).join('');
 
@@ -9570,11 +9513,11 @@ function renderGraphInspectorHtml(store, options = {}) {
     const searchFilterHtml = searchModel.typeOptions.map(option => `
 <button
     type="button"
-    class="luker-rpg-memory-graph-search-filter${option.value === searchModel.typeFilter ? ' is-active' : ''}"
+    class="atria-rpg-memory-graph-search-filter${option.value === searchModel.typeFilter ? ' is-active' : ''}"
     data-search-type="${escapeHtml(option.value)}"
 >
     <span>${escapeHtml(option.label)}</span>
-    <span class="luker-rpg-memory-graph-search-filter-count">${option.count}</span>
+    <span class="atria-rpg-memory-graph-search-filter-count">${option.count}</span>
 </button>`).join('');
 
     // --- Search result cards ---
@@ -9585,84 +9528,84 @@ function renderGraphInspectorHtml(store, options = {}) {
             const summary = clipMemoryGraphText(getNodeSummary(node) || getMemoryGraphNodeSearchText(node), 160);
             return `
 <div
-    class="luker-rpg-memory-graph-search-result${nodeId === searchModel.activeNodeId ? ' is-active' : ''}"
+    class="atria-rpg-memory-graph-search-result${nodeId === searchModel.activeNodeId ? ' is-active' : ''}"
     data-node-id="${escapeHtml(nodeId)}"
     role="button"
     tabindex="0"
 >
-    <div class="luker-rpg-memory-graph-search-result-body">
-        <span class="luker-rpg-memory-graph-search-result-topline">
-            <span class="luker-rpg-memory-graph-search-result-title">${escapeHtml(String(node?.title || nodeId || ''))}</span>
-            <span class="luker-rpg-memory-graph-search-result-type">${escapeHtml(String(node?.type || 'unknown'))}</span>
+    <div class="atria-rpg-memory-graph-search-result-body">
+        <span class="atria-rpg-memory-graph-search-result-topline">
+            <span class="atria-rpg-memory-graph-search-result-title">${escapeHtml(String(node?.title || nodeId || ''))}</span>
+            <span class="atria-rpg-memory-graph-search-result-type">${escapeHtml(String(node?.type || 'unknown'))}</span>
         </span>
-        <span class="luker-rpg-memory-graph-search-result-meta">#${escapeHtml(nodeId)} · seq ${escapeHtml(String(node?.seqTo ?? ''))}</span>
-        <span class="luker-rpg-memory-graph-search-result-summary">${escapeHtml(summary || String(node?.type || ''))}</span>
+        <span class="atria-rpg-memory-graph-search-result-meta">#${escapeHtml(nodeId)} · seq ${escapeHtml(String(node?.seqTo ?? ''))}</span>
+        <span class="atria-rpg-memory-graph-search-result-summary">${escapeHtml(summary || String(node?.type || ''))}</span>
     </div>
-    <div class="luker-rpg-memory-graph-search-result-actions">
-        <div class="menu_button menu_button_small luker-graph-locate-node luker-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-view luker-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('View'))}"><i class="fa-solid fa-eye fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-edit luker-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('Form Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
-        <div class="menu_button menu_button_small luker-rpg-memory-node-delete luker-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('Delete'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
+    <div class="atria-rpg-memory-graph-search-result-actions">
+        <div class="menu_button menu_button_small atria-graph-locate-node atria-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('Locate in Graph'))}"><i class="fa-solid fa-crosshairs fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-view atria-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('View'))}"><i class="fa-solid fa-eye fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-edit atria-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('Form Edit'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
+        <div class="menu_button menu_button_small atria-rpg-memory-node-delete atria-rpg-memory-graph-search-result-action" data-node-id="${escapeHtml(nodeId)}" title="${escapeHtml(i18n('Delete'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
     </div>
 </div>`;
         }).join('')
         : `
-<div class="luker-rpg-memory-graph-search-empty">
+<div class="atria-rpg-memory-graph-search-empty">
     <div>${escapeHtml(searchModel.emptyText)}</div>
     <small>${escapeHtml(searchModel.emptyHint)}</small>
 </div>`;
 
     // --- Tab helper ---
-    const tabClass = (name) => `luker-graph-tab${activeTab === name ? ' is-active' : ''}`;
-    const panelClass = (name) => `luker-graph-tab-panel${activeTab === name ? ' is-active' : ''}`;
+    const tabClass = (name) => `atria-graph-tab${activeTab === name ? ' is-active' : ''}`;
+    const panelClass = (name) => `atria-graph-tab-panel${activeTab === name ? ' is-active' : ''}`;
 
     return `
-<div class="luker-rpg-memory-graph-popup-inner">
+<div class="atria-rpg-memory-graph-popup-inner">
     <!-- HEADER -->
-    <div class="luker-graph-header">
-        <div class="luker-graph-header-left">
-            <h3 class="luker-graph-title">${escapeHtml(i18n('Memory Graph'))}</h3>
-            <div class="luker-graph-stats">
-                <span class="luker-graph-stat">${escapeHtml(i18n('Nodes'))} <b>${stats.nodeCount}</b></span>
-                <span class="luker-graph-stat">${escapeHtml(i18n('Edges'))} <b>${stats.edgeCount}</b></span>
-                <span class="luker-graph-stat">${escapeHtml(i18n('Turns'))} <b>${stats.messageCount}</b></span>
-                <span class="luker-graph-stat">${escapeHtml(i18n('Recall'))} <b>${stats.lastRecallSteps}</b></span>
+    <div class="atria-graph-header">
+        <div class="atria-graph-header-left">
+            <h3 class="atria-graph-title">${escapeHtml(i18n('Memory Graph'))}</h3>
+            <div class="atria-graph-stats">
+                <span class="atria-graph-stat">${escapeHtml(i18n('Nodes'))} <b>${stats.nodeCount}</b></span>
+                <span class="atria-graph-stat">${escapeHtml(i18n('Edges'))} <b>${stats.edgeCount}</b></span>
+                <span class="atria-graph-stat">${escapeHtml(i18n('Turns'))} <b>${stats.messageCount}</b></span>
+                <span class="atria-graph-stat">${escapeHtml(i18n('Recall'))} <b>${stats.lastRecallSteps}</b></span>
             </div>
         </div>
-        <button type="button" class="luker-graph-search-toggle${isSearchOpen ? ' is-active' : ''}" title="${escapeHtml(i18n('Search'))}">
+        <button type="button" class="atria-graph-search-toggle${isSearchOpen ? ' is-active' : ''}" title="${escapeHtml(i18n('Search'))}">
             <i class="fa-solid fa-magnifying-glass"></i>
         </button>
     </div>
 
     <!-- SEARCH (collapsible) -->
-    <div class="luker-graph-search-collapsible${isSearchOpen ? ' is-open' : ''}">
-        <div class="luker-rpg-memory-graph-search-shell">
-            <div class="luker-rpg-memory-graph-search-head">
-                <label class="luker-rpg-memory-graph-search-input-wrap">
+    <div class="atria-graph-search-collapsible${isSearchOpen ? ' is-open' : ''}">
+        <div class="atria-rpg-memory-graph-search-shell">
+            <div class="atria-rpg-memory-graph-search-head">
+                <label class="atria-rpg-memory-graph-search-input-wrap">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input
                         type="search"
-                        class="text_pole luker-rpg-memory-graph-search-input"
+                        class="text_pole atria-rpg-memory-graph-search-input"
                         placeholder="${escapeHtml(i18n('Search nodes, summaries, IDs...'))}"
                         value="${escapeHtml(searchModel.query)}"
                     />
                 </label>
-                <div class="luker-rpg-memory-graph-search-actions">
-                    <button type="button" class="menu_button menu_button_small luker-rpg-memory-graph-search-prev"${searchModel.matchNodeIds.length > 1 ? '' : ' disabled'} title="${escapeHtml(i18n('Prev Result'))}"><i class="fa-solid fa-chevron-up fa-fw"></i></button>
-                    <button type="button" class="menu_button menu_button_small luker-rpg-memory-graph-search-next"${searchModel.matchNodeIds.length > 1 ? '' : ' disabled'} title="${escapeHtml(i18n('Next Result'))}"><i class="fa-solid fa-chevron-down fa-fw"></i></button>
-                    <button type="button" class="menu_button menu_button_small luker-rpg-memory-graph-search-clear"${searchModel.active ? '' : ' disabled'} title="${escapeHtml(i18n('Clear Search'))}"><i class="fa-solid fa-xmark fa-fw"></i></button>
+                <div class="atria-rpg-memory-graph-search-actions">
+                    <button type="button" class="menu_button menu_button_small atria-rpg-memory-graph-search-prev"${searchModel.matchNodeIds.length > 1 ? '' : ' disabled'} title="${escapeHtml(i18n('Prev Result'))}"><i class="fa-solid fa-chevron-up fa-fw"></i></button>
+                    <button type="button" class="menu_button menu_button_small atria-rpg-memory-graph-search-next"${searchModel.matchNodeIds.length > 1 ? '' : ' disabled'} title="${escapeHtml(i18n('Next Result'))}"><i class="fa-solid fa-chevron-down fa-fw"></i></button>
+                    <button type="button" class="menu_button menu_button_small atria-rpg-memory-graph-search-clear"${searchModel.active ? '' : ' disabled'} title="${escapeHtml(i18n('Clear Search'))}"><i class="fa-solid fa-xmark fa-fw"></i></button>
                 </div>
             </div>
-            <div class="luker-rpg-memory-graph-search-meta">
-                <div class="luker-rpg-memory-graph-search-filters">${searchFilterHtml}</div>
-                <small class="luker-rpg-memory-graph-search-summary">${escapeHtml(searchModel.summaryText)}</small>
+            <div class="atria-rpg-memory-graph-search-meta">
+                <div class="atria-rpg-memory-graph-search-filters">${searchFilterHtml}</div>
+                <small class="atria-rpg-memory-graph-search-summary">${escapeHtml(searchModel.summaryText)}</small>
             </div>
-            <div class="luker-rpg-memory-graph-search-results">${searchResultsHtml}</div>
+            <div class="atria-rpg-memory-graph-search-results">${searchResultsHtml}</div>
         </div>
     </div>
 
     <!-- TAB BAR -->
-    <div class="luker-graph-tab-bar">
+    <div class="atria-graph-tab-bar">
         <button type="button" class="${tabClass('graph')}" data-tab="graph"><i class="fa-solid fa-diagram-project fa-fw"></i><span>${escapeHtml(i18n('Graph'))}</span></button>
         <button type="button" class="${tabClass('nodes')}" data-tab="nodes"><i class="fa-solid fa-circle-nodes fa-fw"></i><span>${escapeHtml(i18n('Nodes'))}</span></button>
         <button type="button" class="${tabClass('edges')}" data-tab="edges"><i class="fa-solid fa-arrows-left-right fa-fw"></i><span>${escapeHtml(i18n('Edges'))}</span></button>
@@ -9671,54 +9614,54 @@ function renderGraphInspectorHtml(store, options = {}) {
 
     <!-- TAB: Graph -->
     <div class="${panelClass('graph')}" data-panel="graph">
-        <div class="luker-rpg-memory-graph-workspace">
-            <div class="luker-rpg-memory-graph-canvas-wrap">
-                <div class="luker-rpg-memory-graph-cy"></div>
-                <div class="luker-graph-canvas-toolbar">
-                    <div class="menu_button menu_button_small luker-rpg-memory-graph-fit" title="${escapeHtml(i18n('Fit View'))}"><i class="fa-solid fa-expand fa-fw"></i></div>
-                    <div class="menu_button menu_button_small luker-rpg-memory-edge-add" title="${escapeHtml(i18n('Add Edge'))}"><i class="fa-solid fa-plus fa-fw"></i></div>
-                    <div class="menu_button menu_button_small luker-rpg-memory-edge-edit" title="${escapeHtml(i18n('Edit Selected Edge'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
-                    <div class="menu_button menu_button_small luker-rpg-memory-node-delete" title="${escapeHtml(i18n('Delete Selected Node'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
-                    <div class="menu_button menu_button_small luker-rpg-memory-edge-delete" title="${escapeHtml(i18n('Delete Selected Edge'))}"><i class="fa-solid fa-link-slash fa-fw"></i></div>
-                    <div class="menu_button menu_button_small luker-rpg-memory-graph-raw-view" title="${escapeHtml(i18n('JSON View'))}"><i class="fa-solid fa-code fa-fw"></i></div>
-                    <div class="menu_button menu_button_small luker-rpg-memory-graph-raw-edit" title="${escapeHtml(i18n('JSON Edit'))}"><i class="fa-solid fa-file-code fa-fw"></i></div>
+        <div class="atria-rpg-memory-graph-workspace">
+            <div class="atria-rpg-memory-graph-canvas-wrap">
+                <div class="atria-rpg-memory-graph-cy"></div>
+                <div class="atria-graph-canvas-toolbar">
+                    <div class="menu_button menu_button_small atria-rpg-memory-graph-fit" title="${escapeHtml(i18n('Fit View'))}"><i class="fa-solid fa-expand fa-fw"></i></div>
+                    <div class="menu_button menu_button_small atria-rpg-memory-edge-add" title="${escapeHtml(i18n('Add Edge'))}"><i class="fa-solid fa-plus fa-fw"></i></div>
+                    <div class="menu_button menu_button_small atria-rpg-memory-edge-edit" title="${escapeHtml(i18n('Edit Selected Edge'))}"><i class="fa-solid fa-pen fa-fw"></i></div>
+                    <div class="menu_button menu_button_small atria-rpg-memory-node-delete" title="${escapeHtml(i18n('Delete Selected Node'))}"><i class="fa-solid fa-trash fa-fw"></i></div>
+                    <div class="menu_button menu_button_small atria-rpg-memory-edge-delete" title="${escapeHtml(i18n('Delete Selected Edge'))}"><i class="fa-solid fa-link-slash fa-fw"></i></div>
+                    <div class="menu_button menu_button_small atria-rpg-memory-graph-raw-view" title="${escapeHtml(i18n('JSON View'))}"><i class="fa-solid fa-code fa-fw"></i></div>
+                    <div class="menu_button menu_button_small atria-rpg-memory-graph-raw-edit" title="${escapeHtml(i18n('JSON Edit'))}"><i class="fa-solid fa-file-code fa-fw"></i></div>
                 </div>
-                <small class="luker-rpg-memory-graph-selection">${escapeHtml(i18n('Click a node or edge to inspect.'))}</small>
+                <small class="atria-rpg-memory-graph-selection">${escapeHtml(i18n('Click a node or edge to inspect.'))}</small>
             </div>
-            <div class="luker-rpg-memory-graph-sidepanel">
-                <div class="luker-graph-inspector-header">
+            <div class="atria-rpg-memory-graph-sidepanel">
+                <div class="atria-graph-inspector-header">
                     <h4 class="margin0">${escapeHtml(i18n('Inspector'))}</h4>
-                    <button type="button" class="luker-graph-inspector-toggle" title="${escapeHtml(i18n('Toggle Inspector'))}"><i class="fa-solid fa-chevron-down fa-fw"></i></button>
+                    <button type="button" class="atria-graph-inspector-toggle" title="${escapeHtml(i18n('Toggle Inspector'))}"><i class="fa-solid fa-chevron-down fa-fw"></i></button>
                 </div>
-                <small class="luker-rpg-memory-graph-sidehint">${escapeHtml(i18n('Select a node or edge to edit.'))}</small>
-                <div class="luker-rpg-memory-graph-editor-slot"></div>
+                <small class="atria-rpg-memory-graph-sidehint">${escapeHtml(i18n('Select a node or edge to edit.'))}</small>
+                <div class="atria-rpg-memory-graph-editor-slot"></div>
             </div>
         </div>
     </div>
 
     <!-- TAB: Nodes -->
     <div class="${panelClass('nodes')}" data-panel="nodes">
-        <div class="luker-rpg-memory-graph-table-wrap luker-graph-desktop-only">
-            <table class="table luker-graph-table">
+        <div class="atria-rpg-memory-graph-table-wrap atria-graph-desktop-only">
+            <table class="table atria-graph-table">
                 <thead><tr><th>${escapeHtml(i18n('ID'))}</th><th>${escapeHtml(i18n('Type'))}</th><th>${escapeHtml(i18n('Title'))}</th><th>${escapeHtml(i18n('Summary'))}</th><th>${escapeHtml(i18n('Seq'))}</th><th>${escapeHtml(i18n('Actions'))}</th></tr></thead>
                 <tbody>${nodeTableRows}</tbody>
             </table>
         </div>
-        <div class="luker-graph-card-list luker-graph-mobile-only">${nodeCardList}</div>
+        <div class="atria-graph-card-list atria-graph-mobile-only">${nodeCardList}</div>
     </div>
 
     <!-- TAB: Edges -->
     <div class="${panelClass('edges')}" data-panel="edges">
-        <div class="luker-graph-edges-toolbar">
-            <div class="menu_button menu_button_small luker-rpg-memory-edge-add" title="${escapeHtml(i18n('Add Edge'))}"><i class="fa-solid fa-plus fa-fw"></i> ${escapeHtml(i18n('Add Edge'))}</div>
+        <div class="atria-graph-edges-toolbar">
+            <div class="menu_button menu_button_small atria-rpg-memory-edge-add" title="${escapeHtml(i18n('Add Edge'))}"><i class="fa-solid fa-plus fa-fw"></i> ${escapeHtml(i18n('Add Edge'))}</div>
         </div>
-        <div class="luker-rpg-memory-graph-table-wrap luker-graph-desktop-only">
-            <table class="table luker-graph-table">
+        <div class="atria-rpg-memory-graph-table-wrap atria-graph-desktop-only">
+            <table class="table atria-graph-table">
                 <thead><tr><th>${escapeHtml(i18n('From'))}</th><th>${escapeHtml(i18n('To'))}</th><th>${escapeHtml(i18n('Type'))}</th><th>${escapeHtml(i18n('ID'))}</th><th>${escapeHtml(i18n('Actions'))}</th></tr></thead>
                 <tbody>${edgeTableRows}</tbody>
             </table>
         </div>
-        <div class="luker-graph-card-list luker-graph-mobile-only">${edgeCardList}</div>
+        <div class="atria-graph-card-list atria-graph-mobile-only">${edgeCardList}</div>
     </div>
 
     <!-- TAB: Recall -->
@@ -9794,12 +9737,12 @@ function parseMarkdownTableToHtml(mdTable) {
     const bodyRows = dataRows.map(row => {
         const cells = headers.map((_, i) => {
             const val = row[i] ?? '';
-            const cls = val.length > 60 ? 'luker-injection-cell-wrap' : 'luker-injection-cell-tight';
+            const cls = val.length > 60 ? 'atria-injection-cell-wrap' : 'atria-injection-cell-tight';
             return `<td class="${cls}">${escapeHtml(val)}</td>`;
         }).join('');
         return `<tr>${cells}</tr>`;
     }).join('');
-    return `<table class="luker-injection-table"><thead><tr>${thCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+    return `<table class="atria-injection-table"><thead><tr>${thCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
 }
 
 function renderPacketSectionsAsHtml(packetText) {
@@ -9813,16 +9756,16 @@ function renderPacketSectionsAsHtml(packetText) {
         sections.push({ title: match[1].trim(), body: match[2].trim() });
     }
     if (sections.length === 0) {
-        return `<pre class="luker-injection-rawpre">${escapeHtml(packetText)}</pre>`;
+        return `<pre class="atria-injection-rawpre">${escapeHtml(packetText)}</pre>`;
     }
     return sections.map(section => {
         const tableHtml = parseMarkdownTableToHtml(section.body);
-        const content = tableHtml || `<pre class="luker-injection-rawpre">${escapeHtml(section.body)}</pre>`;
-        return `<div class="luker-injection-section">
-    <div class="luker-injection-section-head">
-        <span class="luker-injection-section-title">${escapeHtml(section.title)}</span>
+        const content = tableHtml || `<pre class="atria-injection-rawpre">${escapeHtml(section.body)}</pre>`;
+        return `<div class="atria-injection-section">
+    <div class="atria-injection-section-head">
+        <span class="atria-injection-section-title">${escapeHtml(section.title)}</span>
     </div>
-    <div class="luker-injection-section-body">${content}</div>
+    <div class="atria-injection-section-body">${content}</div>
 </div>`;
     }).join('');
 }
@@ -9834,9 +9777,9 @@ function buildLastRecallCorePacketHtml(store, options = {}) {
 
     if (!projection) {
         return `
-<div class="luker-injection-shell">
-    ${showHeader ? `<div class="luker-injection-header"><div class="luker-injection-title">${headerLabel}</div></div>` : ''}
-    <div class="luker-injection-empty">${escapeHtml(i18n('No recall injection result yet.'))}</div>
+<div class="atria-injection-shell">
+    ${showHeader ? `<div class="atria-injection-header"><div class="atria-injection-title">${headerLabel}</div></div>` : ''}
+    <div class="atria-injection-empty">${escapeHtml(i18n('No recall injection result yet.'))}</div>
 </div>`;
     }
 
@@ -9847,34 +9790,34 @@ function buildLastRecallCorePacketHtml(store, options = {}) {
 
     const headerHtml = showHeader
         ? `
-<div class="luker-injection-header">
-    <div class="luker-injection-title">${headerLabel}</div>
-    ${renderedAt ? `<div class="luker-injection-time"><i class="fa-regular fa-clock"></i> ${escapeHtml(renderedAt)}</div>` : ''}
-    <div class="luker-injection-header-actions">
-        <button type="button" class="menu_button menu_button_small luker-injection-copy-all" title="${escapeHtml(i18n('Copy'))}"><i class="fa-solid fa-copy fa-fw"></i></button>
+<div class="atria-injection-header">
+    <div class="atria-injection-title">${headerLabel}</div>
+    ${renderedAt ? `<div class="atria-injection-time"><i class="fa-regular fa-clock"></i> ${escapeHtml(renderedAt)}</div>` : ''}
+    <div class="atria-injection-header-actions">
+        <button type="button" class="menu_button menu_button_small atria-injection-copy-all" title="${escapeHtml(i18n('Copy'))}"><i class="fa-solid fa-copy fa-fw"></i></button>
     </div>
 </div>`
         : '';
 
     if (!corePacket && !focusPacket) {
         return `
-<div class="luker-injection-shell">
+<div class="atria-injection-shell">
     ${headerHtml}
-    <div class="luker-injection-empty">${escapeHtml(i18n('Injection content is empty.'))}</div>
+    <div class="atria-injection-empty">${escapeHtml(i18n('Injection content is empty.'))}</div>
 </div>`;
     }
 
     const buildBlock = (label, packet, variant) => {
         if (!packet) return '';
         return `
-<section class="luker-injection-block luker-injection-block-${variant}" data-variant="${variant}">
-    <header class="luker-injection-block-head">
-        <span class="luker-injection-block-badge">${escapeHtml(label)}</span>
-        <button type="button" class="menu_button menu_button_small luker-injection-view-source" data-variant="${variant}" title="${escapeHtml(i18n('View Source'))}"><i class="fa-solid fa-code fa-fw"></i></button>
-        <button type="button" class="menu_button menu_button_small luker-injection-copy-block" data-variant="${variant}" title="${escapeHtml(i18n('Copy'))}"><i class="fa-solid fa-copy fa-fw"></i></button>
+<section class="atria-injection-block atria-injection-block-${variant}" data-variant="${variant}">
+    <header class="atria-injection-block-head">
+        <span class="atria-injection-block-badge">${escapeHtml(label)}</span>
+        <button type="button" class="menu_button menu_button_small atria-injection-view-source" data-variant="${variant}" title="${escapeHtml(i18n('View Source'))}"><i class="fa-solid fa-code fa-fw"></i></button>
+        <button type="button" class="menu_button menu_button_small atria-injection-copy-block" data-variant="${variant}" title="${escapeHtml(i18n('Copy'))}"><i class="fa-solid fa-copy fa-fw"></i></button>
     </header>
-    <textarea class="luker-injection-block-source" data-variant="${variant}" readonly hidden>${escapeHtml(packet)}</textarea>
-    <div class="luker-injection-block-body">${renderPacketSectionsAsHtml(packet)}</div>
+    <textarea class="atria-injection-block-source" data-variant="${variant}" readonly hidden>${escapeHtml(packet)}</textarea>
+    <div class="atria-injection-block-body">${renderPacketSectionsAsHtml(packet)}</div>
 </section>`;
     };
 
@@ -9884,9 +9827,9 @@ function buildLastRecallCorePacketHtml(store, options = {}) {
     ].filter(Boolean).join('');
 
     return `
-<div class="luker-injection-shell">
+<div class="atria-injection-shell">
     ${headerHtml}
-    <div class="luker-injection-content">
+    <div class="atria-injection-content">
         ${blocksHtml}
     </div>
 </div>`;
@@ -9921,13 +9864,13 @@ let injectionViewerBindingsInstalled = false;
 function ensureInjectionViewerBindings() {
     if (injectionViewerBindingsInstalled) return;
     injectionViewerBindingsInstalled = true;
-    const ns = '.luker-injection-viewer';
+    const ns = '.atria-injection-viewer';
     jQuery(document).off(ns)
-        .on(`click${ns}`, '.luker-injection-view-source', async function (event) {
+        .on(`click${ns}`, '.atria-injection-view-source', async function (event) {
             event.preventDefault();
             event.stopPropagation();
-            const block = jQuery(this).closest('.luker-injection-block');
-            const text = String(block.find('.luker-injection-block-source').val() || '');
+            const block = jQuery(this).closest('.atria-injection-block');
+            const text = String(block.find('.atria-injection-block-source').val() || '');
             if (!text) {
                 notifyInfo(i18n('Injection content is empty.'));
                 return;
@@ -9938,20 +9881,20 @@ function ensureInjectionViewerBindings() {
                 : i18n('Injection Source');
             const ctx = getContext();
             await ctx.callGenericPopup(
-                `<div class="luker-injection-source-popup">
+                `<div class="atria-injection-source-popup">
                     <h3 class="margin0">${escapeHtml(title)}</h3>
-                    <pre class="luker-injection-source-pre">${escapeHtml(text)}</pre>
+                    <pre class="atria-injection-source-pre">${escapeHtml(text)}</pre>
                 </div>`,
                 ctx.POPUP_TYPE.TEXT,
                 '',
                 { wide: true, large: true, allowVerticalScrolling: true },
             );
         })
-        .on(`click${ns}`, '.luker-injection-copy-block', async function (event) {
+        .on(`click${ns}`, '.atria-injection-copy-block', async function (event) {
             event.preventDefault();
             event.stopPropagation();
-            const block = jQuery(this).closest('.luker-injection-block');
-            const text = String(block.find('.luker-injection-block-source').val() || '');
+            const block = jQuery(this).closest('.atria-injection-block');
+            const text = String(block.find('.atria-injection-block-source').val() || '');
             const ok = await copyTextToClipboard(text);
             if (ok) {
                 notifySuccess(i18n('Copied.'));
@@ -9959,14 +9902,14 @@ function ensureInjectionViewerBindings() {
                 notifyError(i18n('Copy failed.'));
             }
         })
-        .on(`click${ns}`, '.luker-injection-copy-all', async function (event) {
+        .on(`click${ns}`, '.atria-injection-copy-all', async function (event) {
             event.preventDefault();
             event.stopPropagation();
-            const shell = jQuery(this).closest('.luker-injection-shell');
+            const shell = jQuery(this).closest('.atria-injection-shell');
             const parts = [];
-            shell.find('.luker-injection-block').each(function () {
+            shell.find('.atria-injection-block').each(function () {
                 const variant = String(jQuery(this).data('variant') || '').toUpperCase();
-                const text = String(jQuery(this).find('.luker-injection-block-source').val() || '').trim();
+                const text = String(jQuery(this).find('.atria-injection-block-source').val() || '').trim();
                 if (!text) return;
                 parts.push(variant ? `[${variant}_PACKET]\n${text}` : text);
             });
@@ -10074,9 +10017,9 @@ function renderNodeFormEditorHtml(node, store, settings, editorId) {
         .map(level => `<option value="${level}"${String(node.level || '') === level ? ' selected' : ''}>${level}</option>`).join('');
 
     return `
-<div id="${editorId}" class="flex-container flexFlowColumn luker-rpg-memory-node-form">
+<div id="${editorId}" class="flex-container flexFlowColumn atria-rpg-memory-node-form">
     <small style="opacity:0.85">${escapeHtml(i18n('Form editor for one node. Parent/child relationships and graph persistence are applied automatically.'))}</small>
-    <div class="luker-rpg-memory-node-form-grid">
+    <div class="atria-rpg-memory-node-form-grid">
         <label>${escapeHtml(i18n('Node ID'))}
             <input data-field="id" class="text_pole" type="text" value="${escapeHtml(node.id)}" readonly />
         </label>
@@ -10093,7 +10036,7 @@ function renderNodeFormEditorHtml(node, store, settings, editorId) {
             <input data-field="seqTo" class="text_pole" type="number" step="1" value="${escapeHtml(node.seqTo ?? '')}" />
         </label>
     </div>
-    <div class="luker-rpg-memory-node-form-flags">
+    <div class="atria-rpg-memory-node-form-flags">
         <label class="checkbox_label"><input data-field="archived" type="checkbox" ${node.archived ? 'checked' : ''} /> ${escapeHtml(i18n('Archived'))}</label>
     </div>
     <label>${escapeHtml(i18n('Title'))}
@@ -10135,7 +10078,7 @@ async function ensureCytoscapeLoaded() {
         return cytoscapeLoadPromise;
     }
 
-    const scriptId = 'luker_rpg_memory_cytoscape_script';
+    const scriptId = 'atria_rpg_memory_cytoscape_script';
     const src = '/lib/cytoscape.min.js';
     cytoscapeLoadPromise = new Promise((resolve, reject) => {
         // A previous failed attempt may have left a dead <script> in the DOM.
@@ -10612,7 +10555,7 @@ function renderEdgeFormEditorHtml(store, editorId, edge = {}, edgeIndex = -1) {
     return `
 <div id="${editorId}" class="flex-container flexFlowColumn">
     <small style="opacity:0.85">${escapeHtml(i18nFormat('Edge ${0}: configure relation between two nodes.', edgeIndex >= 0 ? `#${edgeIndex}` : i18n('(new)')))}</small>
-    <div class="luker-rpg-memory-edge-form-grid">
+    <div class="atria-rpg-memory-edge-form-grid">
         <label>${escapeHtml(i18n('From Node'))}
             <select data-field="from" class="text_pole">${getEdgeNodeOptionsHtml(store, from)}</select>
         </label>
@@ -10636,9 +10579,9 @@ async function openGraphInspectorPopup(context) {
         return;
     }
 
-    const popupId = `luker_rpg_memory_graph_popup_${Date.now()}`;
+    const popupId = `atria_rpg_memory_graph_popup_${Date.now()}`;
     const selector = `#${popupId}`;
-    const namespace = `.lukerGraphPopup_${popupId}`;
+    const namespace = `.atriaGraphPopup_${popupId}`;
     let cy = null;
     let selectedEdgeIndex = -1;
     let selectedNodeId = '';
@@ -10650,7 +10593,7 @@ async function openGraphInspectorPopup(context) {
     let isSearchOpen = false;
     let runLayout = null;
     let mountRetryTimer = null;
-    const popupHtml = `<div id="${popupId}" class="luker-rpg-memory-graph-popup">${renderGraphInspectorHtml(store, {
+    const popupHtml = `<div id="${popupId}" class="atria-rpg-memory-graph-popup">${renderGraphInspectorHtml(store, {
         searchState: { query: searchQuery, type: searchType, activeNodeId: activeSearchNodeId },
         activeTab: currentTab,
         isSearchOpen,
@@ -10693,14 +10636,14 @@ async function openGraphInspectorPopup(context) {
         if (!popupRoot.length) {
             return;
         }
-        popupRoot.find('.luker-rpg-memory-graph-selection').text(String(text || getDefaultSelectionText()));
+        popupRoot.find('.atria-rpg-memory-graph-selection').text(String(text || getDefaultSelectionText()));
     };
     const syncSearchResultSelectionUi = () => {
         const popupRoot = getPopupRoot();
         if (!popupRoot.length) {
             return;
         }
-        popupRoot.find('.luker-rpg-memory-graph-search-result').each(function () {
+        popupRoot.find('.atria-rpg-memory-graph-search-result').each(function () {
             const button = jQuery(this);
             button.toggleClass('is-active', String(button.data('node-id') || '') === activeSearchNodeId);
         });
@@ -10711,24 +10654,24 @@ async function openGraphInspectorPopup(context) {
         if (!popupRoot.length || !latest) {
             return;
         }
-        const slot = popupRoot.find('.luker-rpg-memory-graph-editor-slot');
+        const slot = popupRoot.find('.atria-rpg-memory-graph-editor-slot');
         if (!slot.length) {
             return;
         }
         if (selectedNodeId) {
             const node = latest.nodes?.[selectedNodeId];
             if (!node) {
-                slot.html(`<div class="luker-rpg-memory-graph-editor-empty">${escapeHtml(i18nFormat('Node not found: ${0}', selectedNodeId))}</div>`);
+                slot.html(`<div class="atria-rpg-memory-graph-editor-empty">${escapeHtml(i18nFormat('Node not found: ${0}', selectedNodeId))}</div>`);
                 return;
             }
             const editorId = `${popupId}_inline_node_editor`;
             slot.html(`
-<div class="luker-rpg-memory-graph-editor-box">
+<div class="atria-rpg-memory-graph-editor-box">
 ${renderNodeFormEditorHtml(node, latest, getSettings(), editorId)}
-<div class="luker-rpg-memory-graph-inline-actions">
-    <div class="menu_button luker-rpg-memory-inline-node-apply">${escapeHtml(i18n('Apply Changes'))}</div>
-    <div class="menu_button luker-rpg-memory-inline-node-view" data-node-id="${escapeHtml(selectedNodeId)}">${escapeHtml(i18n('View'))}</div>
-    <div class="menu_button luker-rpg-memory-inline-node-delete" data-node-id="${escapeHtml(selectedNodeId)}">${escapeHtml(i18n('Delete'))}</div>
+<div class="atria-rpg-memory-graph-inline-actions">
+    <div class="menu_button atria-rpg-memory-inline-node-apply">${escapeHtml(i18n('Apply Changes'))}</div>
+    <div class="menu_button atria-rpg-memory-inline-node-view" data-node-id="${escapeHtml(selectedNodeId)}">${escapeHtml(i18n('View'))}</div>
+    <div class="menu_button atria-rpg-memory-inline-node-delete" data-node-id="${escapeHtml(selectedNodeId)}">${escapeHtml(i18n('Delete'))}</div>
 </div>
 </div>`);
             return;
@@ -10736,21 +10679,21 @@ ${renderNodeFormEditorHtml(node, latest, getSettings(), editorId)}
         if (Number.isInteger(selectedEdgeIndex) && selectedEdgeIndex >= 0) {
             const edge = latest.edges?.[selectedEdgeIndex];
             if (!edge) {
-                slot.html(`<div class="luker-rpg-memory-graph-editor-empty">${escapeHtml(i18nFormat('Selected edge index ${0} (missing).', selectedEdgeIndex))}</div>`);
+                slot.html(`<div class="atria-rpg-memory-graph-editor-empty">${escapeHtml(i18nFormat('Selected edge index ${0} (missing).', selectedEdgeIndex))}</div>`);
                 return;
             }
             const editorId = `${popupId}_inline_edge_editor`;
             slot.html(`
-<div class="luker-rpg-memory-graph-editor-box">
+<div class="atria-rpg-memory-graph-editor-box">
 ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
-<div class="luker-rpg-memory-graph-inline-actions">
-    <div class="menu_button luker-rpg-memory-inline-edge-apply">${escapeHtml(i18n('Apply Changes'))}</div>
-    <div class="menu_button luker-rpg-memory-inline-edge-delete">${escapeHtml(i18n('Delete'))}</div>
+<div class="atria-rpg-memory-graph-inline-actions">
+    <div class="menu_button atria-rpg-memory-inline-edge-apply">${escapeHtml(i18n('Apply Changes'))}</div>
+    <div class="menu_button atria-rpg-memory-inline-edge-delete">${escapeHtml(i18n('Delete'))}</div>
 </div>
 </div>`);
             return;
         }
-        slot.html(`<div class="luker-rpg-memory-graph-editor-empty">${escapeHtml(i18n('Select a node or edge to edit.'))}</div>`);
+        slot.html(`<div class="atria-rpg-memory-graph-editor-empty">${escapeHtml(i18n('Select a node or edge to edit.'))}</div>`);
     };
     const applySearchGraphState = () => {
         if (!cy) {
@@ -10761,14 +10704,14 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         cy.startBatch();
         cy.nodes().forEach(nodeElement => {
             if (Number(nodeElement.data('tierLabel')) === 1) {
-                nodeElement.removeClass('luker-search-match');
-                nodeElement.removeClass('luker-search-dimmed');
+                nodeElement.removeClass('atria-search-match');
+                nodeElement.removeClass('atria-search-dimmed');
                 return;
             }
             const nodeId = String(nodeElement.data('nodeId') || '');
             const matched = !searchModel.active || searchModel.matchNodeIdSet.has(nodeId);
-            nodeElement.toggleClass('luker-search-match', searchModel.active && matched);
-            nodeElement.toggleClass('luker-search-dimmed', searchModel.active && !matched);
+            nodeElement.toggleClass('atria-search-match', searchModel.active && matched);
+            nodeElement.toggleClass('atria-search-dimmed', searchModel.active && !matched);
         });
         cy.edges().forEach(edgeElement => {
             const sourceId = String(edgeElement.data('source') || '').replace(/^node:/, '');
@@ -10776,7 +10719,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             const matched = !searchModel.active
                 || searchModel.matchNodeIdSet.has(sourceId)
                 || searchModel.matchNodeIdSet.has(targetId);
-            edgeElement.toggleClass('luker-search-dimmed', searchModel.active && !matched);
+            edgeElement.toggleClass('atria-search-dimmed', searchModel.active && !matched);
         });
         cy.endBatch();
         syncSearchResultSelectionUi();
@@ -10919,7 +10862,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             cy = null;
         }
 
-        const container = popupRoot.find('.luker-rpg-memory-graph-cy').get(0);
+        const container = popupRoot.find('.atria-rpg-memory-graph-cy').get(0);
         if (!container) {
             return false;
         }
@@ -10998,8 +10941,8 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
                     { selector: 'node[type = "location_state"]', style: { 'background-color': '#2f8c6d' } },
                     { selector: 'node[type = "rule_constraint"]', style: { 'background-color': '#8b6a24' } },
                     { selector: 'node[archived = true]', style: { opacity: 0.45 } },
-                    { selector: 'node.luker-search-match', style: { 'border-width': 2, 'border-color': '#9ed8b3' } },
-                    { selector: 'node.luker-search-dimmed', style: { opacity: 0.16 } },
+                    { selector: 'node.atria-search-match', style: { 'border-width': 2, 'border-color': '#9ed8b3' } },
+                    { selector: 'node.atria-search-dimmed', style: { opacity: 0.16 } },
                     {
                         selector: 'edge',
                         style: {
@@ -11044,7 +10987,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
                         },
                     },
                     {
-                        selector: 'edge.luker-search-dimmed',
+                        selector: 'edge.atria-search-dimmed',
                         style: {
                             opacity: 0.08,
                             'line-opacity': 0.08,
@@ -11222,7 +11165,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             notifyError(i18nFormat('Edge not found: #${0}', edgeIndex));
             return;
         }
-        const editorId = `luker_rpg_memory_edge_editor_${Date.now()}`;
+        const editorId = `atria_rpg_memory_edge_editor_${Date.now()}`;
         const editorHtml = renderEdgeFormEditorHtml(
             latest,
             editorId,
@@ -11478,7 +11421,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             focusNodeInGraph(selectedNodeId);
         }
         if (restoreCursor !== null) {
-            const input = getPopupRoot().find('.luker-rpg-memory-graph-search-input').get(0);
+            const input = getPopupRoot().find('.atria-rpg-memory-graph-search-input').get(0);
             if (input) {
                 input.focus();
                 const cursor = Math.max(0, Math.min(Number(restoreCursor) || 0, String(input.value || '').length));
@@ -11514,10 +11457,10 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         if (!popupRoot.length) {
             return;
         }
-        popupRoot.find('.luker-graph-tab').each(function () {
+        popupRoot.find('.atria-graph-tab').each(function () {
             jQuery(this).toggleClass('is-active', String(jQuery(this).data('tab') || '') === tabName);
         });
-        popupRoot.find('.luker-graph-tab-panel').each(function () {
+        popupRoot.find('.atria-graph-tab-panel').each(function () {
             jQuery(this).toggleClass('is-active', String(jQuery(this).data('panel') || '') === tabName);
         });
         if (tabName === 'graph') {
@@ -11535,18 +11478,18 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             }
         }
     };
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-graph-tab`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-graph-tab`, async function () {
         await switchToTab(String(jQuery(this).data('tab') || 'graph'));
     });
 
     // --- Locate node/edge in graph ---
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-graph-locate-node`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-graph-locate-node`, async function () {
         const nodeId = String(jQuery(this).data('node-id') || '').trim();
         if (!nodeId) return;
         await switchToTab('graph');
         selectNodeForInspection(nodeId, { focusGraph: true });
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-graph-locate-edge`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-graph-locate-edge`, async function () {
         const edgeIndex = Number(jQuery(this).data('edge-index'));
         if (!Number.isInteger(edgeIndex) || edgeIndex < 0) return;
         await switchToTab('graph');
@@ -11554,16 +11497,16 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
     });
 
     // --- Search toggle ---
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-graph-search-toggle`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-graph-search-toggle`, function () {
         isSearchOpen = !isSearchOpen;
         const popupRoot = getPopupRoot();
         if (!popupRoot.length) {
             return;
         }
         jQuery(this).toggleClass('is-active', isSearchOpen);
-        popupRoot.find('.luker-graph-search-collapsible').toggleClass('is-open', isSearchOpen);
+        popupRoot.find('.atria-graph-search-collapsible').toggleClass('is-open', isSearchOpen);
         if (isSearchOpen) {
-            const input = popupRoot.find('.luker-rpg-memory-graph-search-input');
+            const input = popupRoot.find('.atria-rpg-memory-graph-search-input');
             if (input.length) {
                 input.trigger('focus');
             }
@@ -11571,12 +11514,12 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
     });
 
     // --- Inspector toggle (mobile) ---
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-graph-inspector-toggle`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-graph-inspector-toggle`, function () {
         const popupRoot = getPopupRoot();
         if (!popupRoot.length) {
             return;
         }
-        const panel = popupRoot.find('.luker-rpg-memory-graph-sidepanel');
+        const panel = popupRoot.find('.atria-rpg-memory-graph-sidepanel');
         panel.toggleClass('is-collapsed');
         const icon = jQuery(this).find('i');
         if (panel.hasClass('is-collapsed')) {
@@ -11586,10 +11529,10 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         }
     });
 
-    jQuery(document).on(`compositionstart${namespace}`, `${selector} .luker-rpg-memory-graph-search-input`, function () {
+    jQuery(document).on(`compositionstart${namespace}`, `${selector} .atria-rpg-memory-graph-search-input`, function () {
         isSearchComposing = true;
     });
-    jQuery(document).on(`compositionend${namespace}`, `${selector} .luker-rpg-memory-graph-search-input`, async function () {
+    jQuery(document).on(`compositionend${namespace}`, `${selector} .atria-rpg-memory-graph-search-input`, async function () {
         isSearchComposing = false;
         const cursor = typeof this.selectionStart === 'number' ? this.selectionStart : null;
         await applySearchControls({
@@ -11598,7 +11541,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             restoreCursor: cursor,
         });
     });
-    jQuery(document).on(`input${namespace}`, `${selector} .luker-rpg-memory-graph-search-input`, async function (event) {
+    jQuery(document).on(`input${namespace}`, `${selector} .atria-rpg-memory-graph-search-input`, async function (event) {
         if (isSearchComposing || this.composing || event?.originalEvent?.isComposing) {
             searchQuery = String(jQuery(this).val() || '');
             return;
@@ -11610,15 +11553,15 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             restoreCursor: cursor,
         });
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-search-filter`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-search-filter`, async function () {
         await applySearchControls({
             nextQuery: searchQuery,
             nextType: String(jQuery(this).data('search-type') || MEMORY_GRAPH_SEARCH_ALL_TYPE),
         });
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-search-result`, function (event) {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-search-result`, function (event) {
         // Action buttons inside the card have their own handlers; don't double-fire selection.
-        if (jQuery(event.target).closest('.luker-rpg-memory-graph-search-result-action').length > 0) {
+        if (jQuery(event.target).closest('.atria-rpg-memory-graph-search-result-action').length > 0) {
             return;
         }
         const nodeId = String(jQuery(this).data('node-id') || '').trim();
@@ -11628,23 +11571,23 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         activeSearchNodeId = nodeId;
         selectNodeForInspection(nodeId, { focusGraph: true });
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-search-prev`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-search-prev`, function () {
         stepSearchResult(-1);
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-search-next`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-search-next`, function () {
         stepSearchResult(1);
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-search-clear`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-search-clear`, async function () {
         await applySearchControls({
             nextQuery: '',
             nextType: MEMORY_GRAPH_SEARCH_ALL_TYPE,
         });
-        const input = getPopupRoot().find('.luker-rpg-memory-graph-search-input');
+        const input = getPopupRoot().find('.atria-rpg-memory-graph-search-input');
         if (input.length) {
             input.trigger('focus');
         }
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-node-view`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-node-view`, async function () {
         const nodeId = String(jQuery(this).data('node-id') || '').trim();
         selectNodeForInspection(nodeId);
         const latest = getStore();
@@ -11661,14 +11604,14 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         );
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-node-edit`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-node-edit`, async function () {
         const nodeId = String(jQuery(this).data('node-id') || '').trim();
         await switchToTab('graph');
         selectNodeForInspection(nodeId, { focusGraph: true });
         return;
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-inline-node-view`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-inline-node-view`, async function () {
         const nodeId = String(jQuery(this).data('node-id') || selectedNodeId || '').trim();
         const latest = getStore();
         const node = latest?.nodes?.[nodeId];
@@ -11684,7 +11627,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         );
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-inline-node-apply`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-inline-node-apply`, async function () {
         const nodeId = String(selectedNodeId || '').trim();
         if (!nodeId) {
             notifyError(i18n('No node selected. Click a node in graph first.'));
@@ -11697,20 +11640,20 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             notifyError(i18nFormat('Node edit failed: ${0}', error?.message || error));
         }
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-inline-node-delete`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-inline-node-delete`, async function () {
         const nodeId = String(jQuery(this).data('node-id') || selectedNodeId || '').trim();
         await deleteNodeById(nodeId);
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-node-delete`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-node-delete`, async function () {
         const nodeId = String(jQuery(this).data('node-id') || selectedNodeId || '').trim();
         await deleteNodeById(nodeId);
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-edge-add`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-edge-add`, async function () {
         await openEdgeEditor(-1);
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-fit`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-fit`, function () {
         if (!cy) {
             return;
         }
@@ -11726,7 +11669,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         updateSelectionText(i18n('Fitted graph view.'));
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-edge-edit`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-edge-edit`, async function () {
         if (!Number.isInteger(selectedEdgeIndex) || selectedEdgeIndex < 0) {
             notifyError(i18n('No edge selected. Click an edge in graph first.'));
             return;
@@ -11734,7 +11677,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         await openEdgeEditor(selectedEdgeIndex);
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-edge-edit-row`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-edge-edit-row`, async function () {
         const edgeIndex = Number(jQuery(this).data('edge-index'));
         if (!Number.isInteger(edgeIndex) || edgeIndex < 0) {
             return;
@@ -11743,7 +11686,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         selectEdgeForInspection(edgeIndex, { focusGraph: true });
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-inline-edge-apply`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-inline-edge-apply`, async function () {
         if (!Number.isInteger(selectedEdgeIndex) || selectedEdgeIndex < 0) {
             notifyError(i18n('No edge selected. Click an edge in graph first.'));
             return;
@@ -11756,11 +11699,11 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         }
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-inline-edge-delete`, async function () {
-        jQuery(`${selector} .luker-rpg-memory-edge-delete`).trigger('click');
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-inline-edge-delete`, async function () {
+        jQuery(`${selector} .atria-rpg-memory-edge-delete`).trigger('click');
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-edge-delete`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-edge-delete`, async function () {
         const latest = getStore();
         if (!latest) {
             return;
@@ -11799,7 +11742,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         await rerender();
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-raw-view`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-raw-view`, async function () {
         const latest = getStore();
         if (!latest) {
             return;
@@ -11812,13 +11755,13 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         );
     });
 
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-rpg-memory-graph-raw-edit`, async function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-rpg-memory-graph-raw-edit`, async function () {
         const latest = getStore();
         if (!latest) {
             return;
         }
 
-        const editorId = `luker_rpg_memory_graph_editor_${Date.now()}`;
+        const editorId = `atria_rpg_memory_graph_editor_${Date.now()}`;
         const editorHtml = `
 <div class="flex-container flexFlowColumn">
     <small style="opacity:0.85">${escapeHtml(i18n('Advanced: edit full memory graph JSON for current chat.'))}</small>
@@ -11921,7 +11864,7 @@ function showPersistentRuntimeNotice(message, { level = 'error' } = {}) {
         },
     });
     if (toast?.length) {
-        toast.addClass('luker-persistent-toast');
+        toast.addClass('atria-persistent-toast');
         activePersistentRuntimeNoticeToast = toast;
     }
 }
@@ -11964,11 +11907,11 @@ function showRuntimeInfoToast(message, { stopLabel = '', onStop = null, kind = '
     const toastBody = toastRef ? toastRef.find('.toast-message') : null;
     if (toastBody && toastBody.length > 0) {
         toastBody.empty();
-        const textNode = jQuery('<div class="luker-rpg-memory-toast-text"></div>');
+        const textNode = jQuery('<div class="atria-rpg-memory-toast-text"></div>');
         textNode.text(String(message || ''));
         toastBody.append(textNode);
         if (typeof onStop === 'function') {
-            const button = jQuery('<button type="button" class="menu_button menu_button_small luker-toast-stop-button"></button>');
+            const button = jQuery('<button type="button" class="menu_button menu_button_small atria-toast-stop-button"></button>');
             button.text(String(stopLabel || i18n('Stop')));
             button.on('click', (event) => {
                 event.preventDefault();
@@ -11991,7 +11934,7 @@ function updateRuntimeInfoToastMessage(message, kind = 'extraction') {
     if (!toastRef) {
         return;
     }
-    const textNode = toastRef.find('.luker-rpg-memory-toast-text');
+    const textNode = toastRef.find('.atria-rpg-memory-toast-text');
     if (textNode.length > 0) {
         textNode.text(String(message || ''));
     }
@@ -12042,7 +11985,7 @@ async function stopMemoryRuntimeWork() {
 }
 
 function updateUiStatus(text) {
-    jQuery('#luker_rpg_memory_status').text(String(text || ''));
+    jQuery('#atria_rpg_memory_status').text(String(text || ''));
 }
 
 function refreshUiStats() {
@@ -12056,7 +11999,7 @@ function refreshUiStats() {
     const store = memoryStoreCache.get(chatKey) || createEmptyStore();
     const stats = getStoreStats(store);
 
-    root.find('#luker_rpg_memory_stats').text(
+    root.find('#atria_rpg_memory_stats').text(
         i18nFormat(
             'nodes=${0}, edges=${1}, messages=${2}, source=${3}, semantic=${4}',
             stats.nodeCount,
@@ -12157,7 +12100,7 @@ function ensureStyles() {
     min-width: max-content;
     white-space: nowrap;
 }
-#${UI_BLOCK_ID} #luker_rpg_memory_schema_summary {
+#${UI_BLOCK_ID} #atria_rpg_memory_schema_summary {
     display: block;
     margin: 4px 0 8px;
     padding: 6px 9px;
@@ -12167,7 +12110,7 @@ function ensureStyles() {
     font-variant-numeric: tabular-nums;
 }
 
-.luker-rpg-schema-popup {
+.atria-rpg-schema-popup {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -12179,12 +12122,12 @@ function ensureStyles() {
     text-align: left;
 }
 
-.luker-rpg-schema-popup .menu_button,
-.luker-rpg-schema-popup .menu_button_small,
-.luker-rpg-memory-graph-popup .menu_button,
-.luker-rpg-memory-graph-popup .menu_button_small,
-.luker-rpg-memory-advanced-popup .menu_button,
-.luker-rpg-memory-advanced-popup .menu_button_small {
+.atria-rpg-schema-popup .menu_button,
+.atria-rpg-schema-popup .menu_button_small,
+.atria-rpg-memory-graph-popup .menu_button,
+.atria-rpg-memory-graph-popup .menu_button_small,
+.atria-rpg-memory-advanced-popup .menu_button,
+.atria-rpg-memory-advanced-popup .menu_button_small {
     width: auto;
     min-width: max-content;
     white-space: nowrap;
@@ -12193,33 +12136,33 @@ function ensureStyles() {
     text-orientation: mixed;
 }
 
-.luker-rpg-memory-graph-popup .menu_button,
-.luker-rpg-memory-graph-popup .menu_button_small {
+.atria-rpg-memory-graph-popup .menu_button,
+.atria-rpg-memory-graph-popup .menu_button_small {
     min-width: 0;
     white-space: normal;
 }
 
-.popup:has(.luker-rpg-memory-graph-popup) {
+.popup:has(.atria-rpg-memory-graph-popup) {
     width: min(96vw, 1480px) !important;
     max-width: min(96vw, 1480px) !important;
 }
 
-.popup:has(.luker-rpg-memory-graph-popup) .popup-body {
+.popup:has(.atria-rpg-memory-graph-popup) .popup-body {
     min-height: 0;
 }
 
-.popup:has(.luker-rpg-memory-graph-popup) .popup-content {
+.popup:has(.atria-rpg-memory-graph-popup) .popup-content {
     overflow: hidden !important;
     display: flex;
     flex-direction: column;
     min-height: 0;
 }
 
-.popup:has(.luker-rpg-memory-graph-popup) .popup-controls {
+.popup:has(.atria-rpg-memory-graph-popup) .popup-controls {
     margin-top: 6px;
 }
 
-.luker-rpg-schema-popup .luker-schema-topbar {
+.atria-rpg-schema-popup .atria-schema-topbar {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -12234,24 +12177,24 @@ function ensureStyles() {
     background: linear-gradient(155deg, rgba(17, 47, 43, 0.25), rgba(31, 30, 44, 0.2));
 }
 
-.luker-rpg-schema-popup .luker-schema-topbar-title {
+.atria-rpg-schema-popup .atria-schema-topbar-title {
     font-weight: 700;
     letter-spacing: 0.01em;
 }
 
-.luker-rpg-schema-popup .luker-schema-topbar-note {
+.atria-rpg-schema-popup .atria-schema-topbar-note {
     opacity: 0.85;
     margin-top: 3px;
     font-size: 0.93em;
 }
 
-.luker-rpg-schema-popup .luker-schema-chip-row {
+.atria-rpg-schema-popup .atria-schema-chip-row {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.luker-rpg-schema-popup .luker-schema-chip {
+.atria-rpg-schema-popup .atria-schema-chip {
     display: inline-flex;
     align-items: center;
     border: 1px solid var(--SmartThemeBorderColor, rgba(130,130,130,0.45));
@@ -12262,19 +12205,19 @@ function ensureStyles() {
     white-space: nowrap;
 }
 
-.luker-rpg-schema-popup .luker-schema-chip.hier {
+.atria-rpg-schema-popup .atria-schema-chip.hier {
     border-color: rgba(69, 164, 133, 0.75);
 }
 
-.luker-rpg-schema-popup .luker-schema-chip.latest {
+.atria-rpg-schema-popup .atria-schema-chip.latest {
     border-color: rgba(68, 136, 215, 0.75);
 }
 
-.luker-rpg-schema-popup .luker-schema-chip.inject {
+.atria-rpg-schema-popup .atria-schema-chip.inject {
     border-color: rgba(194, 146, 76, 0.8);
 }
 
-.luker-rpg-schema-popup .luker-schema-editor-list {
+.atria-rpg-schema-popup .atria-schema-editor-list {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -12289,7 +12232,7 @@ function ensureStyles() {
     gap: 10px;
 }
 
-.luker-rpg-schema-popup .luker-schema-card {
+.atria-rpg-schema-popup .atria-schema-card {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -12305,19 +12248,19 @@ function ensureStyles() {
     border-left-width: 4px;
 }
 
-.luker-rpg-schema-popup .luker-schema-card.mode-none {
+.atria-rpg-schema-popup .atria-schema-card.mode-none {
     border-left-color: rgba(140, 140, 140, 0.9);
 }
 
-.luker-rpg-schema-popup .luker-schema-card.mode-hierarchical {
+.atria-rpg-schema-popup .atria-schema-card.mode-hierarchical {
     border-left-color: rgba(58, 173, 118, 0.95);
 }
 
-.luker-rpg-schema-popup .luker-schema-card.is-always {
+.atria-rpg-schema-popup .atria-schema-card.is-always {
     box-shadow: 0 4px 14px rgba(191, 143, 62, 0.25);
 }
 
-.luker-rpg-schema-popup .luker-schema-card-header {
+.atria-rpg-schema-popup .atria-schema-card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -12325,24 +12268,24 @@ function ensureStyles() {
     margin-bottom: 8px;
 }
 
-.luker-rpg-schema-popup .luker-schema-card-title {
+.atria-rpg-schema-popup .atria-schema-card-title {
     font-size: 1.02em;
     font-weight: 700;
     letter-spacing: 0.01em;
 }
 
-.luker-rpg-schema-popup .luker-schema-card-sub {
+.atria-rpg-schema-popup .atria-schema-card-sub {
     opacity: 0.76;
     font-size: 0.86em;
 }
 
-.luker-rpg-schema-popup .luker-schema-badges {
+.atria-rpg-schema-popup .atria-schema-badges {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.luker-rpg-schema-popup .luker-schema-badge {
+.atria-rpg-schema-popup .atria-schema-badge {
     border-radius: 999px;
     padding: 2px 8px;
     font-size: 0.8em;
@@ -12350,13 +12293,13 @@ function ensureStyles() {
     background: rgba(255,255,255,0.05);
 }
 
-.luker-rpg-schema-popup .luker-schema-grid-2 {
+.atria-rpg-schema-popup .atria-schema-grid-2 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
-.luker-rpg-schema-popup .luker-schema-card label:not(.checkbox_label) {
+.atria-rpg-schema-popup .atria-schema-card label:not(.checkbox_label) {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -12364,17 +12307,17 @@ function ensureStyles() {
     gap: 3px;
 }
 
-.luker-rpg-schema-popup .text_pole,
-.luker-rpg-schema-popup textarea,
-.luker-rpg-schema-popup input:not([type="checkbox"]),
-.luker-rpg-schema-popup select {
+.atria-rpg-schema-popup .text_pole,
+.atria-rpg-schema-popup textarea,
+.atria-rpg-schema-popup input:not([type="checkbox"]),
+.atria-rpg-schema-popup select {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
 }
 
-.luker-rpg-schema-popup .luker-schema-card label.checkbox_label {
+.atria-rpg-schema-popup .atria-schema-card label.checkbox_label {
     display: inline-flex;
     flex-direction: row;
     align-items: center;
@@ -12383,7 +12326,7 @@ function ensureStyles() {
     justify-content: flex-start;
 }
 
-.luker-rpg-schema-popup .luker-schema-card label.checkbox_label input[type="checkbox"] {
+.atria-rpg-schema-popup .atria-schema-card label.checkbox_label input[type="checkbox"] {
     width: auto;
     max-width: none;
     min-width: 0;
@@ -12391,14 +12334,14 @@ function ensureStyles() {
     align-self: center;
 }
 
-.luker-rpg-schema-popup .luker-schema-actions {
+.atria-rpg-schema-popup .atria-schema-actions {
     display: flex;
     gap: 6px;
     justify-content: flex-end;
     margin-top: 6px;
 }
 
-.luker-rpg-schema-popup .luker-schema-footer {
+.atria-rpg-schema-popup .atria-schema-footer {
     display: flex;
     gap: 8px;
     justify-content: space-between;
@@ -12411,25 +12354,25 @@ function ensureStyles() {
     padding-top: 8px;
 }
 
-.luker-rpg-schema-popup .luker-schema-footer-note {
+.atria-rpg-schema-popup .atria-schema-footer-note {
     opacity: 0.76;
     font-size: 0.86em;
 }
 
-.luker-rpg-schema-popup .luker-schema-footer-meta {
+.atria-rpg-schema-popup .atria-schema-footer-meta {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.luker-rpg-schema-popup .luker-schema-footer-actions {
+.atria-rpg-schema-popup .atria-schema-footer-actions {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
     justify-content: flex-end;
 }
 
-.luker-rpg-memory-graph-popup {
+.atria-rpg-memory-graph-popup {
     width: min(1380px, calc(100vw - 32px));
     max-width: min(1380px, calc(100vw - 32px));
     min-width: 0;
@@ -12437,7 +12380,7 @@ function ensureStyles() {
     overflow-x: hidden;
 }
 
-.luker-rpg-memory-graph-popup-inner {
+.atria-rpg-memory-graph-popup-inner {
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -12454,7 +12397,7 @@ function ensureStyles() {
 }
 
 /* --- Header --- */
-.luker-graph-header {
+.atria-graph-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -12462,7 +12405,7 @@ function ensureStyles() {
     padding: 6px 2px 10px;
 }
 
-.luker-graph-header-left {
+.atria-graph-header-left {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -12470,20 +12413,20 @@ function ensureStyles() {
     min-width: 0;
 }
 
-.luker-graph-title {
+.atria-graph-title {
     margin: 0;
     font-size: 1.1em;
     font-weight: 700;
     white-space: nowrap;
 }
 
-.luker-graph-stats {
+.atria-graph-stats {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.luker-graph-stat {
+.atria-graph-stat {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -12496,12 +12439,12 @@ function ensureStyles() {
     font-variant-numeric: tabular-nums;
 }
 
-.luker-graph-stat b {
+.atria-graph-stat b {
     font-weight: 700;
     color: rgba(180, 220, 200, 0.95);
 }
 
-.luker-graph-search-toggle {
+.atria-graph-search-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -12516,24 +12459,24 @@ function ensureStyles() {
     transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.luker-graph-search-toggle:hover {
+.atria-graph-search-toggle:hover {
     border-color: rgba(140, 205, 168, 0.5);
 }
 
-.luker-graph-search-toggle.is-active {
+.atria-graph-search-toggle.is-active {
     border-color: rgba(140, 205, 168, 0.8);
     background: rgba(40, 86, 68, 0.5);
 }
 
 /* --- Search collapsible --- */
-.luker-graph-search-collapsible {
+.atria-graph-search-collapsible {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.25s ease, padding 0.25s ease;
     padding: 0;
 }
 
-.luker-graph-search-collapsible.is-open {
+.atria-graph-search-collapsible.is-open {
     flex: 1;
     min-height: 0;
     max-height: none;
@@ -12545,20 +12488,20 @@ function ensureStyles() {
 
 /* When search is open, take over the popup body — hide tabs + panels so
  * results aren't visually mixed with the squeezed graph/inspector strip. */
-.luker-graph-search-collapsible.is-open ~ .luker-graph-tab-bar,
-.luker-graph-search-collapsible.is-open ~ .luker-graph-tab-panel {
+.atria-graph-search-collapsible.is-open ~ .atria-graph-tab-bar,
+.atria-graph-search-collapsible.is-open ~ .atria-graph-tab-panel {
     display: none;
 }
 
 /* --- Tab bar --- */
-.luker-graph-tab-bar {
+.atria-graph-tab-bar {
     display: flex;
     gap: 0;
     border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(130,130,130,0.3));
     margin-bottom: 0;
 }
 
-.luker-graph-tab {
+.atria-graph-tab {
     flex: 1;
     display: inline-flex;
     align-items: center;
@@ -12576,23 +12519,23 @@ function ensureStyles() {
     white-space: nowrap;
 }
 
-.luker-graph-tab:hover {
+.atria-graph-tab:hover {
     opacity: 0.9;
     background: rgba(255, 255, 255, 0.03);
 }
 
-.luker-graph-tab.is-active {
+.atria-graph-tab.is-active {
     opacity: 1;
     border-bottom-color: rgba(140, 205, 168, 0.85);
     background: rgba(40, 86, 68, 0.15);
 }
 
-.luker-graph-tab i {
+.atria-graph-tab i {
     font-size: 1em;
 }
 
 /* --- Tab panels --- */
-.luker-graph-tab-panel {
+.atria-graph-tab-panel {
     display: none;
     flex-direction: column;
     gap: 8px;
@@ -12602,20 +12545,20 @@ function ensureStyles() {
     overflow-y: auto;
 }
 
-.luker-graph-tab-panel.is-active {
+.atria-graph-tab-panel.is-active {
     display: flex;
 }
 
 /* --- Canvas toolbar (icon buttons) --- */
-.luker-graph-canvas-toolbar {
+.atria-graph-canvas-toolbar {
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
     padding: 4px 0 2px;
 }
 
-.luker-graph-canvas-toolbar .menu_button,
-.luker-graph-canvas-toolbar .menu_button_small {
+.atria-graph-canvas-toolbar .menu_button,
+.atria-graph-canvas-toolbar .menu_button_small {
     width: 34px;
     height: 34px;
     min-width: 0;
@@ -12627,14 +12570,14 @@ function ensureStyles() {
 }
 
 /* --- Inspector header with toggle --- */
-.luker-graph-inspector-header {
+.atria-graph-inspector-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
 }
 
-.luker-graph-inspector-toggle {
+.atria-graph-inspector-toggle {
     display: none;
     align-items: center;
     justify-content: center;
@@ -12648,20 +12591,20 @@ function ensureStyles() {
 }
 
 /* --- Edges toolbar --- */
-.luker-graph-edges-toolbar {
+.atria-graph-edges-toolbar {
     display: flex;
     gap: 6px;
     margin-bottom: 4px;
 }
 
 /* --- Row actions (icon buttons in tables) --- */
-.luker-graph-row-actions {
+.atria-graph-row-actions {
     display: flex;
     gap: 4px;
 }
 
-.luker-graph-row-actions .menu_button,
-.luker-graph-row-actions .menu_button_small {
+.atria-graph-row-actions .menu_button,
+.atria-graph-row-actions .menu_button_small {
     width: 30px;
     height: 30px;
     min-width: 0;
@@ -12673,13 +12616,13 @@ function ensureStyles() {
 }
 
 /* --- Table styles --- */
-.luker-graph-table {
+.atria-graph-table {
     font-size: 12px;
     width: 100%;
     table-layout: fixed;
 }
 
-.luker-graph-td-summary {
+.atria-graph-td-summary {
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -12687,7 +12630,7 @@ function ensureStyles() {
 }
 
 /* --- Card list (mobile) --- */
-.luker-graph-card-list {
+.atria-graph-card-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -12701,7 +12644,7 @@ function ensureStyles() {
     box-sizing: border-box;
 }
 
-.luker-graph-card {
+.atria-graph-card {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -12715,7 +12658,7 @@ function ensureStyles() {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
 }
 
-.luker-graph-card-head {
+.atria-graph-card-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -12723,7 +12666,7 @@ function ensureStyles() {
     min-width: 0;
 }
 
-.luker-graph-card-title {
+.atria-graph-card-title {
     font-weight: 600;
     font-size: 0.95em;
     line-height: 1.3;
@@ -12732,7 +12675,7 @@ function ensureStyles() {
     flex: 1;
 }
 
-.luker-graph-card-type {
+.atria-graph-card-type {
     flex-shrink: 1;
     min-width: 0;
     font-size: 0.74em;
@@ -12746,25 +12689,25 @@ function ensureStyles() {
     max-width: 50%;
 }
 
-.luker-graph-card-meta {
+.atria-graph-card-meta {
     font-size: 0.78em;
     opacity: 0.65;
 }
 
-.luker-graph-card-body {
+.atria-graph-card-body {
     font-size: 0.88em;
     line-height: 1.4;
     opacity: 0.88;
 }
 
-.luker-graph-card-actions {
+.atria-graph-card-actions {
     display: flex;
     gap: 4px;
     margin-top: 2px;
 }
 
-.luker-graph-card-actions .menu_button,
-.luker-graph-card-actions .menu_button_small {
+.atria-graph-card-actions .menu_button,
+.atria-graph-card-actions .menu_button_small {
     width: 30px;
     height: 30px;
     min-width: 0;
@@ -12776,10 +12719,10 @@ function ensureStyles() {
 }
 
 /* --- Desktop/mobile visibility --- */
-.luker-graph-desktop-only { display: block; }
-.luker-graph-mobile-only { display: none; }
+.atria-graph-desktop-only { display: block; }
+.atria-graph-mobile-only { display: none; }
 
-.luker-rpg-memory-graph-search-shell {
+.atria-rpg-memory-graph-search-shell {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -12796,14 +12739,14 @@ function ensureStyles() {
     color: var(--SmartThemeBodyColor, inherit);
 }
 
-.luker-rpg-memory-graph-search-head {
+.atria-rpg-memory-graph-search-head {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     align-items: center;
 }
 
-.luker-rpg-memory-graph-search-input-wrap {
+.atria-rpg-memory-graph-search-input-wrap {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -12815,11 +12758,11 @@ function ensureStyles() {
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--SmartThemeBodyColor, #fff) 4%, transparent);
 }
 
-.luker-rpg-memory-graph-search-input-wrap > i {
+.atria-rpg-memory-graph-search-input-wrap > i {
     color: rgba(197, 229, 214, 0.92);
 }
 
-.luker-rpg-memory-graph-search-input-wrap .luker-rpg-memory-graph-search-input {
+.atria-rpg-memory-graph-search-input-wrap .atria-rpg-memory-graph-search-input {
     flex: 1;
     min-width: 0;
     width: 100%;
@@ -12829,18 +12772,18 @@ function ensureStyles() {
     padding: 0 !important;
 }
 
-.luker-rpg-memory-graph-search-input-wrap .luker-rpg-memory-graph-search-input:focus {
+.atria-rpg-memory-graph-search-input-wrap .atria-rpg-memory-graph-search-input:focus {
     outline: none;
 }
 
-.luker-rpg-memory-graph-search-actions {
+.atria-rpg-memory-graph-search-actions {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
     justify-content: flex-end;
 }
 
-.luker-rpg-memory-graph-search-meta {
+.atria-rpg-memory-graph-search-meta {
     display: flex;
     flex-wrap: wrap;
     gap: 8px 12px;
@@ -12848,13 +12791,13 @@ function ensureStyles() {
     justify-content: space-between;
 }
 
-.luker-rpg-memory-graph-search-filters {
+.atria-rpg-memory-graph-search-filters {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.luker-rpg-memory-graph-search-filter {
+.atria-rpg-memory-graph-search-filter {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -12867,18 +12810,18 @@ function ensureStyles() {
     transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
-.luker-rpg-memory-graph-search-filter:hover {
+.atria-rpg-memory-graph-search-filter:hover {
     border-color: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(140,205,168)) 60%, transparent);
     transform: translateY(-1px);
 }
 
-.luker-rpg-memory-graph-search-filter.is-active {
+.atria-rpg-memory-graph-search-filter.is-active {
     border-color: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(140,205,168)) 90%, transparent);
     background: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(140,205,168)) 22%, transparent);
     color: var(--SmartThemeBodyColor, inherit);
 }
 
-.luker-rpg-memory-graph-search-filter-count {
+.atria-rpg-memory-graph-search-filter-count {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -12890,12 +12833,12 @@ function ensureStyles() {
     opacity: 0.92;
 }
 
-.luker-rpg-memory-graph-search-summary {
+.atria-rpg-memory-graph-search-summary {
     opacity: 0.82;
     font-size: 0.9em;
 }
 
-.luker-rpg-memory-graph-search-results {
+.atria-rpg-memory-graph-search-results {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 8px;
@@ -12906,7 +12849,7 @@ function ensureStyles() {
     padding-right: 4px;
 }
 
-.luker-rpg-memory-graph-search-result {
+.atria-rpg-memory-graph-search-result {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -12922,14 +12865,14 @@ function ensureStyles() {
     transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.luker-rpg-memory-graph-search-result-body {
+.atria-rpg-memory-graph-search-result-body {
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-width: 0;
 }
 
-.luker-rpg-memory-graph-search-result-actions {
+.atria-rpg-memory-graph-search-result-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -12938,8 +12881,8 @@ function ensureStyles() {
     border-top: 1px dashed var(--SmartThemeBorderColor, rgba(123, 163, 196, 0.22));
 }
 
-.luker-rpg-memory-graph-search-result-actions .menu_button,
-.luker-rpg-memory-graph-search-result-actions .menu_button_small {
+.atria-rpg-memory-graph-search-result-actions .menu_button,
+.atria-rpg-memory-graph-search-result-actions .menu_button_small {
     width: 30px;
     height: 30px;
     min-width: 0;
@@ -12950,35 +12893,35 @@ function ensureStyles() {
     border-radius: 6px;
 }
 
-.luker-rpg-memory-graph-search-result-action {
+.atria-rpg-memory-graph-search-result-action {
     cursor: pointer;
 }
 
-.luker-rpg-memory-graph-search-result:hover {
+.atria-rpg-memory-graph-search-result:hover {
     transform: translateY(-1px);
     border-color: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(140,205,168)) 60%, transparent);
     box-shadow: 0 8px 20px var(--SmartThemeShadowColor, rgba(0, 0, 0, 0.15));
 }
 
-.luker-rpg-memory-graph-search-result.is-active {
+.atria-rpg-memory-graph-search-result.is-active {
     border-color: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(255,217,108)) 90%, transparent);
     background: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(255,217,108)) 18%, transparent);
     box-shadow: 0 10px 24px var(--SmartThemeShadowColor, rgba(0, 0, 0, 0.22));
 }
 
-.luker-rpg-memory-graph-search-result-topline {
+.atria-rpg-memory-graph-search-result-topline {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
 }
 
-.luker-rpg-memory-graph-search-result-title {
+.atria-rpg-memory-graph-search-result-title {
     font-weight: 600;
     line-height: 1.25;
 }
 
-.luker-rpg-memory-graph-search-result-type {
+.atria-rpg-memory-graph-search-result-type {
     flex-shrink: 0;
     font-size: 0.76em;
     padding: 3px 8px;
@@ -12988,18 +12931,18 @@ function ensureStyles() {
     opacity: 0.9;
 }
 
-.luker-rpg-memory-graph-search-result-meta {
+.atria-rpg-memory-graph-search-result-meta {
     font-size: 0.8em;
     opacity: 0.74;
 }
 
-.luker-rpg-memory-graph-search-result-summary {
+.atria-rpg-memory-graph-search-result-summary {
     font-size: 0.9em;
     line-height: 1.4;
     opacity: 0.92;
 }
 
-.luker-rpg-memory-graph-search-empty {
+.atria-rpg-memory-graph-search-empty {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -13010,7 +12953,7 @@ function ensureStyles() {
     opacity: 0.86;
 }
 
-.luker-rpg-memory-graph-workspace {
+.atria-rpg-memory-graph-workspace {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
     gap: 10px;
@@ -13020,7 +12963,7 @@ function ensureStyles() {
     min-width: 0;
 }
 
-.luker-rpg-memory-graph-canvas-wrap {
+.atria-rpg-memory-graph-canvas-wrap {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -13030,7 +12973,7 @@ function ensureStyles() {
     padding: 6px;
 }
 
-.luker-rpg-memory-graph-cy {
+.atria-rpg-memory-graph-cy {
     width: 100%;
     height: min(58vh, 580px);
     height: min(58dvh, 580px);
@@ -13039,13 +12982,13 @@ function ensureStyles() {
     cursor: grab;
 }
 
-.luker-rpg-memory-graph-selection {
+.atria-rpg-memory-graph-selection {
     display: block;
     opacity: 0.9;
     font-size: 0.9em;
 }
 
-.luker-rpg-memory-graph-sidepanel {
+.atria-rpg-memory-graph-sidepanel {
     border: 1px solid var(--SmartThemeBorderColor, rgba(130,130,130,0.35));
     border-radius: 10px;
     background: linear-gradient(150deg, rgba(30, 35, 47, 0.35), rgba(12, 14, 20, 0.4));
@@ -13058,18 +13001,18 @@ function ensureStyles() {
     overflow: auto;
 }
 
-.luker-rpg-memory-graph-sidehint {
+.atria-rpg-memory-graph-sidehint {
     opacity: 0.8;
     font-size: 0.88em;
 }
 
-.luker-rpg-memory-graph-editor-slot {
+.atria-rpg-memory-graph-editor-slot {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.luker-rpg-memory-graph-editor-empty {
+.atria-rpg-memory-graph-editor-empty {
     opacity: 0.78;
     font-size: 0.9em;
     padding: 8px;
@@ -13078,27 +13021,27 @@ function ensureStyles() {
     background: rgba(0, 0, 0, 0.08);
 }
 
-.luker-rpg-memory-graph-inline-actions {
+.atria-rpg-memory-graph-inline-actions {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.luker-rpg-memory-graph-sidepanel .luker-rpg-memory-node-form {
+.atria-rpg-memory-graph-sidepanel .atria-rpg-memory-node-form {
     min-width: 0;
     width: 100%;
     max-width: 100%;
 }
 
-.luker-rpg-memory-graph-sidepanel .luker-rpg-memory-node-form-grid {
+.atria-rpg-memory-graph-sidepanel .atria-rpg-memory-node-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.luker-rpg-memory-graph-sidepanel .luker-rpg-memory-edge-form-grid {
+.atria-rpg-memory-graph-sidepanel .atria-rpg-memory-edge-form-grid {
     grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
-.luker-rpg-memory-graph-table-wrap {
+.atria-rpg-memory-graph-table-wrap {
     flex: 1 1 0%;
     min-height: 0;
     overflow: auto;
@@ -13112,19 +13055,19 @@ function ensureStyles() {
     box-sizing: border-box;
 }
 
-.luker-rpg-memory-graph-table-wrap table {
+.atria-rpg-memory-graph-table-wrap table {
     width: 100%;
     table-layout: fixed;
 }
 
-.luker-rpg-memory-graph-table-wrap th,
-.luker-rpg-memory-graph-table-wrap td {
+.atria-rpg-memory-graph-table-wrap th,
+.atria-rpg-memory-graph-table-wrap td {
     word-break: break-word;
     overflow-wrap: anywhere;
 }
 
 /* --- Last-injection viewer --- */
-.luker-injection-shell {
+.atria-injection-shell {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -13137,13 +13080,13 @@ function ensureStyles() {
     box-sizing: border-box;
 }
 
-.luker-graph-tab-panel .luker-injection-shell {
+.atria-graph-tab-panel .atria-injection-shell {
     flex: 1 1 0%;
     min-height: 0;
     max-height: none;
 }
 
-.luker-injection-header {
+.atria-injection-header {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -13154,12 +13097,12 @@ function ensureStyles() {
     background: linear-gradient(155deg, rgba(17, 47, 43, 0.18), rgba(31, 30, 44, 0.12));
 }
 
-.luker-injection-title {
+.atria-injection-title {
     font-weight: 600;
     font-size: 1.02em;
 }
 
-.luker-injection-time {
+.atria-injection-time {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -13171,14 +13114,14 @@ function ensureStyles() {
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.luker-injection-header-actions {
+.atria-injection-header-actions {
     margin-left: auto;
     display: flex;
     gap: 6px;
 }
 
-.luker-injection-header-actions .menu_button,
-.luker-injection-header-actions .menu_button_small {
+.atria-injection-header-actions .menu_button,
+.atria-injection-header-actions .menu_button_small {
     width: 30px;
     height: 30px;
     min-width: 0;
@@ -13189,7 +13132,7 @@ function ensureStyles() {
     border-radius: 8px;
 }
 
-.luker-injection-empty {
+.atria-injection-empty {
     padding: 24px 16px;
     text-align: center;
     border: 1px dashed rgba(123, 163, 196, 0.28);
@@ -13199,13 +13142,13 @@ function ensureStyles() {
     font-size: 0.92em;
 }
 
-.luker-injection-content {
+.atria-injection-content {
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
-.luker-injection-block {
+.atria-injection-block {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -13215,27 +13158,27 @@ function ensureStyles() {
     background: linear-gradient(155deg, rgba(17, 47, 43, 0.18), rgba(31, 30, 44, 0.12));
 }
 
-.luker-injection-block-source {
+.atria-injection-block-source {
     display: none;
 }
 
-.luker-injection-block-core {
+.atria-injection-block-core {
     border-color: rgba(80, 175, 120, 0.4);
     box-shadow: inset 3px 0 0 rgba(80, 175, 120, 0.55);
 }
 
-.luker-injection-block-focus {
+.atria-injection-block-focus {
     border-color: rgba(80, 150, 220, 0.4);
     box-shadow: inset 3px 0 0 rgba(80, 150, 220, 0.55);
 }
 
-.luker-injection-block-head {
+.atria-injection-block-head {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.luker-injection-block-badge {
+.atria-injection-block-badge {
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.6px;
@@ -13244,18 +13187,18 @@ function ensureStyles() {
     color: #f5fffa;
 }
 
-.luker-injection-block-core .luker-injection-block-badge {
+.atria-injection-block-core .atria-injection-block-badge {
     background: rgba(76, 175, 80, 0.32);
     color: #b3eac0;
 }
 
-.luker-injection-block-focus .luker-injection-block-badge {
+.atria-injection-block-focus .atria-injection-block-badge {
     background: rgba(33, 150, 243, 0.28);
     color: #aedaff;
 }
 
-.luker-injection-block-head .menu_button,
-.luker-injection-block-head .menu_button_small {
+.atria-injection-block-head .menu_button,
+.atria-injection-block-head .menu_button_small {
     margin-left: auto;
     width: 28px;
     height: 28px;
@@ -13267,14 +13210,14 @@ function ensureStyles() {
     border-radius: 6px;
 }
 
-.luker-injection-block-body {
+.atria-injection-block-body {
     display: flex;
     flex-direction: column;
     gap: 12px;
     min-width: 0;
 }
 
-.luker-injection-section {
+.atria-injection-section {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -13284,7 +13227,7 @@ function ensureStyles() {
     border: 1px solid var(--SmartThemeBorderColor, rgba(130, 130, 130, 0.22));
 }
 
-.luker-injection-source-popup {
+.atria-injection-source-popup {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -13293,7 +13236,7 @@ function ensureStyles() {
     min-width: 0;
 }
 
-.luker-injection-source-pre {
+.atria-injection-source-pre {
     white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -13309,7 +13252,7 @@ function ensureStyles() {
     box-sizing: border-box;
 }
 
-.luker-node-detail {
+.atria-node-detail {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -13322,7 +13265,7 @@ function ensureStyles() {
     box-sizing: border-box;
 }
 
-.luker-node-detail-header {
+.atria-node-detail-header {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -13330,28 +13273,28 @@ function ensureStyles() {
     border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(130, 130, 130, 0.28));
 }
 
-.luker-node-detail-title-row {
+.atria-node-detail-title-row {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.luker-node-detail-title {
+.atria-node-detail-title {
     font-size: 17px;
     font-weight: 700;
     line-height: 1.3;
     word-break: break-word;
 }
 
-.luker-node-detail-id {
+.atria-node-detail-id {
     font-size: 11.5px;
     opacity: 0.6;
     font-family: var(--monoFontFamily, monospace);
     letter-spacing: 0.02em;
 }
 
-.luker-node-detail-badge {
+.atria-node-detail-badge {
     display: inline-flex;
     align-items: center;
     font-size: 11px;
@@ -13363,19 +13306,19 @@ function ensureStyles() {
     border: 1px solid transparent;
 }
 
-.luker-node-detail-badge.is-type {
+.atria-node-detail-badge.is-type {
     background: rgba(120, 160, 220, 0.18);
     color: var(--SmartThemeBodyColor, inherit);
     border-color: rgba(120, 160, 220, 0.32);
 }
 
-.luker-node-detail-badge.is-level {
+.atria-node-detail-badge.is-level {
     background: rgba(168, 137, 220, 0.18);
     color: var(--SmartThemeBodyColor, inherit);
     border-color: rgba(168, 137, 220, 0.32);
 }
 
-.luker-node-detail-summary {
+.atria-node-detail-summary {
     font-size: 13px;
     line-height: 1.55;
     padding: 8px 12px;
@@ -13386,13 +13329,13 @@ function ensureStyles() {
     white-space: pre-wrap;
 }
 
-.luker-node-detail-meta {
+.atria-node-detail-meta {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
 }
 
-.luker-node-detail-meta-item {
+.atria-node-detail-meta-item {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -13403,27 +13346,27 @@ function ensureStyles() {
     border: 1px solid var(--SmartThemeBorderColor, rgba(130, 130, 130, 0.22));
 }
 
-.luker-node-detail-meta-item.is-warn {
+.atria-node-detail-meta-item.is-warn {
     background: rgba(220, 150, 80, 0.14);
     border-color: rgba(220, 150, 80, 0.35);
 }
 
-.luker-node-detail-meta-key {
+.atria-node-detail-meta-key {
     opacity: 0.65;
 }
 
-.luker-node-detail-meta-val {
+.atria-node-detail-meta-val {
     font-weight: 600;
     word-break: break-word;
 }
 
-.luker-node-detail-section {
+.atria-node-detail-section {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.luker-node-detail-section-title {
+.atria-node-detail-section-title {
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
@@ -13431,7 +13374,7 @@ function ensureStyles() {
     opacity: 0.7;
 }
 
-.luker-node-detail-rows {
+.atria-node-detail-rows {
     display: flex;
     flex-direction: column;
     gap: 1px;
@@ -13441,7 +13384,7 @@ function ensureStyles() {
     background: var(--SmartThemeBorderColor, rgba(130, 130, 130, 0.18));
 }
 
-.luker-node-detail-row {
+.atria-node-detail-row {
     display: grid;
     grid-template-columns: minmax(110px, 22%) 1fr;
     gap: 12px;
@@ -13450,12 +13393,12 @@ function ensureStyles() {
     align-items: start;
 }
 
-.luker-node-detail-row.is-block {
+.atria-node-detail-row.is-block {
     grid-template-columns: 1fr;
     gap: 4px;
 }
 
-.luker-node-detail-key {
+.atria-node-detail-key {
     font-size: 12px;
     font-weight: 600;
     opacity: 0.75;
@@ -13464,18 +13407,18 @@ function ensureStyles() {
     padding-top: 2px;
 }
 
-.luker-node-detail-value {
+.atria-node-detail-value {
     font-size: 13px;
     line-height: 1.5;
     word-break: break-word;
     min-width: 0;
 }
 
-.luker-node-detail-scalar {
+.atria-node-detail-scalar {
     word-break: break-word;
 }
 
-.luker-node-detail-text {
+.atria-node-detail-text {
     white-space: pre-wrap;
     word-break: break-word;
     padding: 6px 10px;
@@ -13485,12 +13428,12 @@ function ensureStyles() {
     line-height: 1.55;
 }
 
-.luker-node-detail-empty {
+.atria-node-detail-empty {
     opacity: 0.45;
     font-style: italic;
 }
 
-.luker-node-detail-empty-block {
+.atria-node-detail-empty-block {
     font-size: 12.5px;
     opacity: 0.55;
     font-style: italic;
@@ -13501,7 +13444,7 @@ function ensureStyles() {
     text-align: center;
 }
 
-.luker-node-detail-bool {
+.atria-node-detail-bool {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -13511,17 +13454,17 @@ function ensureStyles() {
     font-weight: 600;
 }
 
-.luker-node-detail-bool.is-true {
+.atria-node-detail-bool.is-true {
     background: rgba(120, 200, 130, 0.18);
     color: rgb(70, 160, 90);
 }
 
-.luker-node-detail-bool.is-false {
+.atria-node-detail-bool.is-false {
     background: rgba(200, 120, 120, 0.16);
     opacity: 0.75;
 }
 
-.luker-node-detail-tag {
+.atria-node-detail-tag {
     display: inline-flex;
     align-items: center;
     margin: 2px 4px 2px 0;
@@ -13533,13 +13476,13 @@ function ensureStyles() {
     word-break: break-word;
 }
 
-.luker-node-detail-tags {
+.atria-node-detail-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 2px;
 }
 
-.luker-node-detail-pre {
+.atria-node-detail-pre {
     margin: 0;
     padding: 8px 10px;
     border-radius: 6px;
@@ -13553,13 +13496,13 @@ function ensureStyles() {
     overflow: auto;
 }
 
-.luker-node-detail-raw {
+.atria-node-detail-raw {
     border-top: 1px dashed var(--SmartThemeBorderColor, rgba(130, 130, 130, 0.3));
     padding-top: 8px;
     margin-top: 4px;
 }
 
-.luker-node-detail-raw > summary {
+.atria-node-detail-raw > summary {
     cursor: pointer;
     font-size: 12px;
     opacity: 0.7;
@@ -13568,11 +13511,11 @@ function ensureStyles() {
     list-style: revert;
 }
 
-.luker-node-detail-raw > summary:hover {
+.atria-node-detail-raw > summary:hover {
     opacity: 1;
 }
 
-.luker-node-detail-raw > pre {
+.atria-node-detail-raw > pre {
     margin: 6px 0 0 0;
     padding: 10px 12px;
     border-radius: 8px;
@@ -13586,13 +13529,13 @@ function ensureStyles() {
     overflow: auto;
 }
 
-.luker-injection-section-head {
+.atria-injection-section-head {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.luker-injection-section-title {
+.atria-injection-section-title {
     font-size: 12px;
     font-weight: 600;
     padding: 3px 8px;
@@ -13601,19 +13544,19 @@ function ensureStyles() {
     color: rgba(220, 234, 250, 0.96);
 }
 
-.luker-injection-section-body {
+.atria-injection-section-body {
     width: 100%;
     overflow-x: auto;
 }
 
-.luker-injection-table {
+.atria-injection-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
     table-layout: auto;
 }
 
-.luker-injection-table th {
+.atria-injection-table th {
     padding: 6px 10px;
     text-align: left;
     font-weight: 600;
@@ -13624,28 +13567,28 @@ function ensureStyles() {
     top: 0;
 }
 
-.luker-injection-table td {
+.atria-injection-table td {
     padding: 6px 10px;
     border-bottom: 1px solid rgba(120, 120, 120, 0.22);
     line-height: 1.45;
     vertical-align: top;
 }
 
-.luker-injection-table tr:hover td {
+.atria-injection-table tr:hover td {
     background: rgba(255, 255, 255, 0.02);
 }
 
-.luker-injection-cell-tight {
+.atria-injection-cell-tight {
     white-space: nowrap;
 }
 
-.luker-injection-cell-wrap {
+.atria-injection-cell-wrap {
     word-break: break-word;
     overflow-wrap: anywhere;
     min-width: 220px;
 }
 
-.luker-injection-rawpre {
+.atria-injection-rawpre {
     white-space: pre-wrap;
     font-size: 12.5px;
     margin: 0;
@@ -13658,26 +13601,26 @@ function ensureStyles() {
 }
 
 @media (max-width: 720px) {
-    .luker-injection-section {
+    .atria-injection-section {
         padding: 6px 6px;
     }
-    .luker-injection-table th,
-    .luker-injection-table td {
+    .atria-injection-table th,
+    .atria-injection-table td {
         padding: 4px 6px;
     }
-    .luker-injection-cell-tight {
+    .atria-injection-cell-tight {
         white-space: normal;
     }
 }
 
-.luker-rpg-memory-node-form {
+.atria-rpg-memory-node-form {
     gap: 8px;
     min-width: 0;
     width: 100%;
     max-width: 100%;
 }
 
-.luker-rpg-memory-advanced-popup {
+.atria-rpg-memory-advanced-popup {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -13689,13 +13632,13 @@ function ensureStyles() {
     overflow-x: hidden;
 }
 
-.luker-rpg-memory-advanced-popup label {
+.atria-rpg-memory-advanced-popup label {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.luker-rpg-memory-advanced-footer {
+.atria-rpg-memory-advanced-footer {
     display: flex;
     gap: 8px;
     justify-content: space-between;
@@ -13708,133 +13651,133 @@ function ensureStyles() {
     padding-top: 8px;
 }
 
-.luker-rpg-memory-advanced-footer-meta {
+.atria-rpg-memory-advanced-footer-meta {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.luker-rpg-memory-advanced-footer-note {
+.atria-rpg-memory-advanced-footer-note {
     opacity: 0.76;
     font-size: 0.86em;
 }
 
-.luker-rpg-memory-advanced-actions {
+.atria-rpg-memory-advanced-actions {
     display: flex;
     justify-content: flex-end;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.luker-rpg-memory-node-form-grid {
+.atria-rpg-memory-node-form-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
 }
 
-.luker-rpg-memory-node-form-flags {
+.atria-rpg-memory-node-form-flags {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
     padding: 2px 0;
 }
 
-.luker-rpg-memory-node-form label {
+.atria-rpg-memory-node-form label {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.luker-rpg-memory-edge-form-grid {
+.atria-rpg-memory-edge-form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
-.luker-rpg-memory-edge-form-grid label {
+.atria-rpg-memory-edge-form-grid label {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
 @media (max-width: 1000px) {
-    .popup:has(.luker-rpg-memory-graph-popup) {
+    .popup:has(.atria-rpg-memory-graph-popup) {
         padding-left: 8px;
         padding-right: 8px;
     }
-    .popup:has(.luker-rpg-memory-graph-popup) .popup-content {
+    .popup:has(.atria-rpg-memory-graph-popup) .popup-content {
         padding: 0 2px;
     }
-    .luker-rpg-schema-popup {
+    .atria-rpg-schema-popup {
         width: 100%;
         max-width: 100%;
     }
-    .luker-rpg-memory-graph-popup {
+    .atria-rpg-memory-graph-popup {
         width: 100%;
         max-width: 100%;
     }
-    .luker-rpg-memory-graph-search-head {
+    .atria-rpg-memory-graph-search-head {
         grid-template-columns: minmax(0, 1fr);
     }
-    .luker-rpg-schema-popup .luker-schema-topbar {
+    .atria-rpg-schema-popup .atria-schema-topbar {
         flex-direction: column;
     }
-    .luker-rpg-schema-popup .luker-schema-grid-2 {
+    .atria-rpg-schema-popup .atria-schema-grid-2 {
         grid-template-columns: 1fr;
     }
-    .luker-rpg-schema-popup .luker-schema-footer {
+    .atria-rpg-schema-popup .atria-schema-footer {
         flex-direction: column;
         align-items: stretch;
     }
-    .luker-rpg-schema-popup .luker-schema-footer-actions {
+    .atria-rpg-schema-popup .atria-schema-footer-actions {
         justify-content: flex-start;
     }
-    .luker-rpg-memory-advanced-actions {
+    .atria-rpg-memory-advanced-actions {
         justify-content: flex-start;
     }
-    .luker-rpg-memory-advanced-footer {
+    .atria-rpg-memory-advanced-footer {
         flex-direction: column;
         align-items: stretch;
     }
     /* Graph workspace: single column on mobile */
-    .luker-rpg-memory-graph-workspace {
+    .atria-rpg-memory-graph-workspace {
         grid-template-columns: minmax(0, 1fr);
     }
-    .luker-rpg-memory-graph-cy {
+    .atria-rpg-memory-graph-cy {
         height: min(55vh, 420px);
     }
     /* Inspector: bottom panel on mobile */
-    .luker-rpg-memory-graph-sidepanel {
+    .atria-rpg-memory-graph-sidepanel {
         max-height: 40vh;
         border-top: 1px solid var(--SmartThemeBorderColor, rgba(130,130,130,0.35));
     }
-    .luker-rpg-memory-graph-sidepanel.is-collapsed {
+    .atria-rpg-memory-graph-sidepanel.is-collapsed {
         max-height: 38px;
         overflow: hidden;
     }
-    .luker-graph-inspector-toggle {
+    .atria-graph-inspector-toggle {
         display: inline-flex;
     }
     /* Show mobile card lists, hide desktop tables */
-    .luker-graph-desktop-only { display: none !important; }
-    .luker-graph-mobile-only { display: flex !important; }
-    .luker-graph-tab-panel {
+    .atria-graph-desktop-only { display: none !important; }
+    .atria-graph-mobile-only { display: flex !important; }
+    .atria-graph-tab-panel {
         width: 100%;
         max-width: 100%;
         box-sizing: border-box;
     }
-    .luker-graph-card-list {
+    .atria-graph-card-list {
         padding: 0;
     }
-    .luker-graph-card {
+    .atria-graph-card {
         padding: 10px 8px;
     }
-    .luker-graph-card-head {
+    .atria-graph-card-head {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
         gap: 6px;
     }
-    .luker-graph-card-type {
+    .atria-graph-card-type {
         justify-self: start;
         max-width: 100%;
         white-space: normal;
@@ -13843,34 +13786,34 @@ function ensureStyles() {
         overflow-wrap: anywhere;
     }
     /* Header: stack title and stats */
-    .luker-graph-header-left {
+    .atria-graph-header-left {
         flex-direction: column;
         align-items: flex-start;
         gap: 6px;
     }
     /* Search actions: compact */
-    .luker-rpg-memory-graph-search-actions {
+    .atria-rpg-memory-graph-search-actions {
         gap: 4px;
     }
-    .luker-rpg-memory-graph-search-results {
+    .atria-rpg-memory-graph-search-results {
         grid-template-columns: 1fr;
     }
     /* Node form grid: 2 columns on mobile */
-    .luker-rpg-memory-node-form-grid {
+    .atria-rpg-memory-node-form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 480px) {
     /* Tab labels: icon only on very small screens */
-    .luker-graph-tab span {
+    .atria-graph-tab span {
         display: none;
     }
-    .luker-graph-tab {
+    .atria-graph-tab {
         gap: 0;
         padding: 10px 6px;
     }
-    .luker-graph-stat {
+    .atria-graph-stat {
         font-size: 0.75em;
         padding: 2px 7px;
     }
@@ -13903,7 +13846,7 @@ function refreshPrimaryKeyOptionsForCard(card) {
         .get()
         .filter(Boolean);
     const validChecked = checked.filter(column => columns.includes(column));
-    root.find('.luker-schema-primary-key-options').html(renderPrimaryKeyOptions(columns, validChecked));
+    root.find('.atria-schema-primary-key-options').html(renderPrimaryKeyOptions(columns, validChecked));
 }
 
 function renderNodeTypeSchemaCard(spec, index) {
@@ -13922,21 +13865,21 @@ function renderNodeTypeSchemaCard(spec, index) {
     const tableName = String(spec?.tableName || spec?.id || '').trim();
     const cardClass = `mode-${mode}${spec.alwaysInject ? ' is-always' : ''}${spec.forceUpdate ? ' is-force' : ''}`;
     return `
-<div class="luker-schema-card ${cardClass}" data-index="${index}">
-    <div class="luker-schema-card-header">
+<div class="atria-schema-card ${cardClass}" data-index="${index}">
+    <div class="atria-schema-card-header">
         <div>
-            <div class="luker-schema-card-title">${escapeHtml(cardTitle)}</div>
-            <div class="luker-schema-card-sub">${escapeHtml(i18nFormat('table: ${0}', tableName || i18n('(unset)')))}</div>
+            <div class="atria-schema-card-title">${escapeHtml(cardTitle)}</div>
+            <div class="atria-schema-card-sub">${escapeHtml(i18nFormat('table: ${0}', tableName || i18n('(unset)')))}</div>
         </div>
-        <div class="luker-schema-badges">
-            <span class="luker-schema-badge">${escapeHtml(i18nFormat('mode: ${0}', mode))}</span>
-            ${spec.editable ? `<span class="luker-schema-badge">${escapeHtml(i18n('Editable'))}</span>` : `<span class="luker-schema-badge">${escapeHtml(i18n('Create-only'))}</span>`}
-            ${spec.alwaysInject ? `<span class="luker-schema-badge">${escapeHtml(i18n('always inject'))}</span>` : ''}
-            ${spec.latestOnly ? `<span class="luker-schema-badge">${escapeHtml(i18n('Latest Only Upsert'))}</span>` : ''}
-            ${spec.forceUpdate ? `<span class="luker-schema-badge">${escapeHtml(i18n('Force Update (must appear each extraction batch)'))}</span>` : ''}
+        <div class="atria-schema-badges">
+            <span class="atria-schema-badge">${escapeHtml(i18nFormat('mode: ${0}', mode))}</span>
+            ${spec.editable ? `<span class="atria-schema-badge">${escapeHtml(i18n('Editable'))}</span>` : `<span class="atria-schema-badge">${escapeHtml(i18n('Create-only'))}</span>`}
+            ${spec.alwaysInject ? `<span class="atria-schema-badge">${escapeHtml(i18n('always inject'))}</span>` : ''}
+            ${spec.latestOnly ? `<span class="atria-schema-badge">${escapeHtml(i18n('Latest Only Upsert'))}</span>` : ''}
+            ${spec.forceUpdate ? `<span class="atria-schema-badge">${escapeHtml(i18n('Force Update (must appear each extraction batch)'))}</span>` : ''}
         </div>
     </div>
-    <div class="luker-schema-grid-2">
+    <div class="atria-schema-grid-2">
         <label>${escapeHtml(i18n('Type ID'))}
             <input data-field="id" class="text_pole" type="text" value="${escapeHtml(spec.id)}" />
         </label>
@@ -13944,23 +13887,23 @@ function renderNodeTypeSchemaCard(spec, index) {
             <input data-field="label" class="text_pole" type="text" value="${escapeHtml(spec.label)}" />
         </label>
     </div>
-    <div class="luker-schema-grid-2">
+    <div class="atria-schema-grid-2">
         <label>${escapeHtml(i18n('Table Name'))}
             <input data-field="tableName" class="text_pole" type="text" value="${escapeHtml(spec.tableName || spec.id)}" />
         </label>
-        <label class="checkbox_label luker-schema-checkbox"><input data-field="alwaysInject" type="checkbox" ${spec.alwaysInject ? 'checked' : ''} />${escapeHtml(i18n('Always Inject'))}
+        <label class="checkbox_label atria-schema-checkbox"><input data-field="alwaysInject" type="checkbox" ${spec.alwaysInject ? 'checked' : ''} />${escapeHtml(i18n('Always Inject'))}
         </label>
     </div>
-    <label class="checkbox_label luker-schema-checkbox"><input data-field="forceUpdate" type="checkbox" ${spec.forceUpdate ? 'checked' : ''} />${escapeHtml(i18n('Force Update (must appear each extraction batch)'))}
+    <label class="checkbox_label atria-schema-checkbox"><input data-field="forceUpdate" type="checkbox" ${spec.forceUpdate ? 'checked' : ''} />${escapeHtml(i18n('Force Update (must appear each extraction batch)'))}
     </label>
-    <label class="checkbox_label luker-schema-checkbox"><input data-field="editable" type="checkbox" ${spec.editable ? 'checked' : ''} />${escapeHtml(i18n('Editable (enable edit/delete tools and graph edit context)'))}
+    <label class="checkbox_label atria-schema-checkbox"><input data-field="editable" type="checkbox" ${spec.editable ? 'checked' : ''} />${escapeHtml(i18n('Editable (enable edit/delete tools and graph edit context)'))}
     </label>
-    <div class="luker-schema-grid-2">
-        <label class="checkbox_label luker-schema-checkbox"><input data-field="latestOnly" type="checkbox" ${latestOnly ? 'checked' : ''} />${escapeHtml(i18n('Latest Only Upsert'))}
+    <div class="atria-schema-grid-2">
+        <label class="checkbox_label atria-schema-checkbox"><input data-field="latestOnly" type="checkbox" ${latestOnly ? 'checked' : ''} />${escapeHtml(i18n('Latest Only Upsert'))}
         </label>
-        <div class="luker-schema-latestonly-keys" style="${latestOnly ? '' : 'display:none;'}">
+        <div class="atria-schema-latestonly-keys" style="${latestOnly ? '' : 'display:none;'}">
             <label>${escapeHtml(i18n('Primary Key Columns'))}</label>
-            <div class="luker-schema-primary-key-options">${renderPrimaryKeyOptions(spec.tableColumns, primaryKeyColumns)}</div>
+            <div class="atria-schema-primary-key-options">${renderPrimaryKeyOptions(spec.tableColumns, primaryKeyColumns)}</div>
         </div>
     </div>
     <label>${escapeHtml(i18n('Table Columns (comma separated)'))}
@@ -13993,9 +13936,9 @@ function renderNodeTypeSchemaCard(spec, index) {
         <small style="opacity:0.7">${escapeHtml(i18n('Empty = use the global default from RAG settings. Non-negative integer overrides only this type. 0 = never surface this type via RAG.'))}</small>
         <input data-field="ragPerTypeK" class="text_pole" type="number" min="0" step="1" value="${Math.max(0, Math.floor(Number.isFinite(Number(spec.ragPerTypeK)) ? Number(spec.ragPerTypeK) : 0))}" />
     </label>
-    <label class="checkbox_label luker-schema-checkbox"><input data-field="compression.enabled" type="checkbox" ${mode === 'hierarchical' ? 'checked' : ''} />${escapeHtml(i18n('Enable Hierarchical Compression'))}
+    <label class="checkbox_label atria-schema-checkbox"><input data-field="compression.enabled" type="checkbox" ${mode === 'hierarchical' ? 'checked' : ''} />${escapeHtml(i18n('Enable Hierarchical Compression'))}
     </label>
-    <div class="luker-schema-grid-2 luker-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">
+    <div class="atria-schema-grid-2 atria-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">
         <label>${escapeHtml(i18n('Threshold'))}
             <input data-field="compression.threshold" class="text_pole" type="number" min="2" step="1" value="${threshold}" />
         </label>
@@ -14003,7 +13946,7 @@ function renderNodeTypeSchemaCard(spec, index) {
             <input data-field="compression.fanIn" class="text_pole" type="number" min="2" step="1" value="${fanIn}" />
         </label>
     </div>
-    <div class="luker-schema-grid-2 luker-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">
+    <div class="atria-schema-grid-2 atria-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">
         <label>${escapeHtml(i18n('Max Depth'))}
             <input data-field="compression.maxDepth" class="text_pole" type="number" min="1" step="1" value="${maxDepth}" />
         </label>
@@ -14011,15 +13954,15 @@ function renderNodeTypeSchemaCard(spec, index) {
             <input data-field="compression.keepRecentLeaves" class="text_pole" type="number" min="0" step="1" value="${keepRecentLeaves}" />
         </label>
     </div>
-    <label class="luker-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">${escapeHtml(i18n('Compression Rule (optional)'))}
+    <label class="atria-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">${escapeHtml(i18n('Compression Rule (optional)'))}
         <textarea data-field="compression.rule" class="text_pole textarea_compact" rows="2" placeholder="${escapeHtml(i18n('Filter nodes eligible for compression. One condition per line or use &&. Examples: status in resolved,dropped ; semantic_rollup=false'))}">${escapeHtml(compressionRule)}</textarea>
     </label>
-    <label class="luker-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">${escapeHtml(i18n('Summarize Instruction'))}
+    <label class="atria-schema-compression-hier" style="${mode === 'hierarchical' ? '' : 'display:none;'}">${escapeHtml(i18n('Summarize Instruction'))}
         <textarea data-field="compression.summarizeInstruction" class="text_pole textarea_compact" rows="2">${escapeHtml(summarizeInstruction)}</textarea>
     </label>
-    <div class="luker-schema-actions">
-        <div class="menu_button luker-schema-action" data-action="duplicate">${escapeHtml(i18n('Duplicate Type'))}</div>
-        <div class="menu_button luker-schema-action" data-action="remove">${escapeHtml(i18n('Remove Type'))}</div>
+    <div class="atria-schema-actions">
+        <div class="menu_button atria-schema-action" data-action="duplicate">${escapeHtml(i18n('Duplicate Type'))}</div>
+        <div class="menu_button atria-schema-action" data-action="remove">${escapeHtml(i18n('Remove Type'))}</div>
     </div>
 </div>`;
 }
@@ -14028,8 +13971,8 @@ function updateSchemaCardModeUi(card) {
     const root = jQuery(card);
     const enabled = Boolean(root.find('[data-field="compression.enabled"]').prop('checked'));
     const latestOnlyEnabled = Boolean(root.find('[data-field="latestOnly"]').prop('checked'));
-    root.find('.luker-schema-compression-hier').toggle(enabled);
-    root.find('.luker-schema-latestonly-keys').toggle(latestOnlyEnabled);
+    root.find('.atria-schema-compression-hier').toggle(enabled);
+    root.find('.atria-schema-latestonly-keys').toggle(latestOnlyEnabled);
 }
 
 function readSchemaCard(card) {
@@ -14070,28 +14013,28 @@ function readSchemaCard(card) {
     };
 }
 
-function readNodeTypeSchemaEditor(root, listSelector = '#luker_rpg_memory_schema_editor_list') {
-    const cards = root.find(`${listSelector} .luker-schema-card`);
+function readNodeTypeSchemaEditor(root, listSelector = '#atria_rpg_memory_schema_editor_list') {
+    const cards = root.find(`${listSelector} .atria-schema-card`);
     const raw = [];
     cards.each((_, card) => raw.push(readSchemaCard(card)));
     return normalizeNodeTypeSchema(raw);
 }
 
-function renderNodeTypeSchemaEditor(root, schema, listSelector = '#luker_rpg_memory_schema_editor_list') {
+function renderNodeTypeSchemaEditor(root, schema, listSelector = '#atria_rpg_memory_schema_editor_list') {
     const list = root.find(listSelector);
     if (!list.length) {
         return;
     }
     const normalized = normalizeNodeTypeSchema(schema);
     list.html(normalized.map((spec, index) => renderNodeTypeSchemaCard(spec, index)).join(''));
-    list.find('.luker-schema-card').each((_, card) => updateSchemaCardModeUi(card));
-    list.off('change.lukerSchemaMode input.lukerSchemaMode');
-    list.on('change.lukerSchemaMode', '[data-field="compression.enabled"],[data-field="latestOnly"]', function () {
-        updateSchemaCardModeUi(jQuery(this).closest('.luker-schema-card'));
-        refreshPrimaryKeyOptionsForCard(jQuery(this).closest('.luker-schema-card'));
+    list.find('.atria-schema-card').each((_, card) => updateSchemaCardModeUi(card));
+    list.off('change.atriaSchemaMode input.atriaSchemaMode');
+    list.on('change.atriaSchemaMode', '[data-field="compression.enabled"],[data-field="latestOnly"]', function () {
+        updateSchemaCardModeUi(jQuery(this).closest('.atria-schema-card'));
+        refreshPrimaryKeyOptionsForCard(jQuery(this).closest('.atria-schema-card'));
     });
-    list.on('input.lukerSchemaMode change.lukerSchemaMode', '[data-field="tableColumns"]', function () {
-        refreshPrimaryKeyOptionsForCard(jQuery(this).closest('.luker-schema-card'));
+    list.on('input.atriaSchemaMode change.atriaSchemaMode', '[data-field="tableColumns"]', function () {
+        refreshPrimaryKeyOptionsForCard(jQuery(this).closest('.atria-schema-card'));
     });
 }
 
@@ -14102,7 +14045,7 @@ function updateSchemaSummary(root, schema) {
     const forceUpdate = normalized.filter(item => item.forceUpdate).length;
     const editable = normalized.filter(item => item.editable).length;
     const hierarchical = normalized.filter(item => String(item?.compression?.mode || '') === 'hierarchical').length;
-    root.find('#luker_rpg_memory_schema_summary').text(i18nFormat(
+    root.find('#atria_rpg_memory_schema_summary').text(i18nFormat(
         'Types: ${0} | Editable: ${1} | Always Inject: ${2} | Force Update: ${3} | Hierarchical: ${4}',
         total,
         editable,
@@ -14116,14 +14059,14 @@ function updateSchemaScopeIndicator(root, scopeInfo) {
     const scopeText = scopeInfo?.hasOverride
         ? i18nFormat('Schema scope: character override (${0})', scopeInfo.characterName || scopeInfo.avatar || i18n('(unset)'))
         : i18n('Schema scope: global');
-    root.find('#luker_rpg_memory_schema_scope').text(scopeText);
+    root.find('#atria_rpg_memory_schema_scope').text(scopeText);
 }
 
 function updateAdvancedScopeIndicator(root, scopeInfo) {
     const scopeText = scopeInfo?.hasOverride
         ? i18nFormat('Advanced scope: character override (${0})', scopeInfo.characterName || scopeInfo.avatar || i18n('(unset)'))
         : i18n('Advanced scope: global');
-    root.find('#luker_rpg_memory_advanced_scope').text(scopeText);
+    root.find('#atria_rpg_memory_advanced_scope').text(scopeText);
 }
 
 async function persistSchemaToGlobal(settings, schema) {
@@ -14154,7 +14097,7 @@ async function persistAdvancedToCharacter(context, avatar, advancedSettings) {
 
 async function openSchemaEditorPopup(context, settings, root) {
     ensureStyles();
-    const popupId = `luker_rpg_memory_schema_popup_${Date.now()}`;
+    const popupId = `atria_rpg_memory_schema_popup_${Date.now()}`;
     const scopeInfo = getSchemaScopeInfo(context, settings);
     const popupHtml = buildSchemaEditorPopupHtml({
         escapeHtml,
@@ -14163,9 +14106,9 @@ async function openSchemaEditorPopup(context, settings, root) {
         normalizeNodeTypeSchema,
         renderNodeTypeSchemaCard,
     }, popupId, scopeInfo);
-    const namespace = `.lukerSchemaPopup_${popupId}`;
+    const namespace = `.atriaSchemaPopup_${popupId}`;
     const selector = `#${popupId}`;
-    const listSelector = '.luker-schema-editor-list';
+    const listSelector = '.atria-schema-editor-list';
 
     const getPopupRoot = () => jQuery(selector);
     const readCurrentSchema = () => {
@@ -14233,15 +14176,15 @@ async function openSchemaEditorPopup(context, settings, root) {
 
     jQuery(document).off(namespace);
     jQuery(document).on(`change${namespace}`, `${selector} [data-field="compression.enabled"], ${selector} [data-field="latestOnly"]`, function () {
-        const card = jQuery(this).closest('.luker-schema-card');
+        const card = jQuery(this).closest('.atria-schema-card');
         updateSchemaCardModeUi(card);
         refreshPrimaryKeyOptionsForCard(card);
     });
     jQuery(document).on(`input${namespace} change${namespace}`, `${selector} [data-field="tableColumns"]`, function () {
-        const card = jQuery(this).closest('.luker-schema-card');
+        const card = jQuery(this).closest('.atria-schema-card');
         refreshPrimaryKeyOptionsForCard(card);
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-schema-editor-add`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-schema-editor-add`, function () {
         const popupRoot = getPopupRoot();
         if (!popupRoot.length) {
             return;
@@ -14250,19 +14193,19 @@ async function openSchemaEditorPopup(context, settings, root) {
         current.push(getSchemaTypeTemplate(current.length + 1));
         rerender(current);
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-schema-editor-reset`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-schema-editor-reset`, function () {
         if (!window.confirm(i18n('Reset schema editor content to default? This will overwrite current unsaved schema edits.'))) {
             return;
         }
         rerender(normalizeNodeTypeSchema(structuredClone(defaultNodeTypeSchema)));
         notifySuccess(i18n('Schema reset to default in editor.'));
     });
-    jQuery(document).on(`click${namespace}`, `${selector} .luker-schema-action`, function () {
+    jQuery(document).on(`click${namespace}`, `${selector} .atria-schema-action`, function () {
         const popupRoot = getPopupRoot();
         if (!popupRoot.length) {
             return;
         }
-        const card = jQuery(this).closest('.luker-schema-card');
+        const card = jQuery(this).closest('.atria-schema-card');
         const index = Number(card.data('index'));
         const action = String(jQuery(this).data('action') || '');
         const current = readNodeTypeSchemaEditor(popupRoot, listSelector);
@@ -14401,60 +14344,60 @@ async function openSchemaEditorPopup(context, settings, root) {
 
 function hydrateAdvancedTabFields(root, source) {
     if (!root?.length || !source) return;
-    root.find('#luker_rpg_memory_advanced_include_world_info').prop('checked', source.includeWorldInfoWithPreset !== false);
-    root.find('#luker_rpg_memory_advanced_recent_raw_turns').val(String(Math.max(0, Number(source.recentRawTurns ?? defaultSettings.recentRawTurns))));
-    root.find('#luker_rpg_memory_advanced_persistent_injection_max_seq_distance').val(String(Math.max(0, Number(source.persistentInjectionMaxSeqDistance ?? defaultSettings.persistentInjectionMaxSeqDistance))));
-    root.find('#luker_rpg_memory_advanced_recall_iterations').val(String(Math.max(2, Math.min(6, Number(source.recallMaxIterations ?? defaultSettings.recallMaxIterations)))));
-    root.find('#luker_rpg_memory_advanced_tool_retries').val(String(Math.max(0, Math.min(10, Number(source.toolCallRetryMax ?? defaultSettings.toolCallRetryMax)))));
-    root.find('#luker_rpg_memory_advanced_rpm_limit').val(String(Math.max(0, Math.min(600, Number(source.rpmLimit ?? defaultSettings.rpmLimit)))));
-    root.find('#luker_rpg_memory_advanced_extract_context_turns').val(String(Math.max(1, Math.min(32, Number(source.extractContextTurns ?? defaultSettings.extractContextTurns)))));
-    root.find('#luker_rpg_memory_advanced_extract_exclude_recent_turns').val(String(normalizeExtractExcludeRecentTurns(source.extractExcludeRecentTurns ?? defaultSettings.extractExcludeRecentTurns)));
-    root.find('#luker_rpg_memory_advanced_recall_query_messages').val(String(sanitizeRecallQueryMessages(source.recallQueryMessages)));
-    root.find('#luker_rpg_memory_advanced_llm_visible_recent_messages').val(String(Math.max(0, Math.min(200, Number(source.llmVisibleRecentMessages ?? defaultSettings.llmVisibleRecentMessages)))));
-    root.find('#luker_rpg_memory_advanced_extract_batch_turns').val(String(Math.max(1, Number(source.extractBatchTurns ?? defaultSettings.extractBatchTurns))));
-    root.find('#luker_rpg_memory_advanced_extract_mode').val(String(source.extractMode || defaultSettings.extractMode));
-    root.find('#luker_rpg_memory_advanced_extract_crawl_rounds').val(String(Math.max(1, Math.min(5, Number(source.extractCrawlMaxRounds ?? defaultSettings.extractCrawlMaxRounds)))));
-    root.find('#luker_rpg_memory_advanced_extract_crawl_candidates').val(String(Math.max(10, Math.min(100, Number(source.extractCrawlCandidateLimit ?? defaultSettings.extractCrawlCandidateLimit)))));
-    root.find('#luker_rpg_memory_advanced_extract_crawl_reads').val(String(Math.max(1, Math.min(30, Number(source.extractCrawlMaxReads ?? defaultSettings.extractCrawlMaxReads)))));
-    root.find('#luker_rpg_memory_advanced_extract_system_prompt').val(String(source.extractSystemPrompt || DEFAULT_EXTRACT_SYSTEM_PROMPT));
-    root.find('#luker_rpg_memory_advanced_extract_crawl_system_prompt').val(String(source.extractCrawlSystemPrompt || DEFAULT_CRAWL_SYSTEM_PROMPT));
-    root.find('#luker_rpg_memory_advanced_recall_route_prompt').val(String(source.recallRouteSystemPrompt || DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT));
-    root.find('#luker_rpg_memory_advanced_recall_finalize_prompt').val(String(source.recallFinalizeSystemPrompt || DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT));
-    root.find('#luker_rpg_memory_advanced_rag_rewrite_prompt').val(String(source.ragRewriteSystemPrompt || DEFAULT_RAG_REWRITE_SYSTEM_PROMPT));
-    root.find('#luker_rpg_memory_advanced_schema_iter_system_prompt').val(String(source.schemaIterSystemPrompt || DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT));
+    root.find('#atria_rpg_memory_advanced_include_world_info').prop('checked', source.includeWorldInfoWithPreset !== false);
+    root.find('#atria_rpg_memory_advanced_recent_raw_turns').val(String(Math.max(0, Number(source.recentRawTurns ?? defaultSettings.recentRawTurns))));
+    root.find('#atria_rpg_memory_advanced_persistent_injection_max_seq_distance').val(String(Math.max(0, Number(source.persistentInjectionMaxSeqDistance ?? defaultSettings.persistentInjectionMaxSeqDistance))));
+    root.find('#atria_rpg_memory_advanced_recall_iterations').val(String(Math.max(2, Math.min(6, Number(source.recallMaxIterations ?? defaultSettings.recallMaxIterations)))));
+    root.find('#atria_rpg_memory_advanced_tool_retries').val(String(Math.max(0, Math.min(10, Number(source.toolCallRetryMax ?? defaultSettings.toolCallRetryMax)))));
+    root.find('#atria_rpg_memory_advanced_rpm_limit').val(String(Math.max(0, Math.min(600, Number(source.rpmLimit ?? defaultSettings.rpmLimit)))));
+    root.find('#atria_rpg_memory_advanced_extract_context_turns').val(String(Math.max(1, Math.min(32, Number(source.extractContextTurns ?? defaultSettings.extractContextTurns)))));
+    root.find('#atria_rpg_memory_advanced_extract_exclude_recent_turns').val(String(normalizeExtractExcludeRecentTurns(source.extractExcludeRecentTurns ?? defaultSettings.extractExcludeRecentTurns)));
+    root.find('#atria_rpg_memory_advanced_recall_query_messages').val(String(sanitizeRecallQueryMessages(source.recallQueryMessages)));
+    root.find('#atria_rpg_memory_advanced_llm_visible_recent_messages').val(String(Math.max(0, Math.min(200, Number(source.llmVisibleRecentMessages ?? defaultSettings.llmVisibleRecentMessages)))));
+    root.find('#atria_rpg_memory_advanced_extract_batch_turns').val(String(Math.max(1, Number(source.extractBatchTurns ?? defaultSettings.extractBatchTurns))));
+    root.find('#atria_rpg_memory_advanced_extract_mode').val(String(source.extractMode || defaultSettings.extractMode));
+    root.find('#atria_rpg_memory_advanced_extract_crawl_rounds').val(String(Math.max(1, Math.min(5, Number(source.extractCrawlMaxRounds ?? defaultSettings.extractCrawlMaxRounds)))));
+    root.find('#atria_rpg_memory_advanced_extract_crawl_candidates').val(String(Math.max(10, Math.min(100, Number(source.extractCrawlCandidateLimit ?? defaultSettings.extractCrawlCandidateLimit)))));
+    root.find('#atria_rpg_memory_advanced_extract_crawl_reads').val(String(Math.max(1, Math.min(30, Number(source.extractCrawlMaxReads ?? defaultSettings.extractCrawlMaxReads)))));
+    root.find('#atria_rpg_memory_advanced_extract_system_prompt').val(String(source.extractSystemPrompt || DEFAULT_EXTRACT_SYSTEM_PROMPT));
+    root.find('#atria_rpg_memory_advanced_extract_crawl_system_prompt').val(String(source.extractCrawlSystemPrompt || DEFAULT_CRAWL_SYSTEM_PROMPT));
+    root.find('#atria_rpg_memory_advanced_recall_route_prompt').val(String(source.recallRouteSystemPrompt || DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT));
+    root.find('#atria_rpg_memory_advanced_recall_finalize_prompt').val(String(source.recallFinalizeSystemPrompt || DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT));
+    root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt').val(String(source.ragRewriteSystemPrompt || DEFAULT_RAG_REWRITE_SYSTEM_PROMPT));
+    root.find('#atria_rpg_memory_advanced_schema_iter_system_prompt').val(String(source.schemaIterSystemPrompt || DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT));
     const ragRewriteVisible = String(source.recallMethod || 'llm') === 'rag' && Boolean(source.ragUseQueryRewrite);
-    root.find('#luker_rpg_memory_advanced_rag_rewrite_prompt_block').toggle(ragRewriteVisible);
+    root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt_block').toggle(ragRewriteVisible);
 }
 
 function readAdvancedTabFields(root) {
     if (!root?.length) return null;
     return {
-        includeWorldInfoWithPreset: Boolean(root.find('#luker_rpg_memory_advanced_include_world_info').prop('checked')),
-        recentRawTurns: Number(root.find('#luker_rpg_memory_advanced_recent_raw_turns').val()),
-        persistentInjectionMaxSeqDistance: Number(root.find('#luker_rpg_memory_advanced_persistent_injection_max_seq_distance').val()),
-        recallMaxIterations: Number(root.find('#luker_rpg_memory_advanced_recall_iterations').val()),
-        toolCallRetryMax: Number(root.find('#luker_rpg_memory_advanced_tool_retries').val()),
-        rpmLimit: Number(root.find('#luker_rpg_memory_advanced_rpm_limit').val()),
-        extractContextTurns: Number(root.find('#luker_rpg_memory_advanced_extract_context_turns').val()),
-        extractExcludeRecentTurns: Number(root.find('#luker_rpg_memory_advanced_extract_exclude_recent_turns').val()),
-        recallQueryMessages: Number(root.find('#luker_rpg_memory_advanced_recall_query_messages').val()),
-        llmVisibleRecentMessages: Number(root.find('#luker_rpg_memory_advanced_llm_visible_recent_messages').val()),
-        extractBatchTurns: Number(root.find('#luker_rpg_memory_advanced_extract_batch_turns').val()),
-        extractMode: String(root.find('#luker_rpg_memory_advanced_extract_mode').val() || defaultSettings.extractMode),
-        extractCrawlMaxRounds: Number(root.find('#luker_rpg_memory_advanced_extract_crawl_rounds').val()),
-        extractCrawlCandidateLimit: Number(root.find('#luker_rpg_memory_advanced_extract_crawl_candidates').val()),
-        extractCrawlMaxReads: Number(root.find('#luker_rpg_memory_advanced_extract_crawl_reads').val()),
-        extractSystemPrompt: String(root.find('#luker_rpg_memory_advanced_extract_system_prompt').val() || '').trim(),
-        extractCrawlSystemPrompt: String(root.find('#luker_rpg_memory_advanced_extract_crawl_system_prompt').val() || '').trim(),
-        recallRouteSystemPrompt: String(root.find('#luker_rpg_memory_advanced_recall_route_prompt').val() || '').trim(),
-        recallFinalizeSystemPrompt: String(root.find('#luker_rpg_memory_advanced_recall_finalize_prompt').val() || '').trim(),
-        ragRewriteSystemPrompt: String(root.find('#luker_rpg_memory_advanced_rag_rewrite_prompt').val() || '').trim(),
-        schemaIterSystemPrompt: String(root.find('#luker_rpg_memory_advanced_schema_iter_system_prompt').val() || '').trim(),
+        includeWorldInfoWithPreset: Boolean(root.find('#atria_rpg_memory_advanced_include_world_info').prop('checked')),
+        recentRawTurns: Number(root.find('#atria_rpg_memory_advanced_recent_raw_turns').val()),
+        persistentInjectionMaxSeqDistance: Number(root.find('#atria_rpg_memory_advanced_persistent_injection_max_seq_distance').val()),
+        recallMaxIterations: Number(root.find('#atria_rpg_memory_advanced_recall_iterations').val()),
+        toolCallRetryMax: Number(root.find('#atria_rpg_memory_advanced_tool_retries').val()),
+        rpmLimit: Number(root.find('#atria_rpg_memory_advanced_rpm_limit').val()),
+        extractContextTurns: Number(root.find('#atria_rpg_memory_advanced_extract_context_turns').val()),
+        extractExcludeRecentTurns: Number(root.find('#atria_rpg_memory_advanced_extract_exclude_recent_turns').val()),
+        recallQueryMessages: Number(root.find('#atria_rpg_memory_advanced_recall_query_messages').val()),
+        llmVisibleRecentMessages: Number(root.find('#atria_rpg_memory_advanced_llm_visible_recent_messages').val()),
+        extractBatchTurns: Number(root.find('#atria_rpg_memory_advanced_extract_batch_turns').val()),
+        extractMode: String(root.find('#atria_rpg_memory_advanced_extract_mode').val() || defaultSettings.extractMode),
+        extractCrawlMaxRounds: Number(root.find('#atria_rpg_memory_advanced_extract_crawl_rounds').val()),
+        extractCrawlCandidateLimit: Number(root.find('#atria_rpg_memory_advanced_extract_crawl_candidates').val()),
+        extractCrawlMaxReads: Number(root.find('#atria_rpg_memory_advanced_extract_crawl_reads').val()),
+        extractSystemPrompt: String(root.find('#atria_rpg_memory_advanced_extract_system_prompt').val() || '').trim(),
+        extractCrawlSystemPrompt: String(root.find('#atria_rpg_memory_advanced_extract_crawl_system_prompt').val() || '').trim(),
+        recallRouteSystemPrompt: String(root.find('#atria_rpg_memory_advanced_recall_route_prompt').val() || '').trim(),
+        recallFinalizeSystemPrompt: String(root.find('#atria_rpg_memory_advanced_recall_finalize_prompt').val() || '').trim(),
+        ragRewriteSystemPrompt: String(root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt').val() || '').trim(),
+        schemaIterSystemPrompt: String(root.find('#atria_rpg_memory_advanced_schema_iter_system_prompt').val() || '').trim(),
     };
 }
 
 function markAdvancedTabDirty(root, dirty) {
-    root.find('#luker_rpg_memory_advanced_dirty_note').toggle(Boolean(dirty));
+    root.find('#atria_rpg_memory_advanced_dirty_note').toggle(Boolean(dirty));
 }
 
 function applyAdvancedTabToLiveSettings(root, settings) {
@@ -14500,7 +14443,7 @@ async function openManualCompressionPopup(context, settings) {
         return;
     }
 
-    const popupId = `luker_rpg_memory_manual_compress_${Date.now()}`;
+    const popupId = `atria_rpg_memory_manual_compress_${Date.now()}`;
     const html = buildManualCompressionPopupHtml({
         escapeHtml,
         i18n,
@@ -14772,28 +14715,28 @@ function bindUi() {
         return;
     }
 
-    root.find('#luker_rpg_memory_os_enabled').prop('checked', isMemoryOsEnabled(settings));
-    root.find('#luker_rpg_memory_enabled').prop('checked', Boolean(settings.enabled));
-    root.find('#luker_rpg_memory_auto_extraction_enabled').prop('checked', settings.autoExtractionEnabled !== false);
-    root.find('#luker_rpg_memory_auto_compression_enabled').prop('checked', settings.autoCompressionEnabled !== false);
-    root.find('#luker_rpg_memory_recall_enabled').prop('checked', Boolean(settings.recallEnabled));
-    root.find('#luker_rpg_memory_recall_inject_position').val(String(normalizeRecallInjectPosition(settings.recallInjectPosition)));
-    root.find('#luker_rpg_memory_recall_inject_depth').val(String(normalizeRecallInjectDepth(settings.recallInjectDepth)));
-    root.find('#luker_rpg_memory_recall_inject_role').val(String(normalizeRecallInjectRole(settings.recallInjectRole)));
-    root.find('#luker_rpg_memory_recall_api_preset').val(String(settings.recallApiPresetName || ''));
-    root.find('#luker_rpg_memory_recall_preset').val(String(settings.recallPresetName || ''));
-    root.find('#luker_rpg_memory_extract_api_preset').val(String(settings.extractApiPresetName || ''));
-    root.find('#luker_rpg_memory_extract_preset').val(String(settings.extractPresetName || ''));
-    root.find('#luker_rpg_memory_request_api_preset').val(String(settings.requestApiPresetName || ''));
-    root.find('#luker_rpg_memory_request_llm_preset').val(String(settings.requestLlmPresetName || ''));
-    root.find('#luker_rpg_memory_update_every').val(String(settings.updateEvery));
+    root.find('#atria_rpg_memory_os_enabled').prop('checked', isMemoryOsEnabled(settings));
+    root.find('#atria_rpg_memory_enabled').prop('checked', Boolean(settings.enabled));
+    root.find('#atria_rpg_memory_auto_extraction_enabled').prop('checked', settings.autoExtractionEnabled !== false);
+    root.find('#atria_rpg_memory_auto_compression_enabled').prop('checked', settings.autoCompressionEnabled !== false);
+    root.find('#atria_rpg_memory_recall_enabled').prop('checked', Boolean(settings.recallEnabled));
+    root.find('#atria_rpg_memory_recall_inject_position').val(String(normalizeRecallInjectPosition(settings.recallInjectPosition)));
+    root.find('#atria_rpg_memory_recall_inject_depth').val(String(normalizeRecallInjectDepth(settings.recallInjectDepth)));
+    root.find('#atria_rpg_memory_recall_inject_role').val(String(normalizeRecallInjectRole(settings.recallInjectRole)));
+    root.find('#atria_rpg_memory_recall_api_preset').val(String(settings.recallApiPresetName || ''));
+    root.find('#atria_rpg_memory_recall_preset').val(String(settings.recallPresetName || ''));
+    root.find('#atria_rpg_memory_extract_api_preset').val(String(settings.extractApiPresetName || ''));
+    root.find('#atria_rpg_memory_extract_preset').val(String(settings.extractPresetName || ''));
+    root.find('#atria_rpg_memory_request_api_preset').val(String(settings.requestApiPresetName || ''));
+    root.find('#atria_rpg_memory_request_llm_preset').val(String(settings.requestLlmPresetName || ''));
+    root.find('#atria_rpg_memory_update_every').val(String(settings.updateEvery));
     const schemaScopeInfo = getSchemaScopeInfo(context, settings);
     updateSchemaSummary(root, schemaScopeInfo.schema);
     updateSchemaScopeIndicator(root, schemaScopeInfo);
     const advancedScopeInfo = getAdvancedScopeInfo(context, settings);
     updateAdvancedScopeIndicator(root, advancedScopeInfo);
-    root.find('#luker_rpg_memory_advanced_save_character').prop('disabled', !advancedScopeInfo.hasAvatar);
-    root.find('#luker_rpg_memory_advanced_clear_character_override').prop('disabled', !(advancedScopeInfo.hasAvatar && advancedScopeInfo.hasOverride));
+    root.find('#atria_rpg_memory_advanced_save_character').prop('disabled', !advancedScopeInfo.hasAvatar);
+    root.find('#atria_rpg_memory_advanced_clear_character_override').prop('disabled', !(advancedScopeInfo.hasAvatar && advancedScopeInfo.hasOverride));
     hydrateAdvancedTabFields(root, advancedScopeInfo.settings);
     markAdvancedTabDirty(root, false);
     refreshOpenAIPresetSelectors(root, context, settings);
@@ -14802,7 +14745,7 @@ function bindUi() {
         .then(() => refreshUiStats())
         .catch(() => refreshUiStats());
 
-    root.find('#luker_rpg_memory_os_enabled').off('input').on('input', function () {
+    root.find('#atria_rpg_memory_os_enabled').off('input').on('input', function () {
         settings.memoryOsEnabled = Boolean(jQuery(this).prop('checked'));
         latestRecallSnapshot = null;
         // Cancel work admitted under the previous mode. Lifecycle reads the
@@ -14811,7 +14754,7 @@ function bindUi() {
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_enabled').off('input').on('input', function () {
+    root.find('#atria_rpg_memory_enabled').off('input').on('input', function () {
         settings.enabled = Boolean(jQuery(this).prop('checked'));
         syncGenerationVisibleHistoryRuntimeRegexScripts();
         void syncMemoryLorebookActivation(getContext(), settings);
@@ -14824,36 +14767,36 @@ function bindUi() {
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_recall_enabled').off('input').on('input', function () {
+    root.find('#atria_rpg_memory_recall_enabled').off('input').on('input', function () {
         settings.recallEnabled = Boolean(jQuery(this).prop('checked'));
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_auto_extraction_enabled').off('input').on('input', function () {
+    root.find('#atria_rpg_memory_auto_extraction_enabled').off('input').on('input', function () {
         settings.autoExtractionEnabled = Boolean(jQuery(this).prop('checked'));
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_auto_compression_enabled').off('input').on('input', function () {
+    root.find('#atria_rpg_memory_auto_compression_enabled').off('input').on('input', function () {
         settings.autoCompressionEnabled = Boolean(jQuery(this).prop('checked'));
         saveSettingsDebounced();
     });
 
     // Recall method selector + RAG settings visibility
-    root.find('#luker_rpg_memory_recall_method').val(String(settings.recallMethod || 'llm'));
+    root.find('#atria_rpg_memory_recall_method').val(String(settings.recallMethod || 'llm'));
 
-    root.find('#luker_rpg_memory_vector_topk').val(String(settings.vectorTopK || 20));
-    root.find('#luker_rpg_memory_hybrid_max_results').val(String(settings.hybridMaxResults || 15));
-    root.find('#luker_rpg_memory_rag_default_per_type_k').val(String(
+    root.find('#atria_rpg_memory_vector_topk').val(String(settings.vectorTopK || 20));
+    root.find('#atria_rpg_memory_hybrid_max_results').val(String(settings.hybridMaxResults || 15));
+    root.find('#atria_rpg_memory_rag_default_per_type_k').val(String(
         Number.isFinite(Number(settings.ragDefaultPerTypeK))
             ? Number(settings.ragDefaultPerTypeK)
             : defaultSettings.ragDefaultPerTypeK,
     ));
-    root.find('#luker_rpg_memory_rag_use_rerank').prop('checked', Boolean(settings.ragUseRerank));
-    root.find('#luker_rpg_memory_rag_use_query_rewrite').prop('checked', Boolean(settings.ragUseQueryRewrite));
+    root.find('#atria_rpg_memory_rag_use_rerank').prop('checked', Boolean(settings.ragUseRerank));
+    root.find('#atria_rpg_memory_rag_use_query_rewrite').prop('checked', Boolean(settings.ragUseQueryRewrite));
 
     function refreshMemoryEmbeddingSelect() {
-        const sel = /** @type {HTMLSelectElement} */ (root.find('#luker_rpg_memory_embedding_profile')[0]);
+        const sel = /** @type {HTMLSelectElement} */ (root.find('#atria_rpg_memory_embedding_profile')[0]);
         if (!sel) return;
         renderProfileSelect(sel, 'embed', settings.embeddingProfileId || '');
         const actual = String(sel.value || '');
@@ -14863,7 +14806,7 @@ function bindUi() {
         }
     }
     function refreshMemoryRerankSelect() {
-        const sel = /** @type {HTMLSelectElement} */ (root.find('#luker_rpg_memory_rerank_profile')[0]);
+        const sel = /** @type {HTMLSelectElement} */ (root.find('#atria_rpg_memory_rerank_profile')[0]);
         if (!sel) return;
         renderProfileSelect(sel, 'rerank', settings.rerankProfileId || '');
         const actual = String(sel.value || '');
@@ -14876,45 +14819,45 @@ function bindUi() {
     refreshMemoryRerankSelect();
 
     function updateRecallMethodVisibility() {
-        const method = String(root.find('#luker_rpg_memory_recall_method').val() || 'llm');
+        const method = String(root.find('#atria_rpg_memory_recall_method').val() || 'llm');
         const isRag = method === 'rag';
         const isLlm = method === 'llm';
         // RAG-only blocks
-        root.find('#luker_rpg_memory_rag_settings').toggle(isRag);
-        root.find('#luker_rpg_memory_rag_rerank_block').toggle(isRag && Boolean(settings.ragUseRerank));
-        root.find('#luker_rpg_memory_rag_rewrite_block').toggle(isRag && Boolean(settings.ragUseQueryRewrite));
+        root.find('#atria_rpg_memory_rag_settings').toggle(isRag);
+        root.find('#atria_rpg_memory_rag_rerank_block').toggle(isRag && Boolean(settings.ragUseRerank));
+        root.find('#atria_rpg_memory_rag_rewrite_block').toggle(isRag && Boolean(settings.ragUseQueryRewrite));
         // Advanced tab's rag rewrite system prompt textarea follows the same gate.
-        root.find('#luker_rpg_memory_advanced_rag_rewrite_prompt_block').toggle(isRag && Boolean(settings.ragUseQueryRewrite));
+        root.find('#atria_rpg_memory_advanced_rag_rewrite_prompt_block').toggle(isRag && Boolean(settings.ragUseQueryRewrite));
         // LLM-only fields: preset row + iterations + stage prompts. Hidden when RAG.
-        root.find('#luker_rpg_memory_recall_llm_settings').toggle(isLlm);
-        root.find('#luker_rpg_memory_advanced_recall_iterations_row').toggle(isLlm);
-        root.find('#luker_rpg_memory_advanced_recall_route_prompt_row').toggle(isLlm);
-        root.find('#luker_rpg_memory_advanced_recall_finalize_prompt_row').toggle(isLlm);
+        root.find('#atria_rpg_memory_recall_llm_settings').toggle(isLlm);
+        root.find('#atria_rpg_memory_advanced_recall_iterations_row').toggle(isLlm);
+        root.find('#atria_rpg_memory_advanced_recall_route_prompt_row').toggle(isLlm);
+        root.find('#atria_rpg_memory_advanced_recall_finalize_prompt_row').toggle(isLlm);
         // Chat-depth-only injection controls: shown only when position === atDepth.
-        const positionVal = Number(root.find('#luker_rpg_memory_recall_inject_position').val());
+        const positionVal = Number(root.find('#atria_rpg_memory_recall_inject_position').val());
         const isAtDepth = positionVal === Number(world_info_position.atDepth);
-        root.find('#luker_rpg_memory_recall_inject_depth_block').toggle(isAtDepth);
-        root.find('#luker_rpg_memory_recall_inject_role_block').toggle(isAtDepth);
+        root.find('#atria_rpg_memory_recall_inject_depth_block').toggle(isAtDepth);
+        root.find('#atria_rpg_memory_recall_inject_role_block').toggle(isAtDepth);
     }
     updateRecallMethodVisibility();
 
-    root.find('#luker_rpg_memory_recall_method').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_recall_method').off('change').on('change', function () {
         settings.recallMethod = String(jQuery(this).val() || 'llm').trim();
         updateRecallMethodVisibility();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_vector_topk').off('change input').on('change input', function () {
+    root.find('#atria_rpg_memory_vector_topk').off('change input').on('change input', function () {
         settings.vectorTopK = Math.max(5, Math.min(100, Math.floor(Number(jQuery(this).val()) || 20)));
         jQuery(this).val(String(settings.vectorTopK));
         saveSettingsDebounced();
     });
-    root.find('#luker_rpg_memory_hybrid_max_results').off('change input').on('change input', function () {
+    root.find('#atria_rpg_memory_hybrid_max_results').off('change input').on('change input', function () {
         settings.hybridMaxResults = Math.max(3, Math.min(50, Math.floor(Number(jQuery(this).val()) || 15)));
         jQuery(this).val(String(settings.hybridMaxResults));
         saveSettingsDebounced();
     });
-    root.find('#luker_rpg_memory_rag_default_per_type_k').off('change input').on('change input', function () {
+    root.find('#atria_rpg_memory_rag_default_per_type_k').off('change input').on('change input', function () {
         const raw = Number(jQuery(this).val());
         const next = Number.isFinite(raw) ? raw : defaultSettings.ragDefaultPerTypeK;
         settings.ragDefaultPerTypeK = Math.max(0, Math.min(50, Math.floor(next)));
@@ -14922,34 +14865,34 @@ function bindUi() {
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_embedding_profile').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_embedding_profile').off('change').on('change', function () {
         settings.embeddingProfileId = String(jQuery(this).val() || '');
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_rerank_profile').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_rerank_profile').off('change').on('change', function () {
         settings.rerankProfileId = String(jQuery(this).val() || '');
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_rag_use_rerank').off('input').on('input', function () {
+    root.find('#atria_rpg_memory_rag_use_rerank').off('input').on('input', function () {
         settings.ragUseRerank = Boolean(jQuery(this).prop('checked'));
         updateRecallMethodVisibility();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_rag_use_query_rewrite').off('input').on('input', function () {
+    root.find('#atria_rpg_memory_rag_use_query_rewrite').off('input').on('input', function () {
         settings.ragUseQueryRewrite = Boolean(jQuery(this).prop('checked'));
         updateRecallMethodVisibility();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_rag_rewrite_api_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_rag_rewrite_api_preset').off('change').on('change', function () {
         settings.ragRewriteApiPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_rag_rewrite_llm_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_rag_rewrite_llm_preset').off('change').on('change', function () {
         settings.ragRewriteLlmPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
@@ -14961,7 +14904,7 @@ function bindUi() {
         });
     });
 
-    root.find('#luker_rpg_memory_recall_inject_position').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_recall_inject_position').off('change').on('change', function () {
         settings.recallInjectPosition = normalizeRecallInjectPosition(jQuery(this).val());
         jQuery(this).val(String(settings.recallInjectPosition));
         updateRecallMethodVisibility();
@@ -14969,7 +14912,7 @@ function bindUi() {
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_recall_inject_depth').off('change input').on('change input', function (event) {
+    root.find('#atria_rpg_memory_recall_inject_depth').off('change input').on('change input', function (event) {
         settings.recallInjectDepth = normalizeRecallInjectDepth(jQuery(this).val());
         jQuery(this).val(String(settings.recallInjectDepth));
         if (event?.type === 'change') {
@@ -14978,54 +14921,54 @@ function bindUi() {
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_recall_inject_role').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_recall_inject_role').off('change').on('change', function () {
         settings.recallInjectRole = normalizeRecallInjectRole(jQuery(this).val());
         jQuery(this).val(String(settings.recallInjectRole));
         void syncPersistentProjectionForCurrentChat(getContext());
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_recall_api_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_recall_api_preset').off('change').on('change', function () {
         settings.recallApiPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_recall_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_recall_preset').off('change').on('change', function () {
         settings.recallPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_extract_api_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_extract_api_preset').off('change').on('change', function () {
         settings.extractApiPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_extract_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_extract_preset').off('change').on('change', function () {
         settings.extractPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_request_api_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_request_api_preset').off('change').on('change', function () {
         settings.requestApiPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_request_llm_preset').off('change').on('change', function () {
+    root.find('#atria_rpg_memory_request_llm_preset').off('change').on('change', function () {
         settings.requestLlmPresetName = String(jQuery(this).val() || '').trim();
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_update_every').off('change input').on('change input', function () {
+    root.find('#atria_rpg_memory_update_every').off('change input').on('change input', function () {
         const nextValue = Math.max(1, Math.floor(Number(jQuery(this).val()) || defaultSettings.updateEvery));
         settings.updateEvery = nextValue;
         jQuery(this).val(String(nextValue));
         saveSettingsDebounced();
     });
 
-    root.find('#luker_rpg_memory_open_schema_editor').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_open_schema_editor').off('click').on('click', async function () {
         await openSchemaEditorPopup(context, settings, root);
     });
-    root.find('#luker_rpg_memory_open_schema_studio').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_open_schema_studio').off('click').on('click', async function () {
         await openSchemaIterationStudio({
             context,
             settings,
@@ -15052,32 +14995,32 @@ function bindUi() {
     // immediately (in-memory) but do NOT persist. Dirty note appears until a
     // scope save button is clicked (or a fresh bindUi() clears the note).
     const advancedFieldSelectors = [
-        '#luker_rpg_memory_advanced_include_world_info',
-        '#luker_rpg_memory_advanced_recent_raw_turns',
-        '#luker_rpg_memory_advanced_recall_iterations',
-        '#luker_rpg_memory_advanced_tool_retries',
-        '#luker_rpg_memory_advanced_rpm_limit',
-        '#luker_rpg_memory_advanced_extract_context_turns',
-        '#luker_rpg_memory_advanced_extract_exclude_recent_turns',
-        '#luker_rpg_memory_advanced_recall_query_messages',
-        '#luker_rpg_memory_advanced_llm_visible_recent_messages',
-        '#luker_rpg_memory_advanced_extract_batch_turns',
-        '#luker_rpg_memory_advanced_extract_mode',
-        '#luker_rpg_memory_advanced_extract_crawl_rounds',
-        '#luker_rpg_memory_advanced_extract_crawl_candidates',
-        '#luker_rpg_memory_advanced_extract_crawl_reads',
-        '#luker_rpg_memory_advanced_extract_system_prompt',
-        '#luker_rpg_memory_advanced_extract_crawl_system_prompt',
-        '#luker_rpg_memory_advanced_recall_route_prompt',
-        '#luker_rpg_memory_advanced_recall_finalize_prompt',
-        '#luker_rpg_memory_advanced_rag_rewrite_prompt',
-        '#luker_rpg_memory_advanced_schema_iter_system_prompt',
+        '#atria_rpg_memory_advanced_include_world_info',
+        '#atria_rpg_memory_advanced_recent_raw_turns',
+        '#atria_rpg_memory_advanced_recall_iterations',
+        '#atria_rpg_memory_advanced_tool_retries',
+        '#atria_rpg_memory_advanced_rpm_limit',
+        '#atria_rpg_memory_advanced_extract_context_turns',
+        '#atria_rpg_memory_advanced_extract_exclude_recent_turns',
+        '#atria_rpg_memory_advanced_recall_query_messages',
+        '#atria_rpg_memory_advanced_llm_visible_recent_messages',
+        '#atria_rpg_memory_advanced_extract_batch_turns',
+        '#atria_rpg_memory_advanced_extract_mode',
+        '#atria_rpg_memory_advanced_extract_crawl_rounds',
+        '#atria_rpg_memory_advanced_extract_crawl_candidates',
+        '#atria_rpg_memory_advanced_extract_crawl_reads',
+        '#atria_rpg_memory_advanced_extract_system_prompt',
+        '#atria_rpg_memory_advanced_extract_crawl_system_prompt',
+        '#atria_rpg_memory_advanced_recall_route_prompt',
+        '#atria_rpg_memory_advanced_recall_finalize_prompt',
+        '#atria_rpg_memory_advanced_rag_rewrite_prompt',
+        '#atria_rpg_memory_advanced_schema_iter_system_prompt',
     ].join(', ');
     root.find(advancedFieldSelectors).off('input change').on('input change', function () {
         applyAdvancedTabToLiveSettings(root, settings);
     });
 
-    root.find('#luker_rpg_memory_advanced_reset').off('click').on('click', function () {
+    root.find('#atria_rpg_memory_advanced_reset').off('click').on('click', function () {
         if (!window.confirm(i18n('Reset advanced settings editor to default? This will overwrite current unsaved advanced edits.'))) {
             return;
         }
@@ -15086,7 +15029,7 @@ function bindUi() {
         notifySuccess(i18n('Advanced settings reset to defaults in editor.'));
     });
 
-    root.find('#luker_rpg_memory_advanced_save_global').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_advanced_save_global').off('click').on('click', async function () {
         // Ensure form values are applied to memory first, then persist to global.
         applyAdvancedTabToLiveSettings(root, settings);
         const info = getAdvancedScopeInfo(context, settings);
@@ -15094,13 +15037,13 @@ function bindUi() {
         syncGenerationVisibleHistoryRuntimeRegexScripts();
         const nextScopeInfo = getAdvancedScopeInfo(context, settings);
         updateAdvancedScopeIndicator(root, nextScopeInfo);
-        root.find('#luker_rpg_memory_advanced_save_character').prop('disabled', !nextScopeInfo.hasAvatar);
-        root.find('#luker_rpg_memory_advanced_clear_character_override').prop('disabled', !(nextScopeInfo.hasAvatar && nextScopeInfo.hasOverride));
+        root.find('#atria_rpg_memory_advanced_save_character').prop('disabled', !nextScopeInfo.hasAvatar);
+        root.find('#atria_rpg_memory_advanced_clear_character_override').prop('disabled', !(nextScopeInfo.hasAvatar && nextScopeInfo.hasOverride));
         markAdvancedTabDirty(root, false);
         notifySuccess(i18n('Advanced settings saved to global settings.'));
         updateUiStatus(i18n('Advanced settings saved to global settings.'));
     });
-    root.find('#luker_rpg_memory_advanced_save_character').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_advanced_save_character').off('click').on('click', async function () {
         const info = getAdvancedScopeInfo(context, settings);
         if (!info.hasAvatar) {
             notifyError(i18n('No active character selected.'));
@@ -15116,13 +15059,13 @@ function bindUi() {
         syncGenerationVisibleHistoryRuntimeRegexScripts();
         const nextScopeInfo = getAdvancedScopeInfo(context, settings);
         updateAdvancedScopeIndicator(root, nextScopeInfo);
-        root.find('#luker_rpg_memory_advanced_save_character').prop('disabled', !nextScopeInfo.hasAvatar);
-        root.find('#luker_rpg_memory_advanced_clear_character_override').prop('disabled', !(nextScopeInfo.hasAvatar && nextScopeInfo.hasOverride));
+        root.find('#atria_rpg_memory_advanced_save_character').prop('disabled', !nextScopeInfo.hasAvatar);
+        root.find('#atria_rpg_memory_advanced_clear_character_override').prop('disabled', !(nextScopeInfo.hasAvatar && nextScopeInfo.hasOverride));
         markAdvancedTabDirty(root, false);
         notifySuccess(i18nFormat('Advanced settings saved to character override: ${0}.', nextScopeInfo.characterName || refreshedInfo.characterName || refreshedInfo.avatar));
         updateUiStatus(i18nFormat('Advanced settings saved to character override: ${0}.', nextScopeInfo.characterName || refreshedInfo.characterName || refreshedInfo.avatar));
     });
-    root.find('#luker_rpg_memory_advanced_clear_character_override').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_advanced_clear_character_override').off('click').on('click', async function () {
         const info = getAdvancedScopeInfo(context, settings);
         if (!info.hasAvatar) {
             notifyError(i18n('No active character selected.'));
@@ -15136,8 +15079,8 @@ function bindUi() {
         syncGenerationVisibleHistoryRuntimeRegexScripts();
         const nextScopeInfo = getAdvancedScopeInfo(context, settings);
         updateAdvancedScopeIndicator(root, nextScopeInfo);
-        root.find('#luker_rpg_memory_advanced_save_character').prop('disabled', !nextScopeInfo.hasAvatar);
-        root.find('#luker_rpg_memory_advanced_clear_character_override').prop('disabled', !(nextScopeInfo.hasAvatar && nextScopeInfo.hasOverride));
+        root.find('#atria_rpg_memory_advanced_save_character').prop('disabled', !nextScopeInfo.hasAvatar);
+        root.find('#atria_rpg_memory_advanced_clear_character_override').prop('disabled', !(nextScopeInfo.hasAvatar && nextScopeInfo.hasOverride));
         // After clearing, form should reflect the freshly-effective settings (global values).
         hydrateAdvancedTabFields(root, nextScopeInfo.settings);
         // Also apply back to live settings so any dirty in-memory state is discarded.
@@ -15147,7 +15090,7 @@ function bindUi() {
         updateUiStatus(i18nFormat('Cleared character advanced override: ${0}.', info.characterName || info.avatar));
     });
 
-    root.find('#luker_rpg_memory_view_graph').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_view_graph').off('click').on('click', async function () {
         const live = getContext();
         if (isMemoryOsEnabled(getEffectiveSettings(live, getSettings()))) {
             await openMemoryOsInspector(live, {
@@ -15160,7 +15103,7 @@ function bindUi() {
         } else await openGraphInspectorPopup(live);
     });
 
-    root.find('#luker_rpg_memory_fill').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_fill').off('click').on('click', async function () {
         await ensureStoreSyncedWithChat(context);
         const chatKey = getChatKey(context);
         const store = memoryStoreCache.get(chatKey);
@@ -15263,14 +15206,14 @@ function bindUi() {
         }
     });
 
-    root.find('#luker_rpg_memory_recall_debug').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_recall_debug').off('click').on('click', async function () {
         await ensureStoreSyncedWithChat(context);
         const store = getMemoryStore(context);
         if (!store) {
             notifyError(i18n('No active chat selected.'));
             return;
         }
-        const query = String(root.find('#luker_rpg_memory_debug_query').val() || '');
+        const query = String(root.find('#atria_rpg_memory_debug_query').val() || '');
         const effectiveSettings = getEffectiveSettings(context, getSettings());
         const payload = {
             coreChat: buildRecallDebugCoreChat(context, query, effectiveSettings),
@@ -15335,7 +15278,7 @@ function bindUi() {
         refreshUiStats();
     });
 
-    root.find('#luker_rpg_memory_view_last_injection').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_view_last_injection').off('click').on('click', async function () {
         await ensureMemoryStoreLoaded(context);
         const store = getMemoryStore(context);
         if (!store) {
@@ -15347,7 +15290,7 @@ function bindUi() {
         await context.callGenericPopup(html, context.POPUP_TYPE.TEXT, i18n('View Last Injection'), { wide: true, large: true });
     });
 
-    root.find('#luker_rpg_memory_rebuild').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_rebuild').off('click').on('click', async function () {
         const runtimeSettings = getEffectiveSettings(context, settings);
         const rebuildLatestSeq = getExtractableLatestSeq(buildPlayableFramesFromContext(context).length, runtimeSettings);
         if (rebuildLatestSeq <= 0) {
@@ -15395,7 +15338,7 @@ function bindUi() {
         }
     });
 
-    root.find('#luker_rpg_memory_rebuild_recent').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_rebuild_recent').off('click').on('click', async function () {
         await ensureMemoryStoreLoaded(context);
         const chatKey = getChatKey(context);
         let store = memoryStoreCache.get(chatKey);
@@ -15524,11 +15467,11 @@ function bindUi() {
         }
     });
 
-    root.find('#luker_rpg_memory_manual_compress').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_manual_compress').off('click').on('click', async function () {
         await openManualCompressionPopup(context, getEffectiveSettings(context, settings));
     });
 
-    root.find('#luker_rpg_memory_reset').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_reset').off('click').on('click', async function () {
         const confirm = await context.callGenericPopup(
             i18n('Reset current chat memory graph? This cannot be undone.'),
             context.POPUP_TYPE.CONFIRM,
@@ -15570,13 +15513,13 @@ function bindUi() {
         updateUiStatus(i18n('Reset memory graph for current chat.'));
     });
 
-    root.find('#luker_rpg_memory_recompute_vectors').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_recompute_vectors').off('click').on('click', async function () {
         await openVectorRecomputePopup(context, getEffectiveSettings(context, settings));
     });
 
-    const importFileInput = root.find('#luker_rpg_memory_import_file');
+    const importFileInput = root.find('#atria_rpg_memory_import_file');
 
-    root.find('#luker_rpg_memory_export').off('click').on('click', async function () {
+    root.find('#atria_rpg_memory_export').off('click').on('click', async function () {
         await ensureMemoryStoreLoaded(context);
         const store = getMemoryStore(context);
         if (!store) {
@@ -15589,7 +15532,7 @@ function bindUi() {
         updateUiStatus(i18nFormat('Downloaded memory graph file: ${0}', fileName));
     });
 
-    root.find('#luker_rpg_memory_import').off('click').on('click', function () {
+    root.find('#atria_rpg_memory_import').off('click').on('click', function () {
         if (!importFileInput.length) {
             notifyError(i18n('Memory graph import failed.'));
             return;
@@ -16015,7 +15958,7 @@ async function _handleWiBeforeScan(payload) {
 /**
  * GENERATION_AFTER_WORLD_INFO_SCAN handler. Bails on dry-run / quiet
  * payloads (see isRecallEligiblePayload). Otherwise runs recall via
- * safeInjectMemoryPrompts and propagates `__lukerRpgMemoryNeedRescan`
+ * safeInjectMemoryPrompts and propagates `__atriaRpgMemoryNeedRescan`
  * to `payload.requestRescan` so core re-runs runWIScan when the
  * focusPacket changed.
  *
@@ -16030,12 +15973,12 @@ async function _handleWiAfterScan(payload) {
     await inject(getContext(), payload, 'after_world_info_scan');
     if (payload?.signal?.aborted) {
         if (payload && typeof payload === 'object') {
-            payload.__lukerRpgMemoryNeedRescan = false;
+            payload.__atriaRpgMemoryNeedRescan = false;
             payload.requestRescan = false;
         }
         return;
     }
-    if (payload && typeof payload === 'object' && payload.__lukerRpgMemoryNeedRescan) {
+    if (payload && typeof payload === 'object' && payload.__atriaRpgMemoryNeedRescan) {
         payload.requestRescan = true;
     }
 }
@@ -16094,67 +16037,11 @@ jQuery(() => {
     // extension isn't loaded the call is a silent no-op.
     void registerMemoryGraphOrchestrationTools();
 
-    // ORDER MATTERS for the migration path. Floor-state's log is the only
-    // persisted source of truth; if a legacy chat (v8 opLog inside the main
-    // namespace) reaches `fs.get()` before our schema migration has hoisted
-    // the opLog into the log namespace, replay sees an empty log and recall
-    // observes a wiped store until the next write rebuilds.
-    //
-    // We therefore: (a) subscribe memory-graph's CHAT_CHANGED handler BEFORE
-    // mounting floor-state — its `migrateLegacyMemoryGraphState` call runs
-    // early on every chat switch; (b) run an explicit migration for the
-    // initial chat before mounting the singleton.
-    context.eventSource.on(context.eventTypes.CHAT_CHANGED, async () => {
-        latestRecallSnapshot = null;
-        ensureUi();
-        const runtimeContext = getContext();
-        const newTarget = buildMemoryTargetFromContext(runtimeContext);
-        const newChatKey = getChatKey(runtimeContext);
-        if (newTarget && newChatKey && newChatKey !== 'invalid_target') {
-            memoryStoreTargets.set(newChatKey, newTarget);
-            try {
-                await migrateLegacyMemoryGraphState(
-                    runtimeContext,
-                    newTarget,
-                    isExtractableAssistantMessage,
-                    applyMemoryLogEntryToStore,
-                );
-            } catch (error) {
-                console.warn(`[${MODULE_NAME}] Schema migration failed on CHAT_CHANGED`, { target: newTarget, error });
-            }
-        }
+    // Mount only the current Atria FloorState namespace. Old product state
+    // is intentionally invisible after the namespace hard cutover.
+    void getFloorStateInstance(context).catch((error) => {
+        console.warn(`[${MODULE_NAME}] Failed to mount floor-state singleton`, error);
     });
-
-    // Mount the floor-state singleton AFTER subscribing the migration
-    // handler. The initial migration writes the log for the current chat,
-    // so the singleton's first `fs.get()` replays against the migrated log.
-    // From this point onward, our CHAT_CHANGED handler runs after core's
-    // settleChatChanged on every switch, and is followed by the cache-refresh
-    // handler below.
-    void (async () => {
-        const initialChatKey = getChatKey(context);
-        if (initialChatKey && initialChatKey !== 'invalid_target') {
-            const initialTarget = buildMemoryTargetFromContext(context);
-            if (initialTarget) {
-                memoryStoreTargets.set(initialChatKey, initialTarget);
-                try {
-                    await migrateLegacyMemoryGraphState(
-                        context,
-                        initialTarget,
-                        isExtractableAssistantMessage,
-                        applyMemoryLogEntryToStore,
-                    );
-                } catch (error) {
-                    console.warn(`[${MODULE_NAME}] Initial schema migration failed`, { target: initialTarget, error });
-                }
-            }
-        }
-        try {
-            await getFloorStateInstance(context);
-        } catch (error) {
-            console.warn(`[${MODULE_NAME}] Failed to mount floor-state singleton`, error);
-        }
-    })();
 
     const wiBeforeEvent = context.eventTypes.GENERATION_BEFORE_WORLD_INFO_SCAN;
     if (wiBeforeEvent) {
@@ -16264,15 +16151,16 @@ jQuery(() => {
         context.eventSource.on(eventName, () => ensureUi());
     }
     context.eventSource.on(context.eventTypes.CHAT_CHANGED, async () => {
-        // The pre-fs-mount CHAT_CHANGED handler at the top of jQuery init
-        // already runs migration; this listener fires after both that one
-        // and core's settleChatChanged (which drives floor-state
-        // instances), so by now fs.get() reflects the new chat. Our job
-        // here is to refresh the runtime store cache and trigger UI
-        // updates.
+        // Core settles every mounted FloorState instance before extension
+        // listeners observe the new chat, so the current Atria namespace is
+        // ready to reload directly. No predecessor-state migration runs.
+        latestRecallSnapshot = null;
+        ensureUi();
         const runtimeContext = getContext();
+        const newTarget = buildMemoryTargetFromContext(runtimeContext);
         const newChatKey = getChatKey(runtimeContext);
-        if (newChatKey && newChatKey !== 'invalid_target') {
+        if (newTarget && newChatKey && newChatKey !== 'invalid_target') {
+            memoryStoreTargets.set(newChatKey, newTarget);
             try {
                 await refreshMemoryStoreCacheFromFloorState(runtimeContext, newChatKey);
             } catch (error) {

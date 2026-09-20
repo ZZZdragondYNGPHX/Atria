@@ -101,7 +101,7 @@ describe('unified CEA editor seed + autoSend', () => {
     it('autoSend triggers a runIterationTurn when invoked via the open opts threader', async () => {
         // Script the runner to return an immediate finalize so the test exits cleanly.
         requestToolCallsWithRetryMock.mockResolvedValue({
-            toolCalls: [{ id: 'f1', name: 'luker_cea_editor_finalize_iteration', args: { summary: 'ok' } }],
+            toolCalls: [{ id: 'f1', name: 'atria_cea_editor_finalize_iteration', args: { summary: 'ok' } }],
             assistantText: 'done',
         });
 

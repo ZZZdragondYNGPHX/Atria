@@ -4,7 +4,7 @@ Repository methods are the only API that endpoints should use to read or write s
 
 ## Layers
 
-- **`engines/`** — how data is read and written. Four engines ship: `FsEngine` (one file per resource under `<dataRoot>/<handle>/`), `SqliteEngine` (per-user `luker-storage.sqlite`, WAL, FK on, real transactions), `MysqlEngine` and `PgEngine` (shared-DB backends keyed by `handle` column). All are swappable behind the same Engine / Transaction interface. The active engine is picked at boot from `storage.mode` in `config.yaml` (`fs` default; `sqlite` / `mysql` / `postgres` opt-in).
+- **`engines/`** — how data is read and written. Four engines ship: `FsEngine` (one file per resource under `<dataRoot>/<handle>/`), `SqliteEngine` (per-user `atria-storage.sqlite`, WAL, FK on, real transactions), `MysqlEngine` and `PgEngine` (shared-DB backends keyed by `handle` column). All are swappable behind the same Engine / Transaction interface. The active engine is picked at boot from `storage.mode` in `config.yaml` (`fs` default; `sqlite` / `mysql` / `postgres` opt-in).
 - **`repositories/`** — what a chat / preset / lorebook *is*. Owns integrity (OCC), gen_id dedup, JSON-Patch idempotency, and any other "what does this resource mean" logic.
 - **`errors.js`** — typed errors that endpoints translate into HTTP status codes:
   - `ConflictError` → 409
@@ -105,7 +105,7 @@ router.post('/something', async function (req, res) {
 
 - Chat: `<chats>/<charDir>/<name>.jsonl`
 - Group chat: `<groupChats>/<groupId|name>.jsonl`
-- Sidecar (chats + presets): `<dir>/<base>.luker-state.<namespace>.json` — uses the `SIDECAR_INFIX = '.luker-state.'` constant from `engines/sidecar-naming.js`; matches the existing Luker convention so vanilla SillyTavern and rsync / Syncthing setups stay compatible
+- Sidecar (chats + presets): `<dir>/<base>.atria-state.<namespace>.json` — uses the `SIDECAR_INFIX = '.atria-state.'` constant from `engines/sidecar-naming.js`; matches the existing Atria convention so vanilla SillyTavern and rsync / Syncthing setups stay compatible
 - Integrity slug: stored in `chat_metadata.integrity` of the first JSONL line; rotated by every write through ChatRepo
 - Pretty-print convention: most resources (settings, presets, worlds, named-docs, groups) write `JSON.stringify(doc, null, 4)`. `StatsRepo` writes compact JSON to match legacy. `ChatRepo` writes JSONL.
 
@@ -135,16 +135,16 @@ storage:
   mode: fs   # or: sqlite, mysql, postgres
   # For mode: mysql
   mysql:
-    url: mysql://user:pass@host:3306/luker
+    url: mysql://user:pass@host:3306/atria
     poolSize: 10
   # For mode: postgres
   postgres:
-    url: postgresql://user:pass@host:5432/luker
+    url: postgresql://user:pass@host:5432/atria
     poolSize: 10
 ```
 
 - `fs` (default) — `FsEngine`. One file per resource under `<dataRoot>/<handle>/`.
-- `sqlite` — `SqliteEngine` opens / creates `<dataRoot>/<handle>/luker-storage.sqlite` per user.
+- `sqlite` — `SqliteEngine` opens / creates `<dataRoot>/<handle>/atria-storage.sqlite` per user.
 - `mysql` — `MysqlEngine` connects to a shared MySQL 8.0+ database; all users live in one schema, keyed by `handle` column. Requires `storage.mysql.url`.
 - `postgres` — `PgEngine` connects to a shared PostgreSQL 14+ database; all users live in one schema, keyed by `handle` column. Requires `storage.postgres.url`.
 
@@ -152,7 +152,7 @@ storage:
 
 ## SqliteEngine on disk
 
-- One database file per user: `<dataRoot>/<handle>/luker-storage.sqlite` — same per-user containment as FS mode.
+- One database file per user: `<dataRoot>/<handle>/atria-storage.sqlite` — same per-user containment as FS mode.
 - PRAGMAs at open: `journal_mode = WAL`, `synchronous = NORMAL`, `foreign_keys = ON`.
 - Real transactions: `withTransaction(handle, fn)` issues `BEGIN IMMEDIATE` → runs `fn(tx)` → `COMMIT` (or `ROLLBACK` on throw). Unlike `FsEngine.withTransaction`, partial writes ARE rolled back.
 
@@ -182,7 +182,7 @@ One table per resource kind (`chats`, `chat_states`, `settings`, `presets`, `pre
   - FS reads `fs.statSync(...).mtimeMs` (real OS flush timestamp; reflects when the file system wrote the bytes).
   - SQLite stores `Date.now()` at save time (reflects when the Repo called `save`).
   - Both are millisecond-resolution numbers, but they answer slightly different questions. Don't compare timestamps across engines.
-- **PostgreSQL collation** — `worlds.name`, `presets.name`, `named_docs.name`, and `chats.name`/`char_dir`/`group_id` rely on byte-exact equality for primary-key lookups. Postgres' default collation is "deterministic" (`=` compares byte-for-byte regardless of locale), so this works out of the box. If the operator deploys the database with an ICU non-deterministic collation declared at the database, schema, or column level, equality on these columns starts honoring locale rules (e.g. case-insensitive or accent-insensitive), and `WorldInfoRepo.resolveName` may map two visually distinct names to the same row. Keep the cluster on its default collation (or explicitly `COLLATE "C"` / `"POSIX"` on these tables) for Luker installs.
+- **PostgreSQL collation** — `worlds.name`, `presets.name`, `named_docs.name`, and `chats.name`/`char_dir`/`group_id` rely on byte-exact equality for primary-key lookups. Postgres' default collation is "deterministic" (`=` compares byte-for-byte regardless of locale), so this works out of the box. If the operator deploys the database with an ICU non-deterministic collation declared at the database, schema, or column level, equality on these columns starts honoring locale rules (e.g. case-insensitive or accent-insensitive), and `WorldInfoRepo.resolveName` may map two visually distinct names to the same row. Keep the cluster on its default collation (or explicitly `COLLATE "C"` / `"POSIX"` on these tables) for Atria installs.
 
 ## Dependencies and install gotchas
 
@@ -287,7 +287,7 @@ Reads `./config.yaml` from the CWD (so the script assumes you ran it from the re
 
 ### Multi-process safety
 
-The read-only flag lives in module-local state inside one Node process. If Luker is deployed as multiple Node processes behind a load balancer, the flag does **not** propagate between processes. Single-process Luker is the only supported deployment for migration; multi-process deployments must coordinate externally (admin downtime window) before triggering migration on one node.
+The read-only flag lives in module-local state inside one Node process. If Atria is deployed as multiple Node processes behind a load balancer, the flag does **not** propagate between processes. Single-process Atria is the only supported deployment for migration; multi-process deployments must coordinate externally (admin downtime window) before triggering migration on one node.
 
 ### Recovery
 
@@ -296,7 +296,7 @@ If a migration fails mid-flight:
 - The source engine remains active.
 - The destination engine state may be partially written. Either:
   - Re-run the migration — it will overwrite the partial destination state, or
-  - Manually delete the destination state (`rm <root>/luker-storage.sqlite*` for SQLite, or `rm -rf` the equivalent FS files for the affected handle) and re-run.
+  - Manually delete the destination state (`rm <root>/atria-storage.sqlite*` for SQLite, or `rm -rf` the equivalent FS files for the affected handle) and re-run.
 
 The backup at `<dataRoot>/_storage-migrations/<timestamp>-<handle>/` is the safety net. To restore a single user from backup:
 
@@ -307,7 +307,7 @@ mv <dataRoot>/_storage-migrations/<timestamp>-<handle>/<handle>/ <dataRoot>/<han
 
 ### Switching modes without migration
 
-Switching `storage.mode` on a populated install **does not delete data** — the other engine's data files (the JSONL/JSON tree, or the `luker-storage.sqlite` file) are left untouched. However, the running engine only sees its own backing store, so the other engine's data becomes **invisible** until you switch back. For first installs or empty users, switching is safe.
+Switching `storage.mode` on a populated install **does not delete data** — the other engine's data files (the JSONL/JSON tree, or the `atria-storage.sqlite` file) are left untouched. However, the running engine only sees its own backing store, so the other engine's data becomes **invisible** until you switch back. For first installs or empty users, switching is safe.
 
 ## Where user data lives
 

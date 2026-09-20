@@ -31,7 +31,7 @@ describe('peer credentials are persisted', () => {
     const statePath = () => path.join(userRoot, '.sync', 'state.json');
 
     beforeEach(() => {
-        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-sync-peerauth-'));
+        userRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-sync-peerauth-'));
     });
     afterEach(() => {
         fs.rmSync(userRoot, { recursive: true, force: true });

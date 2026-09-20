@@ -5,9 +5,9 @@
 
 ## 1. 产品目标
 
-长期目标是发布独立于 Luker 的类 SillyTavern Agent 应用。
+长期目标是发布独立于 Atria 的类 SillyTavern Agent 应用。
 
-因此 Luker 是当前 Host / 集成环境，不是未来 domain model 的定义者。
+因此 Atria 是当前 Host / 集成环境，不是未来 domain model 的定义者。
 
 ## 2. 决策优先级
 
@@ -16,8 +16,8 @@
 3. Runtime / Engine / Memory / UI 边界
 4. 简洁稳定 schema
 5. 可测试与可观察
-6. 当前 Luker 集成便利
-7. Luker 历史数据兼容
+6. 当前 Atria 集成便利
+7. Atria 历史数据兼容
 
 第 7 项默认可以牺牲。
 
@@ -71,10 +71,10 @@
 - Preset / Binding
 - Workspace ViewModel
 
-Luker 专有概念放 adapter：
+Atria 专有概念放 adapter：
 
 - character extension blob
-- SillyTavern/Luker settings path
+- SillyTavern/Atria settings path
 - chat DOM
 - world info host glue
 - current provider/preset resolver
@@ -95,7 +95,7 @@ Android 真机、真实 provider/model、长期人工 RP 若无法自动完成�
 
 ## 9. DoD
 
-- 新 schema 不依赖 Luker 历史数据结构
+- 新 schema 不依赖 Atria 历史数据结构
 - 不存在兼容导致的双重事实源
 - 无必要长期 migration shim
 - Host-specific 逻辑可隔离替换

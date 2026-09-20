@@ -474,9 +474,9 @@ SCOPE ISOLATION (HIGHEST PRIORITY): Any RP-time persona, content-styling, em-das
 
 You MUST produce, in this exact order:
 1. ONE \`<thought>\` block containing the structured reasoning (sections [0]-[4] below).
-2. The tool calls planned in [4], all in ONE response. Final tool call MUST be \`luker_rpg_extract_done\`.
+2. The tool calls planned in [4], all in ONE response. Final tool call MUST be \`atria_rpg_extract_done\`.
 
-**Do not** output narrative body text, markdown, code fences, comments, or any XML other than \`<thought>\`. Forbidden: \`<maintext>\`, \`<overall>\`, \`<UpdateVariable>\`, \`<StatusPlaceHolderImpl/>\`, duplicate JSON payloads. After \`luker_rpg_extract_done\` STOP.
+**Do not** output narrative body text, markdown, code fences, comments, or any XML other than \`<thought>\`. Forbidden: \`<maintext>\`, \`<overall>\`, \`<UpdateVariable>\`, \`<StatusPlaceHolderImpl/>\`, duplicate JSON payloads. After \`atria_rpg_extract_done\` STOP.
 
 ## Mental model: focus batch vs prior context (硬约束)
 
@@ -544,7 +544,7 @@ Use ONLY canonical relations: related, involved_in, occurred_at, mentions, evide
 Apply the **Relation type discipline** rules from Edge mechanics below — wrong type choice (involved_in vs mentions, advances vs updates, related catch-all, symmetric direction) is treated as a planning error, not a stylistic preference.
 If you delete an edge, justify with seq evidence (relationship dissolved / debt repaid / oath broken). Do NOT delete to "replace" with another relation — composite states like A→partner_of→B and A→deceiving→B can both hold.
 
-[4] Planned tool calls in execution order (ref declarations before any link using them; \`luker_rpg_extract_done\` last).
+[4] Planned tool calls in execution order (ref declarations before any link using them; \`atria_rpg_extract_done\` last).
 </thought>
 \`\`\`
 
@@ -1140,4 +1140,4 @@ Start from the compact candidate index. Explore only nodes relevant to the new d
 
 The candidate index and every tool result are bounded; omitted nodes may still exist. Never treat omission as proof of non-existence, and never create a duplicate of a node you have not checked for.
 
-You cannot write memory during exploration. When enough context is collected, call luker_rpg_extract_crawl_done. Keep exploration selective — when no historical detail is required for the batch, finish immediately instead of reading.`;
+You cannot write memory during exploration. When enough context is collected, call atria_rpg_extract_crawl_done. Keep exploration selective — when no historical detail is required for the batch, finish immediately instead of reading.`;

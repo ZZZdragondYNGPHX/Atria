@@ -2,7 +2,7 @@
  * Idempotent stylesheet injector for iteration-library/ui/styles.css.
  * Studios call this once during open(); subsequent calls are no-ops.
  */
-const STYLESHEET_ID = 'luker_lib_ui_stylesheet';
+const STYLESHEET_ID = 'atria_lib_ui_stylesheet';
 const STYLESHEET_HREF = '/scripts/iteration-library/ui/styles.css';
 
 export function ensureUiStylesheetInjected() {

@@ -1,7 +1,7 @@
 /**
  * Filter-at-source tests for the 5 lorebook exec functions.
  *
- * A compiled lorebookFilter on `context.__lukerRun.lorebookFilter` drops
+ * A compiled lorebookFilter on `context.__atriaRun.lorebookFilter` drops
  * matching books/entries at the exec entry point BEFORE any output is
  * shaped. The observable behavior for a filtered book/entry must be
  * indistinguishable from a genuinely absent one — zero side channel —
@@ -54,7 +54,7 @@ function makeContext(filter, opts = {}) {
         __getSortedEntriesFn: async () => ENTRIES,
         __getWorldScopesFn: async () => SCOPES,
         __loadWorldInfoFn: async (name) => makeBook(name),
-        __lukerRun: {
+        __atriaRun: {
             lorebookFilter: filter,
             activatedEntryKeys: new Set(),
             ...(opts.withPayload ? { wiFinalizedPayload: { worldInfoBeforeEntries: [], worldInfoAfterEntries: [], worldInfoDepth: [] } } : {}),
@@ -173,7 +173,7 @@ describe('execLorebookForceActivate — filter at source', () => {
 });
 
 describe('filter absent from context → all exec functions behave as if unfiltered', () => {
-    test('missing __lukerRun → world_book_list returns everything', async () => {
+    test('missing __atriaRun → world_book_list returns everything', async () => {
         const ctx = { __getSortedEntriesFn: async () => ENTRIES, __getWorldScopesFn: async () => SCOPES };
         const result = await execWorldBookList({}, ctx);
         expect(result.output).toContain('private_notes');
@@ -181,7 +181,7 @@ describe('filter absent from context → all exec functions behave as if unfilte
     });
 
     test('missing lorebookFilter → lorebook_get resolves normally', async () => {
-        const ctx = { __getSortedEntriesFn: async () => ENTRIES, __lukerRun: { activatedEntryKeys: new Set() } };
+        const ctx = { __getSortedEntriesFn: async () => ENTRIES, __atriaRun: { activatedEntryKeys: new Set() } };
         const result = await execLorebookGet({ uid: 1 }, ctx);
         expect(result.book).toBe('private_notes');
     });

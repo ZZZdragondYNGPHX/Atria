@@ -4,8 +4,8 @@ import fetch from 'node-fetch';
 
 import { setAdditionalHeaders, setAdditionalHeadersByType } from '../../additional-headers.js';
 import { TEXTGEN_TYPES } from '../../constants.js';
-import { runLukerDispatch } from '../../luker-dispatch/runner.js';
-import { dispatchKobold } from '../../luker-dispatch/providers/kobold.js';
+import { runAtriaDispatch } from '../../atria-dispatch/runner.js';
+import { dispatchKobold } from '../../atria-dispatch/providers/kobold.js';
 import {
     attachInspectionEndpoint,
     startEmbeddingInspection,
@@ -18,12 +18,12 @@ export const router = express.Router();
 
 /**
  * Kobold `/generate` — delegates to {@link dispatchKobold} via
- * {@link runLukerDispatch}. Legacy inline handler (localhost rewrite +
+ * {@link runAtriaDispatch}. Legacy inline handler (localhost rewrite +
  * sampler-bag body pickBy + streaming vs `/v1/generate` fetch + can_abort
  * side-channel POST + 403/503 retry + `{detail:{msg}}` error reshape) now
- * lives in src/luker-dispatch/providers/kobold.js.
+ * lives in src/atria-dispatch/providers/kobold.js.
  */
-router.post('/generate', (req, res) => runLukerDispatch(req, res, {
+router.post('/generate', (req, res) => runAtriaDispatch(req, res, {
     endpoint: 'kobold',
     select: () => dispatchKobold,
 }));

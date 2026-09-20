@@ -55,7 +55,7 @@
  *   - getRequestPresetOptions()           → { llmPresetName, apiPresetName }
  */
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const Popup = __ctx.Popup;
 const POPUP_TYPE = __ctx.POPUP_TYPE;
 const POPUP_RESULT = __ctx.POPUP_RESULT;
@@ -83,7 +83,7 @@ import {
     buildPayloadForOutcome,
 } from '../../orchestrator/iter-studio/edit-tool-result-envelope.js';
 import { buildCpaSkillsBlock } from './skill-prompt.js';
-const skillsApi = Luker.getContext().skills;
+const skillsApi = Atria.getContext().skills;
 import { createCpaIterationSessionStore, makeMessageId, normalizeMessageShape } from './session-store.js';
 import { CPA_TOOL_DISPLAY } from './tool-display.js';
 
@@ -195,7 +195,7 @@ function fmtPendingChangeInline(oldVal, newVal, tFn) {
     const template = '(was ${0} → now ${1})';
     const localized = typeof tFn === 'function' ? String(tFn(template) ?? template) : template;
     const filled = localized.replace(/\$\{(\d+)\}/g, (_, idx) => String([oldDisp, newDisp][Number(idx)] ?? ''));
-    return `<span class="luker-iter-workspace-preview-row-meta">${escapeHtmlLocal(filled)}</span>`;
+    return `<span class="atria-iter-workspace-preview-row-meta">${escapeHtmlLocal(filled)}</span>`;
 }
 
 /**
@@ -211,7 +211,7 @@ function fmtPendingChangeInline(oldVal, newVal, tFn) {
 function renderCpaPreviewPane(live, pendingEdits, savedPresets = [], activeRefName = '', tFn) {
     const t = typeof tFn === 'function' ? tFn : (s) => String(s ?? '');
     if (!live) {
-        return `<div class="luker-iter-workspace-preview-empty">${escapeHtmlLocal(t('No preset loaded.'))}</div>`;
+        return `<div class="atria-iter-workspace-preview-empty">${escapeHtmlLocal(t('No preset loaded.'))}</div>`;
     }
     const edits = Array.isArray(pendingEdits) ? pendingEdits : [];
     const changed = computeChangedPathSet(live, edits);
@@ -247,9 +247,9 @@ function renderCpaPreviewPane(live, pendingEdits, savedPresets = [], activeRefNa
             const displayVal = isChanged ? newVal : oldVal;
             const inlineDiff = isChanged ? fmtPendingChangeInline(oldVal, newVal, t) : '';
             const cls = isChanged
-                ? 'luker-iter-workspace-preview-row pending-change'
-                : 'luker-iter-workspace-preview-row';
-            return `<div class="${cls}"><div class="luker-iter-workspace-preview-row-head"><span class="luker-iter-workspace-preview-row-label">${escapeHtmlLocal(label)}</span><span>${escapeHtmlLocal(String(displayVal ?? ''))}</span>${inlineDiff}</div></div>`;
+                ? 'atria-iter-workspace-preview-row pending-change'
+                : 'atria-iter-workspace-preview-row';
+            return `<div class="${cls}"><div class="atria-iter-workspace-preview-row-head"><span class="atria-iter-workspace-preview-row-label">${escapeHtmlLocal(label)}</span><span>${escapeHtmlLocal(String(displayVal ?? ''))}</span>${inlineDiff}</div></div>`;
         }).join('');
 
     const prompts = Array.isArray(live.prompts) ? live.prompts : [];
@@ -257,40 +257,40 @@ function renderCpaPreviewPane(live, pendingEdits, savedPresets = [], activeRefNa
         const path = `prompts.${idx}.content`;
         const isChanged = changed.has(path) || changed.has(`prompts.${idx}`);
         const cls = isChanged
-            ? 'luker-iter-workspace-preview-row pending-change'
-            : 'luker-iter-workspace-preview-row';
+            ? 'atria-iter-workspace-preview-row pending-change'
+            : 'atria-iter-workspace-preview-row';
         const name = p?.name || p?.identifier || `#${idx}`;
         const role = p?.role || '';
         const body = truncateForPreview(p?.content || '', 200);
         const bodyHtml = body
             ? escapeHtmlLocal(body)
             : `<span class="muted">${escapeHtmlLocal(t('(empty)'))}</span>`;
-        return `<div class="${cls}"><div class="luker-iter-workspace-preview-row-head"><span class="luker-iter-workspace-preview-row-label">${escapeHtmlLocal(name)}</span><span class="luker-iter-workspace-preview-row-meta">${escapeHtmlLocal(role)}</span></div><div class="luker-iter-workspace-preview-row-body">${bodyHtml}</div></div>`;
+        return `<div class="${cls}"><div class="atria-iter-workspace-preview-row-head"><span class="atria-iter-workspace-preview-row-label">${escapeHtmlLocal(name)}</span><span class="atria-iter-workspace-preview-row-meta">${escapeHtmlLocal(role)}</span></div><div class="atria-iter-workspace-preview-row-body">${bodyHtml}</div></div>`;
     }).join('');
 
     const presetNames = Array.isArray(savedPresets) ? savedPresets : [];
     const presetRowsHtml = presetNames.map(name => {
         const isActive = name === activeRefName;
         const cls = isActive
-            ? 'luker-iter-workspace-preview-row changed'
-            : 'luker-iter-workspace-preview-row';
-        return `<div class="${cls}" data-cpa-it-preview-action="ref-pick" data-cpa-it-ref-name="${escapeHtmlLocal(name)}"><div class="luker-iter-workspace-preview-row-head"><span class="luker-iter-workspace-preview-row-label">${escapeHtmlLocal(name)}</span>${isActive ? `<span class="luker-iter-workspace-preview-row-meta">${escapeHtmlLocal(t('Reference'))}</span>` : ''}</div></div>`;
+            ? 'atria-iter-workspace-preview-row changed'
+            : 'atria-iter-workspace-preview-row';
+        return `<div class="${cls}" data-cpa-it-preview-action="ref-pick" data-cpa-it-ref-name="${escapeHtmlLocal(name)}"><div class="atria-iter-workspace-preview-row-head"><span class="atria-iter-workspace-preview-row-label">${escapeHtmlLocal(name)}</span>${isActive ? `<span class="atria-iter-workspace-preview-row-meta">${escapeHtmlLocal(t('Reference'))}</span>` : ''}</div></div>`;
     }).join('');
     const refsHtml = presetNames.length > 0 ? `
-        <div class="luker-iter-workspace-aside">
-            <div class="luker-iter-workspace-aside-title">${escapeHtmlLocal(t('Saved presets'))}</div>
+        <div class="atria-iter-workspace-aside">
+            <div class="atria-iter-workspace-aside-title">${escapeHtmlLocal(t('Saved presets'))}</div>
             ${presetRowsHtml}
         </div>
     ` : '';
 
     return `
-        <div class="luker-iter-workspace-preview-section">
-            <div class="luker-iter-workspace-preview-section-title">${escapeHtmlLocal(t('Sampling params'))}</div>
-            ${samplingRows || `<div class="luker-iter-workspace-preview-empty">${escapeHtmlLocal(t('No data'))}</div>`}
+        <div class="atria-iter-workspace-preview-section">
+            <div class="atria-iter-workspace-preview-section-title">${escapeHtmlLocal(t('Sampling params'))}</div>
+            ${samplingRows || `<div class="atria-iter-workspace-preview-empty">${escapeHtmlLocal(t('No data'))}</div>`}
         </div>
-        <div class="luker-iter-workspace-preview-section">
-            <div class="luker-iter-workspace-preview-section-title">${escapeHtmlLocal(t('Prompts'))}</div>
-            ${promptRows || `<div class="luker-iter-workspace-preview-empty">${escapeHtmlLocal(t('No data'))}</div>`}
+        <div class="atria-iter-workspace-preview-section">
+            <div class="atria-iter-workspace-preview-section-title">${escapeHtmlLocal(t('Prompts'))}</div>
+            ${promptRows || `<div class="atria-iter-workspace-preview-empty">${escapeHtmlLocal(t('No data'))}</div>`}
         </div>
         ${refsHtml}
     `;
@@ -376,7 +376,7 @@ function buildPopupHtml({
     resizerAriaLabel,
 }) {
     return `
-<div id="${popupId}" class="cpa_it_popup luker-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
+<div id="${popupId}" class="cpa_it_popup atria-iter-workspace" data-iter-layout="split" data-iter-active-tab="chat">
     <div class="cpa_it_title">${escapeHtmlLocal(title)}</div>
     <details class="cpa_it_history" data-cpa-it-history${historyOpen ? ' open' : ''}>
         <summary>${escapeHtmlLocal(historyLabel)}</summary>
@@ -388,13 +388,13 @@ function buildPopupHtml({
         </div>
     </details>
 
-    <div class="luker-iter-workspace-tabs" role="tablist">
-        <button type="button" class="luker-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
-            <span class="luker-iter-workspace-tab-label">${escapeHtmlLocal(chatTabLabel)}</span>
-            <span class="luker-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${escapeHtmlLocal(chatBadgeAriaLabel)}"></span>
+    <div class="atria-iter-workspace-tabs" role="tablist">
+        <button type="button" class="atria-iter-workspace-tab active" role="tab" aria-selected="true" data-iter-action="switch-tab" data-iter-tab="chat">
+            <span class="atria-iter-workspace-tab-label">${escapeHtmlLocal(chatTabLabel)}</span>
+            <span class="atria-iter-workspace-tab-badge" data-iter-chat-badge hidden aria-label="${escapeHtmlLocal(chatBadgeAriaLabel)}"></span>
         </button>
-        <button type="button" class="luker-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
-            <span class="luker-iter-workspace-tab-label">${escapeHtmlLocal(previewTabLabel)}</span>
+        <button type="button" class="atria-iter-workspace-tab" role="tab" aria-selected="false" data-iter-action="switch-tab" data-iter-tab="preview">
+            <span class="atria-iter-workspace-tab-label">${escapeHtmlLocal(previewTabLabel)}</span>
         </button>
     </div>
 
@@ -416,8 +416,8 @@ function buildPopupHtml({
         </label>
     </div>
 
-    <div class="luker-iter-workspace-grid">
-        <div class="luker-iter-workspace-chat" data-iter-pane="chat">
+    <div class="atria-iter-workspace-grid">
+        <div class="atria-iter-workspace-chat" data-iter-pane="chat">
             <div class="cpa_it_messages" data-cpa-it-messages></div>
             <div class="cpa_it_skl_summary" data-cpa-it-skl-summary></div>
             <div class="cpa_it_composer">
@@ -433,8 +433,8 @@ function buildPopupHtml({
                 </div>
             </div>
         </div>
-        <div class="luker-iter-workspace-resizer" data-iter-resizer aria-label="${escapeHtmlLocal(resizerAriaLabel)}"></div>
-        <div class="luker-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
+        <div class="atria-iter-workspace-resizer" data-iter-resizer aria-label="${escapeHtmlLocal(resizerAriaLabel)}"></div>
+        <div class="atria-iter-workspace-preview" data-iter-pane="preview" data-iter-preview-pane></div>
     </div>
 </div>`;
 }
@@ -498,7 +498,7 @@ export async function openCpaIterationStudio(deps) {
     // calls are no-ops because the <link> element is id-keyed.
     ensureStylesheetInjected();
     // Inject the shared iteration-library/ui stylesheet so the chip + diff
-    // classes (luker_lib_toolcall*, etc.) resolve once renderToolCallChip
+    // classes (atria_lib_toolcall*, etc.) resolve once renderToolCallChip
     // delegates to the shared component.
     ITER_UI.ensureUiStylesheetInjected();
 
@@ -1241,12 +1241,12 @@ export async function openCpaIterationStudio(deps) {
     // wrapper around the shared component, because studio.css's
     // flex-row alignment / accent colors / max-widths key on
     // `.cpa_it_msg_user` / `_assistant` / `_system`. The inner
-    // `<div class="luker_lib_message ...">` emitted by the shared
+    // `<div class="atria_lib_message ...">` emitted by the shared
     // component carries the rest of the structure (markdown body,
     // read-only-round hint when all calls are read-type, tool chips,
     // edit cards via renderPendingEditCard, applied/rolled-back stamp,
     // Regenerate button). Click delegation accepts msgId from either
-    // `data-cpa-it-msg-id` (outer) or `data-luker-lib-msg-id` (inner).
+    // `data-cpa-it-msg-id` (outer) or `data-atria-lib-msg-id` (inner).
     // ──────────────────────────────────────────────────────────────────
     function renderMessageCard(message, idx, allMessages) {
         if (!message) return '';
@@ -1482,7 +1482,7 @@ export async function openCpaIterationStudio(deps) {
             // eslint-disable-next-line no-console
             console.warn(`[${MODULE}] preview render failed`, err);
             $root.find('[data-iter-preview-pane]').html(
-                `<div class="luker-iter-workspace-preview-empty">${escapeHtmlLocal(t('Preview unavailable'))}</div>`,
+                `<div class="atria-iter-workspace-preview-empty">${escapeHtmlLocal(t('Preview unavailable'))}</div>`,
             );
         }
 
@@ -2911,13 +2911,13 @@ export async function openCpaIterationStudio(deps) {
     // Per-message Regenerate / Rollback. Both buttons are rendered by
     // `iteration-library/ui/message.renderMessageCard`, which emits them
     // with `data-cpa-it-action="regenerate"` / `="rollback-batch"` (via
-    // the actionAttribute opt) and `data-luker-lib-msg-id="..."`. The
+    // the actionAttribute opt) and `data-atria-lib-msg-id="..."`. The
     // msgId resolver accepts both attribute names so a future CPA-only
     // override that still tags `data-cpa-it-msg-id` keeps working.
     function resolveMsgId(target) {
         if (!target) return '';
-        // dataset is camelCase: cpaItMsgId / lukerLibMsgId
-        return String(target.dataset?.cpaItMsgId || target.dataset?.lukerLibMsgId || '');
+        // dataset is camelCase: cpaItMsgId / atriaLibMsgId
+        return String(target.dataset?.cpaItMsgId || target.dataset?.atriaLibMsgId || '');
     }
     $root.on('click.cpaIt', '[data-cpa-it-action="regenerate"]', async (e) => {
         e.preventDefault();

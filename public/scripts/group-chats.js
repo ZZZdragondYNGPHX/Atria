@@ -75,7 +75,7 @@ import {
     refreshSnapshotIntegrityFromActiveLive,
     resolveChatWriteConflictForTarget,
     runSerializedChatWrite,
-    getLastLukerGenerationIdForApi,
+    getLastAtriaGenerationIdForApi,
     getCharacterAlternateGreetings,
     getCharacterDescription,
     getCharacterFirstMessage,
@@ -733,7 +733,7 @@ async function saveGroupChatInternal(groupId, shouldSaveGroup, force = false, re
                     chat_metadata: { ...metadataSnapshot },
                     integrity: metadataSnapshot?.integrity,
                     force: effectiveForce,
-                    luker_generation_id: getLastLukerGenerationIdForApi(),
+                    atri_generation_id: getLastAtriaGenerationIdForApi(),
                 }),
             });
         } else {

@@ -4,12 +4,12 @@
 /**
  * Orchestrator tool-display map — feeds renderToolCallChip's `opts.toolDisplay`.
  *
- * Keys are the `luker_orch_*` tool names registered in
+ * Keys are the `atri_orch_*` tool names registered in
  * `orchestrator/main.js#buildAiIterationToolSet` (one catalog per mode:
  * director / agenda / loop / spec), plus the per-mode reset control tools
  * that `iter-studio/studio.js` splices into character-scope catalogs
- * (`luker_orch_reset_live_to_blank`, `luker_orch_reset_live_to_global`).
- * The legacy `luker_orch_continue_iteration` / `luker_orch_finalize_iteration`
+ * (`atri_orch_reset_live_to_blank`, `atri_orch_reset_live_to_global`).
+ * The legacy `atri_orch_continue_iteration` / `atri_orch_finalize_iteration`
  * tools are NOT exposed by the iter popup at all (catalog + tool-display)
  * — the multi-round loop is program-driven by tool-call presence, so
  * AI-driven continue / finalize signals do not participate.
@@ -21,7 +21,7 @@
  *                          turn; per-leaf splitting happens in the shared
  *                          `iteration-library/ui/diff` renderer).
  *   - `type: 'read'`    — reads the working profile / runs a simulation
- *                          (currently just `luker_orch_simulate`); the
+ *                          (currently just `atri_orch_simulate`); the
  *                          shared message renderer surfaces a read-only-round
  *                          hint when every tool call in a turn is read-type.
  *   - `type: 'remove'`  — drops a sub-agent / agenda agent / stage /
@@ -64,43 +64,43 @@ function fmt(i18n, template, ...values) {
 
 export const ORCH_TOOL_DISPLAY = {
     // ── Director mode ───────────────────────────────────────────────
-    luker_orch_set_director_main_agent: {
+    atri_orch_set_director_main_agent: {
         icon: '✏️',
         label: 'Update director main agent',
         type: 'edit',
         summarize: (a, r, i18n) => (typeof i18n === 'function' ? i18n('main agent') : 'main agent'),
     },
-    luker_orch_set_director_subagent: {
+    atri_orch_set_director_subagent: {
         icon: '✏️',
         label: 'Upsert director sub-agent',
         type: 'edit',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_remove_director_subagent: {
+    atri_orch_remove_director_subagent: {
         icon: '🗑️',
         label: 'Remove director sub-agent',
         type: 'remove',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_set_director_limits: {
+    atri_orch_set_director_limits: {
         icon: '✏️',
         label: 'Update director limits',
         type: 'edit',
         summarize: (a, r, i18n) => (typeof i18n === 'function' ? i18n('limits') : 'limits'),
     },
-    luker_orch_set_director_tools: {
+    atri_orch_set_director_tools: {
         icon: '✏️',
         label: 'Update director tools',
         type: 'edit',
         summarize: (a, r, i18n) => (typeof i18n === 'function' ? i18n('tools') : 'tools'),
     },
-    luker_orch_patch_director_main_agent_system_prompt: {
+    atri_orch_patch_director_main_agent_system_prompt: {
         icon: '🩹',
         label: 'Patch director main agent system prompt',
         type: 'edit',
         summarize: (a, r, i18n) => (typeof i18n === 'function' ? i18n('main agent') : 'main agent'),
     },
-    luker_orch_patch_director_subagent_system_prompt: {
+    atri_orch_patch_director_subagent_system_prompt: {
         icon: '🩹',
         label: 'Patch director sub-agent system prompt',
         type: 'edit',
@@ -108,13 +108,13 @@ export const ORCH_TOOL_DISPLAY = {
     },
 
     // ── Loop mode ───────────────────────────────────────────────────
-    luker_orch_set_loop_profile: {
+    atri_orch_set_loop_profile: {
         icon: '✏️',
         label: 'Update loop profile',
         type: 'edit',
         summarize: (a, r, i18n) => (typeof i18n === 'function' ? i18n('loop profile') : 'loop profile'),
     },
-    luker_orch_patch_loop_system_prompt: {
+    atri_orch_patch_loop_system_prompt: {
         icon: '🩹',
         label: 'Patch loop system prompt',
         type: 'edit',
@@ -122,43 +122,43 @@ export const ORCH_TOOL_DISPLAY = {
     },
 
     // ── Agenda mode ─────────────────────────────────────────────────
-    luker_orch_set_agenda_planner: {
+    atri_orch_set_agenda_planner: {
         icon: '✏️',
         label: 'Update agenda planner',
         type: 'edit',
         summarize: (a, r, i18n) => (typeof i18n === 'function' ? i18n('planner') : 'planner'),
     },
-    luker_orch_set_agenda_agent: {
+    atri_orch_set_agenda_agent: {
         icon: '✏️',
         label: 'Upsert agenda agent',
         type: 'edit',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_patch_agenda_planner_system_prompt: {
+    atri_orch_patch_agenda_planner_system_prompt: {
         icon: '🩹',
         label: 'Patch agenda planner system prompt',
         type: 'edit',
         summarize: (a, r, i18n) => (typeof i18n === 'function' ? i18n('planner') : 'planner'),
     },
-    luker_orch_patch_agenda_agent_system_prompt: {
+    atri_orch_patch_agenda_agent_system_prompt: {
         icon: '🩹',
         label: 'Patch agenda agent system prompt',
         type: 'edit',
         summarize: (a) => String(a?.agent_id || ''),
     },
-    luker_orch_remove_agenda_agent: {
+    atri_orch_remove_agenda_agent: {
         icon: '🗑️',
         label: 'Remove agenda agent',
         type: 'remove',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_set_agenda_final_agent: {
+    atri_orch_set_agenda_final_agent: {
         icon: '✏️',
         label: 'Set agenda final agent',
         type: 'edit',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_set_agenda_limits: {
+    atri_orch_set_agenda_limits: {
         icon: '✏️',
         label: 'Update agenda limits',
         type: 'edit',
@@ -166,37 +166,37 @@ export const ORCH_TOOL_DISPLAY = {
     },
 
     // ── Spec mode ───────────────────────────────────────────────────
-    luker_orch_set_stage: {
+    atri_orch_set_stage: {
         icon: '✏️',
         label: 'Upsert pipeline stage',
         type: 'edit',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_remove_stage: {
+    atri_orch_remove_stage: {
         icon: '🗑️',
         label: 'Remove pipeline stage',
         type: 'remove',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_set_node: {
+    atri_orch_set_node: {
         icon: '✏️',
         label: 'Upsert stage node',
         type: 'edit',
         summarize: (a) => `${a?.stage_id || '?'} / ${a?.id || '?'}`,
     },
-    luker_orch_remove_node: {
+    atri_orch_remove_node: {
         icon: '🗑️',
         label: 'Remove stage node',
         type: 'remove',
         summarize: (a) => `${a?.stage_id || '?'} / ${a?.id || '?'}`,
     },
-    luker_orch_set_preset: {
+    atri_orch_set_preset: {
         icon: '✏️',
         label: 'Upsert preset',
         type: 'edit',
         summarize: (a) => String(a?.id || ''),
     },
-    luker_orch_remove_preset: {
+    atri_orch_remove_preset: {
         icon: '🗑️',
         label: 'Remove preset',
         type: 'remove',
@@ -204,7 +204,7 @@ export const ORCH_TOOL_DISPLAY = {
     },
 
     // ── Read tools (any mode that exposes them) ────────────────────
-    luker_orch_simulate: {
+    atri_orch_simulate: {
         icon: '🧪',
         label: 'Simulate orchestration',
         type: 'read',
@@ -213,30 +213,30 @@ export const ORCH_TOOL_DISPLAY = {
             return input ? input.slice(0, 60) : '';
         },
     },
-    // Per-mode `luker_orch_read_<mode>_fields` — read exact live
+    // Per-mode `atri_orch_read_<mode>_fields` — read exact live
     // working-profile values by lodash paths. Registered under each of
     // the four mode names since the popup shows the concrete tool
     // string, not a family prefix. Summarize surfaces the joined paths
     // so the chip preview shows what the AI is inspecting.
-    luker_orch_read_director_fields: {
+    atri_orch_read_director_fields: {
         icon: '🔎',
         label: 'Read director fields',
         type: 'read',
         summarize: (a) => Array.isArray(a?.paths) ? a.paths.join(', ') : '',
     },
-    luker_orch_read_loop_fields: {
+    atri_orch_read_loop_fields: {
         icon: '🔎',
         label: 'Read loop fields',
         type: 'read',
         summarize: (a) => Array.isArray(a?.paths) ? a.paths.join(', ') : '',
     },
-    luker_orch_read_agenda_fields: {
+    atri_orch_read_agenda_fields: {
         icon: '🔎',
         label: 'Read agenda fields',
         type: 'read',
         summarize: (a) => Array.isArray(a?.paths) ? a.paths.join(', ') : '',
     },
-    luker_orch_read_spec_fields: {
+    atri_orch_read_spec_fields: {
         icon: '🔎',
         label: 'Read spec fields',
         type: 'read',
@@ -244,12 +244,12 @@ export const ORCH_TOOL_DISPLAY = {
     },
 
     // ── Control tools (character scope) ───────────────────────────
-    luker_orch_reset_live_to_blank: {
+    atri_orch_reset_live_to_blank: {
         icon: '♻️',
         label: 'Reset working profile to blank',
         type: 'control',
     },
-    luker_orch_reset_live_to_global: {
+    atri_orch_reset_live_to_global: {
         icon: '⬇️',
         label: 'Reset working profile to global',
         type: 'control',
@@ -262,7 +262,7 @@ export const ORCH_TOOL_DISPLAY = {
     // applyLorebookFilterPatchArgs. `summarize` surfaces the first line of
     // the pattern (multiline patterns get truncated) so the chip shows
     // what the AI is filtering without expanding args.
-    luker_orch_set_lorebook_book_filter: {
+    atri_orch_set_lorebook_book_filter: {
         icon: '✏️',
         label: 'Set lorebook book filter',
         type: 'edit',
@@ -271,7 +271,7 @@ export const ORCH_TOOL_DISPLAY = {
             return first.length > 60 ? `${first.slice(0, 60)}…` : first;
         },
     },
-    luker_orch_set_lorebook_entry_filter: {
+    atri_orch_set_lorebook_entry_filter: {
         icon: '✏️',
         label: 'Set lorebook entry filter',
         type: 'edit',
@@ -280,12 +280,12 @@ export const ORCH_TOOL_DISPLAY = {
             return first.length > 60 ? `${first.slice(0, 60)}…` : first;
         },
     },
-    luker_orch_clear_lorebook_book_filter: {
+    atri_orch_clear_lorebook_book_filter: {
         icon: '🗑️',
         label: 'Clear lorebook book filter',
         type: 'edit',
     },
-    luker_orch_clear_lorebook_entry_filter: {
+    atri_orch_clear_lorebook_entry_filter: {
         icon: '🗑️',
         label: 'Clear lorebook entry filter',
         type: 'edit',

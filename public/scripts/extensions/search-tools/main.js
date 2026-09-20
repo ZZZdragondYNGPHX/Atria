@@ -17,13 +17,12 @@ import {
     getFloorStateInstance,
     loadAnchorMap,
     loadMetaSidecar,
-    migrateLegacyAnchorsIfNeeded,
     persistFallbackManagedEntries,
     pickLatestValidSnapshot,
 } from './persistence.js';
 import { registerSearchToolsOrchestrationTools } from './orchestrator-tools.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const eventSource = __ctx.eventSource;
 const event_types = __ctx.eventTypes;
 const extension_prompt_roles = __ctx.constants.promptRoles;
@@ -31,7 +30,7 @@ const getRequestHeaders = __ctx.getRequestHeaders;
 const saveSettings = __ctx.saveSettings;
 const saveSettingsDebounced = __ctx.saveSettingsDebounced;
 const extension_settings = __ctx.extensionSettings;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const addLocaleData = __ctx.addLocaleData;
 const translate = __ctx.translate;
 const SECRET_KEYS = __ctx.secrets.KEYS;
@@ -48,19 +47,18 @@ const MODULE_NAME = 'search_tools';
 const UI_BLOCK_ID = 'search_tools_settings';
 const STYLE_ID = 'search_tools_style';
 const STATUS_ID = 'search_tools_status';
-const CHAT_LOREBOOK_METADATA_KEY = 'world_info';
 const SHARED_LOREBOOK_NAME = '__SEARCH_TOOLS__';
 const MANAGED_COMMENT_PREFIX = 'SEARCH_TOOLS';
 const ALLOWED_GENERATION_TYPES = new Set(['normal', 'continue', 'regenerate', 'swipe', 'impersonate']);
 const REUSE_GENERATION_TYPES = new Set(['continue', 'regenerate', 'swipe']);
 const TOOL_NAMES = Object.freeze({
-    SEARCH: 'luker_web_search',
-    VISIT: 'luker_web_visit',
-    AGENT_SEARCH: 'luker_search_agent_search',
-    AGENT_VISIT: 'luker_search_agent_visit',
-    AGENT_UPSERT: 'luker_search_agent_upsert_lorebook_entry',
-    AGENT_DELETE: 'luker_search_agent_delete_lorebook_entry',
-    AGENT_FINALIZE: 'luker_search_agent_finalize',
+    SEARCH: 'atri_web_search',
+    VISIT: 'atri_web_visit',
+    AGENT_SEARCH: 'atri_search_agent_search',
+    AGENT_VISIT: 'atri_search_agent_visit',
+    AGENT_UPSERT: 'atri_search_agent_upsert_lorebook_entry',
+    AGENT_DELETE: 'atri_search_agent_delete_lorebook_entry',
+    AGENT_FINALIZE: 'atri_search_agent_finalize',
 });
 const EXPORTED_TOOL_NAMES = Object.freeze({
     SEARCH: TOOL_NAMES.SEARCH,
@@ -724,10 +722,6 @@ async function loadSearchToolsChatState(context, { force = false } = {}) {
         return;
     }
 
-    // One-shot legacy upgrade. Idempotent — the persistence layer's schema
-    // sidecar marks it complete after the first run on each chat.
-    await migrateLegacyAnchorsIfNeeded(context);
-
     loadedChatStateKey = chatKey;
     const map = await loadAnchorMap(context);
     const pick = pickLatestValidSnapshot(context, map);
@@ -738,27 +732,12 @@ async function loadSearchToolsChatState(context, { force = false } = {}) {
             ? normalizeStoredManagedEntries(latestSearchAgentSnapshot.managedEntries)
             : [];
     } else {
-        // No valid snapshot — fall back to the meta sidecar's
-        // `fallbackManagedEntries`, populated only by legacy migrations.
+        // No valid snapshot — use the current Atria meta sidecar fallback.
+        // It is written only by current runtime paths when an anchor cannot
+        // be committed.
         latestSearchAgentSnapshot = null;
         const meta = await loadMetaSidecar(context);
         latestManagedEntries = normalizeStoredManagedEntries(meta.fallbackManagedEntries);
-    }
-
-    if (latestManagedEntries.length === 0 && !latestSearchAgentSnapshot) {
-        // Bootstrap from a pre-existing chat lorebook on a never-touched chat.
-        const migratedEntries = await loadLegacyManagedEntries(context);
-        if (migratedEntries.length > 0) {
-            latestManagedEntries = migratedEntries;
-            try {
-                await persistFallbackManagedEntries(context, migratedEntries);
-            } catch (e) {
-                // Bootstrap fallback is best-effort — if storage rejects it
-                // (server hiccup, transport, etc.) we keep the in-memory
-                // entries and let the next manual / agent write retry.
-                console.warn(`[search-tools] bootstrap fallback persist failed: ${e.message}`);
-            }
-        }
     }
 }
 
@@ -1109,10 +1088,10 @@ async function invokeSharedSearchToolCall(call, { abortSignal = null } = {}) {
 
 function installGlobalApi() {
     const root = globalThis;
-    if (!root.Luker || typeof root.Luker !== 'object') {
-        root.Luker = {};
+    if (!root.Atria || typeof root.Atria !== 'object') {
+        root.Atria = {};
     }
-    root.Luker.searchTools = {
+    root.Atria.searchTools = {
         toolNames: EXPORTED_TOOL_NAMES,
         getToolDefs: () => getSharedSearchToolDefs(),
         isToolName: (name) => isSharedSearchToolName(name),
@@ -1698,24 +1677,6 @@ async function refreshSharedLorebookVisibilityAndSelection(context, selected) {
     }
 }
 
-async function loadLegacyManagedEntries(context) {
-    const metadata = context.chatMetadata && typeof context.chatMetadata === 'object' ? context.chatMetadata : {};
-    const existingNames = Array.isArray(metadata?.[CHAT_LOREBOOK_METADATA_KEY])
-        ? metadata[CHAT_LOREBOOK_METADATA_KEY].map((name) => String(name || '').trim()).filter(Boolean)
-        : [String(metadata?.[CHAT_LOREBOOK_METADATA_KEY] || '').trim()].filter(Boolean);
-    const existingName = existingNames.find((name) => name !== SHARED_LOREBOOK_NAME) || '';
-    if (!existingName || existingName === SHARED_LOREBOOK_NAME) {
-        return [];
-    }
-
-    const loaded = await context.loadWorldInfo(existingName);
-    if (!loaded || typeof loaded !== 'object') {
-        return [];
-    }
-
-    return normalizeStoredManagedEntries(listManagedEntries(loaded));
-}
-
 function applyManagedEntriesToLorebook(data, settings, managedEntries = []) {
     if (!data || typeof data !== 'object') {
         throw new Error('Lorebook data is required.');
@@ -2193,7 +2154,7 @@ function buildSearchAgentUserPrompt(payload, {
         ? [...payload.coreChat].reverse().find(message => message?.is_user)
         : null;
     const userText = normalizeMultilineText(lastUserMessage?.mes || '');
-    const allToolNames = Object.values(TOOL_NAMES).filter(name => name.startsWith('luker_search_agent_'));
+    const allToolNames = Object.values(TOOL_NAMES).filter(name => name.startsWith('atri_search_agent_'));
     const finalStageToolNames = [
         TOOL_NAMES.AGENT_UPSERT,
         TOOL_NAMES.AGENT_DELETE,
@@ -2932,9 +2893,8 @@ jQuery(() => {
     void loadSearchToolsChatState(context, { force: true })
         .then(() => syncSharedLorebookForCurrentChat(context))
         .catch((error) => {
-            // readLegacySearchToolsState now throws on transient legacy-index
-            // reads (storage envelope rejected); without a .catch this would
-            // become an unhandled rejection on boot.
+            // Storage or FloorState failures must not become unhandled
+            // rejections during extension startup.
             console.warn(`[${MODULE_NAME}] boot load failed: ${error?.message || error}`);
         })
         .finally(() => refreshUiStatusForCurrentChat());

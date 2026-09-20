@@ -3,9 +3,9 @@
  *
  * Orchestrator — AI iteration popup styles.
  *
- * Design language mirrors luker-studio.css (the shared shell stylesheet)
+ * Design language mirrors atria-studio.css (the shared shell stylesheet)
  * via local tokens — kept namespaced (`orch_it_*`) so the popup remains
- * self-contained without depending on luker-studio class wrappers.
+ * self-contained without depending on atria-studio class wrappers.
  *
  * Theme-aware: all colors flow through color-mix() of --SmartTheme*
  * variables with sensible fallbacks for testbed environments.

@@ -118,7 +118,7 @@ function formatMessage(msg) {
 
 /**
  * Collect reasoning artifacts (thinking blocks, encrypted signatures, plain
- * reasoning text) attached to a message across every provider dialect Luker
+ * reasoning text) attached to a message across every provider dialect Atria
  * touches. Returns a flat ordered list so the UI can render each item with a
  * dedicated block style, replacing the raw-JSON fallback for opaque payloads.
  *

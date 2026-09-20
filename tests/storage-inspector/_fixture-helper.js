@@ -39,9 +39,9 @@ export async function makeFixtureUser(opts = {}) {
             JSON.stringify({ chat_metadata: { variables: { foo: 'bar' } } }) + '\n' +
             JSON.stringify({ name: 'User', mes: 'hi' }) + '\n' +
             JSON.stringify({ name: 'Sera', mes: 'hello' }) + '\n');
-        await write('chats/default_Seraphina/Chat 2024-01-15.luker-state.memory_graph__floor_log.json',
+        await write('chats/default_Seraphina/Chat 2024-01-15.atria-state.memory_graph__floor_log.json',
             JSON.stringify({ nodes: [] }));
-        await write('chats/default_Seraphina/Chat 2024-01-15.luker-state.luker_orchestrator_anchors__floor_log.json',
+        await write('chats/default_Seraphina/Chat 2024-01-15.atria-state.atri_orchestrator_anchors__floor_log.json',
             JSON.stringify({ anchors: [] }));
         await write('group chats/group_abc123.jsonl',
             JSON.stringify({ chat_metadata: {} }) + '\n');
@@ -102,9 +102,9 @@ export async function makeFixtureUser(opts = {}) {
                 ).join('\n');
                 const body = JSON.stringify(meta) + '\n' + msgs + '\n';
                 await write(`chats/${char}/${chatName}.jsonl`, body);
-                await write(`chats/${char}/${chatName}.luker-state.memory_graph__floor_log.json`,
+                await write(`chats/${char}/${chatName}.atria-state.memory_graph__floor_log.json`,
                     JSON.stringify({ nodes: Array.from({ length: 10 }, (_, i) => ({ id: i })) }));
-                await write(`chats/${char}/${chatName}.luker-state.luker_orchestrator_anchors__floor_log.json`,
+                await write(`chats/${char}/${chatName}.atria-state.atri_orchestrator_anchors__floor_log.json`,
                     JSON.stringify({ anchors: Array.from({ length: 20 }, (_, i) => ({ id: i })) }));
             }
         }
@@ -120,7 +120,7 @@ export async function makeFixtureUser(opts = {}) {
         await write('characters/default_Seraphina/neutral.png', Buffer.alloc(20_000, 0xff));
         await write('characters/default_Seraphina.state.cardapp_studio_sessions_v2.json',
             JSON.stringify({ sessions: Array.from({ length: 5 }, (_, i) => ({ id: i })) }));
-        await write('characters/default_Seraphina.state.character_editor_assistant_iter_sessions.json',
+        await write('characters/default_Seraphina.state.atri_cea_editor_iter_sessions.json',
             JSON.stringify({ sessions: [] }));
         // Coding: 只有 PNG · 无 sprites · 无 sidecar
         await write('characters/default_Coding.png', Buffer.alloc(40_000, 0xff));

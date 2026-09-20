@@ -1,10 +1,10 @@
 # API 连接
 
-Luker 本身不包含 AI 模型，它通过 API 连接到外部的大语言模型（LLM）服务来生成回复。本页介绍如何配置和管理 API 连接。
+Atria 本身不包含 AI 模型，它通过 API 连接到外部的大语言模型（LLM）服务来生成回复。本页介绍如何配置和管理 API 连接。
 
 ## 支持的 API 类型
 
-Luker 支持多种主流的 LLM API：
+Atria 支持多种主流的 LLM API：
 
 ### Chat Completion（聊天补全）
 
@@ -31,7 +31,7 @@ Chat Completion 和 Text Completion 是两种不同的 API 模式。大多数商
 
 ## 连接管理器
 
-Luker 提供了**连接管理器**（Connection Manager）来管理多个 API 连接配置。
+Atria 提供了**连接管理器**（Connection Manager）来管理多个 API 连接配置。
 
 ### 创建连接配置
 
@@ -68,27 +68,27 @@ Luker 提供了**连接管理器**（Connection Manager）来管理多个 API �
 
 ### 填写密钥
 
-在连接配置中填入对应的 API 密钥。密钥会安全地存储在 Luker 的服务端，不会在前端暴露。
+在连接配置中填入对应的 API 密钥。密钥会安全地存储在 Atria 的服务端，不会在前端暴露。
 
 ::: tip
-如果你使用的是自部署的 Luker 实例，API 密钥存储在你自己的服务器上。如果使用他人提供的 Luker 实例，请注意密钥安全。
+如果你使用的是自部署的 Atria 实例，API 密钥存储在你自己的服务器上。如果使用他人提供的 Atria 实例，请注意密钥安全。
 :::
 
 ## 模型选择
 
-配置好 API 连接后，你需要选择要使用的具体模型。Luker 会根据 API 类型动态加载可用的模型列表。
+配置好 API 连接后，你需要选择要使用的具体模型。Atria 会根据 API 类型动态加载可用的模型列表。
 
-对于 Claude 和 Gemini 等 API，Luker 支持**动态模型列表**——自动从 API 获取最新的可用模型，无需手动更新。你也可以为每个 API 源自定义模型列表。详见[其他改进](/zh-CN/improvements/other)。
+对于 Claude 和 Gemini 等 API，Atria 支持**动态模型列表**——自动从 API 获取最新的可用模型，无需手动更新。你也可以为每个 API 源自定义模型列表。详见[其他改进](/zh-CN/improvements/other)。
 
 ## OpenRouter 上的 Gemini 历史缓存
 
-在 **OpenRouter Gemini 提示缓存**区域，启用**缓存稳定的聊天历史**后，Luker 会显式缓存一段包含系统提示、总结和较早对话消息的前缀。此功能默认关闭，仅对声明支持显式缓存的 OpenRouter Gemini 模型生效；直连 Google AI Studio/Vertex 以及其他模型保持原有行为。
+在 **OpenRouter Gemini 提示缓存**区域，启用**缓存稳定的聊天历史**后，Atria 会显式缓存一段包含系统提示、总结和较早对话消息的前缀。此功能默认关闭，仅对声明支持显式缓存的 OpenRouter Gemini 模型生效；直连 Google AI Studio/Vertex 以及其他模型保持原有行为。
 
 **不缓存最近几轮**默认为 **2** 个完整回合，当前输入也始终不缓存。如果正则或扩展会随深度变化改写较早的消息，请调大此值。边界从最终发出的消息中选取，因此连续的 user 消息算作一个回合，工具结果不算新的 user 回合。消息文本、角色、总结位置、工具调用和多媒体内容均保持不变。
 
-Gemini 对普通消息内容只使用最后一个显式缓存标记。因此 Luker 将一个标记固定在相同的历史位置，而不是每轮都向后推进，并在每次复用前检查前缀。五分钟后，或者编辑、swipe、总结替换、上下文裁剪、系统提示或工具定义改变了该前缀时，会选取新的边界。新消息在下次刷新前始终位于固定前缀之外。调大不缓存尾部设置也会在下次请求时生效。
+Gemini 对普通消息内容只使用最后一个显式缓存标记。因此 Atria 将一个标记固定在相同的历史位置，而不是每轮都向后推进，并在每次复用前检查前缀。五分钟后，或者编辑、swipe、总结替换、上下文裁剪、系统提示或工具定义改变了该前缀时，会选取新的边界。新消息在下次刷新前始终位于固定前缀之外。调大不缓存尾部设置也会在下次请求时生效。
 
-已有的**缓存 system prompt**开关适用于历史不足的短请求。历史缓存启用时，Luker 只放置一个历史标记，不再添加与之竞争的系统标记。其他扩展提供的显式标记会被保留并优先生效。
+已有的**缓存 system prompt**开关适用于历史不足的短请求。历史缓存启用时，Atria 只放置一个历史标记，不再添加与之竞争的系统标记。其他扩展提供的显式标记会被保留并优先生效。
 
 这些设置随连接配置保存，也可以用 `/gemini-enable-history-cache` 和 `/gemini-cache-keep-recent-turns` 读取或修改。不经过 UI 的后端调用可以在 `config.yaml` 中使用 `gemini.enableHistoryCache` 和 `gemini.cacheKeepRecentTurns`。
 
@@ -96,7 +96,7 @@ Gemini 对普通消息内容只使用最后一个显式缓存标记。因此 Luk
 
 在请求检查器中查看最终发出的请求：被选中的历史消息的最后一个文本块应包含 `cache_control: { "type": "ephemeral" }`。服务器日志会报告本地边界计划的状态：`created`、`reused`、`refreshed`、`no-history` 或 `external-breakpoint`。**边界被复用并不代表提供商缓存命中。** 请跨多个回合检查 OpenRouter 返回的 `usage.prompt_tokens_details.cached_tokens`、缓存写入次数和总费用。
 
-OpenRouter 文档说明 Gemini 显式缓存有五分钟的生命周期，且缓存写入和存储都会计费。缓存前缀较大时，如果频繁重建或只用一次，费用可能反而更高。长时间停顿、上游路由、最小缓存长度和服务器重启都会降低复用率。Luker 只在内存中保存有界的、按用户/凭据/会话隔离的哈希和位置，不保存提供商缓存对象；它无法保证命中，也无法控制上游缓存的生命周期。参见 [OpenRouter 的 Gemini 缓存文档](https://openrouter.ai/docs/guides/best-practices/prompt-caching#google-gemini)。
+OpenRouter 文档说明 Gemini 显式缓存有五分钟的生命周期，且缓存写入和存储都会计费。缓存前缀较大时，如果频繁重建或只用一次，费用可能反而更高。长时间停顿、上游路由、最小缓存长度和服务器重启都会降低复用率。Atria 只在内存中保存有界的、按用户/凭据/会话隔离的哈希和位置，不保存提供商缓存对象；它无法保证命中，也无法控制上游缓存的生命周期。参见 [OpenRouter 的 Gemini 缓存文档](https://openrouter.ai/docs/guides/best-practices/prompt-caching#google-gemini)。
 
 ## 代理设置
 
@@ -109,7 +109,7 @@ OpenRouter 文档说明 Gemini 显式缓存有五分钟的生命周期，且缓�
 
 ## 与预设解耦的关系
 
-在 Luker 中，API 连接和聊天补全预设是**完全独立**的两个概念：
+在 Atria 中，API 连接和聊天补全预设是**完全独立**的两个概念：
 
 - **连接配置**管理的是「用哪个 API、哪个模型、通过什么地址访问」
 - **聊天补全预设**管理的是「用什么提示词、什么采样参数」
@@ -125,7 +125,7 @@ OpenRouter 文档说明 Gemini 显式缓存有五分钟的生命周期，且缓�
 
 ## 斜杠命令
 
-Luker 的连接管理器提供了斜杠命令，方便高级用户快速操作：
+Atria 的连接管理器提供了斜杠命令，方便高级用户快速操作：
 
 | 命令 | 说明 |
 |------|------|
@@ -136,7 +136,7 @@ Luker 的连接管理器提供了斜杠命令，方便高级用户快速操作�
 
 ## 请求检查器
 
-Luker 内置了请求检查器（Request Inspector），可以查看每次生成请求的详细信息，包括发送给 API 的完整请求内容和返回的响应。这在调试连接问题或优化提示词时非常有用。
+Atria 内置了请求检查器（Request Inspector），可以查看每次生成请求的详细信息，包括发送给 API 的完整请求内容和返回的响应。这在调试连接问题或优化提示词时非常有用。
 
 ## 下一步
 

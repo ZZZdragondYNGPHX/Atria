@@ -10,13 +10,13 @@ let disk;
 let createHistory;
 let getDefaultSchema;
 beforeAll(async () => {
-    const base = global.Luker.getContext();
+    const base = global.Atria.getContext();
     context = Object.assign(Object.create(base), {
         characterId: null, groupId: null, characters: [], chatMetadata: {},
         extensionSettings: { memory_graph: { memoryOsEnabled: true } },
         resolveChatStateTarget: () => ({ is_group: false, avatar_url: 'fact-test.png', file_name: 'facts' }),
     });
-    global.Luker.getContext = () => context;
+    global.Atria.getContext = () => context;
     const main = await import('../../public/scripts/extensions/memory-graph/main.js');
     processBatch = main._processPendingMessageBatchWithLLMForTest;
     createHistory = main.createMemoryHistoryBuilder;
@@ -38,14 +38,14 @@ function answer(request, excerptOverride, withGraph = false) {
     const payload = JSON.parse(tail.slice(marker).split('\n')[0]);
     const source = payload.source_episodes[0];
     return { toolCalls: [
-        { name: 'luker_memory_facts', args: { operations: [{ action: 'create', type: 'explicit', text: 'Roland keeps the sword.',
+        { name: 'atri_memory_facts', args: { operations: [{ action: 'create', type: 'explicit', text: 'Roland keeps the sword.',
             evidence: [{ episodeId: source.episodeId, excerpt: excerptOverride || source.content }] }],
         ...(withGraph ? { graphOperations: [
             { action: 'entity', ref: 'holder', name: 'Roland', type: 'Character', evidence: [{ episodeId: source.episodeId, excerpt: source.content }] },
             { action: 'entity', ref: 'item', name: 'Sword', type: 'Item', evidence: [{ episodeId: source.episodeId, excerpt: source.content }] },
             { action: 'relation', sourceId: 'holder', targetId: 'item', predicate: 'holds', factIndex: 0, evidence: [{ episodeId: source.episodeId, excerpt: source.content }] },
         ] } : { graphOperations: [] }) } },
-        { name: 'luker_rpg_extract_done', args: {} },
+        { name: 'atria_rpg_extract_done', args: {} },
     ] };
 }
 function run(settings = {}) {
@@ -90,7 +90,7 @@ describe('production extraction dispatch with simulated model responses', () => 
     test('requests fact tools even without active legacy node types, then persists sourced facts', async () => {
         context.generateTask = jest.fn(async request => answer(request));
         await run();
-        expect(context.generateTask.mock.calls[0][0].tools.some(tool => tool.function.name === 'luker_memory_facts')).toBe(true);
+        expect(context.generateTask.mock.calls[0][0].tools.some(tool => tool.function.name === 'atri_memory_facts')).toBe(true);
         const facts = Object.values(disk.get('memory_graph__provenance').facts);
         expect(facts).toHaveLength(1);
         expect(facts[0].status).toBe('active');
@@ -113,9 +113,9 @@ describe('production extraction dispatch with simulated model responses', () => 
     });
 });
 
-const eventCall = () => ({ name: 'luker_rpg_extract_event_create', args: { summary: '时间: 未知\n地点: 未知\n\nRoland keeps the sword.', links: [], no_link_reason: 'No grounded relationship.', ref: 'event_one' } });
-const factsCall = () => ({ name: 'luker_memory_facts', args: { operations: [], graphOperations: [] } });
-const doneCall = () => ({ name: 'luker_rpg_extract_done', args: {} });
+const eventCall = () => ({ name: 'atria_rpg_extract_event_create', args: { summary: '时间: 未知\n地点: 未知\n\nRoland keeps the sword.', links: [], no_link_reason: 'No grounded relationship.', ref: 'event_one' } });
+const factsCall = () => ({ name: 'atri_memory_facts', args: { operations: [], graphOperations: [] } });
+const doneCall = () => ({ name: 'atria_rpg_extract_done', args: {} });
 function runEventBatch(store = createEmptyStore()) {
     const schema = getDefaultSchema().filter(type => type.id === 'event');
     return processBatch(context, store, { memoryOsEnabled: true, nodeTypeSchema: schema, toolCallRetryMax: 1 }, schema,
@@ -150,7 +150,7 @@ describe('seq=1 uninitialized event extraction transaction', () => {
             ? requests.slice(1).map(request => request.tools.map(tool => tool.function.name))
             : [];
         const expectedRepairTools = _name === 'event only'
-            ? [['luker_memory_facts'], ['luker_rpg_extract_done']]
+            ? [['atri_memory_facts'], ['atria_rpg_extract_done']]
             : [];
         expect(repairTools).toEqual(expectedRepairTools);
         expect(_name === 'event only' ? requests[1]?.temperature : undefined)
@@ -201,7 +201,7 @@ test('invalid fact evidence repairs only facts and done after a valid staged eve
     });
     await runEventBatch(store);
     expect(Object.values(store.nodes).filter(node => node.type === 'event')).toHaveLength(1);
-    expect(context.generateTask.mock.calls[1][0].tools.map(tool => tool.function.name)).toEqual(['luker_memory_facts']);
+    expect(context.generateTask.mock.calls[1][0].tools.map(tool => tool.function.name)).toEqual(['atri_memory_facts']);
     expect(context.generateTask).toHaveBeenCalledTimes(3);
 });
 test('failed provenance commit never publishes the staged graph', async () => {

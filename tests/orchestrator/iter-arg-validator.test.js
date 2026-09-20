@@ -28,7 +28,7 @@ import {
 
 describe('readIterationStringArg — strict optional-string accessor', () => {
     test('returns undefined when the key is absent (caller inherits)', () => {
-        expect(readIterationStringArg({}, 'systemPrompt', 'luker_orch_set_director_main_agent')).toBeUndefined();
+        expect(readIterationStringArg({}, 'systemPrompt', 'atri_orch_set_director_main_agent')).toBeUndefined();
     });
 
     test('returns the string verbatim when present with the right type', () => {

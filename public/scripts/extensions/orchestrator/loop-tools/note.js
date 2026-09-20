@@ -16,7 +16,7 @@
  * The mechanism behind both:
  *
  *   1. Each note is appended to a per-chat floor-state namespace
- *      (`luker_orch_loop_notes`) tagged at a target floor — defaults to
+ *      (`atri_orch_loop_notes`) tagged at a target floor — defaults to
  *      the chat tail (`max(0, chat.length - 1)`) so the note follows the
  *      conversation when branches / deletions reshape history. Tests can
  *      override the target floor through `context.__targetFloorForNote`.
@@ -288,7 +288,7 @@ export async function loadOpenNotes(context) {
  */
 export const loadAllNotes = loadOpenNotes;
 
-export const NOTES_NAMESPACE = 'luker_orch_loop_notes';
+export const NOTES_NAMESPACE = 'atri_orch_loop_notes';
 export const NOTE_LIMITS = Object.freeze({
     MAX_NOTE_BYTES,
 });

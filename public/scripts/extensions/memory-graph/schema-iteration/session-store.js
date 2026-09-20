@@ -15,8 +15,8 @@
 import { migrateToV3, MigrationFailedError } from '/scripts/iteration-library/storage/migrate-v3.js';
 import { notifyMigrationFailed } from '/scripts/iteration-library/storage/migration-toast.js';
 
-export const MG_SIDECAR_NAMESPACE = 'memory_graph_schema_iter_history';
-export const MG_GLOBAL_BUCKET_KEY = 'schema_iter_global_sessions';
+export const MG_SIDECAR_NAMESPACE = 'atri_mg_schema_iter_history';
+export const MG_GLOBAL_BUCKET_KEY = 'atri_mg_schema_iter_global_sessions';
 
 const SIDECAR_SCHEMA_VERSION = 1;
 

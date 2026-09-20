@@ -1,10 +1,10 @@
 # 自訂工具
 
-自訂工具讓你給編排器的 agent 加新能力——超出 Luker 內建的 chat / lorebook / note / memory 工具範圍。一共支援三條來源通道，四種編排模式（loop / spec / agenda / director）看到它們的方式完全一致。
+自訂工具讓你給編排器的 agent 加新能力——超出 Atria 內建的 chat / lorebook / note / memory 工具範圍。一共支援三條來源通道，四種編排模式（loop / spec / agenda / director）看到它們的方式完全一致。
 
 ## 自訂工具的來源
 
-**來自其他 Luker 擴充。** 像 memory-graph、search-tools 這類擴充在啟動時註冊自己的工具。你什麼都不用做——這些工具會出現在編排編輯器的「自訂工具 → 擴充（來自其他外掛）」裡，新建編排時預設啟用。
+**來自其他 Atria 擴充。** 像 memory-graph、search-tools 這類擴充在啟動時註冊自己的工具。你什麼都不用做——這些工具會出現在編排編輯器的「自訂工具 → 擴充（來自其他外掛）」裡，新建編排時預設啟用。
 
 **來自 SillyTavern。** SillyTavern 本身也有 function tool 系統，其他外掛會用它註冊工具。要把這些工具暴露給編排器 agent，開啟編排編輯器，點「橋接 SillyTavern 工具……」——挑你想要的工具，給每個工具選「讀」或「寫」模式，儲存。它們會出現在「自訂工具 → 來自 SillyTavern」分組裡。
 
@@ -42,10 +42,10 @@
 
 編排執行時掛的（只在編排過程中存在）:
 
-- `ctx.__lukerRun` —— 本次 run 的執行時狀態。子欄位：
-    - `ctx.__lukerRun.activatedEntryKeys` 是一個 `Set`，鍵的形式是 `${world}.${uid}`，標記本輪已經被注入主上下文的 World Info 條目（你的工具若要再呈現 lorebook 內容可據此去重）。
-    - `ctx.__lukerRun.wiFinalizedPayload` 是**可變引用**，指向 `script.js` 即將拼成 `<world_info>` 通道字串的那一份 `wiFinalizedPayload`。**在你的工具呼叫執行期間** push 到 `wiFinalizedPayload.worldInfoBeforeEntries` / `.worldInfoAfterEntries` / `.worldInfoDepth[i].entries` 裡的內容，會被當作本輪 `<world_info>` 通道的一部分一同送進主模型，跟自然啟用的條目完全沒法區分。繞過世界書 token 預算，也不會觸發遞迴 key 掃描。Loop / Spec / Agenda 可用（它們都在 `GENERATION_WORLD_INFO_FINALIZED` 同一幀內跑）；**Director 下為 undefined**（主代理跑的時候 WI 已經焊死在 prompt 裡）。Layer-1 的 `lorebook_force_activate` builtin 是這個機制的官方包裝——優先用它，不要自己手寫 push。
-    - `ctx.__lukerRun.abortSignal` 是本次 run 的協作式取消訊號——長耗時工具裡要定期檢查 `.aborted`。
+- `ctx.__atriaRun` —— 本次 run 的執行時狀態。子欄位：
+    - `ctx.__atriaRun.activatedEntryKeys` 是一個 `Set`，鍵的形式是 `${world}.${uid}`，標記本輪已經被注入主上下文的 World Info 條目（你的工具若要再呈現 lorebook 內容可據此去重）。
+    - `ctx.__atriaRun.wiFinalizedPayload` 是**可變引用**，指向 `script.js` 即將拼成 `<world_info>` 通道字串的那一份 `wiFinalizedPayload`。**在你的工具呼叫執行期間** push 到 `wiFinalizedPayload.worldInfoBeforeEntries` / `.worldInfoAfterEntries` / `.worldInfoDepth[i].entries` 裡的內容，會被當作本輪 `<world_info>` 通道的一部分一同送進主模型，跟自然啟用的條目完全沒法區分。繞過世界書 token 預算，也不會觸發遞迴 key 掃描。Loop / Spec / Agenda 可用（它們都在 `GENERATION_WORLD_INFO_FINALIZED` 同一幀內跑）；**Director 下為 undefined**（主代理跑的時候 WI 已經焊死在 prompt 裡）。Layer-1 的 `lorebook_force_activate` builtin 是這個機制的官方包裝——優先用它，不要自己手寫 push。
+    - `ctx.__atriaRun.abortSignal` 是本次 run 的協作式取消訊號——長耗時工具裡要定期檢查 `.aborted`。
 - `ctx.__floorStateForNotes` —— `note_open` / `note_close` 工具底層用的 floor-state 實例。想跟便箋系統協作的工具可以讀它。
 - `ctx.__customToolRegistry` —— 你的工具被編譯進的那個 per-run Layer-3 註冊表。大多數工具用不到，留給少數進階情境（例如反向列舉本編排裡的其他手寫工具）。
 - `ctx.__memoryGraphSession` —— 由第一次 `memory_*` 工具呼叫 lazy 開啟；本輪跑過至少一次 memory 工具之後才會出現。
@@ -66,16 +66,16 @@ const session = await mg.openSession(ctx);
 ctx.eventSource.emit('my_tool_fired', { args });
 
 // 協作式取消:檢查本 run 的 abort signal
-if (ctx.__lukerRun?.abortSignal?.aborted) {
+if (ctx.__atriaRun?.abortSignal?.aborted) {
     throw new Error('aborted');
 }
 ```
 
 ### 安全提示
 
-函式本體跑在頁面 context 裡，權限和任何 Luker 模組一樣大。它可以發起任意 URL 請求、改全域狀態、讀你的私聊內容。**只貼上你信任的程式碼。**
+函式本體跑在頁面 context 裡，權限和任何 Atria 模組一樣大。它可以發起任意 URL 請求、改全域狀態、讀你的私聊內容。**只貼上你信任的程式碼。**
 
-當你正在匯入的角色卡帶了自訂工具，Luker 會先彈一個審查對話框，把每個工具的名字、描述、模式、完整程式碼都列出來再問你要不要匯入。你可以點「匯入並套用工具」全盤接收，「匯入但不套用工具」只匯入角色卡本身丟掉這些工具，或者展開每一項先把程式碼看一遍。
+當你正在匯入的角色卡帶了自訂工具，Atria 會先彈一個審查對話框，把每個工具的名字、描述、模式、完整程式碼都列出來再問你要不要匯入。你可以點「匯入並套用工具」全盤接收，「匯入但不套用工具」只匯入角色卡本身丟掉這些工具，或者展開每一項先把程式碼看一遍。
 
 ## 啟用與停用
 
@@ -93,18 +93,18 @@ AI 迭代工作台直接在工作 profile 上讀寫自訂工具的 Layer-3 定�
 
 讀工具（結果直接回傳，無需審閱）：
 
-- `luker_orch_list_custom_tools` —— 列出 profile 上的工具，帶模式 / 描述 / 是否有模擬本體 / 一行參數 schema 摘要。
-- `luker_orch_get_custom_tool` —— 按名稱回傳某個工具的完整內容（含函式本體）。
-- `luker_orch_dry_run_custom_tool` —— 在沙箱裡編譯 + 執行函式本體（可傳入實參），回傳 `{ok, result, error, logs, durationMs}`；硬牆時長 3 秒；`console.log/warn/error` 會被捕獲。`name`（跑 profile 上現存工具）或 `body`（編譯內聯函式本體）二選一。
-- `luker_ctx_list_keys` / `luker_ctx_describe` —— 列舉 / 鑽入執行時 `ctx`（就是 SillyTavern/Luker 擴充透過 `getContext()` 拿到的那個物件）。回傳型別 / 函式 arity / 原始碼預覽 / 子鍵。
-- `luker_docs_list` / `luker_docs_read` —— 列出和讀取 `docs/` 下的 markdown 文件（預設隱藏 zh-CN / zh-TW 翻譯）。推薦起步：`features/orchestrator/custom-tools.md`、`development/extension-api/chat-and-state.md`、`development/extension-api/generation.md`、`development/extension-api/world-info.md`、`development/extension-api/orchestrator-tools.md`。
+- `atri_orch_list_custom_tools` —— 列出 profile 上的工具，帶模式 / 描述 / 是否有模擬本體 / 一行參數 schema 摘要。
+- `atri_orch_get_custom_tool` —— 按名稱回傳某個工具的完整內容（含函式本體）。
+- `atri_orch_dry_run_custom_tool` —— 在沙箱裡編譯 + 執行函式本體（可傳入實參），回傳 `{ok, result, error, logs, durationMs}`；硬牆時長 3 秒；`console.log/warn/error` 會被捕獲。`name`（跑 profile 上現存工具）或 `body`（編譯內聯函式本體）二選一。
+- `atri_ctx_list_keys` / `atri_ctx_describe` —— 列舉 / 鑽入執行時 `ctx`（就是 SillyTavern/Atria 擴充透過 `getContext()` 拿到的那個物件）。回傳型別 / 函式 arity / 原始碼預覽 / 子鍵。
+- `atri_docs_list` / `atri_docs_read` —— 列出和讀取 `docs/` 下的 markdown 文件（預設隱藏 zh-CN / zh-TW 翻譯）。推薦起步：`features/orchestrator/custom-tools.md`、`development/extension-api/chat-and-state.md`、`development/extension-api/generation.md`、`development/extension-api/world-info.md`、`development/extension-api/orchestrator-tools.md`。
 
 寫工具（在迭代工作台的 ProposalBus 上掛一張待審 card；你不點同意就什麼都不會落到 profile）：
 
-- `luker_orch_set_custom_tool` —— 新建或整體覆蓋一條工具。掛卡前函式本體會做一次編譯校驗；語法錯的話立刻被拒絕、不掛卡。
-- `luker_orch_patch_custom_tool_body` —— 對現有函式本體做 find/replace 局部補丁（預設要求 `oldString` 命中唯一一處；`replaceAll: true` 才允許多處替換）。補丁後的函式本體也會被再次編譯校驗。微調時優先用它，可避免重新提交大段函式本體。
-- `luker_orch_patch_custom_tool_schema` —— 只替換參數 JSON-Schema，函式本體保持不變。
-- `luker_orch_remove_custom_tool` —— 按名稱刪除一條工具。審閱 card 會把即將被刪的函式本體顯示出來，方便你確認。
+- `atri_orch_set_custom_tool` —— 新建或整體覆蓋一條工具。掛卡前函式本體會做一次編譯校驗；語法錯的話立刻被拒絕、不掛卡。
+- `atri_orch_patch_custom_tool_body` —— 對現有函式本體做 find/replace 局部補丁（預設要求 `oldString` 命中唯一一處；`replaceAll: true` 才允許多處替換）。補丁後的函式本體也會被再次編譯校驗。微調時優先用它，可避免重新提交大段函式本體。
+- `atri_orch_patch_custom_tool_schema` —— 只替換參數 JSON-Schema，函式本體保持不變。
+- `atri_orch_remove_custom_tool` —— 按名稱刪除一條工具。審閱 card 會把即將被刪的函式本體顯示出來，方便你確認。
 
 每次 `set` 提案被你接受後，迭代工作台會同時把模式對應的啟用開關（loop / director 是 `tools.custom.<name>`，agenda 是 `defaultTools.custom.<name>`，spec 是 `spec.defaultTools.custom.<name>`）切到 `true`，這樣新工具立刻就會餵給執行時 agent。
 

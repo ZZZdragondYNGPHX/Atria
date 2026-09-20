@@ -1,4 +1,4 @@
-# `luker/edits` — structured edit primitives for AI-driven editing
+# `atria/edits` — structured edit primitives for AI-driven editing
 
 A small library for plugins where an AI tool-call layer proposes edits to
 user-owned structured data, and the user reviews & applies them with

@@ -138,7 +138,7 @@ describe('unified CEA editor multi-round read+edit flow', () => {
                 ],
             },
             // Round 2: an edit tool. hadAnyToolCall=true → auto-continues.
-            // (The legacy `luker_cea_editor_continue_iteration` is no longer
+            // (The legacy `atria_cea_editor_continue_iteration` is no longer
             // a control tool; emitting it here would just be another tool
             // call. We omit it because it's now noise.)
             {
@@ -260,8 +260,8 @@ describe('unified CEA editor multi-round read+edit flow', () => {
             {
                 assistantText: 'legacy emissions',
                 toolCalls: [
-                    { id: 'k1', name: 'luker_cea_editor_continue_iteration', args: {} },
-                    { id: 'f1', name: 'luker_cea_editor_finalize_iteration', args: { summary: 'really done' } },
+                    { id: 'k1', name: 'atria_cea_editor_continue_iteration', args: {} },
+                    { id: 'f1', name: 'atria_cea_editor_finalize_iteration', args: { summary: 'really done' } },
                 ],
             },
             // Round 2: a real edit lands.
@@ -344,7 +344,7 @@ describe('unified CEA editor multi-round read+edit flow', () => {
             },
             {
                 assistantText: 'should be aborted',
-                toolCalls: [{ id: 'f1', name: 'luker_cea_editor_finalize_iteration', args: {} }],
+                toolCalls: [{ id: 'f1', name: 'atria_cea_editor_finalize_iteration', args: {} }],
             },
         ]);
 

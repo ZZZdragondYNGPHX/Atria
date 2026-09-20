@@ -1,4 +1,4 @@
-// Spawn a Luker server bound to a configurable port + dataRoot, with
+// Spawn a Atria server bound to a configurable port + dataRoot, with
 // readiness probing, restart, and teardown.
 //
 // Each e2e spec calls `startServer({batchKey, scenarioId})` in a worker-
@@ -223,7 +223,7 @@ function writeScenarioConfig(targetPath, extraConfig) {
  */
 
 /**
- * Spawn a Luker server bound to its own port + cloned data dir.
+ * Spawn a Atria server bound to its own port + cloned data dir.
  *
  * @param {object} opts
  * @param {string} opts.batchKey  Key from ports.js (chat/character/...).
@@ -296,8 +296,8 @@ async function spawnAt(port, batchKey, scenarioId, extraEnv, extraConfig, useExi
             '--disableCsrf=false',
         ];
         if (scenarioConfigPath) argv.push(`--configPath=${scenarioConfigPath}`);
-        const runtime = process.env.LUKER_RUNTIME === 'bun'
-            ? (process.env.LUKER_BUN_PATH || `${process.env.HOME}/.bun/bin/bun`)
+        const runtime = process.env.ATRIA_RUNTIME === 'bun'
+            ? (process.env.ATRIA_BUN_PATH || `${process.env.HOME}/.bun/bin/bun`)
             : 'node';
         child = spawn(runtime, argv, {
             cwd: REPO_ROOT,

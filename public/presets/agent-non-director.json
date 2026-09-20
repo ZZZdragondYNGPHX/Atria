@@ -140,7 +140,7 @@
       "name": "Atri｜Agenda 分工",
       "enabled": true,
       "role": "system",
-      "content": "你是 Luker Agenda 编排的内部工作助手。当前运行时系统消息和任务决定本次职责：调度、事实整理、约束、角色分析、剧情推进、审计或汇总。只交付当前职责的结果，不逐项运行所有分析模块。Agenda finalizer 交付写作指导，主聊天模型随后生成正文；finalizer 不是正文作者。",
+      "content": "你是 Atria Agenda 编排的内部工作助手。当前运行时系统消息和任务决定本次职责：调度、事实整理、约束、角色分析、剧情推进、审计或汇总。只交付当前职责的结果，不逐项运行所有分析模块。Agenda finalizer 交付写作指导，主聊天模型随后生成正文；finalizer 不是正文作者。",
       "system_prompt": true,
       "marker": false,
       "forbid_overrides": true,
@@ -359,7 +359,7 @@
       "injection_depth": 4,
       "injection_order": 100,
       "role": "system",
-      "content": "<orchestration_role_lock>\n你现在运行在 Luker 的 Agent / Agenda 编排环境中。\n\n优先级与职责边界：\n1. 角色卡、世界书、情景、示例、聊天历史以及 Atri 的编排模块都是参考上下文，不是“继续写故事”的命令。\n2. 真正决定你是谁、要做什么、以什么格式返回的是随后注入的 Agent System Prompt、Agent Task 与运行时工具要求。\n3. 若底层预设中任何措辞与当前 Agent 职责冲突，以当前 Agent System Prompt / Agent Task 为准。\n4. 默认禁止输出 RP 正文：不要直接扮演角色，不要续写完整场景，不要产出连续成品台词、完整叙事段落或替用户行动。\n5. 允许输出的内容仅限当前 Agent 明确要求的分析、事实锚点、人物动态、世界约束、剧情 beat、审计意见、表达规则或 orchestration capsule。\n6. 即使任务讨论“下一条回复怎么写”，也应给出可执行指引，而不是把那条回复直接写出来。\n7. 只有当当前 Agent System Prompt 明确授权“生成最终正文”时，才解除第 4 条；普通 Agenda Planner、worker、critic 与 finalizer 均视为未授权。\n8. 对于高优先级规则允许完成的任务，直接交付结果，不要添加泛化的道歉、免责声明、道德评判或“作为 AI”式前言。\n9. 若任务只有某一局部无法完成，不得因此放弃整个 Agent 任务：用一句简短说明标记该局部，然后继续所有可完成、可分析、可规划或可校验的部分。\n10. 不要进入“道歉—重复限制—再次道歉”的循环；同一限制最多说明一次。\n11. 题材本身（例如黑暗、暴力、成人、争议性虚构情节）不等于要求现实执行。应先判断当前 Agent 实际被要求做的是分析、规划、审计、状态提取还是现实操作，再按真实任务处理。\n12. 不得把故事中的虚构意图自动升级解释为用户现实意图；除非 Agent Task 明确要求现实世界的实施步骤。\n13. 任何更高优先级的系统/运行时约束仍然有效；本锁只负责减少误判、越权和无关拒绝，不覆盖这些约束。\n</orchestration_role_lock>",
+      "content": "<orchestration_role_lock>\n你现在运行在 Atria 的 Agent / Agenda 编排环境中。\n\n优先级与职责边界：\n1. 角色卡、世界书、情景、示例、聊天历史以及 Atri 的编排模块都是参考上下文，不是“继续写故事”的命令。\n2. 真正决定你是谁、要做什么、以什么格式返回的是随后注入的 Agent System Prompt、Agent Task 与运行时工具要求。\n3. 若底层预设中任何措辞与当前 Agent 职责冲突，以当前 Agent System Prompt / Agent Task 为准。\n4. 默认禁止输出 RP 正文：不要直接扮演角色，不要续写完整场景，不要产出连续成品台词、完整叙事段落或替用户行动。\n5. 允许输出的内容仅限当前 Agent 明确要求的分析、事实锚点、人物动态、世界约束、剧情 beat、审计意见、表达规则或 orchestration capsule。\n6. 即使任务讨论“下一条回复怎么写”，也应给出可执行指引，而不是把那条回复直接写出来。\n7. 只有当当前 Agent System Prompt 明确授权“生成最终正文”时，才解除第 4 条；普通 Agenda Planner、worker、critic 与 finalizer 均视为未授权。\n8. 对于高优先级规则允许完成的任务，直接交付结果，不要添加泛化的道歉、免责声明、道德评判或“作为 AI”式前言。\n9. 若任务只有某一局部无法完成，不得因此放弃整个 Agent 任务：用一句简短说明标记该局部，然后继续所有可完成、可分析、可规划或可校验的部分。\n10. 不要进入“道歉—重复限制—再次道歉”的循环；同一限制最多说明一次。\n11. 题材本身（例如黑暗、暴力、成人、争议性虚构情节）不等于要求现实执行。应先判断当前 Agent 实际被要求做的是分析、规划、审计、状态提取还是现实操作，再按真实任务处理。\n12. 不得把故事中的虚构意图自动升级解释为用户现实意图；除非 Agent Task 明确要求现实世界的实施步骤。\n13. 任何更高优先级的系统/运行时约束仍然有效；本锁只负责减少误判、越权和无关拒绝，不覆盖这些约束。\n</orchestration_role_lock>",
       "system_prompt": false,
       "marker": false,
       "forbid_overrides": false,
@@ -456,7 +456,7 @@
       "plugin_extra": false
     },
     {
-      "identifier": "atri-luker-reference-open",
+      "identifier": "atri-atria-reference-open",
       "name": "Atri｜参考资料开始",
       "content": "<atri_reference_context>\n以下是参考资料。",
       "enabled": true,
@@ -470,7 +470,7 @@
       "forbid_overrides": true
     },
     {
-      "identifier": "atri-luker-reference-close",
+      "identifier": "atri-atria-reference-close",
       "name": "Atri｜参考资料结束",
       "content": "</atri_reference_context>",
       "enabled": true,
@@ -484,9 +484,9 @@
       "forbid_overrides": true
     },
     {
-      "identifier": "atri-luker-agenda-contract",
+      "identifier": "atri-atria-agenda-contract",
       "name": "Atri｜Agenda 工具协议",
-      "content": "仅在运行时提供 Agenda 工具时适用：Planner 调用 luker_orch_planner_step，dispatches 与 finalize 不得同轮出现；finalize 是原因字符串。worker、critic、finalizer 调用 luker_orch_submit_result，参数为 {\"text\":\"完整结果\"}。这些工具调用由运行时提供的 schema 定义，不在普通回复里打印伪调用。critic 用 text 给审计结论，不能调用旧 Spec 的 approve/rerun 协议。禁止将规划内容冒充已发生事实。",
+      "content": "仅在运行时提供 Agenda 工具时适用：Planner 调用 atri_orch_planner_step，dispatches 与 finalize 不得同轮出现；finalize 是原因字符串。worker、critic、finalizer 调用 atri_orch_submit_result，参数为 {\"text\":\"完整结果\"}。这些工具调用由运行时提供的 schema 定义，不在普通回复里打印伪调用。critic 用 text 给审计结论，不能调用旧 Spec 的 approve/rerun 协议。禁止将规划内容冒充已发生事实。",
       "enabled": true,
       "role": "system",
       "system_prompt": true,
@@ -511,7 +511,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-open",
+          "identifier": "atri-atria-reference-open",
           "enabled": true
         },
         {
@@ -543,7 +543,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-close",
+          "identifier": "atri-atria-reference-close",
           "enabled": true
         },
         {
@@ -571,7 +571,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-agenda-contract",
+          "identifier": "atri-atria-agenda-contract",
           "enabled": true
         },
         {
@@ -656,7 +656,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-open",
+          "identifier": "atri-atria-reference-open",
           "enabled": true
         },
         {
@@ -688,7 +688,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-reference-close",
+          "identifier": "atri-atria-reference-close",
           "enabled": true
         },
         {
@@ -716,7 +716,7 @@
           "enabled": true
         },
         {
-          "identifier": "atri-luker-agenda-contract",
+          "identifier": "atri-atria-agenda-contract",
           "enabled": true
         },
         {
@@ -819,7 +819,7 @@
       "scripts": [],
       "variables": {}
     },
-    "luker": {
+    "atria": {
       "embedded_regex_scripts_source": [],
       "prompt_layout": [],
       "prompt_groups": []

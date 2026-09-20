@@ -3,7 +3,7 @@
 //
 // Per `feedback_e2e_real_user_flow`: every action is a real click on a
 // real DOM element. Two real `startServer` instances stand up two
-// independent Luker processes on distinct loopback ports / data dirs;
+// independent Atria processes on distinct loopback ports / data dirs;
 // the helper drives the UI on whichever one the caller's `page` is on.
 //
 // Outcome model: every sync action resolves to one of three terminal
@@ -64,7 +64,7 @@ export async function loginAs(page, baseURL, { handle, password }) {
     }
 
     await page.waitForFunction(() => document.getElementById('preloader') === null, { timeout: 60_000 });
-    await page.waitForFunction(() => !!window.Luker?.getContext, { timeout: 30_000 });
+    await page.waitForFunction(() => !!window.Atria?.getContext, { timeout: 30_000 });
 }
 
 /**
@@ -137,7 +137,7 @@ async function waitForTerminalBannerState(page, timeoutMs = 30_000) {
 
 /**
  * Generate a pairing link on `page` (which is on Device A). Returns the
- * `luker-sync://...` URL. `label` is what A will call B in its own peers
+ * `atria-sync://...` URL. `label` is what A will call B in its own peers
  * list once B accepts.
  */
 export async function generatePairingLink(page, { label, categories }) {
@@ -157,7 +157,7 @@ export async function generatePairingLink(page, { label, categories }) {
     await page.locator('.lanSyncGenerateLinkButton').click();
     await page.locator('.lanSyncPairNewResult').waitFor({ state: 'visible', timeout: 10_000 });
     const link = await page.locator('.lanSyncGeneratedLink').inputValue();
-    expect(link).toMatch(/^luker-sync:/);
+    expect(link).toMatch(/^atria-sync:/);
     return link;
 }
 
@@ -179,7 +179,7 @@ export async function generatePairingLink(page, { label, categories }) {
  *
  * `peerAuth` (optional `{ username, password }`) is typed into the basic-
  * auth fields on the Accept form for specs that pair across multi-user
- * Luker installs where /api routes are basic-auth-gated. Pass `null` (or
+ * Atria installs where /api routes are basic-auth-gated. Pass `null` (or
  * leave the field off) when the peer is a single-user / no-auth install.
  */
 export async function acceptPairingLink(page, link, { categories, localLabel, peerAuth = null }) {

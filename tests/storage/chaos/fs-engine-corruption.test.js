@@ -76,7 +76,7 @@ describe('FS engine corruption recovery', () => {
             [],
             null,
         );
-        const sidecarPath = path.join(h.dirs.chats, 'TestChar', 'chat1.luker-state.bad.json');
+        const sidecarPath = path.join(h.dirs.chats, 'TestChar', 'chat1.atria-state.bad.json');
         fs.writeFileSync(sidecarPath, '[1, 2, 3]');
 
         const got = await repo.getState(h.handle, 'TestChar', 'chat1', 'bad');

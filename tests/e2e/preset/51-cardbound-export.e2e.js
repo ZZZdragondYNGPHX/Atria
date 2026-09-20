@@ -9,7 +9,7 @@
 //   2. Preseed a colliding global preset with the same name but a distinct
 //      body (temperature=0.99). Asserts export does not silently substitute
 //      the global body for the card slot body.
-//   3. Load Luker → select the card → ghost auto-apply.
+//   3. Load Atria → select the card → ghost auto-apply.
 //   4. Open AI Response Configuration drawer → click #export_button (real
 //      visible gesture) → capture the Playwright download event.
 //   5. Assert:
@@ -17,7 +17,7 @@
 //          (slot name, not stale global name).
 //      (b) exported.temperature === SLOT_TEMPERATURE (0.31, not the
 //          global collision 0.99).
-//      (c) exported.extensions.luker.embedded_skills_source lists the
+//      (c) exported.extensions.atria.embedded_skills_source lists the
 //          preset-scope fixture skill (skills bundle attached).
 //      (d) The global colliding preset file on disk was not touched
 //          (mtime unchanged, body unchanged) — export must not write.
@@ -61,7 +61,7 @@ async function exportSelectedPreset(page) {
     const popupClicker = (async () => {
         try {
             const popup = page
-                .locator('.popup:visible', { has: page.locator('.luker_skill_export_confirm') })
+                .locator('.popup:visible', { has: page.locator('.atria_skill_export_confirm') })
                 .last();
             await popup.waitFor({ state: 'visible', timeout: 10_000 });
             await popup.locator('.popup-button-ok, [data-i18n="Include"]').first().click();
@@ -104,7 +104,7 @@ async function installFixtureSkillInPresetScope(page, presetName, skillName, bod
         }],
     };
     await page.evaluate(async ({ scope, payload }) => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         await ctx.skills.executeExtractEmbed({ payload, targetScope: scope, conflictStrategies: {} });
     }, { scope: { kind: 'preset', name: presetName }, payload });
 }
@@ -139,7 +139,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CARD_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SLOT_NAME, preset: { temperature: SLOT_TEMPERATURE, chat_completion_source: 'openai' } },
@@ -168,7 +168,7 @@ test.describe('#51 — card-bound preset export uses slot body + slot name', () 
         // hydrate). Without it the popup never appears, assertion (c)
         // fails for the wrong reason.
         await page.waitForFunction(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return !!ctx?.extensionSettings?.orchestrator;
         }, { timeout: 20_000 });
 
@@ -179,7 +179,7 @@ test.describe('#51 — card-bound preset export uses slot body + slot name', () 
         // signal) rather than the __characterBoundPresetState test hook.
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 15_000 });
 
@@ -212,7 +212,7 @@ test.describe('#51 — card-bound preset export uses slot body + slot name', () 
         expect(exported.temperature).not.toBe(GLOBAL_COLLIDING_TEMPERATURE);
 
         // (c) skills bundle attached under embedded_skills_source.
-        const embedded = exported?.extensions?.luker?.embedded_skills_source;
+        const embedded = exported?.extensions?.atria?.embedded_skills_source;
         expect(embedded, 'exported body should carry embedded_skills_source').toBeTruthy();
         const items = Array.isArray(embedded?.items) ? embedded.items : [];
         const bundledNames = items.map(i => i?.name).filter(Boolean);

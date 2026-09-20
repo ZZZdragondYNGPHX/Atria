@@ -37,7 +37,7 @@ import {
     resolveAllConflictsAs,
 } from '../_lib/sync.js';
 
-const B_DB = 'luker_test_cross';
+const B_DB = 'atria_test_cross';
 const SEED_WORLD = 'cross-engine-seeded';
 const SEED_WORLD_DATA = {
     entries: {

@@ -69,7 +69,7 @@ test('generation-basic: closing the tab mid-stream leaves the job running; a fre
     let generationRequestId = '';
     let persistTarget = null;
     pageA.on('response', (resp) => {
-        const rid = resp.headers()['x-luker-generation-id'];
+        const rid = resp.headers()['x-atria-generation-id'];
         if (rid && !generationRequestId) generationRequestId = String(rid);
     });
 
@@ -99,7 +99,7 @@ test('generation-basic: closing the tab mid-stream leaves the job running; a fre
     // character-select path again (character selection is not itself
     // what's under test here — the recovery HTTP + ws-delivery replay is).
     persistTarget = await pageA.evaluate(() => {
-        const ctx = window.Luker.getContext();
+        const ctx = window.Atria.getContext();
         const c = ctx.characters[ctx.characterId];
         return {
             avatar_url: c?.avatar || '',
@@ -112,7 +112,7 @@ test('generation-basic: closing the tab mid-stream leaves the job running; a fre
     });
     expect(persistTarget.avatar_url, 'must have avatar_url for chat-key lookup').toBeTruthy();
     expect(persistTarget.file_name, 'must have file_name for chat-key lookup').toBeTruthy();
-    expect(generationRequestId, 'x-luker-generation-id must have been observed on /generate').toMatch(/^[0-9a-f-]{8,}/i);
+    expect(generationRequestId, 'x-atria-generation-id must have been observed on /generate').toMatch(/^[0-9a-f-]{8,}/i);
 
     // Snapshot how many chunks made it to Tab A before we close so we can
     // prove Tab B saw the ones that arrived after.
@@ -183,7 +183,7 @@ test('generation-basic: closing the tab mid-stream leaves the job running; a fre
         if (!ticket) return { error: 'no-ticket', status: ticketResp.status, body: ticketBody };
 
         return await new Promise((resolve) => {
-            const proto = `luker-ws-ticket.${ticket}`;
+            const proto = `atria-ws-ticket.${ticket}`;
             const ws = new WebSocket(`ws://${location.host}/api/ws-delivery`, [proto]);
             let received = '';
             let seqCount = 0;

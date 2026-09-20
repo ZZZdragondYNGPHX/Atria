@@ -1,4 +1,4 @@
-// Run against a disposable Luker server. Restore changed JS to the integration
+// Run against a disposable Atria server. Restore changed JS to the integration
 // baseline in browser responses only; never mutate the checkout or user data.
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
@@ -16,5 +16,5 @@ try {
     });
     await page.goto(process.env.WORKSPACE_BASE_URL || 'http://127.0.0.1:8127/');
     await page.waitForTimeout(8000);
-    console.log(JSON.stringify({baseline:base,errors,...await page.evaluate(() => ({ready:!!window.Luker?.getContext,text:document.body.innerText.slice(0,150)}))}));
+    console.log(JSON.stringify({baseline:base,errors,...await page.evaluate(() => ({ready:!!window.Atria?.getContext,text:document.body.innerText.slice(0,150)}))}));
 } finally { await browser.close(); }

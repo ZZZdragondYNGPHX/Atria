@@ -19,8 +19,8 @@ describe('renderToolCallChip', () => {
         expect(html).toContain('✏️');
         expect(html).toContain('Set card field');
         expect(html).toContain('description');
-        expect(html).toContain('luker_lib_toolcall');
-        expect(html).toContain('luker_lib_toolcall_edit');
+        expect(html).toContain('atria_lib_toolcall');
+        expect(html).toContain('atria_lib_toolcall_edit');
     });
 
     it('renders read-type with result block when opts.result is present', () => {
@@ -40,10 +40,10 @@ describe('renderToolCallChip', () => {
                 i18n: ident,
             },
         );
-        expect(html).toContain('luker_lib_toolcall_read');
+        expect(html).toContain('atria_lib_toolcall_read');
         expect(html).toContain('Read preset fields');
         expect(html).toContain('1 values');
-        expect(html).toContain('luker_lib_toolcall_result');
+        expect(html).toContain('atria_lib_toolcall_result');
     });
 
     it('falls back to truncated key-value pairs when no summarize is supplied', () => {
@@ -61,7 +61,7 @@ describe('renderToolCallChip', () => {
             { id: 'c4', name: 'x', args: { huge: 'value '.repeat(60) } },
             { toolDisplay: {}, status: '', i18n: ident },
         );
-        const summaryMatch = html.match(/<div class="luker_lib_toolcall_summary">([\s\S]*?)<\/div>/);
+        const summaryMatch = html.match(/<div class="atria_lib_toolcall_summary">([\s\S]*?)<\/div>/);
         expect(summaryMatch).not.toBeNull();
         expect(summaryMatch[1].length).toBeLessThan(200);
     });
@@ -82,7 +82,7 @@ describe('renderToolCallChip', () => {
             { toolDisplay: {}, i18n: ident },
         );
         expect(html).toContain('<details');
-        expect(html).toContain('luker_lib_toolcall_arg_row');
+        expect(html).toContain('atria_lib_toolcall_arg_row');
         expect(html).toContain('field');
         expect(html).toContain('mode');
         // No raw stringified args block:
@@ -104,8 +104,8 @@ describe('renderToolCallChip', () => {
             { id: 'cr1', name: 'r', args: {} },
             { toolDisplay: {}, result: 'short string', i18n: ident },
         );
-        expect(html).toMatch(/<details class="luker_lib_toolcall_result"\s*>/);
-        expect(html).not.toMatch(/<details class="luker_lib_toolcall_result" open/);
+        expect(html).toMatch(/<details class="atria_lib_toolcall_result"\s*>/);
+        expect(html).not.toMatch(/<details class="atria_lib_toolcall_result" open/);
     });
 
     it('closes result details for empty object results', () => {
@@ -113,8 +113,8 @@ describe('renderToolCallChip', () => {
             { id: 'cr2', name: 'r', args: {} },
             { toolDisplay: {}, result: {}, i18n: ident },
         );
-        expect(html).toMatch(/<details class="luker_lib_toolcall_result"\s*>/);
-        expect(html).not.toMatch(/<details class="luker_lib_toolcall_result" open/);
+        expect(html).toMatch(/<details class="atria_lib_toolcall_result"\s*>/);
+        expect(html).not.toMatch(/<details class="atria_lib_toolcall_result" open/);
     });
 
     it('renders multi-field object result as full JSON, expanding nested values instead of collapsing to {…}', () => {
@@ -136,7 +136,7 @@ describe('renderToolCallChip', () => {
         // Pretty-printed JSON should expose every nested field — the bug was
         // that arrays of objects rendered as `[ {…}, {…} ]` so users on mobile
         // could never read the actual returned values.
-        expect(html).toContain('luker_lib_toolcall_result_pre');
+        expect(html).toContain('atria_lib_toolcall_result_pre');
         expect(html).toContain('book_name');
         expect(html).toContain('total_hits');
         expect(html).toContain('entries');
@@ -153,7 +153,7 @@ describe('renderToolCallChip', () => {
             { id: 'cr3s', name: 'r', args: {} },
             { toolDisplay: {}, result: 'line one\nline two\nline three', i18n: ident },
         );
-        expect(html).toContain('luker_lib_toolcall_result_pre');
+        expect(html).toContain('atria_lib_toolcall_result_pre');
         expect(html).toContain('line one');
         expect(html).toContain('line two');
         expect(html).toContain('line three');
@@ -167,7 +167,7 @@ describe('renderToolCallChip', () => {
             { toolDisplay: {}, status: '', i18n: ident },
         );
         // Summary must include some of the long key, not just "… (1 more)":
-        const summaryMatch = html.match(/<span class="luker_lib_toolcall_summary_text">([^<]*)<\/span>/);
+        const summaryMatch = html.match(/<span class="atria_lib_toolcall_summary_text">([^<]*)<\/span>/);
         expect(summaryMatch).not.toBeNull();
         expect(summaryMatch[1].length).toBeGreaterThan(5);
         expect(summaryMatch[1]).toContain('…');

@@ -50,7 +50,7 @@ async function ensureInlineDrawerOpen(page, hostId) {
 // auto-apply checkbox present) run unconditionally.
 async function ensureConnectionProfile(page) {
     const hasProfile = await page.evaluate(() => {
-        const ctx = window.Luker?.getContext?.();
+        const ctx = window.Atria?.getContext?.();
         const profiles = ctx?.extensionSettings?.connectionManager?.profiles || [];
         return Array.isArray(profiles) && profiles.length > 0;
     });
@@ -69,14 +69,14 @@ test.describe('Iter-studio workspace split — CPA', () => {
         await expect(openBtn).toBeVisible({ timeout: 10000 });
         await openBtn.click();
 
-        const popup = page.locator('.cpa_it_popup.luker-iter-workspace').first();
+        const popup = page.locator('.cpa_it_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 10000 });
 
         // Structural assertions: split grid + chat pane + preview pane + resizer.
-        await expect(popup.locator('.luker-iter-workspace-grid')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-chat')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-grid')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-chat')).toBeVisible();
         await expect(popup.locator('[data-iter-preview-pane]')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-resizer')).toHaveCount(1);
+        await expect(popup.locator('.atria-iter-workspace-resizer')).toHaveCount(1);
 
         // Auto-apply control is mounted in the composer row, unchecked by default.
         const autoApply = popup.locator('[data-cpa-it-action="toggle-auto-apply"]');
@@ -111,7 +111,7 @@ test.describe('Iter-studio workspace split — CPA', () => {
         const openBtn = page.locator('#completion_preset_assistant_open');
         await openBtn.click();
 
-        const popup = page.locator('.cpa_it_popup.luker-iter-workspace').first();
+        const popup = page.locator('.cpa_it_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 10000 });
 
         await popup.locator('[data-cpa-it-input]').fill('Set temperature to 0.85');
@@ -135,18 +135,18 @@ test.describe('Iter-studio workspace split — MG Schema', () => {
         await ensureExtensionsDrawerOpen(page);
         await ensureInlineDrawerOpen(page, 'memory_graph_settings');
 
-        const openBtn = page.locator('#luker_rpg_memory_open_schema_studio');
+        const openBtn = page.locator('#atria_rpg_memory_open_schema_studio');
         await expect(openBtn).toBeVisible({ timeout: 10000 });
         await openBtn.click();
 
-        const popup = page.locator('.mg_schema_it_popup.luker-iter-workspace').first();
+        const popup = page.locator('.mg_schema_it_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 10000 });
 
         // Structural assertions: split grid + chat pane + preview pane + resizer.
-        await expect(popup.locator('.luker-iter-workspace-grid')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-chat')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-grid')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-chat')).toBeVisible();
         await expect(popup.locator('[data-iter-preview-pane]')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-resizer')).toHaveCount(1);
+        await expect(popup.locator('.atria-iter-workspace-resizer')).toHaveCount(1);
 
         // Auto-apply control is mounted in the composer row, unchecked by default.
         const autoApply = popup.locator('[data-mg-schema-it-action="toggle-auto-apply"]');
@@ -178,10 +178,10 @@ test.describe('Iter-studio workspace split — MG Schema', () => {
         await ensureExtensionsDrawerOpen(page);
         await ensureInlineDrawerOpen(page, 'memory_graph_settings');
 
-        const openBtn = page.locator('#luker_rpg_memory_open_schema_studio');
+        const openBtn = page.locator('#atria_rpg_memory_open_schema_studio');
         await openBtn.click();
 
-        const popup = page.locator('.mg_schema_it_popup.luker-iter-workspace').first();
+        const popup = page.locator('.mg_schema_it_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 10000 });
 
         await popup.locator('[data-mg-schema-it-input]').fill('Add a new column called "mood" of type string to the character category');
@@ -208,18 +208,18 @@ test.describe('Iter-studio workspace split — Orchestrator', () => {
         // The orchestrator surfaces 4 mode-specific boards; whichever is
         // visible owns the working "Open AI Iteration Studio" button. Use the
         // first visible one to stay agnostic about the current execution mode.
-        const openBtn = page.locator('#orchestrator_settings [data-luker-action="ai-iterate-open"]:visible').first();
+        const openBtn = page.locator('#orchestrator_settings [data-atria-action="ai-iterate-open"]:visible').first();
         await expect(openBtn).toBeVisible({ timeout: 10000 });
         await openBtn.click();
 
-        const popup = page.locator('.orch_it_popup.luker-iter-workspace').first();
+        const popup = page.locator('.orch_it_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 10000 });
 
         // Structural assertions: split grid + chat pane + preview pane + resizer.
-        await expect(popup.locator('.luker-iter-workspace-grid')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-chat')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-grid')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-chat')).toBeVisible();
         await expect(popup.locator('[data-iter-preview-pane]')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-resizer')).toHaveCount(1);
+        await expect(popup.locator('.atria-iter-workspace-resizer')).toHaveCount(1);
 
         // The legacy `orch_it_toolbar` block (which housed the auto-apply
         // checkbox in its own row) is gone — replaced by the composer-row
@@ -256,10 +256,10 @@ test.describe('Iter-studio workspace split — Orchestrator', () => {
         await ensureExtensionsDrawerOpen(page);
         await ensureInlineDrawerOpen(page, 'orchestrator_settings');
 
-        const openBtn = page.locator('#orchestrator_settings [data-luker-action="ai-iterate-open"]:visible').first();
+        const openBtn = page.locator('#orchestrator_settings [data-atria-action="ai-iterate-open"]:visible').first();
         await openBtn.click();
 
-        const popup = page.locator('.orch_it_popup.luker-iter-workspace').first();
+        const popup = page.locator('.orch_it_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 10000 });
 
         await popup.locator('[data-orch-it-input]').fill('Add a new stage named "review" to the pipeline');
@@ -281,7 +281,7 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
     // selected character. Soft-skips if no character is loaded.
     async function ensureActiveCharacter(page) {
         const avatar = await page.evaluate(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return String(ctx?.characters?.[ctx?.characterId]?.avatar || '').trim();
         });
         expect(avatar, 'PW_INCLUDE_INTEGRATION run requires an active character in the integration data dir').toBeTruthy();
@@ -308,7 +308,7 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
         // the current character's detail shape (matching main.js's reader:
         // `event.detail.character.avatar`).
         await page.evaluate(async (avatarId) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const settings = ctx?.extensionSettings?.['character_editor_assistant'];
             if (settings && typeof settings === 'object') {
                 settings.replaceLorebookSyncEnabled = true;
@@ -328,16 +328,16 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
 
         await acknowledgePostReplaceConfirmPopup(page);
 
-        // Unified editor popup — `.cea_editor_studio.luker-iter-workspace`.
+        // Unified editor popup — `.cea_editor_studio.atria-iter-workspace`.
         // The older `.cea_charit_popup` class never existed for this surface.
-        const popup = page.locator('.cea_editor_studio.luker-iter-workspace').first();
+        const popup = page.locator('.cea_editor_studio.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 15000 });
 
         // Structural assertions: split grid + chat pane + preview pane + resizer.
-        await expect(popup.locator('.luker-iter-workspace-grid')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-chat')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-grid')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-chat')).toBeVisible();
         await expect(popup.locator('[data-iter-preview-pane]')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-resizer')).toHaveCount(1);
+        await expect(popup.locator('.atria-iter-workspace-resizer')).toHaveCount(1);
 
         // Auto-apply control is mounted in the composer row, unchecked by default.
         const autoApply = popup.locator('[data-cea-editor-action="toggle-auto-apply"]');
@@ -368,7 +368,7 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
         const avatar = await ensureActiveCharacter(page);
 
         await page.evaluate(async (avatarId) => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             const settings = ctx?.extensionSettings?.['character_editor_assistant'];
             if (settings && typeof settings === 'object') {
                 settings.replaceLorebookSyncEnabled = true;
@@ -382,7 +382,7 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
 
         await acknowledgePostReplaceConfirmPopup(page);
 
-        const popup = page.locator('.cea_editor_studio.luker-iter-workspace').first();
+        const popup = page.locator('.cea_editor_studio.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 15000 });
 
         await popup.locator('[data-cea-editor-input]').fill('Add to the character description that she has bright green eyes.');
@@ -412,14 +412,14 @@ test.describe('Iter-studio workspace split — CEA Editor', () => {
         await expect(openBtn).toBeVisible({ timeout: 10000 });
         await openBtn.click();
 
-        const popup = page.locator('.cea_sync_popup.luker-iter-workspace').first();
+        const popup = page.locator('.cea_sync_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 15000 });
 
         // Structural assertions: split grid + chat pane + preview pane + resizer.
-        await expect(popup.locator('.luker-iter-workspace-grid')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-chat')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-grid')).toBeVisible();
+        await expect(popup.locator('.atria-iter-workspace-chat')).toBeVisible();
         await expect(popup.locator('[data-iter-preview-pane]')).toBeVisible();
-        await expect(popup.locator('.luker-iter-workspace-resizer')).toHaveCount(1);
+        await expect(popup.locator('.atria-iter-workspace-resizer')).toHaveCount(1);
 
         // Auto-apply control is mounted in the composer row, unchecked by default.
         // The CEA editor uses its own naming convention (`-auto-approve` instead
@@ -456,7 +456,7 @@ test.describe('Iter-studio workspace split — CEA Editor', () => {
         const openBtn = page.locator('#cea_open_editor_popup');
         await openBtn.click();
 
-        const popup = page.locator('.cea_sync_popup.luker-iter-workspace').first();
+        const popup = page.locator('.cea_sync_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 15000 });
 
         await popup.locator('[data-cea-editor-input]').fill('Add a brief lorebook entry about a forest.');
@@ -486,11 +486,11 @@ test.describe('Iter-studio workspace — mobile tab layout', () => {
         await expect(openBtn).toBeVisible({ timeout: 10000 });
         await openBtn.click();
 
-        const popup = page.locator('.cpa_it_popup.luker-iter-workspace').first();
+        const popup = page.locator('.cpa_it_popup.atria-iter-workspace').first();
         await expect(popup).toBeVisible({ timeout: 10000 });
 
         // Tab bar surfaces only on viewports < 900px.
-        const tabBar = popup.locator('.luker-iter-workspace-tabs');
+        const tabBar = popup.locator('.atria-iter-workspace-tabs');
         await expect(tabBar).toBeVisible();
 
         // Initial state: data-iter-active-tab="chat", chat tab marked active.
@@ -504,7 +504,7 @@ test.describe('Iter-studio workspace — mobile tab layout', () => {
         await expect(popup.locator('[data-iter-pane="preview"]')).toBeHidden();
 
         // Resizer is desktop-only — hidden on mobile via @media (max-width: 900px).
-        await expect(popup.locator('.luker-iter-workspace-resizer')).toBeHidden();
+        await expect(popup.locator('.atria-iter-workspace-resizer')).toBeHidden();
 
         // Touch target for the auto-apply label must be at least 44x44 px
         // (the CSS in section 24 enforces min-height: 44px on the label).

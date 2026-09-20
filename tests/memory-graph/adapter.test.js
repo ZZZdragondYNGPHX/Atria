@@ -7,8 +7,8 @@
  * event handling. The full memory-graph extension wiring (event handlers,
  * cache invalidation) is integration-tested at the harness level — these
  * unit tests focus on the contract that survives a session restart: the
- * floor-state log + meta sidecar shape, and the migration that produces
- * them from the legacy `opLog` schema.
+ * current Atria FloorState log + meta sidecar shape. Pre-Atria state is a
+ * hard cutover and is intentionally not migrated.
  */
 
 import { describe, test, expect, beforeEach } from '@jest/globals';
@@ -21,7 +21,6 @@ import {
     getFloorStateInstance,
     loadMetaFields,
     persistMetaFields,
-    migrateLegacyMemoryGraphState,
     resetFloorStateInstanceForTesting,
     constants as adapterConstants,
 } from '../../public/scripts/extensions/memory-graph/persistence.js';
@@ -503,7 +502,7 @@ describe('floor-state events on adapter commits', () => {
         });
 
         // Mount fs so its branch handler picks up the event.
-        const fs = await context.createFloorState({ namespace: adapterConstants.MODULE_NAME });
+        const fs = await context.createFloorState({ namespace: adapterConstants.STATE_NAMESPACE });
         await fs.ready();
         // Note: makeContext caches via getInstance(); spawning above is independent.
         void getInstance;
@@ -519,177 +518,30 @@ describe('floor-state events on adapter commits', () => {
     });
 });
 
-// --- migration ---
+// --- namespace hard cutover ---
 
-describe('migrateLegacyMemoryGraphState', () => {
-    test('per-entry: produces one floor-state commit per legacy opLog entry', async () => {
-        const chatRef = {
-            value: [
-                assistantMsg({ mes: 'a' }),
-                assistantMsg({ mes: 'b' }),
-                assistantMsg({ mes: 'c' }),
-            ],
-        };
-        const { store, context } = makeContext(chatRef);
-
-        // Seed legacy v1 schema: opLog inside main namespace, no __meta.
-        const legacyState = {
-            version: 8,
-            coveredSeqTo: 3,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_1', type: 'event', seqTo: 1 } }] },
-                { seq: 2, ops: [{ type: 'upsert_node', node: { id: 'n_2', type: 'event', seqTo: 2 } }] },
-                { seq: 3, ops: [{ type: 'upsert_node', node: { id: 'n_3', type: 'event', seqTo: 3 } }] },
-            ],
-            sourceMessageCount: 3,
-            lastRecallTrace: [{ step: 'historic' }],
-            lastRecallProjection: { at: 100, blocks: { corePacket: 'old', focusPacket: '' } },
-        };
-        store._raw.set(adapterConstants.MODULE_NAME, legacyState);
-
-        const result = await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        expect(result.migrated).toBe(true);
-
-        // Log: one commit per entry at the corresponding floor.
-        const log = store._raw.get(adapterConstants.LOG_NAMESPACE);
-        expect(log.commits).toHaveLength(3);
-        expect(log.commits.map((c) => c.floor)).toEqual([0, 1, 2]);
-
-        // Main namespace: replay yields full graph payload.
-        const data = store._raw.get(adapterConstants.MODULE_NAME);
-        expect(Object.keys(data.nodes).sort()).toEqual(['n_1', 'n_2', 'n_3']);
-        expect(data.coveredAssistantSeq).toBe(3);
-
-        // Meta: schemaVersion 2 + non-floor fields hoisted out.
-        const meta = store._raw.get(adapterConstants.META_NAMESPACE);
-        expect(meta).toMatchObject({
-            schemaVersion: 2,
-            sourceMessageCount: 3,
-            lastRecallTrace: [{ step: 'historic' }],
-            lastRecallProjection: { at: 100, blocks: expect.any(Object) },
-        });
+describe('Atria memory persistence hard cutover', () => {
+    test('uses only Atria-owned persistence namespaces', () => {
+        expect(adapterConstants.STATE_NAMESPACE).toBe('atri_memory_graph');
+        expect(adapterConstants.META_NAMESPACE).toBe('atri_memory_graph__meta');
+        expect(adapterConstants.LOG_NAMESPACE).toBe('atri_memory_graph__floor_log');
     });
 
-    test('idempotent: running migration twice is a no-op the second time', async () => {
-        const chatRef = { value: [assistantMsg(), assistantMsg()] };
-        const { store, context } = makeContext(chatRef);
-
-        store._raw.set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_1', type: 'event', seqTo: 1 } }] },
-                { seq: 2, ops: [{ type: 'upsert_node', node: { id: 'n_2', type: 'event', seqTo: 2 } }] },
-            ],
-            sourceMessageCount: 2,
-        });
-
-        const first = await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        expect(first.migrated).toBe(true);
-        const logBefore = JSON.stringify(store._raw.get(adapterConstants.LOG_NAMESPACE));
-        const dataBefore = JSON.stringify(store._raw.get(adapterConstants.MODULE_NAME));
-        const metaBefore = JSON.stringify(store._raw.get(adapterConstants.META_NAMESPACE));
-
-        const second = await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        expect(second.migrated).toBe(false);
-        expect(JSON.stringify(store._raw.get(adapterConstants.LOG_NAMESPACE))).toBe(logBefore);
-        expect(JSON.stringify(store._raw.get(adapterConstants.MODULE_NAME))).toBe(dataBefore);
-        expect(JSON.stringify(store._raw.get(adapterConstants.META_NAMESPACE))).toBe(metaBefore);
-    });
-
-    test('fresh install: only stamps schemaVersion when there is no legacy opLog', async () => {
+    test('pre-Atria memory_graph state is ignored and left untouched', async () => {
         const chatRef = { value: [assistantMsg()] };
         const { store, context } = makeContext(chatRef);
-
-        const result = await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        expect(result.migrated).toBe(false);
-
-        const meta = store._raw.get(adapterConstants.META_NAMESPACE);
-        expect(meta).toEqual({ schemaVersion: 2 });
-        expect(store._raw.get(adapterConstants.LOG_NAMESPACE)).toBeUndefined();
-        expect(store._raw.get(adapterConstants.MODULE_NAME)).toBeUndefined();
-    });
-
-    test('post-migration tail-floor delete only drops that floor\'s commit', async () => {
-        // Reproduces the reason the migration emits PER-ENTRY commits rather
-        // than one commit lumped at the tail floor: deleting the tail must
-        // not wipe earlier-floor graph data.
-        const chatRef = {
-            value: [assistantMsg(), assistantMsg(), assistantMsg()],
+        const obsoletePayload = {
+            version: 8,
+            opLog: [{ seq: 1, ops: [{ type: 'upsert_node', node: { id: 'old' } }] }],
         };
-        const { store, eventSource, context } = makeContext(chatRef);
+        store._raw.set('memory_graph', structuredClone(obsoletePayload));
 
-        store._raw.set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_1', type: 'event', seqTo: 1 } }] },
-                { seq: 2, ops: [{ type: 'upsert_node', node: { id: 'n_2', type: 'event', seqTo: 2 } }] },
-                { seq: 3, ops: [{ type: 'upsert_node', node: { id: 'n_3', type: 'event', seqTo: 3 } }] },
-            ],
-        });
-        await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-
-        // Mount the floor-state instance so it can react to MESSAGE_DELETED.
-        const fs = await context.createFloorState({ namespace: adapterConstants.MODULE_NAME });
+        const fs = await getFloorStateInstance(context);
         await fs.ready();
-
-        chatRef.value = chatRef.value.slice(0, 2);
-        await eventSource.emit(event_types.MESSAGE_DELETED, 2);
-        await fs.ready();
-
-        const log = store._raw.get(adapterConstants.LOG_NAMESPACE);
-        expect(log.commits.map((c) => c.floor)).toEqual([0, 1]);
-        const data = (await fs.get()).state;
-        expect(Object.keys(data.nodes).sort()).toEqual(['n_1', 'n_2']);
-    });
-
-    test('skips opLog entries whose seq has no corresponding chat floor', async () => {
-        // Edge case: legacy chat had 5 floors, current chat has 2. Migration
-        // drops the un-anchorable commits without crashing.
-        const chatRef = { value: [assistantMsg(), assistantMsg()] };
-        const { store, context } = makeContext(chatRef);
-
-        store._raw.set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_1', type: 'event', seqTo: 1 } }] },
-                { seq: 2, ops: [{ type: 'upsert_node', node: { id: 'n_2', type: 'event', seqTo: 2 } }] },
-                { seq: 5, ops: [{ type: 'upsert_node', node: { id: 'n_5', type: 'event', seqTo: 5 } }] },
-            ],
-        });
-
-        await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        const log = store._raw.get(adapterConstants.LOG_NAMESPACE);
-        expect(log.commits.map((c) => c.floor)).toEqual([0, 1]);
+        const current = await fs.get();
+        expect(current.ok).toBe(true);
+        expect(current.state).toBeNull();
+        expect(store._raw.get('memory_graph')).toEqual(obsoletePayload);
     });
 });
 
@@ -746,216 +598,17 @@ describe('regenerate bug repro', () => {
     });
 });
 
-// --- main.js integration: handler sequencing ---
-//
-// The migration flow in main.js depends on a specific ordering of
-// CHAT_CHANGED listeners: memory-graph's migration handler must fire
-// BEFORE floor-state's rematerialize handler. Otherwise fs's handler
-// reads an empty `__floor_log` (legacy chats don't have one yet), writes
-// data namespace = `{}`, and clobbers the legacy `opLog` payload that the
-// migration was about to translate. These tests document and lock in the
-// expected ordering so a future refactor that swaps registration order
-// fails loudly instead of silently losing user data.
-
-describe('main.js sequencing: initial mount migration before fs', () => {
-    test('legacy data survives when migration runs before fs mount', async () => {
-        // This is the order main.js implements in jQuery init: migrate the
-        // current chat target, THEN call createFloorState. The instance's
-        // initial rematerialize then reads the migrated log and idempotently
-        // re-applies it against the chat array.
-        const chatRef = { value: [assistantMsg(), assistantMsg()] };
-        const { store, context } = makeContext(chatRef);
-        store._raw.set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_legacy', type: 'event', seqTo: 1 } }] },
-                { seq: 2, ops: [{ type: 'upsert_node', node: { id: 'n_legacy_2', type: 'event', seqTo: 2 } }] },
-            ],
-            sourceMessageCount: 2,
-            lastRecallTrace: [{ step: 'pre-migration' }],
-        });
-
-        await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        const fs = await context.createFloorState({ namespace: adapterConstants.MODULE_NAME });
-        await fs.ready();
-
-        const data = (await fs.get()).state;
-        expect(Object.keys(data.nodes).sort()).toEqual(['n_legacy', 'n_legacy_2']);
-        expect(data.coveredAssistantSeq).toBe(2);
-        const meta = store._raw.get(adapterConstants.META_NAMESPACE);
-        expect(meta).toMatchObject({
-            schemaVersion: 2,
-            sourceMessageCount: 2,
-            lastRecallTrace: [{ step: 'pre-migration' }],
-        });
-        const log = store._raw.get(adapterConstants.LOG_NAMESPACE);
-        expect(log.commits).toHaveLength(2);
-    });
-
-    test('legacy data is LOST if fs mounts before migration (regression guard for ordering)', async () => {
-        // Negative case documenting why ordering matters. fs's initial
-        // rematerialize reads its empty log and writes `{}` to the data
-        // namespace, clobbering the legacy `opLog`. Migration then sees an
-        // empty main namespace and only stamps schemaVersion. The graph is
-        // permanently gone — and there is no surfaced error.
-        //
-        // If this test ever turns green AS-IS (i.e. the regression no
-        // longer happens), great — but it would mean someone changed
-        // floor-state's initial rematerialize to skip the data write when
-        // the log is empty, and that change deserves explicit
-        // re-evaluation of this entire ordering invariant.
-        const chatRef = { value: [assistantMsg(), assistantMsg()] };
-        const { store, context } = makeContext(chatRef);
-        store._raw.set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_legacy', type: 'event', seqTo: 1 } }] },
-            ],
-        });
-
-        const fs = await context.createFloorState({ namespace: adapterConstants.MODULE_NAME });
-        await fs.ready();
-        // floor-state's initial rematerialize sees empty log + non-empty chat,
-        // skips the data write because commits.length === 0 (instance.test.js
-        // covers this directly). Legacy data in main namespace is therefore
-        // PRESERVED because fs's `if (log.commits.length === 0) return;`
-        // shortcuts before the data-namespace write.
-        expect(store._raw.get(adapterConstants.MODULE_NAME).opLog).toBeDefined();
-
-        // Migration now runs and finds the legacy opLog intact.
-        const result = await migrateLegacyMemoryGraphState(
-            context,
-            undefined,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        // The reason ordering still matters: in production, MOST cases
-        // surviving fs's initial rematerialize unscathed depend on this
-        // floor-state shortcut. If the shortcut were removed (e.g.
-        // floor-state started writing `{}` even on empty log), legacy data
-        // would be lost. So sequencing migrate-first remains the
-        // defensive contract.
-        expect(result.migrated).toBe(true);
-    });
-});
-
-describe('main.js sequencing: CHAT_CHANGED migration handler runs before fs handler', () => {
-    test('migration handler registered first preserves legacy data on chat switch', async () => {
-        // The mock event source emits to listeners in registration order.
-        // If memory-graph's migration handler is subscribed BEFORE fs is
-        // mounted (which is when fs's CHAT_CHANGED handler subscribes),
-        // emitting CHAT_CHANGED runs migration first, then fs's
-        // rematerialize sees the migrated log.
-        const chatRef = { value: [assistantMsg(), assistantMsg()] };
-        const { store, eventSource, context } = makeContext(chatRef);
-
-        // Step 1: subscribe migration handler before fs mounts.
-        eventSource.on(event_types.CHAT_CHANGED, async () => {
-            await migrateLegacyMemoryGraphState(
-                context,
-                undefined,
-                isExtractableAssistantMessage,
-                applyMemoryLogEntryToStore,
-            );
-        });
-        const fs = await context.createFloorState({ namespace: adapterConstants.MODULE_NAME });
-        await fs.ready();
-
-        // Step 2: simulate the user switching to a chat that has legacy
-        // data. The chat-state mock conflates "current chat" with "no
-        // explicit target", so we just write into the default partition.
-        store._raw.set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_switched', type: 'event', seqTo: 1 } }] },
-            ],
-        });
-        chatRef.value = [assistantMsg()];
-
-        await eventSource.emit(event_types.CHAT_CHANGED);
-        await fs.ready();
-
-        // Migration ran first → wrote the new log + meta. fs's handler
-        // ran second → rematerialized from the new log, idempotently
-        // overwrote the data namespace with the same content the migration
-        // produced.
-        const data = (await fs.get()).state;
-        expect(Object.keys(data.nodes)).toEqual(['n_switched']);
-        const log = store._raw.get(adapterConstants.LOG_NAMESPACE);
-        expect(log.commits).toHaveLength(1);
-        const meta = store._raw.get(adapterConstants.META_NAMESPACE);
-        expect(meta.schemaVersion).toBe(2);
-    });
-
-    test('reversed order (fs first, migration second) is now non-destructive thanks to defensive shortcut', async () => {
-        // History: with fs's CHAT_CHANGED handler registered before our
-        // migration handler, fs used to run first, read the empty
-        // `__floor_log` (legacy chat hasn't been migrated yet), and overwrite
-        // the data namespace with `{}` — losing the legacy `opLog` payload
-        // before migration could read it.
-        //
-        // After the defensive fix in floor-state.rematerialize() (skip when
-        // the log namespace was never written), the destruction no longer
-        // happens. fs now leaves the legacy data alone; migration runs second
-        // and translates the opLog cleanly. Ordering still matters for
-        // correctness in pathological cases (a writeLog from a concurrent
-        // path could materialize an empty log before migration runs), but
-        // the simple legacy-load case is now safe in either order.
-        const chatRef = { value: [assistantMsg(), assistantMsg()] };
-        const { store, eventSource, context } = makeContext(chatRef);
-
-        // Step 1: mount fs FIRST (subscribes fs's CHAT_CHANGED handler).
-        const fs = await context.createFloorState({ namespace: adapterConstants.MODULE_NAME });
-        await fs.ready();
-        // Step 2: subscribe migration handler SECOND.
-        eventSource.on(event_types.CHAT_CHANGED, async () => {
-            await migrateLegacyMemoryGraphState(
-                context,
-                undefined,
-                isExtractableAssistantMessage,
-                applyMemoryLogEntryToStore,
-            );
-        });
-
-        // Step 3: simulate switching to a chat with legacy data.
-        store._raw.set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'n_switched', type: 'event', seqTo: 1 } }] },
-            ],
-        });
-
-        await eventSource.emit(event_types.CHAT_CHANGED);
-        await fs.ready();
-
-        // fs ran first BUT defensively skipped (log never written). Then
-        // migration ran second on the intact legacy opLog and translated it
-        // cleanly into the v2 layout.
-        const data = store._raw.get(adapterConstants.MODULE_NAME);
-        expect(Object.keys(data.nodes).sort()).toEqual(['n_switched']);
-        const log = store._raw.get(adapterConstants.LOG_NAMESPACE);
-        expect(log.commits).toHaveLength(1);
-        expect(store._raw.get(adapterConstants.META_NAMESPACE).schemaVersion).toBe(2);
-    });
-});
-
 // --- main.js integration: cleanup ---
 
-describe('main.js sequencing: deleteMemoryStoreByTarget cleans all three sidecars', () => {
+describe('main.js sequencing: reset cleans current Atria state, log, and meta', () => {
     test('removes data, log, and meta namespaces at the target', async () => {
-        // Mirrors deleteMemoryStoreByTarget in main.js. Used by the "Reset
-        // memory graph" UI action — important to leave no orphan v2 data
-        // behind, otherwise next-load would resurrect stale state.
+        // Mirrors the namespaces that current Atria reset owns. FloorState
+        // purges data + log together; Memory Graph then removes meta.
         const TARGET = { is_group: false, avatar_url: 'a.png', file_name: 'chat-X' };
         const chatRef = { value: [assistantMsg()] };
         const { store, context } = makeContext(chatRef);
 
-        store._rawFor(TARGET).set(adapterConstants.MODULE_NAME, {
+        store._rawFor(TARGET).set(adapterConstants.STATE_NAMESPACE, {
             nodes: { n: { id: 'n', type: 'event' } },
             edges: [],
             coveredAssistantSeq: 1,
@@ -970,131 +623,37 @@ describe('main.js sequencing: deleteMemoryStoreByTarget cleans all three sidecar
             lastRecallTrace: [{ step: 'before-reset' }],
         });
 
-        // Replicate deleteMemoryStoreByTarget's three deleteChatState calls.
-        await context.deleteChatState(adapterConstants.MODULE_NAME, { target: TARGET });
+        // Replicate the resulting namespace state after FloorState purge +
+        // meta removal.
+        await context.deleteChatState(adapterConstants.STATE_NAMESPACE, { target: TARGET });
         await context.deleteChatState(adapterConstants.LOG_NAMESPACE, { target: TARGET });
         await context.deleteChatState(adapterConstants.META_NAMESPACE, { target: TARGET });
 
-        expect(store._rawFor(TARGET).get(adapterConstants.MODULE_NAME)).toBeUndefined();
+        expect(store._rawFor(TARGET).get(adapterConstants.STATE_NAMESPACE)).toBeUndefined();
         expect(store._rawFor(TARGET).get(adapterConstants.LOG_NAMESPACE)).toBeUndefined();
         expect(store._rawFor(TARGET).get(adapterConstants.META_NAMESPACE)).toBeUndefined();
     });
 
-    test('a partial delete (only main namespace) leaves orphan log + meta — documents the bug we fixed', async () => {
-        // Pre-migration deleteMemoryStoreByTarget only removed the main
-        // namespace; the v2 fix added log + meta deletes alongside. This
-        // test pins that contract: if you only remove the main namespace,
-        // ensureMemoryStoreLoaded would still find the orphan v2 sidecars
-        // and reconstruct stale state on the next read, which is the
-        // failure mode the fix prevents.
+    test('a partial current-state delete leaves the current log + meta intact', async () => {
+        // Reset must purge all current Atria persistence surfaces together.
         const TARGET = { is_group: false, avatar_url: 'a.png', file_name: 'chat-Y' };
         const chatRef = { value: [assistantMsg()] };
         const { store, context } = makeContext(chatRef);
 
-        store._rawFor(TARGET).set(adapterConstants.MODULE_NAME, { nodes: { n: { id: 'n' } } });
+        store._rawFor(TARGET).set(adapterConstants.STATE_NAMESPACE, { nodes: { n: { id: 'n' } } });
         store._rawFor(TARGET).set(adapterConstants.LOG_NAMESPACE, {
             version: 1,
             commits: [{ floor: 0, swipeId: 0, patches: [{ op: 'add', path: '/nodes/n', value: { id: 'n' } }] }],
         });
         store._rawFor(TARGET).set(adapterConstants.META_NAMESPACE, { schemaVersion: 2 });
 
-        // Partial delete (the buggy behaviour).
-        await context.deleteChatState(adapterConstants.MODULE_NAME, { target: TARGET });
+        // Demonstrate why reset owns all three current namespaces.
+        await context.deleteChatState(adapterConstants.STATE_NAMESPACE, { target: TARGET });
 
-        // Orphan log + meta would lead loadMemoryStoreByTarget to read meta
-        // (v2 stamped), see no main namespace, fall through to v2 path
-        // anyway, and then floor-state's next mount/rematerialize for that
-        // target would reconstruct the graph from the surviving log
-        // commits — undeleting the user's reset.
+        // The surviving log can rematerialize graph state on the next
+        // FloorState load, so a complete reset must purge it as well.
         expect(store._rawFor(TARGET).get(adapterConstants.LOG_NAMESPACE)).toBeDefined();
         expect(store._rawFor(TARGET).get(adapterConstants.META_NAMESPACE)).toBeDefined();
-    });
-});
-
-// --- main.js integration: legacy-target fallback ---
-
-describe('main.js sequencing: legacy-target fallback in ensureMemoryStoreLoaded', () => {
-    test('migration runs on a non-default target so legacy data can be copied to the new target', async () => {
-        // ensureMemoryStoreLoaded's flow when the current target is empty
-        // and a legacy-named target has data: run migration on the legacy
-        // target first (so its layout is normalized to v2), load it, then
-        // copy + delete. This test exercises the "run migration on a
-        // legacy target" step.
-        const OLD_TARGET = { is_group: false, avatar_url: 'a.png', file_name: 'old-naming' };
-        const NEW_TARGET = { is_group: false, avatar_url: 'a.png', file_name: 'new-naming' };
-        const chatRef = { value: [assistantMsg(), assistantMsg()] };
-        const { store, context } = makeContext(chatRef);
-
-        // Pre-seed legacy v1 layout at OLD_TARGET.
-        store._rawFor(OLD_TARGET).set(adapterConstants.MODULE_NAME, {
-            version: 8,
-            opLog: [
-                { seq: 1, ops: [{ type: 'upsert_node', node: { id: 'old_a', type: 'event', seqTo: 1 } }] },
-                { seq: 2, ops: [{ type: 'upsert_node', node: { id: 'old_b', type: 'event', seqTo: 2 } }] },
-            ],
-            sourceMessageCount: 2,
-            lastRecallTrace: [{ step: 'legacy-naming-era' }],
-        });
-
-        // Run migration on OLD_TARGET specifically.
-        const result = await migrateLegacyMemoryGraphState(
-            context,
-            OLD_TARGET,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        expect(result.migrated).toBe(true);
-
-        // OLD_TARGET should now be in v2 layout.
-        const oldLog = store._rawFor(OLD_TARGET).get(adapterConstants.LOG_NAMESPACE);
-        expect(oldLog.commits).toHaveLength(2);
-        const oldData = store._rawFor(OLD_TARGET).get(adapterConstants.MODULE_NAME);
-        expect(Object.keys(oldData.nodes).sort()).toEqual(['old_a', 'old_b']);
-        const oldMeta = store._rawFor(OLD_TARGET).get(adapterConstants.META_NAMESPACE);
-        expect(oldMeta.schemaVersion).toBe(2);
-        expect(oldMeta.lastRecallTrace).toEqual([{ step: 'legacy-naming-era' }]);
-
-        // NEW_TARGET is still untouched at this point.
-        expect(store._rawFor(NEW_TARGET).get(adapterConstants.MODULE_NAME)).toBeUndefined();
-        expect(store._rawFor(NEW_TARGET).get(adapterConstants.LOG_NAMESPACE)).toBeUndefined();
-        expect(store._rawFor(NEW_TARGET).get(adapterConstants.META_NAMESPACE)).toBeUndefined();
-    });
-
-    test('migration on already-v2 legacy target is a no-op (the fallback path safely retries)', async () => {
-        // ensureMemoryStoreLoaded calls migrate on every legacy candidate
-        // it visits. If a candidate already has v2 sidecars (from a prior
-        // partial migration), the second migrate must be cheap and
-        // non-destructive.
-        const OLD_TARGET = { is_group: false, avatar_url: 'a.png', file_name: 'old-naming' };
-        const chatRef = { value: [assistantMsg()] };
-        const { store, context } = makeContext(chatRef);
-
-        // Pre-seed v2 layout at OLD_TARGET (as if migration already ran).
-        store._rawFor(OLD_TARGET).set(adapterConstants.MODULE_NAME, {
-            nodes: { keep: { id: 'keep', type: 'event' } },
-            edges: [],
-            coveredAssistantSeq: 1,
-            appliedSeqTo: 1,
-            loggedSeqTo: 1,
-            seqCounter: 1,
-            nodeSeq: 0,
-        });
-        store._rawFor(OLD_TARGET).set(adapterConstants.LOG_NAMESPACE, {
-            version: 1,
-            commits: [{ floor: 0, swipeId: 0, patches: [{ op: 'add', path: '/nodes/keep', value: { id: 'keep' } }] }],
-        });
-        store._rawFor(OLD_TARGET).set(adapterConstants.META_NAMESPACE, { schemaVersion: 2 });
-
-        const before = JSON.stringify([...store._rawFor(OLD_TARGET).entries()]);
-        const result = await migrateLegacyMemoryGraphState(
-            context,
-            OLD_TARGET,
-            isExtractableAssistantMessage,
-            applyMemoryLogEntryToStore,
-        );
-        expect(result.migrated).toBe(false);
-        // No mutation.
-        expect(JSON.stringify([...store._rawFor(OLD_TARGET).entries()])).toBe(before);
     });
 });
 
@@ -1118,7 +677,7 @@ describe('main.js sequencing: meta-only persist stays in its lane', () => {
             0,
             applyMemoryLogEntryToStore,
         );
-        const dataBefore = JSON.stringify(store._raw.get(adapterConstants.MODULE_NAME));
+        const dataBefore = JSON.stringify(store._raw.get(adapterConstants.STATE_NAMESPACE));
         const logBefore = JSON.stringify(store._raw.get(adapterConstants.LOG_NAMESPACE));
 
         await persistMetaFields(context, {
@@ -1129,7 +688,7 @@ describe('main.js sequencing: meta-only persist stays in its lane', () => {
         });
 
         // Data + log unchanged.
-        expect(JSON.stringify(store._raw.get(adapterConstants.MODULE_NAME))).toBe(dataBefore);
+        expect(JSON.stringify(store._raw.get(adapterConstants.STATE_NAMESPACE))).toBe(dataBefore);
         expect(JSON.stringify(store._raw.get(adapterConstants.LOG_NAMESPACE))).toBe(logBefore);
         // Meta has the new content.
         const meta = store._raw.get(adapterConstants.META_NAMESPACE);
@@ -1172,7 +731,7 @@ describe('main.js sequencing: branch inheritance', () => {
         });
 
         // Mount fs (which subscribes the floor-state CHAT_BRANCH_CREATED handler).
-        const fs = await context.createFloorState({ namespace: adapterConstants.MODULE_NAME });
+        const fs = await context.createFloorState({ namespace: adapterConstants.STATE_NAMESPACE });
         await fs.ready();
 
         // Replicate inheritMemoryStoreForBranch's meta seeding alongside the

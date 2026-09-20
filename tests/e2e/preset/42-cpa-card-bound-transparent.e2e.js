@@ -64,7 +64,7 @@ test.beforeAll(async () => {
         overrides: {
             name: CHAR_NAME,
             extensions: {
-                luker: {
+                atria: {
                     chat_completion_preset: {
                         presets: [
                             { name: SHARED_NAME, preset: { temperature: CARD_TEMPERATURE_SEED, chat_completion_source: 'openai' } },
@@ -88,7 +88,7 @@ function readCardBoundPresetBody(dataRoot, avatarFile, name) {
     const path = resolve(dataRoot, 'default-user', 'characters', avatarFile);
     const png = readFileSync(path);
     const card = JSON.parse(readPngCard(png));
-    const state = card?.data?.extensions?.luker?.chat_completion_preset;
+    const state = card?.data?.extensions?.atria?.chat_completion_preset;
     if (!state || !Array.isArray(state.presets)) return null;
     return state.presets.find(p => p?.name === name)?.preset ?? null;
 }
@@ -106,7 +106,7 @@ test.describe('#42 — CPA iter-studio on card-bound preset: opens, iterates, Ap
         await selectCharacterByName(page, CHAR_NAME);
         await page.waitForFunction(() => {
             const sel = document.querySelector('#settings_preset_openai');
-            const opt = sel?.querySelector('option[data-luker-char-bound="1"]');
+            const opt = sel?.querySelector('option[data-atria-char-bound="1"]');
             return Boolean(opt) && String(sel.value) === String(opt.value);
         }, { timeout: 15_000 });
         await expect
@@ -146,7 +146,7 @@ test.describe('#42 — CPA iter-studio on card-bound preset: opens, iterates, Ap
         // to APPLIED_TEMPERATURE. Runtime state is the ground truth here
         // (CPA calls saveOpenAIPreset which writes both runtime + disk).
         const globalBodyTemperature = await page.evaluate((n) => {
-            const openai = window.Luker?.getContext?.()?.openai;
+            const openai = window.Atria?.getContext?.()?.openai;
             const settings = openai?.settings;
             const names = openai?.settingNames;
             if (!Array.isArray(settings) || !names) return null;
@@ -159,7 +159,7 @@ test.describe('#42 — CPA iter-studio on card-bound preset: opens, iterates, Ap
         // -------- Assertion (c): selector still points at the card-bound ghost option --------
         const selectedValueStartsWithSentinel = await page.evaluate(() => {
             const v = document.querySelector('#settings_preset_openai')?.value ?? '';
-            return String(v).startsWith('__luker_card__::');
+            return String(v).startsWith('__atria_card__::');
         });
         expect(selectedValueStartsWithSentinel).toBe(true);
     });

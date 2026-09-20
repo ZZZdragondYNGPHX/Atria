@@ -2,12 +2,12 @@
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 // Implementation source: Toolify: Empower any LLM with function calling capabilities. (https://github.com/funnycups/Toolify)
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const extension_prompt_roles = __ctx.constants.promptRoles;
 
 const saveSettingsDebounced = __ctx.saveSettingsDebounced;
 const extension_settings = __ctx.extensionSettings;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const registerExtensionApi = __ctx.registerExtensionApi;
 
 import { buildLastUserAnchor, compactStageOutputs, normalizeNodeOutputForSnapshot } from './anchors.js';
@@ -93,7 +93,7 @@ if (typeof __ctx.getCurrentUserHandle === 'function') {
 }
 
 const MODULE_NAME = 'orchestrator';
-const ORCH_RESULT_EVENT = 'luker.orchestrator.result';
+const ORCH_RESULT_EVENT = 'atria.orchestrator.result';
 const UI_BLOCK_ID = 'orchestrator_settings';
 
 // Expose the orchestrator custom-tool API surface to other extensions via
@@ -494,12 +494,12 @@ async function onWorldInfoFinalized(payload) {
         ? {
             ...payload,
             signal: linkedAbort.signal,
-            __lukerOrchGenerationSignal: payload?.signal || null,
-            __lukerRun: runMeta,
+            __atriaOrchGenerationSignal: payload?.signal || null,
+            __atriaRun: runMeta,
         }
         : {
             ...payload,
-            __lukerRun: runMeta,
+            __atriaRun: runMeta,
         };
     let stopRequestedByUser = false;
     let resolveStopRequest = null;
@@ -524,7 +524,7 @@ async function onWorldInfoFinalized(payload) {
     // main.js short-circuits with 'cancelled by user' immediately),
     // instead of waiting for the LLM sender to reject and the runtime
     // catch block to reach `finishRun`.
-    orchestrationPayload.__lukerResolveStopRequest = resolveStopRequest;
+    orchestrationPayload.__atriaResolveStopRequest = resolveStopRequest;
 
     try {
         await loadOrchestratorChatState(context);
@@ -735,7 +735,7 @@ function getSettings() {
 }
 
 function updateUiStatus(text) {
-    jQuery('#luker_orch_status').text(String(text || ''));
+    jQuery('#atri_orch_status').text(String(text || ''));
 }
 
 function showRunInfoToast(message, { stopLabel = '', onStop = null } = {}) {
@@ -756,7 +756,7 @@ function showRunInfoToast(message, { stopLabel = '', onStop = null } = {}) {
     if (activeRunInfoToast && typeof onStop === 'function') {
         const toastBody = activeRunInfoToast.find('.toast-message');
         if (toastBody.length > 0) {
-            const button = jQuery('<button type="button" class="menu_button menu_button_small luker-toast-stop-button"></button>');
+            const button = jQuery('<button type="button" class="menu_button menu_button_small atria-toast-stop-button"></button>');
             button.text(String(stopLabel || i18n('Stop')));
             button.on('click', (event) => {
                 event.preventDefault();
@@ -816,7 +816,7 @@ function ensureUi() {
     const workspace = document.createElement('button'); workspace.type = 'button'; workspace.className = 'menu_button';
     workspace.textContent = i18n('Open Agent & Memory Workspace'); workspace.addEventListener('click', () => openWorkspace('Presets')); content.append(workspace);
 
-    const status = document.createElement('p'); status.id = 'luker_orch_status'; status.setAttribute('role', 'status'); content.append(status);
+    const status = document.createElement('p'); status.id = 'atri_orch_status'; status.setAttribute('role', 'status'); content.append(status);
     const notes = document.createElement('div'); content.append(notes); host.append(section);
     void mountNotesPanel(notes, getContext());
 }
@@ -831,10 +831,10 @@ jQuery(() => {
                 : renderOpenAIPresetOptions(getContext(), value, i18n(inherited ? 'Use workspace default' : '(Current preset)')),
             getTools: (preset, agent) => {
                 const plan = preset.planTemplate;
-                const options = plan.metadata?.hostAdapters?.luker || {};
+                const options = plan.metadata?.hostAdapters?.atria || {};
                 // Read schemas only: opening the editor must never compile custom tool bodies.
                 const customToolRegistry = new Map((options.customTools || []).map(tool => [tool.name, { schema: { type: 'function', function: { name: tool.name, description: tool.description } } }]));
-                const config = agent.metadata?.hostAdapters?.luker || {};
+                const config = agent.metadata?.hostAdapters?.atria || {};
                 const tools = [];
                 for (const node of plan.nodes.filter(node => node.agentId === agent.id)) {
                     if (preset.mode === 'loop') tools.push(...getEnabledToolSchemas({ ...options, ...config }, customToolRegistry).map(schema => schema.function));
@@ -883,7 +883,7 @@ jQuery(() => {
     // the preset-scope skills into the JSON before download fires. The hook
     // listens on OAI_PRESET_EXPORT_READY which carries `{data, presetName}`
     // (aligned with OAI_PRESET_IMPORT_READY); we mutate `data` in place to
-    // attach `extensions.luker.embedded_skills_source`. `presetName` is the
+    // attach `extensions.atria.embedded_skills_source`. `presetName` is the
     // real slot name so the hook resolves the correct preset-scope skills
     // even under card-bound selection (where oai_settings.preset_settings_openai
     // is stale global).

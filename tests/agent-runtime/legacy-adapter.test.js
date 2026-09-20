@@ -5,8 +5,8 @@ import { MemoryCheckpointStore } from '../../public/scripts/lib/agent-runtime/in
 
 test('Single adapter preserves legacy input, output, schema and routing fields', async () => {
     const messages = [{ role: 'system', content: 'user custom system' }, { role: 'user', content: 'notes + skill + task' }];
-    const request = { taskMessages: messages, apiPresetName: 'private-api', llmPresetName: 'card-first', tools: [{ function: { name: 'luker_orch_final_guidance' } }], runtimeWorldInfo: { before: 'memory' } };
-    const response = { toolCalls: [{ name: 'luker_orch_final_guidance', args: { text: 'guidance' } }], assistantText: 'text', reasoning: 'reason' };
+    const request = { taskMessages: messages, apiPresetName: 'private-api', llmPresetName: 'card-first', tools: [{ function: { name: 'atri_orch_final_guidance' } }], runtimeWorldInfo: { before: 'memory' } };
+    const response = { toolCalls: [{ name: 'atri_orch_final_guidance', args: { text: 'guidance' } }], assistantText: 'text', reasoning: 'reason' };
     let observed;
     const result = await runLegacySingleRequest({ runId: 'single-1', request, send: async input => { observed = input; return response; } });
     expect(result).toEqual(response);

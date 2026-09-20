@@ -32,13 +32,13 @@ describe('augmentStudioPromptWithCustomTools', () => {
         const out = augmentStudioPromptWithCustomTools('base', { customTools: [] }, []);
         expect(out).not.toBe('base');
         expect(out).toContain('no custom tools yet');
-        expect(out).toContain('luker_orch_set_custom_tool');
+        expect(out).toContain('atri_orch_set_custom_tool');
     });
 
     test('handles null profile', () => {
         const out = augmentStudioPromptWithCustomTools('base', null, []);
         expect(out).toContain('no custom tools yet');
-        expect(out).toContain('luker_orch_set_custom_tool');
+        expect(out).toContain('atri_orch_set_custom_tool');
     });
 
     test('handles missing customTools field on profile', () => {
@@ -147,17 +147,17 @@ describe('augmentStudioPromptWithCustomTools', () => {
     test('names every authoring + maintenance tool by exact id', () => {
         const out = augmentStudioPromptWithCustomTools('base', null, []);
         const required = [
-            'luker_orch_list_custom_tools',
-            'luker_orch_get_custom_tool',
-            'luker_orch_set_custom_tool',
-            'luker_orch_patch_custom_tool_body',
-            'luker_orch_patch_custom_tool_schema',
-            'luker_orch_remove_custom_tool',
-            'luker_orch_dry_run_custom_tool',
-            'luker_ctx_list_keys',
-            'luker_ctx_describe',
-            'luker_docs_list',
-            'luker_docs_read',
+            'atri_orch_list_custom_tools',
+            'atri_orch_get_custom_tool',
+            'atri_orch_set_custom_tool',
+            'atri_orch_patch_custom_tool_body',
+            'atri_orch_patch_custom_tool_schema',
+            'atri_orch_remove_custom_tool',
+            'atri_orch_dry_run_custom_tool',
+            'atri_ctx_list_keys',
+            'atri_ctx_describe',
+            'atri_docs_list',
+            'atri_docs_read',
         ];
         for (const name of required) {
             expect(out).toContain(name);

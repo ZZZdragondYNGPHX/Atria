@@ -29,7 +29,7 @@ import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globa
 // ─── Ambient ST globals ────────────────────────────────────────────────────
 // Same shim shape used by custom-tool-runtime-{spec,agenda,loop}.test.js so
 // the shared runtime modules (defaults.js / agenda-runtime.js / spec-runtime.js
-// / loop-runtime.js) can consume `Luker.getContext()` constants at load time.
+// / loop-runtime.js) can consume `Atria.getContext()` constants at load time.
 const __sillyTavernSettings = {
     orchestrator: {
         agendaPlannerMaxRounds: 4,
@@ -38,7 +38,7 @@ const __sillyTavernSettings = {
         nodeIterationMaxRounds: 3,
     },
 };
-globalThis.Luker = {
+globalThis.Atria = {
     __settings: __sillyTavernSettings,
     getContext: () => ({
         constants: {
@@ -236,7 +236,7 @@ describe('runtime plumbing — deps.activeOrchPresetName threads to buildSkillRu
         };
 
         specLlmResponses.push({
-            toolCalls: [{ id: 'tc1', name: 'luker_orch_final_guidance', args: { text: 'done' } }],
+            toolCalls: [{ id: 'tc1', name: 'atri_orch_final_guidance', args: { text: 'done' } }],
             assistantText: '',
             reasoning: '',
         });

@@ -5,13 +5,13 @@
  * to surface back to other nodes:
  *
  *   1. Approved review feedback — when a review node returns
- *      `luker_orch_review_approve`, the feedback string is captured per
+ *      `atri_orch_review_approve`, the feedback string is captured per
  *      (stageIndex, nodeIndex, nodeId) and accumulates across the run
  *      under `runtime.approvedReviewFeedbackEntries`. Subsequent worker
  *      / review nodes see those entries in their auto-injected prelude
  *      so the run develops a stable consensus.
  *   2. Current rerun feedback — when a review node returns
- *      `luker_orch_review_rerun`, the feedback string is forwarded to
+ *      `atri_orch_review_rerun`, the feedback string is forwarded to
  *      the targeted worker(s) on the next attempt as
  *      `current_rerun_review_feedback`.
  *

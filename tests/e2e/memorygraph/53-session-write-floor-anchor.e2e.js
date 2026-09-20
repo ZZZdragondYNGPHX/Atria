@@ -109,7 +109,7 @@ async function enableMgViaCheckboxes(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        for (const id of ['luker_rpg_memory_enabled', 'luker_rpg_memory_auto_extraction_enabled']) {
+        for (const id of ['atria_rpg_memory_enabled', 'atria_rpg_memory_auto_extraction_enabled']) {
             const el = document.getElementById(id);
             if (el && !el.checked) {
                 el.checked = true;
@@ -123,8 +123,8 @@ async function enableMgViaCheckboxes(page) {
 async function importMgGraphBindLatest(page, filePath) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
-    await page.locator('#luker_rpg_memory_import').click();
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click();
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 10_000 });
     await popup.locator('.popup-button-custom', { hasText: /Bind Latest|绑定最新/ }).first().click();
@@ -141,7 +141,7 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
         // Disable the delete-confirmation popup so deleteMessageViaUI does
         // not need a follow-up OK click.
         await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             if (ctx.powerUserSettings) ctx.powerUserSettings.confirm_message_delete = false;
         });
 
@@ -164,7 +164,7 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
         // The extraction we needed for the spec (none in this case; we
         // import sentinels directly) is already done.
         await page.evaluate(() => {
-            const el = document.getElementById('luker_rpg_memory_auto_extraction_enabled');
+            const el = document.getElementById('atria_rpg_memory_auto_extraction_enabled');
             if (el && el.checked) {
                 el.checked = false;
                 el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -185,7 +185,7 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
 
         // Verify the sentinels are visible BEFORE the delete.
         const beforeDelete = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return { titles: [], chatLen: ctx.chat.length };
@@ -203,7 +203,7 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
 
         // Delete the LAST assistant message via the real trash icon.
         const lastAssistantId = await page.evaluate(() => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             for (let i = ctx.chat.length - 1; i >= 0; i--) {
                 if (!ctx.chat[i]?.is_user) return i;
             }
@@ -227,7 +227,7 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
         // sentinels on disk. Give it time before invalidating the cache
         // and reading fresh.
         await page.waitForFunction((prevLen) => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             return ctx.chat.length === prevLen - 1;
         }, beforeDelete.chatLen, { timeout: 15_000 });
         // Yield generously so the MG MESSAGE_DELETED listener can complete
@@ -247,7 +247,7 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
         });
 
         const afterDelete = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return { titles: [] };

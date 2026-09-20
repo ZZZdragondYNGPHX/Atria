@@ -136,7 +136,7 @@ async function enableMgViaCheckbox(page) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
     await page.evaluate(() => {
-        const el = document.getElementById('luker_rpg_memory_enabled');
+        const el = document.getElementById('atria_rpg_memory_enabled');
         if (el && !el.checked) {
             el.checked = true;
             el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -148,8 +148,8 @@ async function enableMgViaCheckbox(page) {
 async function importMgGraphBindLatest(page, filePath) {
     await openExtensionsDrawer(page);
     await openInlineDrawer(page, 'memory_graph_settings').catch(() => {});
-    await page.locator('#luker_rpg_memory_import').click();
-    await page.locator('#luker_rpg_memory_import_file').setInputFiles(filePath);
+    await page.locator('#atria_rpg_memory_import').click();
+    await page.locator('#atria_rpg_memory_import_file').setInputFiles(filePath);
     const popup = page.locator('.popup:visible').last();
     await popup.waitFor({ state: 'visible', timeout: 10_000 });
     await popup.locator('.popup-button-custom', { hasText: /Bind Latest|绑定最新/ }).first().click();
@@ -166,7 +166,7 @@ test.describe('#55 — Branch chat keeps source MG intact (real branch UI)', () 
         await enableMgViaCheckbox(page);
 
         await page.waitForFunction(() => {
-            const ctx = window.Luker?.getContext?.();
+            const ctx = window.Atria?.getContext?.();
             return Array.isArray(ctx?.chat) && ctx.chat.length >= 1;
         }, { timeout: 10_000 }).catch(() => {});
 
@@ -186,7 +186,7 @@ test.describe('#55 — Branch chat keeps source MG intact (real branch UI)', () 
         await importMgGraphBindLatest(page, sourceImportPath);
 
         const sourceSnapshot = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const titles = session
@@ -215,7 +215,7 @@ test.describe('#55 — Branch chat keeps source MG intact (real branch UI)', () 
         // settle.
         await page.waitForTimeout(1500);
 
-        const branchChatId = await page.evaluate(() => window.Luker.getContext().getCurrentChatId?.() || '');
+        const branchChatId = await page.evaluate(() => window.Atria.getContext().getCurrentChatId?.() || '');
         expect(branchChatId, `branch chat id should differ from source (${sourceSnapshot.sourceChatId})`).not.toBe(sourceSnapshot.sourceChatId);
 
         // Send one turn in the branch so it has its own tail.
@@ -224,7 +224,7 @@ test.describe('#55 — Branch chat keeps source MG intact (real branch UI)', () 
         await importMgGraphBindLatest(page, branchImportPath);
 
         const branchSnapshot = await page.evaluate(async () => {
-            const ctx = window.Luker.getContext();
+            const ctx = window.Atria.getContext();
             const mg = ctx.getExtensionApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const cands = session ? session.listVisibleCandidates({}) : [];

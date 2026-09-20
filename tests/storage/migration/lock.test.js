@@ -33,7 +33,7 @@ describe('migration lock', () => {
     let dataRoot;
 
     beforeEach(() => {
-        dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-lock-test-'));
+        dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-lock-test-'));
     });
 
     afterEach(() => {

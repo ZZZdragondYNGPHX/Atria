@@ -29,13 +29,13 @@ import {
 } from '../../iteration-library/tools/character-presets-reads.js';
 import { floorRecordToTaskMessage, readPluginFloors } from '../../lib/plugin-floors.js';
 
-const __ctx = Luker.getContext();
+const __ctx = Atria.getContext();
 const generateQuietPrompt = __ctx.generateQuietPrompt;
 const saveSettingsDebounced = __ctx.saveSettingsDebounced;
 const DOMPurify = __ctx.lib.DOMPurify;
 const lodash = __ctx.lib.lodash;
 const extension_settings = __ctx.extensionSettings;
-const getContext = Luker.getContext;
+const getContext = Atria.getContext;
 const getCharacterState = __ctx.getCharacterState;
 const updateCharacterState = __ctx.updateCharacterState;
 const addLocaleData = __ctx.addLocaleData;
@@ -55,17 +55,17 @@ const UI_BLOCK_ID = 'character_editor_assistant_settings';
 const STYLE_ID = 'character_editor_assistant_style';
 
 const TOOL_NAMES = Object.freeze({
-    UPDATE_FIELDS: 'luker_card_update_fields',
-    SET_PRIMARY_BOOK: 'luker_card_set_primary_lorebook',
-    UPSERT_ENTRY: 'luker_card_upsert_lorebook_entry',
-    DELETE_ENTRY: 'luker_card_delete_lorebook_entry',
-    LIST_ENTRIES: 'luker_card_list_lorebook_entries',
-    QUERY_ENTRIES: 'luker_card_query_lorebook_entries',
-    GET_ENTRIES: 'luker_card_get_lorebook_entries',
-    SIMULATE_PROMPT: 'luker_card_simulate_prompt',
-    LIST_WORLD_BOOKS: 'luker_card_list_world_books',
-    UPDATE_ENTRY: 'luker_card_update_lorebook_entry',
-    STR_REPLACE_IN_ENTRY: 'luker_card_str_replace_in_lorebook_entry',
+    UPDATE_FIELDS: 'atria_card_update_fields',
+    SET_PRIMARY_BOOK: 'atria_card_set_primary_lorebook',
+    UPSERT_ENTRY: 'atria_card_upsert_lorebook_entry',
+    DELETE_ENTRY: 'atria_card_delete_lorebook_entry',
+    LIST_ENTRIES: 'atria_card_list_lorebook_entries',
+    QUERY_ENTRIES: 'atria_card_query_lorebook_entries',
+    GET_ENTRIES: 'atria_card_get_lorebook_entries',
+    SIMULATE_PROMPT: 'atria_card_simulate_prompt',
+    LIST_WORLD_BOOKS: 'atria_card_list_world_books',
+    UPDATE_ENTRY: 'atria_card_update_lorebook_entry',
+    STR_REPLACE_IN_ENTRY: 'atria_card_str_replace_in_lorebook_entry',
 });
 const CHARACTER_EDITOR_QUERY_LIMIT_DEFAULT = 10;
 const CHARACTER_EDITOR_QUERY_LIMIT_MAX = 20;
@@ -91,7 +91,6 @@ const defaultSettings = {
     editorIterationSystemPrompt: DEFAULT_EDITOR_ITERATION_SYSTEM_PROMPT,
     cardAppStudioSystemPrompt: DEFAULT_CARDAPP_STUDIO_SYSTEM_PROMPT,
 };
-const CHARACTER_EDITOR_SESSION_NAMESPACE = 'character_editor_assistant_sessions';
 
 
 const stateCache = new Map();
@@ -822,7 +821,7 @@ function clone(value) {
         try {
             return structuredClone(value);
         } catch {
-            // Fall back for Luker context proxy objects.
+            // Fall back for Atria context proxy objects.
         }
     }
     const serialized = JSON.stringify(value);
@@ -1138,94 +1137,6 @@ async function clearHistoryRecords(context, { avatar = '' } = {}) {
     state.updatedAt = Date.now();
     await persistOperationState(context, state, { avatar });
     return true;
-}
-
-
-/**
- * Read the raw legacy CEA editor session bundle for an avatar. Returns the
- * underlying `sessions[]` array exactly as it was persisted on the character
- * card (no normalization beyond what the legacy store applied at write time),
- * so the M4 migration converter can introspect every original field.
- *
- * Used only by the unified popup's first-open migration path
- * (`editor-iteration/studio.js`). Returns `[]` on any read error so the
- * popup's session list still loads (migration is best-effort).
- *
- * @param {object} context - SillyTavern context (currently unused; reserved
- *   for symmetry with `loadCharacterEditorSessionStore`).
- * @param {string} avatar - Character avatar key.
- * @returns {Promise<Array<object>>}
- */
-export async function readLegacyCeaEditorSessions(context, avatar) {
-    try {
-        const result = await getCharacterState(avatar, CHARACTER_EDITOR_SESSION_NAMESPACE);
-        // Best-effort legacy migration read — any envelope failure (or a thrown
-        // surprise from a non-conforming stub) falls through to `[]` so the
-        // unified popup never blocks on a recoverable read error.
-        if (!result?.ok) {
-            if (result?.reason) {
-                // eslint-disable-next-line no-console
-                console.warn(`[character-editor-assistant] legacy session read failed: ${result.reason} ${result.hint || ''}`);
-            }
-            return [];
-        }
-        const raw = result.state;
-        const sessions = Array.isArray(raw?.sessions) ? raw.sessions : [];
-        // Return a shallow clone so downstream mutation can't corrupt the
-        // persisted card state if the migrator decides to mutate-in-place.
-        return sessions.map(s => (s && typeof s === 'object') ? { ...s } : s);
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn('[character-editor-assistant] readLegacyCeaEditorSessions failed', err);
-        return [];
-    }
-}
-
-/**
- * Read the raw legacy character-iteration popup session bucket for an avatar.
- *
- * The deleted CHARACTER_REPLACED auto-popup persisted sessions to
- * `extension_settings.character_editor_assistant.popupSessionsV2[char_<avatar>]`.
- * After that popup was removed, those sessions became orphans
- * the new unified-popup migration ignored. This reader gives the migrator a
- * second source so that history is recovered on first open.
- *
- * The bucket shape is `{ [sessionId]: sessionObject }`. We return an array of
- * session objects (shallow-cloned) — the convertLegacyMessage / migrator
- * downstream handles the same conversationMessages / pendingApproval shape
- * that the editor popup used, so no separate adapter is needed.
- *
- * Returns `[]` on any read error so the migration's outer empty-check still
- * works gracefully.
- *
- * @param {object} context - SillyTavern context (currently unused; reserved
- *   for symmetry with `readLegacyCeaEditorSessions`).
- * @param {string} avatar - Character avatar key.
- * @returns {Promise<Array<object>>}
- */
-export async function readLegacyCharIterPopupSessions(context, avatar) {
-    try {
-        const root = context?.extensionSettings?.character_editor_assistant
-            || (typeof globalThis !== 'undefined' && globalThis.extension_settings && globalThis.extension_settings.character_editor_assistant)
-            || null;
-        if (!root || typeof root !== 'object') return [];
-        const v2 = root.popupSessionsV2;
-        if (!v2 || typeof v2 !== 'object') return [];
-        const scope = `char_${avatar}`;
-        const bucket = v2[scope];
-        if (!bucket) return [];
-        if (Array.isArray(bucket)) {
-            return bucket.filter(s => s && typeof s === 'object').map(s => ({ ...s }));
-        }
-        if (typeof bucket === 'object') {
-            return Object.values(bucket).filter(s => s && typeof s === 'object').map(s => ({ ...s }));
-        }
-        return [];
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn('[character-editor-assistant] readLegacyCharIterPopupSessions failed', err);
-        return [];
-    }
 }
 
 
@@ -1938,7 +1849,7 @@ async function queryCharacterEditorLorebookEntries(context, args = {}) {
     const hasConstantFilter = typeof args?.constant === 'boolean';
     const hasEnabledFilter = typeof args?.enabled === 'boolean';
     if (!queryText && !hasConstantFilter && !hasEnabledFilter) {
-        throw new Error(`${TOOL_NAMES.QUERY_ENTRIES} requires text, constant, or enabled.`);
+        throw new Error('lorebook_query requires text, constant, or enabled.');
     }
     const limit = normalizeCharacterEditorQueryLimit(args?.limit);
     const state = await loadCharacterEditorLorebookByName(context, args?.book_name);
@@ -2022,7 +1933,7 @@ async function listCharacterEditorLorebookEntries(context, args = {}) {
 async function getCharacterEditorLorebookEntries(context, args = {}) {
     const uids = normalizeCharacterEditorDetailUids(args?.uids);
     if (uids.length === 0) {
-        throw new Error(`${TOOL_NAMES.GET_ENTRIES} requires one or more valid uids.`);
+        throw new Error('lorebook_get requires one or more valid uids.');
     }
     const state = await loadCharacterEditorLorebookByName(context, args?.book_name);
     const entries = state?.lorebookData?.entries && typeof state.lorebookData.entries === 'object'
@@ -2063,19 +1974,19 @@ async function getCharacterEditorLorebookEntries(context, args = {}) {
 async function computeCharacterEditorLorebookUpdate(context, args = {}) {
     const bookName = String(args?.book_name || '').trim();
     if (!bookName) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} requires book_name.`);
+        throw new Error('lorebook_update_entry requires book_name.');
     }
     const uid = asFiniteInteger(args?.uid, null);
     if (!Number.isInteger(uid) || uid < 0) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} requires a non-negative integer uid.`);
+        throw new Error('lorebook_update_entry requires a non-negative integer uid.');
     }
     const patch = args?.patch;
     if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} requires a patch object.`);
+        throw new Error('lorebook_update_entry requires a patch object.');
     }
     const patchKeys = Object.keys(patch);
     if (patchKeys.length === 0) {
-        throw new Error(`${TOOL_NAMES.UPDATE_ENTRY} patch must contain at least one field.`);
+        throw new Error('lorebook_update_entry patch must contain at least one field.');
     }
     const data = await context.loadWorldInfo(bookName);
     if (!data) {
@@ -2117,17 +2028,17 @@ async function computeCharacterEditorLorebookUpdate(context, args = {}) {
 async function computeCharacterEditorLorebookStrReplace(context, args = {}) {
     const bookName = String(args?.book_name || '').trim();
     if (!bookName) {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires book_name.`);
+        throw new Error('lorebook_str_replace_in_entry requires book_name.');
     }
     const uid = asFiniteInteger(args?.uid, null);
     if (!Number.isInteger(uid) || uid < 0) {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires a non-negative integer uid.`);
+        throw new Error('lorebook_str_replace_in_entry requires a non-negative integer uid.');
     }
     if (typeof args?.oldString !== 'string' || args.oldString.length === 0) {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires a non-empty oldString.`);
+        throw new Error('lorebook_str_replace_in_entry requires a non-empty oldString.');
     }
     if (typeof args?.newString !== 'string') {
-        throw new Error(`${TOOL_NAMES.STR_REPLACE_IN_ENTRY} requires newString (use an empty string to delete).`);
+        throw new Error('lorebook_str_replace_in_entry requires newString (use an empty string to delete).');
     }
     const replaceAll = Boolean(args?.replaceAll);
     const data = await context.loadWorldInfo(bookName);
@@ -2251,9 +2162,9 @@ export async function applyCharacterEditorLorebookProposal(context, { kind, args
 
 function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
     const toolNames = Object.freeze({
-        LIST: TOOL_NAMES.LIST_ENTRIES,
-        QUERY: TOOL_NAMES.QUERY_ENTRIES,
-        GET: TOOL_NAMES.GET_ENTRIES,
+        LIST: 'lorebook_list',
+        QUERY: 'lorebook_query',
+        GET: 'lorebook_get',
     });
     return {
         toolNames,
@@ -2262,7 +2173,7 @@ function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
                 type: 'function',
                 function: {
                     name: toolNames.LIST,
-                    description: `List compact lorebook entry index rows for a world book. Returns only uid, name, and enabled. Call ${TOOL_NAMES.LIST_WORLD_BOOKS} first to know which book names exist. Optional range narrows the inclusive UID window, for example 0~100.`,
+                    description: 'List compact lorebook entry index rows for a world book. Returns only uid, name, and enabled. Call world_book_list first to know which book names exist. Optional range narrows the inclusive UID window, for example 0~100.',
                     parameters: {
                         type: 'object',
                         properties: {
@@ -2284,7 +2195,7 @@ function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
                 type: 'function',
                 function: {
                     name: toolNames.QUERY,
-                    description: `Search a world book and return lightweight matching entries. Call ${TOOL_NAMES.LIST_WORLD_BOOKS} first to know which book names exist. Use this before ${toolNames.GET} to narrow candidates.`,
+                    description: `Search a world book and return lightweight matching entries. Call world_book_list first to know which book names exist. Use this before ${toolNames.GET} to narrow candidates.`,
                     parameters: {
                         type: 'object',
                         properties: {
@@ -2359,13 +2270,13 @@ function createCharacterEditorLorebookToolApi(context, { avatar = '' } = {}) {
  * envelope that the popup captures as a pending diff card; commits happen
  * only when the user clicks Apply, via {@link applyCharacterEditorLorebookCommit}.
  *
- * The tool schemas are owned by `iteration-library/tools/lorebook-writes.js`
- * — this api only owns the legacy wire-name dispatch.
+ * The tool schemas are owned by `iteration-library/tools/lorebook-writes.js`;
+ * this API dispatches those same canonical tool names.
  */
 function createCharacterEditorLorebookWriteToolApi(context, { avatar = '' } = {}) {
     const toolNames = Object.freeze({
-        UPDATE: TOOL_NAMES.UPDATE_ENTRY,
-        STR_REPLACE: TOOL_NAMES.STR_REPLACE_IN_ENTRY,
+        UPDATE: 'lorebook_update_entry',
+        STR_REPLACE: 'lorebook_str_replace_in_entry',
     });
     return {
         toolNames,
@@ -2432,7 +2343,7 @@ export function buildCharacterEditorSimulationSourceMessages(context, {
 
 function createCharacterEditorSimulateToolApi(context) {
     const toolNames = Object.freeze({
-        SIMULATE: TOOL_NAMES.SIMULATE_PROMPT,
+        SIMULATE: 'simulate_prompt',
     });
     return {
         toolNames,
@@ -2665,7 +2576,7 @@ function buildCharacterEditorSimulationErrorResult(err) {
 
 function createCharacterEditorWorldBookListToolApi(context, { avatar = '' } = {}) {
     const toolNames = Object.freeze({
-        LIST_WORLD_BOOKS: TOOL_NAMES.LIST_WORLD_BOOKS,
+        LIST_WORLD_BOOKS: 'world_book_list',
     });
     return {
         toolNames,
@@ -2674,7 +2585,7 @@ function createCharacterEditorWorldBookListToolApi(context, { avatar = '' } = {}
                 type: 'function',
                 function: {
                     name: toolNames.LIST_WORLD_BOOKS,
-                    description: 'List world book names visible to the character being edited, tagged with their scope. Sources: \'character\' (the card\'s primary book at character.data.extensions.world), \'character_aux\' (auxiliary books bound via Luker\'s lorebook editor at world_info.charLore[].extraBooks), \'chat\' (chat-bound books from chat_metadata.world_info — only the active chat), and \'global\' (selected_world_info — books active for every chat). Returns { books: string[], sources: { [name]: scope } } so you can tell which scope owns each book without inspecting the card directly.',
+                    description: 'List world book names visible to the character being edited, tagged with their scope. Sources: \'character\' (the card\'s primary book at character.data.extensions.world), \'character_aux\' (auxiliary books bound via Atria\'s lorebook editor at world_info.charLore[].extraBooks), \'chat\' (chat-bound books from chat_metadata.world_info — only the active chat), and \'global\' (selected_world_info — books active for every chat). Returns { books: string[], sources: { [name]: scope } } so you can tell which scope owns each book without inspecting the card directly.',
                     parameters: {
                         type: 'object',
                         properties: {},
@@ -2728,7 +2639,7 @@ function createCharacterEditorWorldBookListToolApi(context, { avatar = '' } = {}
  * this module: `{ toolNames, getToolDefs, isToolName, invoke }`.
  *
  * The shared executor returns `{ ok, result }` / `{ ok, error }` envelopes;
- * this API unwraps `result` on ok and throws on failure so the legacy
+ * this API unwraps `result` on ok and throws on failure so the shared
  * helper-tool runner's exception path surfaces the error, matching the
  * contract sibling APIs use.
  *
@@ -2994,7 +2905,7 @@ const {
 
 
 function getCharacterEditorSearchApi() {
-    const api = globalThis?.Luker?.searchTools;
+    const api = globalThis?.Atria?.searchTools;
     if (!api || typeof api !== 'object') {
         return null;
     }
@@ -3009,9 +2920,9 @@ function getCharacterEditorSearchApi() {
     return api;
 }
 
-// Exported so editor-iteration/tools.js (unified CEA editor) can dispatch
-// short-name read tool calls (`lorebook_query`, `simulate_prompt`, etc.) to
-// the existing legacy helper-tool APIs without reimplementing them.
+// Exported so editor-iteration/tools.js can dispatch the canonical read-tool
+// names (`lorebook_query`, `simulate_prompt`, etc.) through shared helper
+// APIs without duplicating read-side logic.
 export async function runCharacterEditorHelperToolCall(call, helperToolApis = []) {
     const name = String(call?.name || '').trim();
     const api = (Array.isArray(helperToolApis) ? helperToolApis : [])
@@ -3026,8 +2937,8 @@ export async function runCharacterEditorHelperToolCall(call, helperToolApis = []
  * Build the helper-tool API array the unified CEA editor's read tools
  * (`lorebook_query`, `lorebook_list`, `lorebook_get`, `world_book_list`,
  * `simulate_prompt`, `web_search`) dispatch through. Assembles the same
- * helper-tool surface the legacy editor used so the unified popup keeps
- * tool parity without re-exporting each individual factory.
+ * helper-tool surface used by the unified popup without re-exporting each
+ * individual factory.
  *
  * Returned shape is an Array so it's drop-in compatible with
  * `runCharacterEditorHelperToolCall(call, helperToolApis)` and with the
@@ -3040,7 +2951,7 @@ export async function runCharacterEditorHelperToolCall(call, helperToolApis = []
  *                                   world-book-list APIs to the right card.
  * @returns {Array<Object>} Helper-tool API objects (lorebook, simulate,
  *                          worldBookList, plus optional search when
- *                          `globalThis.Luker.searchTools` is wired).
+ *                          `globalThis.Atria.searchTools` is wired).
  */
 export function buildCharacterEditorHelperApis(context, opts = {}) {
     const avatar = String(opts?.avatar || '').trim();

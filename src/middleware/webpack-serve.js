@@ -8,11 +8,11 @@ import getPublicLibConfig from '../../webpack.config.js';
 // compile path so a partial bundle ship never silently serves a stale lib.
 const PREBUILT_BUNDLE_FILES = ['lib.core.bundle.js', 'lib.optional.bundle.js', 'codemirror.bundle.js'];
 
-// Resolved once at module load: LUKER_PREBUILT_BUNDLES_DIR is set by the
+// Resolved once at module load: ATRIA_PREBUILT_BUNDLES_DIR is set by the
 // packager before server.js is imported and never changes at runtime. Caching
 // avoids 4 fs.existsSync syscalls per bundle request on slow Android flash.
 const prebuiltBundleDir = (() => {
-    const raw = process.env.LUKER_PREBUILT_BUNDLES_DIR;
+    const raw = process.env.ATRIA_PREBUILT_BUNDLES_DIR;
     if (!raw) return null;
     const trimmed = String(raw).trim();
     if (!trimmed) return null;

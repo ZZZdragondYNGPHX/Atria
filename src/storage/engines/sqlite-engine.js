@@ -28,7 +28,7 @@ export class SqliteEngine {
         if (this._dbs.has(handle)) return this._dbs.get(handle);
         const root = this._directoriesByHandle(handle).root;
         fs.mkdirSync(root, { recursive: true });
-        const dbPath = path.join(root, 'luker-storage.sqlite');
+        const dbPath = path.join(root, 'atria-storage.sqlite');
         const db = new Database(dbPath);
         db.pragma('journal_mode = WAL');
         db.pragma('synchronous = NORMAL');
@@ -51,7 +51,7 @@ export class SqliteEngine {
 
     /**
      * No-op for "engine row removal" per design spec §4.1 / §5.3 — every byte
-     * of a sqlite user's data lives in `dirs.root/luker-storage.sqlite`, and
+     * of a sqlite user's data lives in `dirs.root/atria-storage.sqlite`, and
      * the admin `/delete` handler's `purge=true` branch is the single,
      * explicit owner of removing the user dir (which sweeps the .sqlite file
      * with it). `deleteUser` runs unconditionally and must therefore preserve
@@ -85,7 +85,7 @@ export class SqliteEngine {
      */
     async dumpUser(handle) {
         const db = this._dbFor(handle);
-        const tmpPath = path.join(os.tmpdir(), `luker-dump-${randomBytes(8).toString('hex')}.sqlite`);
+        const tmpPath = path.join(os.tmpdir(), `atria-dump-${randomBytes(8).toString('hex')}.sqlite`);
         await db.backup(tmpPath);
         const stream = fs.createReadStream(tmpPath);
         const cleanup = () => {
@@ -98,7 +98,7 @@ export class SqliteEngine {
 
     /**
      * sqlite restore writes the incoming bytes into
-     * `dirs.root/luker-storage.sqlite`. Closes + evicts the cached `Database`
+     * `dirs.root/atria-storage.sqlite`. Closes + evicts the cached `Database`
      * handle first so the rename doesn't race an open handle (Windows refuses
      * to replace open files; *nix would leave readers on a dangling inode).
      * Writes to a temp file first then `fs.rename`s atomically over the final
@@ -116,8 +116,8 @@ export class SqliteEngine {
             this._txTail.delete(handle);
         }
         const dirs = this._directoriesByHandle(handle);
-        const finalPath = path.join(dirs.root, 'luker-storage.sqlite');
-        const tmpPath = path.join(os.tmpdir(), `luker-restore-${randomBytes(8).toString('hex')}.sqlite`);
+        const finalPath = path.join(dirs.root, 'atria-storage.sqlite');
+        const tmpPath = path.join(os.tmpdir(), `atria-restore-${randomBytes(8).toString('hex')}.sqlite`);
         try {
             await new Promise((resolve, reject) => {
                 const write = fs.createWriteStream(tmpPath);
@@ -177,7 +177,7 @@ export class SqliteEngine {
      * against whatever DB file is on disk at that time.
      *
      * Used by the LAN-sync orchestrator after `reconcileShadowToLive`
-     * swaps in a fresh `luker-storage.sqlite` via `write-file-atomic`'s
+     * swaps in a fresh `atria-storage.sqlite` via `write-file-atomic`'s
      * rename: better-sqlite3's cached handle pins the OLD (now unlinked)
      * inode and silently returns stale data, so we MUST drop it before
      * the next read or write. Per-handle (rather than `close()`)

@@ -2,7 +2,7 @@ import { appendShared, appendToolStatusChip, appendToolSourceChip, jsonOrText } 
 
 export function render(payload, i18n) {
     const root = document.createElement('div');
-    root.className = 'luker-sim-review luker-sim-review--orch-agenda';
+    root.className = 'atria-sim-review atria-sim-review--orch-agenda';
 
     const composedSec = appendShared.section(root, i18n('sim.section.final_composed', 'Final Composed Output'), 'Final Composed Output', { isFinalOutput: true });
     appendShared.pre(composedSec, payload?.finalComposedOutput || '');

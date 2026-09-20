@@ -109,7 +109,7 @@ describe('MigrationRunner: FS to SQLite', () => {
     let tmpRoot, src, dst;
 
     beforeEach(() => {
-        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-runner-fs2sq-'));
+        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-runner-fs2sq-'));
         src = buildHarness('fs', path.join(tmpRoot, 'src'));
         dst = buildHarness('sqlite', path.join(tmpRoot, 'dst'));
     });
@@ -483,7 +483,7 @@ describe('MigrationRunner: SQLite to FS (reverse direction)', () => {
     let tmpRoot, src, dst;
 
     beforeEach(() => {
-        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-runner-sq2fs-'));
+        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-runner-sq2fs-'));
         src = buildHarness('sqlite', path.join(tmpRoot, 'src'));
         dst = buildHarness('fs', path.join(tmpRoot, 'dst'));
     });
@@ -689,8 +689,8 @@ describe('MigrationRunner: destHandle', () => {
         // 'u'; this test needs three distinct handles ('_xrestore_abc' src,
         // 'realUser' + '_xrestore_abc' on dst — the latter to assert it stays
         // empty) each with their own directory tree so reads don't alias.
-        const srcRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-desthandle-src-'));
-        const dstRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-desthandle-dst-'));
+        const srcRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-desthandle-src-'));
+        const dstRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-desthandle-dst-'));
         const backupRoot = path.join(dstRoot, '_backups');
         const { engine: srcEngine } = makeMultiHandleFsEngine({ root: srcRoot });
         const { engine: dstEngine, dirsForHandle: dstDirsForHandle } = makeMultiHandleFsEngine({ root: dstRoot });
@@ -756,8 +756,8 @@ describe('MigrationRunner: destHandle', () => {
         // its rollback restore are SOURCE-handle keyed. We assert by intercepting
         // restoreFromSnapshot at the storage/migration/backup module boundary,
         // capturing the `handle` arg passed by _rollback.
-        const srcRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-rb-src-'));
-        const dstRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luker-rb-dst-'));
+        const srcRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-rb-src-'));
+        const dstRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'atria-rb-dst-'));
         const backupRoot = path.join(dstRoot, '_backups');
         const { engine: srcEngine } = makeMultiHandleFsEngine({ root: srcRoot });
         const { engine: dstEngine, dirsForHandle: dstDirsForHandle } = makeMultiHandleFsEngine({ root: dstRoot });

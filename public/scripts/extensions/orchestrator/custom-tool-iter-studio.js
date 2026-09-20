@@ -9,21 +9,21 @@
  *
  * Tool catalog (11 tools):
  *   READS (no proposals, results returned verbatim):
- *     luker_orch_list_custom_tools     — list profile-owned entries
- *     luker_orch_get_custom_tool       — read one entry verbatim
- *     luker_orch_dry_run_custom_tool   — compile + run a body in a sandbox
+ *     atri_orch_list_custom_tools     — list profile-owned entries
+ *     atri_orch_get_custom_tool       — read one entry verbatim
+ *     atri_orch_dry_run_custom_tool   — compile + run a body in a sandbox
  *                                        with caller-supplied args; full
  *                                        exception relayed back; 3s wall-
  *                                        clock cap; console.log captured
- *     luker_ctx_list_keys              — top-level ctx keys (lifted)
- *     luker_ctx_describe               — describe one ctx path (lifted)
- *     luker_docs_list                  — list docs/*.md
- *     luker_docs_read                  — read one doc file
+ *     atri_ctx_list_keys              — top-level ctx keys (lifted)
+ *     atri_ctx_describe               — describe one ctx path (lifted)
+ *     atri_docs_list                  — list docs/*.md
+ *     atri_docs_read                  — read one doc file
  *   WRITES (return {pendingCustomToolEdit} the popup parks on ProposalBus):
- *     luker_orch_set_custom_tool             — kind: 'upsert'
- *     luker_orch_patch_custom_tool_body      — kind: 'patch_body'
- *     luker_orch_patch_custom_tool_schema    — kind: 'patch_schema'
- *     luker_orch_remove_custom_tool          — kind: 'remove'
+ *     atri_orch_set_custom_tool             — kind: 'upsert'
+ *     atri_orch_patch_custom_tool_body      — kind: 'patch_body'
+ *     atri_orch_patch_custom_tool_schema    — kind: 'patch_schema'
+ *     atri_orch_remove_custom_tool          — kind: 'remove'
  *
  * Proposal contract mirrors skill-iter-studio's `pendingSkillEdit` envelope
  * verbatim (one blob per tool call, parked on ProposalBus, committed via
@@ -37,8 +37,8 @@ import { getBuiltinToolRegistry } from './loop-tools.js';
 import {
     listCtxKeys,
     describeCtxPath,
-    listLukerDocs,
-    readLukerDoc,
+    listAtriaDocs,
+    readAtriaDoc,
 } from '../../iteration-library/tools/ctx-and-docs-discovery.js';
 import { STATE_ERROR_REASONS, makeStateError } from '../../state-errors.js';
 
@@ -68,17 +68,17 @@ const DRY_RUN_TIMEOUT_MS = 3000;
 // ────────────────────────────────────────────────────────────────────────────
 
 export const CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES = Object.freeze({
-    LIST: 'luker_orch_list_custom_tools',
-    GET: 'luker_orch_get_custom_tool',
-    SET: 'luker_orch_set_custom_tool',
-    PATCH_BODY: 'luker_orch_patch_custom_tool_body',
-    PATCH_SCHEMA: 'luker_orch_patch_custom_tool_schema',
-    REMOVE: 'luker_orch_remove_custom_tool',
-    DRY_RUN: 'luker_orch_dry_run_custom_tool',
-    CTX_LIST_KEYS: 'luker_ctx_list_keys',
-    CTX_DESCRIBE: 'luker_ctx_describe',
-    DOCS_LIST: 'luker_docs_list',
-    DOCS_READ: 'luker_docs_read',
+    LIST: 'atri_orch_list_custom_tools',
+    GET: 'atri_orch_get_custom_tool',
+    SET: 'atri_orch_set_custom_tool',
+    PATCH_BODY: 'atri_orch_patch_custom_tool_body',
+    PATCH_SCHEMA: 'atri_orch_patch_custom_tool_schema',
+    REMOVE: 'atri_orch_remove_custom_tool',
+    DRY_RUN: 'atri_orch_dry_run_custom_tool',
+    CTX_LIST_KEYS: 'atri_ctx_list_keys',
+    CTX_DESCRIBE: 'atri_ctx_describe',
+    DOCS_LIST: 'atri_docs_list',
+    DOCS_READ: 'atri_docs_read',
 });
 
 const CUSTOM_TOOL_ITER_STUDIO_TOOL_NAME_SET = new Set(Object.values(CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES));
@@ -123,7 +123,7 @@ export const CUSTOM_TOOL_ITER_STUDIO_TOOL_DEFS = Object.freeze([
         type: 'function',
         function: {
             name: CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES.SET,
-            description: 'Create or overwrite one custom tool entry. Body is a JavaScript async function body — receives (args, ctx). The body is compile-validated immediately; a syntax error returns {ok:false}. On success the change is staged as a proposal and rendered as a review card; nothing reaches the profile until the user approves and clicks Apply. ALWAYS run luker_orch_dry_run_custom_tool first with realistic args so you catch runtime errors before staging.',
+            description: 'Create or overwrite one custom tool entry. Body is a JavaScript async function body — receives (args, ctx). The body is compile-validated immediately; a syntax error returns {ok:false}. On success the change is staged as a proposal and rendered as a review card; nothing reaches the profile until the user approves and clicks Apply. ALWAYS run atri_orch_dry_run_custom_tool first with realistic args so you catch runtime errors before staging.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -132,7 +132,7 @@ export const CUSTOM_TOOL_ITER_STUDIO_TOOL_DEFS = Object.freeze([
                     description: { type: 'string', description: 'Required. What the tool does, written for the runtime agent that will call it.' },
                     mode: { type: 'string', enum: ['read', 'write'], description: 'read = no side effects (safe to call in simulation); write = mutates state.' },
                     parameters: { type: 'object', description: 'OpenAI-style JSON Schema describing the runtime agent\'s arguments to this tool.' },
-                    body: { type: 'string', description: 'JavaScript async function body. `args` is the runtime agent\'s parsed call payload; `ctx` is the same object SillyTavern/Luker extensions get via getContext(), augmented with orchestration-specific fields (see ctx.director?.getDraft, ctx.__customToolRegistry). Use luker_ctx_describe + luker_docs_read FIRST to learn the actual surface.' },
+                    body: { type: 'string', description: 'JavaScript async function body. `args` is the runtime agent\'s parsed call payload; `ctx` is the same object SillyTavern/Atria extensions get via getContext(), augmented with orchestration-specific fields (see ctx.director?.getDraft, ctx.__customToolRegistry). Use atri_ctx_describe + atri_docs_read FIRST to learn the actual surface.' },
                     simulateBody: { type: 'string', description: 'Optional. Body used when running in simulation review. Write-mode tools without a simulate body return a placeholder during simulation.' },
                 },
                 required: ['name', 'description', 'mode', 'parameters', 'body'],
@@ -144,7 +144,7 @@ export const CUSTOM_TOOL_ITER_STUDIO_TOOL_DEFS = Object.freeze([
         type: 'function',
         function: {
             name: CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES.PATCH_BODY,
-            description: 'Find/replace patch on an existing custom tool\'s body without resending the whole body. Default `oldString` must occur exactly once — widen with surrounding context until unique. Pass `replaceAll: true` to replace every occurrence. Patched body is compile-validated; syntax errors return {ok:false}. Prefer this over luker_orch_set_custom_tool when only tweaking a few lines.',
+            description: 'Find/replace patch on an existing custom tool\'s body without resending the whole body. Default `oldString` must occur exactly once — widen with surrounding context until unique. Pass `replaceAll: true` to replace every occurrence. Patched body is compile-validated; syntax errors return {ok:false}. Prefer this over atri_orch_set_custom_tool when only tweaking a few lines.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -211,7 +211,7 @@ export const CUSTOM_TOOL_ITER_STUDIO_TOOL_DEFS = Object.freeze([
         type: 'function',
         function: {
             name: CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES.CTX_LIST_KEYS,
-            description: 'List top-level properties of the runtime ctx (the same object SillyTavern/Luker extensions get via getContext(), ~200+ keys). Each entry is {key, type}. Use luker_ctx_describe for details on a specific key.',
+            description: 'List top-level properties of the runtime ctx (the same object SillyTavern/Atria extensions get via getContext(), ~200+ keys). Each entry is {key, type}. Use atri_ctx_describe for details on a specific key.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -240,7 +240,7 @@ export const CUSTOM_TOOL_ITER_STUDIO_TOOL_DEFS = Object.freeze([
         type: 'function',
         function: {
             name: CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES.DOCS_LIST,
-            description: 'List Luker documentation files (markdown) available locally. By default returns only English docs. Useful starting points: development/extension-api/orchestrator-tools.md, features/orchestrator/custom-tools.md, development/extension-api/chat-and-state.md, development/extension-api/generation.md, development/extension-api/world-info.md.',
+            description: 'List Atria documentation files (markdown) available locally. By default returns only English docs. Useful starting points: development/extension-api/orchestrator-tools.md, features/orchestrator/custom-tools.md, development/extension-api/chat-and-state.md, development/extension-api/generation.md, development/extension-api/world-info.md.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -255,7 +255,7 @@ export const CUSTOM_TOOL_ITER_STUDIO_TOOL_DEFS = Object.freeze([
         type: 'function',
         function: {
             name: CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES.DOCS_READ,
-            description: 'Read a Luker documentation markdown file. Use this to look up authoritative guidance on the ctx surface, orchestrator tool API, lorebook contracts, state-system, etc., BEFORE generating code that touches those areas.',
+            description: 'Read a Atria documentation markdown file. Use this to look up authoritative guidance on the ctx surface, orchestrator tool API, lorebook contracts, state-system, etc., BEFORE generating code that touches those areas.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -395,7 +395,7 @@ function defaultCtxFactory({ console: cons }) {
     // surface CardApp / orchestrator runtime use. Augment with the
     // sandbox console so dry-run logs surface without polluting the
     // page console.
-    const ctx = Luker.getContext();
+    const ctx = Atria.getContext();
     return new Proxy(ctx, {
         get(target, prop) {
             if (prop === 'console') return cons;
@@ -499,14 +499,14 @@ export async function executeCustomToolIterStudioCall(call, { profile, ctxFactor
             return result?.ok ? { ok: true, result } : makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET, String(result?.error || 'ctx describe failed'));
         }
         case CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES.DOCS_LIST: {
-            const result = await listLukerDocs({
+            const result = await listAtriaDocs({
                 filter: String(args?.filter || ''),
                 includeTranslations: !!args?.includeTranslations,
             });
             return result?.ok ? { ok: true, result } : makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET, String(result?.error || 'docs list failed'));
         }
         case CUSTOM_TOOL_ITER_STUDIO_TOOL_NAMES.DOCS_READ: {
-            const result = await readLukerDoc({ path: String(args?.path || '') });
+            const result = await readAtriaDoc({ path: String(args?.path || '') });
             return result?.ok ? { ok: true, result } : makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET, String(result?.error || 'docs read failed'));
         }
         default:
@@ -581,7 +581,7 @@ function handleSet(profile, args) {
             name,
             before: before ? cloneToolEntry(before) : null,
             after,
-            op: { name: 'luker_orch_set_custom_tool', args: { ...args } },
+            op: { name: 'atri_orch_set_custom_tool', args: { ...args } },
         },
     };
 }
@@ -622,7 +622,7 @@ function handlePatchBody(profile, args) {
             name,
             before: cloneToolEntry(before),
             after,
-            op: { name: 'luker_orch_patch_custom_tool_body', args: { ...args } },
+            op: { name: 'atri_orch_patch_custom_tool_body', args: { ...args } },
         },
     };
 }
@@ -651,7 +651,7 @@ function handlePatchSchema(profile, args) {
             name,
             before: cloneToolEntry(before),
             after,
-            op: { name: 'luker_orch_patch_custom_tool_schema', args: { ...args } },
+            op: { name: 'atri_orch_patch_custom_tool_schema', args: { ...args } },
         },
     };
 }
@@ -673,7 +673,7 @@ function handleRemove(profile, args) {
             name,
             before: cloneToolEntry(before),
             after: null,
-            op: { name: 'luker_orch_remove_custom_tool', args: { ...args } },
+            op: { name: 'atri_orch_remove_custom_tool', args: { ...args } },
         },
     };
 }
@@ -763,7 +763,7 @@ export function commitApprovedCustomToolProposal(profile, flagBucket, op) {
     const args = op.args && typeof op.args === 'object' ? op.args : {};
     const name = String(args.name || '');
     switch (op.name) {
-        case 'luker_orch_set_custom_tool': {
+        case 'atri_orch_set_custom_tool': {
             const incoming = {
                 name,
                 displayName: String(args.displayName || ''),
@@ -782,7 +782,7 @@ export function commitApprovedCustomToolProposal(profile, flagBucket, op) {
             flagBucket[name] = true;
             return { kind: 'upsert', name };
         }
-        case 'luker_orch_patch_custom_tool_body': {
+        case 'atri_orch_patch_custom_tool_body': {
             const idx = profile.customTools.findIndex(t => String(t?.name || '') === name);
             if (idx < 0) {
                 throw new CustomToolCommitError({ reason: STATE_ERROR_REASONS.CONFLICT, hint: `patch_body commit: tool "${name}" no longer present` });
@@ -800,7 +800,7 @@ export function commitApprovedCustomToolProposal(profile, flagBucket, op) {
             profile.customTools[idx] = { ...current, [target]: patch.nextText };
             return { kind: 'patch_body', name };
         }
-        case 'luker_orch_patch_custom_tool_schema': {
+        case 'atri_orch_patch_custom_tool_schema': {
             const idx = profile.customTools.findIndex(t => String(t?.name || '') === name);
             if (idx < 0) {
                 throw new CustomToolCommitError({ reason: STATE_ERROR_REASONS.CONFLICT, hint: `patch_schema commit: tool "${name}" no longer present` });
@@ -810,7 +810,7 @@ export function commitApprovedCustomToolProposal(profile, flagBucket, op) {
             profile.customTools[idx] = { ...current, parameters };
             return { kind: 'patch_schema', name };
         }
-        case 'luker_orch_remove_custom_tool': {
+        case 'atri_orch_remove_custom_tool': {
             const idx = profile.customTools.findIndex(t => String(t?.name || '') === name);
             if (idx < 0) {
                 // Already gone — treat as a no-op rather than throwing, so a

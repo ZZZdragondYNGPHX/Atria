@@ -134,23 +134,23 @@ test.describe('iter-studio ProposalBus regressions (skill diff, skill_create con
         expect(result.error, JSON.stringify(result)).toBeUndefined();
         // Placeholder used to be a tag like `iter_skill_proposal_inline`
         // with the one-line "skill_update_content foo/SKILL.md" inside.
-        // The real diff renderer emits luker_lib_diff_* classes from the
+        // The real diff renderer emits atria_lib_diff_* classes from the
         // shared LCS card.
         expect(result.html).not.toContain('iter_skill_proposal_inline');
-        expect(result.html).toContain('luker_lib_diff');
+        expect(result.html).toContain('atria_lib_diff');
         // The LCS renderer wraps inserted fragments in
-        // `<span class="luker_lib_diff_word_add">…</span>` for partial-
+        // `<span class="atria_lib_diff_word_add">…</span>` for partial-
         // line changes ("Line A (changed)") and wraps whole new lines in
-        // `<td class="luker_lib_diff_text new">` ("Line D (new)" — no
+        // `<td class="atria_lib_diff_text new">` ("Line D (new)" — no
         // word-split because the whole line is added). Either shape is
         // proof the LCS card body fired (not the inline placeholder).
-        expect(result.html).toContain('luker_lib_diff_word_add');
-        expect(result.html).toMatch(/luker_lib_diff_word_add[^>]*>\s*\(changed\)/);
+        expect(result.html).toContain('atria_lib_diff_word_add');
+        expect(result.html).toMatch(/atria_lib_diff_word_add[^>]*>\s*\(changed\)/);
         // Whole-new-line case ("Line D (new)") shows up inside the
         // "new" diff cell. The cell wraps its content in another div,
         // so we just look for the cell class + "Line D (new)" anywhere
         // in the same render — sequence is sufficient proof.
-        expect(result.html).toMatch(/luker_lib_diff_text new[\s\S]*Line D \(new\)/);
+        expect(result.html).toMatch(/atria_lib_diff_text new[\s\S]*Line D \(new\)/);
     });
 
     test('skill_create approves cleanly (no false conflict from fingerprint mismatch)', async ({ page }) => {

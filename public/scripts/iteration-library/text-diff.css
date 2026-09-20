@@ -1,10 +1,10 @@
 /* iteration-library — inline text-diff styling.
  *
  * Side-by-side LCS diff renderer styling. Lifted from the deleted
- * `luker-studio.css` (rules at lines 562-734 of the Stage-5 ship), with
- * the prefix renamed from `luker_iter_diff_*` to `luker_lib_diff_*` so
+ * `atria-studio.css` (rules at lines 562-734 of the Stage-5 ship), with
+ * the prefix renamed from `atria_iter_diff_*` to `atria_lib_diff_*` so
  * the rules are namespaced to the library, not the shell. The
- * `--luker-iter-split-left` CSS var was renamed to `--luker-lib-split-left`.
+ * `--atria-iter-split-left` CSS var was renamed to `--atria-lib-split-left`.
  *
  * Loaded lazily on first call to `renderInlineTextDiffHtml` (or via
  * explicit `ensureStylesheetInjected()` from a popup's mount path); the
@@ -15,12 +15,12 @@
    Inline text-diff (full table style with line numbers + splitter + zoom)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.luker_lib_diff {
+.atria_lib_diff {
     border: 1px solid color-mix(in oklab, var(--SmartThemeBorderColor, rgba(130,130,130,0.5)) 70%, transparent);
     border-radius: 6px;
     background: color-mix(in oklab, var(--SmartThemeBlurTintColor) 88%, transparent);
 }
-.luker_lib_diff > summary {
+.atria_lib_diff > summary {
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -31,7 +31,7 @@
     font-weight: 500;
     flex-wrap: wrap;
 }
-.luker_lib_diff_summary_main {
+.atria_lib_diff_summary_main {
     display: inline-flex;
     align-items: center;
     gap: 4px 8px;
@@ -39,7 +39,7 @@
     flex-wrap: wrap;
     white-space: nowrap;
 }
-.luker_lib_diff_meta {
+.atria_lib_diff_meta {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -49,7 +49,7 @@
     flex-wrap: wrap;
     white-space: nowrap;
 }
-.luker_lib_diff_meta_add {
+.atria_lib_diff_meta_add {
     color: #2ea043;
     background: color-mix(in oklab, #2ea043 18%, transparent);
     border: 1px solid color-mix(in oklab, #2ea043 40%, transparent);
@@ -58,7 +58,7 @@
     font-weight: 600;
     white-space: nowrap;
 }
-.luker_lib_diff_meta_del {
+.atria_lib_diff_meta_del {
     color: #f85149;
     background: color-mix(in oklab, #f85149 18%, transparent);
     border: 1px solid color-mix(in oklab, #f85149 40%, transparent);
@@ -67,7 +67,7 @@
     font-weight: 600;
     white-space: nowrap;
 }
-.luker_lib_diff_expand_btn {
+.atria_lib_diff_expand_btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -76,8 +76,8 @@
     padding: 0;
     line-height: 1;
 }
-.luker_lib_diff_expand_btn i { pointer-events: none; }
-.luker_lib_diff_pre {
+.atria_lib_diff_expand_btn i { pointer-events: none; }
+.atria_lib_diff_pre {
     margin: 0;
     padding: 6px;
     border-top: 1px solid color-mix(in oklab, var(--SmartThemeBorderColor, rgba(130,130,130,0.5)) 50%, transparent);
@@ -87,34 +87,34 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
 }
-.luker_lib_diff,
-.luker_lib_diff_pre { min-width: 0; max-width: 100%; box-sizing: border-box; }
-.luker_lib_diff_dual { --luker-lib-split-left: 50%; --luker-lib-splitter-width: 12px; display: grid; grid-template-columns: minmax(0, var(--luker-lib-split-left)) var(--luker-lib-splitter-width) minmax(0, calc(100% - var(--luker-lib-split-left) - var(--luker-lib-splitter-width))); gap: 0; width: 100%; min-width: 0; align-items: stretch; }
-.luker_lib_diff_splitter { position: relative; cursor: col-resize; touch-action: none; user-select: none; background: transparent; }
-.luker_lib_diff_splitter::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-50%); border-radius: 999px; background: color-mix(in oklab, var(--SmartThemeBodyColor) 22%, transparent); transition: background-color .12s ease; }
-.luker_lib_diff_splitter:hover::before,
-.luker_lib_diff_splitter.active::before { background: color-mix(in oklab, var(--SmartThemeBodyColor) 45%, transparent); }
-.luker_lib_diff_side { border: 1px solid color-mix(in oklab, var(--SmartThemeBorderColor, rgba(130,130,130,0.5)) 55%, transparent); border-radius: 6px; background: color-mix(in oklab, var(--SmartThemeBlurTintColor) 70%, transparent); min-width: 0; overflow: hidden; }
-.luker_lib_diff_side_scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; touch-action: auto; }
-.luker_lib_diff_table {
+.atria_lib_diff,
+.atria_lib_diff_pre { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.atria_lib_diff_dual { --atria-lib-split-left: 50%; --atria-lib-splitter-width: 12px; display: grid; grid-template-columns: minmax(0, var(--atria-lib-split-left)) var(--atria-lib-splitter-width) minmax(0, calc(100% - var(--atria-lib-split-left) - var(--atria-lib-splitter-width))); gap: 0; width: 100%; min-width: 0; align-items: stretch; }
+.atria_lib_diff_splitter { position: relative; cursor: col-resize; touch-action: none; user-select: none; background: transparent; }
+.atria_lib_diff_splitter::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-50%); border-radius: 999px; background: color-mix(in oklab, var(--SmartThemeBodyColor) 22%, transparent); transition: background-color .12s ease; }
+.atria_lib_diff_splitter:hover::before,
+.atria_lib_diff_splitter.active::before { background: color-mix(in oklab, var(--SmartThemeBodyColor) 45%, transparent); }
+.atria_lib_diff_side { border: 1px solid color-mix(in oklab, var(--SmartThemeBorderColor, rgba(130,130,130,0.5)) 55%, transparent); border-radius: 6px; background: color-mix(in oklab, var(--SmartThemeBlurTintColor) 70%, transparent); min-width: 0; overflow: hidden; }
+.atria_lib_diff_side_scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; touch-action: auto; }
+.atria_lib_diff_table {
     width: max-content;
     min-width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
     font-size: 0.82rem;
 }
-.luker_lib_diff_pre,
-.luker_lib_diff_table,
-.luker_lib_diff_row td,
-.luker_lib_diff_text,
-.luker_lib_diff_text_inner { text-align: left; }
-.luker_lib_diff_row td {
+.atria_lib_diff_pre,
+.atria_lib_diff_table,
+.atria_lib_diff_row td,
+.atria_lib_diff_text,
+.atria_lib_diff_text_inner { text-align: left; }
+.atria_lib_diff_row td {
     border-bottom: 1px solid color-mix(in oklab, var(--SmartThemeBorderColor, rgba(130,130,130,0.5)) 28%, transparent);
     padding: 2px 6px;
     vertical-align: top;
 }
-.luker_lib_diff_row:last-child td { border-bottom: none; }
-.luker_lib_diff_ln {
+.atria_lib_diff_row:last-child td { border-bottom: none; }
+.atria_lib_diff_ln {
     width: 3.8em;
     text-align: right;
     color: color-mix(in oklab, var(--SmartThemeBodyColor) 70%, transparent);
@@ -127,11 +127,11 @@
     background-image: none;
     opacity: 1;
 }
-.luker_lib_diff_text {
+.atria_lib_diff_text {
     width: auto;
     min-width: 0;
 }
-.luker_lib_diff_text_inner {
+.atria_lib_diff_text_inner {
     white-space: pre;
     word-break: normal;
     overflow-wrap: normal;
@@ -139,21 +139,21 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     min-width: max-content;
 }
-.luker_lib_diff_word_add {
+.atria_lib_diff_word_add {
     background: color-mix(in oklab, #2ea043 52%, transparent);
     border-radius: 3px;
     padding: 0 1px;
 }
-.luker_lib_diff_word_del {
+.atria_lib_diff_word_del {
     background: color-mix(in oklab, #f85149 52%, transparent);
     border-radius: 3px;
     padding: 0 1px;
 }
-.luker_lib_diff_row_add .luker_lib_diff_text.new { background: color-mix(in oklab, #2ea043 22%, transparent); }
-.luker_lib_diff_row_del .luker_lib_diff_text.old { background: color-mix(in oklab, #f85149 22%, transparent); }
-.luker_lib_diff_row_mod .luker_lib_diff_text.old { background: color-mix(in oklab, #f85149 18%, transparent); }
-.luker_lib_diff_row_mod .luker_lib_diff_text.new { background: color-mix(in oklab, #2ea043 18%, transparent); }
-.luker_lib_diff_zoom_overlay {
+.atria_lib_diff_row_add .atria_lib_diff_text.new { background: color-mix(in oklab, #2ea043 22%, transparent); }
+.atria_lib_diff_row_del .atria_lib_diff_text.old { background: color-mix(in oklab, #f85149 22%, transparent); }
+.atria_lib_diff_row_mod .atria_lib_diff_text.old { background: color-mix(in oklab, #f85149 18%, transparent); }
+.atria_lib_diff_row_mod .atria_lib_diff_text.new { background: color-mix(in oklab, #2ea043 18%, transparent); }
+.atria_lib_diff_zoom_overlay {
     position: fixed;
     inset: 0;
     z-index: 10010;
@@ -161,12 +161,12 @@
     align-items: center;
     justify-content: center;
 }
-.luker_lib_diff_zoom_backdrop {
+.atria_lib_diff_zoom_backdrop {
     position: absolute;
     inset: 0;
     background: color-mix(in oklab, #000 70%, transparent);
 }
-.luker_lib_diff_zoom_dialog {
+.atria_lib_diff_zoom_dialog {
     position: relative;
     z-index: 1;
     width: min(1280px, 95vw);
@@ -176,7 +176,7 @@
     background-color: var(--SmartThemeBlurTintColor);
     /* Stack the tint with itself so backdrop-filter drops during
        touch-scroll don't visually empty the dialog. Same idea the shell
-       used; see deleted .luker-studio-diff-zoom-dialog history.
+       used; see deleted .atria-studio-diff-zoom-dialog history.
        Bottommost layer forces alpha=1 from the tint's RGB so even an
        α=0.1 theme renders with a fully opaque base behind the
        translucent layers above. */
@@ -193,7 +193,7 @@
     overflow: hidden;
     box-shadow: 0 12px 36px rgba(0,0,0,0.45);
 }
-.luker_lib_diff_zoom_header {
+.atria_lib_diff_zoom_header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -201,13 +201,13 @@
     padding: 10px 12px;
     border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(130,130,130,0.24));
 }
-.luker_lib_diff_zoom_title {
+.atria_lib_diff_zoom_title {
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.luker_lib_diff_zoom_close {
+.atria_lib_diff_zoom_close {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -216,23 +216,23 @@
     padding: 0;
     line-height: 1;
 }
-.luker_lib_diff_zoom_body {
+.atria_lib_diff_zoom_body {
     flex: 1;
     min-height: 0;
     overflow: auto;
     padding: 10px;
 }
-.luker_lib_diff_zoom_body .luker_lib_diff_pre { max-height: none; height: auto; }
+.atria_lib_diff_zoom_body .atria_lib_diff_pre { max-height: none; height: auto; }
 
 /* Narrow-viewport override (innerWidth < 720, class set by
    `openExpandedDiff` in `zoom-overlay.js`): stack the dual-column diff
    into a single column with each panel capped at 45vh and its own
    scrollbar so the line-number gutter no longer crushes the cells. */
-.luker_lib_diff_zoom_narrow .luker_lib_diff_dual {
+.atria_lib_diff_zoom_narrow .atria_lib_diff_dual {
     grid-template-columns: 1fr !important;
     grid-template-rows: minmax(0, 45vh) auto minmax(0, 45vh);
 }
-.luker_lib_diff_zoom_narrow .luker_lib_diff_side_scroll {
+.atria_lib_diff_zoom_narrow .atria_lib_diff_side_scroll {
     max-height: 45vh;
     overflow: auto;
 }
@@ -245,21 +245,21 @@
    stacks the dual-column grid into rows, wraps long lines, and bounds the
    table to its container width. */
 @media (max-width: 720px) {
-    .luker_lib_diff_dual {
+    .atria_lib_diff_dual {
         grid-template-columns: 1fr !important;
         grid-template-rows: auto auto auto;
     }
-    .luker_lib_diff_text_inner {
+    .atria_lib_diff_text_inner {
         white-space: pre-wrap;
         word-break: break-word;
         overflow-wrap: anywhere;
         min-width: 0;
     }
-    .luker_lib_diff_table {
+    .atria_lib_diff_table {
         width: 100%;
         min-width: 0;
     }
-    .luker_lib_diff_ln {
+    .atria_lib_diff_ln {
         width: 2.4em;
     }
 }
@@ -273,7 +273,7 @@
    active paint layer small. The intrinsic-size keyword `auto` tells
    Chromium to remember the measured size after first render so the
    scrollbar doesn't jump as rows enter and leave viewport. */
-.luker_lib_diff_row {
+.atria_lib_diff_row {
     content-visibility: auto;
     contain-intrinsic-size: auto 28px;
 }
@@ -284,7 +284,7 @@
    strips so the user sees WHERE the item landed (`… [3] foo · [4] BAR · [5] baz …`)
    without us dumping the moved item's JSON payload into the card body.
    ═══════════════════════════════════════════════════════════════════════════ */
-.luker_lib_diff_card_list_op {
+.atria_lib_diff_card_list_op {
     border: 1px solid color-mix(in oklab, var(--SmartThemeBorderColor, rgba(130,130,130,0.5)) 60%, transparent);
     border-radius: 6px;
     background: color-mix(in oklab, var(--SmartThemeBlurTintColor) 90%, transparent);
@@ -294,13 +294,13 @@
     flex-direction: column;
     gap: 4px;
 }
-.luker_lib_diff_list_strip_label {
+.atria_lib_diff_list_strip_label {
     font-size: 0.78rem;
     font-weight: 600;
     opacity: 0.7;
     margin-top: 2px;
 }
-.luker_lib_diff_list_strip {
+.atria_lib_diff_list_strip {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -309,7 +309,7 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     line-height: 1.45;
 }
-.luker_lib_diff_list_strip_item {
+.atria_lib_diff_list_strip_item {
     padding: 2px 6px;
     border-radius: 4px;
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 6%, transparent);
@@ -319,33 +319,33 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.luker_lib_diff_list_strip_idx {
+.atria_lib_diff_list_strip_idx {
     opacity: 0.55;
     margin-right: 4px;
     font-weight: 600;
 }
-.luker_lib_diff_list_strip_sep {
+.atria_lib_diff_list_strip_sep {
     opacity: 0.3;
 }
 /* Highlights — match the same hues as row-level add/del in the LCS table
    so the visual vocabulary stays consistent. */
-.luker_lib_diff_list_strip_add {
+.atria_lib_diff_list_strip_add {
     background: color-mix(in oklab, #2ea043 22%, transparent);
     border-color: color-mix(in oklab, #2ea043 55%, transparent);
 }
-.luker_lib_diff_list_strip_del {
+.atria_lib_diff_list_strip_del {
     background: color-mix(in oklab, #f85149 22%, transparent);
     border-color: color-mix(in oklab, #f85149 55%, transparent);
 }
-.luker_lib_diff_list_strip_move_src {
+.atria_lib_diff_list_strip_move_src {
     background: color-mix(in oklab, #f85149 16%, transparent);
     border-color: color-mix(in oklab, #f85149 45%, transparent);
 }
-.luker_lib_diff_list_strip_move_dst {
+.atria_lib_diff_list_strip_move_dst {
     background: color-mix(in oklab, #2ea043 22%, transparent);
     border-color: color-mix(in oklab, #2ea043 55%, transparent);
 }
-.luker_lib_diff_list_strip_anchor {
+.atria_lib_diff_list_strip_anchor {
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 14%, transparent);
     border-color: color-mix(in oklab, var(--SmartThemeBodyColor) 30%, transparent);
     font-weight: 600;

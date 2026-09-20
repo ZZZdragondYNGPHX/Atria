@@ -167,7 +167,7 @@ describe('request-inspector: 200-but-error detection', () => {
             expect(e.responseText).toBe('ok');
         });
 
-        test('error frame in { data } event object shape (luker-generation envelope)', () => {
+        test('error frame in { data } event object shape (atria-generation envelope)', () => {
             // runner.js pushes plain-string SSE data lines, but the reader path
             // (normalizeEvent) also accepts {seq, data, ts} envelopes so error
             // detection must handle both shapes.

@@ -175,7 +175,7 @@ describe('GroupRepo — FS-only on-disk verification', () => {
         await chatRepo.setState(h.handle, null, 'chat-a', 'ns_x', { v: 1 }, { isGroup: true, groupId: 'chat-a' });
         await repo.save(h.handle, 'grp-1', { id: 'grp-1', chats: ['chat-a'] });
 
-        const sidecar = path.join(h.dirs.groupChats, 'chat-a.luker-state.ns_x.json');
+        const sidecar = path.join(h.dirs.groupChats, 'chat-a.atria-state.ns_x.json');
         expect(fs.existsSync(sidecar)).toBe(true);
 
         await repo.delete(h.handle, 'grp-1');

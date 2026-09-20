@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../../public/scripts/skills/embed-import-dialog.js', () => ({
     runEmbedImportFlow: jest.fn(async () => ({ imported: 0, skipped: 0 })),
-    getEmbeddedSkillsSource: jest.fn((body) => body?.extensions?.luker?.embedded_skills_source || null),
+    getEmbeddedSkillsSource: jest.fn((body) => body?.extensions?.atria?.embedded_skills_source || null),
 }));
 
 let embedLifecycle;
@@ -62,7 +62,7 @@ describe('checkOrchPresetEmbeddedSkills', () => {
     test('runs import flow with orch-preset targetScope when embedded skills present', async () => {
         const context = makeContext();
         const embeddedPayload = { format: 'inline-files-v1', skills: [{ name: 'skillA' }] };
-        const importedData = { name: 'RP5', extensions: { luker: { embedded_skills_source: embeddedPayload } } };
+        const importedData = { name: 'RP5', extensions: { atria: { embedded_skills_source: embeddedPayload } } };
         await embedLifecycle.checkOrchPresetEmbeddedSkills(
             { data: importedData, mode: 'director', name: 'RP5' },
             { context, t: (s) => s },

@@ -1,11 +1,11 @@
-# Migrating from Termux SillyTavern to the Luker APK
+# Migrating from Termux SillyTavern to the Atria APK
 
-If you've been running original SillyTavern in Termux and want to switch to the Luker Android APK, this guide walks you through bringing your data along. Luker is fully data-compatible with SillyTavern, and the APK shows an import wizard on first launch — you usually don't need to touch the `Android/data` private directory.
+If you've been running original SillyTavern in Termux and want to switch to the Atria Android APK, this guide walks you through bringing your data along. Atria is fully data-compatible with SillyTavern, and the APK shows an import wizard on first launch — you usually don't need to touch the `Android/data` private directory.
 
 After migration, your character cards, chat logs, lorebooks, presets, personas, and extension settings will load normally.
 
 ::: tip Scope
-This guide covers **Termux SillyTavern → Luker APK**. For PC / Linux / Docker SillyTavern → Luker server, or Termux ↔ Termux migrations, see [Migrating from SillyTavern](/guide/migration).
+This guide covers **Termux SillyTavern → Atria APK**. For PC / Linux / Docker SillyTavern → Atria server, or Termux ↔ Termux migrations, see [Migrating from SillyTavern](/guide/migration).
 :::
 
 ## Recommended flow: the first-launch import wizard
@@ -54,14 +54,14 @@ cp ~/SillyTavern/config.yaml ~/storage/shared/Download/sillytavern-config.yaml
 ```
 
 ::: tip ZIP path prefixes are forgiving
-Luker's importer auto-recognizes subdirectories like `characters/`, `chats/`, `worlds/` regardless of whether they sit under `data/default-user/...`, `default-user/...`, or directly at the ZIP root — they all land in the right place.
+Atria's importer auto-recognizes subdirectories like `characters/`, `chats/`, `worlds/` regardless of whether they sit under `data/default-user/...`, `default-user/...`, or directly at the ZIP root — they all land in the right place.
 :::
 
-### 2. Install the Luker APK and trigger the first-launch wizard
+### 2. Install the Atria APK and trigger the first-launch wizard
 
-Download the latest APK from [GitHub Releases](https://github.com/funnycups/Luker/releases/latest).
+Download the latest APK from [GitHub Releases](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest).
 
-The **first time you open** Luker, a **"Welcome to Luker!"** dialog appears. The top of the dialog has a Language selector. The middle has a **"Migrate from SillyTavern"** block with three side-by-side buttons:
+The **first time you open** Atria, a **"Welcome to Atria!"** dialog appears. The top of the dialog has a Language selector. The middle has a **"Migrate from SillyTavern"** block with three side-by-side buttons:
 
 | Button | Purpose | What to pick |
 | --- | --- | --- |
@@ -73,11 +73,11 @@ Tap each button you need, choose the file in the system picker, and wait for eac
 
 ### 3. Finish the wizard
 
-The wizard then asks for a username (used as your default persona name). Once that's set, Luker enters the main UI — your character list, chats, lorebooks, presets, and API keys should already be in place.
+The wizard then asks for a username (used as your default persona name). Once that's set, Atria enters the main UI — your character list, chats, lorebooks, presets, and API keys should already be in place.
 
 ## What if I missed the first-launch wizard?
 
-If you closed the wizard, or have already used Luker for a while and now want to import, run the same import from the user-management panel:
+If you closed the wizard, or have already used Atria for a while and now want to import, run the same import from the user-management panel:
 
 1. Open **User Settings** → click **Account**
 2. Find the **Backup and Restore** button on your user card
@@ -88,9 +88,9 @@ If you closed the wizard, or have already used Luker for a while and now want to
 
 The same panel also exposes LAN Migration, Download Backup ZIP, and per-category restore — see below.
 
-## LAN Migration (when both ends are Luker)
+## LAN Migration (when both ends are Atria)
 
-If your source side is already running Luker (another Luker APK, or Luker server inside Termux) and the target is the Luker APK, you can skip ZIPs entirely with LAN Migration:
+If your source side is already running Atria (another Atria APK, or Atria server inside Termux) and the target is the Atria APK, you can skip ZIPs entirely with LAN Migration:
 
 1. On the source, open the **Backup and Restore** panel and click **Create Migration Link** to generate a one-shot link
 2. On the target, paste the link into **Migrate from Link** and click import
@@ -103,44 +103,44 @@ The link is single-use and expires quickly. Original SillyTavern lacks this UI, 
 You only need this path when:
 
 - The ZIP flow fails (import errors, the file picker can't see the ZIP, etc.)
-- You need to preserve files Luker's importer doesn't recognize
+- You need to preserve files Atria's importer doesn't recognize
 - You want to surgically replace a specific file rather than do a bulk import
 
-Luker APK stores its data at `/storage/emulated/0/Android/data/com.luker.app/files/luker-data/`. The internal layout matches SillyTavern's `data/` directory. Android 11+ restricts access to this path, so most stock file managers can't enter it without authorization or a different tool.
+Atria APK stores its data at `/storage/emulated/0/Android/data/com.atria.app/files/atria-data/`. The internal layout matches SillyTavern's `data/` directory. Android 11+ restricts access to this path, so most stock file managers can't enter it without authorization or a different tool.
 
 ### 1. Export your data to shared storage from Termux
 
 ```bash
-mkdir -p ~/storage/shared/Luker-migration
-cp -r ~/SillyTavern/data ~/storage/shared/Luker-migration/
+mkdir -p ~/storage/shared/Atria-migration
+cp -r ~/SillyTavern/data ~/storage/shared/Atria-migration/
 ```
 
 Bring third-party extensions along too if you have them:
 
 ```bash
 cp -r ~/SillyTavern/public/scripts/extensions/third-party \
-      ~/storage/shared/Luker-migration/
+      ~/storage/shared/Atria-migration/
 ```
 
-### 2. Launch Luker once so the data directory is created
+### 2. Launch Atria once so the data directory is created
 
-Open the APK once to let `luker-data/` get generated. Without this, the destination directory you'll be writing to doesn't exist yet.
+Open the APK once to let `atria-data/` get generated. Without this, the destination directory you'll be writing to doesn't exist yet.
 
-### 3. Force-stop Luker
+### 3. Force-stop Atria
 
-System Settings → Apps → Luker → **Force stop**. You don't want Luker holding the directory open while you copy files in.
+System Settings → Apps → Atria → **Force stop**. You don't want Atria holding the directory open while you copy files in.
 
-### 4. Move data into the Luker data directory
+### 4. Move data into the Atria data directory
 
 Open a file manager and navigate to:
 
 ```
-/storage/emulated/0/Android/data/com.luker.app/files/luker-data/
+/storage/emulated/0/Android/data/com.atria.app/files/atria-data/
 ```
 
 Copy **the contents of** the `data/` directory from step 1 — i.e. the files and subdirectories that live *inside* `data/`, not the `data/` directory itself.
 
-After the move, `luker-data/` should contain:
+After the move, `atria-data/` should contain:
 
 - `default-user/` (or other username subdirectories in multi-user mode, one per account)
 - Inside each user: `characters/`, `chats/`, `worlds/`, `OpenAI Settings/`, `User Settings/`, `secrets.json`, etc.
@@ -148,14 +148,14 @@ After the move, `luker-data/` should contain:
 If you have third-party extensions, place their contents under:
 
 ```
-/storage/emulated/0/Android/data/com.luker.app/files/luker-data/extensions/third-party/
+/storage/emulated/0/Android/data/com.atria.app/files/atria-data/extensions/third-party/
 ```
 
 ::: warning Don't overwrite `_runtime-persist`
-Luker APK maintains a `_runtime-persist/` directory inside `luker-data/` for runtime persistence artifacts. **Don't overwrite or delete it** — original SillyTavern doesn't produce this directory, so it won't appear in your export.
+Atria APK maintains a `_runtime-persist/` directory inside `atria-data/` for runtime persistence artifacts. **Don't overwrite or delete it** — original SillyTavern doesn't produce this directory, so it won't appear in your export.
 :::
 
-### 5. Restart Luker and verify
+### 5. Restart Atria and verify
 
 Reopen the APK. After loading, your characters, chats, lorebooks, presets, and API connections should all come back.
 
@@ -168,24 +168,24 @@ Android 11+ restricts `Android/data/`, and different OEMs handle it differently:
 - **Samsung (One UI)**: bundled "My Files" works; some versions require long-pressing the directory to authorize
 - **Stock Android / Pixel**: Google's Files app blocks access by default; use a third-party tool
 
-If your file manager can't enter `Android/data/com.luker.app/`, options:
+If your file manager can't enter `Android/data/com.atria.app/`, options:
 
 - **Third-party file manager**: MT Manager, MiXplorer, Solid Explorer, Material Files (open source) — all handle `Android/data` reasonably
 - **PC over USB**: connect via USB in MTP mode and drag files from your computer
-- **ADB push**: `adb push ./data/. /sdcard/Android/data/com.luker.app/files/luker-data/` — fastest and least error-prone for large transfers
+- **ADB push**: `adb push ./data/. /sdcard/Android/data/com.atria.app/files/atria-data/` — fastest and least error-prone for large transfers
 
 ## Path reference
 
-| What | Termux source | Luker APK target |
+| What | Termux source | Atria APK target |
 | --- | --- | --- |
-| Data root | `~/SillyTavern/data/` | `…/com.luker.app/files/luker-data/` |
-| Characters | `data/<user>/characters/` | `luker-data/<user>/characters/` |
-| Chats | `data/<user>/chats/` | `luker-data/<user>/chats/` |
-| Lorebooks | `data/<user>/worlds/` | `luker-data/<user>/worlds/` |
+| Data root | `~/SillyTavern/data/` | `…/com.atria.app/files/atria-data/` |
+| Characters | `data/<user>/characters/` | `atria-data/<user>/characters/` |
+| Chats | `data/<user>/chats/` | `atria-data/<user>/chats/` |
+| Lorebooks | `data/<user>/worlds/` | `atria-data/<user>/worlds/` |
 | Presets | `data/<user>/OpenAI Settings/` etc. | Same subdirectories |
 | API keys | `data/<user>/secrets.json` | Same name |
-| Third-party extensions | `public/scripts/extensions/third-party/` | `luker-data/extensions/third-party/` |
-| Server plugins | `plugins/` | `luker-data/plugins/` |
+| Third-party extensions | `public/scripts/extensions/third-party/` | `atria-data/extensions/third-party/` |
+| Server plugins | `plugins/` | `atria-data/plugins/` |
 
 `<user>` is `default-user` in single-user mode; multi-user mode gives each account its own subdirectory with the same internal layout.
 
@@ -193,7 +193,7 @@ If your file manager can't enter `Android/data/com.luker.app/`, options:
 
 **No Welcome dialog on first launch**
 
-The wizard only appears the first time a fresh data directory is opened. If Luker has been opened before, use the **Backup and Restore** entry on the user-management panel to do the same import — click **Select All**, pick the ZIP, choose **Incremental Update**, and hit **Restore Backup**.
+The wizard only appears the first time a fresh data directory is opened. If Atria has been opened before, use the **Backup and Restore** entry on the user-management panel to do the same import — click **Select All**, pick the ZIP, choose **Incremental Update**, and hit **Restore Backup**.
 
 **Restore says "Archive does not match selected restore categories"**
 
@@ -201,24 +201,24 @@ The ZIP doesn't contain any of `characters/`, `chats/`, `worlds/`, etc. anywhere
 
 **Empty character list after restart (manual-copy flow)**
 
-Check the copy depth: `luker-data/` should contain `default-user/` (or your username directory) directly, not a nested `luker-data/data/default-user/`. If the extra `data/` layer crept in, lift its contents up one level.
+Check the copy depth: `atria-data/` should contain `default-user/` (or your username directory) directly, not a nested `atria-data/data/default-user/`. If the extra `data/` layer crept in, lift its contents up one level.
 
 **White screen / errors after launch (manual-copy flow)**
 
-`_runtime-persist/` may have been overwritten or corrupted. Try (1) deleting `_runtime-persist/` so Luker can rebuild it; (2) if that doesn't help, App Info → Storage → Clear data and redo the migration.
+`_runtime-persist/` may have been overwritten or corrupted. Try (1) deleting `_runtime-persist/` so Atria can rebuild it; (2) if that doesn't help, App Info → Storage → Clear data and redo the migration.
 
 **Third-party extension didn't load**
 
-Confirm it's at `luker-data/extensions/third-party/<extension-name>/`. Each extension is a directory containing a `manifest.json`.
+Confirm it's at `atria-data/extensions/third-party/<extension-name>/`. Each extension is a directory containing a `manifest.json`.
 
 ## Bidirectional compatibility with SillyTavern
 
-After migration, Luker doesn't modify SillyTavern's original data formats — it only adds its own state files (e.g. `.luker-state.<chat_id>.json`) into `data/`. If you ever want to go back to SillyTavern in Termux, copy `luker-data/` contents back; SillyTavern ignores files it doesn't recognize.
+After migration, Atria doesn't modify SillyTavern's original data formats — it only adds its own state files (e.g. `.atria-state.<chat_id>.json`) into `data/`. If you ever want to go back to SillyTavern in Termux, copy `atria-data/` contents back; SillyTavern ignores files it doesn't recognize.
 
 For full compatibility notes, see [Migrating from SillyTavern](/guide/migration#data-compatibility).
 
 ## Related pages
 
 - [Android App](/guide/android) — APK overview
-- [Getting Started](/guide/getting-started) — Luker installation overview
+- [Getting Started](/guide/getting-started) — Atria installation overview
 - [Migrating from SillyTavern](/guide/migration) — server-version migration guide
