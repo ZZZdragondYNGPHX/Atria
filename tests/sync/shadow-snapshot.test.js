@@ -343,4 +343,27 @@ describe('snapshotLiveToShadow', () => {
         const files = await git.listFiles({ fs, dir: paths.workdir, gitdir: paths.gitDir, ref: headOid });
         expect(files).toEqual(['characters/real.png']);
     });
+    test('excludes FS chat patch recovery artifacts from portable chat snapshots', async () => {
+        const chatDir = path.join(liveRoot, 'chats', 'char_a');
+        fs.mkdirSync(chatDir, { recursive: true });
+        fs.writeFileSync(path.join(chatDir, 'chat.jsonl'), '{"chat_metadata":{"integrity":"x"}}\n');
+        fs.writeFileSync(path.join(chatDir, 'chat.jsonl.atria-patch-journal'), 'local-recovery-state');
+        fs.writeFileSync(path.join(chatDir, 'chat.jsonl.atria-patch-journal.tmp-123-1'), 'temp-recovery-state');
+
+        await snapshotLiveToShadow({
+            userRoot,
+            peerId: 'p',
+            directories: fakeDirsAt(liveRoot),
+            enabledCategoryIds: ['chats'],
+        });
+
+        const paths = await ensureShadowRepo({ userRoot, peerId: 'p' });
+        const headOid = await git.resolveRef({ fs, dir: paths.workdir, gitdir: paths.gitDir, ref: 'HEAD' });
+        const files = await git.listFiles({ fs, dir: paths.workdir, gitdir: paths.gitDir, ref: headOid });
+
+        expect(files).toContain('chats/char_a/chat.jsonl');
+        expect(files.some(file => file.includes('atria-patch-journal'))).toBe(false);
+        expect(fs.existsSync(path.join(paths.workdir, 'chats/char_a/chat.jsonl.atria-patch-journal'))).toBe(false);
+    });
+
 });

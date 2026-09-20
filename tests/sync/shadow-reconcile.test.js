@@ -95,4 +95,40 @@ describe('reconcileShadowToLive', () => {
         // Old content is intact (write-file-atomic writes to .tmp then renames).
         expect(fs.readFileSync(path.join(liveRoot, 'characters', 'a.png'), 'utf8')).toBe('OLD_CONTENT');
     });
+    test('reconcile neither imports nor deletes FS chat patch recovery artifacts', async () => {
+        const chatDir = path.join(liveRoot, 'chats', 'char_a');
+        fs.mkdirSync(chatDir, { recursive: true });
+        fs.writeFileSync(path.join(chatDir, 'chat.jsonl'), '{"chat_metadata":{"integrity":"x"}}\n');
+        const localJournal = path.join(chatDir, 'chat.jsonl.atria-patch-journal');
+        fs.writeFileSync(localJournal, 'owned-by-local-transaction');
+
+        await snapshotLiveToShadow({
+            userRoot,
+            peerId: 'p',
+            directories: dirsAt(liveRoot),
+            enabledCategoryIds: ['chats'],
+        });
+        const paths = await ensureShadowRepo({ userRoot, peerId: 'p' });
+
+        const remoteArtifact = path.join(
+            paths.workdir,
+            'chats',
+            'char_a',
+            'remote.jsonl.atria-patch-journal',
+        );
+        fs.writeFileSync(remoteArtifact, 'must-not-cross-devices');
+
+        const result = await reconcileShadowToLive({
+            userRoot,
+            peerId: 'p',
+            directories: dirsAt(liveRoot),
+            enabledCategoryIds: ['chats'],
+        });
+
+        expect(fs.readFileSync(localJournal, 'utf8')).toBe('owned-by-local-transaction');
+        expect(fs.existsSync(path.join(chatDir, 'remote.jsonl.atria-patch-journal'))).toBe(false);
+        expect(result.deleted.some(file => file.includes('atria-patch-journal'))).toBe(false);
+        expect(result.written.some(file => file.includes('atria-patch-journal'))).toBe(false);
+    });
+
 });

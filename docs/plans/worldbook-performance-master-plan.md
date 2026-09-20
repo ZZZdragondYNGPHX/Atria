@@ -46,7 +46,15 @@
   - SQLite / MySQL / PostgreSQL 对整消息 `test/replace/remove` 提供 native patch；复杂路径 fallback；
   - character/group delta、append、whole-message patch 优先走 capability；
   - throttled backup 只在 throttle 真正执行时才 materialize 全聊，可靠备份策略未降低。
-- **P-04 明确停止边界：** FS 可变长度 message replace/remove 仍使用原子整聊 rewrite fallback。要在 canonical JSONL 上做到 crash-safe 的真正局部 replace/remove，需要 journal、物理记录层或其他 storage-format migration；按 5.3 停止条件，这不在本次无迁移分片内。
+- **P-04 FS 深化已在后续显式授权下实施：**
+  - canonical JSONL 继续作为唯一聊天正文事实源，不引入需要批量转换用户历史的新主格式；
+  - FS 对整消息 `test/replace/remove` 提供 native patch；变长修改只重写从最早受影响消息开始的后缀，不再固定整聊 rewrite；
+  - 修改前创建并 fsync 临时 `.atria-patch-journal`，记录原 header 与受影响原后缀；target fsync 与 journal commit-marker fsync 均完成后才视为提交；
+  - pending journal 在启动／首次存储访问时回滚，durable committed journal 只做清理；commit-marker fsync 未确认时保守回滚；
+  - journal 属于本机事务恢复工件，LAN Sync 双向忽略且不得删除正在使用的本机 journal；
+  - 旧／不兼容 header、复杂 patch 或导致 header 序列化字节长度变化的 metadata merge 仍在 mutation 前返回 `unsupported`，继续走既有原子整聊 fallback；
+  - 5,000-message warm tail replace 回归约束实际 read < 原聊天 1%、write < 2%，并要求 canonical JSONL inode 保持不变，证明尾部变长编辑不再通过整文件 atomic rename 完成。
+- **P-04 当前剩余边界：** canonical JSONL 的中前部变长编辑仍需重写“受影响后缀”并在 journal 中保留同一后缀，因此成本与受影响后缀大小相关，而不是严格单消息 O(1)。若未来实测要求旧消息任意位置编辑也保持近似单消息成本，需要另立物理记录层／分段存储迁移任务；不得把该迁移隐藏进当前 JSONL 兼容层。
 - **P-05 已完成已测 Memory 热路径切口：** corpus 复用 fact/support projection；relation→fact 与 provider slot 一次建索引；ranking 一次构建 document map / relation adjacency / state / episode 分组，避免 BFS 层层扫描完整 corpus；保持 RRF 稳定顺序并加入 500／1,500／3,000 合成基准。W-04/W-05 语义和默认模型调用策略不变。
 - **验证策略：** focused workflow 覆盖 P-02/P-03/P-04/P-05、FS/SQLite endpoint parity、备份/重启、synthetic artifact、真实 Chromium host smoke 和 W-04/W-05 E2E；完整 Atria PR Checks 使用 MySQL 8.4 + PostgreSQL 16 跑全量 Node unit、ESLint 与 Migration Guard。
 - Android 与 Docker 保持 opt-in，本轮不默认运行。

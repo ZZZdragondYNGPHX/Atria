@@ -7,6 +7,7 @@ import {
     appendFsChatMessages,
     clearFsChatRangeIndexCache,
     invalidateFsChatRangeIndex,
+    patchFsChatMessages,
     readFsChatRange,
 } from '../../src/storage/engines/fs-chat-range.js';
 
@@ -131,6 +132,51 @@ describe('P-04 FS chat range reader', () => {
         const persisted = fs.readFileSync(filePath, 'utf8').trimEnd().split('\n');
         expect(JSON.parse(persisted[0]).chat_metadata.integrity).toBe(uuid2);
         expect(JSON.parse(persisted.at(-1)).mes).toBe('new tail');
+    });
+
+
+    test('warm variable-length tail replace reads/writes only the affected suffix plus fixed header', () => {
+        const { filePath, byteLength } = makeChat(5_000);
+        const lines = fs.readFileSync(filePath, 'utf8').trimEnd().split('\n');
+        const uuid1 = '00000000-0000-4000-8000-000000000021';
+        const uuid2 = '00000000-0000-4000-8000-000000000022';
+        const header = JSON.parse(lines[0]);
+        header.chat_metadata.integrity = uuid1;
+        lines[0] = JSON.stringify(header);
+        fs.writeFileSync(filePath, lines.join('\n') + '\n');
+        clearFsChatRangeIndexCache();
+
+        // Build the byte-offset index once. The measured patch should touch
+        // only the last message suffix, the integrity header, and its journal.
+        expect(readFsChatRange(filePath, { fromIndex: 4_999, limit: 1 })?.body).toHaveLength(1);
+        const beforeStat = fs.statSync(filePath);
+        const readSpy = jest.spyOn(fs, 'readSync');
+        const writeSpy = jest.spyOn(fs, 'writeSync');
+
+        const result = patchFsChatMessages(filePath, [
+            {
+                op: 'replace',
+                path: '/4999',
+                value: { name: 'Assistant', mes: 'variable-length-tail-' + 'y'.repeat(200), extra: { index: 4_999 } },
+            },
+        ], {
+            expectedIntegrity: uuid1,
+            newIntegrity: uuid2,
+            updatedAt: Date.now(),
+        });
+
+        const bytesRead = readSpy.mock.calls.reduce((sum, call) => sum + Number(call[3] || 0), 0);
+        const bytesWritten = writeSpy.mock.calls.reduce((sum, call) => sum + Number(call[3] || 0), 0);
+        expect(result).toMatchObject({ status: 'ok', integrity: uuid2, applied: 1, totalMessages: 5_000 });
+        expect(bytesRead).toBeLessThan(byteLength / 100);
+        expect(bytesWritten).toBeLessThan(byteLength / 50);
+        // In-place suffix mutation keeps the canonical file inode instead of
+        // replacing the whole JSONL via writeFileAtomic + rename.
+        expect(fs.statSync(filePath).ino).toBe(beforeStat.ino);
+
+        const persisted = fs.readFileSync(filePath, 'utf8').trimEnd().split('\n');
+        expect(JSON.parse(persisted[0]).chat_metadata.integrity).toBe(uuid2);
+        expect(JSON.parse(persisted.at(-1)).mes).toContain('variable-length-tail-');
     });
 
     test('warm generation-id dedup rotates integrity without appending a duplicate body', () => {

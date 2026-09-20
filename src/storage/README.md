@@ -81,6 +81,7 @@ router.post('/something', async function (req, res) {
 | `get(handle, charDir, name)` | Read full chat (header + body + integrity). Returns null if missing. | — |
 | `save(handle, charDir, name, header, body, expectedIntegrity)` | Full write. OCC via `expectedIntegrity` (null = unconditional). Rotates integrity, returns new value. | `ConflictError` if integrity mismatch; `NotFoundError` if integrity was supplied but the chat is missing |
 | `append(handle, charDir, name, newMessages, expectedIntegrity)` | Append messages, dedup by `extra.gen_id`. | `NotFoundError` if chat missing; `ConflictError` on integrity mismatch |
+| `patchMessages(handle, charDir, name, ops, expectedIntegrity, options)` | Native whole-message `test/replace/remove`. FS uses suffix journal + in-place suffix rewrite; SQL engines use their JSON operators. Unsupported shapes return `{status:'unsupported'}` before mutation so endpoints can fall back safely. | `NotFoundError`, `ConflictError`; patch validation/test errors match the full fallback contract |
 | `patch(handle, charDir, name, ops, expectedIntegrity)` | RFC 6902 JSON Patch over `{header, body}`. Rewrites `add /body/<idx>` as `test` when target equals value (idempotent retries). | `NotFoundError`, `ConflictError`, `PatchTestFailedError`, `PatchMissingParentError`, `UnsupportedPatchOpError` |
 | `delete(handle, charDir, name)` | Delete chat and cascade all `chat_state` sidecars. No-op on missing. | — |
 | `rename(handle, charDir, oldName, newName)` | Move chat + all sidecars to new name. Refuses if target exists. | `NotFoundError`, `ConflictError('rename_target_exists')` |
@@ -107,12 +108,16 @@ router.post('/something', async function (req, res) {
 - Group chat: `<groupChats>/<groupId|name>.jsonl`
 - Sidecar (chats + presets): `<dir>/<base>.atria-state.<namespace>.json` — uses the `SIDECAR_INFIX = '.atria-state.'` constant from `engines/sidecar-naming.js`; matches the existing Atria convention so vanilla SillyTavern and rsync / Syncthing setups stay compatible
 - Integrity slug: stored in `chat_metadata.integrity` of the first JSONL line; rotated by every write through ChatRepo
+- Native FS whole-message patch: `test/replace/remove` keeps the canonical JSONL as the source of truth and rewrites only the suffix beginning at the earliest changed message. A transient sibling `<chat>.jsonl.atria-patch-journal` contains the original header + affected suffix while the in-place write is pending. The journal is fsynced before target mutation, marked committed only after the JSONL is fsynced, and removed immediately on success.
+- Crash recovery: pending patch journals are rolled back on the first FS storage access for that user after process start; committed-but-not-yet-deleted journals are cleaned without rollback. Temporary journal-build files are safe to discard because the target is not touched until the durable journal rename completes.
+- Portability boundary: patch journals and their temp files are machine-local transaction artifacts, not user content. LAN Sync excludes them in both snapshot and reconcile directions and never deletes an in-flight local journal as a remote-tree deletion.
+- Fallback boundary: unsupported nested patch paths, incompatible legacy headers, or metadata merges that change the serialized header byte length return `unsupported` before mutation and use ChatRepo's established atomic full-resource rewrite path.
 - Pretty-print convention: most resources (settings, presets, worlds, named-docs, groups) write `JSON.stringify(doc, null, 4)`. `StatsRepo` writes compact JSON to match legacy. `ChatRepo` writes JSONL.
 
 ## What FS mode does NOT provide
 
 - **Cross-resource transactions.** `withTransaction(fn)` on FsEngine runs `fn` sequentially; if a write inside the closure throws after earlier writes succeeded, the earlier writes are NOT rolled back. SqliteEngine provides true transactions.
-- **Concurrent-write linearization.** Chats use the integrity slug (409 → client retries) for safety, not file locks. Other resources have no OCC at all — concurrent writers to the same file race. FS mode introduces no `_journal/`, `_locks/`, or other files that would break vanilla SillyTavern compatibility.
+- **Concurrent-write linearization.** Chats use the integrity slug (409 → client retries), not cross-process file locks. Other resources have no OCC at all — concurrent writers to the same file race. FS whole-message patch uses a transient adjacent Atria recovery journal, not a persistent journal directory or alternate primary chat format; multi-process writers still require external coordination.
 
 ## Testing
 

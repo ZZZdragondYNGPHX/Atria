@@ -10,7 +10,7 @@ import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
-import { appendFsChatMessages, invalidateFsChatRangeIndex, readFsChatInfo, readFsChatRange } from './fs-chat-range.js';
+import { appendFsChatMessages, invalidateFsChatRangeIndex, patchFsChatMessages, readFsChatInfo, readFsChatRange, recoverFsChatPatchJournal } from './fs-chat-range.js';
 
 export class FsTransaction {
     constructor({ directoriesByHandle }) {
@@ -58,6 +58,13 @@ export class FsTransaction {
             throw new Error('FsTransaction.appendChatMessages: chat resource required');
         }
         return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
+
+    async patchChatMessages(key, operations, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('FsTransaction.patchChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'patchChatMessages').patch(key, operations, options);
     }
 
     async deleteResource(key) {
@@ -142,6 +149,7 @@ function registerChatHandler(tx) {
     tx._handlers.set('chat', {
         get(key) {
             const filePath = chatFilePath(key);
+            recoverFsChatPatchJournal(filePath);
             if (!fs.existsSync(filePath)) return null;
             const raw = fs.readFileSync(filePath, 'utf-8');
             const lines = raw.split('\n').filter((l) => l.length > 0);
@@ -178,6 +186,10 @@ function registerChatHandler(tx) {
             const filePath = chatFilePath(key);
             return appendFsChatMessages(filePath, messages, options);
         },
+        patch(key, operations, options) {
+            const filePath = chatFilePath(key);
+            return patchFsChatMessages(filePath, operations, options);
+        },
         put(key, record) {
             if (key.isGroup) {
                 assertSafeRepoNameShape(key.groupId ?? key.name, { field: 'chat.groupId' });
@@ -186,6 +198,7 @@ function registerChatHandler(tx) {
                 assertSafeRepoNameShape(key.name, { field: 'chat.name' });
             }
             const filePath = chatFilePath(key);
+            recoverFsChatPatchJournal(filePath);
             fs.mkdirSync(path.dirname(filePath), { recursive: true });
             const headerWithIntegrity = {
                 ...record.header,
@@ -216,6 +229,7 @@ function registerChatHandler(tx) {
                 if (fs.existsSync(sp)) fs.unlinkSync(sp);
             }
             const filePath = chatFilePath(key);
+            recoverFsChatPatchJournal(filePath);
             if (!fs.existsSync(filePath)) return false;
             fs.unlinkSync(filePath);
             invalidateFsChatRangeIndex(filePath);
