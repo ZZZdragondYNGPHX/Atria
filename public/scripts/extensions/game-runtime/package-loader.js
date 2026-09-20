@@ -77,6 +77,35 @@ async function validateDeclaredPackageFiles(charId, manifest, fetchImpl, headers
  * @param {{fetchImpl?:Function, headers?:object, runtimeVersion?:number}} [options]
  * @returns {Promise<object>}
  */
+
+export async function loadGamePackageJsonResource(charId, relativePath, options = {}) {
+    const fetchImpl = options.fetchImpl || globalThis.fetch;
+    if (typeof fetchImpl !== 'function') {
+        throw new Error('Game Package resource loader has no fetch implementation');
+    }
+
+    const url = resolveGamePackageAssetUrl(charId, relativePath);
+    let response;
+    try {
+        response = await fetchImpl(url, {
+            headers: options.headers || {},
+            cache: 'no-store',
+        });
+    } catch (error) {
+        throw new Error('Failed to fetch Game Package resource ' + relativePath + ': ' + (error?.message || String(error)));
+    }
+
+    if (!response?.ok) {
+        throw new Error('Failed to fetch Game Package resource ' + relativePath + ': HTTP ' + (response?.status ?? 'unknown'));
+    }
+
+    try {
+        return await response.json();
+    } catch (error) {
+        throw new Error('Game Package resource ' + relativePath + ' is not valid JSON: ' + (error?.message || String(error)));
+    }
+}
+
 export async function loadGamePackage(charId, options = {}) {
     const id = String(charId || '').trim();
     if (!id) {
