@@ -53,8 +53,13 @@ export function createImmersiveVisuals({
         const accent = String(visual.accent ?? scene.accent ?? '').trim();
 
         background.style.backgroundImage = backgroundUrl ? `url("${backgroundUrl}")` : '';
-        portrait.src = portraitUrl;
-        portrait.hidden = !portraitUrl;
+        if (portraitUrl) {
+            portrait.src = portraitUrl;
+            portrait.hidden = false;
+        } else {
+            portrait.removeAttribute('src');
+            portrait.hidden = true;
+        }
 
         if (accent) documentRef.body.style.setProperty('--atria-immersive-accent', accent);
         else documentRef.body.style.removeProperty('--atria-immersive-accent');
