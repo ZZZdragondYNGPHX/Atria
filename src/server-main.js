@@ -233,6 +233,54 @@ app.use((req, res, next) => {
 app.use(bodyParser.json({ limit: '500mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '500mb' }));
 
+const STARTUP_LAUNCHER_EVENTS = new Set([
+    'ready-detected',
+    'ready-observed',
+    'browser-open-start',
+    'browser-open-return',
+    'browser-open-manual',
+]);
+let startupLauncherReadyAt = null;
+let startupBrowserOpen = null;
+
+app.get('/api/startup/launcher-event', (request, response) => {
+    // This endpoint exists only for the local Termux launcher. Keep it
+    // unreachable from LAN/remote clients even when Atria is started with
+    // --listen; the data is diagnostic only and never affects startup.
+    if (!shouldSkipLoopbackCompression(request)) {
+        return response.sendStatus(404);
+    }
+
+    const event = String(request.query?.event || '');
+    const epochMs = Number(request.query?.epoch_ms);
+    const methodRaw = String(request.query?.method || '');
+    const method = ['termux-open-url', 'am'].includes(methodRaw) ? methodRaw : '';
+
+    if (!STARTUP_LAUNCHER_EVENTS.has(event)
+        || !Number.isFinite(epochMs)
+        || Math.abs(Date.now() - epochMs) > 5 * 60 * 1000) {
+        return response.sendStatus(400);
+    }
+
+    const summary = { event, epochMs, method: method || null };
+
+    if (event === 'ready-detected' || event === 'ready-observed') {
+        startupLauncherReadyAt = epochMs;
+    }
+    if (event === 'browser-open-start') {
+        startupBrowserOpen = { epochMs, method };
+        if (startupLauncherReadyAt !== null && epochMs >= startupLauncherReadyAt) {
+            summary.readyToBrowserOpenMs = epochMs - startupLauncherReadyAt;
+        }
+    }
+    if (event === 'browser-open-return' && startupBrowserOpen && epochMs >= startupBrowserOpen.epochMs) {
+        summary.browserOpenCommandMs = epochMs - startupBrowserOpen.epochMs;
+    }
+
+    console.log('[startup-launcher]', JSON.stringify(summary));
+    return response.sendStatus(204);
+});
+
 // CORS Settings //
 const corsEnabled = getConfigValue('cors.enabled', true, 'boolean');
 if (corsEnabled) {
@@ -356,6 +404,22 @@ if (!cliArgs.disableCsrf) {
 // Host index page
 app.get('/', cacheBuster.middleware, (request, response) => {
     markStartupMilestone(`http.root.${request.method.toLowerCase()}`);
+    if (request.method === 'GET' && (startupLauncherReadyAt !== null || startupBrowserOpen)) {
+        const now = Date.now();
+        const summary = {
+            event: 'root-get',
+            readyToRootGetMs: startupLauncherReadyAt !== null && now >= startupLauncherReadyAt
+                ? now - startupLauncherReadyAt
+                : null,
+            browserOpenToRootGetMs: startupBrowserOpen && now >= startupBrowserOpen.epochMs
+                ? now - startupBrowserOpen.epochMs
+                : null,
+            method: startupBrowserOpen?.method || null,
+        };
+        console.log('[startup-launcher]', JSON.stringify(summary));
+        startupLauncherReadyAt = null;
+        startupBrowserOpen = null;
+    }
     if (shouldRedirectToLogin(request)) {
         const query = request.url.split('?')[1];
         const redirectUrl = query ? `/login?${query}` : '/login';
