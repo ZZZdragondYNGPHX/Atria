@@ -5,6 +5,7 @@ import { createImmersiveProviderRegistry } from './providers.js';
 import { createImmersiveHud } from './hud.js';
 import { createImmersiveVisuals } from './visuals.js';
 import { createImmersiveDiagnostics } from './diagnostics.js';
+import { createImmersiveBreathing } from './breathing.js';
 
 function callSafely(fn, ...args) {
     try {
@@ -60,7 +61,8 @@ export function createImmersiveController({
         isMobile,
     });
 
-    const wake = () => documentRef.body.classList.remove('atria-immersive-resting');
+    const breathing = createImmersiveBreathing({ document: documentRef });
+    const wake = () => breathing.wake();
     const composer = createImmersiveComposer({
         document: documentRef,
         translate,
@@ -307,6 +309,7 @@ export function createImmersiveController({
         const settings = refreshSettings();
         enabled = shouldEnable;
         presentation.setEnabled(shouldEnable);
+        breathing.setEnabled(shouldEnable);
         composer.setEnabled(shouldEnable);
         messageActions.setEnabled(shouldEnable);
         diagnostics.setEnabled(shouldEnable);
@@ -447,6 +450,7 @@ export function createImmersiveController({
         visuals.dispose();
         messageActions.dispose();
         composer.dispose();
+        breathing.dispose();
         presentation.dispose();
     };
 
