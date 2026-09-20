@@ -6,6 +6,8 @@ const BEARER_PATTERN = /\b(bearer\s+)([A-Za-z0-9._~+/-]{12,})/gi;
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
 const OPENAI_STYLE_KEY_PATTERN = /\b(?:sk|pk)-[A-Za-z0-9_-]{16,}\b/g;
 const QUERY_SECRET_PATTERN = /([?&](?:api[_-]?key|key|token|access[_-]?token|refresh[_-]?token|secret|password)=)([^&#\s]+)/gi;
+const INLINE_SECRET_PATTERN = /\b(api[_-]?key|apikey|token|secret|password|passwd|authorization)\s*[=:]\s*["']?([^\s"',&]+)/gi;
+const HEX_SECRET_PATTERN = /\b[a-f0-9]{40,}\b/gi;
 const LONG_TOKEN_PATTERN = /\b(?=[A-Za-z0-9_+/-]{48,}\b)(?=[A-Za-z0-9_+/-]*[A-Za-z])(?=[A-Za-z0-9_+/-]*\d)[A-Za-z0-9_+/-]{48,}\b/g;
 
 function isPlainObject(value) {
@@ -25,6 +27,8 @@ export function redactText(value) {
         .replace(JWT_PATTERN, REDACTED)
         .replace(OPENAI_STYLE_KEY_PATTERN, REDACTED)
         .replace(QUERY_SECRET_PATTERN, '$1' + REDACTED)
+        .replace(INLINE_SECRET_PATTERN, '$1=' + REDACTED)
+        .replace(HEX_SECRET_PATTERN, REDACTED)
         .replace(LONG_TOKEN_PATTERN, REDACTED);
 }
 
