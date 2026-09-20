@@ -802,7 +802,173 @@ Narrator may elaborate prose but cannot contradict authoritative facts.
 
 Runtime should make fact provenance/debugging visible.
 
-### 10.7 Connection Profile and Runtime Role
+### 10.7 Turn Coordination Contract
+
+Game Runtime, Orchestrator, Memory and final prose must cooperate through one turn-scoped contract rather than independently assembling competing prompt/state views.
+
+Each game-aware turn owns a stable `turnId` and a **Turn Context** that conceptually contains:
+
+- branch/floor/swipe identity;
+- user input;
+- resolved Command(s);
+- command result(s);
+- committed World Events;
+- authoritative current World Observation;
+- recent chat required for narration;
+- recalled long-term memories;
+- active hard constraints / lore required by the package;
+- orchestration guidance when enabled.
+
+The exact serialized shape may evolve, but the ownership/precedence rules below are architectural requirements.
+
+#### 10.7.1 Fact precedence
+
+When sources disagree, consumers must use this authority order:
+
+1. **Current World Runtime observation / schema-valid state**
+2. **Committed Event Journal facts for the active branch**
+3. **Current turn Command results**
+4. **Explicit surviving chat facts on the active branch**
+5. **Memory recall / compressed historical summaries**
+6. **Orchestrator guidance / planning hypotheses**
+
+Orchestrator output and Memory summaries are never allowed to override authoritative current World facts.
+
+#### 10.7.2 One final prose producer
+
+Exactly one component owns the final message body for a turn.
+
+- Normal Game Runtime path: **Narrator** writes the final body.
+- Orchestrator `spec / agenda / loop`: Orchestrator produces guidance/capsule only; Narrator remains the body owner.
+- Orchestrator `director`: Director becomes the turn's Narrative Producer and **replaces Narrator** for that turn.
+
+Never run Director and Narrator as independent body writers and then attempt to merge their prose.
+
+A takeover mode changes the prose producer, not World/Event authority.
+
+#### 10.7.3 Orchestrator integration
+
+Orchestration runs against the same Turn Context used by narration.
+
+For game-aware turns, orchestration must be able to consume:
+
+- authoritative World Observation;
+- committed current-turn Event/Command results;
+- recent chat;
+- relevant Memory recall;
+- package/lore constraints.
+
+`spec / agenda / loop` output is advisory narrative guidance. It may propose pacing, emphasis, voice, continuity handling and next-beat presentation, but it cannot invent an authoritative state transition that bypasses Game Logic.
+
+Director mode must receive the same authoritative Turn Context. Its `finalize` commits prose only; it must not implicitly commit World State.
+
+Game Runtime should expose narrow read-only orchestration tools/adapters for current World observation, recent committed game events and command results instead of making agents scrape UI/HTML or duplicate state.
+
+#### 10.7.4 Memory recall timing
+
+Memory recall happens **before narrative planning/writing**, after the runtime has enough current-turn context to formulate a useful query.
+
+Preferred order:
+
+```text
+User input
+ -> Resolve Command
+ -> Game Logic / optional Event Interpreter
+ -> commit authoritative Events
+ -> build current World Observation
+ -> Memory recall
+ -> Orchestrator guidance (optional)
+ -> Narrator or Director
+ -> final prose
+```
+
+This ensures Memory retrieval and Orchestrator planning see the same committed world reality that the final prose must describe.
+
+Games may support read-only pre-resolution memory lookups for intent resolution when explicitly needed, but those results remain historical context and cannot become current-state authority.
+
+#### 10.7.5 Memory write timing and provenance
+
+Memory updates happen **after** authoritative World Events and the final prose are fixed for the turn.
+
+Memory must distinguish at least:
+
+- **authoritative game memory** derived from committed World Events;
+- **narrative/chat memory** derived from surviving user/assistant text;
+- compressed/derived summaries with explicit provenance.
+
+Hard game facts should preferably be ingested or referenced directly from Event Journal records rather than asking an extraction LLM to reconstruct numbers/state from prose.
+
+Examples:
+
+- damage amount, inventory consumption, location transition, quest state: source from committed events;
+- a memorable line of dialogue, style/relationship nuance not modeled by World Schema: may be extracted from final prose/chat.
+
+Memory extraction must never write World State.
+
+Orchestrator scratch, capsule text, critic suggestions and discarded drafts must not become durable memory merely because they existed during generation.
+
+#### 10.7.6 Memory vs current state
+
+Memory is historical context, not a second live state database.
+
+A recalled memory saying “the player had 20 HP” must never override a current World Observation saying HP is 57.
+
+State-sensitive recall should carry provenance/time/event anchors so consumers can tell historical facts from current facts.
+
+Where possible, Memory should reference authoritative event ids / entities rather than duplicate mutable current-state fields.
+
+#### 10.7.7 Branch / swipe coherence
+
+Turn Context, Orchestrator snapshots, Memory writes and final prose must share the same branch/floor/swipe anchor.
+
+On swipe/delete/branch changes:
+
+- World Runtime selects/replays the correct Event branch;
+- stale orchestration guidance for another branch must not leak;
+- Memory writes from abandoned branches must roll back, become inactive, or be excluded according to Memory's branch semantics;
+- regenerated prose must be paired with the authoritative facts of its own branch.
+
+#### 10.7.8 Narrative consistency
+
+The prose producer receives a **Narrative Contract** containing at minimum:
+
+- facts that must remain true;
+- committed current-turn results/events;
+- current World Observation;
+- recalled memories with provenance;
+- orchestration guidance marked as advisory;
+- relevant style/lore constraints.
+
+Narrative generation may add descriptive texture that does not contradict authoritative facts, but it must not silently create new durable game state.
+
+If a prose-only detail later needs to become a durable game fact, a later Command/Event or explicit memory process must promote it through the appropriate subsystem.
+
+#### 10.7.9 Diagnostics
+
+Diagnostics should correlate the entire turn under one `turnId`:
+
+```text
+intent resolution
+ -> command
+ -> event interpretation (optional)
+ -> game calculation
+ -> committed events
+ -> memory recall
+ -> orchestrator guidance / director trace
+ -> narrative producer
+ -> final prose
+ -> memory post-turn update
+```
+
+Logs should make source authority visible so support can distinguish:
+
+- Game Logic/world-state bug;
+- memory recall/extraction bug;
+- orchestrator planning bug;
+- narrator/director prose contradiction;
+- branch anchoring bug.
+
+### 10.8 Connection Profile and Runtime Role
 
 Atria 1.0 must separate **how a model is reached** from **what the model is used for**.
 
@@ -858,7 +1024,7 @@ Each role may define:
 
 Do not extend the old profile `mode` enum indefinitely with values such as `state`. The role layer is the scalable abstraction.
 
-### 10.8 Model & Runtime configuration UX
+### 10.9 Model & Runtime configuration UX
 
 The existing Connection Manager UI currently presents Chat / Embedding / Rerank as peer connection modes. During this Master Refactor it must evolve toward a role-oriented **Model & Runtime** configuration surface.
 
@@ -1201,6 +1367,10 @@ Work:
 - optional Event Interpreter;
 - typed interpretation schema / confidence / no-change behavior;
 - observation projection;
+- Turn Coordination Contract / Turn Context;
+- Memory recall bridge and post-turn provenance-aware memory update;
+- Orchestrator bridge for authoritative World/Event/Memory context;
+- single Narrative Producer arbitration (Narrator vs Director takeover);
 - Narrator;
 - committed-fact enforcement/debug evidence;
 - UI-action shortcut;
@@ -1212,8 +1382,11 @@ Work:
 
 Exit:
 
-- free text -> command -> commit -> narration e2e;
+- free text -> command -> commit -> memory recall -> optional orchestration -> narration e2e;
 - ambiguous semantic input -> Event Interpreter -> deterministic Game Logic -> commit e2e;
+- spec/agenda/loop guidance and Memory recall reach the same Narrative Contract without overriding World facts;
+- Director takeover produces the only final prose body while still obeying committed World facts;
+- post-turn Memory ingestion uses committed Events for authoritative game facts and does not learn discarded drafts/capsules as facts;
 - deterministic commands skip Event Interpreter;
 - Event Interpreter can return no-change without creating state noise;
 - UI button -> command -> commit -> narration e2e;
@@ -1312,6 +1485,11 @@ Expected areas:
 - mobile/desktop frontend smoke;
 - Game Runtime error recovery;
 - LLM resolve/interpret/narrate tool-loop tests;
+- Turn Context authority/precedence tests;
+- Orchestrator + Game Runtime + Memory integration tests;
+- Director takeover single-writer tests;
+- Memory provenance and branch-alignment tests;
+- Event-derived hard-memory tests that bypass prose re-extraction;
 - Event Interpreter schema/confidence/no-change tests;
 - Runtime Role primary/fallback routing tests;
 - Model & Runtime configuration tests;
@@ -1339,6 +1517,8 @@ Design expectations:
 - formula AST cached;
 - LLM tool list generated from active command visibility;
 - Event Interpreter invoked only for explicitly ambiguous semantic work, never as a mandatory per-turn state updater;
+- one shared Turn Context prevents Orchestrator/Memory/Narrator from independently rebuilding duplicate world context;
+- Memory recall and orchestration consume bounded projections rather than raw full World State;
 - observations narrow by design;
 - assets lazy-loadable;
 - surfaces mount/unmount with explicit lifecycle;
@@ -1358,6 +1538,9 @@ This refactor does not aim to:
 - expose arbitrary `set_state` to LLM as the primary state API;
 - run a mandatory “state update AI” every turn;
 - let Event Interpreter write World State or numeric deltas directly;
+- let Orchestrator, Memory and Narrator maintain separate competing versions of current world truth;
+- treat Memory summaries or Orchestrator capsules as higher authority than current World Runtime state;
+- run Director and Narrator as two independent final-body writers in the same turn;
 - keep extending Connection Profile `mode` with every new AI workload instead of introducing Runtime Roles;
 - preserve the old Chat/Embedding/Rerank-only API-page information architecture for Atria 1.0;
 - dump full World State into every LLM request;
@@ -1402,6 +1585,9 @@ The refactor is successful when Atria can support a character card that:
 - uses selectors rather than raw mutable state for UI;
 - converts free-text intent into commands;
 - optionally uses Event Interpreter for ambiguous semantics without giving it direct state authority;
+- coordinates Game Runtime, Memory, Orchestrator and the final prose through one branch-anchored Turn Context;
+- uses committed World Events as the source for hard game memories while keeping narrative memories provenance-aware;
+- supports spec/agenda/loop guidance and Director takeover without creating competing final-body/state authorities;
 - routes Narrator / Intent Resolver / Event Interpreter / other model workloads through explicit Runtime Roles with fallback policies;
 - narrates committed results without LLM-owned state arithmetic;
 - can be simulated and debugged in Game Studio;
