@@ -39,12 +39,17 @@ export function createImmersiveMessageActions({
     toolbar.className = 'atria-immersive-message-actions';
     toolbar.setAttribute('role', 'toolbar');
     toolbar.setAttribute('aria-label', translate('Message actions'));
+    toolbar.setAttribute('data-i18n', '[aria-label]Message actions');
     toolbar.hidden = true;
 
     const copyButton = createActionButton(documentRef, { action: 'copy', label: translate('Copy'), icon: 'fa-solid fa-copy' });
     const editButton = createActionButton(documentRef, { action: 'edit', label: translate('Edit'), icon: 'fa-solid fa-pencil' });
     const rewriteButton = createActionButton(documentRef, { action: 'rewrite', label: translate('Rewrite'), icon: 'fa-solid fa-repeat' });
     const moreButton = createActionButton(documentRef, { action: 'more', label: translate('More'), icon: 'fa-solid fa-ellipsis' });
+    copyButton.setAttribute('data-i18n', 'Copy;[title]Copy;[aria-label]Copy');
+    editButton.setAttribute('data-i18n', 'Edit;[title]Edit;[aria-label]Edit');
+    rewriteButton.setAttribute('data-i18n', 'Rewrite;[title]Rewrite;[aria-label]Rewrite');
+    moreButton.setAttribute('data-i18n', 'More;[title]More;[aria-label]More');
     moreButton.setAttribute('aria-expanded', 'false');
     toolbar.append(copyButton, editButton, rewriteButton, moreButton);
 
