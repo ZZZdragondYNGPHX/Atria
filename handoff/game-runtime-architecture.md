@@ -126,6 +126,16 @@ Runtime integration:
     - expanded R5 into **LLM Runtime & Model Roles**;
     - added **R7 — Atria Game-first Shell Redesign**, including a role-oriented Model & Runtime configuration UI and a host design-system/UI refactor so Atria 1.0 does not inherit the old pure-text-chat information architecture.
 
+11. Added a formal **Turn Coordination Contract**:
+    - one branch-anchored Turn Context is shared by Game Runtime, Memory, Orchestrator and the final prose producer;
+    - current World Observation / committed Events outrank Memory summaries and orchestration guidance;
+    - spec/agenda/loop remain guidance-only; Director replaces Narrator as the single final-body writer for takeover turns;
+    - Memory recall happens after authoritative turn resolution and before orchestration/narration;
+    - authoritative game memories derive from Event Journal provenance rather than re-parsing prose;
+    - discarded drafts, critic output and capsules are not durable memories;
+    - post-turn memory updates cannot write World State;
+    - diagnostics correlate intent -> command -> events -> memory -> orchestration -> prose -> memory update under one turn id.
+
 ## Validation completed
 
 Final focused workflow:
@@ -178,6 +188,7 @@ Not yet implemented:
 - transaction/rule trace;
 - Card UI Runtime/Surfaces/Selectors;
 - LLM Runtime roles (Intent Resolver / Event Interpreter / Narrator);
+- Turn Coordination Contract integrating Game Runtime, Memory, Orchestrator and final prose;
 - Connection Profile + Runtime Role routing and fallback queues;
 - Game Studio upgrades;
 - R7 Atria Game-first Shell redesign.
@@ -215,5 +226,7 @@ Do not expose arbitrary `set_state(path,value)`.
 Do not give Game Logic the broad CardApp/Atria context.
 Do not begin R4 UI takeover before the R3 mutation contract is stable.
 Do not treat Event Interpreter as a mandatory per-turn state updater.
+Do not let Memory/Orchestrator/Narrator reconstruct their own competing current-state truth; use the shared Turn Context and authority precedence from the Master Plan.
+Do not allow Director takeover to bypass World/Event authority or run alongside a second Narrator body writer.
 Do not extend Connection Profile mode with a new `state` mode; implement the Runtime Role layer described by the Master Plan.
 Do not start R7 host-shell visual redesign until R3-R6 contracts are stable.
