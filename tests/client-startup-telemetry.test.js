@@ -16,7 +16,7 @@ describe('client startup telemetry', () => {
         expect(source).toContain('initModuleEnd');
     });
 
-    test('reports first-load milestones after APP_READY without blocking startup', () => {
+    test('reports first-visible and APP_READY milestones without blocking startup', () => {
         const source = readFileSync(SCRIPT_URL, 'utf8');
         expect(source).toContain("markClientStartupTiming('firstLoadStart')");
         expect(source).toContain("markClientStartupTiming('csrfDone')");
@@ -25,14 +25,20 @@ describe('client startup telemetry', () => {
         expect(source).toContain("markClientStartupTiming('appReady')");
         expect(source).toContain("fetch('/api/startup/client-timing'");
         expect(source).toContain("keepalive: true");
+        expect(source).toContain("reportClientStartupTiming('visible')");
+        expect(source).toContain("reportClientStartupTiming('ready')");
+        expect(source.indexOf("markClientStartupTiming('loaderHidden')"))
+            .toBeLessThan(source.indexOf("reportClientStartupTiming('visible')"));
         expect(source.indexOf("markClientStartupTiming('appReady')"))
-            .toBeLessThan(source.lastIndexOf('reportClientStartupTiming();'));
+            .toBeLessThan(source.lastIndexOf("reportClientStartupTiming('ready')"));
     });
 
     test('backend logs only numeric startup timing summary fields', () => {
         const source = readFileSync(SERVER_URL, 'utf8');
         expect(source).toContain("app.post('/api/startup/client-timing'");
-        expect(source).toContain("console.log('[startup-client]', JSON.stringify(summary))");
+        expect(source).toContain("'[startup-client-visible]'");
+        expect(source).toContain("'[startup-client]'");
+        expect(source).toContain('visibleTotalMs');
         expect(source).toContain('appImportMs');
         expect(source).toContain('firstLoadTotalMs');
         expect(source).toContain('htmlToInitJsMs');
