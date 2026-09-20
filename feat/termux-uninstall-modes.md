@@ -4,47 +4,60 @@
 
 Add two explicit uninstall flows to the Atria Termux toolbox:
 
-1. **Uninstall Atria and keep user data** — remove the installed application/runtime checkout and Atria-managed launcher/runtime state while preserving user-owned data.
-2. **Completely uninstall Atria** — remove the application plus Atria user data and Atria-managed runtime state.
+1. **Uninstall Atria and keep user data** — remove the active Atria program checkout while preserving its shared user data.
+2. **Completely uninstall Atria** — remove all Atria program instances, Atria-owned shared user data and Atria toolbox/runtime state.
 
-## Safety requirements
+## Final implementation
 
-- Derive paths from the toolbox's existing canonical variables instead of reintroducing historical product paths.
-- The keep-data flow must never remove the canonical Atria user-data directory.
-- The complete-uninstall flow must require a stronger confirmation before deleting user data.
-- Refuse unsafe deletion targets such as empty strings, `/`, `$HOME`, or the shared-storage root.
-- Stop a running Atria process before removing application files when the existing toolbox architecture exposes a supported stop path.
-- Uninstall remains scoped to Atria-owned files; Termux itself and unrelated packages/files are untouched.
-- Operations should be idempotent where practical: already-missing paths are not fatal.
+- Original baseline: `main@c407f9e97530f587362c2150f7a0c2601598f75e`.
+- Synchronized baseline before merge: `main@1dffedf610e03a51512ec59f12a09cd7b9a23f43`.
+- Final validated task HEAD: `170f6ad501c6aa100b868e156579f52e96c41931`.
+- PR: #76.
+- Squash merge / authoritative main: `63da3141a3895d3386ed1bebc30876c9766315ba`.
+- Final toolbox version: v0.3.9.
+
+### Keep-user-data uninstall
+
+- Stops the active Atria instance.
+- Deletes only its program checkout (`$HOME/Atria` or `$HOME/Atria-2`).
+- Preserves that instance's shared `data`, `backups`, `exports`, and the toolbox.
+- Allows a later reinstall to reuse the preserved shared data.
+
+### Complete uninstall
+
+- Validates every destructive path before deleting anything.
+- Requires literal `DELETE ATRIA` confirmation plus the existing randomized second confirmation.
+- Stops both main and secondary Atria instances.
+- Disables toolbox autostart.
+- Removes both program checkouts.
+- Removes both Atria shared-storage trees, including `data`, `backups`, and `exports`.
+- Removes Atria toolbox state, toolbox launcher, direct CLI state and `atria-termux` entrypoint.
+- Removes the canonical default Atria Webpack cache.
+- Preserves a custom `ATRIA_TERMUX_WEBPACK_CACHE_ROOT`, because ownership of an arbitrary user-selected path cannot be proven safely.
+- Does not remove Termux, Node.js, npm, git, curl, or unrelated files/packages.
+
+## Safety decisions
+
+- Deletion targets are constrained to known Atria-owned paths.
+- Empty paths, `/`, `$HOME`, `$PREFIX`, and the shared-storage root are rejected.
+- Keep-data mode never deletes the active instance shared Atria directory.
+- The compressed v0.3.0 runtime remains unchanged; the existing launcher injection/override architecture supplies the current v0.3.9 behavior.
+- PR #77 repository-origin/history-cutover repairs and PR #78 `/dev/tty` piped-launch repair were preserved when the task branch synchronized with the newer main.
 
 ## Validation
 
-- Shell syntax / static checks for touched Termux scripts.
-- Focused Node tests for toolbox uninstall path/guard behavior.
-- Existing Termux toolbox update-guard tests.
-- Atria Migration Guard / ESLint / Node suite as required by the normal PR workflow.
-- Android JVM/APK and Docker builds are not part of this task unless explicitly requested.
+Final PR Checks #743 passed on synchronized HEAD `170f6ad501c6aa100b868e156579f52e96c41931`:
 
-## Documentation impact
+- Atria Migration Guard: passed.
+- ESLint: passed.
+- Complete Node unit suite: passed.
+- Focused `tests/termux/toolbox-uninstall.test.js` reconstructs the generated toolbox runtime and validates it with `bash -n`.
+- Existing Termux toolbox update guards remained part of the Node suite.
 
-Record final path behavior, confirmation semantics, validation and merge result here when the task is complete.
+Android JVM/APK and Docker builds were not run because this task changes only the Termux shell/toolbox surface and those validations are opt-in.
 
-## Implementation status
+## Completion
 
-- Task branch: `feat/termux-uninstall-modes`
-- Baseline: `main@c407f9e97530f587362c2150f7a0c2601598f75e`
-- Current task HEAD: `170f6ad501c6aa100b868e156579f52e96c41931`
-- PR: #76
-- Toolbox version bumped to v0.3.6.
-- The previous fragmented four-action uninstall menu is overridden by two product-level actions: keep-data uninstall and complete uninstall.
-- Keep-data uninstall stops the active instance, removes only its program checkout, and preserves the instance shared `data`, `backups`, `exports`, and the toolbox.
-- Complete uninstall validates all destructive targets first, requires `DELETE ATRIA` plus the existing randomized confirmation, stops both instances, disables toolbox autostart, removes both program checkouts and shared trees, removes the Atria CLI entry/state and toolbox state, and deletes only the canonical default Webpack cache.
-- A custom `ATRIA_TERMUX_WEBPACK_CACHE_ROOT` is intentionally retained to avoid deleting a user-managed location.
-- Termux itself and shared runtime packages such as Node.js, git, and curl are not removed.
-- Added `tests/termux/toolbox-uninstall.test.js`, including reconstruction of the generated toolbox runtime followed by `bash -n`.
-
-## Validation status
-
-- PR Checks #733 passed on the original task head. During CI, main advanced through PR #77/#78; the task branch was merged with `main@1dffedf610e03a51512ec59f12a09cd7b9a23f43` without dropping those Termux fixes.
-- PR Checks #743 is queued for the synchronized task head.
-- PR #76 is mergeable after synchronization. Final merge/integration verification is pending PR Checks #743.
+- PR #76 merged successfully.
+- Merged `main` was verified to contain both uninstall modes, v0.3.9, PR #77 repository-origin protection, and PR #78 `/dev/tty` handling.
+- Temporary branch `feat/termux-uninstall-modes` was removed automatically after merge.
