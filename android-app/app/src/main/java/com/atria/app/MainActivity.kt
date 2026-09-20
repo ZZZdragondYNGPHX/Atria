@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity() {
             if (immersiveModeEnabled && immersiveModeSource == "fullscreen_api") {
                 lastBackPressForExitMillis = 0L
                 applyImmersiveMode(false)
-                syncWebImmersiveMode(false)
+                syncWebFullscreenState(false)
                 return
             }
 
@@ -1156,6 +1156,17 @@ class MainActivity : AppCompatActivity() {
         val jsEnabled = if (enabled) "true" else "false"
         webView.evaluateJavascript(
             "window.__atriaSetImmersiveModeFromNative && window.__atriaSetImmersiveModeFromNative($jsEnabled);",
+            null,
+        )
+    }
+
+    private fun syncWebFullscreenState(enabled: Boolean) {
+        if (!this::webView.isInitialized) {
+            return
+        }
+        val jsEnabled = if (enabled) "true" else "false"
+        webView.evaluateJavascript(
+            "window.__atriaSetNativeFullscreenState && window.__atriaSetNativeFullscreenState($jsEnabled);",
             null,
         )
     }
