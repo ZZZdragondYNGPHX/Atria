@@ -6,9 +6,24 @@ Atria is an independent SillyTavern-based modified product. All previously recor
 
 Current authoritative `main`:
 
-- `fad1dd44c11854861db0a5b2d92335792def8ecc`
+- `c407f9e97530f587362c2150f7a0c2601598f75e`
 
 This commit is the squash merge of PR #73, `fix: localize diagnostics workspace in Chinese`, a localization-only follow-up to the Logging Observability Workspace refactor in PR #71. Its final validated task head `f08032f1c9ecd686e5fc1218f39ec82e4f700ad5` passed Atria PR Checks #717 (ESLint, Atria Migration Guard, and the complete Node unit suite). The underlying logging/diagnostics architecture from PR #71 remains unchanged.
+
+### Git history independence cutover
+
+A one-time repository-history cutover was completed on 2026-09-20.
+
+- Pre-cutover `main`: `5c52ab839e14d478ce41d976d5afab027578ac03`.
+- Final authoritative `main`: `c407f9e97530f587362c2150f7a0c2601598f75e`.
+- Final tree: `d709cf1b600ff6f951f19b4be604b29417859703`, identical to the pre-cutover main tree.
+- The active Atria `main` no longer has a common ancestor with the legacy `luker` reference branch.
+- `luker` remains a reference branch at `91ae97aed557be9439317a67d0ec516f7512fe2e`; do not merge it into `main`.
+- `vanilla` remains unchanged at `e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc`.
+- The cutover replayed the 70 authoritative first-parent Atria mainline snapshots after the Luker baseline while dropping legacy and merged side-branch ancestry.
+- Commit SHAs before the cutover are historical references only; future branches must start from the live post-cutover `main`.
+- Product files, runtime behavior, persistence, configuration, and APIs were unchanged.
+- Permanent record: `refactor/git-history-independence-cutover.md`.
 
 ### Android / Termux startup optimization continuation
 
