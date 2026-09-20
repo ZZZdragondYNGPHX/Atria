@@ -34,7 +34,8 @@ export function workspaceRunView(run, selection = {}) {
     const recalls = events.filter(event => event.type === 'memory.recall.completed' && visible(event));
     return { runId: run?.runId || null, mode: run?.mode || '', status: run?.status || 'idle', engine,
         nodeId, stepId, recalls, calls: callCounts(events.filter(visible)), contexts: events.filter(event => event.type === 'context.compiled' && visible(event)),
-        timeline: events.filter(event => visible(event) && /^(graph\.|agent\.handoff|parallel\.|result\.|arbitration\.|output\.)/.test(event.type)),
+        timeline: events.filter(event => visible(event)
+            && /^(graph\.|agent\.handoff|parallel\.|model\.request|tool\.execute|memory\.recall|result\.|arbitration\.|output\.)/.test(event.type)),
         diagnostics: events.filter(visible),
         memoryUsers: referenceId => events.filter(event => event.type === 'memory.recall.completed'
             && event.references?.some(ref => ref.id === referenceId)).map(event => fields(event, ['runId', 'nodeId', 'agentId', 'stepId'])),

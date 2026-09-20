@@ -4416,12 +4416,146 @@ function buildRecallFinalizeInputTail({
     ].join('\n');
 }
 
+function getMemoryWorkspaceStatus() {
+    const settings = getSettings();
+    return {
+        memoryOsEnabled: isMemoryOsEnabled(settings),
+        enabled: Boolean(settings.enabled),
+        recallEnabled: Boolean(settings.recallEnabled),
+        autoExtractionEnabled: settings.autoExtractionEnabled !== false,
+        autoCompressionEnabled: settings.autoCompressionEnabled !== false,
+        recallMethod: String(settings.recallMethod || 'llm'),
+        updateEvery: Math.max(1, Number(settings.updateEvery) || defaultSettings.updateEvery),
+    };
+}
+
+async function setMemoryWorkspaceControl(name, value) {
+    const settings = getSettings();
+    const enabled = Boolean(value);
+    if (name === 'memoryOsEnabled') {
+        settings.memoryOsEnabled = enabled;
+        latestRecallSnapshot = null;
+        await stopMemoryRuntimeWork();
+    } else if (name === 'enabled') {
+        settings.enabled = enabled;
+        syncGenerationVisibleHistoryRuntimeRegexScripts();
+        await syncMemoryLorebookActivation(getContext(), settings);
+        if (enabled) await syncPersistentProjectionForCurrentChat(getContext());
+        else {
+            await stopMemoryRuntimeWork();
+            updateUiStatus(i18n('Memory disabled, cleared memory lorebook injections.'));
+        }
+    } else if (name === 'recallEnabled') {
+        settings.recallEnabled = enabled;
+    } else if (name === 'autoExtractionEnabled') {
+        settings.autoExtractionEnabled = enabled;
+    } else if (name === 'autoCompressionEnabled') {
+        settings.autoCompressionEnabled = enabled;
+    } else if (name === 'recallMethod') {
+        const method = String(value || '').trim();
+        if (!['llm', 'rag'].includes(method)) throw new Error('Invalid recall method');
+        settings.recallMethod = method;
+    } else {
+        throw new Error(`Unknown Memory Workspace control: ${name}`);
+    }
+    saveSettingsDebounced();
+    return getMemoryWorkspaceStatus();
+}
+
+async function exportMemoryGraphForWorkspace(context) {
+    await ensureMemoryStoreLoaded(context);
+    const store = getMemoryStore(context);
+    if (!store) throw new Error(i18n('No active chat selected.'));
+    const fileName = getMemoryGraphExportFileNameForContext(context);
+    download(JSON.stringify(store, null, 2), fileName, 'application/json');
+    notifySuccess(i18n('Memory graph exported for current chat.'));
+    updateUiStatus(i18nFormat('Downloaded memory graph file: ${0}', fileName));
+    return fileName;
+}
+
+async function importMemoryGraphForWorkspace(context, file) {
+    if (!file) throw new Error(i18n('Memory graph import failed.'));
+    await stopMemoryRuntimeWork();
+    await ensureMemoryStoreLoaded(context);
+    const store = getMemoryStore(context);
+    if (!store) throw new Error(i18n('No active chat selected.'));
+    const importToast = toastr.info(i18n('Importing memory graph…'), '', {
+        timeOut: 0,
+        extendedTimeOut: 0,
+        tapToDismiss: false,
+    });
+    try {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        const parsed = JSON.parse(await getFileText(file));
+        await new Promise(resolve => setTimeout(resolve, 0));
+        const imported = await importMemoryGraphStore(context, parsed);
+        if (!imported) throw new Error(i18n('Memory graph import failed.'));
+        notifySuccess(i18n('Memory graph imported for current chat.'));
+        if (imported.importMode === 'restore') {
+            updateUiStatus(i18nFormat('Imported memory graph and restored exported floor ${0}.', imported.bindFloor));
+        } else if (imported.importMode === 'bind_latest') {
+            updateUiStatus(i18nFormat('Imported memory graph and bound it to latest assistant floor ${0}.', imported.bindFloor));
+        } else {
+            updateUiStatus(i18nFormat('Imported memory graph and bound it to assistant floor ${0}.', imported.bindFloor));
+        }
+        return imported;
+    } finally {
+        if (importToast) toastr.clear(importToast);
+    }
+}
+
+async function resetMemoryGraphForWorkspace(context) {
+    const settings = getSettings();
+    const confirmed = await context.callGenericPopup(
+        i18n('Reset current chat memory graph? This cannot be undone.'),
+        context.POPUP_TYPE.CONFIRM,
+        '',
+        { okButton: i18n('Reset'), cancelButton: i18n('Cancel') },
+    );
+    if (confirmed !== context.POPUP_RESULT.AFFIRMATIVE) return { cancelled: true };
+
+    await stopMemoryRuntimeWork();
+    const chatKey = getChatKey(context);
+    const target = memoryStoreTargets.get(chatKey) || buildMemoryTargetFromContext(context);
+    if (target) memoryStoreTargets.set(chatKey, target);
+    memoryStoreCache.set(chatKey, createEmptyStore());
+    clearCachedMeta(chatKey);
+    clearRollbackHistory(chatKey);
+
+    let resetResult = { ok: true, partial: {} };
+    if (target) resetResult = await deleteMemoryStoreByTarget(context, target);
+    await clearAllMemoryLorebookProjection(context, settings);
+    try {
+        const vectorConfig = getVectorConfigFromSettings(settings);
+        if (vectorConfig) await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey));
+    } catch (vectorError) {
+        console.warn(`[${MODULE_NAME}] Failed to purge vector collection on reset`, vectorError);
+    }
+
+    refreshUiStats();
+    if (resetResult.ok) notifySuccess(i18n('Current chat memory graph reset.'));
+    else {
+        const stages = Object.entries(resetResult.partial).map(([k, v]) => `${k}=${v}`).join(', ');
+        notifyError(i18nFormat('Memory graph reset incomplete: ${0}', stages));
+    }
+    updateUiStatus(i18n('Reset memory graph for current chat.'));
+    return resetResult;
+}
+
 export function getMemoryWorkspacePorts(context) {
     return {
+        getStatus: () => getMemoryWorkspaceStatus(),
+        setControl: (name, value) => setMemoryWorkspaceControl(name, value),
         load: () => sourceLifecycle.retrievalSnapshot(context),
         inspect: async snapshot => (await import('./inspector-compute.js')).computeInspector(snapshot),
         correct: (command, snapshot) => sourceLifecycle.correct(context, command, snapshot),
+        loadGraphLibrary: () => ensureCytoscapeLoaded(),
         openHistory: () => openHistoryBuildPopup(context, createMemoryHistoryBuilder()),
+        manualCompress: () => openManualCompressionPopup(context, getEffectiveSettings(context, getSettings())),
+        rebuildVectors: () => openVectorRecomputePopup(context, getEffectiveSettings(context, getSettings())),
+        exportGraph: () => exportMemoryGraphForWorkspace(context),
+        importGraph: file => importMemoryGraphForWorkspace(context, file),
+        resetGraph: () => resetMemoryGraphForWorkspace(context),
         mountSettings: container => mountMemorySettingsUi(container),
         mountKnowledge: (container, signal, onInspect) => openMemoryOsInspector(context, {
             container, signal, onInspect,
@@ -14746,40 +14880,23 @@ function bindUi() {
         .catch(() => refreshUiStats());
 
     root.find('#atria_rpg_memory_os_enabled').off('input').on('input', function () {
-        settings.memoryOsEnabled = Boolean(jQuery(this).prop('checked'));
-        latestRecallSnapshot = null;
-        // Cancel work admitted under the previous mode. Lifecycle reads the
-        // same saved flag per operation, so enabling needs no host restart.
-        void stopMemoryRuntimeWork();
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('memoryOsEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_enabled').off('input').on('input', function () {
-        settings.enabled = Boolean(jQuery(this).prop('checked'));
-        syncGenerationVisibleHistoryRuntimeRegexScripts();
-        void syncMemoryLorebookActivation(getContext(), settings);
-        if (settings.enabled) {
-            void syncPersistentProjectionForCurrentChat(getContext());
-        } else {
-            void stopMemoryRuntimeWork();
-            updateUiStatus(i18n('Memory disabled, cleared memory lorebook injections.'));
-        }
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('enabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_recall_enabled').off('input').on('input', function () {
-        settings.recallEnabled = Boolean(jQuery(this).prop('checked'));
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('recallEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_auto_extraction_enabled').off('input').on('input', function () {
-        settings.autoExtractionEnabled = Boolean(jQuery(this).prop('checked'));
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('autoExtractionEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     root.find('#atria_rpg_memory_auto_compression_enabled').off('input').on('input', function () {
-        settings.autoCompressionEnabled = Boolean(jQuery(this).prop('checked'));
-        saveSettingsDebounced();
+        void setMemoryWorkspaceControl('autoCompressionEnabled', Boolean(jQuery(this).prop('checked')));
     });
 
     // Recall method selector + RAG settings visibility
@@ -14842,9 +14959,8 @@ function bindUi() {
     updateRecallMethodVisibility();
 
     root.find('#atria_rpg_memory_recall_method').off('change').on('change', function () {
-        settings.recallMethod = String(jQuery(this).val() || 'llm').trim();
+        void setMemoryWorkspaceControl('recallMethod', String(jQuery(this).val() || 'llm').trim());
         updateRecallMethodVisibility();
-        saveSettingsDebounced();
     });
 
     root.find('#atria_rpg_memory_vector_topk').off('change input').on('change input', function () {
@@ -15468,68 +15584,25 @@ function bindUi() {
     });
 
     root.find('#atria_rpg_memory_manual_compress').off('click').on('click', async function () {
-        await openManualCompressionPopup(context, getEffectiveSettings(context, settings));
+        await getMemoryWorkspacePorts(context).manualCompress();
     });
 
     root.find('#atria_rpg_memory_reset').off('click').on('click', async function () {
-        const confirm = await context.callGenericPopup(
-            i18n('Reset current chat memory graph? This cannot be undone.'),
-            context.POPUP_TYPE.CONFIRM,
-            '',
-            { okButton: i18n('Reset'), cancelButton: i18n('Cancel') },
-        );
-        if (confirm !== context.POPUP_RESULT.AFFIRMATIVE) {
-            return;
-        }
-        await stopMemoryRuntimeWork();
-        const chatKey = getChatKey(context);
-        const target = memoryStoreTargets.get(chatKey) || buildMemoryTargetFromContext(context);
-        if (target) {
-            memoryStoreTargets.set(chatKey, target);
-        }
-        memoryStoreCache.set(chatKey, createEmptyStore());
-        clearCachedMeta(chatKey);
-        clearRollbackHistory(chatKey);
-        let resetResult = { ok: true, partial: {} };
-        if (target) {
-            resetResult = await deleteMemoryStoreByTarget(context, target);
-        }
-        await clearAllMemoryLorebookProjection(context, settings);
-        try {
-            const vectorConfig = getVectorConfigFromSettings(settings);
-            if (vectorConfig) {
-                await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey));
-            }
-        } catch (vectorError) {
-            console.warn(`[${MODULE_NAME}] Failed to purge vector collection on reset`, vectorError);
-        }
-        refreshUiStats();
-        if (resetResult.ok) {
-            notifySuccess(i18n('Current chat memory graph reset.'));
-        } else {
-            const stages = Object.entries(resetResult.partial).map(([k, v]) => `${k}=${v}`).join(', ');
-            notifyError(i18nFormat('Memory graph reset incomplete: ${0}', stages));
-        }
-        updateUiStatus(i18n('Reset memory graph for current chat.'));
+        await getMemoryWorkspacePorts(context).resetGraph();
     });
 
     root.find('#atria_rpg_memory_recompute_vectors').off('click').on('click', async function () {
-        await openVectorRecomputePopup(context, getEffectiveSettings(context, settings));
+        await getMemoryWorkspacePorts(context).rebuildVectors();
     });
 
     const importFileInput = root.find('#atria_rpg_memory_import_file');
 
     root.find('#atria_rpg_memory_export').off('click').on('click', async function () {
-        await ensureMemoryStoreLoaded(context);
-        const store = getMemoryStore(context);
-        if (!store) {
-            notifyError(i18n('No active chat selected.'));
-            return;
+        try {
+            await getMemoryWorkspacePorts(context).exportGraph();
+        } catch (error) {
+            notifyError(error?.message || String(error));
         }
-        const fileName = getMemoryGraphExportFileNameForContext(context);
-        download(JSON.stringify(store, null, 2), fileName, 'application/json');
-        notifySuccess(i18n('Memory graph exported for current chat.'));
-        updateUiStatus(i18nFormat('Downloaded memory graph file: ${0}', fileName));
     });
 
     root.find('#atria_rpg_memory_import').off('click').on('click', function () {
@@ -15544,44 +15617,12 @@ function bindUi() {
     importFileInput.off('change').on('change', async function () {
         const file = this.files?.[0];
         this.value = '';
-        if (!file) {
-            return;
-        }
-        await stopMemoryRuntimeWork();
-        await ensureMemoryStoreLoaded(context);
-        const store = getMemoryStore(context);
-        if (!store) {
-            notifyError(i18n('No active chat selected.'));
-            return;
-        }
-        const importToast = toastr.info(i18n('Importing memory graph…'), '', {
-            timeOut: 0,
-            extendedTimeOut: 0,
-            tapToDismiss: false,
-        });
+        if (!file) return;
         try {
-            await new Promise(resolve => setTimeout(resolve, 0));
-            const parsed = JSON.parse(await getFileText(file));
-            await new Promise(resolve => setTimeout(resolve, 0));
-            const imported = await importMemoryGraphStore(context, parsed);
-            if (!imported) {
-                return;
-            }
-            notifySuccess(i18n('Memory graph imported for current chat.'));
-            if (imported.importMode === 'restore') {
-                updateUiStatus(i18nFormat('Imported memory graph and restored exported floor ${0}.', imported.bindFloor));
-            } else if (imported.importMode === 'bind_latest') {
-                updateUiStatus(i18nFormat('Imported memory graph and bound it to latest assistant floor ${0}.', imported.bindFloor));
-            } else {
-                updateUiStatus(i18nFormat('Imported memory graph and bound it to assistant floor ${0}.', imported.bindFloor));
-            }
+            await getMemoryWorkspacePorts(context).importGraph(file);
         } catch (error) {
             notifyError(i18nFormat('Import failed: ${0}', error?.message || error));
             updateUiStatus(i18n('Memory graph import failed.'));
-        } finally {
-            if (importToast) {
-                toastr.clear(importToast);
-            }
         }
     });
 }
