@@ -78,6 +78,20 @@ describe('immersive controller', () => {
         controller.dispose();
     });
 
+    test('native fullscreen state changes do not toggle immersive presentation', async () => {
+        window.AtriaAndroid = { setImmersiveModeEnabled: jest.fn() };
+        const controller = createImmersiveController({ document, window });
+
+        await controller.setEnabled(true, { useFullscreen: false, syncNative: false });
+        controller.setNativeFullscreenState(true);
+        controller.setNativeFullscreenState(false);
+
+        expect(controller.isEnabled()).toBe(true);
+        expect(document.body.classList.contains('atria-immersive-mode')).toBe(true);
+        controller.dispose();
+        delete window.AtriaAndroid;
+    });
+
     test('remember-state setting controls persistence without controlling availability', async () => {
         const saveSettings = jest.fn();
         const settings = {
