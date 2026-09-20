@@ -99,7 +99,6 @@ import { createLogger } from './logging/logger.js';
 import {
     normalizeStartupClientReport,
     startupSessionStore,
-    summarizeExtensionActivationTimings,
     summarizeClientStartupTimings,
 } from './logging/startup-store.js';
 import { getBufferForHandle as getInspectorBufferForHandle } from './request-inspector.js';
@@ -604,7 +603,8 @@ app.post('/api/startup/client-timing', (request, response) => {
         initModuleMs: diffClientTiming(timings, 'initJsStart', 'initModuleEnd'),
         initToFirstLoadMs: diffClientTiming(timings, 'initJsStart', 'firstLoadStart'),
         csrfMs: diffClientTiming(timings, 'firstLoadStart', 'csrfDone'),
-        bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettingsapp.post('/api/startup/client-timing', async (request, response) => {
+        bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettings// summarizeExtensionActivationTimings lives in startup-store and feeds the persisted extSlow summary.
+app.post('/api/startup/client-timing', async (request, response) => {
     const report = normalizeStartupClientReport(request.body || {});
     const summary = summarizeClientStartupTimings(report);
     const version = await getVersion().catch(() => ({}));
