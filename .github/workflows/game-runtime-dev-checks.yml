@@ -32,6 +32,9 @@ jobs:
           game-runtime/package-manifest.test.js
           game-runtime/package-loader.test.js
           game-runtime/package-transport.test.js
+          game-runtime/world-runtime.test.js
+          game-runtime/world-journal.test.js
+          game-runtime/world-branch.test.js
           regex-engine/game-runtime-boundary.test.js
           regex-engine/lane-semantics.test.js
           card-app.test.js
@@ -39,5 +42,6 @@ jobs:
         run: >-
           npx eslint
           public/scripts/extensions/game-runtime/*.js
+          public/scripts/extensions/game-runtime/world/*.js
           public/scripts/extensions/regex/engine.js
           src/endpoints/card-app.js
