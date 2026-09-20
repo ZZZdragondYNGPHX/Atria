@@ -6,7 +6,7 @@ Atria is an independent SillyTavern-based modified product. All previously recor
 
 Current authoritative `main`:
 
-- `1dffedf610e03a51512ec59f12a09cd7b9a23f43`
+- `63da3141a3895d3386ed1bebc30876c9766315ba`
 
 This commit is the squash merge of PR #73, `fix: localize diagnostics workspace in Chinese`, a localization-only follow-up to the Logging Observability Workspace refactor in PR #71. Its final validated task head `f08032f1c9ecd686e5fc1218f39ec82e4f700ad5` passed Atria PR Checks #717 (ESLint, Atria Migration Guard, and the complete Node unit suite). The underlying logging/diagnostics architecture from PR #71 remains unchanged.
 
@@ -56,6 +56,27 @@ PR #78 is merged.
 - PR #77 repository-origin repair and history-cutover handling remain unchanged.
 - Final Atria PR Checks #742 passed.
 - Android and Docker builds were not run because this fix is limited to shell/Node launcher behavior.
+
+### Termux Toolbox uninstall modes
+
+PR #76 is merged.
+
+- Original baseline: `main@c407f9e97530f587362c2150f7a0c2601598f75e`.
+- Synchronized baseline after PR #77/#78: `main@1dffedf610e03a51512ec59f12a09cd7b9a23f43`.
+- Final validated task HEAD: `170f6ad501c6aa100b868e156579f52e96c41931`.
+- Squash merge / current `main`: `63da3141a3895d3386ed1bebc30876c9766315ba`.
+- Permanent record: `feat/termux-uninstall-modes.md`.
+- Toolbox version is now v0.3.9.
+- Uninstall management now exposes two product-level flows: remove the active program while preserving user data, or completely remove Atria.
+- Keep-data uninstall preserves shared `data`, `backups`, `exports`, and the toolbox.
+- Complete uninstall removes both instances, both shared Atria trees, toolbox/autostart, Atria CLI state/entrypoint and only the canonical default Webpack cache.
+- Complete uninstall validates Atria-owned deletion targets and requires typed plus randomized confirmation.
+- Custom Webpack cache overrides are intentionally preserved.
+- Termux and general packages such as Node.js, git and curl are not removed.
+- PR #77 repository-origin/history-cutover behavior and PR #78 `/dev/tty` piped-launch behavior remain intact.
+- Final Atria PR Checks #743 passed: Atria Migration Guard, ESLint and the complete Node unit suite.
+- Android JVM/APK and Docker builds were not run because this task is limited to the Termux shell/toolbox surface.
+- Temporary branch `feat/termux-uninstall-modes` was removed after merge.
 
 ### Android / Termux startup optimization continuation
 
