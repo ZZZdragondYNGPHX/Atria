@@ -7,7 +7,7 @@
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
 - Document branch: `docs`
 - Document path: `refactor/game-runtime-architecture.md`
-- Status: architecture approved; implementation has not started.
+- Status: architecture approved and in implementation; R0/R1 and the minimum R2 World/Event vertical slice are complete on the working branch.
 
 This is a product-architecture refactor, not a narrow Regex optimization task.
 
@@ -88,21 +88,30 @@ Direct arbitrary world-state mutation is not the normal runtime contract.
 
 ### 1.4 LLM never owns arithmetic or authoritative state mutation
 
-LLM has two principal runtime roles:
+LLM has three bounded runtime roles:
 
 1. **Intent Resolver**
    - convert user free text into one or more typed Commands;
    - choose arguments from the command schema;
    - never calculate final game-state consequences.
 
-2. **Narrator**
+2. **Event Interpreter**
+   - run only when deterministic code cannot safely infer the semantic meaning of an action/event;
+   - classify ambiguous meaning into typed semantic output such as intent/category/severity/participants/evidence/confidence;
+   - may explicitly return `no_change` when no durable game event should be produced;
+   - never calculate authoritative numeric deltas;
+   - never write World State or Event Journal directly.
+
+3. **Narrator**
    - receive committed facts / observations / event results;
    - turn them into prose;
    - never redefine committed world facts.
 
 Core principle:
 
-> LLM decides “what is attempted”; code decides “what actually happens”; the Event Journal decides “what happened historically”; LLM decides “how to describe it”.
+> LLM resolves intent, interprets genuinely ambiguous semantics when needed, and narrates committed facts. Deterministic code owns calculation and state transitions; the Event Journal owns history.
+
+The Event Interpreter is **not** a per-turn “state update AI”. It is an optional semantic helper invoked by Game Logic only when a rule requires language/world interpretation that deterministic code cannot provide reliably.
 
 ### 1.5 UI never owns game rules
 
@@ -177,7 +186,16 @@ The current CardApp runtime model (“one entry JS module, hide all native chat 
                 | Rules            |
                 | RNG              |
                 | Simulation       |
-                +---------+--------+
+                +----+--------+----+
+                     |        |
+             deterministic    | semantic ambiguity only
+                     |        v
+                     |  +-------------------+
+                     |  | Event Interpreter |
+                     |  | typed meaning only|
+                     |  +---------+---------+
+                     |            |
+                     +------------+
                           |
                           v
                         Events
@@ -235,6 +253,7 @@ game/
 ├── llm/
 │   ├── observations.js
 │   ├── resolver.js
+│   ├── interpreter.js
 │   └── narrator.js
 ├── ui/
 │   ├── game.html
@@ -665,35 +684,86 @@ Declarative HTML binding should bind to selectors or approved read paths, not ra
 
 ## 10. LLM Bridge
 
-### 10.1 Two-phase generation
+### 10.1 Runtime pipeline
 
-For game-aware turns, preferred flow:
+For game-aware turns, the preferred flow is:
 
 ```text
-User intent
- -> Resolve phase
- -> typed Command/tool call
- -> deterministic code execution
- -> world commit
- -> Narrative phase
- -> prose constrained by committed results
+User free text
+ -> Intent Resolver
+ -> typed Command
+ -> deterministic Game Logic
+ -> optional Event Interpreter only when semantic ambiguity requires it
+ -> deterministic Game Logic converts interpretation into rules/events
+ -> World commit
+ -> Narrator
+ -> prose constrained by committed facts
 ```
 
-The Resolve phase must not write final story prose as its primary output.
+The Intent Resolver must not write final story prose as its primary output.
 
-The Narrative phase must not mutate world state.
+The Event Interpreter must not directly update World State, invent numeric deltas, or bypass Game Logic.
+
+The Narrator must not mutate world state.
 
 ### 10.2 UI action shortcut
 
 When a UI action already resolves to a typed Command, skip Intent Resolver.
 
 ```text
-button -> Command -> Game Logic -> Commit -> Narrator
+button -> Command -> Game Logic -> optional Event Interpreter -> Commit -> Narrator
 ```
+
+If the command is completely deterministic, the Event Interpreter is also skipped.
 
 This reduces latency/token use and eliminates needless LLM uncertainty.
 
-### 10.3 Automatic command tool generation
+### 10.3 Event Interpreter
+
+The Event Interpreter exists for **semantic classification**, not state bookkeeping.
+
+Good uses:
+
+- whether a free-form statement counts as a threat, apology, betrayal, flirtation, deception, surrender, etc.;
+- which typed narrative/game event best matches an ambiguous action;
+- severity/category/participants/evidence extraction from prose;
+- resolving a semantic branch explicitly requested by a game rule.
+
+Bad uses:
+
+- `hp = 73`;
+- `favorability += 5`;
+- inventory arithmetic;
+- damage formulas;
+- probability rolls;
+- cooldowns;
+- direct World State patches.
+
+Example output:
+
+```json
+{
+  "decision": "event",
+  "eventType": "implicit_threat",
+  "severity": "medium",
+  "participants": ["guard_02"],
+  "confidence": 0.88,
+  "evidence": ["..."]
+}
+```
+
+A normal no-op is also valid:
+
+```json
+{
+  "decision": "no_change",
+  "confidence": 0.93
+}
+```
+
+Game Logic validates the typed interpretation and decides what deterministic rules/events follow. Low-confidence or invalid interpretation may fail closed, request retry/fallback, or produce no durable state change according to game policy.
+
+### 10.4 Automatic command tool generation
 
 Commands may opt into LLM exposure.
 
@@ -707,7 +777,7 @@ Examples:
 - `buy` visible only when a merchant is available;
 - `unlock` visible only near a locked object.
 
-### 10.4 Observations
+### 10.5 Observations
 
 LLM must not receive raw full World State by default.
 
@@ -724,13 +794,100 @@ Examples:
 
 Internal implementation fields such as seeds, event sequence numbers, caches, hidden flags or huge inventories should not enter prompts unless explicitly required.
 
-### 10.5 Narrator constraints
+### 10.6 Narrator constraints
 
 Narrator input should include committed event/result facts and observation context.
 
 Narrator may elaborate prose but cannot contradict authoritative facts.
 
 Runtime should make fact provenance/debugging visible.
+
+### 10.7 Connection Profile and Runtime Role
+
+Atria 1.0 must separate **how a model is reached** from **what the model is used for**.
+
+#### Connection Profile
+
+Describes transport/provider/model connection details:
+
+- provider/API family;
+- endpoint;
+- credential reference;
+- model;
+- headers/body overrides;
+- retry/rate limit;
+- prompt caching;
+- transport/tool-calling capability.
+
+#### Runtime Role
+
+Describes the workload using a connection.
+
+Core LLM roles:
+
+- `narrator`;
+- `intent_resolver`;
+- `event_interpreter`;
+- `orchestrator`;
+- `studio`.
+
+Retrieval roles remain specialized non-chat workloads:
+
+- `embedding`;
+- `rerank`.
+
+Consumers request a role rather than hard-coding a provider/profile:
+
+```text
+runtime role
+ -> primary connection profile
+ -> validation/retry policy
+ -> fallback profile queue
+```
+
+Each role may define:
+
+- primary profile;
+- ordered fallback profiles;
+- timeout;
+- retry policy;
+- reasoning policy;
+- structured-output/tool-calling requirements;
+- validation behavior;
+- role-specific defaults.
+
+Do not extend the old profile `mode` enum indefinitely with values such as `state`. The role layer is the scalable abstraction.
+
+### 10.8 Model & Runtime configuration UX
+
+The existing Connection Manager UI currently presents Chat / Embedding / Rerank as peer connection modes. During this Master Refactor it must evolve toward a role-oriented **Model & Runtime** configuration surface.
+
+The eventual information architecture should distinguish:
+
+```text
+AI
+├── Narration
+├── Intent Resolution
+├── Event Interpretation
+├── Orchestration
+└── Studio
+
+Retrieval
+├── Embedding
+└── Rerank
+```
+
+Role editors must reflect their actual workload rather than clone the chat UI.
+
+Examples:
+
+- Narration emphasizes generation quality, sampling, streaming, context/cache and fallback.
+- Intent Resolution emphasizes tool/schema reliability, retries, timeout and low-variance defaults.
+- Event Interpretation emphasizes strict structured output, confidence threshold, no-change handling, validation, retries and fallback.
+- Embedding/Rerank keep retrieval-specific forms.
+
+The R5 implementation establishes the role/routing model and functional configuration surface. The final visual/information-architecture redesign belongs to R7.
+
 
 ---
 
@@ -893,6 +1050,7 @@ Correlatable chain:
 UI action / LLM command
  -> command validation
  -> calculation
+ -> optional semantic interpretation
  -> RNG
  -> event emission
  -> reducer
@@ -1031,27 +1189,38 @@ Exit:
 - desktop/mobile smoke;
 - broken package recovery.
 
-### R5 — LLM Bridge
+### R5 — LLM Runtime & Model Roles
 
-Goal: code/LLM collaboration with no LLM-owned authoritative arithmetic.
+Goal: code/LLM collaboration with no LLM-owned authoritative arithmetic or direct state mutation, plus a role-based model routing layer.
 
 Work:
 
 - command tool generation;
 - command visibility;
-- intent resolve phase;
+- Intent Resolver;
+- optional Event Interpreter;
+- typed interpretation schema / confidence / no-change behavior;
 - observation projection;
-- narrator phase;
+- Narrator;
 - committed-fact enforcement/debug evidence;
 - UI-action shortcut;
-- native and prompt-tool fallback paths.
+- native and prompt-tool fallback paths;
+- Connection Profile vs Runtime Role separation;
+- primary + fallback profile routing;
+- role-specific validation/retry/timeout policies;
+- functional Model & Runtime configuration surface.
 
 Exit:
 
 - free text -> command -> commit -> narration e2e;
+- ambiguous semantic input -> Event Interpreter -> deterministic Game Logic -> commit e2e;
+- deterministic commands skip Event Interpreter;
+- Event Interpreter can return no-change without creating state noise;
 - UI button -> command -> commit -> narration e2e;
 - intentionally wrong LLM arithmetic cannot alter world state;
-- irrelevant commands omitted from tool set.
+- invalid/low-confidence interpretation cannot directly mutate state;
+- irrelevant commands omitted from tool set;
+- Runtime Role fallback routing is tested.
 
 ### R6 — Game Studio
 
@@ -1074,6 +1243,47 @@ Exit:
 - simulate/debug it;
 - export/reimport it;
 - retain project files and runtime behavior.
+
+### R7 — Atria Game-first Shell Redesign
+
+Goal: redesign Atria's own host UI so the 1.0 product no longer defaults visually or structurally to the old text-chat/SillyTavern-era information architecture.
+
+This is not a cosmetic reskin. The host shell must reflect that Atria is a Game Runtime Host.
+
+Work:
+
+- establish an Atria 1.0 host design system and reusable shell components;
+- redesign primary navigation and main-stage hierarchy;
+- make Game Package / Runtime / World / Timeline concepts first-class in host UX;
+- redesign mobile navigation around the new runtime instead of inheriting desktop chat drawers;
+- integrate Game Studio, diagnostics and Immersive entry points coherently;
+- redesign Model & Runtime configuration around Runtime Roles rather than the old Chat/Embedding/Rerank-only mental model;
+- remove/reduce UI patterns that encourage future AI-generated features to copy the old “drawer + long text + chat bubble” layout by default;
+- provide explicit reusable components/tokens/documentation so AI-assisted frontend work has a modern Atria-native target;
+- preserve stable Surface APIs for Game Packages while allowing host implementation details to change.
+
+Candidate host primitives may include:
+
+- App/Game Shell;
+- Stage;
+- Workspace;
+- Runtime Card;
+- Inspector;
+- Timeline;
+- Dock;
+- Sheet;
+- Command Bar;
+- Surface Host.
+
+Exact visual language is an implementation/design task in R7; do not freeze arbitrary aesthetics in earlier runtime phases.
+
+Exit:
+
+- desktop and mobile host UI reflect Game Runtime as the primary product model;
+- Model & Runtime page uses role-oriented information architecture;
+- Game Package/World/Timeline/Studio/Diagnostics have coherent navigation;
+- old host DOM remains hidden behind stable Surface/Native Component contracts rather than serving as the public architecture;
+- frontend smoke/E2E covers major host paths and Game UI coexistence.
 
 ---
 
@@ -1101,7 +1311,11 @@ Expected areas:
 - Surface host tests;
 - mobile/desktop frontend smoke;
 - Game Runtime error recovery;
-- LLM resolve/narrate tool-loop tests;
+- LLM resolve/interpret/narrate tool-loop tests;
+- Event Interpreter schema/confidence/no-change tests;
+- Runtime Role primary/fallback routing tests;
+- Model & Runtime configuration tests;
+- R7 desktop/mobile host-shell frontend smoke;
 - export/import e2e;
 - ESLint;
 - complete Node unit suite;
@@ -1124,6 +1338,7 @@ Design expectations:
 - command/rule compilation cached;
 - formula AST cached;
 - LLM tool list generated from active command visibility;
+- Event Interpreter invoked only for explicitly ambiguous semantic work, never as a mandatory per-turn state updater;
 - observations narrow by design;
 - assets lazy-loadable;
 - surfaces mount/unmount with explicit lifecycle;
@@ -1141,6 +1356,10 @@ This refactor does not aim to:
 - preserve historical CardApp “broad ctx can do anything” as the preferred programming model;
 - keep Regex as the UI renderer for new games;
 - expose arbitrary `set_state` to LLM as the primary state API;
+- run a mandatory “state update AI” every turn;
+- let Event Interpreter write World State or numeric deltas directly;
+- keep extending Connection Profile `mode` with every new AI workload instead of introducing Runtime Roles;
+- preserve the old Chat/Embedding/Rerank-only API-page information architecture for Atria 1.0;
 - dump full World State into every LLM request;
 - force every game to use the Orchestrator;
 - require JavaScript for simple game logic;
@@ -1148,21 +1367,22 @@ This refactor does not aim to:
 
 ---
 
-## 19. First implementation rule
+## 19. Current implementation rule
 
-Do not start by building the most visible UI.
+R0, R1 and the minimum R2 World/Event vertical slice are already implemented on the working branch. Continue from the live handoff; do not restart those phases.
 
-The first implementation conversation should:
+The next implementation conversation should:
 
 1. re-read current `main:AGENTS.md`;
 2. re-read current `main:FORK_MAINTENANCE.md`;
 3. re-read `docs:handoff/latest-handoff.md`;
-4. read this document from `docs:refactor/game-runtime-architecture.md`;
-5. verify live branch HEAD and main HEAD;
-6. inspect current Regex/CardApp/State/Function Call code;
-7. begin with R0/R1 foundation in the smallest coherent vertical slice.
+4. read `docs:handoff/game-runtime-architecture.md`;
+5. read this document from `docs:refactor/game-runtime-architecture.md`;
+6. verify live branch HEAD and main HEAD;
+7. inspect current `public/scripts/extensions/game-runtime/**` and focused tests;
+8. continue R3 with the smallest real Command Bus vertical slice.
 
-Avoid speculative massive rewrites before contracts/tests exist.
+Do not jump to R7 visual redesign before R3-R6 runtime contracts are stable. R7 is deliberately late so the UI reflects the final product model rather than freezing premature runtime assumptions.
 
 ---
 
@@ -1181,10 +1401,13 @@ The refactor is successful when Atria can support a character card that:
 - presents itself through Component/Hybrid/Full HTML UI;
 - uses selectors rather than raw mutable state for UI;
 - converts free-text intent into commands;
+- optionally uses Event Interpreter for ambiguous semantics without giving it direct state authority;
+- routes Narrator / Intent Resolver / Event Interpreter / other model workloads through explicit Runtime Roles with fallback policies;
 - narrates committed results without LLM-owned state arithmetic;
 - can be simulated and debugged in Game Studio;
 - exports and reimports as one character-card artifact;
-- does not rely on Regex, MVU, or LoreState to function as a game.
+- does not rely on Regex, MVU, or LoreState to function as a game;
+- presents Atria 1.0 through a Game-first host shell rather than the inherited pure-text-chat UI model.
 
 At that point Atria is no longer merely “SillyTavern plus richer status bars”.
 
