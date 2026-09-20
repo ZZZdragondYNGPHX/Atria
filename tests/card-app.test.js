@@ -158,6 +158,29 @@ describe('packCardAppFiles', () => {
         expect(packCardAppFiles(charData, 'nonexistent', cardAppsDir)).toBe(false);
     });
 
+    test('should pack a game.json package even when legacy CardApp is not enabled', () => {
+        const charId = 'game-package-only';
+        const charDir = path.join(cardAppsDir, charId);
+        fs.mkdirSync(path.join(charDir, 'ui'), { recursive: true });
+        fs.writeFileSync(path.join(charDir, 'game.json'), JSON.stringify({
+            format: 'atria-game',
+            manifestVersion: 1,
+            id: 'demo.package',
+            name: 'Demo Package',
+            version: '0.1.0',
+            runtime: { min: 1 },
+        }));
+        fs.writeFileSync(path.join(charDir, 'ui', 'game.html'), '<main>demo</main>');
+
+        const charData = { data: { extensions: {} } };
+        const result = packCardAppFiles(charData, charId, cardAppsDir);
+
+        expect(result).toBe(true);
+        expect(charData.data.extensions.card_app.enabled).toBeUndefined();
+        expect(charData.data.extensions.card_app.files['game.json']).toContain('"atria-game"');
+        expect(charData.data.extensions.card_app.files['ui/game.html']).toBe('<main>demo</main>');
+    });
+
     test('should pack text files as plain strings', () => {
         const charId = 'pack-test';
         const charDir = path.join(cardAppsDir, charId);
