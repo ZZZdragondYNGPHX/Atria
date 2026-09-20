@@ -74,6 +74,9 @@ function buildHumanSummary(machine, keyLogs) {
         `Error: ${incident.primaryFailure?.message || incident.summary}`,
         `Probable owner: ${owner.probableOwner || 'unknown'}${owner.ownerName ? ` (${owner.ownerName})` : ''} | Confidence: ${Number(owner.confidence || 0).toFixed(2)}`,
     ];
+    if (incident.summary && incident.summary !== incident.primaryFailure?.message) {
+        lines.push(`Summary: ${incident.summary}`);
+    }
     const correlation = Object.entries(incident.correlation || {}).map(([key, value]) => `${key}=${value}`).join(', ');
     if (correlation) lines.push(`Correlation: ${correlation}`);
     if (incident.evidence?.length) {

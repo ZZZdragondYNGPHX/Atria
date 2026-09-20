@@ -690,9 +690,13 @@ function setView(view, { persist = true } = {}) {
     syncWorkspaceChrome();
     if (next === 'entries') {
         // Mobile switches from the catalogue to a full-height virtual list.
-        // Re-render on the next frame after CSS/layout has settled so rows are
-        // painted in the visible pane instead of a stale hidden container.
-        scheduleVirtualRows();
+        // A hidden scroll container may keep an old anchor near the tail.
+        // Reset once more on the next frame after layout has settled.
+        requestAnimationFrame(() => {
+            const viewport = document.querySelector('#wi_workspace_entry_list');
+            if (viewport && isMobileWorkspace() && !state.mobileDetail) viewport.scrollTop = 0;
+            renderVirtualRows();
+        });
     }
 }
 
