@@ -46,10 +46,15 @@ export function createImmersiveMessageActions({
     const editButton = createActionButton(documentRef, { action: 'edit', label: translate('Edit'), icon: 'fa-solid fa-pencil' });
     const rewriteButton = createActionButton(documentRef, { action: 'rewrite', label: translate('Rewrite'), icon: 'fa-solid fa-repeat' });
     const moreButton = createActionButton(documentRef, { action: 'more', label: translate('More'), icon: 'fa-solid fa-ellipsis' });
-    copyButton.setAttribute('data-i18n', 'Copy;[title]Copy;[aria-label]Copy');
-    editButton.setAttribute('data-i18n', 'Edit;[title]Edit;[aria-label]Edit');
-    rewriteButton.setAttribute('data-i18n', 'Rewrite;[title]Rewrite;[aria-label]Rewrite');
-    moreButton.setAttribute('data-i18n', 'More;[title]More;[aria-label]More');
+    for (const [button, key] of [
+        [copyButton, 'Copy'],
+        [editButton, 'Edit'],
+        [rewriteButton, 'Rewrite'],
+        [moreButton, 'More'],
+    ]) {
+        button.setAttribute('data-i18n', `[title]${key};[aria-label]${key}`);
+        button.querySelector('span')?.setAttribute('data-i18n', key);
+    }
     moreButton.setAttribute('aria-expanded', 'false');
     toolbar.append(copyButton, editButton, rewriteButton, moreButton);
 
