@@ -8,8 +8,12 @@ import http from 'isomorphic-git/http/node';
 import { default as git, CheckRepoActions } from 'simple-git';
 import { sync as commandExistsSync } from 'command-exists';
 import { getConfigValue, color } from './util.js';
+import { createLogger } from './logging/logger.js';
+import { captureBackendIncident } from './logging/runtime.js';
+import { classifyOperationalFailure, sanitizeDiagnosticUrl } from './logging/failure-classifier.js';
 
 const enableServerPlugins = !!getConfigValue('enableServerPlugins', false, 'boolean');
+const pluginLogger = createLogger('plugins', { emitToConsole: true });
 const enableServerPluginsAutoUpdate = !!getConfigValue('enableServerPluginsAutoUpdate', true, 'boolean');
 
 /**
@@ -429,6 +433,26 @@ export async function installServerPlugin(pluginsPath, pluginUrl) {
         };
     } catch (error) {
         fs.rmSync(targetPath, { recursive: true, force: true });
+        const classified = classifyOperationalFailure(error, { stage: 'install.clone' });
+        pluginLogger.error('install.failed', '[Plugins] server plugin install failed', {
+            plugin: directory,
+            origin: sanitizeDiagnosticUrl(remoteUrl),
+            stage: classified.stage,
+            code: classified.code,
+            message: classified.message,
+        }, { category: 'install' });
+        captureBackendIncident({
+            type: 'plugin_runtime_failure',
+            primaryModule: 'plugins',
+            stage: classified.stage,
+            summary: classified.message || 'Server plugin install failed',
+            failure: error,
+            probableOwner: classified.probableOwner,
+            ownerName: classified.ownerName,
+            ownerConfidence: classified.confidence,
+            ownershipEvidence: classified.evidence,
+            provenance: { type: 'server-plugin', name: directory, origin: sanitizeDiagnosticUrl(remoteUrl) },
+        });
         throw error;
     }
 }
@@ -701,15 +725,32 @@ async function loadFromPackage(app, packageJsonPath, exitHooks) {
  * @returns {Promise<boolean>} Promise that resolves to true if plugin was loaded successfully
  */
 async function loadFromFile(app, pluginFilePath, exitHooks) {
+    const pluginName = path.basename(path.dirname(pluginFilePath)) || path.basename(pluginFilePath);
+    let plugin;
     try {
         const fileUrl = url.pathToFileURL(pluginFilePath).toString();
-        const plugin = await import(fileUrl);
-        console.log(`Initializing plugin from ${pluginFilePath}`);
-        return await initPlugin(app, plugin, exitHooks);
+        plugin = await import(fileUrl);
     } catch (error) {
-        console.error(`Failed to load plugin from ${pluginFilePath}: ${error}`);
+        pluginLogger.error('load.import-failed', '[Plugins] failed to import server plugin', {
+            plugin: pluginName,
+            message: error?.message || String(error),
+        }, { category: 'runtime', consoleArgs: [`Failed to load plugin from ${pluginFilePath}:`, error] });
+        captureBackendIncident({
+            type: 'plugin_runtime_failure',
+            primaryModule: 'plugins',
+            stage: 'load.import',
+            summary: error?.message || String(error),
+            failure: error,
+            probableOwner: 'server-plugin',
+            ownerName: pluginName,
+            ownerConfidence: 0.95,
+            provenance: { type: 'server-plugin', name: pluginName },
+        });
         return false;
     }
+
+    console.log(`Initializing plugin from ${pluginFilePath}`);
+    return await initPlugin(app, plugin, exitHooks);
 }
 
 /**
@@ -766,7 +807,48 @@ async function initPlugin(app, plugin, exitHooks) {
     // Allow the plugin to register API routes under /api/plugins/[plugin ID] via a router
     const router = express.Router();
 
-    await init(router);
+    try {
+        await init(router);
+    } catch (error) {
+        pluginLogger.error('activate.failed', '[Plugins] server plugin init failed', {
+            plugin: id,
+            message: error?.message || String(error),
+        }, { category: 'runtime', consoleArgs: [`Failed to initialize plugin ${id}:`, error] });
+        captureBackendIncident({
+            type: 'plugin_runtime_failure',
+            primaryModule: 'plugins',
+            stage: 'activate.init',
+            summary: error?.message || String(error),
+            failure: error,
+            probableOwner: 'server-plugin',
+            ownerName: id,
+            ownerConfidence: 0.98,
+            provenance: { type: 'server-plugin', name: id, displayName: info.name },
+        });
+        return false;
+    }
+
+    router.use((error, request, _response, next) => {
+        pluginLogger.error('route.failed', '[Plugins] server plugin route failed', {
+            plugin: id,
+            method: request.method,
+            path: request.path,
+            message: error?.message || String(error),
+        }, { category: 'runtime' });
+        captureBackendIncident({
+            type: 'plugin_runtime_failure',
+            primaryModule: 'plugins',
+            stage: 'route.runtime',
+            summary: error?.message || String(error),
+            failure: error,
+            probableOwner: 'server-plugin',
+            ownerName: id,
+            ownerConfidence: 0.97,
+            provenance: { type: 'server-plugin', name: id, displayName: info.name },
+            environment: { method: request.method, path: request.path },
+        }, { request });
+        next(error);
+    });
 
     loadedPlugins.set(id, plugin);
 

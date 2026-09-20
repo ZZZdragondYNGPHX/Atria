@@ -73,6 +73,14 @@ test.afterAll(async () => {
     await mock?.stop();
 });
 
+test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+        window.localStorage.setItem('atri_world_info_workspace_active_view', 'library');
+        window.localStorage.setItem('atri_world_info_workspace_continuous_cards', 'false');
+        window.localStorage.setItem('atri_world_info_workspace_display_mode', 'standard');
+    });
+});
+
 test('desktop workspace uses Library / Entries / Global Rules and bounded list rendering', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await awaitMainUI(page, server.baseURL);

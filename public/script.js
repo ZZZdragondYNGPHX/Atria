@@ -1,3 +1,4 @@
+import { createLogger } from './scripts/logging/logger.js';
 import { ChatSnapshotCache } from './scripts/atri-chat-snapshot-cache.js';
 import { createWorldInfoDispatchAttribution, markWorldInfoDispatch } from './scripts/atri-world-info-provenance.js';
 import {
@@ -1958,12 +1959,24 @@ export async function pingServer() {
 }
 
 const CLIENT_STARTUP_TIMING_KEY = '__atriaStartupTiming';
+const clientStartupLogger = createLogger('startup');
+const clientUiLogger = createLogger('ui');
+
+function getClientStartupSessionId() {
+    const state = globalThis[CLIENT_STARTUP_TIMING_KEY];
+    return String(state?.startupSessionId || '');
+}
 
 function markClientStartupTiming(name) {
     try {
         const state = globalThis[CLIENT_STARTUP_TIMING_KEY];
         if (state && typeof state === 'object') {
-            state[name] = performance.now();
+            const atMs = performance.now();
+            state[name] = atMs;
+            clientStartupLogger.debug(`milestone.${name}`, `Client startup milestone: ${name}`, { atMs }, {
+                category: 'milestone',
+                correlation: { startupSessionId: String(state.startupSessionId || '') },
+            });
         }
     } catch {
         // Startup diagnostics must never affect app boot.
@@ -2001,8 +2014,9 @@ function reportClientStartupTiming(stage = 'ready') {
         if (!state || typeof state !== 'object') return;
 
         const navigation = performance.getEntriesByType?.('navigation')?.[0];
-        const { durations = {}, ...timings } = state;
+        const { durations = {}, startupSessionId = '', ...timings } = state;
         const payload = {
+            startupSessionId: String(startupSessionId || ''),
             stage,
             timings,
             durations: { ...durations },
@@ -2013,7 +2027,31 @@ function reportClientStartupTiming(stage = 'ready') {
                 domContentLoadedEventEnd: navigation.domContentLoadedEventEnd,
                 loadEventEnd: navigation.loadEventEnd,
             } : null,
+            runtime: {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                online: navigator.onLine,
+                connectionType: navigator.connection?.effectiveType ?? '',
+                memoryGB: navigator.deviceMemory ?? null,
+                hardwareConcurrency: navigator.hardwareConcurrency ?? null,
+                viewport: {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    devicePixelRatio: window.devicePixelRatio,
+                },
+            },
         };
+
+        clientStartupLogger.info('timing.report', `Client startup timing report: ${stage}`, {
+            stage,
+            timings,
+            durations: { ...durations },
+            navigation: payload.navigation,
+        }, {
+            category: 'telemetry',
+            correlation: { startupSessionId: String(startupSessionId || '') },
+        });
 
         fetch('/api/startup/client-timing', {
             method: 'POST',
@@ -2028,6 +2066,7 @@ function reportClientStartupTiming(stage = 'ready') {
 
 //MARK: firstLoadInit
 async function firstLoadInit() {
+    clientStartupLogger.info('first-load.started', 'Frontend first-load initialization started', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     console.debug('[init] firstLoadInit start');
     markClientStartupTiming('firstLoadStart');
     performance.mark('[init] start');
@@ -2038,7 +2077,11 @@ async function firstLoadInit() {
         const tokenData = await tokenResponse.json();
         token = tokenData.token;
         markClientStartupTiming('csrfDone');
-    } catch {
+    } catch (error) {
+        clientStartupLogger.error('csrf.failed', 'Failed to acquire CSRF token during startup', {
+            name: error?.name || '',
+            message: error?.message || String(error),
+        }, { category: 'network', correlation: { startupSessionId: getClientStartupSessionId() } });
         toastr.error(t`Couldn't get CSRF token. Please refresh the page.`, t`Error`, { timeOut: 0, extendedTimeOut: 0, preventDuplicates: true });
         throw new Error('Initialization failed');
     }
@@ -2051,7 +2094,11 @@ async function firstLoadInit() {
     let deliveryReadyPromise = Promise.resolve();
 
     const reportDeliveryBootFailure = (err) => {
-        console.error('[ws-delivery] Boot failed — /generate requests will hang or 400:', err?.message || err);
+        clientStartupLogger.error('websocket-delivery.failed', 'WebSocket delivery failed during startup', {
+            name: err?.name || '',
+            message: err?.message || String(err),
+            stack: err?.stack || '',
+        }, { category: 'websocket', correlation: { startupSessionId: getClientStartupSessionId() } });
         try {
             toastr.error(
                 t`WebSocket delivery failed to start. Chat and plugin generation will not work. Check console for details.`,
@@ -2282,6 +2329,8 @@ async function firstLoadInit() {
     performance.mark('[init] batch3 done');
     await eventSource.emit(event_types.APP_INITIALIZED);
     await eventSource.emit(event_types.APP_READY);
+    clientStartupLogger.info('first-load.completed', 'Frontend first-load initialization completed', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
+    clientUiLogger.info('app.ready', 'Atria UI reached APP_READY', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     console.debug('[init] firstLoadInit complete');
     markClientStartupTiming('appReady');
     performance.mark('[init] complete');

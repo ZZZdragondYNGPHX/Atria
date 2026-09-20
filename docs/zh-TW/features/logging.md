@@ -1,74 +1,49 @@
-# 日誌系統
+# 日誌與診斷系統
 
-Atria 內建了完整的日誌擷取和管理系統，涵蓋後端服務和前端瀏覽器兩個層面。當你遇到問題需要排查時，日誌系統能幫助你快速定位原因。
+Atria 現在以 Diagnostic Incident（診斷事件）為核心，而不是要求使用者自行從整份原始日誌尋找問題。
 
-日誌系統是一個獨立的功能模組，不依賴 Atria 的其他功能（如 Memory Graph、CardApp 等），開箱即用。
+## 診斷工作台
 
-## 後端日誌
+入口：使用者設定 → Diagnostics / 診斷。
 
-Atria 的後端日誌系統會自動攔截伺服器端的所有主控台輸出，將日誌儲存在記憶體中供查看。
+- Guided：預設模式，顯示最近故障、模組健康、歸因證據、關聯 ID、原因鏈，並可複製摘要或完整上下文。
+- Startup：查看最近 StartupSession，比較 Server / Client / Extensions 耗時、慢階段、單擴充功能耗時、SVG 環圖與瀑布時間線。
+- Expert：結構化前端/後端日誌，可按模組、級別與關鍵字篩選，支援增量刷新與虛擬化渲染。
 
-### 運作方式
+手機端採用「列表 → 詳情」專用版面。
 
-- **自動攔截**：服務啟動時，Atria 會自動攔截 `console.log`、`console.warn`、`console.error` 等輸出
-- **環形緩衝區**：日誌儲存在固定大小的記憶體緩衝區中。當緩衝區滿時，最舊的日誌會被自動丟棄，確保不會佔用過多記憶體
-- **時間戳和級別**：每條日誌都記錄了精確的時間戳和日誌級別（info、warn、error），方便按時間和嚴重程度篩選
+## Diagnostic Incident
 
-### 查看和管理
+Incident 可保存故障類型、階段、嚴重程度、關聯 ID、原因鏈、關鍵日誌、最近操作、安全設定、retry/fallback、provenance 與證據式歸因。
 
-管理員可以透過前端管理面板遠端查看伺服器端日誌，無需登入伺服器查看主控台。同時也可以一鍵清空日誌緩衝區。
+歸因可能是 Atria、SillyTavern 上游、第三方擴充功能、伺服器外掛、外部服務、網路/本機環境、使用者設定或 unknown。外掛參與呼叫本身不等於外掛有責任。
 
-::: tip
-後端日誌僅儲存在記憶體中，服務重啟後會清空。如果你需要持久化的日誌記錄，建議將 Atria 的主控台輸出重新導向到檔案。
-:::
+## 高價值故障鏈
 
-## 前端日誌管理器
+結構化診斷已覆蓋啟動、WebSocket、generation/dispatch、智能體編排、Memory Graph、世界書、儲存、LAN Sync、備份恢復、擴充功能安裝/更新、server plugin 與 Editor/Studio。
 
-Atria 還在瀏覽器端內建了一個日誌管理器，用於擷取前端執行時的各種資訊。
+擴充功能安裝/更新可區分 DNS、TLS、連線/逾時、Git、HTTP、manifest、檔案系統與 repository conflict。
 
-### Console 攔截
+## 啟動分析
 
-前端日誌管理器會攔截瀏覽器的 `console.trace`、`console.debug`、`console.log`、`console.info`、`console.warn`、`console.error` 六個級別的輸出，將它們寫入記憶體緩衝區（最多保留 3000 條）。
+Atria 最多保留 20 個緊湊啟動會話，支援 server phases、client 區間、extension discover/manifest/activate、script/style/locale/hook 耗時、慢項、delta 與 waterfall。
 
-### Fetch 請求日誌
+圖表使用原生 SVG，第一次打開 Startup 頁籤時才按需載入。
 
-除了 console 輸出，前端日誌管理器還會自動記錄瀏覽器發出的 API 請求資訊，包括：
+## Canonical store、Debug Export 與隱私
 
-- 請求的方法和路徑
-- 回應狀態碼和耗時
-- 請求失敗或中止的錯誤資訊
+後端只有一個 canonical log store；Atria 自有前端程式碼直接使用 public/scripts/logging。
 
-這些資訊經過**智慧摘要**處理——只擷取關鍵欄位（如模型名稱、訊息數量等），不會記錄完整的請求內容，既保證了除錯價值，又避免了隱私洩露。
+public/scripts/frontend-log-manager.js 僅保留為第三方/上游相容 shim。
 
-### 全域錯誤擷取
+Debug Export 與 Diagnostics 共用 canonical 資料來源。完整 prompt、完整訊息正文與完整 response body 不會進入診斷匯出；API Key、Authorization、Cookie、OAuth/JWT/Bearer、密碼等統一脫敏。
 
-前端日誌管理器還會自動擷取瀏覽器中的未處理錯誤和 Promise 拒絕事件，確保這些容易被忽略的異常也能被記錄下來。
+普通使用者不能讀取全域 backend raw logs；Incident/StartupSession 按使用者隔離；backend raw query/clear 僅管理員可用。
 
-### 日誌可見性
+## 推薦回報流程
 
-預設情況下，只有 `error` 級別的日誌會在瀏覽器主控台中顯示。如果你需要查看更詳細的除錯資訊，可以開啟 debug 模式，此時所有級別的日誌都會輸出到瀏覽器主控台。
-
-無論 debug 模式是否開啟，所有級別的日誌都會被寫入記憶體緩衝區，可以隨時匯出查看。
-
-## 使用場景
-
-### 除錯問題
-
-當 Atria 出現異常行為時，日誌系統是最直接的排查工具：
-
-- **API 連線失敗** — 查看後端日誌中的錯誤資訊，確認 API 位址和金鑰是否正確
-- **生成中斷** — 查看前端日誌中的 Fetch 請求記錄，了解請求是否逾時或被拒絕
-- **擴充功能報錯** — 前端日誌會擷取擴充功能執行時的錯誤，幫助定位問題擴充功能
-
-### 排查錯誤
-
-如果你需要向開發者回報問題，可以匯出前端日誌快照，其中包含了問題發生前後的完整上下文資訊，比單純的截圖更有助於問題定位。
-
-::: warning
-日誌中可能包含 API 請求的部分資訊。在分享日誌時，請注意檢查是否包含敏感內容（如 API 金鑰）。前端日誌管理器已經對敏感欄位進行了脫敏處理（例如 CSRF Token 只記錄「存在」而不記錄具體值），但仍建議在分享前檢查一遍。
-:::
-
-## 相關頁面
-
-- [基礎設定](/zh-TW/guide/configuration) — 日誌相關的設定項
-- [認證與配額](/zh-TW/improvements/auth-and-quota) — 管理員日誌查看功能
+1. 重現問題；
+2. 打開診斷；
+3. 選擇最新 Incident 或點「我剛遇到問題」；
+4. 優先複製故障摘要；
+5. 需要更多證據時再複製完整上下文。

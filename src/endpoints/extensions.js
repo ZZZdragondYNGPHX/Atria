@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 
 import express from 'express';
 import * as isomorphicGit from 'isomorphic-git';
@@ -10,8 +11,12 @@ import { CheckRepoActions, default as simpleGit } from 'simple-git';
 import { PUBLIC_DIRECTORIES } from '../constants.js';
 import { color, getConfigValue, isValidUrl } from '../util.js';
 import { createGitClient } from '../git/client.js';
+import { createLogger } from '../logging/logger.js';
+import { captureBackendIncident } from '../logging/runtime.js';
+import { classifyOperationalFailure, sanitizeDiagnosticUrl } from '../logging/failure-classifier.js';
 
 const gitBackend = getConfigValue('git.backend', 'auto');
+const extensionsLogger = createLogger('extensions', { emitToConsole: true });
 
 /**
  * @type {Partial<import('simple-git').SimpleGitOptions>}
@@ -609,8 +614,17 @@ router.use((request, _response, next) => {
  * @returns {void}
  */
 router.post('/install', async (request, response) => {
+    const operationId = randomUUID();
+    const correlation = { operationId };
+    let diagnosticStage = 'validate';
+    response.setHeader('x-atria-operation-id', operationId);
     try {
         const { url, global, branch } = request.body;
+        extensionsLogger.info('install.started', '[Extensions] install started', {
+            origin: sanitizeDiagnosticUrl(url),
+            global: Boolean(global),
+            branch: String(branch || ''),
+        }, { category: 'install', correlation });
 
         if (global && !request.user.profile.admin) {
             console.error(`User ${request.user.profile.handle} does not have permission to install global extensions.`);
@@ -626,6 +640,7 @@ router.post('/install', async (request, response) => {
             return response.status(400).send('Bad Request: Only HTTP and HTTPS protocols are supported for the Extension URL.');
         }
 
+        diagnosticStage = 'prepare-fs';
         const git = createGitClient({ backend: gitBackend });
 
         // make sure the third-party directory exists
@@ -659,6 +674,7 @@ router.post('/install', async (request, response) => {
         if (branch) {
             cloneOptions.branch = branch;
         }
+        diagnosticStage = 'clone';
         try {
             await git.clone(url, extensionPath, cloneOptions);
             console.info(`Extension has been cloned to ${extensionPath} from ${url} at ${branch || '(default)'} branch`);
@@ -674,20 +690,56 @@ router.post('/install', async (request, response) => {
             console.info(`Extension has been cloned with isomorphic-git to ${extensionPath} from ${resolvedCloneUrl} at ${branch || '(default)'} branch`);
         }
 
+        diagnosticStage = 'manifest';
         try {
             const manifest = await getManifest(extensionPath);
             if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
                 throw new Error('Manifest is not a valid JSON object.');
             }
             const { version, author, display_name } = manifest;
-            return response.send({ version, author, display_name, extensionPath, folderName });
+            extensionsLogger.info('install.completed', '[Extensions] install completed', {
+                extension: folderName,
+                version: String(version || ''),
+                global: Boolean(global),
+            }, { category: 'install', correlation });
+            return response.send({ version, author, display_name, extensionPath, folderName, operationId });
         } catch (manifestError) {
             await fs.promises.rm(extensionPath, { recursive: true, force: true });
             throw manifestError;
         }
     } catch (error) {
-        console.error('Importing extension failed', error);
-        return response.status(500).send('Internal Server Error. Check the server logs for more details.');
+        const classified = classifyOperationalFailure(error, { stage: diagnosticStage });
+        response.setHeader('x-atria-failure-stage', classified.stage);
+        extensionsLogger.error('install.failed', '[Extensions] install failed', {
+            stage: classified.stage,
+            code: classified.code,
+            message: classified.message,
+            origin: sanitizeDiagnosticUrl(request.body?.url),
+        }, { category: 'install', correlation, consoleArgs: ['Importing extension failed', error] });
+        captureBackendIncident({
+            type: 'extension_install_failure',
+            severity: 'error',
+            primaryModule: 'extensions',
+            stage: classified.stage,
+            summary: classified.message || 'Extension install failed',
+            failure: error,
+            correlation,
+            probableOwner: classified.probableOwner,
+            ownerName: classified.ownerName,
+            ownerConfidence: classified.confidence,
+            ownershipEvidence: classified.evidence,
+            provenance: {
+                type: 'extension',
+                name: getInstallDirectoryNameFromUrl(request.body?.url),
+                origin: sanitizeDiagnosticUrl(request.body?.url),
+                operationId,
+            },
+            environment: {
+                branch: String(request.body?.branch || ''),
+                global: Boolean(request.body?.global),
+            },
+        }, { request });
+        return response.status(500).send('Internal Server Error. Check Diagnostics for the captured failure stage.');
     }
 });
 
@@ -703,6 +755,10 @@ router.post('/install', async (request, response) => {
  * @returns {void}
  */
 router.post('/update', async (request, response) => {
+    const operationId = randomUUID();
+    const correlation = { operationId };
+    let diagnosticStage = 'validate';
+    response.setHeader('x-atria-operation-id', operationId);
     try {
         if (typeof request.body.extensionName !== 'string') {
             return response.status(400).send('Bad Request: A valid extensionName is required in the request body.');
@@ -720,6 +776,7 @@ router.post('/update', async (request, response) => {
             return response.status(403).send('Forbidden: No permission to update global extensions.');
         }
 
+        diagnosticStage = 'repository';
         const basePath = global ? PUBLIC_DIRECTORIES.globalExtensions : request.user.directories.extensions;
         const extensionPath = path.join(basePath, extensionNameSanitized);
 
@@ -727,6 +784,7 @@ router.post('/update', async (request, response) => {
             return response.status(404).send(`Directory does not exist at ${extensionPath}`);
         }
 
+        diagnosticStage = forceUpdate ? 'force-update' : 'fetch-pull';
         if (forceUpdate) {
             const result = await forceUpdateWithIsomorphic(extensionPath);
             const shortCommitHash = result.currentCommitHash ? result.currentCommitHash.slice(0, 7) : '';
@@ -779,12 +837,42 @@ router.post('/update', async (request, response) => {
             });
         }
     } catch (error) {
-        if (isExtensionUpdateConflictError(error)) {
+        const classified = classifyOperationalFailure(error, { stage: diagnosticStage });
+        response.setHeader('x-atria-failure-stage', classified.stage);
+        const conflict = isExtensionUpdateConflictError(error);
+        extensionsLogger.error('update.failed', '[Extensions] update failed', {
+            stage: classified.stage,
+            code: classified.code,
+            message: classified.message,
+            extension: String(request.body?.extensionName || ''),
+        }, { category: 'update', correlation, consoleArgs: ['Updating extension failed', error] });
+        captureBackendIncident({
+            type: 'extension_update_failure',
+            severity: conflict ? 'warning' : 'error',
+            primaryModule: 'extensions',
+            stage: classified.stage,
+            summary: classified.message || 'Extension update failed',
+            failure: error,
+            correlation,
+            probableOwner: conflict ? 'user-configuration' : classified.probableOwner,
+            ownerName: conflict ? 'Local extension repository state' : classified.ownerName,
+            ownerConfidence: conflict ? 0.95 : classified.confidence,
+            ownershipEvidence: classified.evidence,
+            provenance: {
+                type: 'extension',
+                name: String(request.body?.extensionName || ''),
+                operationId,
+            },
+            environment: {
+                global: Boolean(request.body?.global),
+                force: Boolean(request.body?.force),
+            },
+        }, { request });
+        if (conflict) {
             const reason = String(error?.message || 'Local changes or branch divergence detected.');
             return response.status(409).send(`Extension update conflict: ${reason} Reinstall or manually reset this extension, then retry.`);
         }
-        console.error('Updating extension failed', error);
-        return response.status(500).send('Internal Server Error. Check the server logs for more details.');
+        return response.status(500).send('Internal Server Error. Check Diagnostics for the captured failure stage.');
     }
 });
 

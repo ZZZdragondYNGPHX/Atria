@@ -112,6 +112,7 @@ import {
 import { attachToolContext, attachNotesFloorState, isStructuredToolError } from './loop-runtime.js';
 import { loadOpenNotesBlock } from './open-notes-injection.js';
 import { buildPerRunCustomToolRegistry } from './per-run-custom-tools.js';
+import { reportOrchestrationFailure } from './diagnostics.js';
 
 // Skill-resolution helpers are loaded lazily (script.js → lib.js dep makes
 // eager import unfriendly to Node tests). Same pattern as director / loop
@@ -1738,6 +1739,14 @@ export async function runSpecOrchestration(context, payload, messages, profile, 
         try {
             finishRun({ runId, status: 'error', error: String(error?.message || error) });
         } catch (_) { /* run may already be cleared */ }
+        reportOrchestrationFailure({
+            mode: 'spec',
+            trace,
+            payload,
+            error,
+            panelRunId: runId,
+            profileName: deps?.activeOrchPresetName || profile?.name || '',
+        });
         throw error;
     }
 }

@@ -60,6 +60,7 @@ import { createMemoryIndex } from './skills/memory-index.js';
 import { ensureFreshInstallPopulate } from './skills/bundled.js';
 import { wsTicketRouter } from './ws-ticket-router.js';
 import { generationControlRouter } from './endpoints/generation-control.js';
+import { router as diagnosticsRouter } from './endpoints/diagnostics.js';
 
 /**
  * @typedef {object} ServerStartupResult
@@ -212,6 +213,7 @@ export function setupPrivateEndpoints(app) {
     }));
     app.use('/api/ws-ticket', wsTicketRouter);
     app.use('/api/generation', generationControlRouter);
+    app.use('/api/diagnostics', diagnosticsRouter);
 }
 
 /**

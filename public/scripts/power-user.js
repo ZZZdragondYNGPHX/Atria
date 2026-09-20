@@ -77,7 +77,7 @@ import { extractDominantColor, generateThemePalette, deriveBackgroundName } from
 import { DEFAULT_REASONING_TEMPLATE, loadReasoningTemplates } from './reasoning.js';
 import { bindModelTemplates } from './chat-templates.js';
 import { IMAGE_OVERSWIPE, MEDIA_DISPLAY } from './constants.js';
-import { setFrontendConsoleDebugLoggingEnabled } from './frontend-log-manager.js';
+import { setFrontendConsoleDebugLoggingEnabled } from './logging/console-adapter.js';
 import { setAndroidDebugRecordingEnabled, isAndroidDebugTrailAvailable, getAndroidDebugRecordingActualState } from './atria-android-debug-trail.js';
 import { t } from './i18n.js';
 import { getBackgroundPath, isCustomBackgroundUrl } from './backgrounds.js';

@@ -1,9 +1,13 @@
 import { t } from '../i18n.js';
 import { accountStorage } from '../util/AccountStorage.js';
+import { createLogger } from '../logging/logger.js';
+import { captureFrontendIncident } from '../logging/incident-reporter.js';
 import {
     filterWorldInfoWorkspaceEntries,
     getWorldInfoEntryIssues,
 } from './diagnostics.js';
+
+const worldbookLogger = createLogger('worldbook');
 
 const DISPLAY_MODE_KEY = 'atri_world_info_workspace_display_mode';
 const CONTINUOUS_CARDS_KEY = 'atri_world_info_workspace_continuous_cards';
@@ -641,7 +645,7 @@ function syncMobileDrilldown() {
     syncWorkspaceChrome();
 }
 
-function renderBulkInspector() {
+function renderBulkInspector({ enterMobileDetail = true } = {}) {
     const host = document.querySelector('#wi_workspace_bulk_inspector');
     const inspector = document.querySelector('#wi_workspace_inspector');
     if (!host || !inspector) return;
@@ -654,14 +658,14 @@ function renderBulkInspector() {
 
     host.classList.remove('displayNone');
     host.querySelector('[data-role="count"]').textContent = String(count);
-    if (isMobileWorkspace()) {
+    if (enterMobileDetail && isMobileWorkspace()) {
         state.mobileDetail = true;
         syncMobileDrilldown();
     }
 }
 
-function syncSelectionUi() {
-    renderBulkInspector();
+function syncSelectionUi({ enterMobileDetail = true } = {}) {
+    renderBulkInspector({ enterMobileDetail });
     renderVirtualRows();
     const toolbar = document.querySelector('#world_entry_bulk_toolbar');
     toolbar?.classList.toggle('wi-workspace-bulk-active', state.selectedUids.size > 0);
@@ -684,6 +688,16 @@ function setView(view, { persist = true } = {}) {
         state.mobileDetail = false;
     }
     syncWorkspaceChrome();
+    if (next === 'entries') {
+        // Mobile switches from the catalogue to a full-height virtual list.
+        // A hidden scroll container may keep an old anchor near the tail.
+        // Reset once more on the next frame after layout has settled.
+        requestAnimationFrame(() => {
+            const viewport = document.querySelector('#wi_workspace_entry_list');
+            if (viewport && isMobileWorkspace() && !state.mobileDetail) viewport.scrollTop = 0;
+            renderVirtualRows();
+        });
+    }
 }
 
 function setDisplayMode(mode) {
@@ -1169,12 +1183,49 @@ function buildWorkspaceDom() {
             resultHost.append(strong, detail);
         } catch (error) {
             resultHost.textContent = t`Activation test failed: ${error?.message || error}`;
+            const entryUid = String(entry?.uid ?? '');
+            worldbookLogger.error('activation-test.failed', '[Worldbook] activation test failed', {
+                worldName: state.worldName,
+                entryUid,
+                message: error?.message || String(error),
+            }, { category: 'diagnostics' });
+            void captureFrontendIncident({
+                type: 'tool_failure',
+                severity: 'error',
+                primaryModule: 'worldbook',
+                stage: 'activation-test',
+                summary: error?.message || String(error),
+                failure: error,
+                environment: {
+                    worldName: state.worldName,
+                    entryUid,
+                },
+            });
         }
     });
 
     shell.querySelector('#wi_workspace_activation_trace')?.addEventListener('click', async () => {
         const entry = state.entries.find(item => String(item?.uid ?? '') === state.selectedUid);
-        if (entry && typeof state.callbacks.onTrace === 'function') await state.callbacks.onTrace(entry);
+        if (!entry || typeof state.callbacks.onTrace !== 'function') return;
+        try {
+            await state.callbacks.onTrace(entry);
+        } catch (error) {
+            const entryUid = String(entry?.uid ?? '');
+            worldbookLogger.error('activation-trace.failed', '[Worldbook] activation trace failed', {
+                worldName: state.worldName,
+                entryUid,
+                message: error?.message || String(error),
+            }, { category: 'diagnostics' });
+            void captureFrontendIncident({
+                type: 'tool_failure',
+                severity: 'error',
+                primaryModule: 'worldbook',
+                stage: 'activation-trace',
+                summary: error?.message || String(error),
+                failure: error,
+                environment: { worldName: state.worldName, entryUid },
+            });
+        }
     });
 
     const forwardInspectorAction = (action, selector) => {
@@ -1232,11 +1283,16 @@ export function syncWorldInfoWorkspace({
         ? ''
         : String(focusUid);
 
+    if (bookChanged || openingEntriesFromAnotherView) {
+        // Entering Entries from Library/Global must start from the top of the
+        // virtual list. A hidden list can retain a large scrollTop from an
+        // earlier render; reusing it can render only off-screen tail rows.
+        const viewport = document.querySelector('#wi_workspace_entry_list');
+        if (viewport) viewport.scrollTop = 0;
+    }
     if (bookChanged) {
         state.selectedUid = '';
         state.mobileDetail = false;
-        const viewport = document.querySelector('#wi_workspace_entry_list');
-        if (viewport) viewport.scrollTop = 0;
     }
 
     if (!nextName || !data) {
@@ -1274,7 +1330,7 @@ export function syncWorldInfoWorkspace({
         }
     }
 
-    syncSelectionUi();
+    syncSelectionUi({ enterMobileDetail: !openingEntriesFromAnotherView });
 }
 
 export function syncWorldInfoWorkspaceSelection(selectedUids = []) {
