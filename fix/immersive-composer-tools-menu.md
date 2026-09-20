@@ -7,7 +7,7 @@ Fix the immersive composer tool entrypoints introduced by the immersive experien
 - Working branch: `fix/immersive-composer-tools-menu`
 - Base: `main@9767257e3ecce049936c68072d9328c14bab3243`
 - Scope: immersive composer tool menu + native extension menu integration
-- Status: implemented, CI pending
+- Status: implemented and CI-validated; PR #75 pending merge
 
 ## User-visible issues
 
@@ -35,3 +35,18 @@ The native extensions entrypoint `#extensionsMenuButton` is injected into `#left
 - Composer test asserts the immersive extension entrypoint exists and uses the magic-wand icon.
 - Structure test guards native menu reuse and immersive Popper anchoring.
 - Final CI results will be appended after PR validation.
+
+
+## Final validation
+
+Validated at `fix/immersive-composer-tools-menu@54ed2c7629aafb3048198eeaec0c8ec88daf96e6`:
+
+- Atria PR Checks — run `35513183135` — **success**
+- Immersive Experience — run `35513183035` — **success**
+- Worldbook Performance Foundation — run `35513183032` — **success**
+
+No Android/Kotlin files were changed, so Android JVM tests were not required for this fix.
+
+## Result
+
+The immersive `+` now keeps the native tools menu open and anchors it to the visible immersive trigger. The immersive composer also exposes the native extensions menu through a magic-wand button without duplicating extension state or menu logic.
