@@ -1,74 +1,57 @@
-# Logging System
+# Logging & Diagnostics
 
-Atria has a built-in comprehensive log capture and management system covering both the backend server and the frontend browser. When you encounter issues that need troubleshooting, the logging system helps you quickly identify the cause.
+Atria is built around Diagnostic Incidents rather than asking users to search raw log dumps.
 
-The logging system is a standalone feature module that does not depend on other Atria features (such as Memory Graph, CardApp, etc.) and works out of the box.
+## Diagnostics Workspace
 
-## Backend Logs
+Open User Settings → Diagnostics.
 
-Atria's backend logging system automatically intercepts all console output from the server and stores logs in memory for viewing.
+- Guided: recent incidents, module health, ownership evidence, correlation IDs, cause chain, copy summary/full context.
+- Startup: recent StartupSessions, Server/Client/Extensions timing, slow phases, per-extension timing, SVG donut and waterfall.
+- Expert: structured frontend/backend logs with module, level and text filters, incremental refresh and virtualized rendering.
 
-### How It Works
+Mobile uses a list-to-detail drill-down instead of compressing the desktop layout.
 
-- **Auto-interception**: On server startup, Atria automatically intercepts `console.log`, `console.warn`, `console.error`, and other outputs
-- **Ring buffer**: Logs are stored in a fixed-size memory buffer. When the buffer is full, the oldest logs are automatically discarded, ensuring memory usage stays bounded
-- **Timestamps and levels**: Each log entry records a precise timestamp and log level (info, warn, error), making it easy to filter by time and severity
+## Diagnostic Incidents
 
-### Viewing and Management
+An Incident can preserve failure type/stage/severity, correlation IDs, cause chain, key logs, recent user actions, safe config, retry/fallback history, provenance and evidence-based ownership.
 
-Administrators can remotely view server logs through the frontend admin panel without needing to log into the server to check the console. The log buffer can also be cleared with one click.
+Ownership can be Atria, SillyTavern upstream, third-party extension, server plugin, external service, network/local environment, user configuration, or unknown. Attribution follows stack and failure evidence; plugin participation alone is not treated as proof.
 
-::: tip
-Backend logs are only kept in memory and are cleared on server restart. If you need persistent log records, it is recommended to redirect Atria's console output to a file.
-:::
+Use My problem just happened immediately after a failure to capture a bounded recent evidence window into an Incident.
 
-## Frontend Log Manager
+## High-value failure paths
 
-Atria also includes a built-in log manager on the browser side for capturing various runtime information from the frontend.
+Structured diagnostics cover startup, WebSocket delivery, generation/dispatch, orchestrator, Memory Graph extraction, World Info diagnostics, storage, LAN sync, backup restore, extension install/update, server plugin runtime, and editor/studio failures.
 
-### Console Interception
+Extension install/update diagnostics distinguish DNS, TLS, connect/timeout, Git, HTTP, manifest, filesystem and repository-conflict stages.
 
-The frontend log manager intercepts six levels of browser console output — `console.trace`, `console.debug`, `console.log`, `console.info`, `console.warn`, `console.error` — and writes them to an in-memory buffer (up to 3000 entries).
+Orchestrator incidents can retain run/agent/round/provider/model/tool/schema/retry/fallback context without copying the full prompt or chat body.
 
-### Fetch Request Logs
+## Startup Analysis
 
-In addition to console output, the frontend log manager automatically records API request information sent by the browser, including:
+Atria retains up to 20 compact startup sessions. Analysis supports server phases, client intervals, extension discover/manifest/activate, per-extension script/style/locale/hook timing, slow items, session deltas and a waterfall timeline.
 
-- Request method and path
-- Response status code and latency
-- Error messages for failed or aborted requests
+Charts use native SVG and load only when the Startup tab is first opened.
 
-This information is processed with **smart summarization** — only key fields (such as model name, message count, etc.) are extracted. Full request content is not recorded, balancing debugging value with privacy protection.
+## Canonical stores and compatibility
 
-### Global Error Capture
+The backend has one bounded canonical log store. Atria-owned frontend code uses the split modules under public/scripts/logging directly.
 
-The frontend log manager also automatically captures unhandled errors and Promise rejection events in the browser, ensuring these easily overlooked exceptions are also recorded.
+public/scripts/frontend-log-manager.js remains only as a thin compatibility shim for third-party/upstream imports.
 
-### Log Visibility
+## Debug Export
 
-By default, only `error`-level logs are displayed in the browser console. If you need more detailed debug information, you can enable debug mode, which outputs all log levels to the browser console.
+Debug Export uses the same canonical sources as Diagnostics. Depending on permission it can include frontend logs, admin backend logs, safe Request Inspector metadata, Incidents, StartupSessions and provenance.
 
-Regardless of whether debug mode is enabled, all log levels are written to the in-memory buffer and can be exported for viewing at any time.
+Full prompt/message bodies and full response bodies are not copied into the diagnostic export. Secrets such as API keys, Authorization, cookies, OAuth/JWT/Bearer values and passwords are centrally redacted.
 
-## Use Cases
+Ordinary users do not receive process-global backend raw logs. Incidents and StartupSessions are user-scoped; backend raw query/clear is admin-only.
 
-### Debugging Issues
+## Recommended report flow
 
-When Atria exhibits abnormal behavior, the logging system is the most direct troubleshooting tool:
-
-- **API connection failures** — Check error messages in the backend logs to confirm whether the API address and key are correct
-- **Generation interruptions** — Check Fetch request records in the frontend logs to understand whether requests timed out or were rejected
-- **Extension errors** — Frontend logs capture runtime errors from extensions, helping locate the problematic extension
-
-### Error Reporting
-
-If you need to report an issue to developers, you can export a frontend log snapshot that contains complete contextual information before and after the issue occurred — much more helpful for issue diagnosis than screenshots alone.
-
-::: warning
-Logs may contain partial API request information. When sharing logs, please check whether they contain sensitive content (such as API keys). The frontend log manager already sanitizes sensitive fields (e.g., CSRF tokens are recorded as "present" rather than their actual values), but it is still recommended to review before sharing.
-:::
-
-## Related Pages
-
-- [Basic Configuration](/guide/configuration) — Log-related configuration options
-- [Auth & Quota](/improvements/auth-and-quota) — Authentication, permissions, and storage quota controls
+1. Reproduce the problem.
+2. Open Diagnostics.
+3. Select the newest Incident or press My problem just happened.
+4. Copy Diagnostic Summary first.
+5. Copy Full Context only when deeper evidence is needed.

@@ -1203,3 +1203,32 @@ C. 第三方插件运行异常：
 - 开发者能从单个 Incident 直接看到最可能的故障链；
 - 如果仍无法确认，诊断包也应明确指出“缺少什么证据”，而不是伪造结论。
 
+
+
+## 22. 实施状态
+
+截至 2026-09-20，refactor/logging-observability-workspace 已按本企划完成 L01–L09 代码实施。
+
+完成项：
+
+- L01 structured logging / redaction / ownership / Incident foundation；
+- L02 backend canonical store consolidation；
+- L03 frontend logging split + adapters；
+- L04 StartupSession store；
+- L05 Diagnostics API；
+- L06 Incident-first Diagnostics Workspace；
+- L07 Startup Analysis；
+- L08 高价值 Atria 模块迁移与 A/B/C 场景诊断；
+- L09 canonical cleanup、Debug Export 收口、文档与 mobile/performance regression。
+
+最终结构约束：
+
+- backend 只有一个 canonical log store；
+- frontend-log-manager.js 只保留第三方/上游兼容 shim；
+- Atria 自有调用直接走 public/scripts/logging；
+- backend 旧 src/log-capture.js 已删除；
+- Debug Export 与 Diagnostics 共用 canonical stores，并输出安全化 Request Inspector 元数据；
+- 不引入 Chart.js/ECharts；
+- Android/Docker 不作为默认验证项。
+
+合并前仍要求最终 CI 全绿。World Info mobile E2E 的历史可见性竞态在 L09 中通过 Entries 切换后的 next-frame virtual render 与测试状态隔离处理。

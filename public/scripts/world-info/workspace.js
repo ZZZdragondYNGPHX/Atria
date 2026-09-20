@@ -688,6 +688,12 @@ function setView(view, { persist = true } = {}) {
         state.mobileDetail = false;
     }
     syncWorkspaceChrome();
+    if (next === 'entries') {
+        // Mobile switches from the catalogue to a full-height virtual list.
+        // Re-render on the next frame after CSS/layout has settled so rows are
+        // painted in the visible pane instead of a stale hidden container.
+        scheduleVirtualRows();
+    }
 }
 
 function setDisplayMode(mode) {
