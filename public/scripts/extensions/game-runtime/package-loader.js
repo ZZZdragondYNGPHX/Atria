@@ -1,7 +1,9 @@
 import {
     GAME_MANIFEST_PATH,
     GAME_RUNTIME_VERSION,
+    getGamePackageDeclaredFiles,
     resolveGamePackageAssetUrl,
+    resolveGamePackageInventoryUrl,
     validateGameManifest,
 } from './manifest.js';
 
@@ -11,6 +13,58 @@ export const GAME_PACKAGE_STATUS = Object.freeze({
     INVALID: 'invalid',
     ERROR: 'error',
 });
+
+async function validateDeclaredPackageFiles(charId, manifest, fetchImpl, headers) {
+    const declaredFiles = getGamePackageDeclaredFiles(manifest);
+    if (declaredFiles.length === 0) {
+        return { ok: true, errors: [] };
+    }
+
+    let response;
+    try {
+        response = await fetchImpl(resolveGamePackageInventoryUrl(charId), {
+            headers,
+            cache: 'no-store',
+        });
+    } catch (error) {
+        return {
+            ok: false,
+            transport: true,
+            errors: [`Failed to list Game Package files: ${error?.message || String(error)}`],
+        };
+    }
+
+    if (!response?.ok) {
+        return {
+            ok: false,
+            transport: true,
+            errors: [`Failed to list Game Package files: HTTP ${response?.status ?? 'unknown'}`],
+        };
+    }
+
+    let body;
+    try {
+        body = await response.json();
+    } catch (error) {
+        return {
+            ok: false,
+            transport: true,
+            errors: [`Game Package file inventory is invalid JSON: ${error?.message || String(error)}`],
+        };
+    }
+
+    const files = Array.isArray(body?.files)
+        ? new Set(body.files
+            .filter(item => item?.type === 'file' && typeof item?.path === 'string')
+            .map(item => item.path))
+        : new Set();
+
+    const errors = declaredFiles
+        .filter(path => !files.has(path))
+        .map(path => `Game Package declares missing file '${path}'`);
+
+    return { ok: errors.length === 0, errors, transport: false };
+}
 
 /**
  * Discover and validate the Game Package rooted at game.json.
@@ -106,6 +160,22 @@ export async function loadGamePackage(charId, options = {}) {
             charId: id,
             manifest: null,
             errors: validated.errors,
+        };
+    }
+
+    const declaredFiles = await validateDeclaredPackageFiles(
+        id,
+        validated.manifest,
+        fetchImpl,
+        options.headers || {},
+    );
+    if (!declaredFiles.ok) {
+        return {
+            status: declaredFiles.transport ? GAME_PACKAGE_STATUS.ERROR : GAME_PACKAGE_STATUS.INVALID,
+            active: false,
+            charId: id,
+            manifest: null,
+            errors: declaredFiles.errors,
         };
     }
 
