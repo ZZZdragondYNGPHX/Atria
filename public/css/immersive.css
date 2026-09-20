@@ -648,3 +648,27 @@ body.atria-immersive-mode.atria-immersive-resting[data-atria-immersive-profile="
         transition: none !important;
     }
 }
+
+
+/* Reasoning/tool-call internals are technical surfaces. They stay in the live
+ * message DOM and become available from More instead of being deleted. */
+body.atria-immersive-mode .mes_reasoning_details,
+body.atria-immersive-mode .mes.atria-immersive-technical-message {
+    display: none;
+}
+
+body.atria-immersive-mode .mes.atria-immersive-native-actions-open .mes_reasoning_details,
+body.atria-immersive-mode .mes.atria-immersive-native-actions-open.atria-immersive-technical-message {
+    display: block;
+}
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] .atria-immersive-stage {
+    position: absolute;
+    width: 100%;
+    height: var(--doc-height);
+    min-height: var(--doc-height);
+}
+
+body.atria-immersive-mode[data-atria-immersive-profile="mobile"] #immersiveExitButton {
+    position: absolute;
+}
