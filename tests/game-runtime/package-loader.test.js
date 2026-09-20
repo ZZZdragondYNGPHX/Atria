@@ -62,6 +62,66 @@ describe('Game Package loader', () => {
         expect(result.errors.join('\n')).toContain('safe package-relative path');
     });
 
+    test('rejects a valid manifest whose declared package file is missing', async () => {
+        const withUi = {
+            ...manifest,
+            ui: { mode: 'component', entry: 'ui/hud.html' },
+        };
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/game.json')) {
+                return response({ body: withUi });
+            }
+            if (url.endsWith('/files')) {
+                return response({
+                    body: {
+                        files: [
+                            { path: 'game.json', type: 'file' },
+                        ],
+                    },
+                });
+            }
+            throw new Error(`unexpected URL ${url}`);
+        });
+
+        const result = await loadGamePackage('hero', { fetchImpl });
+
+        expect(result.status).toBe(GAME_PACKAGE_STATUS.INVALID);
+        expect(result.active).toBe(false);
+        expect(result.errors).toEqual([
+            "Game Package declares missing file 'ui/hud.html'",
+        ]);
+    });
+
+    test('activates when every declared package file exists', async () => {
+        const withWorld = {
+            ...manifest,
+            world: {
+                schema: 'world/schema.json',
+                initial: 'world/initial.json',
+            },
+        };
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/game.json')) {
+                return response({ body: withWorld });
+            }
+            return response({
+                body: {
+                    files: [
+                        { path: 'game.json', type: 'file' },
+                        { path: 'world/schema.json', type: 'file' },
+                        { path: 'world/initial.json', type: 'file' },
+                    ],
+                },
+            });
+        });
+
+        const result = await loadGamePackage('hero', { fetchImpl });
+
+        expect(result.status).toBe(GAME_PACKAGE_STATUS.READY);
+        expect(result.active).toBe(true);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
     test('reports transport failures without activating the package', async () => {
         const fetchImpl = jest.fn(async () => {
             throw new Error('offline');
