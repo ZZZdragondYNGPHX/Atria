@@ -18,6 +18,7 @@ describe('immersive presentation settings', () => {
             extensionsEnabled: false,
             visualMode: 'enhanced',
             hudMode: 'minimal',
+            reducedMotion: false,
         });
     });
 
