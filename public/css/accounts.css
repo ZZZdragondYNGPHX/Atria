@@ -130,7 +130,7 @@
 
 .atriaLogsHealthRow.is-error { color: var(--crimson70a); }
 .atriaLogsHealthRow.is-warning { color: var(--golden); }
-.atriaLogsHealthRow.is-healthy { color: var(--green70a); }
+.atriaLogsHealthRow.is-healthy { color: var(--okGreen70a); }
 .atriaLogsHealthRow.is-quiet { color: var(--grey70); }
 
 .atriaLogsHealthMain,

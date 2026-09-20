@@ -9,6 +9,8 @@ describe('L06 diagnostics workspace structure', () => {
         expect(source).not.toContain('accountLogsViewer');
         expect(source).not.toContain("fetch('/api/users/logs/get'");
         expect(source).not.toContain("fetch('/api/users/logs/clear'");
+        const index = readFileSync(new URL('../../public/index.html', import.meta.url), 'utf8');
+        expect(index).toContain('data-i18n="Diagnostics">Diagnostics</span>');
     });
 
     test('workspace defaults to guided incidents and keeps expert raw logs behind a mode switch', () => {
