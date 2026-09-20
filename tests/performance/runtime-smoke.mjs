@@ -154,7 +154,11 @@ try {
         return ['127.0.0.1', 'localhost'].includes(url.hostname) ? route.continue() : route.abort();
     });
     await page.goto(baseURL);
-    await page.waitForFunction(() => window.Atria?.getContext && !document.getElementById('preloader'), null, { timeout: 60000 });
+    try {
+        await page.waitForFunction(() => window.Atria?.getContext && !document.getElementById('preloader'), null, { timeout: 60000 });
+    } catch (error) {
+        throw new Error(`Runtime startup timeout: ${error.message}\nPage errors:\n${pageErrors.join('\n') || '(none)'}\nServer log:\n${serverLog}`);
+    }
 
     // The isolated data root may surface first-run informational dialogs.
     // Normalize to the ordinary post-onboarding workspace before exercising
