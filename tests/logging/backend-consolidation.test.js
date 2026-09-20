@@ -45,12 +45,15 @@ describe('backend logging consolidation', () => {
         expect(source.match(/installConsoleAdapter\(\);/g)).toHaveLength(1);
     });
 
-    test('admin viewer reads the same canonical backend store', () => {
-        const source = readFileSync(new URL('../../src/endpoints/users-admin.js', import.meta.url), 'utf8');
-        expect(source).toContain("import { backendLogStore } from '../logging/store.js';");
-        expect(source).toContain('backendLogStore.query({');
-        expect(source).toContain('backendLogStore.clear();');
-        expect(source).not.toContain('../log-capture.js');
+    test('diagnostics API owns canonical backend log access after viewer cutover', () => {
+        const diagnostics = readFileSync(new URL('../../src/endpoints/diagnostics.js', import.meta.url), 'utf8');
+        const usersAdmin = readFileSync(new URL('../../src/endpoints/users-admin.js', import.meta.url), 'utf8');
+        expect(diagnostics).toContain("import { backendLogStore } from '../logging/store.js';");
+        expect(diagnostics).toContain('logStore.query(');
+        expect(diagnostics).toContain('logStore.clear();');
+        expect(usersAdmin).not.toContain("router.post('/logs/get'");
+        expect(usersAdmin).not.toContain("router.post('/logs/clear'");
+        expect(usersAdmin).not.toContain('../log-capture.js');
     });
 
     test('legacy log-capture facade owns no storage', () => {

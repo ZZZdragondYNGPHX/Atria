@@ -58,7 +58,7 @@ function htmlEscape(value) {
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+        .replaceAll('\'', '&#039;');
 }
 
 function healthLabel(status) {
@@ -76,6 +76,9 @@ function severityIcon(severity) {
 }
 
 function buildWorkspaceMarkup({ canViewServerLogs }) {
+    const frontendCaptureNote = isFrontendConsoleDebugLoggingEnabled()
+        ? t`Frontend debug capture is enabled.`
+        : t`Frontend debug capture is limited; errors remain captured.`;
     return `
         <section class="atriaLogsWorkspace" data-mode="guided">
             <header class="atriaLogsHeader">
@@ -153,11 +156,7 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
                         <pre class="atriaLogsRawDetailPre">${t`Select a log entry to inspect its structured fields.`}</pre>
                     </aside>
                 </div>
-                <div class="menu_button_note atriaLogsExpertNote">
-                    ${isFrontendConsoleDebugLoggingEnabled()
-                        ? t`Frontend debug capture is enabled.`
-                        : t`Frontend debug capture is limited; errors remain captured.`}
-                </div>
+                <div class="menu_button_note atriaLogsExpertNote">${frontendCaptureNote}</div>
             </div>
         </section>
     `;
