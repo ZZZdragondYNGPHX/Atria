@@ -4,6 +4,12 @@ const SELF_PROFILING_STORAGE_KEY = 'atria.selfProfilingEnabled';
 const SELF_PROFILING_SAMPLE_INTERVAL = 10;
 const SELF_PROFILING_MAX_BUFFER_SIZE = 50000;
 const SELF_PROFILING_STATE_KEY = '__atriaSelfProfilerState';
+const STARTUP_TIMING_STATE_KEY = '__atriaStartupTiming';
+
+const startupTimingState = {
+    initJsStart: performance.now(),
+};
+globalThis[STARTUP_TIMING_STATE_KEY] = startupTimingState;
 
 function startSelfProfilerAtEarliestPoint() {
     try {
@@ -97,13 +103,17 @@ async function initializeApplication() {
         // graph.
         safePerfMark('atria:init:import:lib:start');
         safePerfMark('atria:init:import:app:start');
+        startupTimingState.libImportStart = performance.now();
+        startupTimingState.appImportStart = startupTimingState.libImportStart;
 
         const libImport = import('./lib.js').then((module) => {
+            startupTimingState.libImportEnd = performance.now();
             safePerfMark('atria:init:import:lib:end');
             safePerfMeasure('atria:init:import:lib', 'atria:init:import:lib:start', 'atria:init:import:lib:end');
             return module;
         });
         const appImport = import('./script.js').then((module) => {
+            startupTimingState.appImportEnd = performance.now();
             safePerfMark('atria:init:import:app:end');
             safePerfMeasure('atria:init:import:app', 'atria:init:import:app:start', 'atria:init:import:app:end');
             return module;
@@ -113,6 +123,7 @@ async function initializeApplication() {
     } catch (error) {
         console.error('Failed to initialize Atria application:', error);
     } finally {
+        startupTimingState.initModuleEnd = performance.now();
         safePerfMark('atria:init:end');
         safePerfMeasure('atria:init:total', 'atria:init:start', 'atria:init:end');
     }

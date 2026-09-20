@@ -1961,9 +1961,51 @@ export async function pingServer() {
     }
 }
 
+const CLIENT_STARTUP_TIMING_KEY = '__atriaStartupTiming';
+
+function markClientStartupTiming(name) {
+    try {
+        const state = globalThis[CLIENT_STARTUP_TIMING_KEY];
+        if (state && typeof state === 'object') {
+            state[name] = performance.now();
+        }
+    } catch {
+        // Startup diagnostics must never affect app boot.
+    }
+}
+
+function reportClientStartupTiming() {
+    try {
+        const state = globalThis[CLIENT_STARTUP_TIMING_KEY];
+        if (!state || typeof state !== 'object') return;
+
+        const navigation = performance.getEntriesByType?.('navigation')?.[0];
+        const payload = {
+            timings: { ...state },
+            navigation: navigation ? {
+                responseStart: navigation.responseStart,
+                responseEnd: navigation.responseEnd,
+                domInteractive: navigation.domInteractive,
+                domContentLoadedEventEnd: navigation.domContentLoadedEventEnd,
+                loadEventEnd: navigation.loadEventEnd,
+            } : null,
+        };
+
+        fetch('/api/startup/client-timing', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify(payload),
+            keepalive: true,
+        }).catch(() => {});
+    } catch {
+        // Best-effort telemetry only.
+    }
+}
+
 //MARK: firstLoadInit
 async function firstLoadInit() {
     console.debug('[init] firstLoadInit start');
+    markClientStartupTiming('firstLoadStart');
     performance.mark('[init] start');
     installSettingsGetRequestInterceptor();
 
@@ -1971,6 +2013,7 @@ async function firstLoadInit() {
         const tokenResponse = await fetch('/csrf-token');
         const tokenData = await tokenResponse.json();
         token = tokenData.token;
+        markClientStartupTiming('csrfDone');
     } catch {
         toastr.error(t`Couldn't get CSRF token. Please refresh the page.`, t`Error`, { timeOut: 0, extendedTimeOut: 0, preventDuplicates: true });
         throw new Error('Initialization failed');
@@ -2045,6 +2088,7 @@ async function firstLoadInit() {
         bootstrapPromise,
     ]);
     console.debug('[init] bootstrap snapshot received');
+    markClientStartupTiming('bootstrapDone');
 
     // Preserve the existing readiness guarantee: loader/UI startup does not
     // progress past this point until the initial delivery connection settled.
@@ -2068,6 +2112,7 @@ async function firstLoadInit() {
     console.debug('[init] calling getSettings...');
     await getSettings({ bootstrap: true, payload: bootstrapSnapshot?.settings });
     console.debug('[init] getSettings done');
+    markClientStartupTiming('getSettingsDone');
     performance.mark('[init] getSettings done');
     await checkOpenRouterAuth();
     primeRecentChatsSnapshotPromise(fetchRecentChatsSnapshot());
@@ -2088,6 +2133,7 @@ async function firstLoadInit() {
         console.debug('[init] hiding loader');
         await hideLoader({ immediate: true });
         console.debug('[init] loader hidden');
+        markClientStartupTiming('loaderHidden');
         performance.mark('[init] loader hidden');
     }
     await fixViewport();
@@ -2112,6 +2158,7 @@ async function firstLoadInit() {
         () => getCharacters(),
     ]);
     console.debug('[init] startup tasks batch 1 done');
+    markClientStartupTiming('batch1Done');
     performance.mark('[init] batch1 done');
     await yieldToBrowser();
 
@@ -2138,6 +2185,7 @@ async function firstLoadInit() {
         () => loadMacroAutoCompleteModule().then(({ initMacroAutoComplete }) => initMacroAutoComplete()),
     ]);
     console.debug('[init] startup tasks batch 2 done');
+    markClientStartupTiming('batch2Done');
     performance.mark('[init] batch2 done');
     await yieldToBrowser();
 
@@ -2183,11 +2231,14 @@ async function firstLoadInit() {
         },
     ]);
     console.debug('[init] startup tasks batch 3 done');
+    markClientStartupTiming('batch3Done');
     performance.mark('[init] batch3 done');
     await eventSource.emit(event_types.APP_INITIALIZED);
     await eventSource.emit(event_types.APP_READY);
     console.debug('[init] firstLoadInit complete');
+    markClientStartupTiming('appReady');
     performance.mark('[init] complete');
+    reportClientStartupTiming();
     initDebugExportButton();
 }
 

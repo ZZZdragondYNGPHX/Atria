@@ -531,6 +531,55 @@ app.post('/api/ping', (request, response) => {
     response.sendStatus(204);
 });
 
+function normalizeClientTiming(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0
+        ? Math.round(number * 10) / 10
+        : null;
+}
+
+function diffClientTiming(timings, start, end) {
+    const a = normalizeClientTiming(timings?.[start]);
+    const b = normalizeClientTiming(timings?.[end]);
+    return a !== null && b !== null && b >= a
+        ? Math.round((b - a) * 10) / 10
+        : null;
+}
+
+app.post('/api/startup/client-timing', (request, response) => {
+    const timings = request.body?.timings && typeof request.body.timings === 'object'
+        ? request.body.timings
+        : {};
+    const navigation = request.body?.navigation && typeof request.body.navigation === 'object'
+        ? request.body.navigation
+        : {};
+
+    const initJsStart = normalizeClientTiming(timings.initJsStart);
+    const responseEnd = normalizeClientTiming(navigation.responseEnd);
+    const summary = {
+        navResponseEndMs: responseEnd,
+        htmlToInitJsMs: initJsStart !== null && responseEnd !== null && initJsStart >= responseEnd
+            ? Math.round((initJsStart - responseEnd) * 10) / 10
+            : null,
+        libImportMs: diffClientTiming(timings, 'libImportStart', 'libImportEnd'),
+        appImportMs: diffClientTiming(timings, 'appImportStart', 'appImportEnd'),
+        initModuleMs: diffClientTiming(timings, 'initJsStart', 'initModuleEnd'),
+        initToFirstLoadMs: diffClientTiming(timings, 'initJsStart', 'firstLoadStart'),
+        csrfMs: diffClientTiming(timings, 'firstLoadStart', 'csrfDone'),
+        bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettingsDone'),
+        settingsToVisibleMs: diffClientTiming(timings, 'getSettingsDone', 'loaderHidden'),
+        visibleToBatch1Ms: diffClientTiming(timings, 'loaderHidden', 'batch1Done'),
+        batch2Ms: diffClientTiming(timings, 'batch1Done', 'batch2Done'),
+        batch3Ms: diffClientTiming(timings, 'batch2Done', 'batch3Done'),
+        firstLoadTotalMs: diffClientTiming(timings, 'firstLoadStart', 'appReady'),
+        domInteractiveMs: normalizeClientTiming(navigation.domInteractive),
+        loadEventEndMs: normalizeClientTiming(navigation.loadEventEnd),
+    };
+
+    console.log('[startup-client]', JSON.stringify(summary));
+    response.sendStatus(204);
+});
+
 // Debug export endpoint.
 // One-shot bundle export for troubleshooting: assembles every payload on the
 // server so the browser never has to stringify the full ring buffer. The client
