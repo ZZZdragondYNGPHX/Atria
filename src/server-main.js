@@ -613,6 +613,19 @@ function diffClientTiming(timings, start, end) {
         : null;
 }
 
+function summarizeExtensionActivationTimings(durations) {
+    const prefix = 'extensionActivate:';
+    return Object.entries(durations || {})
+        .filter(([name]) => name.startsWith(prefix))
+        .map(([name, value]) => ({
+            name: name.slice(prefix.length, prefix.length + 120),
+            ms: normalizeClientTiming(value),
+        }))
+        .filter(item => item.name && item.ms !== null)
+        .sort((a, b) => b.ms - a.ms)
+        .slice(0, 8);
+}
+
 app.post('/api/startup/client-timing', (request, response) => {
     const timings = request.body?.timings && typeof request.body.timings === 'object'
         ? request.body.timings
@@ -660,7 +673,9 @@ app.post('/api/startup/client-timing', (request, response) => {
         extDiscoverMs: normalizeClientTiming(durations.extensionsDiscover),
         extManifestsMs: normalizeClientTiming(durations.extensionsManifests),
         extAutoUpdateMs: normalizeClientTiming(durations.extensionsAutoUpdate),
+        extPrewarmMs: normalizeClientTiming(durations.extensionsPrewarm),
         extActivateMs: normalizeClientTiming(durations.extensionsActivate),
+        extSlow: summarizeExtensionActivationTimings(durations),
         extSettingsLoadedEventMs: normalizeClientTiming(durations.extensionsSettingsLoadedEvent),
         batch3Ms: diffClientTiming(timings, 'batch2Done', 'batch3Done'),
         firstLoadTotalMs: diffClientTiming(timings, 'firstLoadStart', 'appReady'),

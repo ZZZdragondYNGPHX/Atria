@@ -46,17 +46,21 @@ describe('client startup telemetry', () => {
         const firstLoad = source.indexOf("measureExtensionStartupPhase('extensionsFirstLoadEvent'");
         const discover = source.indexOf("measureExtensionStartupPhase('extensionsDiscover'");
         const manifests = source.indexOf("measureExtensionStartupPhase('extensionsManifests'");
+        const prewarm = source.indexOf("measureExtensionStartupPhase('extensionsPrewarm'");
         const activate = source.indexOf("measureExtensionStartupPhase('extensionsActivate'");
         const settingsLoaded = source.indexOf("measureExtensionStartupPhase('extensionsSettingsLoadedEvent'");
 
         expect(firstLoad).toBeGreaterThanOrEqual(0);
         expect(discover).toBeGreaterThan(firstLoad);
         expect(manifests).toBeGreaterThan(discover);
-        expect(activate).toBeGreaterThan(manifests);
+        expect(prewarm).toBeGreaterThan(manifests);
+        expect(activate).toBeGreaterThan(prewarm);
         expect(settingsLoaded).toBeGreaterThan(activate);
+        expect(source).toContain('prewarmDeferredSystemExtensionModules');
+        expect(source).toContain('extensionActivate:');
     });
 
-    test('backend logs only numeric startup timing summary fields', () => {
+    test('backend logs startup timing summary and bounded slow-extension diagnostics', () => {
         const source = readFileSync(SERVER_URL, 'utf8');
         expect(source).toContain("app.post('/api/startup/client-timing'");
         expect(source).toContain("'[startup-client-visible]'");
@@ -71,6 +75,9 @@ describe('client startup telemetry', () => {
         expect(source).toContain('b2TokenizersMs');
         expect(source).toContain('extDiscoverMs');
         expect(source).toContain('extManifestsMs');
+        expect(source).toContain('extPrewarmMs');
         expect(source).toContain('extActivateMs');
+        expect(source).toContain('extSlow');
+        expect(source).toContain('summarizeExtensionActivationTimings');
     });
 });
