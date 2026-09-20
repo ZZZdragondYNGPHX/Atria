@@ -33,7 +33,7 @@ Record final path behavior, confirmation semantics, validation and merge result 
 
 - Task branch: `feat/termux-uninstall-modes`
 - Baseline: `main@c407f9e97530f587362c2150f7a0c2601598f75e`
-- Current task HEAD: `6b3e2e343f04cebe887478fec87df287d72717df`
+- Current task HEAD: `170f6ad501c6aa100b868e156579f52e96c41931`
 - PR: #76
 - Toolbox version bumped to v0.3.6.
 - The previous fragmented four-action uninstall menu is overridden by two product-level actions: keep-data uninstall and complete uninstall.
@@ -45,5 +45,6 @@ Record final path behavior, confirmation semantics, validation and merge result 
 
 ## Validation status
 
-- PR Checks #733 is queued for PR #76.
-- Final merge/integration verification is pending CI completion.
+- PR Checks #733 passed on the original task head. During CI, main advanced through PR #77/#78; the task branch was merged with `main@1dffedf610e03a51512ec59f12a09cd7b9a23f43` without dropping those Termux fixes.
+- PR Checks #743 is queued for the synchronized task head.
+- PR #76 is mergeable after synchronization. Final merge/integration verification is pending PR Checks #743.
