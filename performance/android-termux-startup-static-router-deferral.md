@@ -137,3 +137,118 @@ Required lines:
 - any `lazy-router.*` line if an optional feature is used during startup.
 
 That measurement determines whether the next work should target remaining Node static imports, Android browser launch, pre-visible browser module execution, or post-visible batches.
+
+
+## Post-deferral real-device measurement
+
+Real-device Termux log on 2026-09-20 after the router-deferral pass, baseline `main@95644b11837161041048f167f1989ba68869216a`:
+
+```text
+[startup] +3546ms server-main.module-evaluated
+[startup] phase pre-setup.total 487ms
+[startup] phase pre-setup.frontend-cache 2ms
+[startup] +4097ms server.listening
+[startup] +4303ms http.root.head
+[startup] +17224ms http.root.get
+[startup] +18244ms http.csrf-token
+[startup] phase http.bootstrap 334ms
+[startup-client-visible] {... "visibleTotalMs":1052.2, "htmlToInitJsMs":967.5, ...}
+[startup-client] {... "visibleToBatch1Ms":460.1, "batch2Ms":4463.8, "batch3Ms":171.9, "firstLoadTotalMs":6384.5, ...}
+```
+
+### Comparison with the pre-deferral baseline
+
+- `server-main.module-evaluated`: 3252ms -> 3546ms (+294ms, about +9.0%).
+- `server.listening`: 3868ms -> 4097ms (+229ms, about +5.9%).
+- `pre-setup.total`: 548ms -> 487ms (-61ms, about -11.1%).
+- warm frontend-cache check: 3ms -> 2ms.
+
+One real-device run is not enough to claim a causal regression, but this is sufficient to say that #62/#64/#65/#66 did **not** demonstrate a measurable backend-startup win. Do not keep splitting optional server routers on source-code intuition alone. The router-deferral direction is now paused unless later measurements show a specific static dependency is still dominant and independently removable.
+
+### Browser-side interpretation
+
+- Readiness HEAD -> actual browser `GET /`: 12.921s.
+- This interval is outside Atria page JavaScript because browser navigation had not begun.
+- Actual `GET /` -> CSRF: about 1.020s.
+- Navigation response -> first visible Atria UI is about 2.08s:
+  - `navResponseEndMs=33.4`
+  - `htmlToInitJsMs=967.5`
+  - `visibleTotalMs=1052.2`
+- Atria first-load -> APP_READY: 6384.5ms.
+- The previous `batch2Ms=4463.8ms` was not a pure batch-2 measurement: it also included the optional Welcome Screen interval between `batch1Done` and the real batch-2 task start.
+
+This moved the optimization target again: first-visible Atria startup is already around two seconds after the browser starts navigation; the two unresolved large regions are Android/Termux browser launch and post-visible initialization before APP_READY.
+
+## Follow-up diagnostics
+
+### PR #67 — granular post-visible timing
+
+- Baseline: `main@95644b11837161041048f167f1989ba68869216a`
+- Final validated head: `26500c9f38a3617644e0909f3759817685bdcb5c`
+- Squash merge: `48c28adc82c0764392e7261b89031c883512dda8`
+- Atria PR Checks #667 passed.
+- Worldbook Performance Foundation #318 passed, including real-host Chromium startup smoke and complete World Info acceptance.
+
+No startup order changed. The telemetry now separates:
+
+- `welcomeScreenMs`;
+- `batch2TasksMs`;
+- each batch-2 task:
+  - text-generation model selects;
+  - system messages;
+  - announcements;
+  - extension UI init;
+  - extension bootstrap;
+  - extension slash commands;
+  - tool slash commands;
+  - tokenizers;
+  - personas;
+  - slash-command autocomplete;
+  - macro autocomplete;
+- extension bootstrap internals:
+  - first-load event;
+  - discovery;
+  - manifest fetch;
+  - optional auto-update;
+  - activation;
+  - settings-loaded event.
+
+Extension activation semantics remain unchanged. In particular, different `loading_order` groups remain serial because third-party listener ordering is a real compatibility contract; same-order groups were already parallelized.
+
+### PR #68 — launcher-to-root timing in backend logs
+
+- Baseline after #67: `main@48c28adc82c0764392e7261b89031c883512dda8`
+- Final validated head: `db2464702bcee20c43a65dcbc25b3872b38c704a`
+- Squash merge / resulting main: `8fd9fb53af028c6453338ae845827df91898122c`
+- Final Atria PR Checks #672 passed.
+
+The previous Termux launcher markers were written only to the raw shell log and therefore were absent from the in-app backend log the user supplied. #68 adds a loopback-only diagnostic path so the same backend log now contains:
+
+- `[startup-launcher]` ready/open command events;
+- `readyToBrowserOpenMs` where applicable;
+- `browserOpenCommandMs`;
+- on the first real homepage GET:
+  - `readyToRootGetMs`;
+  - `browserOpenToRootGetMs`;
+  - launch method (`termux-open-url` or `am`).
+
+The endpoint is restricted by the raw loopback socket address and is mounted before auth/CSRF only for local launcher diagnostics. Launcher reporting has a 0.2s connect timeout and 0.5s hard timeout so diagnostics cannot become a meaningful startup delay.
+
+## New measurement gate
+
+Update Termux to `main@8fd9fb53af028c6453338ae845827df91898122c` or later and collect one complete startup log.
+
+The next decision is data-driven:
+
+- large `readyToBrowserOpenMs` / `readyToRootGetMs` but small `browserOpenToRootGetMs`:
+  launcher/menu/user-flow delay; consider opening automatically as soon as readiness is detected.
+- large `browserOpenToRootGetMs`:
+  Android/browser cold-start dominates; investigate safe browser pre-warm instead of Atria JavaScript.
+- large `extActivateMs`:
+  keep `loading_order` execution semantics, but consider prefetch/modulepreload of enabled extension assets after manifests are known.
+- large `welcomeScreenMs` or another individual `b2*Ms` field:
+  optimize only that component.
+- no dominant post-visible field:
+  revisit the approximately 0.67s DOM-interactive -> `init.js` start gap and the module/classic-script queue before `init.js`.
+
+Do not resume broad router deferral, tokenizer/core-generation restructuring, Transformers graph restructuring, or extension Git-stack refactoring without new evidence.
