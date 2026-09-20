@@ -3,6 +3,7 @@ import { createImmersiveComposer } from './composer.js';
 import { createImmersiveMessageActions } from './message-actions.js';
 import { createImmersiveProviderRegistry } from './providers.js';
 import { createImmersiveHud } from './hud.js';
+import { createImmersiveVisuals } from './visuals.js';
 
 function callSafely(fn, ...args) {
     try {
@@ -80,9 +81,17 @@ export function createImmersiveController({
         onWake: wake,
     });
 
+    const visuals = createImmersiveVisuals({
+        document: documentRef,
+        window: windowRef,
+    });
     let hud = null;
     const providers = createImmersiveProviderRegistry({
-        onChange: snapshot => hud?.render(snapshot),
+        onChange: snapshot => {
+            hud?.render(snapshot);
+            presentation.setProviderVisual(snapshot.visual);
+            visuals.render(snapshot, presentation.getSettings());
+        },
         onError: (error, providerId) => {
             console.warn(`[immersive] provider "${providerId}" failed`, error);
         },
@@ -264,6 +273,7 @@ export function createImmersiveController({
     const refreshSettings = () => {
         const settings = normalizeImmersiveSettings(getSettings());
         presentation.refreshSettings(settings);
+        visuals.render(providers.getSnapshot(), settings);
         hud.setMode(settings.hudMode);
         hud.setEnabled(enabled && settings.extensionsEnabled);
         return settings;
@@ -281,6 +291,8 @@ export function createImmersiveController({
         presentation.setEnabled(shouldEnable);
         composer.setEnabled(shouldEnable);
         messageActions.setEnabled(shouldEnable);
+        visuals.setEnabled(shouldEnable);
+        visuals.render(providers.getSnapshot(), settings);
         hud.setEnabled(shouldEnable && settings.extensionsEnabled);
         hud.setMode(settings.hudMode);
         if (shouldEnable && settings.extensionsEnabled) {
@@ -411,6 +423,7 @@ export function createImmersiveController({
         }
         providers.dispose();
         hud.dispose();
+        visuals.dispose();
         messageActions.dispose();
         composer.dispose();
         presentation.dispose();
