@@ -286,7 +286,8 @@ export function createImmersiveController({
     };
 
     const refreshSettings = () => {
-        const settings = normalizeImmersiveSettings(getSettings());
+        const rawSettings = callSafely(getSettings);
+        const settings = normalizeImmersiveSettings(rawSettings && typeof rawSettings === 'object' ? rawSettings : {});
         presentation.refreshSettings(settings);
         visuals.render(providers.getSnapshot(), settings);
         hud.setMode(settings.hudMode);
@@ -321,8 +322,8 @@ export function createImmersiveController({
         }
 
         if (persist && settings.rememberState) {
-            const rawSettings = getSettings();
-            if (rawSettings.immersive_mode_last_state !== shouldEnable) {
+            const rawSettings = callSafely(getSettings);
+            if (rawSettings && typeof rawSettings === 'object' && rawSettings.immersive_mode_last_state !== shouldEnable) {
                 rawSettings.immersive_mode_last_state = shouldEnable;
                 callSafely(saveSettings);
             }
@@ -427,7 +428,8 @@ export function createImmersiveController({
     documentRef.addEventListener('fullscreenchange', onFullscreenChanged);
     documentRef.addEventListener('webkitfullscreenchange', onFullscreenChanged);
     documentRef.addEventListener('keydown', keydownHandler, true);
-    presentation.refreshSettings(normalizeImmersiveSettings(getSettings()));
+    // Do not touch host settings during module construction. In Atria's circular
+    // ESM startup graph, power_user is not initialized yet at this point.
     updateToggleUi();
 
     const dispose = () => {
