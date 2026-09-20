@@ -270,6 +270,14 @@ update_repo() {
   command -v git >/dev/null 2>&1 || fail "git is missing."
 
   cd "${REPO_ROOT}"
+  local restore_sentinel="public/scripts/extensions/third-party/.gitkeep"
+  local restore_sentinel_status
+  restore_sentinel_status="$(git status --porcelain -- "${restore_sentinel}" 2>/dev/null || true)"
+  if [[ "${restore_sentinel_status}" == " D ${restore_sentinel}" ]] && git cat-file -e "HEAD:${restore_sentinel}" 2>/dev/null; then
+    git restore --worktree -- "${restore_sentinel}"
+    log "Restored repository sentinel removed by an interrupted full restore: ${restore_sentinel}"
+  fi
+
   if [[ -n "$(git status --porcelain)" ]]; then
     fail "Repository has local tracked/untracked changes. Clean or commit them before update."
   fi

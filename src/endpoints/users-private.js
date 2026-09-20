@@ -48,6 +48,7 @@ import {
 } from '../storage/management.js';
 import { getAdminSettings } from '../admin-settings.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
+import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
 
 // Two sentinel filenames the backup ZIP carries when the storage engine isn't
 // fs (spec §5.1/§5.2). The meta entry is captured during the analyze pass for
@@ -723,7 +724,12 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                 for (const filePath of targetFiles) {
                     await fsPromises.rm(filePath, { force: true });
                 }
+                const globalExtensionsPath = path.resolve(PUBLIC_DIRECTORIES.globalExtensions);
                 for (const directoryPath of targetDirectories) {
+                    if (path.resolve(directoryPath) === globalExtensionsPath) {
+                        await resetGlobalExtensionsRestoreDirectory(directoryPath);
+                        continue;
+                    }
                     await fsPromises.rm(directoryPath, { recursive: true, force: true });
                     ensureDirectory(directoryPath);
                 }
