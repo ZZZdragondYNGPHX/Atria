@@ -30,6 +30,18 @@ describe('immersive presentation settings', () => {
 });
 
 describe('immersive controller', () => {
+    test('construction does not read host settings before the app runtime is initialized', () => {
+        document.body.innerHTML = '<button id="immersive_mode_toggle"><i id="immersiveModeIcon"></i><span id="immersiveModeLabel"></span></button>';
+        const getSettings = jest.fn(() => {
+            throw new ReferenceError('host settings are still in TDZ');
+        });
+
+        const controller = createImmersiveController({ document, window, getSettings });
+
+        expect(getSettings).not.toHaveBeenCalled();
+        controller.dispose();
+    });
+
     beforeEach(() => {
         document.body.innerHTML = '<button id="immersive_mode_toggle"><i id="immersiveModeIcon"></i><span id="immersiveModeLabel"></span></button>';
         document.exitFullscreen = undefined;
