@@ -1,0 +1,8 @@
+.gradle/
+.gradle-user-home/
+local.properties
+release.keystore
+build/
+app/build/
+app/src/main/jniLibs/
+app/libnode/

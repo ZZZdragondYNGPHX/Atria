@@ -1,0 +1,8 @@
+{
+    "display_name": "Orchestrator",
+    "loading_order": 110,
+    "js": "index.js",
+    "author": "Luker",
+    "version": "0.1.0",
+    "homePage": "https://github.com/funnycups/Luker"
+}

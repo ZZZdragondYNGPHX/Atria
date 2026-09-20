@@ -1,0 +1,9 @@
+{
+    "display_name": "Completion Preset Assistant",
+    "loading_order": 113,
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Luker",
+    "version": "0.1.0",
+    "homePage": "https://github.com/funnycups/Luker"
+}

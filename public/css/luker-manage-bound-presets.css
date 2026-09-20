@@ -1,0 +1,250 @@
+/**
+ * Luker — Manage Bound Presets dialog
+ *
+ * Minimal layout styles for the per-character card-bound preset manager
+ * (public/scripts/character/manage-bound-presets-dialog.js). Buttons re-use
+ * the shared `.menu_button` from the base theme so they inherit user theme
+ * choices; only spacing / row layout is scoped here.
+ */
+
+#luker_manage_bound_presets_dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+    /* Cap width so the dialog fits inside the visible chat area on
+       desktops that have the character-edit sidebar open; the previous
+       `min-width: min(48em, 92vw)` expanded the popup wide enough that
+       the trailing "Add" button in the "Add from local preset" row
+       overflowed past the popup edge behind the sidebar on 1440px
+       viewports. `width: min(42em, 100%)` bounds the popup to a size
+       that fits inside the chat area, and `.popup`'s outer max-width
+       still applies. */
+    width: min(42em, 100%);
+    max-width: 100%;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-heading {
+    margin: 0 0 0.25em 0;
+    font-size: 1.1em;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.5em 0.75em;
+    border: 1px solid color-mix(in oklab, var(--SmartThemeBodyColor) 15%, transparent);
+    border-radius: 6px;
+    background: color-mix(in oklab, var(--SmartThemeBodyColor) 3%, transparent);
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-default-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15em 0.6em;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--SmartThemeQuoteColor, gold) 25%, transparent);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-empty {
+    padding: 1em;
+    text-align: center;
+    color: color-mix(in oklab, var(--SmartThemeBodyColor) 60%, transparent);
+    font-style: italic;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-add {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding-top: 0.5em;
+    border-top: 1px solid color-mix(in oklab, var(--SmartThemeBodyColor) 15%, transparent);
+    flex-wrap: wrap;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-add-label {
+    flex: 0 0 auto;
+}
+
+#luker_manage_bound_presets_dialog .luker-mbp-add-select {
+    flex: 1 1 15em;
+    min-width: 0;
+}
+
+/* Small screens: stack the row's name + actions vertically so wide button
+   clusters don't force horizontal scroll (project memory:
+   project_mobile_webview_paint_caps). Also stack the "Add from local
+   preset" row so the trailing Add button doesn't get pushed past the
+   viewport edge at 375px widths. */
+@media (max-width: 720px) {
+    #luker_manage_bound_presets_dialog .luker-mbp-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #luker_manage_bound_presets_dialog .luker-mbp-actions {
+        justify-content: flex-start;
+    }
+    #luker_manage_bound_presets_dialog .luker-mbp-add {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #luker_manage_bound_presets_dialog .luker-mbp-add-label,
+    #luker_manage_bound_presets_dialog .luker-mbp-add-select,
+    #luker_manage_bound_presets_dialog .luker-mbp-add-button {
+        flex: 0 0 auto;
+        width: 100%;
+    }
+}
+
+/*
+ * Luker — Clear Bound Presets salvage dialog
+ *
+ * Sibling of the manage dialog above: one row per card-bound slot with a
+ * Save-to-global / Discard radio pair and an inline global-preset name
+ * input. See `openClearWithSalvageDialog` in
+ * public/scripts/character/manage-bound-presets-dialog.js.
+ */
+
+#luker_clear_bound_presets_dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+    width: min(48em, 100%);
+    max-width: 100%;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-heading {
+    margin: 0 0 0.25em 0;
+    font-size: 1.1em;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-intro {
+    margin: 0;
+    color: color-mix(in oklab, var(--SmartThemeBodyColor) 75%, transparent);
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-bulk {
+    display: flex;
+    gap: 0.5em;
+    flex-wrap: wrap;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.5em 0.75em;
+    border: 1px solid color-mix(in oklab, var(--SmartThemeBodyColor) 15%, transparent);
+    border-radius: 6px;
+    background: color-mix(in oklab, var(--SmartThemeBodyColor) 3%, transparent);
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-slot {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    min-width: 8em;
+    max-width: 14em;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-slot-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-default-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15em 0.5em;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--SmartThemeQuoteColor, gold) 25%, transparent);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.8em;
+    font-weight: 600;
+    flex: 0 0 auto;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-choice {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-choice-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-global-name {
+    flex: 1 1 10em;
+    min-width: 6em;
+}
+
+#luker_clear_bound_presets_dialog .luker-cbp-global-name[disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+@media (max-width: 720px) {
+    #luker_clear_bound_presets_dialog .luker-cbp-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #luker_clear_bound_presets_dialog .luker-cbp-slot {
+        max-width: none;
+    }
+    #luker_clear_bound_presets_dialog .luker-cbp-choice {
+        justify-content: flex-start;
+    }
+    #luker_clear_bound_presets_dialog .luker-cbp-global-name {
+        flex: 0 0 auto;
+        width: 100%;
+    }
+}

@@ -1,0 +1,475 @@
+import https from 'node:https';
+import http from 'node:http';
+import fs from 'node:fs';
+import { color, urlHostnameToIPv6, getHasIP } from './util.js';
+
+// Express routers
+import { router as userDataRouter } from './users.js';
+import { router as usersPrivateRouter } from './endpoints/users-private.js';
+import { router as usersAdminRouter } from './endpoints/users-admin.js';
+import { router as movingUIRouter } from './endpoints/moving-ui.js';
+import { router as imagesRouter } from './endpoints/images.js';
+import { router as quickRepliesRouter } from './endpoints/quick-replies.js';
+import { router as avatarsRouter } from './endpoints/avatars.js';
+import { router as themesRouter } from './endpoints/themes.js';
+import { router as openAiRouter } from './endpoints/openai.js';
+import { router as googleRouter } from './endpoints/google.js';
+import { router as anthropicRouter } from './endpoints/anthropic.js';
+import { router as tokenizersRouter } from './endpoints/tokenizers.js';
+import { router as presetsRouter } from './endpoints/presets.js';
+import { router as secretsRouter } from './endpoints/secrets.js';
+import { router as thumbnailRouter } from './endpoints/thumbnails.js';
+import { router as novelAiRouter } from './endpoints/novelai.js';
+import { router as extensionsRouter } from './endpoints/extensions.js';
+import { router as assetsRouter } from './endpoints/assets.js';
+import { router as filesRouter } from './endpoints/files.js';
+import { router as charactersRouter } from './endpoints/characters.js';
+import { router as chatsRouter } from './endpoints/chats.js';
+import { router as groupsRouter } from './endpoints/groups.js';
+import { router as worldInfoRouter } from './endpoints/worldinfo.js';
+import { router as statsRouter } from './endpoints/stats.js';
+import { router as contentManagerRouter } from './endpoints/content-manager.js';
+import { router as bootstrapRouter } from './endpoints/bootstrap.js';
+import { router as settingsRouter } from './endpoints/settings.js';
+import { router as backgroundsRouter } from './endpoints/backgrounds.js';
+import { router as spritesRouter } from './endpoints/sprites.js';
+import { router as stableDiffusionRouter } from './endpoints/stable-diffusion.js';
+import { router as hordeRouter } from './endpoints/horde.js';
+import { router as vectorsRouter } from './endpoints/vectors.js';
+import { router as translateRouter } from './endpoints/translate.js';
+import { router as classifyRouter } from './endpoints/classify.js';
+import { router as captionRouter } from './endpoints/caption.js';
+import { router as searchRouter } from './endpoints/search.js';
+import { router as openRouterRouter } from './endpoints/openrouter.js';
+import { router as nanogptRouter } from './endpoints/nanogpt.js';
+import { router as chatCompletionsRouter } from './endpoints/backends/chat-completions.js';
+import { router as koboldRouter } from './endpoints/backends/kobold.js';
+import { router as textCompletionsRouter } from './endpoints/backends/text-completions.js';
+import { router as speechRouter } from './endpoints/speech.js';
+import { router as azureRouter } from './endpoints/azure.js';
+import { router as minimaxRouter } from './endpoints/minimax.js';
+import { router as dataMaidRouter } from './endpoints/data-maid.js';
+import { router as backupsRouter } from './endpoints/backups.js';
+import { router as imageMetadataRouter } from './endpoints/image-metadata.js';
+import { router as volcengineRouter } from './endpoints/volcengine.js';
+import { router as requestInspectorRouter } from './request-inspector.js';
+import { router as cardAppRouter } from './endpoints/card-app.js';
+import { router as docsRouter } from './endpoints/docs.js';
+import { createSkillsRouter } from './endpoints/skills.js';
+import { createSkillRepository } from './skills/repository.js';
+import { createMemoryIndex } from './skills/memory-index.js';
+import { ensureFreshInstallPopulate } from './skills/bundled.js';
+import { wsTicketRouter } from './ws-ticket-router.js';
+import { generationControlRouter } from './endpoints/generation-control.js';
+
+/**
+ * @typedef {object} ServerStartupResult
+ * @property {boolean} v6Failed If the server failed to start on IPv6
+ * @property {boolean} v4Failed If the server failed to start on IPv4
+ * @property {unknown} [v6Error] The IPv6 server startup error
+ * @property {unknown} [v4Error] The IPv4 server startup error
+ * @property {boolean} useIPv6 If use IPv6
+ * @property {boolean} useIPv4 If use IPv4
+ * @property {import('http').Server[]} servers The HTTP/HTTPS server instances
+ */
+
+/**
+ * Setup the routers for the endpoints.
+ * @param {import('express').Express} app The Express app to use
+ */
+export function setupPrivateEndpoints(app) {
+    app.use('/', userDataRouter);
+    app.use('/api/users', usersPrivateRouter);
+    app.use('/api/users', usersAdminRouter);
+    app.use('/api/moving-ui', movingUIRouter);
+    app.use('/api/images', imagesRouter);
+    app.use('/api/quick-replies', quickRepliesRouter);
+    app.use('/api/avatars', avatarsRouter);
+    app.use('/api/themes', themesRouter);
+    app.use('/api/openai', openAiRouter);
+    app.use('/api/google', googleRouter);
+    app.use('/api/anthropic', anthropicRouter);
+    app.use('/api/tokenizers', tokenizersRouter);
+    app.use('/api/presets', presetsRouter);
+    app.use('/api/secrets', secretsRouter);
+    app.use('/thumbnail', thumbnailRouter);
+    app.use('/api/novelai', novelAiRouter);
+    app.use('/api/extensions', extensionsRouter);
+    app.use('/api/assets', assetsRouter);
+    app.use('/api/files', filesRouter);
+    app.use('/api/characters', charactersRouter);
+    app.use('/api/chats', chatsRouter);
+    app.use('/api/groups', groupsRouter);
+    app.use('/api/worldinfo', worldInfoRouter);
+    app.use('/api/stats', statsRouter);
+    app.use('/api/backgrounds', backgroundsRouter);
+    app.use('/api/sprites', spritesRouter);
+    app.use('/api/content', contentManagerRouter);
+    app.use('/api', bootstrapRouter);
+    app.use('/api/settings', settingsRouter);
+    app.use('/api/sd', stableDiffusionRouter);
+    app.use('/api/horde', hordeRouter);
+    app.use('/api/vector', vectorsRouter);
+    app.use('/api/translate', translateRouter);
+    app.use('/api/extra/classify', classifyRouter);
+    app.use('/api/extra/caption', captionRouter);
+    app.use('/api/search', searchRouter);
+    app.use('/api/backends/text-completions', textCompletionsRouter);
+    app.use('/api/openrouter', openRouterRouter);
+    app.use('/api/nanogpt', nanogptRouter);
+    app.use('/api/backends/kobold', koboldRouter);
+    app.use('/api/backends/chat-completions', chatCompletionsRouter);
+    app.use('/api/speech', speechRouter);
+    app.use('/api/azure', azureRouter);
+    app.use('/api/volcengine', volcengineRouter);
+    app.use('/api/minimax', minimaxRouter);
+    app.use('/api/data-maid', dataMaidRouter);
+    app.use('/api/backups', backupsRouter);
+    app.use('/api/image-metadata', imageMetadataRouter);
+    app.use('/api/request-inspector', requestInspectorRouter);
+    app.use('/api/card-app', cardAppRouter);
+    app.use('/api/docs', docsRouter);
+    // Skills are scoped to the authenticated user's data root, mirroring the
+    // card-app pattern. Each request resolves a fresh SkillRepository because
+    // request.user.directories.root depends on the authenticated session.
+    //
+    // The skillResourcesByUser cache stores one { repository, memoryIndex }
+    // pair per user-handle for the lifetime of the server process. The memory
+    // index is lazily rebuilt on first lookup so cold starts don't pay the
+    // walk-the-filesystem cost up front; a failure during rebuild is logged
+    // and swallowed (the index becomes empty, getVisible returns []) so a
+    // broken filesystem state never blocks REST traffic. Writes go through
+    // `getMemoryIndex(req).invalidate()` in skills.js, which only touches the
+    // active user's index — other users' caches are unaffected.
+    //
+    // The populate middleware (mounted before the router) lazily mirrors
+    // default/skills/global/ → <userRoot>/skills/global/ on the first
+    // /api/skills request per user per server-process lifetime. Cache key is
+    // request.user.profile.handle — the per-user identifier used elsewhere
+    // in the server. ensureFreshInstallPopulate is itself a no-op if the
+    // user already has any skills in their global scope, so a corrupted
+    // populatedUsers cache (e.g. across server restarts) does not duplicate.
+    // Populate failures are logged and swallowed: a broken default/skills
+    // tree should never block the user from listing their existing skills.
+    const populatedUsers = new Set();
+    const skillResourcesByUser = new Map();
+
+    function getSkillResources(req) {
+        const handle = req.user?.profile?.handle;
+        const root = req.user?.directories?.root;
+        // Anonymous / pre-auth requests: build a one-shot repo with no index.
+        // These should be rare (the auth middleware normally runs before this
+        // router), but a missing handle must not blow up.
+        if (!handle || !root) {
+            return { repository: createSkillRepository(root || '/'), memoryIndex: null };
+        }
+        let entry = skillResourcesByUser.get(handle);
+        if (!entry) {
+            const repository = createSkillRepository(root);
+            const memoryIndex = createMemoryIndex(repository);
+            // Kick off the initial rebuild lazily; subsequent invalidate()s
+            // come from the REST write handlers. Failures don't block the
+            // request — they just leave the index empty until the next write.
+            memoryIndex.rebuild().catch((e) => {
+                console.warn(`[skills] memoryIndex rebuild failed for ${handle}:`, e?.message ?? e);
+            });
+            entry = { repository, memoryIndex };
+            skillResourcesByUser.set(handle, entry);
+        }
+        return entry;
+    }
+
+    app.use('/api/skills', async (req, res, next) => {
+        try {
+            const handle = req.user?.profile?.handle;
+            if (handle && !populatedUsers.has(handle)) {
+                populatedUsers.add(handle);
+                const defaultRoot = app.get('lukerDefaultRoot');
+                if (defaultRoot && req.user?.directories?.root) {
+                    await ensureFreshInstallPopulate({
+                        defaultRoot,
+                        userRoot: req.user.directories.root,
+                    });
+                }
+            }
+        } catch (e) {
+            // Don't block the request on populate failure; bundled skills are
+            // a convenience, not a correctness requirement.
+            console.warn('[skills] ensureFreshInstallPopulate failed:', e?.message ?? e);
+        }
+        next();
+    }, createSkillsRouter({
+        getRepository: (req) => getSkillResources(req).repository,
+        getMemoryIndex: (req) => getSkillResources(req).memoryIndex,
+    }));
+    app.use('/api/ws-ticket', wsTicketRouter);
+    app.use('/api/generation', generationControlRouter);
+}
+
+/**
+ * Utilities for starting the express server.
+ */
+export class ServerStartup {
+    /**
+     * Creates a new ServerStartup instance.
+     * @param {import('express').Express} app The Express app to use
+     * @param {import('./command-line.js').CommandLineArguments} cliArgs The command-line arguments
+     */
+    constructor(app, cliArgs) {
+        this.app = app;
+        this.cliArgs = cliArgs;
+        /** @type {import('http').Server[]} */
+        this.servers = [];
+    }
+
+    /**
+     * Prints a fatal error message and exits the process.
+     * @param {string} message
+     */
+    #fatal(message) {
+        console.error(color.red(message));
+        process.exit(1);
+    }
+
+    /**
+     * Checks if the error was caused by an occupied port.
+     * @param {unknown} error
+     * @returns {error is NodeJS.ErrnoException}
+     */
+    #isAddressInUseError(error) {
+        return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EADDRINUSE';
+    }
+
+    /**
+     * Gets a readable listen address for an IP version.
+     * @param {URL} url The URL to listen on
+     * @param {number} ipVersion The IP version to use
+     * @returns {string}
+     */
+    #getListenAddress(url, ipVersion) {
+        const host = ipVersion === 6 ? urlHostnameToIPv6(url.hostname) : url.hostname;
+        return `${host}:${Number(url.port || (this.cliArgs.ssl ? 443 : 80))}`;
+    }
+
+    /**
+     * Builds a user-facing error for an occupied port.
+     * @param {URL} url The URL that failed to bind
+     * @param {number} ipVersion The IP version that failed
+     * @returns {string}
+     */
+    #getAddressInUseMessage(url, ipVersion) {
+        const listenAddress = this.#getListenAddress(url, ipVersion);
+        return `Address ${listenAddress} is already in use. Another SillyTavern instance may already be running. Stop the other process or change "port" in config.yaml.`;
+    }
+
+    /**
+     * Checks if SSL options are valid. If not, it will print an error message and exit the process.
+     * @returns {void}
+     */
+    #verifySslOptions() {
+        if (!this.cliArgs.ssl) return;
+
+        if (!this.cliArgs.certPath) {
+            this.#fatal('Error: SSL certificate path is required when using HTTPS. Check your config');
+        }
+
+        if (!this.cliArgs.keyPath) {
+            this.#fatal('Error: SSL key path is required when using HTTPS. Check your config');
+        }
+
+        if (!fs.existsSync(this.cliArgs.certPath)) {
+            this.#fatal('Error: SSL certificate path does not exist');
+        }
+
+        if (!fs.existsSync(this.cliArgs.keyPath)) {
+            this.#fatal('Error: SSL key path does not exist');
+        }
+    }
+
+    /**
+     * Creates an HTTPS server.
+     * @param {URL} url The URL to listen on
+     * @param {number} ipVersion the ip version to use
+     * @returns {Promise<void>} A promise that resolves when the server is listening
+     */
+    #createHttpsServer(url, ipVersion) {
+        this.#verifySslOptions();
+        return new Promise((resolve, reject) => {
+            /** @type {import('https').ServerOptions} */
+            const sslOptions = {
+                cert: fs.readFileSync(this.cliArgs.certPath),
+                key: fs.readFileSync(this.cliArgs.keyPath),
+                passphrase: String(this.cliArgs.keyPassphrase ?? ''),
+            };
+            const server = https.createServer(sslOptions, this.app);
+            this.servers.push(server);
+            server.on('error', reject);
+            server.on('listening', resolve);
+
+            let host = url.hostname;
+            if (ipVersion === 6) host = urlHostnameToIPv6(url.hostname);
+            server.listen({
+                host: host,
+                port: Number(url.port || 443),
+                // see https://nodejs.org/api/net.html#serverlisten for why ipv6Only is used
+                ipv6Only: true,
+            });
+        });
+    }
+
+    /**
+     * Creates an HTTP server.
+     * @param {URL} url The URL to listen on
+     * @param {number} ipVersion the ip version to use
+     * @returns {Promise<void>} A promise that resolves when the server is listening
+     */
+    #createHttpServer(url, ipVersion) {
+        return new Promise((resolve, reject) => {
+            const server = http.createServer(this.app);
+            this.servers.push(server);
+            server.on('error', reject);
+            server.on('listening', resolve);
+
+            let host = url.hostname;
+            if (ipVersion === 6) host = urlHostnameToIPv6(url.hostname);
+            server.listen({
+                host: host,
+                port: Number(url.port || 80),
+                // see https://nodejs.org/api/net.html#serverlisten for why ipv6Only is used
+                ipv6Only: true,
+            });
+        });
+    }
+
+    /**
+     * Starts the server using http or https depending on config
+     * @param {boolean} useIPv6 If use IPv6
+     * @param {boolean} useIPv4 If use IPv4
+     * @returns {Promise<[boolean, boolean, unknown, unknown]>} A promise that resolves with an array of booleans indicating if the server failed to start on IPv6 and IPv4, respectively, and the corresponding errors
+     */
+    async #startHTTPorHTTPS(useIPv6, useIPv4) {
+        let v6Failed = false;
+        let v4Failed = false;
+        let v6Error;
+        let v4Error;
+
+        const createFunc = this.cliArgs.ssl ? this.#createHttpsServer.bind(this) : this.#createHttpServer.bind(this);
+
+        if (useIPv6) {
+            try {
+                await createFunc(this.cliArgs.getIPv6ListenUrl(), 6);
+            } catch (error) {
+                console.error('Warning: failed to start server on IPv6');
+                if (this.#isAddressInUseError(error)) {
+                    console.error(this.#getAddressInUseMessage(this.cliArgs.getIPv6ListenUrl(), 6));
+                } else {
+                    console.error(error);
+                }
+
+                v6Failed = true;
+                v6Error = error;
+            }
+        }
+
+        if (useIPv4) {
+            try {
+                await createFunc(this.cliArgs.getIPv4ListenUrl(), 4);
+            } catch (error) {
+                console.error('Warning: failed to start server on IPv4');
+                if (this.#isAddressInUseError(error)) {
+                    console.error(this.#getAddressInUseMessage(this.cliArgs.getIPv4ListenUrl(), 4));
+                } else {
+                    console.error(error);
+                }
+
+                v4Failed = true;
+                v4Error = error;
+            }
+        }
+
+        return [v6Failed, v4Failed, v6Error, v4Error];
+    }
+
+    /**
+     * Handles the case where the server failed to start on one or both protocols.
+     * @param {ServerStartupResult} result The results of the server startup
+     * @returns {void}
+     */
+    #handleServerListenFail({ v6Failed, v4Failed, v6Error, v4Error, useIPv6, useIPv4 }) {
+        if (v6Failed && !useIPv4) {
+            if (this.#isAddressInUseError(v6Error)) {
+                this.#fatal('Error: Startup aborted because IPv6 is the only enabled protocol and its listen port is already in use.');
+            }
+            this.#fatal('Error: Failed to start server on IPv6 and IPv4 disabled');
+        }
+
+        if (v4Failed && !useIPv6) {
+            if (this.#isAddressInUseError(v4Error)) {
+                this.#fatal('Error: Startup aborted because IPv4 is the only enabled protocol and its listen port is already in use.');
+            }
+            this.#fatal('Error: Failed to start server on IPv4 and IPv6 disabled');
+        }
+
+        if (v6Failed && v4Failed) {
+            if (this.#isAddressInUseError(v6Error) && this.#isAddressInUseError(v4Error)) {
+                this.#fatal('Error: Failed to start server because the configured IPv6 and IPv4 listen ports are already in use.');
+            }
+            this.#fatal('Error: Failed to start server on both IPv6 and IPv4');
+        }
+    }
+
+    /**
+     * Performs the server startup.
+     * @returns {Promise<ServerStartupResult>} A promise that resolves with an object containing the results of the server startup
+     */
+    async start() {
+        let useIPv6 = (this.cliArgs.enableIPv6 === true);
+        let useIPv4 = (this.cliArgs.enableIPv4 === true);
+
+        if (this.cliArgs.enableIPv6 === 'auto' || this.cliArgs.enableIPv4 === 'auto') {
+            const ipQuery = await getHasIP();
+            let hasIPv6 = false, hasIPv4 = false;
+
+            hasIPv6 = this.cliArgs.listen ? ipQuery.hasIPv6Any : ipQuery.hasIPv6Local;
+            if (this.cliArgs.enableIPv6 === 'auto') {
+                useIPv6 = hasIPv6;
+            }
+            if (hasIPv6) {
+                if (useIPv6) {
+                    console.log(color.green('IPv6 support detected'));
+                } else {
+                    console.log('IPv6 support detected (but disabled)');
+                }
+            }
+
+            hasIPv4 = this.cliArgs.listen ? ipQuery.hasIPv4Any : ipQuery.hasIPv4Local;
+            if (this.cliArgs.enableIPv4 === 'auto') {
+                useIPv4 = hasIPv4;
+            }
+            if (hasIPv4) {
+                if (useIPv4) {
+                    console.log(color.green('IPv4 support detected'));
+                } else {
+                    console.log('IPv4 support detected (but disabled)');
+                }
+            }
+
+            if (this.cliArgs.enableIPv6 === 'auto' && this.cliArgs.enableIPv4 === 'auto') {
+                if (!hasIPv6 && !hasIPv4) {
+                    console.error('Both IPv6 and IPv4 are not detected');
+                    process.exit(1);
+                }
+            }
+        }
+
+        if (!useIPv6 && !useIPv4) {
+            console.error('Both IPv6 and IPv4 are disabled or not detected');
+            process.exit(1);
+        }
+
+        const [v6Failed, v4Failed, v6Error, v4Error] = await this.#startHTTPorHTTPS(useIPv6, useIPv4);
+        const result = { v6Failed, v4Failed, v6Error, v4Error, useIPv6, useIPv4, servers: this.servers };
+        this.#handleServerListenFail(result);
+        return result;
+    }
+}

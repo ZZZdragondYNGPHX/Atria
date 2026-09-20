@@ -1,0 +1,710 @@
+import { readFileSync } from 'node:fs'
+import { defineConfig } from 'vitepress'
+import { createBuildTimeDiagramsPlugin } from 'vitepress-plugin-diagrams'
+
+const diagrams = createBuildTimeDiagramsPlugin({
+  diagramsDir: 'public/diagrams',
+  publicPath: '/diagrams',
+  diagramsDistDir: 'diagrams',
+  krokiServerUrl: 'https://kroki.io',
+})
+
+type DocLocale = 'en' | 'zh-CN' | 'zh-TW'
+
+const localeMeta: Record<DocLocale, { tagline: string }> = {
+  en: { tagline: 'Next-gen Roleplay Chat Platform' },
+  'zh-CN': { tagline: '下一代角色扮演聊天平台' },
+  'zh-TW': { tagline: '下一代角色扮演聊天平台' },
+}
+
+function detectLocale(relativePath: string): DocLocale {
+  if (relativePath.startsWith('zh-CN/')) return 'zh-CN'
+  if (relativePath.startsWith('zh-TW/')) return 'zh-TW'
+  return 'en'
+}
+
+function extractExcerpt(filePath: string): string | undefined {
+  let raw: string
+  try {
+    raw = readFileSync(filePath, 'utf-8')
+  } catch {
+    return undefined
+  }
+  const body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
+  const lines = body.split(/\r?\n/)
+  let fenced = false
+  const para: string[] = []
+  for (const r of lines) {
+    const line = r.trim()
+    if (/^```/.test(line)) { fenced = !fenced; continue }
+    if (fenced) continue
+    if (line === '') {
+      if (para.length > 0) break
+      continue
+    }
+    if (/^#{1,6}\s/.test(line)) continue
+    if (/^[<:]/.test(line)) continue
+    if (/^!\[/.test(line)) continue
+    if (/^[-*+]\s/.test(line) || /^\d+\.\s/.test(line)) continue
+    para.push(line)
+  }
+  if (para.length === 0) return undefined
+  let text = para.join(' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!text) return undefined
+  if (text.length > 180) {
+    const cut = text.slice(0, 180)
+    text = cut.replace(/\s+\S*$/, '') + '…'
+  }
+  return text
+}
+
+const zhCNSidebar = [
+  {
+  text: '入门指南',
+  items: [
+  { text: 'Luker 是什么', link: '/zh-CN/guide/what-is-luker' },
+  { text: '快速开始', link: '/zh-CN/guide/getting-started' },
+  { text: '从 SillyTavern 迁移', link: '/zh-CN/guide/migration' },
+  { text: '从 Termux 迁移到 APK', link: '/zh-CN/guide/migration-from-termux' },
+  { text: '基础配置', link: '/zh-CN/guide/configuration' },
+  { text: '鉴权与安全', link: '/zh-CN/guide/authentication' },
+  { text: '公告', link: '/zh-CN/guide/announcements' },
+  { text: 'Android App', link: '/zh-CN/guide/android' },
+  ],
+  },
+  {
+  text: '基础概念',
+  items: [
+  { text: '角色卡基础', link: '/zh-CN/basics/character-cards' },
+  { text: '世界书基础', link: '/zh-CN/basics/world-info' },
+  { text: '预设系统', link: '/zh-CN/basics/presets' },
+  { text: '宏', link: '/zh-CN/basics/macros' },
+  { text: 'API 连接', link: '/zh-CN/basics/connections' },
+  { text: '聊天管理', link: '/zh-CN/basics/chat-management' },
+  ],
+  },
+  {
+  text: '技术改进',
+  items: [
+  { text: '改进总览', link: '/zh-CN/improvements/overview' },
+  { text: '增量同步', link: '/zh-CN/improvements/incremental-sync' },
+  { text: '局域网同步', link: '/zh-CN/improvements/lan-sync' },
+  { text: '预设解耦', link: '/zh-CN/improvements/preset-decoupling' },
+  { text: '角色卡绑定预设与人设', link: '/zh-CN/improvements/card-bound-presets' },
+  { text: '函数调用运行时', link: '/zh-CN/improvements/function-call-runtime' },
+  { text: '后端实时存储', link: '/zh-CN/improvements/backend-storage' },
+  { text: '请求检查器', link: '/zh-CN/improvements/request-inspector' },
+  { text: '统一生成层', link: '/zh-CN/improvements/generation-layer' },
+      { text: '性能优化', link: '/zh-CN/improvements/performance' },
+      { text: '预设关联世界书', link: '/zh-CN/improvements/preset-world-info' },
+      { text: 'WebSocket 代理', link: '/zh-CN/improvements/ws-proxy' },
+      { text: '认证与配额', link: '/zh-CN/improvements/auth-and-quota' },
+  { text: '其他改进', link: '/zh-CN/improvements/other' },
+  ],
+  },
+  {
+  text: '独有功能',
+  items: [
+  { text: '记忆图', link: '/zh-CN/features/memory-graph' },
+  {
+    text: '多Agent编排',
+    collapsed: false,
+    items: [
+      { text: '概览', link: '/zh-CN/features/orchestrator/' },
+      { text: 'Spec 模式', link: '/zh-CN/features/orchestrator/spec' },
+      { text: '单 Agent 模式', link: '/zh-CN/features/orchestrator/single' },
+      { text: 'Agenda 模式', link: '/zh-CN/features/orchestrator/agenda' },
+      { text: 'Loop 模式', link: '/zh-CN/features/orchestrator/loop' },
+      { text: '导演模式', link: '/zh-CN/features/orchestrator/director' },
+      { text: '预设', link: '/zh-CN/features/orchestrator/presets' },
+      { text: 'AI 迭代工作台', link: '/zh-CN/features/orchestrator/iteration-studio' },
+      { text: 'Skills 集成', link: '/zh-CN/features/orchestrator/skills' },
+      { text: '笔记', link: '/zh-CN/features/orchestrator/notes' },
+      { text: '自定义工具', link: '/zh-CN/features/orchestrator/custom-tools' },
+    ],
+  },
+  {
+    text: '角色卡编辑助手',
+    collapsed: false,
+    items: [
+      { text: '概览', link: '/zh-CN/features/card-editor/' },
+      {
+        text: '从零写一个 CardApp',
+        collapsed: true,
+        items: [
+          { text: '概览', link: '/zh-CN/features/card-editor/walkthrough/' },
+          { text: '异世界生存日志', link: '/zh-CN/features/card-editor/walkthrough/isekai' },
+          { text: '维多利亚案宗', link: '/zh-CN/features/card-editor/walkthrough/victorian' },
+        ],
+      },
+      { text: '普通弹窗', link: '/zh-CN/features/card-editor/popup' },
+      { text: 'CardApp Studio', link: '/zh-CN/features/card-editor/studio' },
+    ],
+  },
+  { text: '搜索插件', link: '/zh-CN/features/search-tools' },
+  { text: '存储审查', link: '/zh-CN/features/storage-inspector' },
+  { text: '补全预设助手', link: '/zh-CN/features/preset-assistant' },
+  { text: '逐楼层变量', link: '/zh-CN/features/variable-op-log' },
+  { text: 'CardApp', link: '/zh-CN/features/cardapp' },
+  { text: '状态系统', link: '/zh-CN/features/state-system' },
+  { text: '聊天合并与拆分', link: '/zh-CN/features/chat-merge-split' },
+      { text: '日志系统', link: '/zh-CN/features/logging' },
+  { text: '提示词分组', link: '/zh-CN/features/prompt-groups' },
+  { text: '预设分组', link: '/zh-CN/features/preset-groups' },
+      { text: '钩子执行排序', link: '/zh-CN/features/hook-order' },
+      { text: '世界书激活链路追踪', link: '/zh-CN/features/world-info-trace' },
+      { text: '插件注册正则', link: '/zh-CN/features/regex-provider' },
+      {
+        text: '技能',
+        collapsed: false,
+        items: [
+          { text: '概览', link: '/zh-CN/features/skills/' },
+          { text: '创作', link: '/zh-CN/features/skills/authoring' },
+          { text: '管理', link: '/zh-CN/features/skills/management' },
+          { text: '编排器集成', link: '/zh-CN/features/skills/orchestrator-integration' },
+        ],
+      },
+      { text: '其他功能', link: '/zh-CN/features/other-features' },
+  ],
+  },
+  {
+  text: '实战指南',
+  items: [
+  { text: '多Agent上手：预设、记忆图、网络搜索', link: '/zh-CN/recipes/agent-onboarding' },
+  { text: '用 skills 调教 RP 输出', link: '/zh-CN/recipes/rp-skills-walkthrough' },
+  { text: '给一张角色卡做专属编排', link: '/zh-CN/recipes/card-customization-walkthrough' },
+  ],
+  },
+  {
+  text: '开发文档',
+  items: [
+  { text: '前端插件开发', link: '/zh-CN/development/frontend-plugin' },
+          { text: '后端插件开发', link: '/zh-CN/development/server-plugin' },
+          {
+            text: 'Extension API 参考',
+            collapsed: true,
+            items: [
+              { text: '概览', link: '/zh-CN/development/extension-api/' },
+              { text: '聊天与状态', link: '/zh-CN/development/extension-api/chat-and-state' },
+              { text: '角色卡', link: '/zh-CN/development/extension-api/characters' },
+              { text: '世界书', link: '/zh-CN/development/extension-api/world-info' },
+              { text: '预设与提示词', link: '/zh-CN/development/extension-api/presets-and-prompts' },
+              { text: '生成请求', link: '/zh-CN/development/extension-api/generation' },
+              { text: '消息接管', link: '/zh-CN/development/extension-api/message-takeover' },
+              { text: '斜杠命令', link: '/zh-CN/development/extension-api/slash-commands' },
+              { text: '宏与变量', link: '/zh-CN/development/extension-api/macros-and-variables' },
+              { text: 'UI 与弹窗', link: '/zh-CN/development/extension-api/ui-and-popups' },
+              { text: '插件集成', link: '/zh-CN/development/extension-api/plugin-integration' },
+              { text: '底层端点', link: '/zh-CN/development/extension-api/low-level-endpoints' },
+              { text: '记忆图只读 API', link: '/zh-CN/development/extension-api/memory-graph' },
+              { text: 'Edits 库', link: '/zh-CN/development/extension-api/edits-lib' },
+              { text: '迭代工作台框架', link: '/zh-CN/development/extension-api/iteration-studio' },
+              { text: '编排器工具 API', link: '/zh-CN/development/extension-api/orchestrator-tools' },
+              { text: '角色卡编辑助手 API', link: '/zh-CN/development/extension-api/character-editor-assistant' },
+              { text: '技能', link: '/zh-CN/development/extension-api/skills' },
+            ],
+          },
+          { text: '角色卡开发者指南', link: '/zh-CN/development/card-developers' },
+          { text: '贡献指南', link: '/zh-CN/development/contributing' },
+  ],
+  },
+]
+
+const zhTWSidebar = [
+  {
+    text: '入門指南',
+    items: [
+      { text: 'Luker 是什麼', link: '/zh-TW/guide/what-is-luker' },
+      { text: '快速開始', link: '/zh-TW/guide/getting-started' },
+      { text: '從 SillyTavern 遷移', link: '/zh-TW/guide/migration' },
+      { text: '從 Termux 遷移到 APK', link: '/zh-TW/guide/migration-from-termux' },
+      { text: '基礎配置', link: '/zh-TW/guide/configuration' },
+      { text: '驗證與安全', link: '/zh-TW/guide/authentication' },
+      { text: '公告', link: '/zh-TW/guide/announcements' },
+      { text: 'Android App', link: '/zh-TW/guide/android' },
+    ],
+  },
+  {
+    text: '基礎概念',
+    items: [
+      { text: '角色卡基礎', link: '/zh-TW/basics/character-cards' },
+      { text: '世界書基礎', link: '/zh-TW/basics/world-info' },
+      { text: '預設系統', link: '/zh-TW/basics/presets' },
+      { text: '巨集', link: '/zh-TW/basics/macros' },
+      { text: 'API 連接', link: '/zh-TW/basics/connections' },
+      { text: '聊天管理', link: '/zh-TW/basics/chat-management' },
+    ],
+  },
+  {
+    text: '技術改進',
+    items: [
+      { text: '改進總覽', link: '/zh-TW/improvements/overview' },
+      { text: '增量同步', link: '/zh-TW/improvements/incremental-sync' },
+      { text: '區域網路同步', link: '/zh-TW/improvements/lan-sync' },
+      { text: '預設解耦', link: '/zh-TW/improvements/preset-decoupling' },
+      { text: '角色卡綁定預設與人設', link: '/zh-TW/improvements/card-bound-presets' },
+      { text: '函數調用運行時', link: '/zh-TW/improvements/function-call-runtime' },
+      { text: '後端即時儲存', link: '/zh-TW/improvements/backend-storage' },
+      { text: '請求檢查器', link: '/zh-TW/improvements/request-inspector' },
+      { text: '統一生成層', link: '/zh-TW/improvements/generation-layer' },
+      { text: '效能最佳化', link: '/zh-TW/improvements/performance' },
+      { text: '預設關聯世界書', link: '/zh-TW/improvements/preset-world-info' },
+      { text: 'WebSocket 代理', link: '/zh-TW/improvements/ws-proxy' },
+      { text: '認證與配額', link: '/zh-TW/improvements/auth-and-quota' },
+      { text: '其他改進', link: '/zh-TW/improvements/other' },
+    ],
+  },
+  {
+    text: '獨有功能',
+    items: [
+      { text: '記憶圖', link: '/zh-TW/features/memory-graph' },
+      {
+        text: '多Agent編排',
+        collapsed: false,
+        items: [
+          { text: '概覽', link: '/zh-TW/features/orchestrator/' },
+          { text: 'Spec 模式', link: '/zh-TW/features/orchestrator/spec' },
+          { text: '單 Agent 模式', link: '/zh-TW/features/orchestrator/single' },
+          { text: 'Agenda 模式', link: '/zh-TW/features/orchestrator/agenda' },
+          { text: 'Loop 模式', link: '/zh-TW/features/orchestrator/loop' },
+          { text: '導演模式', link: '/zh-TW/features/orchestrator/director' },
+          { text: '預設', link: '/zh-TW/features/orchestrator/presets' },
+          { text: 'AI 迭代工作台', link: '/zh-TW/features/orchestrator/iteration-studio' },
+          { text: 'Skills 整合', link: '/zh-TW/features/orchestrator/skills' },
+          { text: '便箋', link: '/zh-TW/features/orchestrator/notes' },
+          { text: '自訂工具', link: '/zh-TW/features/orchestrator/custom-tools' },
+        ],
+      },
+      {
+        text: '角色卡編輯助手',
+        collapsed: false,
+        items: [
+          { text: '概覽', link: '/zh-TW/features/card-editor/' },
+          {
+            text: '從零寫一個 CardApp',
+            collapsed: true,
+            items: [
+              { text: '概覽', link: '/zh-TW/features/card-editor/walkthrough/' },
+              { text: '異世界生存日誌', link: '/zh-TW/features/card-editor/walkthrough/isekai' },
+              { text: '維多利亞案宗', link: '/zh-TW/features/card-editor/walkthrough/victorian' },
+            ],
+          },
+          { text: '普通彈窗', link: '/zh-TW/features/card-editor/popup' },
+          { text: 'CardApp Studio', link: '/zh-TW/features/card-editor/studio' },
+        ],
+      },
+      { text: '搜尋外掛', link: '/zh-TW/features/search-tools' },
+      { text: '儲存審查', link: '/zh-TW/features/storage-inspector' },
+      { text: '補全預設助手', link: '/zh-TW/features/preset-assistant' },
+      { text: '逐樓層變數', link: '/zh-TW/features/variable-op-log' },
+      { text: 'CardApp', link: '/zh-TW/features/cardapp' },
+      { text: '狀態系統', link: '/zh-TW/features/state-system' },
+      { text: '聊天合併與拆分', link: '/zh-TW/features/chat-merge-split' },
+      { text: '日誌系統', link: '/zh-TW/features/logging' },
+      { text: '提示詞分組', link: '/zh-TW/features/prompt-groups' },
+      { text: '預設分組', link: '/zh-TW/features/preset-groups' },
+      { text: '鉤子執行排序', link: '/zh-TW/features/hook-order' },
+      { text: '世界書啟動鏈路追蹤', link: '/zh-TW/features/world-info-trace' },
+      { text: '外掛註冊正則', link: '/zh-TW/features/regex-provider' },
+      {
+        text: '技能',
+        collapsed: false,
+        items: [
+          { text: '概覽', link: '/zh-TW/features/skills/' },
+          { text: '創作', link: '/zh-TW/features/skills/authoring' },
+          { text: '管理', link: '/zh-TW/features/skills/management' },
+          { text: '編排器整合', link: '/zh-TW/features/skills/orchestrator-integration' },
+        ],
+      },
+      { text: '其他功能', link: '/zh-TW/features/other-features' },
+    ],
+  },
+  {
+    text: '實戰指南',
+    items: [
+      { text: '多Agent上手：預設、記憶圖、網路搜尋', link: '/zh-TW/recipes/agent-onboarding' },
+      { text: '用 skills 調教 RP 輸出', link: '/zh-TW/recipes/rp-skills-walkthrough' },
+      { text: '給一張角色卡做專屬編排', link: '/zh-TW/recipes/card-customization-walkthrough' },
+    ],
+  },
+  {
+    text: '開發文檔',
+    items: [
+      { text: '前端外掛開發', link: '/zh-TW/development/frontend-plugin' },
+              { text: '後端外掛開發', link: '/zh-TW/development/server-plugin' },
+              {
+                text: 'Extension API 參考',
+                collapsed: true,
+                items: [
+                  { text: '概覽', link: '/zh-TW/development/extension-api/' },
+                  { text: '聊天與狀態', link: '/zh-TW/development/extension-api/chat-and-state' },
+                  { text: '角色卡', link: '/zh-TW/development/extension-api/characters' },
+                  { text: '世界書', link: '/zh-TW/development/extension-api/world-info' },
+                  { text: '預設與提示詞', link: '/zh-TW/development/extension-api/presets-and-prompts' },
+                  { text: '生成請求', link: '/zh-TW/development/extension-api/generation' },
+                  { text: '訊息接管', link: '/zh-TW/development/extension-api/message-takeover' },
+                  { text: '斜線指令', link: '/zh-TW/development/extension-api/slash-commands' },
+                  { text: '巨集與變數', link: '/zh-TW/development/extension-api/macros-and-variables' },
+                  { text: 'UI 與彈窗', link: '/zh-TW/development/extension-api/ui-and-popups' },
+                  { text: '外掛整合', link: '/zh-TW/development/extension-api/plugin-integration' },
+                  { text: '底層端點', link: '/zh-TW/development/extension-api/low-level-endpoints' },
+                  { text: '記憶圖唯讀 API', link: '/zh-TW/development/extension-api/memory-graph' },
+                  { text: 'Edits 函式庫', link: '/zh-TW/development/extension-api/edits-lib' },
+                  { text: '迭代工作台框架', link: '/zh-TW/development/extension-api/iteration-studio' },
+                  { text: '編排器工具 API', link: '/zh-TW/development/extension-api/orchestrator-tools' },
+                  { text: '角色卡編輯助手 API', link: '/zh-TW/development/extension-api/character-editor-assistant' },
+                  { text: '技能', link: '/zh-TW/development/extension-api/skills' },
+                ],
+              },
+              { text: '角色卡開發者指南', link: '/zh-TW/development/card-developers' },
+              { text: '貢獻指南', link: '/zh-TW/development/contributing' },
+    ],
+  },
+]
+
+const enSidebar = [
+  {
+    text: 'Getting Started',
+    items: [
+      { text: 'What is Luker', link: '/guide/what-is-luker' },
+      { text: 'Quick Start', link: '/guide/getting-started' },
+      { text: 'Migrating from SillyTavern', link: '/guide/migration' },
+      { text: 'Migrating from Termux to the APK', link: '/guide/migration-from-termux' },
+      { text: 'Configuration', link: '/guide/configuration' },
+      { text: 'Authentication & Security', link: '/guide/authentication' },
+      { text: 'Announcements', link: '/guide/announcements' },
+      { text: 'Android App', link: '/guide/android' },
+    ],
+  },
+  {
+    text: 'Core Concepts',
+    items: [
+      { text: 'Character Cards', link: '/basics/character-cards' },
+      { text: 'World Info', link: '/basics/world-info' },
+      { text: 'Presets', link: '/basics/presets' },
+      { text: 'Macros', link: '/basics/macros' },
+      { text: 'API Connections', link: '/basics/connections' },
+      { text: 'Chat Management', link: '/basics/chat-management' },
+    ],
+  },
+  {
+    text: 'Technical Improvements',
+    items: [
+      { text: 'Overview', link: '/improvements/overview' },
+      { text: 'Incremental Sync', link: '/improvements/incremental-sync' },
+      { text: 'LAN Sync', link: '/improvements/lan-sync' },
+      { text: 'Preset Decoupling', link: '/improvements/preset-decoupling' },
+      { text: 'Card-Bound Presets & Personas', link: '/improvements/card-bound-presets' },
+      { text: 'Function Call Runtime', link: '/improvements/function-call-runtime' },
+      { text: 'Backend Storage', link: '/improvements/backend-storage' },
+      { text: 'Request Inspector', link: '/improvements/request-inspector' },
+      { text: 'Unified Generation Layer', link: '/improvements/generation-layer' },
+      { text: 'Performance', link: '/improvements/performance' },
+      { text: 'Preset-Associated World Info', link: '/improvements/preset-world-info' },
+      { text: 'WebSocket Proxy', link: '/improvements/ws-proxy' },
+      { text: 'Auth & Quotas', link: '/improvements/auth-and-quota' },
+      { text: 'Other Improvements', link: '/improvements/other' },
+    ],
+  },
+  {
+    text: 'Unique Features',
+    items: [
+      { text: 'Memory Graph', link: '/features/memory-graph' },
+      {
+        text: 'Multi-Agent Orchestrator',
+        collapsed: false,
+        items: [
+          { text: 'Overview', link: '/features/orchestrator/' },
+          { text: 'Spec Mode', link: '/features/orchestrator/spec' },
+          { text: 'Single Agent Mode', link: '/features/orchestrator/single' },
+          { text: 'Agenda Mode', link: '/features/orchestrator/agenda' },
+          { text: 'Loop Mode', link: '/features/orchestrator/loop' },
+          { text: 'Director Mode', link: '/features/orchestrator/director' },
+          { text: 'Presets', link: '/features/orchestrator/presets' },
+          { text: 'AI Iteration Studio', link: '/features/orchestrator/iteration-studio' },
+          { text: 'Skills', link: '/features/orchestrator/skills' },
+          { text: 'Notes', link: '/features/orchestrator/notes' },
+          { text: 'Custom Tools', link: '/features/orchestrator/custom-tools' },
+        ],
+      },
+      {
+        text: 'Card Editor Assistant',
+        collapsed: false,
+        items: [
+          { text: 'Overview', link: '/features/card-editor/' },
+          {
+            text: 'Build a CardApp from Scratch',
+            collapsed: true,
+            items: [
+              { text: 'Overview', link: '/features/card-editor/walkthrough/' },
+              { text: 'Isekai Survival Log', link: '/features/card-editor/walkthrough/isekai' },
+              { text: 'Victorian Case File', link: '/features/card-editor/walkthrough/victorian' },
+            ],
+          },
+          { text: 'Popup Mode', link: '/features/card-editor/popup' },
+          { text: 'CardApp Studio', link: '/features/card-editor/studio' },
+        ],
+      },
+      { text: 'Search Tools', link: '/features/search-tools' },
+      { text: 'Storage Inspector', link: '/features/storage-inspector' },
+      { text: 'Preset Assistant', link: '/features/preset-assistant' },
+      { text: 'Per-Message Variables', link: '/features/variable-op-log' },
+      { text: 'CardApp', link: '/features/cardapp' },
+      { text: 'State System', link: '/features/state-system' },
+      { text: 'Chat Merge and Split', link: '/features/chat-merge-split' },
+      { text: 'Logging', link: '/features/logging' },
+      { text: 'Prompt Groups', link: '/features/prompt-groups' },
+      { text: 'Preset Groups', link: '/features/preset-groups' },
+      { text: 'Hook Order', link: '/features/hook-order' },
+      { text: 'World Info Activation Trace', link: '/features/world-info-trace' },
+      { text: 'Plugin-Registered Regex', link: '/features/regex-provider' },
+      {
+        text: 'Skills',
+        collapsed: false,
+        items: [
+          { text: 'Overview', link: '/features/skills/' },
+          { text: 'Authoring', link: '/features/skills/authoring' },
+          { text: 'Management', link: '/features/skills/management' },
+          { text: 'Orchestrator integration', link: '/features/skills/orchestrator-integration' },
+        ],
+      },
+      { text: 'Other Features', link: '/features/other-features' },
+    ],
+  },
+  {
+    text: 'Recipes',
+    items: [
+      { text: 'Multi-agent setup: presets, memory graph, web search', link: '/recipes/agent-onboarding' },
+      { text: 'Shaping RP output with skills', link: '/recipes/rp-skills-walkthrough' },
+      { text: 'Building a card-specific orchestration', link: '/recipes/card-customization-walkthrough' },
+    ],
+  },
+  {
+    text: 'Development',
+    items: [
+      { text: 'Frontend Plugin Development', link: '/development/frontend-plugin' },
+              { text: 'Server Plugin Development', link: '/development/server-plugin' },
+              {
+                text: 'Extension API Reference',
+                collapsed: true,
+                items: [
+                  { text: 'Overview', link: '/development/extension-api/' },
+                  { text: 'Chat & State', link: '/development/extension-api/chat-and-state' },
+                  { text: 'Characters', link: '/development/extension-api/characters' },
+                  { text: 'World Info', link: '/development/extension-api/world-info' },
+                  { text: 'Presets & Prompts', link: '/development/extension-api/presets-and-prompts' },
+                  { text: 'Generation', link: '/development/extension-api/generation' },
+                  { text: 'Message Takeover', link: '/development/extension-api/message-takeover' },
+                  { text: 'Slash Commands', link: '/development/extension-api/slash-commands' },
+                  { text: 'Macros & Variables', link: '/development/extension-api/macros-and-variables' },
+                  { text: 'UI & Popups', link: '/development/extension-api/ui-and-popups' },
+                  { text: 'Plugin Integration', link: '/development/extension-api/plugin-integration' },
+                  { text: 'Low-Level Endpoints', link: '/development/extension-api/low-level-endpoints' },
+                  { text: 'Memory Graph Read-Only API', link: '/development/extension-api/memory-graph' },
+                  { text: 'Edits Library', link: '/development/extension-api/edits-lib' },
+                  { text: 'Iteration Studio Framework', link: '/development/extension-api/iteration-studio' },
+                  { text: 'Orchestrator Tools', link: '/development/extension-api/orchestrator-tools' },
+                  { text: 'Character Editor Assistant', link: '/development/extension-api/character-editor-assistant' },
+                  { text: 'Skills', link: '/development/extension-api/skills' },
+                ],
+              },
+              { text: 'Card Developer Guide', link: '/development/card-developers' },
+              { text: 'Contributing', link: '/development/contributing' },
+    ],
+  },
+]
+
+export default defineConfig({
+  title: 'Luker',
+  description: 'Next-gen Roleplay Chat Platform',
+  base: '/',
+
+  // superpowers/ holds working specs and plans that aren't published docs.
+  srcExclude: ['superpowers/**', '**/README.md'],
+
+  head: [
+    ['meta', { name: 'theme-color', content: '#4F46E5' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'Luker' }],
+  ],
+
+  transformPageData(pageData) {
+    const locale = detectLocale(pageData.relativePath)
+    const fb = localeMeta[locale]
+    const isHome = pageData.frontmatter.layout === 'home'
+    const baseTitle = pageData.title || pageData.frontmatter.title || 'Luker'
+
+    const ogTitle = (isHome || baseTitle === 'Luker')
+      ? `Luker — ${fb.tagline}`
+      : `${baseTitle} | Luker`
+
+    let description: string | undefined = pageData.frontmatter.description
+    if (!description && isHome && pageData.frontmatter.hero?.tagline) {
+      description = String(pageData.frontmatter.hero.tagline).replace(/\s+/g, ' ').trim()
+    }
+    if (!description && !isHome) {
+      description = extractExcerpt(pageData.filePath)
+    }
+    if (!description) {
+      description = fb.tagline
+    }
+
+    pageData.description = description
+
+    pageData.frontmatter.head ??= []
+    pageData.frontmatter.head.push(
+      ['meta', { property: 'og:title', content: ogTitle }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:locale', content: locale.replace('-', '_') }],
+      ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+      ['meta', { name: 'twitter:title', content: ogTitle }],
+      ['meta', { name: 'twitter:description', content: description }],
+    )
+  },
+
+  locales: {
+    root: {
+      label: 'English',
+      lang: 'en',
+      themeConfig: {
+        nav: [
+          { text: 'Guide', link: '/guide/what-is-luker' },
+          { text: 'Features', link: '/features/memory-graph' },
+          { text: 'Development', link: '/development/frontend-plugin' },
+          { text: 'Changelog', link: '/changelog' },
+        ],
+        sidebar: { '/': enSidebar },
+        outline: { label: 'On this page', level: [2, 3] },
+        docFooter: { prev: 'Previous', next: 'Next' },
+        lastUpdated: { text: 'Last updated' },
+        returnToTopLabel: 'Back to top',
+        sidebarMenuLabel: 'Menu',
+        darkModeSwitchLabel: 'Theme',
+        langMenuLabel: 'Change language',
+        footer: {
+          message: 'Built upon SillyTavern',
+          copyright: '© 2026-present funnycups',
+        },
+      },
+    },
+    'zh-CN': {
+      label: '简体中文',
+      lang: 'zh-CN',
+      link: '/zh-CN/',
+      themeConfig: {
+        nav: [
+          { text: '指南', link: '/zh-CN/guide/what-is-luker' },
+          { text: '功能', link: '/zh-CN/features/memory-graph' },
+          { text: '开发', link: '/zh-CN/development/frontend-plugin' },
+          { text: '更新日志', link: '/zh-CN/changelog' },
+        ],
+        sidebar: { '/zh-CN/': zhCNSidebar },
+        outline: { label: '本页目录', level: [2, 3] },
+        docFooter: { prev: '上一页', next: '下一页' },
+        lastUpdated: { text: '最后更新' },
+        returnToTopLabel: '回到顶部',
+        sidebarMenuLabel: '菜单',
+        darkModeSwitchLabel: '主题',
+        langMenuLabel: '切换语言',
+        footer: {
+          message: '基于 SillyTavern 构建',
+          copyright: '© 2026-present funnycups',
+        },
+      },
+    },
+    'zh-TW': {
+      label: '繁體中文',
+      lang: 'zh-TW',
+      link: '/zh-TW/',
+      themeConfig: {
+        nav: [
+          { text: '指南', link: '/zh-TW/guide/what-is-luker' },
+          { text: '功能', link: '/zh-TW/features/memory-graph' },
+          { text: '開發', link: '/zh-TW/development/frontend-plugin' },
+          { text: '更新日誌', link: '/zh-TW/changelog' },
+        ],
+        sidebar: { '/zh-TW/': zhTWSidebar },
+        outline: { label: '本頁目錄', level: [2, 3] },
+        docFooter: { prev: '上一頁', next: '下一頁' },
+        lastUpdated: { text: '最後更新' },
+        returnToTopLabel: '回到頂部',
+        sidebarMenuLabel: '選單',
+        darkModeSwitchLabel: '主題',
+        langMenuLabel: '切換語言',
+        footer: {
+          message: '基於 SillyTavern 建構',
+          copyright: '© 2026-present funnycups',
+        },
+      },
+    },
+  },
+
+  themeConfig: {
+    logo: undefined,
+    siteTitle: 'Luker',
+
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/funnycups/Luker' },
+    ],
+
+    search: {
+      provider: 'local',
+      options: {
+        locales: {
+          'zh-CN': {
+            translations: {
+              button: {
+                buttonText: '搜索文档',
+                buttonAriaLabel: '搜索文档',
+              },
+              modal: {
+                noResultsText: '无法找到相关结果',
+                resetButtonTitle: '清除查询条件',
+                footer: {
+                  selectText: '选择',
+                  navigateText: '切换',
+                  closeText: '关闭',
+                },
+              },
+            },
+          },
+          'zh-TW': {
+            translations: {
+              button: {
+                buttonText: '搜尋文件',
+                buttonAriaLabel: '搜尋文件',
+              },
+              modal: {
+                noResultsText: '無法找到相關結果',
+                resetButtonTitle: '清除查詢條件',
+                footer: {
+                  selectText: '選擇',
+                  navigateText: '切換',
+                  closeText: '關閉',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  markdown: {
+    config: (md) => {
+      diagrams.configureMarkdown(md)
+    },
+  },
+
+  vite: {
+    plugins: [diagrams.vitePlugin()],
+  },
+})

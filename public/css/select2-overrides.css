@@ -1,0 +1,711 @@
+/* Customize the Select2 container */
+.select2-container {
+    color: var(--SmartThemeBodyColor);
+}
+
+/* Customize the dropdown */
+.select2-dropdown {
+    background-color: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor) !important;
+    border-radius: 10px;
+    box-shadow: 0 0 5px black;
+    text-shadow: 0px 0px calc(var(--shadowWidth) * 1px) var(--SmartThemeShadowColor);
+    backdrop-filter: blur(calc(var(--SmartThemeBlurStrength)*2));
+    color: var(--SmartThemeBodyColor);
+    z-index: 40000;
+    user-select: none;
+}
+
+.select2-container .select2-selection.select2-selection--single.select2-selection--clearable .select2-selection__clear {
+    top: 0;
+    right: 25px;
+}
+
+.select2-container .select2-selection .select2-selection__clear {
+    color: var(--SmartThemeBodyColor);
+    font-size: 20px;
+    position: absolute;
+    right: 5px;
+    margin-top: 0;  /* compensate for the increased font size */
+    margin-right: 0;
+}
+
+.select2-container .select2-search--inline textarea.select2-search__field {
+    opacity: 0.8;
+    margin-top: 7px;  /* get placeholder text to the center */
+}
+
+.select2-selection--single .select2-selection__placeholder {
+    color: var(--SmartThemeEmColor);
+}
+
+.select2-container--classic .select2-selection--single .select2-selection__placeholder {
+    color: var(--SmartThemeEmColor);
+}
+
+.select2-container .select2-selection--single .select2-selection__rendered {
+    color: var(--SmartThemeBodyColor);
+    line-height: unset;
+    padding: 3px 5px;
+}
+
+.select2-container .select2-results>.select2-results__options {
+    max-height: 300px;
+}
+
+.select2-container .select2-selection--multiple .select2-selection__choice__remove {
+    padding: revert;
+    border-right: 1px solid var(--SmartThemeBorderColor);
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+.select2-container .select2-selection--multiple .select2-selection__choice__display {
+    padding-left: 5px;
+}
+
+/* Customize the search input */
+.select2-search__field {
+    background-color: var(--black30a);
+    color: var(--SmartThemeBodyColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    font-family: var(--mainFontFamily);
+    padding: 3px 5px;
+    display: unset;  /* override the ST textarea display style */
+    border-radius: 0;  /* border radius was interfering with cursor */
+}
+
+/* Customize the selected option */
+.select2-selection--single {
+    border: 1px solid var(--SmartThemeShadowColor);
+    border-radius: 4px;
+    background-color: var(--SmartThemeBlurTintColor);
+}
+
+/* Customize the selected option text */
+.select2-selection__rendered {
+    color: var(--SmartThemeBodyColor);
+}
+
+/* Customize the option list item */
+.select2-results__option {
+    color: var(--SmartThemeBodyColor);
+    background-color: var(--SmartThemeBodyColor);
+}
+
+.select2-container .select2-selection--multiple,
+.select2-container .select2-selection--single {
+    background-color: var(--black30a);
+    color: var(--SmartThemeBodyColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 7px;
+    font-family: var(--mainFontFamily);
+}
+
+.select2-container .select2-selection--multiple.select2-selection--clearable {
+    padding-right: 20px;
+}
+
+.select2-container.select2-container--focus .select2-selection--multiple,
+.select2-container.select2-container--focus .select2-selection--single {
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.select2-container .select2-results .select2-results__option--disabled {
+    color: inherit;
+    background-color: inherit;
+    cursor: not-allowed;
+    filter: brightness(0.5);
+}
+
+.select2-container .select2-selection--multiple .select2-selection__choice,
+.select2-container .select2-selection--single .select2-selection__choice {
+    border-radius: 5px;
+    border-style: solid;
+    border-width: 1px;
+    box-sizing: border-box;
+    color: var(--SmartThemeBodyColor);
+    background-color: var(--black30a);
+    border-color: var(--SmartThemeBorderColor);
+    font-size: calc(var(--mainFontSize) - 5%);
+    text-shadow: none !important;
+}
+
+.select2-results .select2-results__option--selectable {
+    background-color: unset;
+    color: var(--SmartThemeBodyColor);
+    opacity: 0.5;
+    transition: opacity var(--animation-duration-2x) ease-in-out;
+    position: relative;
+}
+
+.select2-results .select2-results__option--group {
+    color: var(--SmartThemeBodyColor);
+    background-color: var(--SmartThemeBlurTintColor);
+    position: relative;
+}
+
+/* Customize the hovered option list item */
+.select2-results .select2-results__option--highlighted.select2-results__option--selectable {
+    color: var(--SmartThemeBodyColor);
+    background-color: unset;
+    opacity: 1;
+}
+
+.select2-results__option.select2-results__option--group::before {
+    display: none;
+}
+
+/* Customize the option list item */
+.select2-results__option {
+    padding-left: 30px;
+    /* Add some padding to make room for the checkbox */
+}
+
+.select2-results .select2-results__option--group .select2-results__options--nested .select2-results__option {
+    padding-left: 2em;
+}
+
+/* Add the custom checkbox */
+.select2-results__option::before {
+    content: '';
+    display: inline-block;
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    margin-top: -7px;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    background-color: var(--SmartThemeBlurTintColor);
+    border-radius: 2px;
+}
+
+.select2-container .select2-selection--multiple .select2-selection__choice__remove,
+.select2-container .select2-selection--single .select2-selection__choice__remove {
+    color: var(--SmartThemeBodyColor);
+}
+
+/* Add the custom checkbox checkmark */
+.select2-results__option--selected.select2-results__option::before {
+    content: '\2713';
+    font-weight: bold;
+    color: var(--SmartThemeBodyColor);
+    background-color: var(--SmartThemeBlurTintColor);
+    text-align: center;
+    line-height: 14px;
+}
+
+.select2-results__option.select2-results__message {
+    background-color: inherit;
+}
+
+.select2-results__option.select2-results__message::before {
+    display: none;
+}
+
+.select2-selection__choice__display {
+    /* Fix weird alignment of the inside block */
+    margin-left: 3px;
+    margin-right: 1px;
+}
+
+/* Styling for choice remove icon */
+span.select2.select2-container .select2-selection__choice__remove {
+    cursor: pointer;
+    transition: background-color var(--animation-duration-2x);
+    color: var(--SmartThemeBodyColor);
+    background-color: var(--black50a);
+}
+
+span.select2.select2-container .select2-selection__choice__remove:hover {
+    color: var(--SmartThemeBodyColor);
+    background-color: var(--white30a);
+}
+
+/* Custom class to support styling to show clickable choice options */
+.select2_choice_clickable+span.select2-container .select2-selection__choice__display {
+    cursor: pointer;
+}
+
+.select2_choice_clickable_buttonstyle+span.select2-container .select2-selection__choice__display {
+    cursor: pointer;
+    transition: background-color var(--animation-duration-2x);
+    color: var(--SmartThemeBodyColor);
+    background-color: var(--black50a);
+    white-space: break-spaces;
+    word-break: break-all;
+}
+
+.select2_choice_clickable_buttonstyle+span.select2-container .select2-selection__choice__display:hover {
+    background-color: var(--white30a);
+}
+
+.select2-container.luker-action-select2 {
+    flex: 1 1 auto;
+    width: 100% !important;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.select2-container.luker-action-select2 .select2-selection--single {
+    min-height: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    padding: 0 2.35rem 0 0.85rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 88%, transparent);
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--SmartThemeBlurTintColor) 94%, transparent),
+            color-mix(in srgb, var(--black20a) 70%, transparent));
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--white30a) 48%, transparent),
+        inset 0 -1px 0 color-mix(in srgb, var(--black50a) 42%, transparent);
+    transition:
+        border-color var(--animation-duration-1x),
+        box-shadow var(--animation-duration-1x),
+        background-color var(--animation-duration-1x);
+}
+
+.select2-container.luker-action-select2 .select2-selection--single .select2-selection__rendered {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 100%;
+    overflow: hidden;
+    padding: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    word-break: normal;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+}
+
+.select2-container.luker-action-select2 .select2-selection--single .select2-selection__placeholder {
+    color: color-mix(in srgb, var(--SmartThemeEmColor) 82%, var(--SmartThemeBodyColor));
+    font-weight: 400;
+}
+
+.select2-container.luker-action-select2 .select2-selection--single .select2-selection__arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 100%;
+    top: 0;
+    right: 0.15rem;
+}
+
+.select2-container.luker-action-select2 .select2-selection--single .select2-selection__arrow b {
+    position: static;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: 0;
+    border: none;
+    border-right: 2px solid color-mix(in srgb, var(--SmartThemeBodyColor) 82%, transparent);
+    border-bottom: 2px solid color-mix(in srgb, var(--SmartThemeBodyColor) 82%, transparent);
+    transform: rotate(45deg);
+    transition: transform var(--animation-duration-1x), border-color var(--animation-duration-1x);
+}
+
+.select2-container.luker-action-select2 .select2-selection .select2-selection__clear {
+    top: 50%;
+    right: 1.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    border-radius: 0;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 66%, transparent);
+    background: transparent;
+    transform: translateY(-50%);
+    transition: color var(--animation-duration-1x), transform var(--animation-duration-1x);
+}
+
+.select2-container.luker-action-select2 .select2-selection.select2-selection--single.select2-selection--clearable .select2-selection__clear {
+    top: 50%;
+    right: 1.9rem;
+}
+
+.select2-container.luker-action-select2 .select2-selection .select2-selection__clear:hover {
+    color: var(--SmartThemeBodyColor);
+    transform: translateY(-50%) scale(1.08);
+}
+
+/* Focus/open feedback is the themed border-color change only; the extra
+   3px spread ring plus heavy drop shadow read as a redundant glow. */
+.select2-container.luker-action-select2.select2-container--focus .select2-selection--single,
+.select2-container.luker-action-select2.select2-container--open .select2-selection--single {
+    border-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 42%, var(--SmartThemeBorderColor));
+}
+
+.select2-container.luker-action-select2.select2-container--open .select2-selection--single .select2-selection__arrow b {
+    transform: rotate(225deg);
+}
+
+.select2-dropdown.luker-action-select2-dropdown {
+    border-radius: 14px !important;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 88%, transparent) !important;
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--SmartThemeBlurTintColor) 100%, transparent),
+            color-mix(in srgb, var(--SmartThemeBlurTintColor) 92%, var(--SmartThemeBorderColor)));
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+}
+
+.luker-action-select2-dropdown .select2-search--dropdown {
+    padding: 0.55rem 0.55rem 0.35rem;
+}
+
+.luker-action-select2-dropdown .select2-search__field {
+    min-height: 2.35rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 84%, transparent);
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 96%, var(--SmartThemeBorderColor));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--white30a) 24%, transparent);
+}
+
+.luker-action-select2-dropdown .select2-results > .select2-results__options {
+    max-height: min(20rem, 50vh);
+    padding: 0.2rem 0.35rem 0.45rem;
+}
+
+.luker-action-select2-dropdown .select2-results__option {
+    margin: 0;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    color: var(--SmartThemeBodyColor);
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 98%, var(--SmartThemeBorderColor));
+    line-height: 1.35;
+}
+
+.luker-action-select2-dropdown .select2-results__option::before {
+    display: none;
+}
+
+.luker-action-select2-dropdown .select2-results__option--selectable {
+    padding-left: 0.85rem;
+    opacity: 0.82;
+    transition:
+        opacity var(--animation-duration-1x),
+        background-color var(--animation-duration-1x),
+        transform var(--animation-duration-1x);
+}
+
+.luker-action-select2-dropdown .select2-results__option--highlighted.select2-results__option--selectable {
+    opacity: 1;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 16%, var(--SmartThemeBlurTintColor));
+    transform: translateX(2px);
+}
+
+.luker-action-select2-dropdown .select2-results__option--selected {
+    opacity: 1;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 22%, var(--SmartThemeBlurTintColor));
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--SmartThemeQuoteColor) 72%, transparent);
+}
+
+.luker-action-select2-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.luker-action-select2-option__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.luker-action-select2-option__delete {
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: none;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 58%, transparent);
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.72;
+    transition:
+        opacity var(--animation-duration-1x),
+        color var(--animation-duration-1x),
+        background-color var(--animation-duration-1x),
+        transform var(--animation-duration-1x);
+}
+
+.luker-action-select2-option__group {
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: none;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 58%, transparent);
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.72;
+    transition:
+        opacity var(--animation-duration-1x),
+        color var(--animation-duration-1x),
+        background-color var(--animation-duration-1x),
+        transform var(--animation-duration-1x);
+}
+
+.luker-action-select2-dropdown .select2-results__option--highlighted .luker-action-select2-option__delete,
+.luker-action-select2-dropdown .select2-results__option--selected .luker-action-select2-option__delete,
+.luker-action-select2-dropdown .select2-results__option--highlighted .luker-action-select2-option__group,
+.luker-action-select2-dropdown .select2-results__option--selected .luker-action-select2-option__group,
+.luker-action-select2-option__group--selected,
+.luker-action-select2-option__group:focus-visible,
+.luker-action-select2-option__delete:focus-visible {
+    opacity: 1;
+}
+
+.luker-action-select2-option__group:hover,
+.luker-action-select2-option__group:focus-visible,
+.luker-action-select2-option__group--selected {
+    color: color-mix(in srgb, var(--SmartThemeQuoteColor) 85%, var(--SmartThemeBodyColor));
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 20%, transparent);
+    transform: scale(1.06);
+    outline: none;
+}
+
+.luker-action-select2-option__delete:hover,
+.luker-action-select2-option__delete:focus-visible {
+    color: #ffb3b3;
+    background: color-mix(in srgb, #b3261e 22%, transparent);
+    transform: scale(1.06);
+    outline: none;
+}
+
+/* ===== Preset Group: Header ===== */
+
+.luker-preset-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.15rem 0;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 62%, transparent);
+    border-top: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 50%, transparent);
+    margin-top: 0.25rem;
+    padding-top: 0.55rem;
+}
+
+.luker-action-select2-dropdown .select2-results__option:has(.luker-preset-group-header) {
+    padding: 0.35rem 0.85rem 0.25rem;
+    background: transparent !important;
+    opacity: 1 !important;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.luker-action-select2-dropdown .select2-results__option:has(.luker-preset-group-header):first-child .luker-preset-group-header {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0.15rem;
+}
+
+.luker-preset-group-header:hover {
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 82%, transparent);
+}
+
+/* ===== Preset Group: Chevron ===== */
+
+.luker-preset-group-chevron {
+    flex: 0 0 auto;
+    font-size: 0.6rem;
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+}
+
+.luker-preset-group-chevron--expanded {
+    transform: rotate(90deg);
+}
+
+/* ===== Preset Group: Header Label & Count ===== */
+
+.luker-preset-group-header__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.luker-preset-group-header__count {
+    flex: 0 0 auto;
+    font-weight: 400;
+    font-size: 0.72rem;
+    opacity: 0.6;
+}
+
+/* ===== Preset Group: Action Buttons ===== */
+
+.luker-preset-group-header__actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.15rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.luker-preset-group-header:hover .luker-preset-group-header__actions {
+    opacity: 1;
+}
+
+.luker-preset-group-action {
+    width: 1.4rem;
+    height: 1.4rem;
+    border: none;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 52%, transparent);
+    background: transparent;
+    cursor: pointer;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.luker-preset-group-action:hover {
+    color: var(--SmartThemeBodyColor);
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 12%, transparent);
+}
+
+.luker-preset-group-action[data-action="delete"]:hover {
+    color: #ffb3b3;
+    background: color-mix(in srgb, #b3261e 18%, transparent);
+}
+
+/* ===== Preset Group: Member Indentation ===== */
+
+.luker-preset-group-member {
+    padding-left: 0.6rem;
+}
+
+/* ===== Preset Group: Collapsed Members ===== */
+
+.luker-preset-group-member--hidden {
+    display: none !important;
+}
+
+/* ===== Preset Group: Dropdown Toolbar ===== */
+
+.luker-preset-group-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.25rem 0.55rem 0.35rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 46%, transparent);
+    margin-bottom: 0.25rem;
+}
+
+.luker-preset-group-toolbar__new {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 82%, transparent);
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--SmartThemeQuoteColor) 85%, var(--SmartThemeBodyColor));
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 92%, transparent);
+    cursor: pointer;
+    transition: background-color var(--animation-duration-1x), color var(--animation-duration-1x), transform var(--animation-duration-1x);
+}
+
+.luker-preset-group-toolbar__new:hover,
+.luker-preset-group-toolbar__new:focus-visible {
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 16%, var(--SmartThemeBlurTintColor));
+    color: var(--SmartThemeBodyColor);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+/* ===== Preset Context Menu ===== */
+
+.luker-preset-ctx-menu {
+    min-width: 160px;
+    max-width: 280px;
+    padding: 0.35rem;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 88%, transparent);
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--SmartThemeBlurTintColor) 100%, transparent),
+            color-mix(in srgb, var(--SmartThemeBlurTintColor) 92%, var(--SmartThemeBorderColor)));
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.luker-preset-ctx-menu__item {
+    padding: 0.5rem 0.75rem;
+    border-radius: 7px;
+    font-size: 0.85rem;
+    color: var(--SmartThemeBodyColor);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.12s;
+}
+
+.luker-preset-ctx-menu__item:hover {
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor) 16%, var(--SmartThemeBlurTintColor));
+}
+
+.luker-preset-ctx-menu__item--active {
+    font-weight: 600;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.luker-preset-ctx-menu__item--label {
+    font-size: 0.78rem;
+    color: color-mix(in srgb, var(--SmartThemeBodyColor) 68%, transparent);
+    cursor: default;
+}
+
+.luker-preset-ctx-menu__item--label:hover {
+    background: transparent;
+}
+
+.luker-preset-ctx-menu__item--new {
+    color: color-mix(in srgb, var(--SmartThemeQuoteColor) 80%, var(--SmartThemeBodyColor));
+}
+
+.luker-preset-ctx-menu__item--remove {
+    color: color-mix(in srgb, #b3261e 70%, var(--SmartThemeBodyColor));
+}
+
+.luker-preset-ctx-menu__item--remove:hover {
+    background: color-mix(in srgb, #b3261e 14%, var(--SmartThemeBlurTintColor));
+}
+
+.luker-preset-ctx-menu__divider {
+    height: 1px;
+    margin: 0.25rem 0.5rem;
+    background: color-mix(in srgb, var(--SmartThemeBorderColor) 50%, transparent);
+}

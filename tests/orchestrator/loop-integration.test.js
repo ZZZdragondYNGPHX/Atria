@@ -1,0 +1,652 @@
+/**
+ * End-to-end integration tests for orchestrator loop mode (Plan Task 15).
+ *
+ * Each scenario drives the real `runLoopOrchestration` driver and exercises
+ * the full multi-round messages-array contract: scripted `sendLlm` returns
+ * tool calls, the runtime dispatches them through `executeTool` (production
+ * `executeLoopTool` for happy paths or a small mock for failure injection),
+ * and assertions cover capsule body, runtimeTrace events, prompt-injected
+ * notes, lorebook activated-set dedup, and the abort path.
+ *
+ * Mock fixture style mirrors `loop-runtime.test.js`: dependency injection
+ * via `deps.sendLlm` / `deps.executeTool`, in-memory floor-state adapter
+ * for note persistence (matches the production `makeNotesAdapter` shape so
+ * `attachNotesFloorState` does not get reached). Real `loop-tools` registry
+ * is exercised for chat / lorebook paths via injected fixtures
+ * (`__getSortedEntriesFn`, `__floorStateForNotes`) — no `lib.js`
+ * dependency is touched, so tests run on the Node-based jest config.
+ *
+ * memory-graph tools are no longer Layer-1 builtins; the 6-round happy
+ * path test registers them via memory-graph's Layer-2 module and
+ * pre-populates the session via `__setSessionForTest` so the wrapper
+ * exec finds a stub session without hitting the real Layer-1 store.
+ */
+
+import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
+
+import {
+    runLoopOrchestration,
+} from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+import {
+    registerMemoryGraphOrchestrationTools,
+    unregisterMemoryGraphOrchestrationTools,
+    __setSessionForTest,
+} from '../../public/scripts/extensions/memory-graph/orchestrator-tools.js';
+import { __getExtensionRegistryForTest } from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
+
+function makeProfile(overrides = {}) {
+    return {
+        mode: 'loop',
+        apiPresetName: '',
+        promptPresetName: '',
+        system_prompt: 'You are a research assistant for the autumn-festival saga.',
+        tools: {
+            note: { open: true, close: true },
+            chat: { read_range: true, search: true },
+            lorebook: { search: true, get: true },
+            memory: {
+                list_candidates: true, edge_summary: true, node_brief: true,
+                expand_seeds: true, rank: true, schema: true,
+            },
+            finalize: true,
+        },
+        max_rounds: 10,
+        wall_clock_budget_ms: 60000,
+        capsule_inject: { position: 'atDepth', depth: 0, role: 'system', customInstruction: '' },
+        ...overrides,
+    };
+}
+
+function makeFakeFloorStateNotes(initialEntries = []) {
+    // Mirrors the in-memory shape exposed by `loop-tools-note.test.js`'s
+    // fixture; production `makeNotesAdapter` exposes the same call names so
+    // the tool itself doesn't know which path it's on. Keeping this mock
+    // close to the production adapter lets us exercise note_open through the
+    // real registry without touching floor-state.
+    let counter = 0;
+    const mintId = () => `t_${++counter}`;
+    const stored = initialEntries.map(text => ({ floor: 0, id: mintId(), text: String(text), status: 'open' }));
+    return {
+        stored,
+        appendForFloor: async (floor, text) => {
+            const id = mintId();
+            stored.push({ floor, id, text: String(text), status: 'open' });
+            return { ok: true, id };
+        },
+        listAcrossFloors: async () => stored.map(s => ({ id: s.id, text: s.text, status: s.status })),
+        updateStatusById: async (id, status, reason) => {
+            const entry = stored.find(s => s.id === id);
+            if (!entry) return { ok: false, error: 'not_found' };
+            if (entry.status === status) return { ok: false, error: 'already_' + status };
+            entry.status = status;
+            if (typeof reason === 'string' && reason.length > 0) entry.closure_reason = reason;
+            return { ok: true };
+        },
+        updateTextById: async (id, text) => {
+            const entry = stored.find(s => s.id === id);
+            if (!entry) return { ok: false, error: 'not_found' };
+            entry.text = String(text);
+            return { ok: true };
+        },
+        deleteByIds: async (ids) => {
+            const target = new Set(Array.isArray(ids) ? ids.map(s => String(s)) : []);
+            const present = new Set(stored.map(s => s.id));
+            const removed = [];
+            for (let i = stored.length - 1; i >= 0; i -= 1) {
+                if (target.has(stored[i].id)) {
+                    removed.push(stored[i].id);
+                    stored.splice(i, 1);
+                }
+            }
+            const missing = [];
+            for (const id of target) {
+                if (!present.has(id)) missing.push(id);
+            }
+            return { removed, missing };
+        },
+    };
+}
+
+function makeChatContext({ chat = [], notesAdapter = null, sortedEntries = null, memorySession = null, activatedEntryKeys = null, targetFloorForNote = null } = {}) {
+    // Loose context object that matches what the orchestrator hands the
+    // runtime in production: a plain object with `chat`, plus the optional
+    // run-scoped helpers loop-runtime reads through `Object.create(context)`.
+    const ctx = { chat: chat.slice() };
+    if (notesAdapter !== null) {
+        ctx.__floorStateForNotes = notesAdapter;
+        // Pre-populate the open subset so buildInitialMessages sees them
+        // (production attachNotesFloorState does the same eager load,
+        // filtered to status === 'open').
+        ctx.__openNotes = [];
+    }
+    if (sortedEntries !== null) {
+        ctx.__getSortedEntriesFn = async () => sortedEntries;
+    }
+    if (memorySession !== null) {
+        // memory-graph's Layer-2 tools open the session lazily and cache
+        // it on a per-ctx WeakMap. Pre-populate via the test helper so
+        // the wrappers see this stub on first call without hitting the
+        // real Layer-1 store. The orchestrator runtime builds toolContext
+        // via Object.create(context), so cache on both the source ctx
+        // and any descendant (when present) via the same helper.
+        __setSessionForTest(ctx, memorySession);
+    }
+    if (activatedEntryKeys !== null) {
+        ctx.__lukerRun = { activatedEntryKeys };
+    }
+    if (targetFloorForNote !== null) {
+        ctx.__targetFloorForNote = targetFloorForNote;
+    }
+    return ctx;
+}
+
+function makePayload({ signal = new AbortController().signal, activatedEntryKeys = null } = {}) {
+    const payload = { signal, coreChat: [] };
+    if (activatedEntryKeys !== null) {
+        payload.__lukerRun = { activatedEntryKeys };
+    }
+    return payload;
+}
+
+function eventTypes(trace) {
+    return (trace?.events || []).map(e => e.type);
+}
+
+describe('loop mode end-to-end: complete 6-round happy path (Task 15a)', () => {
+    beforeEach(async () => {
+        // memory_* tools live in memory-graph's Layer-2 module now.
+        // Register them once per test so executeLoopTool can dispatch
+        // memory_list_candidates / memory_node_brief; the wrapper exec
+        // looks up the session through the WeakMap pre-populated by
+        // __setSessionForTest in makeChatContext.
+        __getExtensionRegistryForTest().clear();
+        await registerMemoryGraphOrchestrationTools();
+    });
+    afterEach(async () => {
+        await unregisterMemoryGraphOrchestrationTools();
+        __getExtensionRegistryForTest().clear();
+    });
+
+    test('model -> note_open -> lorebook_search -> lorebook_get -> memory_list_candidates -> memory_node_brief -> finalize', async () => {
+        // Scripted six-round trajectory. Each `mockImplementationOnce` reads
+        // the messages array we observed at that round so we can assert
+        // tool-result threading at the boundary; the final round commits
+        // the capsule body that snapshot-cache / capsule-injection consumes
+        // at the orchestrator dispatcher layer (exercised in main.js path,
+        // not here — we assert capsule shape + trace ordering instead).
+        const observedRounds = [];
+        const sendLlm = jest.fn()
+            .mockImplementationOnce(async ({ messages }) => {
+                observedRounds.push({ round: 1, messageCount: messages.length });
+                return {
+                    toolCalls: [
+                        { id: 'tc1', name: 'note_open', args: { text: 'Lyra mentioned the festival opens at dusk.' } },
+                    ],
+                    assistantText: 'I will start by recording the festival timing.',
+                };
+            })
+            .mockImplementationOnce(async ({ messages }) => {
+                observedRounds.push({ round: 2, messageCount: messages.length });
+                return {
+                    toolCalls: [
+                        { id: 'tc2', name: 'lorebook_search', args: { pattern: 'festival' } },
+                    ],
+                    assistantText: '',
+                };
+            })
+            .mockImplementationOnce(async ({ messages }) => {
+                observedRounds.push({ round: 3, messageCount: messages.length });
+                return {
+                    toolCalls: [
+                        { id: 'tc3', name: 'lorebook_get', args: { entry_key: 'autumn-fest' } },
+                    ],
+                    assistantText: '',
+                };
+            })
+            .mockImplementationOnce(async ({ messages }) => {
+                observedRounds.push({ round: 4, messageCount: messages.length });
+                return {
+                    toolCalls: [
+                        { id: 'tc4', name: 'memory_list_candidates', args: {} },
+                    ],
+                    assistantText: '',
+                };
+            })
+            .mockImplementationOnce(async ({ messages }) => {
+                observedRounds.push({ round: 5, messageCount: messages.length });
+                return {
+                    toolCalls: [
+                        { id: 'tc5', name: 'memory_node_brief', args: { node_id: 'lyra-vow' } },
+                    ],
+                    assistantText: '',
+                };
+            })
+            .mockImplementationOnce(async ({ messages }) => {
+                observedRounds.push({ round: 6, messageCount: messages.length });
+                return {
+                    toolCalls: [
+                        { id: 'tc6', name: 'finalize', args: {
+                            capsule_text: 'Dusk opening at the autumn festival; Lyra recalls her vow before entering.',
+                        } },
+                    ],
+                    assistantText: '',
+                };
+            });
+
+        const sortedEntries = [
+            { world: 'global', uid: 1, key: ['festival'],     content: 'The autumn festival is the largest gathering of the season.' },
+            { world: 'global', uid: 2, key: ['autumn-fest'],  content: 'Autumn-fest opens at dusk on the first cold night.' },
+            { world: 'global', uid: 3, key: ['winter-feast'], content: 'Winter feast unrelated.' },
+        ];
+        const memorySession = {
+            listVisibleCandidates: () => [
+                { id: 'lyra-vow', type: 'event', level: 'episodic', title: 'Lyra\'s vow', seqTo: 7, semanticDepth: 0 },
+            ],
+            getEdgeSummary: () => ({ degree: 0, relations: [], sample_neighbors: [] }),
+            getNodeBrief: id => ({
+                id,
+                title: 'Lyra\'s vow',
+                summary: 'Lyra promises to return at autumn.',
+                keyValues: {},
+                rowValues: [],
+                childCount: 0,
+                exposure: 'full',
+                edgeSummary: { degree: 1, relations: [], sample_neighbors: [{ id: 'autumn-festival-node', type: 'event', title: '' }] },
+                alwaysInject: false,
+            }),
+            expandFromSeeds: () => [],
+            getSchema: () => ({ types: [] }),
+        };
+        const notesAdapter = makeFakeFloorStateNotes();
+
+        const context = makeChatContext({
+            chat: [
+                { mes: 'Tell me about the festival opening.', is_user: true },
+            ],
+            notesAdapter,
+            sortedEntries,
+            memorySession,
+            activatedEntryKeys: new Set(),
+            targetFloorForNote: 0,
+        });
+
+        const result = await runLoopOrchestration(context, makePayload(), makeProfile(), { sendLlm });
+
+        expect(result.status).toBe('completed');
+        expect(result.capsule).toBe('Dusk opening at the autumn festival; Lyra recalls her vow before entering.');
+        expect(result.total_rounds).toBe(6);
+        expect(sendLlm).toHaveBeenCalledTimes(6);
+
+        // Each subsequent round's messages array should grow as
+        // assistant + tool result entries get appended, proving the
+        // tool-message threading works end-to-end. Cache-alignment
+        // refactor: a trailing `<runtime_state>` user message rides
+        // at the tail whenever there are open notes (rebuilt in place
+        // each round). Round 1 starts at 1 (system prompt) — no notes
+        // yet — so no runtime_state. Round 1's `note_open` populates
+        // the adapter → round 2 pushes runtime_state at the tail, so
+        // counts jump to 4 (system + assistant + tool + runtime_state)
+        // and each subsequent round adds 2 (assistant + tool; the
+        // runtime_state splices out + repushes in place).
+        const counts = observedRounds.map(r => r.messageCount);
+        expect(counts[0]).toBe(1);
+        expect(counts[1]).toBe(4);
+        expect(counts[2]).toBe(6);
+        expect(counts[3]).toBe(8);
+        expect(counts[4]).toBe(10);
+        expect(counts[5]).toBe(12);
+
+        // The note we wrote in round 1 made it through the adapter; this
+        // is what would be injected into the next run's system prompt.
+        const persistedNotes = await notesAdapter.listAcrossFloors();
+        expect(persistedNotes).toHaveLength(1);
+        expect(persistedNotes[0].text).toMatch(/Lyra mentioned the festival opens at dusk/);
+
+        // Trace coverage: every key event type fired in order.
+        const types = eventTypes(result.runtimeTrace);
+        expect(types).toContain('run_started');
+        expect(types).toContain('llm_request');
+        expect(types).toContain('tool_call');
+        expect(types).toContain('tool_result');
+        expect(types).toContain('run_finished');
+        expect(result.runtimeTrace.status).toBe('completed');
+        expect(result.runtimeTrace.capsuleText).toBe(result.capsule);
+        // Six rounds means six tool_call events for the dispatched tools.
+        const toolCallEvents = result.runtimeTrace.events.filter(e => e.type === 'tool_call');
+        expect(toolCallEvents).toHaveLength(6);
+        expect(toolCallEvents.map(e => e.name)).toEqual([
+            'note_open', 'lorebook_search', 'lorebook_get', 'memory_list_candidates', 'memory_node_brief', 'finalize',
+        ]);
+    });
+});
+
+describe('loop mode end-to-end: tool failure -> agent self-correction (Task 15b)', () => {
+    test('first lorebook_search has empty query -> ToolError -> agent retries with non-empty query and finalizes', async () => {
+        let secondRoundMessages = null;
+        const sendLlm = jest.fn()
+            .mockImplementationOnce(async () => ({
+                toolCalls: [
+                    { id: 'tc1', name: 'lorebook_search', args: { pattern: '' } },
+                ],
+                assistantText: '',
+            }))
+            .mockImplementationOnce(async ({ messages }) => {
+                // Deep-copy so subsequent mutations to the shared messages
+                // array (the runtime keeps appending tool results) do not
+                // leak into our assertion.
+                secondRoundMessages = JSON.parse(JSON.stringify(messages));
+                return {
+                    toolCalls: [
+                        { id: 'tc2', name: 'lorebook_search', args: { pattern: 'autumn' } },
+                    ],
+                    assistantText: '',
+                };
+            })
+            .mockImplementationOnce(async () => ({
+                toolCalls: [
+                    { id: 'tc3', name: 'finalize', args: { capsule_text: 'Recovered: festival opens at dusk.' } },
+                ],
+                assistantText: '',
+            }));
+
+        const sortedEntries = [
+            { world: 'global', uid: 10, key: ['autumn'], content: 'Autumn arrives in three phases.' },
+        ];
+
+        const context = makeChatContext({
+            chat: [{ mes: 'Find autumn lore.', is_user: true }],
+            sortedEntries,
+            activatedEntryKeys: new Set(),
+        });
+
+        const result = await runLoopOrchestration(context, makePayload(), makeProfile({
+            tools: {
+                note: { open: false, close: false },
+                chat: { read_range: false, search: false },
+                lorebook: { search: true, get: false },
+                memory: {
+                    list_candidates: false, edge_summary: false, node_brief: false,
+                    expand_seeds: false, rank: false, schema: false,
+                },
+                finalize: true,
+            },
+        }), { sendLlm });
+
+        expect(result.status).toBe('completed');
+        expect(result.capsule).toBe('Recovered: festival opens at dusk.');
+        expect(sendLlm).toHaveBeenCalledTimes(3);
+
+        // Round 2 must have observed the structured ToolError from round 1
+        // sitting in the messages array as a `role: tool` entry.
+        const errMsg = (secondRoundMessages || []).find(m => m?.role === 'tool' && m?.tool_call_id === 'tc1');
+        expect(errMsg).toBeTruthy();
+        const errPayload = typeof errMsg.content === 'string' ? JSON.parse(errMsg.content) : errMsg.content;
+        expect(errPayload.ok).toBe(false);
+        expect(String(errPayload.error || '')).toMatch(/non-empty/i);
+
+        // Round 2's tool_result should include the recovered ok-shaped message.
+        const okMsg = (secondRoundMessages || []).find(m => m?.role === 'tool' && m?.tool_call_id === 'tc2');
+        // The retry result lands AFTER the round-2 sendLlm observation, so
+        // it isn't in secondRoundMessages — but we can confirm the trace.
+        expect(okMsg).toBeUndefined();
+        const errorEvents = result.runtimeTrace.events.filter(e => e.type === 'tool_error');
+        expect(errorEvents).toHaveLength(1);
+        expect(errorEvents[0].name).toBe('lorebook_search');
+    });
+});
+
+describe('loop mode end-to-end: lorebook activated-entry dedup (Task 15c)', () => {
+    test('payload.__lukerRun.activatedEntryKeys propagates to lorebook_search and excludes pre-injected entries', async () => {
+        // The orchestrator main.js seeds payload.__lukerRun with the World
+        // Info entries already activated for this turn; the runtime forwards
+        // those into toolContext so lorebook_search can dedup. Here we
+        // simulate that by passing the activated set on the payload and
+        // letting the runtime hand it to the tool.
+        let toolResultObserved = null;
+        const sendLlm = jest.fn()
+            .mockImplementationOnce(async () => ({
+                toolCalls: [
+                    { id: 'tc1', name: 'lorebook_search', args: { pattern: 'autumn', flags: 'gmi' } },
+                ],
+                assistantText: '',
+            }))
+            .mockImplementationOnce(async ({ messages }) => {
+                // Round 2 sees the dedup result on its messages array.
+                // Snapshot the array to insulate from later mutations.
+                const frozen = JSON.parse(JSON.stringify(messages));
+                const okMsg = frozen.find(m => m?.role === 'tool' && m?.tool_call_id === 'tc1') || null;
+                toolResultObserved = okMsg
+                    ? (typeof okMsg.content === 'string' ? JSON.parse(okMsg.content) : okMsg.content)
+                    : null;
+                return {
+                    toolCalls: [
+                        { id: 'tc2', name: 'finalize', args: { capsule_text: 'Saw deduped lorebook entries.' } },
+                    ],
+                    assistantText: '',
+                };
+            });
+
+        const sortedEntries = [
+            // Already activated this turn — must be excluded.
+            { world: 'global', uid: 1, key: ['autumn-rite'], content: 'The rite of autumn precedes the feast.' },
+            { world: 'global', uid: 2, key: ['autumn-vow'],  content: 'Autumn vows are sworn under the harvest moon.' },
+            // Not activated — must appear.
+            { world: 'global', uid: 3, key: ['autumn-end'],  content: 'Autumn ends with the first deep frost.' },
+        ];
+
+        const activatedEntryKeys = new Set(['global.1', 'global.2']);
+        const context = makeChatContext({
+            chat: [{ mes: 'Look up autumn lore.', is_user: true }],
+            sortedEntries,
+        });
+
+        const result = await runLoopOrchestration(context, makePayload({ activatedEntryKeys }), makeProfile({
+            tools: {
+                note: { open: false, close: false },
+                chat: { read_range: false, search: false },
+                lorebook: { search: true, get: false },
+                memory: {
+                    list_candidates: false, edge_summary: false, node_brief: false,
+                    expand_seeds: false, rank: false, schema: false,
+                },
+                finalize: true,
+            },
+        }), { sendLlm });
+
+        expect(result.status).toBe('completed');
+        expect(toolResultObserved).toBeTruthy();
+        // grep-style result: { ok: true, output: '...' }. The non-activated
+        // 'autumn-end' entry must appear; the activated 'autumn-rite' and
+        // 'autumn-vow' entries are silently dropped from output.
+        expect(toolResultObserved.ok).toBe(true);
+        expect(toolResultObserved.output).toContain('[global] autumn-end:1: Autumn ends with the first deep frost.');
+        expect(toolResultObserved.output).not.toContain('autumn-rite');
+        expect(toolResultObserved.output).not.toContain('autumn-vow');
+    });
+});
+
+describe('loop mode end-to-end: note persistence across runs (Task 15d)', () => {
+    test('first run writes a note; second run starts with system prompt that includes that note', async () => {
+        // Persistent floor-state adapter: the second run reuses the same
+        // adapter instance so listAcrossFloors() returns the note written
+        // in run 1. This proves the production wiring contract: the system
+        // prompt builder reads `__openNotes` (which production
+        // attachNotesFloorState pre-populates from the adapter, filtered to
+        // open entries only), and any open notes written in earlier runs
+        // surface for the next loop start with their stable id prefix.
+        const notesAdapter = makeFakeFloorStateNotes();
+
+        // ---- Run 1 (floor F): writes one note, then finalizes.
+        const sendLlm1 = jest.fn()
+            .mockImplementationOnce(async () => ({
+                toolCalls: [
+                    { id: 'tc1', name: 'note_open', args: { text: 'Lyra wears the crimson sash to the rite.' } },
+                ],
+                assistantText: '',
+            }))
+            .mockImplementationOnce(async () => ({
+                toolCalls: [
+                    { id: 'tc2', name: 'finalize', args: { capsule_text: 'First-run guidance.' } },
+                ],
+                assistantText: '',
+            }));
+
+        const ctxRun1 = makeChatContext({
+            chat: [{ mes: 'Setting the scene.', is_user: true }],
+            notesAdapter,
+            targetFloorForNote: 5,
+        });
+
+        const result1 = await runLoopOrchestration(ctxRun1, makePayload(), makeProfile({
+            tools: {
+                note: { open: true, close: true },
+                chat: { read_range: false, search: false },
+                lorebook: { search: false, get: false },
+                memory: {
+                    list_candidates: false, edge_summary: false, node_brief: false,
+                    expand_seeds: false, rank: false, schema: false,
+                },
+                finalize: true,
+            },
+        }), { sendLlm: sendLlm1 });
+
+        expect(result1.status).toBe('completed');
+        expect((await notesAdapter.listAcrossFloors())[0].text).toMatch(/crimson sash/);
+
+        // ---- Run 2 (floor F+1): observe round-1 messages array; system
+        // prompt should already contain the note from run 1.
+        let observedRun2Messages = null;
+        const sendLlm2 = jest.fn().mockImplementationOnce(async ({ messages }) => {
+            observedRun2Messages = JSON.parse(JSON.stringify(messages));
+            return {
+                toolCalls: [
+                    { id: 'tc3', name: 'finalize', args: { capsule_text: 'Second-run guidance.' } },
+                ],
+                assistantText: '',
+            };
+        });
+
+        const ctxRun2 = makeChatContext({
+            chat: [
+                { mes: 'Setting the scene.', is_user: true },
+                { mes: 'The rite begins.',   is_user: false },
+            ],
+            notesAdapter,
+            targetFloorForNote: 6,
+        });
+        // Pre-load __openNotes the way production attachNotesFloorState does
+        // (since we provide a fake adapter, the production loader path is
+        // skipped; the runtime expects __openNotes already populated when
+        // __floorStateForNotes is supplied via context). Filter to open
+        // entries only — closed notes never make it into the prompt.
+        const allEntries = await notesAdapter.listAcrossFloors();
+        ctxRun2.__openNotes = allEntries
+            .filter(e => (e.status ?? 'open') === 'open')
+            .map(e => ({ id: e.id, text: e.text }));
+
+        const result2 = await runLoopOrchestration(ctxRun2, makePayload(), makeProfile({
+            tools: {
+                note: { open: true, close: true },
+                chat: { read_range: false, search: false },
+                lorebook: { search: false, get: false },
+                memory: {
+                    list_candidates: false, edge_summary: false, node_brief: false,
+                    expand_seeds: false, rank: false, schema: false,
+                },
+                finalize: true,
+            },
+        }), { sendLlm: sendLlm2 });
+
+        expect(result2.status).toBe('completed');
+        expect(observedRun2Messages).toBeTruthy();
+
+        // Cache-alignment refactor: the historical open-notes block now
+        // rides on a trailing `<runtime_state>` user message pushed by
+        // `runLoopOrchestration` before each LLM call, instead of being
+        // concatenated onto the system prompt. This keeps the system
+        // prefix byte-identical when notes flip mid-run so upstream
+        // prompt caches hold. The block still tags each entry with its
+        // stable id so note_close can reference it by id.
+        const sysMsg = observedRun2Messages.find(m => m.role === 'system');
+        expect(sysMsg).toBeTruthy();
+        expect(sysMsg.content).not.toMatch(/Open Notes/);
+
+        const runtimeStateMsg = observedRun2Messages.find(
+            m => m.role === 'user' && String(m.content || '').includes('<runtime_state>'),
+        );
+        expect(runtimeStateMsg).toBeTruthy();
+        expect(runtimeStateMsg.content).toMatch(/Open Notes/);
+        expect(runtimeStateMsg.content).toMatch(/crimson sash/);
+        const persistedId = (await notesAdapter.listAcrossFloors())[0].id;
+        expect(runtimeStateMsg.content).toContain(`[${persistedId}]`);
+    });
+});
+
+describe('loop mode end-to-end: abort path (Task 15e)', () => {
+    test('AbortController.abort() between round 1 and round 2 propagates a runtime error and trace finalizes as failed', async () => {
+        const aborter = new AbortController();
+        const sendLlm = jest.fn()
+            .mockImplementationOnce(async () => {
+                // Schedule the abort to fire after this LLM call resolves but
+                // before the runtime re-enters the loop body for round 2;
+                // the abort check at the top of the next iteration must
+                // throw and surface the error to the caller.
+                queueMicrotask(() => aborter.abort());
+                return {
+                    toolCalls: [
+                        { id: 'tc1', name: 'note_open', args: { text: 'first' } },
+                    ],
+                    assistantText: '',
+                };
+            })
+            .mockImplementationOnce(async () => {
+                // Should never run — the round-2 abort check throws first.
+                return {
+                    toolCalls: [
+                        { id: 'tc2', name: 'finalize', args: { capsule_text: 'should not be visible' } },
+                    ],
+                    assistantText: '',
+                };
+            });
+
+        const notesAdapter = makeFakeFloorStateNotes();
+        const context = makeChatContext({
+            chat: [{ mes: 'start.', is_user: true }],
+            notesAdapter,
+        });
+
+        await expect(
+            runLoopOrchestration(context, makePayload({ signal: aborter.signal }), makeProfile({
+                tools: {
+                    note: { open: true, close: true },
+                    chat: { read_range: false, search: false },
+                    lorebook: { search: false, get: false },
+                    memory: {
+                        list_candidates: false, edge_summary: false, node_brief: false,
+                        expand_seeds: false, rank: false, schema: false,
+                    },
+                    finalize: true,
+                },
+            }), { sendLlm }),
+        ).rejects.toThrow(/aborted/i);
+
+        // Cancellation arrives before the tool boundary: neither its write nor
+        // round 2 may execute, even if round 1's sender returns a late result.
+        expect(sendLlm).toHaveBeenCalledTimes(1);
+        const persisted = await notesAdapter.listAcrossFloors();
+        expect(persisted.map(n => n.text)).toEqual([]);
+    });
+
+    test('pre-aborted signal raises before the first sendLlm call', async () => {
+        // Complementary case: the signal is already aborted when the
+        // runtime is invoked. No LLM calls, no tool dispatch, no capsule.
+        const aborter = new AbortController();
+        aborter.abort();
+        const sendLlm = jest.fn();
+
+        await expect(
+            runLoopOrchestration(makeChatContext({}), makePayload({ signal: aborter.signal }), makeProfile(), { sendLlm }),
+        ).rejects.toThrow(/aborted/i);
+        expect(sendLlm).not.toHaveBeenCalled();
+    });
+});

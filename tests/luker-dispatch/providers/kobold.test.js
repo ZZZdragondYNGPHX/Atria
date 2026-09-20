@@ -1,0 +1,368 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { jest } from '@jest/globals';
+import { dispatchKobold } from '../../../src/luker-dispatch/providers/kobold.js';
+
+function fakeCtx({ body = {}, onFetch, signal } = {}) {
+    const emitted = [];
+    const ac = new AbortController();
+    const attachedInspections = [];
+    return {
+        body: {
+            api_server: 'http://127.0.0.1:5001',
+            prompt: 'hello',
+            streaming: false,
+            can_abort: false,
+            max_context_length: 2048,
+            max_length: 128,
+            gui_settings: false,
+            temperature: 0.7,
+            rep_pen: 1.1,
+            ...body,
+        },
+        user: { handle: 'alice', directories: {}, profile: { handle: 'alice' } },
+        signal: signal || ac.signal,
+        abort() { try { ac.abort(); } catch { /* ignore */ } },
+        fetch: onFetch || jest.fn(async () => new Response(JSON.stringify({
+            results: [{ text: 'hello back' }],
+        }), { status: 200, headers: { 'content-type': 'application/json' } })),
+        secrets: {
+            read: jest.fn(() => ''),
+        },
+        generation: {
+            startJob: jest.fn(() => null),
+            appendEvent: jest.fn(),
+            hasActiveKeepAliveJob: jest.fn(() => false),
+        },
+        inspection: {
+            start: jest.fn(),
+            attach: jest.fn((url) => attachedInspections.push(url)),
+            fail: jest.fn(),
+        },
+        emit: {
+            head: (h) => emitted.push({ kind: 'head', data: h }),
+            chunk: (b) => emitted.push({ kind: 'chunk', data: b }),
+            end: () => emitted.push({ kind: 'end' }),
+            error: (e) => emitted.push({ kind: 'error', error: e }),
+        },
+        _emitted: emitted,
+        _abortController: ac,
+        _attachedInspections: attachedInspections,
+    };
+}
+
+function chunkToStr(c) {
+    return Buffer.from(c.data).toString('utf8');
+}
+
+describe('dispatchKobold', () => {
+    test('non-streaming: emits chunk with JSON body then end', async () => {
+        const ctx = fakeCtx();
+        await dispatchKobold(ctx);
+
+        const kinds = ctx._emitted.map(e => e.kind);
+        expect(kinds).toContain('chunk');
+        expect(kinds[kinds.length - 1]).toBe('end');
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const parsed = JSON.parse(chunkToStr(chunks[0]));
+        expect(parsed.results[0].text).toBe('hello back');
+
+        expect(ctx.fetch).toHaveBeenCalledTimes(1);
+        const [url, init] = ctx.fetch.mock.calls[0];
+        expect(String(url)).toBe('http://127.0.0.1:5001/v1/generate');
+        expect(init.method).toBe('POST');
+        const sent = JSON.parse(init.body);
+        expect(sent.prompt).toBe('hello');
+        expect(sent.temperature).toBe(0.7);
+    });
+
+    test('streaming: forwards raw SSE chunks then end', async () => {
+        const sseBody =
+            'event: message\ndata: {"token":"he"}\n\n' +
+            'event: message\ndata: {"token":"llo"}\n\n';
+        const ctx = fakeCtx({
+            body: { streaming: true },
+            onFetch: jest.fn(async () => new Response(sseBody, {
+                status: 200, headers: { 'content-type': 'text/event-stream' },
+            })),
+        });
+        await dispatchKobold(ctx);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks.length).toBeGreaterThan(0);
+        const decoded = chunks.map(chunkToStr).join('');
+        expect(decoded).toContain('"token":"he"');
+        expect(decoded).toContain('"token":"llo"');
+        expect(ctx._emitted[ctx._emitted.length - 1].kind).toBe('end');
+
+        // Streaming URL suffix.
+        const [url] = ctx.fetch.mock.calls[0];
+        expect(String(url)).toBe('http://127.0.0.1:5001/extra/generate/stream');
+    });
+
+    test('localhost → 127.0.0.1 rewrite', async () => {
+        const ctx = fakeCtx({
+            body: { api_server: 'http://localhost:5001' },
+        });
+        await dispatchKobold(ctx);
+        const [url] = ctx.fetch.mock.calls[0];
+        expect(String(url)).toBe('http://127.0.0.1:5001/v1/generate');
+    });
+
+    test('retry on resolved 403 Response: retries up to success', async () => {
+        let calls = 0;
+        const fetchMock = jest.fn(async () => {
+            calls++;
+            if (calls <= 2) {
+                return new Response('busy', {
+                    status: 403,
+                    headers: { 'content-type': 'text/plain' },
+                });
+            }
+            return new Response(JSON.stringify({ results: [{ text: 'finally' }] }), {
+                status: 200, headers: { 'content-type': 'application/json' },
+            });
+        });
+        const ctx = fakeCtx({ onFetch: fetchMock });
+        await dispatchKobold(ctx);
+
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        const chunk = ctx._emitted.find(e => e.kind === 'chunk');
+        expect(chunk).toBeDefined();
+        const parsed = JSON.parse(chunkToStr(chunk));
+        expect(parsed.results[0].text).toBe('finally');
+
+        // Head emits exactly once: only the final resolved-Response reaches
+        // ctx.emit.head; retried 403 responses continue past the head branch.
+        const heads = ctx._emitted.filter(e => e.kind === 'head');
+        expect(heads).toHaveLength(1);
+        expect(heads[0].data.status).toBe(200);
+    }, 30000);
+
+    test('retry on resolved 503 Response: retries up to success', async () => {
+        let calls = 0;
+        const fetchMock = jest.fn(async () => {
+            calls++;
+            if (calls === 1) {
+                return new Response('overloaded', {
+                    status: 503,
+                    headers: { 'content-type': 'text/plain' },
+                });
+            }
+            return new Response(JSON.stringify({ results: [{ text: 'ok' }] }), {
+                status: 200, headers: { 'content-type': 'application/json' },
+            });
+        });
+        const ctx = fakeCtx({ onFetch: fetchMock });
+        await dispatchKobold(ctx);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(ctx._emitted.filter(e => e.kind === 'chunk')).toHaveLength(1);
+    }, 30000);
+
+    test('fetch rejection with .status=403 does NOT retry (rejections carry no HTTP status)', async () => {
+        // fetch() rejections in the real runtime never carry a `.status`
+        // field (status only exists on the resolved Response). Old code
+        // branched on `error?.status === 403` in the catch, so it never
+        // fired. The fix moves the check to the resolved-Response branch;
+        // rejections must terminate immediately without retry.
+        let _calls = 0;
+        const fetchMock = jest.fn(async () => {
+            _calls++;
+            const err = new Error('busy');
+            // @ts-ignore — mimic a hypothetical status-carrying rejection
+            err.status = 403;
+            throw err;
+        });
+        const ctx = fakeCtx({ onFetch: fetchMock });
+        await dispatchKobold(ctx);
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(ctx._emitted.filter(e => e.kind === 'error')).toHaveLength(1);
+        expect(ctx._emitted.filter(e => e.kind === 'chunk')).toHaveLength(0);
+    });
+
+    test('can_abort → POST /extra/abort fired on signal abort', async () => {
+        const ac = new AbortController();
+        const fetchMock = jest.fn((url, init) => {
+            if (String(url).includes('/extra/abort')) {
+                return Promise.resolve(new Response('{}', { status: 200 }));
+            }
+            // The primary /v1/generate call hangs until aborted.
+            return new Promise((_resolve, reject) => {
+                init.signal?.addEventListener?.('abort', () => {
+                    const err = new Error('aborted');
+                    err.name = 'AbortError';
+                    reject(err);
+                });
+            });
+        });
+        const ctx = fakeCtx({
+            signal: ac.signal,
+            body: { can_abort: true },
+            onFetch: fetchMock,
+        });
+        const p = dispatchKobold(ctx);
+        await new Promise(r => setImmediate(r));
+        ac.abort();
+        await p;
+        await new Promise(r => setImmediate(r));
+
+        const abortCalls = fetchMock.mock.calls.filter(([u]) => String(u).includes('/extra/abort'));
+        expect(abortCalls).toHaveLength(1);
+        const [abortUrl, abortInit] = abortCalls[0];
+        expect(String(abortUrl)).toBe('http://127.0.0.1:5001/extra/abort');
+        expect(abortInit.method).toBe('POST');
+    });
+
+    test('can_abort → opts into ctx.onRequestClose so client disconnect fires /extra/abort', async () => {
+        // The runner does NOT default-bind client-close → ctx.signal.abort
+        // (generation-jobs survive disconnect). Classic Kobold has no
+        // resume channel — once the client drops, the GPU keeps
+        // generating until it finishes on its own. Opt in to
+        // ctx.onRequestClose so tab close/cancel releases GPU cycles.
+        const fetchMock = jest.fn((url, init) => {
+            if (String(url).includes('/extra/abort')) {
+                return Promise.resolve(new Response('{}', { status: 200 }));
+            }
+            return new Promise((_resolve, reject) => {
+                init.signal?.addEventListener?.('abort', () => {
+                    const err = new Error('aborted');
+                    err.name = 'AbortError';
+                    reject(err);
+                });
+            });
+        });
+        const closeHandlers = new Set();
+        const ctx = fakeCtx({
+            body: { can_abort: true, streaming: true },
+            onFetch: fetchMock,
+        });
+        ctx.onRequestClose = (cb) => {
+            closeHandlers.add(cb);
+            return () => { closeHandlers.delete(cb); };
+        };
+        const p = dispatchKobold(ctx);
+        await new Promise(r => setImmediate(r));
+        expect(closeHandlers.size).toBe(1);
+        for (const cb of closeHandlers) cb();
+        await p;
+        await new Promise(r => setImmediate(r));
+
+        const abortCalls = fetchMock.mock.calls.filter(([u]) => String(u).includes('/extra/abort'));
+        // At least one abort POST from the close hook. In production the
+        // hook also calls ctx.abort() which flips ctx.signal — the
+        // pre-existing signal listener then fires a second abort POST.
+        // Both paths are correct; assertion is >= 1 to allow the double.
+        expect(abortCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('can_abort close hook disposed after successful settle (no /extra/abort on clean end)', async () => {
+        const closeHandlers = new Set();
+        const ctx = fakeCtx({
+            body: { can_abort: true },
+        });
+        ctx.onRequestClose = (cb) => {
+            closeHandlers.add(cb);
+            return () => { closeHandlers.delete(cb); };
+        };
+        await dispatchKobold(ctx);
+        expect(closeHandlers.size).toBe(0);
+    });
+
+    test('can_abort=false does NOT register onRequestClose', async () => {
+        const closeHandlers = new Set();
+        const ctx = fakeCtx({
+            body: { can_abort: false },
+        });
+        ctx.onRequestClose = (cb) => {
+            closeHandlers.add(cb);
+            return () => { closeHandlers.delete(cb); };
+        };
+        await dispatchKobold(ctx);
+        expect(closeHandlers.size).toBe(0);
+    });
+
+    test('upstream error: emits head+chunk+end with raw error body (no emit.error)', async () => {
+        const ctx = fakeCtx({
+            onFetch: jest.fn(async () => new Response(JSON.stringify({
+                detail: { msg: 'foo bar upstream complaint' },
+            }), { status: 400, headers: { 'content-type': 'application/json' } })),
+        });
+        await dispatchKobold(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const heads = ctx._emitted.filter(e => e.kind === 'head');
+        expect(heads).toHaveLength(1);
+        expect(heads[0].data.status).toBe(400);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const decoded = new TextDecoder().decode(chunks[0].data);
+        const parsed = JSON.parse(decoded);
+        expect(parsed.detail.msg).toBe('foo bar upstream complaint');
+
+        const ends = ctx._emitted.filter(e => e.kind === 'end');
+        expect(ends).toHaveLength(1);
+
+        expect(ctx.inspection.fail).toHaveBeenCalledTimes(1);
+        expect(ctx.inspection.fail.mock.calls[0][1]).toBe(400);
+    });
+
+    test('streaming upstream !ok: gates raw JSON error body via head+chunk+end (not piped as SSE)', async () => {
+        // Without this gate the raw JSON error body pipes into the client
+        // SSE parser mid-stream and is silently dropped (EventSource
+        // ignores non-SSE lines), so the user sees an empty response with
+        // no toast. The gate mirrors the legacy
+        // `forwardFetchResponse({jsonErrorResponse:true})` shape and the
+        // non-streaming branch of this same dispatch.
+        const errBody = JSON.stringify({ detail: { msg: 'streaming upstream complaint' } });
+        const ctx = fakeCtx({
+            body: { streaming: true },
+            onFetch: jest.fn(async () => new Response(errBody, {
+                status: 400,
+                headers: { 'content-type': 'application/json' },
+            })),
+        });
+        await dispatchKobold(ctx);
+
+        const errs = ctx._emitted.filter(e => e.kind === 'error');
+        expect(errs).toHaveLength(0);
+
+        const heads = ctx._emitted.filter(e => e.kind === 'head');
+        expect(heads).toHaveLength(1);
+        expect(heads[0].data.status).toBe(400);
+
+        const chunks = ctx._emitted.filter(e => e.kind === 'chunk');
+        expect(chunks).toHaveLength(1);
+        const decoded = new TextDecoder().decode(chunks[0].data);
+        expect(JSON.parse(decoded).detail.msg).toBe('streaming upstream complaint');
+
+        const ends = ctx._emitted.filter(e => e.kind === 'end');
+        expect(ends).toHaveLength(1);
+
+        expect(ctx.inspection.fail).toHaveBeenCalledTimes(1);
+        expect(ctx.inspection.fail.mock.calls[0][1]).toBe(400);
+    });
+
+    test('ctx.signal abort mid-request: emits error, no chunk', async () => {
+        const ac = new AbortController();
+        const ctx = fakeCtx({
+            signal: ac.signal,
+            onFetch: jest.fn((_url, init) => new Promise((_resolve, reject) => {
+                init.signal?.addEventListener?.('abort', () => {
+                    const err = new Error('The user aborted a request.');
+                    err.name = 'AbortError';
+                    reject(err);
+                });
+            })),
+        });
+        const p = dispatchKobold(ctx);
+        setImmediate(() => ac.abort());
+        await p;
+        expect(ctx._emitted.filter(e => e.kind === 'chunk')).toHaveLength(0);
+        expect(ctx._emitted.filter(e => e.kind === 'error').length).toBeGreaterThan(0);
+    });
+});

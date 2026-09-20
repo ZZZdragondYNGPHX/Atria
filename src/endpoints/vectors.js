@@ -1,0 +1,697 @@
+import path from 'node:path';
+import fs from 'node:fs';
+
+import vectra from 'vectra';
+import express from 'express';
+import sanitize from 'sanitize-filename';
+
+import { getNomicAIBatchVector, getNomicAIVector } from '../vectors/nomicai-vectors.js';
+import { getOpenAIVector, getOpenAIBatchVector } from '../vectors/openai-vectors.js';
+import { getTransformersVector, getTransformersBatchVector } from '../vectors/embedding.js';
+import { getExtrasVector, getExtrasBatchVector } from '../vectors/extras-vectors.js';
+import { getMakerSuiteVector, getMakerSuiteBatchVector } from '../vectors/google-vectors.js';
+import { getVertexVector, getVertexBatchVector } from '../vectors/google-vectors.js';
+import { getCohereVector, getCohereBatchVector } from '../vectors/cohere-vectors.js';
+import { getJinaVector, getJinaBatchVector } from '../vectors/jina-vectors.js';
+import { getLlamaCppVector, getLlamaCppBatchVector } from '../vectors/llamacpp-vectors.js';
+import { getVllmVector, getVllmBatchVector } from '../vectors/vllm-vectors.js';
+import { getOllamaVector, getOllamaBatchVector } from '../vectors/ollama-vectors.js';
+import { rerank } from '../vectors/rerank.js';
+import { getCommonCredentials, getSourceSettings } from '../vectors/source-settings.js';
+import {
+    startEmbeddingInspection,
+    completeEmbeddingInspection,
+    failEmbeddingInspection,
+    extractEmbeddingMeta,
+} from '../request-inspector.js';
+
+// Vector sources that never hit an upstream HTTP endpoint from the server:
+//   - transformers  → local xenova/transformers pipeline (in-process inference)
+//   - webllm        → client-side pre-computed vectors, server just receives
+//                     the dict via `sourceSettings.embeddings` and looks up
+//   - koboldcpp     → same pattern; client hits /api/backends/kobold/embed
+//                     separately (that endpoint IS inspected on its own)
+// For these sources the /api/vector/{insert,query,query-multi} handlers do
+// nothing over the wire — inspecting them would fill the ring buffer with
+// entries whose `endpoint` and `wireRequest` are permanently null and give
+// the user no debugging leverage. The three routes that DO hit upstream
+// (all other sources) get the full lifecycle wrap.
+const LOCAL_ONLY_SOURCES = new Set(['transformers', 'webllm', 'koboldcpp']);
+
+// Don't forget to add new sources to the SOURCES array
+const SOURCES = [
+    'transformers',
+    'mistral',
+    'openai',
+    'extras',
+    'palm',
+    'togetherai',
+    'nomicai',
+    'cohere',
+    'jina',
+    'ollama',
+    'llamacpp',
+    'vllm',
+    'webllm',
+    'koboldcpp',
+    'vertexai',
+    'electronhub',
+    'openrouter',
+    'chutes',
+    'nanogpt',
+    'siliconflow',
+    'workers_ai',
+];
+
+/**
+ * Gets the vector for the given text from the given source.
+ * @param {string} source - The source of the vector
+ * @param {Object} sourceSettings - Settings for the source, if it needs any
+ * @param {string} text - The text to get the vector for
+ * @param {boolean} isQuery - If the text is a query for embedding search
+ * @param {import('../users.js').UserDirectoryList} directories - The directories object for the user
+ * @param {import('express').Request} [request] - Inspector-carrying request (null skips inspection attach)
+ * @returns {Promise<number[]>} - The vector for the text
+ */
+async function getVector(source, sourceSettings, text, isQuery, directories, request = null) {
+    switch (source) {
+        case 'nomicai':
+            return getNomicAIVector(text, source, directories, sourceSettings, request);
+        case 'togetherai':
+        case 'mistral':
+        case 'openai':
+            return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
+        case 'electronhub':
+            return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
+        case 'openrouter':
+            return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
+        case 'transformers':
+            return getTransformersVector(text);
+        case 'extras':
+            return getExtrasVector(text, sourceSettings.extrasUrl, sourceSettings.extrasKey, request);
+        // palm/vertexai already receive the Express request via
+        // `sourceSettings.request` (they need it to derive URL + auth
+        // via getGoogleApiConfig). That IS the same object as `request`
+        // above — startEmbeddingInspection stamped `__inspectorId` on it —
+        // so no fourth parameter is needed for attach.
+        case 'palm':
+            return getMakerSuiteVector(text, sourceSettings.model, sourceSettings.request);
+        case 'vertexai':
+            return getVertexVector(text, sourceSettings.model, sourceSettings.request);
+        case 'cohere':
+            return getCohereVector(text, isQuery, directories, sourceSettings.model, sourceSettings, request);
+        case 'jina':
+            return getJinaVector(text, isQuery, directories, sourceSettings.model, sourceSettings.options, sourceSettings, request);
+        case 'llamacpp':
+            return getLlamaCppVector(text, sourceSettings.apiUrl, directories, sourceSettings, request);
+        case 'vllm':
+            return getVllmVector(text, sourceSettings.apiUrl, sourceSettings.model, directories, sourceSettings, request);
+        case 'ollama':
+            return getOllamaVector(text, sourceSettings.apiUrl, sourceSettings.model, sourceSettings.keep, directories, sourceSettings, request);
+        case 'webllm':
+            return sourceSettings.embeddings[text];
+        case 'koboldcpp':
+            return sourceSettings.embeddings[text];
+        case 'chutes':
+            return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
+        case 'nanogpt':
+            return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
+        case 'siliconflow':
+            return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
+        case 'workers_ai':
+            return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
+    }
+
+    throw new Error(`Unknown vector source ${source}`);
+}
+
+/**
+ * Gets the vector for the given text batch from the given source.
+ * @param {string} source - The source of the vector
+ * @param {Object} sourceSettings - Settings for the source, if it needs any
+ * @param {string[]} texts - The array of texts to get the vector for
+ * @param {boolean} isQuery - If the text is a query for embedding search
+ * @param {import('../users.js').UserDirectoryList} directories - The directories object for the user
+ * @param {import('express').Request} [request] - Inspector-carrying request (null skips inspection attach)
+ * @returns {Promise<number[][]>} - The array of vectors for the texts
+ */
+async function getBatchVector(source, sourceSettings, texts, isQuery, directories, request = null) {
+    const batchSize = 10;
+    const batches = Array(Math.ceil(texts.length / batchSize)).fill(undefined).map((_, i) => texts.slice(i * batchSize, i * batchSize + batchSize));
+
+    let results = [];
+    for (let batch of batches) {
+        switch (source) {
+            case 'nomicai':
+                results.push(...await getNomicAIBatchVector(batch, source, directories, sourceSettings, request));
+                break;
+            case 'togetherai':
+            case 'mistral':
+            case 'openai':
+                results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            case 'electronhub':
+                results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            case 'openrouter':
+                results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            case 'transformers':
+                results.push(...await getTransformersBatchVector(batch));
+                break;
+            case 'extras':
+                results.push(...await getExtrasBatchVector(batch, sourceSettings.extrasUrl, sourceSettings.extrasKey, request));
+                break;
+            case 'palm':
+                results.push(...await getMakerSuiteBatchVector(batch, sourceSettings.model, sourceSettings.request));
+                break;
+            case 'vertexai':
+                results.push(...await getVertexBatchVector(batch, sourceSettings.model, sourceSettings.request));
+                break;
+            case 'cohere':
+                results.push(...await getCohereBatchVector(batch, isQuery, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            case 'jina':
+                results.push(...await getJinaBatchVector(batch, isQuery, directories, sourceSettings.model, sourceSettings.options, sourceSettings, request));
+                break;
+            case 'llamacpp':
+                results.push(...await getLlamaCppBatchVector(batch, sourceSettings.apiUrl, directories, sourceSettings, request));
+                break;
+            case 'vllm':
+                results.push(...await getVllmBatchVector(batch, sourceSettings.apiUrl, sourceSettings.model, directories, sourceSettings, request));
+                break;
+            case 'ollama':
+                results.push(...await getOllamaBatchVector(batch, sourceSettings.apiUrl, sourceSettings.model, sourceSettings.keep, directories, sourceSettings, request));
+                break;
+            case 'webllm':
+                results.push(...texts.map(x => sourceSettings.embeddings[x]));
+                break;
+            case 'koboldcpp':
+                results.push(...texts.map(x => sourceSettings.embeddings[x]));
+                break;
+            case 'chutes':
+                results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            case 'nanogpt':
+                results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            case 'siliconflow':
+                results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            case 'workers_ai':
+                results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
+                break;
+            default:
+                throw new Error(`Unknown vector source ${source}`);
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Gets the model scope for the source.
+ * @param {object} sourceSettings - The settings for the source
+ * @returns {string} The model scope for the source
+ */
+function getModelScope(sourceSettings) {
+    return (sourceSettings?.model || '');
+}
+
+/**
+ * Gets the index for the vector collection
+ * @param {import('../users.js').UserDirectoryList} directories - User directories
+ * @param {string} collectionId - The collection ID
+ * @param {string} source - The source of the vector
+ * @param {object} sourceSettings - The model for the source
+ * @returns {Promise<vectra.LocalIndex>} - The index for the collection
+ */
+async function getIndex(directories, collectionId, source, sourceSettings) {
+    const model = getModelScope(sourceSettings);
+    const pathToFile = path.join(directories.vectors, sanitize(source), sanitize(collectionId), sanitize(model));
+    const store = new vectra.LocalIndex(pathToFile);
+
+    if (!await store.isIndexCreated()) {
+        await store.createIndex();
+    }
+
+    return store;
+}
+
+/**
+ * Inserts items into the vector collection
+ * @param {import('../users.js').UserDirectoryList} directories - User directories
+ * @param {string} collectionId - The collection ID
+ * @param {string} source - The source of the vector
+ * @param {Object} sourceSettings - Settings for the source, if it needs any
+ * @param {{ hash: number; text: string; index: number; metadata?: Object; }[]} items - The items to insert
+ * @param {import('express').Request} [request] - Inspector-carrying request
+ */
+async function insertVectorItems(directories, collectionId, source, sourceSettings, items, request = null) {
+    const store = await getIndex(directories, collectionId, source, sourceSettings);
+
+    await store.beginUpdate();
+
+    const vectors = await getBatchVector(source, sourceSettings, items.map(x => x.text), false, directories, request);
+
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const vector = vectors[i];
+        await store.upsertItem({ vector: vector, metadata: { hash: item.hash, text: item.text, index: item.index, ...(item.metadata || {}) } });
+    }
+
+    await store.endUpdate();
+
+    // Return first vector dim so the router can surface `vectorDim` on the
+    // inspector entry without a second pass over the vectors array.
+    return {
+        insertedCount: items.length,
+        vectorDim: Array.isArray(vectors[0]) ? vectors[0].length : null,
+    };
+}
+
+/**
+ * Gets the hashes of the items in the vector collection
+ * @param {import('../users.js').UserDirectoryList} directories - User directories
+ * @param {string} collectionId - The collection ID
+ * @param {string} source - The source of the vector
+ * @param {Object} sourceSettings - Settings for the source, if it needs any
+ * @returns {Promise<number[]>} - The hashes of the items in the collection
+ */
+async function getSavedHashes(directories, collectionId, source, sourceSettings) {
+    const store = await getIndex(directories, collectionId, source, sourceSettings);
+
+    const items = await store.listItems();
+    const hashes = items.map(x => Number(x.metadata.hash));
+
+    return hashes;
+}
+
+/**
+ * Deletes items from the vector collection by hash
+ * @param {import('../users.js').UserDirectoryList} directories - User directories
+ * @param {string} collectionId - The collection ID
+ * @param {string} source - The source of the vector
+ * @param {Object} sourceSettings - Settings for the source, if it needs any
+ * @param {number[]} hashes - The hashes of the items to delete
+ */
+async function deleteVectorItems(directories, collectionId, source, sourceSettings, hashes) {
+    const store = await getIndex(directories, collectionId, source, sourceSettings);
+    const items = await store.listItemsByMetadata({ hash: { '$in': hashes } });
+
+    await store.beginUpdate();
+
+    for (const item of items) {
+        await store.deleteItem(item.id);
+    }
+
+    await store.endUpdate();
+}
+
+/**
+ * Gets the hashes of the items in the vector collection that match the search text
+ * @param {import('../users.js').UserDirectoryList} directories - User directories
+ * @param {string} collectionId - The collection ID
+ * @param {string} source - The source of the vector
+ * @param {Object} sourceSettings - Settings for the source, if it needs any
+ * @param {string} searchText - The text to search for
+ * @param {number} topK - The number of results to return
+ * @param {number} threshold - The threshold for the search
+ * @param {boolean} [includeVectors]
+ * @param {import('express').Request} [request] - Inspector-carrying request
+ * @returns {Promise<{hashes: number[], metadata: object[]}>} - The metadata of the items that match the search text
+ */
+async function queryCollection(directories, collectionId, source, sourceSettings, searchText, topK, threshold, includeVectors = false, request = null) {
+    const store = await getIndex(directories, collectionId, source, sourceSettings);
+    const vector = await getVector(source, sourceSettings, searchText, true, directories, request);
+
+    const result = await store.queryItems(vector, topK);
+    const filtered = result.filter(x => x.score >= threshold);
+    const metadata = filtered.map(x => {
+        const entry = { ...x.item.metadata, score: x.score };
+        if (includeVectors && Array.isArray(x.item.vector)) {
+            entry.vector = x.item.vector;
+        }
+        return entry;
+    });
+    const hashes = filtered.map(x => Number(x.item.metadata.hash));
+    const response = { metadata, hashes };
+    if (includeVectors && Array.isArray(vector)) {
+        response.queryVector = vector;
+    }
+    return response;
+}
+
+/**
+ * Queries multiple collections for the given search queries. Returns the overall top K results.
+ * @param {import('../users.js').UserDirectoryList} directories - User directories
+ * @param {string[]} collectionIds - The collection IDs to query
+ * @param {string} source - The source of the vector
+ * @param {Object} sourceSettings - Settings for the source, if it needs any
+ * @param {string} searchText - The text to search for
+ * @param {number} topK - The number of results to return
+ * @param {number} threshold - The threshold for the search
+ * @param {import('express').Request} [request] - Inspector-carrying request
+ *
+ * @returns {Promise<Record<string, { hashes: number[], metadata: object[] }>>} - The top K results from each collection
+ */
+async function multiQueryCollection(directories, collectionIds, source, sourceSettings, searchText, topK, threshold, request = null) {
+    const vector = await getVector(source, sourceSettings, searchText, true, directories, request);
+    const results = [];
+
+    for (const collectionId of collectionIds) {
+        const store = await getIndex(directories, collectionId, source, sourceSettings);
+        const result = await store.queryItems(vector, topK);
+        results.push(...result.map(result => ({ collectionId, result })));
+    }
+
+    // Sort results by descending similarity, apply threshold, and take top K
+    const sortedResults = results
+        .sort((a, b) => b.result.score - a.result.score)
+        .filter(x => x.result.score >= threshold)
+        .slice(0, topK);
+
+    /**
+     * Group the results by collection ID
+     * @type {Record<string, { hashes: number[], metadata: object[] }>}
+     */
+    const groupedResults = {};
+    for (const result of sortedResults) {
+        if (!groupedResults[result.collectionId]) {
+            groupedResults[result.collectionId] = { hashes: [], metadata: [] };
+        }
+
+        groupedResults[result.collectionId].hashes.push(Number(result.result.item.metadata.hash));
+        groupedResults[result.collectionId].metadata.push({ ...result.result.item.metadata, score: result.result.score });
+    }
+
+    return groupedResults;
+}
+
+/**
+ * Performs a request to regenerate the index if it is corrupted.
+ * @param {import('express').Request} req Express request object
+ * @param {import('express').Response} res Express response object
+ * @param {Error} error Error object
+ * @returns {Promise<any>} Promise
+ */
+async function regenerateCorruptedIndexErrorHandler(req, res, error) {
+    if (error instanceof SyntaxError && !req.query.regenerated) {
+        const collectionId = String(req.body.collectionId);
+        const source = String(req.body.source) || 'transformers';
+        const sourceSettings = getSourceSettings(source, req);
+
+        if (collectionId && source) {
+            const index = await getIndex(req.user.directories, collectionId, source, sourceSettings);
+            const exists = await index.isIndexCreated();
+
+            if (exists) {
+                const path = index.folderPath;
+                console.warn(`Corrupted index detected at ${path}, regenerating...`);
+                await index.deleteIndex();
+                return res.redirect(307, req.originalUrl + '?regenerated=true');
+            }
+        }
+    }
+
+    console.error(error);
+    return res.sendStatus(500);
+}
+
+export const router = express.Router();
+
+router.post('/query', async (req, res) => {
+    const source = String(req.body.source) || 'transformers';
+    const inspect = !LOCAL_ONLY_SOURCES.has(source);
+    if (inspect) startEmbeddingInspection(req, extractEmbeddingMeta('query', req.body));
+    try {
+        if (!req.body.collectionId || !req.body.searchText) {
+            if (inspect) failEmbeddingInspection(req, 'Missing collectionId or searchText', 400);
+            return res.sendStatus(400);
+        }
+
+        const collectionId = String(req.body.collectionId);
+        const searchText = String(req.body.searchText);
+        const topK = Number(req.body.topK) || 10;
+        const threshold = Number(req.body.threshold) || 0.0;
+        const sourceSettings = getSourceSettings(source, req);
+        const includeVectors = Boolean(req.body.includeVectors);
+
+        const results = await queryCollection(req.user.directories, collectionId, source, sourceSettings, searchText, topK, threshold, includeVectors, inspect ? req : null);
+        if (inspect) {
+            // Store every returned hit verbatim; the UI folds each entry
+            // behind a <details> so we never pay DOM cost until the user
+            // expands it. Never truncate here — matches the chat inspector,
+            // which snapshots `fullMessages` and `wireRequest` untouched.
+            const hits = Array.isArray(results.metadata)
+                ? results.metadata.map(m => ({
+                    hash: m?.hash,
+                    score: m?.score,
+                    text: String(m?.text ?? ''),
+                }))
+                : [];
+            completeEmbeddingInspection(req, {
+                resultCount: Array.isArray(results.hashes) ? results.hashes.length : 0,
+                vectorDim: Array.isArray(results.queryVector) ? results.queryVector.length : null,
+                hits,
+            });
+        }
+        return res.json(results);
+    } catch (error) {
+        if (inspect) failEmbeddingInspection(req, error?.message || String(error), 500);
+        return regenerateCorruptedIndexErrorHandler(req, res, error);
+    }
+});
+
+router.post('/query-by-vector', async (req, res) => {
+    try {
+        if (!req.body.collectionId || !Array.isArray(req.body.vector) || req.body.vector.length === 0) {
+            return res.sendStatus(400);
+        }
+
+        const collectionId = String(req.body.collectionId);
+        const vector = req.body.vector.map(x => Number(x) || 0);
+        const topK = Number(req.body.topK) || 10;
+        const threshold = Number(req.body.threshold) || 0.0;
+        const source = String(req.body.source) || 'transformers';
+        const sourceSettings = getSourceSettings(source, req);
+        const includeVectors = Boolean(req.body.includeVectors);
+
+        const store = await getIndex(req.user.directories, collectionId, source, sourceSettings);
+        const result = await store.queryItems(vector, topK);
+        const filtered = result.filter(x => x.score >= threshold);
+        const metadata = filtered.map(x => {
+            const entry = { ...x.item.metadata, score: x.score };
+            if (includeVectors && Array.isArray(x.item.vector)) {
+                entry.vector = x.item.vector;
+            }
+            return entry;
+        });
+        const hashes = filtered.map(x => Number(x.item.metadata.hash));
+        return res.json({ metadata, hashes });
+    } catch (error) {
+        return regenerateCorruptedIndexErrorHandler(req, res, error);
+    }
+});
+
+router.post('/query-multi', async (req, res) => {
+    const source = String(req.body.source) || 'transformers';
+    const inspect = !LOCAL_ONLY_SOURCES.has(source);
+    if (inspect) startEmbeddingInspection(req, extractEmbeddingMeta('query-multi', req.body));
+    try {
+        if (!Array.isArray(req.body.collectionIds) || !req.body.searchText) {
+            if (inspect) failEmbeddingInspection(req, 'Missing collectionIds or searchText', 400);
+            return res.sendStatus(400);
+        }
+
+        const collectionIds = req.body.collectionIds.map(x => String(x));
+        const searchText = String(req.body.searchText);
+        const topK = Number(req.body.topK) || 10;
+        const threshold = Number(req.body.threshold) || 0.0;
+        const sourceSettings = getSourceSettings(source, req);
+
+        const results = await multiQueryCollection(req.user.directories, collectionIds, source, sourceSettings, searchText, topK, threshold, inspect ? req : null);
+        if (inspect) {
+            // multiQueryCollection returns { [collectionId]: { hashes, metadata } };
+            // flatten across collections into a single hits list so the UI
+            // renders the full set behind foldable <details> without paging
+            // through per-collection buckets. No truncation — everything the
+            // upstream returned gets stored verbatim.
+            const flatHits = [];
+            let totalHits = 0;
+            for (const [cid, group] of Object.entries(results || {})) {
+                if (!Array.isArray(group?.metadata)) continue;
+                totalHits += group.metadata.length;
+                for (const m of group.metadata) {
+                    flatHits.push({
+                        collectionId: cid,
+                        hash: m?.hash,
+                        score: m?.score,
+                        text: String(m?.text ?? ''),
+                    });
+                }
+            }
+            completeEmbeddingInspection(req, {
+                resultCount: totalHits,
+                hits: flatHits,
+            });
+        }
+        return res.json(results);
+    } catch (error) {
+        if (inspect) failEmbeddingInspection(req, error?.message || String(error), 500);
+        return regenerateCorruptedIndexErrorHandler(req, res, error);
+    }
+});
+
+router.post('/rerank', async (req, res) => {
+    // Rerank goes exclusively to remote providers (cohere / jina / custom);
+    // no local-only source path exists, so inspection is unconditional.
+    startEmbeddingInspection(req, extractEmbeddingMeta('rerank', req.body));
+    try {
+        if (!req.body.query || !Array.isArray(req.body.documents)) {
+            failEmbeddingInspection(req, 'Missing query or documents', 400);
+            return res.sendStatus(400);
+        }
+
+        const query = String(req.body.query);
+        const documents = req.body.documents;
+        const topK = Number(req.body.topK) || 5;
+        const source = String(req.body.source) || 'cohere';
+        const credentials = getCommonCredentials(req);
+        const rerankSettings = {
+            model: String(req.body.model || ''),
+            apiUrl: String(req.body.apiUrl || ''),
+            apiKey: String(req.body.apiKey || ''),
+            ...credentials,
+        };
+
+        const results = await rerank(source, rerankSettings, query, documents, topK, req.user.directories, req);
+        const hits = Array.isArray(results)
+            ? results.map(r => ({
+                index: r?.index,
+                hash: r?.hash,
+                score: r?.relevance_score,
+                text: String(r?.text ?? ''),
+            }))
+            : [];
+        completeEmbeddingInspection(req, {
+            resultCount: Array.isArray(results) ? results.length : 0,
+            hits,
+        });
+        return res.json(results);
+    } catch (error) {
+        console.error('Rerank failed:', error);
+        failEmbeddingInspection(req, error?.message || String(error), 500);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/insert', async (req, res) => {
+    const source = String(req.body.source) || 'transformers';
+    const inspect = !LOCAL_ONLY_SOURCES.has(source);
+    if (inspect) startEmbeddingInspection(req, extractEmbeddingMeta('insert', req.body));
+    try {
+        if (!Array.isArray(req.body.items) || !req.body.collectionId) {
+            if (inspect) failEmbeddingInspection(req, 'Missing items or collectionId', 400);
+            return res.sendStatus(400);
+        }
+
+        const collectionId = String(req.body.collectionId);
+        const items = req.body.items.map(x => ({
+            hash: x.hash,
+            text: x.text,
+            index: x.index,
+            ...(x.metadata && typeof x.metadata === 'object' && !Array.isArray(x.metadata) ? { metadata: x.metadata } : {}),
+        }));
+        const sourceSettings = getSourceSettings(source, req);
+
+        const insertResult = await insertVectorItems(req.user.directories, collectionId, source, sourceSettings, items, inspect ? req : null);
+        if (inspect) {
+            completeEmbeddingInspection(req, {
+                resultCount: insertResult?.insertedCount ?? items.length,
+                vectorDim: insertResult?.vectorDim ?? null,
+            });
+        }
+        return res.sendStatus(200);
+    } catch (error) {
+        if (inspect) failEmbeddingInspection(req, error?.message || String(error), 500);
+        return regenerateCorruptedIndexErrorHandler(req, res, error);
+    }
+});
+
+router.post('/list', async (req, res) => {
+    try {
+        if (!req.body.collectionId) {
+            return res.sendStatus(400);
+        }
+
+        const collectionId = String(req.body.collectionId);
+        const source = String(req.body.source) || 'transformers';
+        const sourceSettings = getSourceSettings(source, req);
+
+        const hashes = await getSavedHashes(req.user.directories, collectionId, source, sourceSettings);
+        return res.json(hashes);
+    } catch (error) {
+        return regenerateCorruptedIndexErrorHandler(req, res, error);
+    }
+});
+
+router.post('/delete', async (req, res) => {
+    try {
+        if (!Array.isArray(req.body.hashes) || !req.body.collectionId) {
+            return res.sendStatus(400);
+        }
+
+        const collectionId = String(req.body.collectionId);
+        const hashes = req.body.hashes.map(x => Number(x));
+        const source = String(req.body.source) || 'transformers';
+        const sourceSettings = getSourceSettings(source, req);
+
+        await deleteVectorItems(req.user.directories, collectionId, source, sourceSettings, hashes);
+        return res.sendStatus(200);
+    } catch (error) {
+        return regenerateCorruptedIndexErrorHandler(req, res, error);
+    }
+});
+
+router.post('/purge-all', async (req, res) => {
+    try {
+        for (const source of SOURCES) {
+            const sourcePath = path.join(req.user.directories.vectors, sanitize(source));
+            if (!fs.existsSync(sourcePath)) {
+                continue;
+            }
+            await fs.promises.rm(sourcePath, { recursive: true });
+            console.info(`Deleted vector source store at ${sourcePath}`);
+        }
+
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+});
+
+router.post('/purge', async (req, res) => {
+    try {
+        if (!req.body.collectionId) {
+            return res.sendStatus(400);
+        }
+
+        const collectionId = String(req.body.collectionId);
+
+        for (const source of SOURCES) {
+            const sourcePath = path.join(req.user.directories.vectors, sanitize(source), sanitize(collectionId));
+            if (!fs.existsSync(sourcePath)) {
+                continue;
+            }
+            await fs.promises.rm(sourcePath, { recursive: true });
+            console.info(`Deleted vector index at ${sourcePath}`);
+        }
+
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
+});

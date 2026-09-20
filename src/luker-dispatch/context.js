@@ -1,0 +1,273 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import fetch from 'node-fetch';
+import { readSecret, getRequestedSecretId } from '../endpoints/secrets.js';
+import {
+    createGenerationJob,
+    appendGenerationEvent,
+    getJobFromRequest,
+} from '../endpoints/backends/luker-generation.js';
+import {
+    startInspection,
+    attachInspectionEndpoint,
+    completeInspection,
+    completeInspectionFromStream,
+    failInspection,
+    startImageInspection,
+    completeImageInspection,
+    failImageInspection,
+    abortInspection,
+} from '../request-inspector.js';
+
+// Whitelist of upstream response headers propagated to the client via
+// the `head` frame. Kept small and behaviorally-motivated:
+//   • `content-type` — SSE clients branch on it; inspector renders body accordingly.
+//   • `retry-after` / `ratelimit-*` / `x-ratelimit-*` — request-retry.js
+//     (public/scripts/request-retry.js:63,131) reads Retry-After to
+//     compute backoff; inspector UI shows remaining quota.
+//   • `anthropic-ratelimit-*` — Claude-specific ratelimit family, same purpose.
+//   • `x-request-id` / `x-goog-request-id` — upstream request IDs (support tickets).
+//
+// Everything else (Set-Cookie, auth echo, provider-internal debug hints)
+// is stripped. Match is case-insensitive because node-fetch normalizes to
+// lowercase but `Headers` from other transports may not.
+const HEAD_HEADER_PREFIXES = [
+    'ratelimit-',
+    'x-ratelimit-',
+    'anthropic-ratelimit-',
+];
+const HEAD_HEADER_EXACT = new Set([
+    'content-type',
+    'retry-after',
+    'x-request-id',
+    'x-goog-request-id',
+]);
+
+function isWhitelistedHeader(name) {
+    const lower = String(name).toLowerCase();
+    if (HEAD_HEADER_EXACT.has(lower)) return true;
+    for (const prefix of HEAD_HEADER_PREFIXES) {
+        if (lower.startsWith(prefix)) return true;
+    }
+    return false;
+}
+
+/**
+ * Pick the whitelisted subset from a headers input. Accepts:
+ *   • A plain object (already-picked / caller-controlled) — pass-through
+ *     after lowercasing keys and applying the whitelist. Callers passing
+ *     `{}` get `{}` back (no-op, back-compat).
+ *   • A `Headers` instance (node-fetch / undici / whatwg) — iterate via
+ *     `.forEach` and pick whitelisted keys.
+ *   • `null` / `undefined` — returns `{}`.
+ *
+ * Returns a fresh lower-cased plain object suitable for JSON serialization.
+ */
+function pickWhitelistedHeaders(headers) {
+    const out = {};
+    if (!headers) return out;
+    // Headers-like: forEach(value, name) per whatwg fetch spec.
+    if (typeof headers.forEach === 'function' && typeof headers.get === 'function') {
+        headers.forEach((value, name) => {
+            if (isWhitelistedHeader(name)) {
+                out[String(name).toLowerCase()] = String(value);
+            }
+        });
+        return out;
+    }
+    // Plain object.
+    if (typeof headers === 'object') {
+        for (const [name, value] of Object.entries(headers)) {
+            if (value === undefined || value === null) continue;
+            if (isWhitelistedHeader(name)) {
+                out[String(name).toLowerCase()] = String(value);
+            }
+        }
+    }
+    return out;
+}
+
+export function createDispatchContext({ request, task, abortController, onEmit, onCloseHandlers }) {
+    let terminal = false;
+
+    function safeEmit(event) {
+        if (terminal) return;
+        if (event.kind === 'end' || event.kind === 'error') {
+            terminal = true;
+        }
+        try { onEmit(event); } catch (error) { console.warn('[Dispatch] onEmit threw', error); }
+    }    return {
+        body: request.body,
+        user: {
+            handle: request.user?.profile?.handle,
+            directories: request.user?.directories,
+            profile: request.user?.profile,
+        },
+        signal: abortController.signal,
+        // Explicit abort trigger. Runner owns the AbortController; dispatch
+        // code that needs to fire abort as a side effect (comfy /interrupt
+        // → stop local polling) goes through this instead of receiving the
+        // controller directly. Kept a no-op-safe method call so tests that
+        // stub ctx don't need to reproduce the whole abort lifecycle.
+        abort() {
+            try { abortController.abort(); } catch { /* ignore */ }
+        },
+        fetch,
+
+        // Register a callback that fires when the underlying HTTP request
+        // socket closes (client disconnected — tab close, network drop,
+        // explicit browser cancel, or an abort routed through the runner).
+        //
+        // The runner does NOT default-bind close→abort so that the
+        // generation-job survives disconnect and can be reclaimed by
+        // GET /api/generation/active. Dispatches that hold external
+        // resources whose only stop channel is the client connection
+        // (ComfyUI's /interrupt, etc.) opt in here to preserve legacy
+        // shutdown semantics.
+        //
+        // Returns a disposer so the dispatch can drop the handler after a
+        // successful settle (avoids firing side effects on a normal close
+        // that races the response tail).
+        onRequestClose(callback) {
+            if (typeof callback !== 'function') return () => {};
+            if (!onCloseHandlers) return () => {};
+            onCloseHandlers.add(callback);
+            return () => { onCloseHandlers.delete(callback); };
+        },
+
+        secrets: {
+            // Mirror legacy readProviderSecret(request, key) semantics:
+            //   - if body.secret_id is set AND resolves to a stored secret,
+            //     use it (connection profile / preset picked a specific
+            //     credential slot)
+            //   - otherwise fall back to the active secret for the key
+            // Callers passing an explicit `secretId` opt into a raw lookup
+            // (no fallback to active), matching legacy
+            // readSecret(dirs, key, id) callers (MINIMAX, POLLINATIONS,
+            // WORKERS_AI in chat-completions.js).
+            //
+            // BEFORE this fix, ctx.secrets.read(KEY) called readSecret
+            // without an id and always returned the active secret —
+            // ignoring body.secret_id — so users who selected a non-active
+            // connection profile got authenticated against the wrong key.
+            read(key, opts) {
+                const directories = request.user?.directories;
+                if (opts && Object.prototype.hasOwnProperty.call(opts, 'secretId')) {
+                    return readSecret(directories, key, opts.secretId);
+                }
+                const secretId = getRequestedSecretId(request);
+                if (secretId) {
+                    const requested = readSecret(directories, key, secretId);
+                    if (requested) return requested;
+                }
+                return readSecret(directories, key);
+            },
+        },
+
+        generation: {
+            startJob({ persist_target } = {}) {
+                const job = createGenerationJob(request, {
+                    job_id: task.id,
+                    persist_target: persist_target || null,
+                });
+                return job;
+            },
+            appendEvent(job, rawData) {
+                appendGenerationEvent(job, rawData);
+            },
+            hasActiveKeepAliveJob() {
+                return Boolean(getJobFromRequest(request));
+            },
+        },
+
+        inspection: {
+            start() { startInspection(request); },
+            attach(url, apiKey, wirePayload) { attachInspectionEndpoint(request, url, apiKey, wirePayload); },
+            complete(payload, rawApiResponse) { completeInspection(request, payload, rawApiResponse); },
+            completeFromStream(events, accumulatedText) { completeInspectionFromStream(request, events, accumulatedText); },
+            fail(err, httpStatus) {
+                const msg = err && err.message ? err.message : String(err || '');
+                failInspection(request, msg, httpStatus);
+            },
+            startImage(meta) { startImageInspection(request, meta); },
+            completeImage(resultMeta) { completeImageInspection(request, resultMeta); },
+            failImage(err, httpStatus) {
+                const msg = err && err.message ? err.message : String(err || '');
+                failImageInspection(request, msg, httpStatus);
+            },
+            abort() { abortInspection(request); },
+        },
+
+        emit: {
+            // Emit a `head` frame with upstream status + a whitelisted
+            // projection of upstream response headers. Callers pass:
+            //   • `status` — the HTTP status code from `resp.status`
+            //   • `headers` — either a plain object (already picked by the
+            //      dispatch) OR a `Headers`-like instance with `.get`/`.forEach`
+            //      (typically `resp.headers` from `node-fetch`). When a
+            //      Headers-like instance is passed, this method pulls only
+            //      the whitelisted subset so upstream `ratelimit-*`,
+            //      `retry-after`, `x-ratelimit-*`, `anthropic-ratelimit-*`,
+            //      `x-request-id`, `x-goog-request-id`, and `content-type`
+            //      reach the client via the `head` frame + ws-delivery.
+            //
+            // Passing plain `{}` remains valid (dispatches that don't yet
+            // forward upstream headers), but new dispatches SHOULD pass
+            // `resp.headers` so the client-side proxied fetch surfaces
+            // `Response.headers.get('retry-after')` etc. — request-retry.js
+            // (public/scripts/request-retry.js:63,131) already reads it
+            // to compute backoff, and inspector UI can show ratelimit
+            // state without dispatch-side manual pickers.
+            head({ status, headers }) {
+                const picked = pickWhitelistedHeaders(headers);
+                safeEmit({ kind: 'head', data: { status, headers: picked } });
+            },
+            chunk(bytes) { safeEmit({ kind: 'chunk', data: bytes }); },
+            end() { safeEmit({ kind: 'end', data: null }); },
+            // Serialize both `err.message` AND `err.cause`. Several SD
+            // providers throw `new Error('X failed to generate image.',
+            // { cause: statusData })` or set `err.cause = errText` after
+            // reading an upstream response body — the cause carries the
+            // field-level validation detail (fal.ai `${loc[1]}: ${msg}` /
+            // Cloudflare Workers AI `{errors:[]}` / aimlapi raw upstream
+            // text / sdcpp / webui). Without appending it here, the
+            // client-side ws-delivery reads `msg.message` (line 71) which
+            // only carries the generic "X returned an error" prefix, so
+            // users see a useless generic error and lose the actionable
+            // validation detail. Cause is appended after `: ` so the same
+            // channel keeps working — no new frame shape required.
+            error(err) {
+                const message = String(err?.message || err);
+                const cause = err?.cause;
+                let full = message;
+                if (cause !== undefined && cause !== null) {
+                    const causeStr = typeof cause === 'string'
+                        ? cause
+                        : (cause?.message ? String(cause.message) : (() => {
+                            try { return JSON.stringify(cause); } catch { return String(cause); }
+                        })());
+                    if (causeStr) full = `${message}: ${causeStr}`;
+                }
+                safeEmit({ kind: 'error', data: { message: full } });
+            },
+            // Runner-only escape hatch: append a chunk AFTER the dispatch has
+            // already emitted a terminal `end`/`error`. Legacy behavior
+            // appended a `data: {"luker":{...}}\n\n` trailer frame to the tail
+            // of every streaming chat/text response so the frontend
+            // (openai.js:4316 / kai-settings.js / nai-settings.js /
+            // textgen-settings.js / script.js) could learn the server-side
+            // `generation_id` + `persisted` flag from the stream itself.
+            //
+            // Refactor's `safeEmit` locks the terminal state on the first
+            // `end`/`error` and drops every subsequent emit — including the
+            // runner's trailer. This bypass exists so the runner can still
+            // append the trailer without introducing an ordering coupling
+            // (dispatch must emit chunks first, then runner appends trailer,
+            // then real terminal fires). Bypass is NOT exposed to dispatches
+            // and does NOT reopen the terminal flag: the next `emit.end` /
+            // `emit.error` after a trailer is still a no-op.
+            trailer(bytes) {
+                try { onEmit({ kind: 'chunk', data: bytes }); } catch (error) { console.warn('[Dispatch] onEmit threw (trailer)', error); }
+            },
+        },
+    };
+}

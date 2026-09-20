@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base href="/">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, viewport-fit=cover, initial-scale=1, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="darkreader-lock">
+    <meta name="robots" content="noindex, nofollow" />
+    <style>
+        body {
+            background-color: rgb(36, 36, 37);
+        }
+    </style>
+    <link rel="preload" as="style" href="style.css">
+    <link rel="apple-touch-icon" sizes="57x57" href="img/apple-icon-57x57.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="img/apple-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="img/apple-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="img/apple-icon-144x144.png" />
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="css/st-tailwind.css">
+    <link rel="stylesheet" type="text/css" href="css/login.css">
+    <link rel="manifest" crossorigin="use-credentials" href="manifest.json">
+    <link href="webfonts/NotoSans/stylesheet.css" rel="stylesheet">
+    <link href="webfonts/NotoSansMono/stylesheet.css" rel="stylesheet">
+    <link href="css/fontawesome.min.css" rel="stylesheet">
+    <link href="css/solid.min.css" rel="stylesheet">
+    <link href="css/brands.min.css" rel="stylesheet">
+    <link href="css/user.css" rel="stylesheet">
+    <title>Luker</title>
+</head>
+
+<body class="login">
+    <div id="shadow_popup" style="opacity: 0;">
+        <div id="dialogue_popup">
+            <div id="dialogue_popup_holder">
+                <div id="dialogue_popup_text">
+                    <div id="userSelectBlock" class="flex-container flexFlowColumn alignItemsCenter">
+                        <h2 id="logoBlock" class="flex-container">
+                            <img src="img/logo.png" alt="Luker" class="logo">
+                            <span>Welcome to Luker</span>
+                        </h2>
+                        <h3 id="normalLoginPrompt">Select an Account</h3>
+                        <h3 id="discreetLoginPrompt">Enter Login Details</h3>
+                        <div id="userListBlock" class="wide100p">
+                            <div id="userList" class="flex-container justifySpaceEvenly"></div>
+                            <div id="handleEntryBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
+                                <input id="userHandle" class="text_pole" type="text" placeholder="User handle" autocomplete="username">
+                            </div>
+                            <div id="passwordEntryBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
+                                <input id="userPassword" class="text_pole" type="password" placeholder="Password" autocomplete="current-password">
+                                <a id="recoverPassword" href="#" onclick="return false;">Forgot password?</a>
+                                <div class="flex-container">
+                                    <div id="loginButton" class="menu_button">Login</div>
+                                </div>
+                            </div>
+                            <div id="oauthLoginBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
+                                <div class="oauthLoginTitle">Or continue with</div>
+                                <div class="flex-container flexGap10 justifyCenter">
+                                    <a id="oauthGithubButton" class="menu_button menu_button_icon" href="#" style="display:none;">
+                                        <i class="fa-brands fa-github"></i>
+                                        <span>GitHub</span>
+                                    </a>
+                                    <a id="oauthDiscordButton" class="menu_button menu_button_icon" href="#" style="display:none;">
+                                        <i class="fa-brands fa-discord"></i>
+                                        <span>Discord</span>
+                                    </a>
+                                </div>
+                            </div>
+                            <div id="registerEntryBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
+                                <a id="openRegisterLink" href="#" onclick="return false;">Don't have an account? Create one</a>
+                            </div>
+                            <div id="registerBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
+                                <h3>Create a new account</h3>
+                                <input id="registerName" class="text_pole" type="text" placeholder="Display name" autocomplete="name">
+                                <input id="registerHandle" class="text_pole" type="text" placeholder="User handle (lowercase letters, numbers, dashes)" autocomplete="username" pattern="[a-z0-9-]+">
+                                <input id="registerPassword" class="text_pole" type="password" placeholder="Password" autocomplete="new-password">
+                                <input id="registerConfirm" class="text_pole" type="password" placeholder="Confirm password" autocomplete="new-password">
+                                <div class="flex-container flexGap10">
+                                    <div id="submitRegister" class="menu_button">Create account</div>
+                                    <div id="cancelRegister" class="menu_button">Cancel</div>
+                                </div>
+                            </div>
+                            <div id="passwordRecoveryBlock" style="display:none;" class="flex-container flexFlowColumn alignItemsCenter">
+                                <div id="recoverMessage">Recovery code has been posted to the server console.</div>
+                                <input id="recoveryCode" class="text_pole" type="text" placeholder="Recovery code">
+                                <input id="newPassword" class="text_pole" type="password" placeholder="New password" autocomplete="new-password">
+                                <div class="flex-container flexGap10">
+                                    <div id="sendRecovery" class="menu_button">Send</div>
+                                    <div id="cancelRecovery" class="menu_button">Cancel</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="neutral_warning" id="errorMessage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="lib/jquery-3.5.1.min.js"></script>
+    <script src="scripts/login.js" type="module"></script>
+</body>
+
+</html>

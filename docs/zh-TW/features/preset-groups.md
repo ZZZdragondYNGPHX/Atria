@@ -1,0 +1,71 @@
+# 預設分組
+
+預設分組是 Luker 為預設選擇器引入的分組展示功能。當你累積了大量預設後，扁平的下拉列表會變得難以管理。預設分組允許你將預設歸入命名分組，在下拉選擇器中以分組 header + 成員的層級結構展示。
+
+![預設分組](/images/presets/preset-groups.png)
+
+上圖展示了下拉裡的實際效果：未分組的預設保持在頂層，下方依次列出幾個分組 header；每個 header 自帶成員數量標籤和折疊 chevron，展開後成員以縮排形式顯示，行尾的圖示分別用於改組和刪除預設。
+
+## 資料模型
+
+每個分組包含以下欄位：
+
+```js
+{
+    id: string,         // 分組 ID（目前實作為 pg-<timestamp>-<random>）
+    name: string,       // 分組名稱
+    presets: string[]    // 成員預設名稱列表
+}
+```
+
+分組資料按 API 類型儲存在 `power_user.preset_groups[apiId]`，透過 `getPresetGroups()` 讀取，並由 `createPresetGroup()`、`renamePresetGroup()`、`deletePresetGroup()`、`addPresetToGroup()`、`removePresetFromGroup()` 等方法修改，最後隨設定儲存持久化。
+
+## 每個 API 類型獨立維護
+
+預設分組按 API 類型（如 Chat Completion、Text Completion 等）獨立維護。不同 API 類型的預設分組互不影響，切換 API 類型時會載入對應的分組設定。
+
+## 分組展示
+
+### 分組 Header 可折疊
+
+在預設下拉選擇器中，每個分組顯示為一個可折疊的 header。點擊 header 可以展開或收起該分組下的所有預設，方便在大量預設中快速定位。
+
+### 成員縮排展示
+
+分組內的預設成員以縮排的方式展示在 header 下方，形成清晰的層級視覺結構。
+
+### 未分組預設保持頂層
+
+未歸入任何分組的預設保持在下拉列表的頂層位置，不受分組結構的影響。
+
+## 分組管理
+
+### 右鍵選單
+
+預設分組的管理操作透過右鍵選單完成：
+
+- **建立分組**：新建一個命名分組
+- **重新命名分組**：修改已有分組的名稱
+- **刪除分組**：移除分組，組內預設回到未分組狀態
+- **移入/移出分組**：將預設新增到分組或從分組中移除
+
+### 預設生命週期同步
+
+分組系統會自動回應預設的生命週期事件：
+
+- **預設重新命名**：分組中的成員名稱自動同步更新
+- **預設刪除**：自動從所屬分組中移除
+
+## Select2 適配器
+
+Luker 實作了自訂的 Select2 適配器，用於在下拉選擇器中渲染分組結構和操作按鈕：
+
+1. 收集所有真實 option 元素（跳過分組 header）
+2. 保留自訂屬性（如 `data-luker-char-bound`）
+3. 清空 select 後先新增未分組預設
+4. 按分組順序新增 header 和成員
+
+## 相關功能
+
+- [提示詞分組](/zh-TW/features/prompt-groups) — 提示詞管理器中的分組系統
+- [補全預設助手](/zh-TW/features/preset-assistant) — AI 輔助理解和調整預設參數

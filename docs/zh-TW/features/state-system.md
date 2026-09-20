@@ -1,0 +1,115 @@
+# 狀態系統
+
+Luker 引入了一套狀態系統，允許角色卡、聊天和預設攜帶持久化的狀態資料。擴充功能和 CardApp 可以利用這套系統儲存和讀取自訂資料，而無需修改角色卡或聊天記錄本身。
+
+## 角色狀態
+
+每個角色可以擁有獨立的狀態資料，按命名空間隔離。不同的擴充功能或 CardApp 使用各自的命名空間，互不干擾。
+
+例如，一個記憶擴充功能可以在角色狀態中儲存該角色的記憶摘要，而一個 CardApp 可以在同一角色上儲存遊戲進度——兩者透過不同的命名空間各自獨立運作。
+
+### 運作方式
+
+- **讀取狀態**：透過角色標識和命名空間取得該角色在該命名空間下的狀態資料
+- **寫入狀態**：將資料儲存到指定角色的指定命名空間中
+- **自動持久化**：狀態資料會自動儲存到磁碟，服務重啟後不會遺失
+
+角色狀態的生命週期與角色本身綁定——當角色被刪除時，其關聯的狀態資料也會被清理。
+
+## 聊天狀態
+
+每個聊天有自己的狀態，按命名空間隔離。Luker 將聊天狀態按命名空間儲存在聊天檔案旁的獨立檔案中，命名模式為 `<聊天檔案基名>.luker-state.<namespace>.json`。
+
+### 狀態檔案的特點
+
+- 每個命名空間一個檔案，放在聊天檔案同目錄（不是單一全域狀態檔）
+- 同一聊天可存在多個狀態檔案（每個 namespace 一個），在首次寫入時懶建立
+- 與聊天檔案生命週期綁定：聊天被重新命名時，關聯狀態檔同步重新命名；聊天被刪除時，關聯狀態檔同步刪除
+- 支援增量更新，不需要每次都寫入完整資料
+
+### 儲存內容
+
+聊天狀態可以儲存各種與聊天相關的輔助資訊，例如：
+
+- 生成任務的確認狀態
+- 擴充功能為該聊天儲存的自訂資料
+- 其他不適合直接寫入聊天記錄的中繼資料
+
+::: tip
+聊天狀態由 Luker 自動管理，通常不需要手動編輯。如果你從 SillyTavern 遷移資料，這些檔案會在首次使用時自動建立。
+:::
+
+## 預設狀態
+
+Luker 同樣支援為預設附加狀態資料。預設狀態允許擴充功能在特定預設上儲存設定或執行時資訊，當使用者切換預設時，相關的狀態資料也會隨之切換。
+
+## 狀態的持久化和生命週期
+
+狀態系統遵循以下原則：
+
+| 狀態類型 | 儲存位置 | 生命週期 |
+| --- | --- | --- |
+| 角色狀態 | 角色卡同目錄的命名空間檔案（`<角色名>.state.<namespace>.json`） | 首次命名空間寫入時建立；隨角色重新命名/刪除聯動 |
+| 聊天狀態 | 聊天同目錄的命名空間檔案（`<聊天名>.luker-state.<namespace>.json`） | 首次命名空間寫入時建立；隨聊天重新命名/刪除聯動 |
+| 預設狀態 | 預設同目錄的命名空間檔案（`<預設名>.luker-state.<namespace>.json`） | 首次命名空間寫入時建立；隨預設重新命名/刪除聯動 |
+
+```d2
+direction: right
+
+CHAR: "角色目錄" {
+  CHAR_MAIN: "Seraphina.png\n角色卡主檔案" {
+    style.fill: "#e1f5ff"
+  }
+  CHAR_S1: "Seraphina.state.memory_graph.json\n記憶圖狀態"
+  CHAR_S2: "Seraphina.state.cardapp_studio.json\nStudio 工作階段"
+}
+
+CHAT: "聊天目錄" {
+  CHAT_MAIN: "Seraphina-2026.jsonl\n聊天主檔案" {
+    style.fill: "#e1f5ff"
+  }
+  CHAT_S1: "Seraphina-2026.luker-state.chat_sync.json\nintegrity / updated_at"
+  CHAT_S2: "Seraphina-2026.luker-state.luker_orchestrator__schema.json\n編排狀態"
+  CHAT_S3: "Seraphina-2026.luker-state.memory_graph__meta.json\n記憶圖中繼資料"
+}
+
+PRESET: "預設目錄" {
+  P_MAIN: "for_my_athena.json\n預設主檔案" {
+    style.fill: "#e1f5ff"
+  }
+  P_S1: "for_my_athena.luker-state.preset_assistant.json\n預設助手工作階段"
+}
+```
+
+所有狀態資料都會持久化到磁碟，不會因為服務重啟而遺失。狀態檔案的清理是自動的——當關聯的角色、聊天或預設被刪除時，對應的狀態檔案也會被自動清理。
+
+## 使用場景
+
+### CardApp 狀態追蹤
+
+CardApp 是狀態系統最典型的使用者。角色卡內嵌的應用可以透過狀態系統儲存遊戲進度、使用者偏好、互動歷史等資料。例如，一個 RPG 類型的 CardApp 可以將角色的等級、裝備、任務進度等資訊儲存在角色狀態中。
+
+詳見 [CardApp](/zh-TW/features/cardapp)。
+
+### 擴充功能資料儲存
+
+第三方擴充功能可以利用狀態系統為每個角色或聊天儲存自訂資料，而無需自行管理檔案讀寫。這簡化了擴充功能開發，也確保了資料的生命週期管理是正確的。
+
+詳見 [擴充 API — 聊天與狀態](/zh-TW/development/extension-api/chat-and-state)。
+
+### 記憶系統
+
+[Memory Graph](/zh-TW/features/memory-graph) 等記憶類擴充功能可以利用角色狀態儲存記憶摘要和索引資料，實現按角色隔離的記憶管理。
+
+## 樓層狀態（可回退的聊天狀態）
+
+普通聊天狀態只能整體覆寫：使用者回切 swipe、刪訊息或切換聊天時，外掛得自己重新讀取命名空間、自己對帳資料。樓層狀態在聊天狀態之上加了一層薄封裝，自動處理這件事：每次寫入都會附帶聊天尾端的位置（樓層索引 + swipe 編號）記入日誌，聊天結構變化時自動重播倖存提交，外掛狀態始終跟當前作用 swipe 鏈路一致，不必手動對帳。
+
+API、程式碼範例與使用約定請見 [擴充 API — 樓層狀態](/zh-TW/development/extension-api/chat-and-state#樓層狀態)。
+
+## 相關頁面
+
+- [CardApp](/zh-TW/features/cardapp) — 角色卡內嵌應用系統
+- [擴充 API](/zh-TW/development/extension-api/) — 擴充功能開發介面
+- [樓層狀態](/zh-TW/development/extension-api/chat-and-state#樓層狀態) — 帶自動回退的聊天狀態開發參考
+- [增量同步](/zh-TW/improvements/incremental-sync) — 聊天資料的增量儲存機制

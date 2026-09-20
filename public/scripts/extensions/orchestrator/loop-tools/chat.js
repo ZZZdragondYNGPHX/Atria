@@ -1,0 +1,177 @@
+/**
+ * loop-tools/chat.js — chat-based tool implementations for loop mode.
+ *
+ * Two tools cover the "look at recent context" and "search the whole
+ * conversation" use cases without leaking SillyTavern internals into the
+ * agent's prompt:
+ *
+ *   - chat_read_range({ start, end }) returns a contiguous slice of
+ *     `context.chat` floors normalized to `{ floor, role, content }`.
+ *     Negative indices count from the end (Pythonic). The slice is hard
+ *     capped at MAX_RANGE floors so a hallucinated `end: 9999` cannot
+ *     blow up token budget; over-wide ranges raise a structured
+ *     `ToolError(CHAT_RANGE_TOO_LARGE)` so the agent reads the failure
+ *     and retries with a saner window.
+ *   - chat_search({ pattern, flags }) is a regex scan over `mes` text.
+ *     Results are emitted in grep -n shape: one matched line per result
+ *     as `floor_{N} [{role}]:{lineno}: {line_content}`. Empty patterns
+ *     raise `ToolError(CHAT_PATTERN_EMPTY)`; invalid regex is returned
+ *     as `{ ok: false, error }` with an escape hint so the agent can
+ *     self-correct on the next round.
+ *
+ * Both tools are pure functions of `(args, context)` and never write back
+ * to the chat array; they exist purely to shape input for the agent.
+ */
+
+import { ToolError } from '../loop-runtime.js';
+import { gatherGrepMatches } from '../grep-tool.js';
+import { readPluginFloors } from '../../../lib/plugin-floors.js';
+
+const MAX_RANGE = 50;
+
+/**
+ * Resolve a (potentially negative) chat index against `len` chat floors.
+ * Negative values count from the end like Python slicing; out-of-range
+ * values are clamped to `[0, len-1]`. Returns -1 when `len === 0`.
+ */
+function resolveIndex(idx, len) {
+    if (!Number.isFinite(len) || len <= 0) return -1;
+    let n = Math.trunc(Number(idx));
+    if (!Number.isFinite(n)) n = 0;
+    if (n < 0) n = len + n;
+    if (n < 0) n = 0;
+    if (n > len - 1) n = len - 1;
+    return n;
+}
+
+function roleFromMessage(message) {
+    if (message?.is_user) return 'user';
+    if (message?.is_system) return 'system';
+    return 'assistant';
+}
+
+// All three roles: both tools surface system floors verbatim (grep
+// corpus / read slices), so they must come back from the floor walk.
+const FLOOR_ROLES = ['user', 'assistant', 'system'];
+
+/**
+ * Cooked text by chat index. Falls back to raw `mes` for entries
+ * readPluginFloors skips (non-object slots) so output shape stays
+ * identical to the pre-API walk.
+ */
+function cookedTextByIndex(context) {
+    return new Map(
+        readPluginFloors(context, { roles: FLOOR_ROLES })
+            .map(record => [record.sourceIndex, record.mesCooked]),
+    );
+}
+
+/**
+ * Read a contiguous range of chat floors. Negative indices count from the
+ * end. Range size is capped at MAX_RANGE; oversize requests raise
+ * `ToolError(CHAT_RANGE_TOO_LARGE)` so the agent self-corrects.
+ *
+ * @param {{ start: number, end: number }} args
+ * @param {object} context — must expose `context.chat` array
+ * @returns {Promise<Array<{floor: number, role: string, content: string}>>}
+ */
+export async function execChatReadRange(args, context) {
+    const chat = Array.isArray(context?.chat) ? context.chat : [];
+    if (chat.length === 0) return [];
+
+    let start = resolveIndex(args?.start, chat.length);
+    let end = resolveIndex(args?.end, chat.length);
+    if (start < 0 || end < 0) return [];
+    if (end < start) {
+        throw new ToolError(
+            `chat_read_range: end (${end}) must be >= start (${start}).`,
+            'CHAT_RANGE_INVALID',
+            'Pass start <= end. Negative indices count from the end of the chat.',
+        );
+    }
+    const span = end - start + 1;
+    if (span > MAX_RANGE) {
+        throw new ToolError(
+            `chat_read_range: range too large (${span} floors), max ${MAX_RANGE}.`,
+            'CHAT_RANGE_TOO_LARGE',
+            `Reduce the range so end - start + 1 <= ${MAX_RANGE}. Use chat_search to locate specific floors first.`,
+        );
+    }
+
+    // Auto-align to whole user→assistant pairs. Walking backward at the
+    // start moves to a user message (or chat head). Walking forward at the
+    // end moves past any user/system messages until an assistant message
+    // (or chat tail). LLM consumers passing chat-floor coords sourced from
+    // memory-graph's `floorRange` translation always get well-formed pairs
+    // — and so do consumers that walk mid-pair manually.
+    let alignedStart = start;
+    while (alignedStart > 0 && !chat[alignedStart]?.is_user) {
+        alignedStart -= 1;
+    }
+    let alignedEnd = end;
+    while (alignedEnd < chat.length - 1) {
+        const m = chat[alignedEnd];
+        if (m?.is_user || m?.is_system) {
+            alignedEnd += 1;
+        } else {
+            break;  // assistant — stop here
+        }
+    }
+
+    const alignedSpan = alignedEnd - alignedStart + 1;
+    if (alignedSpan > MAX_RANGE) {
+        throw new ToolError(
+            `chat_read_range: range expanded to whole user→assistant pairs (${alignedStart}..${alignedEnd}, ${alignedSpan} floors) exceeds max ${MAX_RANGE}.`,
+            'CHAT_RANGE_TOO_LARGE',
+            `Reduce the requested range. The slice is auto-aligned outward to pair boundaries; aim for fewer than ${MAX_RANGE} floors after alignment.`,
+        );
+    }
+    start = alignedStart;
+    end = alignedEnd;
+
+    const cookedByIndex = cookedTextByIndex(context);
+    const out = [];
+    for (let i = start; i <= end; i += 1) {
+        const message = chat[i];
+        out.push({
+            floor: i,
+            role: roleFromMessage(message),
+            content: cookedByIndex.has(i) ? cookedByIndex.get(i) : String(message?.mes ?? ''),
+        });
+    }
+    return out;
+}
+
+/**
+ * Regex search across all chat floors. Emits grep -n style output with a
+ * "floor_{N} [{role}]" prefix on each match line.
+ *
+ * @param {{ pattern: string, flags?: string }} args
+ * @param {object} context — must expose `context.chat`
+ * @returns {Promise<{ok: true, output: string} | {ok: false, error: string}>}
+ */
+export async function execChatSearch(args, context) {
+    const pattern = String(args?.pattern ?? '');
+    if (!pattern) {
+        throw new ToolError(
+            'chat_search: pattern must be non-empty.',
+            'CHAT_PATTERN_EMPTY',
+            'Provide a non-empty regex pattern. To match literal text, escape regex metacharacters.',
+        );
+    }
+    const flags = typeof args?.flags === 'string' && args.flags.length > 0 ? args.flags : 'gm';
+    const chat = Array.isArray(context?.chat) ? context.chat : [];
+    const cookedByIndex = cookedTextByIndex(context);
+
+    function* corpus() {
+        for (let i = 0; i < chat.length; i++) {
+            const msg = chat[i];
+            yield {
+                prefix: `floor_${i} [${roleFromMessage(msg)}]`,
+                content: cookedByIndex.has(i) ? cookedByIndex.get(i) : String(msg?.mes ?? ''),
+            };
+        }
+    }
+
+    return gatherGrepMatches(corpus(), pattern, flags);
+}

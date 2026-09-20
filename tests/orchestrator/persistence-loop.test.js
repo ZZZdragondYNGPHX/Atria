@@ -1,0 +1,291 @@
+/**
+ * V3 loop profile schema + sanitizer tests.
+ *
+ * Covers the new `loop` execution mode added alongside V1 (spec) / V2 (agenda):
+ *
+ *   - default field values (mode / system_prompt / tool flags / max_rounds /
+ *     wall_clock_budget_ms / capsule_inject)
+ *   - max_rounds floored at 1 (no upper bound)
+ *   - wall_clock_budget_ms floored at 10000ms
+ *   - tools.finalize forced to true even if input passes false
+ *   - mode field forced to 'loop' regardless of input
+ *
+ * Sibling sanitizers (sanitizeSpec / sanitizeAgendaWorkingProfile) are
+ * untouched by this layer; this file only exercises sanitizeLoopProfile.
+ */
+
+import { describe, test, expect } from '@jest/globals';
+
+import {
+    ORCH_EXECUTION_MODE_LOOP,
+    sanitizeLoopProfile,
+} from '../../public/scripts/extensions/orchestrator/persistence.js';
+import { DEFAULT_LOOP_SYSTEM_PROMPT } from '../../public/scripts/extensions/orchestrator/loop-default-prompt.js';
+
+describe('ORCH_EXECUTION_MODE_LOOP', () => {
+    test('exposes the loop mode literal', () => {
+        expect(ORCH_EXECUTION_MODE_LOOP).toBe('loop');
+    });
+});
+
+describe('sanitizeLoopProfile defaults', () => {
+    test('returns a fully-populated V3 profile when input is empty', () => {
+        const out = sanitizeLoopProfile({});
+        expect(out.mode).toBe(ORCH_EXECUTION_MODE_LOOP);
+        expect(out.apiPresetName).toBe('');
+        expect(out.promptPresetName).toBe('');
+        // Missing system_prompt falls back to the shipped default prompt so
+        // fresh installs ship with a usable RP director system message.
+        expect(out.system_prompt).toBe(DEFAULT_LOOP_SYSTEM_PROMPT);
+        // Canonical post-migration shape: tools.note.{open, close}. Legacy
+        // tools.note.{add, delete} inputs are remapped to this shape by the
+        // sanitizer; no caller should ever observe the legacy keys.
+        expect(out.tools.note.open).toBe(true);
+        expect(out.tools.note.close).toBe(true);
+        expect(out.tools.chat.read_range).toBe(true);
+        expect(out.tools.chat.search).toBe(true);
+        expect(out.tools.lorebook.search).toBe(true);
+        expect(out.tools.lorebook.get).toBe(true);
+        // memory + search tools live in Layer-2 now; the loop profile
+        // defaults pre-populate tools.custom with each verb's flag so
+        // first-run users get the same enabled set as before.
+        expect(out.tools.memory).toBeUndefined();
+        expect(out.tools.search).toBeUndefined();
+        expect(out.tools.custom.memory_list_candidates).toBe(true);
+        expect(out.tools.custom.memory_edge_summary).toBe(true);
+        expect(out.tools.custom.memory_node_brief).toBe(true);
+        expect(out.tools.custom.memory_expand_seeds).toBe(true);
+        expect(out.tools.custom.memory_keyword_search).toBe(true);
+        expect(out.tools.custom.memory_vector_search).toBe(true);
+        expect(out.tools.custom.memory_find_by_name).toBe(true);
+        expect(out.tools.custom.memory_compaction_candidates).toBe(true);
+        expect(out.tools.custom.memory_node_create).toBe(true);
+        expect(out.tools.custom.memory_node_edit).toBe(true);
+        expect(out.tools.custom.memory_node_delete).toBe(true);
+        expect(out.tools.custom.memory_link_upsert).toBe(true);
+        expect(out.tools.custom.memory_link_delete).toBe(true);
+        expect(out.tools.custom.memory_compact_nodes).toBe(true);
+        expect(out.tools.custom.memory_schema).toBe(true);
+        // search-tools also live in tools.custom.
+        expect(out.tools.custom.search_search).toBe(true);
+        expect(out.tools.custom.search_visit).toBe(true);
+        expect(out.tools.finalize).toBe(true);
+        expect(out.max_rounds).toBe(40);
+        expect(out.wall_clock_budget_ms).toBe(300000);
+        expect(out.capsule_inject).toMatchObject({
+            position: 'atDepth',
+            depth: 0,
+            role: 'system',
+            customInstruction: '',
+        });
+    });
+
+    test('returns the default profile shape when input is null/undefined', () => {
+        const fromNull = sanitizeLoopProfile(null);
+        const fromUndefined = sanitizeLoopProfile(undefined);
+        expect(fromNull.mode).toBe(ORCH_EXECUTION_MODE_LOOP);
+        expect(fromNull.max_rounds).toBe(40);
+        expect(fromUndefined.mode).toBe(ORCH_EXECUTION_MODE_LOOP);
+        expect(fromUndefined.tools.finalize).toBe(true);
+    });
+
+    test('preserves caller-supplied system_prompt / apiPresetName / promptPresetName', () => {
+        const out = sanitizeLoopProfile({
+            mode: 'loop',
+            apiPresetName: 'my-api',
+            promptPresetName: 'my-preset',
+            system_prompt: 'You are a research agent.',
+        });
+        expect(out.apiPresetName).toBe('my-api');
+        expect(out.promptPresetName).toBe('my-preset');
+        expect(out.system_prompt).toBe('You are a research agent.');
+    });
+
+    test('coerces non-string preset names to empty strings', () => {
+        const out = sanitizeLoopProfile({ apiPresetName: 42, promptPresetName: null, system_prompt: undefined });
+        expect(out.apiPresetName).toBe('42');
+        expect(out.promptPresetName).toBe('');
+        // undefined is treated as "missing" → falls back to default prompt
+        // (same path as input `{}` in the previous test). To keep an
+        // explicitly empty string, callers pass `system_prompt: ''`.
+        expect(out.system_prompt).toBe(DEFAULT_LOOP_SYSTEM_PROMPT);
+    });
+
+    test('preserves an explicit empty string system_prompt (deliberate clear)', () => {
+        // Distinguishing missing-field from explicit-empty matters: users
+        // who deleted the textarea should not have the default re-stamped
+        // back on every sanitize roundtrip.
+        const out = sanitizeLoopProfile({ system_prompt: '' });
+        expect(out.system_prompt).toBe('');
+    });
+});
+
+describe('sanitizeLoopProfile mode coercion', () => {
+    test('forces mode to \'loop\' even when input declares a different mode', () => {
+        expect(sanitizeLoopProfile({ mode: 'spec' }).mode).toBe('loop');
+        expect(sanitizeLoopProfile({ mode: 'agenda' }).mode).toBe('loop');
+        expect(sanitizeLoopProfile({ mode: '' }).mode).toBe('loop');
+        expect(sanitizeLoopProfile({ mode: 'whatever' }).mode).toBe('loop');
+    });
+});
+
+describe('sanitizeLoopProfile max_rounds', () => {
+    test('clamps zero / negative input to the floor (1)', () => {
+        expect(sanitizeLoopProfile({ max_rounds: 0 }).max_rounds).toBe(1);
+        expect(sanitizeLoopProfile({ max_rounds: -50 }).max_rounds).toBe(1);
+    });
+
+    test('preserves arbitrarily large positive values (no upper bound)', () => {
+        expect(sanitizeLoopProfile({ max_rounds: 999 }).max_rounds).toBe(999);
+        expect(sanitizeLoopProfile({ max_rounds: 99999 }).max_rounds).toBe(99999);
+    });
+
+    test('passes valid values through unchanged', () => {
+        expect(sanitizeLoopProfile({ max_rounds: 25 }).max_rounds).toBe(25);
+        expect(sanitizeLoopProfile({ max_rounds: 1 }).max_rounds).toBe(1);
+    });
+
+    test('floors fractional values', () => {
+        expect(sanitizeLoopProfile({ max_rounds: 12.9 }).max_rounds).toBe(12);
+    });
+
+    test('falls back to default on non-numeric / NaN input', () => {
+        expect(sanitizeLoopProfile({ max_rounds: 'lots' }).max_rounds).toBe(40);
+        expect(sanitizeLoopProfile({ max_rounds: NaN }).max_rounds).toBe(40);
+        expect(sanitizeLoopProfile({ max_rounds: null }).max_rounds).toBe(40);
+    });
+});
+
+describe('sanitizeLoopProfile wall_clock_budget_ms floor', () => {
+    test('raises sub-floor input up to 10000ms', () => {
+        expect(sanitizeLoopProfile({ wall_clock_budget_ms: 5000 }).wall_clock_budget_ms).toBe(10000);
+        expect(sanitizeLoopProfile({ wall_clock_budget_ms: 0 }).wall_clock_budget_ms).toBe(10000);
+        expect(sanitizeLoopProfile({ wall_clock_budget_ms: -1 }).wall_clock_budget_ms).toBe(10000);
+    });
+
+    test('passes valid values >= 10000 through unchanged', () => {
+        expect(sanitizeLoopProfile({ wall_clock_budget_ms: 10000 }).wall_clock_budget_ms).toBe(10000);
+        expect(sanitizeLoopProfile({ wall_clock_budget_ms: 600000 }).wall_clock_budget_ms).toBe(600000);
+    });
+
+    test('falls back to default (300000) on non-numeric input', () => {
+        expect(sanitizeLoopProfile({ wall_clock_budget_ms: 'fast' }).wall_clock_budget_ms).toBe(300000);
+        expect(sanitizeLoopProfile({ wall_clock_budget_ms: null }).wall_clock_budget_ms).toBe(300000);
+    });
+});
+
+describe('sanitizeLoopProfile tools handling', () => {
+    test('forces tools.finalize: true even if user passes false', () => {
+        const out = sanitizeLoopProfile({ tools: { finalize: false } });
+        expect(out.tools.finalize).toBe(true);
+    });
+
+    test('keeps tools.finalize: true regardless of any other shape', () => {
+        expect(sanitizeLoopProfile({ tools: { finalize: 'no' } }).tools.finalize).toBe(true);
+        expect(sanitizeLoopProfile({ tools: { finalize: 0 } }).tools.finalize).toBe(true);
+        expect(sanitizeLoopProfile({ tools: null }).tools.finalize).toBe(true);
+        expect(sanitizeLoopProfile({}).tools.finalize).toBe(true);
+    });
+
+    test('respects user-disabled flags for non-finalize tools', () => {
+        const out = sanitizeLoopProfile({
+            tools: {
+                note: { open: false, close: false },
+                chat: { read_range: false, search: false },
+                lorebook: { search: false, get: false },
+                memory: {
+                    list_candidates: false, edge_summary: false, node_brief: false,
+                    expand_seeds: false, schema: false,
+                    keyword_search: false, vector_search: false, find_by_name: false,
+                    compaction_candidates: false,
+                    node_create: false, node_edit: false, node_delete: false,
+                    link_upsert: false, link_delete: false, compact_nodes: false,
+                },
+                finalize: false,
+            },
+        });
+        expect(out.tools.note.open).toBe(false);
+        expect(out.tools.note.close).toBe(false);
+        expect(out.tools.chat.read_range).toBe(false);
+        expect(out.tools.chat.search).toBe(false);
+        expect(out.tools.lorebook.search).toBe(false);
+        expect(out.tools.lorebook.get).toBe(false);
+        // memory.* legacy flags translate into custom.memory_<verb>.
+        expect(out.tools.memory).toBeUndefined();
+        expect(out.tools.custom.memory_list_candidates).toBe(false);
+        expect(out.tools.custom.memory_edge_summary).toBe(false);
+        expect(out.tools.custom.memory_node_brief).toBe(false);
+        expect(out.tools.custom.memory_expand_seeds).toBe(false);
+        expect(out.tools.custom.memory_keyword_search).toBe(false);
+        expect(out.tools.custom.memory_vector_search).toBe(false);
+        expect(out.tools.custom.memory_find_by_name).toBe(false);
+        expect(out.tools.custom.memory_compaction_candidates).toBe(false);
+        expect(out.tools.custom.memory_node_create).toBe(false);
+        expect(out.tools.custom.memory_node_edit).toBe(false);
+        expect(out.tools.custom.memory_node_delete).toBe(false);
+        expect(out.tools.custom.memory_link_upsert).toBe(false);
+        expect(out.tools.custom.memory_link_delete).toBe(false);
+        expect(out.tools.custom.memory_compact_nodes).toBe(false);
+        expect(out.tools.custom.memory_schema).toBe(false);
+        // finalize remains forced on
+        expect(out.tools.finalize).toBe(true);
+    });
+
+    test('defaults missing tool flags to true', () => {
+        const out = sanitizeLoopProfile({ tools: { chat: { read_range: false } } });
+        // chat.read_range explicitly disabled, but chat.search defaults to true
+        expect(out.tools.chat.read_range).toBe(false);
+        expect(out.tools.chat.search).toBe(true);
+        // unmentioned namespaces default to all-true
+        expect(out.tools.note.open).toBe(true);
+        expect(out.tools.note.close).toBe(true);
+        expect(out.tools.lorebook.search).toBe(true);
+        expect(out.tools.lorebook.get).toBe(true);
+        // memory lives in tools.custom now; LOOP_PROFILE_DEFAULTS
+        // pre-populates each verb so the first-run enabled set is unchanged.
+        expect(out.tools.custom.memory_list_candidates).toBe(true);
+        expect(out.tools.custom.memory_edge_summary).toBe(true);
+        expect(out.tools.custom.memory_node_brief).toBe(true);
+        expect(out.tools.custom.memory_expand_seeds).toBe(true);
+        expect(out.tools.custom.memory_keyword_search).toBe(true);
+        expect(out.tools.custom.memory_vector_search).toBe(true);
+        expect(out.tools.custom.memory_find_by_name).toBe(true);
+        expect(out.tools.custom.memory_compaction_candidates).toBe(true);
+        expect(out.tools.custom.memory_node_create).toBe(true);
+        expect(out.tools.custom.memory_node_edit).toBe(true);
+        expect(out.tools.custom.memory_node_delete).toBe(true);
+        expect(out.tools.custom.memory_link_upsert).toBe(true);
+        expect(out.tools.custom.memory_link_delete).toBe(true);
+        expect(out.tools.custom.memory_compact_nodes).toBe(true);
+        expect(out.tools.custom.memory_schema).toBe(true);
+        // search-tools also live in tools.custom; LOOP_PROFILE_DEFAULTS
+        // pre-populates both verbs on, neither lives under tools.search.
+        expect(out.tools.search).toBeUndefined();
+        expect(out.tools.custom.search_search).toBe(true);
+        expect(out.tools.custom.search_visit).toBe(true);
+    });
+});
+
+describe('sanitizeLoopProfile capsule_inject', () => {
+    test('merges caller-supplied capsule_inject fields over the defaults', () => {
+        const out = sanitizeLoopProfile({
+            capsule_inject: { depth: 4, role: 'user', customInstruction: 'hi' },
+        });
+        expect(out.capsule_inject).toEqual({
+            position: 'atDepth',
+            depth: 4,
+            role: 'user',
+            customInstruction: 'hi',
+        });
+    });
+
+    test('returns the defaults when capsule_inject is missing', () => {
+        const out = sanitizeLoopProfile({});
+        expect(out.capsule_inject).toEqual({
+            position: 'atDepth',
+            depth: 0,
+            role: 'system',
+            customInstruction: '',
+        });
+    });
+});

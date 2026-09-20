@@ -1,0 +1,8 @@
+{
+    "display_name": "Character Editor Assistant",
+    "loading_order": 112,
+    "js": "index.js",
+    "author": "Luker",
+    "version": "0.1.0",
+    "homePage": "https://github.com/funnycups/Luker"
+}

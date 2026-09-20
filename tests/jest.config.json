@@ -1,0 +1,27 @@
+{
+    "verbose": true,
+    "testTimeout": 15000,
+    "transform": {},
+    "setupFiles": [
+        "./jest.setup.js"
+    ],
+    "testEnvironment": "node",
+    "testMatch": [
+        "**/?(*.)+(test).js"
+    ],
+    "testPathIgnorePatterns": [
+        "/node_modules/",
+        "/skills-ui/playwright/",
+        "/frontend/"
+    ],
+    "moduleNameMapper": {
+        "^(.*/)?public/lib\\.js$": "<rootDir>/util/lib-stub.js",
+        "^\\.{1,2}/lib\\.core\\.bundle\\.js$": "<rootDir>/util/lib-stub.js",
+        "^\\.{1,2}/lib\\.optional\\.bundle\\.js$": "<rootDir>/util/lib-stub.js",
+        "^/script\\.js$": "<rootDir>/../public/script.js",
+        "^/lib\\.js$": "<rootDir>/util/lib-stub.js",
+        "^/scripts/(.*)$": "<rootDir>/../public/scripts/$1",
+        "^(.*/)?dialog-polyfill\\.esm\\.js$": "<rootDir>/util/dialog-polyfill-stub.js"
+    },
+    "workerIdleMemoryLimit": "512MB"
+}

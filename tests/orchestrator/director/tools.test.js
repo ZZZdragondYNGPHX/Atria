@@ -1,0 +1,976 @@
+import { buildPerRunCustomToolRegistry } from '../../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
+
+test.each([false, true])('worker write grant %s never grants finalize or recursive dispatch', async allowed => {
+    const { handle } = setupHandle({ initialText: 'original' });
+    const steps = [{ assistantText: '', toolCalls: [
+        { id: 'w', name: 'write_message', args: { text: 'worker draft' } },
+        { id: 'f', name: 'finalize', args: {} },
+        { id: 'd', name: 'dispatch_inline_subagent', args: { systemPrompt: 'unauthorized' } },
+    ] }, { assistantText: 'done', toolCalls: [] }];
+    const fallback = jest.fn();
+    const dispatcher = createSubagentDispatcher({ subAgents: [{ id: 's', systemPrompt: 's', maxRounds: 2 }],
+        handle, tools: { message: { write_message: allowed } }, executeLoopTool: fallback,
+        generateTask: async () => steps.shift(), abortSignal: new AbortController().signal });
+    const id = await dispatcher.dispatch({ subagentId: 's', task: 'inspect' });
+    expect((await dispatcher.awaitAll([id]))[0].outputText).toBe('done');
+    expect(handle.getText()).toBe(allowed ? 'originalworker draft' : 'original');
+    expect(handle.isSettled()).toBe(false);
+    expect(fallback).not.toHaveBeenCalled();
+    const snapshot = JSON.parse(JSON.stringify(dispatcher.snapshot()));
+    const restored = createSubagentDispatcher({ subAgents: [], generateTask: () => { throw new Error('must not replay'); } });
+    await restored.restore(snapshot, []);
+    expect((await restored.awaitAll([id]))[0].outputText).toBe('done');
+});
+import { describe, expect, test, jest } from '@jest/globals';
+import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
+import {
+    buildMainAgentToolSchemas,
+    buildSubAgentToolSchemas,
+    executeWriteMessageTool,
+    executeApplyPatchesTool,
+    executeFinalizeTool,
+    executeGetDraftTool,
+    createSubagentDispatcher,
+} from '../../../public/scripts/extensions/orchestrator/director-tools.js';
+
+function setupHandle({ initialText = '', generationType = 'normal' } = {}) {
+    const chat = [{ mes: initialText, extra: { reasoning: '' }, is_user: false }];
+    void (jest.fn(async () => {}));
+    const handle = createMessageEditorHandle({ generationType, originalText: initialText, flushIntervalMs: 0 });
+    handle.setOnUpdate((text, reasoning) => {
+        chat[0].mes = text;
+        chat[0].extra.reasoning = reasoning;
+    });
+    return { chat, handle };
+}
+
+describe('tool schemas', () => {
+    test('main-agent set includes collaboration + message-production + loop tools (with message flags on)', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [{ id: 'critic', description: 'crit' }],
+            tools: {
+                chat: { read_range: true, search: true },
+                lorebook: { search: false, get: false },
+                memory: { search: false, list_recent: false, get: false },
+                note: { add: false, delete: false },
+                search: { search: false, visit: false },
+                message: { write_message: true, apply_message_patches: true },
+                finalize: false,
+            },
+        });
+        const names = schemas.map(s => s.function.name).sort();
+        expect(names).toContain('dispatch_subagent');
+        expect(names).toContain('await_subagents');
+        expect(names).toContain('cancel_subagent');
+        expect(names).toContain('write_message');
+        expect(names).toContain('apply_message_patches');
+        expect(names).toContain('get_draft');
+        expect(names).toContain('finalize');
+        // chat tools enabled, others disabled
+        expect(names.some(n => n.startsWith('chat_'))).toBe(true);
+        expect(names.some(n => n.startsWith('lorebook_'))).toBe(false);
+    });
+
+    test('sub-agent set includes get_draft + loop tools, excludes collaboration / finalize / message-editing tools by default', () => {
+        const schemas = buildSubAgentToolSchemas({
+            tools: {
+                chat: { read_range: true, search: true },
+                lorebook: { search: false, get: false },
+                memory: { search: false, list_recent: false, get: false },
+                note: { add: false, delete: false },
+                search: { search: false, visit: false },
+                finalize: false,
+            },
+        });
+        const names = schemas.map(s => s.function.name);
+        // Excluded unconditionally: dispatch / await / cancel / finalize
+        expect(names).not.toContain('dispatch_subagent');
+        expect(names).not.toContain('await_subagents');
+        expect(names).not.toContain('cancel_subagent');
+        expect(names).not.toContain('finalize');
+        // Excluded by default (opt-in via tools.message.<verb>)
+        expect(names).not.toContain('write_message');
+        expect(names).not.toContain('apply_message_patches');
+        // Included: get_draft (always) + enabled loop tools
+        expect(names).toContain('get_draft');
+        expect(names.some(n => n.startsWith('chat_'))).toBe(true);
+    });
+
+    test('main agent without configured sub-agents still gets inline-dispatch + await/cancel + message-production (message flags on)', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [],
+            tools: { message: { write_message: true, apply_message_patches: true } },
+        });
+        const names = schemas.map(s => s.function.name);
+        // dispatch_subagent (by id) only when there ARE configured sub-agents.
+        expect(names).not.toContain('dispatch_subagent');
+        // dispatch_inline_subagent, await_subagents, cancel_subagent are always
+        // available — they work with any handle regardless of how it was
+        // dispatched, so withholding them when no sub-agents are configured
+        // would leave the main agent unable to use the inline path at all.
+        expect(names).toContain('dispatch_inline_subagent');
+        expect(names).toContain('await_subagents');
+        expect(names).toContain('cancel_subagent');
+        expect(names).toContain('get_draft');
+        expect(names).toContain('write_message');
+        expect(names).toContain('finalize');
+    });
+
+    test('dispatch_subagent appears only when subAgents.length > 0; dispatch_inline_subagent always appears', () => {
+        const withSubs = buildMainAgentToolSchemas({ subAgents: [{ id: 'c', description: 'crit' }], tools: {} });
+        const namesWith = withSubs.map(s => s.function.name);
+        expect(namesWith).toContain('dispatch_subagent');
+        expect(namesWith).toContain('dispatch_inline_subagent');
+
+        const withoutSubs = buildMainAgentToolSchemas({ subAgents: [], tools: {} });
+        const namesWithout = withoutSubs.map(s => s.function.name);
+        expect(namesWithout).not.toContain('dispatch_subagent');
+        expect(namesWithout).toContain('dispatch_inline_subagent');
+    });
+
+    test('sub-agent schema set does NOT include dispatch_inline_subagent (sub-agents cannot recurse)', () => {
+        const subSchemas = buildSubAgentToolSchemas({ tools: { chat: { read_range: true } } });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).not.toContain('dispatch_subagent');
+        expect(subNames).not.toContain('dispatch_inline_subagent');
+        expect(subNames).not.toContain('await_subagents');
+        expect(subNames).not.toContain('cancel_subagent');
+    });
+
+    test('apply_message_patches schema has no occurrence field', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [],
+            tools: { message: { write_message: true, apply_message_patches: true } },
+        });
+        const apply = schemas.find(s => s.function.name === 'apply_message_patches');
+        expect(apply).toBeDefined();
+        const itemProps = apply.function.parameters.properties.patches.items.properties;
+        expect(itemProps).toHaveProperty('kind');
+        expect(itemProps).toHaveProperty('oldString');
+        expect(itemProps).toHaveProperty('newString');
+        expect(itemProps).not.toHaveProperty('occurrence');
+        // Description should instruct the model on context-uniqueness.
+        expect(apply.function.description).toMatch(/(unique|surrounding context)/i);
+    });
+
+    // ── collab.* gating (main-agent sub-agent dispatchers) ──
+    //
+    // The two dispatcher tools (`dispatch_subagent` by id and
+    // `dispatch_inline_subagent`) are user-toggleable from the main-agent
+    // tool grid via `tools.collab.<verb>`. `await_subagents` /
+    // `cancel_subagent` are companion tools — they only make sense when at
+    // least one dispatcher is enabled (without either, there are no
+    // handles to wait for or cancel). They auto-hide when both
+    // dispatchers are off, auto-show when at least one is on.
+    //
+    // Default (missing collab namespace) preserves legacy behavior:
+    // both dispatchers enabled. Only an explicit `false` disables.
+
+    test('collab.dispatch_subagent: false hides dispatch_subagent even when subAgents are configured', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [{ id: 'critic', description: 'crit' }],
+            tools: { collab: { dispatch_subagent: false } },
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).not.toContain('dispatch_subagent');
+        // inline + companions still present (inline not disabled)
+        expect(names).toContain('dispatch_inline_subagent');
+        expect(names).toContain('await_subagents');
+        expect(names).toContain('cancel_subagent');
+    });
+
+    test('collab.dispatch_inline_subagent: false hides dispatch_inline_subagent', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [{ id: 'critic', description: 'crit' }],
+            tools: { collab: { dispatch_inline_subagent: false } },
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).not.toContain('dispatch_inline_subagent');
+        // by-id dispatch + companions still present
+        expect(names).toContain('dispatch_subagent');
+        expect(names).toContain('await_subagents');
+        expect(names).toContain('cancel_subagent');
+    });
+
+    test('both dispatchers disabled hides await_subagents and cancel_subagent (no live handles to act on)', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [{ id: 'critic', description: 'crit' }],
+            tools: {
+                collab: { dispatch_subagent: false, dispatch_inline_subagent: false },
+                message: { write_message: true, apply_message_patches: true },
+            },
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).not.toContain('dispatch_subagent');
+        expect(names).not.toContain('dispatch_inline_subagent');
+        expect(names).not.toContain('await_subagents');
+        expect(names).not.toContain('cancel_subagent');
+        // Message-production tools unaffected (message flags on here).
+        expect(names).toContain('write_message');
+        expect(names).toContain('finalize');
+    });
+
+    test('only inline disabled: by-id dispatch + await + cancel still present', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [{ id: 'critic', description: 'crit' }],
+            tools: { collab: { dispatch_inline_subagent: false, dispatch_subagent: true } },
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).toContain('dispatch_subagent');
+        expect(names).not.toContain('dispatch_inline_subagent');
+        expect(names).toContain('await_subagents');
+        expect(names).toContain('cancel_subagent');
+    });
+
+    test('missing collab namespace preserves legacy default (both dispatchers + companions enabled)', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [{ id: 'critic', description: 'crit' }],
+            tools: {},
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).toContain('dispatch_subagent');
+        expect(names).toContain('dispatch_inline_subagent');
+        expect(names).toContain('await_subagents');
+        expect(names).toContain('cancel_subagent');
+    });
+
+    test('sub-agent schemas never include collab tools, regardless of flag values', () => {
+        const subSchemas = buildSubAgentToolSchemas({
+            tools: { collab: { dispatch_subagent: true, dispatch_inline_subagent: true } },
+        });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).not.toContain('dispatch_subagent');
+        expect(subNames).not.toContain('dispatch_inline_subagent');
+        expect(subNames).not.toContain('await_subagents');
+        expect(subNames).not.toContain('cancel_subagent');
+    });
+
+    // ── message.* opt-in (sub-agent draft-editing tools) ──
+    //
+    // write_message / apply_message_patches are OFF by default for
+    // sub-agents; users opt a specific sub-agent (or the profile default)
+    // in through the message-* toggles. finalize stays main-agent-only
+    // regardless of any flag — sub-agents cannot commit / end the turn.
+
+    test('sub-agent schemas include write_message when tools.message.write_message is true', () => {
+        const subSchemas = buildSubAgentToolSchemas({
+            tools: { message: { write_message: true } },
+        });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).toContain('write_message');
+        expect(subNames).not.toContain('apply_message_patches');
+        expect(subNames).not.toContain('finalize');
+    });
+
+    test('sub-agent schemas include apply_message_patches when tools.message.apply_message_patches is true', () => {
+        const subSchemas = buildSubAgentToolSchemas({
+            tools: { message: { apply_message_patches: true } },
+        });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).toContain('apply_message_patches');
+        expect(subNames).not.toContain('write_message');
+        expect(subNames).not.toContain('finalize');
+    });
+
+    test('sub-agent schemas include both message tools when both flags are true', () => {
+        const subSchemas = buildSubAgentToolSchemas({
+            tools: { message: { write_message: true, apply_message_patches: true } },
+        });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).toContain('write_message');
+        expect(subNames).toContain('apply_message_patches');
+        // Finalize stays main-only regardless of message.* flags.
+        expect(subNames).not.toContain('finalize');
+    });
+
+    test('sub-agent schemas never include finalize, even when caller wedges it in tools.message', () => {
+        // Defensive: message namespace only exposes write_message and
+        // apply_message_patches. A malformed profile that adds
+        // `message.finalize` (not a real slot) must NOT sneak finalize
+        // into the sub-agent schema — finalize is committed via a
+        // dedicated tool that ends the whole director turn.
+        const subSchemas = buildSubAgentToolSchemas({
+            tools: { message: { write_message: true, apply_message_patches: true, finalize: true } },
+        });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).not.toContain('finalize');
+    });
+
+    test('sub-agent schemas exclude both message tools when flags are explicitly false', () => {
+        const subSchemas = buildSubAgentToolSchemas({
+            tools: { message: { write_message: false, apply_message_patches: false } },
+        });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).not.toContain('write_message');
+        expect(subNames).not.toContain('apply_message_patches');
+    });
+
+    test('sub-agent schemas exclude message tools when tools.message namespace is absent', () => {
+        // Sanitizer will typically fill in the namespace, but a raw
+        // handwritten tools object without `message` must still result
+        // in default-off draft editing.
+        const subSchemas = buildSubAgentToolSchemas({
+            tools: { chat: { read_range: true } },
+        });
+        const subNames = subSchemas.map(s => s.function.name);
+        expect(subNames).not.toContain('write_message');
+        expect(subNames).not.toContain('apply_message_patches');
+    });
+
+    // ── Symmetric message.* gating for the MAIN agent ──
+    //
+    // Main-agent write_message / apply_message_patches used to be
+    // hardcoded on. They now go through the same tools.message.<verb>
+    // flags sub-agents use, no role-based special-casing. The shipping
+    // default profile compensates by giving the main agent an explicit
+    // tools override with message.<verb> on (see
+    // `buildDefaultMainAgentToolsOverride` in director-defaults.js), so
+    // out-of-the-box behavior is unchanged. Users who want a pure-
+    // orchestrator main agent (sub-agents produce the message body) can
+    // uncheck these toggles in the main-agent Tools override panel.
+    //
+    // finalize / get_draft / draft_search stay unconditional on the
+    // main agent (finalize is the turn-terminator, draft reads are
+    // read-only), so those must appear regardless of message flags.
+
+    test('main-agent schemas exclude write_message when tools.message.write_message is false', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [],
+            tools: { message: { write_message: false, apply_message_patches: true } },
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).not.toContain('write_message');
+        expect(names).toContain('apply_message_patches');
+        // Read + terminator stay on regardless.
+        expect(names).toContain('get_draft');
+        expect(names).toContain('draft_search');
+        expect(names).toContain('finalize');
+    });
+
+    test('main-agent schemas exclude apply_message_patches when tools.message.apply_message_patches is false', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [],
+            tools: { message: { write_message: true, apply_message_patches: false } },
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).toContain('write_message');
+        expect(names).not.toContain('apply_message_patches');
+        expect(names).toContain('finalize');
+    });
+
+    test('main-agent becomes a pure orchestrator when both message flags are off (no write/patch, but still dispatches / finalizes)', () => {
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [{ id: 'writer', description: 'writes the draft' }],
+            tools: { message: { write_message: false, apply_message_patches: false } },
+        });
+        const names = schemas.map(s => s.function.name);
+        // Message editing stripped.
+        expect(names).not.toContain('write_message');
+        expect(names).not.toContain('apply_message_patches');
+        // Dispatch / await / cancel / finalize / get_draft / draft_search all present —
+        // main agent can still orchestrate and end the turn, just cannot write.
+        expect(names).toContain('dispatch_subagent');
+        expect(names).toContain('await_subagents');
+        expect(names).toContain('cancel_subagent');
+        expect(names).toContain('finalize');
+        expect(names).toContain('get_draft');
+        expect(names).toContain('draft_search');
+    });
+
+    test('main-agent schemas exclude message tools when tools.message namespace is absent (no hardcoded fallback)', () => {
+        // Guards against a regression that would silently re-enable the
+        // pre-flag hardcoded behavior for the main agent. If message ns
+        // is missing (raw handwritten profile), main agent gets neither
+        // tool — matching sub-agent gating exactly.
+        const schemas = buildMainAgentToolSchemas({
+            subAgents: [],
+            tools: { chat: { read_range: true } },
+        });
+        const names = schemas.map(s => s.function.name);
+        expect(names).not.toContain('write_message');
+        expect(names).not.toContain('apply_message_patches');
+        // Unconditional tools still present.
+        expect(names).toContain('get_draft');
+        expect(names).toContain('draft_search');
+        expect(names).toContain('finalize');
+    });
+});
+
+describe('get_draft executor', () => {
+    test('returns current handle text', async () => {
+        const { handle } = setupHandle({ initialText: 'hello world' });
+        const result = await executeGetDraftTool(handle);
+        expect(result.ok).toBe(true);
+        expect(result.text).toBe('hello world');
+    });
+
+    test('returns empty string when handle has no text yet', async () => {
+        const { handle } = setupHandle({ initialText: '' });
+        const result = await executeGetDraftTool(handle);
+        expect(result.ok).toBe(true);
+        expect(result.text).toBe('');
+    });
+
+    test('reflects later mutations (live snapshot, not cached)', async () => {
+        const { handle } = setupHandle({ initialText: 'a' });
+        const r1 = await executeGetDraftTool(handle);
+        await executeWriteMessageTool(handle, { text: 'b', mode: 'append' });
+        const r2 = await executeGetDraftTool(handle);
+        expect(r1.text).toBe('a');
+        expect(r2.text).toBe('ab');
+    });
+
+    test('returns error if handle missing', async () => {
+        const result = await executeGetDraftTool(null);
+        expect(result.ok).toBe(false);
+        expect(result.error).toMatch(/no handle/i);
+    });
+});
+
+describe('write_message executor', () => {
+    test('append mode concatenates', async () => {
+        const { chat, handle } = setupHandle({ initialText: 'pre: ' });
+        const result = await executeWriteMessageTool(handle, { text: 'after', mode: 'append' });
+        expect(result.ok).toBe(true);
+        expect(chat[0].mes).toBe('pre: after');
+    });
+
+    test('replace mode overwrites', async () => {
+        const { chat, handle } = setupHandle({ initialText: 'pre' });
+        await executeWriteMessageTool(handle, { text: 'new', mode: 'replace' });
+        expect(chat[0].mes).toBe('new');
+    });
+
+    test('replace during continue surfaces error in tool result', async () => {
+        const { handle } = setupHandle({ initialText: 'prefix', generationType: 'continue' });
+        const result = await executeWriteMessageTool(handle, { text: '', mode: 'replace' });
+        expect(result.ok).toBe(false);
+        expect(result.error).toMatch(/continue/);
+    });
+});
+
+describe('apply_message_patches executor', () => {
+    test('valid context_replace patches succeed', async () => {
+        const { chat, handle } = setupHandle({ initialText: 'The cat sat.' });
+        const result = await executeApplyPatchesTool(handle, {
+            patches: [{ kind: 'context_replace', oldString: 'cat', newString: 'dog' }],
+        });
+        expect(result.ok).toBe(true);
+        expect(chat[0].mes).toBe('The dog sat.');
+    });
+
+    test('ambiguous patch returns error in tool result (no throw)', async () => {
+        const { chat, handle } = setupHandle({ initialText: 'cat cat cat' });
+        const result = await executeApplyPatchesTool(handle, {
+            patches: [{ kind: 'context_replace', oldString: 'cat', newString: 'dog' }],
+        });
+        expect(result.ok).toBe(false);
+        // Strict structured-failure assertion: rely on the code field, not
+        // on prose wording. The error string also carries a `[code]` prefix
+        // for agents that only read `result.error`, but the source of truth
+        // is the code.
+        expect(result.code).toBe('patch_ambiguous');
+        expect(result.error).toMatch(/^\[patch_ambiguous\]/);
+        // message must not be partially mutated
+        expect(chat[0].mes).toBe('cat cat cat');
+    });
+});
+
+describe('finalize executor', () => {
+    test('calls handle.commit and returns ok', async () => {
+        const { chat, handle } = setupHandle({ initialText: 'final.' });
+        const result = await executeFinalizeTool(handle);
+        expect(result.ok).toBe(true);
+        const completionResult = await handle.complete;
+        expect(completionResult.status).toBe('committed');
+        expect(chat[0].mes).toBe('final.');
+    });
+});
+
+describe('subagent dispatcher', () => {
+    test('dispatch returns a handle id, await resolves to fake output', async () => {
+        // Inject a fake generateTaskStream so tests do not need real LLM.
+        const fakeGenerate = jest.fn(async () => {
+            return { assistantText: 'sub-agent output', toolCalls: [], reasoning: null, finishReason: 'stop', usage: null, raw: null };
+        });
+
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 'critic', description: 'crit', systemPrompt: 'be a critic' }],
+            limits: { maxConcurrentSubagents: 2, maxTotalSubagentRuns: 10 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+
+        const handleA = await dispatcher.dispatch({ subagentId: 'critic', task: 'review this' });
+        expect(typeof handleA).toBe('string');
+
+        const awaited = await dispatcher.awaitAll([handleA]);
+        expect(awaited).toHaveLength(1);
+        expect(awaited[0]).toEqual(expect.objectContaining({
+            handleId: handleA,
+            subagentId: 'critic',
+            outputText: 'sub-agent output',
+        }));
+        expect(fakeGenerate).toHaveBeenCalledTimes(1);
+    });
+
+    test('dispatch with unknown subagentId returns synthetic-error result via await', async () => {
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [],
+            limits: { maxConcurrentSubagents: 1, maxTotalSubagentRuns: 5 },
+            generateTask: jest.fn(),
+            abortSignal: new AbortController().signal,
+        });
+        const handleId = await dispatcher.dispatch({ subagentId: 'nope', task: 't' });
+        const awaited = await dispatcher.awaitAll([handleId]);
+        expect(awaited[0].error).toMatch(/unknown.*sub-?agent|nope/i);
+    });
+
+    test('budget exhaustion: dispatch returns budget-exhausted result on Nth + 1 call', async () => {
+        const fakeGenerate = jest.fn(async () => ({ assistantText: 'x', toolCalls: [], reasoning: null, finishReason: 'stop', usage: null, raw: null }));
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxConcurrentSubagents: 1, maxTotalSubagentRuns: 2 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+        const h1 = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        const h2 = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        const h3 = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+
+        const awaited = await dispatcher.awaitAll([h1, h2, h3]);
+        const errors = awaited.filter(r => r.error && /budget/i.test(r.error));
+        expect(errors).toHaveLength(1);
+    });
+
+    test('completion notifications: each successful sub-agent pushes one entry, drained after read', async () => {
+        const fakeGenerate = jest.fn(async () => ({ assistantText: 'done', toolCalls: [], reasoning: null, finishReason: 'stop', usage: null, raw: null }));
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+        const h1 = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        const h2 = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        // Let promises resolve.
+        await dispatcher.awaitAll([h1, h2]);
+
+        const notifs = dispatcher.drainCompletionNotifications();
+        expect(notifs).toHaveLength(2);
+        expect(notifs.every(n => n.status === 'completed')).toBe(true);
+        expect(notifs.map(n => n.handleId).sort()).toEqual([h1, h2].sort());
+
+        // Drained set is empty next call.
+        const second = dispatcher.drainCompletionNotifications();
+        expect(second).toEqual([]);
+    });
+
+    test('completion notifications: failed / unknown / budget-exhausted also push entries', async () => {
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 1 },
+            generateTask: jest.fn(async () => ({ assistantText: 'x', toolCalls: [], reasoning: null, finishReason: 'stop' })),
+            abortSignal: new AbortController().signal,
+        });
+        const h1 = await dispatcher.dispatch({ subagentId: 's', task: 't' });           // succeeds
+        const h2 = await dispatcher.dispatch({ subagentId: 'nope', task: 't' });        // unknown
+        const h3 = await dispatcher.dispatch({ subagentId: 's', task: 't' });           // budget exhausted
+        await dispatcher.awaitAll([h1, h2, h3]);
+
+        const notifs = dispatcher.drainCompletionNotifications();
+        expect(notifs).toHaveLength(3);
+        const statusByHandle = Object.fromEntries(notifs.map(n => [n.handleId, n.status]));
+        expect(statusByHandle[h1]).toBe('completed');
+        expect(statusByHandle[h2]).toBe('failed');
+        expect(statusByHandle[h3]).toBe('failed');
+    });
+
+    test('cancel: aborts an in-flight sub-agent and pushes a cancelled notification', async () => {
+        // Sub-agent that waits long enough to give us a chance to cancel.
+        // We yield to the microtask queue and check the signal each round.
+        let _rounds = 0;
+        const fakeGenerate = jest.fn(async (opts) => {
+            _rounds++;
+            // Honour the abort signal — simulate a generation that
+            // notices abort mid-flight.
+            await new Promise((resolve, reject) => {
+                if (opts.abortSignal?.aborted) {
+                    reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+                    return;
+                }
+                const onAbort = () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+                opts.abortSignal?.addEventListener('abort', onAbort, { once: true });
+                setTimeout(() => {
+                    opts.abortSignal?.removeEventListener('abort', onAbort);
+                    resolve();
+                }, 50);
+            });
+            return { assistantText: 'partial', toolCalls: [], reasoning: null, finishReason: 'stop' };
+        });
+
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+        const h = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        // Cancel before the timer fires.
+        const cancelResult = dispatcher.cancel(h);
+        expect(cancelResult.ok).toBe(true);
+
+        const [awaited] = await dispatcher.awaitAll([h]);
+        expect(awaited.error).toMatch(/cancel|abort/i);
+
+        const notifs = dispatcher.drainCompletionNotifications();
+        const mine = notifs.find(n => n.handleId === h);
+        expect(mine).toBeDefined();
+        expect(mine.status).toBe('cancelled');
+    });
+
+    test('cancel: no-op when handle already completed or unknown', async () => {
+        const fakeGenerate = jest.fn(async () => ({ assistantText: 'done', toolCalls: [], reasoning: null, finishReason: 'stop' }));
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+        const h = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        await dispatcher.awaitAll([h]);
+        // Now cancel — should not throw, should report alreadyDone.
+        const result = dispatcher.cancel(h);
+        expect(result).toEqual({ ok: true, alreadyDone: true });
+        // Unknown handle also no-ops cleanly.
+        const result2 = dispatcher.cancel('no-such-handle');
+        expect(result2).toEqual({ ok: true, alreadyDone: true });
+    });
+
+    test('sub-agent can call get_draft and see the current draft', async () => {
+        const { chat, handle } = setupHandle({ initialText: 'pre-draft body' });
+        const calls = [
+            // Round 0: call get_draft
+            { assistantText: '', toolCalls: [{ id: 't1', name: 'get_draft', args: {} }], reasoning: null, finishReason: 'tool_calls' },
+            // Round 1: terminate with output that references the draft length
+            { assistantText: 'I saw the draft (14 chars).', toolCalls: [], reasoning: null, finishReason: 'stop' },
+        ];
+        let i = 0;
+        const fakeGenerate = jest.fn(async () => calls[i++] || { assistantText: '', toolCalls: [], reasoning: null, finishReason: 'stop' });
+
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            handle,
+            abortSignal: new AbortController().signal,
+            // No loop tools enabled — get_draft is wired by the dispatcher itself.
+            tools: {},
+        });
+        const h = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        const [awaited] = await dispatcher.awaitAll([h]);
+        expect(awaited.outputText).toBe('I saw the draft (14 chars).');
+        // Two rounds: one tool-using, one terminating.
+        expect(fakeGenerate).toHaveBeenCalledTimes(2);
+        // The tool-result chunk for get_draft should have been pushed
+        // into the messages — easiest way to verify is that the second
+        // round's call opts has the prior round's tool message.
+        const secondCallOpts = fakeGenerate.mock.calls[1][0];
+        const toolMsg = secondCallOpts.taskMessages.find(m => m.role === 'tool' && m.tool_call_id === 't1');
+        expect(toolMsg).toBeDefined();
+        const parsed = JSON.parse(toolMsg.content);
+        expect(parsed.ok).toBe(true);
+        expect(parsed.text).toBe(chat[0].mes);
+    });
+
+    // Runtime compiles an isolated request: later trace appends must not mutate
+    // the messages already observed by the transport.
+    test('dispatchInline: runs with caller-provided system prompt + works with empty subAgents list', async () => {
+        // Capture the system message the sub-agent actually receives so
+        // we can assert it is the INLINE systemPrompt (not silently
+        // overridden by a missing profile spec).
+        const seenCallOpts = [];
+        const fakeGenerate = jest.fn(async (opts) => {
+            seenCallOpts.push(opts);
+            return { assistantText: 'inline output', toolCalls: [], reasoning: null, finishReason: 'stop' };
+        });
+        const dispatcher = createSubagentDispatcher({
+            // Crucially: NO sub-agents configured. Inline path must still work.
+            subAgents: [],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+        const h = await dispatcher.dispatchInline({
+            systemPrompt: 'You are an ad-hoc auditor. Find any continuity errors.',
+            task: 'go',
+        });
+        const [awaited] = await dispatcher.awaitAll([h]);
+        expect(awaited).toEqual(expect.objectContaining({
+            handleId: h,
+            subagentId: '(inline)',
+            outputText: 'inline output',
+        }));
+        // System prompt was the inline one (not whatever a missing spec
+        // would have produced — which would have been empty). The
+        // dispatcher now wraps the caller-provided systemPrompt in a
+        // dedicated <orchestration_role> system message AFTER
+        // </story_context> + META_REMINDER (identity-last: recency bias
+        // keeps the role fresh right before <task>; the meta-frame at
+        // index 0 tells the model where to look; the reminder bridges
+        // story_context and role so a long payload can't push the
+        // anti-RP framing out of recency). The story_context open +
+        // close are clean boundary tags.
+        const firstCall = seenCallOpts[0];
+        const metaFrame = firstCall.taskMessages[0];
+        expect(metaFrame.role).toBe('system');
+        expect(metaFrame.content).toMatch(/orchestration agent/i);
+        expect(metaFrame.content).toMatch(/READ-ONLY/);
+        const systemOpen = firstCall.taskMessages[1];
+        expect(systemOpen).toEqual({ role: 'system', content: '<story_context>' });
+        // Trailing slots, counting back from </task> at -1:
+        //   -1 <task> ; -2 <orchestration_role> ; -3 META_REMINDER ; -4 </story_context>
+        const taskMsg = firstCall.taskMessages[firstCall.taskMessages.length - 1];
+        expect(taskMsg).toEqual({ role: 'system', content: '<task>\ngo\n</task>' });
+        const roleMsg = firstCall.taskMessages[firstCall.taskMessages.length - 2];
+        expect(roleMsg.role).toBe('system');
+        expect(roleMsg.content.startsWith('<orchestration_role>')).toBe(true);
+        expect(roleMsg.content.endsWith('</orchestration_role>')).toBe(true);
+        expect(roleMsg.content).toContain('You are an ad-hoc auditor. Find any continuity errors.');
+        const reminderMsg = firstCall.taskMessages[firstCall.taskMessages.length - 3];
+        expect(reminderMsg.role).toBe('system');
+        expect(reminderMsg.content).toMatch(/^Reminder:/);
+        expect(reminderMsg.content).toMatch(/operating ON the story/);
+        const closeMsg = firstCall.taskMessages[firstCall.taskMessages.length - 4];
+        expect(closeMsg).toEqual({ role: 'system', content: '</story_context>' });
+    });
+
+    test('dispatchInline: empty systemPrompt is rejected with error result', async () => {
+        const fakeGenerate = jest.fn();
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+        const h = await dispatcher.dispatchInline({ systemPrompt: '   ', task: 'x' });
+        const [awaited] = await dispatcher.awaitAll([h]);
+        expect(awaited.error).toMatch(/non-empty systemPrompt/i);
+        // LLM never invoked.
+        expect(fakeGenerate).not.toHaveBeenCalled();
+    });
+
+    test('dispatchInline: shares the totalSubagentRuns budget with dispatch by id', async () => {
+        const fakeGenerate = jest.fn(async () => ({ assistantText: 'ok', toolCalls: [], reasoning: null, finishReason: 'stop' }));
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 2 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+        });
+        const h1 = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        const h2 = await dispatcher.dispatchInline({ systemPrompt: 'role', task: 't' });
+        const h3 = await dispatcher.dispatchInline({ systemPrompt: 'role', task: 't' });  // budget should be hit
+        const awaited = await dispatcher.awaitAll([h1, h2, h3]);
+        const budgetErrors = awaited.filter(r => r.error && /budget/i.test(r.error));
+        expect(budgetErrors).toHaveLength(1);
+    });
+
+    test('contextForNotes overlay reaches executeLoopTool so note_* tools find the floor-state adapter', async () => {
+        // The dispatcher owns contextForNotes for system-prompt
+        // "## Open Notes" rendering and must also spread it into the
+        // per-tool-call ctx so note_open / note_close can reach
+        // `__floorStateForNotes`. Without the spread, sub-agents lose
+        // write access to notes even when the adapter is wired by main.js.
+        const calls = [
+            { assistantText: '', toolCalls: [{ id: 't1', name: 'note_open', args: { text: 'pending' } }], reasoning: null, finishReason: 'tool_calls' },
+            { assistantText: 'done', toolCalls: [], reasoning: null, finishReason: 'stop' },
+        ];
+        let i = 0;
+        const fakeGenerate = jest.fn(async () => calls[i++] || { assistantText: '', toolCalls: [], reasoning: null, finishReason: 'stop' });
+
+        const seenToolCtx = [];
+        const executeLoopTool = jest.fn(async (_name, _args, ctx) => {
+            seenToolCtx.push(ctx);
+            return { id: 'n1' };
+        });
+
+        const notesCtx = {
+            __floorStateForNotes: {
+                appendForFloor: async () => 'n1',
+                listAcrossFloors: async () => [],
+                updateStatusById: async () => ({ ok: true }),
+            },
+        };
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+            tools: { note: { open: true } },
+            executeLoopTool,
+            chat: [],
+            contextForNotes: notesCtx,
+        });
+        const h = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        await dispatcher.awaitAll([h]);
+
+        expect(executeLoopTool).toHaveBeenCalledTimes(1);
+        expect(executeLoopTool.mock.calls[0][0]).toBe('note_open');
+        expect(seenToolCtx[0].__floorStateForNotes).toBe(notesCtx.__floorStateForNotes);
+        expect(seenToolCtx[0].chat).toBeDefined();
+    });
+
+    test('sub-agent executeLoopTool ctx inherits updateChatState from contextForNotes prototype', async () => {
+        const calls = [
+            { assistantText: '', toolCalls: [{ id: 't1', name: 'memory_keyword_search', args: { query: 'x' } }], reasoning: null, finishReason: 'tool_calls' },
+            { assistantText: 'done', toolCalls: [], reasoning: null, finishReason: 'stop' },
+        ];
+        let i = 0;
+        const fakeGenerate = jest.fn(async () => calls[i++] || { assistantText: '', toolCalls: [], reasoning: null, finishReason: 'stop' });
+
+        const seenToolCtx = [];
+        const executeLoopTool = jest.fn(async (_name, _args, ctx) => {
+            seenToolCtx.push(ctx);
+            return { ok: true };
+        });
+
+        const updateChatState = jest.fn(async () => ({ ok: true }));
+        const stContext = { updateChatState };
+        const notesCtx = Object.create(stContext);
+        notesCtx.__floorStateForNotes = {
+            appendForFloor: async () => 'n1',
+            listAcrossFloors: async () => [],
+            updateStatusById: async () => ({ ok: true }),
+        };
+
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [{ id: 's', description: '', systemPrompt: 's' }],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+            tools: { custom: { memory_keyword_search: true } },
+            customToolRegistry: buildPerRunCustomToolRegistry({ customTools: [{ name: 'memory_keyword_search', description: 'test', parameters: {}, mode: 'read', body: 'return {};', simulateBody: '' }] }, null),
+            executeLoopTool,
+            chat: [],
+            contextForNotes: notesCtx,
+        });
+        const h = await dispatcher.dispatch({ subagentId: 's', task: 't' });
+        await dispatcher.awaitAll([h]);
+
+        expect(seenToolCtx[0].updateChatState).toBe(updateChatState);
+    });
+
+    test('sub-agent with tools override gets its own schemas; sub-agent without override inherits profile defaults', async () => {
+        // Capture the `tools` schema array passed to generateTask so we can
+        // assert what each sub-agent dispatch actually saw.
+        const seenSchemas = [];
+        const fakeGenerate = jest.fn(async (opts) => {
+            const names = (opts.tools || []).map(s => s?.function?.name).filter(Boolean).sort();
+            seenSchemas.push(names);
+            return { assistantText: 'ok', toolCalls: [], reasoning: null, finishReason: 'stop' };
+        });
+
+        const profileTools = {
+            chat: { read_range: true, search: true },
+            lorebook: { search: true, get: true },
+            note: { open: false, close: false },
+            search: { search: false, visit: false },
+            finalize: false,
+        };
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [
+                // Inheriting sub-agent: should see chat_* + lorebook_* + get_draft.
+                { id: 'inheritor', description: '', systemPrompt: 's' },
+                // Override sub-agent: ONLY note tools enabled, nothing else.
+                {
+                    id: 'overrider',
+                    description: '',
+                    systemPrompt: 's',
+                    tools: {
+                        note: { open: true, close: true },
+                        chat: { read_range: false, search: false },
+                        lorebook: { search: false, get: false },
+                        search: { search: false, visit: false },
+                    },
+                },
+            ],
+            limits: { maxTotalSubagentRuns: 5 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+            tools: profileTools,
+        });
+
+        const h1 = await dispatcher.dispatch({ subagentId: 'inheritor', task: 't' });
+        const h2 = await dispatcher.dispatch({ subagentId: 'overrider', task: 't' });
+        await dispatcher.awaitAll([h1, h2]);
+
+        const [inheritorSchemas, overriderSchemas] = seenSchemas;
+        // Inheritor sees the profile-level tools.
+        expect(inheritorSchemas).toContain('chat_read_range');
+        expect(inheritorSchemas).toContain('chat_search');
+        expect(inheritorSchemas).toContain('lorebook_search');
+        expect(inheritorSchemas).toContain('lorebook_get');
+        expect(inheritorSchemas).not.toContain('note_open');
+        // Overrider sees only its own tools (note) + get_draft.
+        expect(overriderSchemas).toContain('note_open');
+        expect(overriderSchemas).toContain('note_close');
+        expect(overriderSchemas).not.toContain('chat_read_range');
+        expect(overriderSchemas).not.toContain('lorebook_search');
+    });
+
+    test('inline dispatch uses profile default tools (no per-agent override field)', async () => {
+        const seenSchemas = [];
+        const fakeGenerate = jest.fn(async (opts) => {
+            seenSchemas.push((opts.tools || []).map(s => s?.function?.name).filter(Boolean).sort());
+            return { assistantText: 'ok', toolCalls: [], reasoning: null, finishReason: 'stop' };
+        });
+
+        const dispatcher = createSubagentDispatcher({
+            subAgents: [],
+            limits: { maxTotalSubagentRuns: 3 },
+            generateTask: fakeGenerate,
+            abortSignal: new AbortController().signal,
+            tools: { chat: { read_range: true, search: false }, finalize: false },
+        });
+
+        const h = await dispatcher.dispatchInline({ systemPrompt: 'inline role', task: 't' });
+        await dispatcher.awaitAll([h]);
+
+        expect(seenSchemas[0]).toContain('chat_read_range');
+        expect(seenSchemas[0]).not.toContain('chat_search');
+    });
+});
+
+test('configured and inline Director children record distinct delegate branches before model execution', async () => {
+    const events = [], specs = [{ id: 'critic', systemPrompt: 'original' }];
+    const dispatcher = createSubagentDispatcher({ subAgents: specs, limits: { maxTotalSubagentRuns: 3 }, runId: 'director-parent',
+        onRuntimeEvent: event => events.push(event),
+        generateTask: async () => {
+            expect(events.some(e => e.type === 'parallel.branch.started')).toBe(true);
+            return { assistantText: 'done', toolCalls: [] };
+        }, abortSignal: new AbortController().signal,
+    });
+    specs[0].systemPrompt = 'external change';
+    const named = await dispatcher.dispatch({ subagentId: 'critic', task: 'review' });
+    const inline = await dispatcher.dispatchInline({ systemPrompt: 'one-off role', task: 'inspect' });
+    expect((await dispatcher.awaitAll([named, inline])).map(item => item.outputText)).toEqual(['done', 'done']);
+    const handoffs = events.filter(e => e.type === 'parallel.branch.started');
+    expect(events.some(e => e.type === 'agent.handoff.completed')).toBe(false);
+    expect(handoffs).toHaveLength(2);
+    expect(handoffs.every(e => e.runId === 'director-parent')).toBe(true);
+    expect(handoffs.map(e => e.toAgentId)).toEqual(expect.arrayContaining(['director/agent/named%3Acritic', expect.stringMatching(/^director\/agent\/inline%3A/)]));
+    expect(new Set(handoffs.map(e => e.childRunId)).size).toBe(2);
+});
+
+test('Director duplicate configured IDs preserve the existing last-definition lookup', async () => {
+    let messages;
+    const dispatcher = createSubagentDispatcher({ subAgents: [{ id: 'worker', systemPrompt: 'old role' }, { id: 'worker', systemPrompt: 'chosen role' }],
+        generateTask: async request => { messages = request.taskMessages; return { assistantText: 'done', toolCalls: [] }; },
+        limits: { maxTotalSubagentRuns: 1 }, abortSignal: new AbortController().signal,
+    });
+    const id = await dispatcher.dispatch({ subagentId: 'worker', task: 'work' });
+    expect((await dispatcher.awaitAll([id]))[0].outputText).toBe('done');
+    expect(JSON.stringify(messages)).toContain('chosen role');
+    expect(JSON.stringify(messages)).not.toContain('old role');
+});

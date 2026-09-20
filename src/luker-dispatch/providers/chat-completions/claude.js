@@ -1,0 +1,396 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
+//
+// Pure dispatch for Claude (Anthropic) chat completions. Extracted from
+// legacy `sendClaudeRequest` (src/endpoints/backends/chat-completions.js).
+// Consumes a DispatchContext (see src/luker-dispatch/context.js) and emits
+// head/chunk/end/error events; never touches Express request/response.
+//
+// TEMPLATE: subsequent providers (4.2-4.26) should mirror this shape:
+//   1) resolve secret via ctx.secrets.read (with secret_id + fallback)
+//   2) build upstream request body/headers (copy from legacy sendXRequest)
+//   3) ctx.inspection.start() / ctx.inspection.attach(url) before fetch
+//   4) ctx.fetch(url, { signal: ctx.signal })
+//   5) on !resp.ok: read body text, ctx.inspection.fail, ctx.emit.error, return
+//   6) streaming: read resp.body as ReadableStream, ctx.emit.chunk per read,
+//      then ctx.emit.end
+//   7) non-streaming: ctx.emit.chunk(bytes of upstream JSON) + ctx.emit.end
+//   8) try/catch around 3-7: ctx.inspection.fail + ctx.emit.error
+
+import { SECRET_KEYS } from '../../../endpoints/secrets.js';
+import { pipeResponseBodyToEmit } from '../../response-stream.js';
+import { normalizeClaudeResponseToOAI } from '../../../endpoints/backends/chat-completions.js';
+import {
+    convertClaudeMessages,
+    cachingAtDepthForClaude,
+    getPromptNames,
+    calculateClaudeBudgetTokens,
+} from '../../../prompt-converters.js';
+import {
+    buildClaudeTool,
+    color,
+    convertClaudeToolChoice,
+    excludeKeysByYaml,
+    getConfigValue,
+    mergeObjectWithYaml,
+} from '../../../util.js';
+
+const API_CLAUDE = 'https://api.anthropic.com/v1';
+
+const enableAdaptiveThinking = getConfigValue('claude.enableAdaptiveThinking', true, 'boolean');
+
+function resolveClaudeCacheConfig(body) {
+    const sysFromBody = body?.claude_enable_system_prompt_cache;
+    const depthFromBody = body?.claude_caching_at_depth;
+    const ttlFromBody = body?.claude_extended_ttl;
+
+    const enableSystemPromptCache = typeof sysFromBody === 'boolean'
+        ? sysFromBody
+        : getConfigValue('claude.enableSystemPromptCache', false, 'boolean');
+
+    const useExtendedTtl = typeof ttlFromBody === 'boolean'
+        ? ttlFromBody
+        : getConfigValue('claude.extendedTTL', false, 'boolean');
+    const cacheTTL = useExtendedTtl ? '1h' : '5m';
+
+    const depthRaw = typeof depthFromBody === 'number'
+        ? depthFromBody
+        : getConfigValue('claude.cachingAtDepth', -1, 'number');
+    const cachingAtDepth = Number.isInteger(depthRaw) && depthRaw >= 0 ? depthRaw : -1;
+
+    return { cacheTTL, enableSystemPromptCache, cachingAtDepth };
+}
+
+/**
+ * Read Claude API key honoring optional `secret_id` in body, then falling back
+ * to the active CLAUDE secret. Mirrors readProviderSecret() semantics without
+ * requiring Express request shape.
+ * @param {object} ctx DispatchContext
+ * @returns {string}
+ */
+function resolveClaudeApiKey(ctx) {
+    const requestedId = typeof ctx.body?.secret_id === 'string'
+        ? ctx.body.secret_id.trim()
+        : (typeof ctx.body?.secretId === 'string' ? ctx.body.secretId.trim() : '');
+
+    if (requestedId) {
+        const byId = ctx.secrets.read(SECRET_KEYS.CLAUDE, { secretId: requestedId });
+        if (byId) return byId;
+    }
+    // Prefer ctx.secrets.read for consistency; fall through to active secret.
+    const active = ctx.secrets.read(SECRET_KEYS.CLAUDE);
+    return active || '';
+}
+
+/**
+ * Dispatch a Claude chat completion request through the transport-agnostic
+ * event bus. Does NOT return a payload; results flow to the caller via
+ * ctx.emit.{head,chunk,end,error}.
+ *
+ * @param {object} ctx DispatchContext (see src/luker-dispatch/context.js)
+ * @returns {Promise<void>}
+ */
+export async function dispatchClaude(ctx) {
+    const body = ctx.body || {};
+    ctx.inspection.start();
+
+    // Direct body-supplied password wins (legacy: proxy_password override).
+    const bodyApiKey = typeof body.proxy_password === 'string' ? body.proxy_password : '';
+    const secretKey = bodyApiKey || resolveClaudeApiKey(ctx);
+
+    if (!secretKey && !body.reverse_proxy) {
+        console.warn('Claude API key is missing.');
+        // Legacy shape: `.status(400).send({error:true})`. Surface the missing
+        // key as an HTTP 400 with a parseable JSON envelope via head+chunk+
+        // end so the client's `!response.ok` branch fires with a meaningful
+        // body (not a generic stream error). Client:
+        //   • ws-delivery reads msg.type='head' → resolves headPromise with
+        //     status=400, then chunk/end enqueue the body → proxiedFetch
+        //     constructs `new Response(stream, { status: 400 })`.
+        //   • openai.js sees `!response.ok`, reads `.text()`, throws with
+        //     the envelope substring (matches pre-refactor error surface).
+        const errBody = JSON.stringify({ error: true, message: 'Claude API key is missing.' });
+        ctx.emit.head({ status: 400, headers: { 'content-type': 'application/json' } });
+        ctx.emit.chunk(new TextEncoder().encode(errBody));
+        ctx.emit.end();
+        ctx.inspection.fail(new Error('Claude API key is missing.'), 400);
+        return;
+    }
+
+    let apiUrl;
+    try {
+        apiUrl = new URL(body.reverse_proxy || body.base_url || API_CLAUDE).toString();
+    } catch (parseErr) {
+        const err = new Error(`Claude upstream URL invalid: ${parseErr?.message || parseErr}`);
+        ctx.inspection.fail(err, 400);
+        ctx.emit.error(err);
+        return;
+    }
+
+    try {
+        const additionalHeaders = {};
+        // Upstream ST hard-coded 'output-128k-2025-02-19' (added with Sonnet 3.7) and
+        // 'context-1m-2025-08-07' (added with Opus 4.6) as unconditional defaults. Per
+        // platform.claude.com docs, both are now dead flags for every current Claude model:
+        //   - 128k output is native on Fable 5 / Opus 4.6+ / Sonnet 4.6+; older models
+        //     (Sonnet 4.5 = 64k, Opus 4.5 = 64k, Opus 4.1 = 32k) never supported 128k
+        //     regardless of this beta, so it was never useful on them either.
+        //   - 1M context is GA (no beta required) on Opus 4.6+ / Sonnet 4.6+ / Fable 5;
+        //     it was retired on Sonnet 4.5 / Sonnet 4 on 2026-04-30.
+        // AWS Bedrock rejects unknown beta names with `ValidationException: invalid beta
+        // flag`, breaking Fable 5 on Bedrock proxies. Removed.
+        const betaHeaders = [];
+        const useTools = Array.isArray(body.tools) && body.tools.length > 0;
+        const useSystemPrompt = Boolean(body.use_sysprompt);
+        const convertedPrompt = convertClaudeMessages(
+            body.messages,
+            body.assistant_prefill,
+            useSystemPrompt,
+            useTools,
+            getPromptNames({ body }),
+        );
+        // Proxy-qualified IDs must retain the upstream model capabilities.
+        const isFableModel = /claude-fable/.test(body.model);
+        const isFable51Model = /claude-fable-5-1/.test(body.model);
+        const isClaude5Model = /claude-(opus-5|sonnet-5)/.test(body.model);
+        const useThinking = /^claude-(3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
+        const useWebSearch = (/^claude-(3-5|3-7|opus-4|sonnet-4|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model) && Boolean(body.enable_web_search);
+        const isLimitedSampling = /^claude-(opus-4-1|sonnet-4-5|haiku-4-5|opus-4-5|opus-4-6|sonnet-4-6)/.test(body.model);
+        const useVerbosity = /^claude-(opus-4-5|opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
+        const noPrefillModel = /^claude-(opus-4-6|sonnet-4-6|opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
+        const isAdaptiveModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model || (enableAdaptiveThinking && /^claude-(opus-4-6|sonnet-4-6)/.test(body.model));
+        const noSamplingModel = /^claude-(opus-4-7|opus-4-8|fable-5|mythos-5|mythos-preview|opus-5|sonnet-5)/.test(body.model) || isFableModel || isClaude5Model;
+        let fixThinkingPrefill = false;
+
+        const stopSequences = [];
+        if (Array.isArray(body.stop)) {
+            stopSequences.push(...body.stop);
+        }
+
+        const requestBody = {
+            /** @type {any} */ system: [],
+            messages: convertedPrompt.messages,
+            model: body.model,
+            max_tokens: body.max_tokens,
+            stop_sequences: stopSequences,
+            temperature: body.temperature,
+            top_p: body.top_p,
+            top_k: body.top_k,
+            stream: body.stream,
+        };
+        const { cacheTTL, enableSystemPromptCache, cachingAtDepth } = resolveClaudeCacheConfig(body);
+        if (useSystemPrompt) {
+            if (enableSystemPromptCache && Array.isArray(convertedPrompt.systemPrompt) && convertedPrompt.systemPrompt.length) {
+                convertedPrompt.systemPrompt[convertedPrompt.systemPrompt.length - 1].cache_control = { type: 'ephemeral', ttl: cacheTTL };
+            }
+            requestBody.system = convertedPrompt.systemPrompt;
+        } else {
+            delete requestBody.system;
+        }
+
+        const functionTools = useTools
+            ? body.tools
+                .filter(tool => tool.type === 'function')
+                .map(tool => buildClaudeTool(tool))
+                .filter(Boolean)
+            : [];
+
+        if (enableSystemPromptCache && functionTools.length) {
+            functionTools[functionTools.length - 1].cache_control = { type: 'ephemeral', ttl: cacheTTL };
+        }
+
+        // See legacy sendClaudeRequest comment: attach cache_control to first-user
+        // last text block when systemPrompt ends up empty (custom_prompt_post_processing
+        // shape or use_sysprompt:false).
+        if (enableSystemPromptCache && (!Array.isArray(convertedPrompt.systemPrompt) || convertedPrompt.systemPrompt.length === 0)) {
+            const firstUser = Array.isArray(convertedPrompt.messages) ? convertedPrompt.messages[0] : null;
+            if (firstUser && firstUser.role === 'user' && Array.isArray(firstUser.content)) {
+                for (let i = firstUser.content.length - 1; i >= 0; i--) {
+                    if (firstUser.content[i]?.type === 'text') {
+                        firstUser.content[i].cache_control = { type: 'ephemeral', ttl: cacheTTL };
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (functionTools.length) {
+            requestBody.tools = functionTools;
+            const toolChoice = convertClaudeToolChoice(body.tool_choice, body.parallel_tool_calls);
+            if (toolChoice) {
+                requestBody.tool_choice = toolChoice;
+            }
+        }
+
+        if (body.json_schema && isFable51Model) {
+            requestBody.output_config = {
+                format: { type: 'json_schema', schema: body.json_schema.value },
+            };
+        } else if (body.json_schema) {
+            const jsonTool = buildClaudeTool({
+                name: body.json_schema.name,
+                description: body.json_schema.description || 'Well-formed JSON object',
+                parameters: body.json_schema.value,
+            });
+            if (jsonTool) {
+                requestBody.tools = [...(requestBody.tools || []), jsonTool];
+                requestBody.tool_choice = { type: 'tool', name: jsonTool.name };
+            }
+        }
+
+        if (useWebSearch) {
+            const webSearchTool = [{ 'type': 'web_search_20250305', 'name': 'web_search' }];
+            requestBody.tools = [...webSearchTool, ...(requestBody.tools || [])];
+        }
+
+        if (cachingAtDepth !== -1) {
+            cachingAtDepthForClaude(convertedPrompt.messages, cachingAtDepth, cacheTTL);
+        }
+
+        if (isLimitedSampling) {
+            if (requestBody.top_p < 1) {
+                delete requestBody.temperature;
+            } else {
+                delete requestBody.top_p;
+            }
+        }
+
+        if (noSamplingModel) {
+            delete requestBody.temperature;
+            delete requestBody.top_p;
+            delete requestBody.top_k;
+        }
+
+        const reasoningEffort = body.reasoning_effort;
+        const includeReasoning = Boolean(body.include_reasoning);
+        const budgetTokens = calculateClaudeBudgetTokens(requestBody.max_tokens, reasoningEffort, requestBody.stream, isAdaptiveModel);
+
+        if (useThinking && typeof budgetTokens === 'string') {
+            fixThinkingPrefill = true;
+            requestBody.thinking = { type: 'adaptive' };
+            if (noSamplingModel && includeReasoning) {
+                requestBody.thinking.display = 'summarized';
+            }
+            requestBody.output_config ??= {};
+            requestBody.output_config.effort = budgetTokens;
+            delete requestBody.top_k;
+        } else if (useThinking && (isFableModel || isClaude5Model) && reasoningEffort === 'auto' && includeReasoning) {
+            fixThinkingPrefill = true;
+            requestBody.thinking = { type: 'adaptive', display: 'summarized' };
+        } else if (useThinking && Number.isInteger(budgetTokens)) {
+            fixThinkingPrefill = true;
+            const minThinkTokens = 1024;
+            if (requestBody.max_tokens <= minThinkTokens) {
+                const newValue = requestBody.max_tokens + minThinkTokens;
+                console.warn(color.yellow(`Claude thinking requires a minimum of ${minThinkTokens} response tokens.`));
+                console.info(color.blue(`Increasing response length to ${newValue}.`));
+                requestBody.max_tokens = newValue;
+            }
+            requestBody.thinking = { type: 'enabled', budget_tokens: budgetTokens };
+            delete requestBody.temperature;
+            delete requestBody.top_p;
+            delete requestBody.top_k;
+        }
+
+        if ((fixThinkingPrefill || noPrefillModel) && convertedPrompt.messages.length && convertedPrompt.messages[convertedPrompt.messages.length - 1].role === 'assistant') {
+            convertedPrompt.messages[convertedPrompt.messages.length - 1].role = 'user';
+        }
+
+        if (useVerbosity && body.verbosity && !requestBody.output_config?.effort) {
+            betaHeaders.push('effort-2025-11-24');
+            requestBody.output_config ??= {};
+            requestBody.output_config.effort = body.verbosity;
+        }
+
+        if (betaHeaders.length) {
+            additionalHeaders['anthropic-beta'] = betaHeaders.join(',');
+        }
+
+        mergeObjectWithYaml(requestBody, body.custom_include_body);
+        excludeKeysByYaml(requestBody, body.custom_exclude_body);
+        mergeObjectWithYaml(additionalHeaders, body.custom_include_headers);
+
+        const fetchUrl = apiUrl.endsWith('/') ? apiUrl + 'messages' : apiUrl + '/messages';
+        ctx.inspection.attach(fetchUrl, secretKey, requestBody);
+
+        console.debug('Claude request:', requestBody);
+
+        const resp = await ctx.fetch(fetchUrl, {
+            method: 'POST',
+            signal: ctx.signal,
+            body: JSON.stringify(requestBody),
+            headers: {
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01',
+                'x-api-key': secretKey,
+                ...additionalHeaders,
+            },
+        });
+
+        // Architectural contract: every dispatch emits a single head frame
+        // immediately after the upstream fetch resolves, regardless of
+        // status. The WebSocket delivery layer (ws-delivery) uses head to
+        // release the client-side `await headPromise`; without it the
+        // client hangs on subscribe races with setImmediate dispatch.
+        ctx.emit.head({ status: resp.status, headers: resp.headers });
+
+        if (!resp.ok) {
+            let errText = '';
+            try { errText = await resp.text(); } catch { /* body already consumed */ }
+            console.warn(`Claude API returned error: ${resp.status} ${resp.statusText}\n${errText}`);
+            const msg = `Claude upstream ${resp.status}: ${errText}`;
+            ctx.inspection.fail(new Error(msg), resp?.status ?? 502);
+            // Surface upstream status + body to the client via chunk + end
+            // (head already emitted above). Client sees
+            // Response.status=<upstream> and Response.body readable so
+            // callers can do `await response.text()` or
+            // `await response.json()` for structured error inspection
+            // (matches legacy handler shape which returned
+            // `.status(4xx).send({error:{...}})`).
+            if (errText) {
+                ctx.emit.chunk(new TextEncoder().encode(errText));
+            }
+            ctx.emit.end();
+            return;
+        }
+
+        if (body.stream) {
+            await pipeResponseBodyToEmit(resp, ctx);
+        } else {
+            // Non-streaming Claude returns Anthropic-shaped JSON
+            // (content: [{type,text}], stop_reason, usage: {input_tokens,
+            // output_tokens}). Frontend consumers (openai.js:4515 for main
+            // chat, generate-task.js:807 for iter studio) expect OAI shape
+            // (choices[0].message.content). Legacy sendClaudeRequest called
+            // normalizeClaudeResponseToOAI before response.send; the refactor
+            // dropped it so both non-stream paths returned raw Anthropic body
+            // and consumers saw `undefined` / `no choices` errors.
+            const anthropicJson = await resp.json();
+            console.debug('Claude response:', anthropicJson);
+            const oai = normalizeClaudeResponseToOAI(anthropicJson);
+            const oaiBytes = new TextEncoder().encode(JSON.stringify(oai));
+            ctx.emit.chunk(oaiBytes);
+            ctx.emit.end();
+            // Feed BOTH the normalized OAI payload and the raw Anthropic
+            // body to the inspector. Runner-side completeInspection only
+            // has access to the OAI reply (that's what dispatch emits on
+            // the chunk bus) and would call completeInspection(oai, oai)
+            // — extractUsageFromClaude then walks the OAI-normalized
+            // usage shape and misses Anthropic-native fields:
+            //   • usage.cache_creation_input_tokens (cache_write)
+            //   • usage.cache_read_input_tokens (cache_read)
+            //   • content[].type='thinking' blocks with .signature
+            //   • content[].type='tool_use' blocks (extractPartsFromPayload
+            //     for source='claude' walks raw.content directly)
+            // Calling ctx.inspection.complete here marks the entry as
+            // 'success' so the runner's status-guard skips the fallback
+            // path (entry.status === 'running' check in runner.js:300).
+            try { ctx.inspection.complete(oai, anthropicJson); } catch { /* inspection best-effort */ }
+        }
+    } catch (err) {
+        // AbortError, network error, or any body-construction throw.
+        try { ctx.inspection.fail(err); } catch { /* inspection best-effort */ }
+        console.error('Error communicating with Claude: ', err);
+        ctx.emit.error(err);
+    }
+}
