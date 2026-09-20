@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.5
+# Atria Toolbox launcher - v0.3.6
+# v0.3.6：卸载管理收敛为“保留用户数据卸载”和“彻底卸载 Atria”两种安全模式。
 # v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。\n# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。\n# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
 # v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
 # v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
@@ -7,7 +8,7 @@
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.5"
+SCRIPT_VERSION="v0.3.6"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
@@ -278,7 +279,7 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.5"
+SCRIPT_VERSION="v0.3.6"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 WEBPACK_CACHE_ROOT="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-${HOME}/.cache/atria-webpack}"
@@ -393,6 +394,202 @@ version_menu() {
             2) switch_tag_interactive; pause ;;
             3) switch_commit_interactive; pause ;;
             4) show_recent_commits; pause ;;
+            0) return ;;
+            *) error "无效选项"; pause ;;
+        esac
+    done
+}
+
+
+# ============================================================================
+# v0.3.6 uninstall modes
+# ============================================================================
+
+atria_uninstall_assert_owned_path() {
+    local path="$1"
+    local kind="${2:-path}"
+
+    [ -n "$path" ] || {
+        error "拒绝删除空的 ${kind} 路径。"
+        return 1
+    }
+
+    case "$path" in
+        "/"|"$HOME"|"$PREFIX"|"$SHARED_STORAGE_LINK")
+            error "拒绝删除不安全的 ${kind} 路径：$path"
+            return 1
+            ;;
+    esac
+
+    case "$kind" in
+        program)
+            [ "$path" = "$ATRIA_MAIN_DIR" ] || [ "$path" = "$ATRIA_SECOND_DIR" ] || {
+                error "拒绝删除非 Atria 程序目录：$path"
+                return 1
+            }
+            ;;
+        shared)
+            [ "$path" = "$ATRIA_MAIN_SHARED_DIR" ] || [ "$path" = "$ATRIA_SECOND_SHARED_DIR" ] || {
+                error "拒绝删除非 Atria 共享目录：$path"
+                return 1
+            }
+            ;;
+        toolbox)
+            [ "$path" = "$TOOLBOX_HOME" ] || [ "$path" = "$TOOLBOX_PATH" ] || {
+                error "拒绝删除非 Atria 工具箱路径：$path"
+                return 1
+            }
+            ;;
+        cli)
+            [ "$path" = "${PREFIX}/bin/atria-termux" ] || [ "$path" = "${HOME}/.local/state/atria-termux" ] || {
+                error "拒绝删除非 Atria CLI 路径：$path"
+                return 1
+            }
+            ;;
+        *)
+            error "未知卸载路径类型：$kind"
+            return 1
+            ;;
+    esac
+}
+
+atria_uninstall_default_cache_path() {
+    printf '%s\n' "${HOME}/.cache/atria-webpack"
+}
+
+stop_all_atria_instances() {
+    local original="main"
+
+    [ "$ATRIA_DIR" = "$ATRIA_SECOND_DIR" ] && original="second"
+
+    set_instance main
+    stop_atria || true
+
+    set_instance second
+    stop_atria || true
+
+    set_instance "$original"
+}
+
+uninstall_current_keep_data() {
+    refresh_instance_storage_paths
+
+    echo ""
+    echo -e "${BOLD}将卸载当前实例程序，但保留全部共享用户数据：${NC}"
+    echo "程序：$ATRIA_DIR"
+    echo "保留：$ATRIA_SHARED_DIR"
+    echo "  - data"
+    echo "  - backups"
+    echo "  - exports"
+    echo ""
+    info "之后可重新安装 Atria，并继续使用这些共享数据。"
+
+    atria_uninstall_assert_owned_path "$ATRIA_DIR" program || return 1
+    safe_delete_confirm "卸载当前 Atria 程序（保留用户数据）" || return 1
+
+    stop_atria || true
+    rm -rf -- "$ATRIA_DIR"
+
+    info "当前 Atria 程序已卸载。"
+    info "用户数据已保留：$ATRIA_SHARED_DIR"
+    info "工具箱仍保留，可随时使用“安装 / 重装 Atria”恢复程序。"
+}
+
+confirm_complete_uninstall() {
+    local input
+
+    echo ""
+    warn "这会永久删除 Atria 的主实例、分身实例及其全部共享用户数据。"
+    warn "包括 data、backups、exports；删除后工具箱无法恢复这些文件。"
+    echo ""
+    echo "将删除："
+    echo "  程序：$ATRIA_MAIN_DIR"
+    echo "  程序：$ATRIA_SECOND_DIR"
+    echo "  数据：$ATRIA_MAIN_SHARED_DIR"
+    echo "  数据：$ATRIA_SECOND_SHARED_DIR"
+    echo "  工具箱：$TOOLBOX_PATH"
+    echo "  工具箱状态：$TOOLBOX_HOME"
+    echo "  CLI 状态：$HOME/.local/state/atria-termux"
+    echo "  CLI 入口：$PREFIX/bin/atria-termux"
+    echo ""
+
+    read -r -p '第一次确认：请输入 DELETE ATRIA ：' input
+    [ "$input" = "DELETE ATRIA" ] || {
+        warn "确认文本不匹配，已取消彻底卸载。"
+        return 1
+    }
+
+    safe_delete_confirm "最终确认：彻底卸载 Atria 并永久删除全部 Atria 用户数据" || return 1
+}
+
+uninstall_atria_completely() {
+    local default_cache
+    default_cache="$(atria_uninstall_default_cache_path)"
+
+    ensure_shared_storage || return 1
+    refresh_instance_storage_paths
+
+    # Validate every destructive target before deleting the first byte.
+    atria_uninstall_assert_owned_path "$ATRIA_MAIN_DIR" program || return 1
+    atria_uninstall_assert_owned_path "$ATRIA_SECOND_DIR" program || return 1
+    atria_uninstall_assert_owned_path "$ATRIA_MAIN_SHARED_DIR" shared || return 1
+    atria_uninstall_assert_owned_path "$ATRIA_SECOND_SHARED_DIR" shared || return 1
+    atria_uninstall_assert_owned_path "$TOOLBOX_PATH" toolbox || return 1
+    atria_uninstall_assert_owned_path "$TOOLBOX_HOME" toolbox || return 1
+    atria_uninstall_assert_owned_path "${PREFIX}/bin/atria-termux" cli || return 1
+    atria_uninstall_assert_owned_path "${HOME}/.local/state/atria-termux" cli || return 1
+
+    confirm_complete_uninstall || return 1
+
+    stop_all_atria_instances
+    disable_toolbox_autostart
+
+    rm -rf -- "$ATRIA_MAIN_DIR" "$ATRIA_SECOND_DIR"
+    rm -rf -- "$ATRIA_MAIN_SHARED_DIR" "$ATRIA_SECOND_SHARED_DIR"
+    rm -rf -- "${HOME}/.local/state/atria-termux"
+    rm -f -- "${PREFIX}/bin/atria-termux"
+
+    # Only auto-delete the canonical Atria cache. A custom override may point
+    # at a user-managed location, so it is intentionally preserved.
+    if [ "$WEBPACK_CACHE_ROOT" = "$default_cache" ]; then
+        rm -rf -- "$default_cache"
+    elif [ -n "$WEBPACK_CACHE_ROOT" ]; then
+        warn "检测到自定义 Webpack 缓存路径，出于安全考虑未自动删除：$WEBPACK_CACHE_ROOT"
+    fi
+
+    rm -f -- "$TOOLBOX_PATH"
+    rm -rf -- "$TOOLBOX_HOME"
+
+    echo ""
+    info "Atria 已彻底卸载。"
+    info "主实例、分身实例、共享用户数据、备份、导出、工具箱和默认缓存均已删除。"
+    info "Termux、Node.js、git、curl 等通用环境未删除。"
+    exit 0
+}
+
+uninstall_menu() {
+    while true; do
+        refresh_instance_storage_paths
+        clear
+        echo -e "${CYAN}========== Atria 卸载 ==========${NC}"
+        echo "当前：$CURRENT_INSTANCE"
+        echo ""
+        echo "1. 卸载当前 Atria（保留用户数据）"
+        echo "   删除程序，保留 data / backups / exports 和工具箱"
+        echo ""
+        echo "2. 彻底卸载 Atria"
+        echo "   删除主实例 + 分身 + 全部共享用户数据 + 工具箱"
+        echo ""
+        echo "0. 返回"
+        read -r -p "请选择：" choice
+        case "$choice" in
+            1)
+                uninstall_current_keep_data
+                pause
+                ;;
+            2)
+                uninstall_atria_completely
+                ;;
             0) return ;;
             *) error "无效选项"; pause ;;
         esac
