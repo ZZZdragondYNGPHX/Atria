@@ -68,7 +68,12 @@ export function createImmersivePresentation({
                 'atria-immersive-previous-turn',
                 'atria-immersive-history',
                 'atria-immersive-consecutive-speaker',
+                'atria-immersive-technical-message',
             );
+            const isToolCallMessage = message.getAttribute('is_system') === 'true'
+                && [...message.querySelectorAll('.mes_text details summary')]
+                    .some(summary => String(summary.textContent || '').trim().startsWith('Tool calls:'));
+            message.classList.toggle('atria-immersive-technical-message', isToolCallMessage);
         }
         if (!enabled || messages.length === 0) return;
 
