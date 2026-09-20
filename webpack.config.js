@@ -30,6 +30,8 @@ export function getWebpackBundleInputFiles() {
     return [...WEBPACK_BUNDLE_INPUT_FILES];
 }
 
+let cachedWebpackCacheVersion = null;
+
 /**
  * Generate the frontend bundle cache key from inputs that can actually affect
  * emitted bundle bytes. Unrelated Atria source commits therefore retain the
@@ -38,6 +40,10 @@ export function getWebpackBundleInputFiles() {
  * @returns {string} Stable content fingerprint for the current bundle inputs.
  */
 export function getWebpackCacheVersion() {
+    if (cachedWebpackCacheVersion) {
+        return cachedWebpackCacheVersion;
+    }
+
     const hash = crypto.createHash('shake256', { outputLength: 8 });
     hash.update(`webpack:${webpackVersion}\0bundle-schema:${WEBPACK_BUNDLE_SCHEMA_VERSION}\0`);
 
@@ -48,7 +54,8 @@ export function getWebpackCacheVersion() {
         hash.update('\0');
     }
 
-    return hash.digest('hex');
+    cachedWebpackCacheVersion = hash.digest('hex');
+    return cachedWebpackCacheVersion;
 }
 
 /**
