@@ -56,8 +56,12 @@ describe('client startup telemetry', () => {
         expect(prewarm).toBeGreaterThan(manifests);
         expect(activate).toBeGreaterThan(prewarm);
         expect(settingsLoaded).toBeGreaterThan(activate);
-        expect(source).toContain('prewarmDeferredSystemExtensionModules');
+        expect(source).toContain('prewarmDeferredExtensionModules');
         expect(source).toContain('extensionActivate:');
+        expect(source).toContain('extensionLocale:');
+        expect(source).toContain('extensionScript:');
+        expect(source).toContain('extensionStyle:');
+        expect(source).toContain('extensionHook:');
     });
 
     test('backend logs startup timing summary and bounded slow-extension diagnostics', () => {
@@ -79,5 +83,8 @@ describe('client startup telemetry', () => {
         expect(source).toContain('extActivateMs');
         expect(source).toContain('extSlow');
         expect(source).toContain('summarizeExtensionActivationTimings');
+        expect(source).toContain('scriptMs');
+        expect(source).toContain('styleMs');
+        expect(source).toContain('hookMs');
     });
 });
