@@ -554,6 +554,8 @@ app.post('/api/startup/client-timing', (request, response) => {
         ? request.body.navigation
         : {};
 
+    const stage = request.body?.stage === 'visible' ? 'visible' : 'ready';
+
     const initJsStart = normalizeClientTiming(timings.initJsStart);
     const responseEnd = normalizeClientTiming(navigation.responseEnd);
     const summary = {
@@ -568,6 +570,7 @@ app.post('/api/startup/client-timing', (request, response) => {
         csrfMs: diffClientTiming(timings, 'firstLoadStart', 'csrfDone'),
         bootstrapToSettingsMs: diffClientTiming(timings, 'csrfDone', 'getSettingsDone'),
         settingsToVisibleMs: diffClientTiming(timings, 'getSettingsDone', 'loaderHidden'),
+        visibleTotalMs: diffClientTiming(timings, 'firstLoadStart', 'loaderHidden'),
         visibleToBatch1Ms: diffClientTiming(timings, 'loaderHidden', 'batch1Done'),
         batch2Ms: diffClientTiming(timings, 'batch1Done', 'batch2Done'),
         batch3Ms: diffClientTiming(timings, 'batch2Done', 'batch3Done'),
@@ -576,7 +579,7 @@ app.post('/api/startup/client-timing', (request, response) => {
         loadEventEndMs: normalizeClientTiming(navigation.loadEventEnd),
     };
 
-    console.log('[startup-client]', JSON.stringify(summary));
+    console.log(stage === 'visible' ? '[startup-client-visible]' : '[startup-client]', JSON.stringify(summary));
     response.sendStatus(204);
 });
 
