@@ -6410,5 +6410,7 @@
     "Activate": "啟用",
     "Settings-loaded event": "設定載入完成事件",
     "Server phase": "伺服器階段",
-    "Unknown extension": "未知擴充"
+    "Unknown extension": "未知擴充",
+    "Unknown time": "未知時間",
+    "Unknown version": "未知版本"
 }
