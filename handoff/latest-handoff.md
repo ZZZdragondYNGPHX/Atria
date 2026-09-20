@@ -2,11 +2,11 @@
 
 ## Current state
 
-Atria is an independent SillyTavern-based modified product. All previously recorded product, storage, orchestration, memory, World Info, restore, mobile UI, and namespace work remains integrated. The latest Android / Termux startup pass consumed a second real-device log: optional server-router deferral did not demonstrate a startup win, while first-visible Atria startup is already near two seconds once browser navigation begins. The current focus is therefore measurement of Android browser-launch delay and post-visible batch-2/extension work, not further blind module splitting.
+Atria is an independent SillyTavern-based modified product. All previously recorded product, storage, orchestration, memory, World Info, restore, mobile UI, and namespace work remains integrated. The latest Android / Termux startup pass has now consumed a third real-device log. First-visible Atria startup remains fast once browser navigation begins, while post-visible extension activation is the dominant remaining measured component. PR #69 therefore prewarms high-order built-in extension module graphs without changing loading-order evaluation semantics and adds per-extension backend timing for the next pass.
 
 Current authoritative `main`:
 
-- `8fd9fb53af028c6453338ae845827df91898122c`
+- `9e96c82d01e6291ee469b2834061fd6778a5d235`
 
 This commit is the squash merge of PR #68, `perf: surface Termux browser-launch timing in backend logs`. It includes PR #67 granular post-visible startup timing on top of the previously merged #62/#63/#64/#65/#66 startup work. PR #67 passed Atria PR Checks #667 and Worldbook Performance Foundation #318; PR #68 final head passed Atria PR Checks #672.
 
@@ -74,56 +74,51 @@ No Android APK/JVM or Docker build was run during this browser/Node startup cont
 
 ### Measurement gate / next action
 
-The second real-device measurement has now been consumed.
+The third real-device measurement has now been consumed.
 
-On `main@95644b118...`:
+On `main@8fd9fb53af028c6453338ae845827df91898122c`:
 
-- `server-main.module-evaluated`: +3546ms;
-- `pre-setup.total`: 487ms;
-- warm frontend-cache check: 2ms;
-- `server.listening`: +4097ms;
-- readiness HEAD: +4303ms;
-- actual browser `GET /`: +17224ms;
-- readiness HEAD -> browser navigation gap: 12.921s;
-- `GET /` -> CSRF: about 1.020s;
-- navigation -> first visible Atria UI: about 2.08s;
-- `visibleTotalMs`: 1052.2ms;
-- `firstLoadTotalMs`: 6384.5ms;
-- old mixed `batch2Ms`: 4463.8ms.
+- `server-main.module-evaluated`: +3828ms;
+- `pre-setup.total`: 419ms;
+- warm frontend-cache check: 3ms;
+- `server.listening`: +4313ms;
+- `visibleTotalMs`: 964.6ms;
+- `batch2TasksMs`: 4013.2ms;
+- `b2BootstrapExtensionsMs`: 3902ms;
+- `extActivateMs`: 3831.3ms;
+- `firstLoadTotalMs`: 6194.4ms.
 
-The current `main@8fd9fb53af028c6453338ae845827df91898122c` adds the diagnostics needed to split those remaining large regions.
+This decisively selects the existing extension-activation decision branch: preserve `loading_order` execution semantics and overlap resource preparation instead of changing evaluation order.
 
-Collect the next complete startup log with:
+PR #69 is merged as `main@9e96c82d01e6291ee469b2834061fd6778a5d235` and now:
 
-- `server-main.module-evaluated`;
-- all backend `bootstrap.*` and `pre-setup.*` phases;
-- frontend-cache source/root/key/hit;
-- `server.listening`, root HEAD/GET, critical asset milestones, CSRF, WS ticket/connection and bootstrap timing;
-- every `[startup-launcher] {...}` line, especially:
-  - ready/open events;
-  - `readyToBrowserOpenMs`;
-  - `browserOpenCommandMs`;
-  - root-get `readyToRootGetMs`;
-  - root-get `browserOpenToRootGetMs`;
-- `[startup-client-visible] {...}`;
-- final `[startup-client] {...}` including:
-  - `welcomeScreenMs`;
-  - `batch2TasksMs`;
-  - every `b2*Ms` field;
-  - `extDiscoverMs`;
-  - `extManifestsMs`;
-  - `extActivateMs`;
-  - `extSettingsLoadedEventMs`.
+- prewarms built-in system extension module graphs with `loading_order >= 100` using `modulepreload`;
+- keeps actual extension evaluation in the original loading-order groups;
+- excludes third-party extensions from the prewarm path;
+- reports `extPrewarmMs`;
+- reports `extSlow`, the eight slowest per-extension activation timings.
 
-Decision rules:
+Permanent record:
 
-- large ready -> browser-open delay, but small browser-open -> root-GET: optimize Toolbox/launcher flow, likely auto-open immediately on readiness;
-- large browser-open -> root-GET: Android/browser cold-start dominates; investigate safe browser pre-warm rather than Atria JS;
-- dominant `extActivateMs`: keep `loading_order` semantics and investigate parallel asset prefetch/modulepreload only;
-- dominant `welcomeScreenMs` or a specific `b2*Ms`: optimize only that component;
-- no dominant post-visible component: inspect the roughly 0.67s DOM-interactive -> `init.js` queue, especially redundant/side-effect module entries before `init.js`.
+- `performance/android-termux-startup-extension-prewarm.md`
 
-Do not resume broad optional-router deferral or high-risk tokenizer/generation/Transformers/Git-stack refactors without new evidence.
+Collect the next complete startup log from `main@9e96c82d01e6291ee469b2834061fd6778a5d235`. In addition to the existing backend / launcher / client fields, the most important new values are:
+
+- `extPrewarmMs`;
+- `extActivateMs`;
+- `extSlow`;
+- `b2BootstrapExtensionsMs`;
+- `batch2TasksMs`;
+- `firstLoadTotalMs`.
+
+Decision rules for the next pass:
+
+- if `extActivateMs` drops materially, keep the preload strategy and use `extSlow` to target only the remaining expensive extension;
+- if `extActivateMs` stays high and one Atria extension dominates `extSlow`, move that extension's optional UI/runtime subgraphs behind an on-demand boundary;
+- if several high-order Atria extensions remain similarly expensive, inspect their shared static import graph before considering any broader loader change;
+- do not parallelize different loading-order groups merely for speed: existing listener-order compatibility remains authoritative;
+- do not revive the previously rejected Toolcool Color Picker delay or izoomify removal without new evidence;
+- continue treating Android/browser launch delay separately from Atria JS startup.
 
 ## Branch roles
 
