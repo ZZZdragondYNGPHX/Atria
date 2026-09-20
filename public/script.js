@@ -1970,13 +1970,14 @@ function markClientStartupTiming(name) {
     }
 }
 
-function reportClientStartupTiming() {
+function reportClientStartupTiming(stage = 'ready') {
     try {
         const state = globalThis[CLIENT_STARTUP_TIMING_KEY];
         if (!state || typeof state !== 'object') return;
 
         const navigation = performance.getEntriesByType?.('navigation')?.[0];
         const payload = {
+            stage,
             timings: { ...state },
             navigation: navigation ? {
                 responseStart: navigation.responseStart,
@@ -2134,6 +2135,7 @@ async function firstLoadInit() {
     }
     await fixViewport();
     await yieldToBrowser();
+    reportClientStartupTiming('visible');
 
     // The UI has painted. Start classic Select2 loading now so its parse/eval
     // work is no longer on the pre-visible critical path.
@@ -2253,7 +2255,7 @@ async function firstLoadInit() {
     console.debug('[init] firstLoadInit complete');
     markClientStartupTiming('appReady');
     performance.mark('[init] complete');
-    reportClientStartupTiming();
+    reportClientStartupTiming('ready');
     void loadPostVisibleStartupModules()
         .then(({ initDebugExportButton }) => initDebugExportButton())
         .catch((error) => console.warn('[init] debug export module failed to load', error));

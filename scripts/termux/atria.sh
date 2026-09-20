@@ -57,15 +57,36 @@ http_ready() {
   curl -fsSI --max-time 3 "${URL}/" >/dev/null 2>&1
 }
 
+launcher_epoch_ms() {
+  date +%s%3N 2>/dev/null || printf '%s000\n' "$(date +%s)"
+}
+
+log_launcher_event() {
+  local event="$1"
+  local method="${2:-}"
+  local now
+  now="$(launcher_epoch_ms)"
+  if [[ -n "$method" ]]; then
+    printf '[atria-termux-launch] event=%s epoch_ms=%s method=%s\n' "$event" "$now" "$method" >>"${LOG_FILE}" 2>/dev/null || true
+  else
+    printf '[atria-termux-launch] event=%s epoch_ms=%s\n' "$event" "$now" >>"${LOG_FILE}" 2>/dev/null || true
+  fi
+}
+
 open_browser() {
   if command -v termux-open-url >/dev/null 2>&1; then
+    log_launcher_event "browser-open-start" "termux-open-url"
     termux-open-url "${URL}" >/dev/null 2>&1 || true
+    log_launcher_event "browser-open-return" "termux-open-url"
     return
   fi
   if command -v am >/dev/null 2>&1; then
+    log_launcher_event "browser-open-start" "am"
     am start -a android.intent.action.VIEW -d "${URL}" >/dev/null 2>&1 || true
+    log_launcher_event "browser-open-return" "am"
     return
   fi
+  log_launcher_event "browser-open-manual"
   log "Open ${URL} in Chrome/Edge."
 }
 
@@ -84,6 +105,7 @@ start_server() {
   if managed_process_alive; then
     if http_ready; then
       log "Atria is already running at ${URL}."
+      log_launcher_event "ready-observed"
       open_browser
       return
     fi
@@ -126,6 +148,7 @@ start_server() {
     fi
     if http_ready; then
       log "Ready: ${URL}"
+      log_launcher_event "ready-detected"
       open_browser
       return
     fi

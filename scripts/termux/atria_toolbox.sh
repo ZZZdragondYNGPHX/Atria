@@ -80,6 +80,22 @@ server_http_ready() {
     curl -fsSI --connect-timeout 1 --max-time 2 "http://127.0.0.1:${port}/" >/dev/null 2>&1
 }
 
+launcher_epoch_ms() {
+    date +%s%3N 2>/dev/null || printf '%s000\n' "$(date +%s)"
+}
+
+log_launcher_event() {
+    local event="$1"
+    local method="${2:-}"
+    local now
+    now="$(launcher_epoch_ms)"
+    if [ -n "$method" ]; then
+        printf '[atria-termux-launch] event=%s epoch_ms=%s method=%s\n' "$event" "$now" "$method" >>"$LOG_FILE" 2>/dev/null || true
+    else
+        printf '[atria-termux-launch] event=%s epoch_ms=%s\n' "$event" "$now" >>"$LOG_FILE" 2>/dev/null || true
+    fi
+}
+
 wait_for_server_ready() {
     local pid="$1"
     local timeout="${2:-$STARTUP_WAIT_SECONDS}"
@@ -104,6 +120,7 @@ wait_for_server_ready() {
         if server_http_ready "$port"; then
             elapsed=$((poll / polls_per_second))
             info "Atria Web 服务已就绪（约 ${elapsed}s）。"
+            log_launcher_event "ready-detected"
             return 0
         fi
 
@@ -233,10 +250,15 @@ open_browser() {
 
     info "打开：$url"
     if command -v termux-open-url >/dev/null 2>&1; then
-        termux-open-url "$url"
+        log_launcher_event "browser-open-start" "termux-open-url"
+        termux-open-url "$url" || true
+        log_launcher_event "browser-open-return" "termux-open-url"
     elif command -v am >/dev/null 2>&1; then
+        log_launcher_event "browser-open-start" "am"
         am start -a android.intent.action.VIEW -d "$url" >/dev/null 2>&1 || true
+        log_launcher_event "browser-open-return" "am"
     else
+        log_launcher_event "browser-open-manual"
         echo "$url"
     fi
 }
