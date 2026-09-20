@@ -40,5 +40,15 @@ Validation status:
 
 - PR: #77.
 - First PR Checks run #740 exposed the namespace-guard issue caused by literal predecessor naming in compatibility code; that code was rewritten to construct the legacy identifier without a contiguous active-code namespace.
-- PR Checks run #741 is the current validation run and is pending.
+- PR Checks run #741 completed successfully: ESLint, Atria Migration Guard, and the complete Node unit suite passed.
 - Android and Docker builds are intentionally not part of this shell/Node-only fix.
+
+
+## Completed result
+
+- PR: #77
+- Validated task HEAD: `76e37c4a3a30a0cfa01599fde69e7180efab9eef`
+- Final validation: Atria PR Checks #741 — success
+- Merged result: `main@d9cf7600d02d9334717e67992930507fe809b305`
+- Merge method: squash
+- Android / Docker builds: not run by design for this shell/Node-only fix
