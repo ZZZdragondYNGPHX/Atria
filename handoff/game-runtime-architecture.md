@@ -3,70 +3,208 @@
 ## Current branch and HEAD
 
 - Working branch: `refactor/game-runtime-architecture`
-- Created from: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- Working branch currently contains no feature-code changes.
-- Formal architecture plan: `docs:refactor/game-runtime-architecture.md`
-- Plan commit on `docs`: `b696e600ef85d5a04346f290304d16cd57671453`
+- Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
+- Current working HEAD: `d72058d33c9471d8514ca540d775079f97dd54a9`
+- Live `main` was re-checked at the checkpoint and remains `63da3141a3895d3386ed1bebc30876c9766315ba`.
+- Formal Master Plan: `docs:refactor/game-runtime-architecture.md`
+- Midpoint status: R0 complete, R1 minimum foundation complete, R2 minimum World/Event vertical slice complete and focused CI green.
+- No PR has been opened and nothing has been merged to `main`; keep this branch and continue the Master Refactor.
 
-## Completed
+## Midpoint completed
 
-- Researched current Atria Regex engine and prior Regex Engine Performance Refactor.
-- Confirmed Regex already has execution-plan caching, lane semantics, runtime providers and diagnostics; the new task must not repeat that work.
-- Researched current CardApp file storage, runtime, Studio, import/export packing, Git history and context API.
-- Researched Immersive presentation contracts.
-- Researched Atria state/FloorState, variable op-log, tool-calling and custom orchestration tools.
-- Completed multi-round architecture discussion with the user.
-- Architecture approved by the user.
-- Created the implementation branch.
-- Wrote the permanent master plan.
+### R0 — Regex Separation
 
-## Architecture decisions
+- Added an explicit architecture boundary to Regex Core: Regex owns string transformation only.
+- Game Runtime does not depend on Regex for world state, package activation, persistence or UI lifecycle.
+- Existing Regex Engine Performance Refactor remains intact; execution-plan caching, lane indexing/runtime providers and diagnostics were not reimplemented.
+- Added a structural regression test that prevents Game Runtime from depending on Regex and prevents the R0/R1 foundation from silently growing DOM/world mutation responsibilities.
 
-1. Regex returns to basic text transformation and is not the new UI/game substrate.
-2. MVU, LoreState and legacy Regex status-bar patterns are not new-architecture compatibility constraints.
-3. Atria becomes the authoritative Game Runtime for Game Packages.
-4. Character cards may carry complete `game.json`-rooted Game Packages.
-5. Authoritative game state uses a World/Event model: Schema + Event Journal + Snapshot + Branch/Replay.
-6. Normal mutation happens through typed Commands, not arbitrary state writes.
-7. LLM is split into Intent Resolver and Narrator; LLM does not own authoritative arithmetic/state mutation.
-8. Game Logic Runtime owns validation, formulas, deterministic RNG, reducers, rules and simulation.
-9. UI supports Component / Hybrid / Full takeover modes through stable Surface APIs.
-10. UI consumes Selectors, not raw mutable world state.
-11. LLM consumes Observations, not raw full world state.
-12. Declarative DSL/formulas serve ordinary authors; restricted JS serves advanced authors through the same runtime.
-13. CardApp Studio evolves into Atria Game Studio rather than creating a second parallel authoring product.
-14. Game Package travels with the character-card artifact.
+### R1 — Game Package Foundation
 
-## Not started
+Implemented a real `game.json`-rooted package foundation under:
 
-No implementation phase has started.
+- `public/scripts/extensions/game-runtime/manifest.js`
+- `public/scripts/extensions/game-runtime/package-loader.js`
+- `public/scripts/extensions/game-runtime/index.js`
+- `public/scripts/extensions/game-runtime/manifest.json`
 
-The implementation conversation should begin with R0/R1 foundation and must re-check live `main` before editing. If `main` advanced after this handoff, rebase/merge the working branch deliberately according to repository rules before implementation.
+Current manifest contract includes:
 
-## Implementation phases
+- `format: "atria-game"`
+- `manifestVersion: 1`
+- package id/name/version
+- Game Runtime version gate
+- declared capabilities
+- optional Component/Hybrid/Full UI entry
+- optional World schema/initial entry
+- optional Logic entry
+- strict unknown-field rejection
+- safe package-relative path validation
 
-- R0 Regex Separation
-- R1 Game Package Foundation
-- R2 World/Event Runtime
-- R3 Game Logic Runtime
-- R4 Card UI Runtime
-- R5 LLM Bridge
-- R6 Game Studio
+Game Package discovery:
 
-Each phase must be independently runnable/testable.
+- root entry is `game.json`, not `index.js`;
+- missing `game.json` means “no Game Package”, not an error;
+- malformed/incompatible packages do not activate;
+- declared `world/ui/logic` files are checked against the real character file inventory before activation;
+- invalid packages leave the normal Atria host UI available as the recovery shell.
 
-## Validation status
+Transport reuse:
 
-Planning/research only. No implementation tests have been run because feature code has not been modified.
+- Game Package deliberately reuses the existing CardApp per-character directory and character-card file transport;
+- package activation is not tied to `card_app.enabled`;
+- package-only characters containing `game.json` are packed on export;
+- nested text and binary assets round-trip through the existing character-card artifact;
+- this is transport reuse only, not reuse of CardApp's broad `ctx` runtime model.
 
-## Next step
+### R2 — World / Event Runtime minimum vertical slice
 
-Read:
+Implemented:
 
-1. `main:AGENTS.md`
-2. `main:FORK_MAINTENANCE.md`
-3. `docs:handoff/latest-handoff.md`
-4. `docs:handoff/game-runtime-architecture.md`
-5. `docs:refactor/game-runtime-architecture.md`
+- `world/branch.js`
+  - maps live chat `swipe_id` values to a deterministic game branch path;
+  - historical events are replayed only when their recorded branch path is a prefix of the active path;
+  - changing an earlier swipe selects another event lineage instead of manually rolling variables backward.
 
-Then verify the live `main` and working branch HEAD, inspect current Regex/CardApp/state/tool-calling code, and begin implementation without reopening product design.
+- `world/schema.js`
+  - deterministic JSON-schema subset for World State validation;
+  - no DOM dependency and no JavaScript `eval`.
+
+- `world/journal.js`
+  - versioned Event Journal;
+  - monotonic event sequence/id;
+  - event branch lineage;
+  - snapshot records;
+  - deterministic replay through pure reducers;
+  - unknown event types fail replay instead of silently losing facts;
+  - reducers receive a deeply frozen clone and must return the next state.
+
+- `world/runtime.js`
+  - Initial State + Event Journal + Snapshot + Branch/Replay projection;
+  - atomic persistence update path;
+  - schema validation before a commit becomes durable;
+  - failed state validation leaves persistence unchanged;
+  - bounded snapshots.
+
+- `world/persistence.js`
+  - current authoritative chat-state namespace: `atri_game_world`;
+  - Chat State provides atomic storage;
+  - Event Journal, not FloorState incremental patches, is the authoritative game history.
+
+- `world/package.js`
+  - loads declared World schema and initial state from the Game Package;
+  - rejects invalid JSON roots and invalid initial states.
+
+- `world/session.js`
+  - binds a validated package World to the current chat;
+  - loads the current swipe branch;
+  - supports branch synchronization and reload from persisted Event Journal;
+  - exposes an internal event commit primitive for the upcoming Command Bus.
+
+Runtime integration:
+
+- `game-runtime/index.js` creates a World Session for a validated package that declares `world`;
+- malformed World definitions downgrade package activation to invalid rather than taking over the host;
+- structural chat events synchronize the active world branch;
+- the extension API currently exposes World state/journal/branch as read-only views;
+- no public generic world setter or LLM-facing `set_state` was introduced.
+
+## Important architecture decisions preserved
+
+1. Regex is a text subsystem, not Game Runtime/UI/state.
+2. MVU/LoreState/legacy Regex status bars are not compatibility constraints for the new runtime.
+3. `game.json` is the Game Package entry.
+4. Existing CardApp file storage/import/export/Git infrastructure is reused as transport/authoring infrastructure only.
+5. Event Journal is the causal history source; projected World State is derived.
+6. Game branch identity is based on full swipe lineage, not only the tail swipe.
+7. World history does not use FloorState's incremental patch log as its authoritative event model.
+8. World mutation is not exposed publicly yet. `commitEventsInternal` exists only to bridge R2 into R3.
+9. The next normal mutation surface must be the typed Command Bus.
+10. No Master Plan architecture change occurred in this midpoint, so `docs:refactor/game-runtime-architecture.md` did not require revision.
+
+## Validation completed
+
+Final focused workflow:
+
+- Workflow: `Game Runtime Dev Checks`
+- Run: `35523372735`
+- HEAD: `d72058d33c9471d8514ca540d775079f97dd54a9`
+- Result: success
+
+The final run passed:
+
+- Game Package manifest tests
+- Game Package loader tests
+- declared-file rejection tests
+- package-only nested text/binary import-export round-trip
+- CardApp transport regression tests
+- Regex lane semantics
+- Regex/Game Runtime architecture boundary tests
+- World branch mapping tests
+- World Event Journal deterministic replay tests
+- snapshot replay tests
+- alternate swipe branch restoration tests
+- World Runtime atomic commit/reload tests
+- schema-failure no-partial-write test
+- World package schema/initial loading tests
+- live World Session branch synchronization/reload tests
+- focused ESLint for Game Runtime, World Runtime, Regex engine and CardApp endpoint
+
+The run immediately before the final lint fix already reported 11 passing suites / 59 tests; the final run then passed both the focused unit-test step and focused ESLint.
+
+Android and Docker were not run, per repository/user policy and because this midpoint touches browser/Node runtime architecture only.
+
+## Current limitations / intentionally unfinished
+
+R2 is a minimum vertical slice, not the final World Runtime.
+
+Not yet implemented:
+
+- package-loaded reducer/logic registry;
+- explicit event type schema registry;
+- richer snapshot policy/compaction/corruption recovery diagnostics;
+- dedicated World Inspector UI;
+- full host diagnostics correlation ids;
+- Command Bus;
+- validators;
+- Formula AST;
+- deterministic RNG;
+- Rules Engine;
+- Simulation;
+- transaction/rule trace;
+- Card UI Runtime/Surfaces/Selectors;
+- LLM Bridge;
+- Game Studio upgrades.
+
+The production Game Runtime currently starts a World Session with an empty reducer registry. That is safe because no public mutation API exists yet. R3 must establish the reducer/command registry before exposing any package/UI/LLM write path.
+
+## Next implementation step
+
+Continue on the existing branch from:
+
+`refactor/game-runtime-architecture@d72058d33c9471d8514ca540d775079f97dd54a9`
+
+Startup sequence:
+
+1. Re-read `main:AGENTS.md`.
+2. Re-read `main:FORK_MAINTENANCE.md`.
+3. Re-read `docs:handoff/latest-handoff.md`.
+4. Re-read this handoff.
+5. Re-read `docs:refactor/game-runtime-architecture.md`.
+6. Re-check live `main`; if it advanced, inspect conflicts before synchronizing this long-running branch.
+7. Inspect the current `public/scripts/extensions/game-runtime/**` implementation and focused tests.
+8. Continue R2 hardening only where required by the Master Plan, then begin R3 with the smallest real Command Bus vertical slice.
+
+Recommended first R3 slice:
+
+- command registry + typed argument schema;
+- one deterministic command fixture;
+- command validation;
+- reducer/event production;
+- atomic `WorldRuntime.commitEvents`;
+- simulation/no-commit path;
+- focused tests proving failed commands cannot partially mutate state.
+
+Do not expose arbitrary `set_state(path,value)`.
+Do not give Game Logic the broad CardApp/Atria context.
+Do not begin R4 UI takeover before the R3 mutation contract is stable.
