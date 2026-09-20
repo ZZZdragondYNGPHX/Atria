@@ -147,13 +147,13 @@ export function replayWorldJournal(options) {
 
         const reducer = reducers.get(event.type);
         if (typeof reducer !== 'function') {
-            throw new Error("No World reducer registered for event type '" + event.type + "'");
+            throw new Error('No World reducer registered for event type \'\'' + event.type + '\'\'');
         }
 
         const input = deepFreeze(clone(state));
         const next = reducer(input, clone(event));
         if (!next || typeof next !== 'object') {
-            throw new Error("World reducer '" + event.type + "' must return an object state");
+            throw new Error('World reducer \'\'' + event.type + '\' must return an object state');
         }
         state = clone(next);
         appliedEventIds.push(event.id);
