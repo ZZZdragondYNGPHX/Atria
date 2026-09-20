@@ -1,3 +1,17 @@
+/**
+ * Regex Core architecture boundary.
+ *
+ * This module owns string transformation only: matching/replacement,
+ * substitution, placement/lane/depth selection, capture handling and the
+ * execution diagnostics needed to make those text operations safe.
+ *
+ * It must not become a world-state owner, Game Runtime, HUD renderer,
+ * lifecycle host, or persistence layer for game data. New game behavior
+ * belongs under the Game Runtime contracts and may consume ordinary text
+ * after Regex has transformed it; Game Runtime must not depend on Regex for
+ * authoritative state or UI lifecycle.
+ */
+
 import { characters, saveSettingsDebounced, substituteParams, substituteParamsExtended, this_chid } from '../../../script.js';
 import { extension_settings, writeExtensionField } from '../../extensions.js';
 import { t } from '../../i18n.js';
