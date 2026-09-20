@@ -19,8 +19,7 @@ WEBPACK_CACHE_ROOT="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-${HOME}/.cache/atria-webp
 PID_FILE="${STATE_DIR}/server.pid"
 LOG_FILE="${STATE_DIR}/server.log"
 PORT="${ATRIA_TERMUX_PORT:-8000}"
-URL="http://127.0.0.1:${PORT}"
-
+URL="http://127.0.0.1:${PORT}"\nCANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"\nHISTORY_CUTOVER_LEGACY_ANCHOR="91ae97aed557be9439317a67d0ec516f7512fe2e"\n
 mkdir -p "${STATE_DIR}" "${WEBPACK_CACHE_ROOT}"
 
 log() {
@@ -301,6 +300,48 @@ doctor() {
   log "Doctor: OK"
 }
 
+ensure_canonical_origin() {
+  local current_origin
+  current_origin="$(git -C "${REPO_ROOT}" remote get-url origin 2>/dev/null || true)"
+
+  if [[ "${current_origin}" == "${CANONICAL_REPO_URL}" ]]; then
+    return 0
+  fi
+
+  if [[ -z "${current_origin}" ]]; then
+    git -C "${REPO_ROOT}" remote add origin "${CANONICAL_REPO_URL}"
+  else
+    git -C "${REPO_ROOT}" remote set-url origin "${CANONICAL_REPO_URL}"
+  fi
+  log "Corrected repository origin to ${CANONICAL_REPO_URL}"
+}
+
+history_cutover_required() {
+  local local_sha="$1"
+  local remote_sha="$2"
+
+  git -C "${REPO_ROOT}" merge-base "${local_sha}" "${remote_sha}" >/dev/null 2>&1 && return 1
+  git -C "${REPO_ROOT}" cat-file -e "${HISTORY_CUTOVER_LEGACY_ANCHOR}^{commit}" 2>/dev/null || return 1
+  git -C "${REPO_ROOT}" merge-base --is-ancestor "${HISTORY_CUTOVER_LEGACY_ANCHOR}" "${local_sha}"
+}
+
+align_main_after_history_cutover() {
+  local old_sha="$1"
+  local stamp backup_branch suffix=0
+
+  stamp="$(date +%Y%m%d-%H%M%S)"
+  backup_branch="history-cutover-backup-${stamp}"
+  while git -C "${REPO_ROOT}" show-ref --verify --quiet "refs/heads/${backup_branch}"; do
+    suffix=$((suffix + 1))
+    backup_branch="history-cutover-backup-${stamp}-${suffix}"
+  done
+
+  git -C "${REPO_ROOT}" branch "${backup_branch}" "${old_sha}"
+  log "Saved pre-cutover code history as local branch: ${backup_branch}"
+  git -C "${REPO_ROOT}" switch -C main origin/main
+  git -C "${REPO_ROOT}" branch --set-upstream-to=origin/main main >/dev/null 2>&1 || true
+  log "Aligned main to the independent Atria history."
+}
 update_repo() {
   assert_install_ready
   command -v git >/dev/null 2>&1 || fail "git is missing."
@@ -324,17 +365,26 @@ update_repo() {
     stop_server
   fi
 
+  ensure_canonical_origin
   log "Refreshing origin/main..."
   git fetch origin main --prune
 
-  if git show-ref --verify --quiet refs/heads/main; then
-    git switch main
-  else
-    git switch -c main --track origin/main
-  fi
+  local old_sha remote_sha
+  old_sha="$(git rev-parse HEAD)"
+  remote_sha="$(git rev-parse origin/main)"
 
-  log "Updating main with fast-forward only..."
-  git merge --ff-only origin/main
+  if history_cutover_required "${old_sha}" "${remote_sha}"; then
+    align_main_after_history_cutover "${old_sha}"
+  else
+    if git show-ref --verify --quiet refs/heads/main; then
+      git switch main
+    else
+      git switch -c main --track origin/main
+    fi
+
+    log "Updating main with fast-forward only..."
+    git merge --ff-only origin/main
+  fi
   log "Refreshing production dependencies..."
   npm_package_config_node_gyp_nodedir="${PREFIX:-}" npm ci --omit=dev --no-audit --no-fund
   bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
