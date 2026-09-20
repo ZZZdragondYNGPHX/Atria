@@ -12,6 +12,7 @@ export function normalizeImmersiveSettings(settings = {}) {
         extensionsEnabled: settings.immersive_mode_extensions_enabled !== false,
         visualMode: includesValue(IMMERSIVE_VISUAL_MODES, settings.immersive_mode_visual_mode, 'auto'),
         hudMode: includesValue(IMMERSIVE_HUD_MODES, settings.immersive_mode_hud_mode, 'auto'),
+        reducedMotion: settings.reduced_motion === true,
     };
 }
 
@@ -34,6 +35,7 @@ export function createImmersivePresentation({
     let enabled = false;
     let profile = 'desktop';
     let settings = normalizeImmersiveSettings();
+    let providerVisual = null;
     const chat = documentRef.getElementById('chat');
 
     const resolveProfile = () => resolveImmersiveProfile({
@@ -93,7 +95,9 @@ export function createImmersivePresentation({
 
         const currentMessage = messages[currentIndex];
         let adaptation = 'text';
-        if (settings.visualMode !== 'text' && hasMeaningfulAvatar(currentMessage)) {
+        if (settings.visualMode !== 'text' && providerVisual?.portrait) {
+            adaptation = 'portrait';
+        } else if (settings.visualMode !== 'text' && hasMeaningfulAvatar(currentMessage)) {
             adaptation = 'avatar';
         }
         documentRef.body.dataset.atriaImmersiveAdaptation = adaptation;
@@ -108,6 +112,11 @@ export function createImmersivePresentation({
         documentRef.body.classList.toggle('atria-immersive-story-focus', settings.storyFocus);
         documentRef.body.classList.toggle('atria-immersive-extensions-enabled', settings.extensionsEnabled);
         refreshNarrative();
+    };
+
+    const setProviderVisual = visual => {
+        providerVisual = visual && typeof visual === 'object' ? visual : null;
+        if (enabled) refreshNarrative();
     };
 
     const setEnabled = nextEnabled => {
@@ -148,6 +157,7 @@ export function createImmersivePresentation({
         setEnabled,
         refreshSettings,
         refreshNarrative,
+        setProviderVisual,
         getProfile: () => profile,
         getSettings: () => ({ ...settings }),
         dispose() {
