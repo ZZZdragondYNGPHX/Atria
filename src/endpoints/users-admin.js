@@ -23,7 +23,7 @@ import {
     ensurePublicDirectoriesExist,
 } from '../users.js';
 import { DEFAULT_USER, PUBLIC_DIRECTORIES } from '../constants.js';
-import { clearCapturedLogs, getCapturedLogs } from '../log-capture.js';
+import { backendLogStore } from '../logging/store.js';
 import {
     fetchLatestApkReleaseInfo,
     getGitUpdateStatus,
@@ -217,7 +217,7 @@ router.post('/logs/get', requireAdminMiddleware, async (request, response) => {
         const endTime = Number.isFinite(parsedEndTime) ? Math.max(0, Math.floor(parsedEndTime)) : undefined;
         const levels = Array.isArray(request.body?.levels) ? request.body.levels : undefined;
 
-        const result = getCapturedLogs({ sinceId, limit, levels, startTime, endTime, searchTerm });
+        const result = backendLogStore.query({ sinceId, limit, levels, startTime, endTime, text: searchTerm });
         return response.json(result);
     } catch (error) {
         console.error('Admin logs get failed:', error);
@@ -227,7 +227,7 @@ router.post('/logs/get', requireAdminMiddleware, async (request, response) => {
 
 router.post('/logs/clear', requireAdminMiddleware, async (_request, response) => {
     try {
-        clearCapturedLogs();
+        backendLogStore.clear();
         return response.sendStatus(204);
     } catch (error) {
         console.error('Admin logs clear failed:', error);
