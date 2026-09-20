@@ -61,8 +61,8 @@ export function createImmersivePresentation({
 
     const refreshNarrative = () => {
         if (!chat) return;
-        const messages = [...chat.querySelectorAll('.mes')].filter(message => message.getAttribute('is_system') !== 'true');
-        for (const message of messages) {
+        const allMessages = [...chat.querySelectorAll('.mes')];
+        for (const message of allMessages) {
             message.classList.remove(
                 'atria-immersive-current-response',
                 'atria-immersive-previous-turn',
@@ -73,8 +73,9 @@ export function createImmersivePresentation({
             const isToolCallMessage = message.getAttribute('is_system') === 'true'
                 && [...message.querySelectorAll('.mes_text details summary')]
                     .some(summary => String(summary.textContent || '').trim().startsWith('Tool calls:'));
-            message.classList.toggle('atria-immersive-technical-message', isToolCallMessage);
+            message.classList.toggle('atria-immersive-technical-message', enabled && isToolCallMessage);
         }
+        const messages = allMessages.filter(message => message.getAttribute('is_system') !== 'true');
         if (!enabled || messages.length === 0) return;
 
         const currentAssistantIndex = messages.findLastIndex(message => message.getAttribute('is_user') !== 'true');
