@@ -21,7 +21,7 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply } from '../_lib/page.js';
-import { migrateViaAdminUI, closeAdminPanel, fetchStorageStatus } from '../_lib/storage-ui.js';
+import { migrateStorageBackend, fetchStorageStatus } from '../_lib/storage-ui.js';
 
 let server, mock;
 
@@ -45,11 +45,9 @@ test('sanity (SQLite): migrate fs->sqlite then run the first-turn happy path', a
 
     // Migrate to SQLite via the real admin UI before sending any chat,
     // so the SqliteEngine is the live backend when the chat fires.
-    await migrateViaAdminUI(page, 'sqlite');
+    await migrateStorageBackend(page, 'sqlite');
     const postStatus = await fetchStorageStatus(page);
     expect(postStatus.currentMode).toBe('sqlite');
-    await closeAdminPanel(page);
-
     // Standard sanity flow against the live SQLite backend.
     await selectCharacterByName(page, 'Seraphina');
 

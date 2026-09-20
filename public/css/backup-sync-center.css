@@ -1,0 +1,154 @@
+.backupSyncCenter {
+    min-width: min(920px, 92vw);
+    max-width: 1100px;
+}
+
+.backupSyncTabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 4px 0;
+    background: var(--SmartThemeBlurTintColor);
+}
+
+.backupSyncTab.active {
+    outline: 1px solid var(--SmartThemeEmColor);
+}
+
+.backupSyncPanel {
+    min-height: 320px;
+}
+
+.backupRetentionGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.backupRetentionCard,
+.backupManagedGroup,
+.backupProviderCard,
+.storageManagementSection {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 70%, transparent);
+    border-radius: 10px;
+    padding: 12px;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 78%, transparent);
+}
+
+.backupRetentionCard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.backupRetentionCard > label:not(.checkbox_label) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.backupManagedList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.backupManagedGroupHeader,
+.backupManagedRow,
+.backupProviderCardHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.backupManagedGroupHeader {
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.backupManagedRows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.backupManagedRow {
+    padding: 7px 8px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 6%, transparent);
+}
+
+.backupManagedRowMeta {
+    flex: 1;
+    min-width: 0;
+    opacity: .82;
+}
+
+.backupManagedRowActions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.backupArchiveFileLabel {
+    align-self: center;
+    overflow-wrap: anywhere;
+    opacity: .85;
+}
+
+.backupPreflightReport[data-state="ok"] {
+    border-inline-start: 3px solid var(--SmartThemeQuoteColor);
+}
+
+.backupPreflightReport[data-state="error"] {
+    border-inline-start: 3px solid var(--warning);
+}
+
+.backupCloudProviders {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.backupProviderCardHeader {
+    justify-content: space-between;
+}
+
+.backupProviderBadge {
+    font-size: .85em;
+    opacity: .8;
+}
+
+.backupProviderCapabilities {
+    margin-top: 8px;
+    opacity: .8;
+    font-size: .9em;
+}
+
+.storageManagementTabs {
+    margin-bottom: 10px;
+}
+
+.storageManagementMount {
+    min-height: 360px;
+}
+
+@media (max-width: 700px) {
+    .backupSyncCenter {
+        min-width: 0;
+        width: 94vw;
+    }
+
+    .backupRetentionGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .backupSyncTabs {
+        flex-wrap: wrap;
+    }
+
+    .backupManagedRow {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

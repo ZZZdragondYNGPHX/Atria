@@ -1,5 +1,5 @@
 import { getRequestHeaders } from '../script.js';
-import { callGenericPopup, POPUP_TYPE } from './popup.js';
+import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
 import { renderTemplateAsync } from './templates.js';
 import { humanFileSize } from './utils.js';
 import { t, translate } from './i18n.js';
@@ -55,6 +55,22 @@ async function fetchInspector(dataSource, pathArr) {
     return await res.json();
 }
 
+async function postStorageJson(endpoint, body = {}) {
+    const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify(body),
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+        const err = new Error(payload?.error?.message || payload?.error || res.statusText || `HTTP ${res.status}`);
+        err.code = payload?.error?.code || 'E_UNKNOWN';
+        err.status = res.status;
+        throw err;
+    }
+    return payload;
+}
+
 /**
  * V1 provider · 通过 REST endpoint 拿 InspectorResponse.
  * 只读(canMutate=false).
@@ -62,25 +78,72 @@ async function fetchInspector(dataSource, pathArr) {
 export class RestProvider {
     constructor(dataSource) {
         this.id = 'rest';
-        this.canMutate = false;
-        this.dataSource = dataSource;  // {kind:'self'} | {kind:'any', target}
+        this.canMutate = dataSource?.kind === 'self';
+        this.dataSource = dataSource;
     }
 
     async fetch(pathArr) {
         const resp = await fetchInspector(this.dataSource, pathArr);
-        // 补 canDelete 默认值(V1 backend 不发)
         for (const e of resp.entries ?? []) {
-            e.canDelete = e.canDelete ?? false;
+            e.capabilities ??= {
+                view: false,
+                viewContent: false,
+                edit: false,
+                delete: Boolean(e.canDelete),
+                download: false,
+                restore: false,
+            };
+            e.canDelete = Boolean(e.capabilities.delete);
         }
         return resp;
+    }
+
+    async readAtPath(pathArr, entry) {
+        if (this.dataSource?.kind !== 'self') {
+            const err = new Error(t`This inspector is read-only.`);
+            err.code = 'E_READ_ONLY';
+            throw err;
+        }
+        return postStorageJson('/api/users/storage/resource/read', {
+            path: pathArr,
+            kind: entry?.kind || '',
+        });
+    }
+
+    canCreateAtPath() {
+        return false;
+    }
+}
+
+export class RestMutator {
+    async writeAtPath(pathArr, entry, content, expectedModifiedMs = null) {
+        return postStorageJson('/api/users/storage/resource/write', {
+            path: pathArr,
+            kind: entry?.kind || '',
+            content,
+            expectedModifiedMs,
+        });
+    }
+
+    async deleteAtPath(pathArr, entry) {
+        return postStorageJson('/api/users/storage/resource/delete', {
+            path: pathArr,
+            kind: entry?.kind || '',
+        });
     }
 }
 
 /**
- * 只读 mutator · 任何删除请求都 throw.
+ * Read-only mutator used for non-self/admin aggregate views.
  */
 export class ThrowingMutator {
-    async deleteAtPath(_pathArr) {
+    async writeAtPath() {
+        const err = new Error(t`This inspector is read-only.`);
+        err.code = 'E_READ_ONLY';
+        throw err;
+    }
+
+    async deleteAtPath() {
         const err = new Error(t`This inspector is read-only.`);
         err.code = 'E_READ_ONLY';
         throw err;
@@ -113,6 +176,8 @@ class StorageInspector {
             .addEventListener('click', () => this.refresh());
         this.container.querySelector('.storageInspectorRetryButton')
             .addEventListener('click', () => this.navigateTo(this.failedPath ?? this.pathStack));
+        this.container.querySelector('.storageInspectorCreateButton')
+            .addEventListener('click', () => this._createResource());
     }
 
     _cacheKey(pathArr) {
@@ -158,6 +223,7 @@ class StorageInspector {
         this._renderStackedBar(resp);
         this._renderLegend(resp);
         this._renderBreadcrumbs(resp);
+        this._renderCreateAction();
         this._renderList(resp);
     }
 
@@ -288,10 +354,10 @@ class StorageInspector {
         dots.style.color = this._colorFor(entry);
         const filled = Math.round(((entry.sizeBytes ?? 0) / maxSize) * 8);
         for (let i = 0; i < 8; i++) {
-            const d = document.createElement('span');
-            d.className = 'storageInspectorEntryDot';
-            if (i < filled) d.classList.add('storageInspectorEntryDotFilled');
-            dots.appendChild(d);
+            const dot = document.createElement('span');
+            dot.className = 'storageInspectorEntryDot';
+            if (i < filled) dot.classList.add('storageInspectorEntryDotFilled');
+            dots.appendChild(dot);
         }
 
         const size = document.createElement('span');
@@ -300,29 +366,62 @@ class StorageInspector {
 
         row.append(icon, label, dots, size);
 
-        // 删除按钮 · provider 与 entry 均声明支持时才 render
-        if (this.provider.canMutate && entry.canDelete) {
-            const del = document.createElement('button');
-            del.type = 'button';
-            del.className = 'storageInspectorEntryDeleteButton menu_button menu_button_icon';
-            del.title = translate('Delete');
-            del.setAttribute('data-i18n', '[title]Delete');
-            const delIcon = document.createElement('i');
-            delIcon.classList.add('fa-fw', 'fa-solid', 'fa-trash');
-            del.appendChild(delIcon);
-            del.addEventListener('click', async (ev) => {
-                ev.stopPropagation();  // 别触发 drill
-                if (del.disabled) return;
-                del.disabled = true;
+        const capabilities = entry.capabilities || {};
+        const actions = document.createElement('span');
+        actions.className = 'storageInspectorEntryActions';
+
+        const addAction = (iconNameValue, title, handler, warning = false, extraClass = '') => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `storageInspectorEntryActionButton menu_button menu_button_icon${warning ? ' warning' : ''}`;
+            if (extraClass) button.classList.add(extraClass);
+            button.title = title;
+            const actionIcon = document.createElement('i');
+            actionIcon.classList.add('fa-fw', 'fa-solid', `fa-${iconNameValue}`);
+            button.appendChild(actionIcon);
+            button.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                if (button.disabled) return;
+                button.disabled = true;
                 try {
-                    await this._confirmAndDelete(entry);
+                    await handler();
+                } catch (error) {
+                    this._showError(error);
                 } finally {
-                    // refresh() 后 del 可能已被 detach,只在还挂在 DOM 上时才恢复.
-                    if (del.isConnected) del.disabled = false;
+                    if (button.isConnected) button.disabled = false;
                 }
             });
-            row.appendChild(del);
+            actions.appendChild(button);
+        };
+
+        if (capabilities.view && typeof this.provider.readAtPath === 'function') {
+            addAction(
+                'eye',
+                translate('View'),
+                () => this._viewResource(entry),
+                false,
+                'storageInspectorEntryViewButton',
+            );
         }
+        if (capabilities.edit && typeof this.mutator.writeAtPath === 'function') {
+            addAction(
+                'pen',
+                translate('Edit'),
+                () => this._editResource(entry),
+                false,
+                'storageInspectorEntryEditButton',
+            );
+        }
+        if (this.provider.canMutate && capabilities.delete && typeof this.mutator.deleteAtPath === 'function') {
+            addAction(
+                'trash',
+                translate('Delete'),
+                () => this._confirmAndDelete(entry),
+                true,
+                'storageInspectorEntryDeleteButton',
+            );
+        }
+        if (actions.childElementCount > 0) row.appendChild(actions);
 
         if (canDrill) {
             const chev = document.createElement('span');
@@ -337,22 +436,118 @@ class StorageInspector {
         return row;
     }
 
+    _renderCreateAction() {
+        const button = this.container.querySelector('.storageInspectorCreateButton');
+        const canCreate = Boolean(
+            this.provider.canMutate
+            && typeof this.provider.canCreateAtPath === 'function'
+            && this.provider.canCreateAtPath(this.pathStack)
+            && typeof this.mutator.createAtPath === 'function',
+        );
+        button.classList.toggle('displayNone', !canCreate);
+    }
+
+    async _viewResource(entry) {
+        const payload = await this.provider.readAtPath([...this.pathStack, entry.key], entry);
+        const textarea = document.createElement('textarea');
+        textarea.className = 'text_pole monospace';
+        textarea.rows = 22;
+        textarea.readOnly = true;
+        textarea.value = payload?.content != null
+            ? String(payload.content)
+            : JSON.stringify({
+                path: payload?.relativePath || [...this.pathStack, entry.key].join('/'),
+                kind: payload?.kind || entry.kind,
+                sizeBytes: payload?.sizeBytes ?? entry.sizeBytes,
+                modifiedMs: payload?.modifiedMs ?? entry.mtimeMs,
+                protected: Boolean(payload?.protected),
+                capabilities: payload?.capabilities || entry.capabilities || {},
+            }, null, 2);
+        if (payload?.truncated) textarea.value += '\n\n… preview truncated …';
+        await callGenericPopup(textarea, POPUP_TYPE.TEXT, '', {
+            okButton: t`Close`,
+            wide: true,
+            large: true,
+            allowVerticalScrolling: true,
+        });
+    }
+
+    async _editResource(entry) {
+        const path = [...this.pathStack, entry.key];
+        const payload = await this.provider.readAtPath(path, entry);
+        if (payload?.content == null) {
+            const err = new Error(t`This resource has no editable text representation.`);
+            err.code = 'E_READ_ONLY';
+            throw err;
+        }
+        if (payload.truncated) {
+            const err = new Error(t`This resource is too large to edit safely in the storage manager.`);
+            err.code = 'E_TOO_LARGE';
+            throw err;
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'text_pole monospace';
+        textarea.rows = 24;
+        textarea.value = String(payload.content);
+        const confirmed = await callGenericPopup(textarea, POPUP_TYPE.CONFIRM, '', {
+            okButton: t`Save`,
+            cancelButton: t`Cancel`,
+            wide: true,
+            large: true,
+            allowVerticalScrolling: true,
+        });
+        if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
+
+        const result = await this.mutator.writeAtPath(path, entry, textarea.value, payload.modifiedMs ?? null);
+        if (result?.recovery?.id) {
+            toastr.success(t`Saved. Recovery point: ${result.recovery.id}`);
+        } else {
+            toastr.success(t`Saved.`);
+        }
+        await this.refresh();
+    }
+
+    async _createResource() {
+        const result = await callGenericPopup(
+            t`Enter a key name for the new storage entry.`,
+            POPUP_TYPE.INPUT,
+            '',
+            { okButton: t`Next`, cancelButton: t`Cancel`, rows: 1 },
+        );
+        const key = String(result || '').trim();
+        if (!key) return;
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'text_pole monospace';
+        textarea.rows = 12;
+        const confirmed = await callGenericPopup(textarea, POPUP_TYPE.CONFIRM, '', {
+            okButton: t`Create`,
+            cancelButton: t`Cancel`,
+            wide: true,
+        });
+        if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
+        await this.mutator.createAtPath(this.pathStack, key, textarea.value);
+        await this.refresh();
+    }
+
     /**
-     * 弹二次确认 · 用户确认后调 mutator.deleteAtPath,成功 refresh.
+     * Confirm a destructive resource removal and refresh the current view.
      */
     async _confirmAndDelete(entry) {
         const label = translate(entry.label) + (entry.labelSuffix ?? '');
-        const body = translate('This will permanently remove %s from your browser. This action cannot be undone.').replace('%s', label);
-        // Also expose 'Delete %s?' to the i18n string harvester for Task 4 (popup has no title slot yet).
-        void translate('Delete %s?');
-        const confirmed = await callGenericPopup(body, POPUP_TYPE.CONFIRM, '', { okButton: t`Delete`, cancelButton: t`Cancel`, wide: false });
-        if (!confirmed) return;
-        try {
-            await this.mutator.deleteAtPath([...this.pathStack, entry.key]);
-            await this.refresh();
-        } catch (err) {
-            this._showError(err);
+        const body = translate('Delete %s? A recovery point will be created when the provider supports it.').replace('%s', label);
+        const confirmed = await callGenericPopup(body, POPUP_TYPE.CONFIRM, '', {
+            okButton: t`Delete`,
+            cancelButton: t`Cancel`,
+            wide: false,
+        });
+        if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
+        const result = await this.mutator.deleteAtPath([...this.pathStack, entry.key], entry);
+        if (result?.recovery?.id) {
+            toastr.success(t`Deleted. Recovery point: ${result.recovery.id}`);
         }
+        await this.refresh();
     }
 
     _colorFor(entry) {
@@ -391,7 +586,7 @@ export async function openStorageInspector(dataSource) {
     container.classList.add('storageInspectorContainerWrapper');
     const inspector = new StorageInspector({
         provider: new RestProvider(dataSource),
-        mutator: new ThrowingMutator(),
+        mutator: dataSource.kind === 'self' ? new RestMutator() : new ThrowingMutator(),
         container,
     });
     await inspector.init();
@@ -410,7 +605,7 @@ export async function openStorageInspector(dataSource) {
 export async function mountStorageInspector(dataSource, container) {
     const inspector = new StorageInspector({
         provider: new RestProvider(dataSource),
-        mutator: new ThrowingMutator(),
+        mutator: dataSource.kind === 'self' ? new RestMutator() : new ThrowingMutator(),
         container,
     });
     await inspector.init();

@@ -3,14 +3,14 @@
 //
 // Flow:
 //   1. acquireMigrationLock + setReadOnly(true)
-//   2. snapshot live destination (overwrite mode only) — so a failure can roll back
+//   2. snapshot the live destination for every restore mode so any failure can roll back
 //   3. materializeTransientSource(engineMeta, zip, scratchCreds) — build a live
 //      source engine instance populated from the ZIP's dump
 //   4. MigrationRunner(transient→liveEngine, categories=selectionToRunnerCategories,
 //      skipInternalSnapshot=true, destHandle=realHandle).migrateUser(scratchHandle)
 //   5. extractFsTreeCategories(zip, dirs, selection) — secrets/characters/etc.
 //   6. transient.cleanup() — drop scratch dir / scratch DB rows
-//   7. removeSnapshot (on success) or restoreFromSnapshot (on failure)
+//   7. retain the recovery point on success, or restoreFromSnapshot on failure
 //   8. setReadOnly(false) + releaseMigrationLock
 //
 // Errors are surfaced as typed errors so the route handler maps to 400/500.
@@ -24,15 +24,15 @@ import yauzl from 'yauzl';
 
 import { ChatRepo } from '../repositories/chat-repo.js';
 import { SettingsRepo } from '../repositories/settings-repo.js';
-import { PresetRepo } from '../repositories/preset-repo.js';
+import { PRESET_FOLDER_BY_API_ID, PresetRepo } from '../repositories/preset-repo.js';
 import { WorldInfoRepo } from '../repositories/world-info-repo.js';
-import { NamedDocRepo } from '../repositories/named-doc-repo.js';
+import { BUCKET_TO_DIR, NamedDocRepo } from '../repositories/named-doc-repo.js';
 import { GroupRepo } from '../repositories/group-repo.js';
 import { StatsRepo } from '../repositories/stats-repo.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../engine-backup-entries.js';
-import { setReadOnly } from '../read-only-mode.js';
+import { setReadOnly, withReadOnlyBypass } from '../read-only-mode.js';
 import { MigrationRunner } from './runner.js';
-import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
+import { snapshotUser, restoreFromSnapshot } from './backup.js';
 import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './lock.js';
 import { materializeTransientSource } from './transient-source.js';
 import { selectionToRunnerCategories, FS_TREE_CATEGORIES } from './selection-mapping.js';
@@ -57,12 +57,103 @@ const CONVERT_STAGES = [
  * @property {{ mysqlUrl?: string, postgresUrl?: string, mysqlPoolSize?: number, postgresPoolSize?: number }} [scratchCreds]
  */
 
+
+async function clearSelectedEngineCategories(engine, handle, selection) {
+    const categories = selectionToRunnerCategories(selection);
+    const repos = buildRepos(engine);
+
+    await withReadOnlyBypass(async () => {
+        if (categories.settings) {
+            await engine.withTransaction(handle, (tx) =>
+                tx.deleteResource({ kind: 'settings', handle }));
+        }
+
+        if (categories.worlds) {
+            const entries = await repos.worldInfo.list(handle);
+            for (const entry of entries) {
+                const name = entry?.key?.name;
+                if (name) await repos.worldInfo.delete(handle, name);
+            }
+        }
+
+        if (categories.presets) {
+            const canonicalApiIds = [];
+            const seenDirs = new Set();
+            for (const [apiId, dirKey] of Object.entries(PRESET_FOLDER_BY_API_ID)) {
+                if (seenDirs.has(dirKey)) continue;
+                seenDirs.add(dirKey);
+                canonicalApiIds.push(apiId);
+            }
+            for (const apiId of canonicalApiIds) {
+                const entries = await repos.preset.list(handle, apiId);
+                for (const entry of entries) {
+                    const name = entry?.key?.name;
+                    if (name) await repos.preset.delete(handle, apiId, name);
+                }
+            }
+        }
+
+        if (categories.namedDocs) {
+            for (const bucket of Object.keys(BUCKET_TO_DIR)) {
+                const entries = await repos.namedDoc.list(handle, bucket);
+                for (const entry of entries) {
+                    const name = entry?.key?.name;
+                    if (name) await repos.namedDoc.delete(handle, bucket, name);
+                }
+            }
+        }
+
+        if (categories.chats) {
+            await engine.withTransaction(handle, async (tx) => {
+                const chats = await tx.listResources({ kind: 'chat', handle });
+                for (const entry of chats) {
+                    if (entry?.key) await tx.deleteResource(entry.key);
+                }
+            });
+        }
+
+        if (categories.groups) {
+            const groups = await repos.group.list(handle);
+            for (const entry of groups) {
+                const id = entry?.key?.id;
+                if (id != null) await repos.group.delete(handle, id);
+            }
+        }
+
+        if (categories.stats) {
+            await engine.withTransaction(handle, (tx) =>
+                tx.deleteResource({ kind: 'stats', handle }));
+        }
+    });
+}
+
+async function clearSelectedFsTreeCategories(dirs, selection, includeGlobalExtensions) {
+    const enabled = new Set();
+    for (const cat of FS_TREE_CATEGORIES) {
+        if (cat === 'globalExtensions' && !includeGlobalExtensions) continue;
+        if (selection?.[cat]) enabled.add(cat);
+    }
+    const rules = buildFsTreeRules(enabled, dirs);
+    const cleared = new Set();
+    for (const rule of rules) {
+        const target = rule.exact ? rule.targetPath : rule.targetDir;
+        if (!target || cleared.has(target)) continue;
+        cleared.add(target);
+        if (rule.exact) {
+            await fsPromises.rm(target, { force: true });
+        } else {
+            await fsPromises.rm(target, { recursive: true, force: true });
+            await fsPromises.mkdir(target, { recursive: true });
+        }
+    }
+}
+
 /**
  * @param {string} zipPath
  * @param {{ engineKind: string, handle?: string }} engineMeta
  * @param {object} dirs        Live user's `directories` object (must have `.root`).
  * @param {object} selection   10-key backup-category selection.
- * @param {'merge'|'overwrite'} mode
+ * @param {'merge'|'overwrite'|'full'} mode
  * @param {CrossModeRestoreOpts} opts
  */
 export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mode, opts) {
@@ -74,15 +165,16 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
     if (!dataRoot) throw new Error('crossModeRestore: dataRoot is required');
 
     const handle = path.basename(dirs.root);
-    const backupRoot = path.join(dataRoot, '_storage-migrations');
+    const backupRoot = path.join(dataRoot, '_restore-recovery');
     fs.mkdirSync(backupRoot, { recursive: true });
 
     // Gate: if backup is from mysql/pg, the operator must supply a scratch DB
     // connection string. This is a 400, not a 500 — the UI prompts and retries.
-    if (engineMeta.engineKind === 'mysql' && !scratchCreds?.mysqlUrl) {
+    const sameEngineKind = engineMeta.engineKind === currentEngine.kind;
+    if (!sameEngineKind && engineMeta.engineKind === 'mysql' && !scratchCreds?.mysqlUrl) {
         throw new CrossModeScratchCredsRequiredError('mysql');
     }
-    if (engineMeta.engineKind === 'postgres' && !scratchCreds?.postgresUrl) {
+    if (!sameEngineKind && engineMeta.engineKind === 'postgres' && !scratchCreds?.postgresUrl) {
         throw new CrossModeScratchCredsRequiredError('postgres');
     }
 
@@ -113,28 +205,50 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
 
     let cleanupWarning = null;
     try {
-        // 1. Snapshot live destination (overwrite mode only — merge mode
-        //    intentionally has no rollback per spec §4.2/4.3).
-        if (mode === 'overwrite') {
-            try {
-                snapshotPath = await snapshotUser({
-                    handle,
-                    userRoot: dirs.root,
-                    backupRoot,
-                    engine: currentEngine,
-                });
-            } catch (err) {
-                throw new CrossModeConversionFailedError(err, {
-                    rollback: 'merge-no-snapshot',
-                    snapshotPath: null,
-                });
+        // 1. Snapshot the full live destination before every restore. Merge
+        //    can mutate both engine rows and filesystem categories, so it must
+        //    have the same rollback guarantee as replace/full restores.
+        try {
+            snapshotPath = await snapshotUser({
+                handle,
+                userRoot: dirs.root,
+                backupRoot,
+                engine: currentEngine,
+                metadata: {
+                    purpose: 'backup-restore',
+                    restoreMode: mode,
+                    engineKind: currentEngine.kind,
+                    sourceEngineKind: engineMeta.engineKind,
+                },
+            });
+            if (onProgress) {
+                try { onProgress({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
             }
+        } catch (err) {
+            throw new CrossModeConversionFailedError(err, {
+                rollback: 'snapshot-failed',
+                snapshotPath: null,
+            });
         }
 
         // 2. Materialize transient source engine populated from the ZIP.
         transient = await materializeTransientSource(engineMeta, zipPath, {
-            dataRoot, scratchHandle, scratchCreds,
+            dataRoot,
+            scratchHandle,
+            scratchCreds,
+            reuseEngine: sameEngineKind ? currentEngine : null,
         });
+
+        // Replacement modes remove only the selected logical categories.
+        // Merge leaves unrelated and unmatched destination records intact.
+        if (mode === 'overwrite' || mode === 'full') {
+            await clearSelectedEngineCategories(currentEngine, handle, selection);
+            await clearSelectedFsTreeCategories(
+                dirs,
+                selection,
+                Boolean(opts.includeGlobalExtensions),
+            );
+        }
 
         // 3. MigrationRunner: scratch source → live destination.
         const sourceRepos = buildRepos(transient.engine);
@@ -168,11 +282,8 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             onProgress,
         });
 
-        // 5. Success: drop the snapshot and tear down the transient.
-        if (snapshotPath) {
-            try { removeSnapshot(snapshotPath); } catch { /* preserve on rm failure */ }
-            snapshotPath = null;
-        }
+        // 5. Success: retain the snapshot as the user's recovery point and
+        // tear down the transient source.
         try {
             await transient.cleanup();
         } catch (err) {
@@ -180,33 +291,41 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
         }
         transient = null;
 
+        const staging = {
+            sourceKind: engineMeta.engineKind,
+            destKind: currentEngine.kind,
+            scratchHandle,
+            durationMs: Date.now() - startedAt,
+            converted: {
+                settings: migrationStats.settings,
+                presets: migrationStats.presets,
+                preset_states: migrationStats.preset_states,
+                worlds: migrationStats.worlds,
+                chats: migrationStats.chats,
+                chat_states: migrationStats.chat_states,
+                named_docs: migrationStats.named_docs,
+                groups: migrationStats.groups,
+                stats: migrationStats.stats,
+            },
+            cleanupWarning,
+        };
         return {
             restoredCount: extractResult.restoredCount,
             failedCount: extractResult.failedCount,
-            crossMode: {
-                sourceKind: engineMeta.engineKind,
-                destKind: currentEngine.kind,
-                scratchHandle,
-                durationMs: Date.now() - startedAt,
-                converted: {
-                    settings: migrationStats.settings,
-                    presets: migrationStats.presets,
-                    preset_states: migrationStats.preset_states,
-                    worlds: migrationStats.worlds,
-                    chats: migrationStats.chats,
-                    chat_states: migrationStats.chat_states,
-                    named_docs: migrationStats.named_docs,
-                    groups: migrationStats.groups,
-                    stats: migrationStats.stats,
-                },
-                cleanupWarning,
+            staging,
+            ...(sameEngineKind ? {} : { crossMode: staging }),
+            recoveryPoint: snapshotPath ? path.basename(snapshotPath) : null,
+            verification: {
+                ok: Boolean(migrationStats.verified),
+                engineRecordsVerified: Boolean(migrationStats.verified),
+                fsEntriesRestored: extractResult.restoredCount,
+                fsEntriesFailed: extractResult.failedCount,
             },
         };
     } catch (err) {
         // Rollback path. Three states:
-        //   - overwrite + snapshot exists  → restore live dest from snapshot
-        //   - merge (no snapshot)          → cannot roll back, surface warning
-        //   - rollback itself fails        → CCFE.partial with snapshotPath
+        //   - every admitted restore has a snapshot → restore live dest
+        //   - rollback itself fails                 → CCFE.partial with snapshotPath
         // Always try to clean up the transient last so a leaked scratch
         // doesn't survive the failure.
         //
@@ -267,7 +386,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             try { await transient.cleanup(); } catch { /* best-effort */ }
         }
         throw new CrossModeConversionFailedError(err, {
-            rollback: 'merge-no-snapshot',
+            rollback: 'snapshot-missing',
             snapshotPath: null,
         });
     } finally {

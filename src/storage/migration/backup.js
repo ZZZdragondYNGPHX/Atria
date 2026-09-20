@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../engine-backup-entries.js';
 
+export const SNAPSHOT_META_ENTRY = '_atria_snapshot_meta.json';
+
 /**
  * Snapshot a user's directory tree into <backupRoot>/<timestamp>-<handle>/.
  * Returns the absolute backup path.
@@ -37,9 +39,10 @@ import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../engine-backup-entries.j
  * @param {string} args.userRoot
  * @param {string} args.backupRoot
  * @param {object|null} [args.engine] — engine instance with `kind`, `dumpUser`.
+ * @param {object|null} [args.metadata] — optional operator-facing snapshot metadata.
  * @returns {Promise<string>} the absolute snapshot directory path.
  */
-export async function snapshotUser({ handle, userRoot, backupRoot, engine = null }) {
+export async function snapshotUser({ handle, userRoot, backupRoot, engine = null, metadata = null }) {
     if (!handle) throw new Error('snapshotUser: handle is required');
     if (!userRoot) throw new Error('snapshotUser: userRoot is required');
     if (!backupRoot) throw new Error('snapshotUser: backupRoot is required');
@@ -50,6 +53,19 @@ export async function snapshotUser({ handle, userRoot, backupRoot, engine = null
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const dest = path.join(backupRoot, `${timestamp}-${handle}`);
     fs.cpSync(userRoot, dest, { recursive: true });
+
+    if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+        const snapshotMeta = {
+            ...metadata,
+            handle,
+            createdAt: new Date().toISOString(),
+        };
+        fs.writeFileSync(
+            path.join(dest, SNAPSHOT_META_ENTRY),
+            JSON.stringify(snapshotMeta, null, 2) + '\n',
+            'utf8',
+        );
+    }
 
     // In non-fs modes also capture an engine dump so the
     // engine-side state (mysql/pg rows; sqlite .sqlite file) survives a
@@ -136,7 +152,9 @@ export async function restoreFromSnapshot({ handle, userRoot, backupPath, engine
         recursive: true,
         filter: (src) => {
             const base = path.basename(src);
-            return base !== ENGINE_DUMP_ENTRY && base !== ENGINE_META_ENTRY;
+            return base !== ENGINE_DUMP_ENTRY
+                && base !== ENGINE_META_ENTRY
+                && base !== SNAPSHOT_META_ENTRY;
         },
     });
 

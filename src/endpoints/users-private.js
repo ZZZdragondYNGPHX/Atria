@@ -21,15 +21,31 @@ import { invalidateRecentChatIndex } from './chats.js';
 import { color, Cache, getConfigValue, ensureDirectory, isValidUrl, normalizeZipEntryPath, trimTrailingSlash } from '../util.js';
 import { createLanMigrationOffer, LAN_MIGRATION_PATH_PREFIX } from '../lan-migration.js';
 import { listForUser, mergeReadIds } from '../announcements.js';
-import { getStorageEngine } from '../storage/index.js';
+import { getStorageEngine, setReadOnly } from '../storage/index.js';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../storage/engine-backup-entries.js';
 import { crossModeRestore } from '../storage/migration/cross-mode-restore.js';
+import { SNAPSHOT_META_ENTRY, snapshotUser, restoreFromSnapshot } from '../storage/migration/backup.js';
 import {
     CrossModeScratchCredsRequiredError,
     CrossModeScratchConnectionError,
     CrossModeConversionFailedError,
 } from '../storage/migration/cross-mode-errors.js';
+import {
+    acquireMigrationLock,
+    makeHolderId,
+    releaseMigrationLock,
+    startHeartbeat,
+    stopHeartbeat,
+} from '../storage/migration/lock.js';
 import { resolvePath, StorageInspectorError } from '../storage/inspector.js';
+import {
+    deleteStorageResource,
+    listStorageRecoveryPoints,
+    readStorageResource,
+    resolveStorageResource,
+    restoreStorageRecoveryPoint,
+    writeStorageResource,
+} from '../storage/management.js';
 import { getAdminSettings } from '../admin-settings.js';
 
 // Two sentinel filenames the backup ZIP carries when the storage engine isn't
@@ -553,41 +569,34 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
     return { targetByNormalizedEntry, report, engineMeta };
 }
 
-async function discardRestoreSnapshots(snapshots) {
-    await Promise.all(snapshots.map(async (snap) => {
-        try {
-            if (snap.type === 'file') {
-                await fsPromises.rm(snap.snapshot, { force: true });
-            } else {
-                await fsPromises.rm(snap.snapshot, { recursive: true, force: true });
-            }
-        } catch (error) {
-            console.warn(`Failed to remove restore snapshot ${snap.snapshot}:`, error);
-        }
-    }));
+const RESTORE_RECOVERY_DIR = '_restore-recovery';
+
+async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null, metadata = {}) {
+    const backupRoot = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
+    ensureDirectory(backupRoot);
+    try { onProgress?.({ phase: 'snapshot', current: 0, total: 1 }); } catch { /* observer */ }
+    const backupPath = await snapshotUser({
+        handle,
+        userRoot: directories.root,
+        backupRoot,
+        engine,
+        metadata: {
+            purpose: 'backup-restore',
+            engineKind: engine.kind,
+            ...metadata,
+        },
+    });
+    try { onProgress?.({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
+    return backupPath;
 }
 
-async function rollbackRestoreSnapshots(snapshots) {
-    const results = await Promise.all(snapshots.map(async (snap) => {
-        try {
-            if (snap.type === 'file') {
-                await fsPromises.rm(snap.original, { force: true });
-            } else {
-                await fsPromises.rm(snap.original, { recursive: true, force: true });
-            }
-        } catch (error) {
-            console.warn(`Failed to clear partial restore at ${snap.original} before rollback:`, error);
-        }
-
-        try {
-            await fsPromises.rename(snap.snapshot, snap.original);
-            return null;
-        } catch (error) {
-            console.error(`Failed to roll back snapshot ${snap.snapshot} -> ${snap.original}:`, error);
-            return snap;
-        }
-    }));
-    return results.filter((snap) => snap !== null);
+async function rollbackRestoreRecoveryPoint(handle, directories, engine, recoveryPath) {
+    await restoreFromSnapshot({
+        handle,
+        userRoot: directories.root,
+        backupPath: recoveryPath,
+        engine,
+    });
 }
 
 async function restoreUserBackupArchive(uploadPath, directories, selection, mode, options = {}) {
@@ -642,8 +651,12 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // db engine. This subsumes the legacy 400 "run storage-migrate" error.
     const currentEngine = getStorageEngine();
     const effectiveMeta = analysis.engineMeta || (currentEngine.kind !== 'fs' ? { engineKind: 'fs' } : null);
-    if (effectiveMeta && effectiveMeta.engineKind !== currentEngine.kind) {
-        // Cross-mode restore delegation. Returns a normalized
+    if (effectiveMeta) {
+        // Database-backed archives are always staged, even when source and
+        // destination engine kinds match. This prevents a selected-category
+        // restore from replaying a whole-user dump via engine.restoreUser().
+        // Legacy fs archives on DB destinations use the same staging path.
+        // Returns a normalized
         // `{ restoredCount, failedCount, crossMode: {...} }` shape that the
         // caller can echo straight back.
         const crossResult = await crossModeRestore(
@@ -672,54 +685,42 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // type is kept exported for defensive backward compat with consumers that
     // still match on it, but the throw site has been removed.
 
-    if (mode === 'overwrite' && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
+    if (isReplacingRestoreMode(mode) && analysis.report.targetableEntries === 0 && !analysis.engineMeta) {
         throw new Error('Archive does not match selected restore categories. Overwrite was cancelled to protect existing data.');
     }
 
-    /** @type {{type: 'file'|'directory', original: string, snapshot: string}[]} */
-    const snapshots = [];
+    let recoveryPath = null;
     let snapshotMs = 0;
+    const tSnap = Date.now();
+    try {
+        recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress, {
+            restoreMode: mode,
+        });
+    } catch (snapshotError) {
+        throw new Error(`Failed to create recovery point before restore: ${snapshotError?.message || snapshotError}`);
+    }
+    snapshotMs = Date.now() - tSnap;
 
-    if (mode === 'overwrite') {
-        const tSnap = Date.now();
-        const snapshotSuffix = `.restore-snapshot-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-        const snapshotTotal = targetFiles.size + targetDirectories.length;
-        let snapshotCurrent = 0;
-        reportProgress({ phase: 'snapshot', current: 0, total: snapshotTotal });
-
+    if (isReplacingRestoreMode(mode)) {
         try {
             for (const filePath of targetFiles) {
-                snapshotCurrent += 1;
-                if (!fs.existsSync(filePath)) {
-                    reportProgress({ phase: 'snapshot', current: snapshotCurrent, total: snapshotTotal });
-                    continue;
-                }
-                const snapshot = filePath + snapshotSuffix;
-                await fsPromises.rename(filePath, snapshot);
-                snapshots.push({ type: 'file', original: filePath, snapshot });
-                reportProgress({ phase: 'snapshot', current: snapshotCurrent, total: snapshotTotal });
+                await fsPromises.rm(filePath, { force: true });
             }
-
             for (const directoryPath of targetDirectories) {
-                snapshotCurrent += 1;
-                if (fs.existsSync(directoryPath)) {
-                    const snapshot = directoryPath + snapshotSuffix;
-                    await fsPromises.rename(directoryPath, snapshot);
-                    snapshots.push({ type: 'directory', original: directoryPath, snapshot });
-                }
+                await fsPromises.rm(directoryPath, { recursive: true, force: true });
                 ensureDirectory(directoryPath);
-                reportProgress({ phase: 'snapshot', current: snapshotCurrent, total: snapshotTotal });
             }
-        } catch (snapshotError) {
-            const orphaned = await rollbackRestoreSnapshots(snapshots);
-            const baseMessage = snapshotError instanceof Error ? snapshotError.message : String(snapshotError);
-            if (orphaned.length > 0) {
-                const paths = orphaned.map(snap => snap.snapshot).join(', ');
-                throw new Error(`Failed to snapshot existing data before overwrite: ${baseMessage}. Manual recovery required for: ${paths}`);
+        } catch (clearError) {
+            try {
+                await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
+            } catch (rollbackError) {
+                throw new Error(
+                    `Failed to prepare overwrite restore and rollback also failed. Recovery point: ${recoveryPath}. `
+                    + `Prepare error: ${clearError?.message || clearError}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                );
             }
-            throw new Error(`Failed to snapshot existing data before overwrite: ${baseMessage}`);
+            throw new Error(`Failed to prepare overwrite restore; previous data restored. ${clearError?.message || clearError}`);
         }
-        snapshotMs = Date.now() - tSnap;
     }
 
     const result = {
@@ -732,7 +733,6 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
 
     const tExtract = Date.now();
     let extractMs = 0;
-    let discardMs = 0;
     const extractTotal = analysis.report.targetableEntries;
     reportProgress({ phase: 'extract', current: 0, total: extractTotal });
     let lastExtractProgressAt = 0;
@@ -873,24 +873,61 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         extractMs = Date.now() - tExtract;
         reportExtractProgress(true);
 
-        if (mode === 'overwrite') {
-            const tDiscard = Date.now();
-            reportProgress({ phase: 'finalize' });
-            await discardRestoreSnapshots(snapshots);
-            discardMs = Date.now() - tDiscard;
+        const verification = {
+            ok: true,
+            checkedFiles: 0,
+            missingFiles: [],
+            enginePing: null,
+        };
+        for (const mapping of analysis.targetByNormalizedEntry.values()) {
+            verification.checkedFiles += 1;
+            if (!fs.existsSync(mapping.targetPath)) {
+                verification.ok = false;
+                verification.missingFiles.push(path.relative(targetRoot, mapping.targetPath));
+            }
         }
+        if (analysis.engineMeta && currentEngine.kind !== 'fs') {
+            try {
+                await currentEngine.ping();
+                verification.enginePing = true;
+            } catch (verifyError) {
+                verification.ok = false;
+                verification.enginePing = false;
+                addRestoreReportSample(
+                    result.preflight,
+                    ENGINE_DUMP_ENTRY,
+                    `engine_verify_failed:${verifyError?.message || verifyError}`,
+                );
+            }
+        }
+        if (!verification.ok) {
+            throw new Error(
+                `Restore verification failed: ${verification.missingFiles.length} restored file(s) missing`
+                + (verification.enginePing === false ? '; storage engine verification failed' : ''),
+            );
+        }
+        result.verification = verification;
+
+        reportProgress({ phase: 'finalize' });
+        result.recoveryPoint = path.basename(recoveryPath);
     } catch (extractError) {
         extractMs = Date.now() - tExtract;
         const totalMs = Date.now() - restoreStart;
         console.warn(`[user-backup] Restore failed after ${totalMs}ms (analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms): ${extractError?.message || extractError}`);
-        if (mode === 'overwrite' && snapshots.length > 0) {
-            const orphaned = await rollbackRestoreSnapshots(snapshots);
-            const baseMessage = extractError instanceof Error ? extractError.message : String(extractError);
-            if (orphaned.length > 0) {
-                const paths = orphaned.map(snap => snap.snapshot).join(', ');
-                throw new Error(`Restore failed; previous data partially rolled back from snapshot. Manual recovery required for: ${paths}. Original error: ${baseMessage}`);
+        const baseMessage = extractError instanceof Error ? extractError.message : String(extractError);
+        if (recoveryPath) {
+            try {
+                await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
+                throw new Error(`Restore failed; previous data restored from recovery point. Original error: ${baseMessage}`);
+            } catch (rollbackError) {
+                if (String(rollbackError?.message || '').startsWith('Restore failed; previous data restored')) {
+                    throw rollbackError;
+                }
+                throw new Error(
+                    `Restore failed and automatic rollback failed. Recovery point: ${recoveryPath}. `
+                    + `Original error: ${baseMessage}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                );
             }
-            throw new Error(`Restore failed; previous data restored from snapshot. Original error: ${baseMessage}`);
         }
         throw extractError;
     }
@@ -900,8 +937,110 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     }
 
     const totalMs = Date.now() - restoreStart;
-    console.info(`[user-backup] Restore done: mode=${mode} entries=${result.restoredCount}/${analysis.report.totalEntries} failed=${result.failedCount} analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms discard=${discardMs}ms total=${totalMs}ms`);
+    console.info(`[user-backup] Restore done: mode=${mode} entries=${result.restoredCount}/${analysis.report.totalEntries} failed=${result.failedCount} analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms total=${totalMs}ms recovery=${result.recoveryPoint}`);
     return result;
+}
+
+
+async function listRestoreRecoveryPoints(handle) {
+    const root = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
+    let entries = [];
+    try {
+        entries = await fsPromises.readdir(root, { withFileTypes: true });
+    } catch {
+        return [];
+    }
+
+    const points = [];
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const recoveryPath = path.join(root, entry.name);
+        const metaPath = path.join(recoveryPath, SNAPSHOT_META_ENTRY);
+        try {
+            const meta = JSON.parse(await fsPromises.readFile(metaPath, 'utf8'));
+            if (meta?.handle !== handle) continue;
+            const stat = await fsPromises.stat(recoveryPath);
+            points.push({
+                id: entry.name,
+                createdAt: meta.createdAt || stat.mtime.toISOString(),
+                purpose: meta.purpose || 'backup-restore',
+                restoreMode: meta.restoreMode || null,
+                engineKind: meta.engineKind || null,
+                sourceRecoveryPoint: meta.sourceRecoveryPoint || null,
+            });
+        } catch {
+            // Ignore non-restore snapshots or incomplete forensic directories.
+        }
+    }
+    points.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return points.slice(0, 50);
+}
+
+function resolveRestoreRecoveryPath(handle, id) {
+    const safeId = String(id || '').trim();
+    if (!safeId || safeId.includes('/') || safeId.includes('\\') || safeId.includes('..')) {
+        throw new Error('Invalid recovery point id.');
+    }
+    const root = path.resolve(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
+    const recoveryPath = path.resolve(root, safeId);
+    if (!recoveryPath.startsWith(root + path.sep)) {
+        throw new Error('Invalid recovery point path.');
+    }
+    const metaPath = path.join(recoveryPath, SNAPSHOT_META_ENTRY);
+    if (!fs.existsSync(metaPath)) throw new Error('Recovery point not found.');
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    if (meta?.handle !== handle) throw new Error('Recovery point does not belong to this account.');
+    return { recoveryPath, meta };
+}
+
+async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
+    const { recoveryPath } = resolveRestoreRecoveryPath(handle, recoveryId);
+    const engine = getStorageEngine();
+    const holderId = makeHolderId();
+    let heartbeat = null;
+    await acquireMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    heartbeat = startHeartbeat({ dataRoot: globalThis.DATA_ROOT, holderId });
+    setReadOnly(true);
+
+    let undoPath = null;
+    try {
+        undoPath = await createRestoreRecoveryPoint(handle, directories, engine, null, {
+            purpose: 'before-recovery-apply',
+            restoreMode: 'recovery',
+            sourceRecoveryPoint: recoveryId,
+        });
+        await restoreFromSnapshot({
+            handle,
+            userRoot: directories.root,
+            backupPath: recoveryPath,
+            engine,
+        });
+        return {
+            restored: recoveryId,
+            undoRecoveryPoint: path.basename(undoPath),
+        };
+    } catch (error) {
+        if (undoPath) {
+            try {
+                await restoreFromSnapshot({
+                    handle,
+                    userRoot: directories.root,
+                    backupPath: undoPath,
+                    engine,
+                });
+            } catch (rollbackError) {
+                throw new Error(
+                    `Recovery apply failed and rollback failed. Undo point: ${undoPath}. `
+                    + `Apply error: ${error?.message || error}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                );
+            }
+        }
+        throw error;
+    } finally {
+        try { setReadOnly(false); } catch { /* best effort */ }
+        try { stopHeartbeat(heartbeat); } catch { /* best effort */ }
+        try { await releaseMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId }); } catch { /* best effort */ }
+    }
 }
 
 const RESTORE_STREAM_MIME = 'application/x-ndjson';
@@ -1135,63 +1274,50 @@ router.post('/lan-migration/offer', async (request, response) => {
     }
 });
 
-/**
- * Pull out only the `_engine_meta.json` payload from a backup ZIP. Returns
- * null when the ZIP has no engine meta (legacy fs-only backup). Used by the
- * `/restore-backup/probe` endpoint to tell the client whether a cross-mode
- * restore is needed and whether scratch DB credentials are required, all
- * without committing to the full restore pipeline.
- */
-function readEngineMetaFromZip(zipPath) {
-    return new Promise((resolve, reject) => {
-        yauzl.open(zipPath, { lazyEntries: true, decodeStrings: true }, (openErr, zipfile) => {
-            if (openErr) return reject(openErr);
-            let settled = false;
-            zipfile.readEntry();
-            zipfile.on('entry', (entry) => {
-                if (entry.fileName !== ENGINE_META_ENTRY) {
-                    zipfile.readEntry();
-                    return;
-                }
-                zipfile.openReadStream(entry, (streamErr, readStream) => {
-                    if (settled) return;
-                    if (streamErr) {
-                        settled = true;
-                        try { zipfile.close(); } catch { /* Preserve the existing best-effort error handling. */ }
-                        return reject(streamErr);
-                    }
-                    const chunks = [];
-                    readStream.on('data', (c) => chunks.push(c));
-                    readStream.on('error', (e) => {
-                        if (settled) return;
-                        settled = true;
-                        try { zipfile.close(); } catch { /* Preserve the existing best-effort error handling. */ }
-                        reject(e);
-                    });
-                    readStream.on('end', () => {
-                        if (settled) return;
-                        settled = true;
-                        try { zipfile.close(); } catch { /* Preserve the existing best-effort error handling. */ }
-                        try {
-                            resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-                        } catch (parseErr) {
-                            reject(parseErr);
-                        }
-                    });
-                });
-            });
-            zipfile.on('end', () => {
-                if (settled) return;
-                settled = true;
-                resolve(null);
-            });
-            zipfile.on('error', (err) => {
-                if (settled) return;
-                settled = true;
-                reject(err);
-            });
+router.post('/restore-backup/recovery/list', async (request, response) => {
+    try {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.status(401).json({ error: 'Not logged in' });
+        return response.json({ recoveryPoints: await listRestoreRecoveryPoints(handle) });
+    } catch (error) {
+        console.error('Restore recovery list failed:', error);
+        return response.status(500).json({ error: error?.message || 'Failed to list recovery points' });
+    }
+});
+
+router.post('/restore-backup/recovery/apply', async (request, response) => {
+    try {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.status(401).json({ error: 'Not logged in' });
+        const directories = request.user.directories ?? getUserDirectories(handle);
+        const result = await applyRestoreRecoveryPoint({
+            handle,
+            directories,
+            recoveryId: request.body?.id,
         });
-    });
+        await invalidateRecentChatIndex(request);
+        return response.json({ ok: true, ...result });
+    } catch (error) {
+        console.error('Restore recovery apply failed:', error);
+        const locked = String(error?.message || '').includes('another holder is migrating');
+        return response.status(locked ? 409 : 400).json({ error: error?.message || 'Failed to apply recovery point' });
+    }
+});
+
+function normalizeRestoreMode(value) {
+    const mode = String(value || 'merge').trim().toLowerCase();
+    return mode === 'overwrite' || mode === 'full' ? mode : 'merge';
+}
+
+function buildFullRestoreSelection(isAdminUser) {
+    const base = normalizeUserBackupSelection({});
+    for (const key of Object.keys(base)) base[key] = true;
+    if (!isAdminUser) base.globalExtensions = false;
+    return base;
+}
+
+function isReplacingRestoreMode(mode) {
+    return mode === 'overwrite' || mode === 'full';
 }
 
 router.post('/restore-backup/probe', async (request, response) => {
@@ -1200,33 +1326,105 @@ router.post('/restore-backup/probe', async (request, response) => {
         if (!request.file) {
             return response.status(400).json({ error: 'No backup file uploaded' });
         }
-        uploadPath = request.file.path;
-        const meta = await readEngineMetaFromZip(uploadPath);
-        const currentEngine = getStorageEngine();
-        if (!meta) {
-            // Legacy fs-only ZIP — only restorable on fs servers.
-            return response.json({
-                engineKind: 'fs',
-                schemaVersion: null,
-                crossModeRequired: currentEngine.kind !== 'fs',
-                scratchCredsNeeded: null,
-            });
+
+        const originalName = String(request.file.originalname || '');
+        if (!originalName.toLowerCase().endsWith('.zip')) {
+            return response.status(400).json({ error: 'Backup file must be a .zip archive' });
         }
-        const crossModeRequired = meta.engineKind !== currentEngine.kind;
-        const scratchCredsNeeded = crossModeRequired
-            && (meta.engineKind === 'mysql' || meta.engineKind === 'postgres')
-            ? meta.engineKind
+
+        uploadPath = request.file.path;
+        const user = request.user?.profile;
+        if (!user) {
+            return response.status(401).json({ error: 'Not logged in' });
+        }
+
+        const isAdminUser = Boolean(user.admin);
+        const mode = normalizeRestoreMode(request.body?.mode);
+        const parsedSelection = parseBackupSelectionPayload(request.body?.selection);
+        const selection = mode === 'full'
+            ? buildFullRestoreSelection(isAdminUser)
+            : sanitizeBackupSelectionForUser(parsedSelection, isAdminUser);
+        if (!Object.values(selection).some(Boolean)) {
+            return response.status(400).json({ error: 'At least one restore category must be selected.' });
+        }
+        const directories = request.user.directories ?? getUserDirectories(user.handle);
+        const backupTargets = getUserBackupTargets(directories, selection, {
+            includeGlobalExtensions: isAdminUser,
+        });
+        const targetRoot = path.resolve(directories.root);
+        const targetDirectories = backupTargets.directories.map(dir => path.resolve(dir));
+        const targetFiles = new Set(backupTargets.files.map(file => path.resolve(file)));
+        const categoryTargets = buildRestoreCategoryTargets(directories, selection, {
+            includeGlobalExtensions: isAdminUser,
+        });
+
+        const analysis = await analyzeRestoreArchive(
+            uploadPath,
+            targetRoot,
+            targetFiles,
+            targetDirectories,
+            categoryTargets,
+        );
+
+        const currentEngine = getStorageEngine();
+        const sourceMeta = analysis.engineMeta || { engineKind: 'fs', schemaVersion: null, handle: null };
+        const supportedKinds = new Set(['fs', 'sqlite', 'mysql', 'postgres']);
+        const sourceKind = String(sourceMeta.engineKind || '');
+        const crossModeRequired = sourceKind !== currentEngine.kind;
+        // Every database-backed archive is staged before apply so category
+        // selection never replays a whole-user dump directly into the live
+        // engine. Same-kind MySQL/PostgreSQL staging reuses the live engine
+        // under an isolated scratch handle; extra scratch credentials are
+        // needed only for a true cross-engine MySQL/PostgreSQL source.
+        const stagedEngineRestore = Boolean(analysis.engineMeta) || crossModeRequired;
+        const scratchCredsNeeded = crossModeRequired && (sourceKind === 'mysql' || sourceKind === 'postgres')
+            ? sourceKind
             : null;
+
+        let compatible = true;
+        let reason = null;
+        if (!supportedKinds.has(sourceKind)) {
+            compatible = false;
+            reason = `Unsupported backup engine kind: ${sourceKind || '(missing)'}`;
+        } else if (analysis.report.targetableEntries === 0 && analysis.report.engineDumpEntries === 0) {
+            compatible = false;
+            reason = 'Archive contains no entries matching the selected restore categories.';
+        }
+
         return response.json({
-            engineKind: meta.engineKind,
-            schemaVersion: meta.schemaVersion || 1,
-            sourceHandle: meta.handle || null,
+            compatible,
+            reason,
+            engineKind: sourceKind,
+            destinationEngineKind: currentEngine.kind,
+            schemaVersion: sourceMeta.schemaVersion ?? null,
+            sourceHandle: sourceMeta.handle || null,
             crossModeRequired,
             scratchCredsNeeded,
+            restoreMode: mode,
+            selectedCategories: Object.entries(selection).filter(([, enabled]) => enabled).map(([key]) => key),
+            requiresRecoveryPoint: true,
+            restorePlan: {
+                mode,
+                destructive: isReplacingRestoreMode(mode),
+                fullAccount: mode === 'full',
+                selectedCategories: Object.entries(selection)
+                    .filter(([, enabled]) => enabled)
+                    .map(([key]) => key),
+                sourceEngineKind: sourceKind,
+                destinationEngineKind: currentEngine.kind,
+                stagedEngineRestore,
+                crossModeRequired,
+                scratchCredsNeeded,
+                recoveryPoint: 'required',
+                verification: 'required',
+                targetableEntries: analysis.report.targetableEntries,
+                engineDumpEntries: analysis.report.engineDumpEntries,
+            },
+            preflight: analysis.report,
         });
     } catch (err) {
-        console.error('Restore backup probe failed:', err);
-        return response.status(500).json({ error: err?.message || 'Probe failed' });
+        console.error('Restore backup preflight failed:', err);
+        return response.status(400).json({ error: err?.message || 'Preflight failed' });
     } finally {
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true }).catch(() => {});
@@ -1261,7 +1459,7 @@ router.post('/restore-backup', async (request, response) => {
         }
 
         uploadPath = request.file.path;
-        const mode = String(request.body.mode || 'merge').toLowerCase() === 'overwrite' ? 'overwrite' : 'merge';
+        const mode = normalizeRestoreMode(request.body.mode);
 
         let parsedSelection = request.body.selection;
         if (typeof parsedSelection === 'string' && parsedSelection.trim()) {
@@ -1273,7 +1471,9 @@ router.post('/restore-backup', async (request, response) => {
         }
 
         const isAdminUser = Boolean(request.user?.profile?.admin);
-        const selection = sanitizeBackupSelectionForUser(parsedSelection, isAdminUser);
+        const selection = mode === 'full'
+            ? buildFullRestoreSelection(isAdminUser)
+            : sanitizeBackupSelectionForUser(parsedSelection, isAdminUser);
         if (!Object.values(selection).some(Boolean)) {
             return response.status(400).json({ error: 'At least one restore category must be selected.' });
         }
@@ -1713,6 +1913,30 @@ router.post('/storage/inspect', async (request, response) => {
             user,
             adminSettings,
         });
+        // Add mutation capabilities only for concrete resources that the
+        // safe storage-management resolver can map back to this user's root.
+        for (const entry of result.entries ?? []) {
+            try {
+                const resource = resolveStorageResource(
+                    dirs.root,
+                    [...pathArr, entry.key],
+                    String(entry.kind || ''),
+                );
+                entry.capabilities = resource.capabilities;
+                entry.canDelete = Boolean(resource.capabilities.delete);
+            } catch {
+                entry.capabilities = {
+                    view: false,
+                    viewContent: false,
+                    edit: false,
+                    delete: false,
+                    download: false,
+                    restore: false,
+                };
+                entry.canDelete = false;
+            }
+        }
+
         // pure lib 默认 target.handle:null · 这里补齐当前用户 handle
         result.target = { type: 'self', handle: user.handle };
         return response.json(result);
@@ -1722,5 +1946,129 @@ router.post('/storage/inspect', async (request, response) => {
         }
         console.error('storage-inspector /inspect error:', err);
         return response.status(500).json({ error: { code: 'E_INTERNAL', message: String(err?.message ?? err) } });
+    }
+});
+
+
+function storageRecoveryRoot() {
+    return path.join(globalThis.DATA_ROOT, '_storage-recovery');
+}
+
+function storageResourceErrorResponse(response, err) {
+    const code = String(err?.code || 'E_INTERNAL');
+    const status = code === 'E_NOT_FOUND' ? 404
+        : code === 'E_CONFLICT' ? 409
+            : code === 'E_TOO_LARGE' ? 413
+                : code === 'E_INTERNAL' ? 500
+                    : 400;
+    return response.status(status).json({
+        error: {
+            code,
+            message: String(err?.message || err || 'Storage operation failed'),
+        },
+    });
+}
+
+function publicStorageResource(resource) {
+    const safe = { ...resource };
+    delete safe.absolutePath;
+    return safe;
+}
+
+router.post('/storage/resource/read', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const resource = resolveStorageResource(
+            dirs.root,
+            Array.isArray(request.body?.path) ? request.body.path : [],
+            String(request.body?.kind || ''),
+        );
+        const result = await readStorageResource(resource);
+        return response.json(publicStorageResource(result));
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/resource/write', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const pathArr = Array.isArray(request.body?.path) ? request.body.path : [];
+        const resource = resolveStorageResource(dirs.root, pathArr, String(request.body?.kind || ''));
+        const result = await writeStorageResource({
+            resource,
+            content: request.body?.content,
+            recoveryRoot: storageRecoveryRoot(),
+            handle: user.handle,
+            expectedModifiedMs: request.body?.expectedModifiedMs ?? null,
+        });
+        await invalidateRecentChatIndex(request);
+        const refreshed = await readStorageResource(resolveStorageResource(dirs.root, pathArr, String(request.body?.kind || '')));
+        return response.json({
+            ok: true,
+            recovery: result.recovery,
+            resource: publicStorageResource(refreshed),
+        });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/resource/delete', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const resource = resolveStorageResource(
+            dirs.root,
+            Array.isArray(request.body?.path) ? request.body.path : [],
+            String(request.body?.kind || ''),
+        );
+        const result = await deleteStorageResource({
+            resource,
+            recoveryRoot: storageRecoveryRoot(),
+            handle: user.handle,
+        });
+        await invalidateRecentChatIndex(request);
+        return response.json({ ok: true, recovery: result.recovery });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/recovery/list', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const points = await listStorageRecoveryPoints(
+            storageRecoveryRoot(),
+            user.handle,
+            request.body?.limit,
+        );
+        return response.json({ recoveryPoints: points });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
+    }
+});
+
+router.post('/storage/recovery/restore', async (request, response) => {
+    try {
+        const user = request.user?.profile;
+        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
+        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
+        const restored = await restoreStorageRecoveryPoint({
+            recoveryRoot: storageRecoveryRoot(),
+            handle: user.handle,
+            userRoot: dirs.root,
+            id: String(request.body?.id || ''),
+        });
+        await invalidateRecentChatIndex(request);
+        return response.json({ ok: true, restored });
+    } catch (err) {
+        return storageResourceErrorResponse(response, err);
     }
 });

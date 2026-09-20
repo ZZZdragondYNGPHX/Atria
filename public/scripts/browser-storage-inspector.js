@@ -1,311 +1,41 @@
 /**
- * V2 Browser Storage Inspector · 浏览器侧 5 大存储 API 的 provider + mutator.
- * 与 V1 服务端 REST inspector 共享同一 UI 外观(见 storage-inspector.js).
+ * Browser-side storage provider/mutator used by the unified Storage Management
+ * center. The provider exposes capability metadata; the shared inspector
+ * decides which view/edit/delete/create controls are rendered.
  */
 import { callGenericPopup, POPUP_TYPE } from './popup.js';
 import { createStorageInspector } from './storage-inspector.js';
 import { t, translate } from './i18n.js';
 
-// 5 大 category 元数据 · 与 storage-inspector.js CATEGORY_META 保持一致.
-const BROWSER_CATEGORIES = [
-    { key: 'localStorage',   label: 'localStorage'   },
+const MAX_IDB_ROWS = 200;
+const MAX_CACHE_BODY_CHARS = 256 * 1024;
+
+const BROWSER_CATEGORIES = Object.freeze([
+    { key: 'localStorage', label: 'localStorage' },
     { key: 'sessionStorage', label: 'sessionStorage' },
-    { key: 'indexeddb',      label: 'IndexedDB'      },
-    { key: 'cachestorage',   label: 'Cache Storage'  },
-    { key: 'quota',          label: 'Storage Quota'  },
-];
+    { key: 'indexeddb', label: 'IndexedDB' },
+    { key: 'cachestorage', label: 'Cache Storage' },
+    { key: 'quota', label: 'Storage Quota' },
+]);
 
-// UI icon 走 CATEGORY_META(在 storage-inspector.js 里 export);browser 类别的
-// icon/colorVar 由 storage-inspector.js 的扩展条目提供,provider 只发 key.
-
-/**
- * V2 provider · 浏览器 API 枚举.
- * canMutate = true(配合 BrowserMutator 用).
- */
-export class BrowserProvider {
-    constructor() {
-        this.id = 'browser';
-        this.canMutate = true;
-        this.dataSource = null;  // browser 只有一个 origin,无 dataSource
-    }
-
-    async fetch(pathArr) {
-        const quota = await estimateQuota();
-        if (pathArr.length === 0) {
-            return this._fetchRoot(quota);
-        }
-        const [cat, ...rest] = pathArr;
-        switch (cat) {
-            case 'localStorage':   return this._fetchStorageKeys(quota, 'localStorage',   rest);
-            case 'sessionStorage': return this._fetchStorageKeys(quota, 'sessionStorage', rest);
-            case 'indexeddb':      return this._fetchIndexedDb(quota, rest);
-            case 'cachestorage':   return this._fetchCacheStorage(quota, rest);
-            case 'quota':          return this._fetchQuotaLeaf(quota);
-            default:               throw makeErr('E_INVALID_PATH', `Unknown category: ${cat}`);
-        }
-    }
-
-    async _fetchRoot(quota) {
-        const entries = [];
-        for (const cat of BROWSER_CATEGORIES) {
-            let sizeBytes = null;
-            let childCount = 0;
-            let labelSuffix = '';
-            let canDrill = true;
-            let canDelete = false;  // 单 category 行不可删
-
-            if (cat.key === 'localStorage' || cat.key === 'sessionStorage') {
-                const stg = window[cat.key];
-                childCount = stg.length;
-                let bytes = 0;
-                for (let i = 0; i < stg.length; i++) {
-                    const k = stg.key(i);
-                    const v = stg.getItem(k) ?? '';
-                    bytes += estimateEntryBytes(k, v);
-                }
-                sizeBytes = bytes;
-                labelSuffix = ` (${childCount})`;
-                canDrill = childCount > 0;
-            } else if (cat.key === 'indexeddb') {
-                const dbs = await safeListDatabases();
-                childCount = dbs.length;
-                labelSuffix = ` (${childCount})`;
-                canDrill = childCount > 0;
-            } else if (cat.key === 'cachestorage') {
-                const cacheNames = await safeCacheKeys();
-                childCount = cacheNames.length;
-                labelSuffix = ` (${childCount})`;
-                canDrill = childCount > 0;
-            } else if (cat.key === 'quota') {
-                sizeBytes = quota.usedBytes;
-                canDrill = false;
-            }
-
-            entries.push({
-                key: cat.key,
-                label: cat.label,
-                labelSuffix,
-                icon: iconForBrowserCategory(cat.key),
-                kind: 'category',
-                sizeBytes,
-                mtimeMs: null,
-                childCount,
-                canDrill,
-                canDelete,
-                note: null,
-            });
-        }
-
-        return {
-            target: { type: 'browser' },
-            quota,
-            path: [],
-            breadcrumbs: [{ label: t`Browser Storage`, path: [] }],
-            isLeaf: false,
-            canMutate: true,
-            entries,
-        };
-    }
-
-    async _fetchStorageKeys(quota, kind, rest) {
-        if (rest.length !== 0) {
-            throw makeErr('E_INVALID_PATH', `${kind} has no drilldown beyond L2`);
-        }
-        const stg = window[kind];
-        const entries = [];
-        for (let i = 0; i < stg.length; i++) {
-            const k = stg.key(i);
-            const v = stg.getItem(k) ?? '';
-            entries.push({
-                key: k,
-                label: k,  // 用户 key 名,translate 会 no-op
-                icon: 'key',
-                kind: 'storage-key',
-                sizeBytes: estimateEntryBytes(k, v),
-                mtimeMs: null,
-                canDrill: false,
-                canDelete: true,
-                note: null,
-            });
-        }
-        // 按 size desc 排序 · 大的在前
-        entries.sort((a, b) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0));
-
-        return {
-            target: { type: 'browser' },
-            quota,
-            path: [kind],
-            breadcrumbs: [
-                { label: t`Browser Storage`, path: [] },
-                { label: kind, path: [kind] },
-            ],
-            isLeaf: true,
-            canMutate: true,
-            entries,
-        };
-    }
-
-    async _fetchIndexedDb(quota, rest) {
-        if (rest.length === 0) {
-            // L2: DB 列表
-            const dbs = await safeListDatabases();
-            const entries = [];
-            for (const info of dbs) {
-                if (!info.name) continue;  // 无名 DB skip
-                let storeCount = 0;
-                try {
-                    const db = await openReadOnly(info.name);
-                    storeCount = db.objectStoreNames.length;
-                    db.close();
-                } catch { /* leave storeCount = 0 */ }
-                entries.push({
-                    key: info.name,
-                    label: info.name,
-                    labelSuffix: ` (${storeCount} ${translate('stores')})`,
-                    icon: 'database',
-                    kind: 'idb-db',
-                    sizeBytes: null,
-                    mtimeMs: null,
-                    childCount: storeCount,
-                    canDrill: storeCount > 0,
-                    canDelete: true,  // 整 DB 可删
-                    note: null,
-                });
-            }
-            return {
-                target: { type: 'browser' },
-                quota,
-                path: ['indexeddb'],
-                breadcrumbs: [
-                    { label: t`Browser Storage`, path: [] },
-                    { label: 'IndexedDB', path: ['indexeddb'] },
-                ],
-                isLeaf: false,
-                canMutate: true,
-                entries,
-            };
-        }
-        // L3: store 列表 within a DB
-        const [dbName, ...rest2] = rest;
-        if (rest2.length !== 0) {
-            throw makeErr('E_INVALID_PATH', 'IndexedDB has no drilldown beyond L3');
-        }
-        const db = await openReadOnly(dbName);
-        const storeNames = Array.from(db.objectStoreNames);
-        const entries = [];
-        for (const sn of storeNames) {
-            let count = 0;
-            try {
-                count = await countStore(db, sn);
-            } catch { /* leave 0 */ }
-            entries.push({
-                key: sn,
-                label: sn,
-                labelSuffix: ` (${count} ${translate('records')})`,
-                icon: 'table',
-                kind: 'idb-store',
-                sizeBytes: null,
-                mtimeMs: null,
-                childCount: count,
-                canDrill: false,
-                canDelete: true,
-                note: null,
-            });
-        }
-        db.close();
-
-        return {
-            target: { type: 'browser' },
-            quota,
-            path: ['indexeddb', dbName],
-            breadcrumbs: [
-                { label: t`Browser Storage`, path: [] },
-                { label: 'IndexedDB', path: ['indexeddb'] },
-                { label: dbName, path: ['indexeddb', dbName] },
-            ],
-            isLeaf: true,
-            canMutate: true,
-            entries,
-        };
-    }
-
-    async _fetchCacheStorage(quota, rest) {
-        if (rest.length !== 0) {
-            throw makeErr('E_INVALID_PATH', 'Cache Storage has no drilldown beyond L2');
-        }
-        const names = await safeCacheKeys();
-        const entries = [];
-        for (const name of names) {
-            let requestCount = 0;
-            try {
-                const cache = await caches.open(name);
-                const keys = await cache.keys();
-                requestCount = keys.length;
-            } catch { /* leave 0 */ }
-            entries.push({
-                key: name,
-                label: name,
-                labelSuffix: ` (${requestCount} ${translate('requests')})`,
-                icon: 'file-lines',
-                kind: 'cache',
-                sizeBytes: null,
-                mtimeMs: null,
-                childCount: requestCount,
-                canDrill: false,
-                canDelete: true,
-                note: null,
-            });
-        }
-        return {
-            target: { type: 'browser' },
-            quota,
-            path: ['cachestorage'],
-            breadcrumbs: [
-                { label: t`Browser Storage`, path: [] },
-                { label: 'Cache Storage', path: ['cachestorage'] },
-            ],
-            isLeaf: true,
-            canMutate: true,
-            entries,
-        };
-    }
-
-    async _fetchQuotaLeaf(quota) {
-        const used = quota.usedBytes;
-        const q = quota.quotaBytes;
-        const note = q == null
-            ? t`Browser did not report a quota.`
-            : `${((used / q) * 100).toFixed(1)}% used`;
-        return {
-            target: { type: 'browser' },
-            quota,
-            path: ['quota'],
-            breadcrumbs: [
-                { label: t`Browser Storage`, path: [] },
-                { label: 'Storage Quota', path: ['quota'] },
-            ],
-            isLeaf: true,
-            canMutate: true,
-            entries: [{
-                key: 'quota',
-                label: 'Storage Quota',
-                icon: 'chart-pie',
-                kind: 'quota-leaf',
-                sizeBytes: used,
-                mtimeMs: null,
-                canDrill: false,
-                canDelete: false,  // quota 不可删
-                note,
-            }],
-        };
-    }
+function makeErr(code, message) {
+    const err = new Error(message);
+    err.code = code;
+    return err;
 }
 
-/**
- * UTF-16 approximation · key.length + value.length 每字符 2 字节.
- * BMP 外字符(surrogate pair)可能低估 · 误差 < 5% 可接受.
- * 这是估算,不是 cap;上游没有硬约束数字上限.
- */
+function capabilities(overrides = {}) {
+    return {
+        view: false,
+        viewContent: false,
+        edit: false,
+        delete: false,
+        download: false,
+        restore: false,
+        ...overrides,
+    };
+}
+
 export function estimateEntryBytes(key, value) {
     return ((key ?? '').length + (value ?? '').length) * 2;
 }
@@ -322,7 +52,7 @@ async function estimateQuota() {
 
 async function safeListDatabases() {
     try {
-        if (!indexedDB.databases) return [];  // 旧 Safari
+        if (!indexedDB.databases) return [];
         return await indexedDB.databases();
     } catch {
         return [];
@@ -340,86 +70,689 @@ async function safeCacheKeys() {
 
 function iconForBrowserCategory(key) {
     switch (key) {
-        case 'localStorage':   return 'hard-drive';
+        case 'localStorage': return 'hard-drive';
         case 'sessionStorage': return 'clock';
-        case 'indexeddb':      return 'database';
-        case 'cachestorage':   return 'layer-group';
-        case 'quota':          return 'chart-pie';
-        default:               return 'file';
+        case 'indexeddb': return 'database';
+        case 'cachestorage': return 'layer-group';
+        case 'quota': return 'chart-pie';
+        default: return 'file';
     }
 }
 
-function openReadOnly(dbName) {
+function requestResult(request, code = 'E_UNKNOWN') {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(makeErr(code, request.error?.message || 'IndexedDB request failed'));
+    });
+}
+
+function transactionResult(transaction, code = 'E_UNKNOWN') {
+    return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(makeErr(code, transaction.error?.message || 'IndexedDB transaction failed'));
+        transaction.onabort = () => reject(makeErr(code, transaction.error?.message || 'IndexedDB transaction aborted'));
+    });
+}
+
+function openDatabase(dbName) {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(dbName);
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(makeErr('E_DB_OPEN_FAILED', `Cannot open ${dbName}: ${req.error?.message ?? 'unknown'}`));
-        // onupgradeneeded: 有些 vendor DB 不在 databases() 返回值里但 open 会触发 upgrade;
-        // 我们不 upgrade,直接 abort 事务并 resolve empty view.
-        req.onupgradeneeded = () => { req.transaction?.abort(); };
+        req.onupgradeneeded = () => {
+            req.transaction?.abort();
+        };
     });
 }
 
 function countStore(db, storeName) {
-    return new Promise((resolve, reject) => {
-        try {
-            const tx = db.transaction(storeName, 'readonly');
-            const store = tx.objectStore(storeName);
-            const req = store.count();
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => reject(req.error);
-        } catch (e) {
-            reject(e);
+    const tx = db.transaction(storeName, 'readonly');
+    return requestResult(tx.objectStore(storeName).count());
+}
+
+function bytesToBase64(bytes) {
+    let binary = '';
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    for (const byte of view) binary += String.fromCharCode(byte);
+    return btoa(binary);
+}
+
+function base64ToBytes(text) {
+    const binary = atob(text);
+    return Uint8Array.from(binary, ch => ch.charCodeAt(0)).buffer;
+}
+
+function encodeIdbKeyValue(value) {
+    if (typeof value === 'string') return { t: 's', v: value };
+    if (typeof value === 'number') return { t: 'n', v: value };
+    if (value instanceof Date) return { t: 'd', v: value.toISOString() };
+    if (value instanceof ArrayBuffer) return { t: 'b', v: bytesToBase64(value) };
+    if (ArrayBuffer.isView(value)) {
+        return { t: 'b', v: bytesToBase64(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)) };
+    }
+    if (Array.isArray(value)) return { t: 'a', v: value.map(encodeIdbKeyValue) };
+    throw makeErr('E_UNSUPPORTED_KEY', 'Unsupported IndexedDB key type.');
+}
+
+function decodeIdbKeyValue(encoded) {
+    if (!encoded || typeof encoded !== 'object') throw makeErr('E_INVALID_PATH', 'Invalid IndexedDB key token.');
+    if (encoded.t === 's') return String(encoded.v);
+    if (encoded.t === 'n') return Number(encoded.v);
+    if (encoded.t === 'd') return new Date(encoded.v);
+    if (encoded.t === 'b') return base64ToBytes(String(encoded.v));
+    if (encoded.t === 'a') return Array.isArray(encoded.v) ? encoded.v.map(decodeIdbKeyValue) : [];
+    throw makeErr('E_INVALID_PATH', 'Unknown IndexedDB key token.');
+}
+
+function encodeIdbKey(key) {
+    return encodeURIComponent(JSON.stringify(encodeIdbKeyValue(key)));
+}
+
+function decodeIdbKey(token) {
+    try {
+        return decodeIdbKeyValue(JSON.parse(decodeURIComponent(token)));
+    } catch (error) {
+        if (error?.code) throw error;
+        throw makeErr('E_INVALID_PATH', 'Malformed IndexedDB key token.');
+    }
+}
+
+function formatIdbKey(key) {
+    if (key instanceof Date) return key.toISOString();
+    if (Array.isArray(key)) return JSON.stringify(key);
+    if (key instanceof ArrayBuffer || ArrayBuffer.isView(key)) return '[binary key]';
+    return String(key);
+}
+
+function isPlainJsonValue(value, seen = new Set()) {
+    if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (typeof value !== 'object') return false;
+    if (value instanceof Date || value instanceof Blob || value instanceof ArrayBuffer || ArrayBuffer.isView(value)
+        || value instanceof Map || value instanceof Set) return false;
+    if (seen.has(value)) return false;
+    seen.add(value);
+    if (Array.isArray(value)) {
+        const ok = value.every(item => isPlainJsonValue(item, seen));
+        seen.delete(value);
+        return ok;
+    }
+    if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) {
+        seen.delete(value);
+        return false;
+    }
+    const ok = Object.values(value).every(item => isPlainJsonValue(item, seen));
+    seen.delete(value);
+    return ok;
+}
+
+function summarizeValue(value) {
+    if (value === null) return 'null';
+    if (typeof value === 'string') return value.length > 100 ? `${value.slice(0, 100)}…` : value;
+    if (typeof value !== 'object') return String(value);
+    if (value instanceof Date) return `Date(${value.toISOString()})`;
+    if (value instanceof Blob) return `Blob(${value.size} B, ${value.type || 'unknown'})`;
+    if (value instanceof ArrayBuffer) return `ArrayBuffer(${value.byteLength} B)`;
+    if (ArrayBuffer.isView(value)) return `${value.constructor?.name || 'TypedArray'}(${value.byteLength} B)`;
+    if (value instanceof Map) return `Map(${value.size})`;
+    if (value instanceof Set) return `Set(${value.size})`;
+    try {
+        const text = JSON.stringify(value);
+        return text.length > 120 ? `${text.slice(0, 120)}…` : text;
+    } catch {
+        return Object.prototype.toString.call(value);
+    }
+}
+
+async function readStoreRows(dbName, storeName) {
+    const db = await openDatabase(dbName);
+    try {
+        const tx = db.transaction(storeName, 'readonly');
+        const store = tx.objectStore(storeName);
+        const rows = [];
+        await new Promise((resolve, reject) => {
+            const req = store.openCursor();
+            req.onerror = () => reject(makeErr('E_UNKNOWN', req.error?.message || 'Failed to enumerate IndexedDB records'));
+            req.onsuccess = () => {
+                const cursor = req.result;
+                if (!cursor || rows.length >= MAX_IDB_ROWS) {
+                    resolve();
+                    return;
+                }
+                const editable = isPlainJsonValue(cursor.value);
+                rows.push({
+                    key: encodeIdbKey(cursor.key),
+                    label: formatIdbKey(cursor.key),
+                    labelSuffix: '',
+                    icon: 'file-code',
+                    kind: 'idb-record',
+                    sizeBytes: null,
+                    mtimeMs: null,
+                    childCount: 0,
+                    canDrill: false,
+                    canDelete: true,
+                    note: summarizeValue(cursor.value),
+                    capabilities: capabilities({
+                        view: true,
+                        viewContent: true,
+                        edit: editable,
+                        delete: true,
+                    }),
+                });
+                cursor.continue();
+            };
+        });
+        return rows;
+    } finally {
+        db.close();
+    }
+}
+
+async function readIdbRecord(dbName, storeName, token) {
+    const db = await openDatabase(dbName);
+    try {
+        const tx = db.transaction(storeName, 'readonly');
+        const store = tx.objectStore(storeName);
+        const key = decodeIdbKey(token);
+        const value = await requestResult(store.get(key));
+        if (value === undefined) throw makeErr('E_NOT_FOUND', 'IndexedDB record not found.');
+        return { key, value, keyPath: store.keyPath };
+    } finally {
+        db.close();
+    }
+}
+
+export class BrowserProvider {
+    constructor() {
+        this.id = 'browser';
+        this.canMutate = true;
+        this.dataSource = null;
+    }
+
+    canCreateAtPath(pathArr) {
+        return Array.isArray(pathArr)
+            && pathArr.length === 1
+            && (pathArr[0] === 'localStorage' || pathArr[0] === 'sessionStorage');
+    }
+
+    async fetch(pathArr) {
+        const quota = await estimateQuota();
+        if (pathArr.length === 0) return this._fetchRoot(quota);
+        const [category, ...rest] = pathArr;
+        switch (category) {
+            case 'localStorage':
+            case 'sessionStorage':
+                return this._fetchStorageKeys(quota, category, rest);
+            case 'indexeddb':
+                return this._fetchIndexedDb(quota, rest);
+            case 'cachestorage':
+                return this._fetchCacheStorage(quota, rest);
+            case 'quota':
+                return this._fetchQuotaLeaf(quota);
+            default:
+                throw makeErr('E_INVALID_PATH', `Unknown category: ${category}`);
         }
-    });
+    }
+
+    async readAtPath(pathArr, entry) {
+        const [category, ...rest] = pathArr;
+        if ((category === 'localStorage' || category === 'sessionStorage') && rest.length === 1) {
+            const value = window[category].getItem(rest[0]);
+            if (value === null) throw makeErr('E_NOT_FOUND', `${category} key not found.`);
+            return {
+                kind: 'storage-key',
+                content: value,
+                modifiedMs: null,
+                capabilities: capabilities({ view: true, viewContent: true, edit: true, delete: true }),
+            };
+        }
+
+        if (category === 'indexeddb' && rest.length === 3) {
+            const [dbName, storeName, token] = rest;
+            const record = await readIdbRecord(dbName, storeName, token);
+            const editable = isPlainJsonValue(record.value);
+            return {
+                kind: 'idb-record',
+                content: editable ? JSON.stringify(record.value, null, 2) : summarizeValue(record.value),
+                modifiedMs: null,
+                structuredEditable: editable,
+                key: formatIdbKey(record.key),
+                keyPath: record.keyPath,
+                capabilities: capabilities({ view: true, viewContent: true, edit: editable, delete: true }),
+            };
+        }
+
+        if (category === 'cachestorage' && rest.length === 2) {
+            const [cacheName, requestToken] = rest;
+            const url = decodeURIComponent(requestToken);
+            const cache = await caches.open(cacheName);
+            const response = await cache.match(url);
+            if (!response) throw makeErr('E_NOT_FOUND', 'Cached response not found.');
+            const clone = response.clone();
+            let body = '';
+            try {
+                body = await clone.text();
+                if (body.length > MAX_CACHE_BODY_CHARS) body = `${body.slice(0, MAX_CACHE_BODY_CHARS)}\n… preview truncated …`;
+            } catch {
+                body = '[binary or unreadable response body]';
+            }
+            const details = {
+                requestUrl: url,
+                response: {
+                    status: response.status,
+                    statusText: response.statusText,
+                    type: response.type,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    body,
+                },
+            };
+            return {
+                kind: 'cache-request',
+                content: JSON.stringify(details, null, 2),
+                modifiedMs: null,
+                capabilities: capabilities({ view: true, viewContent: true, delete: true }),
+            };
+        }
+
+        return {
+            kind: entry?.kind || 'browser-resource',
+            content: null,
+            modifiedMs: null,
+            capabilities: entry?.capabilities || capabilities({ view: true }),
+        };
+    }
+
+    async _fetchRoot(quota) {
+        const entries = [];
+        for (const category of BROWSER_CATEGORIES) {
+            let sizeBytes = null;
+            let childCount = 0;
+            let labelSuffix = '';
+            let canDrill = true;
+
+            if (category.key === 'localStorage' || category.key === 'sessionStorage') {
+                const storage = window[category.key];
+                childCount = storage.length;
+                let bytes = 0;
+                for (let index = 0; index < storage.length; index++) {
+                    const key = storage.key(index);
+                    bytes += estimateEntryBytes(key, storage.getItem(key) ?? '');
+                }
+                sizeBytes = bytes;
+                labelSuffix = ` (${childCount})`;
+                canDrill = true;
+            } else if (category.key === 'indexeddb') {
+                const dbs = await safeListDatabases();
+                childCount = dbs.length;
+                labelSuffix = ` (${childCount})`;
+                canDrill = childCount > 0;
+            } else if (category.key === 'cachestorage') {
+                const names = await safeCacheKeys();
+                childCount = names.length;
+                labelSuffix = ` (${childCount})`;
+                canDrill = childCount > 0;
+            } else if (category.key === 'quota') {
+                sizeBytes = quota.usedBytes;
+                canDrill = false;
+            }
+
+            entries.push({
+                key: category.key,
+                label: category.label,
+                labelSuffix,
+                icon: iconForBrowserCategory(category.key),
+                kind: 'category',
+                sizeBytes,
+                mtimeMs: null,
+                childCount,
+                canDrill,
+                canDelete: false,
+                note: null,
+                capabilities: capabilities(),
+            });
+        }
+        return {
+            target: { type: 'browser' },
+            quota,
+            path: [],
+            breadcrumbs: [{ label: t`Browser Storage`, path: [] }],
+            isLeaf: false,
+            canMutate: true,
+            entries,
+        };
+    }
+
+    async _fetchStorageKeys(quota, kind, rest) {
+        if (rest.length !== 0) throw makeErr('E_INVALID_PATH', `${kind} has no drilldown beyond keys.`);
+        const storage = window[kind];
+        const entries = [];
+        for (let index = 0; index < storage.length; index++) {
+            const key = storage.key(index);
+            const value = storage.getItem(key) ?? '';
+            entries.push({
+                key,
+                label: key,
+                icon: 'key',
+                kind: 'storage-key',
+                sizeBytes: estimateEntryBytes(key, value),
+                mtimeMs: null,
+                canDrill: false,
+                canDelete: true,
+                note: value.length > 100 ? `${value.slice(0, 100)}…` : value,
+                capabilities: capabilities({ view: true, viewContent: true, edit: true, delete: true }),
+            });
+        }
+        entries.sort((a, b) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0));
+        return {
+            target: { type: 'browser' },
+            quota,
+            path: [kind],
+            breadcrumbs: [
+                { label: t`Browser Storage`, path: [] },
+                { label: kind, path: [kind] },
+            ],
+            isLeaf: true,
+            canMutate: true,
+            entries,
+        };
+    }
+
+    async _fetchIndexedDb(quota, rest) {
+        if (rest.length === 0) {
+            const dbs = await safeListDatabases();
+            const entries = [];
+            for (const info of dbs) {
+                if (!info.name) continue;
+                let storeCount = 0;
+                try {
+                    const db = await openDatabase(info.name);
+                    storeCount = db.objectStoreNames.length;
+                    db.close();
+                } catch { /* unavailable DB */ }
+                entries.push({
+                    key: info.name,
+                    label: info.name,
+                    labelSuffix: ` (${storeCount} ${translate('stores')})`,
+                    icon: 'database',
+                    kind: 'idb-db',
+                    sizeBytes: null,
+                    mtimeMs: null,
+                    childCount: storeCount,
+                    canDrill: storeCount > 0,
+                    canDelete: true,
+                    note: null,
+                    capabilities: capabilities({ delete: true }),
+                });
+            }
+            return {
+                target: { type: 'browser' },
+                quota,
+                path: ['indexeddb'],
+                breadcrumbs: [
+                    { label: t`Browser Storage`, path: [] },
+                    { label: 'IndexedDB', path: ['indexeddb'] },
+                ],
+                isLeaf: false,
+                canMutate: true,
+                entries,
+            };
+        }
+
+        const [dbName, storeName, ...tail] = rest;
+        if (!storeName) {
+            const db = await openDatabase(dbName);
+            try {
+                const entries = [];
+                for (const name of Array.from(db.objectStoreNames)) {
+                    let count = 0;
+                    try { count = await countStore(db, name); } catch { /* keep 0 */ }
+                    entries.push({
+                        key: name,
+                        label: name,
+                        labelSuffix: ` (${count} ${translate('records')})`,
+                        icon: 'table',
+                        kind: 'idb-store',
+                        sizeBytes: null,
+                        mtimeMs: null,
+                        childCount: count,
+                        canDrill: count > 0,
+                        canDelete: true,
+                        note: null,
+                        capabilities: capabilities({ delete: true }),
+                    });
+                }
+                return {
+                    target: { type: 'browser' },
+                    quota,
+                    path: ['indexeddb', dbName],
+                    breadcrumbs: [
+                        { label: t`Browser Storage`, path: [] },
+                        { label: 'IndexedDB', path: ['indexeddb'] },
+                        { label: dbName, path: ['indexeddb', dbName] },
+                    ],
+                    isLeaf: false,
+                    canMutate: true,
+                    entries,
+                };
+            } finally {
+                db.close();
+            }
+        }
+
+        if (tail.length !== 0) throw makeErr('E_INVALID_PATH', 'IndexedDB record paths cannot be drilled further.');
+        const entries = await readStoreRows(dbName, storeName);
+        return {
+            target: { type: 'browser' },
+            quota,
+            path: ['indexeddb', dbName, storeName],
+            breadcrumbs: [
+                { label: t`Browser Storage`, path: [] },
+                { label: 'IndexedDB', path: ['indexeddb'] },
+                { label: dbName, path: ['indexeddb', dbName] },
+                { label: storeName, path: ['indexeddb', dbName, storeName] },
+            ],
+            isLeaf: true,
+            canMutate: true,
+            entries,
+        };
+    }
+
+    async _fetchCacheStorage(quota, rest) {
+        if (rest.length === 0) {
+            const names = await safeCacheKeys();
+            const entries = [];
+            for (const name of names) {
+                let requestCount = 0;
+                try {
+                    const cache = await caches.open(name);
+                    requestCount = (await cache.keys()).length;
+                } catch { /* leave 0 */ }
+                entries.push({
+                    key: name,
+                    label: name,
+                    labelSuffix: ` (${requestCount} ${translate('requests')})`,
+                    icon: 'file-lines',
+                    kind: 'cache',
+                    sizeBytes: null,
+                    mtimeMs: null,
+                    childCount: requestCount,
+                    canDrill: requestCount > 0,
+                    canDelete: true,
+                    note: null,
+                    capabilities: capabilities({ delete: true }),
+                });
+            }
+            return {
+                target: { type: 'browser' },
+                quota,
+                path: ['cachestorage'],
+                breadcrumbs: [
+                    { label: t`Browser Storage`, path: [] },
+                    { label: 'Cache Storage', path: ['cachestorage'] },
+                ],
+                isLeaf: false,
+                canMutate: true,
+                entries,
+            };
+        }
+
+        if (rest.length !== 1) throw makeErr('E_INVALID_PATH', 'Cache request paths cannot be drilled further.');
+        const cacheName = rest[0];
+        const cache = await caches.open(cacheName);
+        const requests = await cache.keys();
+        const entries = requests.map(request => ({
+            key: encodeURIComponent(request.url),
+            label: request.url,
+            labelSuffix: '',
+            icon: 'link',
+            kind: 'cache-request',
+            sizeBytes: null,
+            mtimeMs: null,
+            childCount: 0,
+            canDrill: false,
+            canDelete: true,
+            note: request.method,
+            capabilities: capabilities({ view: true, viewContent: true, delete: true }),
+        }));
+        return {
+            target: { type: 'browser' },
+            quota,
+            path: ['cachestorage', cacheName],
+            breadcrumbs: [
+                { label: t`Browser Storage`, path: [] },
+                { label: 'Cache Storage', path: ['cachestorage'] },
+                { label: cacheName, path: ['cachestorage', cacheName] },
+            ],
+            isLeaf: true,
+            canMutate: true,
+            entries,
+        };
+    }
+
+    async _fetchQuotaLeaf(quota) {
+        const note = quota.quotaBytes == null
+            ? t`Browser did not report a quota.`
+            : `${((quota.usedBytes / quota.quotaBytes) * 100).toFixed(1)}% used`;
+        return {
+            target: { type: 'browser' },
+            quota,
+            path: ['quota'],
+            breadcrumbs: [
+                { label: t`Browser Storage`, path: [] },
+                { label: 'Storage Quota', path: ['quota'] },
+            ],
+            isLeaf: true,
+            canMutate: true,
+            entries: [{
+                key: 'quota',
+                label: 'Storage Quota',
+                icon: 'chart-pie',
+                kind: 'quota-leaf',
+                sizeBytes: quota.usedBytes,
+                mtimeMs: null,
+                canDrill: false,
+                canDelete: false,
+                note,
+                capabilities: capabilities({ view: true }),
+            }],
+        };
+    }
 }
 
-function makeErr(code, message) {
-    const err = new Error(message);
-    err.code = code;
-    return err;
-}
-
-/**
- * V2 mutator · 5 种 path 形状 dispatch 到对应删除操作.
- * 失败时 throw Error(带 .code):E_INVALID_PATH / E_DB_LOCKED / E_STORAGE_UNAVAILABLE / E_UNKNOWN.
- */
 export class BrowserMutator {
+    async createAtPath(pathArr, key, value) {
+        if (!Array.isArray(pathArr) || pathArr.length !== 1) {
+            throw makeErr('E_INVALID_PATH', 'Create is supported only inside localStorage/sessionStorage.');
+        }
+        const [category] = pathArr;
+        if (category !== 'localStorage' && category !== 'sessionStorage') {
+            throw makeErr('E_INVALID_PATH', 'This browser storage category does not support create.');
+        }
+        window[category].setItem(String(key), String(value));
+        return { ok: true };
+    }
+
+    async writeAtPath(pathArr, _entry, content) {
+        if (!Array.isArray(pathArr) || pathArr.length < 2) {
+            throw makeErr('E_INVALID_PATH', 'Storage write path is incomplete.');
+        }
+        const [category, ...rest] = pathArr;
+        if (category === 'localStorage' || category === 'sessionStorage') {
+            if (rest.length !== 1) throw makeErr('E_INVALID_PATH', `${category} path must be [category, key].`);
+            window[category].setItem(rest[0], String(content));
+            return { ok: true };
+        }
+        if (category === 'indexeddb' && rest.length === 3) {
+            const [dbName, storeName, token] = rest;
+            let value;
+            try {
+                value = JSON.parse(String(content));
+            } catch (cause) {
+                throw makeErr('E_INVALID_CONTENT', `IndexedDB record editor accepts JSON values: ${cause.message}`);
+            }
+            if (!isPlainJsonValue(value)) {
+                throw makeErr('E_INVALID_CONTENT', 'This IndexedDB value cannot be safely represented as plain JSON.');
+            }
+            const key = decodeIdbKey(token);
+            const db = await openDatabase(dbName);
+            try {
+                const tx = db.transaction(storeName, 'readwrite');
+                const committed = transactionResult(tx, 'E_WRITE_FAILED');
+                const store = tx.objectStore(storeName);
+                const request = store.keyPath == null ? store.put(value, key) : store.put(value);
+                await requestResult(request, 'E_WRITE_FAILED');
+                await committed;
+            } finally {
+                db.close();
+            }
+            return { ok: true };
+        }
+        throw makeErr('E_READ_ONLY', 'This browser resource is not editable.');
+    }
+
     async deleteAtPath(pathArr) {
         if (!Array.isArray(pathArr) || pathArr.length < 2) {
             throw makeErr('E_INVALID_PATH', `Path must have at least [category, key]: got ${JSON.stringify(pathArr)}`);
         }
-        const [cat, ...rest] = pathArr;
-        switch (cat) {
+        const [category, ...rest] = pathArr;
+        switch (category) {
             case 'localStorage':
-                if (rest.length !== 1) throw makeErr('E_INVALID_PATH', 'localStorage path must be [localStorage, key]');
-                localStorage.removeItem(rest[0]);
-                return;
             case 'sessionStorage':
-                if (rest.length !== 1) throw makeErr('E_INVALID_PATH', 'sessionStorage path must be [sessionStorage, key]');
-                sessionStorage.removeItem(rest[0]);
-                return;
+                if (rest.length !== 1) throw makeErr('E_INVALID_PATH', `${category} path must be [category, key]`);
+                window[category].removeItem(rest[0]);
+                return { ok: true };
             case 'indexeddb':
-                if (rest.length === 1) return this._deleteIdbDatabase(rest[0]);
-                if (rest.length === 2) return this._clearIdbStore(rest[0], rest[1]);
+                if (rest.length === 1) {
+                    await this._deleteIdbDatabase(rest[0]);
+                    return { ok: true };
+                }
+                if (rest.length === 2) {
+                    await this._clearIdbStore(rest[0], rest[1]);
+                    return { ok: true };
+                }
+                if (rest.length === 3) {
+                    await this._deleteIdbRecord(rest[0], rest[1], rest[2]);
+                    return { ok: true };
+                }
                 throw makeErr('E_INVALID_PATH', `IndexedDB path depth ${rest.length} invalid`);
             case 'cachestorage':
-                if (rest.length !== 1) throw makeErr('E_INVALID_PATH', 'Cache Storage path must be [cachestorage, name]');
-                await caches.delete(rest[0]);
-                return;
+                if (rest.length === 1) {
+                    await caches.delete(rest[0]);
+                    return { ok: true };
+                }
+                if (rest.length === 2) {
+                    const cache = await caches.open(rest[0]);
+                    await cache.delete(decodeURIComponent(rest[1]));
+                    return { ok: true };
+                }
+                throw makeErr('E_INVALID_PATH', 'Cache Storage path depth invalid');
             case 'quota':
                 throw makeErr('E_NOT_INSPECTABLE', 'Storage Quota is not deletable');
             default:
-                throw makeErr('E_INVALID_PATH', `Unknown category: ${cat}`);
+                throw makeErr('E_INVALID_PATH', `Unknown category: ${category}`);
         }
     }
 
-    /**
-     * IDB deleteDatabase 会在有开着的连接时触发 `blocked` 事件挂起.
-     * 5 秒后仍未 success · 视为 lock · 抛可读错误.
-     * 5s 是 UX-driven 阈值:vendor lib 通常在 tab 切换后几百 ms 内关闭 IDB
-     * 连接;超过 5s 说明用户还开着其他 tab / worker 持有连接,继续等无意义.
-     */
     _deleteIdbDatabase(dbName) {
         return new Promise((resolve, reject) => {
             const req = indexedDB.deleteDatabase(dbName);
@@ -441,31 +774,30 @@ export class BrowserMutator {
                 clearTimeout(timer);
                 reject(makeErr('E_UNKNOWN', `Delete failed: ${req.error?.message ?? 'unknown'}`));
             };
-            // blocked 时不立刻 reject,让 timeout 触发(给持连接方一个关闭机会)
         });
     }
 
     async _clearIdbStore(dbName, storeName) {
-        const db = await openReadOnly(dbName);
+        const db = await openDatabase(dbName);
         try {
-            await new Promise((resolve, reject) => {
-                const tx = db.transaction(storeName, 'readwrite');
-                const store = tx.objectStore(storeName);
-                const req = store.clear();
-                req.onsuccess = () => resolve();
-                req.onerror = () => reject(makeErr('E_UNKNOWN', `Store clear failed: ${req.error?.message ?? 'unknown'}`));
-                tx.onerror = () => reject(makeErr('E_UNKNOWN', `Transaction failed: ${tx.error?.message ?? 'unknown'}`));
-            });
+            const tx = db.transaction(storeName, 'readwrite');
+            await requestResult(tx.objectStore(storeName).clear());
+        } finally {
+            db.close();
+        }
+    }
+
+    async _deleteIdbRecord(dbName, storeName, token) {
+        const db = await openDatabase(dbName);
+        try {
+            const tx = db.transaction(storeName, 'readwrite');
+            await requestResult(tx.objectStore(storeName).delete(decodeIdbKey(token)));
         } finally {
             db.close();
         }
     }
 }
 
-/**
- * Public entry point · User Profile 按钮点击时调用.
- * 打开 popup · 内嵌 UI shell + BrowserProvider + BrowserMutator.
- */
 export async function openBrowserStorageInspector() {
     const container = document.createElement('div');
     container.classList.add('storageInspectorContainerWrapper');
@@ -476,7 +808,9 @@ export async function openBrowserStorageInspector() {
     });
     await inspector.init();
     return callGenericPopup(container, POPUP_TYPE.DISPLAY, '', {
-        wide: true, wider: true, large: true,
+        wide: true,
+        wider: true,
+        large: true,
         allowVerticalScrolling: true,
         okButton: t`Close`,
     });
