@@ -64,13 +64,21 @@ launcher_epoch_ms() {
 log_launcher_event() {
   local event="$1"
   local method="${2:-}"
-  local now
+  local now event_url
   now="$(launcher_epoch_ms)"
   if [[ -n "$method" ]]; then
     printf '[atria-termux-launch] event=%s epoch_ms=%s method=%s\n' "$event" "$now" "$method" >>"${LOG_FILE}" 2>/dev/null || true
   else
     printf '[atria-termux-launch] event=%s epoch_ms=%s\n' "$event" "$now" >>"${LOG_FILE}" 2>/dev/null || true
   fi
+
+  # Mirror launcher boundaries into Atria's backend log so the in-app log view
+  # can distinguish Android browser launch time from frontend startup time.
+  event_url="${URL}/api/startup/launcher-event?event=${event}&epoch_ms=${now}"
+  if [[ -n "$method" ]]; then
+    event_url+="&method=${method}"
+  fi
+  curl -fsS --connect-timeout 0.2 --max-time 0.5 "$event_url" >/dev/null 2>&1 || true
 }
 
 open_browser() {

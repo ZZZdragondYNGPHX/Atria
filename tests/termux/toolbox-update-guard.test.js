@@ -91,6 +91,7 @@ describe('Termux update guards', () => {
             expect(source).toContain('browser-open-return');
             expect(source).toContain('ready-detected');
             expect(source).toContain('epoch_ms=');
+            expect(source).toContain('/api/startup/launcher-event?event=');
         }
     });
 

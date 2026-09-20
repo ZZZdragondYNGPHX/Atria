@@ -87,12 +87,23 @@ launcher_epoch_ms() {
 log_launcher_event() {
     local event="$1"
     local method="${2:-}"
-    local now
+    local now port event_url
     now="$(launcher_epoch_ms)"
     if [ -n "$method" ]; then
         printf '[atria-termux-launch] event=%s epoch_ms=%s method=%s\n' "$event" "$now" "$method" >>"$LOG_FILE" 2>/dev/null || true
     else
         printf '[atria-termux-launch] event=%s epoch_ms=%s\n' "$event" "$now" >>"$LOG_FILE" 2>/dev/null || true
+    fi
+
+    # Also send the same boundary to the local Atria process. This makes the
+    # timing visible in Atria's backend log UI instead of only in raw shell logs.
+    port="$(get_port 2>/dev/null || true)"
+    if [[ "$port" =~ ^[0-9]+$ ]]; then
+        event_url="http://127.0.0.1:${port}/api/startup/launcher-event?event=${event}&epoch_ms=${now}"
+        if [ -n "$method" ]; then
+            event_url+="&method=${method}"
+        fi
+        curl -fsS --connect-timeout 0.2 --max-time 0.5 "$event_url" >/dev/null 2>&1 || true
     fi
 }
 
