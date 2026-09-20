@@ -2,11 +2,11 @@ export const REDACTED = '[REDACTED]';
 
 const SENSITIVE_KEY_PATTERN = /(?:^|[_-])(api[_-]?key|authorization|cookie|session|csrf|password|passwd|secret|access[_-]?token|refresh[_-]?token|oauth|bearer|jwt|credential|private[_-]?key)(?:$|[_-])/i;
 const AUTHORIZATION_PATTERN = /\b(authorization\s*[:=]\s*(?:bearer|basic)\s+)([^\s,;]+)/gi;
-const BEARER_PATTERN = /\b(bearer\s+)([A-Za-z0-9._~+\/-]{12,})/gi;
+const BEARER_PATTERN = /\b(bearer\s+)([A-Za-z0-9._~+/-]{12,})/gi;
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
 const OPENAI_STYLE_KEY_PATTERN = /\b(?:sk|pk)-[A-Za-z0-9_-]{16,}\b/g;
 const QUERY_SECRET_PATTERN = /([?&](?:api[_-]?key|key|token|access[_-]?token|refresh[_-]?token|secret|password)=)([^&#\s]+)/gi;
-const LONG_TOKEN_PATTERN = /\b(?=[A-Za-z0-9_+\/-]{48,}\b)(?=[A-Za-z0-9_+\/-]*[A-Za-z])(?=[A-Za-z0-9_+\/-]*\d)[A-Za-z0-9_+\/-]{48,}\b/g;
+const LONG_TOKEN_PATTERN = /\b(?=[A-Za-z0-9_+/-]{48,}\b)(?=[A-Za-z0-9_+/-]*[A-Za-z])(?=[A-Za-z0-9_+/-]*\d)[A-Za-z0-9_+/-]{48,}\b/g;
 
 export function isSensitiveKey(key) {
     return SENSITIVE_KEY_PATTERN.test(String(key || ''));
