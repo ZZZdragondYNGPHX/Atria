@@ -1,15 +1,26 @@
-# Pending implementation: Atria Game Runtime Architecture Refactor
+# Active implementation: Atria Game Runtime Architecture Refactor
 
-A new architecture task has been approved and prepared for a fresh implementation conversation.
+The Master Refactor is in progress and has reached its first implementation checkpoint.
 
 - Working branch: `refactor/game-runtime-architecture`
-- Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
+- Baseline/current main at checkpoint: `63da3141a3895d3386ed1bebc30876c9766315ba`
+- Current working HEAD: `d72058d33c9471d8514ca540d775079f97dd54a9`
 - Formal plan: `refactor/game-runtime-architecture.md`
-- Task handoff: `handoff/game-runtime-architecture.md`
-- Status: planning complete; branch created; no feature-code changes yet.
-- Architecture direction: Regex returns to text transformation; new Atria-native Game Package / World-Event / Command-Logic / Card UI / LLM Bridge / Game Studio architecture; MVU/LoreState/legacy Regex status-bar compatibility is not a design constraint.
+- Detailed task handoff: `handoff/game-runtime-architecture.md`
+- Checkpoint: R0 complete; R1 Game Package minimum foundation complete; R2 World/Event minimum vertical slice complete.
+- Focused validation: Game Runtime Dev Checks run `35523372735` passed unit tests and focused ESLint.
+- Status: intentionally paused for conversation handoff; branch is not merged and must be retained.
 
-Implementation should read the plan and task handoff, verify live `main`, and begin R0/R1 without reopening product design.
+Implemented architecture at this checkpoint:
+
+- Regex is explicitly bounded to text transformation and Game Runtime has a regression guard against depending on Regex for state/UI.
+- `game.json` is the Game Package entry with validation, capability metadata, runtime version gating, safe paths, file discovery and recovery behavior.
+- Existing CardApp per-character file transport is reused for package text/binary round-trip without making CardApp runtime the new architecture.
+- World Runtime now has schema validation, Event Journal, snapshots, deterministic replay, full swipe-lineage branches, Chat State persistence under `atri_game_world`, package World loading and a live per-chat World Session.
+- Game Runtime exposes World state/journal/branch read-only; no public arbitrary world mutation API exists.
+- R3 must introduce the typed Command Bus and package reducer/logic registry before any UI/LLM write path is exposed.
+
+The next conversation should continue from the existing branch/HEAD, re-check live `main`, read the detailed handoff and Master Plan, then continue R2 hardening only as necessary and begin the smallest real R3 Command Bus vertical slice. Do not reopen the product-design decision and do not merge/delete the task branch yet.
 
 ---
 
