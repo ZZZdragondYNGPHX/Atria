@@ -25,14 +25,13 @@ function createActionButton(documentRef, { action, label, icon }) {
 
 export function createImmersiveMessageActions({
     document: documentRef = globalThis.document,
-    window: windowRef = globalThis.window,
     translate = value => value,
     rewrite = () => {},
     onWake = () => {},
 } = {}) {
     const chat = documentRef?.getElementById('chat');
     if (!chat) {
-        return { setEnabled() {}, close: () => false, refresh() {}, dispose() {} };
+        return { setEnabled() {}, close: () => false, refresh() {}, hasOpen: () => false, dispose() {} };
     }
 
     const toolbar = documentRef.createElement('div');
