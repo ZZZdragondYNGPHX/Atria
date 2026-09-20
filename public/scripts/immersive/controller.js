@@ -95,7 +95,6 @@ export function createImmersiveController({
         openDiagnostics: failure => callSafely(hostActions.openDiagnostics, failure),
         onWake: wake,
     });
-    let suppressStoppedOnce = false;
     let hud = null;
     const providers = createImmersiveProviderRegistry({
         onChange: snapshot => {
@@ -126,24 +125,20 @@ export function createImmersiveController({
 
     bindEvent('GENERATION_STARTED', (type, _params, isDryRun) => {
         if (isDryRun) return;
-        suppressStoppedOnce = false;
         diagnostics.clear();
         composer.generationStarted(type);
         wake();
     });
     bindEvent('GENERATION_STOPPED', () => {
-        if (suppressStoppedOnce) {
-            suppressStoppedOnce = false;
-            composer.generationEnded();
-        } else {
-            composer.generationStopped();
-        }
+        if (diagnostics.hasOpen()) composer.generationEnded();
+        else composer.generationStopped();
         presentation.refreshNarrative();
         messageActions.refresh();
     });
     bindEvent('GENERATION_ENDED', () => {
-        suppressStoppedOnce = false;
-        diagnostics.clear();
+        // hideStopButton() emits GENERATION_ENDED for both success and final
+        // error paths. A failure notice survives that cleanup event and is
+        // cleared only by the next generation or an explicit user action.
         composer.generationEnded();
         presentation.refreshNarrative();
         messageActions.refresh();
@@ -463,7 +458,6 @@ export function createImmersiveController({
         syncNativeImmersive,
         reportGenerationFailure(failure = {}) {
             if (!enabled) return;
-            suppressStoppedOnce = true;
             composer.dismissInterrupt();
             diagnostics.reportFailure(failure);
         },
