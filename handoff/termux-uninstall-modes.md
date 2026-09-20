@@ -3,8 +3,8 @@
 ## Current branch and HEAD
 
 - Branch: `feat/termux-uninstall-modes`
-- HEAD: `6b3e2e343f04cebe887478fec87df287d72717df`
-- Baseline: `main@c407f9e97530f587362c2150f7a0c2601598f75e`
+- HEAD: `170f6ad501c6aa100b868e156579f52e96c41931`
+- Baseline after synchronization: `main@1dffedf610e03a51512ec59f12a09cd7b9a23f43`
 - PR: #76
 
 ## Completed
@@ -36,6 +36,6 @@
 
 ## Next step
 
-1. Inspect PR Checks #733 result.
+1. Inspect PR Checks #743 result.
 2. Fix any failure directly if present.
 3. When green, finalize the docs record, merge PR #76 into `main`, verify merged `main`, and delete `feat/termux-uninstall-modes`.
