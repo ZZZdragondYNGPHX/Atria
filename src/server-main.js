@@ -112,7 +112,7 @@ import corsProxyMiddleware from './middleware/corsProxy.js';
 import hostWhitelistMiddleware from './middleware/hostWhitelist.js';
 import userCssMiddleware from './middleware/userCss.js';
 import { storageErrorHandler } from './middleware/storage-errors.js';
-import { markStartupMilestone } from './startup-timing.js';
+import { markStartupMilestone, startStartupPhase } from './startup-timing.js';
 import {
     getVersion,
     checkRemoteVersion,
@@ -164,6 +164,7 @@ util.inspect.defaultOptions.maxArrayLength = null;
 util.inspect.defaultOptions.maxStringLength = null;
 util.inspect.defaultOptions.depth = 4;
 installLogCapture();
+markStartupMilestone('server-main.module-evaluated');
 
 /** @type {import('./command-line.js').CommandLineArguments} */
 const cliArgs = globalThis.COMMAND_LINE_ARGS;
@@ -656,7 +657,12 @@ app.use(storageErrorHandler);
  * @returns {Promise<void>}
  */
 async function preSetupTasks() {
+    markStartupMilestone('pre-setup.start');
+    const finishPreSetup = startStartupPhase('pre-setup.total');
+
+    const finishVersion = startStartupPhase('pre-setup.version');
     const version = await getVersion();
+    finishVersion();
 
     // Print formatted header
     console.log();
@@ -674,52 +680,68 @@ async function preSetupTasks() {
     }
     console.log();
 
+    const finishDirectories = startStartupPhase('pre-setup.user-directories');
     const directories = await getUserDirectoriesList();
+    finishDirectories(`users=${directories.length}`);
 
     // Recover any FS whole-message patch interrupted by the previous process
     // before *any* startup migration/cache code can read raw chat JSONL.
     // This also protects maintenance paths that intentionally bypass Repos.
+    const finishJournalRecovery = startStartupPhase('pre-setup.chat-journal-recovery');
     for (const userDirectories of directories) {
         recoverFsChatPatchJournals(userDirectories);
     }
+    finishJournalRecovery();
 
     // Schema migrations must complete before downstream readers run, because
     // diskCache.verify / initializeAllUserMetadata / settingsInit / statsInit
     // all consume whatever shape these migrations leave behind.
+    const finishGroupMigration = startStartupPhase('pre-setup.group-migration');
     await migrateGroupChatsMetadataFormat(directories);
+    finishGroupMigration();
 
     // Content seeding can add new characters/worlds; finish before the
     // metadata/cache stages scan those directories.
+    const finishContentSeed = startStartupPhase('pre-setup.content-seed');
     await checkForNewContent(directories);
+    finishContentSeed();
 
+    const finishHousekeeping = startStartupPhase('pre-setup.housekeeping');
     migrateFlatSecrets(directories);
     cleanUploads();
     migrateAccessLog();
+    finishHousekeeping();
 
     // IO-bound, mutually-independent: each touches disjoint state
     // (diskCache → character PNGs, settingsInit → settings backups,
     // statsInit → stats DB, initializeAllUserMetadata → avatar metadata).
     // Running serially on Android wastes hundreds of ms per user; the JS
     // event loop happily interleaves these fs reads.
+    const finishParallelState = startStartupPhase('pre-setup.parallel-state');
     await Promise.all([
         diskCache.verify(directories),
         settingsInit(),
         statsInit(),
         initializeAllUserMetadata(directories),
     ]);
+    finishParallelState();
 
     // If the native launcher's boot watchdog left a sentinel (i.e. the
     // previous launch never produced a successful /api/ping), expand each
     // user's `disabledExtensions` to cover every third-party extension on
     // disk before any client connects. Re-enabling happens one-by-one from
     // the regular extensions UI.
+    const finishSafeMode = startStartupPhase('pre-setup.safe-mode');
     try {
         await applyPendingSafeMode(globalThis.DATA_ROOT);
     } catch (err) {
         console.warn('safe-mode: failed to apply pending sentinel', err?.message || err);
     }
+    finishSafeMode();
 
+    const finishPlugins = startStartupPhase('pre-setup.plugins');
     const cleanupPlugins = await loadPlugins(app, SERVER_PLUGINS_DIRECTORY);
+    finishPlugins();
     const consoleTitle = process.title;
 
     let isExiting = false;
@@ -771,6 +793,8 @@ async function preSetupTasks() {
         } catch { /* ignore */ }
     });
 
+    const finishNetworkPolicy = startStartupPhase('pre-setup.network-policy');
+
     // Add private request filter.
     const requestFilterOptions = {
         listen: cliArgs.listen,
@@ -786,9 +810,15 @@ async function preSetupTasks() {
 
     // Add request proxy.
     initRequestProxy({ enabled: cliArgs.requestProxyEnabled, url: cliArgs.requestProxyUrl, bypass: cliArgs.requestProxyBypass, enableKeepAlive: cliArgs.enableKeepAlive, privateRequestFilterEnabled: requestFilterOptions.enabled });
+    finishNetworkPolicy();
 
     // Wait for frontend libs to compile
+    const finishFrontendCache = startStartupPhase('pre-setup.frontend-cache');
     await webpackMiddleware.runWebpackCompiler({ pruneCache: true });
+    finishFrontendCache();
+
+    finishPreSetup();
+    markStartupMilestone('pre-setup.done');
 }
 
 /**
@@ -927,29 +957,43 @@ function setDnsResolutionOrder() {
 }
 
 // User storage module needs to be initialized before starting the server
+function timedStartupStep(name, fn) {
+    return async (...args) => {
+        const finish = startStartupPhase(name);
+        try {
+            return await fn(...args);
+        } finally {
+            finish();
+        }
+    };
+}
+
+const finishInitUserStorage = startStartupPhase('bootstrap.init-user-storage');
 initUserStorage(globalThis.DATA_ROOT)
-    .then(setDnsResolutionOrder)
-    .then(ensurePublicDirectoriesExist)
-    .then(migrateUserData)
-    .then(migrateSystemPrompts)
-    .then(migratePublicOverrides)
-    .then(verifySecuritySettings)
-    .then(() => initStorage({
+    .then((result) => {
+        finishInitUserStorage();
+        return result;
+    })
+    .then(timedStartupStep('bootstrap.dns-order', setDnsResolutionOrder))
+    .then(timedStartupStep('bootstrap.public-directories', ensurePublicDirectoriesExist))
+    .then(timedStartupStep('bootstrap.migrate-user-data', migrateUserData))
+    .then(timedStartupStep('bootstrap.migrate-system-prompts', migrateSystemPrompts))
+    .then(timedStartupStep('bootstrap.migrate-public-overrides', migratePublicOverrides))
+    .then(timedStartupStep('bootstrap.verify-security', verifySecuritySettings))
+    .then(timedStartupStep('bootstrap.init-storage', () => initStorage({
         mode: getConfigValue('storage.mode', 'fs'),
         directoriesByHandle: getUserDirectories,
         mysql: getConfigValue('storage.mysql', null),
         postgres: getConfigValue('storage.postgres', null),
         acquireTimeoutMs: getConfigValue('storage.acquireTimeoutMs', 30000),
         retries: { transient: getConfigValue('storage.retries.transient', 3) },
-    }))
-    // Optional crash-on-boot: when storage.failFast=true, ping the engine
-    // once and exit(1) on failure so the server doesn't accept traffic on a
-    // broken storage stack. Default is false (lazy connect).
-    .then(() => maybeFailFast(getStorageEngine(), getConfigValue('storage.failFast', false)))
+    })))
+    .then(timedStartupStep(
+        'bootstrap.storage-fail-fast',
+        () => maybeFailFast(getStorageEngine(), getConfigValue('storage.failFast', false)),
+    ))
     // Cross-mode restore scratch sweep — best-effort, runs in the background
-    // so a slow disk doesn't block server start. Removes _xrestore_<id>
-    // dirs under <dataRoot>/_storage-migrations/ older than 24h (left over
-    // when a previous cross-mode restore was SIGKILL'd mid-run).
+    // so a slow disk doesn't block server start.
     .then(() => {
         import('./storage/migration/gc-scratch.js')
             .then(({ gcScratch }) => gcScratch({
