@@ -13,6 +13,13 @@ describe('immersive experience host integration', () => {
         expect(script).not.toContain('onImmersiveFullscreenChanged');
     });
 
+    test('startup uses the plain i18n translator instead of calling the tagged-template helper as a function', () => {
+        const script = read('public/script.js');
+        expect(script).toContain("translate as translateText");
+        expect(script).toContain('translate: value => translateText(value)');
+        expect(script).not.toContain('translate: value => t(value)');
+    });
+
     test('legacy keep-top-bar product mode is gone from active UI and styling', () => {
         for (const path of [
             'public/index.html',
