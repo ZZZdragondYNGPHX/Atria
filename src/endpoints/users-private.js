@@ -24,7 +24,12 @@ import { listForUser, mergeReadIds } from '../announcements.js';
 import { getStorageEngine, setReadOnly } from '../storage/index.js';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../storage/engine-backup-entries.js';
 import { crossModeRestore } from '../storage/migration/cross-mode-restore.js';
-import { SNAPSHOT_META_ENTRY, snapshotUser, restoreFromSnapshot } from '../storage/migration/backup.js';
+import {
+    SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY,
+    SNAPSHOT_META_ENTRY,
+    snapshotUser,
+    restoreFromSnapshot,
+} from '../storage/migration/backup.js';
 import {
     CrossModeScratchCredsRequiredError,
     CrossModeScratchConnectionError,
@@ -50,8 +55,14 @@ import { getAdminSettings } from '../admin-settings.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
 import {
+    isRestoreCancelledError,
+    RestoreCancelledError,
+    throwIfRestoreCancelled,
+} from '../backup-sync/restore-cancel.js';
+import {
     extractZipEntryWithAdmZip,
     isRestoreEntryIdleTimeoutError,
+    RestoreEntryAdaptivePolicy,
     streamZipEntryWithIdleTimeout,
 } from '../backup-sync/restore-entry-extractor.js';
 
@@ -577,10 +588,12 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
 }
 
 const RESTORE_RECOVERY_DIR = '_restore-recovery';
+const activeRestoreControllers = new Map();
 
 async function createRestoreRecoveryPoint(handle, directories, engine, onProgress = null, metadata = {}) {
     const backupRoot = path.join(globalThis.DATA_ROOT, RESTORE_RECOVERY_DIR);
     ensureDirectory(backupRoot);
+    const includeGlobalExtensions = metadata?.includeGlobalExtensions === true;
     try { onProgress?.({ phase: 'snapshot', current: 0, total: 1 }); } catch { /* observer */ }
     const backupPath = await snapshotUser({
         handle,
@@ -593,6 +606,12 @@ async function createRestoreRecoveryPoint(handle, directories, engine, onProgres
             ...metadata,
         },
     });
+
+    if (includeGlobalExtensions && fs.existsSync(PUBLIC_DIRECTORIES.globalExtensions)) {
+        const globalSnapshotPath = path.join(backupPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY);
+        await fsPromises.cp(PUBLIC_DIRECTORIES.globalExtensions, globalSnapshotPath, { recursive: true });
+    }
+
     try { onProgress?.({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
     return backupPath;
 }
@@ -604,10 +623,21 @@ async function rollbackRestoreRecoveryPoint(handle, directories, engine, recover
         backupPath: recoveryPath,
         engine,
     });
+
+    const globalSnapshotPath = path.join(recoveryPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY);
+    if (fs.existsSync(globalSnapshotPath)) {
+        await resetGlobalExtensionsRestoreDirectory(PUBLIC_DIRECTORIES.globalExtensions);
+        await fsPromises.cp(globalSnapshotPath, PUBLIC_DIRECTORIES.globalExtensions, {
+            recursive: true,
+            force: true,
+        });
+    }
 }
 
 async function restoreUserBackupArchive(uploadPath, directories, selection, mode, options = {}) {
     const restoreStart = Date.now();
+    const signal = options.signal || null;
+    throwIfRestoreCancelled(signal);
     const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
     const reportProgress = (event) => {
         if (!onProgress) {
@@ -642,6 +672,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     const categoryTargets = buildRestoreCategoryTargets(directories, selection, options);
     const tAnalyze = Date.now();
     const analysis = await analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, targetDirectories, categoryTargets, reportProgress);
+    throwIfRestoreCancelled(signal);
     const analyzeMs = Date.now() - tAnalyze;
     console.info(
         `[user-backup] Analyze done: entries=${analysis.report.totalEntries} targetable=${analysis.report.targetableEntries} `
@@ -682,6 +713,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                 onProgress: reportProgress,
                 scratchCreds: options.scratchCreds || null,
                 includeGlobalExtensions: !!options.includeGlobalExtensions,
+                signal,
             },
         );
         const totalMs = Date.now() - restoreStart;
@@ -717,20 +749,24 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         try {
             recoveryPath = await createRestoreRecoveryPoint(handle, directories, currentEngine, reportProgress, {
                 restoreMode: mode,
+                includeGlobalExtensions: Boolean(options.includeGlobalExtensions && selection.globalExtensions),
             });
         } catch (snapshotError) {
             throw new Error(`Failed to create recovery point before restore: ${snapshotError?.message || snapshotError}`);
         }
         snapshotMs = Date.now() - tSnap;
         console.info(`[user-backup] Recovery snapshot done: ${snapshotMs}ms path=${path.basename(recoveryPath)}`);
+        throwIfRestoreCancelled(signal);
 
         if (isReplacingRestoreMode(mode)) {
             try {
                 for (const filePath of targetFiles) {
+                    throwIfRestoreCancelled(signal);
                     await fsPromises.rm(filePath, { force: true });
                 }
                 const globalExtensionsPath = path.resolve(PUBLIC_DIRECTORIES.globalExtensions);
                 for (const directoryPath of targetDirectories) {
+                    throwIfRestoreCancelled(signal);
                     if (path.resolve(directoryPath) === globalExtensionsPath) {
                         await resetGlobalExtensionsRestoreDirectory(directoryPath);
                         continue;
@@ -745,6 +781,12 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                     throw new Error(
                         `Failed to prepare overwrite restore and rollback also failed. Recovery point: ${recoveryPath}. `
                         + `Prepare error: ${clearError?.message || clearError}. Rollback error: ${rollbackError?.message || rollbackError}`,
+                    );
+                }
+                if (isRestoreCancelledError(clearError)) {
+                    throw new RestoreCancelledError(
+                        'Restore cancelled by user; previous data restored from recovery point.',
+                        { rolledBack: true },
                     );
                 }
                 throw new Error(`Failed to prepare overwrite restore; previous data restored. ${clearError?.message || clearError}`);
@@ -766,6 +808,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
         reportProgress({ phase: 'extract', current: 0, total: extractTotal });
         let lastExtractProgressAt = 0;
         let lastExtractLogAt = 0;
+        const entryExtractionPolicy = new RestoreEntryAdaptivePolicy();
         const reportExtractProgress = (force) => {
             const now = Date.now();
             const current = result.restoredCount + result.failedCount;
@@ -803,6 +846,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
 
                     zipfile.on('entry', (entry) => {
                         (async () => {
+                            throwIfRestoreCancelled(signal);
                             // Engine sentinel entries (spec §5.2). _engine_meta.json
                             // was already consumed during analyze for kind
                             // validation, so skip it on disk. _engine_dump.bin is
@@ -895,6 +939,8 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                         zipfile,
                                         entry,
                                         targetPath,
+                                        timeoutMs: entryExtractionPolicy.timeoutMs,
+                                        signal,
                                         onChunk: (_chunkBytes, totalBytes) => {
                                             entryBytes = totalBytes;
                                             reportEntryProgress(false);
@@ -905,13 +951,22 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                         throw error;
                                     }
 
+                                    const wasDegraded = entryExtractionPolicy.degraded;
+                                    entryExtractionPolicy.noteStall();
                                     console.warn(
                                         '[user-backup] Entry stream stalled; retrying with fallback extractor: '
-                                        + `name=${normalized} size=${entryTotalBytes}`,
+                                        + `name=${normalized} size=${entryTotalBytes} timeout=${error.timeoutMs}ms`,
                                     );
+                                    if (!wasDegraded) {
+                                        console.warn(
+                                            '[user-backup] Adaptive fallback enabled for remaining entries: '
+                                            + `primary idle probe=${entryExtractionPolicy.timeoutMs}ms`,
+                                        );
+                                    }
                                     await fsPromises.rm(targetPath, { force: true });
                                     entryBytes = 0;
                                     reportEntryProgress(true);
+                                    throwIfRestoreCancelled(signal);
                                     await extractZipEntryWithAdmZip({
                                         zipPath: uploadPath,
                                         entryName: entry.fileName,
@@ -927,6 +982,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                                     );
                                 }
 
+                                throwIfRestoreCancelled(signal);
                                 reportEntryProgress(true);
                                 const zipLastModified = typeof entry.getLastModDate === 'function'
                                     ? entry.getLastModDate()
@@ -963,6 +1019,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
             });
             extractMs = Date.now() - tExtract;
             reportExtractProgress(true);
+            throwIfRestoreCancelled(signal);
 
             const verification = {
                 ok: true,
@@ -998,19 +1055,31 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                 );
             }
             result.verification = verification;
+            throwIfRestoreCancelled(signal);
 
             reportProgress({ phase: 'finalize' });
             result.recoveryPoint = path.basename(recoveryPath);
+            throwIfRestoreCancelled(signal);
         } catch (extractError) {
             extractMs = Date.now() - tExtract;
             const totalMs = Date.now() - restoreStart;
             console.warn(`[user-backup] Restore failed after ${totalMs}ms (analyze=${analyzeMs}ms snapshot=${snapshotMs}ms extract=${extractMs}ms): ${extractError?.message || extractError}`);
             const baseMessage = extractError instanceof Error ? extractError.message : String(extractError);
+            const cancelled = isRestoreCancelledError(extractError);
             if (recoveryPath) {
                 try {
                     await rollbackRestoreRecoveryPoint(handle, directories, currentEngine, recoveryPath);
+                    if (cancelled) {
+                        throw new RestoreCancelledError(
+                            'Restore cancelled by user; previous data restored from recovery point.',
+                            { rolledBack: true },
+                        );
+                    }
                     throw new Error(`Restore failed; previous data restored from recovery point. Original error: ${baseMessage}`);
                 } catch (rollbackError) {
+                    if (isRestoreCancelledError(rollbackError)) {
+                        throw rollbackError;
+                    }
                     if (String(rollbackError?.message || '').startsWith('Restore failed; previous data restored')) {
                         throw rollbackError;
                     }
@@ -1090,7 +1159,9 @@ function resolveRestoreRecoveryPath(handle, id) {
 }
 
 async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
-    const { recoveryPath } = resolveRestoreRecoveryPath(handle, recoveryId);
+    const { recoveryPath, meta } = resolveRestoreRecoveryPath(handle, recoveryId);
+    const includeGlobalExtensions = meta?.includeGlobalExtensions === true
+        || fs.existsSync(path.join(recoveryPath, SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY));
     const engine = getStorageEngine();
     const holderId = makeHolderId();
     let heartbeat = null;
@@ -1104,13 +1175,9 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
             purpose: 'before-recovery-apply',
             restoreMode: 'recovery',
             sourceRecoveryPoint: recoveryId,
+            includeGlobalExtensions,
         });
-        await restoreFromSnapshot({
-            handle,
-            userRoot: directories.root,
-            backupPath: recoveryPath,
-            engine,
-        });
+        await rollbackRestoreRecoveryPoint(handle, directories, engine, recoveryPath);
         return {
             restored: recoveryId,
             undoRecoveryPoint: path.basename(undoPath),
@@ -1118,12 +1185,7 @@ async function applyRestoreRecoveryPoint({ handle, directories, recoveryId }) {
     } catch (error) {
         if (undoPath) {
             try {
-                await restoreFromSnapshot({
-                    handle,
-                    userRoot: directories.root,
-                    backupPath: undoPath,
-                    engine,
-                });
+                await rollbackRestoreRecoveryPoint(handle, directories, engine, undoPath);
             } catch (rollbackError) {
                 throw new Error(
                     `Recovery apply failed and rollback failed. Undo point: ${undoPath}. `
@@ -1162,7 +1224,14 @@ function beginRestoreProgressStream(response) {
     return {
         onProgress(event) { writeLine({ type: 'progress', ...event }); },
         sendResult(payload) { writeLine({ type: 'result', ...payload }); response.end(); },
-        sendError(message) { writeLine({ type: 'error', error: String(message || 'Restore failed') }); response.end(); },
+        sendError(message, details = {}) {
+            writeLine({
+                type: 'error',
+                error: String(message || 'Restore failed'),
+                ...details,
+            });
+            response.end();
+        },
     };
 }
 
@@ -1528,9 +1597,44 @@ router.post('/restore-backup/probe', async (request, response) => {
     }
 });
 
+router.post('/restore-backup/cancel', async (request, response) => {
+    try {
+        const handle = String(request.body?.handle || request.user?.profile?.handle || '').trim();
+        if (!handle) {
+            return response.status(400).json({ error: 'Missing required fields' });
+        }
+        if (handle !== request.user.profile.handle && !request.user.profile.admin) {
+            return response.status(403).json({ error: 'Unauthorized' });
+        }
+
+        const session = activeRestoreControllers.get(handle);
+        if (!session) {
+            return response.status(404).json({
+                error: 'No active restore for this account.',
+                cancelRequested: false,
+            });
+        }
+
+        if (!session.controller.signal.aborted) {
+            session.controller.abort(new RestoreCancelledError());
+            console.warn(`[user-backup] Manual cancel requested: handle=${handle} restoreId=${session.restoreId}`);
+        }
+
+        return response.json({
+            cancelRequested: true,
+            restoreId: session.restoreId,
+            startedAt: session.startedAt,
+        });
+    } catch (error) {
+        console.error('Restore cancel failed', error);
+        return response.status(500).json({ error: error?.message || 'Restore cancel failed' });
+    }
+});
+
 router.post('/restore-backup', async (request, response) => {
     let uploadPath = '';
     let stagedArchive = null;
+    let restoreSession = null;
     const streaming = wantsRestoreProgressStream(request);
     let stream = null;
 
@@ -1577,6 +1681,18 @@ router.post('/restore-backup', async (request, response) => {
 
         const directories = handle === request.user.profile.handle ? request.user.directories : getUserDirectories(handle);
 
+        if (activeRestoreControllers.has(handle)) {
+            return response.status(409).json({ error: 'A restore is already active for this account.' });
+        }
+        const controller = new AbortController();
+        restoreSession = {
+            controller,
+            restoreId: crypto.randomUUID(),
+            handle,
+            startedAt: Date.now(),
+        };
+        activeRestoreControllers.set(handle, restoreSession);
+
         // Cross-mode restore optionally needs scratch DB connection strings
         // when the backup's source engine is mysql or postgres. These are
         // multipart fields the UI fills in after a probe-endpoint call
@@ -1589,7 +1705,11 @@ router.post('/restore-backup', async (request, response) => {
             stream = beginRestoreProgressStream(response);
         }
 
-        stagedArchive = await stageRestoreArchiveForRandomAccess(uploadPath, stream?.onProgress);
+        stagedArchive = await stageRestoreArchiveForRandomAccess(
+            uploadPath,
+            stream?.onProgress,
+            { signal: restoreSession.controller.signal },
+        );
         const restoreResult = await restoreUserBackupArchive(
             stagedArchive.path,
             directories,
@@ -1599,6 +1719,7 @@ router.post('/restore-backup', async (request, response) => {
                 includeGlobalExtensions: isAdminUser,
                 onProgress: stream?.onProgress,
                 scratchCreds,
+                signal: restoreSession.controller.signal,
             },
         );
         await invalidateRecentChatIndex(request);
@@ -1613,7 +1734,10 @@ router.post('/restore-backup', async (request, response) => {
         console.error('Restore failed', error);
         const message = error?.message || 'Restore failed';
         if (stream) {
-            stream.sendError(message);
+            stream.sendError(message, {
+                code: error?.code || null,
+                rolledBack: Boolean(error?.rolledBack),
+            });
             return;
         }
         // Engine-kind mismatch and legacy-fs-on-db (both spec §5.2) plus
@@ -1644,12 +1768,22 @@ router.post('/restore-backup', async (request, response) => {
                 },
             });
         }
+        if (isRestoreCancelledError(error)) {
+            return response.status(409).json({
+                error: message,
+                code: error.code,
+                rolledBack: Boolean(error.rolledBack),
+            });
+        }
         const isValidationError = error instanceof RestoreEngineKindMismatchError
             || error instanceof RestoreLegacyFsOnDbModeError
             || message.includes('Archive does not match selected restore categories');
         const statusCode = isValidationError ? 400 : 500;
         return response.status(statusCode).json({ error: message });
     } finally {
+        if (restoreSession && activeRestoreControllers.get(restoreSession.handle) === restoreSession) {
+            activeRestoreControllers.delete(restoreSession.handle);
+        }
         await stagedArchive?.cleanup?.().catch(() => {});
         if (uploadPath) {
             await fsPromises.rm(uploadPath, { force: true });

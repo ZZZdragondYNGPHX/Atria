@@ -41,6 +41,11 @@ import {
     CrossModeScratchConnectionError,
     CrossModeConversionFailedError,
 } from './cross-mode-errors.js';
+import {
+    isRestoreCancelledError,
+    RestoreCancelledError,
+    throwIfRestoreCancelled,
+} from '../../backup-sync/restore-cancel.js';
 
 const CONVERT_STAGES = [
     'snapshotted', 'settings-copied', 'presets-copied', 'worlds-copied',
@@ -157,7 +162,8 @@ async function clearSelectedFsTreeCategories(dirs, selection, includeGlobalExten
  * @param {CrossModeRestoreOpts} opts
  */
 export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mode, opts) {
-    const { dataRoot, currentEngine, onProgress, scratchCreds } = opts;
+    const { dataRoot, currentEngine, onProgress, scratchCreds, signal = null } = opts;
+    throwIfRestoreCancelled(signal);
     if (!zipPath) throw new Error('crossModeRestore: zipPath is required');
     if (!engineMeta?.engineKind) throw new Error('crossModeRestore: engineMeta.engineKind is required');
     if (!dirs?.root) throw new Error('crossModeRestore: dirs.root is required');
@@ -224,7 +230,11 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             if (onProgress) {
                 try { onProgress({ phase: 'snapshot', current: 1, total: 1 }); } catch { /* observer */ }
             }
+            throwIfRestoreCancelled(signal);
         } catch (err) {
+            if (isRestoreCancelledError(err)) {
+                throw err;
+            }
             throw new CrossModeConversionFailedError(err, {
                 rollback: 'snapshot-failed',
                 snapshotPath: null,
@@ -232,6 +242,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
         }
 
         // 2. Materialize transient source engine populated from the ZIP.
+        throwIfRestoreCancelled(signal);
         transient = await materializeTransientSource(engineMeta, zipPath, {
             dataRoot,
             scratchHandle,
@@ -242,6 +253,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
         // Replacement modes remove only the selected logical categories.
         // Merge leaves unrelated and unmatched destination records intact.
         if (mode === 'overwrite' || mode === 'full') {
+            throwIfRestoreCancelled(signal);
             await clearSelectedEngineCategories(currentEngine, handle, selection);
             await clearSelectedFsTreeCategories(
                 dirs,
@@ -266,9 +278,11 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             skipInternalSnapshot: true,
         });
 
+        throwIfRestoreCancelled(signal);
         const migrationStats = await runner.migrateUser(scratchHandle, {
             destHandle: handle,
             onProgress: (event) => {
+                throwIfRestoreCancelled(signal);
                 if (!onProgress || !event?.stage) return;
                 try {
                     onProgress({ phase: 'convert', stage: event.stage, counts: event.counts }); // banned-words-allow
@@ -277,10 +291,13 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
         });
 
         // 4. Extract fs-tree categories straight into the live user's dirs.
+        throwIfRestoreCancelled(signal);
         const extractResult = await extractFsTreeCategories(zipPath, dirs, selection, {
             includeGlobalExtensions: !!opts.includeGlobalExtensions,
             onProgress,
+            signal,
         });
+        throwIfRestoreCancelled(signal);
 
         // 5. Success: retain the snapshot as the user's recovery point and
         // tear down the transient source.
@@ -323,6 +340,37 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             },
         };
     } catch (err) {
+        if (isRestoreCancelledError(err) && !snapshotPath) {
+            if (transient) {
+                try { await transient.cleanup(); } catch { /* best-effort */ }
+            }
+            throw err;
+        }
+        if (isRestoreCancelledError(err) && snapshotPath) {
+            try {
+                await restoreFromSnapshot({
+                    handle,
+                    userRoot: dirs.root,
+                    backupPath: snapshotPath,
+                    engine: currentEngine,
+                });
+                if (transient) {
+                    try { await transient.cleanup(); } catch { /* best-effort */ }
+                }
+                throw new RestoreCancelledError(
+                    'Restore cancelled by user; previous data restored from recovery point.',
+                    { rolledBack: true },
+                );
+            } catch (rollbackError) {
+                if (isRestoreCancelledError(rollbackError)) throw rollbackError;
+                throw new CrossModeConversionFailedError(err, {
+                    rollback: 'partial',
+                    rollbackError,
+                    snapshotPath,
+                });
+            }
+        }
+
         // Rollback path. Three states:
         //   - every admitted restore has a snapshot → restore live dest
         //   - rollback itself fails                 → CCFE.partial with snapshotPath
@@ -438,6 +486,8 @@ async function tryAcquireLock(dataRoot, holderId) {
 export async function extractFsTreeCategories(zipPath, dirs, selection, opts = {}) {
     const includeGlobalExtensions = !!opts.includeGlobalExtensions;
     const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
+    const signal = opts.signal || null;
+    throwIfRestoreCancelled(signal);
 
     // Build the set of category names we'll honor, then the per-category
     // prefix → target-dir map. We resolve a few category-to-relpath
@@ -488,6 +538,7 @@ export async function extractFsTreeCategories(zipPath, dirs, selection, opts = {
             zipfile.readEntry();
             zipfile.on('entry', (entry) => {
                 (async () => {
+                    throwIfRestoreCancelled(signal);
                     const name = entry.fileName;
                     // Skip sentinels + manifest + directory entries; engine dump
                     // is consumed by transient source, not extracted here.
@@ -508,13 +559,21 @@ export async function extractFsTreeCategories(zipPath, dirs, selection, opts = {
                     zipfile.openReadStream(entry, async (streamErr, readStream) => {
                         if (streamErr) return finish(streamErr);
                         try {
-                            await pipeline(readStream, fs.createWriteStream(target, { mode: 0o644 }));
+                            await pipeline(
+                                readStream,
+                                fs.createWriteStream(target, { mode: 0o644 }),
+                                signal ? { signal } : {},
+                            );
                             restoredCount += 1;
                             reportProgress(restoredCount + failedCount, extractTotal, false);
                             zipfile.readEntry();
                         } catch (writeErr) {
                             failedCount += 1;
                             reportProgress(restoredCount + failedCount, extractTotal, true);
+                            if (signal?.aborted && signal.reason) {
+                                finish(signal.reason);
+                                return;
+                            }
                             finish(writeErr);
                         }
                     });
