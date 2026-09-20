@@ -28,6 +28,7 @@ export function createImmersiveHud({
     root.id = 'atriaImmersiveHud';
     root.className = 'atria-immersive-hud';
     root.setAttribute('aria-label', translate('Immersive status'));
+    root.setAttribute('data-i18n', '[aria-label]Immersive status');
     root.hidden = true;
 
     const summary = documentRef.createElement('div');
@@ -52,6 +53,7 @@ export function createImmersiveHud({
     detailsButton.type = 'button';
     detailsButton.className = 'atria-immersive-hud-details-button';
     detailsButton.textContent = translate('Details');
+    detailsButton.setAttribute('data-i18n', 'Details');
     detailsButton.setAttribute('aria-expanded', 'false');
     detailsButton.hidden = true;
 
@@ -62,12 +64,15 @@ export function createImmersiveHud({
     dialog.id = 'atriaImmersiveHudDetails';
     dialog.className = 'atria-immersive-hud-details';
     dialog.setAttribute('aria-label', translate('Immersive details'));
+    dialog.setAttribute('data-i18n', '[aria-label]Immersive details');
     const dialogHeader = documentRef.createElement('header');
     const dialogTitle = textNode(documentRef, 'h2', '', translate('Story details'));
+    dialogTitle.setAttribute('data-i18n', 'Story details');
     const closeButton = documentRef.createElement('button');
     closeButton.type = 'button';
     closeButton.className = 'atria-immersive-hud-close';
     closeButton.setAttribute('aria-label', translate('Close details'));
+    closeButton.setAttribute('data-i18n', '[aria-label]Close details');
     closeButton.textContent = '×';
     dialogHeader.append(dialogTitle, closeButton);
     const detailsBody = documentRef.createElement('div');
