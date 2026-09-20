@@ -5,6 +5,7 @@ import { backendLogStore } from './store.js';
 
 const WRAPPED_ORIGINAL = Symbol.for('atria.logging.console.original');
 const CONSOLE_LEVELS = Object.freeze(['trace', 'debug', 'log', 'info', 'warn', 'error']);
+let suppressCaptureDepth = 0;
 
 function stripAnsiArtifacts(input) {
     return String(input)
@@ -76,12 +77,17 @@ export function captureConsoleEntry(level, args, { store = backendLogStore } = {
     }
 }
 
-export function emitConsoleOutput(level, args, { consoleObject = globalThis.console, timestamp = true } = {}) {
+export function emitConsoleOutput(level, args, { consoleObject = globalThis.console } = {}) {
     try {
         const normalizedLevel = CONSOLE_LEVELS.includes(level) ? level : 'log';
-        const base = getBaseMethod(normalizedLevel, consoleObject);
-        const prefix = timestamp ? [new Date().toISOString()] : [];
-        base(...prefix.map(value => '[' + value + ']'), ...(Array.isArray(args) ? args : [args]));
+        const method = consoleObject?.[normalizedLevel];
+        if (typeof method !== 'function') return;
+        suppressCaptureDepth++;
+        try {
+            method(...(Array.isArray(args) ? args : [args]));
+        } finally {
+            suppressCaptureDepth--;
+        }
     } catch {
         // Logging must never alter business control flow.
     }
@@ -94,7 +100,9 @@ export function installConsoleAdapter({ store = backendLogStore, consoleObject =
         if (typeof current === 'function' && Object.prototype.hasOwnProperty.call(current, WRAPPED_ORIGINAL)) continue;
         const base = getBaseMethod(level, consoleObject);
         const wrapped = (...args) => {
-            captureConsoleEntry(level, args, { store });
+            if (suppressCaptureDepth === 0) {
+                captureConsoleEntry(level, args, { store });
+            }
             try {
                 base('[' + new Date().toISOString() + ']', ...args);
             } catch {

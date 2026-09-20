@@ -93,7 +93,7 @@ export async function runAtriaDispatch(request, response, { endpoint, select }) 
     if (request && typeof request.once === 'function') {
         request.once('close', () => {
             for (const handler of onCloseHandlers) {
-                try { handler(); } catch (err) { dispatchLogger.warn('request-close.handler-failed', '[Dispatch] onRequestClose handler threw', { message: err?.message || String(err) }, { category: 'boundary', correlation }); }
+                try { handler(); } catch (err) { dispatchLogger.warn('request-close.handler-failed', '[Dispatch] onRequestClose handler threw', { message: err?.message || String(err) }, { category: 'boundary', correlation, consoleArgs: ['[Dispatch] onRequestClose handler threw:', err] }); }
             }
         });
     }

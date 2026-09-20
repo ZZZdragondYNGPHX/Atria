@@ -19,6 +19,7 @@ export function createLogger(module, options = {}) {
     const write = (level, event, message, data, context) => {
         try {
             const payload = toPayload(event, message, data, context);
+            const consoleArgs = Array.isArray(payload.consoleArgs) ? payload.consoleArgs : null;
             const entry = store.append({
                 ...defaults,
                 ...payload,
@@ -28,7 +29,7 @@ export function createLogger(module, options = {}) {
                 source: payload.source || defaults.source || 'structured',
             });
             if (options.emitToConsole === true) {
-                emitConsoleOutput(level, [entry.message, ...(Object.keys(entry.data || {}).length ? [entry.data] : [])]);
+                emitConsoleOutput(level, consoleArgs || [entry.message, ...(Object.keys(entry.data || {}).length ? [entry.data] : [])]);
             }
             return entry;
         } catch {

@@ -143,7 +143,16 @@ export class IncidentStore {
     }
 
     upsert(incident) {
-        const normalized = createIncident(incident);
+        const isNormalizedIncident = incident
+            && typeof incident === 'object'
+            && typeof incident.incidentId === 'string'
+            && Array.isArray(incident.relatedLogEntryIds)
+            && Array.isArray(incident.recentActions)
+            && incident.ownership
+            && typeof incident.ownership === 'object';
+        const normalized = isNormalizedIncident
+            ? structuredClone(incident)
+            : createIncident(incident);
         const index = this.#entries.findIndex(item => item.incidentId === normalized.incidentId);
         if (index >= 0) this.#entries[index] = normalized;
         else this.#entries.push(normalized);
