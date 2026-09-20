@@ -32,8 +32,45 @@ import { SYNC_CATEGORIES } from '../sync/categories.js';
 import { getStorageEngine } from '../storage/index.js';
 import { getRequestBaseUrl } from '../express-common.js';
 import { ENABLE_ACCOUNTS, resolveUserFromBasicAuth } from '../users.js';
+import { createLogger } from '../logging/logger.js';
+import { captureBackendIncident } from '../logging/runtime.js';
+import { classifyOperationalFailure, sanitizeDiagnosticUrl } from '../logging/failure-classifier.js';
 
 export const router = express.Router();
+
+const syncLogger = createLogger('sync', { emitToConsole: true });
+
+function reportSyncFailure({ request, error, stage, operationId, peerId = '', peerBaseUrl = '', severity = 'error', retry = false }) {
+    const classified = classifyOperationalFailure(error, { stage });
+    const correlation = operationId ? { operationId } : {};
+    syncLogger.error('operation.failed', '[Sync] operation failed', {
+        stage: classified.stage,
+        code: classified.code,
+        message: classified.message,
+        peerId,
+        peerBaseUrl: sanitizeDiagnosticUrl(peerBaseUrl),
+        retry,
+    }, { category: 'operation', correlation, consoleArgs: ['[sync] operation failed', error] });
+    captureBackendIncident({
+        type: 'sync_failure',
+        severity,
+        primaryModule: 'sync',
+        stage: classified.stage,
+        summary: classified.message || error?.message || String(error),
+        failure: error,
+        correlation,
+        probableOwner: classified.probableOwner,
+        ownerName: classified.ownerName,
+        ownerConfidence: classified.confidence,
+        ownershipEvidence: classified.evidence,
+        retryHistory: retry ? [{ stage: classified.stage, retry: true }] : [],
+        environment: {
+            peerId,
+            peerBaseUrl: sanitizeDiagnosticUrl(peerBaseUrl),
+        },
+    }, { request });
+    return classified;
+}
 
 const TOKEN_HEADER_PATTERN = /^Bearer\s+([a-f0-9]{64})$/i;
 
@@ -887,6 +924,8 @@ router.post('/pair/start', express.json({ limit: '4kb' }), async (request, respo
  * URL.
  */
 router.post('/peers/:peerId/sync', express.json({ limit: '4kb' }), async (request, response) => {
+    const operationId = crypto.randomUUID();
+    response.setHeader('x-atria-operation-id', operationId);
     const user = request.user;
     if (!user?.profile?.handle || !user?.directories?.root) {
         return response.status(401).json({ error: 'Auth required' });
@@ -951,20 +990,48 @@ router.post('/peers/:peerId/sync', express.json({ limit: '4kb' }), async (reques
             const text = await offerResponse.text();
             let parsed;
             try { parsed = JSON.parse(text); } catch { parsed = { error: text.slice(0, 256) }; }
+            const offerError = new Error(parsed.error || `Peer returned ${offerResponse.status}`);
+            offerError.code = `HTTP_${offerResponse.status}`;
+            reportSyncFailure({
+                request,
+                error: offerError,
+                stage: 'offer.http',
+                operationId,
+                peerId,
+                peerBaseUrl: peer.peerBaseUrl,
+                severity: offerResponse.status >= 500 ? 'error' : 'warning',
+            });
             return response.status(offerResponse.status).json({
-                error: parsed.error || `Peer returned ${offerResponse.status}`,
+                error: offerError.message,
                 stage: 'offer',
+                operationId,
             });
         }
         offerResult = await offerResponse.json();
     } catch (e) {
-        console.error('[sync] sync-now offer failed', e);
-        return response.status(502).json({ error: e.message, stage: 'offer' });
+        reportSyncFailure({
+            request,
+            error: e,
+            stage: 'offer',
+            operationId,
+            peerId,
+            peerBaseUrl: peer.peerBaseUrl,
+        });
+        return response.status(502).json({ error: e.message, stage: 'offer', operationId });
     }
 
     const offerToken = String(offerResult?.token || '');
     if (!offerToken) {
-        return response.status(502).json({ error: 'Peer returned no token', stage: 'offer' });
+        const error = new Error('Peer returned no token');
+        reportSyncFailure({
+            request,
+            error,
+            stage: 'offer.response',
+            operationId,
+            peerId,
+            peerBaseUrl: peer.peerBaseUrl,
+        });
+        return response.status(502).json({ error: error.message, stage: 'offer', operationId });
     }
 
     try {
@@ -979,16 +1046,47 @@ router.post('/peers/:peerId/sync', express.json({ limit: '4kb' }), async (reques
             categories: peer.categories || [],
             resolutions,
         });
-        response.json({ ...result, peerId, label: peer.label || peerId });
+        syncLogger.info('operation.completed', '[Sync] operation completed', {
+            peerId,
+            peerLabel: peer.label || peerId,
+            categories: peer.categories || [],
+        }, { category: 'operation', correlation: { operationId } });
+        response.json({ ...result, peerId, label: peer.label || peerId, operationId });
     } catch (e) {
         if (e.code === 'PEER_REF_CHANGED') {
-            return response.status(409).json({ error: e.message, retry: true, stage: 'pull' });
+            reportSyncFailure({
+                request,
+                error: e,
+                stage: 'pull.conflict',
+                operationId,
+                peerId,
+                peerBaseUrl: peer.peerBaseUrl,
+                severity: 'warning',
+                retry: true,
+            });
+            return response.status(409).json({ error: e.message, retry: true, stage: 'pull', operationId });
         }
         if (e.code === 'PEER_TIMEOUT') {
-            return response.status(504).json({ error: e.message, stage: 'pull' });
+            reportSyncFailure({
+                request,
+                error: e,
+                stage: 'pull.timeout',
+                operationId,
+                peerId,
+                peerBaseUrl: peer.peerBaseUrl,
+                retry: true,
+            });
+            return response.status(504).json({ error: e.message, stage: 'pull', operationId });
         }
-        console.error('[sync] sync-now pull failed', e);
-        response.status(500).json({ error: e.message, stage: 'pull' });
+        reportSyncFailure({
+            request,
+            error: e,
+            stage: 'pull',
+            operationId,
+            peerId,
+            peerBaseUrl: peer.peerBaseUrl,
+        });
+        response.status(500).json({ error: e.message, stage: 'pull', operationId });
     }
 });
 

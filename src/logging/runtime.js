@@ -92,10 +92,14 @@ export function captureBackendIncident(input = {}, {
         const failure = input.failure ?? input.error ?? input.primaryFailure;
         const classification = classifyOperationalFailure(failure, { stage: input.stage });
         const subjectUser = String(input.subjectUser || request?.user?.profile?.handle || '');
+        const correlation = input.correlation && typeof input.correlation === 'object' ? input.correlation : {};
+        const correlationSearch = input.correlationSearch || correlationSearchValue(correlation);
         return incidentAggregator.capture({
             ...input,
             subjectUser,
             failure,
+            correlation,
+            correlationSearch,
             stage: classification.stage,
             probableOwner: input.probableOwner || classification.probableOwner,
             ownerName: input.ownerName || classification.ownerName,

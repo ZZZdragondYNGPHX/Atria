@@ -1,9 +1,13 @@
 import { t } from '../i18n.js';
 import { accountStorage } from '../util/AccountStorage.js';
+import { createLogger } from '../logging/logger.js';
+import { captureFrontendIncident } from '../logging/incident-reporter.js';
 import {
     filterWorldInfoWorkspaceEntries,
     getWorldInfoEntryIssues,
 } from './diagnostics.js';
+
+const worldbookLogger = createLogger('worldbook');
 
 const DISPLAY_MODE_KEY = 'atri_world_info_workspace_display_mode';
 const CONTINUOUS_CARDS_KEY = 'atri_world_info_workspace_continuous_cards';
@@ -1169,12 +1173,49 @@ function buildWorkspaceDom() {
             resultHost.append(strong, detail);
         } catch (error) {
             resultHost.textContent = t`Activation test failed: ${error?.message || error}`;
+            const entryUid = String(entry?.uid ?? '');
+            worldbookLogger.error('activation-test.failed', '[Worldbook] activation test failed', {
+                worldName: state.worldName,
+                entryUid,
+                message: error?.message || String(error),
+            }, { category: 'diagnostics' });
+            void captureFrontendIncident({
+                type: 'tool_failure',
+                severity: 'error',
+                primaryModule: 'worldbook',
+                stage: 'activation-test',
+                summary: error?.message || String(error),
+                failure: error,
+                environment: {
+                    worldName: state.worldName,
+                    entryUid,
+                },
+            });
         }
     });
 
     shell.querySelector('#wi_workspace_activation_trace')?.addEventListener('click', async () => {
         const entry = state.entries.find(item => String(item?.uid ?? '') === state.selectedUid);
-        if (entry && typeof state.callbacks.onTrace === 'function') await state.callbacks.onTrace(entry);
+        if (!entry || typeof state.callbacks.onTrace !== 'function') return;
+        try {
+            await state.callbacks.onTrace(entry);
+        } catch (error) {
+            const entryUid = String(entry?.uid ?? '');
+            worldbookLogger.error('activation-trace.failed', '[Worldbook] activation trace failed', {
+                worldName: state.worldName,
+                entryUid,
+                message: error?.message || String(error),
+            }, { category: 'diagnostics' });
+            void captureFrontendIncident({
+                type: 'tool_failure',
+                severity: 'error',
+                primaryModule: 'worldbook',
+                stage: 'activation-trace',
+                summary: error?.message || String(error),
+                failure: error,
+                environment: { worldName: state.worldName, entryUid },
+            });
+        }
     });
 
     const forwardInspectorAction = (action, selector) => {
