@@ -34,6 +34,7 @@ jobs:
           game-runtime/package-transport.test.js
           game-runtime/world-runtime.test.js
           game-runtime/world-package.test.js
+          game-runtime/world-session.test.js
           game-runtime/world-journal.test.js
           game-runtime/world-branch.test.js
           regex-engine/game-runtime-boundary.test.js
