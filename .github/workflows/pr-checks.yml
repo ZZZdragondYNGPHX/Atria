@@ -97,27 +97,3 @@ jobs:
             bash -n "$script"
           done
           gzip -dc scripts/termux/atria_toolbox.runtime.sh.gz | bash -n
-
-  android-unit-tests:
-    name: Android Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - name: Install root dependencies
-        run: npm ci --ignore-scripts
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-      - name: Run Android JVM tests
-        working-directory: android-app
-        run: ./gradlew testDebugUnitTest

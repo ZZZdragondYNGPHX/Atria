@@ -1,6 +1,7 @@
 import { validateParsedToolCalls } from '../function-call-runtime.js';
 import { waitForRpmSlot } from '../../lib/iter-tool-calling.js';
 import { isAbortError, throwIfAborted } from './abort-utils.js';
+import { runWithOrchestrationApiFallback } from './api-fallback.js';
 
 const EXPECTED = 'atri_orch_planner_step';
 
@@ -45,19 +46,24 @@ export async function requestAgendaPlannerStep(context, settings, request) {
             throwIfAborted(request.abortSignal);
             await waitForRpmSlot(settings, request.abortSignal);
             throwIfAborted(request.abortSignal);
-            result = await context.generateTask({
-                taskMessages: repaired ? request.repairMessages : request.taskMessages,
-                includeCharacterCard: !repaired,
-                ...(repaired ? { promptMode: 'task' } : {}),
-                worldInfoSource: 'none',
-                runtimeWorldInfo: repaired ? {} : request.runtimeWorldInfo,
-                apiPresetName: request.apiPresetName,
-                llmPresetName: request.llmPresetName,
-                tools, toolChoice, stream: false,
-                ...(repaired ? { temperature: 0 } : {}),
-                functionCallMode: 'auto',
-                functionCallOptions: { requiredFunctionName: EXPECTED, protocolStyle: 'json_schema' },
+            result = await runWithOrchestrationApiFallback({
+                primaryApiPresetName: request.apiPresetName,
+                fallbackApiPresetName: request.fallbackApiPresetName,
                 abortSignal: request.abortSignal,
+                execute: routeApiPresetName => context.generateTask({
+                    taskMessages: repaired ? request.repairMessages : request.taskMessages,
+                    includeCharacterCard: !repaired,
+                    ...(repaired ? { promptMode: 'task' } : {}),
+                    worldInfoSource: 'none',
+                    runtimeWorldInfo: repaired ? {} : request.runtimeWorldInfo,
+                    apiPresetName: routeApiPresetName,
+                    llmPresetName: request.llmPresetName,
+                    tools, toolChoice, stream: false,
+                    ...(repaired ? { temperature: 0 } : {}),
+                    functionCallMode: 'auto',
+                    functionCallOptions: { requiredFunctionName: EXPECTED, protocolStyle: 'json_schema' },
+                    abortSignal: request.abortSignal,
+                }),
             });
             throwIfAborted(request.abortSignal);
             diagnostic = {

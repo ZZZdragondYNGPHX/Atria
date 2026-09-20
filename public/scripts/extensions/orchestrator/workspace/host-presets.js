@@ -3,13 +3,52 @@ import { createFactoryPresetForMode, DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT, DEFAULT
 import { compileWorkspacePreset, emptyPresetLibrary, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
 import { AGENDA_BUILTIN_REVISION } from '../agenda-defaults.js';
 
+const WEB_TOOL_NAMES = Object.freeze(['search_search', 'search_visit']);
+
+function setWebAccessFlags(tools, enabled) {
+    const target = tools && typeof tools === 'object' ? tools : {};
+    target.custom = target.custom && typeof target.custom === 'object' ? target.custom : {};
+    for (const name of WEB_TOOL_NAMES) target.custom[name] = Boolean(enabled);
+    return target;
+}
+
+function applyFactoryWebAccessPolicy(profile, mode) {
+    const source = profile && typeof profile === 'object' ? profile : {};
+    const target = mode === 'director' && source.director && typeof source.director === 'object'
+        ? source.director
+        : source;
+
+    // New Atria factory presets use least-privilege web access. Existing
+    // user presets are not rewritten by this helper: it runs only while a
+    // factory preset is being constructed.
+    if (target.tools || mode === 'loop' || mode === 'director') {
+        target.tools = setWebAccessFlags(target.tools, false);
+    }
+    if (target.defaultTools) target.defaultTools = setWebAccessFlags(target.defaultTools, false);
+    if (target.planner?.tools) target.planner.tools = setWebAccessFlags(target.planner.tools, false);
+    for (const preset of Object.values(target.presets || {})) {
+        preset.tools = setWebAccessFlags(preset.tools, false);
+    }
+    for (const agent of Object.values(target.agents || {})) {
+        agent.tools = setWebAccessFlags(agent.tools, false);
+    }
+    if (target.mainAgent) target.mainAgent.tools = setWebAccessFlags(target.mainAgent.tools, false);
+    for (const agent of target.subAgents || []) {
+        agent.tools = setWebAccessFlags(agent.tools, agent?.id === 'canon_scout');
+    }
+    return source;
+}
+
 /** One-time factory construction, not an importer of old user libraries. */
 export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
     const single = mode === 'single';
     if (single) mode = 'spec';
     const factory = single ? { spec: { stages: [{ id: 'single', mode: 'serial', nodes: [{ id: 'owner', preset: 'owner', type: 'worker' }] }] },
         presets: { owner: { systemPrompt: DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT, userPromptTemplate: DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE } } } : createFactoryPresetForMode(mode);
-    const profile = structuredClone(Array.isArray(factory) ? factory.at(-1) : factory);
+    const profile = applyFactoryWebAccessPolicy(
+        structuredClone(Array.isArray(factory) ? factory.at(-1) : factory),
+        mode,
+    );
     const plan = structuredClone(compilePreset(profile, { mode, presetId: id }));
     delete plan.compatibility;
     plan.source = { mode, presetId: id };

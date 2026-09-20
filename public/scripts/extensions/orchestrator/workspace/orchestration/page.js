@@ -414,7 +414,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const model = el('section', undefined, inspector);
             model.className = 'workspace-inspector-section';
             el('h4', 'Model', model);
-            profileSelect(model, 'API profile', 'api', agent.modelProfile?.apiPresetName || '', value => {
+            profileSelect(model, 'Primary API profile', 'api', agent.modelProfile?.apiPresetName || '', value => {
                 (agent.modelProfile ||= {}).apiPresetName = value;
             }, true);
             const isAgendaPlanner = draft.mode === 'agenda'
@@ -427,6 +427,16 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             toolsSection.className = 'workspace-inspector-section';
             toolsSection.open = true;
             el('summary', 'Tools', toolsSection);
+            try {
+                const webStatus = globalThis?.Atria?.searchTools?.getStatus?.();
+                if (webStatus) {
+                    const webLine = webStatus.available
+                        ? `Web Access · Available · ${webStatus.label || webStatus.provider}`
+                        : `Web Access · Unavailable · ${webStatus.reason || webStatus.provider}`;
+                    const webHint = el('p', webLine, toolsSection);
+                    webHint.className = 'workspace-hint workspace-web-status';
+                }
+            } catch { /* Search Tools is optional. */ }
             const catalog = new Map(getTools(draft, agent).map(tool => [tool.name, tool]));
             for (const name of agent.tools || []) {
                 if (name !== '*' && !catalog.has(name)) catalog.set(name, { name, missing: true });
@@ -628,10 +638,12 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             getSettings().enabled = enabled.checked;
             save();
         });
-        profileSelect(defaults, 'Default API profile', 'api', settings.llmNodeApiPresetName || '', value => {
+        profileSelect(defaults, 'Default API profile · runtime fallback', 'api', settings.llmNodeApiPresetName || '', value => {
             getSettings().llmNodeApiPresetName = value;
             save();
         });
+        const fallbackHint = el('p', 'Agents inherit this profile when no primary API is selected. If a different primary API fails with a provider or transport error, Atria retries through this profile.', defaults);
+        fallbackHint.className = 'workspace-hint';
         profileSelect(defaults, 'Default prompt preset', 'prompt', settings.llmNodePresetName || '', value => {
             getSettings().llmNodePresetName = value;
             save();

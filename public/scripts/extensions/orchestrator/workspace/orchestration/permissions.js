@@ -1,6 +1,6 @@
 const GROUPS = Object.freeze([
     ['memory', 'Memory'],
-    ['search', 'Search'],
+    ['search', 'Web Access'],
     ['chat', 'Chat'],
     ['lorebook', 'Lorebook'],
     ['note', 'Notes'],
@@ -20,7 +20,7 @@ function normalizeTools(tools) {
         .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
-export function renderToolPermissionPanel({ parent, el, button, agent, tools, i18n }) {
+export function renderToolPermissionPanel({ parent, el, button, agent, tools, i18n, onToolToggle = null }) {
     const catalog = normalizeTools(tools);
     const root = el('section', undefined, parent);
     root.className = 'workspace-permission-panel';
@@ -37,22 +37,38 @@ export function renderToolPermissionPanel({ parent, el, button, agent, tools, i1
     actions.className = 'workspace-permission-actions';
     button(actions, 'Allow all', () => {
         agent.tools = ['*'];
+        for (const tool of catalog) {
+            if (typeof tool.effectiveEnabled === 'boolean') tool.effectiveEnabled = true;
+            if (typeof tool.setEnabled === 'function') tool.setEnabled(true);
+        }
         paint();
     });
     button(actions, 'Deny all', () => {
         agent.tools = [];
+        for (const tool of catalog) {
+            if (typeof tool.effectiveEnabled === 'boolean') tool.effectiveEnabled = false;
+            if (typeof tool.setEnabled === 'function') tool.setEnabled(false);
+        }
         paint();
     });
 
     const list = el('div', undefined, root);
     list.className = 'workspace-permission-groups';
 
-    const isAllowed = name => agent.tools?.includes('*') === true || agent.tools?.includes(name) === true;
+    const isAllowed = name => {
+        const planAllowed = agent.tools?.includes('*') === true || agent.tools?.includes(name) === true;
+        const tool = catalog.find(item => item.name === name);
+        return planAllowed && (typeof tool?.effectiveEnabled === 'boolean' ? tool.effectiveEnabled : true);
+    };
     const setAllowed = (name, allowed) => {
         if (agent.tools?.includes('*')) agent.tools = catalog.map(tool => tool.name);
         const selected = new Set(agent.tools || []);
         if (allowed) selected.add(name); else selected.delete(name);
         agent.tools = [...selected];
+        const tool = catalog.find(item => item.name === name);
+        if (tool && typeof tool.effectiveEnabled === 'boolean') tool.effectiveEnabled = Boolean(allowed);
+        if (tool && typeof tool.setEnabled === 'function') tool.setEnabled(Boolean(allowed));
+        if (typeof onToolToggle === 'function') onToolToggle(name, Boolean(allowed));
     };
 
     const paint = () => {
