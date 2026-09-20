@@ -344,11 +344,16 @@ export function createImmersiveController({
         }
     };
 
+    const dismissTransientLayer = () => {
+        if (messageActions.close({ restoreFocus: true })) return true;
+        if (composer.dismissInterrupt()) return true;
+        return false;
+    };
+
     const handleEscape = () => {
         if (!enabled) return false;
         if (callSafely(shouldDeferEscape)) return false;
-        if (messageActions.close({ restoreFocus: true })) return true;
-        if (composer.dismissInterrupt()) return true;
+        if (dismissTransientLayer()) return true;
         if (callSafely(onBeforeExit) === true) return true;
         void setEnabled(false, { useFullscreen: true, source: 'escape' });
         return true;
@@ -386,6 +391,7 @@ export function createImmersiveController({
         refreshSettings,
         installAndroidFullscreenApiShim,
         syncNativeImmersive,
+        dismissTransientLayer,
         handleEscape,
         dispose,
         getState: () => ({
