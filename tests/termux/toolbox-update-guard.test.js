@@ -81,6 +81,19 @@ describe('Termux update guards', () => {
         expect(cliSource).toContain('sleep 0.2');
     });
 
+    test('Termux launchers log readiness and browser-open boundaries', () => {
+        const toolboxSource = fs.readFileSync(toolboxPath, 'utf8');
+        const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
+
+        for (const source of [toolboxSource, cliSource]) {
+            expect(source).toContain('[atria-termux-launch]');
+            expect(source).toContain('browser-open-start');
+            expect(source).toContain('browser-open-return');
+            expect(source).toContain('ready-detected');
+            expect(source).toContain('epoch_ms=');
+        }
+    });
+
     test('direct Termux setup/update prebuild the versioned frontend cache', () => {
         const cliSource = fs.readFileSync(termuxCliPath, 'utf8');
         const setupSource = fs.readFileSync(path.join(repoRoot, 'scripts', 'termux', 'setup.sh'), 'utf8');
