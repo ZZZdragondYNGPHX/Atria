@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -37,6 +38,26 @@ export class MysqlTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getChatRange(key, options = {}) {
+        if (key?.kind !== 'chat') throw new Error('MysqlTransaction.getChatRange: chat resource required');
+        return this._h(key.kind, 'getChatRange').range(key, options);
+    }
+    async getChatInfo(key) {
+        if (key?.kind !== 'chat') throw new Error('MysqlTransaction.getChatInfo: chat resource required');
+        return this._h(key.kind, 'getChatInfo').info(key);
+    }
+    async appendChatMessages(key, messages, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('MysqlTransaction.appendChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
+    async patchChatMessages(key, operations, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('MysqlTransaction.patchChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'patchChatMessages').patch(key, operations, options);
+    }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
@@ -100,6 +121,342 @@ export function registerChatHandler(tx) {
     }
 
     tx._handlers.set('chat', {
+        async patch(key, operations, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+            chatMetadata = {},
+        } = {}) {
+            const parsedOps = [];
+            for (const operation of Array.isArray(operations) ? operations : []) {
+                const op = String(operation?.op || '').trim().toLowerCase();
+                const match = /^\/(0|[1-9]\d*)$/.exec(String(operation?.path || ''));
+                if (!['test', 'replace', 'remove'].includes(op) || !match) {
+                    return { status: 'unsupported' };
+                }
+                if ((op === 'test' || op === 'replace') && !Object.hasOwn(operation, 'value')) {
+                    return { status: 'unsupported' };
+                }
+                const serialized = op === 'replace' ? JSON.stringify(operation.value) : null;
+                if (op === 'replace' && serialized === undefined) return { status: 'unsupported' };
+                parsedOps.push({ op, index: Number(match[1]), value: operation?.value, serialized });
+            }
+            if (parsedOps.length === 0) return { status: 'unsupported' };
+
+            const p = chatKeyToParams(key);
+            const [metaRows] = await conn.execute(
+                `SELECT integrity,
+                        JSON_EXTRACT(doc, '$.header.chat_metadata') AS metadata_value,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header.chat_metadata')) AS metadata_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type,
+                        JSON_LENGTH(doc, '$.body') AS message_count
+                 FROM chats
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?
+                 FOR UPDATE`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaRows[0];
+            if (!meta) return { status: 'missing' };
+            if (meta.metadata_type !== 'OBJECT' || meta.body_type !== 'ARRAY') {
+                return { status: 'unsupported' };
+            }
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const currentMetadata = coerceJson(meta.metadata_value);
+            if (!currentMetadata || typeof currentMetadata !== 'object' || Array.isArray(currentMetadata)) {
+                return { status: 'unsupported' };
+            }
+            let messageCount = Math.max(0, Number(meta.message_count) || 0);
+
+            for (const operation of parsedOps) {
+                if (operation.index < 0 || operation.index >= messageCount) {
+                    if (operation.op === 'test') throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    throw new Error(`Invalid JSON Patch ${operation.op} path. Array index out of bounds`);
+                }
+                const jsonPath = `$.body[${operation.index}]`;
+                if (operation.op === 'test') {
+                    const [rows] = await conn.execute(
+                        'SELECT JSON_EXTRACT(doc, ?) AS value FROM chats WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?',
+                        [jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                    );
+                    const actual = coerceJson(rows[0]?.value);
+                    if (!isDeepStrictEqual(actual, operation.value)) {
+                        throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    }
+                    continue;
+                }
+                if (operation.op === 'replace') {
+                    await conn.execute(
+                        'UPDATE chats SET doc=JSON_SET(doc, ?, CAST(? AS JSON)) WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?',
+                        [jsonPath, operation.serialized, p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                    );
+                    continue;
+                }
+                await conn.execute(
+                    'UPDATE chats SET doc=JSON_REMOVE(doc, ?) WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?',
+                    [jsonPath, p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                );
+                messageCount -= 1;
+            }
+
+            const mergedMetadata = {
+                ...currentMetadata,
+                ...(chatMetadata && typeof chatMetadata === 'object' && !Array.isArray(chatMetadata)
+                    ? chatMetadata : {}),
+                integrity: newIntegrity,
+            };
+            await conn.execute(
+                `UPDATE chats
+                 SET doc=JSON_SET(doc, '$.header.chat_metadata', CAST(? AS JSON)),
+                     updated_at=?
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`,
+                [
+                    JSON.stringify(mergedMetadata),
+                    updatedAt,
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                ],
+            );
+
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                applied: parsedOps.length,
+                totalMessages: messageCount,
+            };
+        },
+        async range(key, { fromIndex = 0, limit = 0 } = {}) {
+            const p = chatKeyToParams(key);
+            const [metaRows] = await conn.execute(
+                `SELECT JSON_EXTRACT(doc, '$.header') AS header_value,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header')) AS header_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type,
+                        JSON_LENGTH(doc, '$.body') AS total_messages,
+                        integrity, updated_at, created_at
+                 FROM chats
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaRows[0];
+            if (!meta || meta.header_type !== 'OBJECT' || meta.body_type !== 'ARRAY') return null;
+            const header = coerceJson(meta.header_value);
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const totalMessages = Math.max(0, Number(meta.total_messages) || 0);
+            const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
+            const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+            const start = Math.min(requestedFrom, totalMessages);
+            const end = requestedLimit > 0
+                ? Math.min(start + requestedLimit, totalMessages)
+                : totalMessages;
+
+            const [rows] = await conn.execute(
+                `SELECT jt.message_value
+                 FROM chats AS c
+                 JOIN JSON_TABLE(
+                     c.doc,
+                     '$.body[*]' COLUMNS(
+                         ord FOR ORDINALITY,
+                         message_value JSON PATH '$'
+                     )
+                 ) AS jt
+                 WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                   AND jt.ord > ?
+                   AND (? <= 0 OR jt.ord <= ?)
+                 ORDER BY jt.ord ASC`,
+                [
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                    start,
+                    requestedLimit,
+                    end,
+                ],
+            );
+            const body = [];
+            for (const row of rows) {
+                const parsed = coerceJson(row.message_value);
+                if (parsed === null && row.message_value !== null) return null;
+                body.push(parsed);
+            }
+            return {
+                header,
+                body,
+                integrity: meta.integrity ?? '',
+                updatedAt: Number(meta.updated_at),
+                createdAt: Number(meta.created_at),
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        },
+        async info(key) {
+            const p = chatKeyToParams(key);
+            const [metaRows] = await conn.execute(
+                `SELECT JSON_EXTRACT(doc, '$.header') AS header_value,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header')) AS header_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type,
+                        JSON_LENGTH(doc, '$.body') AS message_count,
+                        OCTET_LENGTH(CAST(doc AS CHAR)) AS byte_size,
+                        integrity, updated_at, created_at
+                 FROM chats
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const row = metaRows[0];
+            if (!row || row.header_type !== 'OBJECT' || row.body_type !== 'ARRAY') return null;
+            const header = coerceJson(row.header_value);
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const messageCount = Math.max(0, Number(row.message_count) || 0);
+            let lastMessage = null;
+            if (messageCount > 0) {
+                const [lastRows] = await conn.execute(
+                    `SELECT jt.message_value
+                     FROM chats AS c
+                     JOIN JSON_TABLE(
+                         c.doc,
+                         '$.body[*]' COLUMNS(
+                             ord FOR ORDINALITY,
+                             message_value JSON PATH '$'
+                         )
+                     ) AS jt
+                     WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                     ORDER BY jt.ord DESC
+                     LIMIT 1`,
+                    [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                );
+                if (!lastRows.length) return null;
+                lastMessage = coerceJson(lastRows[0].message_value);
+                if (lastMessage === null && lastRows[0].message_value !== null) return null;
+            }
+
+            return {
+                header,
+                integrity: row.integrity ?? '',
+                updatedAt: Number(row.updated_at),
+                createdAt: Number(row.created_at),
+                messageCount,
+                byteSize: Math.max(0, Number(row.byte_size) || 0),
+                lastMessage,
+            };
+        },
+        async append(key, messages, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+        } = {}) {
+            const p = chatKeyToParams(key);
+            const [metaRows] = await conn.execute(
+                `SELECT integrity,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header')) AS header_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.header.chat_metadata')) AS metadata_type,
+                        JSON_TYPE(JSON_EXTRACT(doc, '$.body')) AS body_type
+                 FROM chats
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?
+                 FOR UPDATE`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaRows[0];
+            if (!meta) return { status: 'missing' };
+            if (meta.header_type !== 'OBJECT' || meta.metadata_type !== 'OBJECT' || meta.body_type !== 'ARRAY') {
+                return { status: 'unsupported' };
+            }
+
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const input = Array.isArray(messages) ? messages : [];
+            const incomingGenIds = [...new Set(input
+                .map(message => message?.extra?.gen_id)
+                .filter(id => typeof id === 'string' && id.length > 0))];
+            const seenGenIds = new Set();
+
+            if (incomingGenIds.length > 0) {
+                const placeholders = incomingGenIds.map(() => '?').join(',');
+                const [rows] = await conn.execute(
+                    `SELECT DISTINCT jt.gen_id
+                     FROM chats AS c
+                     JOIN JSON_TABLE(
+                         c.doc,
+                         '$.body[*]' COLUMNS(
+                             gen_id VARCHAR(255) PATH '$.extra.gen_id' NULL ON EMPTY
+                         )
+                     ) AS jt
+                     WHERE c.handle=? AND c.char_dir=? AND c.name=? AND c.is_group=? AND c.group_id=?
+                       AND jt.gen_id IN (${placeholders})`,
+                    [
+                        p.handle,
+                        p.char_dir,
+                        p.name,
+                        p.is_group,
+                        p.group_id,
+                        ...incomingGenIds,
+                    ],
+                );
+                for (const row of rows) {
+                    if (typeof row.gen_id === 'string') seenGenIds.add(row.gen_id);
+                }
+            }
+
+            const accepted = [];
+            const dedupedGenIds = [];
+            for (const message of input) {
+                const genId = message?.extra?.gen_id;
+                if (typeof genId === 'string' && genId.length > 0 && seenGenIds.has(genId)) {
+                    dedupedGenIds.push(genId);
+                    continue;
+                }
+                if (typeof genId === 'string' && genId.length > 0) seenGenIds.add(genId);
+                accepted.push(message);
+            }
+
+            const params = [];
+            const bodyExpr = accepted.length > 0
+                ? 'JSON_MERGE_PRESERVE(JSON_EXTRACT(doc, \'$.body\'), JSON_EXTRACT(?, \'$\'))'
+                : 'JSON_EXTRACT(doc, \'$.body\')';
+            if (accepted.length > 0) params.push(JSON.stringify(accepted));
+            params.push(
+                newIntegrity,
+                updatedAt,
+                p.handle,
+                p.char_dir,
+                p.name,
+                p.is_group,
+                p.group_id,
+            );
+            const [result] = await conn.execute(
+                `UPDATE chats
+                 SET doc = JSON_SET(
+                         doc,
+                         '$.body', ${bodyExpr},
+                         '$.header.chat_metadata.integrity', ?
+                     ),
+                     updated_at = ?
+                 WHERE handle=? AND char_dir=? AND name=? AND is_group=? AND group_id=?`,
+                params,
+            );
+            if (result.affectedRows !== 1) return { status: 'missing' };
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                accepted: accepted.length,
+                dedupedGenIds,
+            };
+        },
         async get(key) {
             const p = chatKeyToParams(key);
             const row = await readRow(p);

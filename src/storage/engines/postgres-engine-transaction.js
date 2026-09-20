@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -48,6 +49,26 @@ export class PgTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getChatRange(key, options = {}) {
+        if (key?.kind !== 'chat') throw new Error('PgTransaction.getChatRange: chat resource required');
+        return this._h(key.kind, 'getChatRange').range(key, options);
+    }
+    async getChatInfo(key) {
+        if (key?.kind !== 'chat') throw new Error('PgTransaction.getChatInfo: chat resource required');
+        return this._h(key.kind, 'getChatInfo').info(key);
+    }
+    async appendChatMessages(key, messages, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('PgTransaction.appendChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'appendChatMessages').append(key, messages, options);
+    }
+    async patchChatMessages(key, operations, options = {}) {
+        if (key?.kind !== 'chat') {
+            throw new Error('PgTransaction.patchChatMessages: chat resource required');
+        }
+        return this._h(key.kind, 'patchChatMessages').patch(key, operations, options);
+    }
     async putResource(key, rec)  { return this._h(key.kind, 'putResource').put(key, rec); }
     async deleteResource(key)    { return this._h(key.kind, 'deleteResource').delete(key); }
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
@@ -111,6 +132,286 @@ export function registerChatHandler(tx) {
     }
 
     tx._handlers.set('chat', {
+        async patch(key, operations, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+            chatMetadata = {},
+        } = {}) {
+            const parsedOps = [];
+            for (const operation of Array.isArray(operations) ? operations : []) {
+                const op = String(operation?.op || '').trim().toLowerCase();
+                const match = /^\/(0|[1-9]\d*)$/.exec(String(operation?.path || ''));
+                if (!['test', 'replace', 'remove'].includes(op) || !match) {
+                    return { status: 'unsupported' };
+                }
+                if ((op === 'test' || op === 'replace') && !Object.hasOwn(operation, 'value')) {
+                    return { status: 'unsupported' };
+                }
+                const serialized = op === 'replace' ? JSON.stringify(operation.value) : null;
+                if (op === 'replace' && serialized === undefined) return { status: 'unsupported' };
+                parsedOps.push({ op, index: Number(match[1]), value: operation?.value, serialized });
+            }
+            if (parsedOps.length === 0) return { status: 'unsupported' };
+
+            const p = chatKeyToParams(key);
+            const metaQuery = await client.query(
+                `SELECT integrity,
+                        doc#>'{header,chat_metadata}' AS metadata_value,
+                        jsonb_typeof(doc#>'{header,chat_metadata}') AS metadata_type,
+                        jsonb_typeof(doc->'body') AS body_type,
+                        jsonb_array_length(doc->'body') AS message_count
+                 FROM chats
+                 WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5
+                 FOR UPDATE`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaQuery.rows[0];
+            if (!meta) return { status: 'missing' };
+            if (meta.metadata_type !== 'object' || meta.body_type !== 'array') {
+                return { status: 'unsupported' };
+            }
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const currentMetadata = coerceJson(meta.metadata_value);
+            if (!currentMetadata || typeof currentMetadata !== 'object' || Array.isArray(currentMetadata)) {
+                return { status: 'unsupported' };
+            }
+            let messageCount = Math.max(0, Number(meta.message_count) || 0);
+
+            for (const operation of parsedOps) {
+                if (operation.index < 0 || operation.index >= messageCount) {
+                    if (operation.op === 'test') throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    throw new Error(`Invalid JSON Patch ${operation.op} path. Array index out of bounds`);
+                }
+                if (operation.op === 'test') {
+                    const result = await client.query(
+                        'SELECT (doc->\'body\')->($6::int) AS value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
+                        [p.handle, p.char_dir, p.name, p.is_group, p.group_id, operation.index],
+                    );
+                    const actual = coerceJson(result.rows[0]?.value);
+                    if (!isDeepStrictEqual(actual, operation.value)) {
+                        throw new Error(`JSON Patch test failed at /${operation.index}`);
+                    }
+                    continue;
+                }
+                if (operation.op === 'replace') {
+                    await client.query(
+                        `UPDATE chats
+                         SET doc=jsonb_set(doc, ARRAY['body', $6::text], $7::jsonb, false)
+                         WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5`,
+                        [p.handle, p.char_dir, p.name, p.is_group, p.group_id, operation.index, operation.serialized],
+                    );
+                    continue;
+                }
+                await client.query(
+                    `UPDATE chats
+                     SET doc=jsonb_set(doc, '{body}', (doc->'body') - ($6::int), false)
+                     WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5`,
+                    [p.handle, p.char_dir, p.name, p.is_group, p.group_id, operation.index],
+                );
+                messageCount -= 1;
+            }
+
+            const mergedMetadata = {
+                ...currentMetadata,
+                ...(chatMetadata && typeof chatMetadata === 'object' && !Array.isArray(chatMetadata)
+                    ? chatMetadata : {}),
+                integrity: newIntegrity,
+            };
+            await client.query(
+                `UPDATE chats
+                 SET doc=jsonb_set(doc, '{header,chat_metadata}', $1::jsonb, false),
+                     updated_at=$2
+                 WHERE handle=$3 AND char_dir=$4 AND name=$5 AND is_group=$6 AND group_id=$7`,
+                [
+                    JSON.stringify(mergedMetadata),
+                    updatedAt,
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                ],
+            );
+
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                applied: parsedOps.length,
+                totalMessages: messageCount,
+            };
+        },
+        async range(key, { fromIndex = 0, limit = 0 } = {}) {
+            const p = chatKeyToParams(key);
+            const metaQuery = await client.query(
+                'SELECT doc->\'header\' AS header_value, jsonb_typeof(doc->\'header\') AS header_type, jsonb_typeof(doc->\'body\') AS body_type, jsonb_array_length(doc->\'body\') AS total_messages, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaQuery.rows[0];
+            if (!meta || meta.header_type !== 'object' || meta.body_type !== 'array') return null;
+            const header = coerceJson(meta.header_value);
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const totalMessages = Math.max(0, Number(meta.total_messages) || 0);
+            const requestedFrom = Math.max(0, Math.floor(Number(fromIndex) || 0));
+            const requestedLimit = Math.max(0, Math.floor(Number(limit) || 0));
+            const start = Math.min(requestedFrom, totalMessages);
+            const end = requestedLimit > 0 ? Math.min(start + requestedLimit, totalMessages) : totalMessages;
+
+            const rowsQuery = await client.query(
+                'SELECT t.elem AS message_value FROM chats AS c CROSS JOIN LATERAL jsonb_array_elements(c.doc->\'body\') WITH ORDINALITY AS t(elem, ord) WHERE c.handle=$1 AND c.char_dir=$2 AND c.name=$3 AND c.is_group=$4 AND c.group_id=$5 AND t.ord > $6 AND ($7 <= 0 OR t.ord <= $8) ORDER BY t.ord ASC',
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id, start, requestedLimit, end],
+            );
+            const body = [];
+            for (const row of rowsQuery.rows) {
+                const parsed = coerceJson(row.message_value);
+                if (parsed === null && row.message_value !== null) return null;
+                body.push(parsed);
+            }
+            return {
+                header,
+                body,
+                integrity: meta.integrity ?? '',
+                updatedAt: Number(meta.updated_at),
+                createdAt: Number(meta.created_at),
+                totalMessages,
+                fromIndex: start,
+                nextIndex: end,
+                hasMore: end < totalMessages,
+            };
+        },
+        async info(key) {
+            const p = chatKeyToParams(key);
+            const metaQuery = await client.query(
+                'SELECT doc->\'header\' AS header_value, jsonb_typeof(doc->\'header\') AS header_type, jsonb_typeof(doc->\'body\') AS body_type, jsonb_array_length(doc->\'body\') AS message_count, octet_length(doc::text) AS byte_size, integrity, updated_at, created_at FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const row = metaQuery.rows[0];
+            if (!row || row.header_type !== 'object' || row.body_type !== 'array') return null;
+            const header = coerceJson(row.header_value);
+            if (!header || typeof header !== 'object' || Array.isArray(header)) return null;
+
+            const messageCount = Math.max(0, Number(row.message_count) || 0);
+            let lastMessage = null;
+            if (messageCount > 0) {
+                const lastQuery = await client.query(
+                    'SELECT (doc->\'body\')->(jsonb_array_length(doc->\'body\') - 1) AS message_value FROM chats WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5',
+                    [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+                );
+                if (!lastQuery.rows.length) return null;
+                lastMessage = coerceJson(lastQuery.rows[0].message_value);
+                if (lastMessage === null && lastQuery.rows[0].message_value !== null) return null;
+            }
+
+            return {
+                header,
+                integrity: row.integrity ?? '',
+                updatedAt: Number(row.updated_at),
+                createdAt: Number(row.created_at),
+                messageCount,
+                byteSize: Math.max(0, Number(row.byte_size) || 0),
+                lastMessage,
+            };
+        },
+        async append(key, messages, {
+            expectedIntegrity = null,
+            newIntegrity,
+            updatedAt = Date.now(),
+        } = {}) {
+            const p = chatKeyToParams(key);
+            const metaQuery = await client.query(
+                `SELECT integrity,
+                        jsonb_typeof(doc->'header') AS header_type,
+                        jsonb_typeof(doc#>'{header,chat_metadata}') AS metadata_type,
+                        jsonb_typeof(doc->'body') AS body_type
+                 FROM chats
+                 WHERE handle=$1 AND char_dir=$2 AND name=$3 AND is_group=$4 AND group_id=$5
+                 FOR UPDATE`,
+                [p.handle, p.char_dir, p.name, p.is_group, p.group_id],
+            );
+            const meta = metaQuery.rows[0];
+            if (!meta) return { status: 'missing' };
+            if (meta.header_type !== 'object' || meta.metadata_type !== 'object' || meta.body_type !== 'array') {
+                return { status: 'unsupported' };
+            }
+
+            const currentIntegrity = String(meta.integrity ?? '');
+            if (expectedIntegrity !== null && expectedIntegrity !== undefined
+                && currentIntegrity !== expectedIntegrity) {
+                return { status: 'conflict', actualIntegrity: currentIntegrity };
+            }
+
+            const input = Array.isArray(messages) ? messages : [];
+            const incomingGenIds = [...new Set(input
+                .map(message => message?.extra?.gen_id)
+                .filter(id => typeof id === 'string' && id.length > 0))];
+            const seenGenIds = new Set();
+
+            if (incomingGenIds.length > 0) {
+                const existingIds = await client.query(
+                    `SELECT DISTINCT elem->'extra'->>'gen_id' AS gen_id
+                     FROM chats AS c
+                     CROSS JOIN LATERAL jsonb_array_elements(c.doc->'body') AS elem
+                     WHERE c.handle=$1 AND c.char_dir=$2 AND c.name=$3 AND c.is_group=$4 AND c.group_id=$5
+                       AND elem->'extra'->>'gen_id' = ANY($6::text[])`,
+                    [p.handle, p.char_dir, p.name, p.is_group, p.group_id, incomingGenIds],
+                );
+                for (const row of existingIds.rows) {
+                    if (typeof row.gen_id === 'string') seenGenIds.add(row.gen_id);
+                }
+            }
+
+            const accepted = [];
+            const dedupedGenIds = [];
+            for (const message of input) {
+                const genId = message?.extra?.gen_id;
+                if (typeof genId === 'string' && genId.length > 0 && seenGenIds.has(genId)) {
+                    dedupedGenIds.push(genId);
+                    continue;
+                }
+                if (typeof genId === 'string' && genId.length > 0) seenGenIds.add(genId);
+                accepted.push(message);
+            }
+
+            const update = await client.query(
+                `UPDATE chats
+                 SET doc = jsonb_set(
+                         jsonb_set(
+                             doc,
+                             '{body}',
+                             (doc->'body') || $1::jsonb,
+                             false
+                         ),
+                         '{header,chat_metadata,integrity}',
+                         to_jsonb($2::text),
+                         false
+                     ),
+                     updated_at = $3
+                 WHERE handle=$4 AND char_dir=$5 AND name=$6 AND is_group=$7 AND group_id=$8`,
+                [
+                    JSON.stringify(accepted),
+                    newIntegrity,
+                    updatedAt,
+                    p.handle,
+                    p.char_dir,
+                    p.name,
+                    p.is_group,
+                    p.group_id,
+                ],
+            );
+            if (update.rowCount !== 1) return { status: 'missing' };
+            return {
+                status: 'ok',
+                integrity: newIntegrity,
+                accepted: accepted.length,
+                dedupedGenIds,
+            };
+        },
         async get(key) {
             const p = chatKeyToParams(key);
             const row = await readRow(p);

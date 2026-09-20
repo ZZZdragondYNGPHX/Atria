@@ -33,6 +33,24 @@
 - **W-03c 出口证据：** `Worldbook Performance Foundation` run `35363369027` 已通过 focused Jest、synthetic benchmark 与真实 Chromium host smoke；真实宿主验证覆盖“钟楼条件直接激活 → 同状态重复生成持续 → provider 切换到城堡后退出”，并覆盖结构化作者 UI 保存。最新 HEAD 的完整 PR Checks / Workspace UI 仍需最终确认后再宣告整个 W-03 验收收口。
 - Android 与 Docker 仍按用户约束不默认构建。
 
+## P-02 至 P-05 延续实施记录 · 2026-09-19
+
+延续任务从 `main@03d97d655370b31c2a27dd1235f917deadd6246e` 启动，复用临时分支名 `feat/worldbook-performance-foundation`，PR #10。W-01 至 W-05 不重新开启设计；本轮只推进性能内容块。
+
+- **P-02 已完成实施：** prompt diagnostics 改为轻量 per-chat index + per-message record；viewer/diff 按需读取；旧整数组 IndexedDB 记录 lazy migration 且保留回退副本；checkpoint、删除、移动兼容；提供显式 rollback。
+- **P-03 已完成安全热路径切口：** regex depth 不再每次格式化 `map/filter` 整聊，最新流式消息深度计算为常数时间，最近窗口只扫描后缀；250／2,500／10,000 消息基准进入 CI artifact。完成消息 HTML 缓存与局部 Markdown 流式渲染暂不启用：当前动态 Regex、宏、MessageFormatter hook、Showdown 配置和 DOMPurify 缺少统一精确 revision，贸然缓存会违反输出一致性出口条件。
+- **P-04 已完成无迁移范围内的主要增量路径：**
+  - Repo/engine 新增可选 `getChatRange`、`getChatInfo`、`appendChatMessages`、`patchChatMessages` capability，并保留正确性 fallback；
+  - FS 使用可丢弃字节偏移索引做 warm range/info，native append 只追加 JSONL 行并原地旋转固定长度 integrity；旧/不兼容 header 自动 fallback；
+  - SQLite / MySQL / PostgreSQL 分别使用 JSON1 / JSON / JSONB 做 native range/info/append；
+  - SQLite / MySQL / PostgreSQL 对整消息 `test/replace/remove` 提供 native patch；复杂路径 fallback；
+  - character/group delta、append、whole-message patch 优先走 capability；
+  - throttled backup 只在 throttle 真正执行时才 materialize 全聊，可靠备份策略未降低。
+- **P-04 明确停止边界：** FS 可变长度 message replace/remove 仍使用原子整聊 rewrite fallback。要在 canonical JSONL 上做到 crash-safe 的真正局部 replace/remove，需要 journal、物理记录层或其他 storage-format migration；按 5.3 停止条件，这不在本次无迁移分片内。
+- **P-05 已完成已测 Memory 热路径切口：** corpus 复用 fact/support projection；relation→fact 与 provider slot 一次建索引；ranking 一次构建 document map / relation adjacency / state / episode 分组，避免 BFS 层层扫描完整 corpus；保持 RRF 稳定顺序并加入 500／1,500／3,000 合成基准。W-04/W-05 语义和默认模型调用策略不变。
+- **验证策略：** focused workflow 覆盖 P-02/P-03/P-04/P-05、FS/SQLite endpoint parity、备份/重启、synthetic artifact、真实 Chromium host smoke 和 W-04/W-05 E2E；完整 Atria PR Checks 使用 MySQL 8.4 + PostgreSQL 16 跑全量 Node unit、ESLint 与 Migration Guard。
+- Android 与 Docker 保持 opt-in，本轮不默认运行。
+
 ## 目录
 
 1. [共同目标、范围与证据边界](#overview)

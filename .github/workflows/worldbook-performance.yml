@@ -9,6 +9,9 @@ on:
       - "public/script.js"
       - "public/scripts/world-info.js"
       - "public/scripts/atri-chat-snapshot-cache.js"
+      - "public/scripts/atri-itemized-prompt-store.js"
+      - "public/scripts/atri-message-depth.js"
+      - "public/scripts/itemized-prompts.js"
       - "public/scripts/atri-world-info-prompt.js"
       - "public/scripts/atri-world-info-provenance.js"
       - "public/scripts/atri-world-info-state-conditions.js"
@@ -21,7 +24,26 @@ on:
       - "public/scripts/horde.js"
       - "public/scripts/extensions/orchestrator/lorebook-filter.js"
       - "public/scripts/extensions/orchestrator/main.js"
+      - "tests/memory-graph/temporal-graph.test.js"
+      - "tests/memory-graph/hybrid-retrieval.test.js"
+      - "public/scripts/extensions/memory-graph/temporal-graph.js"
+      - "public/scripts/extensions/memory-graph/hybrid-retrieval.js"
       - "src/endpoints/characters.js"
+      - "tests/storage/endpoints/group-chat-parity.test.js"
+      - "tests/storage/endpoints/chat-read-parity.test.js"
+      - "src/endpoints/chats.js"
+      - "src/storage/repositories/chat-repo.js"
+      - "src/storage/engines/types.js"
+      - "src/storage/engines/fs-engine-transaction.js"
+      - "src/storage/engines/fs-chat-range.js"
+      - "tests/storage/repositories/chat-repo.test.js"
+      - "tests/storage/endpoints/chat-incremental-backup.parity.test.js"
+      - "tests/storage/engines/sqlite-engine-chat.test.js"
+      - "tests/storage/repositories/chat-repo-append.test.js"
+      - "tests/storage/repositories/chat-repo-patch.test.js"
+      - "src/storage/engines/sqlite-engine-transaction.js"
+      - "src/storage/engines/postgres-engine-transaction.js"
+      - "src/storage/engines/mysql-engine-transaction.js"
       - "tests/e2e/_lib/fixtures.js"
       - "tests/e2e/worldinfo/_helpers.js"
       - "tests/e2e/worldinfo/25-activation-strategies.e2e.js"
@@ -51,6 +73,9 @@ jobs:
       - name: Install root dependencies
         run: npm ci --ignore-scripts
 
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
 
@@ -58,9 +83,24 @@ jobs:
         run: node docker/build-lib.js
 
       - name: Run focused regression tests
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: "1"
+          ATRIA_DISABLE_POSTGRES_TESTS: "1"
         run: >-
           npm run test:unit --prefix tests --
           performance/chat-snapshot-cache.test.js
+          performance/itemized-prompt-store.test.js
+          performance/message-depth.test.js
+          performance/fs-chat-range.test.js
+          storage/repositories/chat-repo.test.js
+          storage/engines/sqlite-engine-chat.test.js
+          storage/repositories/chat-repo-append.test.js
+          storage/repositories/chat-repo-patch.test.js
+          storage/endpoints/chat-read-parity.test.js
+          storage/endpoints/group-chat-parity.test.js
+          storage/endpoints/chat-incremental-backup.parity.test.js
+          memory-graph/temporal-graph.test.js
+          memory-graph/hybrid-retrieval.test.js
           world-info/provenance.test.js
           world-info/timed-effects-baseline.test.js
           world-info/state-conditions.test.js

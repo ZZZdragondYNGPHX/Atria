@@ -1,6 +1,6 @@
 import { describe, test, expect } from '@jest/globals';
-import { emptyProvenance, captureEpisodes, normalizeProvenance } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
-import { applyFactOperations } from '../../public/scripts/extensions/memory-graph/atomic-facts.js';
+import { emptyProvenance, captureEpisodes, createMemorySupportChecker, normalizeProvenance } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
+import { applyFactOperations, projectFacts } from '../../public/scripts/extensions/memory-graph/atomic-facts.js';
 import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from '../../public/scripts/extensions/memory-graph/temporal-graph.js';
 
 function fixture() {
@@ -29,6 +29,24 @@ function fixture() {
     return { chat, ticket, evidence, apply, alice, roland, castle, harbor, sword, relation,
         get state() { return state; }, read: (includeInactive = false) => projectTemporalGraph(state, chat, { includeInactive }) };
 }
+
+describe('P-05 projection reuse', () => {
+    test('preprojected facts and support checker preserve temporal graph output', () => {
+        const f = fixture();
+        const expected = projectTemporalGraph(f.state, f.chat, { includeInactive: true });
+        const check = createMemorySupportChecker(f.state, f.chat);
+        const facts = projectFacts(f.state, f.chat, {
+            includeInactive: true,
+            checkSupport: check,
+        });
+        const reused = projectTemporalGraph(f.state, f.chat, {
+            includeInactive: true,
+            checkSupport: check,
+            projectedFacts: facts,
+        });
+        expect(reused).toEqual(expected);
+    });
+});
 
 describe('Temporal Graph identity and lifecycle', () => {
     test('exact/alias/normalized resolution reuses stable IDs and separates types', () => {
