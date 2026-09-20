@@ -65,8 +65,43 @@ getWorldInfoPrompt(
 | `worldInfoDepth` | `Array<{depth, role, entries}>` | 深度注入條目 |
 | `anBefore` / `anAfter` | `string[]` | 作者註記注入 |
 | `outletEntries` | `Record<string, string[]>` | 自訂 outlet 內容 |
+| `worldInfoEvaluationId` | `string` | 明確提交使用的穩定冪等鍵 |
+| `timedWorldInfoState` | `object` | 待提交的 sticky/cooldown 狀態；評估階段不寫入 |
+| `externalActivationCommitToken` | `Array<{key, revision}>` | 本次評估觀察到的一次性 force-activation revision |
+| `worldInfoCommitScope` | `{chatId: string}` | 提交時必須仍然匹配的聊天範圍 |
 
-當 `isDryRun` 為 `false` 時，會觸發 `event_types.WORLD_INFO_ACTIVATED` 事件，攜帶啟動的條目。
+`getWorldInfoPrompt()` 本身不會提交 timed state，也不會觸發 `WORLD_INFO_ACTIVATED`。接受結果時明確呼叫：
+
+```ts
+commitWorldInfoEvaluation(result): Promise<{
+    committed: boolean,
+    reason?: 'invalid_evaluation' | 'already_committed' | 'scope_changed',
+    activatedEntries?: number,
+    consumedExternalActivations?: number,
+}>
+```
+
+提交會寫入本次評估計算出的 timed state，只消耗這次評估實際看到的 force-activation revision，並且只觸發一次 `WORLD_INFO_ACTIVATED`。即使結果物件被複製，同一個 `worldInfoEvaluationId` 重複提交也不會重複執行。
+
+## 原生狀態條件與場景持續
+
+Atria 世界書可以讀取已提交、唯讀的狀態 provider 快照，而不會把世界書變成第二套可寫狀態來源。
+
+目前條目欄位：
+
+| 欄位 | 類型 | 語意 |
+|------|------|------|
+| `stateConditions` | `Array<{providerId, path, operator, value}>` | 受限純量條件，結果為 `true` / `false` / `unknown` |
+| `stateConditionLogic` | `'all' | 'any'` | 狀態條件的三值聚合邏輯 |
+| `stateActivation` | `boolean` | 為 `true` 時，非空條件集只要評估為 `true`，即可不依賴關鍵字直接啟用條目 |
+| `stateEvents` | `Array<{providerId, path, from?, to?}>` | 比較「上次已提交 provider 基線」與「目前快照」的一次性純量變化事件 |
+| `stateEventLogic` | `'all' | 'any'` | 狀態變化事件的三值聚合邏輯 |
+
+`stateActivation` 預設為 `false`，因此舊條目的關鍵字／常駐行為不會改變。啟用後可用於場景持續：例如條件為 `scene.place == "clocktower"` 的條目，會在已提交狀態仍位於鐘樓時跨多次生成持續生效；provider 一旦回報其他地點，該條目立即退出。provider 缺失、欄位缺失、busy/error、條件格式錯誤或型別不相容都會得到 `unknown`，不會被當成成立。
+
+世界書不會寫入 MVU/LoreState。狀態變化事件的比較基線只有在接受並呼叫 `commitWorldInfoEvaluation()` 後才推進；預覽與重試不會推進基線。
+
+角色卡匯出時，這些欄位分別保存在 `extensions.atria_state_conditions`、`extensions.atria_state_condition_logic`、`extensions.atria_state_activation`、`extensions.atria_state_events` 與 `extensions.atria_state_event_logic`。
 
 ## 寫入世界書
 
@@ -159,7 +194,7 @@ reloadWorldInfoEditor(file: string, loadIfNotSelected?: boolean): void
 simulateWorldInfoActivation(request: {
     coreChat?: ChatMessage[],
     maxContext?: number,
-    dryRun?: boolean,
+    dryRun?: boolean, // 預設 true
     type?: string,
     chatForWI?: string[],
     includeNames?: boolean,
@@ -171,19 +206,19 @@ simulateWorldInfoActivation(request: {
 }>
 ```
 
-針對提供的訊息執行一次世界書啟動掃描並回傳結果。這是 [`resolveWorldInfoForMessages`](/zh-TW/development/extension-api/presets-and-prompts#resolveworldinfoformessages) 背後的原語；只有在你需要對掃描輸入做更精細的控制時才直接呼叫它。
+針對提供的訊息執行一次世界書純評估並回傳選擇結果。評估不會寫入聊天中繼資料、timed World Info 狀態，也不會消耗 force-activation 或觸發 `WORLD_INFO_ACTIVATED`；只有接受該結果時才明確呼叫 `commitWorldInfoEvaluation()`。這是 [`resolveWorldInfoForMessages`](/zh-TW/development/extension-api/presets-and-prompts#resolveworldinfoformessages) 背後的原語；只有在你需要對掃描輸入做更精細的控制時才直接呼叫它。
 
 | 參數 | 說明 |
 |------|------|
 | `coreChat` | 用作掃描來源的訊息列表（`{ name, mes, is_user, is_system }`） |
 | `maxContext` | token 預算；省略或 `<= 0` 時退回 `getMaxPromptTokens()` |
-| `dryRun` | `true` 時抑制 `WORLD_INFO_ACTIVATED` 事件 |
+| `dryRun` | 預覽/診斷標記，預設 `true`；無論取值為何，評估本身都不提交業務狀態。 |
 | `type` | 生成觸發標籤（`'normal'`、`'quiet'`、`'regenerate'` 等） |
 | `chatForWI` | 預先建構好的掃描輸入；提供時跳過 `buildWorldInfoChatInput` |
 | `includeNames` | 是否在每行掃描內容前加上 `name:` |
 | `globalScanData` | 覆寫從角色卡衍生的掃描欄位 |
 
-回傳物件會回拋實際使用的 `chatForWI`、`maxContext`、`globalScanData`，方便呼叫端檢視解析後的掃描輸入。
+回傳物件會回拋實際使用的 `chatForWI`、`maxContext`、`globalScanData`，並帶有穩定的 `worldInfoEvaluationId` 與待提交狀態。只有在確認接受這次評估後才呼叫 `commitWorldInfoEvaluation(result)`。
 
 ### buildWorldInfoChatInput
 

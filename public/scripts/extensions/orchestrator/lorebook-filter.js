@@ -1,4 +1,4 @@
-// public/scripts/extensions/orchestrator/lorebook-filter.js
+import { filterWorldInfoByProvenance } from '../../atri-world-info-provenance.js';
 
 /**
  * Per-preset world book filter shared by all four orchestrator modes.
@@ -18,8 +18,10 @@
  *  - applyProfileWorldInfoFilter(payload, filter) → mutates the six
  *    world-info channels on a chat-completion payload (before/after/depth
  *    buckets/outlet slots/anBefore/anAfter/examples) in place, dropping
- *    entries whose activatedEntries record matches the compiled filter.
- *    Unknown strings (not present in activatedEntries) are preserved
+ *    entries whose rendered occurrence source matches the compiled filter.
+ *    Core resolutions carry worldInfoProvenance; legacy unambiguous raw-body
+ *    lookup remains for extension-supplied resolutions. Mixed-verdict duplicate
+ *    bodies require provenance instead of guessing. Unknown legacy strings (not present in activatedEntries) are preserved
  *    (default-allow) so that non-world content is never accidentally cut.
  *  - applyLorebookFilterPatchArgs(currentFilter, args, {dimension}) →
  *    returns a new filter with `bookPattern` or `entryPattern` replaced by
@@ -76,18 +78,19 @@ export function compileLorebookFilter(filter) {
     };
 }
 
-function buildEntryLookup(activatedEntries) {
+function buildEntryLookup(activatedEntries, compiled) {
     const map = new Map();
     if (!Array.isArray(activatedEntries)) return map;
     for (const entry of activatedEntries) {
         if (!entry || typeof entry !== 'object') continue;
         const content = String(entry.content ?? '');
-        if (!map.has(content)) {
-            // First entry wins for duplicate content; downstream filter is
-            // OR-based across dimensions so duplicates within one book are
-            // safe (same world+comment reads).
-            map.set(content, entry);
+        const previous = map.get(content);
+        if (previous && compiled.test(previous.world, previous.comment) !== compiled.test(entry.world, entry.comment)) {
+            const error = new Error('Ambiguous legacy world info body requires occurrence provenance.');
+            error.code = 'atri_world_info_provenance_required';
+            throw error;
         }
+        if (!previous) map.set(content, entry);
     }
     return map;
 }
@@ -108,8 +111,14 @@ export function applyProfileWorldInfoFilter(payload, filter) {
     const compiled = compileLorebookFilter(filter);
     if (compiled.isEmpty) return;
 
+    const provenance = payload.worldInfoProvenance ?? payload.worldInfoResolution?.worldInfoProvenance;
+    if (provenance) {
+        filterWorldInfoByProvenance(payload, provenance, compiled.test);
+        return;
+    }
+    // Older extension-provided resolutions have no occurrence records.
     const activated = payload.worldInfoResolution?.activatedEntries;
-    const lookup = buildEntryLookup(activated);
+    const lookup = buildEntryLookup(activated, compiled);
 
     filterStringArrayInPlace(payload.worldInfoBeforeEntries, lookup, compiled);
     filterStringArrayInPlace(payload.worldInfoAfterEntries, lookup, compiled);

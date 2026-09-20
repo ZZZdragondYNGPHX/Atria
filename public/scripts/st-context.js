@@ -2410,6 +2410,15 @@ function buildGenerateTaskSenders() {
     };
 }
 
+
+async function commitWorldInfoEvaluationForContext(evaluation) {
+    const module = await import('./world-info.js');
+    if (typeof module.commitWorldInfoEvaluation !== 'function') {
+        return { committed: false, reason: 'unsupported' };
+    }
+    return module.commitWorldInfoEvaluation(evaluation);
+}
+
 export function getContext() {
     return {
         accountStorage,
@@ -2678,6 +2687,7 @@ export function getContext() {
         buildWorldInfoChatInput,
         buildWorldInfoGlobalScanData,
         simulateWorldInfoActivation,
+        commitWorldInfoEvaluation: commitWorldInfoEvaluationForContext,
         resolveWorldInfoForMessages,
         uuidv4,
         humanizedDateTime,

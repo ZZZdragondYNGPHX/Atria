@@ -1,10 +1,20 @@
+import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
+import { evaluateWorldInfoStateConditions, shouldActivateWorldInfoFromStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
+import {
+    buildWorldInfoEventRuntimeState,
+    evaluateWorldInfoStateEvents,
+    fingerprintWorldInfoStateSnapshot,
+    resolveWorldInfoEventComparisonBaseline,
+    snapshotWorldInfoStateProviders,
+} from './atri-world-info-state-events.js';
+import { createFloorState } from './floor-state.js';
 import { Fuse } from '../lib.js';
 import { setInfoBlock, clearInfoBlock } from './utils.js';
 
 import { saveSettings, substituteParams, getRequestHeaders, chat_metadata, this_chid, characters, saveCharacterDebounced, menu_type, eventSource, event_types, getExtensionPromptByName, saveMetadata, getCurrentChatId, extension_prompt_roles, create_save, name1, buildObjectPatchOperationsAsync, requestAsyncDiffForNextSettingsSave, getOneCharacter, select_selected_character } from '../script.js';
 import { areLookupNamesEqual, download, debounce, findCanonicalIndexInList, findCanonicalNameInList, initScrollHeight, resetScrollHeight, parseJsonFile, extractDataFromPng, getFileBuffer, getCharaFilename, escapeRegex, PAGINATION_TEMPLATE, navigation_option, waitUntilCondition, isTrueBoolean, setValueByPath, flashHighlight, select2ModifyOptions, getSelect2OptionId, dynamicSelect2DataViaAjax, highlightRegex, select2ChoiceClickSubscribe, isFalseBoolean, getSanitizedFilename, checkOverwriteExistingData, getStringHash, parseStringArray, cancelDebounce, findChar, onlyUnique, equalsIgnoreCaseAndAccents, uuidv4, normalizeArray, getUniqueName, logSlashCommandWarn, addLongPressEvent, escapeHtml } from './utils.js';
-import { extension_settings, getContext, writeExtensionField } from './extensions.js';
-import { NOTE_MODULE_NAME, metadata_keys, shouldWIAddPrompt } from './authors-note.js';
+import { getContext, writeExtensionField } from './extensions.js';
+import { readStateProviders } from './extensions/memory-graph/state-providers.js';
 import { isMobile } from './RossAscends-mods.js';
 import { FILTER_TYPES, FilterHelper, WORLD_INFO_SEARCH_MODES, keywordSearchWorldInfo } from './filters.js';
 import { getTokenCountAsync } from './tokenizers.js';
@@ -897,6 +907,11 @@ function renderTraceDetailLines(details = {}) {
  * @property {Array} anBefore - Array of entries before Author's Note
  * @property {Array} anAfter - Array of entries after Author's Note
  * @property {{[key: string]: string[]}} outletEntries - Array of entries to be added to an outlet
+ * @property {object} [worldInfoProvenance] Request-local rendered occurrence sources; not a final send receipt.
+ * @property {string} [worldInfoEvaluationId] Stable idempotency key for an explicit commit.
+ * @property {{sticky:object,cooldown:object}} [timedWorldInfoState] Pending timed-effect state; evaluation does not write it.
+ * @property {Array<{key:string,revision:number}>} [externalActivationCommitToken] One-shot force-activation revisions observed by this evaluation.
+ * @property {{chatId:string}} [worldInfoCommitScope] Scope that must still match when committing.
  */
 
 /**
@@ -910,7 +925,10 @@ function renderTraceDetailLines(details = {}) {
  * @property {any[]} ANBeforeEntries The entries before Author's Note.
  * @property {any[]} ANAfterEntries The entries after Author's Note.
  * @property {{[key: string]: string[]}} outletEntries - Array of entries to be added to an outlet
+ * @property {object} [worldInfoProvenance] Request-local rendered occurrence sources; not a final send receipt.
  * @property {Set<any>} allActivatedEntries All entries.
+ * @property {{sticky:object,cooldown:object}} [timedWorldInfoState] Pending timed-effect state for explicit commit.
+ * @property {Array<{key:string,revision:number}>} [externalActivationCommitToken] Force-activation revisions observed by this scan.
  */
 
 /**
@@ -938,9 +956,20 @@ const defaultGlobalScanData = Object.freeze({
  */
 class WorldInfoBuffer {
     /**
-     * @type {Map<string, object>} Map of entries that need to be activated no matter what
+     * One-shot externally forced activations waiting for an accepted WI
+     * evaluation. Values are revisioned so a stale commit cannot consume a
+     * newer force-activation for the same entry.
+     * @type {Map<string, {entry: object, revision: number}>}
      */
     static externalActivations = new Map();
+
+    static externalActivationRevision = 0;
+
+    /**
+     * Snapshot of force-activation records visible to this evaluation.
+     * @type {Map<string, {entry: object, revision: number}>}
+     */
+    #externalActivations = new Map();
 
     /**
      * @type {WIGlobalScanData} Chat independent data to be scanned, such as persona and character descriptions
@@ -980,6 +1009,7 @@ class WorldInfoBuffer {
     constructor(messages, globalScanData) {
         this.#initDepthBuffer(messages);
         this.#globalScanData = globalScanData;
+        this.#externalActivations = new Map(WorldInfoBuffer.externalActivations);
     }
 
     /**
@@ -1228,19 +1258,56 @@ class WorldInfoBuffer {
     }
 
     /**
-     * Get the externally activated version of the entry, if there is one.
+     * Get the externally activated version of the entry from this evaluation's
+     * snapshot, if there is one.
      * @param {object} entry WI entry to check
-     * @returns {object|undefined} the external version if the entry is forcefully activated, undefined otherwise
+     * @returns {object|undefined} force-activated entry override
      */
     getExternallyActivated(entry) {
-        return WorldInfoBuffer.externalActivations.get(`${entry.world}.${entry.uid}`);
+        return this.#externalActivations.get(`${entry.world}.${entry.uid}`)?.entry;
     }
 
     /**
-     * Clean-up the external effects for entries.
+     * Return a serializable commit token for the external activations observed
+     * by this evaluation.
+     * @returns {Array<{key:string,revision:number}>}
      */
-    resetExternalEffects() {
-        WorldInfoBuffer.externalActivations = new Map();
+    getExternalActivationCommitToken() {
+        return [...this.#externalActivations.entries()].map(([key, record]) => ({
+            key,
+            revision: Number(record?.revision || 0),
+        }));
+    }
+
+    /**
+     * Stage a one-shot external activation.
+     * @param {object} entry Entry carrying world and uid.
+     */
+    static stageExternalActivation(entry) {
+        const key = `${entry.world}.${entry.uid}`;
+        const revision = ++WorldInfoBuffer.externalActivationRevision;
+        WorldInfoBuffer.externalActivations.set(key, { entry, revision });
+    }
+
+    /**
+     * Consume only the exact force-activation revisions seen by a committed
+     * evaluation. Newer activations with the same key are preserved.
+     * @param {Array<{key:string,revision:number}>} token Evaluation token.
+     * @returns {number} Number of consumed entries.
+     */
+    static consumeExternalActivations(token) {
+        if (!Array.isArray(token)) return 0;
+        let consumed = 0;
+        for (const item of token) {
+            const key = String(item?.key || '');
+            const revision = Number(item?.revision || 0);
+            if (!key || !revision) continue;
+            const current = WorldInfoBuffer.externalActivations.get(key);
+            if (Number(current?.revision || 0) !== revision) continue;
+            WorldInfoBuffer.externalActivations.delete(key);
+            consumed++;
+        }
+        return consumed;
     }
 
     /**
@@ -1314,10 +1381,11 @@ class WorldInfoTimedEffects {
     #entries = [];
 
     /**
-     * Is this a dry run?
-     * @type {boolean}
+     * Request-local timed-effect state. Evaluation mutates this snapshot only;
+     * chat metadata changes happen later through an explicit commit.
+     * @type {{sticky: Record<string, WITimedEffect>, cooldown: Record<string, WITimedEffect>, delay: Record<string, WITimedEffect>}}
      */
-    #isDryRun = false;
+    #state = { sticky: {}, cooldown: {}, delay: {} };
 
     /**
      * Buffer for active timed effects.
@@ -1346,7 +1414,7 @@ class WorldInfoTimedEffects {
 
             const key = this.#getEntryKey(entry);
             const effect = this.#getEntryTimedEffect('cooldown', entry, true);
-            chat_metadata.timedWorldInfo.cooldown[key] = effect;
+            this.#state.cooldown[key] = effect;
             console.log(`[WI] Adding cooldown entry ${key} on ended sticky: start=${effect.start}, end=${effect.end}, protected=${effect.protected}`);
             // Set the cooldown immediately for this evaluation
             this.#buffer.cooldown.push(entry);
@@ -1366,38 +1434,33 @@ class WorldInfoTimedEffects {
 
     /**
      * Initialize the timed effects with the given messages.
+     * Extra constructor arguments are intentionally ignored for compatibility
+     * with older call sites that passed a dry-run flag.
      * @param {string[]} chat Array of chat messages
      * @param {WIScanEntry[]} entries Array of entries
-     * @param {boolean} isDryRun Whether the operation is a dry run
      */
-    constructor(chat, entries, isDryRun = false) {
+    constructor(chat, entries) {
         this.#chat = chat;
         this.#entries = entries;
-        this.#isDryRun = isDryRun;
-        this.#ensureChatMetadata();
+        this.#state = this.#createState(chat_metadata?.timedWorldInfo);
     }
 
     /**
-     * Verify correct structure of chat metadata.
+     * Normalize a metadata snapshot without mutating the live chat metadata.
+     * @param {object} raw Existing timedWorldInfo value.
+     * @returns {{sticky: Record<string, WITimedEffect>, cooldown: Record<string, WITimedEffect>, delay: Record<string, WITimedEffect>}}
      */
-    #ensureChatMetadata() {
-        if (!chat_metadata.timedWorldInfo) {
-            chat_metadata.timedWorldInfo = {};
-        }
-
-        ['sticky', 'cooldown'].forEach(type => {
-            // Ensure the property exists and is an object
-            if (!chat_metadata.timedWorldInfo[type] || typeof chat_metadata.timedWorldInfo[type] !== 'object') {
-                chat_metadata.timedWorldInfo[type] = {};
+    #createState(raw) {
+        const state = { sticky: {}, cooldown: {}, delay: {} };
+        for (const type of ['sticky', 'cooldown']) {
+            const source = raw?.[type];
+            if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+            for (const [key, value] of Object.entries(source)) {
+                if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+                state[type][key] = { ...value };
             }
-
-            // Clean up invalid entries
-            Object.entries(chat_metadata.timedWorldInfo[type]).forEach(([key, value]) => {
-                if (!value || typeof value !== 'object') {
-                    delete chat_metadata.timedWorldInfo[type][key];
-                }
-            });
-        });
+        }
+        return state;
     }
 
     /**
@@ -1442,14 +1505,14 @@ class WorldInfoTimedEffects {
      */
     #checkTimedEffectOfType(type, buffer, onEnded) {
         /** @type {[string, WITimedEffect][]} */
-        const effects = Object.entries(chat_metadata.timedWorldInfo[type]);
+        const effects = Object.entries(this.#state[type]);
         for (const [key, value] of effects) {
             console.log(`[WI] Processing ${type} entry ${key}`, value);
             const entry = this.#entries.find(x => String(this.#getEntryHash(x)) === String(value.hash));
 
             if (this.#chat.length <= Number(value.start) && !value.protected) {
                 console.log(`[WI] Removing ${type} entry ${key} from timedWorldInfo: chat not advanced`, value);
-                delete chat_metadata.timedWorldInfo[type][key];
+                delete this.#state[type][key];
                 continue;
             }
 
@@ -1457,7 +1520,7 @@ class WorldInfoTimedEffects {
             if (!entry) {
                 if (this.#chat.length >= Number(value.end)) {
                     console.log(`[WI] Removing ${type} entry from timedWorldInfo: entry not found and interval passed`, entry);
-                    delete chat_metadata.timedWorldInfo[type][key];
+                    delete this.#state[type][key];
                 }
                 continue;
             }
@@ -1465,13 +1528,13 @@ class WorldInfoTimedEffects {
             // Ignore invalid entries (not configured for timed effects)
             if (!entry[type]) {
                 console.log(`[WI] Removing ${type} entry from timedWorldInfo: entry not ${type}`, entry);
-                delete chat_metadata.timedWorldInfo[type][key];
+                delete this.#state[type][key];
                 continue;
             }
 
             if (this.#chat.length >= Number(value.end)) {
                 console.log(`[WI] Removing ${type} entry from timedWorldInfo: ${type} interval passed`, entry);
-                delete chat_metadata.timedWorldInfo[type][key];
+                delete this.#state[type][key];
                 if (typeof onEnded === 'function') {
                     onEnded(entry);
                 }
@@ -1504,10 +1567,8 @@ class WorldInfoTimedEffects {
      * Checks for timed effects on chat messages.
      */
     checkTimedEffects() {
-        if (!this.#isDryRun) {
-            this.#checkTimedEffectOfType('sticky', this.#buffer.sticky, this.#onEnded.sticky.bind(this));
-            this.#checkTimedEffectOfType('cooldown', this.#buffer.cooldown, this.#onEnded.cooldown.bind(this));
-        }
+        this.#checkTimedEffectOfType('sticky', this.#buffer.sticky, this.#onEnded.sticky.bind(this));
+        this.#checkTimedEffectOfType('cooldown', this.#buffer.cooldown, this.#onEnded.cooldown.bind(this));
         this.#checkDelayEffect(this.#buffer.delay);
     }
 
@@ -1523,7 +1584,7 @@ class WorldInfoTimedEffects {
         }
 
         const key = this.#getEntryKey(entry);
-        return chat_metadata.timedWorldInfo[type][key];
+        return this.#state[type][key];
     }
 
     /**
@@ -1539,9 +1600,9 @@ class WorldInfoTimedEffects {
 
         const key = this.#getEntryKey(entry);
 
-        if (!chat_metadata.timedWorldInfo[type][key]) {
+        if (!this.#state[type][key]) {
             const effect = this.#getEntryTimedEffect(type, entry, false);
-            chat_metadata.timedWorldInfo[type][key] = effect;
+            this.#state[type][key] = effect;
 
             console.log(`[WI] Adding ${type} entry ${key}: start=${effect.start}, end=${effect.end}, protected=${effect.protected}`);
         }
@@ -1552,7 +1613,6 @@ class WorldInfoTimedEffects {
      * @param {WIScanEntry[]} activatedEntries Entries that were activated
      */
     setTimedEffects(activatedEntries) {
-        if (this.#isDryRun) return;
         for (const entry of activatedEntries) {
             this.#setTimedEffectOfType('sticky', entry);
             this.#setTimedEffectOfType('cooldown', entry);
@@ -1569,16 +1629,12 @@ class WorldInfoTimedEffects {
         if (!this.isValidEffectType(type)) {
             return;
         }
-        if (this.#isDryRun && type !== 'delay') {
-            return;
-        }
-
         const key = this.#getEntryKey(entry);
-        delete chat_metadata.timedWorldInfo[type][key];
+        delete this.#state[type][key];
 
         if (newState) {
             const effect = this.#getEntryTimedEffect(type, entry, false);
-            chat_metadata.timedWorldInfo[type][key] = effect;
+            this.#state[type][key] = effect;
             console.log(`[WI] Adding ${type} entry ${key}: start=${effect.start}, end=${effect.end}, protected=${effect.protected}`);
         }
     }
@@ -1604,6 +1660,25 @@ class WorldInfoTimedEffects {
         }
 
         return this.#buffer[type]?.some(x => this.#getEntryHash(x) === this.#getEntryHash(entry)) ?? false;
+    }
+
+    /**
+     * Return the pending persistent timed-effect state.
+     * @returns {{sticky: Record<string, WITimedEffect>, cooldown: Record<string, WITimedEffect>}}
+     */
+    getPendingState() {
+        return {
+            sticky: Object.fromEntries(Object.entries(this.#state.sticky).map(([key, value]) => [key, { ...value }])),
+            cooldown: Object.fromEntries(Object.entries(this.#state.cooldown).map(([key, value]) => [key, { ...value }])),
+        };
+    }
+
+    /**
+     * Explicitly commit the pending state to chat metadata.
+     * Evaluation paths do not call this method.
+     */
+    commit() {
+        chat_metadata.timedWorldInfo = this.getPendingState();
     }
 
     /**
@@ -1788,7 +1863,7 @@ function invalidateWorldInfoRequestCache(names = []) {
  * Gets the world info based on chat messages.
  * @param {string[]} chat - The chat messages to scan, in reverse order.
  * @param {number} maxContext - The maximum context size of the generation.
- * @param {boolean} isDryRun - If true, the function will not emit any events.
+ * @param {boolean} isDryRun - Marks a preview/diagnostic scan. Business state is never committed by this function; use commitWorldInfoEvaluation() explicitly.
  * @param {WIGlobalScanData} globalScanData Chat independent context to be scanned
  * @returns {Promise<WIPromptResult>} The world info string and depth.
  */
@@ -1804,10 +1879,9 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         ? Array.from(activatedWorldInfo.allActivatedEntries.values())
         : [];
 
-    if (!isDryRun && activatedEntriesList.length > 0) {
-        await eventSource.emit(event_types.WORLD_INFO_ACTIVATED, activatedEntriesList);
-    }
-
+    // W-02: this function is an evaluation boundary. It never commits timed
+    // metadata and never emits WORLD_INFO_ACTIVATED. The accepted final result
+    // must be committed explicitly with commitWorldInfoEvaluation().
     return {
         worldInfoString,
         worldInfoBeforeEntries,
@@ -1819,11 +1893,134 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         anBefore: activatedWorldInfo.ANBeforeEntries ?? [],
         anAfter: activatedWorldInfo.ANAfterEntries ?? [],
         outletEntries: activatedWorldInfo.outletEntries ?? {},
-        // Per-entry attribution (book / comment / position) for consumers
-        // that need to surface which lorebook fired which entry. Existing
-        // consumers ignore this; new consumers (simulation-review popup)
-        // read it via st-context.resolveWorldInfoForMessages.
         activatedEntries: activatedEntriesList,
+        worldInfoEvaluationId: uuidv4(),
+        worldInfoProvenance: activatedWorldInfo.worldInfoProvenance,
+        timedWorldInfoState: activatedWorldInfo.timedWorldInfoState ?? { sticky: {}, cooldown: {} },
+        externalActivationCommitToken: Array.isArray(activatedWorldInfo.externalActivationCommitToken)
+            ? activatedWorldInfo.externalActivationCommitToken
+            : [],
+        worldInfoStateProviderSnapshot: activatedWorldInfo.worldInfoStateProviderSnapshot ?? null,
+        worldInfoStateProviderFingerprint: String(activatedWorldInfo.worldInfoStateProviderFingerprint || ''),
+        worldInfoStateGenerationType: String(activatedWorldInfo.worldInfoStateGenerationType || globalScanData?.trigger || 'normal'),
+        worldInfoEventScope: activatedWorldInfo.worldInfoEventScope ?? null,
+        worldInfoEventPendingState: activatedWorldInfo.worldInfoEventPendingState ?? null,
+        worldInfoEventReplay: activatedWorldInfo.worldInfoEventReplay === true,
+        worldInfoCommitScope: {
+            chatId: String(getCurrentChatId() || ''),
+        },
+    };
+}
+
+const committedWorldInfoEvaluations = new WeakSet();
+const committedWorldInfoEvaluationIds = new Map();
+const COMMITTED_WORLD_INFO_EVALUATION_LIMIT = 256;
+
+function rememberCommittedWorldInfoEvaluationId(id) {
+    const key = String(id || '').trim();
+    if (!key) return;
+    committedWorldInfoEvaluationIds.set(key, true);
+    while (committedWorldInfoEvaluationIds.size > COMMITTED_WORLD_INFO_EVALUATION_LIMIT) {
+        committedWorldInfoEvaluationIds.delete(committedWorldInfoEvaluationIds.keys().next().value);
+    }
+}
+
+/**
+ * Commit one accepted world-info evaluation. Reusing the same evaluation
+ * object is idempotent, so transport retries or duplicate callers cannot emit
+ * activation actions twice.
+ * @param {object} evaluation Result returned by getWorldInfoPrompt.
+ * @returns {Promise<{committed:boolean, reason?:string, activatedEntries?:number}>}
+ */
+export async function commitWorldInfoEvaluation(evaluation) {
+    if (!evaluation || typeof evaluation !== 'object') {
+        return { committed: false, reason: 'invalid_evaluation' };
+    }
+    const evaluationId = String(evaluation.worldInfoEvaluationId || '').trim();
+    if (
+        committedWorldInfoEvaluations.has(evaluation)
+        || (evaluationId && committedWorldInfoEvaluationIds.has(evaluationId))
+    ) {
+        return { committed: false, reason: 'already_committed' };
+    }
+
+    const expectedChatId = String(evaluation.worldInfoCommitScope?.chatId || '');
+    const currentChatId = String(getCurrentChatId() || '');
+    if (expectedChatId && expectedChatId !== currentChatId) {
+        return { committed: false, reason: 'scope_changed' };
+    }
+
+    const expectedStateFingerprint = String(evaluation.worldInfoStateProviderFingerprint || '');
+    if (expectedStateFingerprint) {
+        const currentState = captureCurrentWorldInfoStateSnapshot(
+            evaluation.worldInfoStateGenerationType || 'normal',
+        );
+        if (currentState.fingerprint !== expectedStateFingerprint) {
+            return { committed: false, reason: 'state_changed' };
+        }
+    }
+
+    let stateEventBaselineUpdated = false;
+    if (evaluation.worldInfoEventPendingState && typeof evaluation.worldInfoEventPendingState === 'object') {
+        try {
+            const floorState = await getWorldInfoEventFloorState();
+            const scope = evaluation.worldInfoEventScope;
+            const options = Number.isInteger(scope?.floor) && scope.floor >= 0
+                ? {
+                    floor: scope.floor,
+                    swipeId: Number.isInteger(scope?.swipeId) ? scope.swipeId : 0,
+                }
+                : undefined;
+            const result = await floorState.update(
+                () => structuredClone(evaluation.worldInfoEventPendingState),
+                options,
+            );
+            if (!result?.ok) {
+                console.warn('[WI] Failed to commit event FloorState baseline', result);
+                return { committed: false, reason: 'state_commit_failed' };
+            }
+            stateEventBaselineUpdated = result.updated === true;
+        } catch (error) {
+            console.warn('[WI] Failed to commit event FloorState baseline', error);
+            return { committed: false, reason: 'state_commit_failed' };
+        }
+    }
+
+    const consumedExternalActivations = WorldInfoBuffer.consumeExternalActivations(
+        evaluation.externalActivationCommitToken,
+    );
+
+    const timed = evaluation.timedWorldInfoState;
+    if (timed && typeof timed === 'object') {
+        const cloneBucket = bucket => Object.fromEntries(
+            Object.entries(bucket && typeof bucket === 'object' ? bucket : {})
+                .filter(([, value]) => value && typeof value === 'object' && !Array.isArray(value))
+                .map(([key, value]) => [key, { ...value }]),
+        );
+        chat_metadata.timedWorldInfo = {
+            sticky: cloneBucket(timed.sticky),
+            cooldown: cloneBucket(timed.cooldown),
+        };
+    }
+
+    // Mark before dispatching actions so an observer failure cannot make a
+    // retry replay the same activation side effect. Stable IDs keep the
+    // operation idempotent even if an extension clones/wraps the evaluation.
+    committedWorldInfoEvaluations.add(evaluation);
+    rememberCommittedWorldInfoEvaluationId(evaluationId);
+
+    const activatedEntries = Array.isArray(evaluation.activatedEntries)
+        ? evaluation.activatedEntries
+        : [];
+    if (activatedEntries.length > 0) {
+        await eventSource.emit(event_types.WORLD_INFO_ACTIVATED, activatedEntries);
+    }
+
+    return {
+        committed: true,
+        activatedEntries: activatedEntries.length,
+        consumedExternalActivations,
+        stateEventBaselineUpdated,
     };
 }
 
@@ -1974,7 +2171,7 @@ export function setWorldInfoSettings(settings, data) {
             if (!Object.hasOwn(entry, 'world') || !Object.hasOwn(entry, 'uid')) {
                 console.error('[WI] WORLDINFO_FORCE_ACTIVATE requires all entries to have both world and uid fields, entry IGNORED', entry);
             } else {
-                WorldInfoBuffer.externalActivations.set(`${entry.world}.${entry.uid}`, entry);
+                WorldInfoBuffer.stageExternalActivation(entry);
                 console.log('[WI] WORLDINFO_FORCE_ACTIVATE added entry', entry);
             }
         }
@@ -2403,6 +2600,44 @@ function registerWorldInfoSlashCommands() {
                 entry.characterFilter.isExclude = isTrueBoolean(value);
                 setWIOriginalDataValue(data, uid, 'character_filter', entry.characterFilter);
                 break;
+            case 'stateConditions': {
+                try {
+                    const parsed = JSON.parse(value);
+                    if (!Array.isArray(parsed)) throw new TypeError('stateConditions must be a JSON array');
+                    entry.stateConditions = parsed.slice(0, 32).filter(item => item && typeof item === 'object' && !Array.isArray(item));
+                    setWIOriginalDataValue(data, uid, 'extensions.atria_state_conditions', structuredClone(entry.stateConditions));
+                } catch (error) {
+                    toastr.warning(t`State conditions must be a JSON array of condition objects`);
+                    logSlashCommandWarn('setEntryFieldCallback: Invalid stateConditions JSON', args, { value, error: String(error?.message || error) });
+                    return '';
+                }
+                break;
+            }
+            case 'stateConditionLogic':
+                entry.stateConditionLogic = String(value || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', entry.stateConditionLogic);
+                break;
+            case 'stateActivation':
+                entry.stateActivation = isTrueBoolean(value);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_activation', entry.stateActivation);
+                break;
+            case 'stateEvents': {
+                try {
+                    const parsed = JSON.parse(value);
+                    if (!Array.isArray(parsed)) throw new TypeError('stateEvents must be a JSON array');
+                    entry.stateEvents = parsed.slice(0, 32).filter(item => item && typeof item === 'object' && !Array.isArray(item));
+                    setWIOriginalDataValue(data, uid, 'extensions.atria_state_events', structuredClone(entry.stateEvents));
+                } catch (error) {
+                    toastr.warning(t`State events must be a JSON array of event objects`);
+                    logSlashCommandWarn('setEntryFieldCallback: Invalid stateEvents JSON', args, { value, error: String(error?.message || error) });
+                    return '';
+                }
+                break;
+            }
+            case 'stateEventLogic':
+                entry.stateEventLogic = String(value || '').trim().toLowerCase() === 'any' ? 'any' : 'all';
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_event_logic', entry.stateEventLogic);
+                break;
             default:
                 if (Array.isArray(entry[field])) {
                     entry[field] = parseStringArray(value).filter(arrayFilter);
@@ -2533,6 +2768,7 @@ function registerWorldInfoSlashCommands() {
 
         const newEffectState = getNewEffectState();
         timedEffects.setTimedEffect(effect, entry, newEffectState);
+        timedEffects.commit();
 
         await saveMetadata();
         toastr.success(`Timed effect "${effect}" for entry ${entry.uid} is now ${newEffectState ? 'active' : 'inactive'}`);
@@ -6540,6 +6776,11 @@ export const originalWIDataKeyMap = {
     'cooldown': 'extensions.cooldown',
     'delay': 'extensions.delay',
     'triggers': 'extensions.triggers',
+    'stateConditions': 'extensions.atria_state_conditions',
+    'stateConditionLogic': 'extensions.atria_state_condition_logic',
+    'stateActivation': 'extensions.atria_state_activation',
+    'stateEvents': 'extensions.atria_state_events',
+    'stateEventLogic': 'extensions.atria_state_event_logic',
     'ignoreBudget': 'extensions.ignore_budget',
 };
 
@@ -7639,6 +7880,574 @@ export async function getWorldEntry(name, data, entry) {
         fillCharacterAndTagOptionsHelper({ characterFilter, entry });
         handleCharacterFilterChangeHelper({ characterFilter, data, entry, name });
 
+        // Native state conditions (W-03). The editor keeps incomplete new
+        // rows as local drafts; only rows with a non-empty path are persisted,
+        // so typing a condition never temporarily suppresses a live entry.
+        const stateConditionsRoot = editTemplate.find('.wi-entry-state-conditions');
+        const stateConditionsList = stateConditionsRoot.find('.wi-state-condition-list');
+        const stateConditionCount = stateConditionsRoot.find('.wi-state-condition-count');
+        const stateConditionLogicInput = stateConditionsRoot.find('select[name="stateConditionLogic"]');
+        const stateActivationInput = stateConditionsRoot.find('input[name="stateActivation"]');
+        const stateConditionAdd = stateConditionsRoot.find('.wi-state-condition-add');
+        const stateConditionSave = stateConditionsRoot.find('.wi-state-condition-save');
+        const stateConditionStatus = stateConditionsRoot.find('.wi-state-condition-status');
+        let stateConditionsDirty = false;
+        let stateConditionDrafts = (Array.isArray(entry.stateConditions) ? entry.stateConditions : []).map(condition => ({
+            providerId: String(condition?.providerId || 'mvu').trim() || 'mvu',
+            path: Array.isArray(condition?.path)
+                ? condition.path.map(part => String(part ?? '').trim()).filter(Boolean).slice(0, 12)
+                : [],
+            operator: String(condition?.operator || 'eq').trim().toLowerCase() || 'eq',
+            value: condition?.value === null || ['string', 'number', 'boolean'].includes(typeof condition?.value)
+                ? condition.value
+                : '',
+        }));
+
+        const inferStateConditionValueType = value => {
+            if (value === null) return 'null';
+            if (typeof value === 'number') return 'number';
+            if (typeof value === 'boolean') return 'boolean';
+            return 'string';
+        };
+
+        const parseStateConditionPath = value => String(value || '')
+            .split('.')
+            .map(part => part.trim())
+            .filter(Boolean)
+            .slice(0, 12);
+
+        const getPersistableStateConditions = () => stateConditionDrafts
+            .filter(condition => (
+                condition
+                && String(condition.providerId || '').trim()
+                && Array.isArray(condition.path)
+                && condition.path.length > 0
+                && String(condition.operator || '').trim()
+                && (condition.value === null || ['string', 'number', 'boolean'].includes(typeof condition.value))
+            ))
+            .map(condition => structuredClone(condition));
+
+        const markStateConditionsDirty = () => {
+            stateConditionsDirty = true;
+            stateConditionStatus.text(t`Unsaved state condition changes`);
+            stateConditionCount.text(String(stateConditionDrafts.length));
+        };
+
+        const validateStateConditionDrafts = () => {
+            if (stateConditionDrafts.length > 32) {
+                throw new RangeError('State conditions are limited to 32 per entry');
+            }
+            const persistable = getPersistableStateConditions();
+            if (persistable.length !== stateConditionDrafts.length) {
+                throw new TypeError('Every state condition needs a provider, path, operator, and scalar value');
+            }
+            const logic = stateConditionLogicInput.val() === 'any' ? 'any' : 'all';
+            const stateActivation = persistable.length > 0 && stateActivationInput.prop('checked') === true;
+            const evaluation = evaluateWorldInfoStateConditions(persistable, [], logic);
+            const invalidIndex = evaluation.results.findIndex(result => result.reason === 'invalid_condition');
+            if (invalidIndex >= 0) {
+                throw new TypeError(`Condition #${invalidIndex + 1} is invalid`);
+            }
+            return { persistable, logic, stateActivation };
+        };
+
+        const saveStateConditions = async () => {
+            const uid = entry.uid;
+            const liveEntry = data.entries[uid];
+            if (!liveEntry) return false;
+            try {
+                const { persistable, logic, stateActivation } = validateStateConditionDrafts();
+                liveEntry.stateConditions = persistable;
+                liveEntry.stateConditionLogic = logic;
+                liveEntry.stateActivation = stateActivation;
+                entry.stateConditions = structuredClone(persistable);
+                entry.stateConditionLogic = logic;
+                entry.stateActivation = stateActivation;
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_conditions', structuredClone(persistable));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_condition_logic', logic);
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_activation', stateActivation);
+                await saveWorldInfo(name, data);
+                stateConditionsDirty = false;
+                stateConditionCount.text(String(persistable.length));
+                stateConditionStatus.text(t`State conditions saved`);
+                return true;
+            } catch (error) {
+                const message = String(error?.message || error || 'Invalid state conditions');
+                stateConditionStatus.text(message);
+                toastr.warning(message, t`Invalid state conditions`);
+                return false;
+            }
+        };
+
+        const makeStateConditionField = (label, extraClass = '') => {
+            const field = $('<label class="wi-state-condition-field"></label>');
+            if (extraClass) field.addClass(extraClass);
+            field.append($('<small></small>').text(label));
+            return field;
+        };
+
+        const renderStateConditionRows = () => {
+            stateConditionsList.empty();
+            stateConditionCount.text(String(stateConditionDrafts.length));
+            stateActivationInput.prop('disabled', stateConditionDrafts.length === 0);
+            if (stateConditionDrafts.length === 0) stateActivationInput.prop('checked', false);
+
+            stateConditionDrafts.forEach((condition, index) => {
+                const row = $('<div class="wi-state-condition-row"></div>');
+                row.toggleClass('is-incomplete', !Array.isArray(condition.path) || condition.path.length === 0);
+
+                const providerField = makeStateConditionField(translate('Provider'));
+                const providerInput = $('<select class="text_pole margin0"></select>');
+                providerInput
+                    .append($('<option value="mvu">MVU</option>'))
+                    .append($('<option value="lorestate">LoreState</option>'));
+                if (!['mvu', 'lorestate'].includes(condition.providerId)) {
+                    providerInput.append(
+                        $('<option></option>').val(condition.providerId).text(
+                            condition.providerId + ' (' + translate('unsupported') + ')',
+                        ),
+                    );
+                }
+                providerInput.val(condition.providerId);
+                providerInput.on('input', async () => {
+                    stateConditionDrafts[index].providerId = String(providerInput.val() || '');
+                    markStateConditionsDirty();
+                });
+                providerField.append(providerInput);
+
+                const pathField = makeStateConditionField(translate('Path'), 'wi-state-condition-path');
+                const pathInput = $('<input class="text_pole margin0" type="text" autocomplete="off">')
+                    .attr('placeholder', 'scene.place')
+                    .val(condition.path.join('.'));
+                pathInput.on('input', async () => {
+                    stateConditionDrafts[index].path = parseStateConditionPath(pathInput.val());
+                    row.toggleClass('is-incomplete', stateConditionDrafts[index].path.length === 0);
+                    markStateConditionsDirty();
+                });
+                pathField.append(pathInput);
+
+                const operatorField = makeStateConditionField(translate('Operator'));
+                const operatorInput = $('<select class="text_pole margin0"></select>');
+                const operatorLabels = {
+                    eq: '=',
+                    neq: '≠',
+                    gt: '>',
+                    gte: '≥',
+                    lt: '<',
+                    lte: '≤',
+                    contains: 'contains',
+                };
+                for (const operator of WORLD_INFO_CONDITION_OPERATORS) {
+                    operatorInput.append(
+                        $('<option></option>').val(operator).text(operatorLabels[operator] || operator),
+                    );
+                }
+                if (!WORLD_INFO_CONDITION_OPERATORS.includes(condition.operator)) {
+                    operatorInput.append(
+                        $('<option></option>').val(condition.operator).text(
+                            condition.operator + ' (' + translate('unsupported') + ')',
+                        ),
+                    );
+                }
+                operatorInput.val(condition.operator);
+                operatorInput.on('input', async () => {
+                    stateConditionDrafts[index].operator = String(operatorInput.val() || 'eq');
+                    markStateConditionsDirty();
+                });
+                operatorField.append(operatorInput);
+
+                const typeField = makeStateConditionField(translate('Value type'));
+                const typeInput = $('<select class="text_pole margin0"></select>');
+                for (const type of ['string', 'number', 'boolean', 'null']) {
+                    typeInput.append($('<option></option>').val(type).text(type));
+                }
+                typeInput.val(inferStateConditionValueType(condition.value));
+                typeField.append(typeInput);
+
+                const valueField = makeStateConditionField(translate('Value'), 'wi-state-condition-value');
+                const renderValueInput = () => {
+                    valueField.find('.wi-state-condition-value-control').remove();
+                    const valueType = String(typeInput.val() || 'string');
+                    let valueInput;
+
+                    if (valueType === 'boolean') {
+                        valueInput = $('<select class="text_pole margin0 wi-state-condition-value-control"></select>')
+                            .append($('<option value="true">true</option>'))
+                            .append($('<option value="false">false</option>'))
+                            .val(condition.value === true ? 'true' : 'false');
+                        valueInput.on('input', async () => {
+                            stateConditionDrafts[index].value = valueInput.val() === 'true';
+                            markStateConditionsDirty();
+                        });
+                    } else {
+                        valueInput = $('<input class="text_pole margin0 wi-state-condition-value-control">');
+                        if (valueType === 'number') {
+                            valueInput.attr({ type: 'number', step: 'any' });
+                            valueInput.val(
+                                typeof condition.value === 'number' && Number.isFinite(condition.value)
+                                    ? String(condition.value)
+                                    : '0',
+                            );
+                            valueInput.on('input', async () => {
+                                const numeric = Number(valueInput.val());
+                                stateConditionDrafts[index].value = Number.isFinite(numeric) ? numeric : 0;
+                                markStateConditionsDirty();
+                            });
+                        } else if (valueType === 'null') {
+                            valueInput.attr('type', 'text').val('null').prop('disabled', true);
+                        } else {
+                            valueInput.attr('type', 'text').val(
+                                typeof condition.value === 'string'
+                                    ? condition.value
+                                    : String(condition.value ?? ''),
+                            );
+                            valueInput.on('input', async () => {
+                                stateConditionDrafts[index].value = String(valueInput.val() ?? '');
+                                markStateConditionsDirty();
+                            });
+                        }
+                    }
+
+                    valueField.append(valueInput);
+                };
+
+                typeInput.on('input', async () => {
+                    const valueType = String(typeInput.val() || 'string');
+                    if (valueType === 'number') stateConditionDrafts[index].value = 0;
+                    else if (valueType === 'boolean') stateConditionDrafts[index].value = false;
+                    else if (valueType === 'null') stateConditionDrafts[index].value = null;
+                    else stateConditionDrafts[index].value = '';
+                    renderValueInput();
+                    markStateConditionsDirty();
+                });
+                renderValueInput();
+
+                const removeButton = $(
+                    '<button type="button" class="menu_button wi-state-condition-remove" title="Remove condition"><i class="fa-solid fa-trash-can"></i></button>',
+                );
+                removeButton.on('click', async event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    stateConditionDrafts.splice(index, 1);
+                    renderStateConditionRows();
+                    markStateConditionsDirty();
+                });
+
+                row.append(providerField, pathField, operatorField, typeField, valueField, removeButton);
+                stateConditionsList.append(row);
+            });
+        };
+
+        stateConditionLogicInput.val(entry.stateConditionLogic === 'any' ? 'any' : 'all');
+        stateConditionLogicInput.on('input', markStateConditionsDirty);
+        stateActivationInput.prop('checked', entry.stateActivation === true);
+        stateActivationInput.on('input', markStateConditionsDirty);
+        stateConditionAdd.on('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (stateConditionDrafts.length >= 32) {
+                toastr.warning(t`State conditions are limited to 32 per entry`);
+                return;
+            }
+            stateConditionDrafts.push({ providerId: 'mvu', path: [], operator: 'eq', value: '' });
+            renderStateConditionRows();
+            markStateConditionsDirty();
+            stateConditionsRoot.find('.wi-state-condition-row').last().find('.wi-state-condition-path input').trigger('focus');
+        });
+        stateConditionSave.on('click', async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            await saveStateConditions();
+        });
+        renderStateConditionRows();
+        stateConditionStatus.text(stateConditionsDirty
+            ? t`Unsaved state condition changes`
+            : t`State conditions saved`);
+
+        // Native state transition events (W-03b). Drafts are staged until
+        // Save events is pressed, matching the state-condition editor contract.
+        const stateEventsRoot = editTemplate.find('.wi-entry-state-events');
+        const stateEventsList = stateEventsRoot.find('.wi-state-event-list');
+        const stateEventCount = stateEventsRoot.find('.wi-state-event-count');
+        const stateEventLogicInput = stateEventsRoot.find('select[name="stateEventLogic"]');
+        const stateEventAdd = stateEventsRoot.find('.wi-state-event-add');
+        const stateEventSave = stateEventsRoot.find('.wi-state-event-save');
+        const stateEventStatus = stateEventsRoot.find('.wi-state-event-status');
+        let stateEventsDirty = false;
+        let stateEventDrafts = (Array.isArray(entry.stateEvents) ? entry.stateEvents : []).map(event => ({
+            providerId: String(event?.providerId || 'mvu').trim() || 'mvu',
+            path: Array.isArray(event?.path)
+                ? event.path.map(part => String(part ?? '').trim()).filter(Boolean).slice(0, 12)
+                : [],
+            fromPresent: Object.hasOwn(event || {}, 'from'),
+            fromValue: event?.from === null || ['string', 'number', 'boolean'].includes(typeof event?.from)
+                ? event.from
+                : '',
+            toPresent: Object.hasOwn(event || {}, 'to'),
+            toValue: event?.to === null || ['string', 'number', 'boolean'].includes(typeof event?.to)
+                ? event.to
+                : '',
+        }));
+
+        const inferStateEventValueType = (present, value) => {
+            if (!present) return 'any';
+            if (value === null) return 'null';
+            if (typeof value === 'number') return 'number';
+            if (typeof value === 'boolean') return 'boolean';
+            return 'string';
+        };
+
+        const getPersistableStateEvents = () => stateEventDrafts
+            .filter(event => (
+                event
+                && String(event.providerId || '').trim()
+                && Array.isArray(event.path)
+                && event.path.length > 0
+                && (event.fromPresent || event.toPresent)
+                && (!event.fromPresent || event.fromValue === null || ['string', 'number', 'boolean'].includes(typeof event.fromValue))
+                && (!event.toPresent || event.toValue === null || ['string', 'number', 'boolean'].includes(typeof event.toValue))
+            ))
+            .map(event => ({
+                providerId: String(event.providerId || '').trim(),
+                path: [...event.path],
+                ...(event.fromPresent ? { from: structuredClone(event.fromValue) } : {}),
+                ...(event.toPresent ? { to: structuredClone(event.toValue) } : {}),
+            }));
+
+        const markStateEventsDirty = () => {
+            stateEventsDirty = true;
+            stateEventStatus.text(t`Unsaved state event changes`);
+            stateEventCount.text(String(stateEventDrafts.length));
+        };
+
+        const validateStateEventDrafts = () => {
+            if (stateEventDrafts.length > 32) {
+                throw new RangeError('State events are limited to 32 per entry');
+            }
+            const persistable = getPersistableStateEvents();
+            if (persistable.length !== stateEventDrafts.length) {
+                throw new TypeError('Every state event needs a provider, path, and at least one From/To value');
+            }
+            const logic = stateEventLogicInput.val() === 'any' ? 'any' : 'all';
+            return { persistable, logic };
+        };
+
+        const saveStateEvents = async () => {
+            const uid = entry.uid;
+            const liveEntry = data.entries[uid];
+            if (!liveEntry) return false;
+            try {
+                const { persistable, logic } = validateStateEventDrafts();
+                liveEntry.stateEvents = persistable;
+                liveEntry.stateEventLogic = logic;
+                entry.stateEvents = structuredClone(persistable);
+                entry.stateEventLogic = logic;
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_events', structuredClone(persistable));
+                setWIOriginalDataValue(data, uid, 'extensions.atria_state_event_logic', logic);
+                await saveWorldInfo(name, data);
+                stateEventsDirty = false;
+                stateEventCount.text(String(persistable.length));
+                stateEventStatus.text(t`State events saved`);
+                return true;
+            } catch (error) {
+                const message = String(error?.message || error || 'Invalid state events');
+                stateEventStatus.text(message);
+                toastr.warning(message, t`Invalid state events`);
+                return false;
+            }
+        };
+
+        const makeStateEventField = (label, extraClass = '') => {
+            const field = $('<label class="wi-state-event-field"></label>');
+            if (extraClass) field.addClass(extraClass);
+            field.append($('<small></small>').text(label));
+            return field;
+        };
+
+        const renderStateEventRows = () => {
+            stateEventsList.empty();
+            stateEventCount.text(String(stateEventDrafts.length));
+
+            stateEventDrafts.forEach((eventDraft, index) => {
+                const row = $('<div class="wi-state-event-row"></div>');
+                const refreshIncomplete = () => row.toggleClass(
+                    'is-incomplete',
+                    !Array.isArray(eventDraft.path)
+                    || eventDraft.path.length === 0
+                    || (!eventDraft.fromPresent && !eventDraft.toPresent),
+                );
+                refreshIncomplete();
+
+                const providerField = makeStateEventField(translate('Provider'));
+                const providerInput = $('<select class="text_pole margin0"></select>')
+                    .append($('<option value="mvu">MVU</option>'))
+                    .append($('<option value="lorestate">LoreState</option>'));
+                if (!['mvu', 'lorestate'].includes(eventDraft.providerId)) {
+                    providerInput.append(
+                        $('<option></option>').val(eventDraft.providerId).text(
+                            eventDraft.providerId + ' (' + translate('unsupported') + ')',
+                        ),
+                    );
+                }
+                providerInput.val(eventDraft.providerId);
+                providerInput.on('input', () => {
+                    stateEventDrafts[index].providerId = String(providerInput.val() || '');
+                    markStateEventsDirty();
+                });
+                providerField.append(providerInput);
+
+                const pathField = makeStateEventField(translate('Path'), 'wi-state-event-path');
+                const pathInput = $('<input class="text_pole margin0" type="text" autocomplete="off">')
+                    .attr('placeholder', 'scene.place')
+                    .val(eventDraft.path.join('.'));
+                pathInput.on('input', () => {
+                    stateEventDrafts[index].path = parseStateConditionPath(pathInput.val());
+                    refreshIncomplete();
+                    markStateEventsDirty();
+                });
+                pathField.append(pathInput);
+
+                const buildEndpointControls = (side, label, presentKey, valueKey) => {
+                    const typeField = makeStateEventField(label);
+                    const valueField = makeStateEventField(translate('Value'), `wi-state-event-${side}-value`);
+                    const typeInput = $('<select class="text_pole margin0"></select>');
+                    for (const type of ['any', 'string', 'number', 'boolean', 'null']) {
+                        typeInput.append($('<option></option>').val(type).text(type));
+                    }
+                    typeInput.val(inferStateEventValueType(eventDraft[presentKey], eventDraft[valueKey]));
+                    typeField.append(typeInput);
+
+                    const renderValueInput = () => {
+                        valueField.find('.wi-state-event-value-control').remove();
+                        const valueType = String(typeInput.val() || 'any');
+                        let valueInput;
+
+                        if (valueType === 'any') {
+                            valueInput = $('<input class="text_pole margin0 wi-state-event-value-control" type="text">')
+                                .val('Any')
+                                .prop('disabled', true);
+                        } else if (valueType === 'boolean') {
+                            valueInput = $('<select class="text_pole margin0 wi-state-event-value-control"></select>')
+                                .append($('<option value="true">true</option>'))
+                                .append($('<option value="false">false</option>'))
+                                .val(eventDraft[valueKey] === true ? 'true' : 'false');
+                            valueInput.on('input', () => {
+                                stateEventDrafts[index][valueKey] = valueInput.val() === 'true';
+                                markStateEventsDirty();
+                            });
+                        } else {
+                            valueInput = $('<input class="text_pole margin0 wi-state-event-value-control">');
+                            if (valueType === 'number') {
+                                valueInput.attr({ type: 'number', step: 'any' });
+                                valueInput.val(
+                                    typeof eventDraft[valueKey] === 'number' && Number.isFinite(eventDraft[valueKey])
+                                        ? String(eventDraft[valueKey])
+                                        : '0',
+                                );
+                                valueInput.on('input', () => {
+                                    const numeric = Number(valueInput.val());
+                                    stateEventDrafts[index][valueKey] = Number.isFinite(numeric) ? numeric : 0;
+                                    markStateEventsDirty();
+                                });
+                            } else if (valueType === 'null') {
+                                valueInput.attr('type', 'text').val('null').prop('disabled', true);
+                            } else {
+                                valueInput.attr('type', 'text').val(
+                                    typeof eventDraft[valueKey] === 'string'
+                                        ? eventDraft[valueKey]
+                                        : String(eventDraft[valueKey] ?? ''),
+                                );
+                                valueInput.on('input', () => {
+                                    stateEventDrafts[index][valueKey] = String(valueInput.val() ?? '');
+                                    markStateEventsDirty();
+                                });
+                            }
+                        }
+                        valueField.append(valueInput);
+                    };
+
+                    typeInput.on('input', () => {
+                        const valueType = String(typeInput.val() || 'any');
+                        if (valueType === 'any') {
+                            stateEventDrafts[index][presentKey] = false;
+                            stateEventDrafts[index][valueKey] = '';
+                        } else {
+                            stateEventDrafts[index][presentKey] = true;
+                            if (valueType === 'number') stateEventDrafts[index][valueKey] = 0;
+                            else if (valueType === 'boolean') stateEventDrafts[index][valueKey] = false;
+                            else if (valueType === 'null') stateEventDrafts[index][valueKey] = null;
+                            else stateEventDrafts[index][valueKey] = '';
+                        }
+                        renderValueInput();
+                        refreshIncomplete();
+                        markStateEventsDirty();
+                    });
+                    renderValueInput();
+                    return [typeField, valueField];
+                };
+
+                const [fromTypeField, fromValueField] = buildEndpointControls(
+                    'from', translate('From'), 'fromPresent', 'fromValue',
+                );
+                const [toTypeField, toValueField] = buildEndpointControls(
+                    'to', translate('To'), 'toPresent', 'toValue',
+                );
+
+                const removeButton = $(
+                    '<button type="button" class="menu_button wi-state-event-remove" title="Remove event"><i class="fa-solid fa-trash-can"></i></button>',
+                );
+                removeButton.on('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    stateEventDrafts.splice(index, 1);
+                    renderStateEventRows();
+                    markStateEventsDirty();
+                });
+
+                row.append(
+                    providerField,
+                    pathField,
+                    fromTypeField,
+                    fromValueField,
+                    toTypeField,
+                    toValueField,
+                    removeButton,
+                );
+                stateEventsList.append(row);
+            });
+        };
+
+        stateEventLogicInput.val(entry.stateEventLogic === 'any' ? 'any' : 'all');
+        stateEventLogicInput.on('input', markStateEventsDirty);
+        stateEventAdd.on('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (stateEventDrafts.length >= 32) {
+                toastr.warning(t`State events are limited to 32 per entry`);
+                return;
+            }
+            stateEventDrafts.push({
+                providerId: 'mvu',
+                path: [],
+                fromPresent: false,
+                fromValue: '',
+                toPresent: true,
+                toValue: '',
+            });
+            renderStateEventRows();
+            markStateEventsDirty();
+            stateEventsRoot.find('.wi-state-event-row').last().find('.wi-state-event-path input').trigger('focus');
+        });
+        stateEventSave.on('click', async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            await saveStateEvents();
+        });
+        renderStateEventRows();
+        stateEventStatus.text(stateEventsDirty
+            ? t`Unsaved state event changes`
+            : t`State events saved`);
+
         // Content
         const counter = editTemplate.find('.world_entry_form_token_counter');
         const countTokensDebounced = debounce(async function (counter, value) {
@@ -8101,6 +8910,11 @@ export const newWorldInfoEntryDefinition = {
     characterFilterTags: { default: [], type: 'array', excludeFromTemplate: true },
     characterFilterExclude: { default: false, type: 'boolean', excludeFromTemplate: true },
     triggers: { default: [], type: 'array', arrayFilter: (value) => GENERATION_TYPE_TRIGGERS.includes(value) },
+    stateConditions: { default: [], type: 'array' },
+    stateConditionLogic: { default: 'all', type: 'enum' },
+    stateActivation: { default: false, type: 'boolean' },
+    stateEvents: { default: [], type: 'array' },
+    stateEventLogic: { default: 'all', type: 'enum' },
 };
 
 export const newWorldInfoEntryTemplate = Object.fromEntries(
@@ -8895,6 +9709,68 @@ function parseDecorators(content) {
  * @returns {Promise<WIActivated>} The world info activated.
  */
 //MARK: checkWorldInfo
+const WORLD_INFO_EVENT_STATE_NAMESPACE = 'atri_world_info_events';
+let worldInfoEventFloorStatePromise = null;
+
+async function getWorldInfoEventFloorState() {
+    if (!worldInfoEventFloorStatePromise) {
+        worldInfoEventFloorStatePromise = createFloorState({ namespace: WORLD_INFO_EVENT_STATE_NAMESPACE })
+            .catch(error => {
+                worldInfoEventFloorStatePromise = null;
+                throw error;
+            });
+    }
+    return worldInfoEventFloorStatePromise;
+}
+
+function buildWorldInfoStateProviderContext(context, trigger = 'normal') {
+    return {
+        chat: Array.isArray(context?.chat) ? context.chat : [],
+        eventSource: context?.eventSource,
+        getCurrentChatId: typeof context?.getCurrentChatId === 'function'
+            ? context.getCurrentChatId.bind(context)
+            : getCurrentChatId,
+        memoryOsGenerationType: String(trigger || 'normal'),
+    };
+}
+
+function getWorldInfoEventScope(context) {
+    const sourceChat = Array.isArray(context?.chat) ? context.chat : [];
+    const floor = sourceChat.length - 1;
+    const message = floor >= 0 ? sourceChat[floor] : null;
+    return {
+        floor,
+        swipeId: Number.isInteger(message?.swipe_id) ? message.swipe_id : 0,
+    };
+}
+
+async function getWorldInfoEventRuntimeState() {
+    const floorState = await getWorldInfoEventFloorState();
+    await floorState.ready();
+    const result = await floorState.get();
+    if (!result?.ok) {
+        console.warn('[WI] Failed to read event FloorState baseline', result);
+        return {};
+    }
+    return result.state && typeof result.state === 'object' && !Array.isArray(result.state)
+        ? result.state
+        : {};
+}
+
+function captureCurrentWorldInfoStateSnapshot(trigger = 'normal') {
+    const context = getContext();
+    const providers = readStateProviders(
+        buildWorldInfoStateProviderContext(context, trigger),
+        {},
+        globalThis,
+    );
+    const snapshot = snapshotWorldInfoStateProviders(providers);
+    return {
+        snapshot,
+        fingerprint: fingerprintWorldInfoStateSnapshot(snapshot),
+    };
+}
+
 export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData = defaultGlobalScanData, entryFilter = null) {
     const context = getContext();
     const buffer = new WorldInfoBuffer(chat, globalScanData);
@@ -8936,7 +9812,57 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     console.debug(`[WI] Context size: ${maxContext}; WI budget: ${budget} (max% = ${world_info_budget}%, cap = ${world_info_budget_cap})`);
     const loadedEntries = await getSortedEntries();
     const sortedEntries = typeof entryFilter === 'function' ? loadedEntries.filter(entryFilter) : loadedEntries;
-    const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries, isDryRun);
+    const timedEffects = new WorldInfoTimedEffects(chat, sortedEntries);
+
+    const hasConfiguredStateConditions = entry => (
+        Object.hasOwn(entry || {}, 'stateConditions')
+        && (
+            !Array.isArray(entry.stateConditions)
+            || entry.stateConditions.length > 0
+        )
+    );
+    const hasConfiguredStateEvents = entry => (
+        Object.hasOwn(entry || {}, 'stateEvents')
+        && (
+            !Array.isArray(entry.stateEvents)
+            || entry.stateEvents.length > 0
+        )
+    );
+    const hasStateConditions = sortedEntries.some(hasConfiguredStateConditions);
+    const hasStateEvents = sortedEntries.some(hasConfiguredStateEvents);
+    const usesStateProviders = hasStateConditions || hasStateEvents;
+    let worldInfoStateProviders = [];
+    let worldInfoStateProviderSnapshot = null;
+    let worldInfoStateProviderFingerprint = '';
+    let worldInfoEventScope = null;
+    let worldInfoEventComparisonBaseline = null;
+    let worldInfoEventPendingState = null;
+    let worldInfoEventReplay = false;
+
+    if (usesStateProviders) {
+        const stateContext = buildWorldInfoStateProviderContext(context, globalScanData.trigger);
+        worldInfoStateProviders = readStateProviders(stateContext, {}, globalThis);
+        worldInfoStateProviderSnapshot = snapshotWorldInfoStateProviders(worldInfoStateProviders);
+        worldInfoStateProviderFingerprint = fingerprintWorldInfoStateSnapshot(worldInfoStateProviderSnapshot);
+    }
+
+    if (hasStateEvents) {
+        const runtimeState = await getWorldInfoEventRuntimeState();
+        worldInfoEventScope = getWorldInfoEventScope(context);
+        const comparison = resolveWorldInfoEventComparisonBaseline(
+            runtimeState,
+            worldInfoStateProviderSnapshot,
+            worldInfoEventScope,
+        );
+        worldInfoEventComparisonBaseline = comparison.baseline;
+        worldInfoEventReplay = comparison.replay;
+        worldInfoEventPendingState = buildWorldInfoEventRuntimeState(
+            runtimeState,
+            worldInfoEventComparisonBaseline,
+            worldInfoStateProviderSnapshot,
+            worldInfoEventScope,
+        );
+    }
 
     timedEffects.checkTimedEffects();
 
@@ -8952,6 +9878,8 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
             ANAfterEntries: [],
             outletEntries: {},
             allActivatedEntries: new Set(),
+            timedWorldInfoState: timedEffects.getPendingState(),
+            externalActivationCommitToken: buffer.getExternalActivationCommitToken(),
         };
     }
 
@@ -9078,6 +10006,102 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                 continue;
             }
 
+            let stateConditionActivationTrace = null;
+            if (hasConfiguredStateConditions(entry)) {
+                const stateResult = Array.isArray(entry.stateConditions)
+                    ? evaluateWorldInfoStateConditions(
+                        entry.stateConditions,
+                        worldInfoStateProviders,
+                        entry.stateConditionLogic,
+                    )
+                    : {
+                        status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                        logic: entry.stateConditionLogic === 'any' ? 'any' : 'all',
+                        results: [{
+                            providerId: '',
+                            path: [],
+                            operator: '',
+                            status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                            reason: 'invalid_condition',
+                        }],
+                        reason: 'unknown',
+                    };
+                const stateConditionTrace = {
+                    stateConditionLogic: stateResult.logic,
+                    stateConditions: stateResult.results.map(result => ({
+                        providerId: result.providerId,
+                        path: result.path,
+                        operator: result.operator,
+                        status: result.status,
+                        reason: result.reason,
+                        ...(result.providerStatus ? { providerStatus: result.providerStatus } : {}),
+                    })),
+                };
+                if (stateResult.status !== WORLD_INFO_CONDITION_RESULT.TRUE) {
+                    const reason = stateResult.status === WORLD_INFO_CONDITION_RESULT.UNKNOWN
+                        ? 'state_condition_unknown'
+                        : 'state_condition_false';
+                    log(`suppressed by native state conditions (${stateResult.status})`);
+                    recordActivationAttempt(
+                        entry,
+                        reason,
+                        withRecursionTraceSources(stateConditionTrace),
+                    );
+                    continue;
+                }
+                if (shouldActivateWorldInfoFromStateConditions(entry, stateResult)) {
+                    stateConditionActivationTrace = {
+                        stateActivation: true,
+                        ...stateConditionTrace,
+                    };
+                }
+            }
+
+            if (hasConfiguredStateEvents(entry)) {
+                const stateEventResult = Array.isArray(entry.stateEvents)
+                    ? evaluateWorldInfoStateEvents(
+                        entry.stateEvents,
+                        worldInfoEventComparisonBaseline,
+                        worldInfoStateProviderSnapshot,
+                        entry.stateEventLogic,
+                    )
+                    : {
+                        status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                        logic: entry.stateEventLogic === 'any' ? 'any' : 'all',
+                        results: [{
+                            providerId: '',
+                            path: [],
+                            status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
+                            reason: 'invalid_event',
+                        }],
+                        reason: 'unknown',
+                    };
+
+                if (stateEventResult.status !== WORLD_INFO_CONDITION_RESULT.TRUE) {
+                    const reason = stateEventResult.status === WORLD_INFO_CONDITION_RESULT.UNKNOWN
+                        ? 'state_event_unknown'
+                        : 'state_event_false';
+                    log(`suppressed by native state event (${stateEventResult.status})`);
+                    recordActivationAttempt(
+                        entry,
+                        reason,
+                        withRecursionTraceSources({
+                            stateEventLogic: stateEventResult.logic,
+                            stateEventReplay: worldInfoEventReplay,
+                            stateEvents: stateEventResult.results.map(result => ({
+                                providerId: result.providerId,
+                                path: result.path,
+                                status: result.status,
+                                reason: result.reason,
+                                ...(result.previousReason ? { previousReason: result.previousReason } : {}),
+                                ...(result.currentReason ? { currentReason: result.currentReason } : {}),
+                            })),
+                        }),
+                    );
+                    continue;
+                }
+            }
+
             // Check for generation type trigger filter
             if (Array.isArray(entry.triggers) && entry.triggers.length > 0) {
                 const isTriggered = entry.triggers.includes(globalScanData.trigger);
@@ -9172,6 +10196,17 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
                     withRecursionTraceSources({ sourceEntry: makeTraceKey(entry) }),
                 );
                 activatedNow.add(externallyActivated);
+                continue;
+            }
+
+            if (stateConditionActivationTrace) {
+                log('activated by matched native state conditions');
+                recordActivationAttempt(
+                    entry,
+                    'state_condition_activate',
+                    withRecursionTraceSources(stateConditionActivationTrace),
+                );
+                activatedNow.add(entry);
                 continue;
             }
 
@@ -9645,103 +10680,34 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
 
     console.debug('[WI] --- BUILDING PROMPT ---');
 
-    // Forward-sorted list of entries for joining
-    const WIBeforeEntries = [];
-    const WIAfterEntries = [];
-    const EMEntries = [];
-    const ANTopEntries = [];
-    const ANBottomEntries = [];
-    const WIDepthEntries = [];
-    /** @type {{[key: string]: string[]}} */
-    const WIOutletEntries = {};
-
-    // Appends from insertion order 999 to 1. Use unshift for this purpose
-    // TODO (kingbri): Change to use WI Anchor positioning instead of separate top/bottom arrays
-    [...allActivatedEntries.values()].sort(sortFn).forEach((entry) => {
-        const regexDepth = entry.position === world_info_position.atDepth ? (entry.depth ?? DEFAULT_DEPTH) : null;
-        const content = getRegexedString(entry.content, regex_placement.WORLD_INFO, { depth: regexDepth, isMarkdown: false, isPrompt: true });
-
-        if (!content) {
-            console.debug(`[WI] Entry ${entry.uid}`, 'skipped adding to prompt due to empty content', entry);
-            return;
-        }
-
-        switch (entry.position) {
-            case world_info_position.before:
-                WIBeforeEntries.unshift(content);
-                break;
-            case world_info_position.after:
-                WIAfterEntries.unshift(content);
-                break;
-            case world_info_position.EMTop:
-                EMEntries.unshift(
-                    { position: wi_anchor_position.before, content: content },
-                );
-                break;
-            case world_info_position.EMBottom:
-                EMEntries.unshift(
-                    { position: wi_anchor_position.after, content: content },
-                );
-                break;
-            case world_info_position.ANTop:
-                ANTopEntries.unshift(content);
-                break;
-            case world_info_position.ANBottom:
-                ANBottomEntries.unshift(content);
-                break;
-            case world_info_position.atDepth: {
-                const existingDepthIndex = WIDepthEntries.findIndex((e) => e.depth === (entry.depth ?? DEFAULT_DEPTH) && e.role === (entry.role ?? extension_prompt_roles.SYSTEM));
-                if (existingDepthIndex !== -1) {
-                    WIDepthEntries[existingDepthIndex].entries.unshift(content);
-                } else {
-                    WIDepthEntries.push({
-                        depth: entry.depth,
-                        entries: [content],
-                        role: entry.role ?? extension_prompt_roles.SYSTEM,
-                    });
-                }
-                break;
-            }
-            case world_info_position.outlet: {
-                if (!entry.outletName) {
-                    console.warn(`[WI] Entry ${entry.uid} has position 'outlet' but no outlet name. Skipping.`);
-                    break;
-                }
-                if (Array.isArray(WIOutletEntries[entry.outletName])) {
-                    WIOutletEntries[entry.outletName].push(content);
-                } else {
-                    WIOutletEntries[entry.outletName] = [content];
-                }
-                break;
-            }
-            default:
-                break;
-        }
+    const promptEntries = buildWorldInfoPromptEntries([...allActivatedEntries.values()].sort(sortFn), {
+        world_info_position, wi_anchor_position, DEFAULT_DEPTH, extension_prompt_roles,
+        render: (entry, depth) => getRegexedString(entry.content, regex_placement.WORLD_INFO, { depth, isMarkdown: false, isPrompt: true }),
     });
+    const { worldInfoBeforeEntries: WIBeforeEntries, worldInfoAfterEntries: WIAfterEntries } = promptEntries;
 
-    if (shouldWIAddPrompt) {
-        const originalAN = context.extensionPrompts[NOTE_MODULE_NAME].value;
-        const ANWithWI = `${ANTopEntries.join('\n')}\n${originalAN}\n${ANBottomEntries.join('\n')}`.replace(/(^\n)|(\n$)/g, '');
-        context.setExtensionPrompt(NOTE_MODULE_NAME, ANWithWI, chat_metadata[metadata_keys.position], chat_metadata[metadata_keys.depth], extension_settings.note.allowWIScan, chat_metadata[metadata_keys.role]);
-    }
-
+    // Evaluation updates request-local timed state only. The caller may commit
+    // this snapshot once the finalized selection has been accepted.
     timedEffects.setTimedEffects(Array.from(allActivatedEntries.values()));
-    buffer.resetExternalEffects();
+    const timedWorldInfoState = timedEffects.getPendingState();
+    const externalActivationCommitToken = buffer.getExternalActivationCommitToken();
     timedEffects.cleanUp();
 
     console.debug(`[WI] --- DONE${isDryRun ? ' (DRY RUN)' : ''} ---`);
 
     return {
-        worldInfoBeforeEntries: [...WIBeforeEntries],
-        worldInfoAfterEntries: [...WIAfterEntries],
+        ...promptEntries,
         worldInfoBefore: WIBeforeEntries.length ? WIBeforeEntries.join('\n') : '',
         worldInfoAfter: WIAfterEntries.length ? WIAfterEntries.join('\n') : '',
-        EMEntries,
-        WIDepthEntries,
-        ANBeforeEntries: ANTopEntries,
-        ANAfterEntries: ANBottomEntries,
-        outletEntries: WIOutletEntries,
         allActivatedEntries: new Set(allActivatedEntries.values()),
+        timedWorldInfoState,
+        externalActivationCommitToken,
+        worldInfoStateProviderSnapshot,
+        worldInfoStateProviderFingerprint,
+        worldInfoStateGenerationType: String(globalScanData.trigger || 'normal'),
+        worldInfoEventScope,
+        worldInfoEventPendingState,
+        worldInfoEventReplay,
     };
 }
 
@@ -10138,6 +11104,15 @@ export function convertCharacterBook(characterBook) {
             matchCreatorNotes: entry.extensions?.match_creator_notes ?? false,
             extensions: entry.extensions ?? {},
             triggers: entry.extensions?.triggers || [],
+            stateConditions: Array.isArray(entry.extensions?.atria_state_conditions)
+                ? structuredClone(entry.extensions.atria_state_conditions)
+                : [],
+            stateConditionLogic: entry.extensions?.atria_state_condition_logic === 'any' ? 'any' : 'all',
+            stateActivation: entry.extensions?.atria_state_activation === true,
+            stateEvents: Array.isArray(entry.extensions?.atria_state_events)
+                ? structuredClone(entry.extensions.atria_state_events)
+                : [],
+            stateEventLogic: entry.extensions?.atria_state_event_logic === 'any' ? 'any' : 'all',
             ignoreBudget: entry.extensions?.ignore_budget ?? false,
         };
     });
@@ -10961,6 +11936,13 @@ function updateAuxBooks(fileName, computeNext) {
 }
 
 export function initWorldInfo() {
+    // W-03b: register the event-baseline FloorState as part of normal World
+    // Info startup so branch/checkpoint inheritance works even before the
+    // first state-event scan in this page session.
+    void getWorldInfoEventFloorState().catch(error => {
+        console.warn('[WI] Failed to register event FloorState during init', error);
+    });
+
     $('#world_info').on('mousedown change', async function (e) {
         // If there's no world names, don't do anything
         if (world_names.length === 0) {

@@ -747,10 +747,17 @@ function tryParseStreamingError(response, decoded) {
     }
 }
 
-export async function generateNovelWithStreaming(generate_data, signal, { onAtriaMeta = null } = {}) {
+export async function generateNovelWithStreaming(generate_data, signal, { onAtriaMeta = null, onRequestReady = null } = {}) {
     generate_data.streaming = nai_settings.streaming_novel;
 
     const response = await withProfileRetry(async () => {
+        if (typeof onRequestReady === 'function') {
+            try {
+                onRequestReady();
+            } catch (error) {
+                console.warn('[world-info] request attribution observer failed', error);
+            }
+        }
         return await fetch('/api/novelai/generate', {
             headers: getRequestHeaders(),
             body: JSON.stringify(generate_data),
