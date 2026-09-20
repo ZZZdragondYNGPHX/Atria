@@ -113,6 +113,7 @@ import hostWhitelistMiddleware from './middleware/hostWhitelist.js';
 import userCssMiddleware from './middleware/userCss.js';
 import { storageErrorHandler } from './middleware/storage-errors.js';
 import { markStartupMilestone, startStartupPhase } from './startup-timing.js';
+import { createLazyRouter } from './middleware/lazy-router.js';
 import {
     getVersion,
     checkRemoteVersion,
@@ -136,7 +137,6 @@ import {
 
 // Routers
 import { router as usersPublicRouter } from './endpoints/users-public.js';
-import { router as syncRouter } from './endpoints/sync.js';
 import { syncInProgressMiddleware } from './sync/in-progress-gate.js';
 import { router as storageHealthRouter } from './endpoints/storage-health.js';
 import { init as statsInit, onExit as statsOnExit } from './endpoints/stats.js';
@@ -511,7 +511,10 @@ app.use('/api/storage', storageHealthRouter);
 // logged-in browser cookie. Basic auth still applies to `/health` via the
 // upstream middleware; the `isBasicAuthExemptRequest` patch lets the
 // `/session/*` paths through on their own token.
-app.use('/api/sync/v1', syncRouter);
+app.use('/api/sync/v1', createLazyRouter(
+    () => import('./endpoints/sync.js'),
+    { exportName: 'router', label: 'sync' },
+));
 
 // Everything below this line requires authentication
 app.use(requireLoginMiddleware);
