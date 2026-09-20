@@ -1,11 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';\nimport { gunzipSync } from 'node:zlib';\nimport { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const toolboxPath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.sh');
-const termuxCliPath = path.join(repoRoot, 'scripts', 'termux', 'atria.sh');
+const toolboxPath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.sh');\nconst toolboxRuntimePath = path.join(repoRoot, 'scripts', 'termux', 'atria_toolbox.runtime.sh.gz');\nconst termuxCliPath = path.join(repoRoot, 'scripts', 'termux', 'atria.sh');
 
 describe('Termux update guards', () => {
     test('launchers remain valid bash', () => {
@@ -28,6 +26,34 @@ describe('Termux update guards', () => {
         expect(source).toContain('fetch_repo_refs_base "$@"');
     });
 
+    test('compressed toolbox runtime already clones the standalone Atria repository', () => {
+        const runtime = gunzipSync(fs.readFileSync(toolboxRuntimePath)).toString('utf8');
+
+        expect(runtime).toContain('REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"');
+        expect(runtime).toContain('SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"');
+        expect(runtime).not.toContain('https://github.com/ZZZdragondYNGPHX/Luker.git');
+    });
+
+    test('toolbox preserves old history before aligning a pre-cutover checkout', () => {
+        const source = fs.readFileSync(toolboxPath, 'utf8');
+
+        expect(source).toContain('HISTORY_CUTOVER_LEGACY_ANCHOR="91ae97aed557be9439317a67d0ec516f7512fe2e"');
+        expect(source).toContain('history_cutover_required "$old_sha" "$remote_sha"');
+        expect(source).toContain('backup_branch="history-cutover-backup-$stamp"');
+        expect(source).toContain('git -C "$ATRIA_DIR" branch "$backup_branch" "$old_sha"');
+        expect(source).toContain('git -C "$ATRIA_DIR" switch -C main origin/main');
+    });
+
+    test('direct atria-termux updater repairs origin and handles the same history cutover', () => {
+        const source = fs.readFileSync(termuxCliPath, 'utf8');
+
+        expect(source).toContain('CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"');
+        expect(source).toContain('git -C "${REPO_ROOT}" remote set-url origin "${CANONICAL_REPO_URL}"');
+        expect(source).toContain('ensure_canonical_origin');
+        expect(source).toContain('history_cutover_required "${old_sha}" "${remote_sha}"');
+        expect(source).toContain('backup_branch="history-cutover-backup-${stamp}"');
+        expect(source).toContain('git -C "${REPO_ROOT}" switch -C main origin/main');
+    });
     test('known restore-deleted .gitkeep is healed before dirty-worktree refusal', () => {
         const source = fs.readFileSync(toolboxPath, 'utf8');
         const healCall = source.indexOf('heal_known_restore_sentinel_dirty_state || return 1');
