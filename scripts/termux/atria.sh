@@ -280,8 +280,17 @@ update_repo() {
     stop_server
   fi
 
-  log "Updating current branch with fast-forward only..."
-  git pull --ff-only
+  log "Refreshing origin/main..."
+  git fetch origin main --prune
+
+  if git show-ref --verify --quiet refs/heads/main; then
+    git switch main
+  else
+    git switch -c main --track origin/main
+  fi
+
+  log "Updating main with fast-forward only..."
+  git merge --ff-only origin/main
   log "Refreshing production dependencies..."
   npm_package_config_node_gyp_nodedir="${PREFIX:-}" npm ci --omit=dev --no-audit --no-fund
   bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
@@ -308,7 +317,7 @@ Commands:
   url          Print the local browser URL
   logs [-f]    Show recent logs; -f follows them
   doctor       Check Termux, Node/npm and native SQLite
-  update       Fast-forward the current branch, npm ci, repair native SQLite, and restart if needed
+  update       Switch to/follow main, npm ci, repair native SQLite, and restart if needed
 
 Environment:
   ATRIA_TERMUX_PORT=8000
