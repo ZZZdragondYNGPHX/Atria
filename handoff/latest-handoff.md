@@ -8,7 +8,7 @@ Current authoritative `main`:
 
 - `63da3141a3895d3386ed1bebc30876c9766315ba`
 
-This commit is the squash merge of PR #73, `fix: localize diagnostics workspace in Chinese`, a localization-only follow-up to the Logging Observability Workspace refactor in PR #71. Its final validated task head `f08032f1c9ecd686e5fc1218f39ec82e4f700ad5` passed Atria PR Checks #717 (ESLint, Atria Migration Guard, and the complete Node unit suite). The underlying logging/diagnostics architecture from PR #71 remains unchanged.
+The current main includes all integrations recorded below, including the independent-history cutover, the latest Termux toolbox repairs, and PR #76 uninstall modes. Earlier diagnostics/localization integrations remain unchanged except where later entries explicitly supersede their main SHA.
 
 ### Git history independence cutover
 
