@@ -13,10 +13,11 @@ describe('immersive experience host integration', () => {
         expect(script).not.toContain('onImmersiveFullscreenChanged');
     });
 
-    test('startup uses the plain i18n translator instead of calling the tagged-template helper as a function', () => {
+    test('startup keeps immersive translation safe across the circular i18n module graph', () => {
         const script = read('public/script.js');
         expect(script).toContain("translate as translateText");
-        expect(script).toContain('translate: value => translateText(value)');
+        expect(script).toContain('const translateImmersiveText = value => {');
+        expect(script).toContain('translate: translateImmersiveText');
         expect(script).not.toContain('translate: value => t(value)');
     });
 
