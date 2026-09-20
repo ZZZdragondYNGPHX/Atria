@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.7
+# Atria Toolbox launcher - v0.3.8
+# v0.3.8：修复 curl | bash 启动后菜单 stdin 已耗尽导致反复清屏/“无效选项”。
 # v0.3.7：适配 Atria 独立 Git 历史切割；旧本地主线自动保留安全分支后对齐新 main。
 # v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧产品仓库 origin。
 # v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。
@@ -11,7 +12,7 @@
 set -e
 set -o pipefail
 
-SCRIPT_VERSION="v0.3.7"
+SCRIPT_VERSION="v0.3.8"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
 RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
@@ -306,7 +307,7 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.7"
+SCRIPT_VERSION="v0.3.8"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
@@ -506,4 +507,12 @@ bash -n "$RUNTIME_FILE" || {
     exit 1
 }
 chmod +x "$RUNTIME_FILE"
-exec bash "$RUNTIME_FILE" "$@"
+
+# The documented "curl ... | bash" launch form consumes stdin while Bash reads
+# this launcher. The interactive runtime must read from the controlling terminal
+# instead of inheriting the exhausted pipe, otherwise every menu read sees EOF.
+if [ ! -r /dev/tty ]; then
+    echo "[ERROR] 当前启动方式没有可用的交互终端。请直接在 Termux 终端中运行工具箱。" >&2
+    exit 1
+fi
+exec bash "$RUNTIME_FILE" "$@" </dev/tty
