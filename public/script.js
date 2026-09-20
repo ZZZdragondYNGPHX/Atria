@@ -321,7 +321,6 @@ import { initDomHandlers } from './scripts/dom-handlers.js';
 import { SimpleMutex } from './scripts/util/SimpleMutex.js';
 import { applyPatch as applyJsonPatch, compare as compareJsonPatch } from './scripts/util/fast-json-patch.js';
 import { shouldUseSettingsPatch } from './scripts/util/settings-patch-threshold.js';
-import { AudioPlayer } from './scripts/audio-player.js';
 import { MacroEnvBuilder } from './scripts/macros/engine/MacroEnvBuilder.js';
 import { MessageFormatter } from './scripts/message-formatter.js';
 import { MacroEngine } from './scripts/macros/engine/MacroEngine.js';
@@ -2278,6 +2277,18 @@ function loadVariableOpsPanelModule() {
         });
     }
     return variableOpsPanelModulePromise;
+}
+
+let audioPlayerModulePromise;
+
+function loadAudioPlayerModule() {
+    if (!audioPlayerModulePromise) {
+        audioPlayerModulePromise = import('./scripts/audio-player.js').catch((error) => {
+            audioPlayerModulePromise = null;
+            throw error;
+        });
+    }
+    return audioPlayerModulePromise;
 }
 
 let postVisibleStartupModulesPromise;
@@ -4926,7 +4937,15 @@ export function appendMediaToMessage(mes, messageElement, scrollBehavior = SCROL
             }
         }));
 
-        new AudioPlayer(audio.get(0), template.get(0));
+        mediaPromises.push(
+            loadAudioPlayerModule()
+                .then(({ AudioPlayer }) => {
+                    new AudioPlayer(audio.get(0), template.get(0));
+                })
+                .catch((error) => {
+                    console.error('Failed to load audio player module', error);
+                }),
+        );
 
         mediaBlocks.push(template);
         return template;
