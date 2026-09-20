@@ -1,7 +1,6 @@
 import { normalizeLogModule } from './modules.js';
-import { LogStore } from './store.js';
-
-export const backendLogStore = new LogStore({ side: 'backend' });
+import { backendLogStore } from './store.js';
+import { emitConsoleOutput } from './console-adapter.js';
 
 function toPayload(event, message, data, context) {
     if (event && typeof event === 'object' && !Array.isArray(event)) return { ...event };
@@ -20,7 +19,7 @@ export function createLogger(module, options = {}) {
     const write = (level, event, message, data, context) => {
         try {
             const payload = toPayload(event, message, data, context);
-            return store.append({
+            const entry = store.append({
                 ...defaults,
                 ...payload,
                 side: 'backend',
@@ -28,6 +27,10 @@ export function createLogger(module, options = {}) {
                 module: normalizedModule,
                 source: payload.source || defaults.source || 'structured',
             });
+            if (options.emitToConsole === true) {
+                emitConsoleOutput(level, [entry.message, ...(Object.keys(entry.data || {}).length ? [entry.data] : [])]);
+            }
+            return entry;
         } catch {
             return null;
         }
@@ -43,3 +46,5 @@ export function createLogger(module, options = {}) {
         error: (event, message, data, context) => write('error', event, message, data, context),
     });
 }
+
+export { backendLogStore } from './store.js';
