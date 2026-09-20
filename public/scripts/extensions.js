@@ -263,8 +263,9 @@ function showHideExtensionsMenu() {
         clearInterval(menuInterval);
     }
 
-    // Show or hide the menu button
+    // Show or hide the native and immersive entrypoints together.
     $('#extensionsMenuButton').toggle(hasMenuItems);
+    $('#atriaImmersiveExtensions').prop('hidden', !hasMenuItems);
 }
 
 // Periodically check for new extensions
@@ -737,12 +738,23 @@ async function addExtensionsButtonAndMenu() {
     const button = $('#extensionsMenuButton');
     const dropdown = $('#extensionsMenu');
     let isDropdownVisible = false;
+    let popperReference = button.get(0);
 
-    let popper = Popper.createPopper(button.get(0), dropdown.get(0), {
+    let popper = Popper.createPopper(popperReference, dropdown.get(0), {
         placement: 'top-start',
     });
 
-    $(button).on('click', function () {
+    const updatePopperReference = reference => {
+        if (!reference || reference === popperReference) return;
+        popper.destroy();
+        popperReference = reference;
+        popper = Popper.createPopper(popperReference, dropdown.get(0), {
+            placement: 'top-start',
+        });
+    };
+
+    const toggleDropdown = function () {
+        updatePopperReference(this);
         if (isDropdownVisible) {
             dropdown.fadeOut(animation_duration);
             isDropdownVisible = false;
@@ -751,12 +763,15 @@ async function addExtensionsButtonAndMenu() {
             isDropdownVisible = true;
         }
         popper.update();
-    });
+    };
+
+    $(button).on('click', toggleDropdown);
+    $(document).on('click', '#atriaImmersiveExtensions', toggleDropdown);
 
     $('html').on('click', function (e) {
         if (!isDropdownVisible) return;
         const clickTarget = $(e.target);
-        const noCloseTargets = ['#sd_gen', '#extensionsMenuButton', '#roll_dice'];
+        const noCloseTargets = ['#sd_gen', '#extensionsMenuButton', '#atriaImmersiveExtensions', '#roll_dice'];
         if (!noCloseTargets.some(id => clickTarget.closest(id).length > 0)) {
             dropdown.fadeOut(animation_duration);
             isDropdownVisible = false;
@@ -2799,6 +2814,7 @@ export function getAuthorFromUrl(url) {
 export async function initExtensions() {
     await addExtensionsButtonAndMenu();
     $('#extensionsMenuButton').css('display', 'flex');
+    $('#atriaImmersiveExtensions').prop('hidden', false);
 
     $('#extensions_details').on('click', showExtensionsDetails);
     $('#extensions_notify_updates').on('input', notifyUpdatesInputHandler);
