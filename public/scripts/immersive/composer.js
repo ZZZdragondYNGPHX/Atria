@@ -51,6 +51,7 @@ export function createImmersiveComposer({
         label: '+',
         title: translate('More tools'),
     });
+    toolsButton.setAttribute('data-i18n', '[title]More tools;[aria-label]More tools');
     const status = documentRef.createElement('span');
     status.id = 'atriaImmersiveGenerationStatus';
     status.className = 'atria-immersive-generation-status';
@@ -62,11 +63,13 @@ export function createImmersiveComposer({
         title: translate('Send message'),
         icon: 'fa-solid fa-arrow-up',
     });
+    sendButton.setAttribute('data-i18n', '[title]Send message;[aria-label]Send message');
     const stopButton = createButton(documentRef, {
         id: 'atriaImmersiveStop',
         title: translate('Stop response'),
         icon: 'fa-solid fa-stop',
     });
+    stopButton.setAttribute('data-i18n', '[title]Stop response;[aria-label]Stop response');
 
     root.append(toolsButton, status, sendButton, stopButton);
     formItems.append(root);
@@ -77,6 +80,7 @@ export function createImmersiveComposer({
     interrupt.hidden = true;
     const interruptText = documentRef.createElement('span');
     interruptText.textContent = translate('Response stopped');
+    interruptText.setAttribute('data-i18n', 'Response stopped');
     const continueButton = createButton(documentRef, {
         id: 'atriaImmersiveContinue',
         label: translate('Continue'),
@@ -92,6 +96,9 @@ export function createImmersiveComposer({
         label: translate('Keep'),
         title: translate('Keep partial response'),
     });
+    continueButton.setAttribute('data-i18n', 'Continue;[title]Continue response;[aria-label]Continue response');
+    rewriteButton.setAttribute('data-i18n', 'Rewrite;[title]Rewrite response;[aria-label]Rewrite response');
+    keepButton.setAttribute('data-i18n', 'Keep;[title]Keep partial response;[aria-label]Keep partial response');
     interrupt.append(interruptText, continueButton, rewriteButton, keepButton);
     form.prepend(interrupt);
 
