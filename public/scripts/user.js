@@ -8,8 +8,6 @@ import {
 import { t } from './i18n.js';
 import { POPUP_RESULT, POPUP_TYPE, callGenericPopup } from './popup.js';
 import { renderTemplateAsync } from './templates.js';
-import { openBackupSyncCenter } from './backup-sync-center.js';
-import { openStorageManagement } from './storage-management.js';
 import { debounce, ensureImageFormatSupported, getBase64Async, humanFileSize } from './utils.js';
 
 /**
@@ -23,6 +21,17 @@ const SESSION_EXTEND_INTERVAL = 10 * 60 * 1000;
 const DEFAULT_LOG_VIEW_LIMIT = 300;
 const MAX_LOG_VIEW_LIMIT = 5000;
 const MAX_LOG_VIEW_CHARS = 250000;
+
+let backupSyncCenterModulePromise;
+let storageManagementModulePromise;
+
+function loadBackupSyncCenterModule() {
+    return backupSyncCenterModulePromise ??= import('./backup-sync-center.js');
+}
+
+function loadStorageManagementModule() {
+    return storageManagementModulePromise ??= import('./storage-management.js');
+}
 
 function normalizeOptionalTimestamp(value) {
     if (value === null || value === undefined || value === '') {
@@ -943,13 +952,29 @@ async function openUserProfile() {
     template.find('.hasPassword').toggle(currentUser.password);
     template.find('.noPassword').toggle(!currentUser.password);
     template.find('.userSettingsSnapshotsButton').on('click', () => viewSettingsSnapshots());
-    template.find('.userBackupSyncButton').on('click', () => openBackupSyncCenter({
-        handle: currentUser.handle,
-        canManageGlobalExtensions: isAdmin(),
-        openSettingsSnapshots: viewSettingsSnapshots,
-        onRestored: () => location.reload(),
-    }));
-    template.find('.userStorageManagementButton').on('click', () => openStorageManagement());
+    template.find('.userBackupSyncButton').on('click', async () => {
+        try {
+            const { openBackupSyncCenter } = await loadBackupSyncCenterModule();
+            await openBackupSyncCenter({
+                handle: currentUser.handle,
+                canManageGlobalExtensions: isAdmin(),
+                openSettingsSnapshots: viewSettingsSnapshots,
+                onRestored: () => location.reload(),
+            });
+        } catch (error) {
+            console.error('Failed to load backup sync center:', error);
+            toastr.error(t`Failed to load Backup & Sync Center.`);
+        }
+    });
+    template.find('.userStorageManagementButton').on('click', async () => {
+        try {
+            const { openStorageManagement } = await loadStorageManagementModule();
+            await openStorageManagement();
+        } catch (error) {
+            console.error('Failed to load storage management:', error);
+            toastr.error(t`Failed to load storage management.`);
+        }
+    });
     template.find('.userChangeNameButton').on('click', async () => changeName(currentUser.handle, currentUser.name, async () => {
         await getCurrentUser();
         template.find('.userName').text(currentUser.name);
