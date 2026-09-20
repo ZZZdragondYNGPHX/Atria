@@ -217,7 +217,7 @@ export function createImmersiveController({
             || typeof root?.requestFullscreen === 'function'
             || typeof root?.webkitRequestFullscreen === 'function'
             || typeof root?.mozRequestFullScreen === 'function'
-            || typeof root?.msRequestFullscreen === 'function'
+            || typeof root?.msRequestFullscreen === 'function',
         );
     };
 
