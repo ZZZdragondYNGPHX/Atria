@@ -397,12 +397,12 @@ function mountRuntimeOverview({ document: documentRef, body }) {
     renderOverviewCard(documentRef, root, {
         title: 'Connections',
         description: selected ? `Active profile: ${selected.name}` : 'No Connection Manager profile is active.',
-        status: formatShellText('${0} chat profiles', [chatProfiles.length], undefined, 'atria.shell.runtime.chatProfiles'),
-    });
-    renderOverviewCard(documentRef, root, {
-        title: 'Retrieval',
-        description: formatShellText('${0} embedding · ${1} rerank profiles', [embedProfiles.length, rerankProfiles.length], undefined, 'atria.shell.runtime.retrievalProfiles'),
-        status: embedProfiles.length || rerankProfiles.length ? 'Available' : 'Unconfigured',
+        status: formatShellText(
+            '${0} chat · ${1} embedding · ${2} rerank profiles',
+            [chatProfiles.length, embedProfiles.length, rerankProfiles.length],
+            undefined,
+            'atria.shell.runtime.connectionProfileCounts',
+        ),
     });
 
     body.replaceChildren(root);
