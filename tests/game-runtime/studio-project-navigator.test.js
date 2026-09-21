@@ -62,6 +62,9 @@ describe('Game Studio project navigator', () => {
                 selectors: 'ui/selectors.json',
                 immersive: 'ui/immersive.json',
             },
+            llm: {
+                observations: 'llm/observations.json',
+            },
         };
         const logic = {
             commands: [{ id: 'rest' }],
@@ -78,6 +81,7 @@ describe('Game Studio project navigator', () => {
                 'ui/game.html',
                 'ui/selectors.json',
                 'ui/immersive.json',
+                'llm/observations.json',
                 'knowledge/lore.md',
                 'skills/encounters.md',
                 'assets/icon.png',
@@ -107,6 +111,7 @@ describe('Game Studio project navigator', () => {
         expect(findNode(model, 'ui').path).toBe('ui/game.html');
         expect(findNode(model, 'selectors').path).toBe('ui/selectors.json');
         expect(findNode(model, 'immersive').path).toBe('ui/immersive.json');
+        expect(findNode(model, 'observations').path).toBe('llm/observations.json');
         expect(findNode(model, 'knowledge').path).toBe('knowledge/lore.md');
         expect(findNode(model, 'skill').path).toBe('skills/encounters.md');
         expect(findNode(model, 'asset')).toMatchObject({
