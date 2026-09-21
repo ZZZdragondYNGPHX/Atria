@@ -144,7 +144,7 @@ export function applyWorldSchemaRowPatch(input, schemaPath, patch = {}) {
     if (Object.hasOwn(patch, 'type')) {
         const type = String(patch.type || '').trim();
         if (!WORLD_TYPES.includes(type)) {
-            throw new Error("Unsupported World Schema type '" + type + "'");
+            throw new Error(`Unsupported World Schema type '${type}'`);
         }
         target.type = type;
     }
@@ -280,7 +280,7 @@ export function parseInitialStateEditorValue(rawValue, currentValue) {
         if (type === 'object' && !isPlainObject(value)) throw new Error('Expected a JSON object');
         return value;
     }
-    throw new Error("Unsupported Initial State value type '" + type + "'");
+    throw new Error(`Unsupported Initial State value type '${type}'`);
 }
 
 export function applyInitialStateRowValue(input, path, rawValue) {
@@ -310,7 +310,7 @@ export function parseStructuredRuntimeDocument(editor, text) {
     if (editor === STRUCTURED_RUNTIME_EDITOR.INITIAL_STATE) {
         return { value, model: buildInitialStateEditorModel(value) };
     }
-    throw new Error("Unsupported structured runtime editor '" + editor + "'");
+    throw new Error(`Unsupported structured runtime editor '${editor}'`);
 }
 
 export function serializeStructuredRuntimeDocument(value) {
