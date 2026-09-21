@@ -60,6 +60,84 @@ describe('Live Game Package UI activation', () => {
         expect(document.getElementById('send_form')).not.toBeNull();
     });
 
+
+    test('declared selectors and command actions update live Component DOM through World state', async () => {
+        let world = { hp: 10 };
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/ui/selectors.json')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    async json() {
+                        return [
+                            { id: 'player.hp', formula: 'world.hp' },
+                        ];
+                    },
+                };
+            }
+            if (url.endsWith('/ui/hud.html')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    async text() {
+                        return `
+                            <div>
+                                <span id="hp" data-atria-bind-text="player.hp"></span>
+                                <button
+                                    id="damage"
+                                    data-atria-command="damage"
+                                    data-atria-command-args='{"amount":3}'
+                                >Damage</button>
+                            </div>
+                        `;
+                    },
+                };
+            }
+            throw new Error('unexpected URL ' + url);
+        });
+        const worldSession = {
+            getState: () => structuredClone(world),
+            async dispatchCommandInternal(commandId, args) {
+                expect(commandId).toBe('damage');
+                expect(args).toEqual({ amount: 3 });
+                world = { hp: world.hp - args.amount };
+                return {
+                    status: 'committed',
+                    afterState: structuredClone(world),
+                };
+            },
+            simulateCommandInternal: jest.fn(),
+        };
+
+        const session = await activateGamePackageUi({
+            charId: 'hero',
+            manifest: {
+                ui: {
+                    mode: 'component',
+                    entry: 'ui/hud.html',
+                    surface: 'chat.header',
+                    selectors: 'ui/selectors.json',
+                },
+            },
+        }, worldSession, {
+            document,
+            fetchImpl,
+        });
+
+        const hp = document.querySelector('#hp');
+        const damage = document.querySelector('#damage');
+        expect(hp.textContent).toBe('10');
+
+        damage.click();
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(world).toEqual({ hp: 7 });
+        expect(hp.textContent).toBe('7');
+        expect(damage.dataset.atriaCommandState).toBe('success');
+
+        await session.dispose();
+    });
+
     test('Hybrid and Full remain deferred instead of using the old broad CardApp runtime', async () => {
         for (const mode of ['hybrid', 'full']) {
             const session = await activateGamePackageUi({
