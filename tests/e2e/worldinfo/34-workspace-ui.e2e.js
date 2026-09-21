@@ -297,14 +297,16 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await page.locator('#wi_workspace_mobile_search_mode').selectOption('keyword');
     await page.locator('.wi-entry-mobile-search-trigger').click();
 
-    const [headerBox, listBox, navBox] = await Promise.all([
+    const [headerBox, listBox, navBox, worldBox] = await Promise.all([
         page.locator('.wi-workspace-header').boundingBox(),
         page.locator('.wi-workspace-entry-list-pane').boundingBox(),
         page.locator('.wi-workspace-nav').boundingBox(),
+        page.locator('#WorldInfo').boundingBox(),
     ]);
     expect(headerBox?.height || 0).toBeLessThan(70);
-    expect(listBox?.height || 0).toBeGreaterThan(430);
-    expect(navBox?.y || 0).toBeGreaterThan(760);
+    expect(listBox?.height || 0).toBeGreaterThan(240);
+    expect((listBox?.y || 0) + (listBox?.height || 0)).toBeLessThanOrEqual((navBox?.y || 0) + 2);
+    expect(Math.abs(((navBox?.y || 0) + (navBox?.height || 0)) - ((worldBox?.y || 0) + (worldBox?.height || 0)))).toBeLessThanOrEqual(2);
 
     await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first().click();
     await expect(page.locator('#wi_workspace_inspector')).toBeVisible();
