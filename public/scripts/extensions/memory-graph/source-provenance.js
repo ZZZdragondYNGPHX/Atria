@@ -273,8 +273,13 @@ export function createMemorySupportChecker(state, chat) {
         const hasEvidence = episodeIds.length > 0 || externalSourceIds.length > 0;
         const episodesCurrent = episodeIds.every(valid);
         const externalCurrent = externalSourceIds.every(id => state.externalSources?.[id]?.status === 'active');
-        const manualCurrent = !ref?.manualId
-            || state.corrections?.[ref.manualId]?.scopeId === state.scopeId;
-        return Boolean(hasEvidence && episodesCurrent && externalCurrent && manualCurrent);
+        if (ref?.manualId) {
+            return Boolean(
+                state.corrections?.[ref.manualId]?.scopeId === state.scopeId
+                && episodesCurrent
+                && externalCurrent
+            );
+        }
+        return Boolean(hasEvidence && episodesCurrent && externalCurrent);
     };
 }
