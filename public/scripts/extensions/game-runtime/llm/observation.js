@@ -1,6 +1,6 @@
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+import { cloneGameLlmValue } from './clone.js';
+
+const clone = cloneGameLlmValue;
 
 function deepFreeze(value, seen = new Set()) {
     if (!value || typeof value !== 'object' || seen.has(value)) return value;
