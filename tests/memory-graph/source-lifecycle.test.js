@@ -5,6 +5,7 @@ import { sourceContent } from '../../public/scripts/extensions/memory-graph/sour
 function fixture() {
     const disk = new Map();
     let serial = 0;
+    let externalSources = [];
     let context = {
         key: 'char:a:chat', enabled: true,
         chat: [{ mes: 'Where is Alice?', is_user: true }, { mes: 'At home', is_user: false }],
@@ -20,9 +21,17 @@ function fixture() {
         resolveScope: (ctx, target = null) => ({ key: target?.key || ctx.key, target: target || { key: ctx.key } }),
         enabled: ctx => ctx.enabled,
         newId: () => `id${++serial}`,
+        readExternalSources: () => structuredClone(externalSources),
     });
     const store = { nodes: { n_1: { id: 'n_1', seqTo: 1, fields: { summary: 'Alice is at home' } } }, edges: [] };
-    return { lifecycle, disk, store, get context() { return context; }, switchChat(next) { context = next; } };
+    return {
+        lifecycle,
+        disk,
+        store,
+        get context() { return context; },
+        switchChat(next) { context = next; },
+        setExternalSources(next) { externalSources = structuredClone(next); },
+    };
 }
 
 describe('Memory OS production source lifecycle', () => {
@@ -60,6 +69,56 @@ describe('Memory OS production source lifecycle', () => {
         expect(await f.lifecycle.listFacts(f.context)).toHaveLength(0);
         expect(f.disk.get(f.context.key).facts[result.id].status).toBe('stale');
     });
+    test('authoritative external facts stay active only while their game Event source is current', async () => {
+        const f = fixture();
+        const source = {
+            id: 'game-event:event:7',
+            kind: 'game_event',
+            eventId: 'event:7',
+            branchId: 'swipes:0.1',
+            fingerprint: 'event-7-fingerprint',
+            content: '{"eventId":"event:7","type":"DamageDealt","payload":{"amount":3}}',
+        };
+        f.setExternalSources([source]);
+
+        const [result] = await f.lifecycle.writeAuthoritativeFacts(
+            f.context,
+            [{
+                action: 'create',
+                type: 'authoritative',
+                text: 'Committed game event DamageDealt: {"amount":3}',
+                confidence: 1,
+                evidence: [{
+                    externalSourceId: source.id,
+                    excerpt: source.content,
+                }],
+            }],
+            [source.id],
+        );
+
+        const active = await f.lifecycle.listFacts(f.context);
+        expect(active).toHaveLength(1);
+        expect(active[0]).toMatchObject({
+            id: result.id,
+            type: 'authoritative',
+            status: 'active',
+            confidence: 1,
+        });
+        expect(active[0].supports[0]).toMatchObject({
+            episodeIds: [],
+            externalSourceIds: [source.id],
+        });
+        expect(f.disk.get(f.context.key).externalSources[source.id]).toMatchObject({
+            status: 'active',
+            eventId: 'event:7',
+        });
+
+        f.setExternalSources([]);
+        expect(await f.lifecycle.listFacts(f.context)).toEqual([]);
+        expect(f.disk.get(f.context.key).facts[result.id].status).toBe('stale');
+        expect(f.disk.get(f.context.key).externalSources[source.id].status).toBe('stale');
+    });
+
     test('fact persistence rejects mutations at the async state updater boundary', async () => {
         const f = fixture();
         const ticket = await f.lifecycle.capture(f.context, [1]);
