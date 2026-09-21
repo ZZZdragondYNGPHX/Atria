@@ -1,3 +1,5 @@
+/** @jest-environment jsdom */
+
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import { activateGamePackageUi } from '../../public/scripts/extensions/game-runtime/ui/live.js';
