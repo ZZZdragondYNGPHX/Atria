@@ -2,7 +2,7 @@
 
 ## Status
 
-- Phase: **R7C validated; R7D next**
+- Phase: **R7D validated; R7E next**
 - Repository: `ZZZdragondYNGPHX/Atria`
 - R0-R6 frozen branch: `refactor/game-runtime-architecture`
 - R6 final validated HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
@@ -15,6 +15,8 @@
 - R7B validation: **R7 Shell Dev Checks #52**, run `35572544216`, success
 - R7C final validated HEAD: `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a`
 - R7C validation: **R7 Shell Dev Checks #71**, run `35574765675`, success
+- R7D final validated HEAD: `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`
+- R7D validation: **R7 Shell Dev Checks #96**, run `35578147672`, success
 - R7 is based directly on the complete R0-R6 branch and therefore already contains the full Master Refactor history.
 - Neither long-running branch is to be merged into `main` before R7 final validation.
 
@@ -148,15 +150,82 @@ R7C browser validation covers both Expanded and Compact hosts and proves:
 - Immersive coexists with Component / Hybrid / Full ownership;
 - `#chat`, `#send_form`, and `#send_textarea` remain unique and preserve identity through transitions.
 
-### R7D entry condition
+## R7D validated checkpoint
 
-R7D starts from the validated R7C HEAD above on the **same long-running R7 branch**. Do not create a separate R7D branch and do not merge to `main`.
+R7D — Desktop / Mobile Navigation is complete and validated.
 
-R7D is **Desktop / Mobile Navigation authority**. It makes the Shell authoritative for primary navigation, route/history behavior, Dock/Sheet/Command navigation surfaces, Android Back resolution, keyboard/safe-area behavior, and Compact/Medium/Expanded navigation layouts.
+Validated implementation baseline:
 
-Do not reopen R7A-R7C architecture unless R7D exposes a concrete, reproducible integration defect.
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`
+- Workflow: **R7 Shell Dev Checks #96**
+- Run: `35578147672`
+- **R7D Focused Unit and Lint**: success
+- **R7D Expanded Medium Compact Navigation Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7D changed Web/JS/CSS navigation only and reused the existing native Android Back policy without Kotlin changes.
 
-The R7 preview gate remains available during the staged R7D cutover until navigation authority is validated. R7D must not prematurely implement the R7E Workspace migrations, R7F Library/Runtime product pages, R7G Plugins/Settings reclassification, or R7H final shell retirement.
+R7D established one Shell navigation authority instead of parallel desktop/mobile/page states:
+
+- added a single Navigation Authority for primary domain route, route history, breadcrumb, child route and context presentation state;
+- Desktop Navigation Rail, Compact Bottom Navigation and shared `navigate.*` Command Registry actions all enter that same authority;
+- browser `history.pushState` / `popstate` now participate in Atria route transitions and route restore;
+- route state persists through browser Back / Forward and reload without creating a second page router;
+- primary domains remain exactly Play / Library / Studio / Agents / Runtime;
+- Settings / Plugins / Diagnostics remain global utilities rather than becoming primary domains;
+- staged legacy Character Library triggers adapt into the Atria Library route while the old shell remains available for compatibility until R7H;
+- Stage / Workspace presentation follows route state while R7E-R7G feature controllers remain intentionally unmigrated.
+
+R7D unified responsive context presentation:
+
+- Context Dock and Context Sheet are two responsive presentations of the same context state and same content slot;
+- Expanded / Medium render the current context through Dock;
+- Compact reparents that one context slot into the shared Context Sheet instead of duplicating it;
+- Context Sheet continues to use the standard Closed / Peek / Half / Full states;
+- switching viewport does not create a second context state machine;
+- the R7C `sidebar.right` Surface seam now opens the semantic context presentation when mounted.
+
+R7D established the ordered Web Back Resolver while preserving the existing Android native policy:
+
+- Web Back resolves keyboard / modal-popover / Context Sheet / Command surface / generation interruption / detail route / Full Game / Immersive / workspace child / previous Atria route / legacy fallback in order;
+- Android Kotlin was not modified: the existing native Back policy still gives Web first refusal, then uses WebView history, then app-exit confirmation;
+- Full Game Escape remains above Immersive and does not transfer Host ownership to the package;
+- Immersive retains its own transient-first / exit behavior;
+- Escape consumes one Shell layer at a time instead of closing stacked layers in one key event.
+
+Responsive hardening completed in R7D:
+
+- Expanded, Medium and Compact navigation are browser-tested;
+- Compact Bottom Navigation hides while the soft keyboard is open;
+- the Shell follows measured `visualViewport` height instead of being forced back to full `100dvh` by a minimum-height constraint;
+- safe-area left/right/bottom placement is respected by Shell transient surfaces;
+- Command Palette / Command Sheet continue to share one registry and differ only by presentation.
+
+R7C ownership remained intact through R7D navigation transitions:
+
+- Narrative Play remains the native baseline;
+- Hybrid and Full keep their Stage leases while primary routes change and release them deterministically;
+- Full still owns Stage, never Host;
+- Legacy CardApp remains a recoverable Legacy Full Stage Surface;
+- Immersive remains presentation-only;
+- `#chat`, `#send_form`, and `#send_textarea` remain unique throughout route, Back and responsive transitions.
+
+### R7E entry condition
+
+R7E starts from the validated R7D HEAD above on the **same long-running R7 branch**. Do not create a separate R7E branch and do not merge to `main`.
+
+R7E is **First-class Workspaces**. It integrates existing feature controllers into the Shell Workspace host for:
+
+- Agents / Memory;
+- Game Studio;
+- World Info;
+- Diagnostics.
+
+Use adapters and chrome migration rather than recreating the existing engines/controllers. Preserve the R7D Navigation Authority as the only primary route/history source.
+
+Do not reopen R7A-R7D architecture unless R7E exposes a concrete, reproducible integration defect.
+
+The R7 preview gate remains active during staged R7E migration. R7E must not prematurely implement R7F Library / Runtime product IA, R7G Plugins / Settings reclassification, or R7H final legacy shell retirement.
 
 ---
 
@@ -1093,6 +1162,20 @@ Make the new shell authoritative for:
 
 Exit:
 - primary navigation no longer depends on old top-bar/drawer navigation.
+
+Implementation result — **complete (2026-09-21)**:
+
+- one Navigation Authority owns primary domain, child route, breadcrumb, browser-history index and responsive context state;
+- Navigation Rail, Bottom Navigation and `navigate.*` commands all dispatch through that authority;
+- browser Back / Forward and reload restore the matching Atria route without parallel page state;
+- Context Dock and Compact Context Sheet reuse the same state/content slot;
+- the ordered Web Back Resolver integrates Shell transients, generation interruption, Full Game, Immersive, child routes and Atria route history before native WebView fallback;
+- existing Android `BackNavigationPolicy` remains unchanged because its Web-first / WebView-history / exit-confirmation layering already matches R7D needs;
+- Compact keyboard-open mode hides Bottom Navigation and follows measured visual-viewport height;
+- safe-area-aware transient placement is preserved;
+- Hybrid / Full Stage ownership and unique native Conversation / Composer survive route transitions;
+- staged legacy Character Library entry adapts into the Atria Library route while R7H retirement remains deferred;
+- validation: **R7 Shell Dev Checks #96**, run `35578147672`, HEAD `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`, success.
 
 ### R7E — First-class Workspaces
 
