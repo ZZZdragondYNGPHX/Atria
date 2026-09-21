@@ -215,6 +215,15 @@ export async function mountPluginsUtility({
     const listHost = documentRef.createElement('div');
     listHost.className = 'atria-plugin-list-host';
 
+    const serverSurface = documentRef.createElement('section');
+    serverSurface.className = 'atria-plugin-server-surface';
+    serverSurface.dataset.atriaPluginSurface = 'server';
+    const serverTitle = documentRef.createElement('strong');
+    serverTitle.textContent = 'Server plugins';
+    const serverCopy = documentRef.createElement('p');
+    serverCopy.textContent = 'Server plugins use Atria’s existing backend plugin loader and remain a separate server-managed surface. R7G does not mix them with frontend extensions or Atria built-ins, and does not invent client-side enable/disable state for them.';
+    serverSurface.append(serverTitle, serverCopy);
+
     const compatibility = documentRef.createElement('details');
     compatibility.className = 'atria-plugin-compatibility';
     compatibility.dataset.atriaPluginCompatibility = 'true';
@@ -253,7 +262,7 @@ export async function mountPluginsUtility({
     }
 
     refresh.addEventListener('click', render);
-    frame.body.append(listHost, compatibility);
+    frame.body.append(listHost, serverSurface, compatibility);
     body.replaceChildren(frame.root);
     render();
 
@@ -297,6 +306,17 @@ export function mountSettingsUtility({
     const accountControls = documentRef.getElementById('account_controls');
     const accountControlsHidden = accountControls?.hidden;
 
+    const compatibility = documentRef.createElement('details');
+    compatibility.className = 'atria-settings-compatibility';
+    compatibility.dataset.atriaSettingsCompatibility = 'true';
+    const compatibilitySummary = documentRef.createElement('summary');
+    compatibilitySummary.textContent = 'Advanced & compatibility settings';
+    const compatibilityHint = documentRef.createElement('p');
+    compatibilityHint.textContent = 'Atria keeps the existing User Settings form as the authority for deep or low-frequency controls during R7G. The product categories above are the primary Settings IA.';
+    const compatibilityBody = documentRef.createElement('div');
+    compatibilityBody.className = 'atria-settings-compatibility__body';
+    compatibility.append(compatibilitySummary, compatibilityHint, compatibilityBody);
+
     const nav = documentRef.createElement('nav');
     nav.className = 'atria-settings-categories';
     nav.setAttribute('aria-label', 'Settings categories');
@@ -304,7 +324,10 @@ export function mountSettingsUtility({
         const button = makeButton(documentRef, section.label);
         button.dataset.atriaSettingsSection = section.id;
         button.addEventListener('click', () => {
-            documentRef.getElementById(section.target)?.scrollIntoView?.({ block: 'start' });
+            compatibility.open = true;
+            queueMicrotask(() => {
+                documentRef.getElementById(section.target)?.scrollIntoView?.({ block: 'start' });
+            });
         });
         nav.append(button);
     }
@@ -325,7 +348,8 @@ export function mountSettingsUtility({
     settingsRoot.setAttribute('aria-hidden', 'false');
     if (accountControls) accountControls.hidden = true;
 
-    frame.body.append(nav, accessibility, settingsRoot);
+    compatibilityBody.append(settingsRoot);
+    frame.body.append(nav, accessibility, compatibility);
     body.replaceChildren(frame.root);
 
     return {
