@@ -100,7 +100,7 @@ function validateNode(value, schema, path, errors, depth) {
 
         for (const key of required) {
             if (!Object.hasOwn(value, key)) {
-                errors.push(path + ': missing required property \\'' + key + '\\'');
+                errors.push(`${path}: missing required property '${key}'`);
             }
         }
 
@@ -110,7 +110,7 @@ function validateNode(value, schema, path, errors, depth) {
                 continue;
             }
             if (schema.additionalProperties === false) {
-                errors.push(path + ': unexpected property \\'' + key + '\\'');
+                errors.push(`${path}: unexpected property '${key}'`);
                 continue;
             }
             if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
