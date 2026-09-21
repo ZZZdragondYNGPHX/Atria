@@ -9,6 +9,7 @@ import { renderDiagnosticsPage } from './diagnostics/page.js';
 
 let shell, unsubscribe, frame, previousFocus, timer;
 let ports = {}, open = false, disposePage;
+let hostMount = null;
 let section = 'run', runView = 'graph', selection = {}, replay = null, updateMemory;
 let renderIdentity = '', pageSequence = 0;
 const pageOffsets = new Map();
@@ -391,8 +392,20 @@ function bindNavigationKeyboard(nav, vertical) {
     });
 }
 
-function mount() {
-    if (shell) return;
+function mount(options = {}) {
+    const container = options.container || document.body;
+    const embedded = Boolean(options.embedded);
+    hostMount = {
+        container,
+        embedded,
+        onNavigate: typeof options.onNavigate === 'function' ? options.onNavigate : null,
+    };
+    if (shell) {
+        if (shell.root.parentElement !== container) container.append(shell.root);
+        shell.root.dataset.atriaWorkspaceEmbedded = String(embedded);
+        shell.close.hidden = embedded;
+        return;
+    }
     if (!document.getElementById('agent-memory-workspace-css')) {
         const css = document.createElement('link');
         css.id = 'agent-memory-workspace-css';
@@ -401,7 +414,12 @@ function mount() {
         document.head.append(css);
     }
     shell = createWorkspaceShell({
-        onNavigate: next => setSection(next, { focus: false }),
+        container,
+        embedded,
+        onNavigate: next => {
+            if (hostMount?.onNavigate) hostMount.onNavigate(next);
+            else setSection(next, { focus: false });
+        },
         onClose: closeWorkspace,
         onStop: () => requestRunStop(getCurrentRun()?.runId),
         onToggleOrchestration: enabled => {
@@ -441,9 +459,18 @@ function mount() {
     }, 1000);
 }
 
-export function openWorkspace(initialSection) {
+export function openWorkspace(initialSection, options = {}) {
+    const container = options?.container || null;
+    if (!container) {
+        const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+        if (workspaceHost?.isMounted?.()) {
+            workspaceHost.openAgents(initialSection || 'orchestration');
+            return null;
+        }
+    }
+
     initWorkspace();
-    mount();
+    mount(options);
     if (!open) previousFocus = document.activeElement;
     const normalized = normalizeSection(initialSection);
     if (['orchestration', 'run', 'memory', 'diagnostics'].includes(normalized)) section = normalized;
@@ -451,7 +478,16 @@ export function openWorkspace(initialSection) {
     shell.root.hidden = false;
     shell.pill.hidden = true;
     render();
-    focusWorkspaceSection(shell, section);
+    if (options.focus !== false) focusWorkspaceSection(shell, section);
+    return shell.root;
+}
+
+export function setWorkspaceSection(next, { focus = false } = {}) {
+    if (!shell) return false;
+    const normalized = normalizeSection(next);
+    if (!['orchestration', 'run', 'memory', 'diagnostics'].includes(normalized)) return false;
+    setSection(normalized, { focus });
+    return true;
 }
 
 export function closeWorkspace() {
@@ -494,6 +530,7 @@ export function destroyWorkspace() {
     shell?.root.remove();
     shell?.pill?.remove();
     shell = null;
+    hostMount = null;
     open = false;
     section = 'run';
     runView = 'graph';
