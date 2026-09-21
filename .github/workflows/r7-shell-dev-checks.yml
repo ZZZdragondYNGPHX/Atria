@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   focused:
-    name: R7E Focused Unit and Lint
+    name: R7F Focused Unit and Lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -30,7 +30,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
-      - name: Run R7E workspace and shell regression tests
+      - name: Run R7F Library Runtime and shell regression tests
         run: >-
           npm run test:unit --prefix tests --
           --runInBand
@@ -42,6 +42,12 @@ jobs:
           logging/workspace-i18n.test.js
           logging/workspace-model.test.js
           logging/workspace-structure.test.js
+          skills-ui/skill-manager-panel.test.js
+          connection-manager/embed-rerank-core.test.js
+          game-runtime/llm-model-runtime-config.test.js
+          game-runtime/llm-roles.test.js
+          game-runtime/package-loader.test.js
+          character-presets/unit.test.js
           game-runtime/studio-game-ai-project.test.js
           game-runtime/studio-project-navigator.test.js
           game-runtime/studio-simulation-runtime.test.js
@@ -63,7 +69,7 @@ jobs:
           card-app-loader.test.js
           immersive/controller.test.js
           immersive/structure.test.js
-      - name: Lint R7E production modules
+      - name: Lint R7F production modules
         run: >-
           npx eslint
           public/script.js
@@ -88,7 +94,7 @@ jobs:
           public/scripts/extensions/game-runtime/ui/package.js
           public/scripts/extensions/card-app/loader.js
           public/scripts/extensions/card-app/index.js
-      - name: Lint R7E tests
+      - name: Lint R7F tests
         working-directory: tests
         run: >-
           npx eslint
@@ -104,7 +110,7 @@ jobs:
         run: bash scripts/check-atria-namespace.sh
 
   browser:
-    name: R7E First-class Workspaces Browser Smoke
+    name: R7F Library Runtime Browser Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -128,7 +134,7 @@ jobs:
       - name: Install Chromium
         working-directory: tests
         run: npx playwright install --with-deps chromium
-      - name: Run R7E shell browser smoke
+      - name: Run R7F shell browser smoke
         working-directory: tests
         run: >-
           npx playwright test
@@ -137,5 +143,6 @@ jobs:
           e2e/atria-shell/03-game-surfaces.e2e.js
           e2e/atria-shell/04-navigation.e2e.js
           e2e/atria-shell/05-workspaces.e2e.js
+          e2e/atria-shell/06-library-runtime.e2e.js
           --project=e2e
           --workers=1
