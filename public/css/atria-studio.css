@@ -1913,7 +1913,7 @@ so the
    N · SKILL MANAGER PANEL
    ═════════════════════════════════════════════════════════════════════ */
 
-.popup .atria_skill_manager {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager {
     display: flex;
     flex-direction: column;
     gap: var(--ls-space-md);
@@ -1922,7 +1922,7 @@ so the
 }
 /* Tabs ────────────────────────────────────────────────────────────── */
 
-.popup .atria_skill_manager_tabs {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager_tabs {
     display: flex;
     gap: 2px;
     padding: 3px;
@@ -1931,7 +1931,7 @@ so the
     border-radius: var(--ls-radius-md);
     align-self: flex-start;
 }
-.popup .atria_skill_tab {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_tab {
     padding: 6px 14px;
     border-radius: var(--ls-radius-sm);
     cursor: pointer;
@@ -1940,21 +1940,21 @@ so the
     transition: background var(--ls-motion-fast), opacity var(--ls-motion-fast);
     user-select: none;
 }
-.popup .atria_skill_tab:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_tab:hover {
     background: var(--ls-hover-bg);
     opacity: var(--ls-text-default);
 }
-.popup .atria_skill_tab_active {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_tab_active {
     background: color-mix(in oklab, var(--ls-accent-primary) 18%, transparent);
     opacity: var(--ls-text-strong);
     font-weight: 500;
 }
-.popup .atria_skill_tab_active:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_tab_active:hover {
     background: color-mix(in oklab, var(--ls-accent-primary) 24%, transparent);
 }
 /* Toolbar ─────────────────────────────────────────────────────────── */
 
-.popup .atria_skill_manager_toolbar {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager_toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1965,31 +1965,31 @@ so the
     border-radius: var(--ls-radius-md);
     flex-wrap: wrap;
 }
-.popup .atria_skill_filter_label {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_filter_label {
     display: inline-flex;
     align-items: center;
     gap: var(--ls-space-xs);
     margin: 0;
     flex-wrap: nowrap;
 }
-.popup .atria_skill_filter_label_text {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_filter_label_text {
     font-size: 0.88rem;
     opacity: var(--ls-text-muted);
     white-space: nowrap;
 }
-.popup .atria_skill_filter_select {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_filter_select {
     height: 1.9rem;
     padding: 1px 8px;
     font-size: 0.85rem;
     min-width: 10em;
 }
-.popup .atria_skill_manager_toolbar_actions {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager_toolbar_actions {
     display: inline-flex;
     align-items: center;
     gap: var(--ls-space-sm);
     flex-wrap: wrap;
 }
-.popup .atria_skill_toolbar_group {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_toolbar_group {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -1997,29 +1997,29 @@ so the
     border-radius: var(--ls-radius-sm);
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 5%, transparent);
 }
-.popup .atria_skill_toolbar_btn {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_toolbar_btn {
     font-size: 0.84rem !important;
 }
-.popup .atria_skill_toolbar_btn_primary {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_toolbar_btn_primary {
     background: color-mix(in oklab, var(--ls-accent-primary) 28%, transparent) !important;
     border-color: color-mix(in oklab, var(--ls-accent-primary) 50%, transparent) !important;
 }
-.popup .atria_skill_toolbar_btn_primary:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_toolbar_btn_primary:hover {
     background: color-mix(in oklab, var(--ls-accent-primary) 42%, transparent) !important;
 }
 /* Body + groups ───────────────────────────────────────────────────── */
 
-.popup .atria_skill_manager_body {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager_body {
     display: flex;
     flex-direction: column;
     gap: var(--ls-space-lg);
 }
-.popup .atria_skill_group {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_group {
     display: flex;
     flex-direction: column;
     gap: var(--ls-space-xs);
 }
-.popup .atria_skill_group_header {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_group_header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2027,18 +2027,18 @@ so the
     padding: 0 4px;
     flex-wrap: wrap;
 }
-.popup .atria_skill_group_count {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_group_count {
     font-size: 0.82rem;
     opacity: var(--ls-text-hint);
 }
-.popup .atria_skill_group_rows {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_group_rows {
     display: flex;
     flex-direction: column;
     gap: var(--ls-space-xs);
 }
 /* Scope badge — color-coded per kind ──────────────────────────────── */
 
-.popup .atria_skill_scope_badge {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge {
     display: inline-flex;
     align-items: baseline;
     gap: 6px;
@@ -2050,36 +2050,36 @@ so the
     border: 1px solid;
     user-select: none;
 }
-.popup .atria_skill_scope_badge_kind {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_kind {
     text-transform: uppercase;
     font-size: 0.7rem;
     letter-spacing: 0.04em;
     font-weight: 700;
     opacity: 0.85;
 }
-.popup .atria_skill_scope_badge_sep {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_sep {
     opacity: 0.4;
 }
-.popup .atria_skill_scope_badge_id {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_id {
     font-family: var(--monoFontFamily, monospace);
     font-size: 0.78rem;
     opacity: var(--ls-text-default);
 }
-.popup .atria_skill_scope_badge_global {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_global {
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 8%, transparent);
     border-color: color-mix(in oklab, var(--SmartThemeBodyColor) 22%, transparent);
 }
-.popup .atria_skill_scope_badge_preset {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_preset {
     background: color-mix(in oklab, var(--ls-accent-user) 14%, transparent);
     border-color: color-mix(in oklab, var(--ls-accent-user) 38%, transparent);
 }
-.popup .atria_skill_scope_badge_character {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_character {
     background: color-mix(in oklab, var(--ls-accent-system) 14%, transparent);
     border-color: color-mix(in oklab, var(--ls-accent-system) 38%, transparent);
 }
 /* Skill row card ──────────────────────────────────────────────────── */
 
-.popup .atria_skill_row {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row {
     display: flex;
     gap: var(--ls-space-md);
     padding: var(--ls-space-sm) var(--ls-space-md);
@@ -2090,44 +2090,44 @@ so the
     align-items: flex-start;
     flex-wrap: wrap;
 }
-.popup .atria_skill_row:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row:hover {
     border-color: color-mix(in oklab, var(--SmartThemeBodyColor) 28%, transparent);
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 9%, transparent);
 }
-.popup .atria_skill_row_main {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_main {
     flex: 1 1 320px;
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
-.popup .atria_skill_row_head {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--ls-space-sm);
     flex-wrap: wrap;
 }
-.popup .atria_skill_row_name {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_name {
     font-weight: 600;
     font-size: 1rem;
     line-height: 1.3;
     color: var(--SmartThemeBodyColor);
     overflow-wrap: anywhere;
 }
-.popup .atria_skill_row_desc {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_desc {
     font-size: 0.9rem;
     line-height: 1.45;
     opacity: var(--ls-text-default);
     overflow-wrap: anywhere;
 }
-.popup .atria_skill_row_meta {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_meta {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     flex-wrap: wrap;
 }
-.popup .atria_skill_meta_chip {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_meta_chip {
     display: inline-flex;
     align-items: center;
     padding: 1px 8px;
@@ -2138,7 +2138,7 @@ so the
     border: 1px solid transparent;
     line-height: 1.4;
 }
-.popup .atria_skill_meta_chip_warn {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_meta_chip_warn {
     background: color-mix(in oklab, var(--ls-accent-danger) 14%, transparent);
     border-color: color-mix(in oklab, var(--ls-accent-danger) 30%, transparent);
     color: color-mix(in oklab, var(--ls-accent-danger) 80%, var(--SmartThemeBodyColor));
@@ -2146,14 +2146,14 @@ so the
 }
 /* Row actions ─────────────────────────────────────────────────────── */
 
-.popup .atria_skill_row_actions {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_actions {
     display: inline-flex;
     align-items: center;
     gap: var(--ls-space-sm);
     flex-wrap: wrap;
     align-self: center;
 }
-.popup .atria_skill_row_actions_group {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_actions_group {
     display: inline-flex;
     align-items: center;
     gap: 3px;
@@ -2161,34 +2161,34 @@ so the
     border-radius: var(--ls-radius-sm);
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 4%, transparent);
 }
-.popup .atria_skill_row_btn {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_btn {
     font-size: 0.82rem !important;
     min-width: auto;
 }
-.popup .atria_skill_row_btn_primary {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_btn_primary {
     background: color-mix(in oklab, var(--ls-accent-primary) 22%, transparent) !important;
     border-color: color-mix(in oklab, var(--ls-accent-primary) 42%, transparent) !important;
 }
-.popup .atria_skill_row_btn_primary:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_btn_primary:hover {
     background: color-mix(in oklab, var(--ls-accent-primary) 36%, transparent) !important;
 }
-.popup .atria_skill_row_btn_danger {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_btn_danger {
     color: color-mix(in oklab, var(--ls-accent-danger) 88%, var(--SmartThemeBodyColor)) !important;
 }
-.popup .atria_skill_row_btn_danger:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_btn_danger:hover {
     background: color-mix(in oklab, var(--ls-accent-danger) 22%, transparent) !important;
     border-color: color-mix(in oklab, var(--ls-accent-danger) 50%, transparent) !important;
     color: var(--SmartThemeBodyColor) !important;
 }
 /* Empty states ────────────────────────────────────────────────────── */
 
-.popup .atria_skill_empty {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_empty {
     opacity: var(--ls-text-muted);
     font-size: 0.9rem;
     padding: var(--ls-space-sm) var(--ls-space-md);
     font-style: italic;
 }
-.popup .atria_skill_empty_root {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_empty_root {
     text-align: center;
     padding: var(--ls-space-xl) var(--ls-space-md);
     border: 1px dashed color-mix(in oklab, var(--SmartThemeBodyColor) 20%, transparent);
@@ -2198,17 +2198,17 @@ so the
     flex-direction: column;
     gap: var(--ls-space-xs);
 }
-.popup .atria_skill_empty_title {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_empty_title {
     font-size: 1.05rem;
     opacity: var(--ls-text-default);
 }
-.popup .atria_skill_empty_hint {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_empty_hint {
     font-size: 0.88rem;
     opacity: var(--ls-text-hint);
 }
 /* Bundled tab mount — its own component owns inner styling. We just
    give the mount itself enough breathing room when it's the active tab. */
-.popup .atria_skill_manager_bundled_mount {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager_bundled_mount {
     display: flex;
     flex-direction: column;
     gap: var(--ls-space-md);
@@ -2217,18 +2217,18 @@ so the
    narrow popups so the buttons don't push name/desc into a single
    cramped column. */
 @media (max-width: 640px) {
-.popup .atria_skill_row {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row {
         flex-direction: column;
     }
-.popup .atria_skill_row_actions {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_row_actions {
         align-self: stretch;
         justify-content: flex-end;
     }
-.popup .atria_skill_manager_toolbar {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager_toolbar {
         flex-direction: column;
         align-items: stretch;
     }
-.popup .atria_skill_manager_toolbar_actions {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_manager_toolbar_actions {
         justify-content: stretch;
     }
 }
@@ -2248,7 +2248,7 @@ editor
    CodeMirror.
    ─────────────────────────────────────────────────────────────────── */
 
-.popup .atria_skill_editor {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor {
     display: flex;
     /* Explicit row direction overrides `.atria-studio`'s default
        `flex-direction: column` — that base rule was authored for stacked
@@ -2270,7 +2270,7 @@ editor
 }
 /* File tree — left sidebar ─────────────────────────────────────────── */
 
-.popup .atria_skill_editor_tree {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_tree {
     flex: 0 0 220px;
     display: flex;
     flex-direction: column;
@@ -2280,7 +2280,7 @@ editor
     overflow: hidden;
     min-width: 0;
 }
-.popup .atria_skill_editor_tree_header {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_tree_header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -2292,18 +2292,18 @@ editor
     font-weight: 600;
     opacity: var(--ls-text-default);
 }
-.popup .atria_skill_editor_tree_header > span:first-child {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_tree_header > span:first-child {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-size: 0.78rem;
     opacity: var(--ls-text-muted);
 }
-.popup .atria_skill_editor_tree_header [data-editor-action="new-file"] {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_tree_header [data-editor-action="new-file"] {
     font-size: 0.78rem !important;
     min-width: auto;
     padding: 3px var(--ls-space-sm) !important;
 }
-.popup .atria_skill_editor_tree_body {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_tree_body {
     flex: 1;
     overflow-y: auto;
     padding: var(--ls-space-xs);
@@ -2311,7 +2311,7 @@ editor
     flex-direction: column;
     gap: 2px;
 }
-.popup .atria_skill_editor_file {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2322,17 +2322,17 @@ editor
     transition: background var(--ls-motion-fast);
     min-width: 0;
 }
-.popup .atria_skill_editor_file:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file:hover {
     background: var(--ls-hover-bg);
 }
-.popup .atria_skill_editor_file[data-file-active="true"] {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file[data-file-active="true"] {
     background: color-mix(in oklab, var(--ls-accent-primary) 22%, transparent);
     box-shadow: inset 2px 0 0 var(--ls-accent-primary);
 }
-.popup .atria_skill_editor_file[data-file-active="true"] .atria_skill_editor_file_name {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file[data-file-active="true"] .atria_skill_editor_file_name {
     font-weight: 600;
 }
-.popup .atria_skill_editor_file_name {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_name {
     flex: 1;
     min-width: 0;
     font-family: var(--monoFontFamily, 'JetBrains Mono', 'Fira Code', Consolas, monospace);
@@ -2342,7 +2342,7 @@ editor
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.popup .atria_skill_editor_binary {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_binary {
     display: inline-block;
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 14%, transparent);
     color: var(--SmartThemeBodyColor);
@@ -2356,13 +2356,13 @@ editor
     opacity: var(--ls-text-muted);
     vertical-align: middle;
 }
-.popup .atria_skill_editor_file_actions {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_actions {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     gap: 2px;
 }
-.popup .atria_skill_editor_file_action {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_action {
     flex: 0 0 auto;
     width: 22px;
     height: 22px;
@@ -2377,20 +2377,20 @@ editor
     opacity: 0.55;
     transition: opacity var(--ls-motion-fast), background var(--ls-motion-fast), color var(--ls-motion-fast);
 }
-.popup .atria_skill_editor_file:hover .atria_skill_editor_file_action {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file:hover .atria_skill_editor_file_action {
     opacity: 0.85;
 }
-.popup .atria_skill_editor_file_action:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_action:hover {
     opacity: 1 !important;
     background: var(--ls-hover-bg);
 }
-.popup .atria_skill_editor_file_rename {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_rename {
     color: color-mix(in oklab, var(--ls-accent-primary) 80%, var(--SmartThemeBodyColor));
 }
-.popup .atria_skill_editor_file_rename:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_rename:hover {
     background: color-mix(in oklab, var(--ls-accent-primary) 18%, transparent);
 }
-.popup .atria_skill_editor_file_delete {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_delete {
     color: color-mix(in oklab, var(--ls-accent-danger) 80%, var(--SmartThemeBodyColor));
     /* Reset the stand-alone .atria_skill_editor_file_delete rule
        below — when this glyph is wrapped in .atria_skill_editor_file_actions
@@ -2400,12 +2400,12 @@ editor
     height: 22px;
     font-size: 1rem;
 }
-.popup .atria_skill_editor_file_delete:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_delete:hover {
     background: color-mix(in oklab, var(--ls-accent-danger) 22%, transparent);
 }
 /* Editor pane — right ────────────────────────────────────────────── */
 
-.popup .atria_skill_editor_pane {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane {
     flex: 1;
     min-width: 0;
     display: flex;
@@ -2415,7 +2415,7 @@ editor
     background: var(--ls-card-bg);
     overflow: hidden;
 }
-.popup .atria_skill_editor_pane_header {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2424,7 +2424,7 @@ editor
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 8%, transparent);
     border-bottom: var(--ls-border-soft);
 }
-.popup .atria_skill_editor_pane_path {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_path {
     flex: 1;
     min-width: 0;
     font-family: var(--monoFontFamily, 'JetBrains Mono', 'Fira Code', Consolas, monospace);
@@ -2435,16 +2435,16 @@ editor
     white-space: nowrap;
     opacity: var(--ls-text-strong);
 }
-.popup .atria_skill_editor_pane_sha {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_sha {
     /* Stash for the JS layer; not visible. */
     display: none;
 }
-.popup .atria_skill_editor_pane_header [data-editor-save] {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_header [data-editor-save] {
     font-size: 0.85rem !important;
     background: color-mix(in oklab, var(--ls-accent-primary) 24%, transparent) !important;
     border-color: color-mix(in oklab, var(--ls-accent-primary) 44%, transparent) !important;
 }
-.popup .atria_skill_editor_pane_header [data-editor-save]:hover {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_header [data-editor-save]:hover {
     background: color-mix(in oklab, var(--ls-accent-primary) 38%, transparent) !important;
 }
 .popup textarea.text_pole.atria_skill_editor_textarea {
@@ -2469,7 +2469,7 @@ editor
     outline: none;
     box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ls-accent-primary) 38%, transparent);
 }
-.popup .atria_skill_editor_pane_footer {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -2481,13 +2481,13 @@ editor
     opacity: var(--ls-text-muted);
     min-height: 28px;
 }
-.popup .atria_skill_editor_hint {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_hint {
     font-family: var(--monoFontFamily, 'JetBrains Mono', 'Fira Code', Consolas, monospace);
     font-size: 0.78rem;
 }
 /* Empty states (no file selected; empty tree body) ─────────────── */
 
-.popup .atria_skill_editor_pane.atria_skill_editor_empty {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane.atria_skill_editor_empty {
     align-items: center;
     justify-content: center;
     min-height: 360px;
@@ -2495,7 +2495,7 @@ editor
     color: color-mix(in oklab, var(--SmartThemeBodyColor) 60%, transparent);
     font-style: italic;
 }
-.popup .atria_skill_editor_tree_body .atria_skill_editor_empty {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_tree_body .atria_skill_editor_empty {
     padding: var(--ls-space-md) var(--ls-space-sm);
     text-align: center;
     font-size: 0.85rem;
@@ -2504,12 +2504,12 @@ editor
 }
 /* Compact responsive: stack tree on top of editor on narrow popups. */
 @media (max-width: 720px) {
-.popup .atria_skill_editor {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor {
         flex-direction: column;
         min-height: auto;
         gap: var(--ls-space-sm);
     }
-.popup .atria_skill_editor_tree {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_tree {
         flex: 0 0 auto;
         max-height: 35vh;
     }
@@ -2518,7 +2518,7 @@ editor
     }
 /* On narrow screens,
 always show action buttons (no hover-on-touch) */
-    .popup .atria_skill_editor_file_action {
+    :is(.popup, .atria-skill-workspace-host) .atria_skill_editor_file_action {
         opacity: 0.85;
     }
 }
@@ -2536,7 +2536,7 @@ hashes) reachable
    via scroll instead of clipping silently.
    ─────────────────────────────────────────────────────────────────── */
 
-.popup .atria_skill_view_pre {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_view_pre {
     white-space: pre-wrap;
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -2562,7 +2562,7 @@ hashes) reachable
    treatment from `.popup`. Left-align it too so the manifest reads as
    a document header,
 not a banner. */
-.popup .atria_skill_view_pre + h3,
+:is(.popup, .atria-skill-workspace-host) .atria_skill_view_pre + h3,
 .popup h3 + .atria_skill_view_pre,
 .popup:has(.atria_skill_view_pre) h3 {
     text-align: start;
@@ -2584,32 +2584,32 @@ and toggles the
 not a wall of unlabeled inputs.
    ─────────────────────────────────────────────────────────────────── */
 
-.popup .atria_skill_scope_picker {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_picker {
     display: flex;
     flex-direction: column;
     gap: var(--ls-space-md);
     text-align: start;
     min-width: min(420px, 90vw);
 }
-.popup .atria_skill_scope_picker_title {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_picker_title {
     font-weight: 600;
     color: var(--SmartThemeBodyColor);
     text-align: start;
 }
-.popup .atria_skill_scope_picker_kinds {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_picker_kinds {
     display: flex;
     flex-wrap: wrap;
     gap: var(--ls-space-md);
 }
-.popup .atria_skill_scope_kind_option {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_kind_option {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     cursor: pointer;
     user-select: none;
 }
-.popup .atria_skill_scope_preset_fields,
-.popup .atria_skill_scope_character_fields {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_preset_fields,
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_character_fields {
     display: flex;
     flex-direction: column;
     gap: var(--ls-space-sm);
@@ -2621,21 +2621,21 @@ not a wall of unlabeled inputs.
 /* The `hidden` attribute is the source of truth driven by the radio
    change handler. Add a flex-friendly fallback in case a global rule
    reasserts `display: flex` on the row. */
-.popup .atria_skill_scope_preset_fields[hidden],
-.popup .atria_skill_scope_character_fields[hidden] {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_preset_fields[hidden],
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_character_fields[hidden] {
     display: none !important;
 }
-.popup .atria_skill_scope_field {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_field {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
 }
-.popup .atria_skill_scope_field_label {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_field_label {
     font-size: 0.85rem;
     color: var(--SmartThemeQuoteColor, var(--SmartThemeBodyColor));
     opacity: 0.85;
 }
-.popup .atria_skill_scope_field select.text_pole {
+:is(.popup, .atria-skill-workspace-host) .atria_skill_scope_field select.text_pole {
     width: 100%;
 }
 
