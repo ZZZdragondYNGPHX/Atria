@@ -237,6 +237,13 @@ function requireBoolean(value, label) {
     return value;
 }
 
+function requireValues(values, label) {
+    if (values.length === 0) {
+        throw new Error(label + ' requires at least one argument');
+    }
+    return values.map(value => requireFiniteNumber(value, label));
+}
+
 function safeReference(context, path) {
     let value = context?.[path[0]];
     for (let index = 1; index < path.length; index += 1) {
@@ -249,15 +256,15 @@ function safeReference(context, path) {
 }
 
 const BUILTIN_FUNCTIONS = Object.freeze({
-    min: (...values) => Math.min(...values.map(value => requireFiniteNumber(value, 'min'))),
-    max: (...values) => Math.max(...values.map(value => requireFiniteNumber(value, 'max'))),
-    clamp: (value, minimum, maximum) => Math.min(
-        requireFiniteNumber(maximum, 'clamp'),
-        Math.max(
-            requireFiniteNumber(minimum, 'clamp'),
-            requireFiniteNumber(value, 'clamp'),
-        ),
-    ),
+    min: (...values) => Math.min(...requireValues(values, 'min')),
+    max: (...values) => Math.max(...requireValues(values, 'max')),
+    clamp: (value, minimum, maximum) => {
+        const current = requireFiniteNumber(value, 'clamp');
+        const min = requireFiniteNumber(minimum, 'clamp');
+        const max = requireFiniteNumber(maximum, 'clamp');
+        if (max < min) throw new Error('clamp maximum must be >= minimum');
+        return Math.min(max, Math.max(min, current));
+    },
     round: value => Math.round(requireFiniteNumber(value, 'round')),
     floor: value => Math.floor(requireFiniteNumber(value, 'floor')),
     ceil: value => Math.ceil(requireFiniteNumber(value, 'ceil')),
@@ -342,6 +349,7 @@ function evaluateNode(node, context, functions) {
 export function compileFormula(source) {
     const text = String(source ?? '').trim();
     if (!text) throw new Error('Formula source must be non-empty');
+    if (text.length > 4096) throw new Error('Formula source exceeds 4096 characters');
     return parserFor(text);
 }
 
