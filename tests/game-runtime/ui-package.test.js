@@ -90,6 +90,55 @@ describe('Game Package Component HTML', () => {
         dispose();
     });
 
+    test('Component cannot claim native components and Hybrid is rooted at app.root', async () => {
+        const componentFetch = jest.fn(async () => ({
+            ok: true,
+            status: 200,
+            async text() {
+                return '<div data-atria-native-component="conversation"></div>';
+            },
+        }));
+        const component = await loadGameComponentDefinition({
+            charId: 'hero',
+            manifest: {
+                ui: {
+                    mode: 'component',
+                    entry: 'ui/hud.html',
+                    surface: 'app.root',
+                },
+            },
+        }, {
+            document,
+            fetchImpl: componentFetch,
+        });
+
+        await expect(component.mount({
+            container: document.createElement('div'),
+            selectors: {
+                get: jest.fn(),
+                subscribe: jest.fn(),
+            },
+            actions: {
+                dispatch: jest.fn(),
+                simulate: jest.fn(),
+            },
+        })).rejects.toThrow(/Native component slots require Hybrid or Full/);
+
+        await expect(loadGameComponentDefinition({
+            charId: 'hero',
+            manifest: {
+                ui: {
+                    mode: 'hybrid',
+                    entry: 'ui/game.html',
+                    surface: 'sidebar.left',
+                },
+            },
+        }, {
+            document,
+            fetchImpl: componentFetch,
+        })).rejects.toThrow(/requires the app.root surface/);
+    });
+
     test('rejects script-style Component entrypoints in the static R4 slice', async () => {
         await expect(loadGameComponentDefinition({
             charId: 'hero',
