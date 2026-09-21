@@ -373,6 +373,10 @@ body[data-atria-shell-preview="true"] > #form_sheld {
 .atria-host-recovery {
     position: fixed;
     inset: 0;
+    width: 100vw;
+    height: 100vh;
+    width: 100dvw;
+    height: 100dvh;
     pointer-events: none;
 }
 
@@ -394,6 +398,11 @@ body[data-atria-shell-preview="true"] > #form_sheld {
 .atria-sheet[hidden],
 .atria-command-surface[hidden] {
     display: none !important;
+}
+
+.atria-sheet:not([hidden]),
+.atria-command-surface:not([hidden]) {
+    display: block !important;
 }
 
 .atria-sheet-scrim,
