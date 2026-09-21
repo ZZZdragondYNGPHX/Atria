@@ -210,9 +210,20 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await awaitMainUI(page, server.baseURL);
     await openWorldInfoDrawer(page);
 
-    const drawerBox = await page.locator('#WorldInfo').boundingBox();
-    expect(drawerBox?.width || 0).toBeGreaterThanOrEqual(380);
-    expect(drawerBox?.height || 0).toBeGreaterThanOrEqual(800);
+    const workspaceGeometry = await page.locator('#WorldInfo').evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        const parentRect = node.parentElement?.getBoundingClientRect();
+        return {
+            width: rect.width,
+            height: rect.height,
+            parentWidth: parentRect?.width || 0,
+            parentHeight: parentRect?.height || 0,
+        };
+    });
+    expect(workspaceGeometry.width).toBeGreaterThan(340);
+    expect(workspaceGeometry.height).toBeGreaterThan(600);
+    expect(Math.abs(workspaceGeometry.width - workspaceGeometry.parentWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(workspaceGeometry.height - workspaceGeometry.parentHeight)).toBeLessThanOrEqual(2);
 
     // Mobile starts as a real catalogue. The native book picker is not part
     // of the product navigation; selecting a book card opens its Entries.

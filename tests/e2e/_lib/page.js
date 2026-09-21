@@ -347,6 +347,20 @@ export async function selectCharacterProgrammatic(page, name) {
  * element (not from ctx.chat).
  */
 export async function sendMessageAndAwaitReply(page, text, { timeoutMs = 120_000 } = {}) {
+    // The native Composer is Play-local under R7H. Tests may arrive here
+    // after visiting Library, Plugins, Runtime, or another first-class
+    // workspace, so route back through the one authoritative WorkspaceHost
+    // before touching #send_textarea. Legacy recovery/non-Shell hosts are
+    // unchanged.
+    await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (shell?.isMounted?.() && typeof workspaceHost?.openPlay === 'function') {
+            workspaceHost.openPlay();
+        }
+    });
+    await page.locator('#send_textarea').waitFor({ state: 'visible', timeout: 10_000 });
+
     // GENERATION_ENDED fires after streaming flushes ctx.chat[id].mes —
     // safer than MESSAGE_RECEIVED, which fires before the streamed reply
     // content has fully replaced the "..." placeholder.
