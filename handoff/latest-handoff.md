@@ -1,5 +1,7 @@
 # R0–R7 integrated — main authoritative
 
+> Post-R7 fix: PR #80 已将 R7 Shell 展示层完整接入中文 i18n；当前主线为 `main@5df59a5c7789219bf96c6574f100209a264db454`，Atria PR Checks #758 成功。
+
 R7A–R7H are complete, final integration hardening is validated, PR #79 is merged, and `main` is now the authoritative R0–R7 baseline. There is no active R7 implementation branch.
 
 ## Frozen R0-R6 baseline
