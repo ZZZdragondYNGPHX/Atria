@@ -9,6 +9,7 @@ export async function loadGameLogicDefinition(packageState, options = {}) {
             commands: [],
             reducers: [],
             rules: [],
+            interpretations: [],
             source: null,
         };
     }
@@ -35,6 +36,7 @@ export async function loadGameLogicDefinition(packageState, options = {}) {
         commands: [...compiled.commands],
         reducers: [...compiled.reducers],
         rules: [...compiled.rules],
+        interpretations: [...compiled.interpretations],
         source: {
             kind: 'declarative',
             entry,
