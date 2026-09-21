@@ -8,7 +8,7 @@ import { createSurfaceHost } from './surfaces.js';
 export async function activateGamePackageUi(packageState, worldSession, options = {}) {
     const ui = packageState?.manifest?.ui;
     if (!ui) return null;
-    if (ui.mode !== 'component') {
+    if (ui.mode === 'full') {
         return Object.freeze({
             mode: ui.mode,
             status: 'deferred',
@@ -17,6 +17,9 @@ export async function activateGamePackageUi(packageState, worldSession, options 
             },
             async dispose() {},
         });
+    }
+    if (!['component', 'hybrid'].includes(ui.mode)) {
+        throw new Error(`Unsupported Game UI mode '${String(ui.mode)}'`);
     }
 
     const documentRef = options.document || globalThis.document;
@@ -76,7 +79,7 @@ export async function activateGamePackageUi(packageState, worldSession, options 
 
     let disposed = false;
     return Object.freeze({
-        mode: 'component',
+        mode: ui.mode,
         status: 'active',
         get mountId() {
             return mounted?.id || null;
