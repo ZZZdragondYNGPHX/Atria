@@ -48,6 +48,7 @@ jobs:
           game-runtime/ui-declarative.test.js
           game-runtime/ui-native-components.test.js
           game-runtime/ui-environment.test.js
+          game-runtime/ui-immersive.test.js
           game-runtime/ui-host-surfaces.test.js
           game-runtime/ui-package.test.js
           game-runtime/ui-live.test.js
