@@ -78,6 +78,8 @@ export function initializeAtriaShellFoundation({
         playHost = null;
         shell.destroy();
         shell = null;
+        navigation?.dispose();
+        navigation = null;
         delete documentRef.body.dataset.atriaShellPreview;
         return true;
     }
