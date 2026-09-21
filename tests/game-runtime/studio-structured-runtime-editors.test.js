@@ -68,7 +68,7 @@ describe('Game Studio structured runtime editors', () => {
             description: 'Current vitality',
         });
         expect(updated.properties.player.properties.hp.minimum).toBeUndefined();
-        expect(updated.properties.player.required).not.toContain('hp');
+        expect(updated.properties.player.required).toBeUndefined();
         expect(schema.properties.player.properties.hp.maximum).toBe(100);
     });
 
