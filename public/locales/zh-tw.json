@@ -6547,5 +6547,22 @@
     "atria.shell.command.openAccount.desc": "開啟身分、快照、備份与帳號存储",
     "atria.shell.navigation": "導覽",
     "atria.shell.runtime.instruct": "指令",
-    "atria.shell.runtime.reasoning": "推理"
+    "atria.shell.runtime.reasoning": "推理",
+    "atria.shell.agents.hub.title": "代理工作區",
+    "atria.shell.agents.hub.description": "選擇一個工作區。每個選項都會進入獨立的子介面。",
+    "atria.shell.agents.hub.orchestration": "設定編排預設、代理與工作流程。",
+    "atria.shell.agents.hub.run": "查看目前代理執行、執行圖與時間線。",
+    "atria.shell.agents.hub.memory": "瀏覽長期記憶、證據與知識維護。",
+    "atria.shell.agents.hub.diagnostics": "查看代理診斷、追蹤證據與復原詳情。",
+    "atria.shell.command.openOrchestration": "開啟編排工作區",
+    "atria.shell.command.openAgentRun": "開啟代理執行工作區",
+    "atria.shell.command.openAgentDiagnostics": "開啟代理診斷",
+    "atria.shell.runtime.noActivePackage": "目前沒有啟用的遊戲包。",
+    "atria.shell.runtime.activePackage": "目前遊戲包：${0}",
+    "atria.shell.runtime.noActiveProfile": "目前沒有啟用的 API 連線設定檔。",
+    "atria.shell.runtime.activeProfile": "目前設定檔：${0}",
+    "atria.shell.common.active": "活動中",
+    "atria.shell.common.idle": "閒置",
+    "atria.shell.common.configured": "已設定",
+    "atria.shell.common.defaults": "預設"
 }
