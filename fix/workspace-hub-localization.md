@@ -46,6 +46,7 @@ No persistence/schema migration. This is a presentation/navigation/i18n fix only
 Implementation branch: `fix/workspace-hub-localization`
 Final validated branch HEAD: `9e178b8bce4301412d3995c9f0afe0ce9432c735`
 Pull request: #82 — `fix: repair workspace routing, preview, and localization`
+Merged main commit: `2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 
 ### Implemented
 
@@ -78,3 +79,12 @@ No Android or Docker validation was required because this task changed browser/f
 ### Data / compatibility impact
 
 No persistence or schema migration. Existing Navigation Authority, WorkspaceHost, Orchestrator, Memory OS, Studio, Runtime, and native controller authorities remain authoritative.
+
+
+### Integration
+
+- PR #82 squash-merged into `main`.
+- Integrated main: `2c1c171136cb6f35f3f4fff7c62b148b7200485a`.
+- Validated branch tree and merged-main tree are identical: `5e30f53bf9d97706997ef1e7b5ae24de03be8f29`.
+- Cleanup workflow: **Cleanup merged task branches #79**, run `35620850710`: success.
+- Temporary branch `fix/workspace-hub-localization` deleted; a direct GitHub branch lookup now returns 404.
