@@ -1,4 +1,5 @@
 import { createCommandRegistry } from './command-registry.js';
+import { createDeterministicRng } from './rng.js';
 
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);
@@ -15,7 +16,7 @@ function deepFreeze(value, seen = new Set()) {
 }
 
 function assertWorldContract(world) {
-    for (const method of ['getState', 'commitEvents', 'simulateEvents']) {
+    for (const method of ['getState', 'getJournal', 'getSnapshot', 'commitEvents', 'simulateEvents']) {
         if (typeof world?.[method] !== 'function') {
             throw new Error('Game Logic Runtime requires world.' + method + '()');
         }
@@ -38,11 +39,29 @@ function normalizeEventDrafts(output, commandId) {
         if (!type) {
             throw new Error(`Command '${commandId}' event ${index} requires a type`);
         }
+        const meta = draft.meta && typeof draft.meta === 'object' && !Array.isArray(draft.meta)
+            ? clone(draft.meta)
+            : null;
         return {
             type,
             payload: clone(draft.payload ?? {}),
+            ...(meta ? { meta } : {}),
         };
     });
+}
+
+function getTransactionIdentity(world, commandId, rngSeed) {
+    const journal = world.getJournal();
+    const snapshot = world.getSnapshot();
+    const nextSeq = Number.isInteger(journal?.nextSeq) ? journal.nextSeq : 1;
+    const branchPath = Array.isArray(snapshot?.branchPath) ? [...snapshot.branchPath] : [];
+    const branchKey = branchPath.length > 0 ? branchPath.join('.') : 'root';
+    const transactionId = 'tx:' + nextSeq + ':' + branchKey + ':' + commandId;
+    return {
+        transactionId,
+        branchPath,
+        rngSeed: String(rngSeed) + '|' + transactionId,
+    };
 }
 
 export function createGameLogicRuntime(options = {}) {
@@ -54,7 +73,8 @@ export function createGameLogicRuntime(options = {}) {
         throw new Error('Game Logic Runtime requires a Command Registry');
     }
 
-    let nextTransactionSeq = 1;
+    const rngSeed = options.rngSeed ?? 'atria-game-runtime-v1';
+    let commitQueue = Promise.resolve();
 
     async function execute(commandId, args = {}, options = {}) {
         const validation = registry.validate(commandId, args);
@@ -65,7 +85,9 @@ export function createGameLogicRuntime(options = {}) {
             );
         }
 
-        const transactionId = 'tx:' + nextTransactionSeq++;
+        const identity = getTransactionIdentity(world, validation.command.id, rngSeed);
+        const transactionId = identity.transactionId;
+        const rng = createDeterministicRng(identity.rngSeed);
         const beforeState = clone(world.getState());
         const mode = options.simulate === true ? 'simulation' : 'commit';
         const commandView = Object.freeze({
@@ -78,12 +100,25 @@ export function createGameLogicRuntime(options = {}) {
             command: commandView,
             args: deepFreeze(clone(validation.args)),
             world: deepFreeze(clone(beforeState)),
+            rng,
         });
 
         const output = await validation.command.execute(executionContext);
         const eventDrafts = normalizeEventDrafts(output, validation.command.id);
+        const rngTrace = rng.trace();
+        const transactionEvents = eventDrafts.map((event, index) => ({
+            ...event,
+            meta: {
+                ...(event.meta || {}),
+                command: {
+                    id: validation.command.id,
+                    transactionId,
+                },
+                ...(index === 0 && rngTrace.length > 0 ? { rngTrace } : {}),
+            },
+        }));
 
-        if (eventDrafts.length === 0) {
+        if (transactionEvents.length === 0) {
             return {
                 ok: true,
                 status: 'no_change',
@@ -93,13 +128,14 @@ export function createGameLogicRuntime(options = {}) {
                 beforeState,
                 afterState: clone(beforeState),
                 events: [],
+                rngTrace,
                 committed: false,
             };
         }
 
         const projected = options.simulate === true
-            ? await world.simulateEvents(eventDrafts)
-            : await world.commitEvents(eventDrafts);
+            ? await world.simulateEvents(transactionEvents)
+            : await world.commitEvents(transactionEvents);
 
         return {
             ok: true,
@@ -110,7 +146,8 @@ export function createGameLogicRuntime(options = {}) {
             beforeState,
             afterState: clone(projected.state),
             events: clone(projected.committed || projected.events || []),
-            branchPath: clone(projected.branchPath || []),
+            branchPath: clone(projected.branchPath || identity.branchPath),
+            rngTrace,
             committed: options.simulate !== true,
         };
     }
@@ -130,7 +167,15 @@ export function createGameLogicRuntime(options = {}) {
                 args: clone(result.args),
             };
         },
-        dispatch: (commandId, args) => execute(commandId, args, { simulate: false }),
-        simulate: (commandId, args) => execute(commandId, args, { simulate: true }),
+        dispatch(commandId, args) {
+            const run = () => execute(commandId, args, { simulate: false });
+            const pending = commitQueue.then(run, run);
+            commitQueue = pending.catch(() => undefined);
+            return pending;
+        },
+        async simulate(commandId, args) {
+            await commitQueue;
+            return execute(commandId, args, { simulate: true });
+        },
     });
 }
