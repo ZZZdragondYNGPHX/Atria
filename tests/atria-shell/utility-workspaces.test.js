@@ -10,7 +10,7 @@ import {
     mountSettingsUtility,
 } from '../../public/scripts/atria-shell/utility-workspaces.js';
 
-describe('R7G utility workspace adapters', () => {
+describe('R7G utility workspace adapters via WorkspaceHost slot contract', () => {
     beforeEach(() => {
         document.body.innerHTML = `
             <div id="extensions-home">
@@ -90,7 +90,7 @@ describe('R7G utility workspace adapters', () => {
 
         const controller = await mountPluginsUtility({
             document,
-            body: slot,
+            slot,
             extensionAuthority,
         });
 
@@ -155,7 +155,7 @@ describe('R7G utility workspace adapters', () => {
 
         const controller = await mountAccountUtility({
             document,
-            body: slot,
+            slot,
             accountAuthority: { openUserProfile },
         });
 
