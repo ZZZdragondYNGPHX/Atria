@@ -828,6 +828,11 @@ function removedVirtualPaths(cleanEdits) {
 async function validateGameFileBatch(charId, cleanEdits, newLive) {
     const currentFiles = await fetchFileList(charId);
     const virtualFiles = applyVirtualFileInventory(currentFiles, cleanEdits);
+    const hadGameManifest = currentFiles.some(file => file?.type === 'file' && file.path === 'game.json');
+    const hasGameManifest = virtualFiles.some(file => file?.type === 'file' && file.path === 'game.json');
+    if (hadGameManifest && !hasGameManifest) {
+        throw new Error('AI Builder cannot remove or rename the authoritative game.json contract from an existing Game Runtime project');
+    }
     const removed = removedVirtualPaths(cleanEdits);
     const virtual = newLive?.files && typeof newLive.files === 'object'
         ? newLive.files
