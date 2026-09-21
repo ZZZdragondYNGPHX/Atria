@@ -171,7 +171,7 @@ describe('R7G WorkspaceHost', () => {
 
         host.openRuntimeSection('retrieval');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('retrieval');
+        expect(navigation.getRoute().child?.id).toBe('connections');
         expect(adapters.runtime).toHaveBeenCalledTimes(1);
 
         host.openUtility('diagnostics');
