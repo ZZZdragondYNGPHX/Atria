@@ -56,6 +56,11 @@ export function showLoader() {
  * @returns {Promise<void>}
  */
 export async function hideLoader({ immediate = false } = {}) {
+    // #preloader is only the static first-paint cover from index.html.
+    // Dismiss it as soon as startup explicitly asks to hide the loader;
+    // its lifetime must not depend on Popup animation/handle bookkeeping.
+    document.getElementById('preloader')?.remove();
+
     if (!legacyLoaderHandle || !legacyLoaderHandle.isActive) {
         console.warn('There is no loader showing to hide');
         return Promise.resolve();
