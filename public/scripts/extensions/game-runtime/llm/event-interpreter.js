@@ -1,3 +1,5 @@
+import { cloneGameLlmValue } from './clone.js';
+
 const REQUEST_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
 const EVENT_TYPE_PATTERN = /^[A-Za-z][A-Za-z0-9._-]{0,127}$/;
 const MAX_EVENT_TYPES = 64;
@@ -5,9 +7,7 @@ const MAX_SEVERITIES = 16;
 const MAX_PARTICIPANTS = 16;
 const MAX_EVIDENCE = 8;
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function uniqueStrings(values, label, { pattern = null, max = 64 } = {}) {
     if (!Array.isArray(values)) {
