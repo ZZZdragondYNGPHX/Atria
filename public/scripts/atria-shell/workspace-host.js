@@ -190,6 +190,7 @@ export function createAtriaWorkspaceHost({
     let sequence = 0;
     let active = null;
     let pendingStudioCharacter = null;
+    let lastRouteSignature = JSON.stringify(navigation.getRoute());
     const commandDisposers = [];
 
     function contextState() {
@@ -506,6 +507,9 @@ export function createAtriaWorkspaceHost({
 
     documentRef.addEventListener('click', onLegacyClick, true);
     const unsubscribeNavigation = navigation.subscribe(state => {
+        const signature = JSON.stringify(state.route);
+        if (signature === lastRouteSignature) return;
+        lastRouteSignature = signature;
         void activate(state.route, 'navigation');
     });
     void activate(navigation.getRoute(), 'initial');
