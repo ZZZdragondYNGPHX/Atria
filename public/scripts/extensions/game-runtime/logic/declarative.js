@@ -5,6 +5,8 @@ import {
 
 const BLOCKED_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor']);
 const PATH_SEGMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+const INTERPRETATION_EVENT_TYPE_PATTERN = /^[A-Za-z][A-Za-z0-9._-]{0,127}$/;
+const INTERPRETATION_COMMAND_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
 
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);
@@ -335,11 +337,74 @@ export function compileDeclarativeRule(raw) {
     };
 }
 
+export function compileDeclarativeInterpretationMapping(raw) {
+    if (!isPlainObject(raw)) {
+        throw new Error('Declarative interpretation mapping must be an object');
+    }
+    assertKnownFields(
+        raw,
+        new Set(['eventType', 'command', 'args', 'when']),
+        'Declarative interpretation mapping',
+    );
+
+    const eventType = String(raw.eventType || '').trim();
+    if (!INTERPRETATION_EVENT_TYPE_PATTERN.test(eventType)) {
+        throw new Error('Declarative interpretation mapping has invalid eventType');
+    }
+    const command = String(raw.command || '').trim();
+    if (!INTERPRETATION_COMMAND_ID_PATTERN.test(command)) {
+        throw new Error(
+            `Declarative interpretation mapping '${eventType}' has invalid command id`,
+        );
+    }
+
+    const argsTemplate = compileValueTemplate(
+        raw.args ?? {},
+        `Declarative interpretation mapping '${eventType}' args`,
+    );
+    let whenAst = null;
+    if (raw.when !== undefined) {
+        if (typeof raw.when !== 'string' || !raw.when.trim()) {
+            throw new Error(
+                `Declarative interpretation mapping '${eventType}' when must be a non-empty string`,
+            );
+        }
+        whenAst = compileFormula(raw.when);
+    }
+
+    return Object.freeze({
+        eventType,
+        map(context) {
+            const formulaContext = {
+                world: context.world,
+                args: context.interpretation,
+                selectors: {
+                    observation: context.observation ?? {},
+                },
+            };
+            if (whenAst) {
+                const allowed = evaluateFormulaAst(whenAst, formulaContext);
+                if (typeof allowed !== 'boolean') {
+                    throw new Error(
+                        `Declarative interpretation mapping '${eventType}' when must evaluate to boolean`,
+                    );
+                }
+                if (!allowed) return [];
+            }
+
+            return {
+                id: command,
+                args: evaluateTemplate(argsTemplate, formulaContext),
+            };
+        },
+    });
+}
+
 export function compileDeclarativeLogic(raw = {}) {
     if (!isPlainObject(raw)) throw new Error('Declarative logic root must be an object');
     assertKnownFields(
         raw,
-        new Set(['commands', 'reducers', 'rules']),
+        new Set(['commands', 'reducers', 'rules', 'interpretations']),
         'Declarative logic root',
     );
 
@@ -355,10 +420,15 @@ export function compileDeclarativeLogic(raw = {}) {
         raw.rules,
         'Declarative logic rules',
     ).map(compileDeclarativeRule);
+    const interpretations = normalizeOptionalArray(
+        raw.interpretations,
+        'Declarative logic interpretations',
+    ).map(compileDeclarativeInterpretationMapping);
 
     return Object.freeze({
         commands: Object.freeze(commands),
         reducers: Object.freeze(reducers),
         rules: Object.freeze(rules),
+        interpretations: Object.freeze(interpretations),
     });
 }
