@@ -335,26 +335,159 @@ The exact directory names may evolve during implementation, but the separation o
 
 The manifest must be schema validated before runtime activation.
 
-### 4.3 Distribution
+### 4.3 Distribution and interchange formats
 
-A Game Package travels with the character card.
+A Game Package travels with the character card, but Atria must distinguish **compatibility interchange formats** from the long-term native package ceiling.
 
-Atria should evolve existing CardApp packing rather than invent an unrelated distribution system.
+Existing formats remain supported:
 
-Requirements:
+- **PNG** — convenient traditional character-card sharing format;
+- **JSON** — human-readable character-card data interchange;
+- **CharX** — standard ZIP-based character card + asset interchange.
+
+These formats must not be removed merely because Atria gains a richer native package.
+
+However, PNG/JSON must not become the long-term storage ceiling for complete Atria games. Large Game Packages may contain many HTML/CSS/logic files plus binary images, audio, video, fonts and other assets. Re-encoding all of those files into card JSON/base64 or PNG metadata is inefficient, fragile and difficult to author/version.
+
+Atria should continue to reuse existing CardApp/character-card transport where appropriate during the refactor, while introducing a native package artifact for complete Atria projects.
+
+Requirements shared by all package transports:
 
 - nested files round-trip;
-- binary assets round-trip;
+- binary assets round-trip without semantic loss;
 - path traversal remains rejected;
 - package metadata is validated;
-- import extracts into per-character package storage;
-- export re-embeds package content;
+- imports normalize into Atria's internal per-character/project representation;
+- export format does not change Game Runtime semantics;
 - ordinary character-card semantics remain usable when Game Runtime is unavailable.
 
 Do not design the new runtime around separate user-installed “HTML zip + Regex + state plugin + worldbook” bundles.
 
+### 4.4 Atria Native Package Format
 
-### 4.4 Narrative Card remains a first-class mode
+Atria 1.0 should define a native distribution format for complete Game Packages.
+
+Working canonical extension:
+
+~~~text
+*.atria
+~~~
+
+The native package should be a **standard ZIP container**, not a new opaque/proprietary binary filesystem.
+
+Conceptual layout:
+
+~~~text
+example.atria
+├── manifest.json
+├── card/
+│   └── card.json
+├── game/
+│   ├── game.json
+│   ├── world/
+│   ├── logic/
+│   ├── llm/
+│   └── ui/
+├── worldbooks/
+├── skills/
+├── assets/
+│   ├── images/
+│   ├── audio/
+│   ├── video/
+│   └── fonts/
+└── metadata/
+~~~
+
+Exact optional directories may evolve, but the package contract must preserve clear separation between:
+
+- character-card metadata;
+- Game Runtime project files;
+- authored knowledge/skills;
+- binary assets;
+- package metadata.
+
+The root manifest.json is the package/container manifest. The existing game/game.json remains the Game Runtime manifest. They serve different purposes and must not be conflated.
+
+The native package manifest should eventually support:
+
+- package format/version;
+- package id;
+- author/game version metadata;
+- Atria runtime compatibility;
+- declared entries/components;
+- capability/permission summary;
+- optional integrity hashes;
+- optional dependency metadata;
+- optional localization metadata.
+
+Path normalization, archive bomb/resource limits, traversal protection and manifest validation are mandatory before extraction.
+
+### 4.5 Source project vs distribution artifact
+
+Game Studio authors should work against an unpacked project tree, not edit a compressed .atria archive directly.
+
+Conceptually:
+
+~~~text
+authoring project directory
+ -> validate/build
+ -> distributable .atria package
+~~~
+
+The source project may contain authoring-only files such as tests, Studio metadata or development history that do not all need to enter the runtime package.
+
+The build/export step decides which files become the distributable artifact.
+
+### 4.6 Package is not Save
+
+A Game Package contains the authored game/application:
+
+- character/card definition;
+- initial world/schema;
+- logic;
+- UI;
+- knowledge;
+- assets.
+
+It does **not** normally contain the player's live progression.
+
+Runtime progression remains separate:
+
+- Event Journal;
+- World snapshots;
+- active branch/turn history;
+- Memory state;
+- user-specific settings.
+
+A future portable save bundle may use a separate format such as *.atria-save, but save transport is a different contract from Game Package transport.
+
+Exporting or sharing game.atria must not silently include the author's current playthrough.
+
+### 4.7 Export policy
+
+Recommended product behavior:
+
+~~~text
+Narrative Card
+ -> PNG / JSON / CharX remain normal export choices
+
+Complete Atria Game Package
+ -> .atria is the recommended lossless export
+~~~
+
+A compatibility export to PNG/JSON/CharX may be offered when the package is representable within that format, but Atria must clearly report omitted/degraded Atria-only resources or capabilities rather than silently losing them.
+
+Import should converge formats into one internal model:
+
+~~~text
+PNG    ─┐
+JSON   ─┤
+CharX  ─┼-> Atria internal character/project representation
+.atria ─┘
+~~~
+
+The runtime must not behave differently merely because the same logical package arrived through another supported container.
+### 4.8 Narrative Card remains a first-class mode
 
 Game Runtime is an opt-in enhancement, not a tax imposed on every character card.
 
@@ -1667,14 +1800,22 @@ Work:
 - world timeline;
 - LLM tool/observation preview;
 - AI Builder project-aware editing;
+- source-project vs distribution-artifact build pipeline;
+- Atria native .atria package validator/builder/importer/exporter;
+- package manifest/version validation and safe ZIP extraction;
+- package asset inventory/integrity reporting;
+- compatibility export guidance for PNG/JSON/CharX;
 - preserve code editor/Git/diff flows.
 
 Exit:
 
 - create a small playable game through Studio;
 - simulate/debug it;
-- export/reimport it;
-- retain project files and runtime behavior.
+- build a lossless .atria package;
+- reimport that package and retain project/runtime behavior;
+- verify nested text/binary assets round-trip;
+- verify malformed/traversal/oversized package inputs fail safely;
+- retain PNG/JSON/CharX interoperability for appropriate card classes.
 
 ### R7 — Atria Game-first Shell Redesign
 
@@ -1758,6 +1899,10 @@ Expected areas:
 - Runtime Role primary/fallback routing tests;
 - Model & Runtime configuration tests;
 - R7 desktop/mobile host-shell frontend smoke;
+- .atria package build/import/export round-trip tests;
+- ZIP traversal/archive-limit/manifest validation tests;
+- PNG/JSON/CharX compatibility interchange regression tests;
+- package-vs-save separation tests;
 - export/import e2e;
 - ESLint;
 - complete Node unit suite;
@@ -1817,7 +1962,11 @@ This refactor does not aim to:
 - define HP/MP/level/affection/inventory/quest/combat as mandatory or canonical Game Runtime fields;
 - constrain every game to RPG/chat semantics;
 - require the v1 JSON World representation to remain the only possible large-world storage backend forever;
-- prematurely implement a grand-strategy Entity Store before a concrete scale requirement justifies it.
+- prematurely implement a grand-strategy Entity Store before a concrete scale requirement justifies it;
+- remove PNG/JSON/CharX support merely because Atria gains a native package;
+- keep using PNG metadata or giant JSON/base64 blobs as the permanent ceiling for full Game Packages;
+- invent an opaque proprietary binary container when standard ZIP semantics are sufficient;
+- couple distributable Game Packages to a user's live save/progression state.
 
 ---
 
@@ -1846,6 +1995,8 @@ The next implementation work should extend R5 into:
 7. single Narrative Producer arbitration;
 8. Narrator and end-to-end game-aware turn flow.
 
+The native .atria package build/import/export pipeline belongs to R6 Game Studio. Do not interrupt the current R5 implementation to build it early.
+
 Do not jump to R7 visual redesign before R5-R6 runtime/authoring contracts are stable. R7 is deliberately late so the host UI reflects the final product model rather than freezing premature runtime assumptions.
 
 
@@ -1857,7 +2008,7 @@ The refactor is successful when Atria can support character-card games whose dom
 
 Concretely, Atria can support a character card that:
 
-- carries a complete Game Package;
+- carries a complete Game Package and can export it losslessly as an Atria native package;
 - declares a fully author-defined formal world schema;
 - initializes authoritative state without requiring canonical HP/MP/RPG fields;
 - exposes typed commands;
@@ -1877,10 +2028,11 @@ Concretely, Atria can support a character card that:
 - routes Narrator / Intent Resolver / Event Interpreter / other model workloads through explicit Runtime Roles with fallback policies;
 - narrates committed results without LLM-owned state arithmetic;
 - can be simulated and debugged in Game Studio;
-- exports and reimports as one character-card artifact;
+- exports/reimports complete game projects through .atria while preserving PNG/JSON/CharX interoperability for simpler/standard cards;
 - does not rely on Regex, MVU, or LoreState to function as a game;
 - presents Atria 1.0 through a Game-first host shell rather than the inherited pure-text-chat UI model;
-- can model non-RPG domains such as visual novels, management games and strategy/society simulations without changing the core Command/Event/Rule architecture.
+- can model non-RPG domains such as visual novels, management games and strategy/society simulations without changing the core Command/Event/Rule architecture;
+- keeps authored package content separate from user save/progression state.
 
 At that point Atria is no longer merely “SillyTavern plus richer status bars”.
 
