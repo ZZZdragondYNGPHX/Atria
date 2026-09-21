@@ -7,6 +7,7 @@ import {
     mountRuntimeDomainWorkspace,
     normalizeLibrarySection,
     normalizeRuntimeSection,
+    RUNTIME_SECTIONS,
 } from '../../public/scripts/atria-shell/library-runtime-workspaces.js';
 
 async function flush() {
@@ -28,11 +29,16 @@ describe('R7F Library / Runtime domain adapters', () => {
                     </div>
                 </section>
             </div>
-            <div id="rm_api_block">
-                <section id="atria-connection-manager-root" class="wide100p">
-                    <button class="connection_profile_mode_tab" data-mode="chat">Chat</button>
-                    <button class="connection_profile_mode_tab" data-mode="embed">Embedding</button>
-                </section>
+            <div id="legacy-api-home">
+                <div id="rm_api_block" class="drawer-content closedDrawer" aria-hidden="true">
+                    <select id="main_api"><option value="openai">Chat Completion</option></select>
+                    <div id="native-chat-api-editor">Native chat API editor</div>
+                    <section id="atria-connection-manager-root" class="wide100p">
+                        <button class="connection_profile_mode_tab" data-mode="chat">Chat</button>
+                        <button class="connection_profile_mode_tab" data-mode="embed">Embedding</button>
+                        <button class="connection_profile_mode_tab" data-mode="rerank">Rerank</button>
+                    </section>
+                </div>
             </div>
             <main id="slot"></main>
         `;
@@ -66,7 +72,8 @@ describe('R7F Library / Runtime domain adapters', () => {
         expect(normalizeLibrarySection({ child: { id: 'character:12' } })).toBe('characters');
         expect(normalizeLibrarySection({ child: { id: 'world-info' } })).toBe('world-info');
         expect(normalizeRuntimeSection({ child: null })).toBe('overview');
-        expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('retrieval');
+        expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('connections');
+        expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['overview', 'roles', 'connections', 'presets']);
     });
 
     test('Characters reparents the existing controller root and restores the exact node on dispose', async () => {
@@ -112,12 +119,13 @@ describe('R7F Library / Runtime domain adapters', () => {
         expect(original.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 
-    test('Connections and Retrieval reparent one Connection Manager root and switch its existing tabs', async () => {
+    test('Connections embeds the complete native API authority and keeps old Retrieval routes inside it', async () => {
         const slot = document.getElementById('slot');
-        const root = document.getElementById('atria-connection-manager-root');
-        const originalParent = root.parentNode;
-        const chat = root.querySelector('[data-mode="chat"]');
-        const embed = root.querySelector('[data-mode="embed"]');
+        const apiBlock = document.getElementById('rm_api_block');
+        const managerRoot = document.getElementById('atria-connection-manager-root');
+        const originalParent = apiBlock.parentNode;
+        const chat = managerRoot.querySelector('[data-mode="chat"]');
+        const embed = managerRoot.querySelector('[data-mode="embed"]');
         const chatClick = jest.fn();
         const embedClick = jest.fn();
         chat.addEventListener('click', chatClick);
@@ -129,26 +137,32 @@ describe('R7F Library / Runtime domain adapters', () => {
         const controller = mountRuntimeDomainWorkspace({
             document,
             slot,
-            route: { domain: 'runtime', child: { id: 'connections' } },
+            route: { domain: 'runtime', child: { id: 'retrieval' } },
             host,
         });
         await flush();
 
-        expect(slot.contains(root)).toBe(true);
-        expect(root.dataset.atriaWorkspaceEmbedded).toBe('true');
-        expect(chatClick).toHaveBeenCalled();
+        expect(slot.contains(apiBlock)).toBe(true);
+        expect(apiBlock.dataset.atriaWorkspaceEmbedded).toBe('true');
+        expect(managerRoot.dataset.atriaWorkspaceEmbedded).toBe('true');
+        expect(slot.querySelector('#native-chat-api-editor')).not.toBeNull();
+        expect(embedClick).toHaveBeenCalled();
 
         controller.updateRoute({
             domain: 'runtime',
-            child: { id: 'retrieval', label: 'Retrieval', kind: 'workspace' },
+            child: { id: 'connections', label: 'Connections', kind: 'workspace' },
         });
         await flush();
-        expect(embedClick).toHaveBeenCalled();
+        expect(chatClick).toHaveBeenCalled();
+        expect(document.querySelectorAll('#rm_api_block')).toHaveLength(1);
         expect(document.querySelectorAll('#atria-connection-manager-root')).toHaveLength(1);
 
         controller.dispose();
         await flush();
-        expect(root.parentNode).toBe(originalParent);
-        expect(root.dataset.atriaWorkspaceEmbedded).toBeUndefined();
+        expect(apiBlock.parentNode).toBe(originalParent);
+        expect(apiBlock.className).toBe('drawer-content closedDrawer');
+        expect(apiBlock.getAttribute('aria-hidden')).toBe('true');
+        expect(apiBlock.dataset.atriaWorkspaceEmbedded).toBeUndefined();
+        expect(managerRoot.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 });
