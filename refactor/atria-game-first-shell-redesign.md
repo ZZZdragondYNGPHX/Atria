@@ -2,7 +2,7 @@
 
 ## Status
 
-- Phase: **R7E validated; R7F next**
+- Phase: **R7F validated; R7G next**
 - Repository: `ZZZdragondYNGPHX/Atria`
 - R0-R6 frozen branch: `refactor/game-runtime-architecture`
 - R6 final validated HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
@@ -19,6 +19,8 @@
 - R7D validation: **R7 Shell Dev Checks #96**, run `35578147672`, success
 - R7E final validated HEAD: `f76bdad7de08a7405cd36e908f312ac8c7bf0463`
 - R7E validation: **R7 Shell Dev Checks #119**, run `35582312859`, success
+- R7F final validated HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
+- R7F validation: **R7 Shell Dev Checks #133**, run `35585151542`, success
 - R7 is based directly on the complete R0-R6 branch and therefore already contains the full Master Refactor history.
 - Neither long-running branch is to be merged into `main` before R7 final validation.
 
@@ -310,32 +312,98 @@ Authoritative browser validation covers:
 - R7A-R7D Shell/Game Surface regressions;
 - unique native Conversation/Composer nodes throughout.
 
-### R7F entry condition
+### R7F validated checkpoint
 
-R7F starts from the validated R7E HEAD above on the **same long-running R7 branch**. Do not create a separate R7F branch and do not merge to `main`.
+R7F — Library & Runtime is complete and validated.
 
-R7F is **Library & Runtime**.
+Validated implementation baseline:
 
-Library product IA owns:
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
+- Workflow: **R7 Shell Dev Checks #133**
+- Run: `35585151542`
+- **R7F Focused Unit and Lint**: success
+- **R7F Library Runtime Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7F changed Web/JS/CSS only and did not modify Kotlin/native Back behavior.
 
-- Characters;
-- Games;
-- Worlds & Knowledge;
-- Skills.
+R7F preserved the R7D/R7E ownership chain:
 
-Runtime product IA owns:
+```text
+Navigation Authority
+        ↓
+WorkspaceHost
+        ↓
+Library / Runtime Domain Workspace
+        ↓
+Existing Controller / State / Persistence
+```
 
-- Overview;
-- Roles;
-- Connections;
-- Model / Prompt Presets;
-- Retrieval.
+Library implementation:
 
-R7F must build these product-level workspaces on top of the validated R7D Navigation Authority and R7E WorkspaceHost. Reuse existing Character, World Info, Runtime Role, Connection/Profile, preset and retrieval controllers/state instead of creating duplicate engines.
+- **Characters** reparents the exact existing `#right-nav-panel` Character controller into WorkspaceHost and restores the same node on dispose;
+- Character list, selection, create/import/edit/duplicate/delete, tags, avatar, character-bound resources and lifecycle remain owned by the existing Character system;
+- Character detail navigation uses R7D child/detail routes rather than creating a Library router or duplicate selection state;
+- **Games** is a discovery/management projection over existing character-bound Game Packages and `game.json`; it does not create a Game database or duplicate Game Studio;
+- Game entries can return to Play or open the existing R6 Game Studio for authoring;
+- **Worlds & Knowledge** continues to mount the same R7E World Info controller/root and remains one World Info authority;
+- **Skills** reuses the existing Skill Manager/controller and `context.skills.*` persistence through an embedded Workspace presentation while keeping compatibility popup flows for nested operations.
 
-Provider-specific deep configuration may continue to use compatibility/form adapters where appropriate.
+Runtime implementation:
 
-Do not reopen R7A-R7E unless R7F exposes a concrete integration defect. Do not prematurely implement R7G Plugins/Settings reclassification or R7H legacy shell retirement.
+- **Overview** is a read-only projection over the current Game Runtime, Runtime Role, Connection Manager and retrieval state;
+- **Roles** edits the existing R5 `game-runtime` model-role configuration through `getModelRuntimeConfig` / `setRuntimeRoleConfig`; no second Runtime Role store exists;
+- Runtime Role connection choices are constrained to the existing Chat Completion connection-profile resolver used by `generateTask({ apiPresetName })`;
+- **Connections** reparents the existing Connection Manager controller/root and preserves `extension_settings.connectionManager.profiles` as the only profile authority;
+- **Retrieval** uses that same Connection Manager controller/profile store for embedding/rerank and the existing EmbeddingService path;
+- **Model / Prompt Presets** projects the existing PresetManager authorities and keeps provider-specific deep forms behind compatibility entry points rather than rebuilding them;
+- Agent presets remain owned by Agents; character-bound preset ownership remains unchanged.
+
+Navigation / compatibility:
+
+- Library sections are Characters / Games / Worlds & Knowledge / Skills;
+- Runtime sections are Overview / Roles / Connections / Model / Prompt Presets / Retrieval;
+- all local routes use the R7D Navigation Authority and browser history;
+- WorkspaceHost remains the only first-class feature mount seam;
+- legacy Character, World Info, API/Connection, preset and Skills entry points forward into R7 routes only while preview Shell owns navigation;
+- non-preview compatibility behavior remains available for R7H;
+- Context Dock / Context Sheet remain the existing R7D presentation/state authority.
+
+R7B/R7C ownership remains intact:
+
+- Library/Runtime pages never acquire Stage ownership;
+- Full Game remains the only Game Surface that owns Stage;
+- Hybrid / Full / Immersive contracts were not changed;
+- Narrative Play restores normally after Workspace transitions;
+- `#chat`, `#send_form` and `#send_textarea` remain unique and preserve identity.
+
+Authoritative validation covers:
+
+- Library / Characters real-controller reuse and reversible reparenting;
+- Games discovery without opening/duplicating Studio;
+- Worlds & Knowledge through the R7E World Info seam;
+- embedded Skills through the existing Skill Manager;
+- Runtime Overview / Roles / Connections / Presets / Retrieval;
+- Connection Manager identity across Connections <-> Retrieval;
+- R7D child route / browser Back behavior;
+- Command Registry entries for R7F workspaces;
+- legacy Character / World Info / API / preset entry adaptation;
+- Expanded and Compact Library/Runtime browser paths;
+- Workspace dispose/reopen with no nested orphan controller roots;
+- return to Narrative Play;
+- prior R7A-R7E regression coverage;
+- one live `#chat`, `#send_form`, and `#send_textarea`.
+
+### R7G entry condition
+
+R7G starts from the validated R7F HEAD above on the **same long-running R7 branch**. Do not create a separate R7G branch and do not merge to `main`.
+
+R7G is **Plugins & Settings Reclassification**.
+
+R7G owns product-level reclassification of Plugins / Settings / Account and legacy Extensions/User Settings/API navigation. It must preserve the R7D Navigation Authority and R7E WorkspaceHost, keep Atria built-in core domains out of the third-party Plugins bucket, and retain compatibility anchors until R7H final retirement.
+
+Do not reopen R7A-R7F unless R7G exposes a concrete integration defect. Do not prematurely perform R7H legacy-shell retirement.
+
 
 ---
 
@@ -1307,25 +1375,22 @@ Exit result:
 
 ### R7F — Library & Runtime
 
-Build product-level Library and Runtime IA.
+Implementation result — **complete (2026-09-21)**:
 
-Library:
-- Characters;
-- Games;
-- Worlds & Knowledge;
-- Skills.
+- Library is first-class through Characters / Games / Worlds & Knowledge / Skills;
+- Runtime is first-class through Overview / Roles / Connections / Model / Prompt Presets / Retrieval;
+- Characters, World Info, Skills and Connection Manager reuse their existing controllers/state/persistence;
+- Games is a projection over existing character-bound Game Packages and does not duplicate Studio;
+- Runtime Overview and Roles project/edit the existing R5 Game Runtime configuration;
+- Presets continue through the existing PresetManager and character/project ownership rules;
+- Retrieval continues through Connection Manager embedding/rerank profiles and existing retrieval services;
+- legacy entries adapt into R7D routes while preview Shell is active;
+- no second router, Character database, Game database, World Info engine, Skill runtime, Runtime Role store, Connection store, Preset store, Conversation, Composer or Stage authority was introduced.
 
-Runtime:
-- Overview;
-- Roles;
-- Connections;
-- Model/Prompt Presets;
-- Retrieval.
+Exit result:
 
-Provider-specific deep configuration may continue through legacy form adapters.
-
-Exit:
-- primary Character/World/Runtime tasks are reachable through the new IA.
+- primary Character/World/Skill/Game and Runtime tasks are reachable through the new IA;
+- validation: **R7 Shell Dev Checks #133**, run `35585151542`, HEAD `f8f516ba23ce8f4dbc3df8998cee301e043aace4`, success.
 
 ### R7G — Plugins & Settings Reclassification
 
@@ -1584,7 +1649,7 @@ according to repository policy.
 
 ## 22. Current implementation state
 
-As of the R7E handoff:
+As of the R7F handoff:
 
 - R0-R6 remain frozen and validated at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`;
 - R7A is complete and validated at `5fbc216d907aa80c434093b444b977919b19c885`;
@@ -1592,7 +1657,8 @@ As of the R7E handoff:
 - R7C is complete and validated at `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a`;
 - R7D is complete and validated at `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`;
 - R7E is complete and validated at `f76bdad7de08a7405cd36e908f312ac8c7bf0463`;
-- authoritative R7E validation is **R7 Shell Dev Checks #119**, run `35582312859`, success;
-- R7F — Library & Runtime is next;
+- R7F is complete and validated at `f8f516ba23ce8f4dbc3df8998cee301e043aace4`;
+- authoritative R7F validation is **R7 Shell Dev Checks #133**, run `35585151542`, success;
+- R7G — Plugins & Settings Reclassification is next;
 - the same long-running `refactor/atria-game-first-shell-redesign` branch continues through R7H;
 - neither the R7 branch nor the frozen R0-R6 branch is merged/deleted before final R7 validation.
