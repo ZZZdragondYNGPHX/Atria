@@ -55,7 +55,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     const shellScoped = Boolean(
         shellStage
         && shellRecovery
-        && typeof nativePlayHost?.acquireStageOwnership === 'function'
+        && typeof nativePlayHost?.acquireStageOwnership === 'function',
     );
 
     const root = documentRef.createElement('main');
