@@ -2,7 +2,8 @@
 
 import {
     SOURCE_ID_FIELD, normalizeProvenance, emptyProvenance, sourceContent,
-    reconcileSources, captureEpisodes, episodesAreCurrent, bindDerivedChanges, projectCurrentSources,
+    reconcileSources, reconcileExternalSources, captureEpisodes, episodesAreCurrent,
+    externalSourcesAreCurrent, bindDerivedChanges, projectCurrentSources,
 } from './source-provenance.js';
 import { applyFactOperations, projectFacts } from './atomic-facts.js';
 import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from './temporal-graph.js';
@@ -35,6 +36,10 @@ export function writeMemoryFacts(context, operations, ticket) {
     if (!configuredLifecycle) throw new Error('Memory source lifecycle is not initialized');
     return configuredLifecycle.writeFacts(context, operations, ticket);
 }
+export function writeAuthoritativeMemoryFacts(context, operations, sourceIds) {
+    if (!configuredLifecycle) throw new Error('Memory source lifecycle is not initialized');
+    return configuredLifecycle.writeAuthoritativeFacts(context, operations, sourceIds);
+}
 export function listMemoryGraph(context, options) {
     return configuredLifecycle.listGraph(context, options);
 }
@@ -49,7 +54,15 @@ export function getMemoryRetrievalSnapshot(context) {
 }
 
 /** Runtime I/O is injected so lifecycle/race tests use the same production path. */
-export function createSourceLifecycle({ getContext, resolveScope, enabled, onInvalidation = () => {}, newId = () => crypto.randomUUID(), readProviders = () => [] }) {
+export function createSourceLifecycle({
+    getContext,
+    resolveScope,
+    enabled,
+    onInvalidation = () => {},
+    newId = () => crypto.randomUUID(),
+    readProviders = () => [],
+    readExternalSources = () => [],
+}) {
     const queues = new Map();
     const cache = new Map();
     const observed = new Map();
@@ -112,10 +125,14 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             reconcileSources(state, scope.chat, new Set(dirty.keys()));
             const providers = enabled(context) ? readProviders(context) : [];
             const providerVersion = JSON.stringify(providers);
-            const validateProviders = () => {
+            const externalSources = enabled(context) ? readExternalSources(context) : [];
+            const externalVersion = JSON.stringify(externalSources);
+            const validateSources = () => {
                 if (providerVersion !== JSON.stringify(enabled(context) ? readProviders(context) : [])) throw abort();
+                if (externalVersion !== JSON.stringify(enabled(context) ? readExternalSources(context) : [])) throw abort();
             };
             if (providers.length || state.providerSources) reconcileProviders(state, providers, scope.chat, newId);
+            if (externalSources.length || state.externalSources) reconcileExternalSources(state, externalSources);
             const output = await run(state, scope);
             const changed = before !== JSON.stringify(state);
             if (changed && state.facts) {
@@ -131,19 +148,19 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
             }
             scope.assertLive();
             validate();
-            validateProviders();
+            validateSources();
             if (before !== JSON.stringify(state)) {
                 const saved = await context.updateChatState(PROVENANCE_NAMESPACE, currentState => {
                     scope.assertLive();
                     validate();
-                    validateProviders();
+                    validateSources();
                     if (validateStored) validateStored(normalizeProvenance(currentState));
                     return state;
                 }, { target: scope.target });
                 scope.assertLive();
                 if (!saved?.ok) throw new Error('Memory provenance write failed');
             }
-            validateProviders();
+            validateSources();
             cache.set(scope.key, state);
             for (const [id, epoch] of dirty) {
                 if (pending.get(scope.key)?.get(id) === epoch) pending.get(scope.key).delete(id);
@@ -291,6 +308,30 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         }, () => assertTicket(ticket, context));
     }
 
+    async function writeAuthoritativeFacts(context, operations, sourceIds) {
+        if (!enabled(context)) throw new Error('Memory OS is disabled');
+        const ids = [...new Set(
+            (Array.isArray(sourceIds) ? sourceIds : [])
+                .map(id => String(id || '').trim())
+                .filter(Boolean),
+        )];
+        if (!ids.length) throw new Error('Authoritative facts require external source ids');
+
+        return transaction(context, (state, scope) => {
+            if (!externalSourcesAreCurrent(state, ids)) {
+                throw abort();
+            }
+            const ticket = {
+                scopeId: state.scopeId,
+                episodeIds: [],
+                externalSourceIds: ids,
+            };
+            const result = applyFactOperations(state, operations, ticket, scope.chat, newId);
+            Object.assign(state, result.state);
+            return result.results;
+        });
+    }
+
     function validateFacts(context, operations, ticket, graphOperations = []) {
         assertTicket(ticket, context);
         return evaluateBatch(cache.get(session(context).key), operations, graphOperations, ticket, context.chat);
@@ -331,12 +372,14 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         const original = content();
         const epoch = epochs.get(scope.key) || 0;
         const providerVersion = JSON.stringify(readProviders(context));
+        const externalVersion = JSON.stringify(readExternalSources(context));
         const state = await transaction(context, state => state);
         let version = JSON.stringify(state);
         const assertCurrent = () => {
             scope.assertLive();
             if (!enabled(getContext()) || original !== content() || epoch !== (epochs.get(scope.key) || 0)
                 || providerVersion !== JSON.stringify(readProviders(context))
+                || externalVersion !== JSON.stringify(readExternalSources(context))
                 || version !== JSON.stringify(cache.get(scope.key))) throw abort();
         };
         assertCurrent();
@@ -382,6 +425,25 @@ export function createSourceLifecycle({ getContext, resolveScope, enabled, onInv
         }, validate, validateStored);
     }
 
-    return { capture, assertTicket, bind, refresh, project, inherit, observeMutation, commitGuard, listFacts, writeFacts, validateFacts, correct, publishHistory,
-        writeBatch, commitExtraction, listGraph, retrievalSnapshot, resolveEntity: resolveEntityInContext };
+    return {
+        capture,
+        assertTicket,
+        bind,
+        refresh,
+        project,
+        inherit,
+        observeMutation,
+        commitGuard,
+        listFacts,
+        writeFacts,
+        writeAuthoritativeFacts,
+        validateFacts,
+        correct,
+        publishHistory,
+        writeBatch,
+        commitExtraction,
+        listGraph,
+        retrievalSnapshot,
+        resolveEntity: resolveEntityInContext,
+    };
 }
