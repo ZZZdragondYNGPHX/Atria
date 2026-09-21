@@ -1,4 +1,12 @@
 import { createAtriaStatePanel } from './primitives.js';
+import {
+    LIBRARY_SECTIONS,
+    RUNTIME_SECTIONS,
+    mountLibraryDomainWorkspace,
+    mountRuntimeDomainWorkspace,
+    normalizeLibrarySection,
+    normalizeRuntimeSection,
+} from './library-runtime-workspaces.js';
 
 const AGENT_SECTION_LABELS = Object.freeze({
     orchestration: 'Orchestration',
@@ -40,11 +48,22 @@ function routeDescriptor(route) {
             title: 'Studio',
         });
     }
-    if (route?.domain === 'library' && childId === 'world-info') {
+    if (route?.domain === 'library') {
+        const section = normalizeLibrarySection(route);
         return Object.freeze({
-            key: 'library:world-info',
-            kind: 'world-info',
-            title: 'World Info',
+            key: 'library',
+            kind: 'library',
+            section,
+            title: LIBRARY_SECTIONS.find(item => item.id === section)?.label || 'Library',
+        });
+    }
+    if (route?.domain === 'runtime') {
+        const section = normalizeRuntimeSection(route);
+        return Object.freeze({
+            key: 'runtime',
+            kind: 'runtime',
+            section,
+            title: RUNTIME_SECTIONS.find(item => item.id === section)?.label || 'Runtime',
         });
     }
     if (route?.domain === 'play') return null;
@@ -135,24 +154,6 @@ async function mountStudioWorkspace({ document: documentRef, slot, host }) {
     };
 }
 
-async function mountWorldInfoWorkspace({ document: documentRef, slot }) {
-    const worldInfo = await import('../world-info/workspace.js');
-    const mounted = worldInfo.mountWorldInfoWorkspace(slot, { embedded: true });
-    if (mounted) return mounted;
-
-    const panel = createAtriaStatePanel(documentRef, 'loading', {
-        title: 'World Info',
-        message: 'World Info is still finishing its existing controller bootstrap.',
-    });
-    slot.replaceChildren(panel);
-    return {
-        root: panel,
-        dispose() {
-            panel.remove();
-        },
-    };
-}
-
 async function mountDiagnosticsWorkspace({ slot }) {
     const [diagnostics, user] = await Promise.all([
         import('../logging/workspace.js'),
@@ -168,7 +169,8 @@ export function createAtriaWorkspaceAdapters() {
     return Object.freeze({
         agents: mountAgentsWorkspace,
         studio: mountStudioWorkspace,
-        'world-info': mountWorldInfoWorkspace,
+        library: mountLibraryDomainWorkspace,
+        runtime: mountRuntimeDomainWorkspace,
         diagnostics: mountDiagnosticsWorkspace,
         placeholder: mountPlaceholder,
     });
@@ -206,11 +208,13 @@ export function createAtriaWorkspaceHost({
             ? `Current Agents view: ${AGENT_SECTION_LABELS[descriptor.section] || descriptor.section}`
             : descriptor.kind === 'studio'
                 ? 'Project, editor and simulation details share the existing Studio controller.'
-                : descriptor.kind === 'world-info'
-                    ? 'World and entry details continue to use the existing World Info controller.'
-                    : descriptor.kind === 'diagnostics'
-                        ? 'Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.'
-                        : 'Workspace integration is staged for a later R7 phase.';
+                : descriptor.kind === 'library'
+                    ? `Library / ${descriptor.title} reuses existing character, Game Package, World Info and Skill authorities.`
+                    : descriptor.kind === 'runtime'
+                        ? `Runtime / ${descriptor.title} projects the existing Runtime Role, connection, preset and retrieval authorities.`
+                        : descriptor.kind === 'diagnostics'
+                            ? 'Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.'
+                            : 'Workspace integration is staged for a later R7 phase.';
         shell.setContextContent(
             makeContextSummary(documentRef, descriptor.title, detail),
             {
@@ -356,6 +360,85 @@ export function createAtriaWorkspaceHost({
         });
     }
 
+    function openPlay() {
+        return navigateToDomain('play', { reason: 'workspace-play' });
+    }
+
+    function openLibrarySection(section = 'characters') {
+        const id = String(section || 'characters').trim().toLowerCase();
+        const item = LIBRARY_SECTIONS.find(candidate => candidate.id === id) || LIBRARY_SECTIONS[0];
+        if (navigation.getRoute().domain !== 'library') {
+            navigation.navigate('library', {
+                reason: 'workspace-library-domain',
+                history: 'push',
+            });
+        }
+        if (item.id === 'characters') {
+            if (navigation.getRoute().child) {
+                return navigation.clearChild({
+                    history: 'push',
+                    reason: 'workspace-library-characters',
+                });
+            }
+            return navigation.getRoute();
+        }
+        return navigation.navigateChild({
+            id: item.id,
+            label: item.label,
+            kind: 'workspace',
+        }, {
+            reason: `workspace-library-${item.id}`,
+            history: 'push',
+        });
+    }
+
+    function openLibraryCharacter(characterId, label = '') {
+        const id = Number(characterId);
+        if (!Number.isInteger(id) || id < 0) return openLibrarySection('characters');
+        if (navigation.getRoute().domain !== 'library') {
+            navigation.navigate('library', {
+                reason: 'workspace-library-character-domain',
+                history: 'push',
+            });
+        }
+        return navigation.navigateChild({
+            id: `character:${id}`,
+            label: String(label || `Character ${id}`),
+            kind: 'detail',
+        }, {
+            reason: 'workspace-library-character-detail',
+            history: 'push',
+        });
+    }
+
+    function openRuntimeSection(section = 'overview') {
+        const id = String(section || 'overview').trim().toLowerCase();
+        const item = RUNTIME_SECTIONS.find(candidate => candidate.id === id) || RUNTIME_SECTIONS[0];
+        if (navigation.getRoute().domain !== 'runtime') {
+            navigation.navigate('runtime', {
+                reason: 'workspace-runtime-domain',
+                history: 'push',
+            });
+        }
+        if (item.id === 'overview') {
+            if (navigation.getRoute().child) {
+                return navigation.clearChild({
+                    history: 'push',
+                    reason: 'workspace-runtime-overview',
+                });
+            }
+            return navigation.getRoute();
+        }
+        return navigation.navigateChild({
+            id: item.id,
+            label: item.label,
+            kind: 'workspace',
+        }, {
+            reason: `workspace-runtime-${item.id}`,
+            history: 'push',
+        });
+    }
+
     function openStudio(characterId) {
         const hasExplicitCharacter = characterId !== undefined && characterId !== null && characterId !== '';
         if (hasExplicitCharacter) pendingStudioCharacter = characterId;
@@ -369,20 +452,7 @@ export function createAtriaWorkspaceHost({
     }
 
     function openWorldInfo() {
-        if (navigation.getRoute().domain !== 'library') {
-            navigation.navigate('library', {
-                reason: 'workspace-world-info-domain',
-                history: 'push',
-            });
-        }
-        return navigation.navigateChild({
-            id: 'world-info',
-            label: 'World Info',
-            kind: 'workspace',
-        }, {
-            reason: 'workspace-world-info',
-            history: 'push',
-        });
+        return openLibrarySection('world-info');
     }
 
     function openUtility(id) {
@@ -434,17 +504,35 @@ export function createAtriaWorkspaceHost({
 
     function onLegacyClick(event) {
         if (disposed || event.defaultPrevented) return;
-        const target = event.target?.closest?.('#WIDrawerIcon, #server_logs_button');
+        const target = event.target?.closest?.([
+            '#rightNavDrawerIcon',
+            '#WIDrawerIcon',
+            '#server_logs_button',
+            '#API-status-top',
+            '#leftNavDrawerIcon',
+            '#sys-settings-button .drawer-toggle',
+            '[data-atria-action="manage-skills"]',
+        ].join(', '));
         if (!target) return;
+
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (target.id === 'WIDrawerIcon') openWorldInfo();
-        else openUtility('diagnostics');
+
+        if (target.id === 'rightNavDrawerIcon') openLibrarySection('characters');
+        else if (target.id === 'WIDrawerIcon') openWorldInfo();
+        else if (target.id === 'server_logs_button') openUtility('diagnostics');
+        else if (target.matches?.('[data-atria-action="manage-skills"]')) openLibrarySection('skills');
+        else if (target.id === 'leftNavDrawerIcon') openRuntimeSection('presets');
+        else openRuntimeSection('connections');
     }
 
     const api = Object.freeze({
+        openPlay,
         openAgents: openAgentSection,
         openAgentSection,
+        openLibrarySection,
+        openLibraryCharacter,
+        openRuntimeSection,
         openStudio,
         openWorldInfo,
         openUtility,
@@ -491,6 +579,70 @@ export function createAtriaWorkspaceHost({
             group: 'Workspaces',
             keywords: ['studio', 'game', 'editor'],
             run: () => openStudio(),
+        }),
+        shell.registry.register({
+            id: 'workspace.characters',
+            title: 'Open Character Library',
+            description: 'Open the existing Character controller inside Library',
+            group: 'Workspaces',
+            keywords: ['library', 'characters', 'cards'],
+            run: () => openLibrarySection('characters'),
+        }),
+        shell.registry.register({
+            id: 'workspace.games',
+            title: 'Open Game Library',
+            description: 'Discover existing Game Packages without opening Studio',
+            group: 'Workspaces',
+            keywords: ['library', 'games', 'packages'],
+            run: () => openLibrarySection('games'),
+        }),
+        shell.registry.register({
+            id: 'workspace.skills',
+            title: 'Open Skills Library',
+            description: 'Open the existing Skill Manager controller inside Library',
+            group: 'Workspaces',
+            keywords: ['library', 'skills'],
+            run: () => openLibrarySection('skills'),
+        }),
+        shell.registry.register({
+            id: 'workspace.runtime-overview',
+            title: 'Open Runtime Overview',
+            description: 'Open current runtime health and routing projection',
+            group: 'Workspaces',
+            keywords: ['runtime', 'overview', 'health'],
+            run: () => openRuntimeSection('overview'),
+        }),
+        shell.registry.register({
+            id: 'workspace.runtime-roles',
+            title: 'Open Runtime Roles',
+            description: 'Open R5 Runtime Role routing configuration',
+            group: 'Workspaces',
+            keywords: ['runtime', 'roles', 'narrator', 'intent'],
+            run: () => openRuntimeSection('roles'),
+        }),
+        shell.registry.register({
+            id: 'workspace.connections',
+            title: 'Open Runtime Connections',
+            description: 'Open the existing Connection Manager controller',
+            group: 'Workspaces',
+            keywords: ['runtime', 'connections', 'providers', 'models'],
+            run: () => openRuntimeSection('connections'),
+        }),
+        shell.registry.register({
+            id: 'workspace.presets',
+            title: 'Open Model / Prompt Presets',
+            description: 'Open existing preset authorities through Runtime',
+            group: 'Workspaces',
+            keywords: ['runtime', 'presets', 'prompts'],
+            run: () => openRuntimeSection('presets'),
+        }),
+        shell.registry.register({
+            id: 'workspace.retrieval',
+            title: 'Open Runtime Retrieval',
+            description: 'Open embedding and rerank profiles from Connection Manager',
+            group: 'Workspaces',
+            keywords: ['runtime', 'retrieval', 'embedding', 'rerank'],
+            run: () => openRuntimeSection('retrieval'),
         }),
         shell.registry.register({
             id: 'workspace.world-info',
