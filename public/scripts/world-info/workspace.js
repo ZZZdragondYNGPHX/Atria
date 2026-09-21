@@ -18,6 +18,8 @@ const WORKSPACE_VIEWS = new Set(['library', 'entries', 'global']);
 const ROW_HEIGHT = 68;
 const ROW_OVERSCAN = 6;
 
+let embeddedMount = null;
+
 const state = {
     initialized: false,
     activeView: 'library',
@@ -1260,6 +1262,57 @@ export function initWorldInfoWorkspace() {
     setView(state.activeView, { persist: false });
     setDisplayMode(state.displayMode);
     setContinuousCards(state.continuousCards, { notify: false });
+}
+
+export function mountWorldInfoWorkspace(container, { embedded = true } = {}) {
+    if (!(container instanceof HTMLElement)) {
+        throw new TypeError('World Info Workspace host must be an HTMLElement');
+    }
+
+    initWorldInfoWorkspace();
+    const root = document.querySelector('#WorldInfo');
+    if (!(root instanceof HTMLElement)) return null;
+
+    if (embeddedMount?.root === root) {
+        if (root.parentElement !== container) container.append(root);
+        return embeddedMount.api;
+    }
+
+    const originalParent = root.parentNode;
+    const originalNextSibling = root.nextSibling;
+    const originalClassName = root.className;
+    const originalStyle = root.getAttribute('style');
+
+    container.replaceChildren(root);
+    root.dataset.atriaWorkspaceEmbedded = String(Boolean(embedded));
+    root.classList.add('openDrawer');
+    root.classList.remove('closedDrawer');
+    root.hidden = false;
+
+    let disposed = false;
+    const api = {
+        root,
+        dispose() {
+            if (disposed) return;
+            disposed = true;
+            delete root.dataset.atriaWorkspaceEmbedded;
+            root.className = originalClassName;
+            if (originalStyle === null) root.removeAttribute('style');
+            else root.setAttribute('style', originalStyle);
+
+            if (originalParent?.isConnected) {
+                if (originalNextSibling?.parentNode === originalParent) {
+                    originalParent.insertBefore(root, originalNextSibling);
+                } else {
+                    originalParent.append(root);
+                }
+            }
+            if (embeddedMount?.api === api) embeddedMount = null;
+        },
+    };
+    embeddedMount = { root, api };
+    syncWorkspaceChrome();
+    return api;
 }
 
 export function syncWorldInfoWorkspace({
