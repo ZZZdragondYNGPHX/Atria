@@ -20,6 +20,7 @@ void (__ctx.deleteCharacterState);
 import { sendAIMessage, TOOL_NAMES } from './ai-chat.js';
 import { GAME_PROJECT_KIND, GAME_PROJECT_STATUS, buildGameProjectNavigator } from './game-project-navigator.js';
 import { createStructuredRuntimeEditorHost } from './structured-runtime-ui.js';
+import { createStudioSimulationHost } from './simulation-ui.js';
 
 // Markdown converter for AI messages
 const mdConverter = new showdown.Converter({
@@ -111,6 +112,7 @@ let fileList = [];
 let projectNavigator = null;
 let currentProjectSelection = null;
 let structuredRuntimeEditorHost = null;
+let studioSimulationHost = null;
 
 // CodeMirror 6 state
 let cmEditor = null;
@@ -693,6 +695,7 @@ function buildRightPanelHtml() {
  <div class="card-app-studio-panel-header">
     <span class="card-app-studio-title" data-studio-editor-title>${isGameProject ? '🎮' : '📝'} ${escapeHtml(editorTitle)}</span>
  <div class="card-app-studio-header-actions">
+        ${isGameProject ? `<button class="card-app-studio-btn small" data-studio-action="simulation-toggle" title="${escapeHtml(t('Simulation / Diagnostics'))}">🧪 ${escapeHtml(t('Simulate'))}</button>` : ''}
         <button class="card-app-studio-btn small" data-studio-action="save" title="${escapeHtml(t('Save'))} (Ctrl+S)">💾 ${escapeHtml(t('Save'))}</button>
         <button class="card-app-studio-btn small" data-studio-action="reload" title="${escapeHtml(t('Reload'))}">↻ ${escapeHtml(t('Reload'))}</button>
  </div>
@@ -990,6 +993,7 @@ async function handleSaveCurrentFile() {
         await structuredRuntimeEditorHost?.validateBeforeSave();
         await saveFileContent(currentCharId, currentFile, getCMContent());
         await refreshProjectFiles();
+        await studioSimulationHost?.refresh();
         toastr.success(tFormat('Saved ${0}', currentFile));
         await reloadCardApp();
     } catch (err) {
@@ -1139,6 +1143,13 @@ export async function openCardAppStudio(charId) {
         notifyError: message => toastr.error(message),
     });
 
+    studioSimulationHost = createStudioSimulationHost({
+        translate: t,
+        getProjectNavigator: () => projectNavigator,
+        fetchFileContent: path => fetchFileContent(currentCharId, path),
+        notifyError: message => toastr.error(message),
+    });
+
     // Game projects open their authoritative package metadata first; plain
     // CardApps preserve the original first-file behavior.
     const firstFile = projectNavigator?.kind === GAME_PROJECT_KIND.GAME
@@ -1187,6 +1198,8 @@ export async function closeCardAppStudio() {
 
     structuredRuntimeEditorHost?.destroy();
     structuredRuntimeEditorHost = null;
+    studioSimulationHost?.destroy();
+    studioSimulationHost = null;
 
     // Destroy CM6 editor
     destroyCMEditor();
@@ -1699,6 +1712,7 @@ async function handleAISend() {
         if (result.modifiedFiles.length > 0) {
             await refreshProjectFiles();
             if (currentFile && result.modifiedFiles.includes(currentFile)) await openFile(currentFile);
+            await studioSimulationHost?.refresh();
             await reloadCardApp();
         }
     } catch (err) {
@@ -1740,6 +1754,9 @@ async function handleStudioClick(e) {
             break;
         case 'reload':
             reloadCardApp();
+            break;
+        case 'simulation-toggle':
+            await studioSimulationHost?.toggle();
             break;
         case 'new-file':
             handleNewFile();
