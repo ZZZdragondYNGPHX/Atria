@@ -124,19 +124,21 @@ describe('Game Package Component HTML', () => {
             },
         })).rejects.toThrow(/Native component slots require Hybrid or Full/);
 
-        await expect(loadGameComponentDefinition({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'hybrid',
-                    entry: 'ui/game.html',
-                    surface: 'sidebar.left',
+        for (const mode of ['hybrid', 'full']) {
+            await expect(loadGameComponentDefinition({
+                charId: 'hero',
+                manifest: {
+                    ui: {
+                        mode,
+                        entry: 'ui/game.html',
+                        surface: 'sidebar.left',
+                    },
                 },
-            },
-        }, {
-            document,
-            fetchImpl: componentFetch,
-        })).rejects.toThrow(/requires the app.root surface/);
+            }, {
+                document,
+                fetchImpl: componentFetch,
+            })).rejects.toThrow(/requires the app.root surface/);
+        }
     });
 
     test('rejects script-style Component entrypoints in the static R4 slice', async () => {
