@@ -277,7 +277,7 @@ export function createMemorySupportChecker(state, chat) {
             return Boolean(
                 state.corrections?.[ref.manualId]?.scopeId === state.scopeId
                 && episodesCurrent
-                && externalCurrent
+                && externalCurrent,
             );
         }
         return Boolean(hasEvidence && episodesCurrent && externalCurrent);
