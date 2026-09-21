@@ -1,4 +1,5 @@
 import { createGameLogicRuntime } from '../logic/runtime.js';
+import { createReducerRegistry } from '../logic/reducers.js';
 import { buildGameBranchPath } from './branch.js';
 import { loadGameWorldDefinition } from './package.js';
 import { createChatStateWorldPersistence } from './persistence.js';
@@ -19,10 +20,15 @@ export async function createGameWorldSession(options = {}) {
         return null;
     }
 
+    const reducerRegistry = options.reducerRegistry || createReducerRegistry(options.reducers || {});
+    if (!reducerRegistry || typeof reducerRegistry.toMap !== 'function' || typeof reducerRegistry.list !== 'function') {
+        throw new Error('Game World session requires a Reducer Registry');
+    }
+
     const runtime = createWorldRuntime({
         initialState: definition.initialState,
         schema: definition.schema,
-        reducers: options.reducers || {},
+        reducers: reducerRegistry.toMap(),
         persistence: options.persistence || createChatStateWorldPersistence(context),
         snapshotEvery: options.snapshotEvery,
         maxSnapshots: options.maxSnapshots,
@@ -77,6 +83,10 @@ export async function createGameWorldSession(options = {}) {
 
         getCommands() {
             return logicRuntime.listCommands();
+        },
+
+        getEventTypes() {
+            return reducerRegistry.list();
         },
 
         getRules() {
