@@ -63,6 +63,8 @@ describe('R7A shell architecture', () => {
         expect(shell).toContain('width: 100dvw;');
         expect(shell).toContain('height: 100dvh;');
         expect(shell).toContain('min-height: 100dvh;');
+        expect(shell).toContain('.atria-command-surface:not([hidden])');
+        expect(shell).toContain('display: block !important;');
     });
 });
 , '
