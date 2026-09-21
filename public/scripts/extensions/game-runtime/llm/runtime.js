@@ -3,6 +3,7 @@ import { isGameBranchPathCompatible } from '../world/branch.js';
 import { createEventInterpreter } from './event-interpreter.js';
 import { createIntentResolver } from './intent-resolver.js';
 import { createMemoryRecallBridge } from './memory-bridge.js';
+import { createPostTurnMemoryIngestion } from './memory-ingestion.js';
 import { createWorldObservationProjector } from './observation.js';
 import { createCommandToolCatalog } from './tools.js';
 import {
@@ -50,6 +51,12 @@ export function createGameLlmRuntime(options = {}) {
             context: options.context,
             memoryApi: options.memoryApi,
             getCurrentBranchPath: () => worldSession.getBranchPath(),
+        });
+    const memoryIngestion = options.memoryIngestion
+        || createPostTurnMemoryIngestion({
+            context: options.context,
+            memoryApi: options.memoryApi,
+            projectFactText: options.projectMemoryFactText,
         });
 
     let turnSerial = 0;
@@ -359,6 +366,27 @@ export function createGameLlmRuntime(options = {}) {
         });
     }
 
+    async function finalizeMemory(turnContext, input = {}) {
+        if (!turnContext || typeof turnContext !== 'object') {
+            throw new Error('Game LLM Runtime finalizeMemory requires Turn Context');
+        }
+
+        const beforeState = clone(worldSession.getState());
+        const beforeJournal = clone(worldSession.getJournal());
+        const result = await memoryIngestion.ingest(turnContext, input);
+        const afterState = worldSession.getState();
+        const afterJournal = worldSession.getJournal();
+
+        if (JSON.stringify(afterState) !== JSON.stringify(beforeState)) {
+            throw new Error('Post-turn Memory ingestion mutated World State');
+        }
+        if (JSON.stringify(afterJournal) !== JSON.stringify(beforeJournal)) {
+            throw new Error('Post-turn Memory ingestion mutated Event Journal');
+        }
+
+        return result;
+    }
+
     async function runUiAction(input = {}) {
         const commandId = String(input.commandId || '').trim();
         if (!commandId) throw new Error('UI action turn requires commandId');
@@ -474,6 +502,7 @@ export function createGameLlmRuntime(options = {}) {
         applyInterpretation,
         interpretAndApply,
         recallMemory,
+        finalizeMemory,
         runUiAction,
         runFreeText,
         listObservationProjectors: () => observationProjector.list(),
