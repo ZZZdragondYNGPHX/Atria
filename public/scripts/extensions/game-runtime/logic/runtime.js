@@ -1,5 +1,7 @@
 import { createCommandRegistry } from './command-registry.js';
 import { createDeterministicRng } from './rng.js';
+import { createRulesEngine } from './rules.js';
+import { runCommandValidators } from './validators.js';
 
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);
@@ -73,6 +75,11 @@ export function createGameLogicRuntime(options = {}) {
         throw new Error('Game Logic Runtime requires a Command Registry');
     }
 
+    const rulesEngine = options.rulesEngine || createRulesEngine(options.rules || [], options.ruleLimits || {});
+    if (!rulesEngine || typeof rulesEngine.process !== 'function' || typeof rulesEngine.listRules !== 'function') {
+        throw new Error('Game Logic Runtime requires a Rules Engine');
+    }
+
     const rngSeed = options.rngSeed ?? 'atria-game-runtime-v1';
     let commitQueue = Promise.resolve();
 
@@ -85,15 +92,27 @@ export function createGameLogicRuntime(options = {}) {
             );
         }
 
-        const identity = getTransactionIdentity(world, validation.command.id, rngSeed);
-        const transactionId = identity.transactionId;
-        const rng = createDeterministicRng(identity.rngSeed);
         const beforeState = clone(world.getState());
-        const mode = options.simulate === true ? 'simulation' : 'commit';
         const commandView = Object.freeze({
             id: validation.command.id,
             ...(validation.command.description ? { description: validation.command.description } : {}),
         });
+        const semanticValidation = await runCommandValidators(validation.command.validators, {
+            command: commandView,
+            args: validation.args,
+            world: beforeState,
+        });
+        if (!semanticValidation.ok) {
+            throw new Error(
+                `Command '${validation.command.id}' rejected: `
+                + semanticValidation.errors.slice(0, 8).join('; '),
+            );
+        }
+
+        const identity = getTransactionIdentity(world, validation.command.id, rngSeed);
+        const transactionId = identity.transactionId;
+        const rng = createDeterministicRng(identity.rngSeed);
+        const mode = options.simulate === true ? 'simulation' : 'commit';
         const executionContext = Object.freeze({
             transactionId,
             mode,
@@ -104,9 +123,45 @@ export function createGameLogicRuntime(options = {}) {
         });
 
         const output = await validation.command.execute(executionContext);
-        const eventDrafts = normalizeEventDrafts(output, validation.command.id);
+        const initialEvents = normalizeEventDrafts(output, validation.command.id).map(event => ({
+            ...event,
+            meta: {
+                ...(event.meta || {}),
+                command: {
+                    id: validation.command.id,
+                    transactionId,
+                },
+            },
+        }));
+
+        if (initialEvents.length === 0) {
+            return {
+                ok: true,
+                status: 'no_change',
+                transactionId,
+                commandId: validation.command.id,
+                args: clone(validation.args),
+                beforeState,
+                afterState: clone(beforeState),
+                events: [],
+                rngTrace: rng.trace(),
+                ruleTrace: [],
+                committed: false,
+            };
+        }
+
+        const ruled = await rulesEngine.process(initialEvents, {
+            beforeState,
+            project: events => world.simulateEvents(events),
+            context: {
+                transactionId,
+                command: commandView,
+                args: validation.args,
+                rng,
+            },
+        });
         const rngTrace = rng.trace();
-        const transactionEvents = eventDrafts.map((event, index) => ({
+        const transactionEvents = ruled.events.map((event, index) => ({
             ...event,
             meta: {
                 ...(event.meta || {}),
@@ -117,21 +172,6 @@ export function createGameLogicRuntime(options = {}) {
                 ...(index === 0 && rngTrace.length > 0 ? { rngTrace } : {}),
             },
         }));
-
-        if (transactionEvents.length === 0) {
-            return {
-                ok: true,
-                status: 'no_change',
-                transactionId,
-                commandId: validation.command.id,
-                args: clone(validation.args),
-                beforeState,
-                afterState: clone(beforeState),
-                events: [],
-                rngTrace,
-                committed: false,
-            };
-        }
 
         const projected = options.simulate === true
             ? await world.simulateEvents(transactionEvents)
@@ -148,12 +188,14 @@ export function createGameLogicRuntime(options = {}) {
             events: clone(projected.committed || projected.events || []),
             branchPath: clone(projected.branchPath || identity.branchPath),
             rngTrace,
+            ruleTrace: clone(ruled.trace),
             committed: options.simulate !== true,
         };
     }
 
     return Object.freeze({
         listCommands: () => registry.list(),
+        listRules: () => rulesEngine.listRules(),
         validateCommand: (commandId, args) => {
             const result = registry.validate(commandId, args);
             return {
