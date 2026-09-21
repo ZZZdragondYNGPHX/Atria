@@ -7,6 +7,7 @@ function makeSession() {
         hp: 10,
         inCombat: true,
         secretSeed: 999,
+        threatCount: 0,
     };
     let journal = {
         nextSeq: 2,
@@ -49,6 +50,21 @@ function makeSession() {
                 llm: { expose: true },
             },
             {
+                id: 'record_threat',
+                description: 'Record an interpreted semantic threat',
+                argsSchema: {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['severity'],
+                    properties: {
+                        severity: {
+                            type: 'string',
+                            enum: ['low', 'medium', 'high'],
+                        },
+                    },
+                },
+            },
+            {
                 id: 'internal_debug',
                 argsSchema: {
                     type: 'object',
@@ -58,51 +74,93 @@ function makeSession() {
             },
         ],
         validateCommand(commandId, args) {
-            const valid = commandId === 'attack'
-                && args
+            const isObject = args
                 && typeof args === 'object'
-                && !Array.isArray(args)
+                && !Array.isArray(args);
+            const attackValid = commandId === 'attack'
+                && isObject
                 && Object.keys(args).length === 0;
+            const threatValid = commandId === 'record_threat'
+                && isObject
+                && Object.keys(args).length === 1
+                && ['low', 'medium', 'high'].includes(args.severity);
+            const valid = attackValid || threatValid;
             return {
                 ok: valid,
                 errors: valid ? [] : ['invalid command proposal'],
-                args: valid ? {} : null,
+                args: valid ? structuredClone(args) : null,
             };
         },
         async dispatchCommandInternal(commandId, args) {
-            if (commandId !== 'attack' || Object.keys(args || {}).length !== 0) {
-                throw new Error('invalid dispatched command');
-            }
             dispatchCount += 1;
             const beforeState = structuredClone(state);
-            state = { ...state, hp: state.hp - 1 };
             const seq = journal.nextSeq;
-            const event = {
-                id: 'event:' + seq,
-                seq,
-                type: 'DamageDealt',
-                payload: { amount: 1 },
-                branchPath: [0, 1],
-                meta: {
-                    command: {
-                        id: 'attack',
-                        transactionId: 'tx:' + seq,
+
+            let event;
+            if (commandId === 'attack' && Object.keys(args || {}).length === 0) {
+                state = { ...state, hp: state.hp - 1 };
+                event = {
+                    id: 'event:' + seq,
+                    seq,
+                    type: 'DamageDealt',
+                    payload: { amount: 1 },
+                    branchPath: [0, 1],
+                    meta: {
+                        command: {
+                            id: 'attack',
+                            transactionId: 'tx:' + seq,
+                        },
                     },
-                },
-            };
+                };
+            } else if (
+                commandId === 'record_threat'
+                && ['low', 'medium', 'high'].includes(args?.severity)
+            ) {
+                state = { ...state, threatCount: state.threatCount + 1 };
+                event = {
+                    id: 'event:' + seq,
+                    seq,
+                    type: 'ThreatRecorded',
+                    payload: { severity: args.severity },
+                    branchPath: [0, 1],
+                    meta: {
+                        command: {
+                            id: 'record_threat',
+                            transactionId: 'tx:' + seq,
+                        },
+                    },
+                };
+            } else {
+                dispatchCount -= 1;
+                throw new Error('invalid dispatched command');
+            }
+
             journal.events.push(event);
             journal.nextSeq += 1;
             return {
                 ok: true,
                 status: 'committed',
                 committed: true,
-                commandId: 'attack',
-                command: { id: 'attack', args: {} },
-                args: {},
+                commandId,
+                command: { id: commandId, args: structuredClone(args || {}) },
+                args: structuredClone(args || {}),
                 beforeState,
                 afterState: structuredClone(state),
                 events: [structuredClone(event)],
             };
+        },
+        getInterpretationMappings() {
+            return [{
+                eventType: 'implicit_threat',
+                map(context) {
+                    return {
+                        id: 'record_threat',
+                        args: {
+                            severity: context.interpretation.severity,
+                        },
+                    };
+                },
+            }];
         },
         getDispatchCount() {
             return dispatchCount;
@@ -337,6 +395,87 @@ describe('R5 Game LLM Runtime vertical slice', () => {
         });
     });
 
+    test('accepted semantic interpretation maps through typed Command before any Journal mutation', async () => {
+        const session = makeSession();
+        const runtime = createGameLlmRuntime({
+            worldSession: session,
+            observationProjectors: [{
+                id: 'player',
+                select: world => ({
+                    hp: world.hp,
+                    threatCount: world.threatCount,
+                }),
+            }],
+            eventInterpreter: {
+                async interpret() {
+                    return {
+                        requestId: 'speech_semantics',
+                        status: 'accepted',
+                        accepted: true,
+                        interpretation: {
+                            decision: 'event',
+                            eventType: 'implicit_threat',
+                            severity: 'medium',
+                            participants: ['guard_02'],
+                            confidence: 0.91,
+                            evidence: ['You will regret this.'],
+                        },
+                    };
+                },
+            },
+        });
+
+        const turn = runtime.beginTurn({
+            origin: 'free_text',
+            userInput: 'You will regret this.',
+            serial: 14,
+        });
+
+        const result = await runtime.interpretAndApply(turn, {
+            id: 'speech_semantics',
+        });
+
+        expect(result.status).toBe('committed');
+        expect(result.accepted).toBe(true);
+        expect(result.mapping).toEqual({
+            status: 'mapped',
+            eventType: 'implicit_threat',
+            commands: [{
+                id: 'record_threat',
+                args: { severity: 'medium' },
+            }],
+        });
+        expect(result.commandResult).toMatchObject({
+            status: 'committed',
+            commandId: 'record_threat',
+            command: {
+                id: 'record_threat',
+                args: { severity: 'medium' },
+            },
+        });
+        expect(result.turn.resolution).toMatchObject({
+            eventInterpreter: 'applied',
+            reason: 'semantic_mapping',
+        });
+        expect(result.turn.observation.views.player).toEqual({
+            hp: 10,
+            threatCount: 1,
+        });
+
+        const journalTypes = session.getJournal().events.map(event => event.type);
+        expect(journalTypes).toContain('ThreatRecorded');
+        expect(journalTypes).not.toContain('implicit_threat');
+        expect(session.getJournal().events.at(-1)).toMatchObject({
+            type: 'ThreatRecorded',
+            payload: { severity: 'medium' },
+            meta: {
+                command: {
+                    id: 'record_threat',
+                },
+            },
+        });
+    });
+
     test('low-confidence Event Interpreter result stays no-change and produces no Event noise', async () => {
         const session = makeSession();
         const runtime = createGameLlmRuntime({
@@ -438,6 +577,7 @@ describe('R5 Game LLM Runtime vertical slice', () => {
             hp: 7,
             inCombat: true,
             secretSeed: 999,
+            threatCount: 0,
         });
         session.setJournal({
             nextSeq: 3,
@@ -475,7 +615,12 @@ describe('R5 Game LLM Runtime vertical slice', () => {
                 payload: { amount: 3 },
                 branchPath: [0, 1],
             }],
-            afterState: { hp: 7, inCombat: true, secretSeed: 999 },
+            afterState: {
+                hp: 7,
+                inCombat: true,
+                secretSeed: 999,
+                threatCount: 0,
+            },
         });
 
         expect(advanced.turnId).toBe(turn.turnId);
