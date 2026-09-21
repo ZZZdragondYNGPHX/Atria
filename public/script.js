@@ -2145,20 +2145,28 @@ function loadStartupClassicScript(src) {
 }
 
 function loadSelect2Libraries() {
-    if (typeof $.fn?.select2 === 'function' && globalThis.__atriaSelect2SearchPatchLoaded === true) {
+    const getJQuery = () => globalThis.jQuery || globalThis.$;
+    const initialJQuery = getJQuery();
+    if (typeof initialJQuery?.fn?.select2 === 'function' && globalThis.__atriaSelect2SearchPatchLoaded === true) {
         return Promise.resolve();
     }
 
     if (!select2LibrariesPromise) {
         select2LibrariesPromise = (async () => {
-            if (typeof $.fn?.select2 !== 'function') {
+            let canonicalJQuery = getJQuery();
+            if (typeof canonicalJQuery?.fn?.select2 !== 'function') {
                 await loadStartupClassicScript('/lib/select2.min.js');
+                canonicalJQuery = getJQuery();
+            }
+            if (typeof canonicalJQuery?.fn?.select2 !== 'function') {
+                throw new Error('Select2 library failed to attach to the canonical jQuery instance');
             }
             if (globalThis.__atriaSelect2SearchPatchLoaded !== true) {
                 await loadStartupClassicScript('/lib/select2-search-placeholder.js');
             }
-            if (typeof $.fn?.select2 !== 'function') {
-                throw new Error('Select2 library failed to initialize');
+            canonicalJQuery = getJQuery();
+            if (typeof canonicalJQuery?.fn?.select2 !== 'function') {
+                throw new Error('Select2 library became unavailable after startup patch loading');
             }
         })().catch((error) => {
             select2LibrariesPromise = null;
