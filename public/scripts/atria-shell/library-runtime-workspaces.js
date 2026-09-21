@@ -384,7 +384,7 @@ function mountRuntimeOverview({ document: documentRef, body }) {
     renderOverviewCard(documentRef, root, {
         title: 'Game Runtime',
         description: llmState.packageId
-            ? `Active package: ${llmState.packageId}`
+            ? formatShellText('Active package: 0', [llmState.packageId], undefined, 'atria.shell.runtime.activePackage')
             : 'No Game Package is currently active.',
         status: llmState.active ? 'Active' : 'Idle',
         tone: llmState.active ? 'success' : 'neutral',
@@ -396,7 +396,9 @@ function mountRuntimeOverview({ document: documentRef, body }) {
     });
     renderOverviewCard(documentRef, root, {
         title: 'Connections',
-        description: selected ? `Active profile: ${selected.name}` : 'No Connection Manager profile is active.',
+        description: selected
+            ? formatShellText('Active profile: 0', [selected.name], undefined, 'atria.shell.runtime.activeProfile')
+            : 'No Connection Manager profile is active.',
         status: formatShellText(
             '${0} chat · ${1} embedding · ${2} rerank profiles',
             [chatProfiles.length, embedProfiles.length, rerankProfiles.length],
