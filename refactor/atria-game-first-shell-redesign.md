@@ -2,17 +2,90 @@
 
 ## Status
 
-- Phase: **approved for implementation preparation**
+- Phase: **R7A validated; R7B next**
 - Repository: `ZZZdragondYNGPHX/Atria`
 - R0-R6 frozen branch: `refactor/game-runtime-architecture`
 - R6 final validated HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R6 validation: **Game Runtime Dev Checks #340**, run `35559636615`, success
 - R7 implementation branch: `refactor/atria-game-first-shell-redesign`
-- R7 branch base/current preparation HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+- R7 branch base: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+- R7A final validated HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
+- R7A validation: **R7 Shell Dev Checks #43**, run `35569965553`, success
 - R7 is based directly on the complete R0-R6 branch and therefore already contains the full Master Refactor history.
 - Neither long-running branch is to be merged into `main` before R7 final validation.
 
 R7 is the final host/product-shell phase of the Atria Game Runtime Architecture Refactor. R0-R6 runtime contracts are preserved unless a concrete R7 integration defect requires a targeted correction.
+
+---
+
+## R7A validated checkpoint
+
+R7A — Design System & Shell Foundation is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
+- Workflow: **R7 Shell Dev Checks #43**
+- Run: `35569965553`
+- Focused Unit / Lint / Namespace Guard: success
+- Expanded / Compact Browser Smoke: success
+
+R7A established:
+
+- semantic `--atri-*` token bridge and neutral host styling;
+- the required Atria Shell primitives and layout patterns;
+- AppShell with Navigation Rail, Bottom Navigation, Global Bar, Focus Area, Stage, Workspace, Context Dock, transient surfaces and Host Recovery layer;
+- Compact / Medium / Expanded environment semantics;
+- shared Command Registry rendered as desktop Command Palette and mobile Command Sheet;
+- a temporary R7 preview gate using `?atriaShell=1` / `atria.shell.preview`;
+- normal-startup Shell initialization without introducing a second application runtime;
+- browser-level validation that R7A does not clone or move the native Conversation / Composer before R7B.
+
+R7A also hardened several host compatibility edges exposed by real-browser validation:
+
+- post-visible Select2 enhancement now consistently uses the canonical jQuery instance and fails soft when unavailable;
+- responsive autocomplete refresh guards uninitialized widgets;
+- the initial static preloader is guaranteed to disappear by the `APP_READY` boundary;
+- Backgrounds jQuery UI hash tabs remain local on URLs carrying the R7 preview query instead of accidentally loading a second full application document;
+- Shell roots and transient surfaces own explicit dynamic-viewport geometry on Compact layouts;
+- Shell primitives now honor the HTML `hidden` contract consistently.
+
+These are compatibility fixes discovered while validating the new host. They do not change the R0-R6 Game Runtime architecture.
+
+### R7B entry condition
+
+R7B starts from the validated R7A HEAD above on the **same long-running R7 branch**. Do not create another R7B branch and do not merge to `main`.
+
+R7B is the first phase that may reparent the real native conversation DOM.
+
+Before changing ownership, inspect the live ancestry and behavior of:
+
+- `#sheld`
+- `#chat`
+- `#form_sheld`
+- `#send_form`
+- `#send_textarea`
+
+Then inventory the existing native action paths for:
+
+- send;
+- stop;
+- continue;
+- edit;
+- delete;
+- swipe;
+- regenerate;
+- branch;
+- history/search.
+
+R7B must preserve the hard invariant:
+
+> **One live Conversation DOM, one live Composer DOM, one generation/message state machine. Reparent, do not duplicate.**
+
+The Shell becomes the architectural host while the existing native nodes remain the compatibility/state ABI. R7B must support deterministic restoration/unmount during the staged migration.
+
+Game-linked historical edit/retry must continue through the existing Game Turn Controller / Host Action Resolver semantics rather than creating a second history or world-state authority.
 
 ---
 
