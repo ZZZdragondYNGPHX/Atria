@@ -5,7 +5,7 @@ import {
 import { formatShellText, translateShellText } from './localization.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
-    return createLocalizedStatePanel(documentRef, kind, {
+    return createAtriaStatePanel(documentRef, kind, {
         ...options,
         title: translateShellText(options.title),
         message: translateShellText(options.message),
@@ -13,7 +13,7 @@ function createLocalizedStatePanel(documentRef, kind, options = {}) {
 }
 
 function createLocalizedRuntimeCard(documentRef, options = {}) {
-    return createLocalizedRuntimeCard(documentRef, {
+    return createAtriaRuntimeCard(documentRef, {
         ...options,
         title: translateShellText(options.title),
         description: translateShellText(options.description),

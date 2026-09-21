@@ -15,7 +15,7 @@ import {
 import { formatShellText, translateShellText } from './localization.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
-    return createLocalizedStatePanel(documentRef, kind, {
+    return createAtriaStatePanel(documentRef, kind, {
         ...options,
         title: translateShellText(options.title),
         message: translateShellText(options.message),
