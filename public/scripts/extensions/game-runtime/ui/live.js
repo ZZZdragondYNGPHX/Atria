@@ -1,5 +1,9 @@
 import { loadGameSelectorDefinitions } from './declarative.js';
 import { createAtriaSurfaceAdapter } from './host-surfaces.js';
+import {
+    activateGameImmersiveProvider,
+    loadGameImmersiveDefinition,
+} from './immersive.js';
 import { loadGameComponentDefinition } from './package.js';
 import { createComponentUiRuntime } from './runtime.js';
 import { createSelectorRuntime } from './selectors.js';
@@ -27,10 +31,16 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         throw new Error('Game UI activation requires a document');
     }
 
-    const selectorDefinitions = await loadGameSelectorDefinitions(packageState, {
-        fetchImpl: options.fetchImpl,
-        headers: options.headers || {},
-    });
+    const [selectorDefinitions, immersiveDefinition] = await Promise.all([
+        loadGameSelectorDefinitions(packageState, {
+            fetchImpl: options.fetchImpl,
+            headers: options.headers || {},
+        }),
+        loadGameImmersiveDefinition(packageState, {
+            fetchImpl: options.fetchImpl,
+            headers: options.headers || {},
+        }),
+    ]);
 
     const adapter = createAtriaSurfaceAdapter(documentRef);
     const surfaceHost = createSurfaceHost({
@@ -44,16 +54,17 @@ export async function activateGamePackageUi(packageState, worldSession, options 
             ...(options.selectors || []),
         ],
     });
-    const componentRuntime = createComponentUiRuntime({
-        surfaceHost,
-        selectors,
-        dispatchCommand: async (commandId, args) => {
+
+    const actions = Object.freeze({
+        async dispatch(commandId, args) {
             if (!worldSession?.dispatchCommandInternal) {
                 throw new Error('Game UI cannot dispatch commands without an active World/Logic session');
             }
-            return await worldSession.dispatchCommandInternal(commandId, args);
+            const result = await worldSession.dispatchCommandInternal(commandId, args);
+            selectors.refresh();
+            return result;
         },
-        simulateCommand: async (commandId, args) => {
+        async simulate(commandId, args) {
             if (!worldSession?.simulateCommandInternal) {
                 throw new Error('Game UI cannot simulate commands without an active World/Logic session');
             }
@@ -61,16 +72,34 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         },
     });
 
+    const componentRuntime = createComponentUiRuntime({
+        surfaceHost,
+        selectors,
+        dispatchCommand: actions.dispatch,
+        simulateCommand: actions.simulate,
+    });
+
     let mounted = null;
+    let immersiveSession = null;
     try {
         const definition = await loadGameComponentDefinition(packageState, {
             document: documentRef,
+            window: options.window || globalThis.window,
             fetchImpl: options.fetchImpl,
             headers: options.headers || {},
         });
         if (!definition) return null;
         mounted = await componentRuntime.mountComponent(definition);
+
+        immersiveSession = await activateGameImmersiveProvider({
+            definition: immersiveDefinition,
+            selectors,
+            actions,
+            packageId: packageState?.manifest?.id,
+            immersiveApi: options.immersiveApi || globalThis.Atria?.immersive,
+        });
     } catch (error) {
+        immersiveSession?.dispose?.();
         await componentRuntime.unmountAll();
         surfaceHost.unmountAll();
         adapter.destroy();
@@ -84,12 +113,19 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         get mountId() {
             return mounted?.id || null;
         },
+        get immersiveStatus() {
+            return immersiveSession?.status || null;
+        },
         refresh() {
-            return componentRuntime.refreshSelectors();
+            const changed = componentRuntime.refreshSelectors();
+            void immersiveSession?.refresh?.();
+            return changed;
         },
         async dispose() {
             if (disposed) return;
             disposed = true;
+            immersiveSession?.dispose?.();
+            immersiveSession = null;
             await componentRuntime.unmountAll();
             surfaceHost.unmountAll();
             adapter.destroy();
