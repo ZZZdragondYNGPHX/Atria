@@ -298,6 +298,7 @@ import { DragAndDropHandler } from './scripts/dragdrop.js';
 import { INTERACTABLE_CONTROL_CLASS, initKeyboard } from './scripts/keyboard.js';
 import { initDynamicStyles } from './scripts/dynamic-styles.js';
 import { createImmersiveController } from './scripts/immersive/controller.js';
+import { initializeAtriaShellFoundation } from './scripts/atria-shell/index.js';
 
 import { AbortReason } from './scripts/util/AbortReason.js';
 import { initSystemPrompts } from './scripts/sysprompt.js';
@@ -1932,6 +1933,20 @@ async function firstLoadInit() {
     initWelcomeScreen();
     initKeyboard();
     initDynamicStyles();
+
+    // R7A: establish the Atria Host contracts without moving native
+    // Conversation/Composer yet. The temporary preview gate lets shell
+    // fixtures run against the real app while R7B performs the single-DOM
+    // reparenting step.
+    const shellFoundation = initializeAtriaShellFoundation({
+        document,
+        window,
+        translate: translateText,
+    });
+    if (globalThis.Atria) {
+        globalThis.Atria.shell = shellFoundation;
+    }
+
     initNavPanelPins();
     initSendTextareaState();
     restoreCharacterSearchVisibility();
