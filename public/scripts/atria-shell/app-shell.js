@@ -5,6 +5,7 @@ import {
     ATRIA_VIEWPORT_MODES,
 } from './constants.js';
 import { createAtriaShellEnvironment } from './environment.js';
+import { createAtriaNavigationAuthority } from './navigation-authority.js';
 import {
     createAtriaPrimitive,
     createAtriaStatePanel,
@@ -82,6 +83,7 @@ export function createAtriaAppShell({
     document: documentRef = globalThis.document,
     window: windowRef = globalThis.window,
     registry,
+    navigation,
     translate,
     utilities = {},
     initialDomain = 'play',
@@ -263,72 +265,113 @@ export function createAtriaAppShell({
     documentRef.body.append(root);
 
     const environment = createAtriaShellEnvironment(root, { window: windowRef });
+    const ownsNavigation = !navigation;
+    const navigationAuthority = navigation || createAtriaNavigationAuthority({
+        window: windowRef,
+        initialDomain,
+    });
     const navButtons = new Map();
-    let activeDomain = ATRIA_PRIMARY_DOMAINS.some(domain => domain.id === initialDomain)
-        ? initialDomain
-        : 'play';
-    let dockOpen = true;
     let commandOpen = false;
     let commandDisposers = [];
     let disposed = false;
+    let lastRouteSignature = '';
+
+    if (!navigationAuthority.getContext().initialized) {
+        navigationAuthority.setContext({
+            open: environment.get().mode !== ATRIA_VIEWPORT_MODES.COMPACT,
+            initialized: true,
+        }, { reason: 'shell-mount' });
+    }
 
     function commandContext() {
         return Object.freeze({
             shell: api,
-            domain: activeDomain,
+            domain: navigationAuthority.getRoute().domain,
             viewport: environment.get(),
         });
     }
 
-    function updateDomainPresentation() {
+    function updateDomainPresentation(route = navigationAuthority.getRoute()) {
         for (const [domainId, buttons] of navButtons.entries()) {
-            const selected = domainId === activeDomain;
+            const selected = domainId === route.domain;
             for (const button of buttons) {
                 button.classList.toggle('is-selected', selected);
                 button.setAttribute('aria-current', selected ? 'page' : 'false');
             }
         }
 
-        const domain = ATRIA_PRIMARY_DOMAINS.find(item => item.id === activeDomain);
-        const label = translateLabel(translate, domain?.label || activeDomain);
-        breadcrumb.textContent = `Atria / ${label}`;
-        contextTitle.textContent = label;
+        const domain = ATRIA_PRIMARY_DOMAINS.find(item => item.id === route.domain);
+        const labels = route.breadcrumb.length
+            ? route.breadcrumb.map(value => translateLabel(translate, value))
+            : [translateLabel(translate, domain?.label || route.domain)];
+        breadcrumb.textContent = ['Atria', ...labels].join(' / ');
+        contextTitle.textContent = labels.at(-1) || translateLabel(translate, domain?.label || route.domain);
 
-        const playActive = activeDomain === 'play';
+        const playActive = route.domain === 'play';
         stage.hidden = !playActive;
         workspace.hidden = playActive;
         if (!playActive) {
+            const label = translateLabel(translate, domain?.label || route.domain);
             workspace.replaceChildren(createAtriaStatePanel(documentRef, 'empty', {
-                title: `${label} Workspace`,
-                message: 'R7A provides the Workspace host. Feature controllers are connected in later R7 phases.',
+                title: route.child?.label
+                    ? `${label} / ${route.child.label}`
+                    : `${label} Workspace`,
+                message: 'R7D owns navigation only. First-class workspace controllers connect in later R7 phases.',
             }));
         }
     }
 
-    function navigate(domainId) {
-        if (!ATRIA_PRIMARY_DOMAINS.some(domain => domain.id === domainId)) {
-            throw new Error(`Unknown Atria primary domain: ${domainId}`);
-        }
-        activeDomain = domainId;
-        updateDomainPresentation();
-        return activeDomain;
+    function navigate(domainId, options = {}) {
+        const route = navigationAuthority.navigate(domainId, options);
+        return route.domain;
     }
 
     for (const domain of ATRIA_PRIMARY_DOMAINS) {
         const railButton = makeNavButton(documentRef, domain, translate);
         const bottomButton = makeNavButton(documentRef, domain, translate);
-        railButton.addEventListener('click', () => navigate(domain.id));
-        bottomButton.addEventListener('click', () => navigate(domain.id));
+        railButton.addEventListener('click', () => navigate(domain.id, { reason: 'rail' }));
+        bottomButton.addEventListener('click', () => navigate(domain.id, { reason: 'bottom-navigation' }));
         railItems.append(railButton);
         bottomNavigation.append(bottomButton);
         navButtons.set(domain.id, [railButton, bottomButton]);
     }
 
+    function updateContextPresentation(
+        contextState = navigationAuthority.getContext(),
+        viewport = environment.get(),
+    ) {
+        const compact = viewport.mode === ATRIA_VIEWPORT_MODES.COMPACT;
+        dock.dataset.atriaOpen = String(contextState.open);
+        dockTitle.textContent = contextState.title;
+
+        if (compact) {
+            dock.hidden = true;
+            if (contextState.open) {
+                if (dockBody.parentNode !== sheetBody) {
+                    sheetBody.replaceChildren();
+                    sheetBody.append(dockBody);
+                }
+                sheet.setAttribute('aria-label', contextState.title || 'Context sheet');
+                sheet.dataset.atriaSheetState = contextState.sheetState;
+                sheet.hidden = false;
+            } else {
+                sheet.hidden = true;
+                if (dockBody.parentNode !== dock) dock.append(dockBody);
+            }
+            return;
+        }
+
+        if (dockBody.parentNode !== dock) dock.append(dockBody);
+        sheet.hidden = true;
+        dock.hidden = !contextState.open;
+    }
+
     function setDockOpen(value) {
-        dockOpen = Boolean(value);
-        const state = environment.get();
-        dock.dataset.atriaOpen = String(dockOpen);
-        dock.hidden = !dockOpen || state.mode === ATRIA_VIEWPORT_MODES.COMPACT;
+        navigationAuthority.setContext(
+            { open: Boolean(value) },
+            { reason: 'context-toggle' },
+        );
+        return navigationAuthority.getContext().open;
     }
 
     dockClose.addEventListener('click', () => setDockOpen(false));
@@ -337,9 +380,9 @@ export function createAtriaAppShell({
         const compact = state.mode === ATRIA_VIEWPORT_MODES.COMPACT;
         rail.hidden = compact;
         bottomNavigation.hidden = !compact;
-        dock.hidden = compact || !dockOpen;
         commandSurface.dataset.atriaCommandPresentation = compact ? 'sheet' : 'palette';
         commandPanel.dataset.atriaPrimitive = compact ? 'CommandSheet' : 'CommandPalette';
+        updateContextPresentation(navigationAuthority.getContext(), state);
     }
 
     environment.subscribe(updateResponsiveChrome);
@@ -425,10 +468,8 @@ export function createAtriaAppShell({
     commandScrim.addEventListener('click', closeCommand);
 
     function closeSheet() {
-        if (sheet.hidden) return false;
-        sheet.hidden = true;
-        sheet.dataset.atriaSheetState = 'closed';
-        sheetBody.replaceChildren();
+        if (!navigationAuthority.getContext().open) return false;
+        navigationAuthority.closeContext({ reason: 'context-sheet-close' });
         return true;
     }
 
@@ -438,11 +479,49 @@ export function createAtriaAppShell({
         state = 'half',
         ariaLabel = 'Context sheet',
     } = {}) {
-        setNodeContent(sheetBody, content);
-        sheet.setAttribute('aria-label', ariaLabel);
-        sheet.dataset.atriaSheetState = ['peek', 'half', 'full'].includes(state) ? state : 'half';
-        sheet.hidden = false;
+        setNodeContent(dockBody, content);
+        navigationAuthority.setContext({
+            title: String(ariaLabel || 'Context sheet'),
+            open: true,
+            sheetState: ['peek', 'half', 'full'].includes(state) ? state : 'half',
+        }, { reason: 'context-sheet-open' });
         return sheet;
+    }
+
+    function dismissContextForBack() {
+        const compact = environment.get().mode === ATRIA_VIEWPORT_MODES.COMPACT;
+        if (!compact || sheet.hidden || !navigationAuthority.getContext().open) return false;
+        return closeSheet();
+    }
+
+    function dismissCommandForBack() {
+        return closeCommand();
+    }
+
+    function dismissChildRouteForBack(kind) {
+        const route = navigationAuthority.getRoute();
+        if (!route.child || route.child.kind !== kind) return false;
+        if (navigationAuthority.canGoBackWithinAtria()) {
+            return navigationAuthority.back();
+        }
+        navigationAuthority.clearChild({
+            history: 'replace',
+            reason: `${kind}-back`,
+        });
+        return true;
+    }
+
+    function hasEscapePriorityLayer() {
+        const route = navigationAuthority.getRoute();
+        return (
+            (
+                environment.get().mode === ATRIA_VIEWPORT_MODES.COMPACT
+                && !sheet.hidden
+                && navigationAuthority.getContext().open
+            )
+            || commandOpen
+            || route.child?.kind === 'detail'
+        );
     }
 
     function onKeyDown(event) {
@@ -454,14 +533,16 @@ export function createAtriaAppShell({
         }
 
         if (event.key !== 'Escape') return;
-        if (commandOpen) {
+        if (dismissContextForBack()) {
             event.preventDefault();
-            closeCommand();
             return;
         }
-        if (!sheet.hidden) {
+        if (dismissCommandForBack()) {
             event.preventDefault();
-            closeSheet();
+            return;
+        }
+        if (dismissChildRouteForBack('detail')) {
+            event.preventDefault();
         }
     }
 
@@ -494,7 +575,7 @@ export function createAtriaAppShell({
             description: `Open the ${domain.label} domain`,
             group: 'Navigation',
             keywords: [domain.label, domain.id, 'navigate', 'open'],
-            run: () => navigate(domain.id),
+            run: () => navigate(domain.id, { reason: 'command-navigation' }),
         }));
     }
 
@@ -502,9 +583,24 @@ export function createAtriaAppShell({
         if (commandOpen) renderCommands();
     });
 
+    const unsubscribeNavigation = navigationAuthority.subscribe((state) => {
+        const routeSignature = JSON.stringify(state.route);
+        if (routeSignature !== lastRouteSignature) {
+            lastRouteSignature = routeSignature;
+            updateDomainPresentation(state.route);
+        }
+        updateContextPresentation(state.context, environment.get());
+    });
+
+    const initialNavigationState = navigationAuthority.getState();
+    lastRouteSignature = JSON.stringify(initialNavigationState.route);
+    updateDomainPresentation(initialNavigationState.route);
+    updateContextPresentation(initialNavigationState.context, environment.get());
+
     const api = Object.freeze({
         root,
         registry,
+        navigation: navigationAuthority,
         environment,
         slots: Object.freeze({
             stage,
@@ -515,31 +611,55 @@ export function createAtriaAppShell({
             recovery,
         }),
         navigate,
-        getActiveDomain: () => activeDomain,
+        navigateChild: (child, options) => navigationAuthority.navigateChild(child, options),
+        getActiveDomain: () => navigationAuthority.getRoute().domain,
+        getRoute: () => navigationAuthority.getRoute(),
         setBreadcrumb(parts) {
-            const normalized = Array.isArray(parts)
-                ? parts.map(value => String(value || '').trim()).filter(Boolean)
-                : [String(parts || '').trim()].filter(Boolean);
-            breadcrumb.textContent = ['Atria', ...normalized].join(' / ');
+            navigationAuthority.setBreadcrumb(
+                Array.isArray(parts)
+                    ? parts
+                    : [String(parts || '').trim()].filter(Boolean),
+            );
         },
         setRuntimeStatus(label, tone = 'neutral', title = '') {
             runtimeChip.textContent = String(label);
             runtimeChip.dataset.tone = tone;
             runtimeChip.title = String(title);
         },
-        setDockContent(content, { title = 'Context', open = true } = {}) {
-            dockTitle.textContent = String(title);
+        setDockContent(content, {
+            title = 'Context',
+            open = true,
+            state = 'half',
+        } = {}) {
             setNodeContent(dockBody, content);
-            setDockOpen(open);
+            navigationAuthority.setContext({
+                title: String(title || 'Context'),
+                open: Boolean(open),
+                sheetState: ['peek', 'half', 'full'].includes(state) ? state : 'half',
+            }, { reason: 'context-content' });
             return dockBody;
         },
+        setContextContent(content, options = {}) {
+            return api.setDockContent(content, options);
+        },
         setDockOpen,
-        isDockOpen: () => dockOpen,
+        isDockOpen: () => navigationAuthority.getContext().open,
         openSheet,
         closeSheet,
+        isContextSheetOpen: () => (
+            environment.get().mode === ATRIA_VIEWPORT_MODES.COMPACT
+            && navigationAuthority.getContext().open
+            && !sheet.hidden
+        ),
         openCommand,
         closeCommand,
         isCommandOpen: () => commandOpen,
+        dismissContextForBack,
+        dismissCommandForBack,
+        dismissDetailRouteForBack: () => dismissChildRouteForBack('detail'),
+        dismissWorkspaceChildRouteForBack: () => dismissChildRouteForBack('workspace'),
+        navigateBack: () => navigationAuthority.back(),
+        hasEscapePriorityLayer,
         destroy() {
             if (disposed) return;
             disposed = true;
@@ -547,12 +667,13 @@ export function createAtriaAppShell({
             closeSheet();
             documentRef.removeEventListener('keydown', onKeyDown, true);
             unsubscribeRegistry();
+            unsubscribeNavigation();
             for (const dispose of commandDisposers.splice(0)) dispose();
             environment.dispose();
+            if (ownsNavigation) navigationAuthority.dispose();
             root.remove();
         },
     });
 
-    updateDomainPresentation();
     return api;
 }
