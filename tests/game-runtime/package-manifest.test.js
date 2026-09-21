@@ -45,6 +45,7 @@ describe('Game Package manifest', () => {
                 entry: 'ui/game.html',
                 surface: 'chat.header',
                 selectors: 'ui/selectors.json',
+                immersive: 'ui/immersive.json',
             },
             world: { schema: 'world/schema.json', initial: 'world/initial.json' },
             logic: { entry: 'scripts/main.js' },
@@ -55,6 +56,7 @@ describe('Game Package manifest', () => {
             entry: 'ui/game.html',
             surface: 'chat.header',
             selectors: 'ui/selectors.json',
+            immersive: 'ui/immersive.json',
         });
         expect(result.manifest.world.schema).toBe('world/schema.json');
         expect(result.manifest.logic.entry).toBe('scripts/main.js');
