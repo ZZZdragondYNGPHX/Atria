@@ -34,6 +34,8 @@ export async function createGameWorldSession(options = {}) {
         commands: options.commands || [],
         world: {
             getState: () => runtime.getState(),
+            getJournal: () => runtime.getJournal(),
+            getSnapshot: () => runtime.getSnapshot(),
             commitEvents: eventDrafts => runtime.commitEvents(eventDrafts, {
                 branchPath: buildGameBranchPath(getChat()),
             }),
