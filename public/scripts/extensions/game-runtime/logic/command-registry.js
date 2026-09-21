@@ -39,6 +39,12 @@ function normalizeCommandDefinition(raw) {
     if (typeof raw.execute !== 'function') {
         throw new Error(`Command '${id}' requires an execute() function`);
     }
+    if (raw.validators !== undefined && (
+        !Array.isArray(raw.validators)
+        || raw.validators.some(validator => typeof validator !== 'function')
+    )) {
+        throw new Error(`Command '${id}' validators must be an array of functions`);
+    }
 
     const description = raw.description === undefined
         ? ''
@@ -54,6 +60,7 @@ function normalizeCommandDefinition(raw) {
         id,
         ...(description ? { description } : {}),
         argsSchema: clone(argsSchema),
+        validators: Object.freeze([...(raw.validators || [])]),
         execute: raw.execute,
     });
 }
