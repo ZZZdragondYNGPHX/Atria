@@ -70,7 +70,7 @@ describe('Game Package Component HTML', () => {
         });
 
         const container = document.createElement('div');
-        await definition.mount({
+        const dispose = await definition.mount({
             container,
             selectors: {
                 get() {
@@ -86,6 +86,8 @@ describe('Game Package Component HTML', () => {
             },
         });
         expect(container.querySelector('#hud')?.textContent).toBe('HUD');
+        expect(container.dataset.atriaGameDevice).toBeTruthy();
+        dispose();
     });
 
     test('rejects script-style Component entrypoints in the static R4 slice', async () => {
