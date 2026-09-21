@@ -15,12 +15,13 @@ function resolveNativeNode(documentRef, componentId) {
     return null;
 }
 
-export function createNativeComponentRegistry(documentRef = globalThis.document) {
+export function createNativeComponentRegistry(documentRef = globalThis.document, options = {}) {
     if (!documentRef || typeof documentRef.getElementById !== 'function') {
         throw new Error('Native Component Registry requires a document');
     }
 
     const active = new Map();
+    const nativePlayHost = options.nativePlayHost || options.playHost || null;
 
     function mount(componentId, slot) {
         const id = String(componentId || '').trim();
@@ -32,6 +33,24 @@ export function createNativeComponentRegistry(documentRef = globalThis.document)
         }
         if (active.has(id)) {
             throw new Error(`Native component '${id}' is already mounted`);
+        }
+
+        if (nativePlayHost && typeof nativePlayHost.mountNativeComponent === 'function') {
+            const hostHandle = nativePlayHost.mountNativeComponent(id, slot);
+            let mounted = true;
+            const handle = Object.freeze({
+                id,
+                node: hostHandle.node,
+                slot,
+                restore() {
+                    if (!mounted) return false;
+                    mounted = false;
+                    active.delete(id);
+                    return hostHandle.restore();
+                },
+            });
+            active.set(id, handle);
+            return handle;
         }
 
         const node = resolveNativeNode(documentRef, id);
