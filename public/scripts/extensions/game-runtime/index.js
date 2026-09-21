@@ -38,9 +38,7 @@ let currentUiSession = null;
 let currentLlmSession = null;
 let currentTurnController = null;
 let currentNarrator = null;
-let currentRoleRouter = null;
 let currentOrchestratorBridge = null;
-let currentNarrativeCoordinator = null;
 let currentTurnRecipes = null;
 let currentPackage = Object.freeze({
     status: GAME_PACKAGE_STATUS.NONE,
@@ -74,9 +72,7 @@ function disposeRuntimeSystems() {
     currentLlmSession = null;
     currentTurnController = null;
     currentNarrator = null;
-    currentRoleRouter = null;
     currentOrchestratorBridge = null;
-    currentNarrativeCoordinator = null;
     currentTurnRecipes = null;
 }
 
@@ -489,9 +485,7 @@ export async function reloadGamePackage() {
     currentLlmSession = nextRuntimeSystems?.llmSession || null;
     currentTurnController = nextRuntimeSystems?.turnController || null;
     currentNarrator = nextRuntimeSystems?.narrator || null;
-    currentRoleRouter = nextRuntimeSystems?.roleRouter || null;
     currentOrchestratorBridge = nextRuntimeSystems?.orchestratorBridge || null;
-    currentNarrativeCoordinator = nextRuntimeSystems?.narrativeCoordinator || null;
     currentTurnRecipes = nextRuntimeSystems?.recipes || null;
     publishPackageState(next);
 
