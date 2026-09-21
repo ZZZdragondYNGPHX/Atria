@@ -285,6 +285,98 @@ test.describe('R7B Native Play Host', () => {
         });
     });
 
+    test('Immersive presentation and Full Host Recovery keep the reparented native host coherent', async ({ page }) => {
+        const root = await openShellPreview(page, { width: 1280, height: 800 });
+
+        const before = await page.evaluate(() => ({
+            sheld: document.getElementById('sheld'),
+            chat: document.getElementById('chat'),
+            composer: document.getElementById('send_form'),
+        }));
+        expect(before).toBeTruthy();
+
+        await page.evaluate(async () => {
+            await window.Atria.immersive.setEnabled(true, {
+                useFullscreen: false,
+                syncNative: false,
+            });
+        });
+        await expect(page.locator('body')).toHaveClass(/atria-immersive-mode/);
+
+        const immersiveState = await page.evaluate(() => {
+            const stage = document.getElementById('atria-stage');
+            const sheld = document.getElementById('sheld');
+            const chat = document.getElementById('chat');
+            const composer = document.getElementById('send_form');
+            const stageRect = stage.getBoundingClientRect();
+            const sheldRect = sheld.getBoundingClientRect();
+            return {
+                sheldCount: document.querySelectorAll('#sheld').length,
+                chatCount: document.querySelectorAll('#chat').length,
+                composerCount: document.querySelectorAll('#send_form').length,
+                inStage: stage.contains(sheld),
+                sheldHeight: sheldRect.height,
+                stageHeight: stageRect.height,
+                chatConnected: chat.isConnected,
+                composerConnected: composer.isConnected,
+            };
+        });
+        expect(immersiveState.sheldCount).toBe(1);
+        expect(immersiveState.chatCount).toBe(1);
+        expect(immersiveState.composerCount).toBe(1);
+        expect(immersiveState.inStage).toBe(true);
+        expect(immersiveState.sheldHeight).toBeGreaterThan(100);
+        expect(immersiveState.sheldHeight).toBeLessThanOrEqual(immersiveState.stageHeight + 1);
+        expect(immersiveState.chatConnected).toBe(true);
+        expect(immersiveState.composerConnected).toBe(true);
+
+        await page.evaluate(async () => {
+            await window.Atria.immersive.setEnabled(false, {
+                useFullscreen: false,
+                syncNative: false,
+            });
+        });
+        await expect(page.locator('body')).not.toHaveClass(/atria-immersive-mode/);
+
+        const fullState = await page.evaluate(async () => {
+            const module = await import('/scripts/extensions/game-runtime/ui/full-host.js');
+            const sheld = document.getElementById('sheld');
+            const playHost = document.getElementById('atria-native-play-host');
+            sheld.style.display = 'flex';
+            const host = module.createFullGameHost(document, {
+                onExit() {},
+                onStopGeneration() {},
+                onDisablePackage() {},
+                onDiagnostics() {},
+            });
+            const activated = host.activate();
+            const hiddenDuringFull = getComputedStyle(sheld).display === 'none';
+            const recoveryOutsidePackage = !host.root.contains(host.recovery)
+                && host.recovery.parentElement === document.body;
+            host.dispose();
+            return {
+                activated,
+                hiddenDuringFull,
+                recoveryOutsidePackage,
+                restoredDisplay: sheld.style.display,
+                restoredToPlayHost: sheld.parentElement === playHost,
+                chatCount: document.querySelectorAll('#chat').length,
+                composerCount: document.querySelectorAll('#send_form').length,
+            };
+        });
+
+        expect(fullState).toEqual({
+            activated: true,
+            hiddenDuringFull: true,
+            recoveryOutsidePackage: true,
+            restoredDisplay: 'flex',
+            restoredToPlayHost: true,
+            chatCount: 1,
+            composerCount: 1,
+        });
+        await expect(root.locator('#sheld')).toBeVisible();
+    });
+
     test('Ctrl+K opens the command surface and Escape closes it', async ({ page }) => {
         const root = await openShellPreview(page, { width: 1280, height: 800 });
 
