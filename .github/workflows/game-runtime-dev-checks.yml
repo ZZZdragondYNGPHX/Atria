@@ -38,6 +38,7 @@ jobs:
           game-runtime/studio-structured-projection-editors.test.js
           game-runtime/studio-simulation-runtime.test.js
           game-runtime/studio-game-ai-project.test.js
+          game-runtime/atria-distribution.test.js
           game-runtime/world-runtime.test.js
           game-runtime/command-registry.test.js
           game-runtime/logic-runtime.test.js
@@ -116,3 +117,4 @@ jobs:
           public/scripts/extensions/orchestrator/main.js
           public/scripts/extensions/regex/engine.js
           src/endpoints/card-app.js
+          src/game-package/distribution.js
