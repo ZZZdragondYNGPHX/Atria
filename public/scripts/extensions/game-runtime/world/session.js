@@ -1,6 +1,9 @@
 import { createGameLogicRuntime } from '../logic/runtime.js';
 import { createReducerRegistry } from '../logic/reducers.js';
-import { buildGameBranchPath } from './branch.js';
+import {
+    buildGameBranchPath,
+    normalizeGameBranchPath,
+} from './branch.js';
 import { loadGameWorldDefinition } from './package.js';
 import { createChatStateWorldPersistence } from './persistence.js';
 import { createWorldRuntime } from './runtime.js';
@@ -34,7 +37,12 @@ export async function createGameWorldSession(options = {}) {
         maxSnapshots: options.maxSnapshots,
     });
 
-    await runtime.load(buildGameBranchPath(getChat()));
+    let branchOverride = null;
+    const resolveActiveBranchPath = () => branchOverride
+        ? [...branchOverride]
+        : buildGameBranchPath(getChat());
+
+    await runtime.load(resolveActiveBranchPath());
 
     const logicRuntime = createGameLogicRuntime({
         commands: options.commands || [],
@@ -50,23 +58,38 @@ export async function createGameWorldSession(options = {}) {
             getJournal: () => runtime.getJournal(),
             getSnapshot: () => runtime.getSnapshot(),
             commitEvents: eventDrafts => runtime.commitEvents(eventDrafts, {
-                branchPath: buildGameBranchPath(getChat()),
+                branchPath: resolveActiveBranchPath(),
             }),
             simulateEvents: eventDrafts => runtime.simulateEvents(eventDrafts, {
-                branchPath: buildGameBranchPath(getChat()),
+                branchPath: resolveActiveBranchPath(),
             }),
         },
     });
 
-    async function syncRuntimeBranch() {
-        return runtime.switchBranch(buildGameBranchPath(getChat()));
+    async function syncRuntimeBranch(options = {}) {
+        if (options.clearOverride === true) branchOverride = null;
+        return runtime.switchBranch(resolveActiveBranchPath());
     }
 
     return Object.freeze({
         definition: Object.freeze(structuredClone(definition)),
 
         async syncBranch() {
-            return syncRuntimeBranch();
+            return syncRuntimeBranch({ clearOverride: true });
+        },
+
+        async switchBranchPathInternal(branchPath) {
+            branchOverride = normalizeGameBranchPath(branchPath);
+            return runtime.switchBranch(branchOverride);
+        },
+
+        async clearBranchOverrideInternal() {
+            branchOverride = null;
+            return runtime.switchBranch(buildGameBranchPath(getChat()));
+        },
+
+        getChatBranchPathInternal() {
+            return buildGameBranchPath(getChat());
         },
 
         getState() {
@@ -113,7 +136,7 @@ export async function createGameWorldSession(options = {}) {
 
         async commitEventsInternal(eventDrafts) {
             return runtime.commitEvents(eventDrafts, {
-                branchPath: buildGameBranchPath(getChat()),
+                branchPath: resolveActiveBranchPath(),
             });
         },
     });
