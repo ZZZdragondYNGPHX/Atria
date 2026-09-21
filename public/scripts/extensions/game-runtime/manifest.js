@@ -48,7 +48,7 @@ const TOP_LEVEL_KEYS = new Set([
     'world',
     'logic',
 ]);
-const UI_KEYS = new Set(['mode', 'entry', 'surface']);
+const UI_KEYS = new Set(['mode', 'entry', 'surface', 'selectors']);
 const WORLD_KEYS = new Set(['schema', 'initial']);
 const LOGIC_KEYS = new Set(['entry']);
 const RUNTIME_KEYS = new Set(['min', 'max']);
@@ -228,7 +228,15 @@ export function validateGameManifest(input, options = {}) {
             if (!GAME_UI_SURFACES.includes(surface)) {
                 errors.push(`ui.surface: expected one of ${GAME_UI_SURFACES.join(', ')}`);
             }
-            ui = { mode, entry, surface };
+            const selectors = input.ui.selectors === undefined
+                ? null
+                : validatePathField(input.ui.selectors, 'ui.selectors', errors);
+            ui = {
+                mode,
+                entry,
+                surface,
+                ...(selectors ? { selectors } : {}),
+            };
         }
     }
 
@@ -289,6 +297,7 @@ export function validateGameManifest(input, options = {}) {
 export function getGamePackageDeclaredFiles(manifest) {
     const paths = [
         manifest?.ui?.entry,
+        manifest?.ui?.selectors,
         manifest?.world?.schema,
         manifest?.world?.initial,
         manifest?.logic?.entry,
