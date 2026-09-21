@@ -446,7 +446,7 @@ describe('R7G WorkspaceHost', () => {
         expect(routeDescriptor({
             domain: 'runtime',
             child: { id: 'retrieval', label: 'Retrieval', kind: 'workspace' },
-        })).toMatchObject({ key: 'runtime', kind: 'runtime', section: 'retrieval' });
+        })).toMatchObject({ key: 'runtime', kind: 'runtime', section: 'connections', title: 'Connections' });
         expect(routeDescriptor({ domain: 'play', child: null, breadcrumb: ['Play'] })).toBeNull();
     });
 });
