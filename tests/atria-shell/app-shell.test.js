@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import { createAtriaAppShell } from '../../public/scripts/atria-shell/app-shell.js';
+import { initializeAtriaShellFoundation } from '../../public/scripts/atria-shell/index.js';
 import { createCommandRegistry } from '../../public/scripts/atria-shell/command-registry.js';
 import { ATRIA_PRIMITIVES } from '../../public/scripts/atria-shell/primitives.js';
 
@@ -107,6 +108,27 @@ describe('R7A Atria AppShell foundation', () => {
         expect(shell.isCommandOpen()).toBe(false);
 
         shell.destroy();
+    });
+
+    test('tracks preview enable and disable state without stale initialization flags', () => {
+        const foundation = initializeAtriaShellFoundation({
+            document,
+            window,
+            forcePreview: true,
+        });
+
+        expect(foundation.isPreviewEnabled()).toBe(true);
+        expect(foundation.isMounted()).toBe(true);
+
+        foundation.setPreviewEnabled(false, { persist: false });
+        expect(foundation.isPreviewEnabled()).toBe(false);
+        expect(foundation.isMounted()).toBe(false);
+
+        foundation.setPreviewEnabled(true, { persist: false });
+        expect(foundation.isPreviewEnabled()).toBe(true);
+        expect(foundation.isMounted()).toBe(true);
+
+        foundation.unmount();
     });
 
     test('opens Dock and Context Sheet as host containers rather than feature state machines', () => {
