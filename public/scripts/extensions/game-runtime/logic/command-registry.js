@@ -37,7 +37,7 @@ function normalizeCommandDefinition(raw) {
         throw new Error('Command id must match /^[a-z][a-z0-9._-]{0,63}$/');
     }
     if (typeof raw.execute !== 'function') {
-        throw new Error('Command \\'' + id + '\\' requires an execute() function');
+        throw new Error(`Command '${id}' requires an execute() function`);
     }
 
     const description = raw.description === undefined
@@ -47,7 +47,7 @@ function normalizeCommandDefinition(raw) {
         ? EMPTY_ARGUMENT_SCHEMA
         : raw.argsSchema;
     if (!isPlainObject(argsSchema)) {
-        throw new Error('Command \\'' + id + '\\' argsSchema must be an object');
+        throw new Error(`Command '${id}' argsSchema must be an object`);
     }
 
     return Object.freeze({
@@ -64,7 +64,7 @@ export function createCommandRegistry(definitions = []) {
     for (const raw of normalizeDefinitions(definitions)) {
         const command = normalizeCommandDefinition(raw);
         if (commands.has(command.id)) {
-            throw new Error('Duplicate command id \\'' + command.id + '\\'');
+            throw new Error(`Duplicate command id '${command.id}'`);
         }
         commands.set(command.id, command);
     }
@@ -87,7 +87,7 @@ export function createCommandRegistry(definitions = []) {
         if (!command) {
             return {
                 ok: false,
-                errors: ['Unknown command \\'' + String(commandId || '').trim() + '\\''],
+                errors: [`Unknown command '${String(commandId || '').trim()}'`],
                 command: null,
                 args: null,
             };
