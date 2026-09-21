@@ -1,4 +1,5 @@
 import { isGameBranchPathCompatible } from '../world/branch.js';
+import { createIntentResolver } from './intent-resolver.js';
 import { createWorldObservationProjector } from './observation.js';
 import { createCommandToolCatalog } from './tools.js';
 import {
@@ -130,11 +131,119 @@ export function createGameLlmRuntime(options = {}) {
         });
     }
 
+    async function runUiAction(input = {}) {
+        const commandId = String(input.commandId || '').trim();
+        if (!commandId) throw new Error('UI action turn requires commandId');
+        if (typeof worldSession.dispatchCommandInternal !== 'function') {
+            throw new Error('Game LLM Runtime UI action requires worldSession.dispatchCommandInternal()');
+        }
+
+        let turn = beginTurn({
+            origin: 'ui_action',
+            recentChat: input.recentChat || [],
+            constraints: input.constraints || [],
+            serial: input.serial,
+        });
+
+        const result = await worldSession.dispatchCommandInternal(commandId, input.args || {});
+        turn = applyCommandResult(turn, result, {
+            resolution: {
+                intentResolver: 'skipped',
+                eventInterpreter: 'not_requested',
+                reason: 'typed_ui_command',
+            },
+        });
+
+        return Object.freeze({
+            status: result.status,
+            turn,
+            commandResult: clone(result),
+        });
+    }
+
+    async function runFreeText(input = {}) {
+        const userInput = String(input.userInput || '').trim();
+        if (!userInput) throw new Error('Free-text game turn requires userInput');
+        if (typeof worldSession.dispatchCommandInternal !== 'function') {
+            throw new Error('Game LLM Runtime free-text turn requires worldSession.dispatchCommandInternal()');
+        }
+        if (typeof worldSession.validateCommand !== 'function') {
+            throw new Error('Game LLM Runtime free-text turn requires worldSession.validateCommand()');
+        }
+
+        let turn = beginTurn({
+            origin: 'free_text',
+            userInput,
+            recentChat: input.recentChat || [],
+            constraints: input.constraints || [],
+            serial: input.serial,
+        });
+        const catalog = await getCommandTools({
+            role: 'intent_resolver',
+            observation: turn.observation,
+            turn,
+        });
+
+        const resolver = input.intentResolver || options.intentResolver || createIntentResolver({
+            generateTask: input.generateTask || options.generateTask,
+            validateCommand: (commandId, args) => worldSession.validateCommand(commandId, args),
+        });
+        if (!resolver || typeof resolver.resolve !== 'function') {
+            throw new Error('Game LLM Runtime requires an Intent Resolver');
+        }
+
+        const resolutionResult = await resolver.resolve(turn, catalog, input.requestOptions || {});
+        if (resolutionResult.decision === 'no_change') {
+            turn = advanceTurnContext(turn, {
+                resolution: {
+                    intentResolver: 'resolved_no_change',
+                    eventInterpreter: 'not_requested',
+                    reason: resolutionResult.reason || 'no_matching_command',
+                },
+            });
+            return Object.freeze({
+                status: 'no_change',
+                turn,
+                resolution: clone(resolutionResult),
+                commandResults: Object.freeze([]),
+            });
+        }
+        if (resolutionResult.decision !== 'commands' || !Array.isArray(resolutionResult.commands)) {
+            throw new Error('Intent Resolver returned an unsupported decision');
+        }
+
+        turn = advanceTurnContext(turn, {
+            resolution: {
+                intentResolver: 'resolved_commands',
+                eventInterpreter: 'not_requested',
+                reason: 'typed_commands',
+            },
+        });
+
+        const commandResults = [];
+        for (const proposal of resolutionResult.commands) {
+            const result = await worldSession.dispatchCommandInternal(proposal.id, proposal.args || {});
+            commandResults.push(clone(result));
+            turn = applyCommandResult(turn, result);
+        }
+
+        return Object.freeze({
+            status: commandResults.some(result => result.committed === true)
+                ? 'committed'
+                : 'no_change',
+            turn,
+            resolution: clone(resolutionResult),
+            commandResults: Object.freeze(commandResults),
+        });
+    }
+
     return Object.freeze({
         buildObservation,
         getCommandTools,
         beginTurn,
         applyCommandResult,
+        runUiAction,
+        runFreeText,
         listObservationProjectors: () => observationProjector.list(),
     });
 }
