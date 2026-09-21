@@ -2023,6 +2023,20 @@ export function initBackgrounds() {
         });
     });
 
+    // jQuery UI compares each tab anchor's resolved URL against the current
+    // document URL to decide whether it is local or remote. Because Atria uses
+    // <base href="/">, a bare "#bg_*" anchor resolves without the current
+    // query string. On URLs such as ?atriaShell=1 that makes jQuery UI treat
+    // the tab as remote and load the whole app document into a generated panel.
+    // Preserve the current pathname + query so these anchors always remain local.
+    const currentDocumentUrl = `${window.location.pathname}${window.location.search}`;
+    $('#bg_tabs .bg_tabs_list > li > a[href^="#"]').each(function () {
+        const hash = this.hash;
+        if (hash) {
+            this.setAttribute('href', `${currentDocumentUrl}${hash}`);
+        }
+    });
+
     $('#bg_tabs').tabs();
     $('#bg_tabs').on('tabsactivate', function () {
         console.debug('[Backgrounds] Background tab activated', {

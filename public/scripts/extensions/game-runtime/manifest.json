@@ -1,0 +1,11 @@
+{
+    "display_name": "Atria Game Runtime",
+    "loading_order": 95,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "author": "Atria",
+    "version": "0.1.0",
+    "homePage": "",
+    "auto_update": true
+}

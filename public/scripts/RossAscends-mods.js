@@ -680,10 +680,23 @@ const saveUserInputDebounced = debounce(saveUserInput);
 // Make the DIV element draggable:
 
 /**
+ * Returns whether Atria Shell currently owns the element's layout.
+ * MovingUI can still serve compatibility islands outside the Shell, but it
+ * must never become layout authority for Stage, Workspace or Native Play.
+ *
+ * @param {Element|null|undefined} element
+ * @returns {boolean}
+ */
+export function isAtriaShellLayoutOwned(element) {
+    return Boolean(element?.closest?.('#atria-app-shell'));
+}
+
+/**
  * Make the given element draggable. This is used for Moving UI.
  * @param {JQuery} $elmnt - The element to make draggable.
  */
 export function dragElement($elmnt) {
+    if (isAtriaShellLayoutOwned($elmnt?.[0])) return;
     let actionType = null; // "drag" or "resize"
     let isMouseDown = false;
 
@@ -835,6 +848,7 @@ export function dragElement($elmnt) {
     // Setup event listeners
     if ($elmntHeader.length) {
         $elmntHeader.off('mousedown').on('mousedown', (e) => {
+            if (isAtriaShellLayoutOwned($elmnt[0])) return;
             if ($(e.target).hasClass('drag-grabber')) {
                 actionType = 'drag';
                 isMouseDown = true;
@@ -845,6 +859,7 @@ export function dragElement($elmnt) {
     }
 
     $elmnt.off('mousedown').on('mousedown', (e) => {
+        if (isAtriaShellLayoutOwned($elmnt[0])) return;
         const rect = $elmnt[0].getBoundingClientRect();
         const resizeMargin = 16;
         const isNearRight = e.clientX > rect.right - resizeMargin;

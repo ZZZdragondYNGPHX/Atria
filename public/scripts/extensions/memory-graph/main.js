@@ -112,6 +112,12 @@ const sourceLifecycle = configureSourceLifecycle({
     }),
     enabled: context => isMemoryOsEnabled(getEffectiveSettings(context, getSettings())),
     readProviders: context => readStateProviders(context, getEffectiveSettings(context, getSettings())),
+    readExternalSources: context => {
+        const api = context?.getExtensionApi?.('game-runtime');
+        return typeof api?.getAuthoritativeMemorySources === 'function'
+            ? api.getAuthoritativeMemorySources()
+            : [];
+    },
     onInvalidation: () => { latestRecallSnapshot = null; },
 });
 const META_NAMESPACE = floorStateAdapterConstants.META_NAMESPACE;

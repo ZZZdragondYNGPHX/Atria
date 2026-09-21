@@ -447,7 +447,7 @@ async function resetEverything(callback) {
     }
 }
 
-async function openUserProfile() {
+export async function openUserProfile({ container = null } = {}) {
     await getCurrentUser();
     const template = $(await renderTemplateAsync('userProfile'));
     template.find('.userName').text(currentUser.name);
@@ -518,6 +518,12 @@ async function openUserProfile() {
         template.find('.accountsDisabledHint').show();
     }
 
+    const root = template.get(0);
+    if (container?.replaceChildren && root) {
+        container.replaceChildren(root);
+        return root;
+    }
+
     const popupOptions = {
         okButton: 'Close',
         wide: false,
@@ -526,6 +532,7 @@ async function openUserProfile() {
         allowHorizontalScrolling: false,
     };
     callGenericPopup(template, POPUP_TYPE.TEXT, '', popupOptions);
+    return root || null;
 }
 
 /**

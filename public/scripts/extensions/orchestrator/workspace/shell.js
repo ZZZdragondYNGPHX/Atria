@@ -26,10 +26,11 @@ function icon(name, parent) {
  * The shell owns layout, focusable global navigation and the contextual
  * inspector column. Feature pages own only their page contents.
  */
-export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrchestration }) {
-    const root = el('section', 'atria-workspace', document.body);
+export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrchestration, container = document.body, embedded = false }) {
+    const root = el('section', 'atria-workspace', container);
     root.id = 'agent-memory-workspace';
     root.hidden = true;
+    root.dataset.atriaWorkspaceEmbedded = String(Boolean(embedded));
     root.setAttribute('aria-label', i18n('Atria Workspace'));
 
     const header = el('header', 'atria-workspace-header', root);
@@ -67,6 +68,7 @@ export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrch
     close.type = 'button';
     close.setAttribute('aria-label', i18n('Close'));
     close.addEventListener('click', onClose);
+    close.hidden = Boolean(embedded);
     icon('fa-xmark', close);
 
     const frame = el('div', 'atria-workspace-frame', root);

@@ -11,6 +11,11 @@ import {
     TOOL_PROTOCOL_STYLE,
 } from '../../function-call-runtime.js';
 import { fetchFileList, fetchFileContent, saveFileContent, deleteFile, renameFile } from './studio.js';
+import {
+    buildGameStudioAiSystemAppendix,
+    inspectGameStudioProject,
+    validateGameStudioProjectSource,
+} from './game-ai-project.js';
 import { applyEdits } from '../../../lib/edits/index.js';
 import { showConflictResolution } from '../../../lib/edits/conflict-ui.js';
 import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../../regex/engine.js';
@@ -82,10 +87,19 @@ const TOOL_NAMES = Object.freeze({
     DOCS_LIST: 'list_atria_docs',
     DOCS_READ: 'read_atria_doc',
     CARDAPP_SET_ENABLED: 'cardapp_set_enabled',
+    GAME_PROJECT_INSPECT: 'game_project_inspect',
 });
 
 function buildTools() {
     return [
+        {
+            type: 'function',
+            function: {
+                name: TOOL_NAMES.GAME_PROJECT_INSPECT,
+                description: 'Inspect the current Atria Game Studio source project. Returns whether this is a Game Runtime project or plain CardApp, current runtime-aware source map, manifest summary, and validation diagnostics. Use this before cross-file Game Runtime architecture edits and whenever file layout may have changed.',
+                parameters: { type: 'object', properties: {}, additionalProperties: false },
+            },
+        },
         {
             type: 'function',
             function: {
@@ -755,6 +769,97 @@ async function commitFileOpEdits(charId, cleanEdits, newLive) {
     }
 }
 
+
+async function inspectLiveStudioProject(charId) {
+    const files = await fetchFileList(charId);
+    return inspectGameStudioProject({
+        files,
+        readFile: path => fetchFileContent(charId, path),
+    });
+}
+
+function applyVirtualFileInventory(files, cleanEdits) {
+    const map = new Map(
+        (Array.isArray(files) ? files : [])
+            .filter(file => file?.type === 'file' && typeof file.path === 'string')
+            .map(file => [file.path, { ...file }]),
+    );
+
+    for (const edit of cleanEdits || []) {
+        if (edit.op === 'set') {
+            const path = parseCardAppFilePath(edit.path);
+            map.set(path, {
+                path,
+                type: 'file',
+                size: typeof edit.newValue === 'string' ? edit.newValue.length : 0,
+            });
+        } else if (edit.op === 'unset') {
+            map.delete(parseCardAppFilePath(edit.path));
+        } else if (edit.op === 'cardapp_patch_file') {
+            const existing = map.get(edit.path);
+            map.set(edit.path, {
+                path: edit.path,
+                type: 'file',
+                size: existing?.size || 0,
+            });
+        } else if (edit.op === 'cardapp_rename_file') {
+            const existing = map.get(edit.from);
+            map.delete(edit.from);
+            map.set(edit.to, {
+                path: edit.to,
+                type: 'file',
+                size: existing?.size || 0,
+            });
+        }
+    }
+
+    return [...map.values()];
+}
+
+function removedVirtualPaths(cleanEdits) {
+    const removed = new Set();
+    for (const edit of cleanEdits || []) {
+        if (edit.op === 'unset') removed.add(parseCardAppFilePath(edit.path));
+        if (edit.op === 'cardapp_rename_file') removed.add(edit.from);
+    }
+    return removed;
+}
+
+async function validateGameFileBatch(charId, cleanEdits, newLive) {
+    const currentFiles = await fetchFileList(charId);
+    const virtualFiles = applyVirtualFileInventory(currentFiles, cleanEdits);
+    const hadGameManifest = currentFiles.some(file => file?.type === 'file' && file.path === 'game.json');
+    const hasGameManifest = virtualFiles.some(file => file?.type === 'file' && file.path === 'game.json');
+    if (hadGameManifest && !hasGameManifest) {
+        throw new Error('AI Builder cannot remove or rename the authoritative game.json contract from an existing Game Runtime project');
+    }
+    const removed = removedVirtualPaths(cleanEdits);
+    const virtual = newLive?.files && typeof newLive.files === 'object'
+        ? newLive.files
+        : {};
+
+    return validateGameStudioProjectSource({
+        files: virtualFiles,
+        async readFile(path) {
+            if (Object.hasOwn(virtual, path)) {
+                return virtual[path];
+            }
+            if (removed.has(path)) {
+                throw new Error('missing ' + path);
+            }
+
+            const rename = (cleanEdits || []).find(edit => (
+                edit.op === 'cardapp_rename_file' && edit.to === path
+            ));
+            if (rename) {
+                return fetchFileContent(charId, rename.from);
+            }
+
+            return fetchFileContent(charId, path);
+        },
+    });
+}
+
 // ==================== Tool Execution ====================
 
 /**
@@ -770,6 +875,10 @@ async function executeTool(charId, toolName, args, options = {}) {
     const { deferWriteOps = false } = options;
     try {
         switch (toolName) {
+            case TOOL_NAMES.GAME_PROJECT_INSPECT: {
+                const project = await inspectLiveStudioProject(charId);
+                return { ok: true, project };
+            }
             case TOOL_NAMES.LIST_FILES: {
                 const files = await fetchFileList(charId);
                 return { ok: true, files };
@@ -2306,6 +2415,7 @@ let makeCallId = (() => {
  * @param {function} [options.onToolCall] - Callback when a tool is called: (toolName, args, result) => void
  * @param {function} [options.onAssistantText] - Callback when assistant produces text: (text) => void
  * @param {function} [options.onPendingApproval] - Callback when a file modification needs approval: (pendingOp) => Promise<boolean> (true=approved, false=rejected)
+ * @param {object} [options.projectContext] - Optional precomputed runtime-aware project context.
  * @returns {Promise<{assistantText: string, toolCalls: Array, modifiedFiles: string[]}>}
  */
 export async function sendAIMessage(charId, conversationMessages, userMessage, options = {}) {
@@ -2317,8 +2427,12 @@ export async function sendAIMessage(charId, conversationMessages, userMessage, o
         onPendingApproval = null,
         llmPresetName = '',
         apiPresetName = '',
+        projectContext = null,
     } = options;
 
+    const liveProjectContext = projectContext || await inspectLiveStudioProject(charId);
+    const effectiveSystemPrompt = String(systemPrompt || DEFAULT_SYSTEM_PROMPT)
+        + buildGameStudioAiSystemAppendix(liveProjectContext);
     const tools = buildTools();
     const allowedNames = new Set(Object.values(TOOL_NAMES));
     const modifiedFiles = [];
@@ -2348,7 +2462,7 @@ export async function sendAIMessage(charId, conversationMessages, userMessage, o
         void (extension_settings?.character_editor_assistant || {});
         const generateTaskOpts = {
             taskMessages: [
-                { role: 'system', content: systemPrompt },
+                { role: 'system', content: effectiveSystemPrompt },
                 ...conversationMessages,
             ],
             includeCharacterCard: true,
@@ -2515,6 +2629,15 @@ export async function sendAIMessage(charId, conversationMessages, userMessage, o
             }
 
             if (!batchOutcome) {
+                try {
+                    await validateGameFileBatch(charId, resolvedClean, resolvedNewLive);
+                } catch (error) {
+                    batchOutcome = 'project_validation_failed';
+                    batchError = 'Game Runtime project preflight failed: ' + (error?.message || String(error));
+                }
+            }
+
+            if (!batchOutcome) {
                 // No conflicts (or all resolved). Ask for approval if a callback is
                 // wired; otherwise auto-commit.
                 const approved = onPendingApproval
@@ -2575,6 +2698,8 @@ export async function sendAIMessage(charId, conversationMessages, userMessage, o
                     r = { ok: false, error: `commit failed: ${batchError}` };
                 } else if (batchOutcome === 'apply_failed') {
                     r = { ok: false, error: `apply failed: ${batchError}` };
+                } else if (batchOutcome === 'project_validation_failed') {
+                    r = { ok: false, error: batchError };
                 } else {
                     r = { ok: false, error: batchError || 'Batch failed.' };
                 }

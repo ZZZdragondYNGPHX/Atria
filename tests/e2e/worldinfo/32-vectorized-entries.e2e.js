@@ -37,7 +37,7 @@ import {
     bootstrapVectorsBackend, markOnboarded, writeWorldBook,
 } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply, openExtensionsDrawer } from '../_lib/page.js';
-import { enableWorldInfoContinuousCards, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { closeWorldInfoDrawer, enableWorldInfoContinuousCards, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { writeCharacterWithBinding, startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -166,15 +166,7 @@ async function openBookInEditor(page, bookName) {
     if (!rendered) throw new Error(`book "${bookName}" entries did not render after 3 retries`);
 }
 
-async function closeWIDrawerIfOpen(page) {
-    await page.evaluate(() => {
-        const i = document.querySelector('#WIDrawerIcon');
-        if (i && i.classList.contains('openIcon')) {
-            (i.closest('.drawer-toggle') || i).click();
-        }
-    });
-    await page.locator('#world_popup').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
-}
+const closeWIDrawerIfOpen = closeWorldInfoDrawer;
 
 /**
  * Close the Extensions drawer so the chat composer (send button area)

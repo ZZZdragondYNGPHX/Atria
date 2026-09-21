@@ -1,0 +1,77 @@
+/*
+ * Atria Design System semantic tokens.
+ *
+ * SmartTheme remains an input compatibility layer only. New Atria Host
+ * components consume the --atri-* API below and never bind directly to
+ * SmartTheme variables.
+ */
+
+:root {
+    --atri-color-canvas: var(--SmartThemeBlurTintColor, rgb(28 30 34));
+    --atri-color-surface: color-mix(in srgb, var(--SmartThemeBlurTintColor, rgb(28 30 34)) 90%, white 10%);
+    --atri-color-raised: color-mix(in srgb, var(--SmartThemeBlurTintColor, rgb(28 30 34)) 82%, white 18%);
+    --atri-color-overlay: color-mix(in srgb, var(--SmartThemeBlurTintColor, rgb(28 30 34)) 92%, black 8%);
+    --atri-color-text: var(--SmartThemeBodyColor, rgb(238 240 244));
+    --atri-color-text-muted: color-mix(in srgb, var(--SmartThemeBodyColor, rgb(238 240 244)) 68%, transparent);
+    --atri-color-border: var(--SmartThemeBorderColor, rgb(96 102 113));
+    --atri-color-accent: var(--SmartThemeQuoteColor, rgb(118 167 255));
+    --atri-color-accent-contrast: rgb(8 13 20);
+    --atri-color-success: rgb(78 190 129);
+    --atri-color-warning: rgb(232 179 78);
+    --atri-color-danger: rgb(231 100 105);
+    --atri-color-focus: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(118 167 255)) 78%, white 22%);
+    --atri-color-scrim: rgb(0 0 0 / 0.56);
+
+    --atri-font-family-body: var(--mainFontFamily, "Noto Sans", sans-serif);
+    --atri-font-family-mono: "Noto Sans Mono", ui-monospace, monospace;
+    --atri-font-size-display: calc(var(--mainFontSize, 16px) * 1.75);
+    --atri-font-size-title: calc(var(--mainFontSize, 16px) * 1.35);
+    --atri-font-size-heading: calc(var(--mainFontSize, 16px) * 1.12);
+    --atri-font-size-subheading: calc(var(--mainFontSize, 16px) * 1);
+    --atri-font-size-body: var(--mainFontSize, 16px);
+    --atri-font-size-body-small: calc(var(--mainFontSize, 16px) * 0.9);
+    --atri-font-size-caption: calc(var(--mainFontSize, 16px) * 0.78);
+
+    --atri-space-1: 4px;
+    --atri-space-2: 8px;
+    --atri-space-3: 12px;
+    --atri-space-4: 16px;
+    --atri-space-5: 20px;
+    --atri-space-6: 24px;
+    --atri-space-8: 32px;
+
+    --atri-radius-sm: 6px;
+    --atri-radius-md: 10px;
+    --atri-radius-lg: 16px;
+    --atri-radius-pill: 999px;
+
+    --atri-shadow-surface: 0 1px 2px rgb(0 0 0 / 0.14);
+    --atri-shadow-raised: 0 8px 28px rgb(0 0 0 / 0.22);
+    --atri-shadow-overlay: 0 18px 56px rgb(0 0 0 / 0.34);
+
+    --atri-motion-fast: 120ms;
+    --atri-motion-normal: 200ms;
+    --atri-motion-slow: 320ms;
+    --atri-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+    --atri-safe-area-top: env(safe-area-inset-top, 0px);
+    --atri-safe-area-right: env(safe-area-inset-right, 0px);
+    --atri-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --atri-safe-area-left: env(safe-area-inset-left, 0px);
+
+    --atri-density-control-height: 40px;
+    --atri-density-row-gap: var(--atri-space-3);
+}
+
+[data-atria-density="compact"] {
+    --atri-density-control-height: 32px;
+    --atri-density-row-gap: var(--atri-space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --atri-motion-fast: 0ms;
+        --atri-motion-normal: 0ms;
+        --atri-motion-slow: 0ms;
+    }
+}

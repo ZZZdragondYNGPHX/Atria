@@ -28,7 +28,7 @@ import { resolve } from 'node:path';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded, writeWorldBook } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { closeWorldInfoDrawer, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { writeCharacterWithBinding, startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 /**
@@ -223,6 +223,7 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         await openBookInEditor(page, 'activation-strategies-book');
         const editorEntryCount = page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row');
         await expect(editorEntryCount, 'expected the editor to render all 7 strategy entries on open').toHaveCount(7);
+        await closeWorldInfoDrawer(page);
 
         // Helper: send a turn and return the body of the resulting chat-completion request.
         async function sendAndCaptureBody(text) {
@@ -295,6 +296,7 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         const vectorState = page.locator('#wi_workspace_inspector_body select[name="entryStateSelector"]');
         await vectorState.waitFor({ state: 'visible', timeout: 5000 });
         expect(await vectorState.inputValue(), 'vectorized entry should expose the "vectorized" state in the Inspector').toBe('vectorized');
+        await closeWorldInfoDrawer(page);
 
         // Now drive a real send turn whose user text mentions the
         // vectorized entry's primary key ("kelp"). VECTOR_LORE must

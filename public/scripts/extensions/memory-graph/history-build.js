@@ -25,7 +25,14 @@ export function rebuildSeed(ledger) {
     const state = structuredClone(ledger);
     const kept = Object.fromEntries(['facts', 'entities', 'relations', 'entityPending'].map(key => [key, new Set()]));
     const manual = value => value && typeof value === 'object' && (value.manualId || value.manualDisabled || Object.values(value).some(manual));
-    for (const key of Object.keys(kept)) for (const item of Object.values(state[key] || {})) if (manual(item)) kept[key].add(item.id);
+    const authoritative = value => value?.type === 'authoritative'
+        && Array.isArray(value.supports)
+        && value.supports.some(support => Array.isArray(support?.externalSourceIds) && support.externalSourceIds.length > 0);
+    for (const key of Object.keys(kept)) {
+        for (const item of Object.values(state[key] || {})) {
+            if (manual(item) || key === 'facts' && authoritative(item)) kept[key].add(item.id);
+        }
+    }
     let changed = true;
     const keep = (key, id) => { if (state[key]?.[id] && !kept[key].has(id)) { kept[key].add(id); changed = true; } };
     while (changed) {

@@ -1,21 +1,21 @@
-#rm_api_block .connection_profile_toolbar {
+#atria-connection-manager-root .connection_profile_toolbar {
     align-items: center;
     display: flex;
     gap: 5px;
     min-width: 0;
 }
 
-#rm_api_block .connection_profile_picker {
+#atria-connection-manager-root .connection_profile_picker {
     flex: 1 1 20rem;
     min-width: 0;
 }
 
-#rm_api_block .connection_profile_picker #connection_profiles,
-#rm_api_block .connection_profile_picker .select2-container {
+#atria-connection-manager-root .connection_profile_picker #connection_profiles,
+#atria-connection-manager-root .connection_profile_picker .select2-container {
     width: 100% !important;
 }
 
-#rm_api_block .connection_profile_actions {
+#atria-connection-manager-root .connection_profile_actions {
     align-items: center;
     display: flex;
     flex: 0 0 auto;
@@ -24,7 +24,7 @@
     margin-left: auto;
 }
 
-#rm_api_block .connection_profile_actions .menu_button {
+#atria-connection-manager-root .connection_profile_actions .menu_button {
     flex: 0 0 auto;
 }
 
@@ -40,7 +40,7 @@
     margin-left: 5px;
 }
 
-#rm_api_block .connection_profile_mode_tabs {
+#atria-connection-manager-root .connection_profile_mode_tabs {
     align-items: stretch;
     border-bottom: 1px solid var(--SmartThemeBorderColor);
     display: flex;
@@ -48,7 +48,7 @@
     margin: 4px 0 6px;
 }
 
-#rm_api_block .connection_profile_mode_tab {
+#atria-connection-manager-root .connection_profile_mode_tab {
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
@@ -61,20 +61,20 @@
     transition: opacity 0.15s ease, border-color 0.15s ease;
 }
 
-#rm_api_block .connection_profile_mode_tab:hover {
+#atria-connection-manager-root .connection_profile_mode_tab:hover {
     opacity: 1;
 }
 
-#rm_api_block .connection_profile_mode_tab.active {
+#atria-connection-manager-root .connection_profile_mode_tab.active {
     border-bottom-color: var(--SmartThemeBodyColor);
     opacity: 1;
 }
 
-#rm_api_block .connection_profile_tab_panel[hidden] {
+#atria-connection-manager-root .connection_profile_tab_panel[hidden] {
     display: none;
 }
 
-#rm_api_block .connection_profile_inline_editor:not(:empty) {
+#atria-connection-manager-root .connection_profile_inline_editor:not(:empty) {
     background: rgba(127, 127, 127, 0.06);
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 6px;
@@ -82,11 +82,11 @@
     padding: 10px 12px;
 }
 
-#rm_api_block .connection_profile_inline_editor .embed-rerank-profile-form > h3 {
+#atria-connection-manager-root .connection_profile_inline_editor .embed-rerank-profile-form > h3 {
     display: none;
 }
 
-#rm_api_block .connection_profile_inline_editor .embed-rerank-profile-form label {
+#atria-connection-manager-root .connection_profile_inline_editor .embed-rerank-profile-form label {
     margin-top: 6px;
 }
 
@@ -99,4 +99,16 @@
  */
 #rm_api_block.hide-chat-api > *:not(.wide100p) {
     display: none !important;
+}
+
+
+/* R7F: the existing Connection Manager controller may be reparented into
+ * WorkspaceHost. Keep its product UI fluid without changing persistence or
+ * controller ownership. */
+#atria-connection-manager-root[data-atria-workspace-embedded="true"] {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--atri-space-3, 12px);
 }

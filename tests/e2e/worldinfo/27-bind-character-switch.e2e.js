@@ -153,30 +153,8 @@ async function expectWorldButtonBound(page, expectedBookName) {
 }
 
 async function openListAndSelect(page, name) {
-    // First make sure the right nav drawer is open.
-    await page.evaluate(() => {
-        const i = document.querySelector('#rightNavDrawerIcon');
-        if (i && i.classList.contains('closedIcon')) {
-            (i.closest('.drawer-toggle') || i).click();
-        }
-    });
-    await page.locator('#right-nav-panel').waitFor({ state: 'visible', timeout: 10_000 });
-    // If the character editor panel is currently shown (selecting a
-    // character routes selectRightMenuWithAnimation to
-    // `rm_ch_create_block`), click the "Select/Create Characters"
-    // button — this is the canonical real-user gesture to return to
-    // the character LIST view (rm_button_back is hidden in editor
-    // mode; the user instead uses the list icon at the top of the
-    // right nav).
-    const isEditorShown = await page.evaluate(() => {
-        const block = document.querySelector('#rm_ch_create_block');
-        return block && window.getComputedStyle(block).display !== 'none';
-    });
-    if (isEditorShown) {
-        await page.locator('#rm_button_characters').click({ force: true });
-        await page.locator('#rm_print_characters_block').waitFor({ state: 'visible', timeout: 10_000 });
-    }
-    // Now the shared helper can find the card and click it.
+    // The shared helper is Shell-aware: it opens Library → Characters and
+    // falls back to the inherited right drawer only in legacy recovery.
     await selectCharacterByName(page, name);
 }
 

@@ -109,20 +109,47 @@ async function sendAndCaptureBody(page, text) {
  * the character-editor panel's `.chat_lorebook_button` is on screen.
  */
 async function reopenRightNav(page) {
-    await page.evaluate(() => {
-        const i = document.querySelector('#rightNavDrawerIcon');
-        if (i && i.classList.contains('closedIcon')) {
-            (i.closest('.drawer-toggle') || i).click();
+    const openedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        const ctx = window.Atria?.getContext?.();
+        const id = Number(ctx?.characterId);
+        if (!shell?.isMounted?.() || !Number.isInteger(id) || id < 0 || typeof workspaceHost?.openLibraryCharacter !== 'function') {
+            return false;
         }
-    });
-    // Wait for the editor panel (mounted by select_selected_character) to be visible.
-    await page.waitForFunction(() => {
-        const block = document.querySelector('#rm_ch_create_block');
-        return block && window.getComputedStyle(block).display !== 'none';
-    }, { timeout: 10_000 });
+        workspaceHost.openLibraryCharacter(id, ctx?.characters?.[id]?.name || '');
+        return true;
+    }).catch(() => false);
+
+    if (!openedByShell) {
+        await page.evaluate(() => {
+            const i = document.querySelector('#rightNavDrawerIcon');
+            if (i && i.classList.contains('closedIcon')) {
+                (i.closest('.drawer-toggle') || i).click();
+            }
+        });
+    }
+
+    await page.locator('.form_create_bottom_buttons_block .chat_lorebook_button').first()
+        .waitFor({ state: 'visible', timeout: 10_000 });
 }
 
 async function closeRightNavIfOpen(page) {
+    const closedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openPlay !== 'function') {
+            return false;
+        }
+        workspaceHost.openPlay();
+        return true;
+    }).catch(() => false);
+
+    if (closedByShell) {
+        await page.locator('#sheld').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+        return;
+    }
+
     await page.evaluate(() => {
         const i = document.querySelector('#rightNavDrawerIcon');
         if (i && i.classList.contains('openIcon')) {

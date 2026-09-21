@@ -329,11 +329,15 @@ async function getFrontendEvidence() {
     return { logs, actions, safeConfigSnapshot };
 }
 
-export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
+export async function openLogsWorkspace({ canViewServerLogs = false, container = null } = {}) {
     installFrontendLogging();
     const wrapper = document.createElement('div');
     wrapper.innerHTML = buildWorkspaceMarkup({ canViewServerLogs });
     const root = wrapper.firstElementChild;
+    if (container instanceof HTMLElement) {
+        container.replaceChildren(root);
+        root.dataset.atriaWorkspaceEmbedded = 'true';
+    }
 
     const state = {
         mode: 'guided',
@@ -590,6 +594,25 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
 
     void refresh();
 
+    let destroyed = false;
+    const destroy = () => {
+        if (destroyed) return;
+        destroyed = true;
+        state.closed = true;
+        clearInterval(timer);
+        delete root.dataset.atriaWorkspaceEmbedded;
+        root.remove();
+    };
+
+    if (container instanceof HTMLElement) {
+        return {
+            root,
+            refresh,
+            destroy,
+            dispose: destroy,
+        };
+    }
+
     try {
         await callGenericPopup(root, POPUP_TYPE.TEXT, '', {
             okButton: t`Close`,
@@ -599,7 +622,6 @@ export async function openLogsWorkspace({ canViewServerLogs = false } = {}) {
             allowHorizontalScrolling: false,
         });
     } finally {
-        state.closed = true;
-        clearInterval(timer);
+        destroy();
     }
 }

@@ -66,6 +66,27 @@ function getCharId() {
     return character.avatar.replace('.png', '');
 }
 
+function stopCardAppGeneration() {
+    const context = getContext();
+    try {
+        context?.abortController?.abort?.();
+    } catch (error) {
+        console.warn(`[${MODULE_NAME}] Failed to abort generation controller`, error);
+    }
+    document.getElementById('mes_stop')?.click?.();
+    return true;
+}
+
+function openCardAppDiagnostics() {
+    const button = document.getElementById('server_logs_button');
+    if (!button?.click) {
+        console.warn(`[${MODULE_NAME}] Diagnostics control is unavailable`);
+        return false;
+    }
+    button.click();
+    return true;
+}
+
 /**
  * Activate CardApp for the current character.
  */
@@ -76,8 +97,14 @@ async function activateCardApp() {
 
     console.log(`[${MODULE_NAME}] Activating CardApp for character: ${charId}`);
 
-    // 1. Create container and hide default chat UI
-    const container = createContainer();
+    // 1. Mount as a recoverable Legacy Full Stage Surface when the R7 Shell
+    // owns Play. The loader keeps the historical in-#sheld fallback when the
+    // staged Shell is unavailable.
+    const container = createContainer({
+        onExit: deactivateCardApp,
+        onStopGeneration: stopCardAppGeneration,
+        onDiagnostics: openCardAppDiagnostics,
+    });
 
     // 2. Load and inject scoped CSS (if any CSS files exist)
     try {

@@ -2123,15 +2123,20 @@ async function onTagDeleteClick() {
 
     appendTagToList(popupContent.find('#tag_to_delete'), tag);
 
-    // Make the select control more fancy on not mobile
+    // Make the select control more fancy on not mobile. Keep the popup
+    // functional with its native select if the lazy Select2 enhancement is
+    // unavailable or attached to a different legacy jQuery alias.
     if (!isMobile()) {
-        // Delete the empty option in the dropdown, and make the select2 be empty by default
+        const mergeSelect = popupContent.find('#merge_tag_select').get(0);
         popupContent.find('#merge_tag_select option[value=""]').remove();
-        popupContent.find('#merge_tag_select').select2({
-            width: '50%',
-            placeholder: 'Select tag to merge into',
-            allowClear: true,
-        }).val(null).trigger('change');
+        const select2Jq = globalThis.jQuery || globalThis.$;
+        if (mergeSelect instanceof HTMLSelectElement && typeof select2Jq?.fn?.select2 === 'function') {
+            select2Jq(mergeSelect).select2({
+                width: '50%',
+                placeholder: 'Select tag to merge into',
+                allowClear: true,
+            }).val(null).trigger('change');
+        }
     }
 
     const result = await callGenericPopup(popupContent, POPUP_TYPE.CONFIRM);

@@ -11,6 +11,24 @@ const CONTAINER_SELECTOR = `#${CONTAINER_ID}`;
  * Elements to hide when CardApp is active.
  */
 const ELEMENTS_TO_HIDE = ['#chat', '#form_sheld', '#qr--bar'];
+let activeContainerState = null;
+
+function createRecoveryButton(action, label, handler) {
+    if (typeof handler !== 'function') return null;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'atria-card-app-recovery-action';
+    button.dataset.atriaCardAppRecoveryAction = action;
+    button.textContent = label;
+    button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        void Promise.resolve(handler()).catch(error => {
+            console.error('[card-app] Host recovery action failed', { action, error });
+        });
+    });
+    return button;
+}
 
 /**
  * Scope CSS selectors to the CardApp container.
@@ -145,24 +163,79 @@ function findMatchingBrace(str, openPos) {
 }
 
 /**
- * Create the CardApp container and hide default chat UI.
+ * Create the legacy CardApp surface.
+ *
+ * Under the staged R7 Shell this is a recoverable Full Stage Surface: CardApp
+ * owns Stage content while the Atria Host and its Recovery layer remain
+ * authoritative. Outside the Shell the historical in-#sheld behavior remains
+ * available as a compatibility fallback.
+ *
+ * @param {object} [options]
  * @returns {HTMLElement} The container element
  */
-export function createContainer() {
-    // Hide default chat elements
-    for (const selector of ELEMENTS_TO_HIDE) {
-        const el = document.querySelector(selector);
-        if (el) {
-            el.dataset.cardAppHidden = 'true';
-            el.style.display = 'none';
-        }
+export function createContainer(options = {}) {
+    if (activeContainerState || document.getElementById(CONTAINER_ID)) {
+        throw new Error('CardApp surface is already active');
     }
 
-    // Create container
+    const shellFoundation = options.shell || globalThis.Atria?.shell || null;
+    const shell = shellFoundation?.getShell?.() || shellFoundation;
+    const nativePlayHost = options.nativePlayHost || shellFoundation?.getPlayHost?.() || null;
+    const shellScoped = Boolean(
+        shell?.slots?.stage
+        && shell?.slots?.recovery
+        && typeof nativePlayHost?.acquireStageOwnership === 'function',
+    );
+
     const container = document.createElement('div');
     container.id = CONTAINER_ID;
 
-    // Insert into #sheld, before #form_sheld
+    if (shellScoped) {
+        const stageOwnership = nativePlayHost.acquireStageOwnership('legacy-card-app');
+        container.dataset.atriaLegacyFullStage = 'true';
+        container.dataset.atriaGameHostScope = 'stage';
+        shell.slots.stage.appendChild(container);
+
+        const recovery = document.createElement('div');
+        recovery.id = 'card-app-host-recovery';
+        recovery.className = 'atria-card-app-host-recovery';
+        recovery.dataset.atriaGameHostRecovery = 'true';
+        recovery.setAttribute('role', 'toolbar');
+        recovery.setAttribute('aria-label', 'Legacy CardApp recovery');
+
+        for (const [action, label, handler] of [
+            ['exit', 'Exit CardApp', options.onExit],
+            ['stop', 'Stop generation', options.onStopGeneration],
+            ['diagnostics', 'Diagnostics', options.onDiagnostics],
+        ]) {
+            const button = createRecoveryButton(action, label, handler);
+            if (button) recovery.appendChild(button);
+        }
+        shell.slots.recovery.appendChild(recovery);
+
+        activeContainerState = {
+            shellScoped: true,
+            container,
+            recovery,
+            stageOwnership,
+            hidden: [],
+        };
+        return container;
+    }
+
+    const hidden = [];
+    for (const selector of ELEMENTS_TO_HIDE) {
+        const element = document.querySelector(selector);
+        if (!element) continue;
+        hidden.push({
+            element,
+            display: element.style.display,
+            marker: element.getAttribute('data-card-app-hidden'),
+        });
+        element.dataset.cardAppHidden = 'true';
+        element.style.display = 'none';
+    }
+
     const sheld = document.getElementById('sheld');
     const formSheld = document.getElementById('form_sheld');
     if (sheld && formSheld) {
@@ -173,41 +246,55 @@ export function createContainer() {
         document.body.appendChild(container);
     }
 
-    // Add a floating menu button so users can still access Atria's options menu
+    // Fallback-only access to the inherited options menu. The R7 Shell path
+    // keeps normal Host chrome and Command available instead.
     const menuBtn = document.createElement('button');
     menuBtn.id = 'card-app-menu-btn';
     menuBtn.innerHTML = '☰';
     menuBtn.title = 'Menu';
     menuBtn.addEventListener('click', () => {
-        const optionsBtn = document.getElementById('options_button');
-        if (optionsBtn) optionsBtn.click();
+        document.getElementById('options_button')?.click();
     });
     container.appendChild(menuBtn);
 
+    activeContainerState = {
+        shellScoped: false,
+        container,
+        recovery: null,
+        stageOwnership: null,
+        hidden,
+    };
     return container;
 }
 
 /**
- * Remove the CardApp container and restore default chat UI.
+ * Remove the CardApp surface and restore the Native Play presentation.
  */
 export function destroyContainer() {
-    // Remove container
-    const container = document.getElementById(CONTAINER_ID);
-    if (container) {
-        container.remove();
-    }
+    const state = activeContainerState;
+    activeContainerState = null;
 
-    // Remove scoped styles
+    const container = state?.container || document.getElementById(CONTAINER_ID);
+    container?.remove();
+
     const style = document.getElementById(SCOPED_STYLE_ID);
-    if (style) {
-        style.remove();
+    style?.remove();
+
+    if (state) {
+        state.recovery?.remove();
+        state.stageOwnership?.release?.();
+        for (const saved of state.hidden.slice().reverse()) {
+            saved.element.style.display = saved.display;
+            if (saved.marker === null) saved.element.removeAttribute('data-card-app-hidden');
+            else saved.element.setAttribute('data-card-app-hidden', saved.marker);
+        }
+        return;
     }
 
-    // Restore hidden elements
-    const hiddenElements = document.querySelectorAll('[data-card-app-hidden]');
-    for (const el of hiddenElements) {
-        el.style.display = '';
-        delete el.dataset.cardAppHidden;
+    // Defensive cleanup for surfaces created before the R7C ownership adapter.
+    for (const element of document.querySelectorAll('[data-card-app-hidden]')) {
+        element.style.display = '';
+        delete element.dataset.cardAppHidden;
     }
 }
 

@@ -1437,62 +1437,71 @@ export function initTextGenModels() {
 
 export function initTextGenModelSelects() {
     if (textGenModelSelectsInitialized || isMobile()) {
-        return;
+        return true;
+    }
+
+    // Select2 is a post-visible progressive enhancement. Always bind against
+    // the canonical jQuery instance that the classic Select2 script extends;
+    // a transient alias mismatch must never brick the whole Atria startup.
+    const select2Jq = globalThis.jQuery || globalThis.$;
+    if (typeof select2Jq?.fn?.select2 !== 'function') {
+        console.warn('[init] Select2 is not ready; text-generation model selects remain native and can be retried later.');
+        return false;
     }
 
     textGenModelSelectsInitialized = true;
-    const providersSelect = $('.openrouter_providers');
-    const nanoGptProvidersSelect = $('#nanogpt_provider');
+    const providersSelect = select2Jq('.openrouter_providers');
+    const nanoGptProvidersSelect = select2Jq('#nanogpt_provider');
 
-    $('#mancer_model').select2({
+    select2Jq('#mancer_model').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         templateResult: getMancerModelTemplate,
     });
-    $('#model_togetherai_select').select2({
+    select2Jq('#model_togetherai_select').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         templateResult: getTogetherModelTemplate,
     });
-    $('#ollama_model').select2({
+    select2Jq('#ollama_model').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
     });
-    $('#tabby_model').select2({
+    select2Jq('#tabby_model').select2({
         placeholder: t`[Currently loaded]`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         allowClear: true,
     });
-    $('#llamacpp_model').select2({
+    select2Jq('#llamacpp_model').select2({
         placeholder: t`[Currently loaded]`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         allowClear: true,
     });
-    $('#model_infermaticai_select').select2({
+    select2Jq('#model_infermaticai_select').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         templateResult: getInfermaticAIModelTemplate,
     });
-    $('#model_dreamgen_select').select2({
+    select2Jq('#model_dreamgen_select').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         templateResult: getDreamGenModelTemplate,
     });
-    $('#openrouter_model').select2({
+    select2Jq('#openrouter_model').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
@@ -1500,21 +1509,21 @@ export function initTextGenModelSelects() {
         templateResult: getOpenRouterModelTemplate,
         matcher: textValueMatcher,
     });
-    $('#vllm_model').select2({
+    select2Jq('#vllm_model').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         templateResult: getVllmModelTemplate,
     });
-    $('#aphrodite_model').select2({
+    select2Jq('#aphrodite_model').select2({
         placeholder: t`Select a model`,
         searchInputPlaceholder: t`Search models...`,
         searchInputCssClass: 'text_pole',
         width: '100%',
         templateResult: getAphroditeModelTemplate,
     });
-    $('.openrouter_quantizations').select2({
+    select2Jq('.openrouter_quantizations').select2({
         closeOnSelect: false,
         placeholder: t`Select quantizations. No selection = all quantizations.`,
         searchInputCssClass: 'text_pole',
@@ -1531,11 +1540,11 @@ export function initTextGenModelSelects() {
     });
     providersSelect.on('select2:select', function (/** @type {any} */ evt) {
         const element = evt.params.data.element;
-        const $element = $(element);
+        const $element = select2Jq(element);
 
         $element.detach();
-        $(this).append($element);
-        $(this).trigger('change');
+        select2Jq(this).append($element);
+        select2Jq(this).trigger('change');
     });
     nanoGptProvidersSelect.select2({
         sorter: data => data.sort((a, b) => a.text.localeCompare(b.text)),
@@ -1545,4 +1554,6 @@ export function initTextGenModelSelects() {
         width: '100%',
         allowClear: true,
     });
+
+    return true;
 }

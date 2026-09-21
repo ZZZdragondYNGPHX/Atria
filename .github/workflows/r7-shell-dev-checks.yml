@@ -1,0 +1,213 @@
+name: R7 Shell Dev Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-game-first-shell-redesign
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r7-shell-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    name: R7H Focused Unit and Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run R7H shell hardening and regression tests
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          atria-shell
+          orchestrator/run-state-store.test.js
+          orchestrator/persistence.test.js
+          world-info/workspace-boot-order.test.js
+          world-info/workspace-diagnostics.test.js
+          logging/workspace-i18n.test.js
+          logging/workspace-model.test.js
+          logging/workspace-structure.test.js
+          skills-ui/skill-manager-panel.test.js
+          connection-manager/embed-rerank-core.test.js
+          game-runtime/llm-model-runtime-config.test.js
+          game-runtime/llm-roles.test.js
+          game-runtime/package-loader.test.js
+          character-presets/unit.test.js
+          game-runtime/studio-game-ai-project.test.js
+          game-runtime/studio-project-navigator.test.js
+          game-runtime/studio-simulation-runtime.test.js
+          game-runtime/studio-structured-logic-editors.test.js
+          game-runtime/studio-structured-projection-editors.test.js
+          game-runtime/studio-structured-runtime-editors.test.js
+          frontend-bootstrap-order.test.js
+          frontend-dom-ready-bootstrap.test.js
+          frontend-module-preload.test.js
+          frontend-startup-loader.test.js
+          frontend-lazy-select2.test.js
+          frontend-lazy-account-management.test.js
+          extensions-discover.test.js
+          game-runtime/ui-environment.test.js
+          game-runtime/ui-host-surfaces.test.js
+          game-runtime/ui-native-components.test.js
+          game-runtime/ui-package.test.js
+          game-runtime/ui-live.test.js
+          game-runtime/ui-full-host.test.js
+          game-runtime/ui-immersive.test.js
+          card-app-loader.test.js
+          immersive/controller.test.js
+          immersive/structure.test.js
+      - name: Lint R7H production modules
+        run: >-
+          npx eslint
+          public/script.js
+          public/scripts/textgen-models.js
+          public/scripts/select2-actionable-single.js
+          public/scripts/horde.js
+          public/scripts/tags.js
+          public/scripts/loader.js
+          public/scripts/power-user.js
+          public/scripts/RossAscends-mods.js
+          public/scripts/user.js
+          public/scripts/backgrounds.js
+          "public/scripts/atria-shell/*.js"
+          public/scripts/extensions/orchestrator/main.js
+          public/scripts/extensions/orchestrator/workspace/panel.js
+          public/scripts/extensions/orchestrator/workspace/shell.js
+          public/scripts/extensions/character-editor-assistant/studio/studio.js
+          public/scripts/world-info/workspace.js
+          public/scripts/logging/workspace.js
+          public/scripts/extensions/game-runtime/ui/host-surfaces.js
+          public/scripts/extensions/game-runtime/ui/native-components.js
+          public/scripts/extensions/game-runtime/ui/full-host.js
+          public/scripts/extensions/game-runtime/ui/live.js
+          public/scripts/extensions/game-runtime/ui/package.js
+          public/scripts/extensions/card-app/loader.js
+          public/scripts/extensions/card-app/index.js
+      - name: Lint R7H tests
+        working-directory: tests
+        run: >-
+          npx eslint
+          "atria-shell/**/*.js"
+          "game-runtime/ui-host-surfaces.test.js"
+          "game-runtime/ui-native-components.test.js"
+          "game-runtime/ui-package.test.js"
+          "game-runtime/ui-live.test.js"
+          "game-runtime/ui-full-host.test.js"
+          "card-app-loader.test.js"
+          "e2e/atria-shell/**/*.e2e.js"
+      - name: Verify Atria namespace guard
+        run: bash scripts/check-atria-namespace.sh
+
+  browser:
+    name: R7H Final Shell Browser Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Initialize test configuration
+        run: npm run init
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Run R7H full shell browser smoke
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/atria-shell/01-foundation.e2e.js
+          e2e/atria-shell/02-native-actions.e2e.js
+          e2e/atria-shell/03-game-surfaces.e2e.js
+          e2e/atria-shell/04-navigation.e2e.js
+          e2e/atria-shell/05-workspaces.e2e.js
+          e2e/atria-shell/06-library-runtime.e2e.js
+          e2e/atria-shell/07-plugins-settings.e2e.js
+          e2e/atria-shell/08-final-hardening.e2e.js
+          --project=e2e
+          --workers=1
+
+
+  final-regression:
+    name: R7 Final Node Regression and Frontend Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atria
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atria_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready -U atria -d atria_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run complete Node unit regression
+        env:
+          ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
+        run: npm run test:unit:serial --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Verify retired preview gate is absent
+        run: |
+          if grep -RInE 'atria\.shell\.preview|ATRIA_SHELL_PREVIEW_|setPreviewEnabled|forcePreview|data-atria-shell-preview|\?atriaShell=1' \
+            public/scripts/atria-shell \
+            public/css/atria-shell.css \
+            public/script.js \
+            tests/atria-shell \
+            tests/e2e/atria-shell; then
+            echo "Retired R7 preview-gate contract found."
+            exit 1
+          fi

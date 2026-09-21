@@ -13,6 +13,21 @@ import './page.js';
  * Open the right nav (character list) drawer if it's closed.
  */
 async function ensureRightDrawerOpen(page) {
+    const openedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openLibrarySection !== 'function') {
+            return false;
+        }
+        workspaceHost.openLibrarySection('characters');
+        return true;
+    }).catch(() => false);
+
+    if (openedByShell) {
+        await page.locator('#rm_print_characters_block').waitFor({ state: 'visible', timeout: 10_000 });
+        return;
+    }
+
     const drawer = page.locator('#rightNavDrawerIcon');
     const closed = await drawer.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
     if (closed) {

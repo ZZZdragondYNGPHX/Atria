@@ -18,6 +18,9 @@ const getCharacterState = __ctx.getCharacterState;
 const updateCharacterState = __ctx.updateCharacterState;
 void (__ctx.deleteCharacterState);
 import { sendAIMessage, TOOL_NAMES } from './ai-chat.js';
+import { GAME_PROJECT_KIND, GAME_PROJECT_STATUS, buildGameProjectNavigator } from './game-project-navigator.js';
+import { createStructuredRuntimeEditorHost } from './structured-runtime-ui.js';
+import { createStudioSimulationHost } from './simulation-ui.js';
 
 // Markdown converter for AI messages
 const mdConverter = new showdown.Converter({
@@ -88,6 +91,7 @@ function formatSaveSessionsError(reason, _hint) {
 const STUDIO_PANEL_LEFT_ID = 'card-app-studio-left';
 const STUDIO_PANEL_RIGHT_ID = 'card-app-studio-right';
 const STUDIO_MOBILE_TABS_ID = 'card-app-studio-mobile-tabs';
+const STUDIO_WORKSPACE_ROOT_ID = 'card-app-studio-workspace';
 
 function isAutoApplyEnabled() {
     return Boolean(extension_settings?.character_editor_assistant?.autoApprove);
@@ -106,6 +110,13 @@ let currentCharId = null;
 let currentAvatar = null;
 let currentFile = null;
 let fileList = [];
+let projectNavigator = null;
+let currentProjectSelection = null;
+let structuredRuntimeEditorHost = null;
+let studioSimulationHost = null;
+let studioMountRoot = null;
+let studioMountContainer = null;
+let studioEmbedded = false;
 
 // CodeMirror 6 state
 let cmEditor = null;
@@ -356,6 +367,46 @@ async function renameFile(charId, fromPath, toPath) {
     });
     if (!response.ok) throw new Error(`Failed to rename file: ${response.status}`);
     return await response.json();
+}
+
+// ==================== Game Project Navigator ====================
+
+async function rebuildProjectNavigator() {
+    if (!currentCharId) {
+        projectNavigator = null;
+        return null;
+    }
+    projectNavigator = await buildGameProjectNavigator({
+        files: fileList,
+        readFile: filePath => fetchFileContent(currentCharId, filePath),
+    });
+    return projectNavigator;
+}
+
+function updateStudioProjectIdentity() {
+    const isGameProject = projectNavigator?.kind === GAME_PROJECT_KIND.GAME;
+    const editorTitle = document.querySelector('[data-studio-editor-title]');
+    if (editorTitle) {
+        editorTitle.innerHTML = isGameProject
+            ? `🎮 ${escapeHtml(t('Atria Game Studio'))}`
+            : `📝 ${escapeHtml(t('Code Editor'))}`;
+    }
+    const navigatorTitle = document.querySelector('[data-studio-project-title]');
+    if (navigatorTitle) {
+        navigatorTitle.innerHTML = isGameProject
+            ? `🧭 ${escapeHtml(t('Project Navigator'))}`
+            : `📁 ${escapeHtml(t('Files'))}`;
+    }
+}
+
+async function refreshProjectFiles({ render = true } = {}) {
+    if (!currentCharId) return;
+    fileList = await fetchFileList(currentCharId);
+    await rebuildProjectNavigator();
+    if (!render) return;
+    updateStudioProjectIdentity();
+    const fileListEl = document.querySelector('[data-studio-file-list]');
+    if (fileListEl) renderFileList(fileListEl);
 }
 
 // ==================== Skeleton Init ====================
@@ -640,11 +691,17 @@ function buildLeftPanelHtml() {
 }
 
 function buildRightPanelHtml() {
+    const isGameProject = projectNavigator?.kind === GAME_PROJECT_KIND.GAME;
+    const editorTitle = isGameProject ? t('Atria Game Studio') : t('Code Editor');
+    const navigatorTitle = isGameProject ? t('Project Navigator') : t('Files');
     return `
 <div id="${STUDIO_PANEL_RIGHT_ID}" class="card-app-studio-panel right">
  <div class="card-app-studio-panel-header">
-    <span class="card-app-studio-title">📝 ${escapeHtml(t('Code Editor'))}</span>
+    <span class="card-app-studio-title" data-studio-editor-title>${isGameProject ? '🎮' : '📝'} ${escapeHtml(editorTitle)}</span>
  <div class="card-app-studio-header-actions">
+        ${isGameProject ? `<button class="card-app-studio-btn small" data-studio-action="atria-build" title="${escapeHtml(t('Validate and build .atria distribution'))}">📦 ${escapeHtml(t('Build .atria'))}</button>` : ''}
+        <button class="card-app-studio-btn small" data-studio-action="atria-import" title="${escapeHtml(t('Validate and restore .atria source project'))}">📥 ${escapeHtml(t('Import .atria'))}</button>
+        ${isGameProject ? `<button class="card-app-studio-btn small" data-studio-action="simulation-toggle" title="${escapeHtml(t('Simulation / Diagnostics'))}">🧪 ${escapeHtml(t('Simulate'))}</button>` : ''}
         <button class="card-app-studio-btn small" data-studio-action="save" title="${escapeHtml(t('Save'))} (Ctrl+S)">💾 ${escapeHtml(t('Save'))}</button>
         <button class="card-app-studio-btn small" data-studio-action="reload" title="${escapeHtml(t('Reload'))}">↻ ${escapeHtml(t('Reload'))}</button>
  </div>
@@ -655,7 +712,7 @@ function buildRightPanelHtml() {
  </div>
  <div class="card-app-studio-file-tree">
  <div class="card-app-studio-file-tree-header">
-        <span>📁 ${escapeHtml(t('Files'))}</span>
+        <span data-studio-project-title>${isGameProject ? '🧭' : '📁'} ${escapeHtml(navigatorTitle)}</span>
  <button class="card-app-studio-btn small" data-studio-action="new-file" title="New file">+</button>
  </div>
  <div class="card-app-studio-file-list" data-studio-file-list></div>
@@ -713,15 +770,116 @@ function setMobileActiveTab(which) {
     }
 }
 
+function getProjectRoleIcon(role, path) {
+    const icons = {
+        package_metadata: 'fa-solid fa-box-archive',
+        world_schema: 'fa-solid fa-diagram-project',
+        initial_state: 'fa-solid fa-play',
+        game_logic: 'fa-solid fa-gears',
+        commands: 'fa-solid fa-terminal',
+        reducers: 'fa-solid fa-code-branch',
+        rules: 'fa-solid fa-scale-balanced',
+        interpretations: 'fa-solid fa-language',
+        ui: 'fa-solid fa-window-maximize',
+        selectors: 'fa-solid fa-filter',
+        immersive: 'fa-solid fa-expand',
+        observations: 'fa-solid fa-eye',
+        knowledge: 'fa-solid fa-book',
+        skill: 'fa-solid fa-graduation-cap',
+        asset: 'fa-solid fa-photo-film',
+    };
+    return icons[role] || getFileIcon(path);
+}
+
+function formatProjectFileSize(size) {
+    const value = Number(size) || 0;
+    return value > 1024 ? `${(value / 1024).toFixed(1)}KB` : `${value}B`;
+}
+
+function renderGameProjectSummary() {
+    if (projectNavigator?.kind !== GAME_PROJECT_KIND.GAME) return '';
+    const ready = projectNavigator.status === GAME_PROJECT_STATUS.READY;
+    const name = projectNavigator.summary?.name || t('Atria Game Project');
+    const version = projectNavigator.summary?.version
+        ? `v${projectNavigator.summary.version}`
+        : '';
+    const status = ready ? t('Runtime project') : t('Needs attention');
+    const diagnostics = projectNavigator.diagnostics || [];
+    const detail = diagnostics.length > 0
+        ? diagnostics[0].message
+        : t('Uses the live Game Runtime source files directly.');
+    return `
+        <div class="card-app-studio-project-summary ${ready ? 'ready' : 'invalid'}" title="${escapeHtml(detail)}">
+            <div class="card-app-studio-project-summary-main">
+                <span class="card-app-studio-project-name">🎮 ${escapeHtml(name)}</span>
+                ${version ? `<span class="card-app-studio-project-version">${escapeHtml(version)}</span>` : ''}
+            </div>
+            <div class="card-app-studio-project-summary-status">
+                <span class="card-app-studio-project-status">${ready ? '✓' : '⚠'} ${escapeHtml(status)}</span>
+                ${diagnostics.length ? `<span class="card-app-studio-project-diagnostics">${diagnostics.length}</span>` : ''}
+            </div>
+        </div>`;
+}
+
+function renderProjectNode(node) {
+    const active = currentFile === node.path ? ' active' : '';
+    const missing = node.exists === false ? ' missing' : '';
+    const section = node.kind === 'section' ? ' section' : '';
+    const binary = node.editable === false && node.exists !== false ? ' binary' : '';
+    const canOpen = node.exists !== false && node.editable !== false;
+    const dataFile = canOpen
+        ? ` data-studio-file="${escapeHtml(node.path)}" data-studio-role="${escapeHtml(node.role || '')}"${node.section ? ` data-studio-section="${escapeHtml(node.section)}"` : ''}`
+        : '';
+    const secondary = node.kind === 'section'
+        ? node.path
+        : (node.label === node.path ? '' : node.path);
+    const meta = node.kind === 'section'
+        ? `<span class="card-app-studio-project-count">${Number(node.count) || 0}</span>`
+        : (node.exists === false
+            ? `<span class="card-app-studio-project-missing">${escapeHtml(t('Missing'))}</span>`
+            : `<span class="card-app-studio-file-size">${formatProjectFileSize(node.size)}</span>`);
+    return `
+        <div class="card-app-studio-file-item project-node${active}${missing}${section}${binary}"${dataFile}
+             title="${escapeHtml(node.exists === false ? `${node.label}: ${node.path}` : node.path)}">
+            <i class="${getProjectRoleIcon(node.role, node.path)}"></i>
+            <span class="card-app-studio-project-node-text">
+                <span class="card-app-studio-file-name">${escapeHtml(t(node.label))}</span>
+                ${secondary ? `<span class="card-app-studio-project-path">${escapeHtml(secondary)}</span>` : ''}
+            </span>
+            ${meta}
+        </div>`;
+}
+
+function findProjectNode(filePath, role = '', section = '') {
+    if (!projectNavigator?.groups) return null;
+    const nodes = projectNavigator.groups.flatMap(group => group.nodes || []);
+    return nodes.find(node => (
+        node.path === filePath
+        && (!role || node.role === role)
+        && (!section || node.section === section)
+    )) || nodes.find(node => node.path === filePath) || null;
+}
+
 function renderFileList(container) {
     const files = fileList.filter(f => f.type === 'file');
+    if (projectNavigator?.kind === GAME_PROJECT_KIND.GAME) {
+        const groups = projectNavigator.groups || [];
+        container.innerHTML = `${renderGameProjectSummary()}${groups.map(group => `
+            <section class="card-app-studio-project-group" data-project-group="${escapeHtml(group.id)}">
+                <div class="card-app-studio-project-group-title">${escapeHtml(t(group.label))}</div>
+                <div class="card-app-studio-project-group-nodes">
+                    ${group.nodes.map(renderProjectNode).join('')}
+                </div>
+            </section>`).join('')}`;
+        return;
+    }
     container.innerHTML = files.length === 0
         ? `<div class="card-app-studio-empty">${escapeHtml(t('No files yet'))}</div>`
         : files.map(f => `
  <div class="card-app-studio-file-item${currentFile === f.path ? ' active' : ''}" data-studio-file="${escapeHtml(f.path)}">
  <i class="${getFileIcon(f.path)}"></i>
  <span class="card-app-studio-file-name">${escapeHtml(f.path)}</span>
- <span class="card-app-studio-file-size">${f.size > 1024 ? (f.size / 1024).toFixed(1) + 'KB' : f.size + 'B'}</span>
+ <span class="card-app-studio-file-size">${formatProjectFileSize(f.size)}</span>
  </div>
  `).join('');
 }
@@ -798,24 +956,24 @@ async function handleRollback(hash) {
         toastr.success(t('Rolled back successfully'));
 
         // Refresh everything
-        fileList = await fetchFileList(currentCharId);
-        const fileListEl = document.querySelector('[data-studio-file-list]');
-        if (fileListEl) renderFileList(fileListEl);
+        await refreshProjectFiles();
         if (currentFile) await openFile(currentFile);
         await renderHistory();
         await reloadCardApp();
+        return true;
     } catch (err) {
         toastr.error(tFormat('Rollback failed: ${0}', err.message));
     }
 }
 
-async function openFile(filePath) {
+async function openFile(filePath, selection = null) {
     if (!currentCharId) return;
 
     try {
         const content = await fetchFileContent(currentCharId, filePath);
         setCMContent(content, filePath);
         currentFile = filePath;
+        currentProjectSelection = selection || findProjectNode(filePath);
 
         // Update file list highlight
         const fileListEl = document.querySelector('[data-studio-file-list]');
@@ -824,8 +982,12 @@ async function openFile(filePath) {
         // Update tab display
         const tabsEl = document.querySelector('[data-studio-tabs]');
         if (tabsEl) {
-            tabsEl.innerHTML = `<div class="card-app-studio-tab active">${escapeHtml(filePath)}</div>`;
+            const logicalLabel = currentProjectSelection?.label && currentProjectSelection.label !== filePath
+                ? `${escapeHtml(t(currentProjectSelection.label))} · ${escapeHtml(filePath)}`
+                : escapeHtml(filePath);
+            tabsEl.innerHTML = `<div class="card-app-studio-tab active">${logicalLabel}</div>`;
         }
+        structuredRuntimeEditorHost?.open(currentProjectSelection);
     } catch (err) {
         console.error(`[${MODULE_NAME}] Failed to open file:`, err);
         setCMContent(`// Error loading ${filePath}: ${err.message}`, filePath);
@@ -833,16 +995,149 @@ async function openFile(filePath) {
 }
 
 async function handleSaveCurrentFile() {
-    if (!currentFile || !currentCharId) return;
+    if (!currentFile || !currentCharId) return false;
 
     try {
+        await structuredRuntimeEditorHost?.validateBeforeSave();
         await saveFileContent(currentCharId, currentFile, getCMContent());
+        await refreshProjectFiles();
+        await studioSimulationHost?.refresh();
         toastr.success(tFormat('Saved ${0}', currentFile));
         await reloadCardApp();
     } catch (err) {
         console.error(`[${MODULE_NAME}] Failed to save file:`, err);
         toastr.error(tFormat('Failed to save: ${0}', err.message));
+        return false;
     }
+}
+
+async function readAtriaApiError(response, fallback) {
+    try {
+        const body = await response.json();
+        return String(body?.error || fallback);
+    } catch {
+        return fallback;
+    }
+}
+
+function atriaDownloadName(response) {
+    const disposition = String(response.headers.get('content-disposition') || '');
+    const match = /filename="([^"]+)"/i.exec(disposition);
+    if (match?.[1]) return match[1];
+    const id = String(projectNavigator?.manifest?.id || 'atria-game').replace(/[^A-Za-z0-9._-]+/g, '_');
+    const version = String(projectNavigator?.manifest?.version || '0.0.0').replace(/[^A-Za-z0-9._+-]+/g, '_');
+    return id + '-' + version + '.atria';
+}
+
+async function handleBuildAtria() {
+    if (!currentCharId || projectNavigator?.kind !== GAME_PROJECT_KIND.GAME) return;
+    if (currentFile && !(await handleSaveCurrentFile())) return;
+
+    try {
+        const response = await fetch(
+            `/api/card-app/${encodeURIComponent(currentCharId)}/atria/export`,
+            { headers: getRequestHeaders() },
+        );
+        if (!response.ok) {
+            throw new Error(await readAtriaApiError(response, 'Failed to build .atria distribution'));
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = atriaDownloadName(response);
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        toastr.success(t('Validated and built .atria distribution'));
+    } catch (error) {
+        toastr.error(t('Build .atria failed') + ': ' + (error?.message || String(error)));
+    }
+}
+
+async function validateAtriaImport(charId, archiveBuffer) {
+    const response = await fetch(
+        `/api/card-app/${encodeURIComponent(charId)}/atria/validate`,
+        {
+            method: 'POST',
+            headers: {
+                ...getRequestHeaders(),
+                'Content-Type': 'application/x-atria',
+            },
+            body: archiveBuffer,
+        },
+    );
+    if (!response.ok) {
+        throw new Error(await readAtriaApiError(response, 'Invalid .atria distribution'));
+    }
+    return response.json();
+}
+
+async function restoreAtriaImport(charId, archiveBuffer) {
+    const response = await fetch(
+        `/api/card-app/${encodeURIComponent(charId)}/atria/import`,
+        {
+            method: 'POST',
+            headers: {
+                ...getRequestHeaders(),
+                'Content-Type': 'application/x-atria',
+            },
+            body: archiveBuffer,
+        },
+    );
+    if (!response.ok) {
+        throw new Error(await readAtriaApiError(response, 'Failed to restore .atria distribution'));
+    }
+    return response.json();
+}
+
+async function handleImportAtria() {
+    if (!currentCharId) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.atria,application/zip,application/x-atria';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        input.remove();
+        if (!file) return;
+
+        try {
+            const archiveBuffer = await file.arrayBuffer();
+            const preview = await validateAtriaImport(currentCharId, archiveBuffer);
+            const game = preview?.game || {};
+            const confirmed = confirm(
+                t('Restore this validated .atria Source Project? Existing source files will be replaced; Git history is preserved.')
+                + '\n\n'
+                + String(game.name || game.id || file.name)
+                + (game.version ? ' @ ' + game.version : '')
+                + '\n'
+                + String(preview?.fileCount || 0) + ' ' + t('files'),
+            );
+            if (!confirmed) return;
+
+            const charId = currentCharId;
+            const reopenContainer = studioEmbedded
+                ? (studioMountRoot?.parentElement || studioMountContainer)
+                : null;
+            await restoreAtriaImport(charId, archiveBuffer);
+            toastr.success(t('Restored .atria Source Project'));
+            await closeCardAppStudio();
+            await openCardAppStudio(charId, reopenContainer
+                ? { container: reopenContainer, embedded: true }
+                : {});
+            await reloadCardApp();
+        } catch (error) {
+            toastr.error(t('Import .atria failed') + ': ' + (error?.message || String(error)));
+        }
+    }, { once: true });
+
+    input.click();
 }
 
 async function handleNewFile() {
@@ -854,9 +1149,7 @@ async function handleNewFile() {
 
     try {
         await saveFileContent(currentCharId, safeName, '');
-        fileList = await fetchFileList(currentCharId);
-        const fileListEl = document.querySelector('[data-studio-file-list]');
-        if (fileListEl) renderFileList(fileListEl);
+        await refreshProjectFiles();
         await openFile(safeName);
         toastr.success(tFormat('Created ${0}', safeName));
     } catch (err) {
@@ -916,10 +1209,59 @@ async function wipeSp2EraSessionsIfNeeded(avatar) {
     }
 }
 
-export async function openCardAppStudio(charId) {
+function prepareStudioMount({ container = null, embedded = false } = {}) {
+    studioEmbedded = Boolean(container && embedded);
+    if (!studioEmbedded) {
+        studioMountRoot = null;
+        studioMountContainer = null;
+        return document.body;
+    }
+
+    const root = document.createElement('section');
+    root.id = STUDIO_WORKSPACE_ROOT_ID;
+    root.className = 'card-app-studio-workspace';
+    root.dataset.atriaWorkspaceEmbedded = 'true';
+    container.replaceChildren(root);
+    studioMountRoot = root;
+    studioMountContainer = container;
+    return root;
+}
+
+function requestStudioClose() {
+    if (studioEmbedded) {
+        const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+        if (workspaceHost?.isMounted?.()) {
+            workspaceHost.closeActive();
+            return;
+        }
+    }
+    void closeCardAppStudio();
+}
+
+export async function openCardAppStudio(charId, options = {}) {
+    const container = options?.container || null;
+    const embedded = Boolean(options?.embedded);
+
+    if (!container) {
+        const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+        if (workspaceHost?.isMounted?.()) {
+            workspaceHost.openStudio(charId);
+            return null;
+        }
+    }
+
     if (isStudioOpen) {
+        if (container && embedded) {
+            const mountParent = prepareStudioMount({ container, embedded: true });
+            for (const id of [STUDIO_PANEL_LEFT_ID, STUDIO_PANEL_RIGHT_ID, STUDIO_MOBILE_TABS_ID]) {
+                const node = document.getElementById(id);
+                if (node) mountParent.append(node);
+            }
+            document.body.classList.add('card-app-studio-embedded');
+            return studioMountRoot;
+        }
         toastr.warning(t('CardApp Studio is already open.'));
-        return;
+        return studioMountRoot;
     }
 
     currentCharId = charId;
@@ -935,8 +1277,8 @@ export async function openCardAppStudio(charId) {
     // Ensure skeleton files exist
     await ensureSkeletonFiles(charId);
 
-    // Load file list
-    fileList = await fetchFileList(charId);
+    // Load the live source project and derive the runtime-aware navigator.
+    await refreshProjectFiles({ render: false });
 
     // Inject CSS
     if (!document.getElementById('card-app-studio-style')) {
@@ -947,26 +1289,29 @@ export async function openCardAppStudio(charId) {
         document.head.appendChild(link);
     }
 
-    // Create panels
+    // Create the existing Studio controller DOM inside either its legacy
+    // body host or the R7E WorkspaceHost adapter.
+    const mountParent = prepareStudioMount({ container, embedded });
     const leftPanel = document.createElement('div');
     leftPanel.innerHTML = buildLeftPanelHtml();
-    document.body.appendChild(leftPanel.firstElementChild);
+    mountParent.appendChild(leftPanel.firstElementChild);
 
     const rightPanel = document.createElement('div');
     rightPanel.innerHTML = buildRightPanelHtml();
-    document.body.appendChild(rightPanel.firstElementChild);
+    mountParent.appendChild(rightPanel.firstElementChild);
 
     // Mobile tab bar (CSS @media decides whether it's visible)
     const mobileTabs = document.createElement('div');
     mobileTabs.innerHTML = buildMobileTabsHtml();
-    document.body.appendChild(mobileTabs.firstElementChild);
+    mountParent.appendChild(mobileTabs.firstElementChild);
 
     // Sync auto-apply checkbox from persisted settings
     const autoApplyEl = document.querySelector('[data-studio-toggle="auto-apply"]');
     if (autoApplyEl) autoApplyEl.checked = isAutoApplyEnabled();
 
-    // Add body class for margin adjustment
+    // The same controller serves legacy and first-class Workspace chrome.
     document.body.classList.add('card-app-studio-active');
+    document.body.classList.toggle('card-app-studio-embedded', studioEmbedded);
 
     // Render file list
     const fileListEl = document.querySelector('[data-studio-file-list]');
@@ -978,8 +1323,28 @@ export async function openCardAppStudio(charId) {
         await createCMEditor(codeContainer, '', '');
     }
 
-    // Open first file
-    const firstFile = fileList.find(f => f.type === 'file');
+    structuredRuntimeEditorHost = createStructuredRuntimeEditorHost({
+        translate: t,
+        getSourceText: getCMContent,
+        setSourceText: setCMContent,
+        getProjectNavigator: () => projectNavigator,
+        fetchFileContent: path => fetchFileContent(currentCharId, path),
+        requestRawMeasure: () => cmEditor?.requestMeasure?.(),
+        notifyError: message => toastr.error(message),
+    });
+
+    studioSimulationHost = createStudioSimulationHost({
+        translate: t,
+        getProjectNavigator: () => projectNavigator,
+        fetchFileContent: path => fetchFileContent(currentCharId, path),
+        notifyError: message => toastr.error(message),
+    });
+
+    // Game projects open their authoritative package metadata first; plain
+    // CardApps preserve the original first-file behavior.
+    const firstFile = projectNavigator?.kind === GAME_PROJECT_KIND.GAME
+        ? fileList.find(f => f.type === 'file' && f.path === 'game.json')
+        : fileList.find(f => f.type === 'file');
     if (firstFile) {
         await openFile(firstFile.path);
     }
@@ -1016,10 +1381,16 @@ export async function openCardAppStudio(charId) {
     bindStudioEvents();
 
     console.log(`[${MODULE_NAME}] Studio opened for ${charId}`);
+    return studioMountRoot || document.getElementById(STUDIO_PANEL_RIGHT_ID);
 }
 
 export async function closeCardAppStudio() {
     if (!isStudioOpen) return;
+
+    structuredRuntimeEditorHost?.destroy();
+    structuredRuntimeEditorHost = null;
+    studioSimulationHost?.destroy();
+    studioSimulationHost = null;
 
     // Destroy CM6 editor
     destroyCMEditor();
@@ -1032,9 +1403,14 @@ export async function closeCardAppStudio() {
     // Remove body classes
     document.body.classList.remove(
         'card-app-studio-active',
+        'card-app-studio-embedded',
         'card-app-studio-mobile-tab-right',
         'card-app-studio-mobile-tab-preview',
     );
+    studioMountRoot?.remove();
+    studioMountRoot = null;
+    studioMountContainer = null;
+    studioEmbedded = false;
 
     mobileActiveTab = 'left';
 
@@ -1048,6 +1424,8 @@ export async function closeCardAppStudio() {
     currentAvatar = null;
     currentFile = null;
     fileList = [];
+    projectNavigator = null;
+    currentProjectSelection = null;
     conversationMessages = [];
     currentSessionId = null;
     isSending = false;
@@ -1083,7 +1461,9 @@ function bindStudioEvents() {
             const fileItem = e.target.closest('[data-studio-file]');
             if (fileItem) {
                 const filePath = fileItem.dataset.studioFile;
-                if (filePath) await openFile(filePath);
+                const role = fileItem.dataset.studioRole || '';
+                const section = fileItem.dataset.studioSection || '';
+                if (filePath) await openFile(filePath, findProjectNode(filePath, role, section));
             }
         });
     }
@@ -1190,6 +1570,7 @@ function getToolDisplay(name) {
         cardapp_delete_file: { icon: '🗑️', label: 'Delete file' },
         cardapp_rename_file: { icon: '📝', label: 'Rename file' },
         cardapp_set_enabled: { icon: '🔌', label: 'Toggle CardApp' },
+        game_project_inspect: { icon: '🎮', label: 'Inspect Game Project' },
     };
     return map[name] || { icon: '🔧', label: name };
 }
@@ -1506,7 +1887,12 @@ async function handleAISend() {
                 else if (name === TOOL_NAMES.DELETE_FILE) detail = args.path;
                 else if (name === TOOL_NAMES.RENAME_FILE) detail = `${args.from_path} → ${args.to_path}`;
                 else if (name === TOOL_NAMES.LIST_FILES) detail = `${toolResult?.files?.length || 0} files`;
-                else if (name === TOOL_NAMES.REGEX_LIST_SCRIPTS) {
+                else if (name === TOOL_NAMES.GAME_PROJECT_INSPECT) {
+                    const project = toolResult?.project;
+                    detail = project?.kind === 'game'
+                        ? `${project.summary?.name || 'Game Project'} · ${project.status}`
+                        : 'Plain CardApp';
+                } else if (name === TOOL_NAMES.REGEX_LIST_SCRIPTS) {
                     const scope = String(args?.scope || 'all');
                     if (scope === 'all') {
                         const cc = toolResult?.character?.length || 0;
@@ -1526,10 +1912,9 @@ async function handleAISend() {
         });
         if (loadingEl?.parentNode) loadingEl.remove();
         if (result.modifiedFiles.length > 0) {
-            fileList = await fetchFileList(currentCharId);
-            const fileListEl = document.querySelector('[data-studio-file-list]');
-            if (fileListEl) renderFileList(fileListEl);
+            await refreshProjectFiles();
             if (currentFile && result.modifiedFiles.includes(currentFile)) await openFile(currentFile);
+            await studioSimulationHost?.refresh();
             await reloadCardApp();
         }
     } catch (err) {
@@ -1564,13 +1949,22 @@ async function handleStudioClick(e) {
     const action = actionEl.dataset.studioAction;
     switch (action) {
         case 'close':
-            closeCardAppStudio();
+            requestStudioClose();
             break;
         case 'save':
             handleSaveCurrentFile();
             break;
         case 'reload':
             reloadCardApp();
+            break;
+        case 'atria-build':
+            await handleBuildAtria();
+            break;
+        case 'atria-import':
+            await handleImportAtria();
+            break;
+        case 'simulation-toggle':
+            await studioSimulationHost?.toggle();
             break;
         case 'new-file':
             handleNewFile();
@@ -1644,11 +2038,21 @@ function handleStudioKeydown(e) {
     // so an Enter-to-send shortcut here would always lose newlines for
     // touch users.
 
-    // Escape: Close studio (only if not focused in AI input textarea or CM6 editor)
+    // Escape leaves an embedded Studio through the R7D navigation authority.
+    // Standalone legacy Studio keeps its original close behavior.
     if (e.key === 'Escape' && document.activeElement?.tagName !== 'TEXTAREA' && !document.activeElement?.closest('.cm-editor')) {
-        closeCardAppStudio();
+        requestStudioClose();
         return;
     }
+}
+
+export function getCardAppStudioStateForTests() {
+    return {
+        open: isStudioOpen,
+        embedded: studioEmbedded,
+        characterId: currentCharId,
+        root: studioMountRoot,
+    };
 }
 
 // Export file API for AI tool execution (Commit 4)

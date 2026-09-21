@@ -96,6 +96,26 @@ export async function reloadAndAwait(page, baseURL) {
 }
 
 export async function openExtensionsDrawer(page) {
+    const openedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openUtility !== 'function') {
+            return false;
+        }
+        workspaceHost.openUtility('plugins');
+        return true;
+    }).catch(() => false);
+
+    if (openedByShell) {
+        const compatibility = page.locator('[data-atria-plugin-compatibility="true"]');
+        await compatibility.waitFor({ state: 'visible', timeout: 10_000 });
+        if (!await compatibility.evaluate(el => el.open).catch(() => false)) {
+            await compatibility.locator('> summary').click();
+        }
+        await page.locator('#extensions_settings').waitFor({ state: 'visible', timeout: 10_000 });
+        return;
+    }
+
     const block = page.locator('#rm_extensions_block');
     const isOpen = await block.evaluate(el => el && !el.classList.contains('closedDrawer')).catch(() => false);
     if (isOpen) return;
@@ -119,6 +139,22 @@ export async function openExtensionsDrawer(page) {
  * sendMessageAndAwaitReply.
  */
 export async function closeExtensionsDrawer(page) {
+    const closedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        const route = shell?.getNavigation?.()?.getRoute?.();
+        if (!shell?.isMounted?.() || route?.child?.id !== 'utility.plugins' || typeof workspaceHost?.openPlay !== 'function') {
+            return false;
+        }
+        workspaceHost.openPlay();
+        return true;
+    }).catch(() => false);
+
+    if (closedByShell) {
+        await page.locator('#sheld').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+        return;
+    }
+
     const block = page.locator('#rm_extensions_block');
     const isOpen = await block.evaluate(el => el && el.classList.contains('openDrawer')).catch(() => false);
     if (!isOpen) return;
@@ -202,11 +238,25 @@ export async function selectCharacterByName(page, name) {
         await onboardingHeader.waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
     }
 
-    const drawer = page.locator('#rightNavDrawerIcon');
-    const drawerClosed = await drawer.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
-    if (drawerClosed) await drawer.click();
+    const openedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openLibrarySection !== 'function') {
+            return false;
+        }
+        workspaceHost.openLibrarySection('characters');
+        return true;
+    }).catch(() => false);
 
-    // If a prior character was already selected, the right drawer is
+    if (openedByShell) {
+        await page.locator('#rm_print_characters_block').waitFor({ state: 'visible', timeout: 10_000 });
+    } else {
+        const drawer = page.locator('#rightNavDrawerIcon');
+        const drawerClosed = await drawer.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
+        if (drawerClosed) await drawer.click();
+    }
+
+    // If a prior character was already selected, the character surface is
     // showing the character-edit panel rather than the list. Click the
     // "Characters" sub-panel button so #rm_print_characters_block becomes
     // visible again. Use a JS click so a toast or transient overlay
@@ -297,6 +347,20 @@ export async function selectCharacterProgrammatic(page, name) {
  * element (not from ctx.chat).
  */
 export async function sendMessageAndAwaitReply(page, text, { timeoutMs = 120_000 } = {}) {
+    // The native Composer is Play-local under R7H. Tests may arrive here
+    // after visiting Library, Plugins, Runtime, or another first-class
+    // workspace, so route back through the one authoritative WorkspaceHost
+    // before touching #send_textarea. Legacy recovery/non-Shell hosts are
+    // unchanged.
+    await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (shell?.isMounted?.() && typeof workspaceHost?.openPlay === 'function') {
+            workspaceHost.openPlay();
+        }
+    });
+    await page.locator('#send_textarea').waitFor({ state: 'visible', timeout: 10_000 });
+
     // GENERATION_ENDED fires after streaming flushes ctx.chat[id].mes —
     // safer than MESSAGE_RECEIVED, which fires before the streamed reply
     // content has fully replaced the "..." placeholder.

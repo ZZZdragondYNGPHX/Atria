@@ -298,6 +298,8 @@ import { DragAndDropHandler } from './scripts/dragdrop.js';
 import { INTERACTABLE_CONTROL_CLASS, initKeyboard } from './scripts/keyboard.js';
 import { initDynamicStyles } from './scripts/dynamic-styles.js';
 import { createImmersiveController } from './scripts/immersive/controller.js';
+import { initializeAtriaShellFoundation } from './scripts/atria-shell/index.js';
+import { createAtriaBackResolver } from './scripts/atria-shell/back-resolver.js';
 
 import { AbortReason } from './scripts/util/AbortReason.js';
 import { initSystemPrompts } from './scripts/sysprompt.js';
@@ -954,6 +956,9 @@ const immersiveController = createImmersiveController({
         || $('#logprobsViewer, #cfgConfig, #floatingPrompt, #WorldInfo').is(':visible')
         || $('#movingDivs > div:visible').length > 0
         || $('.drawer-content.openDrawer:visible').length > 0
+        || Boolean(globalThis.Atria?.shell?.getShell?.()?.hasEscapePriorityLayer?.())
+        || globalThis.Atria?.shell?.getPlayHost?.()?.getStageOwner?.() === 'legacy-card-app'
+        || document.body?.dataset?.atriaGameFullActive === 'true'
     ),
 });
 
@@ -982,71 +987,112 @@ if (typeof window !== 'undefined') {
     window.__atriaSetNativeFullscreenState = (enabled) => {
         immersiveController.setNativeFullscreenState?.(Boolean(enabled));
     };
-    window.__atriaHandleBack = () => {
-        try {
-            const $ = window.jQuery;
-            if (typeof $ !== 'function') return 'noop';
 
+    const dispatchAtriaEscape = () => {
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Escape',
+            code: 'Escape',
+            keyCode: 27,
+            which: 27,
+            bubbles: true,
+            cancelable: true,
+        }));
+    };
+
+    const getMountedAtriaShell = () => globalThis.Atria?.shell?.getShell?.() || null;
+    const atriaBackResolver = createAtriaBackResolver({
+        dismissKeyboard: () => {
             const activeElement = document.activeElement;
-            if (activeElement?.matches?.('input, textarea, select, [contenteditable="true"]')) {
-                activeElement.blur();
-                return 'consumed';
+            if (!activeElement?.matches?.('input, textarea, select, [contenteditable="true"]')) {
+                return false;
             }
+            activeElement.blur();
+            return true;
+        },
+        dismissModalPopover: () => {
+            const jq = window.jQuery;
+            if (typeof jq !== 'function') return false;
 
             const topUiIsActionable =
-                $('#curEditTextarea').is(':visible')
+                jq('#curEditTextarea').is(':visible')
                 || !!document.querySelector('dialog[open]:not(#atriaImmersiveHudDetails)')
-                || $('#dialogue_popup, #select_chat_popup, #character_popup, #dialogue_del_mes_cancel').is(':visible')
-                || $('#logprobsViewer, #cfgConfig, #floatingPrompt, #WorldInfo').is(':visible')
-                || $('#movingDivs > div:visible').length > 0
-                || $('.drawer-content.openDrawer')
+                || jq('#dialogue_popup, #select_chat_popup, #character_popup, #dialogue_del_mes_cancel').is(':visible')
+                || jq('#logprobsViewer, #cfgConfig, #floatingPrompt, #WorldInfo').is(':visible')
+                || jq('#movingDivs > div:visible').length > 0
+                || jq('.drawer-content.openDrawer')
                     .not('#WorldInfo').not('#left-nav-panel').not('#right-nav-panel')
                     .not('#floatingPrompt').not('#cfgConfig').not('#logprobsViewer')
                     .not('#movingDivs > div')
                     .filter(':visible').length > 0;
 
             if (topUiIsActionable) {
-                document.dispatchEvent(new KeyboardEvent('keydown', {
-                    key: 'Escape', code: 'Escape', keyCode: 27, which: 27,
-                    bubbles: true, cancelable: true,
-                }));
-                return 'consumed';
+                dispatchAtriaEscape();
+                return true;
             }
-
-            if ($('#left-nav-panel').hasClass('openDrawer')) {
-                $('#leftNavDrawerIcon').trigger('click');
-                return 'consumed';
+            if (jq('#left-nav-panel').hasClass('openDrawer')) {
+                jq('#leftNavDrawerIcon').trigger('click');
+                return true;
             }
-            if ($('#right-nav-panel').hasClass('openDrawer')) {
-                $('#rightNavDrawerIcon').trigger('click');
-                return 'consumed';
+            if (jq('#right-nav-panel').hasClass('openDrawer')) {
+                jq('#rightNavDrawerIcon').trigger('click');
+                return true;
             }
-
-            if (immersiveController.dismissTransientLayer?.()) {
-                return 'consumed';
+            return false;
+        },
+        dismissContextSheet: () => (
+            getMountedAtriaShell()?.dismissContextForBack?.() === true
+        ),
+        dismissCommandSurface: () => (
+            getMountedAtriaShell()?.dismissCommandForBack?.() === true
+        ),
+        dismissGeneration: () => {
+            const jq = window.jQuery;
+            if (typeof jq !== 'function' || !jq('#mes_stop').is(':visible')) return false;
+            jq('#mes_stop').trigger('click');
+            return true;
+        },
+        dismissDetailRoute: () => (
+            getMountedAtriaShell()?.dismissDetailRouteForBack?.() === true
+        ),
+        escapeFullGame: () => {
+            const shellFoundation = globalThis.Atria?.shell;
+            const stageOwner = shellFoundation?.getPlayHost?.()?.getStageOwner?.();
+            if (stageOwner === 'legacy-card-app') {
+                const exit = document.querySelector('[data-atria-card-app-recovery-action="exit"]');
+                if (!exit) return false;
+                exit.click();
+                return true;
             }
-
-            if ($('#mes_stop').is(':visible')) {
-                $('#mes_stop').trigger('click');
-                return 'consumed';
-            }
-
-            if (immersiveController.isEnabled()) {
-                void setImmersiveMode(false, { useFullscreen: true, source: 'android_back' });
-                return 'consumed';
-            }
-
+            if (document.body?.dataset?.atriaGameFullActive !== 'true') return false;
+            dispatchAtriaEscape();
+            return true;
+        },
+        exitImmersive: () => {
+            if (immersiveController.dismissTransientLayer?.()) return true;
+            if (!immersiveController.isEnabled()) return false;
+            void setImmersiveMode(false, {
+                useFullscreen: true,
+                source: 'android_back',
+            });
+            return true;
+        },
+        dismissWorkspaceChild: () => (
+            getMountedAtriaShell()?.dismissWorkspaceChildRouteForBack?.() === true
+        ),
+        navigateAtriaBack: () => (
+            getMountedAtriaShell()?.navigateBack?.() === true
+        ),
+        dismissLegacyFallback: () => {
+            if (getMountedAtriaShell()) return false;
             if (this_chid !== undefined || selected_group) {
                 void closeCurrentChat();
-                return 'consumed';
+                return true;
             }
+            return false;
+        },
+    });
 
-            return 'unhandled';
-        } catch (error) {
-            console.warn('Failed to handle back press from native', error);
-            return 'noop';
-        }
-    };
+    window.__atriaHandleBack = () => atriaBackResolver.resolve();
 }
 
 // Saved here for performance reasons
@@ -1932,6 +1978,19 @@ async function firstLoadInit() {
     initWelcomeScreen();
     initKeyboard();
     initDynamicStyles();
+
+    // R7H: the Atria Shell is the normal product Host. It reparents the
+    // existing native Conversation/Composer through the single-DOM ownership
+    // seam; explicit legacy recovery is handled inside the shell foundation.
+    const shellFoundation = initializeAtriaShellFoundation({
+        document,
+        window,
+        translate: translateText,
+    });
+    if (globalThis.Atria) {
+        globalThis.Atria.shell = shellFoundation;
+    }
+
     initNavPanelPins();
     initSendTextareaState();
     restoreCharacterSearchVisibility();
@@ -2071,6 +2130,10 @@ async function firstLoadInit() {
     performance.mark('[init] batch3 done');
     await eventSource.emit(event_types.APP_INITIALIZED);
     await eventSource.emit(event_types.APP_READY);
+    // APP_READY is the final authority for the initial boot cover. The
+    // static preloader must never survive beyond this boundary even if a
+    // legacy loader handle was already cleaned up through another path.
+    document.getElementById('preloader')?.remove();
     clientStartupLogger.info('first-load.completed', 'Frontend first-load initialization completed', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     clientUiLogger.info('app.ready', 'Atria UI reached APP_READY', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     console.debug('[init] firstLoadInit complete');
@@ -2130,20 +2193,28 @@ function loadStartupClassicScript(src) {
 }
 
 function loadSelect2Libraries() {
-    if (typeof $.fn?.select2 === 'function' && globalThis.__atriaSelect2SearchPatchLoaded === true) {
+    const getJQuery = () => globalThis.jQuery || globalThis.$;
+    const initialJQuery = getJQuery();
+    if (typeof initialJQuery?.fn?.select2 === 'function' && globalThis.__atriaSelect2SearchPatchLoaded === true) {
         return Promise.resolve();
     }
 
     if (!select2LibrariesPromise) {
         select2LibrariesPromise = (async () => {
-            if (typeof $.fn?.select2 !== 'function') {
+            let canonicalJQuery = getJQuery();
+            if (typeof canonicalJQuery?.fn?.select2 !== 'function') {
                 await loadStartupClassicScript('/lib/select2.min.js');
+                canonicalJQuery = getJQuery();
+            }
+            if (typeof canonicalJQuery?.fn?.select2 !== 'function') {
+                throw new Error('Select2 library failed to attach to the canonical jQuery instance');
             }
             if (globalThis.__atriaSelect2SearchPatchLoaded !== true) {
                 await loadStartupClassicScript('/lib/select2-search-placeholder.js');
             }
-            if (typeof $.fn?.select2 !== 'function') {
-                throw new Error('Select2 library failed to initialize');
+            canonicalJQuery = getJQuery();
+            if (typeof canonicalJQuery?.fn?.select2 !== 'function') {
+                throw new Error('Select2 library became unavailable after startup patch loading');
             }
         })().catch((error) => {
             select2LibrariesPromise = null;
@@ -21993,6 +22064,11 @@ jQuery(async function () {
     });
 
     $(document).on('click', '.open_characters_library', async function () {
+        const shell = globalThis.Atria?.shell?.getShell?.();
+        if (shell) {
+            shell.navigate('library', { reason: 'legacy-character-library' });
+            return;
+        }
         await getCharacters();
         await eventSource.emit(event_types.OPEN_CHARACTER_LIBRARY);
     });

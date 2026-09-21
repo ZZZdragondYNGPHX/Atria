@@ -155,6 +155,60 @@ describe('Memory OS historical build', () => {
         expect((await f.lifecycle.listGraph(f.context)).entities.find(item => item.id === alice.id).canonicalName).toBe('Alicia');
         await f.builder.rollback(f.context); expect(await historyHash(f.state)).toBe(before);
     });
+    test('rebuild seed preserves authoritative Game Event facts', () => {
+        const ledger = {
+            version: 1,
+            scopeId: 'chat:a',
+            sources: {},
+            episodes: {},
+            externalSources: {
+                'game-event:event:2': {
+                    id: 'game-event:event:2',
+                    kind: 'game_event',
+                    fingerprint: 'fp',
+                    status: 'active',
+                },
+            },
+            dependencies: [],
+            facts: {
+                authoritative: {
+                    id: 'authoritative',
+                    scopeId: 'chat:a',
+                    text: 'Committed game event DamageDealt: {"amount":3}',
+                    type: 'authoritative',
+                    supports: [{
+                        id: 'support',
+                        episodeIds: [],
+                        externalSourceIds: ['game-event:event:2'],
+                        evidence: [],
+                    }],
+                    supersededBy: [],
+                },
+                extracted: {
+                    id: 'extracted',
+                    scopeId: 'chat:a',
+                    text: 'Model-extracted detail',
+                    type: 'explicit',
+                    supports: [{
+                        id: 'support2',
+                        episodeIds: ['episode:1'],
+                        evidence: [],
+                    }],
+                    supersededBy: [],
+                },
+            },
+            entities: {},
+            relations: {},
+            entityPending: {},
+        };
+
+        const rebuilt = rebuildSeed(ledger);
+
+        expect(rebuilt.facts.authoritative).toBeDefined();
+        expect(rebuilt.facts.extracted).toBeUndefined();
+        expect(rebuilt.externalSources['game-event:event:2']).toBeDefined();
+    });
+
     test('only one build per scope runs, and the lock is released after cancellation', async () => {
         const f = fixture(); let release; let entered;
         const started = new Promise(resolve => { entered = resolve; }); const gate = new Promise(resolve => { release = resolve; });

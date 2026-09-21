@@ -6,6 +6,9 @@ const SCRIPT_URL = new URL('../public/script.js', import.meta.url);
 const OPENAI_URL = new URL('../public/scripts/openai.js', import.meta.url);
 const FOCUS_GUARD_URL = new URL('../public/lib/mobile-focus-guard.js', import.meta.url);
 const SELECT2_PATCH_URL = new URL('../public/lib/select2-search-placeholder.js', import.meta.url);
+const ACTIONABLE_SELECT_URL = new URL('../public/scripts/select2-actionable-single.js', import.meta.url);
+const HORDE_URL = new URL('../public/scripts/horde.js', import.meta.url);
+const TAGS_URL = new URL('../public/scripts/tags.js', import.meta.url);
 
 describe('post-visible Select2 loading', () => {
     test('keeps Select2 out of the pre-visible classic script list', () => {
@@ -42,6 +45,44 @@ describe('post-visible Select2 loading', () => {
         expect(join).toBeGreaterThanOrEqual(0);
         expect(openaiSelects).toBeGreaterThan(join);
         expect(presetInit).toBeGreaterThan(openaiSelects);
+    });
+
+    test('keeps lazy Select2 bound to canonical jQuery and fail-soft at enhancement time', () => {
+        const script = readFileSync(SCRIPT_URL, 'utf8');
+        const textgen = readFileSync(new URL('../public/scripts/textgen-models.js', import.meta.url), 'utf8');
+
+        expect(script).toContain('const getJQuery = () => globalThis.jQuery || globalThis.$;');
+        expect(script).toContain('Select2 library failed to attach to the canonical jQuery instance');
+        expect(textgen).toContain('const select2Jq = globalThis.jQuery || globalThis.$;');
+        expect(textgen).toContain("if (typeof select2Jq?.fn?.select2 !== 'function')");
+        expect(textgen).toContain("console.warn('[init] Select2 is not ready;");
+        expect(textgen).toContain("select2Jq('#mancer_model').select2({");
+        expect(textgen).not.toContain("$('#mancer_model').select2({");
+    });
+
+    test('keeps actionable Select2 on the canonical jQuery instance and fail-soft', () => {
+        const actionable = readFileSync(ACTIONABLE_SELECT_URL, 'utf8');
+
+        expect(actionable).toContain('function getCanonicalJQuery()');
+        expect(actionable).toContain('const jq = getCanonicalJQuery();');
+        expect(actionable).toContain("if (typeof jq.fn?.select2 !== 'function')");
+        expect(actionable).toContain('const $select = jq(selectElement);');
+        expect(actionable).toContain("console.warn('[init] Select2 is not ready;");
+        expect(actionable).not.toContain('const $select = $(selectElement);');
+    });
+
+    test('keeps remaining legacy Select2 enhancements fail-soft on canonical jQuery', () => {
+        const horde = readFileSync(HORDE_URL, 'utf8');
+        const tags = readFileSync(TAGS_URL, 'utf8');
+
+        expect(horde).toContain('const select2Jq = globalThis.jQuery || globalThis.$;');
+        expect(horde).toContain("typeof select2Jq?.fn?.select2 === 'function'");
+        expect(horde).toContain("select2Jq('#horde_model').select2({");
+        expect(horde).not.toContain("$('#horde_model').select2({");
+
+        expect(tags).toContain('const select2Jq = globalThis.jQuery || globalThis.$;');
+        expect(tags).toContain('select2Jq(mergeSelect).select2({');
+        expect(tags).not.toContain("popupContent.find('#merge_tag_select').select2({");
     });
 
     test('loads Select2 after visible paint and before preset-manager initialization', () => {

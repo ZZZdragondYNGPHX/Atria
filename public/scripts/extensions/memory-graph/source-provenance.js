@@ -3,14 +3,21 @@
 export const SOURCE_ID_FIELD = 'memory_os_source_id';
 
 export function emptyProvenance() {
-    return { version: 1, scopeId: '', sources: {}, episodes: {}, dependencies: [] };
+    return {
+        version: 1,
+        scopeId: '',
+        sources: {},
+        episodes: {},
+        externalSources: {},
+        dependencies: [],
+    };
 }
 
 export function normalizeProvenance(raw) {
     const state = emptyProvenance();
     if (!raw || raw.version !== 1) return state;
     state.scopeId = String(raw.scopeId || '');
-    for (const key of ['sources', 'episodes', 'facts', 'entities', 'relations', 'entityPending', 'predicates', 'providerSources', 'providerSnapshots', 'corrections', 'historyBuild']) {
+    for (const key of ['sources', 'episodes', 'externalSources', 'facts', 'entities', 'relations', 'entityPending', 'predicates', 'providerSources', 'providerSnapshots', 'corrections', 'historyBuild']) {
         if (raw[key] && typeof raw[key] === 'object' && !Array.isArray(raw[key])) {
             state[key] = structuredClone(raw[key]);
         }
@@ -121,6 +128,53 @@ export function episodesAreCurrent(state, ids, chat, scopeId, lookup = sourceLoo
     });
 }
 
+export function reconcileExternalSources(state, sources = []) {
+    state.externalSources ||= {};
+    const current = new Map();
+    for (const raw of Array.isArray(sources) ? sources : []) {
+        const id = String(raw?.id || '').trim();
+        const kind = String(raw?.kind || '').trim();
+        const fingerprint = String(raw?.fingerprint || '').trim();
+        if (!id || !kind || !fingerprint) continue;
+        current.set(id, {
+            id,
+            kind,
+            fingerprint,
+            content: String(raw?.content || ''),
+            branchId: String(raw?.branchId || ''),
+            eventId: String(raw?.eventId || ''),
+        });
+    }
+
+    for (const [id, source] of Object.entries(state.externalSources)) {
+        const live = current.get(id);
+        source.status = live && live.fingerprint === source.fingerprint
+            ? 'active'
+            : 'stale';
+    }
+
+    for (const [id, live] of current) {
+        const existing = state.externalSources[id];
+        if (!existing || existing.fingerprint !== live.fingerprint) {
+            state.externalSources[id] = {
+                ...structuredClone(live),
+                status: 'active',
+            };
+        } else {
+            existing.status = 'active';
+            existing.content = live.content;
+            existing.branchId = live.branchId;
+            existing.eventId = live.eventId;
+        }
+    }
+}
+
+export function externalSourcesAreCurrent(state, ids) {
+    return Array.isArray(ids) && ids.length > 0 && ids.every(id => (
+        state.externalSources?.[id]?.status === 'active'
+    ));
+}
+
 export function copyEvidence(value) {
     if (!value || typeof value.scopeId !== 'string' || typeof value.id !== 'string' || !Array.isArray(value.episodeIds)) return undefined;
     return { id: value.id, scopeId: value.scopeId, episodeIds: [...new Set(value.episodeIds.filter(id => typeof id === 'string'))] };
@@ -185,9 +239,20 @@ export function projectCurrentSources(store, state, chat, scopeId) {
 
 /** User corrections are explicit scope-local sources, never fabricated Episodes. */
 export function isCurrentMemorySupport(state, ref, chat) {
-    if (ref?.manualId) return state.corrections?.[ref.manualId]?.scopeId === state.scopeId
-        && Array.isArray(ref.episodeIds) && (!ref.episodeIds.length || episodesAreCurrent(state, ref.episodeIds, chat, state.scopeId));
-    return Array.isArray(ref?.episodeIds) && episodesAreCurrent(state, ref.episodeIds, chat, state.scopeId);
+    const episodeIds = Array.isArray(ref?.episodeIds) ? ref.episodeIds : [];
+    const externalSourceIds = Array.isArray(ref?.externalSourceIds) ? ref.externalSourceIds : [];
+    const episodesCurrent = episodeIds.length === 0
+        || episodesAreCurrent(state, episodeIds, chat, state.scopeId);
+    const externalCurrent = externalSourceIds.length === 0
+        || externalSourcesAreCurrent(state, externalSourceIds);
+    const hasEvidence = episodeIds.length > 0 || externalSourceIds.length > 0;
+
+    if (ref?.manualId) {
+        return state.corrections?.[ref.manualId]?.scopeId === state.scopeId
+            && episodesCurrent
+            && externalCurrent;
+    }
+    return hasEvidence && episodesCurrent && externalCurrent;
 }
 
 /** Short-lived synchronous projection index. Never retain across an await or mutation. */
@@ -202,7 +267,16 @@ export function createMemorySupportChecker(state, chat) {
         }
         return episodes.get(id);
     };
-    return ref => Boolean(Array.isArray(ref?.episodeIds) && (ref.manualId
-        ? state.corrections?.[ref.manualId]?.scopeId === state.scopeId && ref.episodeIds.every(valid)
-        : ref.episodeIds.length && ref.episodeIds.every(valid)));
+    return ref => {
+        const episodeIds = Array.isArray(ref?.episodeIds) ? ref.episodeIds : [];
+        const externalSourceIds = Array.isArray(ref?.externalSourceIds) ? ref.externalSourceIds : [];
+        const hasEvidence = episodeIds.length > 0 || externalSourceIds.length > 0;
+        const episodesCurrent = episodeIds.every(valid);
+        const externalCurrent = externalSourceIds.every(id => state.externalSources?.[id]?.status === 'active');
+        if (ref?.manualId) {
+            const manualCurrent = state.corrections?.[ref.manualId]?.scopeId === state.scopeId;
+            return Boolean(manualCurrent && episodesCurrent && externalCurrent);
+        }
+        return Boolean(hasEvidence && episodesCurrent && externalCurrent);
+    };
 }

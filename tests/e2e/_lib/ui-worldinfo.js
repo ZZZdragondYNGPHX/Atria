@@ -9,15 +9,58 @@
 import '@playwright/test';
 
 /**
- * Open the WI panel drawer (#WIDrawerIcon). Idempotent.
+ * Open World Info through the authoritative Atria Shell when mounted.
+ * Legacy recovery/non-Shell hosts fall back to the inherited drawer launcher.
  */
 export async function openWorldInfoDrawer(page) {
-    const icon = page.locator('#WIDrawerIcon');
-    const isClosed = await icon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
-    if (isClosed) {
-        await icon.click();
+    const openedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openWorldInfo !== 'function') {
+            return false;
+        }
+        workspaceHost.openWorldInfo();
+        return true;
+    }).catch(() => false);
+
+    if (!openedByShell) {
+        const icon = page.locator('#WIDrawerIcon');
+        const isClosed = await icon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
+        if (isClosed) {
+            await icon.click();
+        }
     }
-    await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+}
+
+/**
+ * Leave World Info and return to Play through the authoritative Shell.
+ * Legacy recovery/non-Shell hosts close the inherited drawer instead.
+ */
+export async function closeWorldInfoDrawer(page) {
+    const closedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openPlay !== 'function') {
+            return false;
+        }
+        workspaceHost.openPlay();
+        return true;
+    }).catch(() => false);
+
+    if (closedByShell) {
+        await page.locator('#sheld').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+        return;
+    }
+
+    await page.evaluate(() => {
+        const icon = document.querySelector('#WIDrawerIcon');
+        if (icon?.classList.contains('openIcon')) {
+            (icon.closest('.drawer-toggle') || icon).click();
+        }
+    });
+    await page.locator('#world_popup').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 }
 
 /**

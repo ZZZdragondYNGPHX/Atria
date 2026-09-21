@@ -32,7 +32,7 @@ import { resolve } from 'node:path';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded, writeWorldBook } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { closeWorldInfoDrawer, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { writeCharacterWithBinding, startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -228,15 +228,7 @@ async function setMaxRecursionSteps(page, value) {
  * Close the WI drawer so the chat composer (send-button area) is
  * unobstructed. Symmetric with openWorldInfoDrawer.
  */
-async function closeWIDrawerIfOpen(page) {
-    await page.evaluate(() => {
-        const i = document.querySelector('#WIDrawerIcon');
-        if (i && i.classList.contains('openIcon')) {
-            (i.closest('.drawer-toggle') || i).click();
-        }
-    });
-    await page.locator('#world_popup').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
-}
+const closeWIDrawerIfOpen = closeWorldInfoDrawer;
 
 test.describe('#31 — Recursive activation boundaries', () => {
     test('recursion on: A → B chain fires both entries', async ({ page }) => {

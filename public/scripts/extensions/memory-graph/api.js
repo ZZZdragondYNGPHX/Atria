@@ -23,8 +23,16 @@
 
 const registerExtensionApi = Atria.getContext().registerExtensionApi;
 import { recallHybridMemory } from './hybrid-runtime.js';
-import { captureMemorySourceSession, assertMemorySourceSession, listMemoryFacts, writeMemoryFacts,
-    listMemoryGraph, resolveMemoryEntity, writeMemoryBatch } from './source-lifecycle.js';
+import {
+    captureMemorySourceSession,
+    assertMemorySourceSession,
+    listMemoryFacts,
+    writeMemoryFacts,
+    writeAuthoritativeMemoryFacts,
+    listMemoryGraph,
+    resolveMemoryEntity,
+    writeMemoryBatch,
+} from './source-lifecycle.js';
 import {
     getCurrentlyInjectedNodeIds,
     addInjectionChangedListener,
@@ -91,6 +99,11 @@ export async function openSession(context) {
         getFactSources: () => structuredClone(sourceTicket?.sources || []),
         listFacts: options => listMemoryFacts(context, options),
         applyFacts: operations => writeMemoryFacts(context, operations, sourceTicket),
+        applyAuthoritativeFacts: input => writeAuthoritativeMemoryFacts(
+            context,
+            input?.facts || [],
+            input?.sourceIds || [],
+        ),
         applyMemoryBatch: batch => writeMemoryBatch(context, batch, sourceTicket),
         listTemporalGraph: options => listMemoryGraph(context, options),
         recallMemory: (query, options) => recallHybridMemory(context, query, options),
@@ -141,6 +154,11 @@ registerExtensionApi('memory-graph', {
     getWorkspacePorts: getMemoryWorkspacePorts,
     openSession,
     listFacts: (context, options) => listMemoryFacts(context, options),
+    applyAuthoritativeFacts: (context, input) => writeAuthoritativeMemoryFacts(
+        context,
+        input?.facts || [],
+        input?.sourceIds || [],
+    ),
     listTemporalGraph: (context, options) => listMemoryGraph(context, options),
     recallMemory: (context, query, options) => recallHybridMemory(context, query, options),
     // Per-character override accessors (character-overrides.js).

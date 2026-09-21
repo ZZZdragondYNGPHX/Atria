@@ -5,6 +5,11 @@ import mime from 'mime-types';
 import express from 'express';
 import sanitize from 'sanitize-filename';
 import { createGitClient } from '../git/client.js';
+import {
+    buildAtriaDistribution,
+    inspectAtriaDistribution,
+    restoreAtriaDistribution,
+} from '../game-package/distribution.js';
 
 import { resolvePathWithinParent } from '../util.js';
 
@@ -326,6 +331,104 @@ router.get('/:charId/diff/:hash', async (request, response) => {
 });
 
 /**
+ * Build the current Source Project as an Atria native distribution archive.
+ * GET /api/card-app/:charId/atria/export
+ */
+router.get('/:charId/atria/export', (request, response) => {
+    try {
+        const charId = sanitize(String(request.params.charId));
+        if (!charId) return response.sendStatus(400);
+
+        const charDir = path.join(request.user.directories.cardApps, charId);
+        const result = buildAtriaDistribution(charDir, { cardId: charId });
+        const safeId = String(result.manifest.package.id || 'game')
+            .replace(/[^A-Za-z0-9._-]+/g, '_');
+        const safeVersion = String(result.manifest.package.version || '0.0.0')
+            .replace(/[^A-Za-z0-9._+-]+/g, '_');
+        const fileName = safeId + '-' + safeVersion + '.atria';
+
+        response.setHeader('Content-Type', 'application/zip');
+        response.setHeader('Content-Disposition', 'attachment; filename="' + fileName + '"');
+        response.setHeader('Content-Length', String(result.archive.length));
+        return response.send(result.archive);
+    } catch (error) {
+        console.warn('[card-app] .atria export rejected:', error?.message || error);
+        return response.status(400).json({
+            error: error?.message || String(error),
+        });
+    }
+});
+
+const atriaRawBody = express.raw({
+    type: ['application/octet-stream', 'application/zip', 'application/x-atria'],
+    limit: '128mb',
+});
+
+/**
+ * Validate an .atria archive without changing Source Project files.
+ * POST /api/card-app/:charId/atria/validate
+ */
+router.post('/:charId/atria/validate', atriaRawBody, (request, response) => {
+    try {
+        const charId = sanitize(String(request.params.charId));
+        if (!charId || !Buffer.isBuffer(request.body)) {
+            return response.status(400).json({ error: 'Missing .atria archive body' });
+        }
+
+        const inspected = inspectAtriaDistribution(request.body);
+        return response.json({
+            ok: true,
+            manifest: inspected.manifest,
+            game: inspected.game,
+            fileCount: inspected.files.size,
+        });
+    } catch (error) {
+        console.warn('[card-app] .atria validation rejected:', error?.message || error);
+        return response.status(400).json({
+            ok: false,
+            error: error?.message || String(error),
+        });
+    }
+});
+
+/**
+ * Restore an already validated .atria archive into the current Source Project.
+ * The project Git repository is retained and the restore receives one commit.
+ * POST /api/card-app/:charId/atria/import
+ */
+router.post('/:charId/atria/import', atriaRawBody, async (request, response) => {
+    try {
+        const charId = sanitize(String(request.params.charId));
+        if (!charId || !Buffer.isBuffer(request.body)) {
+            return response.status(400).json({ error: 'Missing .atria archive body' });
+        }
+
+        // Invalid archives must not even create Git metadata in the target.
+        inspectAtriaDistribution(request.body);
+        const charDir = path.join(request.user.directories.cardApps, charId);
+        await ensureGitRepo(charDir);
+        const restored = restoreAtriaDistribution(request.body, charDir);
+        await autoCommit(
+            charDir,
+            '[Studio] restore .atria ' + restored.game.id + '@' + restored.game.version,
+        );
+
+        return response.json({
+            ok: true,
+            manifest: restored.manifest,
+            game: restored.game,
+            filesRestored: restored.filesRestored,
+        });
+    } catch (error) {
+        console.warn('[card-app] .atria import rejected:', error?.message || error);
+        return response.status(400).json({
+            ok: false,
+            error: error?.message || String(error),
+        });
+    }
+});
+
+/**
  * Serve CardApp files for a character.
  * GET /api/card-app/:charId/*
  */
@@ -424,15 +527,34 @@ export function extractCardAppFiles(charData, charId, cardAppsDir) {
  * @returns {boolean} Whether any files were packed
  */
 export function packCardAppFiles(charData, charId, cardAppsDir) {
-    const cardApp = charData?.data?.extensions?.card_app;
-    if (!cardApp?.enabled) {
-        return false;
-    }
-
     const charAppDir = path.join(cardAppsDir, sanitize(charId));
     if (!fs.existsSync(charAppDir)) {
         return false;
     }
+
+    const gameManifestPath = path.join(charAppDir, 'game.json');
+    const hasGamePackage = fs.existsSync(gameManifestPath) && fs.statSync(gameManifestPath).isFile();
+    const existingCardApp = charData?.data?.extensions?.card_app;
+    if (!existingCardApp?.enabled && !hasGamePackage) {
+        return false;
+    }
+
+    // Game Package deliberately reuses the mature CardApp file transport
+    // envelope for character-card import/export, but activation is no longer
+    // tied to card_app.enabled or an index.js entrypoint. game.json is the
+    // authoritative Game Package entry. Keeping transport and runtime identity
+    // separate lets R1 reuse nested/binary packing without inheriting CardApp's
+    // broad runtime context model.
+    if (!charData?.data || typeof charData.data !== 'object') {
+        return false;
+    }
+    if (!charData.data.extensions || typeof charData.data.extensions !== 'object') {
+        charData.data.extensions = {};
+    }
+    const cardApp = existingCardApp && typeof existingCardApp === 'object'
+        ? existingCardApp
+        : {};
+    charData.data.extensions.card_app = cardApp;
 
     const files = {};
     const textExtensions = new Set(['.js', '.css', '.html', '.htm', '.json', '.txt', '.md', '.svg', '.xml']);

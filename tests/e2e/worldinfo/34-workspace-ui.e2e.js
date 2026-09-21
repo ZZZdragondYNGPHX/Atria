@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded, writeWorldBook } from '../_lib/fixtures.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { openWorldInfoDrawer, selectWorldBook } from '../_lib/ui-worldinfo.js';
+import { closeWorldInfoDrawer, openWorldInfoDrawer, selectWorldBook } from '../_lib/ui-worldinfo.js';
 import { startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -210,9 +210,25 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await awaitMainUI(page, server.baseURL);
     await openWorldInfoDrawer(page);
 
-    const drawerBox = await page.locator('#WorldInfo').boundingBox();
-    expect(drawerBox?.width || 0).toBeGreaterThanOrEqual(380);
-    expect(drawerBox?.height || 0).toBeGreaterThanOrEqual(800);
+    const workspaceGeometry = await page.locator('#WorldInfo').evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        const parent = node.parentElement;
+        const parentRect = parent?.getBoundingClientRect();
+        const parentStyle = parent ? getComputedStyle(parent) : null;
+        const paddingTop = Number.parseFloat(parentStyle?.paddingTop || '0') || 0;
+        const paddingBottom = Number.parseFloat(parentStyle?.paddingBottom || '0') || 0;
+        return {
+            width: rect.width,
+            height: rect.height,
+            parentWidth: parentRect?.width || 0,
+            parentHeight: parentRect?.height || 0,
+            parentContentHeight: Math.max(0, (parentRect?.height || 0) - paddingTop - paddingBottom),
+        };
+    });
+    expect(workspaceGeometry.width).toBeGreaterThan(340);
+    expect(workspaceGeometry.height).toBeGreaterThan(600);
+    expect(Math.abs(workspaceGeometry.width - workspaceGeometry.parentWidth)).toBeLessThanOrEqual(2);
+    expect(Math.abs(workspaceGeometry.height - workspaceGeometry.parentContentHeight)).toBeLessThanOrEqual(2);
 
     // Mobile starts as a real catalogue. The native book picker is not part
     // of the product navigation; selecting a book card opens its Entries.
@@ -281,14 +297,16 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await page.locator('#wi_workspace_mobile_search_mode').selectOption('keyword');
     await page.locator('.wi-entry-mobile-search-trigger').click();
 
-    const [headerBox, listBox, navBox] = await Promise.all([
+    const [headerBox, listBox, navBox, shellBox] = await Promise.all([
         page.locator('.wi-workspace-header').boundingBox(),
         page.locator('.wi-workspace-entry-list-pane').boundingBox(),
         page.locator('.wi-workspace-nav').boundingBox(),
+        page.locator('#wi_workspace_shell').boundingBox(),
     ]);
     expect(headerBox?.height || 0).toBeLessThan(70);
-    expect(listBox?.height || 0).toBeGreaterThan(430);
-    expect(navBox?.y || 0).toBeGreaterThan(760);
+    expect(listBox?.height || 0).toBeGreaterThan(240);
+    expect((listBox?.y || 0) + (listBox?.height || 0)).toBeLessThanOrEqual((navBox?.y || 0) + 2);
+    expect(Math.abs(((navBox?.y || 0) + (navBox?.height || 0)) - ((shellBox?.y || 0) + (shellBox?.height || 0)))).toBeLessThanOrEqual(2);
 
     await page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row').first().click();
     await expect(page.locator('#wi_workspace_inspector')).toBeVisible();
@@ -307,9 +325,11 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();
     await expect(page.locator('#wi_workspace_inspector')).toBeHidden();
 
-    // Full-screen mobile keeps an in-workspace close action because the
-    // external drawer launcher is covered by the workspace itself.
-    await page.locator('#wi_workspace_close').click();
+    // Under R7H the embedded World Info controller is closed by the
+    // authoritative WorkspaceHost; the inherited internal close button is
+    // deliberately hidden while embedded.
+    await expect(page.locator('#wi_workspace_close')).toBeHidden();
+    await closeWorldInfoDrawer(page);
     await expect(page.locator('#WorldInfo')).toBeHidden();
 });
 

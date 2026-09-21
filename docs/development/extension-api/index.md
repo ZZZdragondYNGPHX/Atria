@@ -14,7 +14,7 @@ This is the complete reference for the Atria Extension API, intended for plugin 
 | [Skills](/development/extension-api/skills) | `context.skills.*` — install, read, write, search, scope migration, embed pack/extract; CardApp ctx parity |
 | [UI & Popups](/development/extension-api/ui-and-popups) | Popups, loaders, templates, message formatting |
 | [IterationStudio](/development/extension-api/iteration-studio) | Shared popup framework for AI-driven iterative editing — conversation, sessions, diff preview, approve/reject lifecycle. Adapters supply the artifact shape + tools |
-| [Plugin Integration](/development/extension-api/plugin-integration) | Regex runtime, search tools, extension API registry, event system, i18n, settings storage, debug & scraper registration, tokenization, utilities, symbols & constants |
+| [Plugin Integration](/development/extension-api/plugin-integration) | Atria Shell compatibility rules, regex runtime, search tools, extension API registry, event system, i18n, settings storage, debug & scraper registration, tokenization, utilities, symbols & constants |
 | [Low-Level Endpoints](/development/extension-api/low-level-endpoints) | Raw HTTP routes (advanced / debugging only) |
 
 ## Global Entry Point

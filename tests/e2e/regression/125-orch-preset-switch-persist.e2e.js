@@ -12,7 +12,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
-test('settings drawer entry opens Workspace above the host drawer on mobile', async ({ page }) => {
+test('plugin compatibility settings entry opens embedded Agents Workspace on mobile', async ({ page }) => {
     test.setTimeout(90000);
     await page.setViewportSize({ width: 390, height: 844 });
     await awaitMainUI(page, server.baseURL);
@@ -50,18 +50,27 @@ test('settings drawer entry opens Workspace above the host drawer on mobile', as
     expect(geometry.display).toBe('grid');
     expect(geometry.visibility).toBe('visible');
 
-    const stack = await page.evaluate(() => {
+    const ownership = await page.evaluate(() => {
+        const shell = document.getElementById('atria-app-shell');
+        const workspaceSlot = document.getElementById('atria-workspace');
         const workspace = document.getElementById('agent-memory-workspace');
-        const drawer = document.getElementById('rm_extensions_block');
+        const legacyDrawer = document.getElementById('rm_extensions_block');
         const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
         return {
-            workspaceZ: Number.parseInt(getComputedStyle(workspace).zIndex, 10),
-            drawerZ: Number.parseInt(getComputedStyle(drawer).zIndex, 10) || 0,
+            embedded: workspace?.dataset.atriaWorkspaceEmbedded === 'true',
+            inShell: Boolean(shell?.contains(workspace)),
+            inWorkspaceSlot: Boolean(workspaceSlot?.contains(workspace)),
+            legacyDrawerVisible: legacyDrawer ? getComputedStyle(legacyDrawer).display !== 'none' : false,
             hitInsideWorkspace: Boolean(hit?.closest?.('#agent-memory-workspace')),
         };
     });
-    expect(stack.workspaceZ).toBeGreaterThan(4005);
-    expect(stack.hitInsideWorkspace).toBe(true);
+    expect(ownership).toEqual({
+        embedded: true,
+        inShell: true,
+        inWorkspaceSlot: true,
+        legacyDrawerVisible: false,
+        hitInsideWorkspace: true,
+    });
 });
 
 test('native definition and default binding survive page reload', async ({ page }) => {
