@@ -105,6 +105,9 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         await root.locator('[data-atria-utility="settings"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.settings/);
         await expect(root.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
+        await expect(root.locator('[data-atria-settings-compatibility="true"]')).not.toHaveAttribute('open', '');
+        await root.locator('[data-atria-settings-section="language"]').click();
+        await expect(root.locator('[data-atria-settings-compatibility="true"]')).toHaveAttribute('open', '');
         await expect(root.locator('#user-settings-block[data-atria-workspace-embedded="true"]')).toBeVisible();
         expect(await page.evaluate(() => ({
             sameRoot: window.__r7gSettingsRoot === document.getElementById('user-settings-block'),
@@ -127,7 +130,7 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
 
         await page.goBack();
         await expect(page).toHaveURL(/atriaChild=utility.settings/);
-        await expect(root.locator('#user-settings-block[data-atria-workspace-embedded="true"]')).toBeVisible();
+        await expect(root.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
 
         const commands = await page.evaluate(() => {
             const registry = window.Atria.shell.getShell()?.registry;
@@ -159,6 +162,7 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
 
         await page.evaluate(() => document.querySelector('#user-settings-button .drawer-toggle')?.click());
         await expect(page).toHaveURL(/atriaChild=utility.settings/);
+        await expect(root.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
 
         await page.evaluate(() => document.getElementById('account_button')?.click());
         await expect(page).toHaveURL(/atriaChild=utility.account/);
