@@ -86,6 +86,7 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document, opt
             if (semanticDock) {
                 anchor.classList.add('atria-game-host-surface--dock');
                 semanticDock.appendChild(anchor);
+                shell?.setDockOpen?.(true);
                 inserted = true;
             } else if (rightPanel) {
                 rightPanel.appendChild(anchor);
