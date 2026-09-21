@@ -1,4 +1,13 @@
 import { createAtriaStatePanel } from './primitives.js';
+import { translateShellText } from './localization.js';
+
+function createLocalizedStatePanel(documentRef, kind, options = {}) {
+    return createAtriaStatePanel(documentRef, kind, {
+        ...options,
+        title: translateShellText(options.title),
+        message: translateShellText(options.message),
+    });
+}
 
 const THIRD_PARTY_EXTENSION_TYPES = new Set(['local', 'global']);
 
@@ -40,9 +49,9 @@ function makeUtilityFrame(documentRef, {
     header.className = 'atria-utility-workspace__header';
     const copy = documentRef.createElement('div');
     const heading = documentRef.createElement('h2');
-    heading.textContent = title;
+    heading.textContent = translateShellText(title);
     const detail = documentRef.createElement('p');
-    detail.textContent = description;
+    detail.textContent = translateShellText(description);
     copy.append(heading, detail);
     const actions = documentRef.createElement('div');
     actions.className = 'atria-utility-workspace__actions';
@@ -61,7 +70,7 @@ function makeButton(documentRef, label, {
     const button = documentRef.createElement('button');
     button.type = 'button';
     button.className = 'atria-utility-action';
-    button.title = title;
+    button.title = translateShellText(title);
     if (icon) {
         const node = documentRef.createElement('i');
         node.className = icon;
@@ -69,7 +78,7 @@ function makeButton(documentRef, label, {
         button.append(node);
     }
     const text = documentRef.createElement('span');
-    text.textContent = label;
+    text.textContent = translateShellText(label);
     button.append(text);
     return button;
 }
@@ -114,7 +123,7 @@ async function resolveExtensionAuthority(extensionAuthority) {
 function renderPluginList(documentRef, container, plugins, authority, onOpenSettings) {
     container.replaceChildren();
     if (!plugins.length) {
-        container.append(createAtriaStatePanel(documentRef, 'empty', {
+        container.append(createLocalizedStatePanel(documentRef, 'empty', {
             title: 'No third-party plugins installed',
             message: 'Atria built-in features are intentionally excluded from Plugins.',
         }));
@@ -134,7 +143,7 @@ function renderPluginList(documentRef, container, plugins, authority, onOpenSett
         title.textContent = plugin.displayName;
         const scope = documentRef.createElement('span');
         scope.className = 'atria-plugin-card__scope';
-        scope.textContent = plugin.type || 'third-party';
+        scope.textContent = plugin.type || translateShellText('Third-party extension');
         titleRow.append(title, scope);
 
         const metadata = documentRef.createElement('small');
@@ -144,7 +153,7 @@ function renderPluginList(documentRef, container, plugins, authority, onOpenSett
             .join(' · ') || 'Third-party extension';
 
         const description = documentRef.createElement('p');
-        description.textContent = plugin.description || 'No description provided by this plugin.';
+        description.textContent = plugin.description || translateShellText('No description provided by this plugin.');
 
         const controls = documentRef.createElement('div');
         controls.className = 'atria-plugin-card__controls';
@@ -155,7 +164,7 @@ function renderPluginList(documentRef, container, plugins, authority, onOpenSett
         toggle.checked = plugin.enabled;
         toggle.dataset.pluginName = plugin.name;
         const toggleText = documentRef.createElement('span');
-        toggleText.textContent = plugin.enabled ? 'Enabled' : 'Disabled';
+        toggleText.textContent = translateShellText(plugin.enabled ? 'Enabled' : 'Disabled');
         toggleLabel.append(toggle, toggleText);
 
         toggle.addEventListener('change', async () => {
@@ -165,11 +174,11 @@ function renderPluginList(documentRef, container, plugins, authority, onOpenSett
             try {
                 if (desired) await authority.enableExtension(plugin.name, false);
                 else await authority.disableExtension(plugin.name, false);
-                toggleText.textContent = desired ? 'Enabled' : 'Disabled';
+                toggleText.textContent = translateShellText(desired ? 'Enabled' : 'Disabled');
                 card.dataset.saveState = 'saved';
             } catch (error) {
                 toggle.checked = !desired;
-                toggleText.textContent = toggle.checked ? 'Enabled' : 'Disabled';
+                toggleText.textContent = translateShellText(toggle.checked ? 'Enabled' : 'Disabled');
                 card.dataset.saveState = 'error';
                 console.error('[atria-shell] Plugin toggle failed', {
                     plugin: plugin.name,
@@ -219,18 +228,18 @@ export async function mountPluginsUtility({
     serverSurface.className = 'atria-plugin-server-surface';
     serverSurface.dataset.atriaPluginSurface = 'server';
     const serverTitle = documentRef.createElement('strong');
-    serverTitle.textContent = 'Server plugins';
+    serverTitle.textContent = translateShellText('Server plugins');
     const serverCopy = documentRef.createElement('p');
-    serverCopy.textContent = 'Server plugins use Atria’s existing backend plugin loader and remain a separate server-managed surface. R7G does not mix them with frontend extensions or Atria built-ins, and does not invent client-side enable/disable state for them.';
+    serverCopy.textContent = translateShellText('Server plugins use Atria’s existing backend plugin loader and remain a separate server-managed surface. R7G does not mix them with frontend extensions or Atria built-ins, and does not invent client-side enable/disable state for them.');
     serverSurface.append(serverTitle, serverCopy);
 
     const compatibility = documentRef.createElement('details');
     compatibility.className = 'atria-plugin-compatibility';
     compatibility.dataset.atriaPluginCompatibility = 'true';
     const compatibilitySummary = documentRef.createElement('summary');
-    compatibilitySummary.textContent = 'Extension compatibility settings';
+    compatibilitySummary.textContent = translateShellText('Extension compatibility settings');
     const compatibilityHint = documentRef.createElement('p');
-    compatibilityHint.textContent = 'This is the existing extension settings DOM retained as a compatibility ABI for third-party integrations and deep historical forms.';
+    compatibilityHint.textContent = translateShellText('This is the existing extension settings DOM retained as a compatibility ABI for third-party integrations and deep historical forms.');
     const compatibilityBody = documentRef.createElement('div');
     compatibilityBody.className = 'atria-plugin-compatibility__body';
     compatibility.append(compatibilitySummary, compatibilityHint, compatibilityBody);
@@ -288,7 +297,7 @@ export function mountSettingsUtility({
 } = {}) {
     const settingsRoot = documentRef.getElementById('user-settings-block');
     if (!settingsRoot) {
-        const panel = createAtriaStatePanel(documentRef, 'loading', {
+        const panel = createLocalizedStatePanel(documentRef, 'loading', {
             title: 'Settings',
             message: 'The existing User Settings controller is still booting.',
         });
@@ -309,16 +318,16 @@ export function mountSettingsUtility({
     compatibility.className = 'atria-settings-compatibility';
     compatibility.dataset.atriaSettingsCompatibility = 'true';
     const compatibilitySummary = documentRef.createElement('summary');
-    compatibilitySummary.textContent = 'Advanced & compatibility settings';
+    compatibilitySummary.textContent = translateShellText('Advanced & compatibility settings');
     const compatibilityHint = documentRef.createElement('p');
-    compatibilityHint.textContent = 'Atria keeps the existing User Settings form as the authority for deep or low-frequency compatibility controls. MovingUI remains available here for legacy compatibility islands but does not control Atria Shell layout.';
+    compatibilityHint.textContent = translateShellText('Atria keeps the existing User Settings form as the authority for deep or low-frequency compatibility controls. MovingUI remains available here for legacy compatibility islands but does not control Atria Shell layout.');
     const compatibilityBody = documentRef.createElement('div');
     compatibilityBody.className = 'atria-settings-compatibility__body';
     compatibility.append(compatibilitySummary, compatibilityHint, compatibilityBody);
 
     const nav = documentRef.createElement('nav');
     nav.className = 'atria-settings-categories';
-    nav.setAttribute('aria-label', 'Settings categories');
+    nav.setAttribute('aria-label', translateShellText('Settings categories'));
     for (const section of SETTINGS_SECTIONS) {
         const button = makeButton(documentRef, section.label);
         button.dataset.atriaSettingsSection = section.id;
@@ -335,9 +344,9 @@ export function mountSettingsUtility({
     accessibility.className = 'atria-settings-accessibility-note';
     accessibility.dataset.atriaSettingsSection = 'accessibility';
     const accessibilityTitle = documentRef.createElement('strong');
-    accessibilityTitle.textContent = 'Accessibility';
+    accessibilityTitle.textContent = translateShellText('Accessibility');
     const accessibilityCopy = documentRef.createElement('span');
-    accessibilityCopy.textContent = 'Accessibility behavior continues to use the existing Atria/SillyTavern accessibility controller and the same underlying controls.';
+    accessibilityCopy.textContent = translateShellText('Accessibility behavior continues to use the existing Atria/SillyTavern accessibility controller and the same underlying controls.');
     accessibility.append(accessibilityTitle, accessibilityCopy);
 
     settingsRoot.dataset.atriaWorkspaceEmbedded = 'true';
@@ -369,7 +378,7 @@ export async function mountAccountUtility({
 } = {}) {
     const authority = accountAuthority || await import('../user.js');
     if (typeof authority.openUserProfile !== 'function') {
-        const panel = createAtriaStatePanel(documentRef, 'error', {
+        const panel = createLocalizedStatePanel(documentRef, 'error', {
             title: 'Account',
             message: 'The existing account controller is unavailable.',
         });

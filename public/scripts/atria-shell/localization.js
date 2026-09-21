@@ -1,0 +1,172 @@
+const SHELL_TEXT_KEYS = Object.freeze({
+    'Play': 'atria.shell.domain.play',
+    'Library': 'atria.shell.domain.library',
+    'Studio': 'atria.shell.domain.studio',
+    'Agents': 'atria.shell.domain.agents',
+    'Runtime': 'atria.shell.domain.runtime',
+    'Command': 'atria.shell.utility.command',
+    'Diagnostics': 'atria.shell.utility.diagnostics',
+    'Plugins': 'atria.shell.utility.plugins',
+    'Settings': 'atria.shell.utility.settings',
+    'Account': 'atria.shell.utility.account',
+    'Characters': 'atria.shell.library.characters',
+    'Games': 'atria.shell.library.games',
+    'Worlds & Knowledge': 'atria.shell.library.worldInfo',
+    'Skills': 'atria.shell.library.skills',
+    'Overview': 'atria.shell.runtime.overview',
+    'Roles': 'atria.shell.runtime.roles',
+    'Connections': 'atria.shell.runtime.connections',
+    'Model / Prompt Presets': 'atria.shell.runtime.presets',
+    'Retrieval': 'atria.shell.runtime.retrieval',
+    'Orchestration': 'atria.shell.agents.orchestration',
+    'Run': 'atria.shell.agents.run',
+    'Memory': 'atria.shell.agents.memory',
+    'Workspace': 'atria.shell.workspace',
+    'Workspaces': 'atria.shell.workspaces',
+    'Utilities': 'atria.shell.utilities',
+    'Navigation': 'atria.shell.navigation',
+    'Context': 'atria.shell.context',
+    'Instruct': 'atria.shell.runtime.instruct',
+    'Reasoning': 'atria.shell.runtime.reasoning',
+    'Primary navigation': 'atria.shell.aria.primaryNavigation',
+    'Global controls': 'atria.shell.aria.globalControls',
+    'Runtime ready': 'atria.shell.runtime.ready',
+    'Atria focus area': 'atria.shell.aria.focusArea',
+    'Context controls': 'atria.shell.aria.contextControls',
+    'Play stage': 'atria.shell.aria.playStage',
+    'The Native Conversation Host mounts here when Play owns the Stage.': 'atria.shell.play.hostHint',
+    'Context dock': 'atria.shell.aria.contextDock',
+    'Close dock': 'atria.shell.action.closeDock',
+    'Context Dock': 'atria.shell.contextDock',
+    'Timeline, Inspector, World, Runtime and evidence panels can mount here.': 'atria.shell.contextDock.hint',
+    'Host recovery': 'atria.shell.aria.hostRecovery',
+    'Context sheet': 'atria.shell.contextSheet',
+    'Close sheet': 'atria.shell.action.closeSheet',
+    'Close command': 'atria.shell.action.closeCommand',
+    'Search commands': 'atria.shell.command.search',
+    'No commands': 'atria.shell.command.empty',
+    'Try a different search.': 'atria.shell.command.emptyHint',
+    'Library sections': 'atria.shell.library.sections',
+    'Runtime sections': 'atria.shell.runtime.sections',
+    'The existing Character controller is still booting.': 'atria.shell.library.characters.booting',
+    'Discovering existing Game Packages from the current character library…': 'atria.shell.library.games.discovering',
+    'No Game Packages found': 'atria.shell.library.games.empty',
+    'Narrative Cards remain in Characters. Game Studio authors Game Packages; Library only discovers and opens existing packages.': 'atria.shell.library.games.emptyHint',
+    'Open in Play': 'atria.shell.action.openInPlay',
+    'Open in Studio': 'atria.shell.action.openInStudio',
+    'World Info is still finishing its existing controller bootstrap.': 'atria.shell.library.worldInfo.booting',
+    'Game Runtime': 'atria.shell.runtime.gameRuntime',
+    'Runtime Roles': 'atria.shell.runtime.runtimeRoles',
+    'Primary connection': 'atria.shell.runtime.primaryConnection',
+    'Use global/default connection': 'atria.shell.runtime.useDefaultConnection',
+    'Fallback connections': 'atria.shell.runtime.fallbackConnections',
+    'Timeout milliseconds': 'atria.shell.runtime.timeoutMs',
+    'Retries': 'atria.shell.runtime.retries',
+    'required': 'atria.shell.common.required',
+    'optional': 'atria.shell.common.optional',
+    'Connection Manager is still finishing its existing controller bootstrap.': 'atria.shell.runtime.connections.booting',
+    'Chat Completion': 'atria.shell.runtime.chatCompletion',
+    'Text Completion': 'atria.shell.runtime.textCompletion',
+    'System Prompt': 'atria.shell.runtime.systemPrompt',
+    'Open advanced preset forms': 'atria.shell.runtime.openAdvancedPresets',
+    'Opening existing controller…': 'atria.shell.workspace.openingController',
+    'No third-party plugins installed': 'atria.shell.plugins.empty',
+    'Atria built-in features are intentionally excluded from Plugins.': 'atria.shell.plugins.emptyHint',
+    'Third-party extension': 'atria.shell.plugins.thirdPartyExtension',
+    'No description provided by this plugin.': 'atria.shell.plugins.noDescription',
+    'Enabled': 'atria.shell.common.enabled',
+    'Disabled': 'atria.shell.common.disabled',
+    'Compatibility settings': 'atria.shell.plugins.compatibilitySettings',
+    'Open the existing extension settings surface': 'atria.shell.plugins.openCompatibility',
+    'Third-party frontend extensions. Atria built-in features stay with their owning product domains.': 'atria.shell.plugins.description',
+    'Advanced manager': 'atria.shell.plugins.advancedManager',
+    'Server plugins': 'atria.shell.plugins.serverPlugins',
+    'Server plugins use Atria’s existing backend plugin loader and remain a separate server-managed surface. R7G does not mix them with frontend extensions or Atria built-ins, and does not invent client-side enable/disable state for them.': 'atria.shell.plugins.serverPluginsHint',
+    'Extension compatibility settings': 'atria.shell.plugins.compatibilityTitle',
+    'This is the existing extension settings DOM retained as a compatibility ABI for third-party integrations and deep historical forms.': 'atria.shell.plugins.compatibilityHint',
+    'Appearance': 'atria.shell.settings.appearance',
+    'Language': 'atria.shell.settings.language',
+    'Interface & behavior': 'atria.shell.settings.interfaceBehavior',
+    'Accessibility': 'atria.shell.settings.accessibility',
+    'The existing User Settings controller is still booting.': 'atria.shell.settings.booting',
+    'Global appearance, language, accessibility and interaction preferences. Runtime and domain configuration live elsewhere.': 'atria.shell.settings.description',
+    'Advanced & compatibility settings': 'atria.shell.settings.compatibilityTitle',
+    'Atria keeps the existing User Settings form as the authority for deep or low-frequency compatibility controls. MovingUI remains available here for legacy compatibility islands but does not control Atria Shell layout.': 'atria.shell.settings.compatibilityHint',
+    'Settings categories': 'atria.shell.settings.categories',
+    'Accessibility behavior continues to use the existing Atria/SillyTavern accessibility controller and the same underlying controls.': 'atria.shell.settings.accessibilityHint',
+    'The existing account controller is unavailable.': 'atria.shell.account.unavailable',
+    'Identity, account-isolated storage, settings snapshots, backup and recovery continue to use the existing account controller.': 'atria.shell.account.description',
+    'This domain is reserved for the next staged R7 integration phase.': 'atria.shell.workspace.placeholder',
+    'Game Studio': 'atria.shell.studio.gameStudio',
+    'Select a character or game project to open the existing Game Studio controller.': 'atria.shell.studio.selectProject',
+    'Project, editor and simulation details share the existing Studio controller.': 'atria.shell.context.studio',
+    'Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.': 'atria.shell.context.diagnostics',
+    'Third-party plugins reuse the existing extension loader, manifests and enable/disable persistence.': 'atria.shell.context.plugins',
+    'Global preferences reuse the existing User Settings controls and persistence authorities.': 'atria.shell.context.settings',
+    'Identity, snapshots, backup and account-isolated storage reuse the existing account controller.': 'atria.shell.context.account',
+    'Workspace integration is staged for a later R7 phase.': 'atria.shell.context.placeholder',
+    'Opening workspace…': 'atria.shell.workspace.opening',
+    'Open Agents Workspace': 'atria.shell.command.openAgents',
+    'Open orchestration and agent runs': 'atria.shell.command.openAgents.desc',
+    'Open Memory Workspace': 'atria.shell.command.openMemory',
+    'Open long-term memory inside Agents': 'atria.shell.command.openMemory.desc',
+    'Open Game Studio': 'atria.shell.command.openStudio',
+    'Open the existing Atria Game Studio': 'atria.shell.command.openStudio.desc',
+    'Open Character Library': 'atria.shell.command.openCharacters',
+    'Open the existing Character controller inside Library': 'atria.shell.command.openCharacters.desc',
+    'Open Game Library': 'atria.shell.command.openGames',
+    'Discover existing Game Packages without opening Studio': 'atria.shell.command.openGames.desc',
+    'Open Skills Library': 'atria.shell.command.openSkills',
+    'Open the existing Skill Manager controller inside Library': 'atria.shell.command.openSkills.desc',
+    'Open Runtime Overview': 'atria.shell.command.openRuntimeOverview',
+    'Open current runtime health and routing projection': 'atria.shell.command.openRuntimeOverview.desc',
+    'Open Runtime Roles': 'atria.shell.command.openRuntimeRoles',
+    'Open R5 Runtime Role routing configuration': 'atria.shell.command.openRuntimeRoles.desc',
+    'Open Runtime Connections': 'atria.shell.command.openRuntimeConnections',
+    'Open the existing Connection Manager controller': 'atria.shell.command.openRuntimeConnections.desc',
+    'Open Model / Prompt Presets': 'atria.shell.command.openPresets',
+    'Open existing preset authorities through Runtime': 'atria.shell.command.openPresets.desc',
+    'Open Runtime Retrieval': 'atria.shell.command.openRetrieval',
+    'Open embedding and rerank profiles from Connection Manager': 'atria.shell.command.openRetrieval.desc',
+    'Open World Info Workspace': 'atria.shell.command.openWorldInfo',
+    'Open worlds and knowledge through the existing World Info controller': 'atria.shell.command.openWorldInfo.desc',
+    'Open Diagnostics Workspace': 'atria.shell.command.openDiagnostics',
+    'Open incidents, startup diagnostics and logs': 'atria.shell.command.openDiagnostics.desc',
+    'Open Plugins': 'atria.shell.command.openPlugins',
+    'Manage installed third-party extensions': 'atria.shell.command.openPlugins.desc',
+    'Open Settings': 'atria.shell.command.openSettings',
+    'Open global appearance, language and interaction preferences': 'atria.shell.command.openSettings.desc',
+    'Open Account': 'atria.shell.command.openAccount',
+    'Open identity, snapshots, backup and account storage': 'atria.shell.command.openAccount.desc',
+});
+
+function resolveTranslator(translate) {
+    if (typeof translate === 'function') return translate;
+    const globalTranslate = globalThis.__i18n?.translate;
+    return typeof globalTranslate === 'function' ? globalTranslate : null;
+}
+
+export function translateShellText(value, translate) {
+    const text = String(value ?? '');
+    const translator = resolveTranslator(translate);
+    if (!translator || !text) return text;
+    const key = SHELL_TEXT_KEYS[text] || null;
+    try {
+        return String(translator(text, key) ?? text);
+    } catch {
+        return text;
+    }
+}
+
+export function formatShellText(fallback, values = [], translate, key = null) {
+    const translator = resolveTranslator(translate);
+    let template = String(fallback ?? '');
+    if (translator) {
+        try {
+            template = String(translator(template, key) ?? template);
+        } catch {
+            // Fall through to the English fallback.
+        }
+    }
+    return template.replace(/\$\{(\d+)\}/g, (_match, index) => String(values[Number(index)] ?? ''));
+}

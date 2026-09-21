@@ -12,6 +12,15 @@ import {
     normalizeLibrarySection,
     normalizeRuntimeSection,
 } from './library-runtime-workspaces.js';
+import { formatShellText, translateShellText } from './localization.js';
+
+function createLocalizedStatePanel(documentRef, kind, options = {}) {
+    return createAtriaStatePanel(documentRef, kind, {
+        ...options,
+        title: translateShellText(options.title),
+        message: translateShellText(options.message),
+    });
+}
 
 const AGENT_SECTION_LABELS = Object.freeze({
     orchestration: 'Orchestration',
@@ -96,19 +105,19 @@ function makeContextSummary(documentRef, title, detail = '') {
     root.className = 'atria-workspace-context-summary';
 
     const heading = documentRef.createElement('strong');
-    heading.textContent = String(title || 'Workspace');
+    heading.textContent = translateShellText(title || 'Workspace');
     root.append(heading);
 
     if (detail) {
         const paragraph = documentRef.createElement('p');
-        paragraph.textContent = String(detail);
+        paragraph.textContent = translateShellText(detail);
         root.append(paragraph);
     }
     return root;
 }
 
 function mountPlaceholder({ document: documentRef, slot, descriptor }) {
-    const panel = createAtriaStatePanel(documentRef, 'empty', {
+    const panel = createLocalizedStatePanel(documentRef, 'empty', {
         title: descriptor.title,
         message: 'This domain is reserved for the next staged R7 integration phase.',
     });
@@ -144,7 +153,7 @@ async function mountStudioWorkspace({ document: documentRef, slot, host }) {
     const requested = host.consumeStudioCharacter();
     const charId = requested ?? context?.characterId;
     if (charId === undefined || charId === null || charId === '' || Number(charId) < 0) {
-        const panel = createAtriaStatePanel(documentRef, 'empty', {
+        const panel = createLocalizedStatePanel(documentRef, 'empty', {
             title: 'Game Studio',
             message: 'Select a character or game project to open the existing Game Studio controller.',
         });
@@ -224,26 +233,26 @@ export function createAtriaWorkspaceHost({
     function setWorkspaceContext(descriptor) {
         const current = contextState();
         const detail = descriptor.kind === 'agents'
-            ? `Current Agents view: ${AGENT_SECTION_LABELS[descriptor.section] || descriptor.section}`
+            ? formatShellText('Current Agents view: ${0}', [translateShellText(AGENT_SECTION_LABELS[descriptor.section] || descriptor.section)], undefined, 'atria.shell.context.agents')
             : descriptor.kind === 'studio'
-                ? 'Project, editor and simulation details share the existing Studio controller.'
+                ? translateShellText('Project, editor and simulation details share the existing Studio controller.')
                 : descriptor.kind === 'library'
-                    ? `Library / ${descriptor.title} reuses existing character, Game Package, World Info and Skill authorities.`
+                    ? formatShellText('Library / ${0} reuses existing character, Game Package, World Info and Skill authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
                     : descriptor.kind === 'runtime'
-                        ? `Runtime / ${descriptor.title} projects the existing Runtime Role, connection, preset and retrieval authorities.`
+                        ? formatShellText('Runtime / ${0} projects the existing Runtime Role, connection, preset and retrieval authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.runtime')
                         : descriptor.kind === 'diagnostics'
-                            ? 'Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.'
+                            ? translateShellText('Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.')
                             : descriptor.kind === 'plugins'
-                                ? 'Third-party plugins reuse the existing extension loader, manifests and enable/disable persistence.'
+                                ? translateShellText('Third-party plugins reuse the existing extension loader, manifests and enable/disable persistence.')
                                 : descriptor.kind === 'settings'
-                                    ? 'Global preferences reuse the existing User Settings controls and persistence authorities.'
+                                    ? translateShellText('Global preferences reuse the existing User Settings controls and persistence authorities.')
                                     : descriptor.kind === 'account'
-                                        ? 'Identity, snapshots, backup and account-isolated storage reuse the existing account controller.'
-                                        : 'Workspace integration is staged for a later R7 phase.';
+                                        ? translateShellText('Identity, snapshots, backup and account-isolated storage reuse the existing account controller.')
+                                        : translateShellText('Workspace integration is staged for a later R7 phase.');
         shell.setContextContent(
             makeContextSummary(documentRef, descriptor.title, detail),
             {
-                title: descriptor.title,
+                title: translateShellText(descriptor.title),
                 open: Boolean(current.open),
                 state: current.sheetState,
             },
@@ -297,7 +306,7 @@ export function createAtriaWorkspaceHost({
         if (token !== sequence || disposed) return;
 
         slot.dataset.atriaWorkspaceHost = descriptor.key;
-        slot.replaceChildren(createAtriaStatePanel(documentRef, 'loading', {
+        slot.replaceChildren(createLocalizedStatePanel(documentRef, 'loading', {
             title: descriptor.title,
             message: 'Opening workspace…',
         }));
@@ -326,7 +335,7 @@ export function createAtriaWorkspaceHost({
                 workspace: descriptor.key,
                 error,
             });
-            slot.replaceChildren(createAtriaStatePanel(documentRef, 'error', {
+            slot.replaceChildren(createLocalizedStatePanel(documentRef, 'error', {
                 title: descriptor.title,
                 message: error?.message || String(error),
             }));
@@ -591,129 +600,129 @@ export function createAtriaWorkspaceHost({
     commandDisposers.push(
         shell.registry.register({
             id: 'workspace.agents',
-            title: 'Open Agents Workspace',
-            description: 'Open orchestration and agent runs',
-            group: 'Workspaces',
+            title: translateShellText('Open Agents Workspace'),
+            description: translateShellText('Open orchestration and agent runs'),
+            group: translateShellText('Workspaces'),
             keywords: ['agents', 'orchestration', 'runs'],
             run: () => openAgentSection('orchestration'),
         }),
         shell.registry.register({
             id: 'workspace.memory',
-            title: 'Open Memory Workspace',
-            description: 'Open long-term memory inside Agents',
-            group: 'Workspaces',
+            title: translateShellText('Open Memory Workspace'),
+            description: translateShellText('Open long-term memory inside Agents'),
+            group: translateShellText('Workspaces'),
             keywords: ['memory', 'graph', 'agents'],
             run: () => openAgentSection('memory'),
         }),
         shell.registry.register({
             id: 'workspace.studio',
-            title: 'Open Game Studio',
-            description: 'Open the existing Atria Game Studio',
-            group: 'Workspaces',
+            title: translateShellText('Open Game Studio'),
+            description: translateShellText('Open the existing Atria Game Studio'),
+            group: translateShellText('Workspaces'),
             keywords: ['studio', 'game', 'editor'],
             run: () => openStudio(),
         }),
         shell.registry.register({
             id: 'workspace.characters',
-            title: 'Open Character Library',
-            description: 'Open the existing Character controller inside Library',
-            group: 'Workspaces',
+            title: translateShellText('Open Character Library'),
+            description: translateShellText('Open the existing Character controller inside Library'),
+            group: translateShellText('Workspaces'),
             keywords: ['library', 'characters', 'cards'],
             run: () => openLibrarySection('characters'),
         }),
         shell.registry.register({
             id: 'workspace.games',
-            title: 'Open Game Library',
-            description: 'Discover existing Game Packages without opening Studio',
-            group: 'Workspaces',
+            title: translateShellText('Open Game Library'),
+            description: translateShellText('Discover existing Game Packages without opening Studio'),
+            group: translateShellText('Workspaces'),
             keywords: ['library', 'games', 'packages'],
             run: () => openLibrarySection('games'),
         }),
         shell.registry.register({
             id: 'workspace.skills',
-            title: 'Open Skills Library',
-            description: 'Open the existing Skill Manager controller inside Library',
-            group: 'Workspaces',
+            title: translateShellText('Open Skills Library'),
+            description: translateShellText('Open the existing Skill Manager controller inside Library'),
+            group: translateShellText('Workspaces'),
             keywords: ['library', 'skills'],
             run: () => openLibrarySection('skills'),
         }),
         shell.registry.register({
             id: 'workspace.runtime-overview',
-            title: 'Open Runtime Overview',
-            description: 'Open current runtime health and routing projection',
-            group: 'Workspaces',
+            title: translateShellText('Open Runtime Overview'),
+            description: translateShellText('Open current runtime health and routing projection'),
+            group: translateShellText('Workspaces'),
             keywords: ['runtime', 'overview', 'health'],
             run: () => openRuntimeSection('overview'),
         }),
         shell.registry.register({
             id: 'workspace.runtime-roles',
-            title: 'Open Runtime Roles',
-            description: 'Open R5 Runtime Role routing configuration',
-            group: 'Workspaces',
+            title: translateShellText('Open Runtime Roles'),
+            description: translateShellText('Open R5 Runtime Role routing configuration'),
+            group: translateShellText('Workspaces'),
             keywords: ['runtime', 'roles', 'narrator', 'intent'],
             run: () => openRuntimeSection('roles'),
         }),
         shell.registry.register({
             id: 'workspace.connections',
-            title: 'Open Runtime Connections',
-            description: 'Open the existing Connection Manager controller',
-            group: 'Workspaces',
+            title: translateShellText('Open Runtime Connections'),
+            description: translateShellText('Open the existing Connection Manager controller'),
+            group: translateShellText('Workspaces'),
             keywords: ['runtime', 'connections', 'providers', 'models'],
             run: () => openRuntimeSection('connections'),
         }),
         shell.registry.register({
             id: 'workspace.presets',
-            title: 'Open Model / Prompt Presets',
-            description: 'Open existing preset authorities through Runtime',
-            group: 'Workspaces',
+            title: translateShellText('Open Model / Prompt Presets'),
+            description: translateShellText('Open existing preset authorities through Runtime'),
+            group: translateShellText('Workspaces'),
             keywords: ['runtime', 'presets', 'prompts'],
             run: () => openRuntimeSection('presets'),
         }),
         shell.registry.register({
             id: 'workspace.retrieval',
-            title: 'Open Runtime Retrieval',
-            description: 'Open embedding and rerank profiles from Connection Manager',
-            group: 'Workspaces',
+            title: translateShellText('Open Runtime Retrieval'),
+            description: translateShellText('Open embedding and rerank profiles from Connection Manager'),
+            group: translateShellText('Workspaces'),
             keywords: ['runtime', 'retrieval', 'embedding', 'rerank'],
             run: () => openRuntimeSection('retrieval'),
         }),
         shell.registry.register({
             id: 'workspace.world-info',
-            title: 'Open World Info Workspace',
-            description: 'Open worlds and knowledge through the existing World Info controller',
-            group: 'Workspaces',
+            title: translateShellText('Open World Info Workspace'),
+            description: translateShellText('Open worlds and knowledge through the existing World Info controller'),
+            group: translateShellText('Workspaces'),
             keywords: ['world', 'lorebook', 'knowledge'],
             run: () => openWorldInfo(),
         }),
         shell.registry.register({
             id: 'workspace.diagnostics',
-            title: 'Open Diagnostics Workspace',
-            description: 'Open incidents, startup diagnostics and logs',
-            group: 'Workspaces',
+            title: translateShellText('Open Diagnostics Workspace'),
+            description: translateShellText('Open incidents, startup diagnostics and logs'),
+            group: translateShellText('Workspaces'),
             keywords: ['diagnostics', 'logs', 'startup', 'incidents'],
             run: () => openUtility('diagnostics'),
         }),
         shell.registry.register({
             id: 'workspace.plugins',
-            title: 'Open Plugins',
-            description: 'Manage installed third-party extensions',
-            group: 'Utilities',
+            title: translateShellText('Open Plugins'),
+            description: translateShellText('Manage installed third-party extensions'),
+            group: translateShellText('Utilities'),
             keywords: ['plugins', 'extensions', 'third-party'],
             run: () => openUtility('plugins'),
         }),
         shell.registry.register({
             id: 'workspace.settings',
-            title: 'Open Settings',
-            description: 'Open global appearance, language and interaction preferences',
-            group: 'Utilities',
+            title: translateShellText('Open Settings'),
+            description: translateShellText('Open global appearance, language and interaction preferences'),
+            group: translateShellText('Utilities'),
             keywords: ['settings', 'appearance', 'language', 'accessibility'],
             run: () => openUtility('settings'),
         }),
         shell.registry.register({
             id: 'workspace.account',
-            title: 'Open Account',
-            description: 'Open identity, snapshots, backup and account storage',
-            group: 'Utilities',
+            title: translateShellText('Open Account'),
+            description: translateShellText('Open identity, snapshots, backup and account storage'),
+            group: translateShellText('Utilities'),
             keywords: ['account', 'profile', 'backup', 'snapshots'],
             run: () => openUtility('account'),
         }),

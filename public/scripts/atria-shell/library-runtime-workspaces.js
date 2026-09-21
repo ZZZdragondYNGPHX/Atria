@@ -2,6 +2,24 @@ import {
     createAtriaRuntimeCard,
     createAtriaStatePanel,
 } from './primitives.js';
+import { formatShellText, translateShellText } from './localization.js';
+
+function createLocalizedStatePanel(documentRef, kind, options = {}) {
+    return createAtriaStatePanel(documentRef, kind, {
+        ...options,
+        title: translateShellText(options.title),
+        message: translateShellText(options.message),
+    });
+}
+
+function createLocalizedRuntimeCard(documentRef, options = {}) {
+    return createAtriaRuntimeCard(documentRef, {
+        ...options,
+        title: translateShellText(options.title),
+        description: translateShellText(options.description),
+        status: translateShellText(options.status),
+    });
+}
 
 export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'characters', label: 'Characters' }),
@@ -47,7 +65,7 @@ function buildDomainFrame(documentRef, {
 
     const nav = documentRef.createElement('nav');
     nav.className = 'atria-domain-workspace__nav';
-    nav.setAttribute('aria-label', domain === 'library' ? 'Library sections' : 'Runtime sections');
+    nav.setAttribute('aria-label', translateShellText(domain === 'library' ? 'Library sections' : 'Runtime sections'));
 
     const body = documentRef.createElement('div');
     body.className = 'atria-domain-workspace__body';
@@ -57,7 +75,7 @@ function buildDomainFrame(documentRef, {
         button.type = 'button';
         button.className = 'atria-domain-workspace__tab';
         button.dataset.atriaDomainSection = item.id;
-        button.textContent = item.label;
+        button.textContent = translateShellText(item.label);
         button.classList.toggle('is-selected', item.id === activeSection);
         button.setAttribute('aria-current', item.id === activeSection ? 'page' : 'false');
         button.addEventListener('click', () => onNavigate(item.id));
@@ -111,7 +129,7 @@ function characterLabel(context, id) {
 function mountCharactersWorkspace({ document: documentRef, body, route, host }) {
     const root = documentRef.getElementById('right-nav-panel');
     if (!root) {
-        const panel = createAtriaStatePanel(documentRef, 'loading', {
+        const panel = createLocalizedStatePanel(documentRef, 'loading', {
             title: 'Characters',
             message: 'The existing Character controller is still booting.',
         });
@@ -187,7 +205,7 @@ async function mapWithConcurrency(items, concurrency, mapper) {
 }
 
 async function mountGamesWorkspace({ document: documentRef, body, host }) {
-    const loading = createAtriaStatePanel(documentRef, 'loading', {
+    const loading = createLocalizedStatePanel(documentRef, 'loading', {
         title: 'Games',
         message: 'Discovering existing Game Packages from the current character library…',
     });
@@ -229,7 +247,7 @@ async function mountGamesWorkspace({ document: documentRef, body, host }) {
     root.dataset.atriaLibraryGames = 'true';
 
     if (!games.length) {
-        root.append(createAtriaStatePanel(documentRef, 'empty', {
+        root.append(createLocalizedStatePanel(documentRef, 'empty', {
             title: 'No Game Packages found',
             message: 'Narrative Cards remain in Characters. Game Studio authors Game Packages; Library only discovers and opens existing packages.',
         }));
@@ -242,7 +260,7 @@ async function mountGamesWorkspace({ document: documentRef, body, host }) {
     for (const game of games) {
         const manifest = game.state.manifest;
         const ready = game.state.status === GAME_PACKAGE_STATUS.READY;
-        const card = createAtriaRuntimeCard(documentRef, {
+        const card = createLocalizedRuntimeCard(documentRef, {
             title: manifest?.name || game.character.name || game.packageId,
             description: manifest?.description || (ready
                 ? 'Game Package attached to this character card.'
@@ -257,7 +275,7 @@ async function mountGamesWorkspace({ document: documentRef, body, host }) {
 
         const play = documentRef.createElement('button');
         play.type = 'button';
-        play.textContent = 'Open in Play';
+        play.textContent = translateShellText('Open in Play');
         play.disabled = !ready;
         play.addEventListener('click', async () => {
             await context?.selectCharacterById?.(game.index);
@@ -266,7 +284,7 @@ async function mountGamesWorkspace({ document: documentRef, body, host }) {
 
         const studio = documentRef.createElement('button');
         studio.type = 'button';
-        studio.textContent = 'Open in Studio';
+        studio.textContent = translateShellText('Open in Studio');
         studio.addEventListener('click', () => host.openStudio(game.index));
 
         actions.append(play, studio);
@@ -282,7 +300,7 @@ async function mountWorldWorkspace({ document: documentRef, body }) {
     const worldInfo = await import('../world-info/workspace.js');
     const mounted = worldInfo.mountWorldInfoWorkspace(body, { embedded: true });
     if (mounted) return mounted;
-    const panel = createAtriaStatePanel(documentRef, 'loading', {
+    const panel = createLocalizedStatePanel(documentRef, 'loading', {
         title: 'Worlds & Knowledge',
         message: 'World Info is still finishing its existing controller bootstrap.',
     });
@@ -319,7 +337,7 @@ async function mountSkillsWorkspace({ document: documentRef, body }) {
         t: context?.translate || (value => value),
     }).catch(error => {
         if (!root.isConnected) return;
-        root.replaceChildren(createAtriaStatePanel(documentRef, 'error', {
+        root.replaceChildren(createLocalizedStatePanel(documentRef, 'error', {
             title: 'Skills',
             message: error?.message || String(error),
         }));
@@ -336,7 +354,7 @@ async function mountSkillsWorkspace({ document: documentRef, body }) {
 }
 
 function renderOverviewCard(documentRef, root, options) {
-    root.append(createAtriaRuntimeCard(documentRef, options));
+    root.append(createLocalizedRuntimeCard(documentRef, options));
 }
 
 function mountRuntimeOverview({ document: documentRef, body }) {
@@ -370,17 +388,17 @@ function mountRuntimeOverview({ document: documentRef, body }) {
     });
     renderOverviewCard(documentRef, root, {
         title: 'Runtime Roles',
-        description: `${configuredRoles} of ${Object.keys(roleConfigs).length} roles have an explicit primary connection profile.`,
+        description: formatShellText('${0} of ${1} roles have an explicit primary connection profile.', [configuredRoles, Object.keys(roleConfigs).length], undefined, 'atria.shell.runtime.configuredRoles'),
         status: configuredRoles ? 'Configured' : 'Defaults',
     });
     renderOverviewCard(documentRef, root, {
         title: 'Connections',
         description: selected ? `Active profile: ${selected.name}` : 'No Connection Manager profile is active.',
-        status: `${chatProfiles.length} chat profiles`,
+        status: formatShellText('${0} chat profiles', [chatProfiles.length], undefined, 'atria.shell.runtime.chatProfiles'),
     });
     renderOverviewCard(documentRef, root, {
         title: 'Retrieval',
-        description: `${embedProfiles.length} embedding · ${rerankProfiles.length} rerank profiles`,
+        description: formatShellText('${0} embedding · ${1} rerank profiles', [embedProfiles.length, rerankProfiles.length], undefined, 'atria.shell.runtime.retrievalProfiles'),
         status: embedProfiles.length || rerankProfiles.length ? 'Available' : 'Unconfigured',
     });
 
@@ -392,7 +410,7 @@ async function mountRuntimeRoles({ document: documentRef, body }) {
     const context = globalThis.Atria?.getContext?.();
     const api = context?.getExtensionApi?.('game-runtime');
     if (!api?.getModelRuntimeConfig || !api?.setRuntimeRoleConfig) {
-        const panel = createAtriaStatePanel(documentRef, 'loading', {
+        const panel = createLocalizedStatePanel(documentRef, 'loading', {
             title: 'Runtime Roles',
             message: 'The existing Game Runtime role controller is still booting.',
         });
@@ -417,12 +435,12 @@ async function mountRuntimeRoles({ document: documentRef, body }) {
         title.textContent = roleId.replaceAll('_', ' ');
 
         const primaryLabel = documentRef.createElement('label');
-        primaryLabel.textContent = 'Primary connection';
+        primaryLabel.textContent = translateShellText('Primary connection');
         const primary = documentRef.createElement('select');
         primary.className = 'text_pole';
         const none = documentRef.createElement('option');
         none.value = '';
-        none.textContent = 'Use global/default connection';
+        none.textContent = translateShellText('Use global/default connection');
         primary.append(none);
         for (const profile of profiles) {
             const option = documentRef.createElement('option');
@@ -434,7 +452,7 @@ async function mountRuntimeRoles({ document: documentRef, body }) {
         primaryLabel.append(primary);
 
         const fallbacksLabel = documentRef.createElement('label');
-        fallbacksLabel.textContent = 'Fallback connections';
+        fallbacksLabel.textContent = translateShellText('Fallback connections');
         const fallbacks = documentRef.createElement('select');
         fallbacks.className = 'text_pole';
         fallbacks.multiple = true;
@@ -455,17 +473,17 @@ async function mountRuntimeRoles({ document: documentRef, body }) {
         timeout.max = '600000';
         timeout.step = '1000';
         timeout.value = String(role.timeoutMs);
-        timeout.setAttribute('aria-label', 'Timeout milliseconds');
+        timeout.setAttribute('aria-label', translateShellText('Timeout milliseconds'));
         const retries = documentRef.createElement('input');
         retries.type = 'number';
         retries.min = '0';
         retries.max = '5';
         retries.value = String(role.retries);
-        retries.setAttribute('aria-label', 'Retries');
+        retries.setAttribute('aria-label', translateShellText('Retries'));
         limits.append(timeout, retries);
 
         const meta = documentRef.createElement('small');
-        meta.textContent = `Policy: ${role.reasoningPolicy} · tools: ${role.requirements?.tools ? 'required' : 'optional'} · structured output: ${role.requirements?.structuredOutput ? 'required' : 'optional'}`;
+        meta.textContent = formatShellText('Policy: ${0} · tools: ${1} · structured output: ${2}', [role.reasoningPolicy, translateShellText(role.requirements?.tools ? 'required' : 'optional'), translateShellText(role.requirements?.structuredOutput ? 'required' : 'optional')], undefined, 'atria.shell.runtime.rolePolicy');
 
         async function persist() {
             try {
@@ -524,7 +542,7 @@ async function waitForConnectionManagerRoot(documentRef, timeoutMs = 6000) {
 async function mountConnectionManagerWorkspace({ document: documentRef, body, section }) {
     const root = await waitForConnectionManagerRoot(documentRef);
     if (!root) {
-        const panel = createAtriaStatePanel(documentRef, 'loading', {
+        const panel = createLocalizedStatePanel(documentRef, 'loading', {
             title: section === 'retrieval' ? 'Retrieval' : 'Connections',
             message: 'Connection Manager is still finishing its existing controller bootstrap.',
         });
@@ -576,7 +594,7 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
 
         const row = documentRef.createElement('label');
         row.className = 'atria-runtime-preset-row';
-        row.textContent = label;
+        row.textContent = translateShellText(label);
         const select = documentRef.createElement('select');
         select.className = 'text_pole';
         const selected = manager.getSelectedPresetName?.() || '';
@@ -599,7 +617,7 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
 
     const advanced = documentRef.createElement('button');
     advanced.type = 'button';
-    advanced.textContent = 'Open advanced preset forms';
+    advanced.textContent = translateShellText('Open advanced preset forms');
     advanced.addEventListener('click', () => {
         documentRef.getElementById('leftNavDrawerIcon')?.closest?.('.drawer-toggle')?.click?.();
     });
@@ -670,7 +688,7 @@ function createDomainController({
         await Promise.resolve(sectionController?.dispose?.());
         if (disposed || token !== sequence) return;
 
-        frame.body.replaceChildren(createAtriaStatePanel(documentRef, 'loading', {
+        frame.body.replaceChildren(createLocalizedStatePanel(documentRef, 'loading', {
             title: sectionById(sections, nextSection, sections[0].id).label,
             message: 'Opening existing controller…',
         }));
@@ -686,7 +704,7 @@ function createDomainController({
             });
         } catch (error) {
             if (disposed || token !== sequence) return;
-            const panel = createAtriaStatePanel(documentRef, 'error', {
+            const panel = createLocalizedStatePanel(documentRef, 'error', {
                 title: sectionById(sections, nextSection, sections[0].id).label,
                 message: error?.message || String(error),
             });
