@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-import { appendConnectionProfile, bootstrapCustomBackend, markOnboarded } from '../_lib/fixtures.js';
+import {
+    appendConnectionProfile,
+    bootstrapCustomBackend,
+    disableExtensions,
+    markOnboarded,
+} from '../_lib/fixtures.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import {
     abortGenerationViaUI,
@@ -30,6 +35,10 @@ test.beforeAll(async () => {
         scenarioId: 'r7b-native-actions',
     });
     markOnboarded({ dataRoot: server.dataRoot });
+    disableExtensions({
+        dataRoot: server.dataRoot,
+        names: ['stable-diffusion'],
+    });
     bootstrapCustomBackend({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
     appendConnectionProfile({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
 });
@@ -113,7 +122,7 @@ test.describe('R7B native Play action continuity', () => {
 
         const beforeContinueCount = await page.locator('#chat .mes').count();
         const continued = await continueViaUI(page);
-        expect(continued).toContain('R7B-B');
+        expect(continued.text).toContain('R7B-B');
         await expect(page.locator('#chat .mes')).toHaveCount(beforeContinueCount);
 
         const regenerated = await regenerateViaUI(page);
