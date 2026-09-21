@@ -307,18 +307,10 @@ export function createAtriaAppShell({
         breadcrumb.textContent = ['Atria', ...labels].join(' / ');
         contextTitle.textContent = labels.at(-1) || translateLabel(translate, domain?.label || route.domain);
 
-        const playActive = route.domain === 'play';
+        const utilityWorkspaceActive = route.child?.id === 'utility.diagnostics';
+        const playActive = route.domain === 'play' && !utilityWorkspaceActive;
         stage.hidden = !playActive;
         workspace.hidden = playActive;
-        if (!playActive) {
-            const label = translateLabel(translate, domain?.label || route.domain);
-            workspace.replaceChildren(createAtriaStatePanel(documentRef, 'empty', {
-                title: route.child?.label
-                    ? `${label} / ${route.child.label}`
-                    : `${label} Workspace`,
-                message: 'R7D owns navigation only. First-class workspace controllers connect in later R7 phases.',
-            }));
-        }
     }
 
     function navigate(domainId, options = {}) {
