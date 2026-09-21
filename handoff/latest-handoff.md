@@ -16,6 +16,8 @@ The Master Refactor has completed **R0-R4** and **R5 is now underway**.
 - New architecture clarification: Game UI uses **Persistent Game Surfaces**, not a special floor-0 message. Conversation floors remain Timeline/history data and optional Native Components.
 - New R5 requirement: **Turn Controller / Turn Transaction** must keep Stop, Undo, Delete Assistant Result, Rewrite Narrative, Retry Turn and Switch Variant coherent with World/Event/Memory/Orchestrator state.
 - Narrative Cards without `game.json` remain first-class and do not require Game Runtime authoring.
+- Domain-neutrality requirement: HP/MP/RPG fields are examples only; package authors own World Schema/Commands/Events/Rules. The architecture must also support visual novels, management games and future grand-strategy/society simulations without changing the core runtime.
+- Large-world backends (entity/index/query layers) are a future scalability path, not an R5 scope expansion.
 - The long-running refactor branch remains unmerged and must be retained until the complete Master Refactor finishes.
 
 Continue R5 from the current branch; do not restart R0-R4 or the already-landed R5 foundation.
