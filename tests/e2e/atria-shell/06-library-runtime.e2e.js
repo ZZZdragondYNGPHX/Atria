@@ -98,28 +98,49 @@ test.describe('R7F Library & Runtime', () => {
         await expect(page).toHaveURL(/atriaChild=roles/);
 
         await root.locator('[data-atria-domain-section="connections"]').click();
-        const connectionRoot = root.locator('#atria-connection-manager-root[data-atria-workspace-embedded="true"]');
-        await connectionRoot.waitFor({ state: 'visible', timeout: 10_000 });
+        const apiBlock = root.locator('#rm_api_block[data-atria-workspace-embedded="true"]');
+        const connectionRoot = apiBlock.locator('#atria-connection-manager-root[data-atria-workspace-embedded="true"]');
+        await apiBlock.waitFor({ state: 'visible', timeout: 10_000 });
+        await expect(connectionRoot).toBeVisible();
+        await expect(apiBlock.locator('#main_api')).toBeVisible();
+        await expect(root.locator('[data-atria-domain-section="retrieval"]')).toHaveCount(0);
         await page.evaluate(() => {
-            window.__r7fConnectionRoot = document.getElementById('atria-connection-manager-root');
+            window.__r7fApiBlock = document.getElementById('rm_api_block');
         });
         await expect(page).toHaveURL(/atriaChild=connections/);
 
-        await root.locator('[data-atria-domain-section="retrieval"]').click();
-        await connectionRoot.waitFor({ state: 'visible', timeout: 10_000 });
-        await expect(page).toHaveURL(/atriaChild=retrieval/);
+        // Retrieval is now a native mode inside the single Connections surface.
+        await connectionRoot.locator('.connection_profile_mode_tab[data-mode="embed"]').click();
         await expect(connectionRoot.locator('.connection_profile_mode_tab[data-mode="embed"]')).toHaveClass(/active/);
+        await expect(page).toHaveURL(/atriaChild=connections/);
         expect(await page.evaluate(() => (
-            window.__r7fConnectionRoot === document.getElementById('atria-connection-manager-root')
+            window.__r7fApiBlock === document.getElementById('rm_api_block')
         ))).toBe(true);
 
         await root.locator('[data-atria-domain-section="presets"]').click();
-        await expect(root.locator('[data-atria-runtime-presets="true"]')).toBeVisible();
+        const presets = root.locator('[data-atria-runtime-presets="true"]');
+        await expect(presets).toBeVisible();
         await expect(page).toHaveURL(/atriaChild=presets/);
+        await expect(presets.locator('.atria-runtime-preset-row')).toHaveCount(6);
+
+        // Prompt presets stay compact until the user asks to edit; editing
+        // reparents the existing Advanced Formatting authority.
+        await presets.locator('[data-atria-preset-api="context"] .atria-runtime-preset-row__edit').click();
+        await expect(presets.locator('#AdvancedFormatting[data-atria-runtime-preset-editor-source="context"]')).toBeVisible();
+        await expect(presets.locator('#context_presets')).toBeVisible();
+        await presets.locator('.atria-runtime-preset-editor__back').click();
+        await expect(presets.locator('[data-atria-preset-summary="true"]')).toBeVisible();
+
+        // Model presets likewise open the native AI response editor instead of
+        // a read-only duplicate form.
+        await presets.locator('[data-atria-preset-api="openai"] .atria-runtime-preset-row__edit').click();
+        await expect(presets.locator('#left-nav-panel[data-atria-runtime-preset-editor-source="openai"]')).toBeVisible();
+        await expect(presets.locator('#settings_preset_openai')).toBeVisible();
+        await presets.locator('.atria-runtime-preset-editor__back').click();
 
         await page.goBack();
-        await expect(page).toHaveURL(/atriaChild=retrieval/);
-        await connectionRoot.waitFor({ state: 'visible', timeout: 10_000 });
+        await expect(page).toHaveURL(/atriaChild=connections/);
+        await apiBlock.waitFor({ state: 'visible', timeout: 10_000 });
 
         const commandState = await page.evaluate(() => {
             const registry = window.Atria.shell.getShell()?.registry;
@@ -138,7 +159,7 @@ test.describe('R7F Library & Runtime', () => {
             skills: true,
             roles: true,
             connections: true,
-            retrieval: true,
+            retrieval: false,
         });
 
         await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="play"]').click();
@@ -152,7 +173,7 @@ test.describe('R7F Library & Runtime', () => {
             textareaSame: window.__r7fNative.textarea === document.getElementById('send_textarea'),
             orphanCharacter: document.querySelectorAll('#atria-workspace #right-nav-panel').length,
             orphanWorld: document.querySelectorAll('#atria-workspace #WorldInfo').length,
-            orphanConnection: document.querySelectorAll('#atria-workspace #atria-connection-manager-root').length,
+            orphanConnection: document.querySelectorAll('#atria-workspace #rm_api_block').length,
         }))).toEqual({
             chatCount: 1,
             formCount: 1,
@@ -187,9 +208,18 @@ test.describe('R7F Library & Runtime', () => {
         await root.locator('[data-atria-primitive="BottomNavigation"] [data-atria-domain="runtime"]').click();
         await expect(root.locator('[data-atria-runtime-overview="true"]')).toBeVisible();
 
-        await root.locator('[data-atria-domain-section="retrieval"]').click();
-        await expect(root.locator('#atria-connection-manager-root[data-atria-workspace-embedded="true"]')).toBeVisible();
-        await expect(page).toHaveURL(/atriaChild=retrieval/);
+        await root.locator('[data-atria-domain-section="connections"]').click();
+        await expect(root.locator('#rm_api_block[data-atria-workspace-embedded="true"]')).toBeVisible();
+        await expect(root.locator('[data-atria-domain-section="retrieval"]')).toHaveCount(0);
+        await expect(page).toHaveURL(/atriaChild=connections/);
+
+        await root.locator('[data-atria-domain-section="presets"]').click();
+        const compactPresets = root.locator('[data-atria-runtime-presets="true"]');
+        await expect(compactPresets).toBeVisible();
+        const compactRows = compactPresets.locator('.atria-runtime-preset-row');
+        await expect(compactRows).toHaveCount(6);
+        const maxRowHeight = await compactRows.evaluateAll(rows => Math.max(...rows.map(row => row.getBoundingClientRect().height)));
+        expect(maxRowHeight).toBeLessThan(90);
 
         expect(await page.evaluate(() => ({
             chat: document.querySelectorAll('#chat').length,
