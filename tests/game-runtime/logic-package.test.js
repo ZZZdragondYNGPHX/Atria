@@ -40,6 +40,11 @@ describe('Game Package logic loading', () => {
                     },
                 }],
                 rules: [],
+                interpretations: [{
+                    eventType: 'implicit_threat',
+                    command: 'rest',
+                    args: {},
+                }],
             });
         });
 
@@ -52,6 +57,8 @@ describe('Game Package logic loading', () => {
         expect(definition.commands).toHaveLength(1);
         expect(definition.reducers).toHaveLength(1);
         expect(definition.rules).toEqual([]);
+        expect(definition.interpretations).toHaveLength(1);
+        expect(definition.interpretations[0].eventType).toBe('implicit_threat');
         expect(definition.commands[0].id).toBe('rest');
         expect(definition.reducers[0].type).toBe('Rested');
     });
@@ -64,6 +71,7 @@ describe('Game Package logic loading', () => {
             commands: [],
             reducers: [],
             rules: [],
+            interpretations: [],
             source: null,
         });
     });
