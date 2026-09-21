@@ -37,4 +37,15 @@ describe('startup loader fast hide', () => {
         expect(powerUser).toContain('if (!instance)');
         expect(powerUser).toContain("const widget = control.autocomplete('widget')[0];");
     });
+
+    test('enforces static preloader removal again at APP_READY', () => {
+        const script = readFileSync(SCRIPT_URL, 'utf8');
+        const appReadyEvent = script.indexOf('await eventSource.emit(event_types.APP_READY);');
+        const remove = script.indexOf("document.getElementById('preloader')?.remove();", appReadyEvent);
+        const timing = script.indexOf("markClientStartupTiming('appReady');", appReadyEvent);
+
+        expect(appReadyEvent).toBeGreaterThanOrEqual(0);
+        expect(remove).toBeGreaterThan(appReadyEvent);
+        expect(timing).toBeGreaterThan(remove);
+    });
 });
