@@ -184,7 +184,7 @@ export function createContainer(options = {}) {
     const shellScoped = Boolean(
         shell?.slots?.stage
         && shell?.slots?.recovery
-        && typeof nativePlayHost?.acquireStageOwnership === 'function'
+        && typeof nativePlayHost?.acquireStageOwnership === 'function',
     );
 
     const container = document.createElement('div');
