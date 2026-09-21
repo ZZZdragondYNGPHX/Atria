@@ -1,5 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
+import { GAME_LOGIC_ERROR_CODES, GameLogicError } from '../../public/scripts/extensions/game-runtime/logic/errors.js';
 import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
 import { createWorldRuntime } from '../../public/scripts/extensions/game-runtime/world/runtime.js';
 
@@ -123,6 +124,10 @@ describe('Game Logic Runtime command transaction', () => {
             ok: true,
             status: 'committed',
             commandId: 'damage',
+            command: {
+                id: 'damage',
+                args: { amount: 5 },
+            },
             beforeState: { hp: 20 },
             afterState: { hp: 15 },
             committed: true,
@@ -139,7 +144,24 @@ describe('Game Logic Runtime command transaction', () => {
     test('invalid arguments fail before command execution or persistence', async () => {
         const { persistence, world, logic } = await makeRuntime();
 
-        await expect(logic.dispatch('damage', { amount: 0 })).rejects.toThrow(/validation failed/);
+        let error;
+        try {
+            await logic.dispatch('damage', { amount: 0 });
+        } catch (caught) {
+            error = caught;
+        }
+
+        expect(error).toBeInstanceOf(GameLogicError);
+        expect(error.toJSON()).toMatchObject({
+            code: GAME_LOGIC_ERROR_CODES.COMMAND_ARGUMENTS_INVALID,
+            stage: 'arguments',
+            commandId: 'damage',
+            transactionId: null,
+            details: {
+                errors: expect.any(Array),
+            },
+        });
+        expect(error.message).toMatch(/validation failed/);
 
         expect(world.getState()).toEqual({ hp: 20 });
         expect(world.getJournal().events).toHaveLength(0);
@@ -149,7 +171,21 @@ describe('Game Logic Runtime command transaction', () => {
     test('multi-event schema failure aborts the entire transaction', async () => {
         const { persistence, world, logic } = await makeRuntime();
 
-        await expect(logic.dispatch('broken_combo', {})).rejects.toThrow(/World State validation failed/);
+        let error;
+        try {
+            await logic.dispatch('broken_combo', {});
+        } catch (caught) {
+            error = caught;
+        }
+
+        expect(error).toBeInstanceOf(GameLogicError);
+        expect(error).toMatchObject({
+            code: GAME_LOGIC_ERROR_CODES.COMMIT_FAILED,
+            stage: 'commit',
+            commandId: 'broken_combo',
+        });
+        expect(error.transactionId).toMatch(/^tx:/);
+        expect(error.message).toMatch(/World State validation failed/);
 
         expect(world.getState()).toEqual({ hp: 20 });
         expect(world.getJournal().events).toHaveLength(0);
