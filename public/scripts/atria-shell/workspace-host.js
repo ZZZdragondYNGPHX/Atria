@@ -1,5 +1,10 @@
 import { createAtriaStatePanel } from './primitives.js';
 import {
+    mountAccountUtility,
+    mountPluginsUtility,
+    mountSettingsUtility,
+} from './utility-workspaces.js';
+import {
     LIBRARY_SECTIONS,
     RUNTIME_SECTIONS,
     mountLibraryDomainWorkspace,
@@ -15,6 +20,13 @@ const AGENT_SECTION_LABELS = Object.freeze({
     diagnostics: 'Diagnostics',
 });
 
+const UTILITY_LABELS = Object.freeze({
+    diagnostics: 'Diagnostics',
+    plugins: 'Plugins',
+    settings: 'Settings',
+    account: 'Account',
+});
+
 function normalizeAgentSection(route) {
     const childId = String(route?.child?.id || '').trim();
     if (childId === 'memory') return 'memory';
@@ -25,12 +37,16 @@ function normalizeAgentSection(route) {
 
 function routeDescriptor(route) {
     const childId = String(route?.child?.id || '').trim();
-    if (childId === 'utility.diagnostics') {
-        return Object.freeze({
-            key: 'utility:diagnostics',
-            kind: 'diagnostics',
-            title: 'Diagnostics',
-        });
+    if (childId.startsWith('utility.')) {
+        const utilityId = childId.slice('utility.'.length);
+        const title = UTILITY_LABELS[utilityId];
+        if (title) {
+            return Object.freeze({
+                key: `utility:${utilityId}`,
+                kind: utilityId,
+                title,
+            });
+        }
     }
     if (route?.domain === 'agents') {
         const section = normalizeAgentSection(route);
@@ -172,6 +188,9 @@ export function createAtriaWorkspaceAdapters() {
         library: mountLibraryDomainWorkspace,
         runtime: mountRuntimeDomainWorkspace,
         diagnostics: mountDiagnosticsWorkspace,
+        plugins: mountPluginsUtility,
+        settings: mountSettingsUtility,
+        account: mountAccountUtility,
         placeholder: mountPlaceholder,
     });
 }
@@ -214,7 +233,13 @@ export function createAtriaWorkspaceHost({
                         ? `Runtime / ${descriptor.title} projects the existing Runtime Role, connection, preset and retrieval authorities.`
                         : descriptor.kind === 'diagnostics'
                             ? 'Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.'
-                            : 'Workspace integration is staged for a later R7 phase.';
+                            : descriptor.kind === 'plugins'
+                                ? 'Third-party plugins reuse the existing extension loader, manifests and enable/disable persistence.'
+                                : descriptor.kind === 'settings'
+                                    ? 'Global preferences reuse the existing User Settings controls and persistence authorities.'
+                                    : descriptor.kind === 'account'
+                                        ? 'Identity, snapshots, backup and account-isolated storage reuse the existing account controller.'
+                                        : 'Workspace integration is staged for a later R7 phase.';
         shell.setContextContent(
             makeContextSummary(documentRef, descriptor.title, detail),
             {
@@ -456,15 +481,17 @@ export function createAtriaWorkspaceHost({
     }
 
     function openUtility(id) {
-        if (id !== 'diagnostics') {
+        const utilityId = String(id || '').trim().toLowerCase();
+        const label = UTILITY_LABELS[utilityId];
+        if (!label) {
             throw new Error(`Unknown Atria workspace utility: ${id}`);
         }
         return navigation.navigateChild({
-            id: 'utility.diagnostics',
-            label: 'Diagnostics',
+            id: `utility.${utilityId}`,
+            label,
             kind: 'workspace',
         }, {
-            reason: 'workspace-utility-diagnostics',
+            reason: `workspace-utility-${utilityId}`,
             history: 'push',
         });
     }
@@ -511,6 +538,9 @@ export function createAtriaWorkspaceHost({
             '#API-status-top',
             '#leftNavDrawerIcon',
             '#sys-settings-button .drawer-toggle',
+            '#extensions-settings-button .drawer-toggle',
+            '#user-settings-button .drawer-toggle',
+            '#account_button',
             '[data-atria-action="manage-skills"]',
         ].join(', '));
         if (!target) return;
@@ -521,6 +551,9 @@ export function createAtriaWorkspaceHost({
         if (target.id === 'rightNavDrawerIcon') openLibrarySection('characters');
         else if (target.id === 'WIDrawerIcon') openWorldInfo();
         else if (target.id === 'server_logs_button') openUtility('diagnostics');
+        else if (target.id === 'account_button') openUtility('account');
+        else if (target.closest?.('#extensions-settings-button')) openUtility('plugins');
+        else if (target.closest?.('#user-settings-button')) openUtility('settings');
         else if (target.matches?.('[data-atria-action="manage-skills"]')) openLibrarySection('skills');
         else if (target.id === 'leftNavDrawerIcon') openRuntimeSection('presets');
         else openRuntimeSection('connections');
@@ -659,6 +692,30 @@ export function createAtriaWorkspaceHost({
             group: 'Workspaces',
             keywords: ['diagnostics', 'logs', 'startup', 'incidents'],
             run: () => openUtility('diagnostics'),
+        }),
+        shell.registry.register({
+            id: 'workspace.plugins',
+            title: 'Open Plugins',
+            description: 'Manage installed third-party extensions',
+            group: 'Utilities',
+            keywords: ['plugins', 'extensions', 'third-party'],
+            run: () => openUtility('plugins'),
+        }),
+        shell.registry.register({
+            id: 'workspace.settings',
+            title: 'Open Settings',
+            description: 'Open global appearance, language and interaction preferences',
+            group: 'Utilities',
+            keywords: ['settings', 'appearance', 'language', 'accessibility'],
+            run: () => openUtility('settings'),
+        }),
+        shell.registry.register({
+            id: 'workspace.account',
+            title: 'Open Account',
+            description: 'Open identity, snapshots, backup and account storage',
+            group: 'Utilities',
+            keywords: ['account', 'profile', 'backup', 'snapshots'],
+            run: () => openUtility('account'),
         }),
     );
 
