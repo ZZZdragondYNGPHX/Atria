@@ -49,7 +49,7 @@ function makeAdapter(kind, records) {
     });
 }
 
-describe('R7E WorkspaceHost', () => {
+describe('R7F WorkspaceHost', () => {
     beforeEach(() => {
         window.history.replaceState(null, '', '/');
         setViewport();
@@ -71,7 +71,8 @@ describe('R7E WorkspaceHost', () => {
         const adapters = {
             agents: makeAdapter('agents', records),
             studio: makeAdapter('studio', records),
-            'world-info': makeAdapter('world-info', records),
+            library: makeAdapter('library', records),
+            runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
             placeholder: makeAdapter('placeholder', records),
         };
@@ -105,7 +106,7 @@ describe('R7E WorkspaceHost', () => {
         navigation.dispose();
     });
 
-    test('opens World Info as a Library child workspace and Diagnostics as a global utility child', async () => {
+    test('opens Library and Runtime child routes through one domain adapter each', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({
             document,
@@ -117,7 +118,8 @@ describe('R7E WorkspaceHost', () => {
         const adapters = {
             agents: makeAdapter('agents', records),
             studio: makeAdapter('studio', records),
-            'world-info': makeAdapter('world-info', records),
+            library: makeAdapter('library', records),
+            runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
             placeholder: makeAdapter('placeholder', records),
         };
@@ -129,18 +131,42 @@ describe('R7E WorkspaceHost', () => {
             domain: 'library',
             child: { id: 'world-info', kind: 'workspace' },
         });
-        expect(host.getActiveWorkspace()?.key).toBe('library:world-info');
-        expect(adapters['world-info']).toHaveBeenCalledTimes(1);
+        expect(host.getActiveWorkspace()).toMatchObject({
+            key: 'library',
+            kind: 'library',
+            section: 'world-info',
+        });
+        expect(adapters.library).toHaveBeenCalledTimes(1);
+
+        host.openLibrarySection('skills');
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('skills');
+        expect(adapters.library).toHaveBeenCalledTimes(1);
+        expect(records.find(item => item.kind === 'library').controller.updateRoute).toHaveBeenCalled();
+
+        host.openRuntimeSection('roles');
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'runtime',
+            child: { id: 'roles', kind: 'workspace' },
+        });
+        expect(host.getActiveWorkspace()).toMatchObject({
+            key: 'runtime',
+            kind: 'runtime',
+            section: 'roles',
+        });
+        expect(adapters.runtime).toHaveBeenCalledTimes(1);
+
+        host.openRuntimeSection('retrieval');
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('retrieval');
+        expect(adapters.runtime).toHaveBeenCalledTimes(1);
 
         host.openUtility('diagnostics');
         await flushWorkspace();
-        expect(navigation.getRoute()).toMatchObject({
-            domain: 'library',
-            child: { id: 'utility.diagnostics', kind: 'workspace' },
-        });
+        expect(navigation.getRoute().child?.id).toBe('utility.diagnostics');
         expect(host.getActiveWorkspace()?.key).toBe('utility:diagnostics');
         expect(adapters.diagnostics).toHaveBeenCalledTimes(1);
-        expect(shell.slots.workspace.hidden).toBe(false);
 
         host.dispose();
         shell.destroy();
@@ -205,7 +231,8 @@ describe('R7E WorkspaceHost', () => {
         const adapters = {
             agents: makeAdapter('agents', records),
             studio: makeAdapter('studio', records),
-            'world-info': makeAdapter('world-info', records),
+            library: makeAdapter('library', records),
+            runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
             placeholder: makeAdapter('placeholder', records),
         };
@@ -232,7 +259,7 @@ describe('R7E WorkspaceHost', () => {
         navigation.dispose();
     });
 
-    test('legacy World Info and Diagnostics triggers forward into the same Navigation Authority', async () => {
+    test('legacy Library and Runtime triggers forward into the same Navigation Authority', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({
             document,
@@ -249,11 +276,19 @@ describe('R7E WorkspaceHost', () => {
             adapters: {
                 agents: makeAdapter('agents', records),
                 studio: makeAdapter('studio', records),
-                'world-info': makeAdapter('world-info', records),
+                library: makeAdapter('library', records),
+                runtime: makeAdapter('runtime', records),
                 diagnostics: makeAdapter('diagnostics', records),
                 placeholder: makeAdapter('placeholder', records),
             },
         });
+
+        const characters = document.createElement('button');
+        characters.id = 'rightNavDrawerIcon';
+        document.body.append(characters);
+        characters.click();
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({ domain: 'library', child: null });
 
         const world = document.createElement('button');
         world.id = 'WIDrawerIcon';
@@ -263,6 +298,36 @@ describe('R7E WorkspaceHost', () => {
         expect(navigation.getRoute()).toMatchObject({
             domain: 'library',
             child: { id: 'world-info' },
+        });
+
+        const api = document.createElement('button');
+        api.id = 'API-status-top';
+        document.body.append(api);
+        api.click();
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'runtime',
+            child: { id: 'connections' },
+        });
+
+        const presets = document.createElement('button');
+        presets.id = 'leftNavDrawerIcon';
+        document.body.append(presets);
+        presets.click();
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'runtime',
+            child: { id: 'presets' },
+        });
+
+        const skills = document.createElement('button');
+        skills.dataset.atriaAction = 'manage-skills';
+        document.body.append(skills);
+        skills.click();
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'library',
+            child: { id: 'skills' },
         });
 
         const diagnostics = document.createElement('button');
@@ -277,13 +342,23 @@ describe('R7E WorkspaceHost', () => {
         navigation.dispose();
     });
 
-    test('route descriptor keeps Diagnostics a utility and leaves R7F domains staged', () => {
+    test('route descriptor maps R7F Library and Runtime without creating new routers', () => {
         expect(routeDescriptor({
             domain: 'play',
             child: { id: 'utility.diagnostics', label: 'Diagnostics', kind: 'workspace' },
         })).toMatchObject({ key: 'utility:diagnostics', kind: 'diagnostics' });
+        expect(routeDescriptor({ domain: 'library', child: null, breadcrumb: ['Library'] }))
+            .toMatchObject({ key: 'library', kind: 'library', section: 'characters', title: 'Characters' });
+        expect(routeDescriptor({
+            domain: 'library',
+            child: { id: 'world-info', label: 'Worlds & Knowledge', kind: 'workspace' },
+        })).toMatchObject({ key: 'library', kind: 'library', section: 'world-info' });
         expect(routeDescriptor({ domain: 'runtime', child: null, breadcrumb: ['Runtime'] }))
-            .toMatchObject({ key: 'placeholder:runtime', kind: 'placeholder' });
+            .toMatchObject({ key: 'runtime', kind: 'runtime', section: 'overview', title: 'Overview' });
+        expect(routeDescriptor({
+            domain: 'runtime',
+            child: { id: 'retrieval', label: 'Retrieval', kind: 'workspace' },
+        })).toMatchObject({ key: 'runtime', kind: 'runtime', section: 'retrieval' });
         expect(routeDescriptor({ domain: 'play', child: null, breadcrumb: ['Play'] })).toBeNull();
-    });
+    });;
 });
