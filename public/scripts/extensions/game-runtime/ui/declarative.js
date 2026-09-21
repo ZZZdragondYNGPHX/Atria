@@ -82,7 +82,7 @@ function parseCommandArgs(raw) {
     return value;
 }
 
-function normalizeSelectorDefinitions(raw) {
+export function compileGameSelectorDefinitions(raw) {
     if (!Array.isArray(raw)) {
         throw new Error('Game UI selectors resource must be an array');
     }
@@ -137,7 +137,7 @@ export async function loadGameSelectorDefinitions(packageState, options = {}) {
         fetchImpl: options.fetchImpl,
         headers: options.headers || {},
     });
-    return normalizeSelectorDefinitions(raw);
+    return compileGameSelectorDefinitions(raw);
 }
 
 function setBoundValue(element, binding, value) {
