@@ -1,5 +1,7 @@
+import { cloneGameUiValue } from './clone.js';
+
 function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
+    return cloneGameUiValue(value);
 }
 
 function assertRuntimeContract(options) {
