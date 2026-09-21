@@ -71,6 +71,13 @@ describe('Game Formula AST', () => {
         })).toThrow(/finite number/);
     });
 
+    test('numeric builtins reject empty or inverted ranges instead of producing non-finite values', () => {
+        expect(() => evaluateFormula('min()')).toThrow(/at least one argument/);
+        expect(() => evaluateFormula('max()')).toThrow(/at least one argument/);
+        expect(() => evaluateFormula('clamp(5, 10, 1)')).toThrow(/maximum must be >= minimum/);
+        expect(() => compileFormula('1'.repeat(4097))).toThrow(/exceeds 4096/);
+    });
+
     test('boolean operators require booleans instead of JavaScript truthiness', () => {
         expect(() => evaluateFormula('world.hp && true', {
             world: { hp: 1 },
