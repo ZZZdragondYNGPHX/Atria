@@ -482,19 +482,26 @@ export function initHorde() {
     $('#horde_refresh').on('click', () => getHordeModels(true));
     $('#horde_kudos').on('click', showKudos);
 
-    // Not needed on mobile
+    // Not needed on mobile. Select2 is loaded after first paint and is
+    // attached to the canonical jQuery instance; keep this enhancement
+    // fail-soft so Horde can still use its native select if unavailable.
     if (!isMobile()) {
-        $('#horde_model').select2({
-            width: '100%',
-            placeholder: t`Select Horde models`,
-            allowClear: true,
-            closeOnSelect: false,
-            templateSelection: function (data) {
-                // Customize the pillbox text by shortening the full text
-                return data.id;
-            },
-            templateResult: getHordeModelTemplate,
-        });
+        const select2Jq = globalThis.jQuery || globalThis.$;
+        if (typeof select2Jq?.fn?.select2 === 'function') {
+            select2Jq('#horde_model').select2({
+                width: '100%',
+                placeholder: t`Select Horde models`,
+                allowClear: true,
+                closeOnSelect: false,
+                templateSelection: function (data) {
+                    // Customize the pillbox text by shortening the full text
+                    return data.id;
+                },
+                templateResult: getHordeModelTemplate,
+            });
+        } else {
+            console.warn('[init] Select2 is not ready; Horde model selection stays native.');
+        }
     }
 }
 
