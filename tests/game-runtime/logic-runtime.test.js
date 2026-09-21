@@ -93,6 +93,23 @@ const commands = [
         },
     },
     {
+        id: 'formula_damage',
+        argsSchema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['base'],
+            properties: {
+                base: { type: 'integer', minimum: 1, maximum: 10 },
+            },
+        },
+        execute({ formula }) {
+            const amount = formula.evaluate(
+                'clamp(args.base + rng.int(1, 3), 1, world.hp)',
+            );
+            return [{ type: 'DamageDealt', payload: { amount } }];
+        },
+    },
+    {
         id: 'noop',
         execute() {
             return [];
@@ -249,6 +266,71 @@ describe('Game Logic Runtime command transaction', () => {
         const replayed = await reloaded.load([0]);
         expect(replayed.state).toEqual(committed.afterState);
         expect(reloaded.getJournal().events[0].payload).toEqual(committed.events[0].payload);
+    });
+
+    test('safe Formula API can consume command args, world state, and transaction RNG', async () => {
+        const { persistence, world, logic } = await makeRuntime();
+
+        const simulated = await logic.simulate('formula_damage', { base: 2 });
+        const committed = await logic.dispatch('formula_damage', { base: 2 });
+
+        expect(simulated.events[0].payload.amount).toBeGreaterThanOrEqual(3);
+        expect(simulated.events[0].payload.amount).toBeLessThanOrEqual(5);
+        expect(committed.events[0].payload).toEqual(simulated.events[0].payload);
+        expect(committed.rngTrace).toEqual(simulated.rngTrace);
+        expect(world.getState()).toEqual(committed.afterState);
+        expect(persistence.writes).toBe(1);
+    });
+
+    test('simulation and commit share one transaction queue without overlap', async () => {
+        const persistence = makePersistence();
+        const world = createWorldRuntime({
+            initialState: { hp: 20 },
+            schema,
+            reducers,
+            persistence,
+        });
+        await world.load([0]);
+
+        let entered = 0;
+        let releaseFirst;
+        let markStarted;
+        const firstStarted = new Promise(resolve => {
+            markStarted = resolve;
+        });
+        const firstGate = new Promise(resolve => {
+            releaseFirst = resolve;
+        });
+        const logic = createGameLogicRuntime({
+            world,
+            commands: [{
+                id: 'queued_damage',
+                async execute() {
+                    entered += 1;
+                    if (entered === 1) {
+                        markStarted();
+                        await firstGate;
+                    }
+                    return [{ type: 'DamageDealt', payload: { amount: 1 } }];
+                },
+            }],
+        });
+
+        const simulation = logic.simulate('queued_damage', {});
+        await firstStarted;
+        const commit = logic.dispatch('queued_damage', {});
+        await Promise.resolve();
+        expect(entered).toBe(1);
+
+        releaseFirst();
+        const simulated = await simulation;
+        const committed = await commit;
+
+        expect(entered).toBe(2);
+        expect(simulated.committed).toBe(false);
+        expect(committed.committed).toBe(true);
+        expect(world.getState()).toEqual({ hp: 19 });
+        expect(persistence.writes).toBe(1);
     });
 
     test('zero-event command is a no-change transaction and does not write', async () => {
