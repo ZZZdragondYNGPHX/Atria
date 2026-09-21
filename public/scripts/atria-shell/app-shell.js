@@ -307,7 +307,7 @@ export function createAtriaAppShell({
         breadcrumb.textContent = ['Atria', ...labels].join(' / ');
         contextTitle.textContent = labels.at(-1) || translateLabel(translate, domain?.label || route.domain);
 
-        const utilityWorkspaceActive = route.child?.id === 'utility.diagnostics';
+        const utilityWorkspaceActive = String(route.child?.id || '').startsWith('utility.');
         const playActive = route.domain === 'play' && !utilityWorkspaceActive;
         stage.hidden = !playActive;
         workspace.hidden = playActive;
