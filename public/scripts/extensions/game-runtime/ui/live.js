@@ -22,6 +22,9 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         throw new Error('Game UI activation requires a document');
     }
 
+    const shellFoundation = options.shell || globalThis.Atria?.shell || null;
+    const nativePlayHost = options.nativePlayHost || shellFoundation?.getPlayHost?.() || null;
+
     const [selectorDefinitions, immersiveDefinition] = await Promise.all([
         loadGameSelectorDefinitions(packageState, {
             fetchImpl: options.fetchImpl,
@@ -34,9 +37,15 @@ export async function activateGamePackageUi(packageState, worldSession, options 
     ]);
 
     const isFull = ui.mode === 'full';
-    const adapter = isFull ? null : createAtriaSurfaceAdapter(documentRef);
+    const adapter = isFull ? null : createAtriaSurfaceAdapter(documentRef, {
+        mode: ui.mode,
+        shell: shellFoundation,
+        nativePlayHost,
+    });
     const fullHost = isFull
         ? createFullGameHost(documentRef, {
+            shell: shellFoundation,
+            nativePlayHost,
             onExit: options.hostActions?.exitGameUi,
             onStopGeneration: options.hostActions?.stopGeneration,
             onDisablePackage: options.hostActions?.disablePackage,
@@ -98,6 +107,7 @@ export async function activateGamePackageUi(packageState, worldSession, options 
             window: options.window || globalThis.window,
             fetchImpl: options.fetchImpl,
             headers: options.headers || {},
+            nativePlayHost,
         });
         if (!definition) {
             fullHost?.dispose();
