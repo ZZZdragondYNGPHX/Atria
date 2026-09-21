@@ -34,11 +34,16 @@ function normalizeEvent(raw) {
         return null;
     }
 
+    const meta = raw.meta && typeof raw.meta === 'object' && !Array.isArray(raw.meta)
+        ? clone(raw.meta)
+        : null;
+
     return {
         id,
         seq,
         type,
         payload: clone(raw.payload ?? {}),
+        ...(meta ? { meta } : {}),
         branchPath,
         branchId: getGameBranchId(branchPath),
     };
@@ -107,11 +112,15 @@ export function appendWorldEvents(journal, drafts, branchPath) {
         }
 
         const seq = next.nextSeq++;
+        const meta = draft?.meta && typeof draft.meta === 'object' && !Array.isArray(draft.meta)
+            ? clone(draft.meta)
+            : null;
         const event = {
             id: 'event:' + seq,
             seq,
             type,
             payload: clone(draft?.payload ?? {}),
+            ...(meta ? { meta } : {}),
             branchPath: [...path],
             branchId,
         };
