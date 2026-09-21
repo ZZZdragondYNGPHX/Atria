@@ -171,9 +171,21 @@ try {
     }
     assert.equal(await page.locator('dialog[open]').count(), 0, 'startup dialog still blocks the workspace');
 
-    const wiDrawerIcon = page.locator('#WIDrawerIcon');
-    if (await wiDrawerIcon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true)) {
-        await wiDrawerIcon.click();
+    const worldInfoOpenedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openWorldInfo !== 'function') {
+            return false;
+        }
+        workspaceHost.openWorldInfo();
+        return true;
+    }).catch(() => false);
+
+    if (!worldInfoOpenedByShell) {
+        const wiDrawerIcon = page.locator('#WIDrawerIcon');
+        if (await wiDrawerIcon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true)) {
+            await wiDrawerIcon.click();
+        }
     }
     await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10000 });
     const authorBookName = 'atri-condition-author-ui-fixture';
