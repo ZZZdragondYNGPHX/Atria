@@ -18,6 +18,7 @@ function setViewport(width, height) {
 
 describe('R7A Atria AppShell foundation', () => {
     beforeEach(() => {
+        window.history.replaceState(null, '', '/');
         document.body.innerHTML = `
             <div id="top-bar"></div>
             <div id="top-settings-holder"></div>
@@ -152,25 +153,82 @@ describe('R7A Atria AppShell foundation', () => {
         expect(nativeSheld.parentElement).toBe(document.body);
     });
 
-    test('opens Dock and Context Sheet as host containers rather than feature state machines', () => {
+    test('reuses one context slot as Dock on desktop and Context Sheet on Compact', () => {
         const shell = createAtriaAppShell({
             document,
             window,
             registry: createCommandRegistry(),
         });
+        const slot = shell.slots.dock;
         const panel = document.createElement('div');
         panel.textContent = 'Timeline fixture';
-        shell.setDockContent(panel, { title: 'Timeline' });
-        expect(shell.slots.dock.textContent).toBe('Timeline fixture');
+        shell.setDockContent(panel, { title: 'Timeline', state: 'half' });
 
-        const sheetContent = document.createElement('div');
-        sheetContent.textContent = 'Inspector fixture';
-        const sheet = shell.openSheet(sheetContent, { state: 'half', ariaLabel: 'Inspector' });
+        expect(slot.textContent).toBe('Timeline fixture');
+        expect(slot.parentElement?.classList.contains('atria-dock')).toBe(true);
+        expect(shell.root.querySelector('[data-atria-primitive="Dock"]').hidden).toBe(false);
+        expect(shell.root.querySelector('#atria-context-sheet').hidden).toBe(true);
+
+        setViewport(390, 844);
+        shell.environment.refresh();
+
+        const sheet = shell.root.querySelector('#atria-context-sheet');
         expect(sheet.hidden).toBe(false);
         expect(sheet.dataset.atriaSheetState).toBe('half');
-        expect(sheet.textContent).toContain('Inspector fixture');
+        expect(slot.parentElement?.classList.contains('atria-sheet-body')).toBe(true);
+        expect(slot.textContent).toBe('Timeline fixture');
 
         expect(shell.closeSheet()).toBe(true);
+        expect(sheet.hidden).toBe(true);
+        shell.destroy();
+    });
+
+    test('routes Rail, Bottom Navigation and navigate.* commands through one history authority', async () => {
+        const registry = createCommandRegistry();
+        const shell = createAtriaAppShell({ document, window, registry });
+
+        shell.root
+            .querySelector('[data-atria-primitive="NavigationRail"] [data-atria-domain="library"]')
+            .click();
+        expect(shell.getRoute().domain).toBe('library');
+        expect(window.location.search).toContain('atriaRoute=library');
+        expect(shell.root.querySelectorAll('[data-atria-domain="library"].is-selected')).toHaveLength(2);
+
+        shell.openCommand();
+        shell.root.querySelector('[data-atria-command-id="navigate.runtime"]').click();
+        await Promise.resolve();
+
+        expect(shell.getRoute().domain).toBe('runtime');
+        expect(window.history.state.atriaNavigation.domain).toBe('runtime');
+        expect(shell.root.querySelector('.atria-global-bar__breadcrumb').textContent)
+            .toContain('Runtime');
+        shell.destroy();
+    });
+
+    test('Escape closes Compact Context Sheet before Command Sheet', () => {
+        setViewport(390, 844);
+        const shell = createAtriaAppShell({
+            document,
+            window,
+            registry: createCommandRegistry(),
+        });
+        shell.setDockContent('context', { title: 'Context', open: true });
+        shell.openCommand();
+
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true,
+        }));
+        expect(shell.isContextSheetOpen()).toBe(false);
+        expect(shell.isCommandOpen()).toBe(true);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true,
+        }));
+        expect(shell.isCommandOpen()).toBe(false);
         shell.destroy();
     });
 });
