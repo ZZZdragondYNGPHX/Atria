@@ -35,6 +35,7 @@ jobs:
           frontend-dom-ready-bootstrap.test.js
           frontend-module-preload.test.js
           frontend-startup-loader.test.js
+          frontend-lazy-select2.test.js
           game-runtime/ui-environment.test.js
           game-runtime/ui-host-surfaces.test.js
           game-runtime/ui-full-host.test.js
