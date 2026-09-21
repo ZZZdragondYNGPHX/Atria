@@ -123,7 +123,10 @@ async function readJson(readFile, path, label) {
     try {
         value = JSON.parse(String(await readFile(path)));
     } catch (error) {
-        throw new Error(label + " '" + path + "' is not valid JSON: " + (error?.message || String(error)));
+        throw new Error(label + ' \''
+            + path
+            + '\' is not valid JSON: '
+            + (error?.message || String(error)));
     }
     return value;
 }
@@ -157,7 +160,9 @@ export async function validateGameStudioProjectSource(options = {}) {
 
     for (const path of getGamePackageDeclaredFiles(manifest)) {
         if (!fileSet.has(path)) {
-            throw new Error("Game manifest references missing source file '" + path + "'");
+            throw new Error('Game manifest references missing source file \''
+                + path
+                + '\'');
         }
     }
 
@@ -178,8 +183,9 @@ export async function validateGameStudioProjectSource(options = {}) {
     if (manifest.logic) {
         if (!manifest.logic.entry.endsWith('.json')) {
             throw new Error(
-                "Game Logic entry '" + manifest.logic.entry
-                + "' must remain declarative JSON until the restricted JavaScript runtime exists",
+                'Game Logic entry \''
+                + manifest.logic.entry
+                + '\' must remain declarative JSON until the restricted JavaScript runtime exists',
             );
         }
         const logic = await readJson(readFile, manifest.logic.entry, 'Game Logic');
