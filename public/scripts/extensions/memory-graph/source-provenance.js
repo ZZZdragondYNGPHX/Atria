@@ -274,11 +274,8 @@ export function createMemorySupportChecker(state, chat) {
         const episodesCurrent = episodeIds.every(valid);
         const externalCurrent = externalSourceIds.every(id => state.externalSources?.[id]?.status === 'active');
         if (ref?.manualId) {
-            return Boolean(
-                state.corrections?.[ref.manualId]?.scopeId === state.scopeId
-                && episodesCurrent
-                && externalCurrent,
-            );
+            const manualCurrent = state.corrections?.[ref.manualId]?.scopeId === state.scopeId;
+            return Boolean(manualCurrent && episodesCurrent && externalCurrent);
         }
         return Boolean(hasEvidence && episodesCurrent && externalCurrent);
     };
