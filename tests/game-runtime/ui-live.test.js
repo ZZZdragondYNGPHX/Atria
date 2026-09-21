@@ -138,23 +138,75 @@ describe('Live Game Package UI activation', () => {
         await session.dispose();
     });
 
-    test('Hybrid and Full remain deferred instead of using the old broad CardApp runtime', async () => {
-        for (const mode of ['hybrid', 'full']) {
-            const session = await activateGamePackageUi({
-                charId: 'hero',
-                manifest: {
-                    ui: {
-                        mode,
-                        entry: 'ui/game.html',
-                        surface: 'app.root',
-                    },
-                },
-            }, null, { document });
+    test('Hybrid recomposes the original native conversation and composer, then restores them', async () => {
+        const chat = document.getElementById('chat');
+        const sendForm = document.getElementById('send_form');
+        const formSheld = document.getElementById('form_sheld');
+        const fetchImpl = jest.fn(async () => ({
+            ok: true,
+            status: 200,
+            async text() {
+                return `
+                    <section id="hybrid-shell">
+                        <div id="conversation-slot" data-atria-native-component="conversation"></div>
+                        <aside>Game HUD</aside>
+                        <div id="composer-slot" data-atria-native-component="composer"></div>
+                    </section>
+                `;
+            },
+        }));
 
-            expect(session).toMatchObject({
-                mode,
-                status: 'deferred',
-            });
-        }
+        const session = await activateGamePackageUi({
+            charId: 'hero',
+            manifest: {
+                ui: {
+                    mode: 'hybrid',
+                    entry: 'ui/game.html',
+                    surface: 'app.root',
+                },
+            },
+        }, {
+            getState: () => ({}),
+            dispatchCommandInternal: jest.fn(),
+            simulateCommandInternal: jest.fn(),
+        }, {
+            document,
+            fetchImpl,
+        });
+
+        expect(session).toMatchObject({
+            mode: 'hybrid',
+            status: 'active',
+            mountId: 'package.hybrid',
+        });
+        expect(document.getElementById('chat')).toBe(chat);
+        expect(document.getElementById('send_form')).toBe(sendForm);
+        expect(chat.parentElement.id).toBe('conversation-slot');
+        expect(sendForm.parentElement.id).toBe('composer-slot');
+
+        await session.dispose();
+
+        expect(chat.parentElement.id).toBe('sheld');
+        expect(sendForm.parentElement).toBe(formSheld);
+        expect(document.querySelector('#hybrid-shell')).toBeNull();
+        expect(document.querySelectorAll('[data-atria-game-host-surface]')).toHaveLength(0);
+    });
+
+    test('Full remains deferred until the takeover/recovery contract is implemented', async () => {
+        const session = await activateGamePackageUi({
+            charId: 'hero',
+            manifest: {
+                ui: {
+                    mode: 'full',
+                    entry: 'ui/game.html',
+                    surface: 'app.root',
+                },
+            },
+        }, null, { document });
+
+        expect(session).toMatchObject({
+            mode: 'full',
+            status: 'deferred',
+        });
     });
 });
