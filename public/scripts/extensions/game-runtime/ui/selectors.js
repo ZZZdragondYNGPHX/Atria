@@ -1,7 +1,9 @@
+import { cloneGameUiValue } from './clone.js';
+
 const SELECTOR_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
 
 function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
+    return cloneGameUiValue(value);
 }
 
 function deepFreeze(value, seen = new Set()) {
