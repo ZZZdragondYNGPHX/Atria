@@ -1,3 +1,23 @@
+# Workspace hub/localization fix validated — PR #82 ready to merge
+
+- Task branch: `fix/workspace-hub-localization`
+- Final validated HEAD: `9e178b8bce4301412d3995c9f0afe0ce9432c735`
+- PR: #82 — `fix: repair workspace routing, preview, and localization`
+- Validation:
+  - Atria PR Checks #762 / run `35619796768`: success
+  - Workspace UI #182 / run `35619796719`: success
+- Changes:
+  - Agents primary route is now a hub; Orchestration / Run / Memory / Diagnostics are routed child workspaces.
+  - Global command/search results navigate to the owning route rather than embedding B inside caller page A.
+  - Global utilities use a neutral routed host and no longer inherit the caller domain identity.
+  - Memory + Runtime visible Chinese localization completed for the reported surfaces.
+  - Studio Preview is now a dedicated project-preview surface, not the underlying host chat.
+  - Diagnostics trace replay no longer loses an import when run-state redraw replaces the file-input node.
+
+Permanent task record: `fix/workspace-hub-localization.md`.
+
+---
+
 # R0–R7 integrated — main authoritative
 
 > Post-R7 fix: PR #80 已将 R7 Shell 展示层完整接入中文 i18n；当前主线为 `main@5df59a5c7789219bf96c6574f100209a264db454`，Atria PR Checks #758 成功。
