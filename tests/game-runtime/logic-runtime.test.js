@@ -78,6 +78,20 @@ const commands = [
         },
     },
     {
+        id: 'roll_damage',
+        argsSchema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {},
+        },
+        execute({ rng }) {
+            return [{
+                type: 'DamageDealt',
+                payload: { amount: rng.int(1, 6) },
+            }];
+        },
+    },
+    {
         id: 'noop',
         execute() {
             return [];
@@ -160,6 +174,45 @@ describe('Game Logic Runtime command transaction', () => {
         expect(world.getState()).toEqual({ hp: 20 });
         expect(world.getJournal().events).toHaveLength(0);
         expect(persistence.writes).toBe(0);
+    });
+
+    test('simulation and immediate commit consume the same deterministic RNG outcome', async () => {
+        const { persistence, world, logic } = await makeRuntime();
+
+        const simulated = await logic.simulate('roll_damage', {});
+        const committed = await logic.dispatch('roll_damage', {});
+
+        expect(committed.afterState).toEqual(simulated.afterState);
+        expect(committed.events[0].payload).toEqual(simulated.events[0].payload);
+        expect(committed.rngTrace).toEqual(simulated.rngTrace);
+        expect(committed.rngTrace).toEqual([
+            expect.objectContaining({
+                stream: 'default',
+                operation: 'int',
+                minimum: 1,
+                maximum: 6,
+            }),
+        ]);
+
+        const event = world.getJournal().events[0];
+        expect(event.meta).toEqual({
+            command: {
+                id: 'roll_damage',
+                transactionId: committed.transactionId,
+            },
+            rngTrace: committed.rngTrace,
+        });
+        expect(persistence.writes).toBe(1);
+
+        const reloaded = createWorldRuntime({
+            initialState: { hp: 20 },
+            schema,
+            reducers,
+            persistence,
+        });
+        const replayed = await reloaded.load([0]);
+        expect(replayed.state).toEqual(committed.afterState);
+        expect(reloaded.getJournal().events[0].payload).toEqual(committed.events[0].payload);
     });
 
     test('zero-event command is a no-change transaction and does not write', async () => {
