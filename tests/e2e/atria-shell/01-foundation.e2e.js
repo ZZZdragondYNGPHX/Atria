@@ -172,7 +172,7 @@ test.describe('R7B Native Play Host', () => {
                     && document.getElementById('form_sheld')?.parentElement === sheld
                     && composer?.parentElement?.id === 'form_sheld'
                     && composer?.contains(textarea)
-                    && playHost?.contains(sheld)
+                    && playHost?.contains(sheld),
                 ),
             };
         });
