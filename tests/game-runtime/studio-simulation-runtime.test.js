@@ -153,13 +153,16 @@ describe('Game Studio Simulation Harness', () => {
                 commandId: 'strike',
             }),
         ]);
-        expect(result.observation).toEqual({
-            views: {
-                'player.hp': 0,
-                'preview.role': 'narrator',
-            },
-            recentEvents: expect.any(Array),
+        expect(result.observation.views).toEqual({
+            'player.hp': 0,
+            'preview.role': 'narrator',
         });
+        expect(Array.isArray(result.observation.recentEvents)).toBe(true);
+        expect(result.observation.recentEvents.map(event => event.type)).toEqual([
+            'DamageDealt',
+            'EntityDied',
+            'ScoreAwarded',
+        ]);
         expect(result.selectors).toEqual({
             'player.hp': 0,
             'player.score': 5,
