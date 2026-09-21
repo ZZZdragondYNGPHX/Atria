@@ -1,0 +1,672 @@
+body[data-atria-shell-preview="true"] {
+    overflow: hidden;
+}
+
+body[data-atria-shell-preview="true"] > #top-bar,
+body[data-atria-shell-preview="true"] > #top-settings-holder,
+body[data-atria-shell-preview="true"] > #sheld,
+body[data-atria-shell-preview="true"] > #form_sheld {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.atria-app-shell,
+.atria-app-shell * {
+    box-sizing: border-box;
+}
+
+.atria-app-shell {
+    position: fixed;
+    inset: 0;
+    z-index: 3800;
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr) minmax(280px, 320px);
+    grid-template-rows: calc(52px + var(--atri-safe-area-top)) minmax(0, 1fr);
+    grid-template-areas:
+        "rail global global"
+        "rail focus dock";
+    overflow: hidden;
+    color: var(--atri-color-text);
+    background: var(--atri-color-canvas);
+    font-family: var(--atri-font-family-body);
+    font-size: var(--atri-font-size-body);
+    padding-right: var(--atri-safe-area-right);
+    padding-bottom: var(--atri-safe-area-bottom);
+    padding-left: var(--atri-safe-area-left);
+}
+
+.atria-app-shell button,
+.atria-app-shell input,
+.atria-app-shell textarea,
+.atria-app-shell select {
+    font: inherit;
+}
+
+.atria-app-shell button {
+    color: inherit;
+}
+
+.atria-navigation-rail {
+    grid-area: rail;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--atri-space-3);
+    padding: calc(var(--atri-safe-area-top) + var(--atri-space-3)) var(--atri-space-2) var(--atri-space-3);
+    border-right: 1px solid var(--atri-color-border);
+    background: var(--atri-color-surface);
+}
+
+.atria-shell-brand {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin: 0 auto;
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-accent);
+    color: var(--atri-color-accent-contrast);
+    font-weight: 800;
+    font-size: var(--atri-font-size-heading);
+    box-shadow: var(--atri-shadow-surface);
+}
+
+.atria-shell-nav-items {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--atri-space-1);
+}
+
+.atria-shell-nav-button,
+.atria-shell-utility-button,
+.atria-icon-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.atria-shell-nav-button {
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--atri-space-1);
+    padding: var(--atri-space-2) var(--atri-space-1);
+    border-radius: var(--atri-radius-md);
+    color: var(--atri-color-text-muted);
+    transition:
+        color var(--atri-motion-fast) var(--atri-ease-standard),
+        background var(--atri-motion-fast) var(--atri-ease-standard);
+}
+
+.atria-shell-nav-button:hover:not(:disabled),
+.atria-shell-nav-button.is-selected {
+    color: var(--atri-color-text);
+    background: color-mix(in srgb, var(--atri-color-accent) 16%, transparent);
+}
+
+.atria-shell-nav-button.is-selected {
+    box-shadow: inset 3px 0 0 var(--atri-color-accent);
+}
+
+.atria-shell-nav-label {
+    font-size: var(--atri-font-size-caption);
+    line-height: 1.1;
+}
+
+.atria-global-bar {
+    grid-area: global;
+    min-width: 0;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--atri-space-4);
+    padding: var(--atri-space-2) var(--atri-space-4);
+    padding-top: calc(var(--atri-space-2) + var(--atri-safe-area-top));
+    border-bottom: 1px solid var(--atri-color-border);
+    background: color-mix(in srgb, var(--atri-color-surface) 94%, transparent);
+}
+
+.atria-global-bar__context,
+.atria-global-bar__utilities {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-2);
+}
+
+.atria-global-bar__context {
+    overflow: hidden;
+}
+
+.atria-global-bar__breadcrumb {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 650;
+}
+
+.atria-shell-utility-button {
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--atri-space-1);
+    padding: 0 var(--atri-space-2);
+    border-radius: var(--atri-radius-md);
+    color: var(--atri-color-text-muted);
+}
+
+.atria-shell-utility-button:hover:not(:disabled) {
+    color: var(--atri-color-text);
+    background: var(--atri-color-raised);
+}
+
+.atria-shell-utility-button:disabled {
+    cursor: default;
+    opacity: 0.42;
+}
+
+.atria-shell-utility-label {
+    display: none;
+    font-size: var(--atri-font-size-body-small);
+}
+
+.atria-focus-area {
+    grid-area: focus;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--atri-color-canvas);
+}
+
+.atria-context-bar {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--atri-space-3);
+    padding: var(--atri-space-2) var(--atri-space-4);
+    border-bottom: 1px solid color-mix(in srgb, var(--atri-color-border) 72%, transparent);
+    background: var(--atri-color-surface);
+}
+
+.atria-context-bar__title {
+    font-size: var(--atri-font-size-subheading);
+}
+
+.atria-context-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-2);
+}
+
+.atria-focus-area__body {
+    min-width: 0;
+    min-height: 0;
+    flex: 1;
+    display: grid;
+}
+
+.atria-stage,
+.atria-workspace {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--atri-space-4);
+}
+
+.atria-stage {
+    display: grid;
+    place-items: center;
+}
+
+.atria-dock {
+    grid-area: dock;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--atri-color-border);
+    background: var(--atri-color-surface);
+}
+
+.atria-dock__header {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-2) var(--atri-space-3);
+    border-bottom: 1px solid color-mix(in srgb, var(--atri-color-border) 72%, transparent);
+}
+
+.atria-dock__body {
+    min-height: 0;
+    flex: 1;
+    overflow: auto;
+    padding: var(--atri-space-3);
+}
+
+.atria-icon-button {
+    width: 32px;
+    height: 32px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--atri-radius-sm);
+    color: var(--atri-color-text-muted);
+}
+
+.atria-icon-button:hover {
+    color: var(--atri-color-text);
+    background: var(--atri-color-raised);
+}
+
+.atria-bottom-navigation {
+    display: none;
+    grid-area: bottom;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+    padding: var(--atri-space-1) var(--atri-space-1) calc(var(--atri-space-1) + var(--atri-safe-area-bottom));
+    border-top: 1px solid var(--atri-color-border);
+    background: var(--atri-color-surface);
+}
+
+.atria-bottom-navigation .atria-shell-nav-button {
+    flex: 1;
+    min-height: 52px;
+}
+
+.atria-bottom-navigation .atria-shell-nav-button.is-selected {
+    box-shadow: inset 0 3px 0 var(--atri-color-accent);
+}
+
+.atria-status-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 var(--atri-space-2);
+    border-radius: var(--atri-radius-pill);
+    background: var(--atri-color-raised);
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+    white-space: nowrap;
+}
+
+.atria-status-chip[data-tone="success"] {
+    color: var(--atri-color-success);
+}
+
+.atria-status-chip[data-tone="warning"] {
+    color: var(--atri-color-warning);
+}
+
+.atria-status-chip[data-tone="danger"],
+.atria-status-chip[data-tone="error"] {
+    color: var(--atri-color-danger);
+}
+
+.atria-empty-state,
+.atria-error-state,
+.atria-loading-state {
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-5);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-surface);
+    color: var(--atri-color-text-muted);
+    box-shadow: var(--atri-shadow-surface);
+}
+
+.atria-empty-state strong,
+.atria-error-state strong,
+.atria-loading-state strong {
+    color: var(--atri-color-text);
+    font-size: var(--atri-font-size-heading);
+}
+
+.atria-runtime-card {
+    display: grid;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-surface);
+}
+
+.atria-runtime-card__title,
+.atria-runtime-card__description {
+    margin: 0;
+}
+
+.atria-runtime-card__title {
+    font-size: var(--atri-font-size-heading);
+}
+
+.atria-runtime-card__description {
+    color: var(--atri-color-text-muted);
+}
+
+.atria-transient-layer,
+.atria-host-recovery {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+.atria-transient-layer {
+    z-index: 30;
+}
+
+.atria-host-recovery {
+    z-index: 40;
+}
+
+.atria-sheet,
+.atria-command-surface {
+    position: absolute;
+    inset: 0;
+    pointer-events: auto;
+}
+
+.atria-sheet[hidden],
+.atria-command-surface[hidden] {
+    display: none !important;
+}
+
+.atria-sheet-scrim,
+.atria-command-scrim {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: var(--atri-color-scrim);
+}
+
+.atria-sheet-panel {
+    position: absolute;
+    right: var(--atri-space-3);
+    bottom: var(--atri-space-3);
+    left: var(--atri-space-3);
+    max-height: min(78vh, 760px);
+    overflow: auto;
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-overlay);
+    box-shadow: var(--atri-shadow-overlay);
+    transform-origin: bottom center;
+}
+
+.atria-sheet[data-atria-sheet-state="peek"] .atria-sheet-panel {
+    max-height: 20vh;
+}
+
+.atria-sheet[data-atria-sheet-state="half"] .atria-sheet-panel {
+    max-height: 50vh;
+}
+
+.atria-sheet[data-atria-sheet-state="full"] .atria-sheet-panel {
+    top: calc(var(--atri-safe-area-top) + var(--atri-space-2));
+    max-height: none;
+}
+
+.atria-sheet-handle {
+    width: 42px;
+    height: 4px;
+    margin: var(--atri-space-2) auto;
+    border-radius: var(--atri-radius-pill);
+    background: var(--atri-color-border);
+}
+
+.atria-sheet-body {
+    padding: var(--atri-space-3) var(--atri-space-4) var(--atri-space-5);
+}
+
+.atria-command-panel {
+    position: absolute;
+    top: max(10vh, calc(var(--atri-safe-area-top) + var(--atri-space-5)));
+    left: 50%;
+    width: min(680px, calc(100vw - 48px));
+    max-height: min(72vh, 720px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateX(-50%);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-overlay);
+    box-shadow: var(--atri-shadow-overlay);
+}
+
+.atria-command-input {
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+    border-bottom: 1px solid var(--atri-color-border);
+    outline: 0;
+    padding: 0 var(--atri-space-4);
+    background: transparent;
+    color: var(--atri-color-text);
+}
+
+.atria-command-input:focus-visible {
+    box-shadow: inset 0 -2px 0 var(--atri-color-focus);
+}
+
+.atria-command-results {
+    min-height: 0;
+    overflow: auto;
+    padding: var(--atri-space-2);
+}
+
+.atria-command-result {
+    width: 100%;
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "title shortcut"
+        "subtitle shortcut";
+    gap: 2px var(--atri-space-3);
+    align-items: center;
+    border: 0;
+    border-radius: var(--atri-radius-md);
+    padding: var(--atri-space-2) var(--atri-space-3);
+    background: transparent;
+    color: var(--atri-color-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.atria-command-result:hover,
+.atria-command-result:focus-visible {
+    outline: 0;
+    background: var(--atri-color-raised);
+}
+
+.atria-command-result__title {
+    grid-area: title;
+    font-weight: 650;
+}
+
+.atria-command-result__subtitle {
+    grid-area: subtitle;
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+}
+
+.atria-command-result kbd {
+    grid-area: shortcut;
+    padding: 2px 6px;
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-sm);
+    color: var(--atri-color-text-muted);
+    font-family: var(--atri-font-family-mono);
+    font-size: var(--atri-font-size-caption);
+}
+
+[data-atria-pattern="list-detail"],
+[data-atria-pattern="master-detail"],
+[data-atria-pattern="incident-list-detail"] {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
+    min-height: 0;
+}
+
+[data-atria-pattern="editor-workspace"] {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(240px, 320px);
+    min-height: 0;
+}
+
+[data-atria-pattern="runtime-status"] {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--atri-space-3);
+}
+
+[data-atria-pattern="mobile-drill-down"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.atria-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-2);
+}
+
+.atria-segmented-control {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-raised);
+}
+
+.atria-split-pane {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-height: 0;
+}
+
+.atria-inspector,
+.atria-timeline,
+.atria-composer {
+    min-width: 0;
+    min-height: 0;
+}
+
+.atria-app-shell[data-atria-viewport="medium"] {
+    grid-template-columns: 68px minmax(0, 1fr);
+    grid-template-areas:
+        "rail global"
+        "rail focus";
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-dock:not([hidden]) {
+    position: absolute;
+    z-index: 10;
+    top: calc(52px + var(--atri-safe-area-top));
+    right: var(--atri-safe-area-right);
+    bottom: var(--atri-safe-area-bottom);
+    width: min(360px, 42vw);
+    box-shadow: var(--atri-shadow-raised);
+}
+
+.atria-app-shell[data-atria-viewport="compact"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+        calc(48px + var(--atri-safe-area-top))
+        minmax(0, 1fr)
+        calc(60px + var(--atri-safe-area-bottom));
+    grid-template-areas:
+        "global"
+        "focus"
+        "bottom";
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-navigation-rail {
+    display: none;
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-bottom-navigation {
+    display: flex;
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-global-bar {
+    min-height: 48px;
+    padding-inline: var(--atri-space-3);
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-global-bar__breadcrumb {
+    font-size: var(--atri-font-size-body-small);
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-status-chip {
+    display: none;
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-shell-utility-button:not([data-atria-utility="command"]) {
+    display: none;
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-context-bar {
+    min-height: 40px;
+    padding-inline: var(--atri-space-3);
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-stage,
+.atria-app-shell[data-atria-viewport="compact"] .atria-workspace {
+    padding: var(--atri-space-3);
+}
+
+.atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-panel {
+    top: auto;
+    right: var(--atri-space-2);
+    bottom: calc(var(--atri-space-2) + var(--atri-safe-area-bottom));
+    left: var(--atri-space-2);
+    width: auto;
+    max-height: min(72vh, 640px);
+    transform: none;
+    transform-origin: bottom center;
+}
+
+.atria-app-shell[data-atria-keyboard="open"] .atria-bottom-navigation {
+    display: none;
+}
+
+.atria-app-shell[data-atria-keyboard="open"] {
+    grid-template-rows:
+        calc(48px + var(--atri-safe-area-top))
+        minmax(0, 1fr);
+    grid-template-areas:
+        "global"
+        "focus";
+}
+
+.atria-app-shell :focus-visible {
+    outline: 2px solid var(--atri-color-focus);
+    outline-offset: 2px;
+}
+
+@media (hover: none) {
+    .atria-shell-nav-button,
+    .atria-shell-utility-button,
+    .atria-command-result {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
