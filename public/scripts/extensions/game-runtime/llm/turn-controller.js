@@ -405,12 +405,14 @@ export function createGameTurnController(options = {}) {
 
         async deleteAssistantResult(attemptId) {
             const attempt = getAttempt(attemptId);
-            attempt.transaction.deactivate('assistant_result_deleted');
-            attempt.transaction.markDeleted();
             const record = turns.get(attempt.turnId);
-            if (record?.activeAttemptId === attempt.attemptId) {
-                record.activeAttemptId = null;
+            for (const siblingId of record?.attemptIds || [attempt.attemptId]) {
+                const sibling = attempts.get(siblingId);
+                if (!sibling) continue;
+                sibling.transaction.deactivate('assistant_result_deleted');
+                sibling.transaction.markDeleted();
             }
+            if (record) record.activeAttemptId = null;
             await adapter.deactivateAttempt?.({
                 turnId: attempt.turnId,
                 attemptId: attempt.attemptId,
