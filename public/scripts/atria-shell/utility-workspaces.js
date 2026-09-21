@@ -194,7 +194,8 @@ function renderPluginList(documentRef, container, plugins, authority, onOpenSett
 
 export async function mountPluginsUtility({
     document: documentRef = globalThis.document,
-    body,
+    slot,
+    body = slot,
     extensionAuthority,
 } = {}) {
     const authority = await resolveExtensionAuthority(extensionAuthority);
@@ -274,7 +275,8 @@ const SETTINGS_SECTIONS = Object.freeze([
 
 export function mountSettingsUtility({
     document: documentRef = globalThis.document,
-    body,
+    slot,
+    body = slot,
 } = {}) {
     const settingsRoot = documentRef.getElementById('user-settings-block');
     if (!settingsRoot) {
@@ -338,7 +340,8 @@ export function mountSettingsUtility({
 
 export async function mountAccountUtility({
     document: documentRef = globalThis.document,
-    body,
+    slot,
+    body = slot,
     accountAuthority,
 } = {}) {
     const authority = accountAuthority || await import('../user.js');
