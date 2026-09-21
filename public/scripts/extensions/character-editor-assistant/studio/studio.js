@@ -1375,6 +1375,7 @@ function getToolDisplay(name) {
         cardapp_delete_file: { icon: '🗑️', label: 'Delete file' },
         cardapp_rename_file: { icon: '📝', label: 'Rename file' },
         cardapp_set_enabled: { icon: '🔌', label: 'Toggle CardApp' },
+        game_project_inspect: { icon: '🎮', label: 'Inspect Game Project' },
     };
     return map[name] || { icon: '🔧', label: name };
 }
@@ -1691,6 +1692,12 @@ async function handleAISend() {
                 else if (name === TOOL_NAMES.DELETE_FILE) detail = args.path;
                 else if (name === TOOL_NAMES.RENAME_FILE) detail = `${args.from_path} → ${args.to_path}`;
                 else if (name === TOOL_NAMES.LIST_FILES) detail = `${toolResult?.files?.length || 0} files`;
+                else if (name === TOOL_NAMES.GAME_PROJECT_INSPECT) {
+                    const project = toolResult?.project;
+                    detail = project?.kind === 'game'
+                        ? `${project.summary?.name || 'Game Project'} · ${project.status}`
+                        : 'Plain CardApp';
+                }
                 else if (name === TOOL_NAMES.REGEX_LIST_SCRIPTS) {
                     const scope = String(args?.scope || 'all');
                     if (scope === 'all') {
