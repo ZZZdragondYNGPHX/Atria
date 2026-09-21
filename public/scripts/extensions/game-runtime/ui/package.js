@@ -118,7 +118,6 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
                 if (ui.mode === 'hybrid') {
                     const registry = createNativeComponentRegistry(documentRef);
                     cleanup.push(bindNativeGameComponents(context.container, registry));
-                    cleanup.push(() => registry.restoreAll());
                 }
             } catch (error) {
                 for (const dispose of cleanup.splice(0).reverse()) dispose();
