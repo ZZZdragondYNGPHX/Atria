@@ -44,6 +44,19 @@ describe('post-visible Select2 loading', () => {
         expect(presetInit).toBeGreaterThan(openaiSelects);
     });
 
+    test('keeps lazy Select2 bound to canonical jQuery and fail-soft at enhancement time', () => {
+        const script = readFileSync(SCRIPT_URL, 'utf8');
+        const textgen = readFileSync(new URL('../public/scripts/textgen-models.js', import.meta.url), 'utf8');
+
+        expect(script).toContain('const getJQuery = () => globalThis.jQuery || globalThis.$;');
+        expect(script).toContain('Select2 library failed to attach to the canonical jQuery instance');
+        expect(textgen).toContain('const select2Jq = globalThis.jQuery || globalThis.$;');
+        expect(textgen).toContain("if (typeof select2Jq?.fn?.select2 !== 'function')");
+        expect(textgen).toContain("console.warn('[init] Select2 is not ready;");
+        expect(textgen).toContain("select2Jq('#mancer_model').select2({");
+        expect(textgen).not.toContain("$('#mancer_model').select2({");
+    });
+
     test('loads Select2 after visible paint and before preset-manager initialization', () => {
         const source = readFileSync(SCRIPT_URL, 'utf8');
         const loaderHidden = source.indexOf("markClientStartupTiming('loaderHidden')");
