@@ -766,3 +766,73 @@ body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-ho
     max-height: none !important;
 }
 
+
+/* R7C — Game Surface Integration
+ * Game-first Hybrid/Full/legacy CardApp presentations may own Stage content,
+ * but Host chrome and Host Recovery remain outside package ownership.
+ */
+.atria-stage[data-atria-stage-owner] {
+    place-items: stretch;
+    overflow: hidden;
+    padding: 0;
+}
+
+.atria-game-host-surface--stage,
+#atria-game-full-root[data-atria-game-host-scope="stage"],
+#card-app-container[data-atria-legacy-full-stage="true"] {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+}
+
+.atria-game-host-surface--stage {
+    position: relative;
+    display: block;
+}
+
+.atria-game-host-surface--transient {
+    pointer-events: auto;
+}
+
+.atria-host-recovery > #atria-game-full-recovery,
+.atria-host-recovery > #card-app-host-recovery {
+    pointer-events: auto;
+}
+
+#atria-game-full-recovery[data-atria-game-host-scope="host-recovery"],
+.atria-card-app-host-recovery {
+    position: absolute !important;
+    top: max(var(--atri-space-2), var(--atri-safe-area-top)) !important;
+    right: max(var(--atri-space-2), var(--atri-safe-area-right)) !important;
+    z-index: 1 !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--atri-space-2);
+    max-width: calc(100% - (2 * var(--atri-space-2)));
+}
+
+.atria-game-recovery-action,
+.atria-card-app-recovery-action {
+    min-height: 36px;
+    padding: var(--atri-space-2) var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-control);
+    background: var(--atri-color-surface-raised);
+    color: var(--atri-color-text);
+    box-shadow: var(--atri-shadow-raised);
+    cursor: pointer;
+}
+
+.atria-game-recovery-action:hover,
+.atria-card-app-recovery-action:hover {
+    background: var(--atri-color-surface-hover);
+}
+
+.atria-app-shell[data-atria-viewport="compact"] #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"],
+.atria-app-shell[data-atria-viewport="compact"] .atria-card-app-host-recovery {
+    top: calc(var(--atri-safe-area-top) + var(--atri-space-1)) !important;
+    right: calc(var(--atri-safe-area-right) + var(--atri-space-1)) !important;
+}
+
