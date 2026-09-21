@@ -120,10 +120,21 @@ function validateNode(value, schema, path, errors, depth) {
     }
 }
 
-export function validateWorldState(state, schema) {
+export function validateSchemaValue(value, schema, options = {}) {
     const errors = [];
-    validateNode(state, schema, '$', errors, 0);
+    const path = typeof options.path === 'string' && options.path ? options.path : '
+    const result = validateWorldState(state, schema);
+    if (!result.ok) {
+        throw new Error('World State validation failed: ' + result.errors.slice(0, 8).join('; '));
+    }
+}
+;
+    validateNode(value, schema, path, errors, 0);
     return { ok: errors.length === 0, errors };
+}
+
+export function validateWorldState(state, schema) {
+    return validateSchemaValue(state, schema);
 }
 
 export function assertValidWorldState(state, schema) {
