@@ -37,9 +37,14 @@ describe('Deterministic Game RNG', () => {
         const rng = createDeterministicRng('validation');
 
         expect(() => rng.int(4, 3)).toThrow(/maximum/);
+        expect(() => rng.int(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)).toThrow(/deterministic precision/);
         expect(() => rng.dice(0, 6)).toThrow(/>= 1/);
         expect(() => rng.weighted([])).toThrow(/non-empty/);
         expect(() => rng.weighted([{ value: 'x', weight: 0 }])).toThrow(/weight > 0/);
+        expect(() => rng.weighted([
+            { value: 'x', weight: Number.MAX_VALUE },
+            { value: 'y', weight: Number.MAX_VALUE },
+        ])).toThrow(/total weight must be finite/);
         expect(() => rng.stream('../unsafe')).toThrow(/stream name/);
     });
 
