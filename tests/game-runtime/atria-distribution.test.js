@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 
+import { createStudioSimulationHarness } from '../../public/scripts/extensions/character-editor-assistant/studio/simulation-runtime.js';
+
 import {
     ATRIA_DISTRIBUTION_FORMAT,
     ATRIA_DISTRIBUTION_LIMITS,
@@ -241,9 +243,9 @@ describe('.atria distribution container', () => {
         const { archive } = createAtriaDistributionFromFiles(validFiles());
 
         const traversalZip = new AdmZip(archive);
-        traversalZip.addFile('game/AAAAAAAAAAAA', Buffer.from('escape'));
+        traversalZip.addFile('game/AAAAAAAAAAA', Buffer.from('escape'));
         let traversal = traversalZip.toBuffer();
-        traversal = patchZipEntryName(traversal, 'game/AAAAAAAAAAAA', 'game/../escape.x');
+        traversal = patchZipEntryName(traversal, 'game/AAAAAAAAAAA', 'game/../escape.x');
         expect(() => inspectAtriaDistribution(traversal))
             .toThrow(/path traversal|illegal segment|relative/i);
 
@@ -265,25 +267,13 @@ describe('.atria distribution container', () => {
             .toThrow(/Conflicting .atria file paths/);
     });
 
-    test('rejects oversized or suspiciously compressed entries', () => {
-        const { archive } = createAtriaDistributionFromFiles(validFiles());
-        const zip = new AdmZip(archive);
-        const bomb = Buffer.alloc(2 * 1024 * 1024, 0);
-        zip.addFile('game/bomb.bin', bomb);
+    test('rejects suspiciously compressed entries with a valid inventory', () => {
+        const files = validFiles();
+        files.set('assets/bomb.bin', Buffer.alloc(2 * 1024 * 1024, 0));
+        const { archive } = createAtriaDistributionFromFiles(files);
 
-        const manifestEntry = zip.getEntry('manifest.json');
-        const manifest = JSON.parse(manifestEntry.getData().toString('utf8'));
-        manifest.inventory.push({
-            path: 'game/bomb.bin',
-            size: bomb.length,
-            sha256: '0'.repeat(64),
-        });
-        // Deliberately leave inventorySha256 stale. Path/ratio validation should
-        // reject before any extraction reaches the filesystem.
-        zip.updateFile('manifest.json', Buffer.from(JSON.stringify(manifest)));
-
-        expect(() => inspectAtriaDistribution(zip.toBuffer()))
-            .toThrow(/integrity hash mismatch|decompression-ratio/);
+        expect(() => inspectAtriaDistribution(archive))
+            .toThrow(/decompression-ratio/);
 
         expect(ATRIA_DISTRIBUTION_LIMITS.maxFileBytes)
             .toBeLessThan(ATRIA_DISTRIBUTION_LIMITS.maxTotalUncompressedBytes);
@@ -305,6 +295,56 @@ describe('.atria distribution container', () => {
             .toBe('# Zone\nNested knowledge.\n');
         expect(fs.readFileSync(path.join(target, 'assets', 'icon.bin')))
             .toEqual(Buffer.from([0, 1, 2, 3, 255, 128, 64, 0]));
+    });
+
+    test('build -> inspect -> restore preserves runtime simulation behavior', async () => {
+        const files = validFiles();
+        const sourceProject = {
+            packageId: 'distribution.demo',
+            packageVersion: '1.2.3',
+            schema: JSON.parse(files.get('world/schema.json').toString('utf8')),
+            initialState: JSON.parse(files.get('world/initial.json').toString('utf8')),
+            logic: JSON.parse(files.get('logic/game.json').toString('utf8')),
+            selectors: JSON.parse(files.get('ui/selectors.json').toString('utf8')),
+            observations: JSON.parse(files.get('llm/observations.json').toString('utf8')),
+        };
+        const beforeHarness = await createStudioSimulationHarness(sourceProject);
+        const before = await beforeHarness.simulate('heal', {}, { role: 'intent_resolver' });
+
+        const { archive } = createAtriaDistributionFromFiles(files);
+        const restoredRoot = tempDir('atria-dist-behavior-');
+        restoreAtriaDistribution(archive, restoredRoot);
+
+        const restoredProject = {
+            packageId: 'distribution.demo',
+            packageVersion: '1.2.3',
+            schema: JSON.parse(fs.readFileSync(path.join(restoredRoot, 'world/schema.json'), 'utf8')),
+            initialState: JSON.parse(fs.readFileSync(path.join(restoredRoot, 'world/initial.json'), 'utf8')),
+            logic: JSON.parse(fs.readFileSync(path.join(restoredRoot, 'logic/game.json'), 'utf8')),
+            selectors: JSON.parse(fs.readFileSync(path.join(restoredRoot, 'ui/selectors.json'), 'utf8')),
+            observations: JSON.parse(fs.readFileSync(path.join(restoredRoot, 'llm/observations.json'), 'utf8')),
+        };
+        const afterHarness = await createStudioSimulationHarness(restoredProject);
+        const after = await afterHarness.simulate('heal', {}, { role: 'intent_resolver' });
+
+        expect(after.projectedState).toEqual(before.projectedState);
+        expect(after.events.map(event => ({
+            type: event.type,
+            payload: event.payload,
+        }))).toEqual(before.events.map(event => ({
+            type: event.type,
+            payload: event.payload,
+        })));
+        expect(after.ruleTrace).toEqual(before.ruleTrace);
+        expect(after.rngTrace).toEqual(before.rngTrace);
+        expect(after.commandTools.tools).toEqual(before.commandTools.tools);
+        expect(after.observation).toEqual(before.observation);
+        expect(after.selectors).toEqual(before.selectors);
+        expect(after.mutation).toEqual({
+            persistenceWrites: 0,
+            stateUnchanged: true,
+            journalUnchanged: true,
+        });
     });
 
     test('restore refuses invalid archive without touching current source', () => {
