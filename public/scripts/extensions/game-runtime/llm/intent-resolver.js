@@ -1,10 +1,10 @@
+import { cloneGameLlmValue } from './clone.js';
+
 const NO_CHANGE_TOOL_NAME = 'game_no_change';
 const MAX_RESOLVED_COMMANDS = 8;
 const SAFE_TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function commandToolName(commandId) {
     const base = 'game_command_' + String(commandId || '')
