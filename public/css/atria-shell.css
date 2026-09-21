@@ -15,6 +15,10 @@ body[data-atria-shell-preview="true"] > #form_sheld {
     box-sizing: border-box;
 }
 
+.atria-app-shell [hidden] {
+    display: none !important;
+}
+
 .atria-app-shell {
     position: fixed;
     inset: 0;
