@@ -403,6 +403,8 @@ router.post('/:charId/atria/import', atriaRawBody, async (request, response) => 
             return response.status(400).json({ error: 'Missing .atria archive body' });
         }
 
+        // Invalid archives must not even create Git metadata in the target.
+        inspectAtriaDistribution(request.body);
         const charDir = path.join(request.user.directories.cardApps, charId);
         await ensureGitRepo(charDir);
         const restored = restoreAtriaDistribution(request.body, charDir);
