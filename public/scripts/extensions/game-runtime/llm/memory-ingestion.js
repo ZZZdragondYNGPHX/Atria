@@ -134,8 +134,20 @@ export function createPostTurnMemoryIngestion(options = {}) {
                 });
             }
 
-            const session = await memoryApi.openSession(context);
-            if (!session || typeof session.applyAuthoritativeFacts !== 'function') {
+            let applyAuthoritativeFacts = null;
+            if (typeof memoryApi.applyAuthoritativeFacts === 'function') {
+                applyAuthoritativeFacts = inputPayload => memoryApi.applyAuthoritativeFacts(
+                    context,
+                    inputPayload,
+                );
+            } else if (typeof memoryApi.openSession === 'function') {
+                const session = await memoryApi.openSession(context);
+                if (typeof session?.applyAuthoritativeFacts === 'function') {
+                    applyAuthoritativeFacts = inputPayload => session.applyAuthoritativeFacts(inputPayload);
+                }
+            }
+
+            if (!applyAuthoritativeFacts) {
                 const update = Object.freeze({
                     status: 'unavailable',
                     source: 'committed_events',
@@ -152,7 +164,7 @@ export function createPostTurnMemoryIngestion(options = {}) {
                 });
             }
 
-            const results = await session.applyAuthoritativeFacts({
+            const results = await applyAuthoritativeFacts({
                 sourceIds: [...prepared.sourceIds],
                 facts: prepared.facts.map(fact => clone(fact)),
             });
