@@ -119,15 +119,8 @@ function makeSession() {
 describe('R5 Game LLM Runtime vertical slice', () => {
     test('builds active-branch Observation and filters Command tools from it', async () => {
         const session = makeSession();
-        let interpreterCalls = 0;
         const runtime = createGameLlmRuntime({
             worldSession: session,
-            eventInterpreter: {
-                async interpret() {
-                    interpreterCalls += 1;
-                    throw new Error('deterministic free-text command must not call Event Interpreter');
-                },
-            },
             observationProjectors: [
                 {
                     id: 'player',
@@ -215,8 +208,15 @@ describe('R5 Game LLM Runtime vertical slice', () => {
         const session = makeSession();
         let seenTurn = null;
         let seenCatalog = null;
+        let interpreterCalls = 0;
         const runtime = createGameLlmRuntime({
             worldSession: session,
+            eventInterpreter: {
+                async interpret() {
+                    interpreterCalls += 1;
+                    throw new Error('deterministic free-text command must not call Event Interpreter');
+                },
+            },
             observationProjectors: [
                 {
                     id: 'player',
