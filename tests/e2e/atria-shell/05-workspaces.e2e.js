@@ -114,7 +114,7 @@ test.describe('R7E First-class Workspaces', () => {
             textarea: document.querySelectorAll('#send_textarea').length,
             orphanAgents: document.querySelectorAll('#atria-workspace > #agent-memory-workspace').length,
             orphanStudio: document.querySelectorAll('#atria-workspace > #card-app-studio-workspace').length,
-            orphanWorldInfo: document.querySelectorAll('#atria-workspace > #WorldInfo').length,
+            orphanWorldInfo: document.querySelectorAll('#atria-workspace #WorldInfo').length,
             orphanDiagnostics: document.querySelectorAll('#atria-workspace > .atriaLogsWorkspace').length,
         }))).toEqual({
             chat: 1,
