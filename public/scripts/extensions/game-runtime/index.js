@@ -5,7 +5,11 @@ import {
     setRuntimeRoleConfig as writeRuntimeRoleConfig,
     ensureModelRuntimeConfig,
 } from './llm/model-runtime-config.js';
-import { createNarrativeCoordinator, createNarrator } from './llm/narrative.js';
+import {
+    buildNarrativeContract,
+    createNarrativeCoordinator,
+    createNarrator,
+} from './llm/narrative.js';
 import { createGameOrchestratorBridge } from './llm/orchestrator-bridge.js';
 import { createRuntimeRoleRouter } from './llm/roles.js';
 import { createGameLlmRuntime } from './llm/runtime.js';
@@ -35,6 +39,9 @@ let currentLlmSession = null;
 let currentTurnController = null;
 let currentNarrator = null;
 let currentRoleRouter = null;
+let currentOrchestratorBridge = null;
+let currentNarrativeCoordinator = null;
+let currentTurnRecipes = null;
 let currentPackage = Object.freeze({
     status: GAME_PACKAGE_STATUS.NONE,
     active: false,
@@ -68,6 +75,9 @@ function disposeRuntimeSystems() {
     currentTurnController = null;
     currentNarrator = null;
     currentRoleRouter = null;
+    currentOrchestratorBridge = null;
+    currentNarrativeCoordinator = null;
+    currentTurnRecipes = null;
 }
 
 function createRuntimeSystems(worldSession) {
@@ -97,7 +107,46 @@ function createRuntimeSystems(worldSession) {
         getOrchestrationMode: () => orchestratorBridge.getMode(),
         generateTask: atriaContext.generateTask,
     });
-    const turnController = createGameTurnController();
+
+    const attemptBranches = new Map();
+    const turnController = createGameTurnController({
+        adapter: {
+            async createAttemptBranch({ attemptIndex }) {
+                const base = typeof worldSession.getChatBranchPathInternal === 'function'
+                    ? worldSession.getChatBranchPathInternal()
+                    : worldSession.getBranchPath();
+                return {
+                    branchPath: [...base, attemptIndex],
+                    variantId: 'attempt:' + attemptIndex,
+                };
+            },
+            async prepareAttempt({ attemptId, branch }) {
+                attemptBranches.set(attemptId, [...branch.branchPath]);
+                await worldSession.switchBranchPathInternal?.(branch.branchPath);
+            },
+            async activateAttempt({ attemptId, branch }) {
+                attemptBranches.set(attemptId, [...branch.branchPath]);
+                await worldSession.switchBranchPathInternal?.(branch.branchPath);
+            },
+            async activateAttemptBranch({ attemptId, branch }) {
+                attemptBranches.set(attemptId, [...branch.branchPath]);
+                await worldSession.switchBranchPathInternal?.(branch.branchPath);
+            },
+            async deactivateAttempt({ restoreAttemptId }) {
+                const restore = restoreAttemptId
+                    ? attemptBranches.get(restoreAttemptId)
+                    : null;
+                if (restore) {
+                    await worldSession.switchBranchPathInternal?.(restore);
+                } else {
+                    await worldSession.clearBranchOverrideInternal?.();
+                }
+            },
+            async restoreBeforeTurn() {
+                await worldSession.clearBranchOverrideInternal?.();
+            },
+        },
+    });
 
     return {
         roleRouter,
@@ -106,6 +155,7 @@ function createRuntimeSystems(worldSession) {
         narrativeCoordinator,
         llmSession,
         turnController,
+        recipes: new Map(),
     };
 }
 
@@ -263,6 +313,9 @@ export async function reloadGamePackage() {
     currentTurnController = nextRuntimeSystems?.turnController || null;
     currentNarrator = nextRuntimeSystems?.narrator || null;
     currentRoleRouter = nextRuntimeSystems?.roleRouter || null;
+    currentOrchestratorBridge = nextRuntimeSystems?.orchestratorBridge || null;
+    currentNarrativeCoordinator = nextRuntimeSystems?.narrativeCoordinator || null;
+    currentTurnRecipes = nextRuntimeSystems?.recipes || null;
     publishPackageState(next);
 
     if (next.status === GAME_PACKAGE_STATUS.INVALID) {
@@ -363,6 +416,13 @@ export async function submitGameFreeText(input = {}) {
         recentChat: input.recentChat || [],
         constraints: input.constraints || [],
     });
+    currentTurnRecipes?.set(baseTurn.turnId, {
+        kind: 'free_text',
+        input: structuredClone({
+            ...input,
+            userInput,
+        }),
+    });
     return currentTurnController.submit(baseTurn, {
         execute: ({ turn, signal, transition }) => currentLlmSession.completeFreeTextTurn({
             ...input,
@@ -386,6 +446,13 @@ export async function submitGameUiAction(input = {}) {
         recentChat: input.recentChat || [],
         constraints: input.constraints || [],
     });
+    currentTurnRecipes?.set(baseTurn.turnId, {
+        kind: 'ui_action',
+        input: structuredClone({
+            ...input,
+            commandId,
+        }),
+    });
     return currentTurnController.submit(baseTurn, {
         execute: ({ turn, signal, transition }) => currentLlmSession.completeUiActionTurn({
             ...input,
@@ -408,6 +475,84 @@ export async function undoGameTurn(turnId) {
 export async function deleteGameAssistantResult(attemptId) {
     if (!currentTurnController) return false;
     return currentTurnController.deleteAssistantResult(attemptId);
+}
+
+export async function retryGameTurn(turnId, overrides = {}) {
+    if (!currentTurnController || !currentLlmSession) {
+        throw new Error('No active Game Turn Controller');
+    }
+    const recipe = currentTurnRecipes?.get(String(turnId || ''));
+    if (!recipe) throw new Error(`No retry recipe for Turn '${String(turnId || '')}'`);
+    const input = {
+        ...structuredClone(recipe.input),
+        ...structuredClone(overrides),
+    };
+
+    return currentTurnController.retryTurn(turnId, {
+        execute: ({ turn, signal, transition }) => (
+            recipe.kind === 'ui_action'
+                ? currentLlmSession.completeUiActionTurn({
+                    ...input,
+                    turnContext: turn,
+                    abortSignal: signal,
+                    transition,
+                })
+                : currentLlmSession.completeFreeTextTurn({
+                    ...input,
+                    turnContext: turn,
+                    abortSignal: signal,
+                    transition,
+                })
+        ),
+    });
+}
+
+export async function switchGameVariant(attemptId) {
+    if (!currentTurnController) throw new Error('No active Game Turn Controller');
+    return currentTurnController.switchVariant(attemptId);
+}
+
+export async function rewriteGameNarrative(attemptId, input = {}) {
+    if (!currentTurnController || !currentNarrator) {
+        throw new Error('No active Game Narrative Runtime');
+    }
+    const instruction = String(input.instruction || '').trim();
+    return currentTurnController.rewriteNarrative(attemptId, {
+        producer: input.producer,
+        rewrite: async (turn) => {
+            const producer = String(turn.narrative?.producer || 'narrator');
+            if (producer === 'director') {
+                if (!currentOrchestratorBridge) {
+                    throw new Error('Director rewrite requires Orchestrator bridge');
+                }
+                const contract = structuredClone(buildNarrativeContract(turn));
+                if (instruction) {
+                    contract.hardConstraints = [
+                        ...(contract.hardConstraints || []),
+                        'Rewrite Narrative instruction: ' + instruction,
+                    ];
+                }
+                const directed = await currentOrchestratorBridge.runDirector(turn, {
+                    contract,
+                    abortSignal: input.abortSignal,
+                });
+                return directed.finalProse;
+            }
+
+            const contract = structuredClone(buildNarrativeContract(turn));
+            if (instruction) {
+                contract.hardConstraints = [
+                    ...(contract.hardConstraints || []),
+                    'Rewrite Narrative instruction: ' + instruction,
+                ];
+            }
+            const narrated = await currentNarrator.narrate(turn, {
+                contract,
+                abortSignal: input.abortSignal,
+            });
+            return narrated.finalProse;
+        },
+    });
 }
 
 export function getGameTurn(turnId) {
@@ -451,6 +596,9 @@ registerExtensionApi(MODULE_NAME, {
     stopAttempt: stopGameAttempt,
     undoTurn: undoGameTurn,
     deleteAssistantResult: deleteGameAssistantResult,
+    retryTurn: retryGameTurn,
+    switchVariant: switchGameVariant,
+    rewriteNarrative: rewriteGameNarrative,
     getTurn: getGameTurn,
     getAttempt: getGameAttempt,
     exitUi: exitCurrentGameUi,
