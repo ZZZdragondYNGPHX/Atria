@@ -120,6 +120,36 @@ describe('R7G WorkspaceHost', () => {
         navigation.dispose();
     });
 
+    test('Agents primary route renders a chooser hub before mounting child workspaces', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({
+            document,
+            window,
+            registry: createCommandRegistry(),
+            navigation,
+        });
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation });
+
+        host.openAgents();
+        await flushWorkspace();
+
+        const hub = shell.slots.workspace.querySelector('[data-atria-agents-hub="true"]');
+        expect(hub).not.toBeNull();
+        expect(hub.querySelectorAll('[data-atria-agent-section]')).toHaveLength(4);
+        expect(navigation.getRoute()).toMatchObject({ domain: 'agents', child: null });
+
+        hub.querySelector('[data-atria-agent-section="memory"]').click();
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'agents',
+            child: { id: 'memory', kind: 'workspace' },
+        });
+
+        host.dispose();
+        shell.destroy();
+        navigation.dispose();
+    });
+
     test('opens Library and Runtime child routes through one domain adapter each', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({
