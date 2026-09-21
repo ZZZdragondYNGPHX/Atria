@@ -12,7 +12,7 @@ describe('R7A shell architecture', () => {
 
     test('initializes the shell foundation after settings/theme setup without making it a second app runtime', () => {
         const script = read('public/script.js');
-        expect(script).toContain("import { initializeAtriaShellFoundation } from './scripts/atria-shell/index.js'");
+        expect(script).toContain('import { initializeAtriaShellFoundation } from \'./scripts/atria-shell/index.js\'');
         expect(script).toContain('const shellFoundation = initializeAtriaShellFoundation({');
         expect(script).toContain('globalThis.Atria.shell = shellFoundation');
 
@@ -25,9 +25,9 @@ describe('R7A shell architecture', () => {
 
     test('keeps native Conversation and Composer out of R7A shell implementation', () => {
         const shell = read('public/scripts/atria-shell/app-shell.js');
-        expect(shell).not.toContain("getElementById('chat')");
-        expect(shell).not.toContain("getElementById('send_form')");
-        expect(shell).not.toContain("getElementById('send_textarea')");
+        expect(shell).not.toContain('getElementById(\'chat\')');
+        expect(shell).not.toContain('getElementById(\'send_form\')');
+        expect(shell).not.toContain('getElementById(\'send_textarea\')');
         expect(shell).not.toContain('cloneNode(');
     });
 
@@ -42,8 +42,8 @@ describe('R7A shell architecture', () => {
 
     test('keeps R7A behind the temporary preview gate until R7B reparenting', () => {
         const entry = read('public/scripts/atria-shell/index.js');
-        expect(entry).toContain("ATRIA_SHELL_PREVIEW_QUERY_KEY");
-        expect(entry).toContain("ATRIA_SHELL_PREVIEW_STORAGE_KEY");
+        expect(entry).toContain('ATRIA_SHELL_PREVIEW_QUERY_KEY');
+        expect(entry).toContain('ATRIA_SHELL_PREVIEW_STORAGE_KEY');
         expect(entry).toContain('if (previewEnabled) mount();');
     });
 });
