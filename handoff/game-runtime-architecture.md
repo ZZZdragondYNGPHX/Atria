@@ -324,6 +324,18 @@ Important R4 boundaries:
     - switching a full variant/swipe selects the matching World/Event/Memory/Orchestrator lineage;
     - narrative-only variants may share one Event lineage.
 
+14. Added **domain-agnostic World/Game Logic requirement**:
+    - HP/MP/level/affection/inventory/quest/combat are examples only, never canonical engine fields;
+    - Game Packages own their complete World Schema, Command vocabulary, Event types, Rules and Selectors;
+    - the same runtime must support RPG, Galgame/visual novel, detective, management, card/board, strategy and other author-defined domains;
+    - tests/docs may use small RPG-like fixtures for readability, but implementation must not special-case those paths.
+
+15. Added **large-world scalability guardrail**:
+    - v1 structured JSON World State remains the current implementation model;
+    - public APIs must not require the entire world to remain one monolithic JSON object forever;
+    - future Entity Collections / indexes / query layers / partitioned projections may be introduced for grand-strategy-scale simulations while preserving Command -> Event -> Reducer semantics;
+    - do not expand the current R5 scope to implement that future Entity Store without a concrete need.
+
 ## Validation completed
 
 Final focused workflow:
@@ -397,4 +409,6 @@ Do not:
 - create competing per-subsystem current-state truths;
 - let Director and Narrator both write the final prose body for one turn;
 - collapse Connection Profile and Runtime Role into one concept;
-- start R7 shell redesign before R5-R6 contracts are stable.
+- start R7 shell redesign before R5-R6 contracts are stable;
+- introduce built-in RPG field assumptions into World/Logic/LLM/UI contracts;
+- expand current R5 into a speculative large-world Entity Store project.
