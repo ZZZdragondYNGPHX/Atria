@@ -46,4 +46,20 @@ describe('R7A shell architecture', () => {
         expect(entry).toContain('ATRIA_SHELL_PREVIEW_STORAGE_KEY');
         expect(entry).toContain('if (previewEnabled) mount();');
     });
+
+    test('keeps Backgrounds hash tabs local when the document URL has a query string', () => {
+        const backgrounds = read('public/scripts/backgrounds.js');
+        expect(backgrounds).toContain('const currentDocumentUrl =');
+        expect(backgrounds).toContain('window.location.pathname');
+        expect(backgrounds).toContain('window.location.search');
+        expect(backgrounds).toContain('this.setAttribute(\'href\',');
+        expect(backgrounds.indexOf('currentDocumentUrl')).toBeLessThan(backgrounds.indexOf("$('#bg_tabs').tabs();"));
+    });
+
+    test('locks the shell root to the dynamic viewport on compact devices', () => {
+        const shell = read('public/css/atria-shell.css');
+        expect(shell).toContain('width: 100dvw;');
+        expect(shell).toContain('height: 100dvh;');
+        expect(shell).toContain('min-height: 100dvh;');
+    });
 });
