@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: r7-shell-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   focused:
     name: R7D Focused Unit and Lint
