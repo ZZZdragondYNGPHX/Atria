@@ -69,6 +69,7 @@ describe('Game Package loader', () => {
                 mode: 'component',
                 entry: 'ui/hud.html',
                 selectors: 'ui/selectors.json',
+                immersive: 'ui/immersive.json',
             },
         };
         const fetchImpl = jest.fn(async (url) => {
@@ -81,6 +82,7 @@ describe('Game Package loader', () => {
                         files: [
                             { path: 'game.json', type: 'file' },
                             { path: 'ui/hud.html', type: 'file' },
+                            { path: 'ui/selectors.json', type: 'file' },
                         ],
                     },
                 });
@@ -93,7 +95,7 @@ describe('Game Package loader', () => {
         expect(result.status).toBe(GAME_PACKAGE_STATUS.INVALID);
         expect(result.active).toBe(false);
         expect(result.errors).toEqual([
-            "Game Package declares missing file 'ui/selectors.json'",
+            "Game Package declares missing file 'ui/immersive.json'",
         ]);
     });
 
