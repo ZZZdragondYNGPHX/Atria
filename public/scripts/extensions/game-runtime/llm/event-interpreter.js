@@ -324,28 +324,43 @@ export function buildEventInterpreterMessages(turnContext, requestInput) {
 }
 
 export function createEventInterpreter(options = {}) {
+    const roleRouter = options.roleRouter || null;
     const generateTask = options.generateTask
         || globalThis.Atria?.getContext?.()?.generateTask;
-    if (typeof generateTask !== 'function') {
-        throw new Error('Event Interpreter requires generateTask()');
+    if (!roleRouter && typeof generateTask !== 'function') {
+        throw new Error('Event Interpreter requires Runtime Role Router or generateTask()');
     }
 
     return Object.freeze({
         async interpret(turnContext, requestInput, requestOptions = {}) {
             const request = normalizeEventInterpretationRequest(requestInput);
-            const result = await generateTask({
+            const taskRequest = {
                 taskMessages: buildEventInterpreterMessages(turnContext, request),
                 promptMode: 'task',
                 includeCharacterCard: false,
                 worldInfoSource: 'none',
                 jsonSchema: buildEventInterpretationSchema(request),
-                apiPresetName: requestOptions.apiPresetName || '',
                 llmPresetName: requestOptions.llmPresetName || '',
                 abortSignal: requestOptions.abortSignal,
                 stream: false,
                 temperature: requestOptions.temperature ?? 0,
                 substituteMacros: false,
-            });
+            };
+            const routed = roleRouter
+                ? await roleRouter.execute('event_interpreter', taskRequest, {
+                    abortSignal: requestOptions.abortSignal,
+                })
+                : {
+                    role: 'event_interpreter',
+                    apiPresetName: requestOptions.apiPresetName || '',
+                    fallbackUsed: false,
+                    attempts: [],
+                    result: await generateTask({
+                        ...taskRequest,
+                        apiPresetName: requestOptions.apiPresetName || '',
+                    }),
+                };
+            const result = routed.result;
 
             const validated = validateEventInterpretation(result?.jsonData, request);
             return Object.freeze({
@@ -353,6 +368,12 @@ export function createEventInterpreter(options = {}) {
                 ...validated,
                 requestInfo: clone(result?.requestInfo || null),
                 usage: clone(result?.usage || null),
+                routing: Object.freeze({
+                    role: routed.role,
+                    apiPresetName: routed.apiPresetName,
+                    fallbackUsed: routed.fallbackUsed === true,
+                    attempts: clone(routed.attempts || []),
+                }),
             });
         },
     });
