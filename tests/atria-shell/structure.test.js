@@ -77,7 +77,7 @@ describe('R7 shell architecture', () => {
         const shell = read('public/css/atria-shell.css');
         expect(shell).toContain('width: var(--atri-viewport-width, 100dvw);');
         expect(shell).toContain('height: var(--atri-viewport-height, 100dvh);');
-        expect(shell).toContain('min-height: 100dvh;');
+        expect(shell).toContain('min-height: 0;');
         expect(shell).toContain('.atria-command-surface:not([hidden])');
         expect(shell).toContain('display: block !important;');
         expect(shell).toContain('var(--atri-safe-area-bottom)');
