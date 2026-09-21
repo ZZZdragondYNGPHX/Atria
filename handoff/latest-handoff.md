@@ -1,21 +1,24 @@
 # Active implementation: Atria Game Runtime Architecture Refactor
 
-The Master Refactor has completed **R4 Card UI Runtime** and is ready to begin R5.
+The Master Refactor has completed **R0-R4** and **R5 is now underway**.
 
 - Working branch: `refactor/game-runtime-architecture`
 - Baseline/current main: `63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current validated R4 HEAD: `adc607bc5c1bdbe383d2647d82b1e0b323743df4`
+- Current working HEAD: `d7546b216acff61f796e4cf95fa47c1653f8eef5`
 - Formal plan: `refactor/game-runtime-architecture.md`
 - Detailed task handoff: `handoff/game-runtime-architecture.md`
-- Status: **R0 Regex Separation complete; R1 Game Package foundation complete; R2 World/Event complete at planned vertical-slice scope; R3 Game Logic Runtime complete; R4 Card UI Runtime complete.**
-- R4 now includes stable Surface APIs, read-only Selectors, declarative bindings/actions, Component/Hybrid/Full modes, native conversation/composer composition, responsive/mobile contracts, Immersive provider integration, and Full host escape/recovery.
-- Final R4 focused validation: Game Runtime Dev Checks #160, run `35550867047`, success.
-- Final real-browser validation: Game Runtime R4 Browser Checks #2, run `35550867046`, success for desktop Full and mobile Hybrid smoke.
-- Next phase: **R5 — LLM Runtime & Model Roles**.
+- R0 Regex Separation: complete.
+- R1 Game Package Foundation: complete.
+- R2 World/Event Runtime planned vertical slice: complete.
+- R3 Game Logic Runtime: complete.
+- R4 Card UI Runtime: complete, including Component/Hybrid/Full, Surface APIs, Selectors, Native Components, responsive/mobile, Immersive and Full recovery.
+- R5 foundation already landed: typed Command LLM tool catalog, command visibility metadata, World Observation, branch-anchored Turn Context and live World-session integration.
+- New architecture clarification: Game UI uses **Persistent Game Surfaces**, not a special floor-0 message. Conversation floors remain Timeline/history data and optional Native Components.
+- New R5 requirement: **Turn Controller / Turn Transaction** must keep Stop, Undo, Delete Assistant Result, Rewrite Narrative, Retry Turn and Switch Variant coherent with World/Event/Memory/Orchestrator state.
+- Narrative Cards without `game.json` remain first-class and do not require Game Runtime authoring.
 - The long-running refactor branch remains unmerged and must be retained until the complete Master Refactor finishes.
 
-R5 should begin with LLM-safe typed Command tool generation, command visibility, World Observation projection and the minimal branch-anchored Turn Context. Do not let Resolver/Event Interpreter/Memory/Orchestrator/Narrator become alternate state writers.
-
+Continue R5 from the current branch; do not restart R0-R4 or the already-landed R5 foundation.
 
 ---
 
