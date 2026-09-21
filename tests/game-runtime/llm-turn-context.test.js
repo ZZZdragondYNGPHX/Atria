@@ -65,6 +65,95 @@ describe('R5 Turn Context contract', () => {
         });
     });
 
+    test('builds an explicit source-authority provenance ledger', () => {
+        const turn = createTurnContext({
+            anchor: {
+                branchPath: [0, 1],
+                journalNextSeq: 5,
+                serial: 7,
+            },
+            commandResults: [{
+                commandId: 'attack',
+                transactionId: 'tx:4',
+                status: 'committed',
+            }],
+            committedEvents: [{
+                id: 'event:4',
+                type: 'DamageDealt',
+                meta: {
+                    command: {
+                        id: 'attack',
+                    },
+                },
+            }],
+            recentChat: [{
+                role: 'assistant',
+                content: 'The guard staggers.',
+            }],
+            memories: [{
+                id: 'memory-recall:turn:test',
+                authority: 'historical_context',
+                references: [
+                    { id: 'fact:old_hp' },
+                    { id: 'episode:2' },
+                ],
+            }],
+            orchestration: {
+                mode: 'agenda',
+                guidance: 'Keep the pace tight.',
+            },
+        });
+
+        expect(turn.provenance).toEqual({
+            worldObservation: {
+                authorityRank: 1,
+                source: 'world_runtime',
+                branchId: 'swipes:0.1',
+            },
+            committedEvents: {
+                authorityRank: 2,
+                source: 'event_journal',
+                items: [{
+                    id: 'event:4',
+                    type: 'DamageDealt',
+                    commandId: 'attack',
+                }],
+            },
+            commandResults: {
+                authorityRank: 3,
+                source: 'command_bus',
+                items: [{
+                    commandId: 'attack',
+                    transactionId: 'tx:4',
+                    status: 'committed',
+                }],
+            },
+            activeBranchChat: {
+                authorityRank: 4,
+                source: 'chat',
+                branchId: 'swipes:0.1',
+                itemCount: 1,
+            },
+            memoryRecall: {
+                authorityRank: 5,
+                source: 'memory_graph',
+                items: [{
+                    id: 'memory-recall:turn:test',
+                    authority: 'historical_context',
+                    referenceIds: ['fact:old_hp', 'episode:2'],
+                }],
+            },
+            orchestratorGuidance: {
+                authorityRank: 6,
+                source: 'orchestrator',
+                present: true,
+                mode: 'agenda',
+            },
+        });
+        expect(Object.isFrozen(turn.provenance)).toBe(true);
+        expect(Object.isFrozen(turn.provenance.memoryRecall)).toBe(true);
+    });
+
     test('advances one immutable Turn Context without changing identity/anchor', () => {
         const turn = createTurnContext({
             anchor: {
