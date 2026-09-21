@@ -53,7 +53,7 @@ describe('R7A shell architecture', () => {
         expect(backgrounds).toContain('window.location.pathname');
         expect(backgrounds).toContain('window.location.search');
         expect(backgrounds).toContain('this.setAttribute(\'href\',');
-        expect(backgrounds.indexOf('currentDocumentUrl')).toBeLessThan(backgrounds.indexOf('\$(\'#bg_tabs\').tabs();'.replace('\\
+        expect(backgrounds.indexOf('currentDocumentUrl')).toBeLessThan(backgrounds.indexOf('$(\'#bg_tabs\').tabs();'));
     });
 
     test('locks the shell root to the dynamic viewport on compact devices', () => {
