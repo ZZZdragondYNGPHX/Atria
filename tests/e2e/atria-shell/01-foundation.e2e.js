@@ -17,7 +17,7 @@ test.afterAll(async () => {
 
 async function openShellPreview(page, viewport) {
     const startupErrors = [];
-    page.on('pageerror', error => startupErrors.push(`pageerror: ${error?.message || error}`));
+    page.on('pageerror', error => startupErrors.push(`pageerror: ${error?.stack || error?.message || error}`));
     page.on('console', message => {
         if (message.type() === 'error') startupErrors.push(`console: ${message.text()}`);
     });
@@ -47,7 +47,7 @@ async function openShellPreview(page, viewport) {
                 && Boolean(window.Atria?.getContext)
                 && Boolean(window.Atria?.shell?.isMounted?.()),
             null,
-            { timeout: 30_000 },
+            { timeout: 8_000 },
         );
     } catch (error) {
         const state = await page.evaluate(() => ({
