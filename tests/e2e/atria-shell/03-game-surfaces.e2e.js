@@ -238,7 +238,7 @@ test('Expanded: Component, Hybrid, Full, failure recovery, Immersive and legacy 
         </section>
     `);
     await expect(page.locator('#atria-game-full-root')).toHaveCount(1);
-    await expect(page.locator('#atria-global-bar')).toHaveCount(1);
+    await expect(page.locator('.atria-global-bar')).toHaveCount(1);
     expect(await page.evaluate(() => {
         const shell = window.Atria.shell.getShell();
         const root = document.getElementById('atria-game-full-root');
