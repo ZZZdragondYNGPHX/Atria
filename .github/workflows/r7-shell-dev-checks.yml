@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   focused:
-    name: R7B Focused Unit and Lint
+    name: R7C Focused Unit and Lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -26,7 +26,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
-      - name: Run R7B shell and native host regression tests
+      - name: Run R7C shell and game surface regression tests
         run: >-
           npm run test:unit --prefix tests --
           --runInBand
@@ -38,11 +38,15 @@ jobs:
           frontend-lazy-select2.test.js
           game-runtime/ui-environment.test.js
           game-runtime/ui-host-surfaces.test.js
+          game-runtime/ui-native-components.test.js
+          game-runtime/ui-package.test.js
+          game-runtime/ui-live.test.js
           game-runtime/ui-full-host.test.js
           game-runtime/ui-immersive.test.js
+          card-app-loader.test.js
           immersive/controller.test.js
           immersive/structure.test.js
-      - name: Lint R7B production modules
+      - name: Lint R7C production modules
         run: >-
           npx eslint
           public/script.js
@@ -54,17 +58,30 @@ jobs:
           public/scripts/power-user.js
           public/scripts/backgrounds.js
           "public/scripts/atria-shell/*.js"
-      - name: Lint R7B tests
+          public/scripts/extensions/game-runtime/ui/host-surfaces.js
+          public/scripts/extensions/game-runtime/ui/native-components.js
+          public/scripts/extensions/game-runtime/ui/full-host.js
+          public/scripts/extensions/game-runtime/ui/live.js
+          public/scripts/extensions/game-runtime/ui/package.js
+          public/scripts/extensions/card-app/loader.js
+          public/scripts/extensions/card-app/index.js
+      - name: Lint R7C tests
         working-directory: tests
         run: >-
           npx eslint
           "atria-shell/**/*.js"
+          "game-runtime/ui-host-surfaces.test.js"
+          "game-runtime/ui-native-components.test.js"
+          "game-runtime/ui-package.test.js"
+          "game-runtime/ui-live.test.js"
+          "game-runtime/ui-full-host.test.js"
+          "card-app-loader.test.js"
           "e2e/atria-shell/**/*.e2e.js"
       - name: Verify Atria namespace guard
         run: bash scripts/check-atria-namespace.sh
 
   browser:
-    name: R7B Expanded Compact Native Play Browser Smoke
+    name: R7C Expanded Compact Game Surface Browser Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -88,11 +105,12 @@ jobs:
       - name: Install Chromium
         working-directory: tests
         run: npx playwright install --with-deps chromium
-      - name: Run R7B shell browser smoke
+      - name: Run R7C shell browser smoke
         working-directory: tests
         run: >-
           npx playwright test
           e2e/atria-shell/01-foundation.e2e.js
           e2e/atria-shell/02-native-actions.e2e.js
+          e2e/atria-shell/03-game-surfaces.e2e.js
           --project=e2e
           --workers=1
