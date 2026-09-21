@@ -1,3 +1,4 @@
+import { cloneGameLlmValue } from './clone.js';
 import { getGameBranchId } from '../world/branch.js';
 import {
     advanceTurnContext,
@@ -29,9 +30,7 @@ const ALLOWED_TRANSITIONS = Object.freeze({
     failed: new Set(),
 });
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function deepFreeze(value, seen = new Set()) {
     if (!value || typeof value !== 'object' || seen.has(value)) return value;
