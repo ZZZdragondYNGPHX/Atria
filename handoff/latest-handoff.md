@@ -1,6 +1,6 @@
-# Active implementation: R7B — Play / Native Conversation Host
+# Active implementation: R7C — Game Surface Integration
 
-R7A — Design System & Shell Foundation is complete and validated. The next conversation should continue directly with **R7B — Play / Native Conversation Host** on the same long-running R7 branch.
+R7A — Design System & Shell Foundation and R7B — Play / Native Conversation Host are complete and validated. The next conversation should continue directly with **R7C — Game Surface Integration** on the same long-running R7 branch.
 
 ## Frozen R0-R6 baseline
 
@@ -23,139 +23,176 @@ Keep this branch frozen during R7 except for a narrowly targeted correction prov
 - Created from: `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R7A final validated HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
 - R7A validation: **R7 Shell Dev Checks #43**, run `35569965553`, success
+- R7B final validated HEAD: `a2ec6478ff2846069dc780f35813b159a21b597a`
+- R7B validation: **R7 Shell Dev Checks #52**, run `35572544216`, success
 - Authoritative R7 plan: `refactor/atria-game-first-shell-redesign.md`
 - Master runtime plan: `refactor/game-runtime-architecture.md`
 - Detailed frozen-runtime handoff: `handoff/game-runtime-architecture.md`
 
-Do not create a separate R7B branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
+Do not create a separate R7C branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
 
 Do not merge R7 to `main` at phase boundaries. R7A-R7H remain one long-running R7 implementation line. Final integration happens only after R7H/final R7 validation.
 
 ## R7A completed — do not redo
 
-R7A established:
+R7A established the Atria semantic Design System, AppShell, Navigation Rail / Bottom Navigation, Global Bar, Focus Area, Stage, Workspace, Context Dock, Sheet/Command surfaces, Host Recovery, Compact/Medium/Expanded environment, shared Command Registry, preview gate and R7 CI/browser foundation.
 
-- semantic `--atri-*` Design System token bridge;
-- required Atria host primitives and patterns;
-- AppShell;
-- Navigation Rail and Bottom Navigation;
-- Global Bar;
-- Focus Area;
-- Stage and Workspace hosts;
-- Context Dock;
-- transient Sheet/Command surfaces;
-- Host Recovery layer;
-- Compact / Medium / Expanded responsive environment;
-- shared Command Registry;
-- desktop Command Palette / mobile Command Sheet;
-- temporary preview gate via `?atriaShell=1` and `atria.shell.preview`;
-- normal startup publication through `globalThis.Atria.shell`;
-- R7-specific CI workflow and real-browser Expanded/Compact smoke.
+R7A final validation:
 
-R7A browser validation also fixed host compatibility defects discovered during Shell bring-up:
+- HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
+- **R7 Shell Dev Checks #43**
+- run `35569965553`
+- success
 
-- canonical/fail-soft Select2 initialization paths;
-- autocomplete resize race;
-- static preloader lifecycle at APP_READY;
-- Backgrounds jQuery UI tabs accidentally loading a second full document on query-string URLs;
-- Compact Shell/transient zero-height geometry;
-- Shell-wide `hidden` semantics.
+Do not reopen R7A architecture unless R7C exposes a concrete integration defect.
 
-Final R7A validation passed both:
+## R7B completed — do not redo
 
-- **R7A Focused Unit and Lint**
-- **R7A Expanded Compact Browser Smoke**
+R7B audited the real native Conversation/Composer ownership and established the first real Play ownership migration.
 
-Do not reopen R7A architecture unless R7B exposes a concrete integration defect.
+The actual native hierarchy is preserved:
 
-## R7B objective
+```text
+#sheld
+├ #chat
+└ #form_sheld
+   └ #send_form
+      └ #send_textarea
+```
 
-R7B is the first ownership-migration phase.
+R7B implementation:
 
-Move the **existing live native Conversation and Composer** into the Atria Play host by reparenting the real DOM nodes.
+- added the Atria Native Play Host;
+- reparents the **one real `#sheld` subtree** into `#atria-stage`;
+- does not clone `#chat`, `#send_form` or `#send_textarea`;
+- preserves node identity, listeners, jQuery data and native runtime state;
+- records/restores the original DOM position for deterministic staged unmount;
+- restores Native Play before Shell destruction;
+- guards uniqueness/integrity of the native nodes;
+- leaves the temporary `?atriaShell=1` / `atria.shell.preview` gate in place;
+- neutralizes legacy body-level `#sheld` geometry only while Stage owns it;
+- keeps Composer Play-local rather than global Shell input;
+- keeps R4 Surface anchors working against the same real native subtree;
+- keeps Full Game Host able to hide/restore the real `#sheld`;
+- keeps Host Recovery outside package-owned Full UI;
+- constrains Immersive to presentation ownership inside the Stage instead of allowing it to reclaim viewport Host geometry.
 
-Hard rule:
+R7B did **not** create:
 
-> **Reparent, don't duplicate.**
+- a second Timeline;
+- a second Composer;
+- a second generation source;
+- a second message/history state machine;
+- a second World/Event/Turn authority;
+- a fourth Game Runtime UI mode.
 
-There must remain exactly:
+Native action continuity is browser-validated after reparenting:
+
+- Send;
+- Stop;
+- Continue;
+- user edit;
+- assistant edit;
+- Delete;
+- Swipe;
+- Regenerate;
+- Branch;
+- History;
+- Search.
+
+R7B validation also covers:
 
 - one live `#chat`;
 - one live `#send_form`;
-- one live generation source of truth;
-- one message/history state machine;
-- one set of native message actions.
+- one live `#send_textarea`;
+- original node identity across mount/unmount/remount;
+- Expanded host;
+- Compact host;
+- R4 native-component composition;
+- Immersive coexistence;
+- Full Host Recovery coexistence.
 
-Do not implement a second Timeline and synchronize it with `#chat`.
-Do not implement a second Composer and synchronize it with `#send_form`.
+Final R7B validation:
 
-## R7B required first inspection
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `a2ec6478ff2846069dc780f35813b159a21b597a`
+- Workflow: **R7 Shell Dev Checks #52**
+- Run: `35572544216`
+- **R7B Focused Unit and Lint**: success
+- **R7B Expanded Compact Native Play Browser Smoke**: success
+- namespace guard: success
+- Android/Docker: not run; neither was required for browser/frontend-only R7B work.
 
-Before editing ownership code, inspect the live DOM ancestry, lifecycle and restoration assumptions for:
+## R7C objective
 
-- `#sheld`
-- `#chat`
-- `#form_sheld`
-- `#send_form`
-- `#send_textarea`
+R7C — Game Surface Integration makes the already-complete R4 Game UI system operate coherently under the new Shell / Native Play Host.
 
-Then trace the real existing action paths for at least:
+Integrate, rather than redesign:
 
-- send;
-- stop generation;
-- continue;
-- user/assistant edit;
-- delete;
-- swipe;
-- regenerate;
-- branch;
-- history/search.
+- Component;
+- Hybrid;
+- Full;
+- native Conversation / Composer slots;
+- Host Surface Registry / adapter;
+- legacy CardApp;
+- Host Recovery;
+- Immersive.
 
-Also inspect the existing R4 native-component / Host Surface adapter and Immersive presentation integration so R7B composes with them rather than bypassing them.
+The core invariant remains:
 
-## R7B architecture constraints
+> **Full owns Stage, never Host.**
 
-- Shell/Host becomes the architectural owner of Play presentation.
-- Native Conversation/Composer nodes remain the compatibility/state ABI.
-- Reparent live nodes; never clone them.
-- Mount/unmount must be deterministic and restore the original host during staged migration.
-- Preserve all current event listeners, jQuery data, native autocomplete, file attachment, quick reply, reasoning, message action and generation behavior.
-- Composer belongs to Play/Stage context, not global Shell chrome.
-- Narrative remains Timeline-primary.
-- R4 Component / Hybrid / Full remain the only Game Runtime UI modes.
-- Full owns Stage, never Host.
-- R4 Surface / Native Component contracts remain stable.
-- Host Recovery remains above package-owned Full surfaces.
-- R7B should prepare semantic Timeline/Composer host ownership without prematurely completing R7C Game Surface migration or R7D navigation authority.
-- Keep the temporary preview gate during staged R7B migration unless the authoritative plan explicitly reaches the later cutover step.
+The Native Play Host from R7B remains the single native Conversation/Composer ABI.
 
-## Timeline action semantics to preserve
+## R7C required first inspection
 
-Ordinary narrative/chat records continue through native chat actions.
+Before editing, inspect the real latest remote branch and trace the current runtime paths for at least:
 
-Game-linked records must continue through the existing Game Turn Controller / Host Action Resolver semantics:
+- `public/scripts/extensions/game-runtime/ui/host-surfaces.js`;
+- `public/scripts/extensions/game-runtime/ui/surfaces.js`;
+- `public/scripts/extensions/game-runtime/ui/full-host.js`;
+- Game UI Component/Hybrid mount lifecycle;
+- native component mount/unmount and restoration;
+- the code that activates package UI modes from the Game Runtime;
+- legacy CardApp surface activation/recovery;
+- Immersive provider/presentation integration;
+- Shell Stage / Native Play Host ownership introduced in R7B.
 
-- **Rewrite Narrative**: same committed world/events/outcome; regenerate prose only.
-- **Retry Turn**: new attempt/outcome; world/events may change.
-- historical game-linked user edit: **Edit & Retry from here**, not silent mutation of committed facts.
-- distinguish Narrative Variant from Outcome Variant.
+Confirm where R4 currently resolves each surface before changing the adapter.
 
-Do not create another world/history state machine in the Shell.
+## R7C architecture constraints
 
-## R7B validation expectations
+- Do not add a fourth Game Runtime UI mode. R4 remains `component / hybrid / full`.
+- Do not clone or synchronize a second Conversation/Composer.
+- Preserve all R4 Surface / Native Component contracts unless a concrete defect requires a narrowly compatible adapter change.
+- Component should augment the native Play experience through supported surfaces.
+- Hybrid may become Game-first while still composing the same native Conversation/Composer through supported slots.
+- Full may replace/own **Stage content**, but never the entire Atria Host.
+- Host Recovery must stay reachable above package-owned Full surfaces.
+- Timeline access, Stop, Diagnostics, Exit Game UI, Disable Package and Command remain Host-authoritative recovery capabilities.
+- Legacy CardApp should be treated as a recoverable **Legacy Full Stage Surface**, not as an independent application shell.
+- Immersive remains a presentation contract and must coexist with Component/Hybrid/Full rather than being folded into their state.
+- Do not create another World/Event/Turn state machine in the Shell.
+- Do not begin the R7D authoritative Desktop/Mobile navigation cutover.
+- Keep the R7 preview gate during R7C staged migration unless the authoritative plan explicitly reaches the later cutover phase.
 
-Add focused tests that prove at minimum:
+## R7C validation expectations
 
-- exactly one live `#chat`;
-- exactly one live `#send_form`;
-- those are the original nodes, not clones;
-- Play mount reparents them into the Shell;
-- staged unmount restores them deterministically;
-- send/stop/continue/edit/delete/swipe/regenerate/branch/history-search behavior remains connected to the existing native implementation;
-- desktop and Compact hosts remain usable;
-- no second generation/message state authority appears.
+Add focused unit/integration coverage plus real-browser smoke proving at minimum:
 
-Use existing focused tests and browser E2E where possible. Do not default-build Android APK or Docker. Android JVM tests are only needed if Android/Kotlin code actually changes or the user explicitly requests them.
+- Narrative-only Play remains functional;
+- Component operates under the Shell and uses supported host/native slots;
+- Hybrid operates under the Shell without duplicating native Conversation/Composer;
+- Full owns Stage content while Atria Host Recovery remains reachable;
+- leaving Full restores the appropriate native/host surface;
+- native Conversation/Composer identity remains single and stable through Game Surface transitions;
+- Host Surface resolution does not create duplicate anchors or duplicate state authorities;
+- legacy CardApp remains recoverable through the Stage/Host contract;
+- Immersive can coexist with the R7C Game Surface lifecycle;
+- Expanded and Compact hosts remain usable;
+- failure/disable/exit paths recover to a usable Atria Host.
+
+Reuse the existing R4 tests and R7 browser infrastructure where practical. Do not build Android APK or Docker unless Android/Kotlin code is actually modified or the user explicitly requests it.
 
 ## R7 product architecture remains frozen
 
@@ -177,21 +214,23 @@ Global utilities:
 - Settings
 - Account
 
-Key product decisions remain unchanged:
+Key decisions remain unchanged:
 
 - Stage, Timeline and Workspace are distinct;
 - Narrative Cards remain first-class;
-- Full Game UI owns Stage, never the Host;
+- Full Game UI owns Stage, never Host;
 - desktop uses Rail + Global Bar + Focus Area + Context Dock;
 - Compact uses Bottom Navigation + Stage-first + Context Sheets;
 - Focus / Immersive / Full are distinct contracts;
-- Agents, Memory, Studio and Runtime become first-class domains/workspaces;
+- R4 Component / Hybrid / Full remain authoritative Game UI modes;
+- R7B Native Play Host remains the one native Conversation/Composer ABI;
+- Agents, Memory, Studio and Runtime become first-class domains/workspaces in later R7 phases;
 - Skills live under Library;
 - user-facing Extensions becomes Plugins for third-party functionality;
 - Diagnostics is Shell-level;
 - SmartTheme is compatibility input only; new Host UI consumes semantic `--atri-*` tokens;
 - MovingUI does not own the new Shell;
-- legacy CardApp is a recoverable Legacy Full Stage Surface.
+- legacy CardApp becomes a recoverable Legacy Full Stage Surface.
 
 ## Merge / archive policy
 
