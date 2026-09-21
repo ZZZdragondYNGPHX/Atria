@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const SCRIPT_URL = new URL('../public/script.js', import.meta.url);
 const LOADER_URL = new URL('../public/scripts/loader.js', import.meta.url);
 const ACTION_LOADER_URL = new URL('../public/scripts/action-loader.js', import.meta.url);
+const POWER_USER_URL = new URL('../public/scripts/power-user.js', import.meta.url);
 
 describe('startup loader fast hide', () => {
     test('first-load path skips the visual fade while the default remains animated', () => {
@@ -18,5 +19,22 @@ describe('startup loader fast hide', () => {
         expect(actionLoader).toContain('await hideOverlay({ immediate })');
         expect(actionLoader).toContain('if (immediate) {');
         expect(actionLoader).toContain('setTimeout(r, 500)');
+    });
+
+    test('removes the static preloader before awaiting loader popup cleanup', () => {
+        const loader = readFileSync(LOADER_URL, 'utf8');
+        const remove = loader.indexOf("document.getElementById('preloader')?.remove();");
+        const awaitHide = loader.indexOf('await legacyLoaderHandle.hide({ immediate });');
+
+        expect(remove).toBeGreaterThanOrEqual(0);
+        expect(awaitHide).toBeGreaterThan(remove);
+    });
+
+    test('guards responsive autocomplete refresh until the widget is initialized', () => {
+        const powerUser = readFileSync(POWER_USER_URL, 'utf8');
+
+        expect(powerUser).toContain("const instance = control.autocomplete('instance');");
+        expect(powerUser).toContain('if (!instance)');
+        expect(powerUser).toContain("const widget = control.autocomplete('widget')[0];");
     });
 });
