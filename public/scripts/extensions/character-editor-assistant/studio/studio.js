@@ -1697,8 +1697,7 @@ async function handleAISend() {
                     detail = project?.kind === 'game'
                         ? `${project.summary?.name || 'Game Project'} · ${project.status}`
                         : 'Plain CardApp';
-                }
-                else if (name === TOOL_NAMES.REGEX_LIST_SCRIPTS) {
+                } else if (name === TOOL_NAMES.REGEX_LIST_SCRIPTS) {
                     const scope = String(args?.scope || 'all');
                     if (scope === 'all') {
                         const cc = toolResult?.character?.length || 0;
