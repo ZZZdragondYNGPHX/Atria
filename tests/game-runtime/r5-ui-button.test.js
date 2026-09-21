@@ -33,9 +33,10 @@ describe('R5 declarative UI button full turn pipeline', () => {
         let state = { door: 'closed' };
         const journal = { nextSeq: 1, events: [] };
         let dispatchCount = 0;
+        const clone = value => JSON.parse(JSON.stringify(value));
         const worldSession = {
-            getState: () => structuredClone(state),
-            getJournal: () => structuredClone(journal),
+            getState: () => clone(state),
+            getJournal: () => clone(journal),
             getBranchPath: () => [0, 0],
             getInterpretationMappings: () => [],
             getCommands: () => [{
@@ -72,8 +73,8 @@ describe('R5 declarative UI button full turn pipeline', () => {
                     committed: true,
                     commandId: 'open_door',
                     command: { id: 'open_door', args: {} },
-                    events: [structuredClone(event)],
-                    afterState: structuredClone(state),
+                    events: [clone(event)],
+                    afterState: clone(state),
                 };
             },
             async simulateCommandInternal() {
