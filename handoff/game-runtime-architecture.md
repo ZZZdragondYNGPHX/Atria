@@ -1,14 +1,17 @@
 # Atria Game Runtime Architecture — Implementation Handoff
 
-## Current branch and HEAD
+## Current branches and HEADs
 
-- Working branch: `refactor/game-runtime-architecture`
-- Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current validated working HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
-- Live `main` remains `63da3141a3895d3386ed1bebc30876c9766315ba`.
+- R0-R6 frozen branch: `refactor/game-runtime-architecture`
+- R0-R6 validated/frozen HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+- R7 implementation branch: `refactor/atria-game-first-shell-redesign`
+- R7 preparation/current HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+- Baseline/live `main`: `63da3141a3895d3386ed1bebc30876c9766315ba`
 - Formal Master Plan: `docs:refactor/game-runtime-architecture.md`
-- Current status: **R0-R6 complete against their Master Plan exit criteria. R6 — Game Studio is complete. Next phase: R7 — Atria Game-first Shell Redesign.**
-- No PR has been opened and nothing has been merged to `main`; keep this long-lived branch through R7 and do not merge/delete it before the Master Refactor is complete.
+- Authoritative expanded R7 plan: `docs:refactor/atria-game-first-shell-redesign.md`
+- Current status: **R0-R6 are complete and frozen. R7 — Atria Game-first Shell Redesign is prepared on its own branch; functional implementation has not started in the planning/preparation conversation.**
+- The old assumption that R7 would continue directly on `refactor/game-runtime-architecture` is superseded.
+- Do not merge either long-running branch into `main` during R7 development. Because the R7 branch is based on the complete R0-R6 history, only the final validated R7 branch is merged into `main` after R0-R7 validation.
 
 ## R3 checkpoint — Game Logic Runtime
 
@@ -921,40 +924,65 @@ Known deferred boundaries carried into R7/future work:
 
 ## Next implementation step — R7 Atria Game-first Shell Redesign
 
-Continue the same long-running branch from:
+R7 now uses the independent implementation branch:
+
+`refactor/atria-game-first-shell-redesign@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+
+The branch was created directly from the final validated R6 HEAD.
+
+The R0-R6 branch remains frozen at:
 
 `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 
-Do not reopen R0-R6 unless a concrete R7 integration defect requires a targeted fix.
+Do not continue R7 feature development on the frozen branch. Do not merge or delete either branch before R7 completion.
 
-R7 is a **host-shell redesign**, not another Game Runtime semantic rewrite.
+The authoritative R7 architecture/product plan is:
 
-R7 target from the Master Plan:
+`docs:refactor/atria-game-first-shell-redesign.md`
 
-1. establish an Atria 1.0 host design system and reusable shell primitives;
-2. redesign primary navigation and main-stage hierarchy around the Game Runtime product model;
-3. make Game Package / Runtime / World / Timeline concepts first-class in host UX;
-4. redesign mobile navigation as a first-class mobile shell rather than a desktop-drawer derivative;
-5. integrate Game Studio, Runtime diagnostics and Immersive entry points coherently;
-6. redesign Model & Runtime configuration around Runtime Roles rather than the old Chat/Embedding/Rerank-only mental model;
-7. reduce/remove host patterns that encourage future features to copy old drawer + long-text + chat-bubble information architecture;
-8. preserve stable R4 Surface / Native Component contracts while allowing host DOM/layout implementation to change;
-9. preserve Narrative Card first-class behavior;
-10. add desktop/mobile frontend smoke/E2E for major host paths and Game UI coexistence.
+R7 must preserve R0-R6 contracts unless a concrete shell-integration defect requires a targeted fix.
 
-Candidate host primitives remain:
+Approved R7 implementation phases:
 
-- App/Game Shell;
-- Stage;
-- Workspace;
-- Runtime Card;
-- Inspector;
-- Timeline;
-- Dock;
-- Sheet;
-- Command Bar;
-- Surface Host.
+1. **R7A — Design System & Shell Foundation**
+2. **R7B — Play / Native Conversation Host**
+3. **R7C — Game Surface Integration**
+4. **R7D — Desktop / Mobile Navigation**
+5. **R7E — First-class Workspaces**
+6. **R7F — Library & Runtime**
+7. **R7G — Plugins & Settings Reclassification**
+8. **R7H — Legacy Shell Retirement & Final Hardening**
 
-R7 must begin by auditing the current host/navigation/mobile DOM and existing stable Surface adapters. Do not invalidate R4/R5/R6 contracts merely to simplify frontend implementation.
+Key approved decisions:
 
-Do not merge/delete `refactor/game-runtime-architecture` until R7 is complete and the entire R0-R7 Master Refactor has passed final validation.
+- Atria 1.0 is an **Interactive Runtime Host**: Game-first, not Game-only.
+- Primary domains: Play / Library / Studio / Agents / Runtime.
+- Global utilities: Command/Search / Diagnostics / Plugins / Settings / Account.
+- Conversation Timeline remains a first-class native/runtime component but no longer must permanently occupy the center of the application.
+- Component / Hybrid / Full remain the only Game Runtime UI modes.
+- Full Game UI owns **Stage**, never the Atria Host.
+- Desktop uses Navigation Rail + Global Bar + Focus Area + Context Dock.
+- Compact/mobile uses Bottom Navigation + Stage-first + Context Sheets + Command Sheet.
+- Focus / Immersive / Full are separate contracts.
+- Agent Orchestration and Memory become first-class Agents product capabilities and leave the Extensions product hierarchy.
+- Skills become Library assets with contextual Agent links.
+- Runtime Roles/Connections gain a first-class Runtime Workspace.
+- user-facing Extensions becomes Plugins and returns to third-party plugin management.
+- Design System = tokens + primitives + patterns + AI development rules.
+- SmartTheme remains a compatibility/theme input; new Atria components consume `--atri-*` semantic tokens.
+- Preserve stateful native DOM anchors and **reparent, don't duplicate**.
+- R4 Surface/Native Component contracts remain stable while the Host adapter becomes semantic.
+- legacy CardApp becomes a recoverable Legacy Full Stage Surface.
+- the new Atria Shell does not participate in legacy MovingUI geometry.
+- R7 is a staged migration, not a big-bang rewrite.
+
+Final integration policy:
+
+```text
+refactor/atria-game-first-shell-redesign@<R7_FINAL_VALIDATED_HEAD>
+    -> main
+```
+
+Do **not** separately merge `refactor/game-runtime-architecture` into `main`, because the R7 branch already contains the complete R0-R6 history.
+
+After final R7 merge and verification, archive/clean up both long-running branches according to repository policy.
