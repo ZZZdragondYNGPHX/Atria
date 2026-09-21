@@ -777,6 +777,7 @@ function getProjectRoleIcon(role, path) {
         ui: 'fa-solid fa-window-maximize',
         selectors: 'fa-solid fa-filter',
         immersive: 'fa-solid fa-expand',
+        observations: 'fa-solid fa-eye',
         knowledge: 'fa-solid fa-book',
         skill: 'fa-solid fa-graduation-cap',
         asset: 'fa-solid fa-photo-film',
