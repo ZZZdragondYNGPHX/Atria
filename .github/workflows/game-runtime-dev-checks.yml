@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   focused:
-    name: R0-R4 Focused
+    name: R0-R5 Focused
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,6 +38,7 @@ jobs:
           game-runtime/logic-package.test.js
           game-runtime/logic-rules-integration.test.js
           game-runtime/llm-tools.test.js
+          game-runtime/llm-intent-resolver.test.js
           game-runtime/llm-observation.test.js
           game-runtime/llm-turn-context.test.js
           game-runtime/llm-runtime.test.js
