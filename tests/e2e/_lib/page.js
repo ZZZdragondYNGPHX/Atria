@@ -96,6 +96,26 @@ export async function reloadAndAwait(page, baseURL) {
 }
 
 export async function openExtensionsDrawer(page) {
+    const openedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openUtility !== 'function') {
+            return false;
+        }
+        workspaceHost.openUtility('plugins');
+        return true;
+    }).catch(() => false);
+
+    if (openedByShell) {
+        const compatibility = page.locator('[data-atria-plugin-compatibility="true"]');
+        await compatibility.waitFor({ state: 'visible', timeout: 10_000 });
+        if (!await compatibility.evaluate(el => el.open).catch(() => false)) {
+            await compatibility.locator('> summary').click();
+        }
+        await page.locator('#extensions_settings').waitFor({ state: 'visible', timeout: 10_000 });
+        return;
+    }
+
     const block = page.locator('#rm_extensions_block');
     const isOpen = await block.evaluate(el => el && !el.classList.contains('closedDrawer')).catch(() => false);
     if (isOpen) return;
@@ -119,6 +139,22 @@ export async function openExtensionsDrawer(page) {
  * sendMessageAndAwaitReply.
  */
 export async function closeExtensionsDrawer(page) {
+    const closedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        const route = shell?.getNavigation?.()?.getRoute?.();
+        if (!shell?.isMounted?.() || route?.child?.id !== 'utility.plugins' || typeof workspaceHost?.openPlay !== 'function') {
+            return false;
+        }
+        workspaceHost.openPlay();
+        return true;
+    }).catch(() => false);
+
+    if (closedByShell) {
+        await page.locator('#sheld').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+        return;
+    }
+
     const block = page.locator('#rm_extensions_block');
     const isOpen = await block.evaluate(el => el && el.classList.contains('openDrawer')).catch(() => false);
     if (!isOpen) return;
