@@ -115,6 +115,7 @@ let currentProjectSelection = null;
 let structuredRuntimeEditorHost = null;
 let studioSimulationHost = null;
 let studioMountRoot = null;
+let studioMountContainer = null;
 let studioEmbedded = false;
 
 // CodeMirror 6 state
@@ -1121,10 +1122,15 @@ async function handleImportAtria() {
             if (!confirmed) return;
 
             const charId = currentCharId;
+            const reopenContainer = studioEmbedded
+                ? (studioMountRoot?.parentElement || studioMountContainer)
+                : null;
             await restoreAtriaImport(charId, archiveBuffer);
             toastr.success(t('Restored .atria Source Project'));
             await closeCardAppStudio();
-            await openCardAppStudio(charId);
+            await openCardAppStudio(charId, reopenContainer
+                ? { container: reopenContainer, embedded: true }
+                : {});
             await reloadCardApp();
         } catch (error) {
             toastr.error(t('Import .atria failed') + ': ' + (error?.message || String(error)));
@@ -1207,6 +1213,7 @@ function prepareStudioMount({ container = null, embedded = false } = {}) {
     studioEmbedded = Boolean(container && embedded);
     if (!studioEmbedded) {
         studioMountRoot = null;
+        studioMountContainer = null;
         return document.body;
     }
 
@@ -1216,6 +1223,7 @@ function prepareStudioMount({ container = null, embedded = false } = {}) {
     root.dataset.atriaWorkspaceEmbedded = 'true';
     container.replaceChildren(root);
     studioMountRoot = root;
+    studioMountContainer = container;
     return root;
 }
 
@@ -1401,6 +1409,7 @@ export async function closeCardAppStudio() {
     );
     studioMountRoot?.remove();
     studioMountRoot = null;
+    studioMountContainer = null;
     studioEmbedded = false;
 
     mobileActiveTab = 'left';
