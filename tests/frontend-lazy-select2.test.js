@@ -6,6 +6,7 @@ const SCRIPT_URL = new URL('../public/script.js', import.meta.url);
 const OPENAI_URL = new URL('../public/scripts/openai.js', import.meta.url);
 const FOCUS_GUARD_URL = new URL('../public/lib/mobile-focus-guard.js', import.meta.url);
 const SELECT2_PATCH_URL = new URL('../public/lib/select2-search-placeholder.js', import.meta.url);
+const ACTIONABLE_SELECT_URL = new URL('../public/scripts/select2-actionable-single.js', import.meta.url);
 
 describe('post-visible Select2 loading', () => {
     test('keeps Select2 out of the pre-visible classic script list', () => {
@@ -55,6 +56,17 @@ describe('post-visible Select2 loading', () => {
         expect(textgen).toContain("console.warn('[init] Select2 is not ready;");
         expect(textgen).toContain("select2Jq('#mancer_model').select2({");
         expect(textgen).not.toContain("$('#mancer_model').select2({");
+    });
+
+    test('keeps actionable Select2 on the canonical jQuery instance and fail-soft', () => {
+        const actionable = readFileSync(ACTIONABLE_SELECT_URL, 'utf8');
+
+        expect(actionable).toContain('function getCanonicalJQuery()');
+        expect(actionable).toContain('const jq = getCanonicalJQuery();');
+        expect(actionable).toContain("if (typeof jq.fn?.select2 !== 'function')");
+        expect(actionable).toContain('const $select = jq(selectElement);');
+        expect(actionable).toContain("console.warn('[init] Select2 is not ready;");
+        expect(actionable).not.toContain('const $select = $(selectElement);');
     });
 
     test('loads Select2 after visible paint and before preset-manager initialization', () => {
