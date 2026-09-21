@@ -158,8 +158,8 @@ export function createAtriaAppShell({
     });
     stage.id = 'atria-stage';
     stage.append(createAtriaStatePanel(documentRef, 'empty', {
-        title: 'R7A Shell Foundation',
-        message: 'The native Conversation and Composer will be reparented into this Stage in R7B.',
+        title: 'Play',
+        message: 'The Native Conversation Host mounts here when the staged R7 preview is enabled.',
     }));
 
     const workspace = createAtriaPrimitive(documentRef, 'Workspace', {

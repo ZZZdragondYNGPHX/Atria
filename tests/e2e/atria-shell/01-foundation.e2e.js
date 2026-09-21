@@ -56,8 +56,11 @@ async function collectDomDiagnostics(page) {
         };
 
         return {
+            shelds: Array.from(document.querySelectorAll('#sheld')).map(describeNode),
             chats: Array.from(document.querySelectorAll('#chat')).map(describeNode),
             composers: Array.from(document.querySelectorAll('#send_form')).map(describeNode),
+            textareas: Array.from(document.querySelectorAll('#send_textarea')).map(describeNode),
+            playHost: describeNode(document.getElementById('atria-native-play-host')),
             shell: describeNode(document.getElementById('atria-app-shell')),
         };
     });
@@ -112,7 +115,7 @@ async function openShellPreview(page, viewport) {
                 : null,
         })).catch(() => ({ href: page.url() }));
         throw new Error(
-            `Atria R7A shell failed to become ready: ${JSON.stringify(state)}\n${startupErrors.slice(-12).join('\n') || 'no browser errors captured'}`,
+            `Atria R7B shell failed to become ready: ${JSON.stringify(state)}\n${startupErrors.slice(-12).join('\n') || 'no browser errors captured'}`,
             { cause: error },
         );
     }
@@ -132,12 +135,12 @@ async function openShellPreview(page, viewport) {
         await root.waitFor({ state: 'visible', timeout: 10_000 });
     } catch (error) {
         const diagnostics = await collectDomDiagnostics(page);
-        throw new Error(`Atria R7A shell mounted but is not visible: ${JSON.stringify(diagnostics)}`, { cause: error });
+        throw new Error(`Atria R7B shell mounted but is not visible: ${JSON.stringify(diagnostics)}`, { cause: error });
     }
     return root;
 }
 
-test.describe('R7A AppShell foundation', () => {
+test.describe('R7B Native Play Host', () => {
     test('Expanded shell exposes rail, dock and command palette without cloning native chat', async ({ page }) => {
         const root = await openShellPreview(page, { width: 1440, height: 900 });
 
@@ -148,22 +151,46 @@ test.describe('R7A AppShell foundation', () => {
 
         const ownership = await page.evaluate(() => {
             const shell = document.getElementById('atria-app-shell');
+            const stage = document.getElementById('atria-stage');
+            const playHost = document.getElementById('atria-native-play-host');
+            const sheld = document.getElementById('sheld');
             const chat = document.getElementById('chat');
             const composer = document.getElementById('send_form');
+            const textarea = document.getElementById('send_textarea');
             return {
+                sheldCount: document.querySelectorAll('#sheld').length,
                 chatCount: document.querySelectorAll('#chat').length,
                 composerCount: document.querySelectorAll('#send_form').length,
+                textareaCount: document.querySelectorAll('#send_textarea').length,
+                sheldInsideStage: Boolean(stage?.contains(sheld)),
                 chatInsideShell: Boolean(shell?.contains(chat)),
                 composerInsideShell: Boolean(shell?.contains(composer)),
+                sheldParentId: sheld?.parentElement?.id || '',
+                nativeHierarchy: Boolean(
+                    sheld
+                    && chat?.parentElement === sheld
+                    && document.getElementById('form_sheld')?.parentElement === sheld
+                    && composer?.parentElement?.id === 'form_sheld'
+                    && composer?.contains(textarea)
+                    && playHost?.contains(sheld)
+                ),
             };
         });
         const diagnostics = await collectDomDiagnostics(page);
-        expect(ownership, `R7A native host ownership diagnostics: ${JSON.stringify(diagnostics)}`).toEqual({
+        expect(ownership, `R7B native host ownership diagnostics: ${JSON.stringify(diagnostics)}`).toEqual({
+            sheldCount: 1,
             chatCount: 1,
             composerCount: 1,
-            chatInsideShell: false,
-            composerInsideShell: false,
+            textareaCount: 1,
+            sheldInsideStage: true,
+            chatInsideShell: true,
+            composerInsideShell: true,
+            sheldParentId: 'atria-native-play-host',
+            nativeHierarchy: true,
         });
+        const sheldBox = await root.locator('#sheld').boundingBox();
+        expect(sheldBox?.width || 0).toBeGreaterThan(100);
+        expect(sheldBox?.height || 0).toBeGreaterThan(100);
 
         await root.locator('[data-atria-utility="command"]').click();
         const command = root.locator('.atria-command-surface');
@@ -183,6 +210,8 @@ test.describe('R7A AppShell foundation', () => {
         await expect(root.locator('[data-atria-primitive="NavigationRail"]')).toBeHidden();
         await expect(root.locator('[data-atria-primitive="BottomNavigation"]')).toBeVisible();
         await expect(root.locator('[data-atria-primitive="Dock"]')).toBeHidden();
+        await expect(root.locator('#atria-native-play-host > #sheld')).toHaveCount(1);
+        await expect(root.locator('#send_form')).toBeVisible();
 
         await root.locator('[data-atria-utility="command"]').click();
         const command = root.locator('.atria-command-surface');
@@ -196,6 +225,64 @@ test.describe('R7A AppShell foundation', () => {
 
         await expect(root.locator('[data-atria-domain="runtime"].is-selected')).toHaveCount(2);
         await expect(root.locator('.atria-global-bar__breadcrumb')).toContainText('Runtime');
+    });
+
+    test('preview unmount restores and remount reuses the exact native nodes', async ({ page }) => {
+        await openShellPreview(page, { width: 1280, height: 800 });
+
+        await page.evaluate(() => {
+            window.__r7bNativeRefs = {
+                sheld: document.getElementById('sheld'),
+                chat: document.getElementById('chat'),
+                composer: document.getElementById('send_form'),
+                textarea: document.getElementById('send_textarea'),
+            };
+        });
+
+        const disabled = await page.evaluate(() => {
+            const refs = window.__r7bNativeRefs;
+            window.Atria.shell.setPreviewEnabled(false, { persist: false });
+            return {
+                shellPresent: Boolean(document.getElementById('atria-app-shell')),
+                parentTag: refs.sheld?.parentElement?.tagName || '',
+                sameChat: document.getElementById('chat') === refs.chat,
+                sameComposer: document.getElementById('send_form') === refs.composer,
+                sameTextarea: document.getElementById('send_textarea') === refs.textarea,
+                chatCount: document.querySelectorAll('#chat').length,
+                composerCount: document.querySelectorAll('#send_form').length,
+            };
+        });
+        expect(disabled).toEqual({
+            shellPresent: false,
+            parentTag: 'BODY',
+            sameChat: true,
+            sameComposer: true,
+            sameTextarea: true,
+            chatCount: 1,
+            composerCount: 1,
+        });
+
+        const remounted = await page.evaluate(() => {
+            const refs = window.__r7bNativeRefs;
+            window.Atria.shell.setPreviewEnabled(true, { persist: false });
+            const stage = document.getElementById('atria-stage');
+            return {
+                shellPresent: Boolean(document.getElementById('atria-app-shell')),
+                sameSheld: document.getElementById('sheld') === refs.sheld,
+                sameChat: document.getElementById('chat') === refs.chat,
+                sameComposer: document.getElementById('send_form') === refs.composer,
+                sameTextarea: document.getElementById('send_textarea') === refs.textarea,
+                inStage: Boolean(stage?.contains(refs.sheld)),
+            };
+        });
+        expect(remounted).toEqual({
+            shellPresent: true,
+            sameSheld: true,
+            sameChat: true,
+            sameComposer: true,
+            sameTextarea: true,
+            inStage: true,
+        });
     });
 
     test('Ctrl+K opens the command surface and Escape closes it', async ({ page }) => {

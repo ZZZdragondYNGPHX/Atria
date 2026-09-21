@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   focused:
-    name: R7A Focused Unit and Lint
+    name: R7B Focused Unit and Lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -26,7 +26,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
-      - name: Run R7A shell and host regression tests
+      - name: Run R7B shell and native host regression tests
         run: >-
           npm run test:unit --prefix tests --
           --runInBand
@@ -42,7 +42,7 @@ jobs:
           game-runtime/ui-immersive.test.js
           immersive/controller.test.js
           immersive/structure.test.js
-      - name: Lint R7A production modules
+      - name: Lint R7B production modules
         run: >-
           npx eslint
           public/script.js
@@ -54,7 +54,7 @@ jobs:
           public/scripts/power-user.js
           public/scripts/backgrounds.js
           "public/scripts/atria-shell/*.js"
-      - name: Lint R7A tests
+      - name: Lint R7B tests
         working-directory: tests
         run: >-
           npx eslint
@@ -64,7 +64,7 @@ jobs:
         run: bash scripts/check-atria-namespace.sh
 
   browser:
-    name: R7A Expanded Compact Browser Smoke
+    name: R7B Expanded Compact Native Play Browser Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -88,10 +88,11 @@ jobs:
       - name: Install Chromium
         working-directory: tests
         run: npx playwright install --with-deps chromium
-      - name: Run R7A shell browser smoke
+      - name: Run R7B shell browser smoke
         working-directory: tests
         run: >-
           npx playwright test
           e2e/atria-shell/01-foundation.e2e.js
+          e2e/atria-shell/02-native-actions.e2e.js
           --project=e2e
           --workers=1

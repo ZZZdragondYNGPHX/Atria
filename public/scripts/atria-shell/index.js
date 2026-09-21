@@ -4,6 +4,7 @@ import {
 } from './constants.js';
 import { createAtriaAppShell } from './app-shell.js';
 import { createCommandRegistry } from './command-registry.js';
+import { mountNativePlayHost } from './native-play-host.js';
 
 function readPreviewPreference(windowRef) {
     try {
@@ -36,6 +37,7 @@ export function initializeAtriaShellFoundation({
 
     const registry = createCommandRegistry();
     let shell = null;
+    let playHost = null;
     let previewEnabled = forcePreview === undefined
         ? readPreviewPreference(windowRef)
         : Boolean(forcePreview);
@@ -49,12 +51,24 @@ export function initializeAtriaShellFoundation({
             translate,
             utilities,
         });
+        try {
+            playHost = mountNativePlayHost({
+                document: documentRef,
+                stage: shell.slots.stage,
+            });
+        } catch (error) {
+            shell.destroy();
+            shell = null;
+            throw error;
+        }
         documentRef.body.dataset.atriaShellPreview = 'true';
         return shell;
     }
 
     function unmount() {
         if (!shell) return false;
+        playHost?.unmount();
+        playHost = null;
         shell.destroy();
         shell = null;
         delete documentRef.body.dataset.atriaShellPreview;
@@ -88,6 +102,7 @@ export function initializeAtriaShellFoundation({
         setPreviewEnabled,
         isMounted: () => Boolean(shell),
         getShell: () => shell,
+        getPlayHost: () => playHost,
         getRoot: () => shell?.root || null,
         isPreviewEnabled: () => previewEnabled,
     });

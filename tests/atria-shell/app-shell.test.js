@@ -110,7 +110,12 @@ describe('R7A Atria AppShell foundation', () => {
         shell.destroy();
     });
 
-    test('tracks preview enable and disable state without stale initialization flags', () => {
+    test('tracks staged preview mount and reversibly reparents the one native Play host', () => {
+        const nativeSheld = document.getElementById('sheld');
+        const nativeChat = document.getElementById('chat');
+        const nativeComposer = document.getElementById('send_form');
+        const nativeTextarea = document.getElementById('send_textarea');
+
         const foundation = initializeAtriaShellFoundation({
             document,
             window,
@@ -119,16 +124,32 @@ describe('R7A Atria AppShell foundation', () => {
 
         expect(foundation.isPreviewEnabled()).toBe(true);
         expect(foundation.isMounted()).toBe(true);
+        expect(foundation.getPlayHost().native.sheld).toBe(nativeSheld);
+        expect(foundation.getPlayHost().native.chat).toBe(nativeChat);
+        expect(foundation.getPlayHost().native.sendForm).toBe(nativeComposer);
+        expect(foundation.getPlayHost().native.sendTextarea).toBe(nativeTextarea);
+        expect(foundation.getShell().slots.stage.contains(nativeSheld)).toBe(true);
+        expect(document.querySelectorAll('#chat')).toHaveLength(1);
+        expect(document.querySelectorAll('#send_form')).toHaveLength(1);
 
         foundation.setPreviewEnabled(false, { persist: false });
         expect(foundation.isPreviewEnabled()).toBe(false);
         expect(foundation.isMounted()).toBe(false);
+        expect(foundation.getPlayHost()).toBeNull();
+        expect(nativeSheld.parentElement).toBe(document.body);
+        expect(document.getElementById('chat')).toBe(nativeChat);
+        expect(document.getElementById('send_form')).toBe(nativeComposer);
+        expect(document.getElementById('send_textarea')).toBe(nativeTextarea);
 
         foundation.setPreviewEnabled(true, { persist: false });
         expect(foundation.isPreviewEnabled()).toBe(true);
         expect(foundation.isMounted()).toBe(true);
+        expect(foundation.getPlayHost().native.sheld).toBe(nativeSheld);
+        expect(foundation.getPlayHost().native.chat).toBe(nativeChat);
+        expect(foundation.getPlayHost().native.sendForm).toBe(nativeComposer);
 
         foundation.unmount();
+        expect(nativeSheld.parentElement).toBe(document.body);
     });
 
     test('opens Dock and Context Sheet as host containers rather than feature state machines', () => {

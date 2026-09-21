@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const read = relative => readFileSync(new URL(`../../${relative}`, import.meta.url), 'utf8');
 
-describe('R7A shell architecture', () => {
+describe('R7 shell architecture', () => {
     test('loads semantic tokens and shell stylesheet as first-class frontend assets', () => {
         const index = read('public/index.html');
         expect(index).toContain('href="css/atria-tokens.css"');
@@ -23,12 +23,25 @@ describe('R7A shell architecture', () => {
         expect(shellInit).toBeLessThan(worldWorkspace);
     });
 
-    test('keeps native Conversation and Composer out of R7A shell implementation', () => {
+    test('R7B reparents the native host without cloning or creating a second Conversation runtime', () => {
         const shell = read('public/scripts/atria-shell/app-shell.js');
-        expect(shell).not.toContain('getElementById(\'chat\')');
-        expect(shell).not.toContain('getElementById(\'send_form\')');
-        expect(shell).not.toContain('getElementById(\'send_textarea\')');
-        expect(shell).not.toContain('cloneNode(');
+        const entry = read('public/scripts/atria-shell/index.js');
+        const nativeHost = read('public/scripts/atria-shell/native-play-host.js');
+
+        expect(shell).not.toContain("getElementById('chat')");
+        expect(shell).not.toContain("getElementById('send_form')");
+        expect(entry).toContain("import { mountNativePlayHost } from './native-play-host.js';");
+        expect(entry).toContain('playHost = mountNativePlayHost({');
+        expect(entry.indexOf('playHost?.unmount();')).toBeLessThan(entry.indexOf('shell.destroy();'));
+        expect(nativeHost).toContain("'sheld'");
+        expect(nativeHost).toContain("'chat'");
+        expect(nativeHost).toContain("'send_form'");
+        expect(nativeHost).toContain("'send_textarea'");
+        expect(nativeHost).not.toContain('cloneNode(');
+        expect(nativeHost).not.toContain("createElement('chat')");
+        expect(nativeHost).not.toContain("createElement('send_form')");
+        expect(nativeHost).not.toContain('Generate(');
+        expect(nativeHost).not.toContain('chat = []');
     });
 
     test('isolates SmartTheme compatibility in the semantic token adapter', () => {
@@ -40,7 +53,7 @@ describe('R7A shell architecture', () => {
         expect(shell).toContain('var(--atri-color-canvas)');
     });
 
-    test('keeps R7A behind the temporary preview gate until R7B reparenting', () => {
+    test('keeps R7B behind the temporary preview gate until the later R7D cutover', () => {
         const entry = read('public/scripts/atria-shell/index.js');
         expect(entry).toContain('ATRIA_SHELL_PREVIEW_QUERY_KEY');
         expect(entry).toContain('ATRIA_SHELL_PREVIEW_STORAGE_KEY');
