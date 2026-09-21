@@ -150,9 +150,9 @@ test.describe('R7F Library & Runtime', () => {
             chatSame: window.__r7fNative.chat === document.getElementById('chat'),
             formSame: window.__r7fNative.sendForm === document.getElementById('send_form'),
             textareaSame: window.__r7fNative.textarea === document.getElementById('send_textarea'),
-            orphanCharacter: document.querySelectorAll('#atria-workspace > #right-nav-panel').length,
-            orphanWorld: document.querySelectorAll('#atria-workspace > #WorldInfo').length,
-            orphanConnection: document.querySelectorAll('#atria-workspace > #atria-connection-manager-root').length,
+            orphanCharacter: document.querySelectorAll('#atria-workspace #right-nav-panel').length,
+            orphanWorld: document.querySelectorAll('#atria-workspace #WorldInfo').length,
+            orphanConnection: document.querySelectorAll('#atria-workspace #atria-connection-manager-root').length,
         }))).toEqual({
             chatCount: 1,
             formCount: 1,
