@@ -198,7 +198,7 @@ export function compileDeclarativeCommand(raw) {
     if (!isPlainObject(raw)) throw new Error('Declarative command must be an object');
     assertKnownFields(
         raw,
-        new Set(['id', 'description', 'argsSchema', 'validators', 'events']),
+        new Set(['id', 'description', 'argsSchema', 'validators', 'events', 'llm']),
         'Declarative command',
     );
 
@@ -220,6 +220,7 @@ export function compileDeclarativeCommand(raw) {
         id,
         ...(raw.description === undefined ? {} : { description: String(raw.description) }),
         ...(raw.argsSchema === undefined ? {} : { argsSchema: clone(raw.argsSchema) }),
+        ...(llm ? { llm } : {}),
         validators,
         execute(context) {
             return events.map(event => evaluateEventTemplate(event, {
