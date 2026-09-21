@@ -18,7 +18,7 @@ const BLOCKED_ELEMENTS = Object.freeze([
 ]);
 
 const URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'xlink:href']);
-const SUPPORTED_STATIC_UI_MODES = new Set(['component', 'hybrid']);
+const SUPPORTED_STATIC_UI_MODES = new Set(['component', 'hybrid', 'full']);
 
 function isUnsafeUrl(value) {
     const normalized = String(value || '').trim().replace(/[\u0000-\u001F\u007F\s]+/g, '');
@@ -68,11 +68,11 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
     const entry = String(ui.entry || '').trim();
     if (!entry.endsWith('.html')) {
         throw new Error(
-            `${ui.mode === 'hybrid' ? 'Hybrid' : 'Component'} UI entry '${entry}' must be an .html file in the current R4 runtime`,
+            `${ui.mode === 'full' ? 'Full' : (ui.mode === 'hybrid' ? 'Hybrid' : 'Component')} UI entry '${entry}' must be an .html file in the current R4 runtime`,
         );
     }
-    if (ui.mode === 'hybrid' && (ui.surface || 'app.root') !== 'app.root') {
-        throw new Error('Hybrid UI currently requires the app.root surface');
+    if (['hybrid', 'full'].includes(ui.mode) && (ui.surface || 'app.root') !== 'app.root') {
+        throw new Error(`${ui.mode === 'full' ? 'Full' : 'Hybrid'} UI currently requires the app.root surface`);
     }
 
     const html = await loadGamePackageTextResource(charId, entry, {
@@ -86,7 +86,9 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
     }
 
     return Object.freeze({
-        id: ui.mode === 'hybrid' ? 'package.hybrid' : 'package.component',
+        id: ui.mode === 'full'
+            ? 'package.full'
+            : (ui.mode === 'hybrid' ? 'package.hybrid' : 'package.component'),
         mode: ui.mode,
         surface: ui.surface || 'app.root',
         className: 'atria-game-package-' + ui.mode,
@@ -115,7 +117,7 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
 
                 cleanup.push(bindDeclarativeGameUi(context.container, context));
 
-                if (ui.mode === 'hybrid') {
+                if (['hybrid', 'full'].includes(ui.mode)) {
                     const registry = createNativeComponentRegistry(documentRef);
                     cleanup.push(bindNativeGameComponents(context.container, registry));
                 }
