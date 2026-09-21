@@ -1,38 +1,167 @@
-# Active implementation: R7 — Atria Game-first Shell Redesign
+# Active implementation: R7B — Play / Native Conversation Host
 
-The Atria Game Runtime Architecture Refactor has completed and validated **R0-R6**. R7 is now prepared on its own implementation branch after a dedicated product/frontend architecture discussion.
+R7A — Design System & Shell Foundation is complete and validated. The next conversation should continue directly with **R7B — Play / Native Conversation Host** on the same long-running R7 branch.
 
 ## Frozen R0-R6 baseline
 
 - Frozen branch: `refactor/game-runtime-architecture`
 - Final validated R6 HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R6 validation: **Game Runtime Dev Checks #340**, run `35559636615`, success
-- Baseline/live `main`: `63da3141a3895d3386ed1bebc30876c9766315ba`
-- R0 Regex Separation: complete.
-- R1 Game Package Foundation: complete.
-- R2 World/Event Runtime: complete.
-- R3 Game Logic Runtime: complete.
-- R4 Card UI Runtime: complete.
-- R5 LLM Runtime & Model Roles: complete.
-- R6 Game Studio: complete.
+- R0 Regex Separation: complete
+- R1 Game Package Foundation: complete
+- R2 World/Event Runtime: complete
+- R3 Game Logic Runtime: complete
+- R4 Card UI Runtime: complete
+- R5 LLM Runtime & Model Roles: complete
+- R6 Game Studio: complete
 
-The frozen branch is retained as the complete R0-R6 phase archive/baseline during R7. Do not continue R7 feature work there, merge it into `main`, or delete it during R7.
+Keep this branch frozen during R7 except for a narrowly targeted correction proven necessary by a concrete R7 integration defect. Do not merge or delete it during R7.
 
 ## Active R7 branch
 
 - Working branch: `refactor/atria-game-first-shell-redesign`
 - Created from: `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
-- Current preparation HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+- R7A final validated HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
+- R7A validation: **R7 Shell Dev Checks #43**, run `35569965553`, success
 - Authoritative R7 plan: `refactor/atria-game-first-shell-redesign.md`
-- Master plan: `refactor/game-runtime-architecture.md`
-- Detailed handoff: `handoff/game-runtime-architecture.md`
-- Functional R7 implementation has **not** started in the planning/preparation conversation.
+- Master runtime plan: `refactor/game-runtime-architecture.md`
+- Detailed frozen-runtime handoff: `handoff/game-runtime-architecture.md`
 
-## Final approved R7 product architecture
+Do not create a separate R7B branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
 
-Atria 1.0 is an **Interactive Runtime Host**: **Game-first, not Game-only**.
+Do not merge R7 to `main` at phase boundaries. R7A-R7H remain one long-running R7 implementation line. Final integration happens only after R7H/final R7 validation.
 
-Primary product domains:
+## R7A completed — do not redo
+
+R7A established:
+
+- semantic `--atri-*` Design System token bridge;
+- required Atria host primitives and patterns;
+- AppShell;
+- Navigation Rail and Bottom Navigation;
+- Global Bar;
+- Focus Area;
+- Stage and Workspace hosts;
+- Context Dock;
+- transient Sheet/Command surfaces;
+- Host Recovery layer;
+- Compact / Medium / Expanded responsive environment;
+- shared Command Registry;
+- desktop Command Palette / mobile Command Sheet;
+- temporary preview gate via `?atriaShell=1` and `atria.shell.preview`;
+- normal startup publication through `globalThis.Atria.shell`;
+- R7-specific CI workflow and real-browser Expanded/Compact smoke.
+
+R7A browser validation also fixed host compatibility defects discovered during Shell bring-up:
+
+- canonical/fail-soft Select2 initialization paths;
+- autocomplete resize race;
+- static preloader lifecycle at APP_READY;
+- Backgrounds jQuery UI tabs accidentally loading a second full document on query-string URLs;
+- Compact Shell/transient zero-height geometry;
+- Shell-wide `hidden` semantics.
+
+Final R7A validation passed both:
+
+- **R7A Focused Unit and Lint**
+- **R7A Expanded Compact Browser Smoke**
+
+Do not reopen R7A architecture unless R7B exposes a concrete integration defect.
+
+## R7B objective
+
+R7B is the first ownership-migration phase.
+
+Move the **existing live native Conversation and Composer** into the Atria Play host by reparenting the real DOM nodes.
+
+Hard rule:
+
+> **Reparent, don't duplicate.**
+
+There must remain exactly:
+
+- one live `#chat`;
+- one live `#send_form`;
+- one live generation source of truth;
+- one message/history state machine;
+- one set of native message actions.
+
+Do not implement a second Timeline and synchronize it with `#chat`.
+Do not implement a second Composer and synchronize it with `#send_form`.
+
+## R7B required first inspection
+
+Before editing ownership code, inspect the live DOM ancestry, lifecycle and restoration assumptions for:
+
+- `#sheld`
+- `#chat`
+- `#form_sheld`
+- `#send_form`
+- `#send_textarea`
+
+Then trace the real existing action paths for at least:
+
+- send;
+- stop generation;
+- continue;
+- user/assistant edit;
+- delete;
+- swipe;
+- regenerate;
+- branch;
+- history/search.
+
+Also inspect the existing R4 native-component / Host Surface adapter and Immersive presentation integration so R7B composes with them rather than bypassing them.
+
+## R7B architecture constraints
+
+- Shell/Host becomes the architectural owner of Play presentation.
+- Native Conversation/Composer nodes remain the compatibility/state ABI.
+- Reparent live nodes; never clone them.
+- Mount/unmount must be deterministic and restore the original host during staged migration.
+- Preserve all current event listeners, jQuery data, native autocomplete, file attachment, quick reply, reasoning, message action and generation behavior.
+- Composer belongs to Play/Stage context, not global Shell chrome.
+- Narrative remains Timeline-primary.
+- R4 Component / Hybrid / Full remain the only Game Runtime UI modes.
+- Full owns Stage, never Host.
+- R4 Surface / Native Component contracts remain stable.
+- Host Recovery remains above package-owned Full surfaces.
+- R7B should prepare semantic Timeline/Composer host ownership without prematurely completing R7C Game Surface migration or R7D navigation authority.
+- Keep the temporary preview gate during staged R7B migration unless the authoritative plan explicitly reaches the later cutover step.
+
+## Timeline action semantics to preserve
+
+Ordinary narrative/chat records continue through native chat actions.
+
+Game-linked records must continue through the existing Game Turn Controller / Host Action Resolver semantics:
+
+- **Rewrite Narrative**: same committed world/events/outcome; regenerate prose only.
+- **Retry Turn**: new attempt/outcome; world/events may change.
+- historical game-linked user edit: **Edit & Retry from here**, not silent mutation of committed facts.
+- distinguish Narrative Variant from Outcome Variant.
+
+Do not create another world/history state machine in the Shell.
+
+## R7B validation expectations
+
+Add focused tests that prove at minimum:
+
+- exactly one live `#chat`;
+- exactly one live `#send_form`;
+- those are the original nodes, not clones;
+- Play mount reparents them into the Shell;
+- staged unmount restores them deterministically;
+- send/stop/continue/edit/delete/swipe/regenerate/branch/history-search behavior remains connected to the existing native implementation;
+- desktop and Compact hosts remain usable;
+- no second generation/message state authority appears.
+
+Use existing focused tests and browser E2E where possible. Do not default-build Android APK or Docker. Android JVM tests are only needed if Android/Kotlin code actually changes or the user explicitly requests them.
+
+## R7 product architecture remains frozen
+
+Atria 1.0 remains an **Interactive Runtime Host**: **Game-first, not Game-only**.
+
+Primary domains:
 
 - Play
 - Library
@@ -48,59 +177,38 @@ Global utilities:
 - Settings
 - Account
 
-Core decisions:
+Key product decisions remain unchanged:
 
-- Stage, Timeline and Workspace are distinct host concepts.
-- Conversation Timeline remains a first-class native/runtime component but does not permanently own the center of the app.
-- Narrative stays first-class; R4 Component / Hybrid / Full remain the only Game Runtime UI modes.
-- Full UI owns Stage, never the Atria Host.
-- Desktop: Navigation Rail + Global Bar + Focus Area + Context Dock.
-- Compact/mobile: Bottom Navigation + Stage-first + Context Sheets + Command Sheet.
-- Focus / Immersive / Full are separate contracts.
-- Agent Orchestration and Memory become first-class Agents product capabilities and leave the Extensions product hierarchy.
-- Skills become Library assets with contextual links from Agents.
-- Studio becomes a first-class project authoring domain; R6 Game Studio internals remain authoritative.
-- Runtime Roles / Connections become a first-class Runtime Workspace.
-- user-facing Extensions becomes **Plugins** and returns to third-party plugin management.
-- Diagnostics becomes a Shell-level utility.
-- Immersive becomes a Play/Stage presentation action, with preferences remaining in Settings.
-- Design System = **tokens + primitives + patterns + AI development rules**.
-- SmartTheme remains a compatibility input; new Atria components consume semantic `--atri-*` tokens.
-- Preserve stateful native DOM anchors; **reparent, don't duplicate**.
-- R4 Surface / Native Component contracts remain stable while the Host adapter becomes semantic.
-- legacy CardApp becomes a recoverable Legacy Full Stage Surface.
-- the new Atria Shell does not participate in legacy MovingUI geometry.
-- R7 is a staged migration rather than a big-bang DOM rewrite.
-
-## R7 implementation phases
-
-1. **R7A — Design System & Shell Foundation**
-2. **R7B — Play / Native Conversation Host**
-3. **R7C — Game Surface Integration**
-4. **R7D — Desktop / Mobile Navigation**
-5. **R7E — First-class Workspaces**
-6. **R7F — Library & Runtime**
-7. **R7G — Plugins & Settings Reclassification**
-8. **R7H — Legacy Shell Retirement & Final Hardening**
-
-Start implementation with R7A. Do not reopen R0-R6 unless a concrete shell-integration defect requires a targeted fix.
+- Stage, Timeline and Workspace are distinct;
+- Narrative Cards remain first-class;
+- Full Game UI owns Stage, never the Host;
+- desktop uses Rail + Global Bar + Focus Area + Context Dock;
+- Compact uses Bottom Navigation + Stage-first + Context Sheets;
+- Focus / Immersive / Full are distinct contracts;
+- Agents, Memory, Studio and Runtime become first-class domains/workspaces;
+- Skills live under Library;
+- user-facing Extensions becomes Plugins for third-party functionality;
+- Diagnostics is Shell-level;
+- SmartTheme is compatibility input only; new Host UI consumes semantic `--atri-*` tokens;
+- MovingUI does not own the new Shell;
+- legacy CardApp is a recoverable Legacy Full Stage Surface.
 
 ## Merge / archive policy
 
 During R7:
 
 - do not merge `refactor/game-runtime-architecture` to `main`;
-- do not merge `refactor/atria-game-first-shell-redesign` to `main` before R7 final validation;
+- do not merge `refactor/atria-game-first-shell-redesign` to `main` before final R7 validation;
 - do not delete either long-running branch.
 
-The R7 branch already contains the complete R0-R6 history. Final integration is therefore:
+The final integration remains:
 
 ```text
 refactor/atria-game-first-shell-redesign@<R7_FINAL_VALIDATED_HEAD>
     -> main
 ```
 
-Do **not** separately merge the frozen R0-R6 branch. After the final R7 merge is verified, archive/clean up both long-running branches according to repository policy.
+Do not separately merge the frozen R0-R6 branch.
 
 ---
 
