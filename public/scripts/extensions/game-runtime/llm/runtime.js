@@ -34,6 +34,8 @@ function getActiveEvents(session) {
 export function createGameLlmRuntime(options = {}) {
     const worldSession = options.worldSession;
     assertWorldSession(worldSession);
+    const roleRouter = options.roleRouter || null;
+    const narrativeCoordinator = options.narrativeCoordinator || null;
 
     const observationProjector = options.observationProjector
         || createWorldObservationProjector({
@@ -161,6 +163,7 @@ export function createGameLlmRuntime(options = {}) {
         const interpreter = input.eventInterpreter
             || options.eventInterpreter
             || createEventInterpreter({
+                roleRouter,
                 generateTask: input.generateTask || options.generateTask,
             });
         if (!interpreter || typeof interpreter.interpret !== 'function') {
@@ -400,6 +403,10 @@ export function createGameLlmRuntime(options = {}) {
             constraints: input.constraints || [],
             serial: input.serial,
         });
+        input.transition?.('calculating', {
+            origin: 'ui_action',
+            commandId,
+        });
 
         const result = await worldSession.dispatchCommandInternal(commandId, input.args || {});
         turn = applyCommandResult(turn, result, {
@@ -434,6 +441,9 @@ export function createGameLlmRuntime(options = {}) {
             constraints: input.constraints || [],
             serial: input.serial,
         });
+        input.transition?.('resolving', {
+            origin: 'free_text',
+        });
         const catalog = await getCommandTools({
             role: 'intent_resolver',
             observation: turn.observation,
@@ -441,6 +451,7 @@ export function createGameLlmRuntime(options = {}) {
         });
 
         const resolver = input.intentResolver || options.intentResolver || createIntentResolver({
+            roleRouter,
             generateTask: input.generateTask || options.generateTask,
             validateCommand: (commandId, args) => worldSession.validateCommand(commandId, args),
         });
@@ -449,6 +460,9 @@ export function createGameLlmRuntime(options = {}) {
         }
 
         const resolutionResult = await resolver.resolve(turn, catalog, input.requestOptions || {});
+        input.transition?.('calculating', {
+            decision: resolutionResult.decision,
+        });
         if (resolutionResult.decision === 'no_change') {
             turn = advanceTurnContext(turn, {
                 resolution: {
@@ -493,6 +507,74 @@ export function createGameLlmRuntime(options = {}) {
         });
     }
 
+    async function completeCommittedTurn(baseResult, input = {}) {
+        if (!narrativeCoordinator || typeof narrativeCoordinator.produce !== 'function') {
+            throw new Error('Complete Game turn requires Narrative Coordinator');
+        }
+
+        let turn = baseResult.turn;
+        input.transition?.('recalling');
+        const recalled = await recallMemory(turn, {
+            ...(input.memory || {}),
+            signal: input.abortSignal,
+        });
+        turn = recalled.turn;
+
+        const orchestrationMode = String(
+            input.orchestrationMode
+            || options.getOrchestrationMode?.()
+            || '',
+        ).trim().toLowerCase();
+        if (['spec', 'agenda', 'loop', 'director'].includes(orchestrationMode)) {
+            input.transition?.('orchestrating', {
+                mode: orchestrationMode,
+            });
+        }
+        input.transition?.('narrating', {
+            producer: orchestrationMode === 'director' ? 'director' : 'narrator',
+        });
+
+        const narrative = await narrativeCoordinator.produce(turn, {
+            orchestrationMode,
+            abortSignal: input.abortSignal,
+        });
+        turn = narrative.turn;
+
+        const memoryFinal = await finalizeMemory(turn, {
+            producer: narrative.producer,
+            finalProse: narrative.finalProse,
+        });
+
+        return Object.freeze({
+            status: 'finalized',
+            turn: memoryFinal.turn,
+            finalProse: narrative.finalProse,
+            producer: narrative.producer,
+            commandResults: clone(baseResult.commandResults || (
+                baseResult.commandResult ? [baseResult.commandResult] : []
+            )),
+            memoryRecall: clone(recalled),
+            narration: clone(narrative),
+            memoryUpdate: clone(memoryFinal.update || null),
+        });
+    }
+
+    async function completeFreeTextTurn(input = {}) {
+        const base = await runFreeText({
+            ...input,
+            transition: input.transition,
+        });
+        return completeCommittedTurn(base, input);
+    }
+
+    async function completeUiActionTurn(input = {}) {
+        const base = await runUiAction({
+            ...input,
+            transition: input.transition,
+        });
+        return completeCommittedTurn(base, input);
+    }
+
     return Object.freeze({
         buildObservation,
         getCommandTools,
@@ -505,6 +587,8 @@ export function createGameLlmRuntime(options = {}) {
         finalizeMemory,
         runUiAction,
         runFreeText,
+        completeUiActionTurn,
+        completeFreeTextTurn,
         listObservationProjectors: () => observationProjector.list(),
     });
 }
