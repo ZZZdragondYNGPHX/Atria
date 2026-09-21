@@ -32,7 +32,9 @@ describe('R7 shell architecture', () => {
         expect(shell).not.toContain("getElementById('send_form')");
         expect(entry).toContain("import { mountNativePlayHost } from './native-play-host.js';");
         expect(entry).toContain('playHost = mountNativePlayHost({');
-        expect(entry.indexOf('playHost?.unmount();')).toBeLessThan(entry.indexOf('shell.destroy();'));
+        const unmountBody = entry.slice(entry.indexOf('function unmount()'), entry.indexOf('function setPreviewEnabled'));
+        expect(unmountBody.indexOf('playHost?.unmount();')).toBeGreaterThanOrEqual(0);
+        expect(unmountBody.indexOf('playHost?.unmount();')).toBeLessThan(unmountBody.indexOf('shell.destroy();'));
         expect(nativeHost).toContain("'sheld'");
         expect(nativeHost).toContain("'chat'");
         expect(nativeHost).toContain("'send_form'");
