@@ -28,7 +28,7 @@ import { resolve } from 'node:path';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded, writeWorldBook } from '../_lib/fixtures.js';
 import { awaitMainUI, selectCharacterByName, sendMessageAndAwaitReply } from '../_lib/page.js';
-import { openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
+import { closeWorldInfoDrawer, openWorldInfoDrawer } from '../_lib/ui-worldinfo.js';
 import { writeCharacterWithBinding, startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 /**
@@ -223,6 +223,7 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         await openBookInEditor(page, 'activation-strategies-book');
         const editorEntryCount = page.locator('#wi_workspace_entry_list_canvas .wi-workspace-entry-row');
         await expect(editorEntryCount, 'expected the editor to render all 7 strategy entries on open').toHaveCount(7);
+        await closeWorldInfoDrawer(page);
 
         // Helper: send a turn and return the body of the resulting chat-completion request.
         async function sendAndCaptureBody(text) {
