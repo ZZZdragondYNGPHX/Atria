@@ -91,6 +91,7 @@ function formatSaveSessionsError(reason, _hint) {
 const STUDIO_PANEL_LEFT_ID = 'card-app-studio-left';
 const STUDIO_PANEL_RIGHT_ID = 'card-app-studio-right';
 const STUDIO_MOBILE_TABS_ID = 'card-app-studio-mobile-tabs';
+const STUDIO_WORKSPACE_ROOT_ID = 'card-app-studio-workspace';
 
 function isAutoApplyEnabled() {
     return Boolean(extension_settings?.character_editor_assistant?.autoApprove);
@@ -113,6 +114,8 @@ let projectNavigator = null;
 let currentProjectSelection = null;
 let structuredRuntimeEditorHost = null;
 let studioSimulationHost = null;
+let studioMountRoot = null;
+let studioEmbedded = false;
 
 // CodeMirror 6 state
 let cmEditor = null;
@@ -1200,10 +1203,57 @@ async function wipeSp2EraSessionsIfNeeded(avatar) {
     }
 }
 
-export async function openCardAppStudio(charId) {
+function prepareStudioMount({ container = null, embedded = false } = {}) {
+    studioEmbedded = Boolean(container && embedded);
+    if (!studioEmbedded) {
+        studioMountRoot = null;
+        return document.body;
+    }
+
+    const root = document.createElement('section');
+    root.id = STUDIO_WORKSPACE_ROOT_ID;
+    root.className = 'card-app-studio-workspace';
+    root.dataset.atriaWorkspaceEmbedded = 'true';
+    container.replaceChildren(root);
+    studioMountRoot = root;
+    return root;
+}
+
+function requestStudioClose() {
+    if (studioEmbedded) {
+        const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+        if (workspaceHost?.isMounted?.()) {
+            workspaceHost.closeActive();
+            return;
+        }
+    }
+    void closeCardAppStudio();
+}
+
+export async function openCardAppStudio(charId, options = {}) {
+    const container = options?.container || null;
+    const embedded = Boolean(options?.embedded);
+
+    if (!container) {
+        const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+        if (workspaceHost?.isMounted?.()) {
+            workspaceHost.openStudio(charId);
+            return null;
+        }
+    }
+
     if (isStudioOpen) {
+        if (container && embedded) {
+            const mountParent = prepareStudioMount({ container, embedded: true });
+            for (const id of [STUDIO_PANEL_LEFT_ID, STUDIO_PANEL_RIGHT_ID, STUDIO_MOBILE_TABS_ID]) {
+                const node = document.getElementById(id);
+                if (node) mountParent.append(node);
+            }
+            document.body.classList.add('card-app-studio-embedded');
+            return studioMountRoot;
+        }
         toastr.warning(t('CardApp Studio is already open.'));
-        return;
+        return studioMountRoot;
     }
 
     currentCharId = charId;
@@ -1231,26 +1281,29 @@ export async function openCardAppStudio(charId) {
         document.head.appendChild(link);
     }
 
-    // Create panels
+    // Create the existing Studio controller DOM inside either its legacy
+    // body host or the R7E WorkspaceHost adapter.
+    const mountParent = prepareStudioMount({ container, embedded });
     const leftPanel = document.createElement('div');
     leftPanel.innerHTML = buildLeftPanelHtml();
-    document.body.appendChild(leftPanel.firstElementChild);
+    mountParent.appendChild(leftPanel.firstElementChild);
 
     const rightPanel = document.createElement('div');
     rightPanel.innerHTML = buildRightPanelHtml();
-    document.body.appendChild(rightPanel.firstElementChild);
+    mountParent.appendChild(rightPanel.firstElementChild);
 
     // Mobile tab bar (CSS @media decides whether it's visible)
     const mobileTabs = document.createElement('div');
     mobileTabs.innerHTML = buildMobileTabsHtml();
-    document.body.appendChild(mobileTabs.firstElementChild);
+    mountParent.appendChild(mobileTabs.firstElementChild);
 
     // Sync auto-apply checkbox from persisted settings
     const autoApplyEl = document.querySelector('[data-studio-toggle="auto-apply"]');
     if (autoApplyEl) autoApplyEl.checked = isAutoApplyEnabled();
 
-    // Add body class for margin adjustment
+    // The same controller serves legacy and first-class Workspace chrome.
     document.body.classList.add('card-app-studio-active');
+    document.body.classList.toggle('card-app-studio-embedded', studioEmbedded);
 
     // Render file list
     const fileListEl = document.querySelector('[data-studio-file-list]');
@@ -1320,6 +1373,7 @@ export async function openCardAppStudio(charId) {
     bindStudioEvents();
 
     console.log(`[${MODULE_NAME}] Studio opened for ${charId}`);
+    return studioMountRoot || document.getElementById(STUDIO_PANEL_RIGHT_ID);
 }
 
 export async function closeCardAppStudio() {
@@ -1341,9 +1395,13 @@ export async function closeCardAppStudio() {
     // Remove body classes
     document.body.classList.remove(
         'card-app-studio-active',
+        'card-app-studio-embedded',
         'card-app-studio-mobile-tab-right',
         'card-app-studio-mobile-tab-preview',
     );
+    studioMountRoot?.remove();
+    studioMountRoot = null;
+    studioEmbedded = false;
 
     mobileActiveTab = 'left';
 
@@ -1882,7 +1940,7 @@ async function handleStudioClick(e) {
     const action = actionEl.dataset.studioAction;
     switch (action) {
         case 'close':
-            closeCardAppStudio();
+            requestStudioClose();
             break;
         case 'save':
             handleSaveCurrentFile();
@@ -1971,11 +2029,21 @@ function handleStudioKeydown(e) {
     // so an Enter-to-send shortcut here would always lose newlines for
     // touch users.
 
-    // Escape: Close studio (only if not focused in AI input textarea or CM6 editor)
+    // Escape leaves an embedded Studio through the R7D navigation authority.
+    // Standalone legacy Studio keeps its original close behavior.
     if (e.key === 'Escape' && document.activeElement?.tagName !== 'TEXTAREA' && !document.activeElement?.closest('.cm-editor')) {
-        closeCardAppStudio();
+        requestStudioClose();
         return;
     }
+}
+
+export function getCardAppStudioStateForTests() {
+    return {
+        open: isStudioOpen,
+        embedded: studioEmbedded,
+        characterId: currentCharId,
+        root: studioMountRoot,
+    };
 }
 
 // Export file API for AI tool execution (Commit 4)
