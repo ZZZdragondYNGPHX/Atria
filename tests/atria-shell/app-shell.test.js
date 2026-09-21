@@ -215,7 +215,8 @@ describe('R7A Atria AppShell foundation', () => {
         shell.setDockContent('context', { title: 'Context', open: true });
         shell.openCommand();
 
-        document.dispatchEvent(new KeyboardEvent('keydown', {
+        const commandInput = shell.root.querySelector('.atria-command-input');
+        commandInput.dispatchEvent(new KeyboardEvent('keydown', {
             key: 'Escape',
             bubbles: true,
             cancelable: true,
@@ -223,7 +224,7 @@ describe('R7A Atria AppShell foundation', () => {
         expect(shell.isContextSheetOpen()).toBe(false);
         expect(shell.isCommandOpen()).toBe(true);
 
-        document.dispatchEvent(new KeyboardEvent('keydown', {
+        commandInput.dispatchEvent(new KeyboardEvent('keydown', {
             key: 'Escape',
             bubbles: true,
             cancelable: true,
