@@ -744,3 +744,25 @@ body[data-atria-shell-preview="true"] > #form_sheld {
     min-width: 0;
 }
 
+
+/* Immersive remains a Native presentation mode inside the Play Host.
+ * It may restyle Conversation/Composer, but it must not reclaim viewport
+ * positioning from the Shell Stage during staged R7 ownership migration.
+ */
+body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-host > #sheld {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding-top: 0;
+}
+
+body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-host #chat {
+    max-height: none !important;
+}
+
