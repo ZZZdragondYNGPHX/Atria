@@ -81,6 +81,62 @@ function defaultResolution(origin) {
     };
 }
 
+function buildTurnProvenance(input, anchor) {
+    const committedEvents = Array.isArray(input.committedEvents) ? input.committedEvents : [];
+    const commandResults = Array.isArray(input.commandResults) ? input.commandResults : [];
+    const memories = Array.isArray(input.memories) ? input.memories : [];
+    const recentChat = Array.isArray(input.recentChat) ? input.recentChat : [];
+
+    return {
+        worldObservation: {
+            authorityRank: 1,
+            source: 'world_runtime',
+            branchId: anchor.branchId,
+        },
+        committedEvents: {
+            authorityRank: 2,
+            source: 'event_journal',
+            items: committedEvents.map(event => ({
+                id: String(event?.id || '').trim() || null,
+                type: String(event?.type || '').trim() || null,
+                commandId: String(event?.meta?.command?.id || '').trim() || null,
+            })),
+        },
+        commandResults: {
+            authorityRank: 3,
+            source: 'command_bus',
+            items: commandResults.map(result => ({
+                commandId: String(result?.commandId || result?.command?.id || '').trim() || null,
+                transactionId: String(result?.transactionId || '').trim() || null,
+                status: String(result?.status || '').trim() || null,
+            })),
+        },
+        activeBranchChat: {
+            authorityRank: 4,
+            source: 'chat',
+            branchId: anchor.branchId,
+            itemCount: recentChat.length,
+        },
+        memoryRecall: {
+            authorityRank: 5,
+            source: 'memory_graph',
+            items: memories.map(memory => ({
+                id: String(memory?.id || '').trim() || null,
+                authority: String(memory?.authority || 'historical_context'),
+                referenceIds: Array.isArray(memory?.references)
+                    ? memory.references.map(reference => String(reference?.id || '').trim()).filter(Boolean)
+                    : [],
+            })),
+        },
+        orchestratorGuidance: {
+            authorityRank: 6,
+            source: 'orchestrator',
+            present: Boolean(input.orchestration),
+            mode: String(input.orchestration?.mode || '').trim() || null,
+        },
+    };
+}
+
 export function createTurnContext(input = {}) {
     const origin = String(input.origin || 'free_text').trim();
     if (!['free_text', 'ui_action', 'system'].includes(origin)) {
@@ -111,6 +167,7 @@ export function createTurnContext(input = {}) {
         authority: {
             precedence: [...TURN_FACT_PRECEDENCE],
         },
+        provenance: buildTurnProvenance(input, anchor),
     });
 }
 
