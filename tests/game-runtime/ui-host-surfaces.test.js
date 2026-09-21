@@ -1,3 +1,5 @@
+/** @jest-environment jsdom */
+
 import { beforeEach, describe, expect, test } from '@jest/globals';
 
 import { createAtriaSurfaceAdapter } from '../../public/scripts/extensions/game-runtime/ui/host-surfaces.js';
