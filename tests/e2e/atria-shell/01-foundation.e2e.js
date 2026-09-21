@@ -23,7 +23,7 @@ test.afterAll(async () => {
 
 async function collectDomDiagnostics(page) {
     return page.evaluate(() => {
-        const describe = (node) => {
+        const describeNode = (node) => {
             if (!(node instanceof HTMLElement)) return null;
             const style = getComputedStyle(node);
             const rect = node.getBoundingClientRect();
@@ -56,9 +56,9 @@ async function collectDomDiagnostics(page) {
         };
 
         return {
-            chats: Array.from(document.querySelectorAll('#chat')).map(describe),
+            chats: Array.from(document.querySelectorAll('#chat')).map(describeNode),
             composers: Array.from(document.querySelectorAll('#send_form')).map(describe),
-            shell: describe(document.getElementById('atria-app-shell')),
+            shell: describeNode(document.getElementById('atria-app-shell')),
         };
     });
 }
@@ -157,11 +157,8 @@ test.describe('R7A AppShell foundation', () => {
                 composerInsideShell: Boolean(shell?.contains(composer)),
             };
         });
-        if (ownership.chatCount !== 1 || ownership.composerCount !== 1) {
-            const diagnostics = await collectDomDiagnostics(page);
-            throw new Error(`R7A native host ownership invariant failed: ${JSON.stringify({ ownership, diagnostics })}`);
-        }
-        expect(ownership).toEqual({
+        const diagnostics = await collectDomDiagnostics(page);
+        expect(ownership, `R7A native host ownership diagnostics: ${JSON.stringify(diagnostics)}`).toEqual({
             chatCount: 1,
             composerCount: 1,
             chatInsideShell: false,
