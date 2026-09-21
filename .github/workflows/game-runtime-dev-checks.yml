@@ -35,6 +35,7 @@ jobs:
           game-runtime/world-runtime.test.js
           game-runtime/command-registry.test.js
           game-runtime/logic-runtime.test.js
+          game-runtime/logic-package.test.js
           game-runtime/logic-rules-integration.test.js
           game-runtime/r3-exit-matrix.test.js
           game-runtime/validators.test.js
@@ -44,6 +45,9 @@ jobs:
           game-runtime/ui-surfaces.test.js
           game-runtime/ui-selectors.test.js
           game-runtime/ui-component.test.js
+          game-runtime/ui-host-surfaces.test.js
+          game-runtime/ui-package.test.js
+          game-runtime/ui-live.test.js
           game-runtime/formula.test.js
           game-runtime/rng.test.js
           game-runtime/world-package.test.js
