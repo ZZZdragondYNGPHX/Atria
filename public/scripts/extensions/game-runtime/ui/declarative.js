@@ -1,5 +1,6 @@
 import { compileFormula, evaluateFormulaAst } from '../logic/formula.js';
 import { loadGamePackageJsonResource } from '../package-loader.js';
+import { cloneGameUiValue } from './clone.js';
 
 const SELECTOR_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
 const COMMAND_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
@@ -10,7 +11,7 @@ const MAX_ARGS_NODES = 256;
 const MAX_ARGS_DEPTH = 8;
 
 function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
+    return cloneGameUiValue(value);
 }
 
 function isPlainObject(value) {
