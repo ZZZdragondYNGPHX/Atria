@@ -310,6 +310,15 @@ export function createSourceLifecycle({
 
     async function writeAuthoritativeFacts(context, operations, sourceIds) {
         if (!enabled(context)) throw new Error('Memory OS is disabled');
+        if (
+            !Array.isArray(operations)
+            || operations.some(operation => (
+                operation?.action !== 'create'
+                || operation?.type !== 'authoritative'
+            ))
+        ) {
+            throw new Error('Authoritative Memory API only accepts authoritative create operations');
+        }
         const ids = [...new Set(
             (Array.isArray(sourceIds) ? sourceIds : [])
                 .map(id => String(id || '').trim())
