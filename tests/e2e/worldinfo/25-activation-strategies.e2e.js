@@ -296,6 +296,7 @@ test.describe('#25 — Activation strategies all inject correctly', () => {
         const vectorState = page.locator('#wi_workspace_inspector_body select[name="entryStateSelector"]');
         await vectorState.waitFor({ state: 'visible', timeout: 5000 });
         expect(await vectorState.inputValue(), 'vectorized entry should expose the "vectorized" state in the Inspector').toBe('vectorized');
+        await closeWorldInfoDrawer(page);
 
         // Now drive a real send turn whose user text mentions the
         // vectorized entry's primary key ("kelp"). VECTOR_LORE must
