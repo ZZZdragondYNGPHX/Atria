@@ -127,6 +127,48 @@ Card UI cannot directly mutate authoritative World State.
 
 UI JavaScript and Game Logic JavaScript must be separate runtimes/contracts.
 
+### 1.6 Game Runtime is domain-agnostic
+
+Atria Game Runtime must not define a built-in RPG world model.
+
+Names such as:
+
+- `hp`;
+- `mp`;
+- `level`;
+- `affection`;
+- `inventory`;
+- `quest`;
+- `combat`;
+
+are examples only. They are package-authored schema conventions, not canonical engine fields.
+
+The Runtime operates on:
+
+- author-defined World Schema;
+- typed Commands;
+- typed Events;
+- Reducers;
+- Rules;
+- Selectors;
+- Observations;
+
+without assuming what those structures mean.
+
+A valid Game Package may model, for example:
+
+- character RPG state;
+- visual-novel routes, flags, CG unlocks and relationship dimensions;
+- detective evidence and case graphs;
+- management/economic simulation;
+- countries, provinces, armies, markets and diplomacy;
+- dynasties, laws, political factions and succession;
+- social simulation;
+- card/board-game state;
+- arbitrary author-defined domains that do not resemble RPG statistics.
+
+The architecture must support “the author defines what the world is” rather than “the engine supplies RPG variables and the author fills them”.
+
 ---
 
 ## 2. Existing Atria foundations to reuse
@@ -370,6 +412,10 @@ State constraints should include, where applicable:
 
 Schema validation occurs before commits.
 
+World Schema is intentionally author-defined. Runtime code must not special-case canonical RPG paths such as `player.hp`, `player.mp`, `inventory` or `quests`.
+
+Examples in tests/docs may use compact RPG-like fields for readability, but those examples must never become required public contracts.
+
 ### 5.2 Event Journal is historical authority
 
 Do not treat one mutable state JSON blob as the only truth.
@@ -424,6 +470,44 @@ Switching active swipe/branch should restore the corresponding world state by br
 
 The exact mapping to existing FloorState / message swipe identifiers is an implementation decision, but the observable semantics must be deterministic.
 
+### 5.5 Large-world scalability and future storage evolution
+
+The v1 Runtime may use structured JSON World State as its first authoring/storage model, but public contracts must not require the entire world to remain one monolithic in-memory JSON object forever.
+
+Atria must leave room for future large-simulation backends such as:
+
+- entity collections;
+- stable entity ids / references;
+- indexed lookup;
+- query layers;
+- partial/lazy loading;
+- partitioned state;
+- incremental materialized projections;
+- high-volume simulation/tick processing.
+
+Possible future examples include grand-strategy or society simulations with large collections of:
+
+- characters;
+- countries;
+- provinces;
+- armies;
+- markets;
+- factions;
+- treaties;
+- populations.
+
+Such evolution should preserve the semantic contracts already established:
+
+```text
+Command
+ -> deterministic calculation
+ -> Events
+ -> Reducers / projections
+ -> authoritative World
+```
+
+Do **not** add an Entity Store to the current R5 merely because future games may need one. The current requirement is architectural neutrality: today's APIs must avoid assumptions that would make such a backend impossible without replacing the whole Game Runtime.
+
 ---
 
 ## 6. Command model
@@ -432,7 +516,7 @@ The exact mapping to existing FloorState / message swipe identifiers is an imple
 
 UI, LLM, quick actions, automation and future integrations should converge on one Command Bus.
 
-Examples:
+Illustrative examples:
 
 - `attack`
 - `use_item`
@@ -444,6 +528,8 @@ Examples:
 - `accept_quest`
 - `investigate`
 - `talk`
+
+These command names are not built-ins. A package may instead define domains such as `enact_law`, `move_army`, `schedule_date`, `unlock_route`, `merge_company` or anything else allowed by its own schema.
 
 Do not make generic LLM-facing `set_state(path,value)` the normal model.
 
@@ -1727,7 +1813,11 @@ This refactor does not aim to:
 - dump full World State into every LLM request;
 - force every game to use the Orchestrator;
 - require JavaScript for simple game logic;
-- require separate package installation beside the character card.
+- require separate package installation beside the character card;
+- define HP/MP/level/affection/inventory/quest/combat as mandatory or canonical Game Runtime fields;
+- constrain every game to RPG/chat semantics;
+- require the v1 JSON World representation to remain the only possible large-world storage backend forever;
+- prematurely implement a grand-strategy Entity Store before a concrete scale requirement justifies it.
 
 ---
 
@@ -1763,11 +1853,13 @@ Do not jump to R7 visual redesign before R5-R6 runtime/authoring contracts are s
 
 ## 20. Success definition
 
-The refactor is successful when Atria can support a character card that:
+The refactor is successful when Atria can support character-card games whose domain model is defined by the package rather than by Atria. A successful runtime can represent anything from a simple visual novel to a complex simulation without introducing engine-level RPG field assumptions.
+
+Concretely, Atria can support a character card that:
 
 - carries a complete Game Package;
-- declares a formal world schema;
-- initializes authoritative state;
+- declares a fully author-defined formal world schema;
+- initializes authoritative state without requiring canonical HP/MP/RPG fields;
 - exposes typed commands;
 - computes combat/items/resources in code;
 - uses deterministic RNG;
@@ -1787,7 +1879,8 @@ The refactor is successful when Atria can support a character card that:
 - can be simulated and debugged in Game Studio;
 - exports and reimports as one character-card artifact;
 - does not rely on Regex, MVU, or LoreState to function as a game;
-- presents Atria 1.0 through a Game-first host shell rather than the inherited pure-text-chat UI model.
+- presents Atria 1.0 through a Game-first host shell rather than the inherited pure-text-chat UI model;
+- can model non-RPG domains such as visual novels, management games and strategy/society simulations without changing the core Command/Event/Rule architecture.
 
 At that point Atria is no longer merely “SillyTavern plus richer status bars”.
 
