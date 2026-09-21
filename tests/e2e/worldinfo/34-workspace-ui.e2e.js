@@ -212,18 +212,23 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
 
     const workspaceGeometry = await page.locator('#WorldInfo').evaluate(node => {
         const rect = node.getBoundingClientRect();
-        const parentRect = node.parentElement?.getBoundingClientRect();
+        const parent = node.parentElement;
+        const parentRect = parent?.getBoundingClientRect();
+        const parentStyle = parent ? getComputedStyle(parent) : null;
+        const paddingTop = Number.parseFloat(parentStyle?.paddingTop || '0') || 0;
+        const paddingBottom = Number.parseFloat(parentStyle?.paddingBottom || '0') || 0;
         return {
             width: rect.width,
             height: rect.height,
             parentWidth: parentRect?.width || 0,
             parentHeight: parentRect?.height || 0,
+            parentContentHeight: Math.max(0, (parentRect?.height || 0) - paddingTop - paddingBottom),
         };
     });
     expect(workspaceGeometry.width).toBeGreaterThan(340);
     expect(workspaceGeometry.height).toBeGreaterThan(600);
     expect(Math.abs(workspaceGeometry.width - workspaceGeometry.parentWidth)).toBeLessThanOrEqual(2);
-    expect(Math.abs(workspaceGeometry.height - workspaceGeometry.parentHeight)).toBeLessThanOrEqual(2);
+    expect(Math.abs(workspaceGeometry.height - workspaceGeometry.parentContentHeight)).toBeLessThanOrEqual(2);
 
     // Mobile starts as a real catalogue. The native book picker is not part
     // of the product navigation; selecting a book card opens its Entries.
