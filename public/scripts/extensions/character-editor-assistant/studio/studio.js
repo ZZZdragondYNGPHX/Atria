@@ -90,6 +90,7 @@ function formatSaveSessionsError(reason, _hint) {
 }
 const STUDIO_PANEL_LEFT_ID = 'card-app-studio-left';
 const STUDIO_PANEL_RIGHT_ID = 'card-app-studio-right';
+const STUDIO_PANEL_PREVIEW_ID = 'card-app-studio-preview';
 const STUDIO_MOBILE_TABS_ID = 'card-app-studio-mobile-tabs';
 const STUDIO_WORKSPACE_ROOT_ID = 'card-app-studio-workspace';
 
@@ -405,8 +406,10 @@ async function refreshProjectFiles({ render = true } = {}) {
     await rebuildProjectNavigator();
     if (!render) return;
     updateStudioProjectIdentity();
+    renderStudioPreview();
     const fileListEl = document.querySelector('[data-studio-file-list]');
     if (fileListEl) renderFileList(fileListEl);
+    renderStudioPreview();
 }
 
 // ==================== Skeleton Init ====================
@@ -727,6 +730,57 @@ function buildRightPanelHtml() {
 </div>`;
 }
 
+function buildPreviewPanelHtml() {
+    return `
+<div id="${STUDIO_PANEL_PREVIEW_ID}" class="card-app-studio-panel preview">
+ <div class="card-app-studio-panel-header">
+    <span class="card-app-studio-title">📱 ${escapeHtml(t('Project Preview'))}</span>
+    <div class="card-app-studio-header-actions">
+        <button class="card-app-studio-btn small" data-studio-action="preview-refresh" title="${escapeHtml(t('Refresh preview'))}">↻ ${escapeHtml(t('Refresh'))}</button>
+        <button class="card-app-studio-btn small primary" data-studio-action="preview-open-play" title="${escapeHtml(t('Open this project in Play'))}">▶ ${escapeHtml(t('Open in Play'))}</button>
+    </div>
+ </div>
+ <div class="card-app-studio-preview-body" data-studio-preview-body></div>
+</div>`;
+}
+
+function renderStudioPreview() {
+    const host = document.querySelector('[data-studio-preview-body]');
+    if (!host) return;
+
+    const isGameProject = projectNavigator?.kind === GAME_PROJECT_KIND.GAME;
+    const summary = projectNavigator?.summary || {};
+    const diagnostics = projectNavigator?.diagnostics || [];
+    const name = summary.name || (isGameProject ? t('Atria Game Project') : t('CardApp Project'));
+    const version = summary.version ? `v${summary.version}` : '';
+    const status = isGameProject
+        ? (projectNavigator?.status === GAME_PROJECT_STATUS.READY ? t('Ready to preview') : t('Needs attention'))
+        : t('CardApp preview');
+    const uiMode = summary.uiMode || summary.mode || projectNavigator?.manifest?.ui?.mode || '';
+    const fileCount = Array.isArray(fileList) ? fileList.length : 0;
+
+    host.innerHTML = `
+        <section class="card-app-studio-preview-hero">
+            <span class="card-app-studio-preview-eyebrow">${escapeHtml(isGameProject ? t('Game Package') : t('CardApp'))}</span>
+            <h2>${escapeHtml(name)}</h2>
+            <p>${escapeHtml(isGameProject
+                ? t('This preview describes the current project. Use Play to run the real conversation/game surface.')
+                : t('This preview describes the current CardApp project. Use Play to run the live surface.'))}</p>
+        </section>
+        <section class="card-app-studio-preview-grid">
+            <article><span>${escapeHtml(t('Status'))}</span><strong>${escapeHtml(status)}</strong></article>
+            <article><span>${escapeHtml(t('Version'))}</span><strong>${escapeHtml(version || '—')}</strong></article>
+            <article><span>${escapeHtml(t('Files'))}</span><strong>${fileCount}</strong></article>
+            <article><span>${escapeHtml(t('UI mode'))}</span><strong>${escapeHtml(uiMode || '—')}</strong></article>
+        </section>
+        ${diagnostics.length ? `
+        <section class="card-app-studio-preview-diagnostics">
+            <h3>${escapeHtml(t('Diagnostics'))}</h3>
+            <ul>${diagnostics.slice(0, 6).map(item => `<li>${escapeHtml(item?.message || String(item))}</li>`).join('')}</ul>
+        </section>` : ''}
+    `;
+}
+
 function buildMobileTabsHtml() {
     return `
 <div id="${STUDIO_MOBILE_TABS_ID}" class="card-app-studio-mobile-tabs" role="tablist">
@@ -747,7 +801,7 @@ function buildMobileTabsHtml() {
  * Switch the visible mobile panel. Three states:
  *   left   — AI chat panel
  *   right  — code editor panel
- *   preview — both studio panels hidden, host chat shows through
+ *   preview — dedicated read-only project preview panel
  * On desktop the body class has no visual effect (CSS rules sit inside @media),
  * so calling this is harmless regardless of viewport.
  * @param {'left'|'right'|'preview'} which
@@ -1253,7 +1307,7 @@ export async function openCardAppStudio(charId, options = {}) {
     if (isStudioOpen) {
         if (container && embedded) {
             const mountParent = prepareStudioMount({ container, embedded: true });
-            for (const id of [STUDIO_PANEL_LEFT_ID, STUDIO_PANEL_RIGHT_ID, STUDIO_MOBILE_TABS_ID]) {
+            for (const id of [STUDIO_PANEL_LEFT_ID, STUDIO_PANEL_RIGHT_ID, STUDIO_PANEL_PREVIEW_ID, STUDIO_MOBILE_TABS_ID]) {
                 const node = document.getElementById(id);
                 if (node) mountParent.append(node);
             }
@@ -1299,6 +1353,10 @@ export async function openCardAppStudio(charId, options = {}) {
     const rightPanel = document.createElement('div');
     rightPanel.innerHTML = buildRightPanelHtml();
     mountParent.appendChild(rightPanel.firstElementChild);
+
+    const previewPanel = document.createElement('div');
+    previewPanel.innerHTML = buildPreviewPanelHtml();
+    mountParent.appendChild(previewPanel.firstElementChild);
 
     // Mobile tab bar (CSS @media decides whether it's visible)
     const mobileTabs = document.createElement('div');
@@ -1398,6 +1456,7 @@ export async function closeCardAppStudio() {
     // Remove panels
     document.getElementById(STUDIO_PANEL_LEFT_ID)?.remove();
     document.getElementById(STUDIO_PANEL_RIGHT_ID)?.remove();
+    document.getElementById(STUDIO_PANEL_PREVIEW_ID)?.remove();
     document.getElementById(STUDIO_MOBILE_TABS_ID)?.remove();
 
     // Remove body classes
@@ -2017,8 +2076,21 @@ async function handleStudioClick(e) {
             setMobileActiveTab('right');
             break;
         case 'mobile-tab-preview':
+            renderStudioPreview();
             setMobileActiveTab('preview');
             break;
+        case 'preview-refresh':
+            await refreshProjectFiles({ render: true });
+            await studioSimulationHost?.refresh();
+            renderStudioPreview();
+            break;
+        case 'preview-open-play': {
+            await reloadCardApp();
+            const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+            if (workspaceHost?.isMounted?.()) workspaceHost.openPlay();
+            else requestStudioClose();
+            break;
+        }
     }
 }
 
