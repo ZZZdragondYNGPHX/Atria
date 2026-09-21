@@ -1,3 +1,4 @@
+import { cloneGameLlmValue } from './clone.js';
 import {
     GAME_RUNTIME_ROLES,
     normalizeRuntimeRoleConfig,
@@ -6,9 +7,7 @@ import {
 
 export const MODEL_RUNTIME_CONFIG_VERSION = 1;
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 export function ensureModelRuntimeConfig(settingsRoot) {
     if (!settingsRoot || typeof settingsRoot !== 'object' || Array.isArray(settingsRoot)) {
