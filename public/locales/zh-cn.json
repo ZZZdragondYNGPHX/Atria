@@ -6706,5 +6706,22 @@
     "atria.shell.command.openAccount.desc": "打开身份、快照、备份与账户存储",
     "atria.shell.navigation": "导航",
     "atria.shell.runtime.instruct": "指令",
-    "atria.shell.runtime.reasoning": "推理"
+    "atria.shell.runtime.reasoning": "推理",
+    "atria.shell.agents.hub.title": "智能体工作区",
+    "atria.shell.agents.hub.description": "选择一个工作区。每个选项都会进入独立的子界面。",
+    "atria.shell.agents.hub.orchestration": "配置编排预设、智能体与工作流。",
+    "atria.shell.agents.hub.run": "查看当前智能体运行、执行图与时间线。",
+    "atria.shell.agents.hub.memory": "浏览长期记忆、证据与知识维护。",
+    "atria.shell.agents.hub.diagnostics": "查看智能体诊断、追踪证据与恢复详情。",
+    "atria.shell.command.openOrchestration": "打开编排工作区",
+    "atria.shell.command.openAgentRun": "打开智能体运行工作区",
+    "atria.shell.command.openAgentDiagnostics": "打开智能体诊断",
+    "atria.shell.runtime.noActivePackage": "当前没有启用的游戏包。",
+    "atria.shell.runtime.activePackage": "当前游戏包：${0}",
+    "atria.shell.runtime.noActiveProfile": "当前没有启用的 API 连接配置。",
+    "atria.shell.runtime.activeProfile": "当前配置：${0}",
+    "atria.shell.common.active": "活动",
+    "atria.shell.common.idle": "空闲",
+    "atria.shell.common.configured": "已配置",
+    "atria.shell.common.defaults": "默认"
 }
