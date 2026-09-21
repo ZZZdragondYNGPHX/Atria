@@ -4,10 +4,10 @@
 
 - Working branch: `refactor/game-runtime-architecture`
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current working HEAD: `d72058d33c9471d8514ca540d775079f97dd54a9`
-- Live `main` was re-checked at the checkpoint and remains `63da3141a3895d3386ed1bebc30876c9766315ba`.
+- Current working HEAD: `9276e460c7534c6ad097771f462b3917f6c53080`
+- Live `main` remains `63da3141a3895d3386ed1bebc30876c9766315ba`.
 - Formal Master Plan: `docs:refactor/game-runtime-architecture.md`
-- Midpoint status: R0 complete, R1 minimum foundation complete, R2 minimum World/Event vertical slice complete and focused CI green.
+- Current status: R0 complete, R1 complete at its planned foundation scope, R2 minimum World/Event vertical slice complete, and **R3 Game Logic Runtime complete against the Master Plan exit criteria**.
 - No PR has been opened and nothing has been merged to `main`; keep this branch and continue the Master Refactor.
 
 ## Midpoint completed
@@ -109,6 +109,71 @@ Runtime integration:
 - the extension API currently exposes World state/journal/branch as read-only views;
 - no public generic world setter or LLM-facing `set_state` was introduced.
 
+## R3 — Game Logic Runtime complete
+
+R3 now provides one deterministic mutation contract shared by JavaScript-authored and declarative game logic.
+
+Implemented runtime pieces:
+
+- typed Command Registry with JSON-schema argument validation;
+- semantic command validators that run before command execution;
+- safe Formula AST parser/evaluator with bounded numeric behavior and inspectable AST;
+- deterministic RNG streams with bounded integer/dice/weighted domains and recorded RNG trace;
+- typed reducer registry with per-event payload schemas;
+- deterministic Rules Engine with priority ordering, derived events, bounded evaluation and derived-event limits;
+- Rule Trace entries for emitted/no-change/condition-false decisions;
+- atomic command transactions;
+- simulation using the same Command/Formula/RNG/Reducer/Rule path without durable mutation;
+- structured `GameLogicError` codes/stages for argument, precondition, command execution, rule, simulation and commit failures;
+- command / rule / RNG provenance carried into committed World Events;
+- serialized commit/simulation access so transaction identity and deterministic RNG cannot race;
+- declarative Command / Reducer / Rule compiler that feeds the exact same runtime contracts as JavaScript-authored logic.
+
+The normal write path is now:
+
+```text
+typed Command
+ -> argument schema validation
+ -> command validators
+ -> Formula / deterministic calculation
+ -> deterministic RNG
+ -> initial Event drafts
+ -> typed reducer projection
+ -> deterministic Rules / derived Events
+ -> World schema validation
+ -> atomic commit
+```
+
+Simulation follows the same pipeline through projection and Rule Trace but does not persist the Journal or projected World State.
+
+Important boundaries preserved:
+
+- no public generic `set_state(path, value)`;
+- Game Logic does not receive broad SillyTavern/Atria context;
+- reducers remain the only state-transition functions;
+- Rules emit Events rather than mutating World State;
+- committed RNG outcomes are recorded in Event provenance and replay never re-rolls them;
+- declarative logic is not a second engine: it compiles into the same Command/Reducer/Rule contracts.
+
+R3 exit matrix is explicitly tested:
+
+- command matrix and validation;
+- deterministic replay after a committed derived-event transaction;
+- deterministic RNG/provenance;
+- Rule Trace and rule ordering;
+- failed command leaves World State, Journal and persistence unchanged;
+- simulation and immediate commit produce equivalent events/state/RNG trace/Rule Trace;
+- simulation produces no persisted mutation;
+- malformed declarative logic and unsafe reducer assignment paths fail before runtime activation.
+
+Final R3 focused validation:
+
+- Game Runtime Dev Checks run `35547976049` at `01ec11315990e9b149580a275cea79081d85e085`: success, including the formal R3 exit matrix.
+- Subsequent hardening runs through #88 also passed.
+- Latest validated R3 HEAD: `9276e460c7534c6ad097771f462b3917f6c53080`.
+
+Android and Docker were not run because R3 changes are browser/Node runtime logic only and those builds remain opt-in.
+
 ## Important architecture decisions preserved
 
 1. Regex is a text subsystem, not Game Runtime/UI/state.
@@ -170,63 +235,46 @@ Android and Docker were not run, per repository/user policy and because this mid
 
 ## Current limitations / intentionally unfinished
 
-R2 is a minimum vertical slice, not the final World Runtime.
+R0-R3 are complete at their current Master Plan phase scope. Remaining work begins at R4.
 
 Not yet implemented:
 
-- package-loaded reducer/logic registry;
-- explicit event type schema registry;
-- richer snapshot policy/compaction/corruption recovery diagnostics;
-- dedicated World Inspector UI;
-- full host diagnostics correlation ids;
-- Command Bus;
-- validators;
-- Formula AST;
-- deterministic RNG;
-- Rules Engine;
-- Simulation;
-- transaction/rule trace;
-- Card UI Runtime/Surfaces/Selectors;
+- Card UI Runtime / stable Surfaces / Selectors / declarative binding;
+- Component / Hybrid / Full presentation lifecycle;
+- mobile/responsive UI contract and Immersive integration;
+- host escape/recovery for Game UI takeover;
+- richer World Inspector / timeline UI and broader corruption diagnostics;
 - LLM Runtime roles (Intent Resolver / Event Interpreter / Narrator);
 - Turn Coordination Contract integrating Game Runtime, Memory, Orchestrator and final prose;
 - Connection Profile + Runtime Role routing and fallback queues;
 - Game Studio upgrades;
 - R7 Atria Game-first Shell redesign.
 
-The production Game Runtime currently starts a World Session with an empty reducer registry. That is safe because no public mutation API exists yet. R3 must establish the reducer/command registry before exposing any package/UI/LLM write path.
+The Game Runtime now has a stable typed mutation contract. R4 may dispatch Commands and request simulations, but UI code must not gain direct authoritative World mutation.
 
 ## Next implementation step
 
 Continue on the existing branch from:
 
-`refactor/game-runtime-architecture@d72058d33c9471d8514ca540d775079f97dd54a9`
+`refactor/game-runtime-architecture@9276e460c7534c6ad097771f462b3917f6c53080`
 
-Startup sequence:
+R3 is complete. Do not reopen Command/Formula/RNG/Rule architecture unless R4 exposes a concrete contract defect.
 
-1. Re-read `main:AGENTS.md`.
-2. Re-read `main:FORK_MAINTENANCE.md`.
-3. Re-read `docs:handoff/latest-handoff.md`.
-4. Re-read this handoff.
-5. Re-read `docs:refactor/game-runtime-architecture.md`.
-6. Re-check live `main`; if it advanced, inspect conflicts before synchronizing this long-running branch.
-7. Inspect the current `public/scripts/extensions/game-runtime/**` implementation and focused tests.
-8. Continue R2 hardening only where required by the Master Plan, then begin R3 with the smallest real Command Bus vertical slice.
+Begin **R4 — Card UI Runtime** with the smallest real vertical slice:
 
-Recommended first R3 slice:
+1. define a stable Surface API independent from SillyTavern internal selectors;
+2. implement a Selector runtime that exposes read-only projections of World State;
+3. implement the Component-mode mount/unmount lifecycle;
+4. allow UI actions to dispatch typed Commands or request simulation only;
+5. add one real Component fixture/test that reacts to selector changes;
+6. preserve the host recovery/escape path when a UI package is malformed or fails to mount.
 
-- command registry + typed argument schema;
-- one deterministic command fixture;
-- command validation;
-- reducer/event production;
-- atomic `WorldRuntime.commitEvents`;
-- simulation/no-commit path;
-- focused tests proving failed commands cannot partially mutate state.
+Then expand toward Hybrid/Full, declarative HTML binding/actions, responsive/mobile behavior and Immersive integration.
 
-Do not expose arbitrary `set_state(path,value)`.
-Do not give Game Logic the broad CardApp/Atria context.
-Do not begin R4 UI takeover before the R3 mutation contract is stable.
-Do not treat Event Interpreter as a mandatory per-turn state updater.
-Do not let Memory/Orchestrator/Narrator reconstruct their own competing current-state truth; use the shared Turn Context and authority precedence from the Master Plan.
-Do not allow Director takeover to bypass World/Event authority or run alongside a second Narrator body writer.
-Do not extend Connection Profile mode with a new `state` mode; implement the Runtime Role layer described by the Master Plan.
-Do not start R7 host-shell visual redesign until R3-R6 contracts are stable.
+Do not:
+
+- expose generic state setters to UI;
+- pass broad Atria/SillyTavern context into package UI;
+- bind public package contracts directly to inherited host DOM selectors;
+- start R5 LLM integration before the R4 Surface/Selector contract is stable;
+- start R7 host-shell redesign before R4-R6 contracts are stable.
