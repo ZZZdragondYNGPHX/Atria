@@ -33,7 +33,6 @@ export const RUNTIME_SECTIONS = Object.freeze([
     Object.freeze({ id: 'roles', label: 'Roles' }),
     Object.freeze({ id: 'connections', label: 'Connections' }),
     Object.freeze({ id: 'presets', label: 'Model / Prompt Presets' }),
-    Object.freeze({ id: 'retrieval', label: 'Retrieval' }),
 ]);
 
 function sectionById(list, id, fallbackId) {
@@ -50,7 +49,11 @@ export function normalizeLibrarySection(route) {
 
 export function normalizeRuntimeSection(route) {
     const childId = String(route?.child?.id || '').trim();
-    return sectionById(RUNTIME_SECTIONS, childId || 'overview', 'overview').id;
+    // R7F exposed Retrieval as a second tab even though it mounted the same
+    // Connection Manager controller. Keep old deep links readable, but make
+    // Connections the single product/navigation surface.
+    const normalizedId = childId === 'retrieval' ? 'connections' : childId;
+    return sectionById(RUNTIME_SECTIONS, normalizedId || 'overview', 'overview').id;
 }
 
 function buildDomainFrame(documentRef, {
@@ -539,34 +542,48 @@ async function waitForConnectionManagerRoot(documentRef, timeoutMs = 6000) {
     });
 }
 
-async function mountConnectionManagerWorkspace({ document: documentRef, body, section }) {
-    const root = await waitForConnectionManagerRoot(documentRef);
-    if (!root) {
+async function mountConnectionManagerWorkspace({ document: documentRef, body, route }) {
+    const managerRoot = await waitForConnectionManagerRoot(documentRef);
+    if (!managerRoot) {
         const panel = createLocalizedStatePanel(documentRef, 'loading', {
-            title: section === 'retrieval' ? 'Retrieval' : 'Connections',
+            title: 'Connections',
             message: 'Connection Manager is still finishing its existing controller bootstrap.',
         });
         body.replaceChildren(panel);
         return { root: panel, dispose: () => panel.remove() };
     }
 
-    const placement = savePlacement(root);
-    root.dataset.atriaWorkspaceEmbedded = 'true';
-    body.replaceChildren(root);
+    // The old R7F adapter only moved #atria-connection-manager-root. That
+    // block contains the profile picker, but the live chat API/model editor
+    // remains a sibling inside #rm_api_block, so profiles were effectively
+    // view-only from Runtime. Embed the complete native API authority instead.
+    const apiBlock = managerRoot.closest?.('#rm_api_block') || documentRef.getElementById('rm_api_block') || managerRoot;
+    const placement = savePlacement(apiBlock);
+    apiBlock.dataset.atriaWorkspaceEmbedded = 'true';
+    managerRoot.dataset.atriaWorkspaceEmbedded = 'true';
+    apiBlock.classList.remove('closedDrawer');
+    apiBlock.classList.add('openDrawer');
+    apiBlock.removeAttribute('aria-hidden');
+    body.replaceChildren(apiBlock);
 
-    function applyMode(nextSection) {
-        const mode = nextSection === 'retrieval' ? 'embed' : 'chat';
-        root.querySelector(`.connection_profile_mode_tab[data-mode="${mode}"]`)?.click?.();
+    function applyRouteMode(nextRoute) {
+        // Preserve the intent of old ?atriaChild=retrieval deep links without
+        // exposing a duplicate Runtime tab. Native mode tabs remain the single
+        // switch between conversation / embedding / rerank profiles.
+        const oldRetrievalRoute = String(nextRoute?.child?.id || '') === 'retrieval';
+        const mode = oldRetrievalRoute ? 'embed' : 'chat';
+        managerRoot.querySelector(`.connection_profile_mode_tab[data-mode="${mode}"]`)?.click?.();
     }
-    applyMode(section);
+    applyRouteMode(route);
 
     return {
-        root,
-        updateSection(nextSection) {
-            applyMode(nextSection);
+        root: apiBlock,
+        updateRoute(nextRoute) {
+            applyRouteMode(nextRoute);
         },
         dispose() {
-            restorePlacement(root, placement);
+            delete managerRoot.dataset.atriaWorkspaceEmbedded;
+            restorePlacement(apiBlock, placement);
         },
     };
 }
@@ -577,54 +594,154 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
     root.className = 'atria-runtime-presets';
     root.dataset.atriaRuntimePresets = 'true';
 
+    const summary = documentRef.createElement('div');
+    summary.className = 'atria-runtime-preset-list';
+    summary.dataset.atriaPresetSummary = 'true';
+
+    const editor = documentRef.createElement('section');
+    editor.className = 'atria-runtime-preset-editor';
+    editor.dataset.atriaPresetEditor = 'true';
+    editor.hidden = true;
+
+    const editorHeader = documentRef.createElement('header');
+    editorHeader.className = 'atria-runtime-preset-editor__header';
+    const back = documentRef.createElement('button');
+    back.type = 'button';
+    back.className = 'atria-runtime-preset-editor__back';
+    back.textContent = translateShellText('Back to preset list');
+    const editorTitle = documentRef.createElement('h3');
+    editorTitle.textContent = translateShellText('Preset editor');
+    editorHeader.append(back, editorTitle);
+
+    const editorBody = documentRef.createElement('div');
+    editorBody.className = 'atria-runtime-preset-editor__body';
+    editor.append(editorHeader, editorBody);
+
     const definitions = [
-        ['openai', 'Chat Completion'],
-        ['textgenerationwebui', 'Text Completion'],
-        ['context', 'Context'],
-        ['instruct', 'Instruct'],
-        ['sysprompt', 'System Prompt'],
-        ['reasoning', 'Reasoning'],
+        ['openai', 'Chat Completion', 'model'],
+        ['textgenerationwebui', 'Text Completion', 'model'],
+        ['context', 'Context', 'prompt'],
+        ['instruct', 'Instruct', 'prompt'],
+        ['sysprompt', 'System Prompt', 'prompt'],
+        ['reasoning', 'Reasoning', 'prompt'],
     ];
 
-    for (const [apiId, label] of definitions) {
+    const refreshers = [];
+    let activePlacement = null;
+    let activeSource = null;
+
+    function restoreEditorSource() {
+        if (activeSource && activePlacement) {
+            delete activeSource.dataset.atriaRuntimePresetEditorSource;
+            restorePlacement(activeSource, activePlacement);
+        }
+        activeSource = null;
+        activePlacement = null;
+        editorBody.replaceChildren();
+        editor.hidden = true;
+        summary.hidden = false;
+        delete root.dataset.atriaPresetEditing;
+        for (const refresh of refreshers) refresh();
+    }
+
+    function openNativeEditor(apiId, label, kind, manager) {
+        restoreEditorSource();
+        const source = kind === 'model'
+            ? documentRef.getElementById('left-nav-panel')
+            : documentRef.getElementById('AdvancedFormatting');
+        if (!source) {
+            const panel = createLocalizedStatePanel(documentRef, 'loading', {
+                title: label,
+                message: 'The existing preset editor is still booting.',
+            });
+            editorBody.replaceChildren(panel);
+            summary.hidden = true;
+            editor.hidden = false;
+            root.dataset.atriaPresetEditing = apiId;
+            editorTitle.textContent = translateShellText(label);
+            return;
+        }
+
+        activeSource = source;
+        activePlacement = savePlacement(source);
+        source.dataset.atriaWorkspaceEmbedded = 'true';
+        source.dataset.atriaRuntimePresetEditorSource = apiId;
+        source.classList.remove('closedDrawer');
+        source.classList.add('openDrawer');
+        source.removeAttribute('aria-hidden');
+
+        summary.hidden = true;
+        editor.hidden = false;
+        root.dataset.atriaPresetEditing = apiId;
+        editorTitle.textContent = formatShellText('Edit 0', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle');
+        editorBody.replaceChildren(source);
+
+        const nativeSelect = manager?.select?.get?.(0) || manager?.select?.[0] || null;
+        queueMicrotask(() => nativeSelect?.scrollIntoView?.({ block: 'start' }));
+    }
+
+    back.addEventListener('click', restoreEditorSource);
+
+    for (const [apiId, label, kind] of definitions) {
         const manager = getPresetManager(apiId);
         if (!manager) continue;
         const names = manager.getAllPresets?.() || [];
         if (!names.length) continue;
 
-        const row = documentRef.createElement('label');
+        const row = documentRef.createElement('div');
         row.className = 'atria-runtime-preset-row';
-        row.textContent = translateShellText(label);
+        row.dataset.atriaPresetApi = apiId;
+
+        const title = documentRef.createElement('strong');
+        title.className = 'atria-runtime-preset-row__label';
+        title.textContent = translateShellText(label);
+
         const select = documentRef.createElement('select');
-        select.className = 'text_pole';
-        const selected = manager.getSelectedPresetName?.() || '';
-        for (const name of names) {
-            const option = documentRef.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            option.selected = name === selected;
-            select.append(option);
+        select.className = 'text_pole atria-runtime-preset-row__select';
+        select.setAttribute('aria-label', formatShellText('0 current preset', [translateShellText(label)], undefined, 'atria.shell.runtime.currentPresetAria'));
+
+        const edit = documentRef.createElement('button');
+        edit.type = 'button';
+        edit.className = 'atria-runtime-preset-row__edit';
+        edit.textContent = translateShellText('Edit');
+        edit.setAttribute('aria-label', formatShellText('Edit 0', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle'));
+
+        function refresh() {
+            const selected = manager.getSelectedPresetName?.() || '';
+            const available = manager.getAllPresets?.() || [];
+            select.replaceChildren();
+            for (const name of available) {
+                const option = documentRef.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                option.selected = name === selected;
+                select.append(option);
+            }
         }
+        refreshers.push(refresh);
+        refresh();
+
         select.addEventListener('change', () => {
             const value = manager.findPreset?.(select.value);
             if (value !== undefined && value !== null) {
                 void Promise.resolve(manager.selectPreset?.(value));
             }
         });
-        row.append(select);
-        root.append(row);
+        edit.addEventListener('click', () => openNativeEditor(apiId, label, kind, manager));
+
+        row.append(title, select, edit);
+        summary.append(row);
     }
 
-    const advanced = documentRef.createElement('button');
-    advanced.type = 'button';
-    advanced.textContent = translateShellText('Open advanced preset forms');
-    advanced.addEventListener('click', () => {
-        documentRef.getElementById('leftNavDrawerIcon')?.closest?.('.drawer-toggle')?.click?.();
-    });
-    root.append(advanced);
-
+    root.append(summary, editor);
     body.replaceChildren(root);
-    return { root, dispose: () => root.remove() };
+    return {
+        root,
+        dispose() {
+            restoreEditorSource();
+            root.remove();
+        },
+    };
 }
 
 async function mountLibrarySection(args) {
@@ -639,8 +756,8 @@ async function mountRuntimeSection(args) {
     const section = normalizeRuntimeSection(args.route);
     if (section === 'overview') return mountRuntimeOverview(args);
     if (section === 'roles') return await mountRuntimeRoles(args);
-    if (section === 'connections' || section === 'retrieval') {
-        return await mountConnectionManagerWorkspace({ ...args, section });
+    if (section === 'connections') {
+        return await mountConnectionManagerWorkspace(args);
     }
     return await mountPresetWorkspace(args);
 }
