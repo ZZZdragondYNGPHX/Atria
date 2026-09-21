@@ -52,6 +52,7 @@ jobs:
           game-runtime/llm-runtime.test.js
           game-runtime/r3-exit-matrix.test.js
           game-runtime/r5-exit-matrix.test.js
+          game-runtime/r5-ui-button.test.js
           game-runtime/validators.test.js
           game-runtime/rules.test.js
           game-runtime/reducers.test.js
