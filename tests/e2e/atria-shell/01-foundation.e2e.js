@@ -65,6 +65,9 @@ async function openShellPreview(page, viewport) {
             shellPublished: Boolean(window.Atria?.shell),
             shellMounted: Boolean(window.Atria?.shell?.isMounted?.()),
             shellRootPresent: Boolean(document.getElementById('atria-app-shell')),
+            startupTiming: globalThis.__atriaStartupTiming
+                ? JSON.parse(JSON.stringify(globalThis.__atriaStartupTiming))
+                : null,
         })).catch(() => ({ href: page.url() }));
         throw new Error(
             `Atria R7A shell failed to become ready: ${JSON.stringify(state)}\n${startupErrors.slice(-12).join('\n') || 'no browser errors captured'}`,
