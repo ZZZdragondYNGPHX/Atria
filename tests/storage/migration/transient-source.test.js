@@ -283,7 +283,11 @@ describeMysql('materializeTransientSource — mysql', () => {
                     dataRoot,
                     scratchHandle,
                     // Re-use the harness DB as the operator's scratch DB.
-                    scratchCreds: { mysqlUrl: srcHarness.engine._pool?.config?.connectionConfig?.uri || `mysql://root:root@127.0.0.1:53306/${srcHarness.dbName}` },
+                    // Keep the scratch connection on the same dynamic CI port
+                    // selected for the main MySQL harness.
+                    scratchCreds: {
+                        mysqlUrl: `${process.env.ATRIA_TEST_MYSQL_ROOT_URL || 'mysql://root:root@127.0.0.1:53306'}/${srcHarness.dbName}`,
+                    },
                 },
             );
             try {
