@@ -1,11 +1,11 @@
-body[data-atria-shell-preview="true"] {
+body[data-atria-shell-mounted="true"] {
     overflow: hidden;
 }
 
-body[data-atria-shell-preview="true"] > #top-bar,
-body[data-atria-shell-preview="true"] > #top-settings-holder,
-body[data-atria-shell-preview="true"] > #sheld,
-body[data-atria-shell-preview="true"] > #form_sheld {
+body[data-atria-shell-mounted="true"] > #top-bar,
+body[data-atria-shell-mounted="true"] > #top-settings-holder,
+body[data-atria-shell-mounted="true"] > #sheld,
+body[data-atria-shell-mounted="true"] > #form_sheld {
     visibility: hidden !important;
     pointer-events: none !important;
 }
@@ -751,9 +751,9 @@ body[data-atria-shell-preview="true"] > #form_sheld {
 
 /* Immersive remains a Native presentation mode inside the Play Host.
  * It may restyle Conversation/Composer, but it must not reclaim viewport
- * positioning from the Shell Stage during staged R7 ownership migration.
+ * positioning from the Shell Stage under Atria Shell ownership.
  */
-body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-host > #sheld {
+body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-host > #sheld {
     position: relative !important;
     inset: auto !important;
     top: auto !important;
@@ -766,7 +766,7 @@ body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-ho
     padding-top: 0;
 }
 
-body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-host #chat {
+body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-host #chat {
     max-height: none !important;
 }
 

@@ -1979,10 +1979,9 @@ async function firstLoadInit() {
     initKeyboard();
     initDynamicStyles();
 
-    // R7A: establish the Atria Host contracts without moving native
-    // Conversation/Composer yet. The temporary preview gate lets shell
-    // fixtures run against the real app while R7B performs the single-DOM
-    // reparenting step.
+    // R7H: the Atria Shell is the normal product Host. It reparents the
+    // existing native Conversation/Composer through the single-DOM ownership
+    // seam; explicit legacy recovery is handled inside the shell foundation.
     const shellFoundation = initializeAtriaShellFoundation({
         document,
         window,

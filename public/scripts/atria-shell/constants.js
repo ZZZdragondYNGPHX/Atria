@@ -32,8 +32,7 @@ export const ATRIA_SHELL_BREAKPOINTS = Object.freeze({
     mediumMax: 1179,
 });
 
-export const ATRIA_SHELL_PREVIEW_QUERY_KEY = 'atriaShell';
-export const ATRIA_SHELL_PREVIEW_STORAGE_KEY = 'atria.shell.preview';
+export const ATRIA_SHELL_RECOVERY_QUERY_KEY = 'atriaShellRecovery';
 
 export const ATRIA_COMMAND_SHORTCUT = Object.freeze({
     key: 'k',

@@ -161,7 +161,7 @@ export function createAtriaAppShell({
     stage.id = 'atria-stage';
     stage.append(createAtriaStatePanel(documentRef, 'empty', {
         title: 'Play',
-        message: 'The Native Conversation Host mounts here when the staged R7 preview is enabled.',
+        message: 'The Native Conversation Host mounts here when Play owns the Stage.',
     }));
 
     const workspace = createAtriaPrimitive(documentRef, 'Workspace', {

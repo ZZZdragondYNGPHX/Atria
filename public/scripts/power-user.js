@@ -33,7 +33,7 @@ import {
     deleteMessage,
     settingsReady,
 } from '../script.js';
-import { isMobile, initMovingUI, favsToHotswap } from './RossAscends-mods.js';
+import { isMobile, initMovingUI, favsToHotswap, isAtriaShellLayoutOwned } from './RossAscends-mods.js';
 import {
     getActiveKeepAliveMode,
     getAvailableWebModes,
@@ -2511,6 +2511,10 @@ export function loadMovingUIState() {
             var elmntState = power_user.movingUIState[elmntName];
             try {
                 var elmnt = $('#' + $.escapeSelector(elmntName));
+                if (elmnt.length && isAtriaShellLayoutOwned(elmnt[0])) {
+                    console.debug(`skipping ${elmntName} because Atria Shell owns its layout`);
+                    continue;
+                }
                 if (elmnt.length) {
                     console.debug(`loading state for ${elmntName}`);
                     elmnt.css(elmntState);
@@ -3340,7 +3344,7 @@ async function resetMovablePanels(type) {
      * @type {HTMLElement[]} Generic panels that don't have a known ID
      */
     const draggedElements = Array.from(document.querySelectorAll('[data-dragged]'));
-    const allDraggable = panelIds.map(id => document.getElementById(id)).concat(draggedElements).filter(onlyUnique);
+    const allDraggable = panelIds.map(id => document.getElementById(id)).concat(draggedElements).filter(onlyUnique).filter(panel => !isAtriaShellLayoutOwned(panel));
 
     const panelStyles = ['top', 'left', 'right', 'bottom', 'height', 'width', 'margin'];
     allDraggable.forEach((panel) => {
@@ -3876,6 +3880,10 @@ jQuery(() => {
                 newRight = Number(oldRight * scaleX).toFixed(0);
                 try {
                     var elmnt = $('#' + $.escapeSelector(elmntName));
+                    if (elmnt.length && isAtriaShellLayoutOwned(elmnt[0])) {
+                        console.debug(`skipping MovingUI resize for ${elmntName} because Atria Shell owns its layout`);
+                        continue;
+                    }
                     if (elmnt.length) {
                         console.log(`scaling ${elmntName} by ${scaleX}x${scaleY} to ${newWidth}x${newHeight}`);
                         elmnt.css('height', newHeight);

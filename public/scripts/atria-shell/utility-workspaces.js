@@ -230,7 +230,7 @@ export async function mountPluginsUtility({
     const compatibilitySummary = documentRef.createElement('summary');
     compatibilitySummary.textContent = 'Extension compatibility settings';
     const compatibilityHint = documentRef.createElement('p');
-    compatibilityHint.textContent = 'This is the existing extension settings DOM. It remains available for third-party integrations and historical built-in forms until R7H.';
+    compatibilityHint.textContent = 'This is the existing extension settings DOM retained as a compatibility ABI for third-party integrations and deep historical forms.';
     const compatibilityBody = documentRef.createElement('div');
     compatibilityBody.className = 'atria-plugin-compatibility__body';
     compatibility.append(compatibilitySummary, compatibilityHint, compatibilityBody);
@@ -279,7 +279,6 @@ const SETTINGS_SECTIONS = Object.freeze([
     Object.freeze({ id: 'appearance', label: 'Appearance', target: 'UI-Theme-Block' }),
     Object.freeze({ id: 'language', label: 'Language', target: 'UI-language-block' }),
     Object.freeze({ id: 'interface', label: 'Interface & behavior', target: 'power-user-options-block' }),
-    Object.freeze({ id: 'moving-ui', label: 'Moving UI', target: 'movingUIModeCheckBlock' }),
 ]);
 
 export function mountSettingsUtility({
@@ -312,7 +311,7 @@ export function mountSettingsUtility({
     const compatibilitySummary = documentRef.createElement('summary');
     compatibilitySummary.textContent = 'Advanced & compatibility settings';
     const compatibilityHint = documentRef.createElement('p');
-    compatibilityHint.textContent = 'Atria keeps the existing User Settings form as the authority for deep or low-frequency controls during R7G. The product categories above are the primary Settings IA.';
+    compatibilityHint.textContent = 'Atria keeps the existing User Settings form as the authority for deep or low-frequency compatibility controls. MovingUI remains available here for legacy compatibility islands but does not control Atria Shell layout.';
     const compatibilityBody = documentRef.createElement('div');
     compatibilityBody.className = 'atria-settings-compatibility__body';
     compatibility.append(compatibilitySummary, compatibilityHint, compatibilityBody);

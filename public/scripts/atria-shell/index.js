@@ -1,28 +1,37 @@
-import {
-    ATRIA_SHELL_PREVIEW_QUERY_KEY,
-    ATRIA_SHELL_PREVIEW_STORAGE_KEY,
-} from './constants.js';
+import { ATRIA_SHELL_RECOVERY_QUERY_KEY } from './constants.js';
 import { createAtriaAppShell } from './app-shell.js';
 import { createCommandRegistry } from './command-registry.js';
 import { createAtriaNavigationAuthority } from './navigation-authority.js';
 import { mountNativePlayHost } from './native-play-host.js';
 import { createAtriaWorkspaceHost } from './workspace-host.js';
 
-function readPreviewPreference(windowRef) {
+function readRecoveryPreference(windowRef) {
     try {
         const params = new URLSearchParams(windowRef.location?.search || '');
-        const queryValue = params.get(ATRIA_SHELL_PREVIEW_QUERY_KEY);
-        if (queryValue === '1' || queryValue === 'true') return true;
-        if (queryValue === '0' || queryValue === 'false') return false;
-    } catch {
-        // Ignore malformed or unavailable location objects.
-    }
-
-    try {
-        const stored = windowRef.localStorage?.getItem(ATRIA_SHELL_PREVIEW_STORAGE_KEY);
-        return stored === '1' || stored === 'true';
+        const value = String(params.get(ATRIA_SHELL_RECOVERY_QUERY_KEY) || '').trim().toLowerCase();
+        return value === 'legacy' || value === '1' || value === 'true';
     } catch {
         return false;
+    }
+}
+
+const COMPATIBILITY_ANCHOR_IDS = Object.freeze([
+    'top-bar',
+    'top-settings-holder',
+    'left-nav-panel',
+    'right-nav-panel',
+    'WorldInfo',
+    'rm_api_block',
+    'user-settings-block',
+    'rm_extensions_block',
+    'extensions_settings',
+    'extensions_settings2',
+]);
+
+function markCompatibilityAnchors(documentRef) {
+    for (const id of COMPATIBILITY_ANCHOR_IDS) {
+        const node = documentRef.getElementById(id);
+        if (node) node.dataset.atriaCompatibilityAnchor = 'true';
     }
 }
 
@@ -31,7 +40,7 @@ export function initializeAtriaShellFoundation({
     window: windowRef = globalThis.window,
     translate,
     utilities,
-    forcePreview,
+    forceRecovery,
 } = {}) {
     if (!documentRef?.body || !windowRef) {
         throw new Error('Atria shell foundation requires document and window');
@@ -42,9 +51,11 @@ export function initializeAtriaShellFoundation({
     let shell = null;
     let playHost = null;
     let workspaceHost = null;
-    let previewEnabled = forcePreview === undefined
-        ? readPreviewPreference(windowRef)
-        : Boolean(forcePreview);
+    let recoveryMode = forceRecovery === undefined
+        ? readRecoveryPreference(windowRef)
+        : Boolean(forceRecovery);
+
+    markCompatibilityAnchors(documentRef);
 
     function mount() {
         if (shell) return shell;
@@ -84,9 +95,13 @@ export function initializeAtriaShellFoundation({
             playHost = null;
             shell.destroy();
             shell = null;
+            documentRef.body.dataset.atriaShellFailure = 'mount';
+            console.error('[Atria Shell] mount failed; legacy recovery surface remains available', error);
             throw error;
         }
-        documentRef.body.dataset.atriaShellPreview = 'true';
+        documentRef.body.dataset.atriaShellMounted = 'true';
+        delete documentRef.body.dataset.atriaShellFailure;
+        delete documentRef.body.dataset.atriaShellRecovery;
         return shell;
     }
 
@@ -100,41 +115,39 @@ export function initializeAtriaShellFoundation({
         shell = null;
         navigation?.dispose();
         navigation = null;
-        delete documentRef.body.dataset.atriaShellPreview;
+        delete documentRef.body.dataset.atriaShellMounted;
         return true;
     }
 
-    function setPreviewEnabled(enabled, { persist = true } = {}) {
-        const next = Boolean(enabled);
-        previewEnabled = next;
-        if (persist) {
-            try {
-                windowRef.localStorage?.setItem(
-                    ATRIA_SHELL_PREVIEW_STORAGE_KEY,
-                    next ? '1' : '0',
-                );
-            } catch {
-                // Storage may be unavailable in privacy-restricted contexts.
-            }
-        }
-        if (next) return mount();
+    function setMountedForDebug(enabled) {
+        recoveryMode = false;
+        if (enabled) return mount();
         unmount();
         return null;
     }
 
-    if (previewEnabled) mount();
+    if (recoveryMode) {
+        documentRef.body.dataset.atriaShellRecovery = 'legacy';
+    } else {
+        try {
+            mount();
+        } catch {
+            // mount() already recorded a diagnosable failure and restored the
+            // native host. Continue startup on the legacy recovery surface.
+        }
+    }
 
     return Object.freeze({
         registry,
         mount,
         unmount,
-        setPreviewEnabled,
+        setMountedForDebug,
         isMounted: () => Boolean(shell),
         getShell: () => shell,
         getNavigation: () => navigation,
         getPlayHost: () => playHost,
         getWorkspaceHost: () => workspaceHost,
         getRoot: () => shell?.root || null,
-        isPreviewEnabled: () => previewEnabled,
+        isRecoveryMode: () => recoveryMode,
     });
 }
