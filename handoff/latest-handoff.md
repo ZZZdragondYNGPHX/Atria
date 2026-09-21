@@ -1,17 +1,24 @@
 # Active implementation: Atria Game Runtime Architecture Refactor
 
-The Master Refactor is in progress and has completed R3.
+The Master Refactor is in progress at the R3 validation checkpoint.
 
 - Working branch: `refactor/game-runtime-architecture`
-- Baseline/current main: `63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current validated R3 HEAD: `9276e460c7534c6ad097771f462b3917f6c53080`
+- Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
+- Live main at checkpoint: `63da3141a3895d3386ed1bebc30876c9766315ba`
+- Current working HEAD: `b8c363b70573c1993b737582691c5767832adcd3`
 - Formal plan: `refactor/game-runtime-architecture.md`
 - Detailed task handoff: `handoff/game-runtime-architecture.md`
-- Status: R0 Regex Separation complete; R1 Game Package foundation complete; R2 World/Event minimum vertical slice complete; **R3 Game Logic Runtime complete**.
-- R3 provides typed Commands, validators, safe Formula AST, typed reducers, deterministic RNG, deterministic Rules/derived Events, Rule Trace, simulation/no-commit, structured transaction errors, declarative logic compilation and deterministic replay coverage.
-- Formal R3 exit matrix passed in Game Runtime Dev Checks run `35547976049`; subsequent hardening through run #88 is also green.
-- Next phase: R4 Card UI Runtime, starting with stable Surface API + read-only Selectors + Component lifecycle.
-- The branch is not merged and must be retained until the complete Master Refactor finishes.
+- Checkpoint: R0/R1/R2 complete; R3 Game Logic Runtime implementation complete.
+- Focused validation: Game Runtime Dev Checks run `35548001015` (#88) passed the R3 exit matrix and focused ESLint.
+- Broad validation: Game Runtime R3 Broad Checks run `35548063514` is in progress on `b8c363b70573c1993b737582691c5767832adcd3`.
+- Parallel focused run caused by the broad-check workflow commit: `35548063475` (#89), in progress at handoff.
+- Android, Docker and UI E2E are not part of this R3 broad validation.
+
+R3 now includes the typed Command Bus, semantic validators, Formula AST, typed reducers/events, deterministic RNG, Rules Engine + Rule Trace, atomic transactions, no-commit simulation, structured failures, deterministic replay provenance, and a declarative compiler that feeds the same runtime contracts as advanced JavaScript.
+
+No public generic world setter exists. Game Logic does not receive broad SillyTavern/Atria context.
+
+Next action: resolve the two active R3 validation runs. If green, remove the one-time `.github/workflows/game-runtime-r3-broad-checks.yml`, verify focused checks once more, then begin R4 Card UI Runtime from the live branch. Do not merge/delete the long-running refactor branch yet.
 
 
 ---
