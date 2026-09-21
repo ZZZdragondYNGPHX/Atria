@@ -215,6 +215,56 @@ describe('Game World session', () => {
         expect(session.getJournal().events).toHaveLength(1);
     });
 
+    test('typed reducer payload validation aborts an invalid command transaction', async () => {
+        const chatRef = { value: [{ swipe_id: 0 }] };
+        const context = makeContext(chatRef);
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/world/schema.json')) return response(schema);
+            return response({ hp: 20 });
+        });
+        const typedReducers = {
+            DamageDealt: {
+                payloadSchema: {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['amount'],
+                    properties: {
+                        amount: { type: 'integer', minimum: 1, maximum: 20 },
+                    },
+                },
+                reduce(state, event) {
+                    return { hp: state.hp - event.payload.amount };
+                },
+            },
+        };
+        const badCommand = [{
+            id: 'bad_damage',
+            execute() {
+                return [{ type: 'DamageDealt', payload: { amount: 'five' } }];
+            },
+        }];
+
+        const session = await createGameWorldSession({
+            packageState,
+            context,
+            getChat: () => chatRef.value,
+            fetchImpl,
+            reducers: typedReducers,
+            commands: badCommand,
+        });
+
+        expect(session.getEventTypes()).toEqual([{
+            type: 'DamageDealt',
+            payloadSchema: typedReducers.DamageDealt.payloadSchema,
+        }]);
+        await expect(
+            session.dispatchCommandInternal('bad_damage', {}),
+        ).rejects.toThrow(/payload validation failed/);
+        expect(session.getState()).toEqual({ hp: 20 });
+        expect(session.getJournal().events).toHaveLength(0);
+        expect(context._store.has('atri_game_world')).toBe(false);
+    });
+
     test('returns null for packages without a World definition', async () => {
         const chatRef = { value: [] };
         const context = makeContext(chatRef);
