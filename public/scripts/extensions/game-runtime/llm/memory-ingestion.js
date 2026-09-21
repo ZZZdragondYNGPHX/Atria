@@ -116,7 +116,10 @@ export function createPostTurnMemoryIngestion(options = {}) {
             if (
                 prepared.facts.length === 0
                 || !memoryApi
-                || typeof memoryApi.openSession !== 'function'
+                || (
+                    typeof memoryApi.applyAuthoritativeFacts !== 'function'
+                    && typeof memoryApi.openSession !== 'function'
+                )
             ) {
                 const update = Object.freeze({
                     status: prepared.facts.length === 0 ? 'no_authoritative_facts' : 'unavailable',
