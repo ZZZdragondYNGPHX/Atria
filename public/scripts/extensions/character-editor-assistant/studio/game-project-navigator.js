@@ -28,6 +28,7 @@ const GROUP_DEFINITIONS = Object.freeze([
     Object.freeze({ id: 'world', label: 'World' }),
     Object.freeze({ id: 'logic', label: 'Game Logic' }),
     Object.freeze({ id: 'presentation', label: 'Presentation' }),
+    Object.freeze({ id: 'llm', label: 'LLM / Observation' }),
     Object.freeze({ id: 'knowledge', label: 'Knowledge / Skills' }),
     Object.freeze({ id: 'assets', label: 'Assets' }),
     Object.freeze({ id: 'source', label: 'Other Source' }),
@@ -338,6 +339,16 @@ export async function buildGameProjectNavigator(options = {}) {
         path: manifest.ui?.immersive,
         role: 'immersive',
         label: 'Immersive Presentation',
+    });
+    addDeclaredFileNode({
+        groups,
+        groupId: 'llm',
+        fileMap,
+        consumed,
+        diagnostics,
+        path: manifest.llm?.observations,
+        role: 'observations',
+        label: 'Observations',
     });
 
     addUnclaimedFiles(groups, files, consumed);
