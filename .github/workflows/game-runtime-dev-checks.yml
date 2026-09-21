@@ -70,6 +70,7 @@ jobs:
           game-runtime/world-branch.test.js
           memory-graph/atomic-facts.test.js
           memory-graph/source-lifecycle.test.js
+          memory-graph/history-build.test.js
           memory-graph/hybrid-retrieval.test.js
           regex-engine/game-runtime-boundary.test.js
           regex-engine/lane-semantics.test.js
@@ -82,5 +83,11 @@ jobs:
           public/scripts/extensions/game-runtime/llm/*.js
           public/scripts/extensions/game-runtime/ui/*.js
           public/scripts/extensions/game-runtime/world/*.js
+          public/scripts/extensions/memory-graph/api.js
+          public/scripts/extensions/memory-graph/atomic-facts.js
+          public/scripts/extensions/memory-graph/history-build.js
+          public/scripts/extensions/memory-graph/main.js
+          public/scripts/extensions/memory-graph/source-lifecycle.js
+          public/scripts/extensions/memory-graph/source-provenance.js
           public/scripts/extensions/regex/engine.js
           src/endpoints/card-app.js
