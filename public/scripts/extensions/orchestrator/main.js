@@ -1358,7 +1358,10 @@ jQuery(() => {
             } catch (_) { /* state may already be clean */ }
         }
         clearCurrentRun();
+        const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+        const refreshEmbeddedWorkspace = workspaceHost?.isActive?.('agents');
         destroyWorkspace(); initRunPanel();
+        if (refreshEmbeddedWorkspace) workspaceHost.refreshActive();
         clearCapsulePrompt(liveContext);
         void loadOrchestratorChatState(liveContext).finally(() => ensureUi());
     });
@@ -1370,6 +1373,13 @@ jQuery(() => {
         context.eventTypes?.CHARACTER_EDITED,
     ].filter(Boolean);
     for (const eventName of characterRefreshEvents) {
-        context.eventSource.on(eventName, () => { destroyWorkspace(); initRunPanel(); ensureUi(); });
+        context.eventSource.on(eventName, () => {
+            const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
+            const refreshEmbeddedWorkspace = workspaceHost?.isActive?.('agents');
+            destroyWorkspace();
+            initRunPanel();
+            ensureUi();
+            if (refreshEmbeddedWorkspace) workspaceHost.refreshActive();
+        });
     }
 });
