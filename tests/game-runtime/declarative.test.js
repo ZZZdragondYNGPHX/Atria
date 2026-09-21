@@ -223,6 +223,83 @@ describe('Declarative Game Logic compiler', () => {
         })).toThrow(/unknown field/);
     });
 
+    test('declarative interpretation mapping compiles semantic fields into a typed Command proposal', () => {
+        const compiled = compileDeclarativeLogic({
+            interpretations: [{
+                eventType: 'implicit_threat',
+                command: 'record_threat',
+                when: 'args.confidence >= 0.75',
+                args: {
+                    severity: { formula: 'args.severity' },
+                    participants: { formula: 'args.participants' },
+                    confidence: { formula: 'args.confidence' },
+                },
+            }],
+        });
+
+        expect(compiled.interpretations).toHaveLength(1);
+
+        const mapped = compiled.interpretations[0].map({
+            interpretation: {
+                decision: 'event',
+                eventType: 'implicit_threat',
+                severity: 'medium',
+                participants: ['guard_02'],
+                confidence: 0.91,
+            },
+            world: { threatCount: 0 },
+            observation: {},
+        });
+        expect(mapped).toEqual({
+            id: 'record_threat',
+            args: {
+                severity: 'medium',
+                participants: ['guard_02'],
+                confidence: 0.91,
+            },
+        });
+
+        const noChange = compiled.interpretations[0].map({
+            interpretation: {
+                decision: 'event',
+                eventType: 'implicit_threat',
+                severity: 'low',
+                participants: ['guard_02'],
+                confidence: 0.4,
+            },
+            world: { threatCount: 0 },
+            observation: {},
+        });
+        expect(noChange).toEqual([]);
+    });
+
+    test('declarative interpretation mappings reject unsafe shapes', () => {
+        expect(() => compileDeclarativeLogic({
+            interpretations: [{
+                eventType: 'implicit threat',
+                command: 'record_threat',
+                args: {},
+            }],
+        })).toThrow(/invalid eventType/);
+
+        expect(() => compileDeclarativeLogic({
+            interpretations: [{
+                eventType: 'implicit_threat',
+                command: 'Record Threat',
+                args: {},
+            }],
+        })).toThrow(/invalid command id/);
+
+        expect(() => compileDeclarativeLogic({
+            interpretations: [{
+                eventType: 'implicit_threat',
+                command: 'record_threat',
+                setState: true,
+                args: {},
+            }],
+        })).toThrow(/unknown field/);
+    });
+
     test('unsafe reducer paths and unknown DSL fields fail during compile', () => {
         expect(() => compileDeclarativeLogic({
             reducers: [{
