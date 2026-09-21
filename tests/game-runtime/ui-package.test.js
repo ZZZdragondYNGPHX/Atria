@@ -70,7 +70,21 @@ describe('Game Package Component HTML', () => {
         });
 
         const container = document.createElement('div');
-        await definition.mount({ container });
+        await definition.mount({
+            container,
+            selectors: {
+                get() {
+                    throw new Error('fixture has no selectors');
+                },
+                subscribe() {
+                    throw new Error('fixture has no selectors');
+                },
+            },
+            actions: {
+                dispatch: jest.fn(),
+                simulate: jest.fn(),
+            },
+        });
         expect(container.querySelector('#hud')?.textContent).toBe('HUD');
     });
 
