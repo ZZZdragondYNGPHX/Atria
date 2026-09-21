@@ -840,3 +840,34 @@ body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-ho
     right: calc(var(--atri-safe-area-right) + var(--atri-space-1)) !important;
 }
 
+
+
+/* R7E WorkspaceHost integration seam. */
+#atria-workspace[data-atria-workspace-host] {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#atria-workspace[data-atria-workspace-host] > :first-child {
+    min-width: 0;
+    min-height: 0;
+}
+
+.atria-workspace-context-summary {
+    display: grid;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-3);
+}
+
+.atria-workspace-context-summary > strong {
+    font-size: var(--atri-font-size-body);
+}
+
+.atria-workspace-context-summary > p {
+    margin: 0;
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+    line-height: 1.5;
+}
