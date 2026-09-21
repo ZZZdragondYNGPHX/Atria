@@ -38,6 +38,7 @@ jobs:
           game-runtime/logic-rules-integration.test.js
           game-runtime/validators.test.js
           game-runtime/rules.test.js
+          game-runtime/reducers.test.js
           game-runtime/formula.test.js
           game-runtime/rng.test.js
           game-runtime/world-package.test.js
