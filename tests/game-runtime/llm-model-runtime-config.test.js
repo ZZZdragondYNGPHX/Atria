@@ -71,7 +71,7 @@ describe('R5 Model & Runtime configuration surface', () => {
     test('returns defensive normalized snapshots instead of mutable live settings', () => {
         const settings = {};
         const first = getModelRuntimeConfig(settings);
-        first.roles.narrator.fallbackProfiles.push?.('mutate');
+        expect(Object.isFrozen(first.roles.narrator.fallbackProfiles)).toBe(true);
 
         const second = getModelRuntimeConfig(settings);
         expect(second.roles.narrator.fallbackProfiles).toEqual([]);
