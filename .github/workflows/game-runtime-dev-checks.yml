@@ -43,10 +43,15 @@ jobs:
           game-runtime/llm-event-interpreter.test.js
           game-runtime/llm-memory-bridge.test.js
           game-runtime/llm-memory-ingestion.test.js
+          game-runtime/llm-model-runtime-config.test.js
           game-runtime/llm-observation.test.js
+          game-runtime/llm-orchestrator-narrative.test.js
+          game-runtime/llm-roles.test.js
+          game-runtime/llm-turn-controller.test.js
           game-runtime/llm-turn-context.test.js
           game-runtime/llm-runtime.test.js
           game-runtime/r3-exit-matrix.test.js
+          game-runtime/r5-exit-matrix.test.js
           game-runtime/validators.test.js
           game-runtime/rules.test.js
           game-runtime/reducers.test.js
@@ -89,5 +94,7 @@ jobs:
           public/scripts/extensions/memory-graph/main.js
           public/scripts/extensions/memory-graph/source-lifecycle.js
           public/scripts/extensions/memory-graph/source-provenance.js
+          public/scripts/extensions/orchestrator/game-runtime-bridge.js
+          public/scripts/extensions/orchestrator/main.js
           public/scripts/extensions/regex/engine.js
           src/endpoints/card-app.js
