@@ -24,8 +24,8 @@ body[data-atria-shell-preview="true"] > #form_sheld {
     inset: 0;
     width: 100vw;
     height: 100vh;
-    width: 100dvw;
-    height: 100dvh;
+    width: var(--atri-viewport-width, 100dvw);
+    height: var(--atri-viewport-height, 100dvh);
     min-width: 0;
     min-height: 100vh;
     min-height: 100dvh;
@@ -417,9 +417,9 @@ body[data-atria-shell-preview="true"] > #form_sheld {
 
 .atria-sheet-panel {
     position: absolute;
-    right: var(--atri-space-3);
-    bottom: var(--atri-space-3);
-    left: var(--atri-space-3);
+    right: max(var(--atri-space-3), var(--atri-safe-area-right));
+    bottom: max(var(--atri-space-3), var(--atri-safe-area-bottom));
+    left: max(var(--atri-space-3), var(--atri-safe-area-left));
     max-height: min(78vh, 760px);
     overflow: auto;
     border: 1px solid var(--atri-color-border);
@@ -657,7 +657,7 @@ body[data-atria-shell-preview="true"] > #form_sheld {
 .atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-panel {
     top: auto;
     right: var(--atri-space-2);
-    bottom: calc(var(--atri-space-2) + var(--atri-safe-area-bottom));
+    bottom: max(var(--atri-space-2), var(--atri-safe-area-bottom));
     left: var(--atri-space-2);
     width: auto;
     max-height: min(72vh, 640px);
@@ -667,6 +667,11 @@ body[data-atria-shell-preview="true"] > #form_sheld {
 
 .atria-app-shell[data-atria-keyboard="open"] .atria-bottom-navigation {
     display: none;
+}
+
+.atria-app-shell[data-atria-keyboard="open"] .atria-sheet-panel,
+.atria-app-shell[data-atria-keyboard="open"] .atria-command-panel {
+    max-height: calc(var(--atri-viewport-height) - (2 * var(--atri-space-2)));
 }
 
 .atria-app-shell[data-atria-keyboard="open"] {
