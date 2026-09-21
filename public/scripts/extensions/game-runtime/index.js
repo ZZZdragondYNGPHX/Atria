@@ -12,6 +12,7 @@ import {
 } from './llm/narrative.js';
 import { createGameOrchestratorBridge } from './llm/orchestrator-bridge.js';
 import { createRuntimeRoleRouter } from './llm/roles.js';
+import { loadGameObservationDefinitions } from './llm/declarative-observations.js';
 import { createGameLlmRuntime } from './llm/runtime.js';
 import { createGameTurnController } from './llm/turn-controller.js';
 import { listActiveGameEventMemorySources } from './world/memory-source.js';
@@ -76,7 +77,7 @@ function disposeRuntimeSystems() {
     currentTurnRecipes = null;
 }
 
-function createRuntimeSystems(worldSession) {
+function createRuntimeSystems(worldSession, options = {}) {
     if (!worldSession) return null;
 
     const roleRouter = createRuntimeRoleRouter({
@@ -100,6 +101,7 @@ function createRuntimeSystems(worldSession) {
         context: atriaContext,
         roleRouter,
         narrativeCoordinator,
+        observationProjectors: options.observationProjectors || [],
         getOrchestrationMode: () => orchestratorBridge.getMode(),
         generateTask: atriaContext.generateTask,
     });
@@ -410,9 +412,14 @@ export async function reloadGamePackage() {
     let nextRuntimeSystems = null;
     if (next.status === GAME_PACKAGE_STATUS.READY) {
         try {
-            const logicDefinition = await loadGameLogicDefinition(next, {
-                headers: getRequestHeaders(),
-            });
+            const [logicDefinition, observationProjectors] = await Promise.all([
+                loadGameLogicDefinition(next, {
+                    headers: getRequestHeaders(),
+                }),
+                loadGameObservationDefinitions(next, {
+                    headers: getRequestHeaders(),
+                }),
+            ]);
             nextWorldSession = await createGameWorldSession({
                 packageState: next,
                 context: atriaContext,
@@ -423,7 +430,7 @@ export async function reloadGamePackage() {
                 rules: logicDefinition.rules,
                 interpretations: logicDefinition.interpretations,
             });
-            nextRuntimeSystems = createRuntimeSystems(nextWorldSession);
+            nextRuntimeSystems = createRuntimeSystems(nextWorldSession, { observationProjectors });
             nextUiSession = await activateGamePackageUi(next, nextWorldSession, {
                 headers: getRequestHeaders(),
                 dispatchCommand: async (commandId, args) => {
