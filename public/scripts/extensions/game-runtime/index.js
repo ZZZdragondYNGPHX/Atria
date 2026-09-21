@@ -255,19 +255,14 @@ function createRuntimeSystems(worldSession) {
                 }
                 await worldSession.clearBranchOverrideInternal?.();
             },
-            async deleteAssistantResult({ turnId, branch }) {
+            async deleteAssistantResult({ turnId }) {
                 const messageIndex = turnMessageIndices.get(turnId);
                 const liveContext = getContext();
-                const message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
-                if (!message) return;
-                const variantIndex = getAttemptVariantIndex(branch);
-                const swipes = Array.isArray(message.swipes) ? message.swipes : [message.mes];
-                if (swipes.length <= 1) {
+                if (Number.isInteger(messageIndex) && liveContext.chat?.[messageIndex]) {
                     await liveContext.deleteMessages(messageIndex);
-                    turnMessageIndices.delete(turnId);
-                    return;
                 }
-                await liveContext.deleteMessages(messageIndex, { swipe: variantIndex });
+                turnMessageIndices.delete(turnId);
+                await worldSession.clearBranchOverrideInternal?.();
             },
             async replaceNarrative({ turnId, attemptId, variantId, prose }) {
                 const messageIndex = turnMessageIndices.get(turnId);
