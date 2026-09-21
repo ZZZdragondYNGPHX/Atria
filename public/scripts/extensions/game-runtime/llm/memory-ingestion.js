@@ -1,12 +1,11 @@
+import { cloneGameLlmValue } from './clone.js';
 import { advanceTurnContext } from './turn-context.js';
 import { buildGameEventMemorySource } from '../world/memory-source.js';
 
 const MAX_FACT_TEXT = 1900;
 const MAX_EVENTS_PER_TURN = 64;
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function truncate(value, limit) {
     const text = String(value ?? '');
