@@ -98,6 +98,56 @@ describe('R7B Native Play Host', () => {
         expect(document.getElementById('atria-native-play-host')).toBeNull();
     });
 
+    test('coordinates Hybrid native slots and Stage ownership without replacing native nodes', () => {
+        const stage = document.getElementById('atria-stage');
+        const host = mountNativePlayHost({ document, stage });
+        const chat = host.native.chat;
+        const sendForm = host.native.sendForm;
+        const textarea = host.native.sendTextarea;
+
+        const gameSurface = document.createElement('section');
+        gameSurface.id = 'hybrid-stage-surface';
+        const conversationSlot = document.createElement('div');
+        conversationSlot.id = 'hybrid-conversation-slot';
+        const composerSlot = document.createElement('div');
+        composerSlot.id = 'hybrid-composer-slot';
+        gameSurface.append(conversationSlot, composerSlot);
+        stage.appendChild(gameSurface);
+
+        const ownership = host.acquireStageOwnership('game-runtime:hybrid');
+        const conversation = host.mountNativeComponent('conversation', conversationSlot);
+        const composer = host.mountNativeComponent('composer', composerSlot);
+
+        expect(host.getStageOwner()).toBe('game-runtime:hybrid');
+        expect(host.root.style.display).toBe('none');
+        expect(stage.dataset.atriaStageOwner).toBe('game-runtime:hybrid');
+        expect(host.getActiveNativeComponents()).toEqual(['conversation', 'composer']);
+        expect(document.querySelectorAll('#chat')).toHaveLength(1);
+        expect(document.querySelectorAll('#send_form')).toHaveLength(1);
+        expect(document.querySelectorAll('#send_textarea')).toHaveLength(1);
+        expect(document.getElementById('chat')).toBe(chat);
+        expect(document.getElementById('send_form')).toBe(sendForm);
+        expect(document.getElementById('send_textarea')).toBe(textarea);
+        expect(chat.parentElement).toBe(conversationSlot);
+        expect(sendForm.parentElement).toBe(composerSlot);
+        expect(host.assertIntegrity()).toBe(true);
+        expect(() => host.acquireStageOwnership('game-runtime:full')).toThrow(/already owned/);
+
+        composer.restore();
+        conversation.restore();
+        expect(chat.parentElement).toBe(host.native.sheld);
+        expect(sendForm.parentElement).toBe(host.native.formSheld);
+        expect(host.getActiveNativeComponents()).toEqual([]);
+
+        ownership.release();
+        expect(host.getStageOwner()).toBeNull();
+        expect(host.root.style.display).toBe('');
+        expect(stage.dataset.atriaStageOwner).toBeUndefined();
+        expect(host.assertIntegrity()).toBe(true);
+
+        host.unmount();
+    });
+
     test('preserves R4 native component surface composition inside the moved subtree', () => {
         const host = mountNativePlayHost({
             document,
