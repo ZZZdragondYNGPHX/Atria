@@ -552,6 +552,29 @@ export function createAtriaWorkspaceHost({
         if (!label) {
             throw new Error(`Unknown Atria workspace utility: ${id}`);
         }
+
+        // Utilities are global surfaces, not children of whichever primary
+        // domain happened to launch/search them. Canonicalize their parent to
+        // the neutral Play host, then replace that same history entry with the
+        // utility child route. This prevents e.g. Settings searched from
+        // Agents from appearing as an Agents-owned page.
+        const route = navigation.getRoute();
+        if (route.domain !== 'play') {
+            navigation.navigate('play', {
+                reason: `workspace-utility-${utilityId}-host`,
+                history: 'push',
+            });
+            return navigation.navigateChild({
+                id: `utility.${utilityId}`,
+                label,
+                kind: 'workspace',
+            }, {
+                breadcrumb: [label],
+                reason: `workspace-utility-${utilityId}`,
+                history: 'replace',
+            });
+        }
+
         return navigation.navigateChild({
             id: `utility.${utilityId}`,
             label,
