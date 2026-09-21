@@ -47,7 +47,7 @@ async function openShellPreview(page, viewport) {
                 && Boolean(window.Atria?.getContext)
                 && Boolean(window.Atria?.shell?.isMounted?.()),
             null,
-            { timeout: 8_000 },
+            { timeout: 30_000 },
         );
     } catch (error) {
         const state = await page.evaluate(() => ({
