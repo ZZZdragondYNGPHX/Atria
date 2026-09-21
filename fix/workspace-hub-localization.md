@@ -39,3 +39,42 @@ Global search is a locator, not an embedding mechanism: result execution must re
 ## Compatibility
 
 No persistence/schema migration. This is a presentation/navigation/i18n fix only.
+
+
+## Completion record
+
+Implementation branch: `fix/workspace-hub-localization`
+Final validated branch HEAD: `9e178b8bce4301412d3995c9f0afe0ce9432c735`
+Pull request: #82 — `fix: repair workspace routing, preview, and localization`
+
+### Implemented
+
+- Completed Memory workspace Simplified/Traditional Chinese coverage for the visible Memory OS surface.
+- Localized Runtime overview status strings that were still rendered in English.
+- Changed the Agents primary route into a hub with routed child workspaces:
+  - Orchestration
+  - Run
+  - Memory
+  - Diagnostics
+- Added canonical command/search routing so a result opens its owning primary domain / child route instead of rendering foreign content inside the caller domain.
+- Canonicalized global utilities (Diagnostics / Plugins / Settings / Account) under a neutral Play-hosted utility route so they do not inherit the caller domain identity.
+- Replaced Studio mobile Preview's previous host-chat passthrough with a dedicated project-preview surface.
+- Fixed a Diagnostics trace-import redraw race discovered by CI: a selected trace now completes replay even if the original file-input node is replaced while `file.text()` is pending.
+
+### Validation
+
+- Atria PR Checks #762 — run `35619796768`: success
+  - Atria Migration Guard: success
+  - Unit Tests: success
+  - ESLint: success
+- Workspace UI #182 — run `35619796719`: success
+  - Workspace information-architecture guard: success
+  - Workspace projection smoke: success
+  - Workspace UI smoke: success
+  - remaining Workspace workflow checks: success
+
+No Android or Docker validation was required because this task changed browser/frontend workspace, routing, i18n, Studio presentation, and frontend diagnostics behavior only.
+
+### Data / compatibility impact
+
+No persistence or schema migration. Existing Navigation Authority, WorkspaceHost, Orchestrator, Memory OS, Studio, Runtime, and native controller authorities remain authoritative.
