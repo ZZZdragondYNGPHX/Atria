@@ -1,3 +1,4 @@
+import { loadGameSelectorDefinitions } from './declarative.js';
 import { createAtriaSurfaceAdapter } from './host-surfaces.js';
 import { loadGameComponentDefinition } from './package.js';
 import { createComponentUiRuntime } from './runtime.js';
@@ -23,6 +24,11 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         throw new Error('Game UI activation requires a document');
     }
 
+    const selectorDefinitions = await loadGameSelectorDefinitions(packageState, {
+        fetchImpl: options.fetchImpl,
+        headers: options.headers || {},
+    });
+
     const adapter = createAtriaSurfaceAdapter(documentRef);
     const surfaceHost = createSurfaceHost({
         resolveSurface: surfaceId => adapter.resolveSurface(surfaceId),
@@ -30,7 +36,10 @@ export async function activateGamePackageUi(packageState, worldSession, options 
     });
     const selectors = createSelectorRuntime({
         getWorldState: () => worldSession?.getState?.() ?? {},
-        definitions: options.selectors || [],
+        definitions: [
+            ...selectorDefinitions,
+            ...(options.selectors || []),
+        ],
     });
     const componentRuntime = createComponentUiRuntime({
         surfaceHost,
