@@ -239,7 +239,7 @@ export function createAtriaWorkspaceHost({
                 : descriptor.kind === 'library'
                     ? formatShellText('Library / ${0} reuses existing character, Game Package, World Info and Skill authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
                     : descriptor.kind === 'runtime'
-                        ? formatShellText('Runtime / ${0} projects the existing Runtime Role, connection, preset and retrieval authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.runtime')
+                        ? formatShellText('Runtime / ${0} projects the existing Runtime Role, API connection and preset authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.runtime')
                         : descriptor.kind === 'diagnostics'
                             ? translateShellText('Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.')
                             : descriptor.kind === 'plugins'
@@ -446,7 +446,11 @@ export function createAtriaWorkspaceHost({
     }
 
     function openRuntimeSection(section = 'overview') {
-        const id = String(section || 'overview').trim().toLowerCase();
+        const requestedId = String(section || 'overview').trim().toLowerCase();
+        // Retrieval used to be a duplicate Runtime tab pointing at the same
+        // Connection Manager. Keep callers compatible while routing to the
+        // single Connections surface.
+        const id = requestedId === 'retrieval' ? 'connections' : requestedId;
         const item = RUNTIME_SECTIONS.find(candidate => candidate.id === id) || RUNTIME_SECTIONS[0];
         if (navigation.getRoute().domain !== 'runtime') {
             navigation.navigate('runtime', {
@@ -677,14 +681,6 @@ export function createAtriaWorkspaceHost({
             group: translateShellText('Workspaces'),
             keywords: ['runtime', 'presets', 'prompts'],
             run: () => openRuntimeSection('presets'),
-        }),
-        shell.registry.register({
-            id: 'workspace.retrieval',
-            title: translateShellText('Open Runtime Retrieval'),
-            description: translateShellText('Open embedding and rerank profiles from Connection Manager'),
-            group: translateShellText('Workspaces'),
-            keywords: ['runtime', 'retrieval', 'embedding', 'rerank'],
-            run: () => openRuntimeSection('retrieval'),
         }),
         shell.registry.register({
             id: 'workspace.world-info',
