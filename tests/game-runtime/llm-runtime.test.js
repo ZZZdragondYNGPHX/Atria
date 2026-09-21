@@ -649,6 +649,103 @@ describe('R5 Game LLM Runtime vertical slice', () => {
             .rejects.toThrow(/Memory recall mutated World State/);
     });
 
+    test('finalizeMemory persists committed Event facts after final prose without mutating World/Journal', async () => {
+        const session = makeSession();
+        const beforeState = session.getState();
+        const beforeJournal = session.getJournal();
+        const seen = [];
+        const runtime = createGameLlmRuntime({
+            worldSession: session,
+            memoryIngestion: {
+                async ingest(turn, input) {
+                    seen.push({
+                        turnId: turn.turnId,
+                        committedEvents: structuredClone(turn.committedEvents),
+                        producer: input.producer,
+                        finalProse: input.finalProse,
+                    });
+                    return {
+                        status: 'ingested',
+                        turn: {
+                            ...turn,
+                            narrative: {
+                                status: 'final',
+                                producer: input.producer,
+                                text: input.finalProse,
+                            },
+                            memoryUpdates: [{
+                                status: 'ingested',
+                                source: 'committed_events',
+                            }],
+                        },
+                        update: {
+                            status: 'ingested',
+                            source: 'committed_events',
+                        },
+                    };
+                },
+            },
+        });
+
+        let turn = runtime.beginTurn({
+            origin: 'ui_action',
+            serial: 17,
+        });
+        const committed = await session.dispatchCommandInternal('attack', {});
+        turn = runtime.applyCommandResult(turn, committed);
+
+        const result = await runtime.finalizeMemory(turn, {
+            producer: 'narrator',
+            finalProse: 'The guard staggers.',
+        });
+
+        expect(result.status).toBe('ingested');
+        expect(seen).toEqual([{
+            turnId: turn.turnId,
+            committedEvents: turn.committedEvents,
+            producer: 'narrator',
+            finalProse: 'The guard staggers.',
+        }]);
+        expect(session.getState()).toEqual({
+            ...beforeState,
+            hp: beforeState.hp - 1,
+        });
+        expect(session.getJournal().events).toHaveLength(beforeJournal.events.length + 1);
+    });
+
+    test('finalizeMemory rejects a Memory writer that mutates World state', async () => {
+        const session = makeSession();
+        const runtime = createGameLlmRuntime({
+            worldSession: session,
+            memoryIngestion: {
+                async ingest(turn) {
+                    session.setState({
+                        hp: 0,
+                        inCombat: false,
+                        secretSeed: 999,
+                        threatCount: 0,
+                    });
+                    return {
+                        status: 'ingested',
+                        turn,
+                        update: { status: 'ingested' },
+                    };
+                },
+            },
+        });
+
+        const turn = runtime.beginTurn({
+            origin: 'free_text',
+            userInput: 'Remember this',
+            serial: 18,
+        });
+
+        await expect(runtime.finalizeMemory(turn, {
+            producer: 'director',
+            finalProse: 'Final director body.',
+        })).rejects.toThrow(/Post-turn Memory ingestion mutated World State/);
+    });
+
     test('free-text no-change creates no command transaction or Event noise', async () => {
         const session = makeSession();
         const runtime = createGameLlmRuntime({
