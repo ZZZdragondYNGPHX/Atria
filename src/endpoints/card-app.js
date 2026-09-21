@@ -5,6 +5,11 @@ import mime from 'mime-types';
 import express from 'express';
 import sanitize from 'sanitize-filename';
 import { createGitClient } from '../git/client.js';
+import {
+    buildAtriaDistribution,
+    inspectAtriaDistribution,
+    restoreAtriaDistribution,
+} from '../game-package/distribution.js';
 
 import { resolvePathWithinParent } from '../util.js';
 
@@ -322,6 +327,102 @@ router.get('/:charId/diff/:hash', async (request, response) => {
     } catch (err) {
         console.error('[card-app] Error getting diff:', err);
         return response.sendStatus(500);
+    }
+});
+
+/**
+ * Build the current Source Project as an Atria native distribution archive.
+ * GET /api/card-app/:charId/atria/export
+ */
+router.get('/:charId/atria/export', (request, response) => {
+    try {
+        const charId = sanitize(String(request.params.charId));
+        if (!charId) return response.sendStatus(400);
+
+        const charDir = path.join(request.user.directories.cardApps, charId);
+        const result = buildAtriaDistribution(charDir, { cardId: charId });
+        const safeId = String(result.manifest.package.id || 'game')
+            .replace(/[^A-Za-z0-9._-]+/g, '_');
+        const safeVersion = String(result.manifest.package.version || '0.0.0')
+            .replace(/[^A-Za-z0-9._+-]+/g, '_');
+        const fileName = safeId + '-' + safeVersion + '.atria';
+
+        response.setHeader('Content-Type', 'application/zip');
+        response.setHeader('Content-Disposition', 'attachment; filename="' + fileName + '"');
+        response.setHeader('Content-Length', String(result.archive.length));
+        return response.send(result.archive);
+    } catch (error) {
+        console.warn('[card-app] .atria export rejected:', error?.message || error);
+        return response.status(400).json({
+            error: error?.message || String(error),
+        });
+    }
+});
+
+const atriaRawBody = express.raw({
+    type: ['application/octet-stream', 'application/zip', 'application/x-atria'],
+    limit: '128mb',
+});
+
+/**
+ * Validate an .atria archive without changing Source Project files.
+ * POST /api/card-app/:charId/atria/validate
+ */
+router.post('/:charId/atria/validate', atriaRawBody, (request, response) => {
+    try {
+        const charId = sanitize(String(request.params.charId));
+        if (!charId || !Buffer.isBuffer(request.body)) {
+            return response.status(400).json({ error: 'Missing .atria archive body' });
+        }
+
+        const inspected = inspectAtriaDistribution(request.body);
+        return response.json({
+            ok: true,
+            manifest: inspected.manifest,
+            game: inspected.game,
+            fileCount: inspected.files.size,
+        });
+    } catch (error) {
+        console.warn('[card-app] .atria validation rejected:', error?.message || error);
+        return response.status(400).json({
+            ok: false,
+            error: error?.message || String(error),
+        });
+    }
+});
+
+/**
+ * Restore an already validated .atria archive into the current Source Project.
+ * The project Git repository is retained and the restore receives one commit.
+ * POST /api/card-app/:charId/atria/import
+ */
+router.post('/:charId/atria/import', atriaRawBody, async (request, response) => {
+    try {
+        const charId = sanitize(String(request.params.charId));
+        if (!charId || !Buffer.isBuffer(request.body)) {
+            return response.status(400).json({ error: 'Missing .atria archive body' });
+        }
+
+        const charDir = path.join(request.user.directories.cardApps, charId);
+        await ensureGitRepo(charDir);
+        const restored = restoreAtriaDistribution(request.body, charDir);
+        await autoCommit(
+            charDir,
+            '[Studio] restore .atria ' + restored.game.id + '@' + restored.game.version,
+        );
+
+        return response.json({
+            ok: true,
+            manifest: restored.manifest,
+            game: restored.game,
+            filesRestored: restored.filesRestored,
+        });
+    } catch (error) {
+        console.warn('[card-app] .atria import rejected:', error?.message || error);
+        return response.status(400).json({
+            ok: false,
+            error: error?.message || String(error),
+        });
     }
 });
 
