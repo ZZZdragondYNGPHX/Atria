@@ -65,7 +65,11 @@ describe('Game Package loader', () => {
     test('rejects a valid manifest whose declared package file is missing', async () => {
         const withUi = {
             ...manifest,
-            ui: { mode: 'component', entry: 'ui/hud.html' },
+            ui: {
+                mode: 'component',
+                entry: 'ui/hud.html',
+                selectors: 'ui/selectors.json',
+            },
         };
         const fetchImpl = jest.fn(async (url) => {
             if (url.endsWith('/game.json')) {
@@ -76,6 +80,7 @@ describe('Game Package loader', () => {
                     body: {
                         files: [
                             { path: 'game.json', type: 'file' },
+                            { path: 'ui/hud.html', type: 'file' },
                         ],
                     },
                 });
@@ -88,7 +93,7 @@ describe('Game Package loader', () => {
         expect(result.status).toBe(GAME_PACKAGE_STATUS.INVALID);
         expect(result.active).toBe(false);
         expect(result.errors).toEqual([
-            "Game Package declares missing file 'ui/hud.html'",
+            "Game Package declares missing file 'ui/selectors.json'",
         ]);
     });
 
