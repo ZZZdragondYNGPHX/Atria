@@ -93,6 +93,10 @@ export async function createGameWorldSession(options = {}) {
             return logicRuntime.listRules();
         },
 
+        getInterpretationMappings() {
+            return [...(options.interpretations || [])];
+        },
+
         validateCommand(commandId, args) {
             return logicRuntime.validateCommand(commandId, args);
         },
