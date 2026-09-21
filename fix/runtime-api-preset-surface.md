@@ -10,6 +10,7 @@ Completed and merged.
 - PR: #81 — `fix: repair Runtime API and preset editing surfaces`
 - Squash merge / resulting main: `5e0f46da9dcd4dce3811e854ad87d694fa2606d7`
 - Validated task tree and merged-main tree: `15faba33c2e63f7d739368059ef53f112d4f08b8` — identical
+- Post-merge cleanup: **Cleanup merged task branches #78**, run `35613926434`: success; `fix/runtime-api-preset-surface` removed
 
 ## Goal
 
