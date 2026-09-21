@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { bootstrapCustomBackend, appendConnectionProfile, markOnboarded, writeWorldBook } from '../_lib/fixtures.js';
 import { startMockLLM } from '../_lib/mockLLM.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { openWorldInfoDrawer, selectWorldBook } from '../_lib/ui-worldinfo.js';
+import { closeWorldInfoDrawer, openWorldInfoDrawer, selectWorldBook } from '../_lib/ui-worldinfo.js';
 import { startWorldInfoServer, tearDownWorldInfoServer } from './_helpers.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -325,9 +325,11 @@ test('mobile workspace uses drill-down instead of squeezed split panes', async (
     await expect(page.locator('.wi-workspace-entry-list-pane')).toBeVisible();
     await expect(page.locator('#wi_workspace_inspector')).toBeHidden();
 
-    // Full-screen mobile keeps an in-workspace close action because the
-    // external drawer launcher is covered by the workspace itself.
-    await page.locator('#wi_workspace_close').click();
+    // Under R7H the embedded World Info controller is closed by the
+    // authoritative WorkspaceHost; the inherited internal close button is
+    // deliberately hidden while embedded.
+    await expect(page.locator('#wi_workspace_close')).toBeHidden();
+    await closeWorldInfoDrawer(page);
     await expect(page.locator('#WorldInfo')).toBeHidden();
 });
 
