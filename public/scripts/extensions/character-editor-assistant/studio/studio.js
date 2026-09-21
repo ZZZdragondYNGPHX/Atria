@@ -18,6 +18,7 @@ const getCharacterState = __ctx.getCharacterState;
 const updateCharacterState = __ctx.updateCharacterState;
 void (__ctx.deleteCharacterState);
 import { sendAIMessage, TOOL_NAMES } from './ai-chat.js';
+import { GAME_PROJECT_KIND, GAME_PROJECT_STATUS, buildGameProjectNavigator } from './game-project-navigator.js';
 
 // Markdown converter for AI messages
 const mdConverter = new showdown.Converter({
@@ -106,6 +107,7 @@ let currentCharId = null;
 let currentAvatar = null;
 let currentFile = null;
 let fileList = [];
+let projectNavigator = null;
 
 // CodeMirror 6 state
 let cmEditor = null;
@@ -356,6 +358,46 @@ async function renameFile(charId, fromPath, toPath) {
     });
     if (!response.ok) throw new Error(`Failed to rename file: ${response.status}`);
     return await response.json();
+}
+
+// ==================== Game Project Navigator ====================
+
+async function rebuildProjectNavigator() {
+    if (!currentCharId) {
+        projectNavigator = null;
+        return null;
+    }
+    projectNavigator = await buildGameProjectNavigator({
+        files: fileList,
+        readFile: filePath => fetchFileContent(currentCharId, filePath),
+    });
+    return projectNavigator;
+}
+
+function updateStudioProjectIdentity() {
+    const isGameProject = projectNavigator?.kind === GAME_PROJECT_KIND.GAME;
+    const editorTitle = document.querySelector('[data-studio-editor-title]');
+    if (editorTitle) {
+        editorTitle.innerHTML = isGameProject
+            ? `🎮 ${escapeHtml(t('Atria Game Studio'))}`
+            : `📝 ${escapeHtml(t('Code Editor'))}`;
+    }
+    const navigatorTitle = document.querySelector('[data-studio-project-title]');
+    if (navigatorTitle) {
+        navigatorTitle.innerHTML = isGameProject
+            ? `🧭 ${escapeHtml(t('Project Navigator'))}`
+            : `📁 ${escapeHtml(t('Files'))}`;
+    }
+}
+
+async function refreshProjectFiles({ render = true } = {}) {
+    if (!currentCharId) return;
+    fileList = await fetchFileList(currentCharId);
+    await rebuildProjectNavigator();
+    if (!render) return;
+    updateStudioProjectIdentity();
+    const fileListEl = document.querySelector('[data-studio-file-list]');
+    if (fileListEl) renderFileList(fileListEl);
 }
 
 // ==================== Skeleton Init ====================
@@ -640,10 +682,13 @@ function buildLeftPanelHtml() {
 }
 
 function buildRightPanelHtml() {
+    const isGameProject = projectNavigator?.kind === GAME_PROJECT_KIND.GAME;
+    const editorTitle = isGameProject ? t('Atria Game Studio') : t('Code Editor');
+    const navigatorTitle = isGameProject ? t('Project Navigator') : t('Files');
     return `
 <div id="${STUDIO_PANEL_RIGHT_ID}" class="card-app-studio-panel right">
  <div class="card-app-studio-panel-header">
-    <span class="card-app-studio-title">📝 ${escapeHtml(t('Code Editor'))}</span>
+    <span class="card-app-studio-title" data-studio-editor-title>${isGameProject ? '🎮' : '📝'} ${escapeHtml(editorTitle)}</span>
  <div class="card-app-studio-header-actions">
         <button class="card-app-studio-btn small" data-studio-action="save" title="${escapeHtml(t('Save'))} (Ctrl+S)">💾 ${escapeHtml(t('Save'))}</button>
         <button class="card-app-studio-btn small" data-studio-action="reload" title="${escapeHtml(t('Reload'))}">↻ ${escapeHtml(t('Reload'))}</button>
@@ -655,7 +700,7 @@ function buildRightPanelHtml() {
  </div>
  <div class="card-app-studio-file-tree">
  <div class="card-app-studio-file-tree-header">
-        <span>📁 ${escapeHtml(t('Files'))}</span>
+        <span data-studio-project-title>${isGameProject ? '🧭' : '📁'} ${escapeHtml(navigatorTitle)}</span>
  <button class="card-app-studio-btn small" data-studio-action="new-file" title="New file">+</button>
  </div>
  <div class="card-app-studio-file-list" data-studio-file-list></div>
@@ -713,15 +758,103 @@ function setMobileActiveTab(which) {
     }
 }
 
+function getProjectRoleIcon(role, path) {
+    const icons = {
+        package_metadata: 'fa-solid fa-box-archive',
+        world_schema: 'fa-solid fa-diagram-project',
+        initial_state: 'fa-solid fa-play',
+        game_logic: 'fa-solid fa-gears',
+        commands: 'fa-solid fa-terminal',
+        reducers: 'fa-solid fa-code-branch',
+        rules: 'fa-solid fa-scale-balanced',
+        interpretations: 'fa-solid fa-language',
+        ui: 'fa-solid fa-window-maximize',
+        selectors: 'fa-solid fa-filter',
+        immersive: 'fa-solid fa-expand',
+        knowledge: 'fa-solid fa-book',
+        skill: 'fa-solid fa-graduation-cap',
+        asset: 'fa-solid fa-photo-film',
+    };
+    return icons[role] || getFileIcon(path);
+}
+
+function formatProjectFileSize(size) {
+    const value = Number(size) || 0;
+    return value > 1024 ? `${(value / 1024).toFixed(1)}KB` : `${value}B`;
+}
+
+function renderGameProjectSummary() {
+    if (projectNavigator?.kind !== GAME_PROJECT_KIND.GAME) return '';
+    const ready = projectNavigator.status === GAME_PROJECT_STATUS.READY;
+    const name = projectNavigator.summary?.name || t('Atria Game Project');
+    const version = projectNavigator.summary?.version
+        ? `v${projectNavigator.summary.version}`
+        : '';
+    const status = ready ? t('Runtime project') : t('Needs attention');
+    const diagnostics = projectNavigator.diagnostics || [];
+    const detail = diagnostics.length > 0
+        ? diagnostics[0].message
+        : t('Uses the live Game Runtime source files directly.');
+    return `
+        <div class="card-app-studio-project-summary ${ready ? 'ready' : 'invalid'}" title="${escapeHtml(detail)}">
+            <div class="card-app-studio-project-summary-main">
+                <span class="card-app-studio-project-name">🎮 ${escapeHtml(name)}</span>
+                ${version ? `<span class="card-app-studio-project-version">${escapeHtml(version)}</span>` : ''}
+            </div>
+            <div class="card-app-studio-project-summary-status">
+                <span class="card-app-studio-project-status">${ready ? '✓' : '⚠'} ${escapeHtml(status)}</span>
+                ${diagnostics.length ? `<span class="card-app-studio-project-diagnostics">${diagnostics.length}</span>` : ''}
+            </div>
+        </div>`;
+}
+
+function renderProjectNode(node) {
+    const active = currentFile === node.path ? ' active' : '';
+    const missing = node.exists === false ? ' missing' : '';
+    const section = node.kind === 'section' ? ' section' : '';
+    const binary = node.editable === false && node.exists !== false ? ' binary' : '';
+    const canOpen = node.exists !== false && node.editable !== false;
+    const dataFile = canOpen ? ` data-studio-file="${escapeHtml(node.path)}"` : '';
+    const secondary = node.kind === 'section'
+        ? node.path
+        : (node.label === node.path ? '' : node.path);
+    const meta = node.kind === 'section'
+        ? `<span class="card-app-studio-project-count">${Number(node.count) || 0}</span>`
+        : (node.exists === false
+            ? `<span class="card-app-studio-project-missing">${escapeHtml(t('Missing'))}</span>`
+            : `<span class="card-app-studio-file-size">${formatProjectFileSize(node.size)}</span>`);
+    return `
+        <div class="card-app-studio-file-item project-node${active}${missing}${section}${binary}"${dataFile}
+             title="${escapeHtml(node.exists === false ? `${node.label}: ${node.path}` : node.path)}">
+            <i class="${getProjectRoleIcon(node.role, node.path)}"></i>
+            <span class="card-app-studio-project-node-text">
+                <span class="card-app-studio-file-name">${escapeHtml(t(node.label))}</span>
+                ${secondary ? `<span class="card-app-studio-project-path">${escapeHtml(secondary)}</span>` : ''}
+            </span>
+            ${meta}
+        </div>`;
+}
+
 function renderFileList(container) {
     const files = fileList.filter(f => f.type === 'file');
+    if (projectNavigator?.kind === GAME_PROJECT_KIND.GAME) {
+        const groups = projectNavigator.groups || [];
+        container.innerHTML = `${renderGameProjectSummary()}${groups.map(group => `
+            <section class="card-app-studio-project-group" data-project-group="${escapeHtml(group.id)}">
+                <div class="card-app-studio-project-group-title">${escapeHtml(t(group.label))}</div>
+                <div class="card-app-studio-project-group-nodes">
+                    ${group.nodes.map(renderProjectNode).join('')}
+                </div>
+            </section>`).join('')}`;
+        return;
+    }
     container.innerHTML = files.length === 0
         ? `<div class="card-app-studio-empty">${escapeHtml(t('No files yet'))}</div>`
         : files.map(f => `
  <div class="card-app-studio-file-item${currentFile === f.path ? ' active' : ''}" data-studio-file="${escapeHtml(f.path)}">
  <i class="${getFileIcon(f.path)}"></i>
  <span class="card-app-studio-file-name">${escapeHtml(f.path)}</span>
- <span class="card-app-studio-file-size">${f.size > 1024 ? (f.size / 1024).toFixed(1) + 'KB' : f.size + 'B'}</span>
+ <span class="card-app-studio-file-size">${formatProjectFileSize(f.size)}</span>
  </div>
  `).join('');
 }
@@ -798,9 +931,7 @@ async function handleRollback(hash) {
         toastr.success(t('Rolled back successfully'));
 
         // Refresh everything
-        fileList = await fetchFileList(currentCharId);
-        const fileListEl = document.querySelector('[data-studio-file-list]');
-        if (fileListEl) renderFileList(fileListEl);
+        await refreshProjectFiles();
         if (currentFile) await openFile(currentFile);
         await renderHistory();
         await reloadCardApp();
@@ -837,6 +968,7 @@ async function handleSaveCurrentFile() {
 
     try {
         await saveFileContent(currentCharId, currentFile, getCMContent());
+        await refreshProjectFiles();
         toastr.success(tFormat('Saved ${0}', currentFile));
         await reloadCardApp();
     } catch (err) {
@@ -854,9 +986,7 @@ async function handleNewFile() {
 
     try {
         await saveFileContent(currentCharId, safeName, '');
-        fileList = await fetchFileList(currentCharId);
-        const fileListEl = document.querySelector('[data-studio-file-list]');
-        if (fileListEl) renderFileList(fileListEl);
+        await refreshProjectFiles();
         await openFile(safeName);
         toastr.success(tFormat('Created ${0}', safeName));
     } catch (err) {
@@ -935,8 +1065,8 @@ export async function openCardAppStudio(charId) {
     // Ensure skeleton files exist
     await ensureSkeletonFiles(charId);
 
-    // Load file list
-    fileList = await fetchFileList(charId);
+    // Load the live source project and derive the runtime-aware navigator.
+    await refreshProjectFiles({ render: false });
 
     // Inject CSS
     if (!document.getElementById('card-app-studio-style')) {
@@ -978,8 +1108,11 @@ export async function openCardAppStudio(charId) {
         await createCMEditor(codeContainer, '', '');
     }
 
-    // Open first file
-    const firstFile = fileList.find(f => f.type === 'file');
+    // Game projects open their authoritative package metadata first; plain
+    // CardApps preserve the original first-file behavior.
+    const firstFile = projectNavigator?.kind === GAME_PROJECT_KIND.GAME
+        ? fileList.find(f => f.type === 'file' && f.path === 'game.json')
+        : fileList.find(f => f.type === 'file');
     if (firstFile) {
         await openFile(firstFile.path);
     }
@@ -1048,6 +1181,7 @@ export async function closeCardAppStudio() {
     currentAvatar = null;
     currentFile = null;
     fileList = [];
+    projectNavigator = null;
     conversationMessages = [];
     currentSessionId = null;
     isSending = false;
@@ -1526,9 +1660,7 @@ async function handleAISend() {
         });
         if (loadingEl?.parentNode) loadingEl.remove();
         if (result.modifiedFiles.length > 0) {
-            fileList = await fetchFileList(currentCharId);
-            const fileListEl = document.querySelector('[data-studio-file-list]');
-            if (fileListEl) renderFileList(fileListEl);
+            await refreshProjectFiles();
             if (currentFile && result.modifiedFiles.includes(currentFile)) await openFile(currentFile);
             await reloadCardApp();
         }

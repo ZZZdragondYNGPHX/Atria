@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   focused:
-    name: R0-R5 Focused
+    name: R0-R6 Focused Dev
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,6 +32,7 @@ jobs:
           game-runtime/package-manifest.test.js
           game-runtime/package-loader.test.js
           game-runtime/package-transport.test.js
+          game-runtime/studio-project-navigator.test.js
           game-runtime/world-runtime.test.js
           game-runtime/command-registry.test.js
           game-runtime/logic-runtime.test.js
@@ -89,6 +90,8 @@ jobs:
           public/scripts/extensions/game-runtime/llm/*.js
           public/scripts/extensions/game-runtime/ui/*.js
           public/scripts/extensions/game-runtime/world/*.js
+          public/scripts/extensions/character-editor-assistant/studio/game-project-navigator.js
+          public/scripts/extensions/character-editor-assistant/studio/studio.js
           public/scripts/extensions/memory-graph/api.js
           public/scripts/extensions/memory-graph/atomic-facts.js
           public/scripts/extensions/memory-graph/history-build.js
