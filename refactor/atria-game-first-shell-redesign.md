@@ -2,7 +2,7 @@
 
 ## Status
 
-- Phase: **R7F validated; R7G next**
+- Phase: **R7G validated; R7H next**
 - Repository: `ZZZdragondYNGPHX/Atria`
 - R0-R6 frozen branch: `refactor/game-runtime-architecture`
 - R6 final validated HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
@@ -21,6 +21,8 @@
 - R7E validation: **R7 Shell Dev Checks #119**, run `35582312859`, success
 - R7F final validated HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
 - R7F validation: **R7 Shell Dev Checks #133**, run `35585151542`, success
+- R7G final validated HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
+- R7G validation: **R7 Shell Dev Checks #152**, run `35588313656`, success
 - R7 is based directly on the complete R0-R6 branch and therefore already contains the full Master Refactor history.
 - Neither long-running branch is to be merged into `main` before R7 final validation.
 
@@ -394,15 +396,109 @@ Authoritative validation covers:
 - prior R7A-R7E regression coverage;
 - one live `#chat`, `#send_form`, and `#send_textarea`.
 
-### R7G entry condition
+### R7G validated checkpoint
 
-R7G starts from the validated R7F HEAD above on the **same long-running R7 branch**. Do not create a separate R7G branch and do not merge to `main`.
+R7G — Plugins & Settings Reclassification is complete and validated.
 
-R7G is **Plugins & Settings Reclassification**.
+Validated implementation baseline:
 
-R7G owns product-level reclassification of Plugins / Settings / Account and legacy Extensions/User Settings/API navigation. It must preserve the R7D Navigation Authority and R7E WorkspaceHost, keep Atria built-in core domains out of the third-party Plugins bucket, and retain compatibility anchors until R7H final retirement.
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
+- Workflow: **R7 Shell Dev Checks #152**
+- Run: `35588313656`
+- **R7G Focused Unit and Lint**: success
+- **R7G Plugins Settings Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7G changed Web/JS/CSS and one browser Account-controller mount seam only, with no Kotlin/native Back or Docker changes.
 
-Do not reopen R7A-R7F unless R7G exposes a concrete integration defect. Do not prematurely perform R7H legacy-shell retirement.
+R7G preserved the existing authority chain:
+
+```text
+Global Utility
+        ↓
+R7D Navigation Authority
+        ↓
+R7E WorkspaceHost
+        ↓
+R7G Utility Adapter
+        ↓
+Existing Controller / DOM / State / Persistence
+```
+
+Plugins implementation:
+
+- **Plugins** remains a Global Utility rather than becoming a sixth Primary Domain;
+- product-level third-party classification uses the existing extension discovery/type model: `third-party/*` and existing `local` / `global` extension types are treated as third-party Plugins;
+- Atria built-ins such as Game Runtime, Game Studio, Orchestrator/Agents, Memory Graph, World Info, Skills, Diagnostics and Connection Manager are not surfaced as third-party Plugins merely because some live under `public/scripts/extensions/`;
+- the existing frontend extension loader, manifest registry, activation lifecycle, hooks and install/update/delete flows remain authoritative;
+- enable/disable uses the existing `extension_settings.disabledExtensions` plus existing `enableExtension` / `disableExtension` / `saveSettings` persistence; no second Plugin state store exists;
+- existing `#extensions_settings` / `#extensions_settings2` DOM is reparented only into a collapsed **Extension compatibility settings** surface and restored exactly on dispose;
+- the existing advanced extension manager and install entry remain compatibility/deep-management flows;
+- backend **server plugins** remain a separate server-managed plugin-loader surface; R7G does not merge their runtime/state with frontend extensions or invent browser-side enable/disable state for them.
+
+Settings implementation:
+
+- **Settings** remains a Global Utility and is intentionally narrower than the inherited SillyTavern User Settings drawer;
+- primary Settings IA exposes Appearance, Language, Accessibility, Interface & Behavior, with MovingUI explicitly retained as compatibility during R7G;
+- the exact real `#user-settings-block` is reparented into a collapsed **Advanced & compatibility settings** form rather than cloned or reimplemented;
+- the existing theme/power-user controls, `SettingsRepo` / settings document, `power_user`, language `localStorage` behavior and existing controller listeners remain authoritative;
+- Account controls are hidden from the Settings compatibility form while embedded because Account is its own Global Utility;
+- Runtime Roles, Connections, Presets and Retrieval remain owned by R7F Runtime and are not reclassified as Settings;
+- Agents/Memory, Skills, World Info and Diagnostics remain with their existing domain/utility ownership.
+
+Account implementation:
+
+- **Account** remains a separate Global Utility, not a Settings tab;
+- the existing `public/scripts/user.js` account controller remains authoritative for `currentUser`, account enablement/admin state, identity changes, password operations, settings snapshots, Backup & Sync and Storage Management;
+- `openUserProfile()` gained a narrow embedded-container seam while preserving its existing popup behavior for non-Shell callers;
+- no second user/account state, authentication state or account-storage mechanism was introduced.
+
+Navigation / compatibility:
+
+- Plugins / Settings / Account use `utility.plugins`, `utility.settings`, and `utility.account` child routes under the existing R7D Navigation Authority;
+- WorkspaceHost remains the only first-class Utility mount seam;
+- browser Back and Command Registry navigation use the existing R7D route/history model;
+- legacy Extensions, User Settings and Account triggers forward into the matching Utility only while preview Shell owns navigation;
+- legacy API / Connection and AI preset entry points continue forwarding to **Runtime**, preserving the R7F ownership boundary;
+- non-preview drawers, popup anchors and third-party compatibility DOM remain intact for R7H;
+- Context Dock / Compact Context Sheet remain the existing R7D context authority;
+- Expanded / Medium / Compact layouts use one utility/controller tree rather than separate desktop/mobile implementations.
+
+R7B/R7C ownership remains intact:
+
+- Utility workspaces never acquire Stage ownership;
+- Full Game continues to own Stage, never Host;
+- Narrative Play, Component, Hybrid, Full, Legacy CardApp and Immersive contracts are unchanged;
+- utility switching/disposal restores reparented legacy DOM and leaves no orphan Utility root;
+- `#chat`, `#send_form` and `#send_textarea` remain unique.
+
+Authoritative validation covers:
+
+- Plugins Global Utility and Command navigation;
+- real third-party Plugin classification while Atria built-ins stay excluded;
+- existing enable/disable persistence;
+- extension compatibility settings reparent/restore;
+- Settings Global Utility with the same real language/theme/power-user DOM and no duplicate settings store;
+- Account Global Utility through the same account controller;
+- Runtime/API compatibility ownership;
+- legacy Extensions / User Settings / Account trigger forwarding;
+- browser Back;
+- Expanded and Compact Utility flows plus the prior Medium/navigation regression matrix;
+- dispose/reopen and return to Narrative Play;
+- R7A-R7F browser regressions;
+- one live `#chat`, `#send_form`, and `#send_textarea`.
+
+### R7H entry condition
+
+R7H starts from the validated R7G HEAD above on the **same long-running R7 branch**. Do not create a separate R7H branch and do not merge to `main` until R7H/final R7 validation is complete.
+
+R7H is **Legacy Shell Retirement & Final Hardening**.
+
+R7H owns final retirement of obsolete shell launchers/chrome from the normal product path, compatibility-anchor isolation, MovingUI ownership hardening, safe stale-shell CSS cleanup, frontend/plugin guidance updates, preview-gate retirement/cutover decisions, and final R0-R7 regression/performance validation.
+
+Do not reopen R7A-R7G unless R7H exposes a concrete integration defect.
+
+
 
 
 ---
@@ -1394,14 +1490,24 @@ Exit result:
 
 ### R7G — Plugins & Settings Reclassification
 
-- expose third-party Plugins distinctly;
-- keep legacy plugin settings compatibility;
-- relocate built-in legacy feature settings appropriately;
-- slim Settings;
-- retire Extensions/User Settings/API drawers as primary product navigation.
+Implementation result — **complete and validated**:
 
-Exit:
-- Atria core no longer lives in the Plugins/Extensions bucket.
+- Plugins is a Global Utility for true third-party frontend extensions, using existing extension discovery/manifests and `local/global` classification;
+- Atria built-ins are excluded from the third-party Plugin product bucket even when physically implemented under `public/scripts/extensions/`;
+- enable/disable remains owned by `extension_settings.disabledExtensions` and the existing extension lifecycle/persistence;
+- existing extension settings DOM is retained behind a compatibility surface instead of becoming the new product IA;
+- backend server plugins remain a distinct existing server-plugin-loader surface;
+- Settings is narrowed to user/application preferences and reparents the real User Settings form only as an advanced/compatibility form;
+- Account is an independent Global Utility and reuses the existing account controller/state;
+- legacy Extensions / User Settings / Account launchers forward through R7D Navigation Authority while preview is active;
+- API / Connection / preset compatibility entries remain owned by R7F Runtime;
+- no second router, Plugin store, Settings store, Account state, extension loader, Conversation, Composer or Stage authority was introduced.
+
+Exit result:
+
+- Atria core no longer lives conceptually in the third-party Plugins/Extensions bucket;
+- Plugins / Settings / Account have explicit ownership while legacy compatibility anchors remain available for R7H;
+- validation: **R7 Shell Dev Checks #152**, run `35588313656`, HEAD `7d4207aec9974d0ae697afe517494e70866c0a39`, success.
 
 ### R7H — Legacy Shell Retirement & Final Hardening
 
@@ -1649,7 +1755,7 @@ according to repository policy.
 
 ## 22. Current implementation state
 
-As of the R7F handoff:
+As of the R7G handoff:
 
 - R0-R6 remain frozen and validated at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`;
 - R7A is complete and validated at `5fbc216d907aa80c434093b444b977919b19c885`;
@@ -1658,7 +1764,8 @@ As of the R7F handoff:
 - R7D is complete and validated at `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`;
 - R7E is complete and validated at `f76bdad7de08a7405cd36e908f312ac8c7bf0463`;
 - R7F is complete and validated at `f8f516ba23ce8f4dbc3df8998cee301e043aace4`;
-- authoritative R7F validation is **R7 Shell Dev Checks #133**, run `35585151542`, success;
-- R7G — Plugins & Settings Reclassification is next;
+- R7G is complete and validated at `7d4207aec9974d0ae697afe517494e70866c0a39`;
+- authoritative R7G validation is **R7 Shell Dev Checks #152**, run `35588313656`, success;
+- R7H — Legacy Shell Retirement & Final Hardening is next;
 - the same long-running `refactor/atria-game-first-shell-redesign` branch continues through R7H;
 - neither the R7 branch nor the frozen R0-R6 branch is merged/deleted before final R7 validation.
