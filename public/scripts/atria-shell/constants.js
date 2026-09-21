@@ -40,3 +40,6 @@ export const ATRIA_COMMAND_SHORTCUT = Object.freeze({
     mac: 'Meta',
     other: 'Control',
 });
+
+export const ATRIA_ROUTE_QUERY_KEY = 'atriaRoute';
+export const ATRIA_ROUTE_CHILD_QUERY_KEY = 'atriaChild';
