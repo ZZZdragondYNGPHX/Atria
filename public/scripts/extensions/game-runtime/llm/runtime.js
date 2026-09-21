@@ -397,7 +397,7 @@ export function createGameLlmRuntime(options = {}) {
             throw new Error('Game LLM Runtime UI action requires worldSession.dispatchCommandInternal()');
         }
 
-        let turn = beginTurn({
+        let turn = input.turnContext || beginTurn({
             origin: 'ui_action',
             recentChat: input.recentChat || [],
             constraints: input.constraints || [],
@@ -434,7 +434,7 @@ export function createGameLlmRuntime(options = {}) {
             throw new Error('Game LLM Runtime free-text turn requires worldSession.validateCommand()');
         }
 
-        let turn = beginTurn({
+        let turn = input.turnContext || beginTurn({
             origin: 'free_text',
             userInput,
             recentChat: input.recentChat || [],
