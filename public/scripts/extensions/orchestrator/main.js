@@ -57,7 +57,8 @@ import { sanitizeConnectionProfileName, renderConnectionProfileOptions, renderOp
 import { runAgendaOrchestration } from './agenda-runtime.js';
 import { runSpecOrchestration, buildNodeToolSet } from './spec-runtime.js';
 import { runLoopOrchestration, attachNotesFloorState } from './loop-runtime.js';
-import { handleDirectorDispatch } from './director-runtime.js';
+import { handleDirectorDispatch, runMainAgentLoop } from './director-runtime.js';
+import { createOrchestratorGameRuntimeApi } from './game-runtime-bridge.js';
 
 import { createContentPayloadCache } from './director-content-payload.js';
 import { executeLoopTool, getEnabledToolSchemas } from './loop-tools.js';
@@ -96,6 +97,22 @@ const MODULE_NAME = 'orchestrator';
 const ORCH_RESULT_EVENT = 'atria.orchestrator.result';
 const UI_BLOCK_ID = 'orchestrator_settings';
 
+let gameRuntimeBridge = null;
+function getGameRuntimeBridge() {
+    if (!gameRuntimeBridge) {
+        gameRuntimeBridge = createOrchestratorGameRuntimeApi({
+            getEffectiveProfile,
+            runOrchestration,
+            buildCapsule,
+            runMainAgentLoop,
+            executeLoopTool,
+            getSettings,
+            attachNotesFloorState,
+        });
+    }
+    return gameRuntimeBridge;
+}
+
 // Expose the orchestrator custom-tool API surface to other extensions via
 // `getContext().getExtensionApi('orchestrator')`. Matches the three-layer
 // exposure contract documented in register-custom-tool.js: ES-module import
@@ -103,6 +120,9 @@ const UI_BLOCK_ID = 'orchestrator_settings';
 // same function references.
 registerExtensionApi(MODULE_NAME, {
     recordMemoryRecall,
+    getGameRuntimeMode: context => getGameRuntimeBridge().getMode(context),
+    runGameGuidance: input => getGameRuntimeBridge().runGuidance(input),
+    runGameDirector: input => getGameRuntimeBridge().runDirector(input),
     listRuntimeCheckpoints,
     cancelRuntimeCheckpoint,
     registerOrchestrationTool,
@@ -386,7 +406,7 @@ function extractNodeInjectionText(nodeOutput) {
     return '';
 }
 
-function buildCapsule(stageOutputs, customInstructionOverride) {
+export function buildCapsule(stageOutputs, customInstructionOverride) {
     const finalStage = getFinalStageSnapshot(stageOutputs);
     const settings = extension_settings[MODULE_NAME];
     const overrideTrimmed = typeof customInstructionOverride === 'string'
