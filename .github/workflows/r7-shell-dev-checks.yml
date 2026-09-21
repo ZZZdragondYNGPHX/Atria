@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   focused:
-    name: R7C Focused Unit and Lint
+    name: R7D Focused Unit and Lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -26,7 +26,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
-      - name: Run R7C shell and game surface regression tests
+      - name: Run R7D navigation and shell regression tests
         run: >-
           npm run test:unit --prefix tests --
           --runInBand
@@ -46,7 +46,7 @@ jobs:
           card-app-loader.test.js
           immersive/controller.test.js
           immersive/structure.test.js
-      - name: Lint R7C production modules
+      - name: Lint R7D production modules
         run: >-
           npx eslint
           public/script.js
@@ -65,7 +65,7 @@ jobs:
           public/scripts/extensions/game-runtime/ui/package.js
           public/scripts/extensions/card-app/loader.js
           public/scripts/extensions/card-app/index.js
-      - name: Lint R7C tests
+      - name: Lint R7D tests
         working-directory: tests
         run: >-
           npx eslint
@@ -81,7 +81,7 @@ jobs:
         run: bash scripts/check-atria-namespace.sh
 
   browser:
-    name: R7C Expanded Compact Game Surface Browser Smoke
+    name: R7D Expanded Medium Compact Navigation Browser Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -105,12 +105,13 @@ jobs:
       - name: Install Chromium
         working-directory: tests
         run: npx playwright install --with-deps chromium
-      - name: Run R7C shell browser smoke
+      - name: Run R7D shell browser smoke
         working-directory: tests
         run: >-
           npx playwright test
           e2e/atria-shell/01-foundation.e2e.js
           e2e/atria-shell/02-native-actions.e2e.js
           e2e/atria-shell/03-game-surfaces.e2e.js
+          e2e/atria-shell/04-navigation.e2e.js
           --project=e2e
           --workers=1
