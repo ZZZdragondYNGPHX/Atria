@@ -764,8 +764,8 @@ function renderStudioPreview() {
             <span class="card-app-studio-preview-eyebrow">${escapeHtml(isGameProject ? t('Game Package') : t('CardApp'))}</span>
             <h2>${escapeHtml(name)}</h2>
             <p>${escapeHtml(isGameProject
-                ? t('This preview describes the current project. Use Play to run the real conversation/game surface.')
-                : t('This preview describes the current CardApp project. Use Play to run the live surface.'))}</p>
+        ? t('This preview describes the current project. Use Play to run the real conversation/game surface.')
+        : t('This preview describes the current CardApp project. Use Play to run the live surface.'))}</p>
         </section>
         <section class="card-app-studio-preview-grid">
             <article><span>${escapeHtml(t('Status'))}</span><strong>${escapeHtml(status)}</strong></article>
