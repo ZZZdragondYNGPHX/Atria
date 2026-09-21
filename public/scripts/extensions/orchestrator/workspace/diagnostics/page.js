@@ -66,11 +66,17 @@ export function renderDiagnosticsPage({
                 .filter(line => line.trim())
                 .map(line => JSON.parse(line));
             const runtime = replayRuntimeEvents(events);
-            if (!upload.isConnected) return;
             if (!runtime.runs.length) throw new Error(i18n('No valid Runtime events in this trace.'));
+            // Completing a user-selected trace import must not depend on the
+            // original <input> node surviving an unrelated run-state redraw.
+            // The Diagnostics page can legitimately re-render while file.text()
+            // is pending (for example when the live run finishes), which used
+            // to disconnect this input and silently discard the replay.
             onReplay(runtime);
         } catch (error) {
-            if (!upload.isConnected) return;
+            // A stale/disconnected page has nowhere useful to render an error,
+            // but successful replay above remains valid across redraws.
+            if (!parent.isConnected) return;
             const row = el('p', error.message, parent);
             row.className = 'workspace-error';
         }

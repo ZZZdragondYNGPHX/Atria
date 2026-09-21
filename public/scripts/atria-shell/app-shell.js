@@ -291,8 +291,12 @@ export function createAtriaAppShell({
     }
 
     function updateDomainPresentation(route = navigationAuthority.getRoute()) {
+        const utilityWorkspaceActive = String(route.child?.id || '').startsWith('utility.');
         for (const [domainId, buttons] of navButtons.entries()) {
-            const selected = domainId === route.domain;
+            // Global utilities are their own routed surfaces. Do not visually
+            // leave the caller's primary domain selected while a searched
+            // utility is being displayed.
+            const selected = !utilityWorkspaceActive && domainId === route.domain;
             for (const button of buttons) {
                 button.classList.toggle('is-selected', selected);
                 button.setAttribute('aria-current', selected ? 'page' : 'false');
@@ -306,7 +310,6 @@ export function createAtriaAppShell({
         breadcrumb.textContent = ['Atria', ...labels].join(' / ');
         contextTitle.textContent = labels.at(-1) || translateLabel(translate, domain?.label || route.domain);
 
-        const utilityWorkspaceActive = String(route.child?.id || '').startsWith('utility.');
         const playActive = route.domain === 'play' && !utilityWorkspaceActive;
         stage.hidden = !playActive;
         workspace.hidden = playActive;

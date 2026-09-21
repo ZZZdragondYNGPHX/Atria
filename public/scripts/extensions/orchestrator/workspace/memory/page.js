@@ -46,7 +46,7 @@ function metric({ host, el, label, value, hint = '' }) {
 }
 
 function sourceLabel(episode) {
-    return `Message ${episode?.sourceFloor ?? '—'} · ${episode?.status || 'unknown'}`;
+    return i18nFormat('Message ${0} · ${1}', episode?.sourceFloor ?? '—', i18n(episode?.status || 'unknown'));
 }
 
 export function createMemoryWorkspace({ getContext }) {

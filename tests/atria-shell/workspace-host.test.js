@@ -88,9 +88,9 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
 
         expect(host.getActiveWorkspace()).toMatchObject({
-            key: 'agents',
+            key: 'agents:home',
             kind: 'agents',
-            section: 'orchestration',
+            section: 'home',
         });
         expect(adapters.agents).toHaveBeenCalledTimes(1);
         expect(shell.slots.workspace.querySelector('[data-test-workspace="agents"]')).not.toBeNull();
@@ -103,9 +103,47 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'memory', kind: 'workspace' },
         });
         expect(normalizeAgentSection(navigation.getRoute())).toBe('memory');
-        expect(adapters.agents).toHaveBeenCalledTimes(1);
+        expect(adapters.agents).toHaveBeenCalledTimes(2);
+
+        host.openAgentSection('run');
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('run');
+        expect(adapters.agents).toHaveBeenCalledTimes(2);
         expect(records.at(-1).controller.updateRoute).toHaveBeenCalled();
         expect(registry.get('workspace.memory')).not.toBeNull();
+        expect(registry.get('workspace.orchestration')).not.toBeNull();
+        expect(registry.get('workspace.agent-run')).not.toBeNull();
+        expect(registry.get('workspace.agent-diagnostics')).not.toBeNull();
+
+        host.dispose();
+        shell.destroy();
+        navigation.dispose();
+    });
+
+    test('Agents primary route renders a chooser hub before mounting child workspaces', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({
+            document,
+            window,
+            registry: createCommandRegistry(),
+            navigation,
+        });
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation });
+
+        host.openAgents();
+        await flushWorkspace();
+
+        const hub = shell.slots.workspace.querySelector('[data-atria-agents-hub="true"]');
+        expect(hub).not.toBeNull();
+        expect(hub.querySelectorAll('[data-atria-agent-section]')).toHaveLength(4);
+        expect(navigation.getRoute()).toMatchObject({ domain: 'agents', child: null });
+
+        hub.querySelector('[data-atria-agent-section="memory"]').click();
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'agents',
+            child: { id: 'memory', kind: 'workspace' },
+        });
 
         host.dispose();
         shell.destroy();
@@ -176,25 +214,38 @@ describe('R7G WorkspaceHost', () => {
 
         host.openUtility('diagnostics');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.diagnostics');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.diagnostics' },
+            breadcrumb: ['Diagnostics'],
+        });
         expect(host.getActiveWorkspace()?.key).toBe('utility:diagnostics');
         expect(adapters.diagnostics).toHaveBeenCalledTimes(1);
 
         host.openUtility('plugins');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.plugins');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.plugins' },
+        });
         expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:plugins', kind: 'plugins' });
         expect(adapters.plugins).toHaveBeenCalledTimes(1);
 
         host.openUtility('settings');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.settings');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.settings' },
+        });
         expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:settings', kind: 'settings' });
         expect(adapters.settings).toHaveBeenCalledTimes(1);
 
         host.openUtility('account');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.account');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.account' },
+        });
         expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:account', kind: 'account' });
         expect(adapters.account).toHaveBeenCalledTimes(1);
 
@@ -244,7 +295,7 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
 
         expect(agents).toHaveBeenCalledTimes(1);
-        expect(host.getActiveWorkspace()?.key).toBe('agents');
+        expect(host.getActiveWorkspace()?.key).toBe('agents:home');
 
         host.dispose();
         shell.destroy();
@@ -418,6 +469,67 @@ describe('R7G WorkspaceHost', () => {
         navigation.dispose();
     });
 
+    test('command search results navigate to the owning domain instead of embedding into the caller domain', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const registry = createCommandRegistry();
+        const shell = createAtriaAppShell({ document, window, registry, navigation });
+        const records = [];
+        const host = createAtriaWorkspaceHost({
+            document,
+            window,
+            shell,
+            navigation,
+            adapters: {
+                agents: makeAdapter('agents', records),
+                studio: makeAdapter('studio', records),
+                library: makeAdapter('library', records),
+                runtime: makeAdapter('runtime', records),
+                diagnostics: makeAdapter('diagnostics', records),
+                plugins: makeAdapter('plugins', records),
+                settings: makeAdapter('settings', records),
+                account: makeAdapter('account', records),
+                placeholder: makeAdapter('placeholder', records),
+            },
+        });
+
+        host.openStudio(7);
+        await flushWorkspace();
+        expect(navigation.getRoute().domain).toBe('studio');
+
+        await registry.execute('workspace.memory', {});
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'agents',
+            child: { id: 'memory', kind: 'workspace' },
+        });
+        expect(host.getActiveWorkspace()).toMatchObject({
+            key: 'agents:workspace',
+            section: 'memory',
+        });
+
+        await registry.execute('workspace.world-info', {});
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'library',
+            child: { id: 'world-info', kind: 'workspace' },
+        });
+
+        await registry.execute('workspace.settings', {});
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.settings', kind: 'workspace' },
+            breadcrumb: ['Settings'],
+        });
+        for (const button of shell.root.querySelectorAll('[data-atria-domain]')) {
+            expect(button.classList.contains('is-selected')).toBe(false);
+        }
+
+        host.dispose();
+        shell.destroy();
+        navigation.dispose();
+    });
+
     test('route descriptor maps R7F Library and Runtime without creating new routers', () => {
         expect(routeDescriptor({
             domain: 'play',
@@ -435,6 +547,12 @@ describe('R7G WorkspaceHost', () => {
             domain: 'library',
             child: { id: 'utility.account', label: 'Account', kind: 'workspace' },
         })).toMatchObject({ key: 'utility:account', kind: 'account', title: 'Account' });
+        expect(routeDescriptor({ domain: 'agents', child: null, breadcrumb: ['Agents'] }))
+            .toMatchObject({ key: 'agents:home', kind: 'agents', section: 'home', title: 'Agents' });
+        expect(routeDescriptor({
+            domain: 'agents',
+            child: { id: 'orchestration', label: 'Orchestration', kind: 'workspace' },
+        })).toMatchObject({ key: 'agents:workspace', kind: 'agents', section: 'orchestration', title: 'Orchestration' });
         expect(routeDescriptor({ domain: 'library', child: null, breadcrumb: ['Library'] }))
             .toMatchObject({ key: 'library', kind: 'library', section: 'characters', title: 'Characters' });
         expect(routeDescriptor({

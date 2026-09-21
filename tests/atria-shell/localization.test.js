@@ -34,6 +34,15 @@ describe('Atria Shell localization', () => {
             'atria.shell.runtime.presetEditor',
             'atria.shell.runtime.editPresetTitle',
             'atria.shell.runtime.connectionProfileCounts',
+            'atria.shell.runtime.noActivePackage',
+            'atria.shell.runtime.activePackage',
+            'atria.shell.runtime.noActiveProfile',
+            'atria.shell.runtime.activeProfile',
+            'atria.shell.agents.hub.title',
+            'atria.shell.agents.hub.description',
+            'atria.shell.command.openOrchestration',
+            'atria.shell.command.openAgentRun',
+            'atria.shell.command.openAgentDiagnostics',
             'atria.shell.command.search',
         ];
         for (const key of required) expect(locale[key]).toBeTruthy();
