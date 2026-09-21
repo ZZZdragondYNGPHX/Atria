@@ -873,6 +873,73 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 }
 
 
+/* Agents landing hub — primary Agents route is a chooser, not a direct
+ * alias for the orchestration editor. Child cards navigate through the same
+ * Navigation Authority / WorkspaceHost used by every other domain. */
+.atria-agents-hub {
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    display: grid;
+    align-content: start;
+    gap: var(--atri-space-4);
+    padding-block: var(--atri-space-2);
+}
+
+.atria-agents-hub__heading {
+    display: grid;
+    gap: var(--atri-space-2);
+}
+
+.atria-agents-hub__heading > h2,
+.atria-agents-hub__heading > p {
+    margin: 0;
+}
+
+.atria-agents-hub__heading > p {
+    color: var(--atri-color-text-muted);
+    line-height: 1.5;
+}
+
+.atria-agents-hub__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--atri-space-3);
+}
+
+.atria-agents-hub__card {
+    appearance: none;
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-surface);
+    color: var(--atri-color-text);
+    padding: var(--atri-space-4);
+    min-height: 132px;
+    text-align: start;
+    cursor: pointer;
+    display: grid;
+    align-content: start;
+    gap: var(--atri-space-2);
+    transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.atria-agents-hub__card:hover,
+.atria-agents-hub__card:focus-visible {
+    background: var(--atri-color-raised);
+    border-color: color-mix(in srgb, var(--atri-color-accent) 58%, var(--atri-color-border));
+    transform: translateY(-1px);
+}
+
+.atria-agents-hub__card > strong {
+    font-size: var(--atri-font-size-heading);
+}
+
+.atria-agents-hub__card > span {
+    color: var(--atri-color-text-muted);
+    line-height: 1.5;
+}
+
 /* R7F Library / Runtime domain workspaces. */
 .atria-domain-workspace {
     min-width: 0;
@@ -1137,6 +1204,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     padding-inline: var(--atri-space-1);
 }
 
+.atria-app-shell[data-atria-viewport="compact"] .atria-agents-hub__grid,
 .atria-app-shell[data-atria-viewport="compact"] .atria-library-games__grid,
 .atria-app-shell[data-atria-viewport="compact"] [data-atria-pattern="runtime-status"] {
     grid-template-columns: minmax(0, 1fr);
