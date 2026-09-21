@@ -2,6 +2,7 @@ import { createInterpretationMappingRegistry } from '../logic/interpretations.js
 import { isGameBranchPathCompatible } from '../world/branch.js';
 import { createEventInterpreter } from './event-interpreter.js';
 import { createIntentResolver } from './intent-resolver.js';
+import { createMemoryRecallBridge } from './memory-bridge.js';
 import { createWorldObservationProjector } from './observation.js';
 import { createCommandToolCatalog } from './tools.js';
 import {
@@ -44,6 +45,12 @@ export function createGameLlmRuntime(options = {}) {
             || worldSession.getInterpretationMappings?.()
             || [],
         );
+    const memoryBridge = options.memoryBridge
+        || createMemoryRecallBridge({
+            context: options.context,
+            memoryApi: options.memoryApi,
+            getCurrentBranchPath: () => worldSession.getBranchPath(),
+        });
 
     let turnSerial = 0;
 
@@ -306,6 +313,52 @@ export function createGameLlmRuntime(options = {}) {
         });
     }
 
+    async function recallMemory(turnContext, input = {}) {
+        if (!turnContext || typeof turnContext !== 'object') {
+            throw new Error('Game LLM Runtime recallMemory requires Turn Context');
+        }
+
+        const beforeState = clone(worldSession.getState());
+        const beforeJournal = clone(worldSession.getJournal());
+        const recalled = await memoryBridge.recall(turnContext, input);
+
+        const afterState = worldSession.getState();
+        const afterJournal = worldSession.getJournal();
+        if (JSON.stringify(afterState) !== JSON.stringify(beforeState)) {
+            throw new Error('Memory recall mutated World State');
+        }
+        if (JSON.stringify(afterJournal) !== JSON.stringify(beforeJournal)) {
+            throw new Error('Memory recall mutated Event Journal');
+        }
+
+        if (!recalled.packet) {
+            return Object.freeze({
+                status: recalled.status,
+                turn: turnContext,
+                memory: null,
+                query: recalled.query,
+            });
+        }
+
+        const packet = Object.freeze({
+            ...clone(recalled.packet),
+            recallStatus: recalled.status,
+        });
+        const turn = advanceTurnContext(turnContext, {
+            memories: [
+                ...turnContext.memories,
+                packet,
+            ],
+        });
+
+        return Object.freeze({
+            status: recalled.status,
+            turn,
+            memory: clone(packet),
+            query: recalled.query,
+        });
+    }
+
     async function runUiAction(input = {}) {
         const commandId = String(input.commandId || '').trim();
         if (!commandId) throw new Error('UI action turn requires commandId');
@@ -420,6 +473,7 @@ export function createGameLlmRuntime(options = {}) {
         interpretEvent,
         applyInterpretation,
         interpretAndApply,
+        recallMemory,
         runUiAction,
         runFreeText,
         listObservationProjectors: () => observationProjector.list(),
