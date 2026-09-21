@@ -67,23 +67,3 @@ describe('R7A shell architecture', () => {
         expect(shell).toContain('display: block !important;');
     });
 });
-, '
-    });
-
-    test('locks the shell root to the dynamic viewport on compact devices', () => {
-        const shell = read('public/css/atria-shell.css');
-        expect(shell).toContain('width: 100dvw;');
-        expect(shell).toContain('height: 100dvh;');
-        expect(shell).toContain('min-height: 100dvh;');
-    });
-});
-)));
-    });
-
-    test('locks the shell root to the dynamic viewport on compact devices', () => {
-        const shell = read('public/css/atria-shell.css');
-        expect(shell).toContain('width: 100dvw;');
-        expect(shell).toContain('height: 100dvh;');
-        expect(shell).toContain('min-height: 100dvh;');
-    });
-});
