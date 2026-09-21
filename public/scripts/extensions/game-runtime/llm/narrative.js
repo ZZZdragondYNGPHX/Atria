@@ -1,8 +1,7 @@
+import { cloneGameLlmValue } from './clone.js';
 import { advanceTurnContext } from './turn-context.js';
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function deepFreeze(value, seen = new Set()) {
     if (!value || typeof value !== 'object' || seen.has(value)) return value;
