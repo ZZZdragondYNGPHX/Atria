@@ -1,3 +1,4 @@
+import { cloneGameLlmValue } from './clone.js';
 import {
     getGameBranchId,
     normalizeGameBranchPath,
@@ -12,9 +13,7 @@ export const TURN_FACT_PRECEDENCE = Object.freeze([
     'orchestrator_guidance',
 ]);
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function deepFreeze(value, seen = new Set()) {
     if (!value || typeof value !== 'object' || seen.has(value)) return value;
