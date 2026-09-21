@@ -27,16 +27,16 @@ function normalizeEventDrafts(output, commandId) {
         ? output
         : (Array.isArray(output?.events) ? output.events : null);
     if (!drafts) {
-        throw new Error('Command \\'' + commandId + '\\' must return an event array or { events }');
+        throw new Error(`Command '${commandId}' must return an event array or { events }`);
     }
 
     return drafts.map((draft, index) => {
         if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
-            throw new Error('Command \\'' + commandId + '\\' event ' + index + ' must be an object');
+            throw new Error(`Command '${commandId}' event ${index} must be an object`);
         }
         const type = String(draft.type || '').trim();
         if (!type) {
-            throw new Error('Command \\'' + commandId + '\\' event ' + index + ' requires a type');
+            throw new Error(`Command '${commandId}' event ${index} requires a type`);
         }
         return {
             type,
@@ -60,7 +60,7 @@ export function createGameLogicRuntime(options = {}) {
         const validation = registry.validate(commandId, args);
         if (!validation.ok) {
             throw new Error(
-                'Command \\'' + String(commandId || '').trim() + '\\' validation failed: '
+                `Command '${String(commandId || '').trim()}' validation failed: `
                 + validation.errors.slice(0, 8).join('; '),
             );
         }
