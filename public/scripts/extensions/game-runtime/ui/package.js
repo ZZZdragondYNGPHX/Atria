@@ -1,5 +1,10 @@
 import { loadGamePackageTextResource } from '../package-loader.js';
 import { bindDeclarativeGameUi } from './declarative.js';
+import { createResponsiveEnvironment } from './environment.js';
+import {
+    bindNativeGameComponents,
+    createNativeComponentRegistry,
+} from './native-components.js';
 
 const BLOCKED_ELEMENTS = Object.freeze([
     'script',
@@ -13,6 +18,7 @@ const BLOCKED_ELEMENTS = Object.freeze([
 ]);
 
 const URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'xlink:href']);
+const SUPPORTED_STATIC_UI_MODES = new Set(['component', 'hybrid']);
 
 function isUnsafeUrl(value) {
     const normalized = String(value || '').trim().replace(/[\u0000-\u001F\u007F\s]+/g, '');
@@ -52,7 +58,7 @@ export function sanitizeGameHtmlFragment(documentRef, html) {
 
 export async function loadGameComponentDefinition(packageState, options = {}) {
     const ui = packageState?.manifest?.ui;
-    if (!ui || ui.mode !== 'component') return null;
+    if (!ui || !SUPPORTED_STATIC_UI_MODES.has(ui.mode)) return null;
 
     const charId = String(packageState?.charId || '').trim();
     if (!charId) {
@@ -62,8 +68,11 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
     const entry = String(ui.entry || '').trim();
     if (!entry.endsWith('.html')) {
         throw new Error(
-            `Component UI entry '${entry}' must be an .html file in the current R4 runtime`,
+            `${ui.mode === 'hybrid' ? 'Hybrid' : 'Component'} UI entry '${entry}' must be an .html file in the current R4 runtime`,
         );
+    }
+    if (ui.mode === 'hybrid' && (ui.surface || 'app.root') !== 'app.root') {
+        throw new Error('Hybrid UI currently requires the app.root surface');
     }
 
     const html = await loadGamePackageTextResource(charId, entry, {
@@ -71,23 +80,57 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
         headers: options.headers || {},
     });
     const documentRef = options.document || globalThis.document;
+    const windowRef = options.window || globalThis.window;
     if (!documentRef) {
-        throw new Error('Component UI requires a document');
+        throw new Error('Game UI requires a document');
     }
 
     return Object.freeze({
-        id: 'package.component',
+        id: ui.mode === 'hybrid' ? 'package.hybrid' : 'package.component',
+        mode: ui.mode,
         surface: ui.surface || 'app.root',
-        className: 'atria-game-package-component',
+        className: 'atria-game-package-' + ui.mode,
         async mount(context) {
             const fragment = sanitizeGameHtmlFragment(documentRef, html);
+            const hasNativeSlots = Boolean(
+                fragment.querySelector?.('[data-atria-native-component]'),
+            );
+            if (ui.mode === 'component' && hasNativeSlots) {
+                throw new Error('Native component slots require Hybrid or Full UI mode');
+            }
+
             if (typeof context.container.replaceChildren === 'function') {
                 context.container.replaceChildren(fragment);
             } else {
                 context.container.innerHTML = '';
                 context.container.appendChild(fragment);
             }
-            return bindDeclarativeGameUi(context.container, context);
+
+            const cleanup = [];
+            try {
+                const responsive = createResponsiveEnvironment(context.container, {
+                    window: windowRef,
+                });
+                cleanup.push(() => responsive.dispose());
+
+                cleanup.push(bindDeclarativeGameUi(context.container, context));
+
+                if (ui.mode === 'hybrid') {
+                    const registry = createNativeComponentRegistry(documentRef);
+                    cleanup.push(bindNativeGameComponents(context.container, registry));
+                    cleanup.push(() => registry.restoreAll());
+                }
+            } catch (error) {
+                for (const dispose of cleanup.splice(0).reverse()) dispose();
+                throw error;
+            }
+
+            let disposed = false;
+            return () => {
+                if (disposed) return;
+                disposed = true;
+                for (const dispose of cleanup.splice(0).reverse()) dispose();
+            };
         },
     });
 }
