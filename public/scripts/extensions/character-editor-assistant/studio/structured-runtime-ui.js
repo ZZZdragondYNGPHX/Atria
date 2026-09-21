@@ -13,10 +13,24 @@ import {
     serializeStructuredRuntimeDocument,
     validateInitialStateAgainstSchema,
 } from './structured-runtime-editors.js';
+import {
+    LOGIC_EDITOR_SECTION,
+    addLogicEntry,
+    applyFormulaExpression,
+    applyLogicEntryFieldPatch,
+    parseLogicStructuredDocument,
+    removeLogicEntry,
+} from './structured-logic-editors.js';
 
 function editorKind(selection) {
     if (selection?.role === 'world_schema') return STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA;
     if (selection?.role === 'initial_state') return STRUCTURED_RUNTIME_EDITOR.INITIAL_STATE;
+    return null;
+}
+
+function logicSection(selection) {
+    const section = String(selection?.section || '');
+    if (Object.values(LOGIC_EDITOR_SECTION).includes(section)) return section;
     return null;
 }
 
@@ -105,9 +119,13 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         });
         container.addEventListener('change', event => {
             const target = event.target;
-            if (target?.matches?.('[data-structured-field]')) {
+            if (target?.matches?.('[data-structured-field], [data-logic-field], [data-formula-index]')) {
                 handleChange(target);
             }
+        });
+        container.addEventListener('click', event => {
+            const target = event.target.closest('[data-logic-action]');
+            if (target) handleLogicAction(target);
         });
 
         return { modebar, container, code };
@@ -162,6 +180,10 @@ export function createStructuredRuntimeEditorHost(options = {}) {
                 option.selected = String(value) === item;
                 input.appendChild(option);
             }
+        } else if (fieldOptions.multiline) {
+            input = documentRef.createElement('textarea');
+            input.rows = fieldOptions.rows || 5;
+            input.value = value ?? '';
         } else {
             input = documentRef.createElement('input');
             input.type = fieldOptions.type || 'text';
@@ -271,6 +293,135 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         });
     }
 
+    function sectionTitle(section) {
+        if (section === LOGIC_EDITOR_SECTION.COMMANDS) return t('Command Editor');
+        if (section === LOGIC_EDITOR_SECTION.REDUCERS) return t('Reducer / Event Inspector');
+        if (section === LOGIC_EDITOR_SECTION.RULES) return t('Rules Editor');
+        return t('Interpretation Mapping Editor');
+    }
+
+    function appendLogicField(card, label, field, value, fieldOptions = {}) {
+        const wrapper = documentRef.createElement('label');
+        wrapper.className = 'card-app-studio-logic-field';
+        if (fieldOptions.wide) wrapper.classList.add('wide');
+        if (fieldOptions.checkbox) wrapper.classList.add('checkbox');
+
+        const caption = documentRef.createElement('span');
+        caption.textContent = label;
+
+        let input;
+        if (fieldOptions.multiline) {
+            input = documentRef.createElement('textarea');
+            input.rows = fieldOptions.rows || 5;
+            input.value = value ?? '';
+        } else {
+            input = documentRef.createElement('input');
+            input.type = fieldOptions.checkbox ? 'checkbox' : (fieldOptions.type || 'text');
+            if (fieldOptions.checkbox) input.checked = Boolean(value);
+            else input.value = value ?? '';
+        }
+        input.dataset.logicField = field;
+        if (fieldOptions.checkbox) wrapper.append(input, caption);
+        else wrapper.append(caption, input);
+        card.appendChild(wrapper);
+    }
+
+    function renderLogicEntry(scroll, entry) {
+        const card = documentRef.createElement('section');
+        card.className = 'card-app-studio-logic-card';
+        card.dataset.logicEntry = String(entry.index);
+
+        const header = documentRef.createElement('div');
+        header.className = 'card-app-studio-logic-card-header';
+        const title = documentRef.createElement('strong');
+        title.textContent = entry.label;
+        const remove = documentRef.createElement('button');
+        remove.type = 'button';
+        remove.className = 'card-app-studio-btn small';
+        remove.dataset.logicAction = 'remove';
+        remove.dataset.logicEntry = String(entry.index);
+        remove.textContent = t('Delete');
+        header.append(title, remove);
+        card.appendChild(header);
+
+        const fields = entry.fields;
+        if (parsed.model.section === LOGIC_EDITOR_SECTION.COMMANDS) {
+            appendLogicField(card, 'ID', 'id', fields.id);
+            appendLogicField(card, t('Description'), 'description', fields.description, { wide: true });
+            appendLogicField(card, 'LLM expose', 'llmExpose', fields.llmExpose, { checkbox: true });
+            appendLogicField(card, 'Args Schema', 'argsSchema', fields.argsSchema, { multiline: true, wide: true });
+            appendLogicField(card, t('Validators'), 'validators', fields.validators, { multiline: true, wide: true });
+            appendLogicField(card, t('Events'), 'events', fields.events, { multiline: true, wide: true });
+        } else if (parsed.model.section === LOGIC_EDITOR_SECTION.REDUCERS) {
+            appendLogicField(card, t('Event Type'), 'type', fields.type);
+            appendLogicField(card, 'Payload Schema', 'payloadSchema', fields.payloadSchema, { multiline: true, wide: true });
+            appendLogicField(card, t('Assignments'), 'assign', fields.assign, { multiline: true, wide: true });
+        } else if (parsed.model.section === LOGIC_EDITOR_SECTION.RULES) {
+            appendLogicField(card, 'ID', 'id', fields.id);
+            appendLogicField(card, t('On Events'), 'on', fields.on, { multiline: true });
+            appendLogicField(card, t('Priority'), 'priority', fields.priority, { type: 'number' });
+            appendLogicField(card, t('When Formula'), 'when', fields.when, { wide: true });
+            appendLogicField(card, t('Events'), 'events', fields.events, { multiline: true, wide: true });
+        } else {
+            appendLogicField(card, t('Semantic Event Type'), 'eventType', fields.eventType);
+            appendLogicField(card, t('Command'), 'command', fields.command);
+            appendLogicField(card, t('When Formula'), 'when', fields.when, { wide: true });
+            appendLogicField(card, t('Arguments'), 'args', fields.args, { multiline: true, wide: true });
+        }
+
+        scroll.appendChild(card);
+    }
+
+    function renderFormulaRows(scroll) {
+        if (!parsed.model.formulas.length) return;
+
+        const group = documentRef.createElement('section');
+        group.className = 'card-app-studio-formula-editor';
+        const header = documentRef.createElement('div');
+        header.className = 'card-app-studio-formula-header';
+        const title = documentRef.createElement('strong');
+        title.textContent = t('Formula Editor');
+        const note = documentRef.createElement('span');
+        note.textContent = t('Validated by the R3 safe Formula AST');
+        header.append(title, note);
+        group.appendChild(header);
+
+        parsed.model.formulas.forEach((formula, index) => {
+            const row = documentRef.createElement('label');
+            row.className = 'card-app-studio-formula-row';
+            const path = documentRef.createElement('span');
+            path.textContent = formula.label;
+            const input = documentRef.createElement('input');
+            input.value = formula.expression;
+            input.dataset.formulaIndex = String(index);
+            row.append(path, input);
+            group.appendChild(row);
+        });
+        scroll.appendChild(group);
+    }
+
+    function renderLogicSection() {
+        const scroll = renderHeader(
+            sectionTitle(parsed.model.section),
+            String(parsed.model.entries.length) + ' ' + t('entries'),
+        );
+
+        const toolbar = documentRef.createElement('div');
+        toolbar.className = 'card-app-studio-logic-toolbar';
+        const sourceNote = documentRef.createElement('span');
+        sourceNote.textContent = t('Edits compile against the live declarative Game Logic contract.');
+        const add = documentRef.createElement('button');
+        add.type = 'button';
+        add.className = 'card-app-studio-btn small';
+        add.dataset.logicAction = 'add';
+        add.textContent = '+ ' + t('Add');
+        toolbar.append(sourceNote, add);
+        scroll.appendChild(toolbar);
+
+        parsed.model.entries.forEach(entry => renderLogicEntry(scroll, entry));
+        renderFormulaRows(scroll);
+    }
+
     function renderError(error) {
         container.replaceChildren();
         const box = documentRef.createElement('div');
@@ -287,9 +438,10 @@ export function createStructuredRuntimeEditorHost(options = {}) {
 
     function render(renderOptions = {}) {
         const kind = editorKind(selection);
+        const section = logicSection(selection);
         const shell = ensureShell();
         if (!shell) return;
-        if (!kind) {
+        if (!kind && !section) {
             shell.modebar.hidden = true;
             parsed = null;
             setMode('raw');
@@ -298,8 +450,11 @@ export function createStructuredRuntimeEditorHost(options = {}) {
 
         shell.modebar.hidden = false;
         try {
-            parsed = parseStructuredRuntimeDocument(kind, getSourceText());
-            if (kind === STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA) renderWorldSchema();
+            parsed = section
+                ? parseLogicStructuredDocument(section, getSourceText())
+                : parseStructuredRuntimeDocument(kind, getSourceText());
+            if (section) renderLogicSection();
+            else if (kind === STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA) renderWorldSchema();
             else renderInitialState();
             setMode(renderOptions.preferStructured === true ? 'structured' : mode);
         } catch (error) {
@@ -314,19 +469,47 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         const kind = parsed.model.editor;
         const source = serializeStructuredRuntimeDocument(nextValue);
         setSourceText(source, selection?.path || '');
-        parsed = parseStructuredRuntimeDocument(kind, source);
-        if (kind === STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA) renderWorldSchema();
-        else renderInitialState();
+        if (kind === 'game_logic') {
+            parsed = parseLogicStructuredDocument(parsed.model.section, source);
+            renderLogicSection();
+        } else {
+            parsed = parseStructuredRuntimeDocument(kind, source);
+            if (kind === STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA) renderWorldSchema();
+            else renderInitialState();
+        }
     }
 
     function handleChange(target) {
-        const rowElement = target.closest('[data-structured-row]');
-        if (!rowElement || !parsed) return;
-        const row = parsed.model.rows[Number(rowElement.dataset.structuredRow)];
-        const field = target.dataset.structuredField;
-        if (!row || !field) return;
+        if (!parsed) return;
 
         try {
+            if (parsed.model.editor === 'game_logic') {
+                if (target.dataset.formulaIndex !== undefined) {
+                    const formula = parsed.model.formulas[Number(target.dataset.formulaIndex)];
+                    if (!formula) return;
+                    sync(applyFormulaExpression(parsed.value, formula.path, target.value));
+                    return;
+                }
+
+                const entryElement = target.closest('[data-logic-entry]');
+                const field = target.dataset.logicField;
+                if (!entryElement || !field) return;
+                sync(applyLogicEntryFieldPatch(
+                    parsed.value,
+                    parsed.model.section,
+                    Number(entryElement.dataset.logicEntry),
+                    field,
+                    target.type === 'checkbox' ? Boolean(target.checked) : target.value,
+                ));
+                return;
+            }
+
+            const rowElement = target.closest('[data-structured-row]');
+            if (!rowElement) return;
+            const row = parsed.model.rows[Number(rowElement.dataset.structuredRow)];
+            const field = target.dataset.structuredField;
+            if (!row || !field) return;
+
             if (parsed.model.editor === STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA) {
                 sync(applyWorldSchemaRowPatch(
                     parsed.value,
@@ -342,9 +525,33 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         }
     }
 
+    function handleLogicAction(target) {
+        if (!parsed || parsed.model.editor !== 'game_logic') return;
+        const action = target.dataset.logicAction;
+        try {
+            if (action === 'add') {
+                sync(addLogicEntry(parsed.value, parsed.model.section));
+            } else if (action === 'remove') {
+                sync(removeLogicEntry(
+                    parsed.value,
+                    parsed.model.section,
+                    Number(target.dataset.logicEntry),
+                ));
+            }
+        } catch (error) {
+            notifyError(t('Structured edit rejected') + ': ' + (error?.message || String(error)));
+            render({ preferStructured: true });
+        }
+    }
+
     async function validateBeforeSave() {
         const kind = editorKind(selection);
-        if (!kind) return;
+        const section = logicSection(selection);
+        if (!kind && !section) return;
+        if (section) {
+            parseLogicStructuredDocument(section, getSourceText());
+            return;
+        }
 
         const current = parseStructuredRuntimeDocument(kind, getSourceText());
         const world = getProjectNavigator()?.manifest?.world;
@@ -379,7 +586,7 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         open(nextSelection) {
             selection = nextSelection || null;
             mode = 'raw';
-            render({ preferStructured: Boolean(editorKind(selection)) });
+            render({ preferStructured: Boolean(editorKind(selection) || logicSection(selection)) });
         },
         refresh() {
             render({ preferStructured: mode === 'structured' });
