@@ -4,10 +4,10 @@
 
 - Working branch: `refactor/game-runtime-architecture`
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current working HEAD: `9276e460c7534c6ad097771f462b3917f6c53080`
+- Current working HEAD: `adc607bc5c1bdbe383d2647d82b1e0b323743df4`
 - Live `main` remains `63da3141a3895d3386ed1bebc30876c9766315ba`.
 - Formal Master Plan: `docs:refactor/game-runtime-architecture.md`
-- Current status: R0 complete, R1 complete at its planned foundation scope, R2 minimum World/Event vertical slice complete, and **R3 Game Logic Runtime complete against the Master Plan exit criteria**.
+- Current status: **R0-R4 complete against their Master Plan exit criteria**. Next phase is R5 — LLM Runtime & Model Roles.
 - No PR has been opened and nothing has been merged to `main`; keep this branch and continue the Master Refactor.
 
 ## R3 checkpoint — Game Logic Runtime
@@ -49,16 +49,6 @@ R3 focused validation:
 - HEAD: `9276e460c7534c6ad097771f462b3917f6c53080`
 - Result: success
 - Includes the dedicated `r3-exit-matrix.test.js` plus Command/Validator/Rules/Reducer/Formula/RNG/Simulation/World tests and focused ESLint.
-
-R3 broad validation currently running:
-
-- Temporary workflow: `Game Runtime R3 Broad Checks`
-- Run: `35548063514`
-- HEAD: `b8c363b70573c1993b737582691c5767832adcd3`
-- Status at handoff: in progress
-- Scope: complete Node/Jest unit suite only; Android, Docker and UI E2E are intentionally excluded.
-- The workflow file `.github/workflows/game-runtime-r3-broad-checks.yml` is one-time validation scaffolding and should be removed after the broad run is resolved.
-- The workflow-file commit also triggered `Game Runtime Dev Checks` run `35548063475` (#89), which was in progress at this handoff.
 
 ## Midpoint completed
 
@@ -224,6 +214,73 @@ Final R3 focused validation:
 
 Android and Docker were not run because R3 changes are browser/Node runtime logic only and those builds remain opt-in.
 
+## R4 — Card UI Runtime complete
+
+R4 is complete against the Master Plan exit contract.
+
+Implemented under `public/scripts/extensions/game-runtime/ui/`:
+
+- versioned stable Surface vocabulary decoupled from inherited SillyTavern DOM selectors;
+- Atria-owned Host Surface adapter for Component/Hybrid packages;
+- read-only Selector Runtime with immutable World snapshots;
+- declarative Selector resources compiled through the safe Formula AST;
+- safe declarative HTML bindings:
+  - `data-atria-bind-text`
+  - `data-atria-bind-value`
+  - `data-atria-bind-hidden`;
+- typed UI actions:
+  - `data-atria-command`
+  - bounded JSON arguments
+  - dispatch/simulation modes;
+- no UI generic World setter and no broad Atria/CardApp context;
+- resilient UI value cloning with safe fallback for older browser/WebView environments;
+- native component composition for the original Atria conversation and composer nodes;
+- Hybrid mode that recomposes the same native chat/generation machinery instead of duplicating it;
+- responsive environment contract:
+  - desktop/tablet/mobile
+  - portrait/landscape
+  - touch/keyboard
+  - viewport geometry
+  - safe-area CSS variables;
+- declarative Immersive presentation bridge over the existing `Atria.immersive.registerProvider()` API;
+- Immersive state sourced only from Selectors and Immersive actions routed only through typed Commands;
+- Full mode with an Atria-owned recovery shell outside package DOM control;
+- Full recovery actions for exit UI, emergency stop, current-session package disable and diagnostics;
+- Escape recovery owned by the host;
+- broken Full packages fail before completed takeover and leave the host usable;
+- live package logic is now wired into production World Sessions for declarative `.json` logic entries;
+- advanced package JavaScript logic remains fail-closed until the restricted advanced-JavaScript runtime is implemented.
+
+UI takeover semantics:
+
+- **Component** — native Atria remains primary and package UI mounts into stable surfaces.
+- **Hybrid** — package shell may rearrange native conversation/composer while those original nodes remain the single source of truth.
+- **Full** — package owns the main experience surface, but Atria retains an out-of-package recovery chrome and can still mount the original native conversation/composer.
+
+R4 exit coverage:
+
+- Component fixture: static safe HTML + Selector/typed Command vertical slice.
+- Hybrid fixture: native conversation/composer recomposition and exact restoration.
+- Full fixture: main-surface takeover + out-of-package recovery shell.
+- Desktop browser smoke: Full takeover/recovery in real Chromium.
+- Mobile browser smoke: Hybrid composition + mobile/portrait/touch responsive contract in real Chromium.
+- Broken-package recovery: invalid Full native ownership aborts takeover and restores/retains the host.
+
+Final R4 validation:
+
+- `Game Runtime Dev Checks` #160 — run `35550867047` — HEAD `adc607bc5c1bdbe383d2647d82b1e0b323743df4` — success.
+- `Game Runtime R4 Browser Checks` #2 — run `35550867046` — same HEAD — success.
+- The first browser run failed only because the synthetic smoke page lacked the real Atria mobile viewport meta tag; after matching the production viewport contract, desktop and mobile Chromium smoke both passed.
+- Android and Docker builds were not run because they remain opt-in and R4 changed browser runtime/UI contracts only.
+
+Important R4 boundaries:
+
+- UI bindings are presentation/adaptation only; reducers/Commands remain authoritative mutation.
+- Hybrid/Full native composition moves original host nodes; it does not clone or reimplement generation/swipe/edit/regenerate state.
+- Immersive remains a presentation layer and never owns World/Event state.
+- Full recovery controls are created and owned by Atria outside package DOM.
+- Host internal selectors remain implementation details behind Surface/Native Component adapters.
+
 ## Important architecture decisions preserved
 
 1. Regex is a text subsystem, not Game Runtime/UI/state.
@@ -285,28 +342,43 @@ Android and Docker were not run, per repository/user policy and because this mid
 
 ## Current limitations / intentionally unfinished
 
-R0–R3 runtime contracts are implemented. The Master Refactor is not complete.
+R0-R4 are complete. The Master Refactor is not complete.
 
 Remaining phases:
 
-- R4 — Card UI Runtime: Component/Hybrid/Full, Surface API, native components, selectors, safe bindings/actions, responsive/mobile, Immersive integration and host recovery.
-- R5 — LLM Runtime & Model Roles: Intent Resolver, optional Event Interpreter, Narrator/Director arbitration, Turn Coordination Contract, Memory/Orchestrator bridges, command-tool generation, observations and Runtime Role routing.
-- R6 — upgrade the existing CardApp Studio into Atria Game Studio; do not create a parallel second Studio.
-- R7 — Atria Game-first Shell Redesign after R3–R6 contracts are stable.
+- R5 — LLM Runtime & Model Roles: command-tool generation, command visibility, Intent Resolver, optional Event Interpreter, observation projection, Turn Coordination Contract, Memory/Orchestrator bridges, single Narrative Producer arbitration, Narrator, committed-fact enforcement, UI-action shortcut and Runtime Role routing/fallback.
+- R6 — evolve the existing CardApp Studio into Atria Game Studio; do not create a parallel second Studio.
+- R7 — Atria Game-first Shell Redesign after R5-R6 runtime/authoring contracts are stable.
 
-R3 is awaiting only the one-time complete Node unit validation described above. Do not start R4 until that run is resolved and the temporary broad-check workflow is removed.
+Known R4 intentionally deferred boundary:
+
+- package-loaded advanced JavaScript Game Logic remains fail-closed; only declarative JSON logic is live until a restricted advanced-JavaScript execution environment exists.
+- R4 establishes runtime contracts, not final Atria 1.0 visual language; R7 owns the host design-system redesign.
 
 ## Next implementation step
 
-1. Check `Game Runtime R3 Broad Checks` run `35548063514` and `Game Runtime Dev Checks` run `35548063475`.
-2. If either failed, diagnose/fix on `refactor/game-runtime-architecture` and rerun the relevant validation.
-3. If broad Node validation is green, remove `.github/workflows/game-runtime-r3-broad-checks.yml`, verify the resulting focused run, and mark R3 validation complete.
-4. Continue R4 from the live branch HEAD. Start with the smallest real Card UI Runtime vertical slice: stable Surface API + one Component fixture using restricted World observation and typed Command actions.
-5. Extend to Hybrid and Full only after the shared Surface/binding/action contract is stable.
+Continue on the existing branch from:
 
-Do not expose arbitrary `set_state(path,value)`.
-Do not give Game Logic or UI packages the broad CardApp/Atria context.
-Do not begin R7 visual redesign before R3–R6 contracts are stable.
-Do not let UI bindings become a second state engine; all authoritative mutations still dispatch typed Commands.
-Do not let Memory/Orchestrator/Narrator reconstruct competing current-state truth; keep the Master Plan Turn Coordination Contract.
+`refactor/game-runtime-architecture@adc607bc5c1bdbe383d2647d82b1e0b323743df4`
 
+Begin **R5 — LLM Runtime & Model Roles** without reopening R0-R4 unless a concrete R5 integration defect proves necessary.
+
+Recommended first R5 vertical slice:
+
+1. generate an LLM-safe tool catalog from typed Command definitions;
+2. add explicit command visibility/filtering so irrelevant Commands are not exposed;
+3. build a read-only World Observation projection using the same authority model as R3/R4;
+4. define the minimal branch-anchored Turn Context identity shared by later Resolver/Memory/Orchestrator/Narrator stages;
+5. prove deterministic UI actions can bypass Intent Resolver/Event Interpreter and still enter the same committed-fact Turn Context.
+
+Then extend into Intent Resolver, optional Event Interpreter, Runtime Role routing, Memory/Orchestrator bridges and single Narrative Producer arbitration.
+
+Do not:
+
+- let an LLM directly emit arbitrary state patches or numeric deltas;
+- expose generic `set_state`;
+- let Memory/Orchestrator/Narrator override committed World/Event facts;
+- create competing per-subsystem current-state truths;
+- let Director and Narrator both write the final prose body for one turn;
+- collapse Connection Profile and Runtime Role into one concept;
+- start R7 shell redesign before R5-R6 contracts are stable.
