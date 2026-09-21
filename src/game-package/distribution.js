@@ -280,6 +280,10 @@ export function buildAtriaDistribution(projectDir, options = {}) {
     if (archive.length > ATRIA_DISTRIBUTION_LIMITS.maxArchiveBytes) {
         throw new Error('.atria archive exceeds the compressed archive-size limit');
     }
+
+    // A builder must never emit an artifact that the matching importer rejects.
+    inspectAtriaDistribution(archive);
+
     return {
         archive,
         manifest,
@@ -486,7 +490,11 @@ export function inspectAtriaDistribution(archiveInput) {
             throw new Error(`Integrity mismatch for .atria file '${archivePath}'`);
         }
 
-        files.set(archivePath.slice('game/'.length), data);
+        const relativePath = archivePath.slice('game/'.length);
+        if (shouldExcludeSource(relativePath)) {
+            throw new Error(`Reserved runtime/persistence path is not allowed in .atria: '${relativePath}'`);
+        }
+        files.set(relativePath, data);
     }
 
     if (!files.has('game.json')) {
@@ -498,6 +506,7 @@ export function inspectAtriaDistribution(archiveInput) {
         manifest.package.id !== game.id
         || manifest.package.name !== game.name
         || manifest.package.version !== game.version
+        || JSON.stringify(manifest.package.runtime) !== JSON.stringify(game.runtime)
     ) {
         throw new Error('.atria container package metadata does not match game/game.json');
     }
@@ -533,8 +542,9 @@ function moveDirectoryContents(sourceDir, targetDir) {
 
 export function restoreAtriaDistribution(archive, targetDir) {
     const inspected = inspectAtriaDistribution(archive);
-    const target = path.resolve(String(targetDir || ''));
-    if (!target) throw new Error('.atria restore requires a target Source Project directory');
+    const targetInput = String(targetDir || '').trim();
+    if (!targetInput) throw new Error('.atria restore requires a target Source Project directory');
+    const target = path.resolve(targetInput);
 
     const parent = path.dirname(target);
     fs.mkdirSync(parent, { recursive: true });
@@ -549,12 +559,11 @@ export function restoreAtriaDistribution(archive, targetDir) {
     try {
         writeStagedFiles(stageDir, inspected.files);
 
-        for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
-            if (entry.name === '.git') continue;
-            fs.renameSync(path.join(target, entry.name), path.join(backupDir, entry.name));
-        }
-
         try {
+            for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+                if (entry.name === '.git') continue;
+                fs.renameSync(path.join(target, entry.name), path.join(backupDir, entry.name));
+            }
             moveDirectoryContents(stageDir, target);
         } catch (error) {
             for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
