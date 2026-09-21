@@ -1,8 +1,11 @@
-# Workspace hub/localization fix validated — PR #82 ready to merge
+# Workspace hub/localization fix merged — main authoritative
 
 - Task branch: `fix/workspace-hub-localization`
 - Final validated HEAD: `9e178b8bce4301412d3995c9f0afe0ce9432c735`
-- PR: #82 — `fix: repair workspace routing, preview, and localization`
+- PR: #82 — `fix: repair workspace routing, preview, and localization` — merged
+- Integrated main: `2c1c171136cb6f35f3f4fff7c62b148b7200485a`
+- Cleanup: `Cleanup merged task branches #79` / run `35620850710` — success
+- Temporary branch `fix/workspace-hub-localization` — deleted
 - Validation:
   - Atria PR Checks #762 / run `35619796768`: success
   - Workspace UI #182 / run `35619796719`: success
