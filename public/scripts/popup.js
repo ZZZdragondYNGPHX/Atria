@@ -665,6 +665,13 @@ export class Popup {
             if (this.#isClosingPrevented) {
                 evt.preventDefault();
                 evt.stopPropagation();
+
+                // A prevented close can be delivered after another async path
+                // has already completed and removed this dialog. Reopening a
+                // detached <dialog> throws InvalidStateError in Chromium.
+                // At that point there is no popup left to preserve, so the
+                // close event is safely ignored.
+                if (!this.dlg.isConnected || this.dlg.open) return;
                 this.dlg.showModal();
             }
         };
