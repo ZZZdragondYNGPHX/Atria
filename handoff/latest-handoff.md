@@ -1,3 +1,28 @@
+# Atria Native Content & Session Architecture — active implementation handoff
+
+- Architecture discussion: **frozen**
+- Implementation: **not started**
+- Authoritative baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
+- Working branch: `refactor/atria-native-content-session-architecture`
+- First phase: **N0 — Native Contracts & Identity**
+- Formal Master Plan: `refactor/atria-native-content-session-architecture.md`
+- Detailed handoff: `handoff/atria-native-content-session-architecture.md`
+
+Core direction:
+
+- Package replaces Character Card as Atria's top-level content authority.
+- Session replaces Chat as Atria's top-level runtime-progress authority.
+- `.atria` is the Native Package artifact; `.atriasave` is the Native save/session artifact.
+- PackageRepo / AssetStore / SessionRepo / SavePointRepo / ProjectStore are distinct authorities.
+- Native identity uses opaque IDs, never filename / avatar / `charDir` / array index.
+- No automatic old-data migration, dual read, dual write, or PNG/JSONL fallback.
+- SillyTavern remains only as a downstream runtime ABI through a one-way Native compatibility adapter.
+- Implementation phases are N0–N8; no product UI cutover before Checkpoint B after N6.
+
+Next implementation conversation must read the Master Plan and start N0 directly. Do not repeat product design.
+
+---
+
 # Workspace hub/localization fix merged — main authoritative
 
 - Task branch: `fix/workspace-hub-localization`
