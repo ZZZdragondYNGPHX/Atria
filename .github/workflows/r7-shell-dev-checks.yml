@@ -48,6 +48,8 @@ jobs:
           public/script.js
           public/scripts/textgen-models.js
           public/scripts/select2-actionable-single.js
+          public/scripts/horde.js
+          public/scripts/tags.js
           "public/scripts/atria-shell/*.js"
       - name: Lint R7A tests
         working-directory: tests
