@@ -109,6 +109,109 @@ function createRuntimeSystems(worldSession) {
     });
 
     const attemptBranches = new Map();
+    const turnMessageIndices = new Map();
+
+    function getAttemptVariantIndex(branch) {
+        const path = Array.isArray(branch?.branchPath) ? branch.branchPath : [];
+        return Number.isInteger(path.at(-1)) ? path.at(-1) : 0;
+    }
+
+    async function publishAttemptNarrative({ turnId, attemptId, branch, turn }) {
+        const prose = String(turn?.narrative?.text || '').trim();
+        if (!prose) return null;
+
+        const variantIndex = getAttemptVariantIndex(branch);
+        let messageIndex = turnMessageIndices.get(turnId);
+        const liveContext = getContext();
+        let message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
+
+        if (!message) {
+            messageIndex = await liveContext.addMessages({
+                name: liveContext.name2 || 'Assistant',
+                mes: prose,
+                is_user: false,
+                is_system: false,
+                swipe_id: variantIndex,
+                swipes: [prose],
+                swipe_info: [{
+                    extra: {
+                        atria_game_turn_id: turnId,
+                        atria_game_attempt_id: attemptId,
+                    },
+                }],
+                extra: {
+                    atria_game_turn_id: turnId,
+                    atria_game_attempt_id: attemptId,
+                },
+            });
+            turnMessageIndices.set(turnId, messageIndex);
+            return messageIndex;
+        }
+
+        const swipes = Array.isArray(message.swipes)
+            ? [...message.swipes]
+            : [String(message.mes || '')];
+        const swipeInfo = Array.isArray(message.swipe_info)
+            ? structuredClone(message.swipe_info)
+            : swipes.map(() => ({}));
+        while (swipes.length <= variantIndex) swipes.push('');
+        while (swipeInfo.length <= variantIndex) swipeInfo.push({});
+        swipes[variantIndex] = prose;
+        swipeInfo[variantIndex] = {
+            ...(swipeInfo[variantIndex] || {}),
+            extra: {
+                ...(swipeInfo[variantIndex]?.extra || {}),
+                atria_game_turn_id: turnId,
+                atria_game_attempt_id: attemptId,
+            },
+        };
+
+        await liveContext.updateMessages({
+            index: messageIndex,
+            patch: {
+                mes: prose,
+                swipe_id: variantIndex,
+                swipes,
+                swipe_info: swipeInfo,
+                extra: {
+                    ...(message.extra || {}),
+                    atria_game_turn_id: turnId,
+                    atria_game_attempt_id: attemptId,
+                },
+            },
+        });
+        await liveContext.eventSource?.emit?.(liveContext.eventTypes?.MESSAGE_SWIPED, messageIndex);
+        return messageIndex;
+    }
+
+    async function activateAttemptMessage({ turnId, attemptId, branch }) {
+        const messageIndex = turnMessageIndices.get(turnId);
+        const liveContext = getContext();
+        const message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
+        if (!message) return;
+
+        const variantIndex = getAttemptVariantIndex(branch);
+        const swipes = Array.isArray(message.swipes) ? [...message.swipes] : [String(message.mes || '')];
+        if (variantIndex < 0 || variantIndex >= swipes.length || !String(swipes[variantIndex] || '').trim()) {
+            throw new Error(`Game narrative variant ${variantIndex} is unavailable`);
+        }
+        const swipeInfo = Array.isArray(message.swipe_info) ? message.swipe_info : [];
+        await liveContext.updateMessages({
+            index: messageIndex,
+            patch: {
+                mes: swipes[variantIndex],
+                swipe_id: variantIndex,
+                extra: {
+                    ...(message.extra || {}),
+                    ...(swipeInfo[variantIndex]?.extra || {}),
+                    atria_game_turn_id: turnId,
+                    atria_game_attempt_id: attemptId,
+                },
+            },
+        });
+        await liveContext.eventSource?.emit?.(liveContext.eventTypes?.MESSAGE_SWIPED, messageIndex);
+    }
+
     const turnController = createGameTurnController({
         adapter: {
             async createAttemptBranch({ attemptIndex }) {
@@ -124,13 +227,15 @@ function createRuntimeSystems(worldSession) {
                 attemptBranches.set(attemptId, [...branch.branchPath]);
                 await worldSession.switchBranchPathInternal?.(branch.branchPath);
             },
-            async activateAttempt({ attemptId, branch }) {
+            async activateAttempt({ turnId, attemptId, branch, turn }) {
                 attemptBranches.set(attemptId, [...branch.branchPath]);
                 await worldSession.switchBranchPathInternal?.(branch.branchPath);
+                await publishAttemptNarrative({ turnId, attemptId, branch, turn });
             },
-            async activateAttemptBranch({ attemptId, branch }) {
+            async activateAttemptBranch({ turnId, attemptId, branch }) {
                 attemptBranches.set(attemptId, [...branch.branchPath]);
                 await worldSession.switchBranchPathInternal?.(branch.branchPath);
+                await activateAttemptMessage({ turnId, attemptId, branch });
             },
             async deactivateAttempt({ restoreAttemptId }) {
                 const restore = restoreAttemptId
@@ -142,8 +247,62 @@ function createRuntimeSystems(worldSession) {
                     await worldSession.clearBranchOverrideInternal?.();
                 }
             },
-            async restoreBeforeTurn() {
+            async restoreBeforeTurn({ turnId }) {
+                const messageIndex = turnMessageIndices.get(turnId);
+                if (Number.isInteger(messageIndex) && getContext().chat?.[messageIndex]) {
+                    await getContext().deleteMessages(messageIndex);
+                    turnMessageIndices.delete(turnId);
+                }
                 await worldSession.clearBranchOverrideInternal?.();
+            },
+            async deleteAssistantResult({ turnId, branch }) {
+                const messageIndex = turnMessageIndices.get(turnId);
+                const liveContext = getContext();
+                const message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
+                if (!message) return;
+                const variantIndex = getAttemptVariantIndex(branch);
+                const swipes = Array.isArray(message.swipes) ? message.swipes : [message.mes];
+                if (swipes.length <= 1) {
+                    await liveContext.deleteMessages(messageIndex);
+                    turnMessageIndices.delete(turnId);
+                    return;
+                }
+                await liveContext.deleteMessages(messageIndex, { swipe: variantIndex });
+            },
+            async replaceNarrative({ turnId, attemptId, variantId, prose }) {
+                const messageIndex = turnMessageIndices.get(turnId);
+                const liveContext = getContext();
+                const message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
+                if (!message) return;
+                const activeSwipe = Number.isInteger(message.swipe_id) ? message.swipe_id : 0;
+                const swipes = Array.isArray(message.swipes) ? [...message.swipes] : [String(message.mes || '')];
+                const swipeInfo = Array.isArray(message.swipe_info)
+                    ? structuredClone(message.swipe_info)
+                    : swipes.map(() => ({}));
+                swipes[activeSwipe] = prose;
+                swipeInfo[activeSwipe] = {
+                    ...(swipeInfo[activeSwipe] || {}),
+                    extra: {
+                        ...(swipeInfo[activeSwipe]?.extra || {}),
+                        atria_game_turn_id: turnId,
+                        atria_game_attempt_id: attemptId,
+                        atria_game_prose_variant_id: variantId,
+                    },
+                };
+                await liveContext.updateMessages({
+                    index: messageIndex,
+                    patch: {
+                        mes: prose,
+                        swipes,
+                        swipe_info: swipeInfo,
+                        extra: {
+                            ...(message.extra || {}),
+                            atria_game_turn_id: turnId,
+                            atria_game_attempt_id: attemptId,
+                            atria_game_prose_variant_id: variantId,
+                        },
+                    },
+                });
             },
         },
     });
