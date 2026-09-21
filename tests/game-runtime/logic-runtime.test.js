@@ -152,15 +152,15 @@ describe('Game Logic Runtime command transaction', () => {
         }
 
         expect(error).toBeInstanceOf(GameLogicError);
-        expect(error.toJSON()).toMatchObject({
+        const serialized = error.toJSON();
+        expect(serialized).toMatchObject({
             code: GAME_LOGIC_ERROR_CODES.COMMAND_ARGUMENTS_INVALID,
             stage: 'arguments',
             commandId: 'damage',
             transactionId: null,
-            details: {
-                errors: expect.any(Array),
-            },
         });
+        expect(Array.isArray(serialized.details?.errors)).toBe(true);
+        expect(serialized.details.errors.length).toBeGreaterThan(0);
         expect(error.message).toMatch(/validation failed/);
 
         expect(world.getState()).toEqual({ hp: 20 });
