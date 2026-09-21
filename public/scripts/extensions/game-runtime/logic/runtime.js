@@ -1,5 +1,6 @@
 import { createCommandRegistry } from './command-registry.js';
 import { createDeterministicRng } from './rng.js';
+import { GAME_LOGIC_ERROR_CODES, GameLogicError, wrapGameLogicError } from './errors.js';
 import { createRulesEngine } from './rules.js';
 import { runCommandValidators } from './validators.js';
 
@@ -81,14 +82,24 @@ export function createGameLogicRuntime(options = {}) {
     }
 
     const rngSeed = options.rngSeed ?? 'atria-game-runtime-v1';
+    const hasRules = rulesEngine.listRules().length > 0;
     let commitQueue = Promise.resolve();
 
     async function execute(commandId, args = {}, options = {}) {
         const validation = registry.validate(commandId, args);
         if (!validation.ok) {
-            throw new Error(
-                `Command '${String(commandId || '').trim()}' validation failed: `
-                + validation.errors.slice(0, 8).join('; '),
+            const normalizedCommandId = String(commandId || '').trim();
+            throw new GameLogicError(
+                validation.command
+                    ? GAME_LOGIC_ERROR_CODES.COMMAND_ARGUMENTS_INVALID
+                    : GAME_LOGIC_ERROR_CODES.COMMAND_NOT_FOUND,
+                `Command '${normalizedCommandId}' validation failed: `
+                    + validation.errors.slice(0, 8).join('; '),
+                {
+                    stage: 'arguments',
+                    commandId: normalizedCommandId || null,
+                    details: { errors: validation.errors.slice(0, 8) },
+                },
             );
         }
 
@@ -97,15 +108,31 @@ export function createGameLogicRuntime(options = {}) {
             id: validation.command.id,
             ...(validation.command.description ? { description: validation.command.description } : {}),
         });
-        const semanticValidation = await runCommandValidators(validation.command.validators, {
-            command: commandView,
-            args: validation.args,
-            world: beforeState,
-        });
+        let semanticValidation;
+        try {
+            semanticValidation = await runCommandValidators(validation.command.validators, {
+                command: commandView,
+                args: validation.args,
+                world: beforeState,
+            });
+        } catch (error) {
+            throw wrapGameLogicError(error, {
+                code: GAME_LOGIC_ERROR_CODES.COMMAND_VALIDATOR_FAILED,
+                stage: 'preconditions',
+                commandId: validation.command.id,
+                message: `Command '${validation.command.id}' validator failed`,
+            });
+        }
         if (!semanticValidation.ok) {
-            throw new Error(
+            throw new GameLogicError(
+                GAME_LOGIC_ERROR_CODES.COMMAND_PRECONDITION_FAILED,
                 `Command '${validation.command.id}' rejected: `
-                + semanticValidation.errors.slice(0, 8).join('; '),
+                    + semanticValidation.errors.slice(0, 8).join('; '),
+                {
+                    stage: 'preconditions',
+                    commandId: validation.command.id,
+                    details: { errors: semanticValidation.errors.slice(0, 8) },
+                },
             );
         }
 
@@ -122,17 +149,28 @@ export function createGameLogicRuntime(options = {}) {
             rng,
         });
 
-        const output = await validation.command.execute(executionContext);
-        const initialEvents = normalizeEventDrafts(output, validation.command.id).map(event => ({
-            ...event,
-            meta: {
-                ...(event.meta || {}),
-                command: {
-                    id: validation.command.id,
-                    transactionId,
+        let initialEvents;
+        try {
+            const output = await validation.command.execute(executionContext);
+            initialEvents = normalizeEventDrafts(output, validation.command.id).map(event => ({
+                ...event,
+                meta: {
+                    ...(event.meta || {}),
+                    command: {
+                        id: validation.command.id,
+                        transactionId,
+                    },
                 },
-            },
-        }));
+            }));
+        } catch (error) {
+            throw wrapGameLogicError(error, {
+                code: GAME_LOGIC_ERROR_CODES.COMMAND_EXECUTION_FAILED,
+                stage: 'command',
+                commandId: validation.command.id,
+                transactionId,
+                message: `Command '${validation.command.id}' execution failed`,
+            });
+        }
 
         if (initialEvents.length === 0) {
             return {
@@ -140,6 +178,10 @@ export function createGameLogicRuntime(options = {}) {
                 status: 'no_change',
                 transactionId,
                 commandId: validation.command.id,
+                command: {
+                    id: validation.command.id,
+                    args: clone(validation.args),
+                },
                 args: clone(validation.args),
                 beforeState,
                 afterState: clone(beforeState),
@@ -150,16 +192,29 @@ export function createGameLogicRuntime(options = {}) {
             };
         }
 
-        const ruled = await rulesEngine.process(initialEvents, {
-            beforeState,
-            project: events => world.simulateEvents(events),
-            context: {
-                transactionId,
-                command: commandView,
-                args: validation.args,
-                rng,
-            },
-        });
+        let ruled = { events: initialEvents, trace: [] };
+        if (hasRules) {
+            try {
+                ruled = await rulesEngine.process(initialEvents, {
+                    beforeState,
+                    project: events => world.simulateEvents(events),
+                    context: {
+                        transactionId,
+                        command: commandView,
+                        args: validation.args,
+                        rng,
+                    },
+                });
+            } catch (error) {
+                throw wrapGameLogicError(error, {
+                    code: GAME_LOGIC_ERROR_CODES.RULE_EVALUATION_FAILED,
+                    stage: 'rules',
+                    commandId: validation.command.id,
+                    transactionId,
+                    message: `Command '${validation.command.id}' rule evaluation failed`,
+                });
+            }
+        }
         const rngTrace = rng.trace();
         const transactionEvents = ruled.events.map((event, index) => ({
             ...event,
@@ -173,15 +228,33 @@ export function createGameLogicRuntime(options = {}) {
             },
         }));
 
-        const projected = options.simulate === true
-            ? await world.simulateEvents(transactionEvents)
-            : await world.commitEvents(transactionEvents);
+        let projected;
+        try {
+            projected = options.simulate === true
+                ? await world.simulateEvents(transactionEvents)
+                : await world.commitEvents(transactionEvents);
+        } catch (error) {
+            const isSimulation = options.simulate === true;
+            throw wrapGameLogicError(error, {
+                code: isSimulation
+                    ? GAME_LOGIC_ERROR_CODES.SIMULATION_FAILED
+                    : GAME_LOGIC_ERROR_CODES.COMMIT_FAILED,
+                stage: isSimulation ? 'simulation' : 'commit',
+                commandId: validation.command.id,
+                transactionId,
+                message: `Command '${validation.command.id}' ${isSimulation ? 'simulation' : 'commit'} failed`,
+            });
+        }
 
         return {
             ok: true,
             status: options.simulate === true ? 'simulated' : 'committed',
             transactionId,
             commandId: validation.command.id,
+            command: {
+                id: validation.command.id,
+                args: clone(validation.args),
+            },
             args: clone(validation.args),
             beforeState,
             afterState: clone(projected.state),
