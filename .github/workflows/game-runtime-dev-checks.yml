@@ -37,6 +37,10 @@ jobs:
           game-runtime/logic-runtime.test.js
           game-runtime/logic-package.test.js
           game-runtime/logic-rules-integration.test.js
+          game-runtime/llm-tools.test.js
+          game-runtime/llm-observation.test.js
+          game-runtime/llm-turn-context.test.js
+          game-runtime/llm-runtime.test.js
           game-runtime/r3-exit-matrix.test.js
           game-runtime/validators.test.js
           game-runtime/rules.test.js
@@ -67,6 +71,7 @@ jobs:
           npx eslint
           public/scripts/extensions/game-runtime/*.js
           public/scripts/extensions/game-runtime/logic/*.js
+          public/scripts/extensions/game-runtime/llm/*.js
           public/scripts/extensions/game-runtime/ui/*.js
           public/scripts/extensions/game-runtime/world/*.js
           public/scripts/extensions/regex/engine.js
