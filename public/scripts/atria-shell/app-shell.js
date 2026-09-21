@@ -533,16 +533,22 @@ export function createAtriaAppShell({
         }
 
         if (event.key !== 'Escape') return;
-        if (dismissContextForBack()) {
+
+        const consumeEscape = () => {
             event.preventDefault();
+            event.stopImmediatePropagation();
+        };
+
+        if (dismissContextForBack()) {
+            consumeEscape();
             return;
         }
         if (dismissCommandForBack()) {
-            event.preventDefault();
+            consumeEscape();
             return;
         }
         if (dismissChildRouteForBack('detail')) {
-            event.preventDefault();
+            consumeEscape();
         }
     }
 
