@@ -1,6 +1,6 @@
 const EVENT_TYPE_PATTERN = /^[A-Za-z][A-Za-z0-9._-]{0,127}$/;
 const COMMAND_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
-const MAX_COMMANDS_PER_INTERPRETATION = 8;
+const MAX_COMMANDS_PER_INTERPRETATION = 1;
 
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);
