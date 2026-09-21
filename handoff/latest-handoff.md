@@ -1,6 +1,6 @@
-# Active implementation: R7G — Plugins & Settings Reclassification
+# Active implementation: R7H — Legacy Shell Retirement & Final Hardening
 
-R7A — Design System & Shell Foundation, R7B — Play / Native Conversation Host, R7C — Game Surface Integration, R7D — Desktop / Mobile Navigation, R7E — First-class Workspaces, and R7F — Library & Runtime are complete and validated. The next conversation should continue directly with **R7G — Plugins & Settings Reclassification** on the same long-running R7 branch.
+R7A — Design System & Shell Foundation, R7B — Play / Native Conversation Host, R7C — Game Surface Integration, R7D — Desktop / Mobile Navigation, R7E — First-class Workspaces, R7F — Library & Runtime, and R7G — Plugins & Settings Reclassification are complete and validated. The next conversation should continue directly with **R7H — Legacy Shell Retirement & Final Hardening** on the same long-running R7 branch.
 
 ## Frozen R0-R6 baseline
 
@@ -33,11 +33,13 @@ Keep this branch frozen during R7 except for a narrowly targeted correction prov
 - R7E validation: **R7 Shell Dev Checks #119**, run `35582312859`, success
 - R7F final validated HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
 - R7F validation: **R7 Shell Dev Checks #133**, run `35585151542`, success
+- R7G final validated HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
+- R7G validation: **R7 Shell Dev Checks #152**, run `35588313656`, success
 - Authoritative R7 plan: `refactor/atria-game-first-shell-redesign.md`
 - Master runtime plan: `refactor/game-runtime-architecture.md`
 - Detailed frozen-runtime handoff: `handoff/game-runtime-architecture.md`
 
-Do not create a separate R7G branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
+Do not create a separate R7H branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
 
 Do not merge R7 to `main` at phase boundaries. R7A-R7H remain one long-running R7 implementation line. Final integration happens only after R7H/final R7 validation.
 
@@ -275,29 +277,71 @@ Browser coverage includes Expanded and Compact Library/Runtime flows, Character 
 
 Do not reopen R7F unless R7G exposes a concrete integration defect.
 
-## R7G objective
+## R7G completed — do not redo
 
-R7G — Plugins & Settings Reclassification is the next phase.
+R7G reclassified Plugins / Settings / Account at the product-shell layer without replacing their existing engines.
 
-R7G must:
+R7G implementation:
 
-- expose third-party Plugins as a distinct product utility;
-- keep plugin/extension compatibility settings available without treating Atria built-ins as third-party Plugins;
-- reclassify built-in legacy settings to their owning product domains where practical;
-- slim Settings to true user/application settings;
-- keep Account separate from Settings;
-- adapt legacy Extensions / User Settings / API entry points into the new Shell product IA while preview is active;
-- preserve R7D Navigation Authority, R7E WorkspaceHost and all R7A-R7F ownership contracts;
-- retain compatibility anchors/chrome until R7H final retirement;
-- avoid prematurely deleting the preview gate, old drawers or compatibility DOM.
+- Plugins is a Global Utility for true third-party frontend extensions only;
+- classification reuses the existing extension discovery/type model (`third-party/*`, `local`, `global`);
+- Atria built-ins remain owned by Play / Library / Studio / Agents / Runtime / Diagnostics even when their source files physically live under `public/scripts/extensions/`;
+- frontend extension loader, manifests, hooks, activation and install/update/delete remain unchanged;
+- enable/disable remains authoritative through `extension_settings.disabledExtensions` and existing save/persistence;
+- `#extensions_settings` / `#extensions_settings2` are reparented only into a compatibility surface and restored on dispose;
+- server plugins remain a separate existing backend plugin-loader surface rather than being mixed with frontend extensions;
+- Settings is a Global Utility for Appearance / Language / Accessibility / Interface & Behavior, with MovingUI retained only as compatibility input during R7G;
+- the exact `#user-settings-block` is reused behind a collapsed advanced/compatibility surface; there is no second settings store;
+- Account remains a separate Global Utility and reuses `public/scripts/user.js`, `currentUser`, existing authentication/account state, settings snapshots, Backup & Sync and Storage Management;
+- `openUserProfile()` now supports an embedded container while preserving its historical popup behavior;
+- legacy Extensions / User Settings / Account triggers route through R7D Navigation Authority only while preview Shell owns navigation;
+- legacy API / Connection / preset triggers remain owned by R7F Runtime;
+- Plugins / Settings / Account use the same R7E WorkspaceHost seam and R7D Back/history authority;
+- compatibility drawers/anchors remain present for R7H; R7G did not perform final shell retirement;
+- no second Plugin store, Settings store, Account state, router, Conversation, Composer or Stage authority was introduced.
 
-R7G exit target:
+R7G final validation:
 
-- Plugins, Settings and Account have clear product ownership;
-- Atria core capabilities no longer appear conceptually owned by the third-party Extensions bucket;
-- primary staged-Shell paths route through existing Shell authorities;
-- legacy compatibility behavior remains usable until R7H;
-- focused unit/lint plus real-browser Plugins/Settings smoke passes.
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
+- Workflow: **R7 Shell Dev Checks #152**
+- Run: `35588313656`
+- **R7G Focused Unit and Lint**: success
+- **R7G Plugins Settings Browser Smoke**: success
+- Atria namespace guard: success
+- prior R7A-R7F browser regression matrix: success
+- Android/Docker: not run; no Kotlin/native Back or Docker changes were required.
+
+Browser coverage includes third-party Plugin classification, existing enable/disable persistence, plugin compatibility settings, Settings/account real-controller reuse, API-to-Runtime ownership, legacy trigger forwarding, Command navigation, browser Back, Expanded/Compact flows, reversible dispose/reopen, Narrative Play return, and uniqueness of `#chat`, `#send_form`, and `#send_textarea`.
+
+Do not reopen R7G unless R7H exposes a concrete integration defect.
+
+## R7H objective
+
+R7H — Legacy Shell Retirement & Final Hardening is the next and final staged R7 phase.
+
+R7H must:
+
+- make the Atria Shell authoritative in normal product flow;
+- retire obsolete old-shell launchers/chrome from primary product navigation;
+- preserve only compatibility anchors genuinely required by third-party extensions or deep legacy forms;
+- isolate compatibility DOM so it no longer defines product IA;
+- stop MovingUI from controlling the Atria Shell while retaining compatibility behavior for legacy surfaces where still needed;
+- remove stale shell-specific CSS only where ownership is proven safe;
+- decide and implement final preview-gate retirement / normal-shell cutover;
+- update frontend/plugin guidance so future work targets Atria Shell primitives rather than old drawer/chrome patterns;
+- preserve the R7D Navigation Authority, R7E WorkspaceHost, R7B Native Play Host, R7C Stage ownership and R7F/R7G domain/utility ownership;
+- run final R0-R7 focused regression, browser validation and appropriate broader checks before any merge to `main`.
+
+R7H exit target:
+
+- Atria Shell is authoritative across desktop/mobile and all major domains/utilities;
+- obsolete shell chrome is no longer primary product UI;
+- required compatibility anchors remain stable for third-party integrations;
+- no duplicate Conversation/Composer/Stage/router/state authority exists;
+- final R7 validation is green before integration into `main`;
+- only after final validation may the R7 integration/merge/archive policy proceed.
+
 
 ## R7 product architecture remains frozen
 
