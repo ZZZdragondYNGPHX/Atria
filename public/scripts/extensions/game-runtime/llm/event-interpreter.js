@@ -99,7 +99,7 @@ export function normalizeEventInterpretationRequest(raw = {}) {
 
     const lowConfidencePolicy = String(raw.lowConfidencePolicy || 'no_change').trim();
     if (!['no_change', 'reject'].includes(lowConfidencePolicy)) {
-        throw new Error("Event Interpretation lowConfidencePolicy must be 'no_change' or 'reject'");
+        throw new Error('Event Interpretation lowConfidencePolicy must be \'no_change\' or \'reject\'');
     }
 
     return Object.freeze({
@@ -204,7 +204,7 @@ export function validateEventInterpretation(raw, requestInput) {
 
     const decision = String(raw.decision || '').trim();
     if (!['event', 'no_change'].includes(decision)) {
-        throw new Error("Event Interpreter decision must be 'event' or 'no_change'");
+        throw new Error('Event Interpreter decision must be \'event\' or \'no_change\'');
     }
     const confidence = Number(raw.confidence);
     if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
