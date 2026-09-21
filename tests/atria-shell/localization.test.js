@@ -29,6 +29,11 @@ describe('Atria Shell localization', () => {
             'atria.shell.utility.account',
             'atria.shell.library.worldInfo',
             'atria.shell.runtime.presets',
+            'atria.shell.action.edit',
+            'atria.shell.runtime.backToPresetList',
+            'atria.shell.runtime.presetEditor',
+            'atria.shell.runtime.editPresetTitle',
+            'atria.shell.runtime.connectionProfileCounts',
             'atria.shell.command.search',
         ];
         for (const key of required) expect(locale[key]).toBeTruthy();
