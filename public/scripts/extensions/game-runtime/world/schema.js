@@ -1,5 +1,5 @@
 /**
- * Deterministic JSON-schema subset for authoritative World State.
+ * Deterministic JSON-schema subset for authoritative runtime data.
  *
  * This validator is intentionally independent from DOM and JavaScript eval.
  */
@@ -100,7 +100,7 @@ function validateNode(value, schema, path, errors, depth) {
 
         for (const key of required) {
             if (!Object.hasOwn(value, key)) {
-                errors.push(path + ': missing required property \'\'' + key + '\'\'');
+                errors.push(path + ": missing required property '" + key + "'");
             }
         }
 
@@ -110,7 +110,7 @@ function validateNode(value, schema, path, errors, depth) {
                 continue;
             }
             if (schema.additionalProperties === false) {
-                errors.push(path + ': unexpected property \'\'' + key + '\'\'');
+                errors.push(path + ": unexpected property '" + key + "'");
                 continue;
             }
             if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
@@ -122,13 +122,7 @@ function validateNode(value, schema, path, errors, depth) {
 
 export function validateSchemaValue(value, schema, options = {}) {
     const errors = [];
-    const path = typeof options.path === 'string' && options.path ? options.path : '
-    const result = validateWorldState(state, schema);
-    if (!result.ok) {
-        throw new Error('World State validation failed: ' + result.errors.slice(0, 8).join('; '));
-    }
-}
-;
+    const path = typeof options.path === 'string' && options.path ? options.path : '$';
     validateNode(value, schema, path, errors, 0);
     return { ok: errors.length === 0, errors };
 }
