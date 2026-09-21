@@ -64,6 +64,51 @@ async function disposeCurrentUi() {
     }
 }
 
+async function exitCurrentGameUi() {
+    await disposeCurrentUi();
+    return true;
+}
+
+function stopCurrentGeneration() {
+    const context = getContext();
+    try {
+        context?.abortController?.abort?.();
+    } catch (error) {
+        console.warn(`[${MODULE_NAME}] Failed to abort generation controller`, error);
+    }
+
+    const stopButton = globalThis.document?.getElementById?.('mes_stop');
+    if (stopButton && typeof stopButton.click === 'function') {
+        stopButton.click();
+    }
+    return true;
+}
+
+async function disableCurrentPackageForSession() {
+    revision += 1;
+    await disposeCurrentUi();
+    currentWorldSession = null;
+    publishPackageState({
+        ...currentPackage,
+        active: false,
+        errors: [
+            ...currentPackage.errors,
+            'Game Package disabled for the current session by host recovery.',
+        ],
+    });
+    return true;
+}
+
+function openGameDiagnostics() {
+    const button = globalThis.document?.getElementById?.('server_logs_button');
+    if (button && typeof button.click === 'function') {
+        button.click();
+        return true;
+    }
+    console.warn(`[${MODULE_NAME}] Diagnostics control is unavailable`);
+    return false;
+}
+
 export async function reloadGamePackage() {
     const loadRevision = ++revision;
     const charId = getCurrentCharacterPackageId();
@@ -93,6 +138,12 @@ export async function reloadGamePackage() {
             });
             nextUiSession = await activateGamePackageUi(next, nextWorldSession, {
                 headers: getRequestHeaders(),
+                hostActions: {
+                    exitGameUi: exitCurrentGameUi,
+                    stopGeneration: stopCurrentGeneration,
+                    disablePackage: disableCurrentPackageForSession,
+                    openDiagnostics: openGameDiagnostics,
+                },
             });
         } catch (error) {
             await nextUiSession?.dispose?.();
@@ -210,6 +261,8 @@ registerExtensionApi(MODULE_NAME, {
     getWorldState,
     getWorldJournal,
     getWorldBranchPath,
+    exitUi: exitCurrentGameUi,
+    disableForSession: disableCurrentPackageForSession,
 });
 
 queueMicrotask(() => {
