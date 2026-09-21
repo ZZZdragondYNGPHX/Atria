@@ -1139,6 +1139,22 @@ body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-ho
     cursor: pointer;
 }
 
+.atria-plugin-server-surface {
+    display: grid;
+    gap: var(--atri-space-1);
+    margin-top: var(--atri-space-4);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-surface);
+}
+
+.atria-plugin-server-surface > p {
+    margin: 0;
+    color: var(--atri-color-text-muted);
+    line-height: 1.45;
+}
+
 .atria-plugin-compatibility {
     margin-top: var(--atri-space-4);
     padding: var(--atri-space-3);
@@ -1177,6 +1193,27 @@ body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-ho
     gap: var(--atri-space-1);
     padding: var(--atri-space-2) 0;
     background: var(--atri-color-canvas);
+}
+
+.atria-settings-compatibility {
+    margin-top: var(--atri-space-3);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-surface);
+}
+
+.atria-settings-compatibility > summary {
+    cursor: pointer;
+    font-weight: 650;
+}
+
+.atria-settings-compatibility > p {
+    color: var(--atri-color-text-muted);
+}
+
+.atria-settings-compatibility__body {
+    min-width: 0;
 }
 
 .atria-settings-accessibility-note {
