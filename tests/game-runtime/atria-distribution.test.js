@@ -270,9 +270,8 @@ describe('.atria distribution container', () => {
     test('rejects suspiciously compressed entries with a valid inventory', () => {
         const files = validFiles();
         files.set('assets/bomb.bin', Buffer.alloc(2 * 1024 * 1024, 0));
-        const { archive } = createAtriaDistributionFromFiles(files);
 
-        expect(() => inspectAtriaDistribution(archive))
+        expect(() => createAtriaDistributionFromFiles(files))
             .toThrow(/decompression-ratio/);
 
         expect(ATRIA_DISTRIBUTION_LIMITS.maxFileBytes)
