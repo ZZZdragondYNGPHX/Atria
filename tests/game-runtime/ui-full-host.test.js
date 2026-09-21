@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import { createFullGameHost } from '../../public/scripts/extensions/game-runtime/ui/full-host.js';
+import { mountNativePlayHost } from '../../public/scripts/atria-shell/native-play-host.js';
 
 describe('Full Game UI host recovery shell', () => {
     beforeEach(() => {
@@ -11,8 +12,10 @@ describe('Full Game UI host recovery shell', () => {
             <div id="top-settings-holder"></div>
             <main id="sheld">
                 <div id="chat"></div>
-                <div id="form_sheld"><div id="send_form"></div></div>
+                <div id="form_sheld"><div id="send_form"><textarea id="send_textarea"></textarea></div></div>
             </main>
+            <section id="atria-stage"></section>
+            <div id="atria-test-recovery"></div>
         `;
     });
 
@@ -75,6 +78,45 @@ describe('Full Game UI host recovery shell', () => {
         expect(host.root.parentElement).toBe(document.body);
 
         host.dispose();
+    });
+
+    test('Shell-scoped Full owns Stage while Host chrome and Recovery stay Host-owned', () => {
+        const stage = document.getElementById('atria-stage');
+        const recoveryLayer = document.getElementById('atria-test-recovery');
+        const playHost = mountNativePlayHost({ document, stage });
+        const shell = { slots: { stage, recovery: recoveryLayer } };
+        const shellFoundation = {
+            getShell: () => shell,
+            getPlayHost: () => playHost,
+        };
+        const host = createFullGameHost(document, {
+            shell: shellFoundation,
+            onExit: jest.fn(),
+            onStopGeneration: jest.fn(),
+        });
+
+        expect(host.root.parentElement).toBe(stage);
+        expect(host.recovery.parentElement).toBe(recoveryLayer);
+        expect(host.root.contains(host.recovery)).toBe(false);
+        expect(host.root.hidden).toBe(true);
+        expect(document.getElementById('top-bar').style.display).toBe('');
+        expect(document.getElementById('top-settings-holder').style.display).toBe('');
+
+        expect(host.activate()).toBe(true);
+        expect(host.root.hidden).toBe(false);
+        expect(playHost.getStageOwner()).toBe('game-runtime:full');
+        expect(playHost.root.style.display).toBe('none');
+        expect(document.getElementById('top-bar').style.display).toBe('');
+        expect(document.getElementById('top-settings-holder').style.display).toBe('');
+
+        host.dispose();
+
+        expect(playHost.getStageOwner()).toBeNull();
+        expect(playHost.root.style.display).toBe('');
+        expect(document.getElementById('atria-game-full-root')).toBeNull();
+        expect(document.getElementById('atria-game-full-recovery')).toBeNull();
+        expect(playHost.assertIntegrity()).toBe(true);
+        playHost.unmount();
     });
 
     test('prevents overlapping Full UI ownership', () => {
