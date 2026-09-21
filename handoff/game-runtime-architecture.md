@@ -4,10 +4,10 @@
 
 - Working branch: `refactor/game-runtime-architecture`
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current working HEAD: `adc607bc5c1bdbe383d2647d82b1e0b323743df4`
+- Current working HEAD: `d7546b216acff61f796e4cf95fa47c1653f8eef5`
 - Live `main` remains `63da3141a3895d3386ed1bebc30876c9766315ba`.
 - Formal Master Plan: `docs:refactor/game-runtime-architecture.md`
-- Current status: **R0-R4 complete against their Master Plan exit criteria**. Next phase is R5 — LLM Runtime & Model Roles.
+- Current status: **R0-R4 complete against their Master Plan exit criteria. R5 has begun with the LLM-safe Command tool catalog, World Observation, branch-anchored Turn Context and live World-session integration.**
 - No PR has been opened and nothing has been merged to `main`; keep this branch and continue the Master Refactor.
 
 ## R3 checkpoint — Game Logic Runtime
@@ -308,6 +308,22 @@ Important R4 boundaries:
     - post-turn memory updates cannot write World State;
     - diagnostics correlate intent -> command -> events -> memory -> orchestration -> prose -> memory update under one turn id.
 
+12. Added **Persistent Game Surface / Conversation Timeline separation**:
+    - Game UI is not modeled as HTML living in a special “floor 0”;
+    - Component/Hybrid/Full surfaces are persistent, branch-aware presentation layers independent of individual floor DOM;
+    - Conversation Timeline remains the history/context/swipe/branch model and may be embedded as a Native Component;
+    - Narrative Cards without `game.json` remain first-class and do not pay a Game Runtime authoring/runtime tax.
+
+13. Added **Turn Controller / Turn Transaction semantics** for R5:
+    - stable turn/attempt identity rather than relying only on mutable floor indexes;
+    - Stop Generation aborts the unfinished attempt without leaving active finalized game/memory/orchestrator artifacts;
+    - Undo Turn restores the prior finalized turn;
+    - deleting an assistant attempt cannot leave its World effects active;
+    - Rewrite Narrative preserves Command/RNG/Event facts and regenerates prose only;
+    - Retry Turn creates a new full attempt and Event branch;
+    - switching a full variant/swipe selects the matching World/Event/Memory/Orchestrator lineage;
+    - narrative-only variants may share one Event lineage.
+
 ## Validation completed
 
 Final focused workflow:
@@ -346,7 +362,7 @@ R0-R4 are complete. The Master Refactor is not complete.
 
 Remaining phases:
 
-- R5 — LLM Runtime & Model Roles: command-tool generation, command visibility, Intent Resolver, optional Event Interpreter, observation projection, Turn Coordination Contract, Memory/Orchestrator bridges, single Narrative Producer arbitration, Narrator, committed-fact enforcement, UI-action shortcut and Runtime Role routing/fallback.
+- R5 — LLM Runtime & Model Roles: initial command-tool generation, command visibility, World Observation and branch-anchored Turn Context are already implemented. Remaining work includes Intent Resolver, optional Event Interpreter, Turn Controller/Turn Transaction, interruption/variant semantics, Memory/Orchestrator bridges, single Narrative Producer arbitration, Narrator, committed-fact enforcement, UI-action shortcut and Runtime Role routing/fallback.
 - R6 — evolve the existing CardApp Studio into Atria Game Studio; do not create a parallel second Studio.
 - R7 — Atria Game-first Shell Redesign after R5-R6 runtime/authoring contracts are stable.
 
@@ -359,19 +375,19 @@ Known R4 intentionally deferred boundary:
 
 Continue on the existing branch from:
 
-`refactor/game-runtime-architecture@adc607bc5c1bdbe383d2647d82b1e0b323743df4`
+`refactor/game-runtime-architecture@d7546b216acff61f796e4cf95fa47c1653f8eef5`
 
 Begin **R5 — LLM Runtime & Model Roles** without reopening R0-R4 unless a concrete R5 integration defect proves necessary.
 
-Recommended first R5 vertical slice:
+R5 foundation already landed:
 
-1. generate an LLM-safe tool catalog from typed Command definitions;
-2. add explicit command visibility/filtering so irrelevant Commands are not exposed;
-3. build a read-only World Observation projection using the same authority model as R3/R4;
-4. define the minimal branch-anchored Turn Context identity shared by later Resolver/Memory/Orchestrator/Narrator stages;
-5. prove deterministic UI actions can bypass Intent Resolver/Event Interpreter and still enter the same committed-fact Turn Context.
+1. LLM-safe typed Command tool catalog;
+2. command visibility/exposure metadata;
+3. read-only World Observation projection;
+4. minimal branch-anchored Turn Context;
+5. live World-session integration and focused coverage.
 
-Then extend into Intent Resolver, optional Event Interpreter, Runtime Role routing, Memory/Orchestrator bridges and single Narrative Producer arbitration.
+Continue with Intent Resolver and optional Event Interpreter, then implement the Turn Controller/Turn Transaction semantics now recorded in the Master Plan before completing Runtime Role routing, Memory/Orchestrator bridges and single Narrative Producer arbitration.
 
 Do not:
 
