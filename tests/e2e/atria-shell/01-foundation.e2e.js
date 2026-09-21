@@ -16,6 +16,20 @@ test.afterAll(async () => {
 });
 
 async function openShellPreview(page, viewport) {
+    const startupErrors = [];
+    page.on('pageerror', error => startupErrors.push(`pageerror: ${error?.message || error}`));
+    page.on('console', message => {
+        if (message.type() === 'error') startupErrors.push(`console: ${message.text()}`);
+    });
+
+    await page.addInitScript(() => {
+        try {
+            localStorage.setItem('atria.shell.preview', '1');
+        } catch {
+            // Storage can be unavailable on transient documents before origin assignment.
+        }
+    });
+
     await page.setViewportSize(viewport);
     await page.goto(`${server.baseURL}/?atriaShell=1`, { waitUntil: 'domcontentloaded' });
 
@@ -27,13 +41,30 @@ async function openShellPreview(page, viewport) {
         // Auto-login path.
     }
 
-    await page.waitForFunction(
-        () => document.getElementById('preloader') === null
-            && Boolean(window.Atria?.getContext)
-            && Boolean(window.Atria?.shell?.isMounted?.()),
-        null,
-        { timeout: 30_000 },
-    );
+    try {
+        await page.waitForFunction(
+            () => document.getElementById('preloader') === null
+                && Boolean(window.Atria?.getContext)
+                && Boolean(window.Atria?.shell?.isMounted?.()),
+            null,
+            { timeout: 30_000 },
+        );
+    } catch (error) {
+        const state = await page.evaluate(() => ({
+            href: location.href,
+            previewStorage: localStorage.getItem('atria.shell.preview'),
+            preloaderPresent: document.getElementById('preloader') !== null,
+            atriaPresent: Boolean(window.Atria),
+            hasGetContext: Boolean(window.Atria?.getContext),
+            shellPublished: Boolean(window.Atria?.shell),
+            shellMounted: Boolean(window.Atria?.shell?.isMounted?.()),
+            shellRootPresent: Boolean(document.getElementById('atria-app-shell')),
+        })).catch(() => ({ href: page.url() }));
+        throw new Error(
+            `Atria R7A shell failed to become ready: ${JSON.stringify(state)}\n${startupErrors.slice(-12).join('\n') || 'no browser errors captured'}`,
+            { cause: error },
+        );
+    }
 
     const onboarding = page.locator('dialog.popup[open]').filter({
         has: page.locator('#onboarding_ui_language_select'),
