@@ -419,8 +419,11 @@ export function createAtriaWorkspaceHost({
 
     function refreshActive() {
         if (disposed) return;
+        const previous = active;
         active = null;
-        void activate(navigation.getRoute(), 'workspace-refresh');
+        void Promise.resolve(previous?.controller?.dispose?.())
+            .catch(error => console.warn('[atria-shell] Workspace refresh dispose failed', error))
+            .finally(() => activate(navigation.getRoute(), 'workspace-refresh'));
     }
 
     function onLegacyClick(event) {
