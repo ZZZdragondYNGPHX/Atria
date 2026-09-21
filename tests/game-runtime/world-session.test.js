@@ -215,6 +215,39 @@ describe('Game World session', () => {
         expect(session.getJournal().events).toHaveLength(1);
     });
 
+    test('exposes deterministic interpretation mappings without executing them', async () => {
+        const chatRef = { value: [{ swipe_id: 0 }] };
+        const context = makeContext(chatRef);
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/world/schema.json')) return response(schema);
+            return response({ hp: 20 });
+        });
+        const interpretations = [{
+            eventType: 'implicit_threat',
+            map() {
+                return {
+                    id: 'damage',
+                    args: { amount: 1 },
+                };
+            },
+        }];
+
+        const session = await createGameWorldSession({
+            packageState,
+            context,
+            getChat: () => chatRef.value,
+            fetchImpl,
+            reducers,
+            commands,
+            interpretations,
+        });
+
+        expect(session.getInterpretationMappings()).toHaveLength(1);
+        expect(session.getInterpretationMappings()[0].eventType).toBe('implicit_threat');
+        expect(session.getState()).toEqual({ hp: 20 });
+        expect(session.getJournal().events).toHaveLength(0);
+    });
+
     test('typed reducer payload validation aborts an invalid command transaction', async () => {
         const chatRef = { value: [{ swipe_id: 0 }] };
         const context = makeContext(chatRef);
