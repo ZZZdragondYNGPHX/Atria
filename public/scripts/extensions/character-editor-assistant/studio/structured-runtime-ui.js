@@ -21,6 +21,16 @@ import {
     parseLogicStructuredDocument,
     removeLogicEntry,
 } from './structured-logic-editors.js';
+import {
+    PROJECTION_EDITOR,
+    addProjectionEntry,
+    applyProjectionFieldPatch,
+    parseProjectionDocument,
+    previewProjectionDocument,
+    removeProjectionEntry,
+    serializeProjectionDocument,
+} from './structured-projection-editors.js';
+import { GAME_RUNTIME_ROLES } from '../../game-runtime/llm/roles.js';
 
 function editorKind(selection) {
     if (selection?.role === 'world_schema') return STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA;
@@ -31,6 +41,12 @@ function editorKind(selection) {
 function logicSection(selection) {
     const section = String(selection?.section || '');
     if (Object.values(LOGIC_EDITOR_SECTION).includes(section)) return section;
+    return null;
+}
+
+function projectionKind(selection) {
+    if (selection?.role === 'selectors') return PROJECTION_EDITOR.SELECTORS;
+    if (selection?.role === 'observations') return PROJECTION_EDITOR.OBSERVATIONS;
     return null;
 }
 
@@ -119,13 +135,15 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         });
         container.addEventListener('change', event => {
             const target = event.target;
-            if (target?.matches?.('[data-structured-field], [data-logic-field], [data-formula-index]')) {
+            if (target?.matches?.('[data-structured-field], [data-logic-field], [data-formula-index], [data-projection-field]')) {
                 handleChange(target);
             }
         });
         container.addEventListener('click', event => {
-            const target = event.target.closest('[data-logic-action]');
-            if (target) handleLogicAction(target);
+            const target = event.target.closest('[data-logic-action], [data-projection-action]');
+            if (!target) return;
+            if (target.dataset.logicAction) handleLogicAction(target);
+            else void handleProjectionAction(target);
         });
 
         return { modebar, container, code };
@@ -422,6 +440,104 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         renderFormulaRows(scroll);
     }
 
+    function projectionTitle(kind) {
+        return kind === PROJECTION_EDITOR.SELECTORS
+            ? t('Selector Editor')
+            : t('Observation Editor');
+    }
+
+    function renderProjectionSection() {
+        const kind = parsed.model.editor;
+        const scroll = renderHeader(
+            projectionTitle(kind),
+            String(parsed.model.entries.length) + ' ' + t('entries'),
+        );
+
+        const toolbar = documentRef.createElement('div');
+        toolbar.className = 'card-app-studio-logic-toolbar projection-toolbar';
+        const note = documentRef.createElement('span');
+        note.textContent = kind === PROJECTION_EDITOR.SELECTORS
+            ? t('Selectors compile through the live R4 safe Formula contract.')
+            : t('Observations compile into the live R5 projector contract.');
+
+        const actions = documentRef.createElement('div');
+        actions.className = 'card-app-studio-projection-actions';
+        if (kind === PROJECTION_EDITOR.OBSERVATIONS) {
+            const role = documentRef.createElement('select');
+            role.dataset.projectionRole = '';
+            for (const roleId of GAME_RUNTIME_ROLES) {
+                const option = documentRef.createElement('option');
+                option.value = roleId;
+                option.textContent = roleId;
+                option.selected = roleId === 'narrator';
+                role.appendChild(option);
+            }
+            actions.appendChild(role);
+        }
+
+        const preview = documentRef.createElement('button');
+        preview.type = 'button';
+        preview.className = 'card-app-studio-btn small';
+        preview.dataset.projectionAction = 'preview';
+        preview.textContent = t('Preview');
+
+        const add = documentRef.createElement('button');
+        add.type = 'button';
+        add.className = 'card-app-studio-btn small';
+        add.dataset.projectionAction = 'add';
+        add.textContent = '+ ' + t('Add');
+
+        actions.append(preview, add);
+        toolbar.append(note, actions);
+        scroll.appendChild(toolbar);
+
+        parsed.model.entries.forEach(entry => {
+            const card = documentRef.createElement('section');
+            card.className = 'card-app-studio-logic-card projection-card';
+            card.dataset.projectionEntry = String(entry.index);
+
+            const header = documentRef.createElement('div');
+            header.className = 'card-app-studio-logic-card-header';
+            const title = documentRef.createElement('strong');
+            title.textContent = entry.id || (kind === PROJECTION_EDITOR.SELECTORS ? t('Selector') : t('Observation'));
+            const remove = documentRef.createElement('button');
+            remove.type = 'button';
+            remove.className = 'card-app-studio-btn small';
+            remove.dataset.projectionAction = 'remove';
+            remove.dataset.projectionEntry = String(entry.index);
+            remove.textContent = t('Delete');
+            header.append(title, remove);
+            card.appendChild(header);
+
+            const idField = documentRef.createElement('label');
+            idField.className = 'card-app-studio-logic-field';
+            const idCaption = documentRef.createElement('span');
+            idCaption.textContent = 'ID';
+            const idInput = documentRef.createElement('input');
+            idInput.value = entry.id;
+            idInput.dataset.projectionField = 'id';
+            idField.append(idCaption, idInput);
+
+            const formulaField = documentRef.createElement('label');
+            formulaField.className = 'card-app-studio-logic-field wide';
+            const formulaCaption = documentRef.createElement('span');
+            formulaCaption.textContent = t('Formula');
+            const formulaInput = documentRef.createElement('input');
+            formulaInput.value = entry.formula;
+            formulaInput.dataset.projectionField = 'formula';
+            formulaField.append(formulaCaption, formulaInput);
+
+            card.append(idField, formulaField);
+            scroll.appendChild(card);
+        });
+
+        const previewBox = documentRef.createElement('pre');
+        previewBox.className = 'card-app-studio-projection-preview';
+        previewBox.dataset.projectionPreview = '';
+        previewBox.textContent = t('Preview uses the Source Project initial World State and does not mutate a save.');
+        scroll.appendChild(previewBox);
+    }
+
     function renderError(error) {
         container.replaceChildren();
         const box = documentRef.createElement('div');
@@ -439,9 +555,10 @@ export function createStructuredRuntimeEditorHost(options = {}) {
     function render(renderOptions = {}) {
         const kind = editorKind(selection);
         const section = logicSection(selection);
+        const projection = projectionKind(selection);
         const shell = ensureShell();
         if (!shell) return;
-        if (!kind && !section) {
+        if (!kind && !section && !projection) {
             shell.modebar.hidden = true;
             parsed = null;
             setMode('raw');
@@ -452,8 +569,11 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         try {
             parsed = section
                 ? parseLogicStructuredDocument(section, getSourceText())
-                : parseStructuredRuntimeDocument(kind, getSourceText());
+                : (projection
+                    ? parseProjectionDocument(projection, getSourceText())
+                    : parseStructuredRuntimeDocument(kind, getSourceText()));
             if (section) renderLogicSection();
+            else if (projection) renderProjectionSection();
             else if (kind === STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA) renderWorldSchema();
             else renderInitialState();
             setMode(renderOptions.preferStructured === true ? 'structured' : mode);
@@ -467,11 +587,16 @@ export function createStructuredRuntimeEditorHost(options = {}) {
     function sync(nextValue) {
         if (!parsed) return;
         const kind = parsed.model.editor;
-        const source = serializeStructuredRuntimeDocument(nextValue);
+        const source = kind === PROJECTION_EDITOR.SELECTORS || kind === PROJECTION_EDITOR.OBSERVATIONS
+            ? serializeProjectionDocument(nextValue, kind)
+            : serializeStructuredRuntimeDocument(nextValue);
         setSourceText(source, selection?.path || '');
         if (kind === 'game_logic') {
             parsed = parseLogicStructuredDocument(parsed.model.section, source);
             renderLogicSection();
+        } else if (kind === PROJECTION_EDITOR.SELECTORS || kind === PROJECTION_EDITOR.OBSERVATIONS) {
+            parsed = parseProjectionDocument(kind, source);
+            renderProjectionSection();
         } else {
             parsed = parseStructuredRuntimeDocument(kind, source);
             if (kind === STRUCTURED_RUNTIME_EDITOR.WORLD_SCHEMA) renderWorldSchema();
@@ -483,6 +608,20 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         if (!parsed) return;
 
         try {
+            if (parsed.model.editor === PROJECTION_EDITOR.SELECTORS || parsed.model.editor === PROJECTION_EDITOR.OBSERVATIONS) {
+                const entryElement = target.closest('[data-projection-entry]');
+                const field = target.dataset.projectionField;
+                if (!entryElement || !field) return;
+                sync(applyProjectionFieldPatch(
+                    parsed.value,
+                    parsed.model.editor,
+                    Number(entryElement.dataset.projectionEntry),
+                    field,
+                    target.value,
+                ));
+                return;
+            }
+
             if (parsed.model.editor === 'game_logic') {
                 if (target.dataset.formulaIndex !== undefined) {
                     const formula = parsed.model.formulas[Number(target.dataset.formulaIndex)];
@@ -544,12 +683,55 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         }
     }
 
+    async function previewProjection() {
+        if (!parsed || ![PROJECTION_EDITOR.SELECTORS, PROJECTION_EDITOR.OBSERVATIONS].includes(parsed.model.editor)) return;
+        const previewBox = container?.querySelector?.('[data-projection-preview]');
+        if (!previewBox) return;
+
+        try {
+            const worldPath = getProjectNavigator()?.manifest?.world?.initial;
+            const world = worldPath
+                ? JSON.parse(await fetchFileContent(worldPath))
+                : {};
+            const role = container?.querySelector?.('[data-projection-role]')?.value || 'narrator';
+            const result = previewProjectionDocument(parsed.model.editor, parsed.value, world, { role });
+            previewBox.textContent = JSON.stringify(result, null, 2);
+        } catch (error) {
+            previewBox.textContent = t('Preview failed') + ': ' + (error?.message || String(error));
+        }
+    }
+
+    async function handleProjectionAction(target) {
+        if (!parsed || ![PROJECTION_EDITOR.SELECTORS, PROJECTION_EDITOR.OBSERVATIONS].includes(parsed.model.editor)) return;
+        try {
+            if (target.dataset.projectionAction === 'add') {
+                sync(addProjectionEntry(parsed.value, parsed.model.editor));
+            } else if (target.dataset.projectionAction === 'remove') {
+                sync(removeProjectionEntry(
+                    parsed.value,
+                    parsed.model.editor,
+                    Number(target.dataset.projectionEntry),
+                ));
+            } else if (target.dataset.projectionAction === 'preview') {
+                await previewProjection();
+            }
+        } catch (error) {
+            notifyError(t('Structured edit rejected') + ': ' + (error?.message || String(error)));
+            render({ preferStructured: true });
+        }
+    }
+
     async function validateBeforeSave() {
         const kind = editorKind(selection);
         const section = logicSection(selection);
-        if (!kind && !section) return;
+        const projection = projectionKind(selection);
+        if (!kind && !section && !projection) return;
         if (section) {
             parseLogicStructuredDocument(section, getSourceText());
+            return;
+        }
+        if (projection) {
+            parseProjectionDocument(projection, getSourceText());
             return;
         }
 
@@ -586,7 +768,7 @@ export function createStructuredRuntimeEditorHost(options = {}) {
         open(nextSelection) {
             selection = nextSelection || null;
             mode = 'raw';
-            render({ preferStructured: Boolean(editorKind(selection) || logicSection(selection)) });
+            render({ preferStructured: Boolean(editorKind(selection) || logicSection(selection) || projectionKind(selection)) });
         },
         refresh() {
             render({ preferStructured: mode === 'structured' });
