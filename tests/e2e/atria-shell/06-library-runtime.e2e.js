@@ -40,11 +40,11 @@ async function ensureCharacter(page) {
     await selectCharacterByName(page, CHARACTER_NAME);
 }
 
-async function enableShellPreview(page) {
-    await page.evaluate(() => {
-        window.Atria.shell.setPreviewEnabled(true, { persist: false });
-    });
-    await page.waitForFunction(() => Boolean(window.Atria?.shell?.getWorkspaceHost?.()));
+async function ensureShellMounted(page) {
+    await page.waitForFunction(() => (
+        Boolean(window.Atria?.shell?.isMounted?.())
+        && Boolean(window.Atria?.shell?.getWorkspaceHost?.())
+    ));
     const root = page.locator('#atria-app-shell');
     await root.waitFor({ state: 'visible', timeout: 10_000 });
     return root;
@@ -55,7 +55,7 @@ test.describe('R7F Library & Runtime', () => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await awaitMainUI(page, server.baseURL);
         await ensureCharacter(page);
-        const root = await enableShellPreview(page);
+        const root = await ensureShellMounted(page);
 
         await page.evaluate(() => {
             window.__r7fNative = {
@@ -169,7 +169,7 @@ test.describe('R7F Library & Runtime', () => {
     test('Compact keeps Bottom Navigation authoritative and uses focused Library / Runtime drill-down', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await awaitMainUI(page, server.baseURL);
-        const root = await enableShellPreview(page);
+        const root = await ensureShellMounted(page);
 
         await root.locator('[data-atria-primitive="BottomNavigation"] [data-atria-domain="library"]').click();
         await expect(root).toHaveAttribute('data-atria-viewport', 'compact');
@@ -202,10 +202,10 @@ test.describe('R7F Library & Runtime', () => {
         });
     });
 
-    test('legacy Character, World Info and API entries adapt into Library / Runtime only while preview Shell owns navigation', async ({ page }) => {
+    test('legacy Character, World Info and API entries forward into authoritative Library / Runtime navigation', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
         await awaitMainUI(page, server.baseURL);
-        await enableShellPreview(page);
+        await ensureShellMounted(page);
 
         await page.evaluate(() => document.getElementById('rightNavDrawerIcon')?.click());
         await expect(page).toHaveURL(/atriaRoute=library/);

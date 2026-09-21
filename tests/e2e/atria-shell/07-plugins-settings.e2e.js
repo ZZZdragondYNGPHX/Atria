@@ -39,11 +39,11 @@ test.afterAll(async () => {
     rmSync(GLOBAL_PLUGIN_ROOT, { recursive: true, force: true });
 });
 
-async function enableShellPreview(page) {
-    await page.evaluate(() => {
-        window.Atria.shell.setPreviewEnabled(true, { persist: false });
-    });
-    await page.waitForFunction(() => Boolean(window.Atria?.shell?.getWorkspaceHost?.()));
+async function ensureShellMounted(page) {
+    await page.waitForFunction(() => (
+        Boolean(window.Atria?.shell?.isMounted?.())
+        && Boolean(window.Atria?.shell?.getWorkspaceHost?.())
+    ));
     const root = page.locator('#atria-app-shell');
     await root.waitFor({ state: 'visible', timeout: 10_000 });
     return root;
@@ -72,7 +72,7 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
             window.__r7gLanguage = document.getElementById('ui_language_select');
         });
 
-        const root = await enableShellPreview(page);
+        const root = await ensureShellMounted(page);
 
         await root.locator('[data-atria-utility="plugins"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.plugins/);
@@ -151,10 +151,10 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         expect(await nativeCounts(page)).toEqual({ chat: 1, sendForm: 1, textarea: 1 });
     });
 
-    test('legacy entries forward only in preview and API remains owned by Runtime', async ({ page }) => {
+    test('legacy entries forward through the authoritative Shell and API remains owned by Runtime', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
         await awaitMainUI(page, server.baseURL);
-        const root = await enableShellPreview(page);
+        const root = await ensureShellMounted(page);
 
         await page.evaluate(() => document.querySelector('#extensions-settings-button .drawer-toggle')?.click());
         await expect(page).toHaveURL(/atriaChild=utility.plugins/);
@@ -186,7 +186,7 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
                 extensionsTwo: document.getElementById('extensions_settings2')?.parentElement,
             };
         });
-        const root = await enableShellPreview(page);
+        const root = await ensureShellMounted(page);
         await expect(root).toHaveAttribute('data-atria-viewport', 'compact');
 
         await page.evaluate(async () => {

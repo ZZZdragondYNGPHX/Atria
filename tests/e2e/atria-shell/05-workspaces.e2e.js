@@ -40,11 +40,11 @@ async function ensureCharacter(page) {
     await selectCharacterByName(page, CHARACTER_NAME);
 }
 
-async function enableShellPreview(page) {
-    await page.evaluate(() => {
-        window.Atria.shell.setPreviewEnabled(true, { persist: false });
-    });
-    await page.waitForFunction(() => Boolean(window.Atria?.shell?.getWorkspaceHost?.()));
+async function ensureShellMounted(page) {
+    await page.waitForFunction(() => (
+        Boolean(window.Atria?.shell?.isMounted?.())
+        && Boolean(window.Atria?.shell?.getWorkspaceHost?.())
+    ));
     const root = page.locator('#atria-app-shell');
     await root.waitFor({ state: 'visible', timeout: 10_000 });
     return root;
@@ -55,7 +55,7 @@ test.describe('R7E First-class Workspaces', () => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await awaitMainUI(page, server.baseURL);
         await ensureCharacter(page);
-        const root = await enableShellPreview(page);
+        const root = await ensureShellMounted(page);
 
         await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]').click();
         const agents = root.locator('#agent-memory-workspace[data-atria-workspace-embedded="true"]');
@@ -130,7 +130,7 @@ test.describe('R7E First-class Workspaces', () => {
     test('Medium and Compact reuse one Workspace and one Context node without squeezing desktop chrome', async ({ page }) => {
         await page.setViewportSize({ width: 900, height: 1000 });
         await awaitMainUI(page, server.baseURL);
-        const root = await enableShellPreview(page);
+        const root = await ensureShellMounted(page);
 
         await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]').click();
         const agents = root.locator('#agent-memory-workspace[data-atria-workspace-embedded="true"]');
