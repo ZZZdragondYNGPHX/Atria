@@ -104,6 +104,34 @@ describe('R5 post-turn authoritative Memory ingestion', () => {
         expect(result.turn.observation.views.player.hp).toBe(57);
     });
 
+    test('prefers top-level authoritative API and does not open a chat-capturing session', async () => {
+        const applyAuthoritativeFacts = jest.fn(async (_context, input) => {
+            expect(input.sourceIds).toEqual(['game-event:event:2']);
+            return [{ id: 'fact:top-level', action: 'create' }];
+        });
+        const openSession = jest.fn(async () => {
+            throw new Error('authoritative ingestion must not open chat session');
+        });
+        const context = { chatId: 'chat-1' };
+        const ingestion = createPostTurnMemoryIngestion({
+            context,
+            memoryApi: {
+                applyAuthoritativeFacts,
+                openSession,
+            },
+        });
+
+        const result = await ingestion.ingest(turn(), {
+            producer: 'narrator',
+            finalProse: 'Final body.',
+        });
+
+        expect(result.status).toBe('ingested');
+        expect(applyAuthoritativeFacts).toHaveBeenCalledTimes(1);
+        expect(applyAuthoritativeFacts.mock.calls[0][0]).toBe(context);
+        expect(openSession).not.toHaveBeenCalled();
+    });
+
     test('Director final prose uses the same single Memory ingestion path', async () => {
         const applyAuthoritativeFacts = jest.fn(async () => [
             { id: 'fact:director-event', action: 'create' },
