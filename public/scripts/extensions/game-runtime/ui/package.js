@@ -118,7 +118,9 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
                 cleanup.push(bindDeclarativeGameUi(context.container, context));
 
                 if (['hybrid', 'full'].includes(ui.mode)) {
-                    const registry = createNativeComponentRegistry(documentRef);
+                    const registry = createNativeComponentRegistry(documentRef, {
+                        nativePlayHost: options.nativePlayHost,
+                    });
                     cleanup.push(bindNativeGameComponents(context.container, registry));
                 }
             } catch (error) {
