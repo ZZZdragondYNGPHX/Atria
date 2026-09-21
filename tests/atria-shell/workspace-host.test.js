@@ -361,5 +361,5 @@ describe('R7F WorkspaceHost', () => {
             child: { id: 'retrieval', label: 'Retrieval', kind: 'workspace' },
         })).toMatchObject({ key: 'runtime', kind: 'runtime', section: 'retrieval' });
         expect(routeDescriptor({ domain: 'play', child: null, breadcrumb: ['Play'] })).toBeNull();
-    });;
+    });
 });
