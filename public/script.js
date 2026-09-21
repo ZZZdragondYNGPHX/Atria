@@ -2086,6 +2086,10 @@ async function firstLoadInit() {
     performance.mark('[init] batch3 done');
     await eventSource.emit(event_types.APP_INITIALIZED);
     await eventSource.emit(event_types.APP_READY);
+    // APP_READY is the final authority for the initial boot cover. The
+    // static preloader must never survive beyond this boundary even if a
+    // legacy loader handle was already cleaned up through another path.
+    document.getElementById('preloader')?.remove();
     clientStartupLogger.info('first-load.completed', 'Frontend first-load initialization completed', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     clientUiLogger.info('app.ready', 'Atria UI reached APP_READY', {}, { category: 'lifecycle', correlation: { startupSessionId: getClientStartupSessionId() } });
     console.debug('[init] firstLoadInit complete');
