@@ -40,7 +40,12 @@ describe('Game Package manifest', () => {
     test('accepts current R1 optional world, logic, ui and capability metadata', () => {
         const result = validateGameManifest(minimalManifest({
             capabilities: ['chat.read', 'host.fullscreen'],
-            ui: { mode: 'hybrid', entry: 'ui/game.html', surface: 'chat.header' },
+            ui: {
+                mode: 'hybrid',
+                entry: 'ui/game.html',
+                surface: 'chat.header',
+                selectors: 'ui/selectors.json',
+            },
             world: { schema: 'world/schema.json', initial: 'world/initial.json' },
             logic: { entry: 'scripts/main.js' },
         }));
@@ -49,6 +54,7 @@ describe('Game Package manifest', () => {
             mode: 'hybrid',
             entry: 'ui/game.html',
             surface: 'chat.header',
+            selectors: 'ui/selectors.json',
         });
         expect(result.manifest.world.schema).toBe('world/schema.json');
         expect(result.manifest.logic.entry).toBe('scripts/main.js');
