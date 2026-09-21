@@ -1,4 +1,5 @@
 import { loadGamePackageTextResource } from '../package-loader.js';
+import { bindDeclarativeGameUi } from './declarative.js';
 
 const BLOCKED_ELEMENTS = Object.freeze([
     'script',
@@ -86,6 +87,7 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
                 context.container.innerHTML = '';
                 context.container.appendChild(fragment);
             }
+            return bindDeclarativeGameUi(context.container, context);
         },
     });
 }
