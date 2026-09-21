@@ -55,7 +55,7 @@ describe('R7 shell architecture', () => {
         expect(shell).toContain('var(--atri-color-canvas)');
     });
 
-    test('keeps R7B behind the temporary preview gate until the later R7D cutover', () => {
+    test('keeps the staged R7 shell behind the temporary preview gate during R7D', () => {
         const entry = read('public/scripts/atria-shell/index.js');
         expect(entry).toContain('ATRIA_SHELL_PREVIEW_QUERY_KEY');
         expect(entry).toContain('ATRIA_SHELL_PREVIEW_STORAGE_KEY');
@@ -73,12 +73,33 @@ describe('R7 shell architecture', () => {
         expect(tabsInitIndex).toBeGreaterThan(rewriteIndex);
     });
 
-    test('locks the shell root to the dynamic viewport on compact devices', () => {
+    test('locks the shell root to the measured visual viewport on compact devices', () => {
         const shell = read('public/css/atria-shell.css');
-        expect(shell).toContain('width: 100dvw;');
-        expect(shell).toContain('height: 100dvh;');
+        expect(shell).toContain('width: var(--atri-viewport-width, 100dvw);');
+        expect(shell).toContain('height: var(--atri-viewport-height, 100dvh);');
         expect(shell).toContain('min-height: 100dvh;');
         expect(shell).toContain('.atria-command-surface:not([hidden])');
         expect(shell).toContain('display: block !important;');
+    });
+
+    test('R7D has one route/history authority and one ordered Web Back resolver', () => {
+        const shell = read('public/scripts/atria-shell/app-shell.js');
+        const entry = read('public/scripts/atria-shell/index.js');
+        const navigation = read('public/scripts/atria-shell/navigation-authority.js');
+        const backResolver = read('public/scripts/atria-shell/back-resolver.js');
+        const script = read('public/script.js');
+
+        expect(entry).toContain('createAtriaNavigationAuthority');
+        expect(shell).toContain('navigation: navigationAuthority');
+        expect(shell).not.toContain('let activeDomain');
+        expect(shell).not.toContain('let dockOpen');
+        expect(navigation).toContain("windowRef.history[method]");
+        expect(navigation).toContain("windowRef.addEventListener?.('popstate'");
+        expect(backResolver).toContain("['context-sheet', 'dismissContextSheet']");
+        expect(backResolver).toContain("['command-surface', 'dismissCommandSurface']");
+        expect(backResolver).toContain("['full-game', 'escapeFullGame']");
+        expect(backResolver).toContain("['immersive', 'exitImmersive']");
+        expect(backResolver).toContain("['atria-history', 'navigateAtriaBack']");
+        expect(script).toContain('window.__atriaHandleBack = () => atriaBackResolver.resolve();');
     });
 });
