@@ -161,10 +161,11 @@ export function validateIntentResolution(result, options = {}) {
 }
 
 export function createIntentResolver(options = {}) {
+    const roleRouter = options.roleRouter || null;
     const generateTask = options.generateTask
         || globalThis.Atria?.getContext?.()?.generateTask;
-    if (typeof generateTask !== 'function') {
-        throw new Error('Intent Resolver requires generateTask()');
+    if (!roleRouter && typeof generateTask !== 'function') {
+        throw new Error('Intent Resolver requires Runtime Role Router or generateTask()');
     }
     if (typeof options.validateCommand !== 'function') {
         throw new Error('Intent Resolver requires validateCommand()');
@@ -174,7 +175,7 @@ export function createIntentResolver(options = {}) {
         async resolve(turnContext, catalog, requestOptions = {}) {
             const transport = buildIntentResolverTools(catalog);
             const taskMessages = buildIntentResolverMessages(turnContext);
-            const result = await generateTask({
+            const taskRequest = {
                 taskMessages,
                 promptMode: 'task',
                 includeCharacterCard: false,
@@ -183,13 +184,27 @@ export function createIntentResolver(options = {}) {
                 toolChoice: 'required',
                 functionCallMode: requestOptions.functionCallMode || 'auto',
                 functionCallOptions: requestOptions.functionCallOptions || null,
-                apiPresetName: requestOptions.apiPresetName || '',
                 llmPresetName: requestOptions.llmPresetName || '',
                 abortSignal: requestOptions.abortSignal,
                 stream: false,
                 temperature: requestOptions.temperature ?? 0,
                 substituteMacros: false,
-            });
+            };
+            const routed = roleRouter
+                ? await roleRouter.execute('intent_resolver', taskRequest, {
+                    abortSignal: requestOptions.abortSignal,
+                })
+                : {
+                    role: 'intent_resolver',
+                    apiPresetName: requestOptions.apiPresetName || '',
+                    fallbackUsed: false,
+                    attempts: [],
+                    result: await generateTask({
+                        ...taskRequest,
+                        apiPresetName: requestOptions.apiPresetName || '',
+                    }),
+                };
+            const result = routed.result;
 
             const resolution = validateIntentResolution(result, {
                 mapping: transport.mapping,
@@ -199,6 +214,12 @@ export function createIntentResolver(options = {}) {
                 ...resolution,
                 requestInfo: clone(result?.requestInfo || null),
                 usage: clone(result?.usage || null),
+                routing: Object.freeze({
+                    role: routed.role,
+                    apiPresetName: routed.apiPresetName,
+                    fallbackUsed: routed.fallbackUsed === true,
+                    attempts: clone(routed.attempts || []),
+                }),
             });
         },
     });
