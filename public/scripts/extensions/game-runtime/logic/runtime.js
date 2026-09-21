@@ -1,6 +1,7 @@
 import { createCommandRegistry } from './command-registry.js';
 import { createDeterministicRng } from './rng.js';
 import { GAME_LOGIC_ERROR_CODES, GameLogicError, wrapGameLogicError } from './errors.js';
+import { compileFormula, evaluateFormula } from './formula.js';
 import { createRulesEngine } from './rules.js';
 import { runCommandValidators } from './validators.js';
 
@@ -53,6 +54,32 @@ function normalizeEventDrafts(output, commandId) {
     });
 }
 
+function createCommandFormulaApi(worldState, args, rng) {
+    const formulaWorld = deepFreeze(clone(worldState));
+    const formulaArgs = deepFreeze(clone(args));
+    const functions = Object.freeze({
+        'rng.float': () => rng.float(),
+        'rng.int': (minimum, maximum) => rng.int(minimum, maximum),
+        'rng.dice': (count, sides, modifier = 0) => rng.dice(count, sides, modifier).total,
+    });
+
+    return Object.freeze({
+        compile: compileFormula,
+        evaluate(sourceOrAst, options = {}) {
+            const selectors = options.selectors === undefined
+                ? {}
+                : deepFreeze(clone(options.selectors));
+            return evaluateFormula(sourceOrAst, {
+                world: formulaWorld,
+                args: formulaArgs,
+                selectors,
+            }, {
+                functions,
+            });
+        },
+    });
+}
+
 function getTransactionIdentity(world, commandId, rngSeed) {
     const journal = world.getJournal();
     const snapshot = world.getSnapshot();
@@ -83,7 +110,7 @@ export function createGameLogicRuntime(options = {}) {
 
     const rngSeed = options.rngSeed ?? 'atria-game-runtime-v1';
     const hasRules = rulesEngine.listRules().length > 0;
-    let commitQueue = Promise.resolve();
+    let transactionQueue = Promise.resolve();
 
     async function execute(commandId, args = {}, options = {}) {
         const validation = registry.validate(commandId, args);
@@ -139,6 +166,7 @@ export function createGameLogicRuntime(options = {}) {
         const identity = getTransactionIdentity(world, validation.command.id, rngSeed);
         const transactionId = identity.transactionId;
         const rng = createDeterministicRng(identity.rngSeed);
+        const formula = createCommandFormulaApi(beforeState, validation.args, rng);
         const mode = options.simulate === true ? 'simulation' : 'commit';
         const executionContext = Object.freeze({
             transactionId,
@@ -146,6 +174,7 @@ export function createGameLogicRuntime(options = {}) {
             command: commandView,
             args: deepFreeze(clone(validation.args)),
             world: deepFreeze(clone(beforeState)),
+            formula,
             rng,
         });
 
@@ -284,13 +313,15 @@ export function createGameLogicRuntime(options = {}) {
         },
         dispatch(commandId, args) {
             const run = () => execute(commandId, args, { simulate: false });
-            const pending = commitQueue.then(run, run);
-            commitQueue = pending.catch(() => undefined);
+            const pending = transactionQueue.then(run, run);
+            transactionQueue = pending.catch(() => undefined);
             return pending;
         },
-        async simulate(commandId, args) {
-            await commitQueue;
-            return execute(commandId, args, { simulate: true });
+        simulate(commandId, args) {
+            const run = () => execute(commandId, args, { simulate: true });
+            const pending = transactionQueue.then(run, run);
+            transactionQueue = pending.catch(() => undefined);
+            return pending;
         },
     });
 }
