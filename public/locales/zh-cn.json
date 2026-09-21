@@ -6670,6 +6670,7 @@
     "atria.shell.runtime.rolePolicy": "策略：${0} · 工具：${1} · 结构化输出：${2}",
     "atria.shell.runtime.configuredRoles": "${0}/${1} 个运行时角色已显式配置主连接。",
     "atria.shell.runtime.chatProfiles": "${0} 个聊天配置",
+    "atria.shell.runtime.connectionProfileCounts": "${0} 个对话 · ${1} 个嵌入 · ${2} 个重排序配置",
     "atria.shell.runtime.retrievalProfiles": "${0} 个嵌入配置 · ${1} 个重排配置",
     "atria.shell.command.openAgents": "打开智能体工作区",
     "atria.shell.command.openAgents.desc": "打开编排与智能体运行",
