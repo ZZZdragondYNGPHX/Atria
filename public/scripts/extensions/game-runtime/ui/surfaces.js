@@ -1,14 +1,6 @@
-export const GAME_SURFACES = Object.freeze([
-    'app.root',
-    'chat.header',
-    'chat.footer',
-    'composer.before',
-    'composer.after',
-    'sidebar.left',
-    'sidebar.right',
-    'drawer',
-    'modal',
-]);
+import { GAME_UI_SURFACES } from '../manifest.js';
+
+export const GAME_SURFACES = GAME_UI_SURFACES;
 
 const SURFACE_SET = new Set(GAME_SURFACES);
 const MOUNT_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
