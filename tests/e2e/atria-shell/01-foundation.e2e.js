@@ -21,6 +21,48 @@ test.afterAll(async () => {
     await tearDownServer(server);
 });
 
+async function collectDomDiagnostics(page) {
+    return page.evaluate(() => {
+        const describe = (node) => {
+            if (!(node instanceof HTMLElement)) return null;
+            const style = getComputedStyle(node);
+            const rect = node.getBoundingClientRect();
+            const parents = [];
+            let current = node.parentElement;
+            while (current && parents.length < 6) {
+                parents.push({
+                    tag: current.tagName,
+                    id: current.id,
+                    className: current.className,
+                    hidden: current.hidden,
+                    display: getComputedStyle(current).display,
+                    visibility: getComputedStyle(current).visibility,
+                });
+                current = current.parentElement;
+            }
+            return {
+                tag: node.tagName,
+                id: node.id,
+                className: node.className,
+                hidden: node.hidden,
+                connected: node.isConnected,
+                display: style.display,
+                visibility: style.visibility,
+                opacity: style.opacity,
+                rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                parents,
+                html: node.outerHTML.slice(0, 500),
+            };
+        };
+
+        return {
+            chats: Array.from(document.querySelectorAll('#chat')).map(describe),
+            composers: Array.from(document.querySelectorAll('#send_form')).map(describe),
+            shell: describe(document.getElementById('atria-app-shell')),
+        };
+    });
+}
+
 async function openShellPreview(page, viewport) {
     const startupErrors = [];
     page.on('pageerror', error => startupErrors.push(`pageerror: ${error?.stack || error?.message || error}`));
@@ -86,7 +128,12 @@ async function openShellPreview(page, viewport) {
     }
 
     const root = page.locator('#atria-app-shell');
-    await root.waitFor({ state: 'visible', timeout: 10_000 });
+    try {
+        await root.waitFor({ state: 'visible', timeout: 10_000 });
+    } catch (error) {
+        const diagnostics = await collectDomDiagnostics(page);
+        throw new Error(`Atria R7A shell mounted but is not visible: ${JSON.stringify(diagnostics)}`, { cause: error });
+    }
     return root;
 }
 
@@ -110,6 +157,10 @@ test.describe('R7A AppShell foundation', () => {
                 composerInsideShell: Boolean(shell?.contains(composer)),
             };
         });
+        if (ownership.chatCount !== 1 || ownership.composerCount !== 1) {
+            const diagnostics = await collectDomDiagnostics(page);
+            throw new Error(`R7A native host ownership invariant failed: ${JSON.stringify({ ownership, diagnostics })}`);
+        }
         expect(ownership).toEqual({
             chatCount: 1,
             composerCount: 1,
