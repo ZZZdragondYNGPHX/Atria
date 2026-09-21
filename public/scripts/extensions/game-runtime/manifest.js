@@ -12,6 +12,17 @@ export const GAME_RUNTIME_VERSION = 1;
 export const GAME_MANIFEST_PATH = 'game.json';
 
 export const GAME_UI_MODES = Object.freeze(['component', 'hybrid', 'full']);
+export const GAME_UI_SURFACES = Object.freeze([
+    'app.root',
+    'chat.header',
+    'chat.footer',
+    'composer.before',
+    'composer.after',
+    'sidebar.left',
+    'sidebar.right',
+    'drawer',
+    'modal',
+]);
 export const GAME_PACKAGE_CAPABILITIES = Object.freeze([
     'chat.read',
     'chat.send',
@@ -37,7 +48,7 @@ const TOP_LEVEL_KEYS = new Set([
     'world',
     'logic',
 ]);
-const UI_KEYS = new Set(['mode', 'entry']);
+const UI_KEYS = new Set(['mode', 'entry', 'surface']);
 const WORLD_KEYS = new Set(['schema', 'initial']);
 const LOGIC_KEYS = new Set(['entry']);
 const RUNTIME_KEYS = new Set(['min', 'max']);
@@ -211,7 +222,13 @@ export function validateGameManifest(input, options = {}) {
                 errors.push(`ui.mode: expected one of ${GAME_UI_MODES.join(', ')}`);
             }
             const entry = validatePathField(input.ui.entry, 'ui.entry', errors);
-            ui = { mode, entry };
+            const surface = input.ui.surface === undefined
+                ? 'app.root'
+                : String(input.ui.surface || '').trim();
+            if (!GAME_UI_SURFACES.includes(surface)) {
+                errors.push(`ui.surface: expected one of ${GAME_UI_SURFACES.join(', ')}`);
+            }
+            ui = { mode, entry, surface };
         }
     }
 
