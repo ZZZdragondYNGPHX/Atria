@@ -214,26 +214,38 @@ describe('R7G WorkspaceHost', () => {
 
         host.openUtility('diagnostics');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.diagnostics');
-        expect(navigation.getRoute().breadcrumb).toEqual(['Diagnostics']);
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.diagnostics' },
+            breadcrumb: ['Diagnostics'],
+        });
         expect(host.getActiveWorkspace()?.key).toBe('utility:diagnostics');
         expect(adapters.diagnostics).toHaveBeenCalledTimes(1);
 
         host.openUtility('plugins');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.plugins');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.plugins' },
+        });
         expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:plugins', kind: 'plugins' });
         expect(adapters.plugins).toHaveBeenCalledTimes(1);
 
         host.openUtility('settings');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.settings');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.settings' },
+        });
         expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:settings', kind: 'settings' });
         expect(adapters.settings).toHaveBeenCalledTimes(1);
 
         host.openUtility('account');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('utility.account');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.account' },
+        });
         expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:account', kind: 'account' });
         expect(adapters.account).toHaveBeenCalledTimes(1);
 
@@ -501,6 +513,17 @@ describe('R7G WorkspaceHost', () => {
             domain: 'library',
             child: { id: 'world-info', kind: 'workspace' },
         });
+
+        await registry.execute('workspace.settings', {});
+        await flushWorkspace();
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'play',
+            child: { id: 'utility.settings', kind: 'workspace' },
+            breadcrumb: ['Settings'],
+        });
+        for (const button of shell.root.querySelectorAll('[data-atria-domain]')) {
+            expect(button.classList.contains('is-selected')).toBe(false);
+        }
 
         host.dispose();
         shell.destroy();
