@@ -76,6 +76,37 @@ const reducers = {
     },
 };
 
+const commands = [
+    {
+        id: 'damage',
+        argsSchema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['amount'],
+            properties: {
+                amount: { type: 'integer', minimum: 1, maximum: 20 },
+            },
+        },
+        execute({ args }) {
+            return [{ type: 'DamageDealt', payload: { amount: args.amount } }];
+        },
+    },
+    {
+        id: 'heal',
+        argsSchema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['amount'],
+            properties: {
+                amount: { type: 'integer', minimum: 1, maximum: 20 },
+            },
+        },
+        execute({ args }) {
+            return [{ type: 'Healed', payload: { amount: args.amount } }];
+        },
+    },
+];
+
 describe('Game World session', () => {
     test('loads package world, persists journal, and follows swipe branch changes', async () => {
         const chatRef = { value: [{ swipe_id: 0 }, { swipe_id: 0 }] };
@@ -144,6 +175,44 @@ describe('Game World session', () => {
 
         expect(second.getState()).toEqual({ hp: 16 });
         expect(second.getJournal().events).toHaveLength(1);
+    });
+
+    test('dispatches typed commands and simulates without committing', async () => {
+        const chatRef = { value: [{ swipe_id: 0 }] };
+        const context = makeContext(chatRef);
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/world/schema.json')) return response(schema);
+            return response({ hp: 20 });
+        });
+
+        const session = await createGameWorldSession({
+            packageState,
+            context,
+            getChat: () => chatRef.value,
+            fetchImpl,
+            reducers,
+            commands,
+        });
+
+        expect(session.getCommands().map(command => command.id)).toEqual(['damage', 'heal']);
+
+        const committed = await session.dispatchCommandInternal('damage', { amount: 5 });
+        expect(committed).toMatchObject({
+            status: 'committed',
+            afterState: { hp: 15 },
+        });
+        expect(session.getState()).toEqual({ hp: 15 });
+        expect(session.getJournal().events).toHaveLength(1);
+
+        const simulated = await session.simulateCommandInternal('heal', { amount: 4 });
+        expect(simulated).toMatchObject({
+            status: 'simulated',
+            beforeState: { hp: 15 },
+            afterState: { hp: 19 },
+            committed: false,
+        });
+        expect(session.getState()).toEqual({ hp: 15 });
+        expect(session.getJournal().events).toHaveLength(1);
     });
 
     test('returns null for packages without a World definition', async () => {
