@@ -20,12 +20,17 @@ function insertAfter(parent, anchor, reference) {
     return true;
 }
 
-export function createAtriaSurfaceAdapter(documentRef = globalThis.document) {
+export function createAtriaSurfaceAdapter(documentRef = globalThis.document, options = {}) {
     if (!documentRef || typeof documentRef.createElement !== 'function') {
         throw new Error('Atria Surface Adapter requires a document');
     }
 
     const anchors = new Map();
+    const mode = String(options.mode || 'component').trim();
+    const shellFoundation = options.shell || null;
+    const shell = shellFoundation?.getShell?.() || shellFoundation;
+    const nativePlayHost = options.nativePlayHost || shellFoundation?.getPlayHost?.() || null;
+    let stageOwnership = null;
 
     function findExisting(surfaceId) {
         return documentRef.querySelector?.(
@@ -51,7 +56,17 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document) {
         const anchor = createAnchor(documentRef, surfaceId);
         let inserted = false;
 
-        if (surfaceId === 'app.root') {
+        if (
+            surfaceId === 'app.root'
+            && mode === 'hybrid'
+            && shell?.slots?.stage
+            && typeof nativePlayHost?.acquireStageOwnership === 'function'
+        ) {
+            stageOwnership ||= nativePlayHost.acquireStageOwnership('game-runtime:hybrid');
+            anchor.classList.add('atria-game-host-surface--stage');
+            shell.slots.stage.appendChild(anchor);
+            inserted = true;
+        } else if (surfaceId === 'app.root') {
             inserted = insertBefore(sheld, anchor, chat);
         } else if (surfaceId === 'chat.header') {
             inserted = insertBefore(sheld, anchor, chat);
@@ -67,12 +82,22 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document) {
                 inserted = true;
             }
         } else if (surfaceId === 'sidebar.right') {
-            if (rightPanel) {
+            const semanticDock = shell?.slots?.dock;
+            if (semanticDock) {
+                anchor.classList.add('atria-game-host-surface--dock');
+                semanticDock.appendChild(anchor);
+                inserted = true;
+            } else if (rightPanel) {
                 rightPanel.appendChild(anchor);
                 inserted = true;
             }
         } else if (surfaceId === 'drawer' || surfaceId === 'modal') {
-            if (body) {
+            const semanticTransient = shell?.slots?.transient;
+            if (semanticTransient) {
+                anchor.classList.add('atria-game-host-surface--transient');
+                semanticTransient.appendChild(anchor);
+                inserted = true;
+            } else if (body) {
                 body.appendChild(anchor);
                 inserted = true;
             }
@@ -90,6 +115,8 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document) {
                 anchor.remove?.();
             }
             anchors.clear();
+            stageOwnership?.release?.();
+            stageOwnership = null;
         },
         getAnchors() {
             return [...anchors.entries()].map(([surface, anchor]) => ({ surface, anchor }));
