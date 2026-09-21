@@ -1,3 +1,5 @@
+import { cloneGameLlmValue } from './clone.js';
+
 export const GAME_RUNTIME_ROLES = Object.freeze([
     'narrator',
     'intent_resolver',
@@ -50,9 +52,7 @@ const DEFAULT_ROLE_CONFIGS = Object.freeze({
     }),
 });
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function normalizeName(value) {
     return String(value || '').trim();
