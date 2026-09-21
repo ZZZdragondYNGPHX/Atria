@@ -1,3 +1,4 @@
+import { cloneGameLlmValue } from './clone.js';
 import { createInterpretationMappingRegistry } from '../logic/interpretations.js';
 import { isGameBranchPathCompatible } from '../world/branch.js';
 import { createEventInterpreter } from './event-interpreter.js';
@@ -11,9 +12,7 @@ import {
     createTurnContext,
 } from './turn-context.js';
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function assertWorldSession(session) {
     for (const method of ['getState', 'getJournal', 'getBranchPath', 'getCommands']) {
