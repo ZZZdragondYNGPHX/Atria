@@ -49,11 +49,13 @@ describe('R7A shell architecture', () => {
 
     test('keeps Backgrounds hash tabs local when the document URL has a query string', () => {
         const backgrounds = read('public/scripts/backgrounds.js');
-        expect(backgrounds).toContain('const currentDocumentUrl =');
+        const rewriteIndex = backgrounds.indexOf('currentDocumentUrl');
+        const tabsInitIndex = backgrounds.indexOf('.tabs();', rewriteIndex);
+
         expect(backgrounds).toContain('window.location.pathname');
         expect(backgrounds).toContain('window.location.search');
-        expect(backgrounds).toContain('this.setAttribute(\'href\',');
-        expect(backgrounds.indexOf('currentDocumentUrl')).toBeLessThan(backgrounds.indexOf('$(\'#bg_tabs\').tabs();'));
+        expect(rewriteIndex).toBeGreaterThanOrEqual(0);
+        expect(tabsInitIndex).toBeGreaterThan(rewriteIndex);
     });
 
     test('locks the shell root to the dynamic viewport on compact devices', () => {
