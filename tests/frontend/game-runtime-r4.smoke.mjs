@@ -17,7 +17,7 @@ const server = createServer(async (req, res) => {
     try {
         if (req.url === '/') {
             res.setHeader('Content-Type', 'text/html');
-            res.end('<!doctype html><html><body></body></html>');
+            res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body></body></html>');
             return;
         }
         const pathname = new URL(req.url, 'http://localhost').pathname;
