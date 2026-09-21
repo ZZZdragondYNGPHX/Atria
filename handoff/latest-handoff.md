@@ -1,24 +1,20 @@
 # Active implementation: Atria Game Runtime Architecture Refactor
 
-The Master Refactor is in progress at the R3 validation checkpoint.
+The Master Refactor has completed **R4 Card UI Runtime** and is ready to begin R5.
 
 - Working branch: `refactor/game-runtime-architecture`
-- Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- Live main at checkpoint: `63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current working HEAD: `b8c363b70573c1993b737582691c5767832adcd3`
+- Baseline/current main: `63da3141a3895d3386ed1bebc30876c9766315ba`
+- Current validated R4 HEAD: `adc607bc5c1bdbe383d2647d82b1e0b323743df4`
 - Formal plan: `refactor/game-runtime-architecture.md`
 - Detailed task handoff: `handoff/game-runtime-architecture.md`
-- Checkpoint: R0/R1/R2 complete; R3 Game Logic Runtime implementation complete.
-- Focused validation: Game Runtime Dev Checks run `35548001015` (#88) passed the R3 exit matrix and focused ESLint.
-- Broad validation: Game Runtime R3 Broad Checks run `35548063514` is in progress on `b8c363b70573c1993b737582691c5767832adcd3`.
-- Parallel focused run caused by the broad-check workflow commit: `35548063475` (#89), in progress at handoff.
-- Android, Docker and UI E2E are not part of this R3 broad validation.
+- Status: **R0 Regex Separation complete; R1 Game Package foundation complete; R2 World/Event complete at planned vertical-slice scope; R3 Game Logic Runtime complete; R4 Card UI Runtime complete.**
+- R4 now includes stable Surface APIs, read-only Selectors, declarative bindings/actions, Component/Hybrid/Full modes, native conversation/composer composition, responsive/mobile contracts, Immersive provider integration, and Full host escape/recovery.
+- Final R4 focused validation: Game Runtime Dev Checks #160, run `35550867047`, success.
+- Final real-browser validation: Game Runtime R4 Browser Checks #2, run `35550867046`, success for desktop Full and mobile Hybrid smoke.
+- Next phase: **R5 — LLM Runtime & Model Roles**.
+- The long-running refactor branch remains unmerged and must be retained until the complete Master Refactor finishes.
 
-R3 now includes the typed Command Bus, semantic validators, Formula AST, typed reducers/events, deterministic RNG, Rules Engine + Rule Trace, atomic transactions, no-commit simulation, structured failures, deterministic replay provenance, and a declarative compiler that feeds the same runtime contracts as advanced JavaScript.
-
-No public generic world setter exists. Game Logic does not receive broad SillyTavern/Atria context.
-
-Next action: resolve the two active R3 validation runs. If green, remove the one-time `.github/workflows/game-runtime-r3-broad-checks.yml`, verify focused checks once more, then begin R4 Card UI Runtime from the live branch. Do not merge/delete the long-running refactor branch yet.
+R5 should begin with LLM-safe typed Command tool generation, command visibility, World Observation projection and the minimal branch-anchored Turn Context. Do not let Resolver/Event Interpreter/Memory/Orchestrator/Narrator become alternate state writers.
 
 
 ---
