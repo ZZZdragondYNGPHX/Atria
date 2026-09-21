@@ -6,7 +6,7 @@ import { createAtriaNavigationAuthority } from '../../public/scripts/atria-shell
 
 describe('R7D Navigation Authority', () => {
     beforeEach(() => {
-        window.history.replaceState(null, '', '/?atriaShell=1');
+        window.history.replaceState(null, '', '/');
     });
 
     test('owns primary route, breadcrumb and browser history as one state', () => {
@@ -69,7 +69,7 @@ describe('R7D Navigation Authority', () => {
                 child: null,
                 breadcrumb: ['Play'],
             },
-        }, '', '/?atriaShell=1&atriaRoute=play');
+        }, '', '/?atriaRoute=play');
         window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
 
         expect(navigation.getRoute().domain).toBe('play');
