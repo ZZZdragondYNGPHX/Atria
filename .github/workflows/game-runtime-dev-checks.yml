@@ -41,6 +41,9 @@ jobs:
           game-runtime/rules.test.js
           game-runtime/reducers.test.js
           game-runtime/declarative.test.js
+          game-runtime/ui-surfaces.test.js
+          game-runtime/ui-selectors.test.js
+          game-runtime/ui-component.test.js
           game-runtime/formula.test.js
           game-runtime/rng.test.js
           game-runtime/world-package.test.js
@@ -55,6 +58,7 @@ jobs:
           npx eslint
           public/scripts/extensions/game-runtime/*.js
           public/scripts/extensions/game-runtime/logic/*.js
+          public/scripts/extensions/game-runtime/ui/*.js
           public/scripts/extensions/game-runtime/world/*.js
           public/scripts/extensions/regex/engine.js
           src/endpoints/card-app.js
