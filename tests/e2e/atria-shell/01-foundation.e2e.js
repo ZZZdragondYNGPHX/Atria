@@ -66,23 +66,15 @@ async function collectDomDiagnostics(page) {
     });
 }
 
-async function openShellPreview(page, viewport) {
+async function openShell(page, viewport) {
     const startupErrors = [];
     page.on('pageerror', error => startupErrors.push(`pageerror: ${error?.stack || error?.message || error}`));
     page.on('console', message => {
         if (message.type() === 'error') startupErrors.push(`console: ${message.text()}`);
     });
 
-    await page.addInitScript(() => {
-        try {
-            localStorage.setItem('atria.shell.preview', '1');
-        } catch {
-            // Storage can be unavailable on transient documents before origin assignment.
-        }
-    });
-
     await page.setViewportSize(viewport);
-    await page.goto(`${server.baseURL}/?atriaShell=1`, { waitUntil: 'domcontentloaded' });
+    await page.goto(server.baseURL, { waitUntil: 'domcontentloaded' });
 
     const gate = page.locator('#userList .userSelect:last-child');
     try {
@@ -103,7 +95,6 @@ async function openShellPreview(page, viewport) {
     } catch (error) {
         const state = await page.evaluate(() => ({
             href: location.href,
-            previewStorage: localStorage.getItem('atria.shell.preview'),
             preloaderPresent: document.getElementById('preloader') !== null,
             atriaPresent: Boolean(window.Atria),
             hasGetContext: Boolean(window.Atria?.getContext),
@@ -142,7 +133,7 @@ async function openShellPreview(page, viewport) {
 
 test.describe('R7B Native Play Host', () => {
     test('Expanded shell exposes rail, dock and command palette without cloning native chat', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 1440, height: 900 });
+        const root = await openShell(page, { width: 1440, height: 900 });
 
         await expect(root).toHaveAttribute('data-atria-viewport', 'expanded');
         await expect(root.locator('[data-atria-primitive="NavigationRail"]')).toBeVisible();
@@ -204,7 +195,7 @@ test.describe('R7B Native Play Host', () => {
     });
 
     test('Compact shell uses bottom navigation and the same registry through Command Sheet', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 390, height: 844 });
+        const root = await openShell(page, { width: 390, height: 844 });
 
         await expect(root).toHaveAttribute('data-atria-viewport', 'compact');
         await expect(root.locator('[data-atria-primitive="NavigationRail"]')).toBeHidden();
@@ -227,8 +218,8 @@ test.describe('R7B Native Play Host', () => {
         await expect(root.locator('.atria-global-bar__breadcrumb')).toContainText('Runtime');
     });
 
-    test('preview unmount restores and remount reuses the exact native nodes', async ({ page }) => {
-        await openShellPreview(page, { width: 1280, height: 800 });
+    test('debug unmount restores and remount reuses the exact native nodes', async ({ page }) => {
+        await openShell(page, { width: 1280, height: 800 });
 
         await page.evaluate(() => {
             window.__r7bNativeRefs = {
@@ -241,7 +232,7 @@ test.describe('R7B Native Play Host', () => {
 
         const disabled = await page.evaluate(() => {
             const refs = window.__r7bNativeRefs;
-            window.Atria.shell.setPreviewEnabled(false, { persist: false });
+            window.Atria.shell.setMountedForDebug(false);
             return {
                 shellPresent: Boolean(document.getElementById('atria-app-shell')),
                 parentTag: refs.sheld?.parentElement?.tagName || '',
@@ -264,7 +255,7 @@ test.describe('R7B Native Play Host', () => {
 
         const remounted = await page.evaluate(() => {
             const refs = window.__r7bNativeRefs;
-            window.Atria.shell.setPreviewEnabled(true, { persist: false });
+            window.Atria.shell.setMountedForDebug(true);
             const stage = document.getElementById('atria-stage');
             return {
                 shellPresent: Boolean(document.getElementById('atria-app-shell')),
@@ -286,7 +277,7 @@ test.describe('R7B Native Play Host', () => {
     });
 
     test('Immersive presentation and Full Host Recovery keep the reparented native host coherent', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 1280, height: 800 });
+        const root = await openShell(page, { width: 1280, height: 800 });
 
         const before = await page.evaluate(() => ({
             sheld: document.getElementById('sheld'),
@@ -378,7 +369,7 @@ test.describe('R7B Native Play Host', () => {
     });
 
     test('Ctrl+K opens the command surface and Escape closes it', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 1280, height: 800 });
+        const root = await openShell(page, { width: 1280, height: 800 });
 
         await page.keyboard.press('Control+K');
         await expect(root.locator('.atria-command-surface')).toBeVisible();

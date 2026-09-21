@@ -32,7 +32,7 @@ describe('R7 shell architecture', () => {
         expect(shell).not.toContain('getElementById(\'send_form\')');
         expect(entry).toContain('import { mountNativePlayHost } from \'./native-play-host.js\';');
         expect(entry).toContain('playHost = mountNativePlayHost({');
-        const unmountBody = entry.slice(entry.indexOf('function unmount()'), entry.indexOf('function setPreviewEnabled'));
+        const unmountBody = entry.slice(entry.indexOf('function unmount()'), entry.indexOf('function setMountedForDebug'));
         expect(unmountBody.indexOf('playHost?.unmount();')).toBeGreaterThanOrEqual(0);
         expect(unmountBody.indexOf('playHost?.unmount();')).toBeLessThan(unmountBody.indexOf('shell.destroy();'));
         expect(nativeHost).toContain('\'sheld\'');
@@ -55,11 +55,24 @@ describe('R7 shell architecture', () => {
         expect(shell).toContain('var(--atri-color-canvas)');
     });
 
-    test('keeps the staged R7 shell behind the temporary preview gate during R7D', () => {
+    test('R7H makes Atria Shell the default Host and keeps only an explicit legacy recovery contract', () => {
         const entry = read('public/scripts/atria-shell/index.js');
-        expect(entry).toContain('ATRIA_SHELL_PREVIEW_QUERY_KEY');
-        expect(entry).toContain('ATRIA_SHELL_PREVIEW_STORAGE_KEY');
-        expect(entry).toContain('if (previewEnabled) mount();');
+        const constants = read('public/scripts/atria-shell/constants.js');
+        const css = read('public/css/atria-shell.css');
+        expect(constants).toContain("ATRIA_SHELL_RECOVERY_QUERY_KEY = 'atriaShellRecovery'");
+        expect(entry).toContain('readRecoveryPreference(windowRef)');
+        expect(entry).toContain("documentRef.body.dataset.atriaShellMounted = 'true'");
+        expect(entry).toContain("documentRef.body.dataset.atriaShellRecovery = 'legacy'");
+        expect(css).toContain('body[data-atria-shell-mounted="true"] > #top-settings-holder');
+    });
+
+    test('MovingUI cannot write geometry onto Shell-owned layout', () => {
+        const ross = read('public/scripts/RossAscends-mods.js');
+        const power = read('public/scripts/power-user.js');
+        expect(ross).toContain('export function isAtriaShellLayoutOwned(element)');
+        expect(ross).toContain("element?.closest?.('#atria-app-shell')");
+        expect(power).toContain('isAtriaShellLayoutOwned(elmnt[0])');
+        expect(power).toContain('filter(panel => !isAtriaShellLayoutOwned(panel))');
     });
 
     test('keeps Backgrounds hash tabs local when the document URL has a query string', () => {

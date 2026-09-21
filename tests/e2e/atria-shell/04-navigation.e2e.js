@@ -21,16 +21,9 @@ test.afterAll(async () => {
     await tearDownServer(server);
 });
 
-async function openShellPreview(page, viewport) {
-    await page.addInitScript(() => {
-        try {
-            localStorage.setItem('atria.shell.preview', '1');
-        } catch {
-            // Storage can be unavailable before origin assignment.
-        }
-    });
+async function openShell(page, viewport) {
     await page.setViewportSize(viewport);
-    await page.goto(`${server.baseURL}/?atriaShell=1`, { waitUntil: 'domcontentloaded' });
+    await page.goto(server.baseURL, { waitUntil: 'domcontentloaded' });
 
     const gate = page.locator('#userList .userSelect:last-child');
     try {
@@ -64,7 +57,7 @@ async function openShellPreview(page, viewport) {
 
 test.describe('R7D Desktop / Mobile Navigation', () => {
     test('Expanded Rail, Command navigation and browser Back/Forward share one authority', async ({ page }) => {
-        let root = await openShellPreview(page, { width: 1440, height: 900 });
+        let root = await openShell(page, { width: 1440, height: 900 });
 
         await expect(root).toHaveAttribute('data-atria-viewport', 'expanded');
         await root
@@ -94,7 +87,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
     });
 
     test('Medium keeps Rail authority and presents current Context as Dock', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 900, height: 1000 });
+        const root = await openShell(page, { width: 900, height: 1000 });
 
         await expect(root).toHaveAttribute('data-atria-viewport', 'medium');
         await expect(root.locator('[data-atria-primitive="NavigationRail"]')).toBeVisible();
@@ -122,7 +115,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
     });
 
     test('Compact Bottom Navigation reuses one Context node as a Sheet and resolves Escape order', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 390, height: 844 });
+        const root = await openShell(page, { width: 390, height: 844 });
 
         await expect(root).toHaveAttribute('data-atria-viewport', 'compact');
         await expect(root.locator('[data-atria-primitive="NavigationRail"]')).toBeHidden();
@@ -168,7 +161,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
     });
 
     test('Compact keyboard shrink hides Bottom Navigation and uses visual viewport height', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 390, height: 844 });
+        const root = await openShell(page, { width: 390, height: 844 });
 
         const patched = await page.evaluate(() => {
             const textarea = document.getElementById('send_textarea');
@@ -198,7 +191,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
     });
 
     test('Web Back exits Full before Immersive/history without breaking Native Play ownership', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 1280, height: 800 });
+        const root = await openShell(page, { width: 1280, height: 800 });
 
         await root
             .locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="library"]')
@@ -264,7 +257,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
     });
 
     test('Hybrid and Full keep Stage ownership coherent across primary route transitions', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 1280, height: 800 });
+        const root = await openShell(page, { width: 1280, height: 800 });
 
         const state = await page.evaluate(async () => {
             const foundation = window.Atria.shell;
@@ -339,8 +332,8 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
         await expect(root.locator('#sheld')).toBeVisible();
     });
 
-    test('legacy Character Library trigger adapts into the Atria Library route under preview', async ({ page }) => {
-        const root = await openShellPreview(page, { width: 1280, height: 800 });
+    test('legacy Character Library trigger forwards into the authoritative Atria Library route', async ({ page }) => {
+        const root = await openShell(page, { width: 1280, height: 800 });
 
         await page.evaluate(() => {
             const trigger = document.createElement('button');

@@ -49,14 +49,7 @@ test.afterAll(async () => {
 });
 
 async function awaitR7BMainUI(page) {
-    await page.addInitScript(() => {
-        try {
-            localStorage.setItem('atria.shell.preview', '1');
-        } catch {
-            // Origin may not exist yet.
-        }
-    });
-    await awaitMainUI(page, `${server.baseURL}/?atriaShell=1`);
+    await awaitMainUI(page, server.baseURL);
     await page.waitForFunction(() => (
         window.Atria?.shell?.isMounted?.()
         && document.getElementById('atria-native-play-host')?.contains(document.getElementById('sheld'))

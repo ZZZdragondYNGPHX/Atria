@@ -111,7 +111,7 @@ describe('R7A Atria AppShell foundation', () => {
         shell.destroy();
     });
 
-    test('tracks staged preview mount and reversibly reparents the one native Play host', () => {
+    test('mounts the authoritative shell by default and reversibly reparents the one native Play host', () => {
         const nativeSheld = document.getElementById('sheld');
         const nativeChat = document.getElementById('chat');
         const nativeComposer = document.getElementById('send_form');
@@ -120,10 +120,9 @@ describe('R7A Atria AppShell foundation', () => {
         const foundation = initializeAtriaShellFoundation({
             document,
             window,
-            forcePreview: true,
         });
 
-        expect(foundation.isPreviewEnabled()).toBe(true);
+        expect(foundation.isRecoveryMode()).toBe(false);
         expect(foundation.isMounted()).toBe(true);
         expect(foundation.getPlayHost().native.sheld).toBe(nativeSheld);
         expect(foundation.getPlayHost().native.chat).toBe(nativeChat);
@@ -133,8 +132,7 @@ describe('R7A Atria AppShell foundation', () => {
         expect(document.querySelectorAll('#chat')).toHaveLength(1);
         expect(document.querySelectorAll('#send_form')).toHaveLength(1);
 
-        foundation.setPreviewEnabled(false, { persist: false });
-        expect(foundation.isPreviewEnabled()).toBe(false);
+        foundation.setMountedForDebug(false);
         expect(foundation.isMounted()).toBe(false);
         expect(foundation.getPlayHost()).toBeNull();
         expect(nativeSheld.parentElement).toBe(document.body);
@@ -142,8 +140,7 @@ describe('R7A Atria AppShell foundation', () => {
         expect(document.getElementById('send_form')).toBe(nativeComposer);
         expect(document.getElementById('send_textarea')).toBe(nativeTextarea);
 
-        foundation.setPreviewEnabled(true, { persist: false });
-        expect(foundation.isPreviewEnabled()).toBe(true);
+        foundation.setMountedForDebug(true);
         expect(foundation.isMounted()).toBe(true);
         expect(foundation.getPlayHost().native.sheld).toBe(nativeSheld);
         expect(foundation.getPlayHost().native.chat).toBe(nativeChat);
