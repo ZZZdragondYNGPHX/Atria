@@ -4,11 +4,11 @@
 
 - Working branch: `refactor/game-runtime-architecture`
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current validated working HEAD: `1da96c37598223e3a2b89f9561a7722d12e58b6b`
+- Current validated working HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - Live `main` remains `63da3141a3895d3386ed1bebc30876c9766315ba`.
 - Formal Master Plan: `docs:refactor/game-runtime-architecture.md`
-- Current status: **R0-R5 complete against their Master Plan exit criteria. R5 is the formal midpoint handoff. Next phase: R6 — Game Studio.**
-- No PR has been opened and nothing has been merged to `main`; keep this branch and continue the Master Refactor.
+- Current status: **R0-R6 complete against their Master Plan exit criteria. R6 — Game Studio is complete. Next phase: R7 — Atria Game-first Shell Redesign.**
+- No PR has been opened and nothing has been merged to `main`; keep this long-lived branch through R7 and do not merge/delete it before the Master Refactor is complete.
 
 ## R3 checkpoint — Game Logic Runtime
 
@@ -576,6 +576,238 @@ Android and Docker builds were not run because they remain opt-in and R5 changes
 - no R6 `.atria` build/import/export implementation pulled forward;
 - no R7 visual shell redesign pulled forward.
 
+## R6 — Game Studio complete
+
+**R6 is complete against the Master Plan exit contract.**
+
+Validated implementation HEAD:
+
+`refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+
+### R6 authoring architecture
+
+The existing CardApp Studio was evolved in place rather than replaced by a parallel product.
+
+Implemented:
+
+- runtime-aware Project Navigator with Game/Narrative project detection;
+- grouped Game Project sources for package metadata, World Schema/Initial State, Game Logic, UI/Selectors/Immersive, Observations, knowledge/skills, assets and raw source;
+- CodeMirror raw editing, Git history, rollback and diff approval preserved;
+- structured editors write the same authoritative source documents used by Runtime; no duplicate Studio persistence format was introduced.
+
+Structured authoring now includes:
+
+- World Schema Editor;
+- Initial State Editor;
+- Command Editor;
+- Formula Editor;
+- Rules Editor;
+- Reducer / Event Inspector;
+- Interpretation Mapping Editor;
+- Selector Editor;
+- Observation Editor.
+
+Validation reuses runtime contracts:
+
+- R2 World Schema validator;
+- R3 declarative compiler;
+- Command Registry;
+- Reducer Registry;
+- Rules Engine;
+- Interpretation Mapping Registry;
+- safe Formula AST;
+- R4 selector compiler/runtime;
+- R5 Observation projector.
+
+### Selector / Observation authoring
+
+R4 selector files remain declarative `[{ id, formula }]` resources.
+
+R6 additionally made package-authored Observation projectors first-class:
+
+`game.json -> llm.observations`
+
+The observation resource is declarative `[{ id, formula }]` and compiles into the existing R5 World Observation projector. It does not create an alternate LLM/world projection pipeline.
+
+Selector/Observation previews use the Source Project Initial State and never mutate a player Save.
+
+### Simulation / Diagnostics
+
+Game Studio now exposes **Simulation / Diagnostics**.
+
+The Studio simulation harness:
+
+- constructs an isolated, memory-backed World Runtime from Source Project files;
+- calls the real R3 `logic.simulate()` path;
+- exposes Command validation;
+- exposes Before / Projected World State;
+- exposes Event Timeline;
+- exposes deterministic RNG Trace;
+- exposes Rule Trace;
+- exposes the actual R5 Command Tool catalog for a selected Runtime Role;
+- exposes Observation Preview;
+- exposes Selector Preview;
+- verifies a mutation guard after every simulation.
+
+The mutation guard requires:
+
+- persistence writes = 0;
+- authoritative in-memory World State unchanged;
+- Journal unchanged;
+- result `committed === false`.
+
+A violation fails closed.
+
+### Game-aware AI Builder
+
+The existing Studio AI multi-file flow was retained:
+
+`tool calls -> edits-lib batch -> conflict handling -> reviewable cross-file diff -> approval -> commit`
+
+R6 added:
+
+- automatic Game Project inspection;
+- `game_project_inspect` tool;
+- runtime-aware source map/system prompt appendix;
+- explicit R2-R6 architectural guardrails;
+- virtual post-edit project preflight before approval/commit.
+
+For Game Projects, AI batches are checked against:
+
+- `game.json`;
+- declared-file inventory;
+- World Schema / Initial State compatibility;
+- declarative Logic + runtime registries;
+- Selectors;
+- Observations.
+
+The AI Builder is told and enforced not to invent an alternate authoritative state engine. Existing Game Projects cannot silently delete/rename the canonical `game.json` contract through the AI batch path.
+
+### Native .atria distribution
+
+R6 implements the native Atria package artifact as a **standard ZIP container**.
+
+Current container layout:
+
+```text
+example.atria
+├── manifest.json          # container-level manifest
+└── game/
+    ├── game.json          # Game Runtime manifest
+    └── ...                # complete authored Source Project
+```
+
+The two manifests are intentionally distinct.
+
+The root container manifest records:
+
+- `format: atria-distribution`;
+- container manifest version;
+- package id/name/version/runtime metadata;
+- optional source card id metadata;
+- fixed Game Project root/entry;
+- full file inventory;
+- per-file SHA-256;
+- canonical inventory SHA-256.
+
+Default build exclusion:
+
+- `.git`;
+- save/saves;
+- progress;
+- checkpoints;
+- Atria save namespaces.
+
+Player progression is therefore not silently distributed with the authored package.
+
+### .atria safety and restore semantics
+
+Import/inspection fails closed for:
+
+- malformed ZIP/container manifest;
+- unsupported container version;
+- traversal / dot segments;
+- absolute paths;
+- backslash ambiguity;
+- duplicate or case-conflicting paths;
+- file-vs-child path conflicts;
+- entries outside the declared `game/` root;
+- undeclared/missing files;
+- malformed inventory;
+- container/game metadata mismatch;
+- SHA-256 mismatch;
+- compressed archive limit;
+- entry count limit;
+- per-file size limit;
+- total uncompressed-size limit;
+- suspicious decompression ratio;
+- corrupt or size-mismatched entry data.
+
+Restore semantics:
+
+1. inspect and validate the full archive in memory;
+2. validate the contained Game Project against runtime contracts;
+3. write validated files to staging;
+4. move existing Source Project content, excluding `.git`, to rollback backup;
+5. install staged project;
+6. restore backup on failure;
+7. preserve the existing project Git repository;
+8. record one Studio restore commit on successful API import.
+
+Invalid imports are rejected before Git/source mutation.
+
+Studio now exposes:
+
+- **Build .atria**
+- **Import .atria**
+
+Import performs validate-only preview before the user confirms restore.
+
+### R6 exit verification
+
+Dedicated R6 coverage includes:
+
+- Studio Project Navigator;
+- structured World/Initial editors;
+- structured Game Logic editors;
+- Selector/Observation editors;
+- declarative Observation resource;
+- non-persistent Simulation Runtime;
+- Game-aware AI project guard;
+- .atria distribution/security/round-trip suite.
+
+The .atria tests prove:
+
+- nested UTF-8 text survives build/import;
+- binary assets survive byte-for-byte;
+- authored knowledge/skills survive nested paths;
+- excluded Save/Progress/Git paths are absent;
+- hostile/malformed archive inputs fail safely;
+- restore preserves `.git` and removes stale authored source;
+- invalid restore leaves existing source untouched;
+- build -> inspect -> restore preserves Game Runtime simulation behavior.
+
+Final R6 validation:
+
+- Workflow: **Game Runtime Dev Checks**
+- Run: **#340 / `35559636615`**
+- HEAD: **`26692b80aaa073e2442f5ed23b3f082ef25b3e2c`**
+- Result: **success**
+- focused unit tests: success
+- focused ESLint: success
+- Android/Docker builds: not run; they remain opt-in and R6 changes browser/Node authoring/runtime/package code.
+
+### R6 boundaries preserved
+
+- Narrative Cards without `game.json` remain first-class.
+- PNG/JSON/CharX compatibility/interchange paths remain supported.
+- no Studio shadow state engine;
+- no LLM-owned World mutation;
+- no UI-owned authoritative game rules;
+- no speculative Entity Store;
+- package-loaded advanced JavaScript Game Logic remains fail-closed pending an explicitly designed restricted runtime;
+- no R7 global host-shell redesign was pulled forward.
+
 ## Important architecture decisions preserved
 
 1. Regex is a text subsystem, not Game Runtime/UI/state.
@@ -674,57 +906,55 @@ Android and Docker were not run, per repository/user policy and because this mid
 
 ## Current limitations / intentionally unfinished
 
-**R0-R5 are complete. The Master Refactor is not complete.**
+**R0-R6 are complete. The Master Refactor is not complete.**
 
-Remaining phases:
+Remaining phase:
 
-- **R6 — Game Studio**: evolve the existing CardApp Studio into Atria Game Studio. This phase owns project-aware authoring, structured runtime editors, simulation/trace tooling and the native `.atria` package build/import/export pipeline.
-- **R7 — Atria Game-first Shell Redesign**: redesign the host shell only after R6 stabilizes the final runtime + authoring contracts.
+- **R7 — Atria Game-first Shell Redesign**.
 
-Known deferred boundaries carried into R6/R7:
+Known deferred boundaries carried into R7/future work:
 
-- package-loaded advanced JavaScript Game Logic remains fail-closed until a restricted advanced-JavaScript execution environment is deliberately designed;
-- R5 exposes functional Runtime Role configuration data/API, but the final role-oriented Model & Runtime **UI** belongs to R7;
-- large-world Entity Store/query/index evolution remains measurement/use-case gated and is not part of R6 by default;
-- R4/R5 establish runtime contracts, not the final Atria 1.0 host visual language.
+- package-loaded advanced JavaScript Game Logic remains fail-closed until a restricted execution environment is deliberately designed;
+- large-world Entity Store/query/index evolution remains measurement/use-case gated;
+- R5 Runtime Role configuration is functionally available, but final role-oriented **Model & Runtime UI/IA** belongs to R7;
+- R6 Studio-specific UI changes are complete, but the product-wide host shell/design system/navigation are intentionally still old-era until R7.
 
-## Next implementation step — R6 Game Studio
+## Next implementation step — R7 Atria Game-first Shell Redesign
 
 Continue the same long-running branch from:
 
-`refactor/game-runtime-architecture@1da96c37598223e3a2b89f9561a7722d12e58b6b`
+`refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 
-This is the **R5 midpoint handoff**. Start **R6 — Game Studio**.
+Do not reopen R0-R6 unless a concrete R7 integration defect requires a targeted fix.
 
-Do not reopen R0-R5 unless a concrete R6 integration defect requires a targeted fix.
+R7 is a **host-shell redesign**, not another Game Runtime semantic rewrite.
 
-R6 must **evolve the existing CardApp Studio** rather than creating a parallel second authoring product.
+R7 target from the Master Plan:
 
-R6 target:
+1. establish an Atria 1.0 host design system and reusable shell primitives;
+2. redesign primary navigation and main-stage hierarchy around the Game Runtime product model;
+3. make Game Package / Runtime / World / Timeline concepts first-class in host UX;
+4. redesign mobile navigation as a first-class mobile shell rather than a desktop-drawer derivative;
+5. integrate Game Studio, Runtime diagnostics and Immersive entry points coherently;
+6. redesign Model & Runtime configuration around Runtime Roles rather than the old Chat/Embedding/Rerank-only mental model;
+7. reduce/remove host patterns that encourage future features to copy old drawer + long-text + chat-bubble information architecture;
+8. preserve stable R4 Surface / Native Component contracts while allowing host DOM/layout implementation to change;
+9. preserve Narrative Card first-class behavior;
+10. add desktop/mobile frontend smoke/E2E for major host paths and Game UI coexistence.
 
-1. inspect the current CardApp Studio architecture, CodeMirror/file tree/live preview/AI builder/diff/Git flows;
-2. rename/evolve the product into Atria Game Studio while retaining useful infrastructure;
-3. add project navigator and structured editors for World Schema, Initial State, Commands, Formulae, Rules, Selectors and Observations;
-4. add Simulation Console, Rule Trace, Event Timeline, World State Inspector, LLM Tool Preview and Observation Preview;
-5. make AI Builder project-aware so one request can propose coordinated cross-file changes with reviewable diffs;
-6. establish source-project vs distribution-artifact workflow;
-7. implement the native standard-ZIP `.atria` package contract, builder, validator, importer and exporter;
-8. keep container-level `manifest.json` distinct from Game Runtime `game/game.json`;
-9. enforce safe extraction: traversal rejection, resource/archive limits, manifest/version validation and asset integrity inventory;
-10. prove lossless nested text/binary package round-trip and reimported runtime behavior;
-11. retain PNG/JSON/CharX interoperability for appropriate Narrative/simple-card workflows;
-12. preserve CodeMirror/Git/diff approval/history capabilities.
+Candidate host primitives remain:
 
-R6 exit criteria from the Master Plan:
+- App/Game Shell;
+- Stage;
+- Workspace;
+- Runtime Card;
+- Inspector;
+- Timeline;
+- Dock;
+- Sheet;
+- Command Bar;
+- Surface Host.
 
-- create a small playable game through Studio;
-- simulate/debug it;
-- build a lossless `.atria` package;
-- reimport it and retain project/runtime behavior;
-- nested text/binary assets round-trip;
-- malformed/traversal/oversized inputs fail safely;
-- PNG/JSON/CharX interoperability remains intact.
+R7 must begin by auditing the current host/navigation/mobile DOM and existing stable Surface adapters. Do not invalidate R4/R5/R6 contracts merely to simplify frontend implementation.
 
-Do not start R7 host-shell redesign during this R6 task.
-
-Do not merge/delete `refactor/game-runtime-architecture` until R0-R7 are all complete.
+Do not merge/delete `refactor/game-runtime-architecture` until R7 is complete and the entire R0-R7 Master Refactor has passed final validation.
