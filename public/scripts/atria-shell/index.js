@@ -36,6 +36,9 @@ export function initializeAtriaShellFoundation({
 
     const registry = createCommandRegistry();
     let shell = null;
+    let previewEnabled = forcePreview === undefined
+        ? readPreviewPreference(windowRef)
+        : Boolean(forcePreview);
 
     function mount() {
         if (shell) return shell;
@@ -60,6 +63,7 @@ export function initializeAtriaShellFoundation({
 
     function setPreviewEnabled(enabled, { persist = true } = {}) {
         const next = Boolean(enabled);
+        previewEnabled = next;
         if (persist) {
             try {
                 windowRef.localStorage?.setItem(
@@ -75,9 +79,6 @@ export function initializeAtriaShellFoundation({
         return null;
     }
 
-    const previewEnabled = forcePreview === undefined
-        ? readPreviewPreference(windowRef)
-        : Boolean(forcePreview);
     if (previewEnabled) mount();
 
     return Object.freeze({
@@ -88,6 +89,6 @@ export function initializeAtriaShellFoundation({
         isMounted: () => Boolean(shell),
         getShell: () => shell,
         getRoot: () => shell?.root || null,
-        isPreviewEnabled: () => previewEnabled || Boolean(shell),
+        isPreviewEnabled: () => previewEnabled,
     });
 }
