@@ -58,6 +58,9 @@ test.describe('R7E First-class Workspaces', () => {
         const root = await ensureShellMounted(page);
 
         await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]').click();
+        const agentsHub = root.locator('[data-atria-agents-hub="true"]');
+        await expect(agentsHub).toBeVisible();
+        await agentsHub.locator('[data-atria-agent-section="orchestration"]').click();
         const agents = root.locator('#agent-memory-workspace[data-atria-workspace-embedded="true"]');
         await expect(agents).toBeVisible();
         await expect(root.locator('#atria-workspace > #agent-memory-workspace')).toHaveCount(1);
@@ -133,6 +136,9 @@ test.describe('R7E First-class Workspaces', () => {
         const root = await ensureShellMounted(page);
 
         await root.locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="agents"]').click();
+        const agentsHub = root.locator('[data-atria-agents-hub="true"]');
+        await expect(agentsHub).toBeVisible();
+        await agentsHub.locator('[data-atria-agent-section="orchestration"]').click();
         const agents = root.locator('#agent-memory-workspace[data-atria-workspace-embedded="true"]');
         await expect(agents).toBeVisible();
         await expect(root).toHaveAttribute('data-atria-viewport', 'medium');
