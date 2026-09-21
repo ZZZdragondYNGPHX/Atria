@@ -129,12 +129,21 @@ function applyCollapsedState(selectElement, collapsedGroups) {
     });
 }
 
+function getCanonicalJQuery() {
+    return globalThis.jQuery || globalThis.$ || null;
+}
+
 /**
  * Re-renders an already-open Select2 dropdown after options are rebuilt.
  * @param {HTMLSelectElement} selectElement
  */
 export function refreshOpenDropdown(selectElement, ownerKey = '') {
-    const $select = $(selectElement);
+    const jq = getCanonicalJQuery();
+    if (typeof jq !== 'function' || typeof jq.fn?.select2 !== 'function') {
+        return false;
+    }
+
+    const $select = jq(selectElement);
     const isOpen = $select.next('.select2-container').hasClass('select2-container--open');
     if (isOpen) {
         const select2 = $select.data('select2');
@@ -167,6 +176,8 @@ export function refreshOpenDropdown(selectElement, ownerKey = '') {
     } else {
         $select.select2('open');
     }
+
+    return true;
 }
 
 /**
@@ -430,17 +441,32 @@ export function initActionableSingleSelect(select, {
     select2Options = {},
     presetGroupCallbacks = null,
 } = {}) {
-    const $select = select?.jquery ? select : $(select);
-    const selectElement = $select.get(0);
+    const jq = getCanonicalJQuery();
+    if (typeof jq !== 'function') {
+        return false;
+    }
+
+    const selectElement = select?.jquery
+        ? select.get(0)
+        : typeof select === 'string'
+            ? document.querySelector(select)
+            : select;
 
     if (!(selectElement instanceof HTMLSelectElement)) {
-        return;
+        return false;
     }
+
+    if (typeof jq.fn?.select2 !== 'function') {
+        console.warn('[init] Select2 is not ready; actionable single-select stays native.');
+        return false;
+    }
+
+    const $select = jq(selectElement);
 
     const previousNamespace = selectElement.dataset.atriaActionableSingleSelectNamespace;
     if (previousNamespace) {
         $select.off(`select2:selecting${previousNamespace} select2:opening${previousNamespace} select2:open${previousNamespace} select2:close${previousNamespace}`);
-        $(document).off(`pointerdown${previousNamespace} mousedown${previousNamespace} mouseup${previousNamespace} touchstart${previousNamespace} touchend${previousNamespace} pointerup${previousNamespace} click${previousNamespace} contextmenu${previousNamespace}`);
+        jq(document).off(`pointerdown${previousNamespace} mousedown${previousNamespace} mouseup${previousNamespace} touchstart${previousNamespace} touchend${previousNamespace} pointerup${previousNamespace} click${previousNamespace} contextmenu${previousNamespace}`);
     }
 
     const ownerKey = buildOwnerKey(selectElement);
@@ -476,30 +502,30 @@ export function initActionableSingleSelect(select, {
                 const depth = parseInt(element.dataset.depth || '0', 10);
                 const parentId = element.dataset.presetGroupParentId || null;
 
-                const header = $('<div class="atria-preset-group-header"></div>')
+                const header = jq('<div class="atria-preset-group-header"></div>')
                     .attr('data-preset-group-id', groupId)
                     .attr('data-atria-action-owner', ownerKey)
                     .attr('data-preset-group-parent-id', parentId || '')
                     .css('padding-left', depth > 0 ? (depth * 20) + 'px' : '');
-                const chevron = $('<i class="fa-solid fa-chevron-right atria-preset-group-chevron"></i>')
+                const chevron = jq('<i class="fa-solid fa-chevron-right atria-preset-group-chevron"></i>')
                     .toggleClass('atria-preset-group-chevron--expanded', !isCollapsed);
-                const label = $('<span class="atria-preset-group-header__label"></span>').text(option.text);
+                const label = jq('<span class="atria-preset-group-header__label"></span>').text(option.text);
 
-                const memberCount = $(selectElement).find('option[data-preset-group-id="' + groupId + '"][data-preset-group-member="true"]').length;
-                const count = $('<span class="atria-preset-group-header__count"></span>').text('(' + memberCount + ')');
+                const memberCount = jq(selectElement).find('option[data-preset-group-id="' + groupId + '"][data-preset-group-member="true"]').length;
+                const count = jq('<span class="atria-preset-group-header__count"></span>').text('(' + memberCount + ')');
 
-                const actions = $('<span class="atria-preset-group-header__actions"></span>');
-                const subgroupBtn = $('<button type="button" class="atria-preset-group-action atria-preset-group-subgroup" tabindex="-1"></button>')
+                const actions = jq('<span class="atria-preset-group-header__actions"></span>');
+                const subgroupBtn = jq('<button type="button" class="atria-preset-group-action atria-preset-group-subgroup" tabindex="-1"></button>')
                     .attr('data-action', 'subgroup')
                     .attr('data-group-id', groupId)
                     .attr('data-atria-action-owner', ownerKey)
                     .html('<i class="fa-solid fa-folder-plus"></i>');
-                const renameBtn = $('<button type="button" class="atria-preset-group-action" tabindex="-1"></button>')
+                const renameBtn = jq('<button type="button" class="atria-preset-group-action" tabindex="-1"></button>')
                     .attr('data-action', 'rename')
                     .attr('data-group-id', groupId)
                     .attr('data-atria-action-owner', ownerKey)
                     .html('<i class="fa-solid fa-pen"></i>');
-                const deleteBtn = $('<button type="button" class="atria-preset-group-action" tabindex="-1"></button>')
+                const deleteBtn = jq('<button type="button" class="atria-preset-group-action" tabindex="-1"></button>')
                     .attr('data-action', 'delete')
                     .attr('data-group-id', groupId)
                     .attr('data-atria-action-owner', ownerKey)
@@ -515,14 +541,14 @@ export function initActionableSingleSelect(select, {
                 const groupId = element.dataset.presetGroupId;
                 const depth = parseInt(element.dataset.depth || '0', 10);
 
-                const row = $('<div class="atria-action-select2-option atria-preset-group-member"></div>')
+                const row = jq('<div class="atria-action-select2-option atria-preset-group-member"></div>')
                     .attr('data-preset-group-id', groupId)
                     .css('padding-left', depth > 0 ? ((depth + 1) * 20) + 'px' : '');
-                const label = $('<span class="atria-action-select2-option__label"></span>').text(optionData.text);
+                const label = jq('<span class="atria-action-select2-option__label"></span>').text(optionData.text);
                 row.append(label);
 
                 if (presetGroupCallbacks) {
-                    const groupButton = $('<button type="button" class="atria-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>')
+                    const groupButton = jq('<button type="button" class="atria-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>')
                         .attr('title', t`Manage preset group`)
                         .attr('aria-label', t`Manage preset group`)
                         .attr('data-atria-action-owner', ownerKey)
@@ -532,7 +558,7 @@ export function initActionableSingleSelect(select, {
                 }
 
                 if (canDelete(optionData)) {
-                    const deleteButton = $('<button type="button" class="atria-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>')
+                    const deleteButton = jq('<button type="button" class="atria-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>')
                         .attr('title', deleteButtonTitle)
                         .attr('aria-label', deleteButtonTitle)
                         .attr('data-atria-action-owner', ownerKey)
@@ -546,15 +572,15 @@ export function initActionableSingleSelect(select, {
 
             // === Ungrouped (original logic) ===
             if (!option?.element || option.loading || optionData.value === '') {
-                return $('<span></span>').text(String(option?.text || ''));
+                return jq('<span></span>').text(String(option?.text || ''));
             }
 
-            const row = $('<div class="atria-action-select2-option"></div>');
-            const label = $('<span class="atria-action-select2-option__label"></span>').text(optionData.text);
+            const row = jq('<div class="atria-action-select2-option"></div>');
+            const label = jq('<span class="atria-action-select2-option__label"></span>').text(optionData.text);
             row.append(label);
 
             if (presetGroupCallbacks) {
-                const groupButton = $('<button type="button" class="atria-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>');
+                const groupButton = jq('<button type="button" class="atria-action-select2-option__group" tabindex="-1"><i class="fa-solid fa-folder-tree"></i></button>');
                 groupButton
                     .attr('title', t`Manage preset group`)
                     .attr('aria-label', t`Manage preset group`)
@@ -565,7 +591,7 @@ export function initActionableSingleSelect(select, {
             }
 
             if (canDelete(optionData)) {
-                const deleteButton = $('<button type="button" class="atria-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>');
+                const deleteButton = jq('<button type="button" class="atria-action-select2-option__delete" tabindex="-1"><i class="fa-solid fa-trash-can"></i></button>');
                 deleteButton
                     .attr('title', deleteButtonTitle)
                     .attr('aria-label', deleteButtonTitle)
@@ -623,8 +649,8 @@ export function initActionableSingleSelect(select, {
                     if ($results?.length) {
                         $results.find('.atria-preset-group-toolbar').remove();
 
-                        const $toolbar = $('<div class="atria-preset-group-toolbar"></div>');
-                        const $newGroupButton = $('<button type="button" class="atria-preset-group-toolbar__new"></button>')
+                        const $toolbar = jq('<div class="atria-preset-group-toolbar"></div>');
+                        const $newGroupButton = jq('<button type="button" class="atria-preset-group-toolbar__new"></button>')
                             .html('<i class="fa-solid fa-folder-plus"></i> ' + t`New Preset Group...`)
                             .on('click', async (event) => {
                                 event.preventDefault();
@@ -672,10 +698,10 @@ export function initActionableSingleSelect(select, {
         });
 
     // === Pointer events for delete buttons, group headers, group actions ===
-    $(document)
+    jq(document)
         .off('pointerdown' + namespace + ' mousedown' + namespace + ' mouseup' + namespace + ' touchstart' + namespace + ' touchend' + namespace)
         .on('pointerdown' + namespace + ' mousedown' + namespace + ' mouseup' + namespace + ' touchstart' + namespace + ' touchend' + namespace, '.atria-action-select2-option__delete, .atria-action-select2-option__group, .atria-preset-group-header, .atria-preset-group-action, .atria-preset-group-subgroup', function (event) {
-            const $el = $(this);
+            const $el = jq(this);
             // Only handle events for our owner
             if ($el.data('atriaActionOwner') !== ownerKey && $el.closest('[data-atria-action-owner]').data('atriaActionOwner') !== ownerKey) {
                 return;
@@ -686,17 +712,17 @@ export function initActionableSingleSelect(select, {
         });
 
     // === Group menu button handler ===
-    $(document)
+    jq(document)
         .off('pointerup' + namespace + '.groupMenu')
         .on('pointerup' + namespace + '.groupMenu', '.atria-action-select2-option__group', function (event) {
-            if ($(this).data('atriaActionOwner') !== ownerKey || !presetGroupCallbacks) {
+            if (jq(this).data('atriaActionOwner') !== ownerKey || !presetGroupCallbacks) {
                 return;
             }
 
             event.preventDefault();
             event.stopPropagation();
 
-            const presetName = String($(this).data('optionText') ?? '').trim();
+            const presetName = String(jq(this).data('optionText') ?? '').trim();
             if (!presetName) {
                 return;
             }
@@ -706,18 +732,18 @@ export function initActionableSingleSelect(select, {
         });
 
     // === Delete button handler ===
-    $(document)
+    jq(document)
         .off('pointerup' + namespace + '.delete')
         .on('pointerup' + namespace + '.delete', '.atria-action-select2-option__delete', async function (event) {
-            if ($(this).data('atriaActionOwner') !== ownerKey || typeof onDelete !== 'function') {
+            if (jq(this).data('atriaActionOwner') !== ownerKey || typeof onDelete !== 'function') {
                 return;
             }
 
             event.preventDefault();
             event.stopPropagation();
 
-            const value = String($(this).data('optionValue') ?? '');
-            const text = String($(this).data('optionText') ?? '').trim();
+            const value = String(jq(this).data('optionValue') ?? '');
+            const text = String(jq(this).data('optionText') ?? '').trim();
             const optionElement = Array.from(selectElement.options).find((option) => String(option.value) === value && String(option.textContent || '').trim() === text) || null;
             const optionData = {
                 ownerKey,
@@ -743,16 +769,16 @@ export function initActionableSingleSelect(select, {
         });
 
     // === Group header pointerup - toggle collapse (pointerup for WebView touch handling) ===
-    $(document)
+    jq(document)
         .off('pointerup' + namespace + '.groupHeader')
         .on('pointerup' + namespace + '.groupHeader', '.atria-preset-group-header', function (event) {
-            const $header = $(this);
+            const $header = jq(this);
             if ($header.data('atriaActionOwner') !== ownerKey) {
                 return;
             }
 
             // Don't toggle if clicking action buttons or subgroup button
-            if ($(event.target).closest('.atria-preset-group-action, .atria-preset-group-subgroup').length) {
+            if (jq(event.target).closest('.atria-preset-group-action, .atria-preset-group-subgroup').length) {
                 return;
             }
 
@@ -772,18 +798,18 @@ export function initActionableSingleSelect(select, {
         });
 
     // === Group action buttons (rename/delete/create sub-group) — pointerup for WebView touch handling ===
-    $(document)
+    jq(document)
         .off('pointerup' + namespace + '.groupAction')
         .on('pointerup' + namespace + '.groupAction', '.atria-preset-group-action, .atria-preset-group-subgroup', async function (event) {
-            if ($(this).data('atriaActionOwner') !== ownerKey || !presetGroupCallbacks) {
+            if (jq(this).data('atriaActionOwner') !== ownerKey || !presetGroupCallbacks) {
                 return;
             }
 
             event.preventDefault();
             event.stopPropagation();
 
-            const action = $(this).data('action');
-            const groupId = $(this).data('groupId');
+            const action = jq(this).data('action');
+            const groupId = jq(this).data('groupId');
 
             if (action === 'subgroup') {
                 const name = prompt(t`Sub-group name:`);
@@ -830,4 +856,5 @@ export function initActionableSingleSelect(select, {
                 refreshOpenDropdown(selectElement, ownerKey);
             }
         });
+    return true;
 }
