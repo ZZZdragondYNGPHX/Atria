@@ -63,6 +63,11 @@ export async function activateGamePackageUi(packageState, worldSession, options 
 
     const actions = Object.freeze({
         async dispatch(commandId, args) {
+            if (typeof options.dispatchCommand === 'function') {
+                const result = await options.dispatchCommand(commandId, args);
+                selectors.refresh();
+                return result;
+            }
             if (!worldSession?.dispatchCommandInternal) {
                 throw new Error('Game UI cannot dispatch commands without an active World/Logic session');
             }
