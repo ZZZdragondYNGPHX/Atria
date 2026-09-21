@@ -42,6 +42,7 @@ jobs:
           game-runtime/llm-intent-resolver.test.js
           game-runtime/llm-event-interpreter.test.js
           game-runtime/llm-memory-bridge.test.js
+          game-runtime/llm-memory-ingestion.test.js
           game-runtime/llm-observation.test.js
           game-runtime/llm-turn-context.test.js
           game-runtime/llm-runtime.test.js
@@ -67,6 +68,9 @@ jobs:
           game-runtime/world-session.test.js
           game-runtime/world-journal.test.js
           game-runtime/world-branch.test.js
+          memory-graph/atomic-facts.test.js
+          memory-graph/source-lifecycle.test.js
+          memory-graph/hybrid-retrieval.test.js
           regex-engine/game-runtime-boundary.test.js
           regex-engine/lane-semantics.test.js
           card-app.test.js
