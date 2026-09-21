@@ -39,6 +39,7 @@ jobs:
           game-runtime/logic-rules-integration.test.js
           game-runtime/llm-tools.test.js
           game-runtime/llm-intent-resolver.test.js
+          game-runtime/llm-event-interpreter.test.js
           game-runtime/llm-observation.test.js
           game-runtime/llm-turn-context.test.js
           game-runtime/llm-runtime.test.js
