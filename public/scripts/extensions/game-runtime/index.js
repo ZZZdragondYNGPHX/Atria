@@ -1,4 +1,5 @@
 import { loadGameLogicDefinition } from './logic/package.js';
+import { isGameBranchPathCompatible } from './world/branch.js';
 import { resolveGamePackageAssetUrl } from './manifest.js';
 import { GAME_PACKAGE_STATUS, loadGamePackage } from './package-loader.js';
 import { activateGamePackageUi } from './ui/live.js';
@@ -239,6 +240,39 @@ export function getWorldBranchPath() {
     return currentWorldSession ? currentWorldSession.getBranchPath() : [];
 }
 
+export function getAuthoritativeMemorySources() {
+    if (!currentWorldSession) return [];
+    const branchPath = currentWorldSession.getBranchPath();
+    const journal = currentWorldSession.getJournal();
+    return (journal?.events || [])
+        .filter(event => isGameBranchPathCompatible(event?.branchPath || [], branchPath))
+        .map(event => {
+            const commandId = String(event?.meta?.command?.id || '').trim();
+            const branchId = String(event?.branchId || '').trim();
+            const content = JSON.stringify({
+                eventId: event.id,
+                type: event.type,
+                payload: event.payload ?? {},
+                branchId,
+                ...(commandId ? { commandId } : {}),
+            });
+            return {
+                id: 'game-event:' + String(event.id),
+                kind: 'game_event',
+                eventId: String(event.id),
+                branchId,
+                fingerprint: JSON.stringify([
+                    event.id,
+                    event.type,
+                    event.payload ?? {},
+                    event.branchPath || [],
+                    commandId,
+                ]),
+                content,
+            };
+        });
+}
+
 eventSource.on(eventTypes.CHAT_CHANGED, () => {
     void reloadGamePackage();
 });
@@ -262,6 +296,7 @@ registerExtensionApi(MODULE_NAME, {
     getWorldState,
     getWorldJournal,
     getWorldBranchPath,
+    getAuthoritativeMemorySources,
     exitUi: exitCurrentGameUi,
     disableForSession: disableCurrentPackageForSession,
 });
