@@ -80,6 +80,9 @@ describe('R7 shell architecture', () => {
         expect(shell).toContain('min-height: 100dvh;');
         expect(shell).toContain('.atria-command-surface:not([hidden])');
         expect(shell).toContain('display: block !important;');
+        expect(shell).toContain('var(--atri-safe-area-bottom)');
+        expect(shell).toContain('var(--atri-safe-area-left)');
+        expect(shell).toContain('var(--atri-safe-area-right)');
     });
 
     test('R7D has one route/history authority and one ordered Web Back resolver', () => {
