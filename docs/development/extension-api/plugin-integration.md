@@ -2,6 +2,23 @@
 
 APIs that connect plugins to Atria's pipelines and to each other: regex processing, search tools, the cross-plugin API registry, and the event system.
 
+## Host UI integration after R7H
+
+Atria Shell is the authoritative product host. The inherited SillyTavern top bar and drawer launchers are no longer the normal navigation UI.
+
+Third-party extensions should treat legacy host DOM as a **compatibility ABI**, not as layout or navigation authority:
+
+- do not assume `#top-settings-holder`, `#rightNavDrawerIcon`, `#leftNavDrawerIcon`, `#WIDrawerIcon`, or other legacy launchers are visible or clickable;
+- do not position plugin UI relative to legacy drawer geometry;
+- do not move, clone, or replace `#sheld`, `#chat`, `#send_form`, or `#send_textarea`;
+- prefer the public Context API, events, slash commands, popups, and extension APIs for behavior;
+- existing extension settings injection roots such as `#extensions_settings` and `#extensions_settings2` remain available as compatibility anchors and may be reparented into Atria's Plugins utility;
+- existing extension-menu actions remain supported as a compatibility path, but plugins should not treat the old top/drawer chrome as permanent product IA.
+
+Compatibility anchors can move in the DOM while preserving identity. Code that needs an anchor should resolve it when used rather than caching its parent, absolute position, or visibility at startup.
+
+Atria also retains an explicit legacy recovery startup path for host failures. This is a recovery/debug contract, not a second supported product shell.
+
 ## Regex Runtime API
 
 Plugins can register managed regex processors via `registerManagedRegexProvider()` to participate in Atria's regex processing pipeline. This function is exported from the regex engine module:

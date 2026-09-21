@@ -152,3 +152,38 @@ jobs:
           e2e/atria-shell/08-final-hardening.e2e.js
           --project=e2e
           --workers=1
+
+
+  final-regression:
+    name: R7 Final Node Regression and Frontend Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run complete Node unit regression
+        run: npm run test:unit:serial --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Verify retired preview gate is absent
+        run: |
+          if grep -RInE 'atria\.shell\.preview|ATRIA_SHELL_PREVIEW_|setPreviewEnabled|forcePreview|data-atria-shell-preview|\?atriaShell=1' \
+            public/scripts/atria-shell \
+            public/css/atria-shell.css \
+            public/script.js \
+            tests/atria-shell \
+            tests/e2e/atria-shell; then
+            echo "Retired R7 preview-gate contract found."
+            exit 1
+          fi
