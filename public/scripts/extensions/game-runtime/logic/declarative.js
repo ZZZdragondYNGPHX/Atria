@@ -22,6 +22,14 @@ function assertKnownFields(source, allowed, label) {
     }
 }
 
+function normalizeOptionalArray(value, label) {
+    if (value === undefined) return [];
+    if (!Array.isArray(value)) {
+        throw new Error(label + ' must be an array');
+    }
+    return value;
+}
+
 function compileValueTemplate(value, label) {
     if (Array.isArray(value)) {
         const items = value.map((item, index) => compileValueTemplate(item, label + '[' + index + ']'));
@@ -196,15 +204,17 @@ export function compileDeclarativeCommand(raw) {
 
     const id = typeof raw.id === 'string' ? raw.id.trim() : '';
     if (!id) throw new Error('Declarative command requires id');
-    const events = Array.isArray(raw.events)
-        ? raw.events.map((event, index) => compileEventTemplate(
-            event,
-            `Declarative command '${id}' event ${index}`,
-        ))
-        : [];
-    const validators = Array.isArray(raw.validators)
-        ? raw.validators.map((validator, index) => compileValidator(validator, index, id))
-        : [];
+    const events = normalizeOptionalArray(
+        raw.events,
+        `Declarative command '${id}' events`,
+    ).map((event, index) => compileEventTemplate(
+        event,
+        `Declarative command '${id}' event ${index}`,
+    ));
+    const validators = normalizeOptionalArray(
+        raw.validators,
+        `Declarative command '${id}' validators`,
+    ).map((validator, index) => compileValidator(validator, index, id));
 
     return {
         id,
@@ -263,15 +273,20 @@ export function compileDeclarativeRule(raw) {
 
     const id = typeof raw.id === 'string' ? raw.id.trim() : '';
     if (!id) throw new Error('Declarative rule requires id');
-    const whenAst = raw.when === undefined
-        ? null
-        : compileFormula(raw.when);
-    const events = Array.isArray(raw.events)
-        ? raw.events.map((event, index) => compileEventTemplate(
-            event,
-            `Declarative rule '${id}' event ${index}`,
-        ))
-        : [];
+    let whenAst = null;
+    if (raw.when !== undefined) {
+        if (typeof raw.when !== 'string' || !raw.when.trim()) {
+            throw new Error(`Declarative rule '${id}' when must be a non-empty string`);
+        }
+        whenAst = compileFormula(raw.when);
+    }
+    const events = normalizeOptionalArray(
+        raw.events,
+        `Declarative rule '${id}' events`,
+    ).map((event, index) => compileEventTemplate(
+        event,
+        `Declarative rule '${id}' event ${index}`,
+    ));
 
     return {
         id,
@@ -315,15 +330,18 @@ export function compileDeclarativeLogic(raw = {}) {
         'Declarative logic root',
     );
 
-    const commands = Array.isArray(raw.commands)
-        ? raw.commands.map(compileDeclarativeCommand)
-        : [];
-    const reducers = Array.isArray(raw.reducers)
-        ? raw.reducers.map(compileDeclarativeReducer)
-        : [];
-    const rules = Array.isArray(raw.rules)
-        ? raw.rules.map(compileDeclarativeRule)
-        : [];
+    const commands = normalizeOptionalArray(
+        raw.commands,
+        'Declarative logic commands',
+    ).map(compileDeclarativeCommand);
+    const reducers = normalizeOptionalArray(
+        raw.reducers,
+        'Declarative logic reducers',
+    ).map(compileDeclarativeReducer);
+    const rules = normalizeOptionalArray(
+        raw.rules,
+        'Declarative logic rules',
+    ).map(compileDeclarativeRule);
 
     return Object.freeze({
         commands: Object.freeze(commands),
