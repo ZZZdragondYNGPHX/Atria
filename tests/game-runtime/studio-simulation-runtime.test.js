@@ -98,7 +98,7 @@ const project = {
                 on: 'EntityDied',
                 events: [{
                     type: 'ScoreAwarded',
-                    payload: { amount: { formula: 'rng.stream.score.int(5, 5)' } },
+                    payload: { amount: { formula: 'rng.int(5, 5)' } },
                 }],
             },
         ],
@@ -141,7 +141,7 @@ describe('Game Studio Simulation Harness', () => {
                 value: 8,
             }),
             expect.objectContaining({
-                stream: expect.stringContaining('score'),
+                stream: 'default',
                 operation: 'int',
                 value: 5,
             }),
