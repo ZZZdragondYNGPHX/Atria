@@ -162,6 +162,40 @@ describe('Declarative Game Logic compiler', () => {
         expect(persistence.writes).toBe(0);
     });
 
+    test('malformed declarative collection and condition types fail during compile', () => {
+        expect(() => compileDeclarativeLogic({
+            commands: {},
+        })).toThrow(/commands must be an array/);
+
+        expect(() => compileDeclarativeLogic({
+            commands: [{
+                id: 'bad_events',
+                events: {},
+            }],
+        })).toThrow(/events must be an array/);
+
+        expect(() => compileDeclarativeLogic({
+            commands: [{
+                id: 'bad_validators',
+                validators: {},
+                events: [],
+            }],
+        })).toThrow(/validators must be an array/);
+
+        expect(() => compileDeclarativeLogic({
+            rules: [{
+                id: 'bad_when',
+                on: 'DamageDealt',
+                when: true,
+                events: [],
+            }],
+        })).toThrow(/when must be a non-empty string/);
+
+        expect(() => compileDeclarativeLogic({
+            reducers: {},
+        })).toThrow(/reducers must be an array/);
+    });
+
     test('unsafe reducer paths and unknown DSL fields fail during compile', () => {
         expect(() => compileDeclarativeLogic({
             reducers: [{
