@@ -7,7 +7,7 @@
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
 - Document branch: `docs`
 - Document path: `refactor/game-runtime-architecture.md`
-- Status: architecture approved and in implementation; R0/R1 and the minimum R2 World/Event vertical slice are complete on the working branch.
+- Status: architecture approved and in implementation; R0-R4 are complete, and R5 has begun on the working branch.
 
 This is a product-architecture refactor, not a narrow Regex optimization task.
 
@@ -310,6 +310,32 @@ Requirements:
 - ordinary character-card semantics remain usable when Game Runtime is unavailable.
 
 Do not design the new runtime around separate user-installed “HTML zip + Regex + state plugin + worldbook” bundles.
+
+
+### 4.4 Narrative Card remains a first-class mode
+
+Game Runtime is an opt-in enhancement, not a tax imposed on every character card.
+
+A character without `game.json` remains a complete, supported **Narrative Card**.
+
+For Narrative Cards:
+
+- character fields / first message / prompt fields / World Info remain the normal authoring model;
+- Regex remains an optional text-processing tool;
+- Game Package loading, World Runtime, Game Logic Runtime and Game UI do not need to initialize;
+- authors are not required to learn Schema, Commands, Rules, Selectors or Surfaces;
+- the host UI should present a clean narrative/chat experience rather than exposing irrelevant game-runtime controls.
+
+Game Studio / authoring UI must use progressive disclosure:
+
+```text
+Narrative Card
+ -> optional interactive enhancement
+ -> explicit Game Package upgrade
+```
+
+Creating a Game Package must be an explicit author action. Atria must not silently “upgrade” ordinary cards into game projects.
+
 
 ---
 
@@ -622,7 +648,35 @@ Examples:
 
 Native component composition must preserve one source of truth for generation/swipe/edit/regenerate behavior.
 
-### 8.4 Responsive contract
+### 8.4 Persistent Game Surface and Conversation Timeline
+
+Game UI is not a chat-floor payload and must not be modeled as “HTML stored in floor 0”.
+
+The architectural split is:
+
+```text
+Conversation Timeline
+= history / user messages / assistant messages / swipe / branch / context
+
+Persistent Game Surface
+= HUD / scene / map / inventory / dialogue shell / controls / game presentation
+```
+
+A Game Surface is session-persistent and branch-aware, but it does not belong to any individual conversation floor.
+
+Conversation floors remain useful as timeline/history records and may continue to back context, swipe and branch behavior. They are not the public UI container contract.
+
+Mode semantics:
+
+- **Component** — persistent Game Surface components coexist around the native Conversation Timeline.
+- **Hybrid** — a persistent Game Shell may embed/recompose the native Conversation Timeline and Composer as reusable host components.
+- **Full** — the persistent Game Surface may hide the traditional floor presentation entirely; the Conversation Timeline still exists as history/context/branch data unless the game explicitly uses another supported projection.
+
+This rule allows Full-mode visual novels/RPGs/phone UIs to present a game rather than a stack of chat bubbles while retaining reliable conversation history underneath.
+
+Button/structured actions may be recorded as structured user-action timeline records with an optional textual projection. The presentation layer decides whether the player sees them as chat messages, action cards, dialogue choices or no explicit floor at all.
+
+### 8.5 Responsive contract
 
 Runtime provides environment contracts:
 
@@ -639,7 +693,7 @@ Standard surfaces should adapt automatically.
 
 Cards may provide explicit alternate layouts, but simple packages should be responsive without duplicated mobile HTML.
 
-### 8.5 Immersive integration
+### 8.6 Immersive integration
 
 Immersive remains an Atria presentation layer, not a state owner.
 
@@ -968,7 +1022,120 @@ Logs should make source authority visible so support can distinguish:
 - narrator/director prose contradiction;
 - branch anchoring bug.
 
-### 10.8 Connection Profile and Runtime Role
+### 10.8 Turn Controller and Turn Transaction
+
+Persistent Game Surfaces must not directly coordinate generation lifecycle by listening to unrelated subsystem events.
+
+Atria should expose one **Turn Controller** that owns the lifecycle of a user/game turn and one branch-anchored **Turn Transaction** that groups the artifacts produced by that attempt.
+
+A turn has stable identifiers independent of mutable array indexes, conceptually including:
+
+- `turnId`;
+- `attemptId`;
+- user action/message identity;
+- assistant result identity when one exists;
+- branch/floor/swipe anchor.
+
+The lifecycle should be explicit enough to represent:
+
+```text
+submitted
+ -> resolving
+ -> calculating
+ -> recalling
+ -> orchestrating
+ -> narrating
+ -> finalized
+```
+
+plus terminal/interruption states such as `aborted` and `failed`.
+
+The Turn Transaction groups, as applicable:
+
+- resolved Command(s);
+- provisional/attempt-scoped World Events;
+- projected World state for the attempt;
+- Memory candidates / recall result;
+- Orchestrator snapshot/guidance;
+- final prose / assistant attempt.
+
+The observable contract is atomic from the player's perspective: an interrupted or abandoned attempt must not leave a finalized prose result pointing at one world branch while state/memory/orchestration artifacts belong to another.
+
+Implementation may use attempt branches, transaction markers, compensating/rollback selection or another mechanism compatible with the immutable Event Journal. The user-facing semantics below are required even if internal event records remain append-only.
+
+#### Stop Generation
+
+Stops the current unfinished attempt:
+
+- abort Resolver / Event Interpreter / Orchestrator / Narrator / sub-agents as applicable;
+- retain the submitted user input/action by default;
+- do not finalize the unfinished assistant attempt;
+- any attempt-scoped World/Memory/Orchestrator artifacts must not become the active durable turn result.
+
+#### Undo Turn
+
+Returns to the state before the turn:
+
+- remove/deactivate the turn's user + assistant presentation records as appropriate;
+- restore the prior active World/Event branch;
+- remove/deactivate the turn's Memory writes and Orchestrator snapshot;
+- return presentation to the prior finalized turn.
+
+#### Delete Assistant Result
+
+Deleting the current assistant result while retaining the user input must also deactivate/roll back that assistant attempt's game/memory/orchestration artifacts. It must never leave “prose deleted but damage/inventory/location change still active”.
+
+The retained user turn can then be retried or edited.
+
+#### Rewrite Narrative
+
+Re-runs only the Narrative Producer over the same authoritative committed game facts.
+
+```text
+same Command result
+same RNG result
+same Events
+same World state
+ -> new prose
+```
+
+This is a presentation/narrative variant, not a new game outcome.
+
+#### Retry Turn
+
+Creates a new full turn attempt:
+
+```text
+same or edited user input
+ -> Resolver if needed
+ -> Game Logic
+ -> new deterministic RNG stream/attempt
+ -> new Events / branch
+ -> new prose
+```
+
+A retry may therefore produce a different game outcome.
+
+#### Switch Variant / Swipe
+
+An assistant swipe/variant is not merely alternate text when it represents a retried game turn.
+
+A full attempt variant owns its corresponding:
+
+- Command result;
+- RNG trace;
+- Event lineage;
+- World projection;
+- Memory/Orchestrator artifacts;
+- prose.
+
+Switching the active full variant must switch the active World/Event branch coherently.
+
+Narrative-only rewrites may share the same authoritative Event lineage while carrying different prose variants.
+
+This distinction should be explicit in runtime metadata so Atria can tell **same facts, different wording** from **different game outcome**.
+
+### 10.9 Connection Profile and Runtime Role
 
 Atria 1.0 must separate **how a model is reached** from **what the model is used for**.
 
@@ -1024,7 +1191,7 @@ Each role may define:
 
 Do not extend the old profile `mode` enum indefinitely with values such as `state`. The role layer is the scalable abstraction.
 
-### 10.9 Model & Runtime configuration UX
+### 10.10 Model & Runtime configuration UX
 
 The existing Connection Manager UI currently presents Chat / Embedding / Rerank as peer connection modes. During this Master Refactor it must evolve toward a role-oriented **Model & Runtime** configuration surface.
 
@@ -1368,6 +1535,8 @@ Work:
 - typed interpretation schema / confidence / no-change behavior;
 - observation projection;
 - Turn Coordination Contract / Turn Context;
+- Turn Controller + Turn Transaction lifecycle;
+- Stop / Undo / Delete Assistant Result / Rewrite Narrative / Retry Turn / Switch Variant semantics;
 - Memory recall bridge and post-turn provenance-aware memory update;
 - Orchestrator bridge for authoritative World/Event/Memory context;
 - single Narrative Producer arbitration (Narrator vs Director takeover);
@@ -1386,6 +1555,10 @@ Exit:
 - ambiguous semantic input -> Event Interpreter -> deterministic Game Logic -> commit e2e;
 - spec/agenda/loop guidance and Memory recall reach the same Narrative Contract without overriding World facts;
 - Director takeover produces the only final prose body while still obeying committed World facts;
+- stopping an unfinished attempt does not leave active finalized World/Memory/Orchestrator artifacts;
+- deleting an assistant attempt cannot leave its game-state effects active;
+- Rewrite Narrative preserves authoritative Command/RNG/Event facts while changing only prose;
+- Retry Turn creates a distinct attempt/event branch and switching variants restores the matching World projection;
 - post-turn Memory ingestion uses committed Events for authoritative game facts and does not learn discarded drafts/capsules as facts;
 - deterministic commands skip Event Interpreter;
 - Event Interpreter can return no-change without creating state noise;
@@ -1486,6 +1659,11 @@ Expected areas:
 - Game Runtime error recovery;
 - LLM resolve/interpret/narrate tool-loop tests;
 - Turn Context authority/precedence tests;
+- Turn Controller interruption/abort tests;
+- Turn Transaction rollback/deactivation tests;
+- narrative-rewrite same-facts tests;
+- full-retry alternate-event-branch tests;
+- assistant-delete state-coherence tests;
 - Orchestrator + Game Runtime + Memory integration tests;
 - Director takeover single-writer tests;
 - Memory provenance and branch-alignment tests;
@@ -1541,6 +1719,9 @@ This refactor does not aim to:
 - let Orchestrator, Memory and Narrator maintain separate competing versions of current world truth;
 - treat Memory summaries or Orchestrator capsules as higher authority than current World Runtime state;
 - run Director and Narrator as two independent final-body writers in the same turn;
+- equate Game UI with a special “floor 0” message or require persistent UI to live inside conversation-floor DOM;
+- let stopping/deleting a generation leave its World/Event/Memory side effects active;
+- treat narrative rewrite and full game retry as the same operation;
 - keep extending Connection Profile `mode` with every new AI workload instead of introducing Runtime Roles;
 - preserve the old Chat/Embedding/Rerank-only API-page information architecture for Atria 1.0;
 - dump full World State into every LLM request;
@@ -1552,20 +1733,31 @@ This refactor does not aim to:
 
 ## 19. Current implementation rule
 
-R0, R1 and the minimum R2 World/Event vertical slice are already implemented on the working branch. Continue from the live handoff; do not restart those phases.
+R0-R4 are complete on the working branch. R5 has begun with the initial LLM contract foundation.
 
-The next implementation conversation should:
+Already implemented at the start of R5:
 
-1. re-read current `main:AGENTS.md`;
-2. re-read current `main:FORK_MAINTENANCE.md`;
-3. re-read `docs:handoff/latest-handoff.md`;
-4. read `docs:handoff/game-runtime-architecture.md`;
-5. read this document from `docs:refactor/game-runtime-architecture.md`;
-6. verify live branch HEAD and main HEAD;
-7. inspect current `public/scripts/extensions/game-runtime/**` and focused tests;
-8. continue R3 with the smallest real Command Bus vertical slice.
+- LLM-safe typed Command tool catalog;
+- command exposure/visibility metadata;
+- explicit read-only World Observation projection;
+- branch-anchored Turn Context;
+- live World-session integration and focused tests.
 
-Do not jump to R7 visual redesign before R3-R6 runtime contracts are stable. R7 is deliberately late so the UI reflects the final product model rather than freezing premature runtime assumptions.
+Continue from the live handoff; do not restart R0-R4 or the already-landed R5 foundation.
+
+The next implementation work should extend R5 into:
+
+1. Intent Resolver;
+2. optional Event Interpreter;
+3. Turn Controller / Turn Transaction and interruption/variant semantics;
+4. Runtime Role routing/fallback;
+5. Memory bridge;
+6. Orchestrator bridge;
+7. single Narrative Producer arbitration;
+8. Narrator and end-to-end game-aware turn flow.
+
+Do not jump to R7 visual redesign before R5-R6 runtime/authoring contracts are stable. R7 is deliberately late so the host UI reflects the final product model rather than freezing premature runtime assumptions.
+
 
 ---
 
@@ -1581,13 +1773,15 @@ The refactor is successful when Atria can support a character card that:
 - uses deterministic RNG;
 - records immutable causal events;
 - replays and branches correctly with conversation history;
-- presents itself through Component/Hybrid/Full HTML UI;
+- presents itself through Component/Hybrid/Full HTML UI using Persistent Game Surfaces independent of individual chat-floor DOM;
+- preserves Narrative Cards as first-class non-Game-Package experiences;
 - uses selectors rather than raw mutable state for UI;
 - converts free-text intent into commands;
 - optionally uses Event Interpreter for ambiguous semantics without giving it direct state authority;
 - coordinates Game Runtime, Memory, Orchestrator and the final prose through one branch-anchored Turn Context;
 - uses committed World Events as the source for hard game memories while keeping narrative memories provenance-aware;
 - supports spec/agenda/loop guidance and Director takeover without creating competing final-body/state authorities;
+- provides coherent Stop/Undo/Delete/Rewrite/Retry/Variant behavior so conversation history, World Events, Memory and orchestration remain on the same attempt branch;
 - routes Narrator / Intent Resolver / Event Interpreter / other model workloads through explicit Runtime Roles with fallback policies;
 - narrates committed results without LLM-owned state arithmetic;
 - can be simulated and debugged in Game Studio;
