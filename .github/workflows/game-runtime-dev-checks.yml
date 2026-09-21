@@ -36,6 +36,7 @@ jobs:
           game-runtime/studio-structured-runtime-editors.test.js
           game-runtime/studio-structured-logic-editors.test.js
           game-runtime/studio-structured-projection-editors.test.js
+          game-runtime/studio-simulation-runtime.test.js
           game-runtime/world-runtime.test.js
           game-runtime/command-registry.test.js
           game-runtime/logic-runtime.test.js
@@ -98,6 +99,8 @@ jobs:
           public/scripts/extensions/character-editor-assistant/studio/structured-runtime-editors.js
           public/scripts/extensions/character-editor-assistant/studio/structured-logic-editors.js
           public/scripts/extensions/character-editor-assistant/studio/structured-projection-editors.js
+          public/scripts/extensions/character-editor-assistant/studio/simulation-runtime.js
+          public/scripts/extensions/character-editor-assistant/studio/simulation-ui.js
           public/scripts/extensions/character-editor-assistant/studio/structured-runtime-ui.js
           public/scripts/extensions/character-editor-assistant/studio/studio.js
           public/scripts/extensions/memory-graph/api.js
