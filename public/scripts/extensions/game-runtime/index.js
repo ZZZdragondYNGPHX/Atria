@@ -135,6 +135,7 @@ export async function reloadGamePackage() {
                 commands: logicDefinition.commands,
                 reducers: logicDefinition.reducers,
                 rules: logicDefinition.rules,
+                interpretations: logicDefinition.interpretations,
             });
             nextUiSession = await activateGamePackageUi(next, nextWorldSession, {
                 headers: getRequestHeaders(),
