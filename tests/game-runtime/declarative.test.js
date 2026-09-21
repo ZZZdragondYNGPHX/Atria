@@ -1,0 +1,183 @@
+import { describe, expect, test } from '@jest/globals';
+
+import { compileDeclarativeLogic } from '../../public/scripts/extensions/game-runtime/logic/declarative.js';
+import { createReducerRegistry } from '../../public/scripts/extensions/game-runtime/logic/reducers.js';
+import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
+import { createWorldRuntime } from '../../public/scripts/extensions/game-runtime/world/runtime.js';
+
+function makePersistence() {
+    let value = null;
+    let writes = 0;
+    return {
+        async read() {
+            return value == null ? null : structuredClone(value);
+        },
+        async update(updater) {
+            const next = await updater(value == null ? null : structuredClone(value));
+            value = structuredClone(next);
+            writes += 1;
+            return structuredClone(value);
+        },
+        get writes() {
+            return writes;
+        },
+    };
+}
+
+const worldSchema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['hp', 'dead'],
+    properties: {
+        hp: { type: 'integer', minimum: 0, maximum: 20 },
+        dead: { type: 'boolean' },
+    },
+};
+
+const declarativeDefinition = {
+    commands: [{
+        id: 'strike',
+        argsSchema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['amount'],
+            properties: {
+                amount: { type: 'integer', minimum: 1, maximum: 20 },
+            },
+        },
+        validators: [{
+            id: 'can_strike',
+            formula: 'world.dead == false && args.amount <= world.hp',
+            error: 'actor cannot strike',
+        }],
+        events: [{
+            type: 'DamageDealt',
+            payload: {
+                amount: { formula: 'args.amount' },
+            },
+        }],
+    }],
+    reducers: [
+        {
+            type: 'DamageDealt',
+            payloadSchema: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['amount'],
+                properties: {
+                    amount: { type: 'integer', minimum: 1, maximum: 20 },
+                },
+            },
+            assign: {
+                hp: { formula: 'max(0, world.hp - args.amount)' },
+            },
+        },
+        {
+            type: 'EntityDied',
+            payloadSchema: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {},
+            },
+            assign: {
+                dead: true,
+            },
+        },
+    ],
+    rules: [{
+        id: 'death',
+        on: 'DamageDealt',
+        when: 'world.hp == 0 && world.dead == false',
+        events: [{
+            type: 'EntityDied',
+            payload: {},
+        }],
+    }],
+};
+
+async function makeRuntime() {
+    const compiled = compileDeclarativeLogic(declarativeDefinition);
+    const reducerRegistry = createReducerRegistry(compiled.reducers);
+    const persistence = makePersistence();
+    const world = createWorldRuntime({
+        initialState: { hp: 10, dead: false },
+        schema: worldSchema,
+        reducers: reducerRegistry.toMap(),
+        persistence,
+    });
+    await world.load([0]);
+    const logic = createGameLogicRuntime({
+        world,
+        commands: compiled.commands,
+        rules: compiled.rules,
+        rngSeed: 'declarative-fixture',
+    });
+    return { compiled, logic, persistence, world };
+}
+
+describe('Declarative Game Logic compiler', () => {
+    test('compiles into the same Command/Reducer/Rule transaction contracts', async () => {
+        const { compiled, logic, persistence, world } = await makeRuntime();
+
+        expect(compiled.commands).toHaveLength(1);
+        expect(compiled.reducers).toHaveLength(2);
+        expect(compiled.rules).toHaveLength(1);
+
+        const result = await logic.dispatch('strike', { amount: 10 });
+
+        expect(result.afterState).toEqual({ hp: 0, dead: true });
+        expect(result.events.map(event => event.type)).toEqual([
+            'DamageDealt',
+            'EntityDied',
+        ]);
+        expect(result.ruleTrace).toEqual([
+            expect.objectContaining({
+                ruleId: 'death',
+                status: 'emitted',
+            }),
+        ]);
+        expect(world.getState()).toEqual(result.afterState);
+        expect(persistence.writes).toBe(1);
+    });
+
+    test('declarative preconditions fail before authoritative mutation', async () => {
+        const { logic, persistence, world } = await makeRuntime();
+
+        await expect(logic.dispatch('strike', { amount: 11 })).rejects.toThrow(/actor cannot strike/);
+
+        expect(world.getState()).toEqual({ hp: 10, dead: false });
+        expect(world.getJournal().events).toEqual([]);
+        expect(persistence.writes).toBe(0);
+    });
+
+    test('declarative simulation uses the same chain without persistence', async () => {
+        const { logic, persistence, world } = await makeRuntime();
+
+        const result = await logic.simulate('strike', { amount: 10 });
+
+        expect(result.afterState).toEqual({ hp: 0, dead: true });
+        expect(result.committed).toBe(false);
+        expect(world.getState()).toEqual({ hp: 10, dead: false });
+        expect(world.getJournal().events).toEqual([]);
+        expect(persistence.writes).toBe(0);
+    });
+
+    test('unsafe reducer paths and unknown DSL fields fail during compile', () => {
+        expect(() => compileDeclarativeLogic({
+            reducers: [{
+                type: 'Bad',
+                assign: {
+                    '__proto__.polluted': true,
+                },
+            }],
+        })).toThrow(/unsafe assignment path/);
+
+        expect(() => compileDeclarativeLogic({
+            commands: [{
+                id: 'bad',
+                events: [],
+                broadContext: true,
+            }],
+        })).toThrow(/unknown field/);
+    });
+});
