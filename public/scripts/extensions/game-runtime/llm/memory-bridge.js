@@ -1,3 +1,4 @@
+import { cloneGameLlmValue } from './clone.js';
 import { getGameBranchId, normalizeGameBranchPath } from '../world/branch.js';
 
 const MAX_QUERY_CHARS = 12000;
@@ -5,9 +6,7 @@ const MAX_MEMORY_CONTENT_CHARS = 48000;
 const MAX_REFERENCES = 64;
 const MAX_DIAGNOSTICS = 32;
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function deepFreeze(value, seen = new Set()) {
     if (!value || typeof value !== 'object' || seen.has(value)) return value;
