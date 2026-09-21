@@ -202,11 +202,25 @@ export async function selectCharacterByName(page, name) {
         await onboardingHeader.waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
     }
 
-    const drawer = page.locator('#rightNavDrawerIcon');
-    const drawerClosed = await drawer.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
-    if (drawerClosed) await drawer.click();
+    const openedByShell = await page.evaluate(() => {
+        const shell = window.Atria?.shell;
+        const workspaceHost = shell?.getWorkspaceHost?.();
+        if (!shell?.isMounted?.() || typeof workspaceHost?.openLibrarySection !== 'function') {
+            return false;
+        }
+        workspaceHost.openLibrarySection('characters');
+        return true;
+    }).catch(() => false);
 
-    // If a prior character was already selected, the right drawer is
+    if (openedByShell) {
+        await page.locator('#rm_print_characters_block').waitFor({ state: 'visible', timeout: 10_000 });
+    } else {
+        const drawer = page.locator('#rightNavDrawerIcon');
+        const drawerClosed = await drawer.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
+        if (drawerClosed) await drawer.click();
+    }
+
+    // If a prior character was already selected, the character surface is
     // showing the character-edit panel rather than the list. Click the
     // "Characters" sub-panel button so #rm_print_characters_block becomes
     // visible again. Use a JS click so a toast or transient overlay
