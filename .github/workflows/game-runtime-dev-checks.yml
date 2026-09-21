@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   focused:
-    name: R0-R3 Focused
+    name: R0-R4 Focused
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -45,6 +45,7 @@ jobs:
           game-runtime/ui-surfaces.test.js
           game-runtime/ui-selectors.test.js
           game-runtime/ui-component.test.js
+          game-runtime/ui-declarative.test.js
           game-runtime/ui-host-surfaces.test.js
           game-runtime/ui-package.test.js
           game-runtime/ui-live.test.js
