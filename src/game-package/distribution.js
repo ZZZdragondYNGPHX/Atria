@@ -132,7 +132,7 @@ function readSourceFiles(projectDir) {
             const safePath = normalizeProjectRelativePath(relativePath);
             const stat = fs.statSync(fullPath);
             if (stat.size > ATRIA_DISTRIBUTION_LIMITS.maxFileBytes) {
-                throw new Error("Source file '" + safePath + "' exceeds the .atria per-file limit");
+                throw new Error(`Source file '${safePath}' exceeds the .atria per-file limit`);
             }
             totalBytes += stat.size;
             if (totalBytes > ATRIA_DISTRIBUTION_LIMITS.maxTotalUncompressedBytes) {
@@ -154,7 +154,7 @@ function parseJsonBuffer(buffer, label, sourcePath) {
         return JSON.parse(buffer.toString('utf8'));
     } catch (error) {
         throw new Error(
-            label + " '" + sourcePath + "' is not valid JSON: "
+            `${label} '${sourcePath}' is not valid JSON: ${error?.message || String(error)}`
             + (error?.message || String(error)),
         );
     }
@@ -176,7 +176,7 @@ export function validateAtriaSourceFiles(files) {
 
     for (const declared of getGamePackageDeclaredFiles(game)) {
         if (!files.has(declared)) {
-            throw new Error("Game manifest references missing source file '" + declared + "'");
+            throw new Error(`Game manifest references missing source file '${declared}'`);
         }
     }
 
@@ -198,8 +198,7 @@ export function validateAtriaSourceFiles(files) {
     if (game.logic) {
         if (!game.logic.entry.endsWith('.json')) {
             throw new Error(
-                "Game Logic entry '" + game.logic.entry
-                + "' is unsupported in .atria v1; declarative JSON is required",
+                `Game Logic entry '${game.logic.entry}' is unsupported in .atria v1; declarative JSON is required`,
             );
         }
         const rawLogic = parseJsonBuffer(files.get(game.logic.entry), 'Game Logic', game.logic.entry);
@@ -291,7 +290,7 @@ export function buildAtriaDistribution(projectDir, options = {}) {
 function validateContainerManifest(raw) {
     if (!isPlainObject(raw)) throw new Error('.atria manifest must be a JSON object');
     if (raw.format !== ATRIA_DISTRIBUTION_FORMAT) {
-        throw new Error("Unsupported .atria format '" + String(raw.format || '') + "'");
+        throw new Error(`Unsupported .atria format '${String(raw.format || '')}'`);
     }
     if (raw.manifestVersion !== ATRIA_DISTRIBUTION_VERSION) {
         throw new Error(
@@ -335,7 +334,7 @@ function validateZipEntryNames(entries) {
         const safePath = normalizeArchivePath(entry.entryName, { directory: entry.isDirectory });
         const lower = safePath.toLocaleLowerCase('en-US');
         if (seen.has(safePath) || folded.has(lower)) {
-            throw new Error("Duplicate or case-conflicting .atria entry '" + safePath + "'");
+            throw new Error(`Duplicate or case-conflicting .atria entry '${safePath}'`);
         }
         seen.add(safePath);
         folded.add(lower);
@@ -349,7 +348,7 @@ function validateZipEntryNames(entries) {
             const parent = segments.slice(0, index).join('/');
             if (files.has(parent)) {
                 throw new Error(
-                    "Conflicting .atria file paths '" + parent + "' and '" + filePath + "'",
+                    `Conflicting .atria file paths '${parent}' and '${filePath}'`,
                 );
             }
         }
@@ -360,16 +359,16 @@ function safeEntryData(entry) {
     const size = entryUncompressedSize(entry);
     const compressedSize = entryCompressedSize(entry);
     if (!Number.isFinite(size) || size < 0 || size > ATRIA_DISTRIBUTION_LIMITS.maxFileBytes) {
-        throw new Error("Archive entry '" + entry.entryName + "' exceeds the per-file limit");
+        throw new Error(`Archive entry '${entry.entryName}' exceeds the per-file limit`);
     }
     if (!Number.isFinite(compressedSize) || compressedSize < 0) {
-        throw new Error("Archive entry '" + entry.entryName + "' has invalid compressed size");
+        throw new Error(`Archive entry '${entry.entryName}' has invalid compressed size`);
     }
     if (size > 1024 * 1024) {
         const ratio = size / Math.max(1, compressedSize);
         if (ratio > ATRIA_DISTRIBUTION_LIMITS.maxCompressionRatio) {
             throw new Error(
-                "Archive entry '" + entry.entryName + "' exceeds the decompression-ratio limit",
+                `Archive entry '${entry.entryName}' exceeds the decompression-ratio limit`,
             );
         }
     }
@@ -379,12 +378,12 @@ function safeEntryData(entry) {
         data = entry.getData();
     } catch (error) {
         throw new Error(
-            "Archive entry '" + entry.entryName + "' is corrupt: "
+            `Archive entry '${entry.entryName}' is corrupt: ${error?.message || String(error)}`
             + (error?.message || String(error)),
         );
     }
     if (!Buffer.isBuffer(data) || data.length !== size) {
-        throw new Error("Archive entry '" + entry.entryName + "' is corrupt or size-mismatched");
+        throw new Error(`Archive entry '${entry.entryName}' is corrupt or size-mismatched`);
     }
     return data;
 }
@@ -442,10 +441,10 @@ export function inspectAtriaDistribution(archiveInput) {
             || size > ATRIA_DISTRIBUTION_LIMITS.maxFileBytes
             || !/^[a-f0-9]{64}$/.test(digest)
         ) {
-            throw new Error("Malformed .atria inventory entry '" + inventoryPath + "'");
+            throw new Error(`Malformed .atria inventory entry '${inventoryPath}'`);
         }
         if (inventoryMap.has(inventoryPath)) {
-            throw new Error("Duplicate .atria inventory path '" + inventoryPath + "'");
+            throw new Error(`Duplicate .atria inventory path '${inventoryPath}'`);
         }
         inventoryMap.set(inventoryPath, { size, sha256: digest });
         declaredTotal += size;
@@ -471,10 +470,10 @@ export function inspectAtriaDistribution(archiveInput) {
         const archivePath = normalizeArchivePath(entry.entryName);
         const expected = inventoryMap.get(archivePath);
         if (!expected) {
-            throw new Error("Undeclared .atria archive file '" + archivePath + "'");
+            throw new Error(`Undeclared .atria archive file '${archivePath}'`);
         }
         if (!archivePath.startsWith('game/')) {
-            throw new Error("Unexpected .atria file outside game/: '" + archivePath + "'");
+            throw new Error(`Unexpected .atria file outside game/: '${archivePath}'`);
         }
 
         const data = safeEntryData(entry);
@@ -483,10 +482,10 @@ export function inspectAtriaDistribution(archiveInput) {
             throw new Error('.atria archive exceeds the total uncompressed-size limit');
         }
         if (data.length !== expected.size) {
-            throw new Error("Size mismatch for .atria file '" + archivePath + "'");
+            throw new Error(`Size mismatch for .atria file '${archivePath}'`);
         }
         if (sha256(data) !== expected.sha256) {
-            throw new Error("Integrity mismatch for .atria file '" + archivePath + "'");
+            throw new Error(`Integrity mismatch for .atria file '${archivePath}'`);
         }
 
         files.set(archivePath.slice('game/'.length), data);
@@ -519,7 +518,7 @@ function writeStagedFiles(stageDir, files) {
         const resolved = path.resolve(target);
         const root = path.resolve(stageDir) + path.sep;
         if (!resolved.startsWith(root)) {
-            throw new Error("Unsafe staged .atria path '" + relativePath + "'");
+            throw new Error(`Unsafe staged .atria path '${relativePath}'`);
         }
         fs.mkdirSync(path.dirname(target), { recursive: true });
         fs.writeFileSync(target, data);
