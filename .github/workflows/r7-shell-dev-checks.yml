@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   focused:
-    name: R7D Focused Unit and Lint
+    name: R7E Focused Unit and Lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -30,11 +30,24 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
-      - name: Run R7D navigation and shell regression tests
+      - name: Run R7E workspace and shell regression tests
         run: >-
           npm run test:unit --prefix tests --
           --runInBand
           atria-shell
+          orchestrator/run-state-store.test.js
+          orchestrator/persistence.test.js
+          world-info/workspace-boot-order.test.js
+          world-info/workspace-diagnostics.test.js
+          logging/workspace-i18n.test.js
+          logging/workspace-model.test.js
+          logging/workspace-structure.test.js
+          game-runtime/studio-game-ai-project.test.js
+          game-runtime/studio-project-navigator.test.js
+          game-runtime/studio-simulation-runtime.test.js
+          game-runtime/studio-structured-logic-editors.test.js
+          game-runtime/studio-structured-projection-editors.test.js
+          game-runtime/studio-structured-runtime-editors.test.js
           frontend-bootstrap-order.test.js
           frontend-dom-ready-bootstrap.test.js
           frontend-module-preload.test.js
@@ -50,7 +63,7 @@ jobs:
           card-app-loader.test.js
           immersive/controller.test.js
           immersive/structure.test.js
-      - name: Lint R7D production modules
+      - name: Lint R7E production modules
         run: >-
           npx eslint
           public/script.js
@@ -62,6 +75,12 @@ jobs:
           public/scripts/power-user.js
           public/scripts/backgrounds.js
           "public/scripts/atria-shell/*.js"
+          public/scripts/extensions/orchestrator/main.js
+          public/scripts/extensions/orchestrator/workspace/panel.js
+          public/scripts/extensions/orchestrator/workspace/shell.js
+          public/scripts/extensions/character-editor-assistant/studio/studio.js
+          public/scripts/world-info/workspace.js
+          public/scripts/logging/workspace.js
           public/scripts/extensions/game-runtime/ui/host-surfaces.js
           public/scripts/extensions/game-runtime/ui/native-components.js
           public/scripts/extensions/game-runtime/ui/full-host.js
@@ -69,7 +88,7 @@ jobs:
           public/scripts/extensions/game-runtime/ui/package.js
           public/scripts/extensions/card-app/loader.js
           public/scripts/extensions/card-app/index.js
-      - name: Lint R7D tests
+      - name: Lint R7E tests
         working-directory: tests
         run: >-
           npx eslint
@@ -85,7 +104,7 @@ jobs:
         run: bash scripts/check-atria-namespace.sh
 
   browser:
-    name: R7D Expanded Medium Compact Navigation Browser Smoke
+    name: R7E First-class Workspaces Browser Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -109,7 +128,7 @@ jobs:
       - name: Install Chromium
         working-directory: tests
         run: npx playwright install --with-deps chromium
-      - name: Run R7D shell browser smoke
+      - name: Run R7E shell browser smoke
         working-directory: tests
         run: >-
           npx playwright test
@@ -117,5 +136,6 @@ jobs:
           e2e/atria-shell/02-native-actions.e2e.js
           e2e/atria-shell/03-game-surfaces.e2e.js
           e2e/atria-shell/04-navigation.e2e.js
+          e2e/atria-shell/05-workspaces.e2e.js
           --project=e2e
           --workers=1
