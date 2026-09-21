@@ -6,8 +6,12 @@
  * also compiled by the R3 safe Formula AST parser before acceptance.
  */
 
+import { createCommandRegistry } from '../../game-runtime/logic/command-registry.js';
 import { compileDeclarativeLogic } from '../../game-runtime/logic/declarative.js';
 import { compileFormula } from '../../game-runtime/logic/formula.js';
+import { createInterpretationMappingRegistry } from '../../game-runtime/logic/interpretations.js';
+import { createReducerRegistry } from '../../game-runtime/logic/reducers.js';
+import { createRulesEngine } from '../../game-runtime/logic/rules.js';
 
 export const LOGIC_EDITOR_SECTION = Object.freeze({
     COMMANDS: 'commands',
@@ -185,14 +189,23 @@ function collectFormulaRows(root, section) {
 
 export function validateDeclarativeLogicSource(value) {
     assertLogicRoot(value);
-    compileDeclarativeLogic(value);
-    return true;
+    const compiled = compileDeclarativeLogic(value);
+
+    // Mirror the R3 runtime's registration gates as well as the declarative
+    // compiler. The compiler validates DSL shape/formulas; the registries own
+    // canonical ids, duplicate detection and event/rule mapping contracts.
+    createCommandRegistry(compiled.commands);
+    createReducerRegistry(compiled.reducers);
+    createRulesEngine(compiled.rules);
+    createInterpretationMappingRegistry(compiled.interpretations);
+
+    return compiled;
 }
 
 export function buildLogicSectionEditorModel(value, section) {
     assertLogicRoot(value);
     assertSection(section);
-    compileDeclarativeLogic(value);
+    validateDeclarativeLogicSource(value);
     return Object.freeze({
         editor: 'game_logic',
         section,
@@ -212,7 +225,7 @@ export function parseLogicStructuredDocument(section, text) {
         throw new Error('Game Logic source is not valid JSON: ' + (error?.message || String(error)));
     }
     assertLogicRoot(value);
-    compileDeclarativeLogic(value);
+    validateDeclarativeLogicSource(value);
     return {
         value,
         model: buildLogicSectionEditorModel(value, section),
@@ -291,7 +304,7 @@ export function applyLogicEntryFieldPatch(value, section, index, field, rawValue
         }
     });
 
-    compileDeclarativeLogic(next);
+    validateDeclarativeLogicSource(next);
     return next;
 }
 
@@ -349,7 +362,7 @@ export function addLogicEntry(value, section) {
     const entries = sectionEntries(next, section);
     entries.push(defaultEntry(next, section));
     next[section] = entries;
-    compileDeclarativeLogic(next);
+    validateDeclarativeLogicSource(next);
     return next;
 }
 
@@ -363,7 +376,7 @@ export function removeLogicEntry(value, section, index) {
     }
     entries.splice(index, 1);
     next[section] = entries;
-    compileDeclarativeLogic(next);
+    validateDeclarativeLogicSource(next);
     return next;
 }
 
@@ -385,7 +398,7 @@ export function applyFormulaExpression(value, path, expression) {
     const source = String(expression || '').trim();
     compileFormula(source);
     const next = setAtPath(value, path, source);
-    compileDeclarativeLogic(next);
+    validateDeclarativeLogicSource(next);
     return next;
 }
 
