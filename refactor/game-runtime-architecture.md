@@ -9,6 +9,17 @@
 - Document path: `refactor/game-runtime-architecture.md`
 - Status: architecture approved and in implementation; **R0-R6 are complete against their phase exit criteria. R6 — Game Studio is validated at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`. The next and final planned phase is R7 — Atria Game-first Shell Redesign.**
 
+## R7 branch-strategy amendment
+
+The original Master Plan assumed R7 would continue directly on `refactor/game-runtime-architecture`. That implementation strategy was superseded after R6 completion.
+
+- R0-R6 are frozen at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`.
+- R7 is implemented independently on `refactor/atria-game-first-shell-redesign`, created from that exact validated R6 HEAD.
+- The frozen R0-R6 branch is retained as the phase archive/baseline during R7 and is not merged separately into `main`.
+- The R7 branch contains the full R0-R6 history and is the only branch that should ultimately be merged into `main` after complete R0-R7 validation.
+- The authoritative expanded R7 product/frontend plan is `docs:refactor/atria-game-first-shell-redesign.md`.
+- Any older instruction in this Master Plan that says to continue R7 on `refactor/game-runtime-architecture` is superseded by this amendment.
+
 This is a product-architecture refactor, not a narrow Regex optimization task.
 
 The goal is to move Atria from a SillyTavern-derived chat application with increasingly overloaded Regex/CardApp state conventions into a first-class **LLM-driven character-card game runtime**.
