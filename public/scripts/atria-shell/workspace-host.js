@@ -357,8 +357,13 @@ export function createAtriaWorkspaceHost({
     }
 
     function openStudio(characterId) {
-        if (characterId !== undefined && characterId !== null && characterId !== '') {
-            pendingStudioCharacter = characterId;
+        const hasExplicitCharacter = characterId !== undefined && characterId !== null && characterId !== '';
+        if (hasExplicitCharacter) pendingStudioCharacter = characterId;
+
+        const route = navigation.getRoute();
+        if (route.domain === 'studio' && !route.child) {
+            if (hasExplicitCharacter) refreshActive();
+            return route;
         }
         return navigateToDomain('studio', { reason: 'workspace-studio' });
     }
