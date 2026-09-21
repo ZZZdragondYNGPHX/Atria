@@ -47,10 +47,12 @@ const TOP_LEVEL_KEYS = new Set([
     'ui',
     'world',
     'logic',
+    'llm',
 ]);
 const UI_KEYS = new Set(['mode', 'entry', 'surface', 'selectors', 'immersive']);
 const WORLD_KEYS = new Set(['schema', 'initial']);
 const LOGIC_KEYS = new Set(['entry']);
+const LLM_KEYS = new Set(['observations']);
 const RUNTIME_KEYS = new Set(['min', 'max']);
 
 function isPlainObject(value) {
@@ -267,6 +269,21 @@ export function validateGameManifest(input, options = {}) {
         }
     }
 
+    let llm;
+    if (input.llm !== undefined) {
+        if (!isPlainObject(input.llm)) {
+            errors.push('llm: expected object');
+        } else {
+            validateObjectKeys(input.llm, LLM_KEYS, 'llm', errors);
+            const observations = input.llm.observations === undefined
+                ? null
+                : validatePathField(input.llm.observations, 'llm.observations', errors);
+            llm = {
+                ...(observations ? { observations } : {}),
+            };
+        }
+    }
+
     if (errors.length > 0) {
         return { ok: false, errors, manifest: null };
     }
@@ -286,6 +303,7 @@ export function validateGameManifest(input, options = {}) {
             ...(ui ? { ui } : {}),
             ...(world ? { world } : {}),
             ...(logic ? { logic } : {}),
+            ...(llm ? { llm } : {}),
         },
     };
 }
@@ -306,6 +324,7 @@ export function getGamePackageDeclaredFiles(manifest) {
         manifest?.world?.schema,
         manifest?.world?.initial,
         manifest?.logic?.entry,
+        manifest?.llm?.observations,
     ].filter(path => typeof path === 'string' && path);
     return [...new Set(paths)];
 }
