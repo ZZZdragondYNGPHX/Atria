@@ -6511,6 +6511,7 @@
     "atria.shell.runtime.rolePolicy": "策略：${0} · 工具：${1} · 结构化输出：${2}",
     "atria.shell.runtime.configuredRoles": "${0}/${1} 个執行階段角色已显式設定檔主連線。",
     "atria.shell.runtime.chatProfiles": "${0} 个聊天設定檔",
+    "atria.shell.runtime.connectionProfileCounts": "${0} 個對話 · ${1} 個嵌入 · ${2} 個重排序設定檔",
     "atria.shell.runtime.retrievalProfiles": "${0} 个嵌入設定檔 · ${1} 个重排序設定檔",
     "atria.shell.command.openAgents": "開啟代理工作区",
     "atria.shell.command.openAgents.desc": "開啟編排与代理运行",
