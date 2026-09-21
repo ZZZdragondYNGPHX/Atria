@@ -17,13 +17,16 @@ Working branch: `fix/workspace-hub-localization`
    - Memory OS
    - Agent diagnostics / runtime inspection where already supported
    - future child workspaces can be added without creating another primary domain
-5. Preserve the existing R7 Navigation Authority, WorkspaceHost, Agent runtime, Memory runtime, Studio engine, and native controller ownership. No duplicate engines or stores.
+5. Fix global command/search routing: selecting a result owned by another domain must navigate to that domain/child route before its workspace renders. Global utilities must present as their own utility route rather than visually inheriting the caller's A-page identity.
+6. Preserve the existing R7 Navigation Authority, WorkspaceHost, Agent runtime, Memory runtime, Studio engine, and native controller ownership. No duplicate engines or stores.
 
 ## UX decision
 
 The Agents primary domain becomes a lightweight child-workspace hub. Selecting a card changes the existing child route and mounts the corresponding existing workspace through Navigation Authority / WorkspaceHost.
 
 The Studio Preview tab remains part of Studio, but it is a project/game preview surface rather than a duplicate AI-builder chat presentation. The AI Assistant remains the only conversational builder surface.
+
+Global search is a locator, not an embedding mechanism: result execution must resolve the canonical owning route, then WorkspaceHost renders only that route.
 
 ## Validation
 
