@@ -248,6 +248,52 @@ describe('Game World session', () => {
         expect(session.getJournal().events).toHaveLength(0);
     });
 
+    test('attempt-scoped sibling branches preserve distinct retry outcomes', async () => {
+        const chatRef = { value: [{ swipe_id: 0 }] };
+        const context = makeContext(chatRef);
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/world/schema.json')) return response(schema);
+            return response({ hp: 20 });
+        });
+
+        const session = await createGameWorldSession({
+            packageState,
+            context,
+            getChat: () => chatRef.value,
+            fetchImpl,
+            reducers,
+            commands,
+        });
+
+        await session.switchBranchPathInternal([0, 0]);
+        await session.dispatchCommandInternal('damage', { amount: 5 });
+        expect(session.getState()).toEqual({ hp: 15 });
+
+        await session.switchBranchPathInternal([0, 1]);
+        expect(session.getState()).toEqual({ hp: 20 });
+        await session.dispatchCommandInternal('heal', { amount: 4 });
+        expect(session.getState()).toEqual({ hp: 24 });
+
+        await session.switchBranchPathInternal([0, 0]);
+        expect(session.getState()).toEqual({ hp: 15 });
+
+        await session.switchBranchPathInternal([0, 1]);
+        expect(session.getState()).toEqual({ hp: 24 });
+
+        await session.clearBranchOverrideInternal();
+        expect(session.getBranchPath()).toEqual([0]);
+        expect(session.getState()).toEqual({ hp: 20 });
+
+        const journal = session.getJournal();
+        expect(journal.events.map(event => ({
+            type: event.type,
+            branchPath: event.branchPath,
+        }))).toEqual([
+            { type: 'DamageDealt', branchPath: [0, 0] },
+            { type: 'Healed', branchPath: [0, 1] },
+        ]);
+    });
+
     test('typed reducer payload validation aborts an invalid command transaction', async () => {
         const chatRef = { value: [{ swipe_id: 0 }] };
         const context = makeContext(chatRef);
