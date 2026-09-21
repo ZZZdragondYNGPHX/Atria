@@ -119,8 +119,15 @@ function makeSession() {
 describe('R5 Game LLM Runtime vertical slice', () => {
     test('builds active-branch Observation and filters Command tools from it', async () => {
         const session = makeSession();
+        let interpreterCalls = 0;
         const runtime = createGameLlmRuntime({
             worldSession: session,
+            eventInterpreter: {
+                async interpret() {
+                    interpreterCalls += 1;
+                    throw new Error('deterministic free-text command must not call Event Interpreter');
+                },
+            },
             observationProjectors: [
                 {
                     id: 'player',
@@ -158,12 +165,19 @@ describe('R5 Game LLM Runtime vertical slice', () => {
     test('UI action shortcut bypasses Intent Resolver and enters the same committed Turn Context', async () => {
         const session = makeSession();
         let resolverCalls = 0;
+        let interpreterCalls = 0;
         const runtime = createGameLlmRuntime({
             worldSession: session,
             intentResolver: {
                 async resolve() {
                     resolverCalls += 1;
                     throw new Error('UI action must not call resolver');
+                },
+            },
+            eventInterpreter: {
+                async interpret() {
+                    interpreterCalls += 1;
+                    throw new Error('deterministic UI action must not call Event Interpreter');
                 },
             },
             observationProjectors: [{
@@ -179,6 +193,7 @@ describe('R5 Game LLM Runtime vertical slice', () => {
         });
 
         expect(resolverCalls).toBe(0);
+        expect(interpreterCalls).toBe(0);
         expect(session.getDispatchCount()).toBe(1);
         expect(result.status).toBe('committed');
         expect(result.turn.origin).toBe('ui_action');
@@ -238,6 +253,7 @@ describe('R5 Game LLM Runtime vertical slice', () => {
 
         expect(seenTurn.userInput).toBe('Attack the guard');
         expect(seenCatalog.tools.map(tool => tool.commandId)).toEqual(['attack']);
+        expect(interpreterCalls).toBe(0);
         expect(session.getDispatchCount()).toBe(1);
         expect(result.status).toBe('committed');
         expect(result.turn.origin).toBe('free_text');
@@ -255,6 +271,113 @@ describe('R5 Game LLM Runtime vertical slice', () => {
             .toEqual(['DamageDealt']);
         expect(result.turn.observation.views.player.hp).toBe(9);
         expect(JSON.stringify(result.turn.observation)).not.toContain('secretSeed');
+    });
+
+    test('Event Interpreter records typed semantics without dispatching or mutating World/Journal', async () => {
+        const session = makeSession();
+        const runtime = createGameLlmRuntime({
+            worldSession: session,
+            observationProjectors: [{
+                id: 'player',
+                select: world => ({ hp: world.hp }),
+            }],
+            eventInterpreter: {
+                async interpret(turn, request) {
+                    expect(turn.observation.views.player.hp).toBe(10);
+                    expect(request.id).toBe('speech_semantics');
+                    return {
+                        requestId: 'speech_semantics',
+                        status: 'accepted',
+                        accepted: true,
+                        interpretation: {
+                            decision: 'event',
+                            eventType: 'implicit_threat',
+                            severity: 'medium',
+                            participants: ['guard_02'],
+                            confidence: 0.88,
+                            evidence: ['You will regret this.'],
+                        },
+                    };
+                },
+            },
+        });
+
+        const turn = runtime.beginTurn({
+            origin: 'free_text',
+            userInput: 'You will regret this.',
+            serial: 12,
+        });
+        const beforeState = session.getState();
+        const beforeJournal = session.getJournal();
+
+        const interpreted = await runtime.interpretEvent(turn, {
+            id: 'speech_semantics',
+        });
+
+        expect(interpreted.status).toBe('accepted');
+        expect(interpreted.accepted).toBe(true);
+        expect(session.getDispatchCount()).toBe(0);
+        expect(session.getState()).toEqual(beforeState);
+        expect(session.getJournal()).toEqual(beforeJournal);
+        expect(interpreted.turn.committedEvents).toEqual([]);
+        expect(interpreted.turn.interpretations).toEqual([
+            expect.objectContaining({
+                requestId: 'speech_semantics',
+                status: 'accepted',
+                accepted: true,
+                interpretation: expect.objectContaining({
+                    decision: 'event',
+                    eventType: 'implicit_threat',
+                }),
+            }),
+        ]);
+        expect(interpreted.turn.resolution).toMatchObject({
+            eventInterpreter: 'accepted',
+            eventInterpreterRequestId: 'speech_semantics',
+        });
+    });
+
+    test('low-confidence Event Interpreter result stays no-change and produces no Event noise', async () => {
+        const session = makeSession();
+        const runtime = createGameLlmRuntime({
+            worldSession: session,
+            eventInterpreter: {
+                async interpret() {
+                    return {
+                        requestId: 'speech_semantics',
+                        status: 'low_confidence_no_change',
+                        accepted: false,
+                        interpretation: {
+                            decision: 'no_change',
+                            confidence: 0.42,
+                            evidence: ['Ambiguous'],
+                        },
+                        rejectedInterpretation: {
+                            decision: 'event',
+                            eventType: 'implicit_threat',
+                            confidence: 0.42,
+                        },
+                    };
+                },
+            },
+        });
+
+        const turn = runtime.beginTurn({
+            origin: 'free_text',
+            userInput: 'Maybe you should watch yourself.',
+            serial: 13,
+        });
+        const interpreted = await runtime.interpretEvent(turn, {
+            id: 'speech_semantics',
+        });
+
+        expect(interpreted.status).toBe('low_confidence_no_change');
+        expect(interpreted.accepted).toBe(false);
+        expect(session.getDispatchCount()).toBe(0);
+        expect(interpreted.turn.committedEvents).toEqual([]);
+        expect(interpreted.turn.resolution).toMatchObject({
+            eventInterpreter: 'low_confidence_no_change',
+        });
     });
 
     test('free-text no-change creates no command transaction or Event noise', async () => {
