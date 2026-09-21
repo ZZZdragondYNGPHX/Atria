@@ -1,6 +1,6 @@
-# Active implementation: R7F — Library & Runtime
+# Active implementation: R7G — Plugins & Settings Reclassification
 
-R7A — Design System & Shell Foundation, R7B — Play / Native Conversation Host, R7C — Game Surface Integration, R7D — Desktop / Mobile Navigation, and R7E — First-class Workspaces are complete and validated. The next conversation should continue directly with **R7F — Library & Runtime** on the same long-running R7 branch.
+R7A — Design System & Shell Foundation, R7B — Play / Native Conversation Host, R7C — Game Surface Integration, R7D — Desktop / Mobile Navigation, R7E — First-class Workspaces, and R7F — Library & Runtime are complete and validated. The next conversation should continue directly with **R7G — Plugins & Settings Reclassification** on the same long-running R7 branch.
 
 ## Frozen R0-R6 baseline
 
@@ -31,11 +31,13 @@ Keep this branch frozen during R7 except for a narrowly targeted correction prov
 - R7D validation: **R7 Shell Dev Checks #96**, run `35578147672`, success
 - R7E final validated HEAD: `f76bdad7de08a7405cd36e908f312ac8c7bf0463`
 - R7E validation: **R7 Shell Dev Checks #119**, run `35582312859`, success
+- R7F final validated HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
+- R7F validation: **R7 Shell Dev Checks #133**, run `35585151542`, success
 - Authoritative R7 plan: `refactor/atria-game-first-shell-redesign.md`
 - Master runtime plan: `refactor/game-runtime-architecture.md`
 - Detailed frozen-runtime handoff: `handoff/game-runtime-architecture.md`
 
-Do not create a separate R7F branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
+Do not create a separate R7G branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
 
 Do not merge R7 to `main` at phase boundaries. R7A-R7H remain one long-running R7 implementation line. Final integration happens only after R7H/final R7 validation.
 
@@ -238,46 +240,64 @@ Browser validation covers Expanded / Medium / Compact, Agents -> Memory child hi
 
 Do not reopen R7E unless R7F exposes a concrete integration defect.
 
-## R7F objective
+## R7F completed — do not redo
 
-R7F — Library & Runtime builds the product-level IA for the two remaining primary domains that still need first-class content.
+R7F established product-level Library and Runtime IA on top of the existing R7D Navigation Authority and R7E WorkspaceHost.
 
-Library owns:
+R7F implementation:
 
-- Characters;
-- Games;
-- Worlds & Knowledge;
-- Skills.
+- Library sections: Characters / Games / Worlds & Knowledge / Skills;
+- Runtime sections: Overview / Roles / Connections / Model / Prompt Presets / Retrieval;
+- Characters reparents the exact existing `#right-nav-panel` Character controller and restores it on dispose;
+- Games discovers existing character-bound Game Packages through the current `game.json` loader and does not create a Game database or duplicate Studio;
+- Worlds & Knowledge reuses the R7E World Info controller/root;
+- Skills reuses the existing Skill Manager and `context.skills.*` persistence through an embedded Workspace presentation;
+- Runtime Overview is a projection over existing runtime/profile/retrieval state;
+- Runtime Roles reuse R5 `game-runtime` role configuration and Chat Completion connection-profile routing;
+- Connections and Retrieval reparent the same real Connection Manager controller/root and retain `extension_settings.connectionManager.profiles` as the authority;
+- Model / Prompt Presets reuse existing PresetManager instances and preserve character/project/Agent ownership boundaries;
+- legacy Character / World Info / API / preset / Skills launchers adapt into R7 routes while the preview Shell is active;
+- non-preview compatibility entry points remain for R7H;
+- no second router, Character/Game database, World Info/Skill runtime, Runtime Role store, Connection/Preset store, Conversation/Composer or Stage authority was created.
 
-Runtime owns:
+R7F validation:
 
-- Overview;
-- Roles;
-- Connections;
-- Model / Prompt Presets;
-- Retrieval.
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
+- Workflow: **R7 Shell Dev Checks #133**
+- Run: `35585151542`
+- **R7F Focused Unit and Lint**: success
+- **R7F Library Runtime Browser Smoke**: success
+- Atria namespace guard: success
+- Android/Docker: not run; no Kotlin/native Back or Docker changes were required.
 
-R7F rules:
+Browser coverage includes Expanded and Compact Library/Runtime flows, Character controller reuse, Game Package discovery without Studio duplication, R7E World Info reuse, embedded Skills, Runtime Overview/Roles, same-node Connection Manager reuse across Connections/Retrieval, Preset projection, browser Back, Command navigation, legacy entry adaptation, dispose/reopen, Narrative Play return and unique `#chat` / `#send_form` / `#send_textarea`.
 
-- keep the R7D Navigation Authority as the only primary/child route and browser-history authority;
-- mount product pages through the validated R7E WorkspaceHost rather than adding new overlay/page routers;
-- reuse existing Character management, World Info, Skills, Game Package, Runtime Role, Connection/Profile, model/prompt preset and retrieval controllers/state/persistence;
-- do not duplicate engines or persisted state merely to fit the new IA;
-- World Info is already R7E-capable and should become the Worlds & Knowledge content seam rather than being reimplemented;
-- provider-specific deep configuration may remain behind compatibility/form adapters where appropriate;
-- preserve R7C Stage ownership and R7B native Conversation/Composer uniqueness;
-- keep Diagnostics a Global Utility;
-- keep the preview gate during staged migration;
-- do not prematurely implement R7G Plugins/Settings reclassification or R7H legacy-shell retirement.
+Do not reopen R7F unless R7G exposes a concrete integration defect.
 
-R7F exit target:
+## R7G objective
 
-- Library primary tasks for Characters / Games / Worlds & Knowledge / Skills are reachable through the new IA;
-- Runtime primary tasks for Overview / Roles / Connections / Presets / Retrieval are reachable through the new IA;
-- local detail/drill-down navigation participates in R7D child routes/Back;
-- Desktop/Medium/Compact behavior uses the existing Shell/Workspace/Context contracts;
-- compatibility adapters remain available where required;
-- focused unit/lint plus real-browser Library/Runtime smoke passes.
+R7G — Plugins & Settings Reclassification is the next phase.
+
+R7G must:
+
+- expose third-party Plugins as a distinct product utility;
+- keep plugin/extension compatibility settings available without treating Atria built-ins as third-party Plugins;
+- reclassify built-in legacy settings to their owning product domains where practical;
+- slim Settings to true user/application settings;
+- keep Account separate from Settings;
+- adapt legacy Extensions / User Settings / API entry points into the new Shell product IA while preview is active;
+- preserve R7D Navigation Authority, R7E WorkspaceHost and all R7A-R7F ownership contracts;
+- retain compatibility anchors/chrome until R7H final retirement;
+- avoid prematurely deleting the preview gate, old drawers or compatibility DOM.
+
+R7G exit target:
+
+- Plugins, Settings and Account have clear product ownership;
+- Atria core capabilities no longer appear conceptually owned by the third-party Extensions bucket;
+- primary staged-Shell paths route through existing Shell authorities;
+- legacy compatibility behavior remains usable until R7H;
+- focused unit/lint plus real-browser Plugins/Settings smoke passes.
 
 ## R7 product architecture remains frozen
 
