@@ -430,6 +430,29 @@ export async function reloadGamePackage() {
             nextRuntimeSystems = createRuntimeSystems(nextWorldSession);
             nextUiSession = await activateGamePackageUi(next, nextWorldSession, {
                 headers: getRequestHeaders(),
+                dispatchCommand: async (commandId, args) => {
+                    const baseTurn = nextRuntimeSystems.llmSession.beginTurn({
+                        origin: 'ui_action',
+                    });
+                    nextRuntimeSystems.recipes.set(baseTurn.turnId, {
+                        kind: 'ui_action',
+                        input: {
+                            commandId,
+                            args: structuredClone(args || {}),
+                        },
+                    });
+                    return nextRuntimeSystems.turnController.submit(baseTurn, {
+                        execute: ({ turn, signal, transition }) => (
+                            nextRuntimeSystems.llmSession.completeUiActionTurn({
+                                commandId,
+                                args,
+                                turnContext: turn,
+                                abortSignal: signal,
+                                transition,
+                            })
+                        ),
+                    });
+                },
                 hostActions: {
                     exitGameUi: exitCurrentGameUi,
                     stopGeneration: stopCurrentGeneration,
