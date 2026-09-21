@@ -291,7 +291,29 @@ describe('Live Game Package UI activation', () => {
         expect(document.querySelectorAll('[data-atria-game-host-surface]')).toHaveLength(0);
     });
 
-    test('Full remains deferred until the takeover/recovery contract is implemented', async () => {
+    test('Full takes over the main experience while host recovery remains outside package control', async () => {
+        const chat = document.getElementById('chat');
+        const sendForm = document.getElementById('send_form');
+        const sheld = document.getElementById('sheld');
+        const formSheld = document.getElementById('form_sheld');
+        const exitGameUi = jest.fn();
+        const stopGeneration = jest.fn();
+        const disablePackage = jest.fn();
+        const openDiagnostics = jest.fn();
+        const fetchImpl = jest.fn(async () => ({
+            ok: true,
+            status: 200,
+            async text() {
+                return `
+                    <section id="full-shell">
+                        <h1>Game</h1>
+                        <div id="full-conversation" data-atria-native-component="conversation"></div>
+                        <div id="full-composer" data-atria-native-component="composer"></div>
+                    </section>
+                `;
+            },
+        }));
+
         const session = await activateGamePackageUi({
             charId: 'hero',
             manifest: {
@@ -301,11 +323,97 @@ describe('Live Game Package UI activation', () => {
                     surface: 'app.root',
                 },
             },
-        }, null, { document });
+        }, {
+            getState: () => ({}),
+            dispatchCommandInternal: jest.fn(),
+            simulateCommandInternal: jest.fn(),
+        }, {
+            document,
+            fetchImpl,
+            hostActions: {
+                exitGameUi,
+                stopGeneration,
+                disablePackage,
+                openDiagnostics,
+            },
+        });
 
         expect(session).toMatchObject({
             mode: 'full',
-            status: 'deferred',
+            status: 'active',
+            mountId: 'package.full',
+            recoveryActive: true,
         });
+        expect(document.body.dataset.atriaGameFullActive).toBe('true');
+        expect(sheld.style.display).toBe('none');
+        expect(document.getElementById('chat')).toBe(chat);
+        expect(document.getElementById('send_form')).toBe(sendForm);
+        expect(chat.parentElement.id).toBe('full-conversation');
+        expect(sendForm.parentElement.id).toBe('full-composer');
+
+        const recovery = document.getElementById('atria-game-full-recovery');
+        expect(document.getElementById('atria-game-full-root').contains(recovery)).toBe(false);
+        recovery.querySelector('[data-atria-game-recovery-action="stop"]').click();
+        recovery.querySelector('[data-atria-game-recovery-action="diagnostics"]').click();
+        expect(stopGeneration).toHaveBeenCalledTimes(1);
+        expect(openDiagnostics).toHaveBeenCalledTimes(1);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true,
+        }));
+        expect(exitGameUi).toHaveBeenCalledTimes(1);
+
+        await session.dispose();
+
+        expect(document.body.dataset.atriaGameFullActive).toBeUndefined();
+        expect(sheld.style.display).toBe('');
+        expect(chat.parentElement).toBe(sheld);
+        expect(sendForm.parentElement).toBe(formSheld);
+        expect(document.getElementById('atria-game-full-root')).toBeNull();
+        expect(document.getElementById('atria-game-full-recovery')).toBeNull();
+    });
+
+    test('broken Full package restores host without ever completing takeover', async () => {
+        const sheld = document.getElementById('sheld');
+        const fetchImpl = jest.fn(async () => ({
+            ok: true,
+            status: 200,
+            async text() {
+                return `
+                    <section>
+                        <div data-atria-native-component="unknown-native-component"></div>
+                    </section>
+                `;
+            },
+        }));
+
+        await expect(activateGamePackageUi({
+            charId: 'hero',
+            manifest: {
+                ui: {
+                    mode: 'full',
+                    entry: 'ui/game.html',
+                    surface: 'app.root',
+                },
+            },
+        }, {
+            getState: () => ({}),
+            dispatchCommandInternal: jest.fn(),
+            simulateCommandInternal: jest.fn(),
+        }, {
+            document,
+            fetchImpl,
+            hostActions: {
+                exitGameUi: jest.fn(),
+            },
+        })).rejects.toThrow(/Unknown native Game UI component/);
+
+        expect(sheld.style.display).toBe('');
+        expect(document.body.dataset.atriaGameFullActive).toBeUndefined();
+        expect(document.getElementById('atria-game-full-root')).toBeNull();
+        expect(document.getElementById('atria-game-full-recovery')).toBeNull();
+        expect(document.getElementById('chat').parentElement).toBe(sheld);
     });
 });
