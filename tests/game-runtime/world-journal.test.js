@@ -92,6 +92,30 @@ describe('World Event Journal replay', () => {
         expect(replayed.appliedEventIds).toEqual(['event:2']);
     });
 
+    test('event metadata survives journal normalization and replay unchanged', () => {
+        const meta = {
+            command: { id: 'roll_damage', transactionId: 'tx:1:0:roll_damage' },
+            rngTrace: [{ stream: 'default', operation: 'int', value: 4 }],
+        };
+        const appended = appendWorldEvents(null, [{
+            type: 'DamageDealt',
+            payload: { amount: 4 },
+            meta,
+        }], [0]);
+
+        const normalized = normalizeWorldJournal(structuredClone(appended.journal));
+        expect(normalized.events[0].meta).toEqual(meta);
+
+        const replayed = replayWorldJournal({
+            initialState,
+            journal: normalized,
+            branchPath: [0],
+            reducers,
+        });
+        expect(replayed.state.player.hp).toBe(16);
+        expect(normalized.events[0].meta).toEqual(meta);
+    });
+
     test('unknown event types fail replay instead of silently dropping facts', () => {
         const journal = appendWorldEvents(null, [
             { type: 'UnknownFact', payload: {} },
