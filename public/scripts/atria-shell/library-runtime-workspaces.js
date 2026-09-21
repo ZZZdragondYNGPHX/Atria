@@ -594,7 +594,7 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
 
         const row = documentRef.createElement('label');
         row.className = 'atria-runtime-preset-row';
-        row.textContent = label;
+        row.textContent = translateShellText(label);
         const select = documentRef.createElement('select');
         select.className = 'text_pole';
         const selected = manager.getSelectedPresetName?.() || '';

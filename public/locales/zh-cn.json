@@ -6696,5 +6696,8 @@
     "atria.shell.command.openSettings": "打开设置",
     "atria.shell.command.openSettings.desc": "打开全局外观、语言与交互偏好",
     "atria.shell.command.openAccount": "打开账户",
-    "atria.shell.command.openAccount.desc": "打开身份、快照、备份与账户存储"
+    "atria.shell.command.openAccount.desc": "打开身份、快照、备份与账户存储",
+    "atria.shell.navigation": "导航",
+    "atria.shell.runtime.instruct": "指令",
+    "atria.shell.runtime.reasoning": "推理"
 }
