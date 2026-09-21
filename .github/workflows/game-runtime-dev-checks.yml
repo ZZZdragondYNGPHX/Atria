@@ -36,6 +36,7 @@ jobs:
           game-runtime/command-registry.test.js
           game-runtime/logic-runtime.test.js
           game-runtime/formula.test.js
+          game-runtime/rng.test.js
           game-runtime/world-package.test.js
           game-runtime/world-session.test.js
           game-runtime/world-journal.test.js
