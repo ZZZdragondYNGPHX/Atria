@@ -56,10 +56,29 @@ function normalizeCommandDefinition(raw) {
         throw new Error(`Command '${id}' argsSchema must be an object`);
     }
 
+    let llm = null;
+    if (raw.llm !== undefined) {
+        if (!isPlainObject(raw.llm)) {
+            throw new Error(`Command '${id}' llm metadata must be an object`);
+        }
+        for (const key of Object.keys(raw.llm)) {
+            if (key !== 'expose') {
+                throw new Error(`Command '${id}' llm metadata contains unknown field '${key}'`);
+            }
+        }
+        if (raw.llm.expose !== undefined && typeof raw.llm.expose !== 'boolean') {
+            throw new Error(`Command '${id}' llm.expose must be a boolean`);
+        }
+        llm = Object.freeze({
+            expose: raw.llm.expose === true,
+        });
+    }
+
     return Object.freeze({
         id,
         ...(description ? { description } : {}),
         argsSchema: clone(argsSchema),
+        ...(llm ? { llm } : {}),
         validators: Object.freeze([...(raw.validators || [])]),
         execute: raw.execute,
     });
@@ -86,6 +105,7 @@ export function createCommandRegistry(definitions = []) {
             id: command.id,
             ...(command.description ? { description: command.description } : {}),
             argsSchema: clone(command.argsSchema),
+            ...(command.llm ? { llm: clone(command.llm) } : {}),
         }));
     }
 
