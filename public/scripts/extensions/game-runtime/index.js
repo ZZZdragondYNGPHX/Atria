@@ -1,3 +1,4 @@
+import { loadGameLogicDefinition } from './logic/package.js';
 import { resolveGamePackageAssetUrl } from './manifest.js';
 import { GAME_PACKAGE_STATUS, loadGamePackage } from './package-loader.js';
 import { createGameWorldSession } from './world/session.js';
@@ -63,12 +64,17 @@ export async function reloadGamePackage() {
     let nextWorldSession = null;
     if (next.status === GAME_PACKAGE_STATUS.READY) {
         try {
+            const logicDefinition = await loadGameLogicDefinition(next, {
+                headers: getRequestHeaders(),
+            });
             nextWorldSession = await createGameWorldSession({
                 packageState: next,
                 context: atriaContext,
                 getChat: () => getContext()?.chat || [],
                 headers: getRequestHeaders(),
-                reducers: {},
+                commands: logicDefinition.commands,
+                reducers: logicDefinition.reducers,
+                rules: logicDefinition.rules,
             });
         } catch (error) {
             next = {
@@ -77,7 +83,7 @@ export async function reloadGamePackage() {
                 charId,
                 manifest: null,
                 errors: [
-                    'World Runtime initialization failed: ' + (error?.message || String(error)),
+                    'Game Runtime initialization failed: ' + (error?.message || String(error)),
                 ],
             };
         }
