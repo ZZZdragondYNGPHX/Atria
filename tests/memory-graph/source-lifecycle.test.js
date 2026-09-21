@@ -119,6 +119,33 @@ describe('Memory OS production source lifecycle', () => {
         expect(f.disk.get(f.context.key).externalSources[source.id].status).toBe('stale');
     });
 
+    test('authoritative API rejects non-authoritative fact shapes', async () => {
+        const f = fixture();
+        const source = {
+            id: 'game-event:event:8',
+            kind: 'game_event',
+            eventId: 'event:8',
+            branchId: 'swipes:0.1',
+            fingerprint: 'event-8-fingerprint',
+            content: '{"eventId":"event:8","type":"Moved","payload":{"location":"gate"}}',
+        };
+        f.setExternalSources([source]);
+
+        await expect(f.lifecycle.writeAuthoritativeFacts(
+            f.context,
+            [{
+                action: 'create',
+                type: 'explicit',
+                text: 'This must be rejected',
+                evidence: [{
+                    externalSourceId: source.id,
+                    excerpt: source.content,
+                }],
+            }],
+            [source.id],
+        )).rejects.toThrow(/only accepts authoritative create operations/);
+    });
+
     test('fact persistence rejects mutations at the async state updater boundary', async () => {
         const f = fixture();
         const ticket = await f.lifecycle.capture(f.context, [1]);
