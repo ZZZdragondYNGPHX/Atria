@@ -7,7 +7,7 @@
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
 - Document branch: `docs`
 - Document path: `refactor/game-runtime-architecture.md`
-- Status: architecture approved and in implementation; R0-R4 are complete, and R5 has begun on the working branch.
+- Status: architecture approved and in implementation; **R0-R5 are complete against their phase exit criteria. R5 is the formal midpoint handoff, and the next phase is R6 — Game Studio.**
 
 This is a product-architecture refactor, not a narrow Regex optimization task.
 
@@ -1972,32 +1972,80 @@ This refactor does not aim to:
 
 ## 19. Current implementation rule
 
-R0-R4 are complete on the working branch. R5 has begun with the initial LLM contract foundation.
+**R0-R5 are complete on `refactor/game-runtime-architecture`. R5 is the formal midpoint checkpoint.**
 
-Already implemented at the start of R5:
+Validated R5 working HEAD:
 
-- LLM-safe typed Command tool catalog;
-- command exposure/visibility metadata;
-- explicit read-only World Observation projection;
-- branch-anchored Turn Context;
-- live World-session integration and focused tests.
+`1da96c37598223e3a2b89f9561a7722d12e58b6b`
 
-Continue from the live handoff; do not restart R0-R4 or the already-landed R5 foundation.
+Final focused validation:
 
-The next implementation work should extend R5 into:
+- Workflow: `Game Runtime Dev Checks`
+- Run: `35556314851` (#280)
+- Result: success
+- Scope: R0-R5 focused unit/integration matrix plus focused ESLint.
+- R4 real-browser smoke remains green from `Game Runtime R4 Browser Checks` #3 at `29fbc5f824324aadddbf550cfc6a7c18c85f1f54`.
 
-1. Intent Resolver;
-2. optional Event Interpreter;
-3. Turn Controller / Turn Transaction and interruption/variant semantics;
-4. Runtime Role routing/fallback;
-5. Memory bridge;
-6. Orchestrator bridge;
-7. single Narrative Producer arbitration;
-8. Narrator and end-to-end game-aware turn flow.
+R5 now includes:
 
-The native .atria package build/import/export pipeline belongs to R6 Game Studio. Do not interrupt the current R5 implementation to build it early.
+- LLM-safe Command tool generation with explicit exposure/visibility;
+- Intent Resolver that can only propose typed Commands;
+- optional typed Event Interpreter with confidence/no-change behavior and no direct World mutation;
+- deterministic interpretation mapping back through the Command Bus;
+- explicit World Observation projections;
+- one branch-anchored Turn Context with fact precedence and source provenance;
+- Memory recall after authoritative commit and before narration;
+- authoritative post-turn Memory ingestion sourced from committed Events rather than prose re-extraction;
+- Orchestrator bridge where spec/agenda/loop provide advisory guidance only;
+- Director takeover as the sole final prose producer for Director turns;
+- Narrative Contract with committed-fact enforcement;
+- Runtime Roles separated from Connection Profiles, with primary/fallback queues, timeout/retry and role capability requirements;
+- functional Model & Runtime configuration data/API surface;
+- Turn Controller / Turn Transaction phases;
+- Stop / Undo / Delete Assistant Result / Rewrite Narrative / Retry Turn / Switch Variant semantics;
+- sibling World branches for distinct retry outcomes;
+- native assistant message/swipe binding for outcome variants;
+- package UI typed actions routed through the complete R5 turn pipeline;
+- compatibility-safe cloning for R5 runtime values in environments without native `structuredClone`.
 
-Do not jump to R7 visual redesign before R5-R6 runtime/authoring contracts are stable. R7 is deliberately late so the host UI reflects the final product model rather than freezing premature runtime assumptions.
+R5 exit coverage proves:
+
+- free text -> Command -> commit -> Memory recall -> optional orchestration -> narration -> post-turn Memory update;
+- ambiguous semantic input -> Event Interpreter -> deterministic mapping -> typed Command -> committed Events;
+- spec/agenda/loop guidance and Memory reach the same Narrative Contract without overriding World facts;
+- Director produces the only final prose body during takeover;
+- stopped attempts do not become active finalized artifacts;
+- deleting the assistant result deactivates the whole Turn artifact set;
+- Rewrite Narrative preserves authoritative Command/Event/Observation facts;
+- Retry Turn creates a sibling attempt/event branch and Switch Variant restores its matching World projection;
+- authoritative Memory facts derive from committed Events and stale with inactive event lineage;
+- deterministic UI Commands skip Intent Resolver/Event Interpreter and still complete narration;
+- intentionally wrong LLM arithmetic cannot alter World State;
+- irrelevant Commands are omitted from the LLM tool set;
+- Runtime Role provider fallback is ordered and fail-closed for schema/validation errors.
+
+**Next phase: R6 — Game Studio.**
+
+R6 must evolve the existing CardApp Studio into Atria Game Studio; do not create a parallel second Studio.
+
+R6 owns:
+
+1. project navigator over the existing source-project files;
+2. World Schema / Initial State / Command / Formula / Rule structured editors;
+3. Selector and Observation editors/previews;
+4. deterministic Simulation Console, Rule Trace, Event Timeline and World State Inspector;
+5. LLM Tool Preview;
+6. AI Builder project-aware cross-file editing with reviewable diffs;
+7. source-project vs distribution-artifact workflow;
+8. native ZIP-based `.atria` package manifest/validator/builder/importer/exporter;
+9. safe ZIP extraction, traversal/resource/archive-limit checks and asset integrity inventory;
+10. lossless nested text/binary round-trip;
+11. PNG/JSON/CharX interoperability for appropriate card classes;
+12. preservation of existing CodeMirror/Git/diff flows.
+
+Do not reopen R0-R5 unless a concrete R6 integration defect requires a targeted fix.
+
+Do not begin R7 host-shell visual redesign during R6. R7 remains deliberately after Game Studio so the host UI reflects the completed runtime and authoring model.
 
 
 ---
