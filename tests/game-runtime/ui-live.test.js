@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
+import { createImmersiveProviderRegistry } from '../../public/scripts/immersive/providers.js';
 import { activateGamePackageUi } from '../../public/scripts/extensions/game-runtime/ui/live.js';
 
 describe('Live Game Package UI activation', () => {
@@ -136,6 +137,104 @@ describe('Live Game Package UI activation', () => {
         expect(damage.dataset.atriaCommandState).toBe('success');
 
         await session.dispose();
+    });
+
+    test('registers and disposes an Immersive provider from declared Selector presentation', async () => {
+        let world = {
+            hp: 10,
+            scene: 'inn',
+        };
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/ui/selectors.json')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    async json() {
+                        return [
+                            { id: 'player.hp', formula: 'world.hp' },
+                            { id: 'scene.id', formula: 'world.scene' },
+                        ];
+                    },
+                };
+            }
+            if (url.endsWith('/ui/immersive.json')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    async json() {
+                        return {
+                            scene: {
+                                id: { selector: 'scene.id' },
+                            },
+                            hud: {
+                                primary: [{
+                                    id: 'hp',
+                                    label: 'HP',
+                                    selector: 'player.hp',
+                                }],
+                            },
+                        };
+                    },
+                };
+            }
+            if (url.endsWith('/ui/hud.html')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    async text() {
+                        return '<div>HUD</div>';
+                    },
+                };
+            }
+            throw new Error('unexpected URL ' + url);
+        });
+        const registry = createImmersiveProviderRegistry();
+        const worldSession = {
+            getState: () => ({ ...world }),
+            async dispatchCommandInternal() {
+                world = { hp: 5, scene: 'road' };
+                return { status: 'committed', afterState: { ...world } };
+            },
+            simulateCommandInternal: jest.fn(),
+        };
+
+        const session = await activateGamePackageUi({
+            charId: 'hero',
+            manifest: {
+                id: 'demo.game',
+                ui: {
+                    mode: 'component',
+                    entry: 'ui/hud.html',
+                    surface: 'chat.header',
+                    selectors: 'ui/selectors.json',
+                    immersive: 'ui/immersive.json',
+                },
+            },
+        }, worldSession, {
+            document,
+            fetchImpl,
+            immersiveApi: {
+                registerProvider: provider => registry.register(provider),
+            },
+        });
+
+        expect(session.immersiveStatus).toBe('active');
+        expect(registry.getSnapshot().providers).toEqual([
+            { id: 'game-runtime:demo.game', priority: 100 },
+        ]);
+        expect(registry.getSnapshot().scene).toEqual({ id: 'inn' });
+        expect(registry.getSnapshot().hud.summary.primary[0].value).toBe('10');
+
+        world = { hp: 6, scene: 'road' };
+        session.refresh();
+        await new Promise(resolve => queueMicrotask(resolve));
+
+        expect(registry.getSnapshot().scene).toEqual({ id: 'road' });
+        expect(registry.getSnapshot().hud.summary.primary[0].value).toBe('6');
+
+        await session.dispose();
+
+        expect(registry.getSnapshot().providers).toEqual([]);
     });
 
     test('Hybrid recomposes the original native conversation and composer, then restores them', async () => {
