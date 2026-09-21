@@ -1,51 +1,54 @@
 # Active implementation: Atria Game Runtime Architecture Refactor
 
-The Master Refactor has completed **R0-R5**. **R5 is the formal midpoint checkpoint; the next phase is R6 — Game Studio.**
+The Master Refactor has completed **R0-R6**. **R6 — Game Studio is complete; the next and final planned phase is R7 — Atria Game-first Shell Redesign.**
 
 - Working branch: `refactor/game-runtime-architecture`
-- Baseline/current main: `63da3141a3895d3386ed1bebc30876c9766315ba`
-- Current validated working HEAD: `1da96c37598223e3a2b89f9561a7722d12e58b6b`
+- Baseline/current main for this long-running Master Refactor: `63da3141a3895d3386ed1bebc30876c9766315ba`
+- Current validated working HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - Formal plan: `refactor/game-runtime-architecture.md`
 - Detailed task handoff: `handoff/game-runtime-architecture.md`
 - R0 Regex Separation: complete.
 - R1 Game Package Foundation: complete.
-- R2 World/Event Runtime planned vertical slice: complete.
+- R2 World/Event Runtime: complete.
 - R3 Game Logic Runtime: complete.
 - R4 Card UI Runtime: complete.
-- **R5 LLM Runtime & Model Roles: complete.**
-- Final R5 focused validation: **Game Runtime Dev Checks #280**, run `35556314851`, success at the validated HEAD above.
-- R4 real-browser regression remains green after the R5 UI host-dispatch hook: **Game Runtime R4 Browser Checks #3** at `29fbc5f824324aadddbf550cfc6a7c18c85f1f54`.
-- R5 includes Command tool visibility, Intent Resolver, optional Event Interpreter, deterministic interpretation mapping, Observation/Turn Context/provenance, Memory recall and authoritative Event-derived ingestion, Orchestrator guidance bridge, Narrative Contract, Director/Narrator single-writer arbitration, Runtime Roles with fallback, Turn Controller/Transaction, Stop/Undo/Delete/Rewrite/Retry/Switch Variant, sibling outcome branches, and native assistant swipe alignment.
-- Game UI uses **Persistent Game Surfaces**, not a special floor-0 message. Conversation floors remain Timeline/history data and optional Native Components.
-- Narrative Cards without `game.json` remain first-class and do not require Game Runtime authoring.
-- Domain-neutrality remains mandatory: HP/MP/RPG fields are examples only; packages own World Schema/Commands/Events/Rules.
-- PNG/JSON/CharX remain supported compatibility/interchange formats. **R6 owns the native standard-ZIP `.atria` source-project build/import/export pipeline.**
-- The long-running refactor branch remains unmerged and must be retained until **R0-R7 are complete**.
+- R5 LLM Runtime & Model Roles: complete.
+- **R6 Game Studio: complete.**
+- Final R6 validation: **Game Runtime Dev Checks #340**, run `35559636615`, success at the validated HEAD above.
+- R6 evolved the existing CardApp Studio in place into Atria Game Studio: runtime-aware project navigation, structured World/Logic/Selector/Observation authoring, deterministic Simulation/Diagnostics, project-aware AI Builder and native `.atria` build/import/export.
+- Studio structured editors write the same Runtime source files; no Studio-only shadow config/state engine was introduced.
+- Simulation uses the real R3 simulation path against an isolated memory World Runtime and proves no persistence/Journal/live-World mutation.
+- AI Builder keeps the existing multi-file edits-lib diff/approval/Git workflow and now preflights Game Runtime source batches before commit.
+- `.atria` is a standard ZIP distribution artifact with root container `manifest.json`, runtime project under `game/`, SHA-256 inventory/integrity, resource limits, traversal/path-conflict defenses and staged rollback-safe restore.
+- Save/progress/checkpoint/Git state is excluded from `.atria` distribution by default.
+- Narrative Cards without `game.json` remain first-class.
+- PNG/JSON/CharX remain supported compatibility/interchange paths.
+- Domain-neutrality remains mandatory: packages define their own World Schema/Commands/Events/Rules; RPG fields are examples only.
+- The long-running branch remains unmerged and must be retained until **R7 and final R0-R7 validation are complete**.
 
-### Next task: R6 — Game Studio
+### Next task: R7 — Atria Game-first Shell Redesign
 
-Start from the existing branch and validated HEAD above.
+Start from:
 
-R6 must evolve the existing **CardApp Studio into Atria Game Studio**, not create a parallel second Studio.
+`refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 
-Primary R6 scope:
+R7 is the final planned phase of this Master Refactor. Do not reopen or redesign R0-R6 unless a concrete shell-integration defect requires a targeted fix.
 
-- project navigator;
-- structured World Schema / Initial State / Command / Formula / Rule / Selector / Observation editors;
-- Simulation Console;
-- Rule Trace;
-- Event Timeline;
-- World State Inspector;
-- LLM Tool Preview / Observation Preview;
-- project-aware AI Builder with cross-file, diff-reviewable edits;
-- source-project vs distribution-artifact workflow;
-- native `.atria` ZIP manifest/validator/builder/importer/exporter;
-- safe ZIP extraction, traversal/resource/archive-limit validation and asset integrity inventory;
-- lossless nested text/binary round-trip;
-- preserve CodeMirror/Git/diff/history infrastructure;
-- retain PNG/JSON/CharX interoperability.
+Primary R7 scope:
 
-Do not reopen R0-R5 except for a concrete R6 integration defect. Do not begin R7 shell redesign during R6.
+- establish the Atria 1.0 host design system and reusable shell primitives;
+- redesign primary navigation and main-stage hierarchy around Game Runtime;
+- make Game Package / Runtime / World / Timeline / Studio / Diagnostics coherent first-class host concepts;
+- redesign mobile navigation as a native mobile shell rather than inherited desktop chat drawers;
+- redesign Model & Runtime settings around Runtime Roles;
+- integrate Immersive and Game Studio entry points cleanly;
+- preserve R4 stable Surface / Native Component APIs while allowing host DOM/layout internals to change;
+- preserve Narrative Card first-class behavior;
+- add desktop/mobile frontend smoke/E2E for major host paths and Game UI coexistence.
+
+Candidate primitives: App/Game Shell, Stage, Workspace, Runtime Card, Inspector, Timeline, Dock, Sheet, Command Bar, Surface Host.
+
+Do not merge/delete `refactor/game-runtime-architecture` until R7 is complete and final validation is green.
 
 
 ---
