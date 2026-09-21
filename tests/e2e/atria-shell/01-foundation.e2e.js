@@ -57,7 +57,7 @@ async function collectDomDiagnostics(page) {
 
         return {
             chats: Array.from(document.querySelectorAll('#chat')).map(describeNode),
-            composers: Array.from(document.querySelectorAll('#send_form')).map(describe),
+            composers: Array.from(document.querySelectorAll('#send_form')).map(describeNode),
             shell: describeNode(document.getElementById('atria-app-shell')),
         };
     });
