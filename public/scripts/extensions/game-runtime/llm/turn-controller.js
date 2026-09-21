@@ -1,3 +1,4 @@
+import { getGameBranchId } from '../world/branch.js';
 import {
     advanceTurnContext,
     createTurnContext,
@@ -61,11 +62,12 @@ function isAbortError(error, signal) {
 
 function normalizeBranchResult(raw, fallbackAnchor) {
     const source = raw && typeof raw === 'object' ? raw : {};
+    const branchPath = Array.isArray(source.branchPath)
+        ? [...source.branchPath]
+        : [...(fallbackAnchor?.branchPath || [])];
     return {
-        branchPath: Array.isArray(source.branchPath)
-            ? [...source.branchPath]
-            : [...(fallbackAnchor?.branchPath || [])],
-        branchId: String(source.branchId || fallbackAnchor?.branchId || ''),
+        branchPath,
+        branchId: String(source.branchId || getGameBranchId(branchPath)),
         variantId: String(source.variantId || ''),
     };
 }
@@ -243,6 +245,7 @@ export function createGameTurnController(options = {}) {
             turnId: turnRecord.turnId,
             kind: String(input.kind || 'initial'),
             branch: normalizeBranchResult(input.branch, turnContext.anchor),
+            previousActiveAttemptId: turnRecord.activeAttemptId,
             transaction,
             turn: clone(turnContext),
             proseVariants: [],
@@ -258,6 +261,14 @@ export function createGameTurnController(options = {}) {
         }
 
         try {
+            await adapter.prepareAttempt?.({
+                turnId: turnRecord.turnId,
+                attemptId,
+                kind: attempt.kind,
+                branch: clone(attempt.branch),
+                previousAttemptId: attempt.previousActiveAttemptId,
+            });
+
             const output = await execute({
                 attemptId,
                 turnId: turnRecord.turnId,
@@ -274,6 +285,7 @@ export function createGameTurnController(options = {}) {
                     attemptId,
                     branch: clone(attempt.branch),
                     reason: 'aborted',
+                    restoreAttemptId: attempt.previousActiveAttemptId,
                 });
                 return transaction.snapshot();
             }
@@ -319,6 +331,7 @@ export function createGameTurnController(options = {}) {
                     attemptId,
                     branch: clone(attempt.branch),
                     reason: 'aborted',
+                    restoreAttemptId: attempt.previousActiveAttemptId,
                 });
                 return transaction.snapshot();
             }
@@ -328,6 +341,7 @@ export function createGameTurnController(options = {}) {
                 attemptId,
                 branch: clone(attempt.branch),
                 reason: 'failed',
+                restoreAttemptId: attempt.previousActiveAttemptId,
             });
             throw error;
         }
@@ -335,9 +349,28 @@ export function createGameTurnController(options = {}) {
 
     return Object.freeze({
         async submit(turnContext, input = {}) {
-            return executeAttempt(turnContext, {
+            const record = ensureTurnRecord(turnContext);
+            const branch = normalizeBranchResult(
+                input.branch || await adapter.createAttemptBranch?.({
+                    turnId: record.turnId,
+                    previousAttemptId: record.activeAttemptId,
+                    attemptIndex: record.attemptIds.length,
+                    kind: input.kind || 'initial',
+                }),
+                turnContext.anchor,
+            );
+            const branchedTurn = createTurnContext({
+                ...clone(turnContext),
+                turnId: record.turnId,
+                anchor: {
+                    ...clone(turnContext.anchor),
+                    branchPath: branch.branchPath,
+                },
+            });
+            return executeAttempt(branchedTurn, {
                 ...input,
                 kind: input.kind || 'initial',
+                branch,
             });
         },
 
@@ -350,6 +383,7 @@ export function createGameTurnController(options = {}) {
                     attemptId: attempt.attemptId,
                     branch: clone(attempt.branch),
                     reason,
+                    restoreAttemptId: attempt.previousActiveAttemptId,
                 });
             }
             return changed;
@@ -457,6 +491,8 @@ export function createGameTurnController(options = {}) {
                 await adapter.createAttemptBranch?.({
                     turnId: record.turnId,
                     previousAttemptId: record.activeAttemptId,
+                    attemptIndex: record.attemptIds.length,
+                    kind: 'retry',
                 }),
                 record.baseTurn.anchor,
             );
