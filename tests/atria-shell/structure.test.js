@@ -59,10 +59,10 @@ describe('R7 shell architecture', () => {
         const entry = read('public/scripts/atria-shell/index.js');
         const constants = read('public/scripts/atria-shell/constants.js');
         const css = read('public/css/atria-shell.css');
-        expect(constants).toContain("ATRIA_SHELL_RECOVERY_QUERY_KEY = 'atriaShellRecovery'");
+        expect(constants).toContain('ATRIA_SHELL_RECOVERY_QUERY_KEY = \'atriaShellRecovery\'');
         expect(entry).toContain('readRecoveryPreference(windowRef)');
-        expect(entry).toContain("documentRef.body.dataset.atriaShellMounted = 'true'");
-        expect(entry).toContain("documentRef.body.dataset.atriaShellRecovery = 'legacy'");
+        expect(entry).toContain('documentRef.body.dataset.atriaShellMounted = \'true\'');
+        expect(entry).toContain('documentRef.body.dataset.atriaShellRecovery = \'legacy\'');
         expect(css).toContain('body[data-atria-shell-mounted="true"] > #top-settings-holder');
     });
 
@@ -70,7 +70,7 @@ describe('R7 shell architecture', () => {
         const ross = read('public/scripts/RossAscends-mods.js');
         const power = read('public/scripts/power-user.js');
         expect(ross).toContain('export function isAtriaShellLayoutOwned(element)');
-        expect(ross).toContain("element?.closest?.('#atria-app-shell')");
+        expect(ross).toContain('element?.closest?.(\'#atria-app-shell\')');
         expect(power).toContain('isAtriaShellLayoutOwned(elmnt[0])');
         expect(power).toContain('filter(panel => !isAtriaShellLayoutOwned(panel))');
     });
