@@ -196,6 +196,33 @@ describe('Declarative Game Logic compiler', () => {
         })).toThrow(/reducers must be an array/);
     });
 
+    test('declarative commands can opt into LLM exposure without gaining state-write authority', () => {
+        const compiled = compileDeclarativeLogic({
+            commands: [{
+                id: 'inspect',
+                description: 'Inspect the current scene',
+                llm: { expose: true },
+                events: [],
+            }],
+        });
+
+        expect(compiled.commands[0]).toMatchObject({
+            id: 'inspect',
+            llm: { expose: true },
+        });
+
+        expect(() => compileDeclarativeLogic({
+            commands: [{
+                id: 'bad',
+                llm: {
+                    expose: true,
+                    setState: true,
+                },
+                events: [],
+            }],
+        })).toThrow(/unknown field/);
+    });
+
     test('unsafe reducer paths and unknown DSL fields fail during compile', () => {
         expect(() => compileDeclarativeLogic({
             reducers: [{
