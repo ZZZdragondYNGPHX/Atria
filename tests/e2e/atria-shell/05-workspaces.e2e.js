@@ -153,6 +153,13 @@ test.describe('R7E First-class Workspaces', () => {
         await expect(contextNode).toBeVisible();
         await expect(agents.locator('.atria-workspace-mobile-nav')).toBeVisible();
 
+        // Context Sheet is a real R7D transient layer and must intercept the
+        // Workspace below it. Close it before interacting with the focused
+        // Workspace, then verify navigation continues through the same route
+        // authority rather than bypassing the overlay.
+        await root.locator('#atria-context-sheet .atria-sheet-scrim').click();
+        await expect(root.locator('#atria-context-sheet')).toBeHidden();
+
         await agents.locator('.atria-workspace-mobile-nav [data-section="memory"]').click();
         await expect(page).toHaveURL(/atriaChild=memory/);
         expect(await page.evaluate(() => ({
