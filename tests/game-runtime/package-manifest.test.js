@@ -40,14 +40,36 @@ describe('Game Package manifest', () => {
     test('accepts current R1 optional world, logic, ui and capability metadata', () => {
         const result = validateGameManifest(minimalManifest({
             capabilities: ['chat.read', 'host.fullscreen'],
-            ui: { mode: 'hybrid', entry: 'ui/game.html' },
+            ui: { mode: 'hybrid', entry: 'ui/game.html', surface: 'chat.header' },
             world: { schema: 'world/schema.json', initial: 'world/initial.json' },
             logic: { entry: 'scripts/main.js' },
         }));
         expect(result.ok).toBe(true);
-        expect(result.manifest.ui.mode).toBe('hybrid');
+        expect(result.manifest.ui).toEqual({
+            mode: 'hybrid',
+            entry: 'ui/game.html',
+            surface: 'chat.header',
+        });
         expect(result.manifest.world.schema).toBe('world/schema.json');
         expect(result.manifest.logic.entry).toBe('scripts/main.js');
+    });
+
+    test('defaults UI surface to app.root and rejects unknown public surfaces', () => {
+        const defaulted = validateGameManifest(minimalManifest({
+            ui: { mode: 'component', entry: 'ui/hud.html' },
+        }));
+        expect(defaulted.ok).toBe(true);
+        expect(defaulted.manifest.ui.surface).toBe('app.root');
+
+        const invalid = validateGameManifest(minimalManifest({
+            ui: {
+                mode: 'component',
+                entry: 'ui/hud.html',
+                surface: '#chat',
+            },
+        }));
+        expect(invalid.ok).toBe(false);
+        expect(invalid.errors.join('\n')).toContain('ui.surface');
     });
 
     test('rejects unsupported runtime versions', () => {
