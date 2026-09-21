@@ -1,8 +1,7 @@
+import { cloneGameLlmValue } from './clone.js';
 const COMMAND_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
 
-function clone(value) {
-    return value === undefined ? undefined : structuredClone(value);
-}
+const clone = cloneGameLlmValue;
 
 function deepFreeze(value, seen = new Set()) {
     if (!value || typeof value !== 'object' || seen.has(value)) return value;
