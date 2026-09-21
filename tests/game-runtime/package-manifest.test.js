@@ -2,6 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import {
     GAME_RUNTIME_VERSION,
+    getGamePackageDeclaredFiles,
     normalizeGamePackagePath,
     resolveGamePackageAssetUrl,
     validateGameManifest,
@@ -49,6 +50,7 @@ describe('Game Package manifest', () => {
             },
             world: { schema: 'world/schema.json', initial: 'world/initial.json' },
             logic: { entry: 'scripts/main.js' },
+            llm: { observations: 'llm/observations.json' },
         }));
         expect(result.ok).toBe(true);
         expect(result.manifest.ui).toEqual({
@@ -60,6 +62,8 @@ describe('Game Package manifest', () => {
         });
         expect(result.manifest.world.schema).toBe('world/schema.json');
         expect(result.manifest.logic.entry).toBe('scripts/main.js');
+        expect(result.manifest.llm.observations).toBe('llm/observations.json');
+        expect(getGamePackageDeclaredFiles(result.manifest)).toContain('llm/observations.json');
     });
 
     test('defaults UI surface to app.root and rejects unknown public surfaces', () => {
