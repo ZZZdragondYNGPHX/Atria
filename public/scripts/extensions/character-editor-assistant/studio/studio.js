@@ -695,6 +695,8 @@ function buildRightPanelHtml() {
  <div class="card-app-studio-panel-header">
     <span class="card-app-studio-title" data-studio-editor-title>${isGameProject ? '🎮' : '📝'} ${escapeHtml(editorTitle)}</span>
  <div class="card-app-studio-header-actions">
+        ${isGameProject ? `<button class="card-app-studio-btn small" data-studio-action="atria-build" title="${escapeHtml(t('Validate and build .atria distribution'))}">📦 ${escapeHtml(t('Build .atria'))}</button>` : ''}
+        <button class="card-app-studio-btn small" data-studio-action="atria-import" title="${escapeHtml(t('Validate and restore .atria source project'))}">📥 ${escapeHtml(t('Import .atria'))}</button>
         ${isGameProject ? `<button class="card-app-studio-btn small" data-studio-action="simulation-toggle" title="${escapeHtml(t('Simulation / Diagnostics'))}">🧪 ${escapeHtml(t('Simulate'))}</button>` : ''}
         <button class="card-app-studio-btn small" data-studio-action="save" title="${escapeHtml(t('Save'))} (Ctrl+S)">💾 ${escapeHtml(t('Save'))}</button>
         <button class="card-app-studio-btn small" data-studio-action="reload" title="${escapeHtml(t('Reload'))}">↻ ${escapeHtml(t('Reload'))}</button>
@@ -954,6 +956,7 @@ async function handleRollback(hash) {
         if (currentFile) await openFile(currentFile);
         await renderHistory();
         await reloadCardApp();
+        return true;
     } catch (err) {
         toastr.error(tFormat('Rollback failed: ${0}', err.message));
     }
@@ -988,7 +991,7 @@ async function openFile(filePath, selection = null) {
 }
 
 async function handleSaveCurrentFile() {
-    if (!currentFile || !currentCharId) return;
+    if (!currentFile || !currentCharId) return false;
 
     try {
         await structuredRuntimeEditorHost?.validateBeforeSave();
@@ -1000,7 +1003,132 @@ async function handleSaveCurrentFile() {
     } catch (err) {
         console.error(`[${MODULE_NAME}] Failed to save file:`, err);
         toastr.error(tFormat('Failed to save: ${0}', err.message));
+        return false;
     }
+}
+
+async function readAtriaApiError(response, fallback) {
+    try {
+        const body = await response.json();
+        return String(body?.error || fallback);
+    } catch {
+        return fallback;
+    }
+}
+
+function atriaDownloadName(response) {
+    const disposition = String(response.headers.get('content-disposition') || '');
+    const match = /filename="([^"]+)"/i.exec(disposition);
+    if (match?.[1]) return match[1];
+    const id = String(projectNavigator?.manifest?.id || 'atria-game').replace(/[^A-Za-z0-9._-]+/g, '_');
+    const version = String(projectNavigator?.manifest?.version || '0.0.0').replace(/[^A-Za-z0-9._+-]+/g, '_');
+    return id + '-' + version + '.atria';
+}
+
+async function handleBuildAtria() {
+    if (!currentCharId || projectNavigator?.kind !== GAME_PROJECT_KIND.GAME) return;
+    if (currentFile && !(await handleSaveCurrentFile())) return;
+
+    try {
+        const response = await fetch(
+            `/api/card-app/${encodeURIComponent(currentCharId)}/atria/export`,
+            { headers: getRequestHeaders() },
+        );
+        if (!response.ok) {
+            throw new Error(await readAtriaApiError(response, 'Failed to build .atria distribution'));
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = atriaDownloadName(response);
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        toastr.success(t('Validated and built .atria distribution'));
+    } catch (error) {
+        toastr.error(t('Build .atria failed') + ': ' + (error?.message || String(error)));
+    }
+}
+
+async function validateAtriaImport(charId, archiveBuffer) {
+    const response = await fetch(
+        `/api/card-app/${encodeURIComponent(charId)}/atria/validate`,
+        {
+            method: 'POST',
+            headers: {
+                ...getRequestHeaders(),
+                'Content-Type': 'application/x-atria',
+            },
+            body: archiveBuffer,
+        },
+    );
+    if (!response.ok) {
+        throw new Error(await readAtriaApiError(response, 'Invalid .atria distribution'));
+    }
+    return response.json();
+}
+
+async function restoreAtriaImport(charId, archiveBuffer) {
+    const response = await fetch(
+        `/api/card-app/${encodeURIComponent(charId)}/atria/import`,
+        {
+            method: 'POST',
+            headers: {
+                ...getRequestHeaders(),
+                'Content-Type': 'application/x-atria',
+            },
+            body: archiveBuffer,
+        },
+    );
+    if (!response.ok) {
+        throw new Error(await readAtriaApiError(response, 'Failed to restore .atria distribution'));
+    }
+    return response.json();
+}
+
+async function handleImportAtria() {
+    if (!currentCharId) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.atria,application/zip,application/x-atria';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        input.remove();
+        if (!file) return;
+
+        try {
+            const archiveBuffer = await file.arrayBuffer();
+            const preview = await validateAtriaImport(currentCharId, archiveBuffer);
+            const game = preview?.game || {};
+            const confirmed = confirm(
+                t('Restore this validated .atria Source Project? Existing source files will be replaced; Git history is preserved.')
+                + '\n\n'
+                + String(game.name || game.id || file.name)
+                + (game.version ? ' @ ' + game.version : '')
+                + '\n'
+                + String(preview?.fileCount || 0) + ' ' + t('files'),
+            );
+            if (!confirmed) return;
+
+            const charId = currentCharId;
+            await restoreAtriaImport(charId, archiveBuffer);
+            toastr.success(t('Restored .atria Source Project'));
+            await closeCardAppStudio();
+            await openCardAppStudio(charId);
+            await reloadCardApp();
+        } catch (error) {
+            toastr.error(t('Import .atria failed') + ': ' + (error?.message || String(error)));
+        }
+    }, { once: true });
+
+    input.click();
 }
 
 async function handleNewFile() {
@@ -1761,6 +1889,12 @@ async function handleStudioClick(e) {
             break;
         case 'reload':
             reloadCardApp();
+            break;
+        case 'atria-build':
+            await handleBuildAtria();
+            break;
+        case 'atria-import':
+            await handleImportAtria();
             break;
         case 'simulation-toggle':
             await studioSimulationHost?.toggle();
