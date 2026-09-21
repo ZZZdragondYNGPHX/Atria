@@ -154,8 +154,7 @@ function parseJsonBuffer(buffer, label, sourcePath) {
         return JSON.parse(buffer.toString('utf8'));
     } catch (error) {
         throw new Error(
-            `${label} '${sourcePath}' is not valid JSON: ${error?.message || String(error)}`
-            + (error?.message || String(error)),
+            `${label} '${sourcePath}' is not valid JSON: ${error?.message || String(error)}`,
         );
     }
 }
@@ -378,8 +377,7 @@ function safeEntryData(entry) {
         data = entry.getData();
     } catch (error) {
         throw new Error(
-            `Archive entry '${entry.entryName}' is corrupt: ${error?.message || String(error)}`
-            + (error?.message || String(error)),
+            `Archive entry '${entry.entryName}' is corrupt: ${error?.message || String(error)}`,
         );
     }
     if (!Buffer.isBuffer(data) || data.length !== size) {
