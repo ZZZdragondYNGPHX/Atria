@@ -2,7 +2,7 @@
 
 ## Status
 
-- Phase: **R7G validated; R7H next**
+- Phase: **R7 complete; final integration to `main` next**
 - Repository: `ZZZdragondYNGPHX/Atria`
 - R0-R6 frozen branch: `refactor/game-runtime-architecture`
 - R6 final validated HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
@@ -23,6 +23,8 @@
 - R7F validation: **R7 Shell Dev Checks #133**, run `35585151542`, success
 - R7G final validated HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
 - R7G validation: **R7 Shell Dev Checks #152**, run `35588313656`, success
+- R7H final validated HEAD: `f03e42106d1ac1c158cab316b1e834670a5c5c5b`
+- R7H / final R7 validation: **R7 Shell Dev Checks #160**, run `35594944832`, success
 - R7 is based directly on the complete R0-R6 branch and therefore already contains the full Master Refactor history.
 - Neither long-running branch is to be merged into `main` before R7 final validation.
 
@@ -1511,15 +1513,41 @@ Exit result:
 
 ### R7H — Legacy Shell Retirement & Final Hardening
 
-- remove obsolete old shell launchers/chrome from normal product flow;
-- isolate remaining compatibility anchors;
-- stop MovingUI from controlling the new shell;
-- remove stale shell-specific CSS only where safe;
-- update frontend/plugin guidance;
-- complete final R0-R7 regression/performance validation.
+Implementation result — **complete and validated**:
 
-Exit:
-- Atria Shell is authoritative across desktop/mobile and all major product domains.
+- Atria Shell is now the normal default Host; the staged `?atriaShell=1` / `atria.shell.preview` gate is fully retired from production and R7 test contracts;
+- an explicit `?atriaShellRecovery=legacy` recovery/debug contract remains available for host failures without becoming a second normal product shell;
+- legacy top-bar/drawer launchers are retired from normal product IA while stateful controller roots and third-party extension anchors remain in the DOM as compatibility ABI;
+- `#top-bar` / `#top-settings-holder` chrome is hidden only while Atria Shell owns the Host; controller roots such as Character, World Info, API, User Settings and extension settings remain reusable through WorkspaceHost/utility adapters;
+- compatibility anchors are explicitly marked and may be reparented without cloning or changing identity;
+- MovingUI is blocked from applying persisted geometry, resizing or drag ownership to nodes currently owned by `#atria-app-shell`; it remains available only for legacy compatibility islands;
+- MovingUI is no longer a first-class Settings category in the Atria product IA and remains accessible through the advanced/compatibility Settings form;
+- stale legacy shell CSS was audited conservatively: rules still required by recovery, compatibility controllers, responsive World Info and the native Conversation/Composer were retained; Atria-mounted geometry is owned by `atria-shell.css`;
+- frontend/plugin guidance now documents that old launchers/drawer geometry are compatibility details rather than product-navigation APIs;
+- R7 browser fixtures and shared character helpers now route through WorkspaceHost while Shell is mounted, with legacy drawer fallback only for recovery/non-Shell cases;
+- no second router, Shell, Conversation, Composer, generation source, Settings store, Plugin store, Account state, Stage authority or Game Runtime authority was introduced.
+
+Final validation:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- Final validated HEAD: `f03e42106d1ac1c158cab316b1e834670a5c5c5b`
+- Workflow: **R7 Shell Dev Checks #160**
+- Run: `35594944832`
+- Result: **success**
+- R7H focused unit/lint: success
+- Atria Namespace Guard: success
+- complete R7 real-browser smoke: success
+- complete Node unit regression with MySQL 8.4 / PostgreSQL 16 CI services: success
+- frontend library build: success
+- retired preview-gate residual guard: success
+- Android/Docker builds were not run because R7H did not modify Android Kotlin/native Back bridge or Docker delivery surfaces.
+
+Exit result:
+
+- Atria Shell is authoritative across Expanded / Medium / Compact and all Primary Domains / Global Utilities;
+- old SillyTavern shell chrome is no longer the normal product navigation architecture;
+- legacy DOM remains only where required as controller/plugin compatibility ABI;
+- R0-R7 is ready for final integration into `main`.
 
 ---
 
@@ -1766,6 +1794,7 @@ As of the R7G handoff:
 - R7F is complete and validated at `f8f516ba23ce8f4dbc3df8998cee301e043aace4`;
 - R7G is complete and validated at `7d4207aec9974d0ae697afe517494e70866c0a39`;
 - authoritative R7G validation is **R7 Shell Dev Checks #152**, run `35588313656`, success;
-- R7H — Legacy Shell Retirement & Final Hardening is next;
-- the same long-running `refactor/atria-game-first-shell-redesign` branch continues through R7H;
-- neither the R7 branch nor the frozen R0-R6 branch is merged/deleted before final R7 validation.
+- R7H — Legacy Shell Retirement & Final Hardening is complete and validated at `f03e42106d1ac1c158cab316b1e834670a5c5c5b`;
+- authoritative final R7 validation is **R7 Shell Dev Checks #160**, run `35594944832`, success;
+- the complete R0-R7 implementation is ready for final PR integration into `main`;
+- keep both long-running refactor branches until main integration CI passes and merged main is verified.
