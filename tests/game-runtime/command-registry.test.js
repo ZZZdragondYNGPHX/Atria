@@ -43,6 +43,54 @@ describe('Game Command Registry', () => {
         expect(registry.validate('damage', { amount: 4, hidden: true }).errors.join(' ')).toMatch(/unexpected property/);
     });
 
+    test('keeps LLM exposure opt-in and validates metadata', () => {
+        const registry = createCommandRegistry([
+            {
+                ...damageCommand(),
+                llm: { expose: true },
+            },
+            {
+                id: 'internal_only',
+                execute() {
+                    return [];
+                },
+            },
+        ]);
+
+        expect(registry.list()).toEqual([
+            {
+                id: 'damage',
+                description: 'Apply deterministic damage',
+                argsSchema: damageCommand().argsSchema,
+                llm: { expose: true },
+            },
+            {
+                id: 'internal_only',
+                argsSchema: {
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: {},
+                },
+            },
+        ]);
+
+        expect(() => createCommandRegistry([{
+            id: 'bad_llm',
+            llm: { expose: 'yes' },
+            execute() {
+                return [];
+            },
+        }])).toThrow(/llm\.expose must be a boolean/);
+
+        expect(() => createCommandRegistry([{
+            id: 'bad_llm_field',
+            llm: { expose: true, stateWriter: true },
+            execute() {
+                return [];
+            },
+        }])).toThrow(/unknown field/);
+    });
+
     test('rejects duplicate and malformed command definitions', () => {
         expect(() => createCommandRegistry([
             damageCommand(),
