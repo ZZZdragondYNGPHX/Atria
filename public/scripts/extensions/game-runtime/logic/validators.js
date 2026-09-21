@@ -35,7 +35,7 @@ export async function runCommandValidators(validators, context = {}) {
         }
 
         const label = validator.validatorId
-            ? "Command validator '" + String(validator.validatorId) + "'"
+            ? `Command validator '${String(validator.validatorId)}'`
             : 'Command validator ' + index;
         let result;
         try {
