@@ -216,6 +216,18 @@ export function compileDeclarativeCommand(raw) {
         `Declarative command '${id}' validators`,
     ).map((validator, index) => compileValidator(validator, index, id));
 
+    let llm;
+    if (raw.llm !== undefined) {
+        if (!isPlainObject(raw.llm)) {
+            throw new Error(`Declarative command '${id}' llm must be an object`);
+        }
+        assertKnownFields(raw.llm, new Set(['expose']), `Declarative command '${id}' llm`);
+        if (raw.llm.expose !== undefined && typeof raw.llm.expose !== 'boolean') {
+            throw new Error(`Declarative command '${id}' llm.expose must be a boolean`);
+        }
+        llm = { expose: raw.llm.expose === true };
+    }
+
     return {
         id,
         ...(raw.description === undefined ? {} : { description: String(raw.description) }),
