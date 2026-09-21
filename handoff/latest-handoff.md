@@ -1,6 +1,6 @@
-# Active implementation: R7C — Game Surface Integration
+# Active implementation: R7D — Desktop / Mobile Navigation
 
-R7A — Design System & Shell Foundation and R7B — Play / Native Conversation Host are complete and validated. The next conversation should continue directly with **R7C — Game Surface Integration** on the same long-running R7 branch.
+R7A — Design System & Shell Foundation, R7B — Play / Native Conversation Host, and R7C — Game Surface Integration are complete and validated. The next conversation should continue directly with **R7D — Desktop / Mobile Navigation** on the same long-running R7 branch.
 
 ## Frozen R0-R6 baseline
 
@@ -25,11 +25,13 @@ Keep this branch frozen during R7 except for a narrowly targeted correction prov
 - R7A validation: **R7 Shell Dev Checks #43**, run `35569965553`, success
 - R7B final validated HEAD: `a2ec6478ff2846069dc780f35813b159a21b597a`
 - R7B validation: **R7 Shell Dev Checks #52**, run `35572544216`, success
+- R7C final validated HEAD: `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a`
+- R7C validation: **R7 Shell Dev Checks #71**, run `35574765675`, success
 - Authoritative R7 plan: `refactor/atria-game-first-shell-redesign.md`
 - Master runtime plan: `refactor/game-runtime-architecture.md`
 - Detailed frozen-runtime handoff: `handoff/game-runtime-architecture.md`
 
-Do not create a separate R7C branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
+Do not create a separate R7D branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
 
 Do not merge R7 to `main` at phase boundaries. R7A-R7H remain one long-running R7 implementation line. Final integration happens only after R7H/final R7 validation.
 
@@ -123,76 +125,91 @@ Final R7B validation:
 - namespace guard: success
 - Android/Docker: not run; neither was required for browser/frontend-only R7B work.
 
-## R7C objective
+## R7C completed — do not redo
 
-R7C — Game Surface Integration makes the already-complete R4 Game UI system operate coherently under the new Shell / Native Play Host.
+R7C integrated the existing R4 Game Surface system into the Shell/Native Play ownership model without adding another runtime UI mode or state authority.
 
-Integrate, rather than redesign:
+R7C implementation:
 
-- Component;
-- Hybrid;
-- Full;
-- native Conversation / Composer slots;
-- Host Surface Registry / adapter;
-- legacy CardApp;
-- Host Recovery;
-- Immersive.
+- Component remains conversation-first and uses the stable R4 Surface contract;
+- the Native Play Host now coordinates native-component mount/restore and exclusive Stage ownership;
+- Hybrid `app.root` maps to the Shell Stage, while its Conversation/Composer slots receive the same real `#chat` and `#send_form` nodes through the Play Host seam;
+- `sidebar.right` may resolve to Context Dock, while `drawer` / `modal` may resolve to the Shell transient layer; native compatibility surfaces remain stable;
+- Full package UI mounts inside Stage and acquires `game-runtime:full` Stage ownership rather than becoming a viewport-level application shell;
+- Full Host Recovery mounts into the Shell Host Recovery layer outside the package root;
+- Exit / Stop / Disable Package / Diagnostics remain Host-authoritative; Stop is still wired to the existing generation control;
+- legacy CardApp uses the same Stage ownership concept as a recoverable **Legacy Full Stage Surface** under Shell ownership, while retaining the historical fallback only when Shell ownership is absent;
+- Immersive remains a separate presentation contract and does not take Stage ownership;
+- mount failure, normal dispose, Shell unmount, Hybrid restore and Full exit all return the exact native nodes to the correct Play structure;
+- no duplicate `#chat`, `#send_form`, `#send_textarea`, generation source, Timeline, Composer, or World/Event/Turn authority was introduced.
 
-The core invariant remains:
+Final R7C validation:
 
-> **Full owns Stage, never Host.**
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a`
+- Workflow: **R7 Shell Dev Checks #71**
+- Run: `35574765675`
+- **R7C Focused Unit and Lint**: success
+- **R7C Expanded Compact Game Surface Browser Smoke**: success
+- Atria namespace guard: success
+- Android/Docker: not run; R7C changed browser/frontend host ownership only.
 
-The Native Play Host from R7B remains the single native Conversation/Composer ABI.
+Browser coverage includes Narrative baseline, Component, Hybrid, Full, Full failure recovery, Host Command availability under Full, native Stop wiring, Immersive coexistence, Legacy CardApp Stage recovery, unique native node identity, Expanded and Compact layouts.
 
-## R7C required first inspection
+Do not reopen R7C architecture unless a concrete R7D integration defect requires a narrowly targeted correction.
 
-Before editing, inspect the real latest remote branch and trace the current runtime paths for at least:
+## R7D objective
 
-- `public/scripts/extensions/game-runtime/ui/host-surfaces.js`;
-- `public/scripts/extensions/game-runtime/ui/surfaces.js`;
-- `public/scripts/extensions/game-runtime/ui/full-host.js`;
-- Game UI Component/Hybrid mount lifecycle;
-- native component mount/unmount and restoration;
-- the code that activates package UI modes from the Game Runtime;
-- legacy CardApp surface activation/recovery;
-- Immersive provider/presentation integration;
-- Shell Stage / Native Play Host ownership introduced in R7B.
+R7D — Desktop / Mobile Navigation makes the R7 Shell authoritative for navigation and responsive host routing while preserving the validated Play/Game Surface ownership from R7A-R7C.
 
-Confirm where R4 currently resolves each surface before changing the adapter.
+R7D owns:
 
-## R7C architecture constraints
+- Desktop Navigation Rail authority;
+- Mobile Bottom Navigation authority;
+- primary route/history semantics;
+- Context Dock navigation behavior;
+- Context Sheet navigation behavior;
+- shared Command surfaces as navigation/action entry points;
+- Android Back Resolver integration;
+- keyboard/safe-area navigation behavior;
+- Compact / Medium / Expanded host navigation behavior.
 
-- Do not add a fourth Game Runtime UI mode. R4 remains `component / hybrid / full`.
-- Do not clone or synchronize a second Conversation/Composer.
-- Preserve all R4 Surface / Native Component contracts unless a concrete defect requires a narrowly compatible adapter change.
-- Component should augment the native Play experience through supported surfaces.
-- Hybrid may become Game-first while still composing the same native Conversation/Composer through supported slots.
-- Full may replace/own **Stage content**, but never the entire Atria Host.
-- Host Recovery must stay reachable above package-owned Full surfaces.
-- Timeline access, Stop, Diagnostics, Exit Game UI, Disable Package and Command remain Host-authoritative recovery capabilities.
-- Legacy CardApp should be treated as a recoverable **Legacy Full Stage Surface**, not as an independent application shell.
-- Immersive remains a presentation contract and must coexist with Component/Hybrid/Full rather than being folded into their state.
-- Do not create another World/Event/Turn state machine in the Shell.
-- Do not begin the R7D authoritative Desktop/Mobile navigation cutover.
-- Keep the R7 preview gate during R7C staged migration unless the authoritative plan explicitly reaches the later cutover phase.
+R7D must preserve:
 
-## R7C validation expectations
+- the R7C Stage ownership model for Narrative / Component / Hybrid / Full / Legacy CardApp;
+- the one real Native Conversation / Composer;
+- Full owns Stage, never Host;
+- Focus / Immersive / Full remain distinct;
+- R4 Game UI modes remain exactly `component / hybrid / full`;
+- the R7 preview gate during staged navigation cutover until the new navigation authority is validated.
 
-Add focused unit/integration coverage plus real-browser smoke proving at minimum:
+R7D must not prematurely perform:
 
-- Narrative-only Play remains functional;
-- Component operates under the Shell and uses supported host/native slots;
-- Hybrid operates under the Shell without duplicating native Conversation/Composer;
-- Full owns Stage content while Atria Host Recovery remains reachable;
-- leaving Full restores the appropriate native/host surface;
-- native Conversation/Composer identity remains single and stable through Game Surface transitions;
-- Host Surface resolution does not create duplicate anchors or duplicate state authorities;
-- legacy CardApp remains recoverable through the Stage/Host contract;
-- Immersive can coexist with the R7C Game Surface lifecycle;
-- Expanded and Compact hosts remain usable;
-- failure/disable/exit paths recover to a usable Atria Host.
+- R7E first-class Workspace controller migration;
+- R7F Library / Runtime product implementation;
+- R7G Plugins / Settings reclassification;
+- R7H legacy shell retirement.
 
-Reuse the existing R4 tests and R7 browser infrastructure where practical. Do not build Android APK or Docker unless Android/Kotlin code is actually modified or the user explicitly requests it.
+Before editing, audit the actual current navigation authority and call paths, including:
+
+- existing AppShell `navigate()` behavior and primary-domain buttons;
+- old top-bar / drawer / settings / extension navigation handlers;
+- route/history state and any URL/hash/history coupling;
+- Context Dock / Context Sheet open-close semantics;
+- Command Registry navigation commands;
+- current Compact/Medium/Expanded responsive transitions;
+- visualViewport / keyboard-open behavior;
+- Android WebView Back bridge and web-side Back handling;
+- Full / Immersive Escape ordering and existing popup/modal/back consumers.
+
+R7D exit target:
+
+- normal primary navigation under the staged R7 Shell no longer depends on the old top-bar/drawer navigation model;
+- desktop Rail and compact Bottom Navigation drive one route authority;
+- route/back behavior is deterministic and does not create duplicate page state;
+- Dock/Sheet/Command navigation surfaces participate in one back-resolution order;
+- Game Surface Stage ownership remains unchanged;
+- Expanded/Medium/Compact browser coverage proves navigation authority and recovery.
 
 ## R7 product architecture remains frozen
 
