@@ -1,6 +1,7 @@
 import { loadGameLogicDefinition } from './logic/package.js';
 import { resolveGamePackageAssetUrl } from './manifest.js';
 import { GAME_PACKAGE_STATUS, loadGamePackage } from './package-loader.js';
+import { activateGamePackageUi } from './ui/live.js';
 import { createGameWorldSession } from './world/session.js';
 
 const MODULE_NAME = 'game-runtime';
@@ -15,6 +16,7 @@ const registerExtensionApi = atriaContext.registerExtensionApi;
 
 let revision = 0;
 let currentWorldSession = null;
+let currentUiSession = null;
 let currentPackage = Object.freeze({
     status: GAME_PACKAGE_STATUS.NONE,
     active: false,
@@ -50,6 +52,18 @@ function publishPackageState(next) {
     }
 }
 
+async function disposeCurrentUi() {
+    const session = currentUiSession;
+    currentUiSession = null;
+    if (session?.dispose) {
+        try {
+            await session.dispose();
+        } catch (error) {
+            console.warn(`[${MODULE_NAME}] Failed to dispose Game UI`, error);
+        }
+    }
+}
+
 export async function reloadGamePackage() {
     const loadRevision = ++revision;
     const charId = getCurrentCharacterPackageId();
@@ -62,6 +76,7 @@ export async function reloadGamePackage() {
     }
 
     let nextWorldSession = null;
+    let nextUiSession = null;
     if (next.status === GAME_PACKAGE_STATUS.READY) {
         try {
             const logicDefinition = await loadGameLogicDefinition(next, {
@@ -76,7 +91,13 @@ export async function reloadGamePackage() {
                 reducers: logicDefinition.reducers,
                 rules: logicDefinition.rules,
             });
+            nextUiSession = await activateGamePackageUi(next, nextWorldSession, {
+                headers: getRequestHeaders(),
+            });
         } catch (error) {
+            await nextUiSession?.dispose?.();
+            nextUiSession = null;
+            nextWorldSession = null;
             next = {
                 status: GAME_PACKAGE_STATUS.INVALID,
                 active: false,
@@ -90,10 +111,13 @@ export async function reloadGamePackage() {
     }
 
     if (loadRevision !== revision) {
+        await nextUiSession?.dispose?.();
         return currentPackage;
     }
 
+    await disposeCurrentUi();
     currentWorldSession = nextWorldSession;
+    currentUiSession = nextUiSession;
     publishPackageState(next);
 
     if (next.status === GAME_PACKAGE_STATUS.INVALID) {
@@ -112,10 +136,13 @@ async function syncCurrentWorldBranch() {
     if (!session) return null;
 
     try {
-        return await session.syncBranch();
+        const result = await session.syncBranch();
+        currentUiSession?.refresh?.();
+        return result;
     } catch (error) {
         if (session !== currentWorldSession) return null;
         currentWorldSession = null;
+        await disposeCurrentUi();
         publishPackageState({
             ...currentPackage,
             status: GAME_PACKAGE_STATUS.ERROR,
