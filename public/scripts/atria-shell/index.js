@@ -61,6 +61,9 @@ export function initializeAtriaShellFoundation({
             utilities: {
                 ...(utilities || {}),
                 diagnostics: utilities?.diagnostics || (() => workspaceHost?.openUtility('diagnostics')),
+                plugins: utilities?.plugins || (() => workspaceHost?.openUtility('plugins')),
+                settings: utilities?.settings || (() => workspaceHost?.openUtility('settings')),
+                account: utilities?.account || (() => workspaceHost?.openUtility('account')),
             },
         });
         try {
