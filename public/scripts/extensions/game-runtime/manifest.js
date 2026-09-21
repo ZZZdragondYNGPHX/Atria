@@ -48,7 +48,7 @@ const TOP_LEVEL_KEYS = new Set([
     'world',
     'logic',
 ]);
-const UI_KEYS = new Set(['mode', 'entry', 'surface', 'selectors']);
+const UI_KEYS = new Set(['mode', 'entry', 'surface', 'selectors', 'immersive']);
 const WORLD_KEYS = new Set(['schema', 'initial']);
 const LOGIC_KEYS = new Set(['entry']);
 const RUNTIME_KEYS = new Set(['min', 'max']);
@@ -231,11 +231,15 @@ export function validateGameManifest(input, options = {}) {
             const selectors = input.ui.selectors === undefined
                 ? null
                 : validatePathField(input.ui.selectors, 'ui.selectors', errors);
+            const immersive = input.ui.immersive === undefined
+                ? null
+                : validatePathField(input.ui.immersive, 'ui.immersive', errors);
             ui = {
                 mode,
                 entry,
                 surface,
                 ...(selectors ? { selectors } : {}),
+                ...(immersive ? { immersive } : {}),
             };
         }
     }
@@ -298,6 +302,7 @@ export function getGamePackageDeclaredFiles(manifest) {
     const paths = [
         manifest?.ui?.entry,
         manifest?.ui?.selectors,
+        manifest?.ui?.immersive,
         manifest?.world?.schema,
         manifest?.world?.initial,
         manifest?.logic?.entry,
