@@ -49,7 +49,7 @@ function makeAdapter(kind, records) {
     });
 }
 
-describe('R7F WorkspaceHost', () => {
+describe('R7G WorkspaceHost', () => {
     beforeEach(() => {
         window.history.replaceState(null, '', '/');
         setViewport();
@@ -74,6 +74,12 @@ describe('R7F WorkspaceHost', () => {
             library: makeAdapter('library', records),
             runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
+
+            plugins: makeAdapter('plugins', records),
+
+            settings: makeAdapter('settings', records),
+
+            account: makeAdapter('account', records),
             placeholder: makeAdapter('placeholder', records),
         };
         const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters });
@@ -121,6 +127,12 @@ describe('R7F WorkspaceHost', () => {
             library: makeAdapter('library', records),
             runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
+
+            plugins: makeAdapter('plugins', records),
+
+            settings: makeAdapter('settings', records),
+
+            account: makeAdapter('account', records),
             placeholder: makeAdapter('placeholder', records),
         };
         const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters });
@@ -168,6 +180,24 @@ describe('R7F WorkspaceHost', () => {
         expect(host.getActiveWorkspace()?.key).toBe('utility:diagnostics');
         expect(adapters.diagnostics).toHaveBeenCalledTimes(1);
 
+        host.openUtility('plugins');
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('utility.plugins');
+        expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:plugins', kind: 'plugins' });
+        expect(adapters.plugins).toHaveBeenCalledTimes(1);
+
+        host.openUtility('settings');
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('utility.settings');
+        expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:settings', kind: 'settings' });
+        expect(adapters.settings).toHaveBeenCalledTimes(1);
+
+        host.openUtility('account');
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('utility.account');
+        expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:account', kind: 'account' });
+        expect(adapters.account).toHaveBeenCalledTimes(1);
+
         host.dispose();
         shell.destroy();
         navigation.dispose();
@@ -194,6 +224,12 @@ describe('R7F WorkspaceHost', () => {
                 library: makeAdapter('library', records),
                 runtime: makeAdapter('runtime', records),
                 diagnostics: makeAdapter('diagnostics', records),
+
+                plugins: makeAdapter('plugins', records),
+
+                settings: makeAdapter('settings', records),
+
+                account: makeAdapter('account', records),
                 placeholder: makeAdapter('placeholder', records),
             },
         });
@@ -235,6 +271,12 @@ describe('R7F WorkspaceHost', () => {
             library: makeAdapter('library', records),
             runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
+
+            plugins: makeAdapter('plugins', records),
+
+            settings: makeAdapter('settings', records),
+
+            account: makeAdapter('account', records),
             placeholder: makeAdapter('placeholder', records),
         };
         const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters });
@@ -280,6 +322,12 @@ describe('R7F WorkspaceHost', () => {
                 library: makeAdapter('library', records),
                 runtime: makeAdapter('runtime', records),
                 diagnostics: makeAdapter('diagnostics', records),
+
+                plugins: makeAdapter('plugins', records),
+
+                settings: makeAdapter('settings', records),
+
+                account: makeAdapter('account', records),
                 placeholder: makeAdapter('placeholder', records),
             },
         });
@@ -338,6 +386,33 @@ describe('R7F WorkspaceHost', () => {
         await flushWorkspace();
         expect(navigation.getRoute().child?.id).toBe('utility.diagnostics');
 
+        const extensionsDrawer = document.createElement('div');
+        extensionsDrawer.id = 'extensions-settings-button';
+        const extensionsToggle = document.createElement('button');
+        extensionsToggle.className = 'drawer-toggle';
+        extensionsDrawer.append(extensionsToggle);
+        document.body.append(extensionsDrawer);
+        extensionsToggle.click();
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('utility.plugins');
+
+        const settingsDrawer = document.createElement('div');
+        settingsDrawer.id = 'user-settings-button';
+        const settingsToggle = document.createElement('button');
+        settingsToggle.className = 'drawer-toggle';
+        settingsDrawer.append(settingsToggle);
+        document.body.append(settingsDrawer);
+        settingsToggle.click();
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('utility.settings');
+
+        const account = document.createElement('button');
+        account.id = 'account_button';
+        document.body.append(account);
+        account.click();
+        await flushWorkspace();
+        expect(navigation.getRoute().child?.id).toBe('utility.account');
+
         host.dispose();
         shell.destroy();
         navigation.dispose();
@@ -348,6 +423,18 @@ describe('R7F WorkspaceHost', () => {
             domain: 'play',
             child: { id: 'utility.diagnostics', label: 'Diagnostics', kind: 'workspace' },
         })).toMatchObject({ key: 'utility:diagnostics', kind: 'diagnostics' });
+        expect(routeDescriptor({
+            domain: 'play',
+            child: { id: 'utility.plugins', label: 'Plugins', kind: 'workspace' },
+        })).toMatchObject({ key: 'utility:plugins', kind: 'plugins', title: 'Plugins' });
+        expect(routeDescriptor({
+            domain: 'runtime',
+            child: { id: 'utility.settings', label: 'Settings', kind: 'workspace' },
+        })).toMatchObject({ key: 'utility:settings', kind: 'settings', title: 'Settings' });
+        expect(routeDescriptor({
+            domain: 'library',
+            child: { id: 'utility.account', label: 'Account', kind: 'workspace' },
+        })).toMatchObject({ key: 'utility:account', kind: 'account', title: 'Account' });
         expect(routeDescriptor({ domain: 'library', child: null, breadcrumb: ['Library'] }))
             .toMatchObject({ key: 'library', kind: 'library', section: 'characters', title: 'Characters' });
         expect(routeDescriptor({
