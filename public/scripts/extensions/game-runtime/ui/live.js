@@ -1,4 +1,5 @@
 import { loadGameSelectorDefinitions } from './declarative.js';
+import { createFullGameHost } from './full-host.js';
 import { createAtriaSurfaceAdapter } from './host-surfaces.js';
 import {
     activateGameImmersiveProvider,
@@ -12,17 +13,7 @@ import { createSurfaceHost } from './surfaces.js';
 export async function activateGamePackageUi(packageState, worldSession, options = {}) {
     const ui = packageState?.manifest?.ui;
     if (!ui) return null;
-    if (ui.mode === 'full') {
-        return Object.freeze({
-            mode: ui.mode,
-            status: 'deferred',
-            refresh() {
-                return [];
-            },
-            async dispose() {},
-        });
-    }
-    if (!['component', 'hybrid'].includes(ui.mode)) {
+    if (!['component', 'hybrid', 'full'].includes(ui.mode)) {
         throw new Error(`Unsupported Game UI mode '${String(ui.mode)}'`);
     }
 
@@ -42,9 +33,24 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         }),
     ]);
 
-    const adapter = createAtriaSurfaceAdapter(documentRef);
+    const isFull = ui.mode === 'full';
+    const adapter = isFull ? null : createAtriaSurfaceAdapter(documentRef);
+    const fullHost = isFull
+        ? createFullGameHost(documentRef, {
+            onExit: options.hostActions?.exitGameUi,
+            onStopGeneration: options.hostActions?.stopGeneration,
+            onDisablePackage: options.hostActions?.disablePackage,
+            onDiagnostics: options.hostActions?.openDiagnostics,
+        })
+        : null;
+
     const surfaceHost = createSurfaceHost({
-        resolveSurface: surfaceId => adapter.resolveSurface(surfaceId),
+        resolveSurface(surfaceId) {
+            if (isFull) {
+                return surfaceId === 'app.root' ? fullHost.root : null;
+            }
+            return adapter.resolveSurface(surfaceId);
+        },
         createElement: tag => documentRef.createElement(tag),
     });
     const selectors = createSelectorRuntime({
@@ -88,7 +94,11 @@ export async function activateGamePackageUi(packageState, worldSession, options 
             fetchImpl: options.fetchImpl,
             headers: options.headers || {},
         });
-        if (!definition) return null;
+        if (!definition) {
+            fullHost?.dispose();
+            adapter?.destroy();
+            return null;
+        }
         mounted = await componentRuntime.mountComponent(definition);
 
         immersiveSession = await activateGameImmersiveProvider({
@@ -98,11 +108,14 @@ export async function activateGamePackageUi(packageState, worldSession, options 
             packageId: packageState?.manifest?.id,
             immersiveApi: options.immersiveApi || globalThis.Atria?.immersive,
         });
+
+        fullHost?.activate();
     } catch (error) {
         immersiveSession?.dispose?.();
         await componentRuntime.unmountAll();
         surfaceHost.unmountAll();
-        adapter.destroy();
+        fullHost?.dispose();
+        adapter?.destroy();
         throw error;
     }
 
@@ -116,6 +129,9 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         get immersiveStatus() {
             return immersiveSession?.status || null;
         },
+        get recoveryActive() {
+            return fullHost?.isActive?.() || false;
+        },
         refresh() {
             const changed = componentRuntime.refreshSelectors();
             void immersiveSession?.refresh?.();
@@ -128,7 +144,8 @@ export async function activateGamePackageUi(packageState, worldSession, options 
             immersiveSession = null;
             await componentRuntime.unmountAll();
             surfaceHost.unmountAll();
-            adapter.destroy();
+            fullHost?.dispose();
+            adapter?.destroy();
             mounted = null;
         },
     });
