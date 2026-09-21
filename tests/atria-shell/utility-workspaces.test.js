@@ -99,6 +99,8 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
         expect(slot.textContent).not.toContain('Atria Orchestrator');
         expect(slot.contains(settingsOne)).toBe(true);
         expect(slot.contains(settingsTwo)).toBe(true);
+        expect(slot.querySelector('[data-atria-plugin-surface="server"]')?.textContent)
+            .toContain('Server plugins');
         expect(document.querySelectorAll('#extensions_settings')).toHaveLength(1);
         expect(document.querySelectorAll('#extensions_settings2')).toHaveLength(1);
 
@@ -118,7 +120,7 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
         expect(settingsOne.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 
-    test('Settings reparents the exact legacy form without creating another settings store', () => {
+    test('Settings reparents the exact legacy form without creating another settings store', async () => {
         const slot = document.getElementById('slot');
         const settingsRoot = document.getElementById('user-settings-block');
         const language = document.getElementById('ui_language_select');
@@ -135,6 +137,13 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
         expect(accountControls.hidden).toBe(true);
         expect(slot.textContent).toContain('Appearance');
         expect(slot.textContent).toContain('Accessibility');
+
+        const compatibility = slot.querySelector('[data-atria-settings-compatibility="true"]');
+        expect(compatibility.open).toBe(false);
+        slot.querySelector('[data-atria-settings-section="language"]').click();
+        await Promise.resolve();
+        expect(compatibility.open).toBe(true);
+        expect(document.getElementById('ui_language_select')).toBe(language);
 
         controller.dispose();
         expect(settingsRoot.parentNode).toBe(originalParent);
