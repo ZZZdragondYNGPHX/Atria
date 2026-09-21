@@ -11,14 +11,10 @@ import {
     createAtriaStatePanel,
     createAtriaStatusChip,
 } from './primitives.js';
+import { formatShellText, translateShellText } from './localization.js';
 
 function translateLabel(translate, value) {
-    if (typeof translate !== 'function') return String(value);
-    try {
-        return String(translate(value) ?? value);
-    } catch {
-        return String(value);
-    }
+    return translateShellText(value, translate);
 }
 
 function makeIcon(documentRef, className) {
@@ -75,8 +71,11 @@ function isCommandShortcut(event) {
     return Boolean(event.metaKey || event.ctrlKey);
 }
 
-function commandSubtitle(command) {
-    return [command.group, command.description].filter(Boolean).join(' · ');
+function commandSubtitle(command, translate) {
+    return [command.group, command.description]
+        .filter(Boolean)
+        .map(value => translateLabel(translate, value))
+        .join(' · ');
 }
 
 export function createAtriaAppShell({
@@ -109,7 +108,7 @@ export function createAtriaAppShell({
 
     const rail = createAtriaPrimitive(documentRef, 'NavigationRail', {
         tag: 'nav',
-        ariaLabel: 'Primary navigation',
+        ariaLabel: translateLabel(translate, 'Primary navigation'),
     });
     const railBrand = documentRef.createElement('div');
     railBrand.className = 'atria-shell-brand';
@@ -121,15 +120,15 @@ export function createAtriaAppShell({
 
     const globalBar = createAtriaPrimitive(documentRef, 'GlobalBar', {
         tag: 'header',
-        ariaLabel: 'Global controls',
+        ariaLabel: translateLabel(translate, 'Global controls'),
     });
     const context = documentRef.createElement('div');
     context.className = 'atria-global-bar__context';
     const breadcrumb = documentRef.createElement('div');
     breadcrumb.className = 'atria-global-bar__breadcrumb';
-    breadcrumb.textContent = 'Atria / Play';
+    breadcrumb.textContent = ['Atria', translateLabel(translate, 'Play')].join(' / ');
     const runtimeChip = createAtriaStatusChip(documentRef, {
-        label: 'Runtime ready',
+        label: translateLabel(translate, 'Runtime ready'),
         tone: 'success',
     });
     context.append(breadcrumb, runtimeChip);
@@ -140,12 +139,12 @@ export function createAtriaAppShell({
 
     const focus = createAtriaPrimitive(documentRef, 'FocusArea', {
         tag: 'main',
-        ariaLabel: 'Atria focus area',
+        ariaLabel: translateLabel(translate, 'Atria focus area'),
     });
     const contextBar = createAtriaPrimitive(documentRef, 'ContextBar', {
         tag: 'div',
         role: 'toolbar',
-        ariaLabel: 'Context controls',
+        ariaLabel: translateLabel(translate, 'Context controls'),
     });
     const contextTitle = documentRef.createElement('strong');
     contextTitle.className = 'atria-context-bar__title';
@@ -156,17 +155,17 @@ export function createAtriaAppShell({
 
     const stage = createAtriaPrimitive(documentRef, 'Stage', {
         tag: 'section',
-        ariaLabel: 'Play stage',
+        ariaLabel: translateLabel(translate, 'Play stage'),
     });
     stage.id = 'atria-stage';
     stage.append(createAtriaStatePanel(documentRef, 'empty', {
-        title: 'Play',
-        message: 'The Native Conversation Host mounts here when Play owns the Stage.',
+        title: translateLabel(translate, 'Play'),
+        message: translateLabel(translate, 'The Native Conversation Host mounts here when Play owns the Stage.'),
     }));
 
     const workspace = createAtriaPrimitive(documentRef, 'Workspace', {
         tag: 'section',
-        ariaLabel: 'Workspace',
+        ariaLabel: translateLabel(translate, 'Workspace'),
     });
     workspace.id = 'atria-workspace';
     workspace.hidden = true;
@@ -178,25 +177,25 @@ export function createAtriaAppShell({
 
     const dock = createAtriaPrimitive(documentRef, 'Dock', {
         tag: 'aside',
-        ariaLabel: 'Context dock',
+        ariaLabel: translateLabel(translate, 'Context dock'),
     });
     dock.id = 'atria-context-dock';
     const dockHeader = documentRef.createElement('div');
     dockHeader.className = 'atria-dock__header';
     const dockTitle = documentRef.createElement('strong');
-    dockTitle.textContent = 'Context';
+    dockTitle.textContent = translateLabel(translate, 'Context');
     const dockClose = documentRef.createElement('button');
     dockClose.type = 'button';
     dockClose.className = 'atria-icon-button';
-    dockClose.title = 'Close dock';
-    dockClose.setAttribute('aria-label', 'Close dock');
+    dockClose.title = translateLabel(translate, 'Close dock');
+    dockClose.setAttribute('aria-label', translateLabel(translate, 'Close dock'));
     dockClose.append(makeIcon(documentRef, 'fa-solid fa-xmark'));
     dockHeader.append(dockTitle, dockClose);
     const dockBody = documentRef.createElement('div');
     dockBody.className = 'atria-dock__body';
     dockBody.append(createAtriaStatePanel(documentRef, 'empty', {
-        title: 'Context Dock',
-        message: 'Timeline, Inspector, World, Runtime and evidence panels can mount here.',
+        title: translateLabel(translate, 'Context Dock'),
+        message: translateLabel(translate, 'Timeline, Inspector, World, Runtime and evidence panels can mount here.'),
     }));
     dock.append(dockHeader, dockBody);
 
@@ -211,21 +210,21 @@ export function createAtriaAppShell({
 
     const recovery = createAtriaPrimitive(documentRef, 'HostRecovery', {
         tag: 'div',
-        ariaLabel: 'Host recovery',
+        ariaLabel: translateLabel(translate, 'Host recovery'),
     });
     recovery.dataset.atriaShellLayer = 'recovery';
 
     const sheet = createAtriaPrimitive(documentRef, 'Sheet', {
         tag: 'section',
         role: 'dialog',
-        ariaLabel: 'Context sheet',
+        ariaLabel: translateLabel(translate, 'Context sheet'),
     });
     sheet.hidden = true;
     sheet.id = 'atria-context-sheet';
     const sheetScrim = documentRef.createElement('button');
     sheetScrim.type = 'button';
     sheetScrim.className = 'atria-sheet-scrim';
-    sheetScrim.setAttribute('aria-label', 'Close sheet');
+    sheetScrim.setAttribute('aria-label', translateLabel(translate, 'Close sheet'));
     const sheetPanel = documentRef.createElement('div');
     sheetPanel.className = 'atria-sheet-panel';
     const sheetHandle = documentRef.createElement('div');
@@ -242,18 +241,18 @@ export function createAtriaAppShell({
     commandSurface.hidden = true;
     commandSurface.setAttribute('role', 'dialog');
     commandSurface.setAttribute('aria-modal', 'true');
-    commandSurface.setAttribute('aria-label', 'Command');
+    commandSurface.setAttribute('aria-label', translateLabel(translate, 'Command'));
     const commandScrim = documentRef.createElement('button');
     commandScrim.type = 'button';
     commandScrim.className = 'atria-command-scrim';
-    commandScrim.setAttribute('aria-label', 'Close command');
+    commandScrim.setAttribute('aria-label', translateLabel(translate, 'Close command'));
     const commandPanel = documentRef.createElement('div');
     commandPanel.className = 'atria-command-panel';
     const commandInput = documentRef.createElement('input');
     commandInput.type = 'search';
     commandInput.className = 'atria-command-input';
-    commandInput.placeholder = 'Search commands';
-    commandInput.setAttribute('aria-label', 'Search commands');
+    commandInput.placeholder = translateLabel(translate, 'Search commands');
+    commandInput.setAttribute('aria-label', translateLabel(translate, 'Search commands'));
     const commandList = documentRef.createElement('div');
     commandList.className = 'atria-command-results';
     commandList.setAttribute('role', 'listbox');
@@ -334,7 +333,7 @@ export function createAtriaAppShell({
     ) {
         const compact = viewport.mode === ATRIA_VIEWPORT_MODES.COMPACT;
         dock.dataset.atriaOpen = String(contextState.open);
-        dockTitle.textContent = contextState.title;
+        dockTitle.textContent = translateLabel(translate, contextState.title);
 
         if (compact) {
             dock.hidden = true;
@@ -343,7 +342,7 @@ export function createAtriaAppShell({
                     sheetBody.replaceChildren();
                     sheetBody.append(dockBody);
                 }
-                sheet.setAttribute('aria-label', contextState.title || 'Context sheet');
+                sheet.setAttribute('aria-label', translateLabel(translate, contextState.title || 'Context sheet'));
                 sheet.dataset.atriaSheetState = contextState.sheetState;
                 sheet.hidden = false;
             } else {
@@ -385,8 +384,8 @@ export function createAtriaAppShell({
         const commands = registry.search(commandInput.value, commandContext());
         if (!commands.length) {
             commandList.append(createAtriaStatePanel(documentRef, 'empty', {
-                title: 'No commands',
-                message: 'Try a different search.',
+                title: translateLabel(translate, 'No commands'),
+                message: translateLabel(translate, 'Try a different search.'),
             }));
             return;
         }
@@ -400,10 +399,10 @@ export function createAtriaAppShell({
 
             const title = documentRef.createElement('span');
             title.className = 'atria-command-result__title';
-            title.textContent = command.title;
+            title.textContent = translateLabel(translate, command.title);
             const subtitle = documentRef.createElement('span');
             subtitle.className = 'atria-command-result__subtitle';
-            subtitle.textContent = commandSubtitle(command);
+            subtitle.textContent = commandSubtitle(command, translate);
             button.append(title, subtitle);
 
             if (command.shortcut) {
@@ -569,8 +568,8 @@ export function createAtriaAppShell({
     for (const domain of ATRIA_PRIMARY_DOMAINS) {
         commandDisposers.push(registry.register({
             id: `navigate.${domain.id}`,
-            title: `Go to ${domain.label}`,
-            description: `Open the ${domain.label} domain`,
+            title: formatShellText('Go to ${0}', [translateLabel(translate, domain.label)], translate, 'atria.shell.command.goToDomain'),
+            description: formatShellText('Open the ${0} domain', [translateLabel(translate, domain.label)], translate, 'atria.shell.command.openDomain'),
             group: 'Navigation',
             keywords: [domain.label, domain.id, 'navigate', 'open'],
             run: () => navigate(domain.id, { reason: 'command-navigation' }),
@@ -620,9 +619,9 @@ export function createAtriaAppShell({
             );
         },
         setRuntimeStatus(label, tone = 'neutral', title = '') {
-            runtimeChip.textContent = String(label);
+            runtimeChip.textContent = translateLabel(translate, label);
             runtimeChip.dataset.tone = tone;
-            runtimeChip.title = String(title);
+            runtimeChip.title = translateLabel(translate, title);
         },
         setDockContent(content, {
             title = 'Context',
