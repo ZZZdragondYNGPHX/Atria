@@ -34,10 +34,10 @@ function normalizeCommandDefinition(raw) {
 
     const id = typeof raw.id === 'string' ? raw.id.trim() : '';
     if (!COMMAND_ID_PATTERN.test(id)) {
-        throw new Error("Command id must match /^[a-z][a-z0-9._-]{0,63}$/");
+        throw new Error('Command id must match /^[a-z][a-z0-9._-]{0,63}$/');
     }
     if (typeof raw.execute !== 'function') {
-        throw new Error("Command '" + id + "' requires an execute() function");
+        throw new Error('Command \' ' + id + ' \' requires an execute() function'.replace(/ \'/g, "\'"));
     }
 
     const description = raw.description === undefined
