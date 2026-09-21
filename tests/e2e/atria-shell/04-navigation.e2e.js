@@ -110,9 +110,15 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
             });
         });
 
-        await expect(root.locator('[data-atria-primitive="Dock"]')).toBeVisible();
+        const dock = root.locator('[data-atria-primitive="Dock"]');
+        await expect(dock).toBeVisible();
         await expect(root.locator('#atria-context-sheet')).toBeHidden();
         await expect(root.locator('#r7d-medium-context')).toBeVisible();
+
+        await page.evaluate(() => window.Atria.shell.getShell().setDockOpen(false));
+        await expect(dock).toBeHidden();
+        await page.evaluate(() => window.Atria.shell.getShell().setDockOpen(true));
+        await expect(dock).toBeVisible();
     });
 
     test('Compact Bottom Navigation reuses one Context node as a Sheet and resolves Escape order', async ({ page }) => {
@@ -255,6 +261,82 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
             composerCount: 1,
             textareaCount: 1,
         });
+    });
+
+    test('Hybrid and Full keep Stage ownership coherent across primary route transitions', async ({ page }) => {
+        const root = await openShellPreview(page, { width: 1280, height: 800 });
+
+        const state = await page.evaluate(async () => {
+            const foundation = window.Atria.shell;
+            const shell = foundation.getShell();
+            const playHost = foundation.getPlayHost();
+            const surfaces = await import('/scripts/extensions/game-runtime/ui/host-surfaces.js');
+            const fullModule = await import('/scripts/extensions/game-runtime/ui/full-host.js');
+
+            const hybrid = surfaces.createAtriaSurfaceAdapter(document, {
+                mode: 'hybrid',
+                shell: foundation,
+                nativePlayHost: playHost,
+            });
+            hybrid.resolveSurface('app.root');
+            const hybridOwnerBefore = playHost.getStageOwner();
+
+            shell.navigate('library', { reason: 'r7d-hybrid-route-test' });
+            const hybridOwnerAway = playHost.getStageOwner();
+            shell.navigate('play', { reason: 'r7d-hybrid-route-return' });
+            const hybridOwnerReturn = playHost.getStageOwner();
+            hybrid.destroy();
+            const afterHybridDispose = playHost.getStageOwner();
+
+            let fullHost;
+            fullHost = fullModule.createFullGameHost(document, {
+                shell: foundation,
+                onExit() {
+                    fullHost.dispose();
+                },
+                onStopGeneration() {},
+                onDisablePackage() {},
+                onDiagnostics() {},
+            });
+            fullHost.activate();
+            const fullOwnerBefore = playHost.getStageOwner();
+            shell.navigate('runtime', { reason: 'r7d-full-route-test' });
+            const fullOwnerAway = playHost.getStageOwner();
+            shell.navigate('play', { reason: 'r7d-full-route-return' });
+            const fullOwnerReturn = playHost.getStageOwner();
+            fullHost.dispose();
+
+            return {
+                hybridOwnerBefore,
+                hybridOwnerAway,
+                hybridOwnerReturn,
+                afterHybridDispose,
+                fullOwnerBefore,
+                fullOwnerAway,
+                fullOwnerReturn,
+                finalOwner: playHost.getStageOwner(),
+                chatCount: document.querySelectorAll('#chat').length,
+                composerCount: document.querySelectorAll('#send_form').length,
+                textareaCount: document.querySelectorAll('#send_textarea').length,
+                nativeVisible: getComputedStyle(document.getElementById('sheld')).display !== 'none',
+            };
+        });
+
+        expect(state).toEqual({
+            hybridOwnerBefore: 'game-runtime:hybrid',
+            hybridOwnerAway: 'game-runtime:hybrid',
+            hybridOwnerReturn: 'game-runtime:hybrid',
+            afterHybridDispose: null,
+            fullOwnerBefore: 'game-runtime:full',
+            fullOwnerAway: 'game-runtime:full',
+            fullOwnerReturn: 'game-runtime:full',
+            finalOwner: null,
+            chatCount: 1,
+            composerCount: 1,
+            textareaCount: 1,
+            nativeVisible: true,
+        });
+        await expect(root.locator('#sheld')).toBeVisible();
     });
 
     test('legacy Character Library trigger adapts into the Atria Library route under preview', async ({ page }) => {
