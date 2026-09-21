@@ -519,6 +519,136 @@ describe('R5 Game LLM Runtime vertical slice', () => {
         });
     });
 
+    test('Memory recall attaches historical context below authoritative World facts', async () => {
+        const session = makeSession();
+        session.setState({
+            hp: 57,
+            inCombat: false,
+            secretSeed: 999,
+            threatCount: 1,
+        });
+        const beforeJournal = session.getJournal();
+        const runtime = createGameLlmRuntime({
+            worldSession: session,
+            observationProjectors: [{
+                id: 'player',
+                select: world => ({
+                    hp: world.hp,
+                    threatCount: world.threatCount,
+                }),
+            }],
+            memoryBridge: {
+                async recall(turn) {
+                    expect(turn.observation.views.player.hp).toBe(57);
+                    return {
+                        status: 'recalled',
+                        query: 'player history',
+                        packet: {
+                            id: 'memory-recall:' + turn.turnId,
+                            source: 'memory_graph',
+                            authority: 'historical_context',
+                            branch: {
+                                id: turn.anchor.branchId,
+                                floor: turn.anchor.floor,
+                                swipe: turn.anchor.swipe,
+                            },
+                            query: 'player history',
+                            content: 'Earlier in the story, the player had 20 HP.',
+                            references: [{
+                                id: 'fact:old_hp',
+                                kind: 'fact',
+                                source: 'memory_graph',
+                                authority: 'historical_context',
+                            }],
+                            tokens: 12,
+                            budget: 200,
+                            providers: [],
+                            diagnostics: [],
+                            provenance: {
+                                source: 'memory_graph',
+                                sourceCurrent: true,
+                                authorityRank: 5,
+                                referenceIds: ['fact:old_hp'],
+                            },
+                        },
+                    };
+                },
+            },
+        });
+
+        const turn = runtime.beginTurn({
+            origin: 'free_text',
+            userInput: 'How am I doing?',
+            serial: 15,
+        });
+        const recalled = await runtime.recallMemory(turn);
+
+        expect(recalled.status).toBe('recalled');
+        expect(recalled.turn.turnId).toBe(turn.turnId);
+        expect(recalled.turn.observation.views.player).toEqual({
+            hp: 57,
+            threatCount: 1,
+        });
+        expect(recalled.turn.memories).toEqual([
+            expect.objectContaining({
+                authority: 'historical_context',
+                content: 'Earlier in the story, the player had 20 HP.',
+                recallStatus: 'recalled',
+            }),
+        ]);
+        expect(recalled.turn.provenance.worldObservation.authorityRank).toBe(1);
+        expect(recalled.turn.provenance.memoryRecall.authorityRank).toBe(5);
+        expect(recalled.turn.provenance.memoryRecall.items[0]).toEqual({
+            id: 'memory-recall:' + turn.turnId,
+            authority: 'historical_context',
+            referenceIds: ['fact:old_hp'],
+        });
+        expect(session.getState().hp).toBe(57);
+        expect(session.getJournal()).toEqual(beforeJournal);
+    });
+
+    test('Memory recall mutation attempts fail before recalled context is accepted', async () => {
+        const session = makeSession();
+        const runtime = createGameLlmRuntime({
+            worldSession: session,
+            memoryBridge: {
+                async recall(turn) {
+                    session.setState({
+                        hp: 1,
+                        inCombat: false,
+                        secretSeed: 999,
+                        threatCount: 0,
+                    });
+                    return {
+                        status: 'recalled',
+                        query: 'bad memory',
+                        packet: {
+                            id: 'memory-recall:' + turn.turnId,
+                            source: 'memory_graph',
+                            authority: 'historical_context',
+                            content: 'malicious',
+                            references: [],
+                            provenance: {
+                                source: 'memory_graph',
+                                sourceCurrent: true,
+                                authorityRank: 5,
+                                referenceIds: [],
+                            },
+                        },
+                    };
+                },
+            },
+        });
+        const turn = runtime.beginTurn({
+            origin: 'free_text',
+            userInput: 'Recall',
+            serial: 16,
+        });
+
+        await expect(runtime.recallMemory(turn))
+            .rejects.toThrow(/Memory recall mutated World State/);
+    });
+
     test('free-text no-change creates no command transaction or Event noise', async () => {
         const session = makeSession();
         const runtime = createGameLlmRuntime({
