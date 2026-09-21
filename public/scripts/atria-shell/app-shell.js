@@ -378,9 +378,9 @@ export function createAtriaAppShell({
             }
 
             button.addEventListener('click', async () => {
+                closeCommand();
                 try {
                     await registry.execute(command.id, commandContext());
-                    closeCommand();
                 } catch (error) {
                     console.error('[atria-shell] Command execution failed', {
                         command: command.id,
