@@ -1,3 +1,4 @@
+import { createInterpretationMappingRegistry } from '../logic/interpretations.js';
 import { isGameBranchPathCompatible } from '../world/branch.js';
 import { createEventInterpreter } from './event-interpreter.js';
 import { createIntentResolver } from './intent-resolver.js';
@@ -37,6 +38,12 @@ export function createGameLlmRuntime(options = {}) {
             projectors: options.observationProjectors || [],
             eventLimit: options.eventLimit,
         });
+    const interpretationMapper = options.interpretationMapper
+        || createInterpretationMappingRegistry(
+            options.interpretationMappings
+            || worldSession.getInterpretationMappings?.()
+            || [],
+        );
 
     let turnSerial = 0;
 
@@ -189,6 +196,116 @@ export function createGameLlmRuntime(options = {}) {
         });
     }
 
+    async function applyInterpretation(turnContext, interpretationResult) {
+        if (!turnContext || typeof turnContext !== 'object') {
+            throw new Error('Game LLM Runtime applyInterpretation requires Turn Context');
+        }
+        if (!interpretationResult || typeof interpretationResult !== 'object') {
+            throw new Error('Game LLM Runtime applyInterpretation requires validated interpretation result');
+        }
+
+        if (
+            interpretationResult.status !== 'accepted'
+            || interpretationResult.accepted !== true
+            || interpretationResult.interpretation?.decision !== 'event'
+        ) {
+            return Object.freeze({
+                status: 'no_change',
+                turn: turnContext,
+                mapping: null,
+                commandResult: null,
+            });
+        }
+        if (typeof worldSession.validateCommand !== 'function') {
+            throw new Error('Game LLM Runtime interpretation mapping requires worldSession.validateCommand()');
+        }
+        if (typeof worldSession.dispatchCommandInternal !== 'function') {
+            throw new Error('Game LLM Runtime interpretation mapping requires worldSession.dispatchCommandInternal()');
+        }
+
+        const mapped = interpretationMapper.map(
+            interpretationResult.interpretation,
+            {
+                world: worldSession.getState(),
+                observation: turnContext.observation,
+                turn: turnContext,
+            },
+        );
+
+        if (mapped.status === 'no_change' || mapped.commands.length === 0) {
+            const turn = advanceTurnContext(turnContext, {
+                resolution: {
+                    ...turnContext.resolution,
+                    eventInterpreter: 'mapped_no_change',
+                    reason: 'semantic_mapping_no_change',
+                },
+            });
+            return Object.freeze({
+                status: 'no_change',
+                turn,
+                mapping: clone(mapped),
+                commandResult: null,
+            });
+        }
+
+        const proposal = mapped.commands[0];
+        const validation = worldSession.validateCommand(proposal.id, proposal.args);
+        if (!validation?.ok) {
+            const errors = Array.isArray(validation?.errors)
+                ? validation.errors.slice(0, 8).join('; ')
+                : 'invalid mapped command';
+            throw new Error(
+                `Interpretation mapping produced invalid command '${proposal.id}': ${errors}`,
+            );
+        }
+
+        const commandResult = await worldSession.dispatchCommandInternal(
+            proposal.id,
+            validation.args ?? proposal.args,
+        );
+        const turn = applyCommandResult(turnContext, commandResult, {
+            resolution: {
+                ...turnContext.resolution,
+                eventInterpreter: 'applied',
+                reason: 'semantic_mapping',
+            },
+        });
+
+        return Object.freeze({
+            status: commandResult.status,
+            turn,
+            mapping: clone(mapped),
+            commandResult: clone(commandResult),
+        });
+    }
+
+    async function interpretAndApply(turnContext, request, input = {}) {
+        const interpreted = await interpretEvent(turnContext, request, input);
+        if (!interpreted.accepted) {
+            return Object.freeze({
+                status: interpreted.status,
+                accepted: false,
+                turn: interpreted.turn,
+                interpretation: clone(interpreted.interpretation),
+                mapping: null,
+                commandResult: null,
+            });
+        }
+
+        const applied = await applyInterpretation(
+            interpreted.turn,
+            interpreted.interpretation,
+        );
+        return Object.freeze({
+            status: applied.status,
+            accepted: true,
+            turn: applied.turn,
+            interpretation: clone(interpreted.interpretation),
+            mapping: clone(applied.mapping),
+            commandResult: clone(applied.commandResult),
+        });
+    }
+
     async function runUiAction(input = {}) {
         const commandId = String(input.commandId || '').trim();
         if (!commandId) throw new Error('UI action turn requires commandId');
@@ -301,6 +418,8 @@ export function createGameLlmRuntime(options = {}) {
         beginTurn,
         applyCommandResult,
         interpretEvent,
+        applyInterpretation,
+        interpretAndApply,
         runUiAction,
         runFreeText,
         listObservationProjectors: () => observationProjector.list(),
