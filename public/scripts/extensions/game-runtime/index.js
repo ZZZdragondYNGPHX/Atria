@@ -1,4 +1,15 @@
 import { loadGameLogicDefinition } from './logic/package.js';
+import {
+    getModelRuntimeConfig as readModelRuntimeConfig,
+    getRuntimeRoleConfig as readRuntimeRoleConfig,
+    setRuntimeRoleConfig as writeRuntimeRoleConfig,
+    ensureModelRuntimeConfig,
+} from './llm/model-runtime-config.js';
+import { createNarrativeCoordinator, createNarrator } from './llm/narrative.js';
+import { createGameOrchestratorBridge } from './llm/orchestrator-bridge.js';
+import { createRuntimeRoleRouter } from './llm/roles.js';
+import { createGameLlmRuntime } from './llm/runtime.js';
+import { createGameTurnController } from './llm/turn-controller.js';
 import { listActiveGameEventMemorySources } from './world/memory-source.js';
 import { resolveGamePackageAssetUrl } from './manifest.js';
 import { GAME_PACKAGE_STATUS, loadGamePackage } from './package-loader.js';
@@ -14,10 +25,16 @@ const eventTypes = atriaContext.eventTypes;
 const getRequestHeaders = atriaContext.getRequestHeaders;
 const getContext = Atria.getContext;
 const registerExtensionApi = atriaContext.registerExtensionApi;
+const extensionSettings = atriaContext.extensionSettings;
+const saveSettingsDebounced = atriaContext.saveSettingsDebounced;
 
 let revision = 0;
 let currentWorldSession = null;
 let currentUiSession = null;
+let currentLlmSession = null;
+let currentTurnController = null;
+let currentNarrator = null;
+let currentRoleRouter = null;
 let currentPackage = Object.freeze({
     status: GAME_PACKAGE_STATUS.NONE,
     active: false,
@@ -25,6 +42,72 @@ let currentPackage = Object.freeze({
     manifest: null,
     errors: [],
 });
+
+function getRuntimeSettingsRoot() {
+    extensionSettings[MODULE_NAME] ||= {};
+    ensureModelRuntimeConfig(extensionSettings[MODULE_NAME]);
+    return extensionSettings[MODULE_NAME];
+}
+
+export function getModelRuntimeConfig() {
+    return structuredClone(readModelRuntimeConfig(getRuntimeSettingsRoot()));
+}
+
+export function getRuntimeRoleConfig(role) {
+    return structuredClone(readRuntimeRoleConfig(getRuntimeSettingsRoot(), role));
+}
+
+export function setRuntimeRoleConfig(role, patch = {}) {
+    const next = writeRuntimeRoleConfig(getRuntimeSettingsRoot(), role, patch);
+    saveSettingsDebounced?.();
+    return structuredClone(next);
+}
+
+function disposeRuntimeSystems() {
+    currentLlmSession = null;
+    currentTurnController = null;
+    currentNarrator = null;
+    currentRoleRouter = null;
+}
+
+function createRuntimeSystems(worldSession) {
+    if (!worldSession) return null;
+
+    const roleRouter = createRuntimeRoleRouter({
+        generateTask: atriaContext.generateTask,
+        getRoleConfig: role => readRuntimeRoleConfig(getRuntimeSettingsRoot(), role),
+    });
+    const orchestratorBridge = createGameOrchestratorBridge({
+        context: atriaContext,
+        getWorldState: () => worldSession.getState(),
+        getJournal: () => worldSession.getJournal(),
+    });
+    const narrator = createNarrator({ roleRouter });
+    const narrativeCoordinator = createNarrativeCoordinator({
+        narrator,
+        orchestratorBridge,
+        getWorldState: () => worldSession.getState(),
+        getJournal: () => worldSession.getJournal(),
+    });
+    const llmSession = createGameLlmRuntime({
+        worldSession,
+        context: atriaContext,
+        roleRouter,
+        narrativeCoordinator,
+        getOrchestrationMode: () => orchestratorBridge.getMode(),
+        generateTask: atriaContext.generateTask,
+    });
+    const turnController = createGameTurnController();
+
+    return {
+        roleRouter,
+        narrator,
+        orchestratorBridge,
+        narrativeCoordinator,
+        llmSession,
+        turnController,
+    };
+}
 
 function getCurrentCharacterPackageId() {
     const context = getContext();
@@ -89,6 +172,7 @@ async function disableCurrentPackageForSession() {
     revision += 1;
     await disposeCurrentUi();
     currentWorldSession = null;
+    disposeRuntimeSystems();
     publishPackageState({
         ...currentPackage,
         active: false,
@@ -123,6 +207,7 @@ export async function reloadGamePackage() {
 
     let nextWorldSession = null;
     let nextUiSession = null;
+    let nextRuntimeSystems = null;
     if (next.status === GAME_PACKAGE_STATUS.READY) {
         try {
             const logicDefinition = await loadGameLogicDefinition(next, {
@@ -138,6 +223,7 @@ export async function reloadGamePackage() {
                 rules: logicDefinition.rules,
                 interpretations: logicDefinition.interpretations,
             });
+            nextRuntimeSystems = createRuntimeSystems(nextWorldSession);
             nextUiSession = await activateGamePackageUi(next, nextWorldSession, {
                 headers: getRequestHeaders(),
                 hostActions: {
@@ -151,6 +237,7 @@ export async function reloadGamePackage() {
             await nextUiSession?.dispose?.();
             nextUiSession = null;
             nextWorldSession = null;
+            nextRuntimeSystems = null;
             next = {
                 status: GAME_PACKAGE_STATUS.INVALID,
                 active: false,
@@ -169,8 +256,13 @@ export async function reloadGamePackage() {
     }
 
     await disposeCurrentUi();
+    disposeRuntimeSystems();
     currentWorldSession = nextWorldSession;
     currentUiSession = nextUiSession;
+    currentLlmSession = nextRuntimeSystems?.llmSession || null;
+    currentTurnController = nextRuntimeSystems?.turnController || null;
+    currentNarrator = nextRuntimeSystems?.narrator || null;
+    currentRoleRouter = nextRuntimeSystems?.roleRouter || null;
     publishPackageState(next);
 
     if (next.status === GAME_PACKAGE_STATUS.INVALID) {
@@ -195,6 +287,7 @@ async function syncCurrentWorldBranch() {
     } catch (error) {
         if (session !== currentWorldSession) return null;
         currentWorldSession = null;
+        disposeRuntimeSystems();
         await disposeCurrentUi();
         publishPackageState({
             ...currentPackage,
@@ -248,6 +341,83 @@ export function getAuthoritativeMemorySources() {
     );
 }
 
+export function getLlmRuntimeState() {
+    return {
+        active: Boolean(currentLlmSession),
+        roles: getModelRuntimeConfig().roles,
+        packageId: currentPackage.manifest?.id || '',
+        branchPath: getWorldBranchPath(),
+    };
+}
+
+export async function submitGameFreeText(input = {}) {
+    if (!currentLlmSession || !currentTurnController) {
+        throw new Error('No active Game LLM Runtime');
+    }
+    const userInput = String(input.userInput || '').trim();
+    if (!userInput) throw new Error('submitGameFreeText requires userInput');
+
+    const baseTurn = currentLlmSession.beginTurn({
+        origin: 'free_text',
+        userInput,
+        recentChat: input.recentChat || [],
+        constraints: input.constraints || [],
+    });
+    return currentTurnController.submit(baseTurn, {
+        execute: ({ turn, signal, transition }) => currentLlmSession.completeFreeTextTurn({
+            ...input,
+            userInput,
+            turnContext: turn,
+            abortSignal: signal,
+            transition,
+        }),
+    });
+}
+
+export async function submitGameUiAction(input = {}) {
+    if (!currentLlmSession || !currentTurnController) {
+        throw new Error('No active Game LLM Runtime');
+    }
+    const commandId = String(input.commandId || '').trim();
+    if (!commandId) throw new Error('submitGameUiAction requires commandId');
+
+    const baseTurn = currentLlmSession.beginTurn({
+        origin: 'ui_action',
+        recentChat: input.recentChat || [],
+        constraints: input.constraints || [],
+    });
+    return currentTurnController.submit(baseTurn, {
+        execute: ({ turn, signal, transition }) => currentLlmSession.completeUiActionTurn({
+            ...input,
+            commandId,
+            turnContext: turn,
+            abortSignal: signal,
+            transition,
+        }),
+    });
+}
+
+export function stopGameAttempt(attemptId) {
+    return currentTurnController?.stop(attemptId) || false;
+}
+
+export async function undoGameTurn(turnId) {
+    return currentTurnController?.undo(turnId) || false;
+}
+
+export async function deleteGameAssistantResult(attemptId) {
+    if (!currentTurnController) return false;
+    return currentTurnController.deleteAssistantResult(attemptId);
+}
+
+export function getGameTurn(turnId) {
+    return currentTurnController?.getTurn(turnId) || null;
+}
+
+export function getGameAttempt(attemptId) {
+    return currentTurnController?.getAttempt(attemptId) || null;
+}
+
 eventSource.on(eventTypes.CHAT_CHANGED, () => {
     void reloadGamePackage();
 });
@@ -272,6 +442,17 @@ registerExtensionApi(MODULE_NAME, {
     getWorldJournal,
     getWorldBranchPath,
     getAuthoritativeMemorySources,
+    getModelRuntimeConfig,
+    getRuntimeRoleConfig,
+    setRuntimeRoleConfig,
+    getLlmRuntimeState,
+    submitFreeText: submitGameFreeText,
+    submitUiAction: submitGameUiAction,
+    stopAttempt: stopGameAttempt,
+    undoTurn: undoGameTurn,
+    deleteAssistantResult: deleteGameAssistantResult,
+    getTurn: getGameTurn,
+    getAttempt: getGameAttempt,
     exitUi: exitCurrentGameUi,
     disableForSession: disableCurrentPackageForSession,
 });
