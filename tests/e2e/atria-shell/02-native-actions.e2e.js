@@ -165,7 +165,9 @@ test.describe('R7B native Play action continuity', () => {
         await assertSingleNativeOwnership(page);
 
         const beforeDeleteCount = await page.locator('#chat .mes').count();
-        const deleteId = Number(await page.locator('#chat .last_mes').getAttribute('mesid'));
+        const deleteTarget = page.locator('#chat .mes[is_user="true"]').last();
+        const deleteId = Number(await deleteTarget.getAttribute('mesid'));
+        expect(Number.isInteger(deleteId)).toBe(true);
         await deleteMessageViaUI(page, deleteId);
         await expect(page.locator('#chat .mes')).toHaveCount(beforeDeleteCount - 1);
         await assertSingleNativeOwnership(page);
