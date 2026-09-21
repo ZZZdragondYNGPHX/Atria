@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { addDependency, episodesAreCurrent, createMemorySupportChecker } from './source-provenance.js';
+import {
+    addDependency,
+    createMemorySupportChecker,
+    episodesAreCurrent,
+    externalSourcesAreCurrent,
+} from './source-provenance.js';
 
-const TYPES = ['explicit', 'inferred', 'summary'];
-const CAPS = { explicit: 0.95, inferred: 0.65, summary: 0.75 };
+const TYPES = ['explicit', 'inferred', 'summary', 'authoritative'];
+const CAPS = { explicit: 0.95, inferred: 0.65, summary: 0.75, authoritative: 1 };
 const canonical = text => text.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 const bounded = (value, fallback, ceiling = 1) => Number.isFinite(value) ? Math.max(0, Math.min(ceiling, value)) : fallback;
 
@@ -29,7 +34,20 @@ export function projectFacts(state, chat, { includeInactive = false, checkSuppor
 
 /** Validate whole input before publishing the returned ledger; caller persists atomically. */
 export function applyFactOperations(ledger, operations, ticket, chat, newId = () => crypto.randomUUID(), now = Date.now()) {
-    if (!ticket || ticket.scopeId !== ledger.scopeId || !episodesAreCurrent(ledger, ticket.episodeIds, chat, ledger.scopeId)) {
+    const ticketEpisodeIds = Array.isArray(ticket?.episodeIds) ? ticket.episodeIds : [];
+    const ticketExternalIds = Array.isArray(ticket?.externalSourceIds) ? ticket.externalSourceIds : [];
+    const ticketHasEvidence = ticketEpisodeIds.length > 0 || ticketExternalIds.length > 0;
+    const ticketEpisodesCurrent = ticketEpisodeIds.length === 0
+        || episodesAreCurrent(ledger, ticketEpisodeIds, chat, ledger.scopeId);
+    const ticketExternalCurrent = ticketExternalIds.length === 0
+        || externalSourcesAreCurrent(ledger, ticketExternalIds);
+    if (
+        !ticket
+        || ticket.scopeId !== ledger.scopeId
+        || !ticketHasEvidence
+        || !ticketEpisodesCurrent
+        || !ticketExternalCurrent
+    ) {
         throw new Error('Facts require a current source ticket');
     }
     if (!Array.isArray(operations) || operations.length > 64) throw new Error('Invalid fact operation batch');
@@ -68,12 +86,35 @@ export function applyFactOperations(ledger, operations, ticket, chat, newId = ()
         if (op.action === 'reinforce' && op.type && op.type !== target.type) throw new Error('Reinforcement cannot change fact type');
         if (!Array.isArray(op.evidence) || !op.evidence.length || op.evidence.length > 16) throw new Error('Facts require evidence excerpts');
         const evidence = op.evidence.map(ref => {
+            if (ref?.externalSourceId) {
+                const sourceId = String(ref.externalSourceId).trim();
+                const source = state.externalSources?.[sourceId];
+                if (
+                    !ticketExternalIds.includes(sourceId)
+                    || !source
+                    || source.status !== 'active'
+                ) {
+                    throw new Error('Evidence must reference a current ticket external source');
+                }
+                const excerpt = ref.excerpt === undefined
+                    ? source.content
+                    : String(ref.excerpt || '');
+                if (!excerpt.trim() || !String(source.content || '').includes(excerpt)) {
+                    throw new Error('External evidence must quote the current source content verbatim');
+                }
+                return {
+                    externalSourceId: sourceId,
+                    excerpt,
+                };
+            }
+
             const episode = state.episodes[ref?.episodeId];
-            if (!ticket.episodeIds.includes(ref?.episodeId) || !episode || typeof ref.excerpt !== 'string'
+            if (!ticketEpisodeIds.includes(ref?.episodeId) || !episode || typeof ref.excerpt !== 'string'
                 || !ref.excerpt.trim() || !episode.content.includes(ref.excerpt)) throw new Error('Evidence must quote a ticket Episode verbatim');
             return { episodeId: ref.episodeId, excerpt: ref.excerpt };
         });
-        const episodeIds = [...new Set(evidence.map(ref => ref.episodeId))];
+        const episodeIds = [...new Set(evidence.map(ref => ref.episodeId).filter(Boolean))];
+        const externalSourceIds = [...new Set(evidence.map(ref => ref.externalSourceId).filter(Boolean))];
         const confidence = bounded(op.confidence, CAPS[type], CAPS[type]);
         let fact = op.action === 'reinforce' ? target : Object.values(state.facts).find(item =>
             active.has(item.id) && item.type === type && canonical(item.text) === canonical(text)
@@ -91,12 +132,24 @@ export function applyFactOperations(ledger, operations, ticket, chat, newId = ()
             state.facts[fact.id] = fact;
         }
         // Same assertion + same evidence is idempotent; repeated extraction does not inflate confidence.
-        const fingerprint = JSON.stringify(evidence.map(ref => [ref.episodeId, ref.excerpt]).sort());
+        const fingerprint = JSON.stringify(evidence.map(ref => [
+            ref.episodeId ? 'episode:' + ref.episodeId : 'external:' + ref.externalSourceId,
+            ref.excerpt,
+        ]).sort());
         if (!fact.supports.some(s => s.fingerprint === fingerprint)) {
-            fact.supports.push({ id: newId(), fingerprint, episodeIds, evidence, confidence, createdAt: now });
+            fact.supports.push({
+                id: newId(),
+                fingerprint,
+                episodeIds,
+                externalSourceIds,
+                evidence,
+                confidence,
+                createdAt: now,
+            });
         }
         fact.updatedAt = now;
         for (const id of episodeIds) addDependency(state, `episode:${id}`, `fact:${fact.id}`);
+        for (const id of externalSourceIds) addDependency(state, `external:${id}`, `fact:${fact.id}`);
         if (op.action === 'supersede') {
             target.supersededBy.push(fact.id);
             target.supersessionReason = op.reason.trim();
