@@ -364,6 +364,20 @@ export function bootstrapMoonshotBackend({ dataRoot, handle = 'default-user', ba
 
 
 /**
+ * Disable one or more extensions in the persisted user settings.
+ * Intended for focused UI fixtures that must not wait on unrelated
+ * external-service extensions during application bootstrap.
+ */
+export function disableExtensions({ dataRoot, handle = 'default-user', names = [] }) {
+    const settingsPath = resolve(userRoot(dataRoot, handle), 'settings.json');
+    const s = existsSync(settingsPath) ? JSON.parse(readFileSync(settingsPath, 'utf8')) : {};
+    const ext = (s.extension_settings = s.extension_settings || {});
+    const current = Array.isArray(ext.disabledExtensions) ? ext.disabledExtensions : [];
+    ext.disabledExtensions = [...new Set([...current, ...names.map(name => String(name))])];
+    writeFileSync(settingsPath, JSON.stringify(s, null, 4));
+}
+
+/**
  * Mark the user as having completed onboarding so the welcome popup
  * does not block first paint. Idempotent.
  */
