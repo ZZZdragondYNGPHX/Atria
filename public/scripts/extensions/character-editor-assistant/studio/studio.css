@@ -906,3 +906,48 @@ body.card-app-studio-active #sheld { transition: margin 0.3s ease; }
         grid-column: auto;
     }
 }
+
+
+/* ===== R6 Selector / Observation Editors ===== */
+.card-app-studio-projection-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.card-app-studio-projection-actions select {
+    max-width: 130px;
+    border: 1px solid var(--SmartThemeBorderColor, #444);
+    border-radius: 4px;
+    padding: 4px 6px;
+    color: var(--SmartThemeBodyColor, #ddd);
+    background: color-mix(in oklab, var(--SmartThemeBodyColor) 5%, transparent);
+    font: inherit;
+    font-size: 10px;
+}
+.card-app-studio-logic-card.projection-card {
+    grid-template-columns: minmax(110px, 0.7fr) minmax(170px, 1.5fr);
+}
+.card-app-studio-projection-preview {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    min-height: 72px;
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid color-mix(in oklab, var(--SmartThemeQuoteColor, #4a9eff) 20%, transparent);
+    border-radius: 7px;
+    background: color-mix(in oklab, var(--SmartThemeBodyColor) 4%, transparent);
+    color: var(--SmartThemeBodyColor, #ddd);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+@media (max-width: 768px) {
+    .card-app-studio-logic-card.projection-card {
+        grid-template-columns: 1fr;
+    }
+    .card-app-studio-projection-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+}
