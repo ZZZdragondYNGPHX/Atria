@@ -191,7 +191,8 @@ describe('R7F WorkspaceHost', () => {
             adapters: {
                 agents,
                 studio: makeAdapter('studio', records),
-                'world-info': makeAdapter('world-info', records),
+                library: makeAdapter('library', records),
+                runtime: makeAdapter('runtime', records),
                 diagnostics: makeAdapter('diagnostics', records),
                 placeholder: makeAdapter('placeholder', records),
             },
