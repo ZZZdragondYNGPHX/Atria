@@ -2,12 +2,12 @@
 
 ## Status
 
-- Phase: **R7 complete; final integration to `main` next**
+- Phase: **R0–R7 integrated into `main`; R7 archived**
 - Repository: `ZZZdragondYNGPHX/Atria`
-- R0-R6 frozen branch: `refactor/game-runtime-architecture`
+- Former R0-R6 frozen branch: `refactor/game-runtime-architecture` — archived and deleted after integration
 - R6 final validated HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R6 validation: **Game Runtime Dev Checks #340**, run `35559636615`, success
-- R7 implementation branch: `refactor/atria-game-first-shell-redesign`
+- Former R7 implementation branch: `refactor/atria-game-first-shell-redesign` — archived and deleted after integration
 - R7 branch base: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R7A final validated HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
 - R7A validation: **R7 Shell Dev Checks #43**, run `35569965553`, success
@@ -25,10 +25,34 @@
 - R7G validation: **R7 Shell Dev Checks #152**, run `35588313656`, success
 - R7H final validated HEAD: `f03e42106d1ac1c158cab316b1e834670a5c5c5b`
 - R7H / final R7 validation: **R7 Shell Dev Checks #160**, run `35594944832`, success
-- R7 is based directly on the complete R0-R6 branch and therefore already contains the full Master Refactor history.
-- Neither long-running branch is to be merged into `main` before R7 final validation.
+- Final integration-hardening HEAD: `afba7b29f6c50fd9a60f6ecb69febfa998bee201`
+- Integration PR: **#79 — refactor: integrate Atria Game Runtime and Game-first Shell R0-R7**
+- Final PR validation:
+  - **Atria PR Checks #757**, run `35604801399`: success
+  - **Workspace UI #179**, run `35604801405`: success
+  - **Immersive Experience #29**, run `35604801465`: success
+  - **Worldbook Performance Foundation #370**, run `35604801455`: success
+- Merged `main`: `1f199764baf7ef87743d52d865d0eb02ae72702d`
+- Final R7 tree / merged-main tree: `1508b001388837aac047fb37f78c4ed693677af1` — identical
+- Post-merge cleanup: **Cleanup merged task branches #76**, run `35606015494`: success
+- Both long-running refactor branches were deleted after merge; `main` is now authoritative.
+- R7 is based directly on the complete R0-R6 branch and therefore preserves the full Master Refactor history.
 
 R7 is the final host/product-shell phase of the Atria Game Runtime Architecture Refactor. R0-R6 runtime contracts are preserved unless a concrete R7 integration defect requires a targeted correction.
+
+## Final integration result
+
+R0–R7 is now part of `main`. The integration-hardening commits after R7H were limited to final test/CI compatibility and one Popup lifecycle race discovered by real-host Chromium:
+
+- legacy World Info / Extensions / Character test helpers were routed through the authoritative R7H Shell/WorkspaceHost contracts;
+- PR database services use dynamic host ports, and storage scratch-restore tests consume the same resolved connection URL;
+- `sendMessageAndAwaitReply()` returns to Play before using the one native Composer;
+- a detached-dialog `showModal()` race in `popup.js` is guarded by dialog lifecycle state;
+- mobile World Info acceptance assertions now validate the embedded compact layout contract instead of retired drawer geometry.
+
+No second Conversation, Composer, router, settings store, plugin manager, World/Turn authority, or package Host was introduced during integration hardening.
+
+The merge commit has the exact same tree as the final validated R7 branch head, so the integration introduced no additional content delta beyond the validated branch.
 
 ---
 

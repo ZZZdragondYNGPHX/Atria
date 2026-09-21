@@ -1,10 +1,10 @@
-# R7 complete — final main integration
+# R0–R7 integrated — main authoritative
 
-R7A–R7H are complete and validated. The active task is no longer feature implementation; it is the final integration of the complete R0–R7 Game Runtime + Game-first Shell refactor into `main`.
+R7A–R7H are complete, final integration hardening is validated, PR #79 is merged, and `main` is now the authoritative R0–R7 baseline. There is no active R7 implementation branch.
 
 ## Frozen R0-R6 baseline
 
-- Frozen branch: `refactor/game-runtime-architecture`
+- Former frozen branch: `refactor/game-runtime-architecture` — deleted after successful integration
 - Final validated R6 HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R6 validation: **Game Runtime Dev Checks #340**, run `35559636615`, success
 - R0 Regex Separation: complete
@@ -15,11 +15,11 @@ R7A–R7H are complete and validated. The active task is no longer feature imple
 - R5 LLM Runtime & Model Roles: complete
 - R6 Game Studio: complete
 
-Keep this branch frozen during R7 except for a narrowly targeted correction proven necessary by a concrete R7 integration defect. Do not merge or delete it during R7.
+The former R0–R6 branch is archived in Git history and no longer exists as a remote branch.
 
-## Active R7 branch
+## Archived R7 branch
 
-- Working branch: `refactor/atria-game-first-shell-redesign`
+- Former working branch: `refactor/atria-game-first-shell-redesign` — deleted after successful integration
 - Created from: `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
 - R7A final validated HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
 - R7A validation: **R7 Shell Dev Checks #43**, run `35569965553`, success
@@ -41,9 +41,26 @@ Keep this branch frozen during R7 except for a narrowly targeted correction prov
 - Master runtime plan: `refactor/game-runtime-architecture.md`
 - Detailed frozen-runtime handoff: `handoff/game-runtime-architecture.md`
 
-R7H is complete. Do not make additional product/architecture changes on the R7 branch unless final integration exposes a concrete reproducible defect.
+R7H is complete and archived. Future architecture work starts from the live `main`; do not recreate or continue the retired R7 branch.
 
-Final integration sequence: compare current `main`, create/update the R7 PR, run authoritative main-integration CI, merge only when green, verify merged `main`, then delete `refactor/atria-game-first-shell-redesign` and the frozen `refactor/game-runtime-architecture` branch.
+## Final integration completed
+
+- Final integration-hardening HEAD: `afba7b29f6c50fd9a60f6ecb69febfa998bee201`
+- PR: **#79 — refactor: integrate Atria Game Runtime and Game-first Shell R0-R7**
+- Final PR validation:
+  - **Atria PR Checks #757**, run `35604801399`: success
+  - **Workspace UI #179**, run `35604801405`: success
+  - **Immersive Experience #29**, run `35604801465`: success
+  - **Worldbook Performance Foundation #370**, run `35604801455`: success
+- Merge commit / current integration baseline: `main@1f199764baf7ef87743d52d865d0eb02ae72702d`
+- Final R7 tree / merged-main tree: `1508b001388837aac047fb37f78c4ed693677af1` — identical
+- Post-merge cleanup: **Cleanup merged task branches #76**, run `35606015494`: success
+- Deleted branches:
+  - `refactor/atria-game-first-shell-redesign`
+  - `refactor/game-runtime-architecture`
+- Retained long-lived branches: `main`, `docs`, `luker`, `vanilla`
+
+Any next initiative is a separate task and should branch from the current live `main`.
 
 ## R7H completed — final checkpoint
 
