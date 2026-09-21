@@ -32,6 +32,13 @@ export async function createGameWorldSession(options = {}) {
 
     const logicRuntime = createGameLogicRuntime({
         commands: options.commands || [],
+        rules: options.rules || [],
+        ruleLimits: options.ruleLimits,
+        rngSeed: options.rngSeed ?? (
+            packageState?.manifest?.id
+                ? packageState.manifest.id + '@' + String(packageState.manifest.version || '0')
+                : undefined
+        ),
         world: {
             getState: () => runtime.getState(),
             getJournal: () => runtime.getJournal(),
@@ -70,6 +77,10 @@ export async function createGameWorldSession(options = {}) {
 
         getCommands() {
             return logicRuntime.listCommands();
+        },
+
+        getRules() {
+            return logicRuntime.listRules();
         },
 
         validateCommand(commandId, args) {
