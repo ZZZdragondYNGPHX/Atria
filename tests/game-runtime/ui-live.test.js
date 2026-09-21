@@ -96,14 +96,14 @@ describe('Live Game Package UI activation', () => {
             throw new Error('unexpected URL ' + url);
         });
         const worldSession = {
-            getState: () => structuredClone(world),
+            getState: () => ({ ...world }),
             async dispatchCommandInternal(commandId, args) {
                 expect(commandId).toBe('damage');
                 expect(args).toEqual({ amount: 3 });
                 world = { hp: world.hp - args.amount };
                 return {
                     status: 'committed',
-                    afterState: structuredClone(world),
+                    afterState: { ...world },
                 };
             },
             simulateCommandInternal: jest.fn(),
