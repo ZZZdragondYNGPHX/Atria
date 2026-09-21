@@ -6,6 +6,7 @@ import { createAtriaAppShell } from './app-shell.js';
 import { createCommandRegistry } from './command-registry.js';
 import { createAtriaNavigationAuthority } from './navigation-authority.js';
 import { mountNativePlayHost } from './native-play-host.js';
+import { createAtriaWorkspaceHost } from './workspace-host.js';
 
 function readPreviewPreference(windowRef) {
     try {
@@ -40,6 +41,7 @@ export function initializeAtriaShellFoundation({
     let navigation = null;
     let shell = null;
     let playHost = null;
+    let workspaceHost = null;
     let previewEnabled = forcePreview === undefined
         ? readPreviewPreference(windowRef)
         : Boolean(forcePreview);
@@ -56,14 +58,27 @@ export function initializeAtriaShellFoundation({
             registry,
             navigation,
             translate,
-            utilities,
+            utilities: {
+                ...(utilities || {}),
+                diagnostics: utilities?.diagnostics || (() => workspaceHost?.openUtility('diagnostics')),
+            },
         });
         try {
             playHost = mountNativePlayHost({
                 document: documentRef,
                 stage: shell.slots.stage,
             });
+            workspaceHost = createAtriaWorkspaceHost({
+                document: documentRef,
+                window: windowRef,
+                shell,
+                navigation,
+            });
         } catch (error) {
+            workspaceHost?.dispose();
+            workspaceHost = null;
+            playHost?.unmount();
+            playHost = null;
             shell.destroy();
             shell = null;
             throw error;
@@ -74,6 +89,8 @@ export function initializeAtriaShellFoundation({
 
     function unmount() {
         if (!shell) return false;
+        workspaceHost?.dispose();
+        workspaceHost = null;
         playHost?.unmount();
         playHost = null;
         shell.destroy();
@@ -113,6 +130,7 @@ export function initializeAtriaShellFoundation({
         getShell: () => shell,
         getNavigation: () => navigation,
         getPlayHost: () => playHost,
+        getWorkspaceHost: () => workspaceHost,
         getRoot: () => shell?.root || null,
         isPreviewEnabled: () => previewEnabled,
     });
