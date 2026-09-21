@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   focused:
-    name: R0-R1 Focused
+    name: R0-R3 Focused
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,6 +33,8 @@ jobs:
           game-runtime/package-loader.test.js
           game-runtime/package-transport.test.js
           game-runtime/world-runtime.test.js
+          game-runtime/command-registry.test.js
+          game-runtime/logic-runtime.test.js
           game-runtime/world-package.test.js
           game-runtime/world-session.test.js
           game-runtime/world-journal.test.js
@@ -44,6 +46,7 @@ jobs:
         run: >-
           npx eslint
           public/scripts/extensions/game-runtime/*.js
+          public/scripts/extensions/game-runtime/logic/*.js
           public/scripts/extensions/game-runtime/world/*.js
           public/scripts/extensions/regex/engine.js
           src/endpoints/card-app.js
