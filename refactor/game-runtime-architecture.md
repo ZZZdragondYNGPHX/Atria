@@ -7,7 +7,7 @@
 - Baseline: `main@63da3141a3895d3386ed1bebc30876c9766315ba`
 - Document branch: `docs`
 - Document path: `refactor/game-runtime-architecture.md`
-- Status: architecture approved and in implementation; **R0-R5 are complete against their phase exit criteria. R5 is the formal midpoint handoff, and the next phase is R6 — Game Studio.**
+- Status: architecture approved and in implementation; **R0-R6 are complete against their phase exit criteria. R6 — Game Studio is validated at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`. The next and final planned phase is R7 — Atria Game-first Shell Redesign.**
 
 This is a product-architecture refactor, not a narrow Regex optimization task.
 
@@ -1816,6 +1816,37 @@ Exit:
 - verify nested text/binary assets round-trip;
 - verify malformed/traversal/oversized package inputs fail safely;
 - retain PNG/JSON/CharX interoperability for appropriate card classes.
+
+Implementation result — **complete (2026-09-21)**:
+
+- the existing CardApp Studio was evolved in place into a runtime-aware **Atria Game Studio**; no parallel authoring product was created;
+- Project Navigator recognizes `game.json`, World Schema, Initial State, declarative Game Logic and its Commands/Reducers/Rules/Interpretations, UI, Selectors, Immersive, Observation resources, knowledge/skills, assets and raw source;
+- World Schema / Initial State / Command / Formula / Rules / Reducer/Event / Interpretation Mapping / Selector / Observation structured editors write the same source files used by Runtime; there is no Studio-only shadow config;
+- structured Game Logic changes are validated through the existing declarative compiler plus Command/Reducer/Rule/Interpretation registries;
+- Selector authoring reuses the R4 safe Formula + Selector Runtime contract;
+- package-declared `llm.observations` compiles into the existing R5 World Observation projector contract;
+- Simulation / Diagnostics runs an isolated in-memory World Runtime through the real R3 `simulate()` path and exposes Command validation, Before/Projected World State, Event Timeline, RNG Trace, Rule Trace, LLM Tool Preview, Observation Preview, Selector Preview and a mutation guard proving no persistence/Journal/authoritative-state write;
+- AI Builder is Game-project-aware while preserving the existing multi-file edits-lib diff/conflict/approval/Git workflow; complete virtual post-edit source batches are preflighted against live Game Runtime contracts before commit;
+- AI Builder cannot replace the runtime with a second authoritative state engine and cannot remove/rename the canonical `game.json` contract from an existing Game Project;
+- native `.atria` distribution is implemented as a standard ZIP container with root container `manifest.json` and runtime project under `game/`, where `game/game.json` remains the distinct Game Runtime manifest;
+- `.atria` inventory carries per-file SHA-256 plus a canonical inventory integrity hash;
+- build excludes `.git`, saves, progress and checkpoints by default;
+- import/inspection rejects unsafe/ambiguous paths, traversal, case/path conflicts, malformed/unsupported manifests, missing/undeclared entries, metadata/integrity mismatch, entry/archive/total-size limit violations and suspicious decompression ratios;
+- restore validates the entire archive before Source Project mutation, uses staging + rollback, preserves the project `.git` directory and creates one Studio restore commit;
+- Studio exposes **Build .atria** and **Import .atria** flows; import uses validate-only preview before confirmed restore;
+- focused tests prove nested UTF-8 and binary assets round-trip and prove build -> inspect -> restore preserves Simulation/Runtime behavior;
+- Narrative Cards and existing PNG/JSON/CharX paths remain supported; R6 does not force ordinary cards into Game Runtime;
+- no R7 global host-shell redesign was pulled into R6.
+
+Final R6 validation:
+
+- Workflow: **Game Runtime Dev Checks**
+- Run: **#340 / `35559636615`**
+- HEAD: **`26692b80aaa073e2442f5ed23b3f082ef25b3e2c`**
+- Result: **success**
+- Focused unit-test step: success
+- Focused ESLint step: success
+- Android/Docker builds were not run because they remain opt-in and R6 changes are browser/Node authoring/runtime/package code.
 
 ### R7 — Atria Game-first Shell Redesign
 
