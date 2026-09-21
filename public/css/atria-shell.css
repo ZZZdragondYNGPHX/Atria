@@ -871,3 +871,147 @@ body[data-atria-shell-preview="true"].atria-immersive-mode .atria-native-play-ho
     font-size: var(--atri-font-size-caption);
     line-height: 1.5;
 }
+
+
+/* R7F Library / Runtime domain workspaces. */
+.atria-domain-workspace {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+}
+
+.atria-domain-workspace__nav {
+    display: flex;
+    gap: var(--atri-space-1);
+    padding: 0 0 var(--atri-space-3);
+    overflow-x: auto;
+    border-bottom: 1px solid var(--atri-color-border);
+}
+
+.atria-domain-workspace__tab,
+.atria-domain-workspace__actions > button,
+.atria-runtime-presets > button {
+    appearance: none;
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-surface);
+    color: var(--atri-color-text-muted);
+    cursor: pointer;
+    padding: var(--atri-space-2) var(--atri-space-3);
+}
+
+.atria-domain-workspace__tab {
+    flex: 0 0 auto;
+}
+
+.atria-domain-workspace__tab:hover,
+.atria-domain-workspace__tab.is-selected,
+.atria-domain-workspace__actions > button:hover:not(:disabled),
+.atria-runtime-presets > button:hover {
+    color: var(--atri-color-text);
+    background: var(--atri-color-raised);
+}
+
+.atria-domain-workspace__tab.is-selected {
+    border-color: color-mix(in srgb, var(--atri-color-accent) 62%, var(--atri-color-border));
+}
+
+.atria-domain-workspace__body {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding-top: var(--atri-space-3);
+}
+
+.atria-domain-workspace__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--atri-space-2);
+    margin-top: var(--atri-space-3);
+}
+
+.atria-domain-workspace__actions > button:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+#atria-workspace #right-nav-panel[data-atria-workspace-embedded="true"] {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow: auto !important;
+    transform: none !important;
+    z-index: auto !important;
+}
+
+.atria-skill-workspace-host {
+    min-width: 0;
+    min-height: 0;
+}
+
+.atria-library-games__grid,
+.atria-runtime-roles,
+.atria-runtime-presets {
+    display: grid;
+    gap: var(--atri-space-3);
+}
+
+.atria-library-games__grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.atria-runtime-role-card {
+    display: grid;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-surface);
+}
+
+.atria-runtime-role-card h3 {
+    margin: 0;
+    text-transform: capitalize;
+}
+
+.atria-runtime-role-card label,
+.atria-runtime-preset-row {
+    display: grid;
+    gap: var(--atri-space-1);
+}
+
+.atria-runtime-role-card__limits {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.4fr);
+    gap: var(--atri-space-2);
+}
+
+.atria-runtime-preset-row {
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-surface);
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__nav {
+    margin-inline: calc(-1 * var(--atri-space-1));
+    padding-inline: var(--atri-space-1);
+}
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-library-games__grid,
+.atria-app-shell[data-atria-viewport="compact"] [data-atria-pattern="runtime-status"] {
+    grid-template-columns: minmax(0, 1fr);
+}
