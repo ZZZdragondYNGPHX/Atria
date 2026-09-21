@@ -1,3 +1,4 @@
+import { createGameLogicRuntime } from '../logic/runtime.js';
 import { buildGameBranchPath } from './branch.js';
 import { loadGameWorldDefinition } from './package.js';
 import { createChatStateWorldPersistence } from './persistence.js';
@@ -29,11 +30,28 @@ export async function createGameWorldSession(options = {}) {
 
     await runtime.load(buildGameBranchPath(getChat()));
 
+    const logicRuntime = createGameLogicRuntime({
+        commands: options.commands || [],
+        world: {
+            getState: () => runtime.getState(),
+            commitEvents: eventDrafts => runtime.commitEvents(eventDrafts, {
+                branchPath: buildGameBranchPath(getChat()),
+            }),
+            simulateEvents: eventDrafts => runtime.simulateEvents(eventDrafts, {
+                branchPath: buildGameBranchPath(getChat()),
+            }),
+        },
+    });
+
+    async function syncRuntimeBranch() {
+        return runtime.switchBranch(buildGameBranchPath(getChat()));
+    }
+
     return Object.freeze({
         definition: Object.freeze(structuredClone(definition)),
 
         async syncBranch() {
-            return runtime.switchBranch(buildGameBranchPath(getChat()));
+            return syncRuntimeBranch();
         },
 
         getState() {
@@ -46,6 +64,24 @@ export async function createGameWorldSession(options = {}) {
 
         getBranchPath() {
             return [...runtime.getSnapshot().branchPath];
+        },
+
+        getCommands() {
+            return logicRuntime.listCommands();
+        },
+
+        validateCommand(commandId, args) {
+            return logicRuntime.validateCommand(commandId, args);
+        },
+
+        async dispatchCommandInternal(commandId, args) {
+            await syncRuntimeBranch();
+            return logicRuntime.dispatch(commandId, args);
+        },
+
+        async simulateCommandInternal(commandId, args) {
+            await syncRuntimeBranch();
+            return logicRuntime.simulate(commandId, args);
         },
 
         async commitEventsInternal(eventDrafts) {
