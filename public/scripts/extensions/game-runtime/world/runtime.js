@@ -63,6 +63,20 @@ export function createWorldRuntime(options = {}) {
         return load(branchPath);
     }
 
+    function simulateEvents(drafts, options = {}) {
+        const branchPath = normalizeGameBranchPath(options.branchPath ?? activeBranchPath);
+        const journal = normalizeWorldJournal(currentJournal);
+        const appended = appendWorldEvents(journal, drafts, branchPath);
+        const projected = replay(appended.journal, branchPath);
+        assertValidWorldState(projected.state, schema);
+
+        return {
+            state: clone(projected.state),
+            events: clone(appended.committed),
+            branchPath: [...branchPath],
+        };
+    }
+
     async function commitEvents(drafts, options = {}) {
         const branchPath = normalizeGameBranchPath(options.branchPath ?? activeBranchPath);
         let committedResult = null;
@@ -125,6 +139,7 @@ export function createWorldRuntime(options = {}) {
     return Object.freeze({
         load,
         switchBranch,
+        simulateEvents,
         commitEvents,
         getState,
         getJournal,
