@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { markOnboarded } from '../_lib/fixtures.js';
@@ -11,27 +11,32 @@ test.describe.configure({ mode: 'serial' });
 let server;
 const PLUGIN_DIR = 'r7g-plugin-fixture';
 const PLUGIN_ID = `third-party/${PLUGIN_DIR}`;
+const REPO_ROOT = resolve(new URL('../../..', import.meta.url).pathname);
+const GLOBAL_PLUGIN_ROOT = resolve(REPO_ROOT, 'public/scripts/extensions/third-party', PLUGIN_DIR);
 
 test.beforeAll(async () => {
-    server = await startServer({
-        batchKey: 'regression',
-        scenarioId: 'r7g-plugins-settings',
-    });
-    markOnboarded({ dataRoot: server.dataRoot });
-
-    const extensionRoot = resolve(server.dataRoot, 'default-user/extensions', PLUGIN_DIR);
-    mkdirSync(extensionRoot, { recursive: true });
-    writeFileSync(resolve(extensionRoot, 'manifest.json'), JSON.stringify({
+    // Global extensions are discovered during server startup, so create the
+    // fixture before boot rather than mutating the per-user directory after
+    // discovery has already been cached.
+    mkdirSync(GLOBAL_PLUGIN_ROOT, { recursive: true });
+    writeFileSync(resolve(GLOBAL_PLUGIN_ROOT, 'manifest.json'), JSON.stringify({
         display_name: 'R7G Fixture Plugin',
         loading_order: 999,
         version: '1.0.0',
         author: 'Atria Tests',
         description: 'Third-party fixture for R7G product classification.',
     }, null, 2));
+
+    server = await startServer({
+        batchKey: 'regression',
+        scenarioId: 'r7g-plugins-settings',
+    });
+    markOnboarded({ dataRoot: server.dataRoot });
 });
 
 test.afterAll(async () => {
     await tearDownServer(server);
+    rmSync(GLOBAL_PLUGIN_ROOT, { recursive: true, force: true });
 });
 
 async function enableShellPreview(page) {
@@ -57,9 +62,10 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         await page.setViewportSize({ width: 1440, height: 900 });
         await awaitMainUI(page, server.baseURL);
 
-        await page.waitForFunction(id => (
-            window.Atria?.getContext?.().extensionNames?.includes?.(id)
-        ), PLUGIN_ID, { timeout: 15_000 }).catch(() => {});
+        await page.waitForFunction(async id => {
+            const extensionModule = await import('/scripts/extensions.js');
+            return extensionModule.extensionNames.includes(id);
+        }, PLUGIN_ID, { timeout: 15_000 });
 
         await page.evaluate(() => {
             window.__r7gSettingsRoot = document.getElementById('user-settings-block');
