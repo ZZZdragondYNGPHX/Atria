@@ -184,8 +184,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
             return true;
         });
 
-        if (!patched) test.skip(true, 'Browser does not allow visualViewport patching in this runtime');
-
+        expect(patched).toBe(true);
         await expect(root).toHaveAttribute('data-atria-keyboard', 'open');
         await expect(root.locator('[data-atria-primitive="BottomNavigation"]')).toBeHidden();
         const height = await root.evaluate(element => Math.round(element.getBoundingClientRect().height));
