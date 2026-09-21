@@ -199,7 +199,7 @@ export function validateDeclarativeLogicSource(value) {
     createRulesEngine(compiled.rules);
     createInterpretationMappingRegistry(compiled.interpretations);
 
-    return compiled;
+    return true;
 }
 
 export function buildLogicSectionEditorModel(value, section) {
