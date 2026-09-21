@@ -83,7 +83,7 @@ async function assertSingleNativeOwnership(page) {
                 chat?.parentElement === sheld
                 && formSheld?.parentElement === sheld
                 && sendForm?.parentElement === formSheld
-                && sendForm?.contains(textarea)
+                && sendForm?.contains(textarea),
             ),
         };
     });
@@ -130,7 +130,14 @@ test.describe('R7B native Play action continuity', () => {
         await expect(page.locator('#chat .mes')).toHaveCount(beforeContinueCount);
 
         const swiped = await swipeRightOnLatest(page);
-        expect(swiped.text).toContain('R7B-D');
+        await page.waitForFunction(({ id, marker }) => {
+            const stop = document.getElementById('mes_stop');
+            const text = document.querySelector(`.mes[mesid="${id}"] .mes_text`)?.textContent || '';
+            return text.includes(marker)
+                && (!stop || getComputedStyle(stop).display === 'none')
+                && document.body.dataset.swiping !== 'true';
+        }, { id: swiped.swipeId, marker: 'R7B-D' }, { timeout: 30_000 });
+        await expect(page.locator(`.mes[mesid="${swiped.swipeId}"] .mes_text`)).toContainText('R7B-D');
         await assertSingleNativeOwnership(page);
 
         await openOptionsAndClick(page, 'option_search_chat');
