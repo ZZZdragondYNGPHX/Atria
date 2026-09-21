@@ -1,4 +1,5 @@
 import { isGameBranchPathCompatible } from '../world/branch.js';
+import { createEventInterpreter } from './event-interpreter.js';
 import { createIntentResolver } from './intent-resolver.js';
 import { createWorldObservationProjector } from './observation.js';
 import { createCommandToolCatalog } from './tools.js';
@@ -131,6 +132,63 @@ export function createGameLlmRuntime(options = {}) {
         });
     }
 
+    async function interpretEvent(turnContext, request, input = {}) {
+        if (!turnContext || typeof turnContext !== 'object') {
+            throw new Error('Game LLM Runtime interpretEvent requires Turn Context');
+        }
+
+        const interpreter = input.eventInterpreter
+            || options.eventInterpreter
+            || createEventInterpreter({
+                generateTask: input.generateTask || options.generateTask,
+            });
+        if (!interpreter || typeof interpreter.interpret !== 'function') {
+            throw new Error('Game LLM Runtime requires an Event Interpreter');
+        }
+
+        const beforeState = clone(worldSession.getState());
+        const beforeJournal = clone(worldSession.getJournal());
+        const result = await interpreter.interpret(
+            turnContext,
+            request,
+            input.requestOptions || {},
+        );
+
+        const afterState = worldSession.getState();
+        const afterJournal = worldSession.getJournal();
+        if (JSON.stringify(afterState) !== JSON.stringify(beforeState)) {
+            throw new Error('Event Interpreter mutated World State directly');
+        }
+        if (JSON.stringify(afterJournal) !== JSON.stringify(beforeJournal)) {
+            throw new Error('Event Interpreter mutated Event Journal directly');
+        }
+
+        const resolutionStatus = result.status === 'accepted'
+            ? 'accepted'
+            : (result.status === 'low_confidence_no_change'
+                ? 'low_confidence_no_change'
+                : 'no_change');
+
+        const turn = advanceTurnContext(turnContext, {
+            resolution: {
+                ...turnContext.resolution,
+                eventInterpreter: resolutionStatus,
+                eventInterpreterRequestId: result.requestId,
+            },
+            interpretations: [
+                ...turnContext.interpretations,
+                clone(result),
+            ],
+        });
+
+        return Object.freeze({
+            status: result.status,
+            accepted: result.accepted === true,
+            turn,
+            interpretation: clone(result),
+        });
+    }
+
     async function runUiAction(input = {}) {
         const commandId = String(input.commandId || '').trim();
         if (!commandId) throw new Error('UI action turn requires commandId');
@@ -242,6 +300,7 @@ export function createGameLlmRuntime(options = {}) {
         getCommandTools,
         beginTurn,
         applyCommandResult,
+        interpretEvent,
         runUiAction,
         runFreeText,
         listObservationProjectors: () => observationProjector.list(),
