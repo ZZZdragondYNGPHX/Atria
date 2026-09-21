@@ -23,8 +23,8 @@ function normalizeStreamName(name) {
 }
 
 function requireInteger(value, label) {
-    if (!Number.isInteger(value)) {
-        throw new Error(label + ' must be an integer');
+    if (!Number.isSafeInteger(value)) {
+        throw new Error(label + ' must be a safe integer');
     }
     return value;
 }
@@ -72,7 +72,11 @@ export function createDeterministicRng(seed, options = {}) {
                 const min = requireInteger(minimum, 'RNG minimum');
                 const max = requireInteger(maximum, 'RNG maximum');
                 if (max < min) throw new Error('RNG maximum must be >= minimum');
-                const value = min + Math.floor(nextUnit() * (max - min + 1));
+                const span = max - min + 1;
+                if (!Number.isSafeInteger(span) || span > 0x100000000) {
+                    throw new Error('RNG integer range exceeds deterministic precision');
+                }
+                const value = min + Math.floor(nextUnit() * span);
                 record({ operation: 'int', minimum: min, maximum: max, value });
                 return value;
             },
@@ -117,6 +121,9 @@ export function createDeterministicRng(seed, options = {}) {
                         throw new Error('RNG weighted choice entry ' + index + ' requires weight > 0');
                     }
                     totalWeight += weight;
+                    if (!Number.isFinite(totalWeight)) {
+                        throw new Error('RNG weighted choice total weight must be finite');
+                    }
                     return weight;
                 });
 
@@ -140,7 +147,11 @@ export function createDeterministicRng(seed, options = {}) {
 
             stream(name) {
                 const child = normalizeStreamName(name);
-                return getStream(namespace + '.' + child);
+                const nestedNamespace = namespace + '.' + child;
+                if (nestedNamespace.length > 256) {
+                    throw new Error('RNG stream namespace exceeds 256 characters');
+                }
+                return getStream(nestedNamespace);
             },
         });
 
