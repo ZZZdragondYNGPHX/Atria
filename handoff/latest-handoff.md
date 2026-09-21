@@ -1,6 +1,6 @@
-# Active implementation: R7H — Legacy Shell Retirement & Final Hardening
+# R7 complete — final main integration
 
-R7A — Design System & Shell Foundation, R7B — Play / Native Conversation Host, R7C — Game Surface Integration, R7D — Desktop / Mobile Navigation, R7E — First-class Workspaces, R7F — Library & Runtime, and R7G — Plugins & Settings Reclassification are complete and validated. The next conversation should continue directly with **R7H — Legacy Shell Retirement & Final Hardening** on the same long-running R7 branch.
+R7A–R7H are complete and validated. The active task is no longer feature implementation; it is the final integration of the complete R0–R7 Game Runtime + Game-first Shell refactor into `main`.
 
 ## Frozen R0-R6 baseline
 
@@ -35,13 +35,45 @@ Keep this branch frozen during R7 except for a narrowly targeted correction prov
 - R7F validation: **R7 Shell Dev Checks #133**, run `35585151542`, success
 - R7G final validated HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
 - R7G validation: **R7 Shell Dev Checks #152**, run `35588313656`, success
+- R7H final validated HEAD: `f03e42106d1ac1c158cab316b1e834670a5c5c5b`
+- R7H / final R7 validation: **R7 Shell Dev Checks #160**, run `35594944832`, success
 - Authoritative R7 plan: `refactor/atria-game-first-shell-redesign.md`
 - Master runtime plan: `refactor/game-runtime-architecture.md`
 - Detailed frozen-runtime handoff: `handoff/game-runtime-architecture.md`
 
-Do not create a separate R7H branch. Continue from the real latest remote HEAD of `refactor/atria-game-first-shell-redesign`; if another conversation has advanced it, use the actual remote HEAD rather than assuming the SHA above is still current.
+R7H is complete. Do not make additional product/architecture changes on the R7 branch unless final integration exposes a concrete reproducible defect.
 
-Do not merge R7 to `main` at phase boundaries. R7A-R7H remain one long-running R7 implementation line. Final integration happens only after R7H/final R7 validation.
+Final integration sequence: compare current `main`, create/update the R7 PR, run authoritative main-integration CI, merge only when green, verify merged `main`, then delete `refactor/atria-game-first-shell-redesign` and the frozen `refactor/game-runtime-architecture` branch.
+
+## R7H completed — final checkpoint
+
+R7H retired the staged preview shell and made Atria Shell the default product Host while preserving stateful legacy DOM as compatibility ABI.
+
+Final ownership:
+
+- default startup -> Atria Shell -> Navigation Authority -> Stage / Workspace / Utility -> existing controller;
+- explicit `?atriaShellRecovery=legacy` exists only as recovery/debug fallback;
+- legacy top bar/drawer chrome is not normal product navigation;
+- `#chat`, `#send_form`, and `#send_textarea` remain unique and keep native identity;
+- compatibility roots for Character, World Info, API, Settings, Extensions/Plugins and Account remain reusable;
+- MovingUI cannot write geometry to Shell-owned nodes;
+- Full Game owns Stage, never Host;
+- frontend/plugin guidance treats old drawer selectors/geometry as compatibility-only.
+
+Final R7 validation:
+
+- HEAD: `f03e42106d1ac1c158cab316b1e834670a5c5c5b`
+- Workflow: **R7 Shell Dev Checks #160**
+- Run: `35594944832`
+- Result: **success**
+- complete Node unit regression: success
+- frontend build: success
+- R7H focused unit/lint: success
+- Namespace Guard: success
+- full R7 browser smoke: success
+- retired preview-gate residual guard: success
+
+No Android/Docker build was required because R7H did not touch Android Kotlin/native Back bridge or Docker delivery behavior.
 
 ## R7A completed — do not redo
 
