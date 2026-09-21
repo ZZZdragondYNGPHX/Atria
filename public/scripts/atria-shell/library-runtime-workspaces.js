@@ -673,7 +673,7 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
         summary.hidden = true;
         editor.hidden = false;
         root.dataset.atriaPresetEditing = apiId;
-        editorTitle.textContent = formatShellText('Edit 0', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle');
+        editorTitle.textContent = formatShellText('Edit ${0}', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle');
         editorBody.replaceChildren(source);
 
         const nativeSelect = manager?.select?.get?.(0) || manager?.select?.[0] || null;
@@ -698,13 +698,13 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
 
         const select = documentRef.createElement('select');
         select.className = 'text_pole atria-runtime-preset-row__select';
-        select.setAttribute('aria-label', formatShellText('0 current preset', [translateShellText(label)], undefined, 'atria.shell.runtime.currentPresetAria'));
+        select.setAttribute('aria-label', formatShellText('${0} current preset', [translateShellText(label)], undefined, 'atria.shell.runtime.currentPresetAria'));
 
         const edit = documentRef.createElement('button');
         edit.type = 'button';
         edit.className = 'atria-runtime-preset-row__edit';
         edit.textContent = translateShellText('Edit');
-        edit.setAttribute('aria-label', formatShellText('Edit 0', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle'));
+        edit.setAttribute('aria-label', formatShellText('Edit ${0}', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle'));
 
         function refresh() {
             const selected = manager.getSelectedPresetName?.() || '';
