@@ -33,7 +33,7 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
         ports:
-          - 53306:3306
+          - 3306/tcp
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
           --health-interval=10s --health-timeout=5s --health-retries=12
@@ -44,10 +44,13 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: atria_test
         ports:
-          - 55432:5432
+          - 5432/tcp
         options: >-
           --health-cmd="pg_isready -U atria -d atria_test"
           --health-interval=10s --health-timeout=5s --health-retries=12
+    env:
+      ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports[3306] }}
+      ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/atria_test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
