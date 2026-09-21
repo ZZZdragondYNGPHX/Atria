@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 
+import { disableExtensions, markOnboarded } from '../_lib/fixtures.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 
 let server;
@@ -8,6 +9,11 @@ test.beforeAll(async () => {
     server = await startServer({
         batchKey: 'regression',
         scenarioId: 'r7a-foundation',
+    });
+    markOnboarded({ dataRoot: server.dataRoot });
+    disableExtensions({
+        dataRoot: server.dataRoot,
+        names: ['stable-diffusion'],
     });
 });
 
