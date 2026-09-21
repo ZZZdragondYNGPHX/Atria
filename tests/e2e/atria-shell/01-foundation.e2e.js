@@ -6,7 +6,7 @@ let server;
 
 test.beforeAll(async () => {
     server = await startServer({
-        batchKey: 'atria-shell',
+        batchKey: 'regression',
         scenarioId: 'r7a-foundation',
     });
 });
