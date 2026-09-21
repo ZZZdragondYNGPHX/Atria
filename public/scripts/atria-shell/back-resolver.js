@@ -8,6 +8,7 @@ const BACK_STEPS = Object.freeze([
     ['modal-popover', 'dismissModalPopover'],
     ['context-sheet', 'dismissContextSheet'],
     ['command-surface', 'dismissCommandSurface'],
+    ['generation', 'dismissGeneration'],
     ['detail-route', 'dismissDetailRoute'],
     ['full-game', 'escapeFullGame'],
     ['immersive', 'exitImmersive'],
