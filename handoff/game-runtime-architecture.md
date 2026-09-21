@@ -336,6 +336,15 @@ Important R4 boundaries:
     - future Entity Collections / indexes / query layers / partitioned projections may be introduced for grand-strategy-scale simulations while preserving Command -> Event -> Reducer semantics;
     - do not expand the current R5 scope to implement that future Entity Store without a concrete need.
 
+16. Added **Atria Native Package Format**:
+    - PNG/JSON/CharX remain supported compatibility/interchange formats;
+    - complete Atria Game Packages should gain a native *.atria distribution artifact instead of indefinitely embedding growing multi-file/binary projects into PNG metadata or giant JSON/base64 payloads;
+    - .atria is planned as a standard ZIP container with a versioned root package manifest, card data, Game Runtime project files, knowledge/skills and binary assets;
+    - manifest.json (container/package contract) remains distinct from game/game.json (Game Runtime contract);
+    - Game Studio edits an unpacked source project and builds/validates the distribution artifact;
+    - package extraction must enforce path traversal/archive/resource/manifest validation;
+    - Game Package and live Save are separate contracts; a future portable save may use a separate *.atria-save style artifact;
+    - R6 Game Studio owns the native package build/import/export pipeline. Do not expand the current R5 scope to implement it early.
 ## Validation completed
 
 Final focused workflow:
@@ -375,7 +384,7 @@ R0-R4 are complete. The Master Refactor is not complete.
 Remaining phases:
 
 - R5 — LLM Runtime & Model Roles: initial command-tool generation, command visibility, World Observation and branch-anchored Turn Context are already implemented. Remaining work includes Intent Resolver, optional Event Interpreter, Turn Controller/Turn Transaction, interruption/variant semantics, Memory/Orchestrator bridges, single Narrative Producer arbitration, Narrator, committed-fact enforcement, UI-action shortcut and Runtime Role routing/fallback.
-- R6 — evolve the existing CardApp Studio into Atria Game Studio; do not create a parallel second Studio.
+- R6 — evolve the existing CardApp Studio into Atria Game Studio; do not create a parallel second Studio. R6 also owns the source-project -> native .atria build/import/export pipeline while retaining PNG/JSON/CharX interoperability.
 - R7 — Atria Game-first Shell Redesign after R5-R6 runtime/authoring contracts are stable.
 
 Known R4 intentionally deferred boundary:
@@ -411,4 +420,7 @@ Do not:
 - collapse Connection Profile and Runtime Role into one concept;
 - start R7 shell redesign before R5-R6 contracts are stable;
 - introduce built-in RPG field assumptions into World/Logic/LLM/UI contracts;
-- expand current R5 into a speculative large-world Entity Store project.
+- expand current R5 into a speculative large-world Entity Store project;
+- interrupt R5 to build the planned .atria container early;
+- treat PNG/JSON/CharX as deprecated just because a native package is planned;
+- put live player progression inside the distributable Game Package by default.
