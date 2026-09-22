@@ -171,22 +171,26 @@ try {
     }
     assert.equal(await page.locator('dialog[open]').count(), 0, 'startup dialog still blocks the workspace');
 
-    const worldInfoOpenedByShell = await page.evaluate(() => {
-        const shell = window.Atria?.shell;
-        const workspaceHost = shell?.getWorkspaceHost?.();
-        if (!shell?.isMounted?.() || typeof workspaceHost?.openWorldInfo !== 'function') {
-            return false;
+    // N9/N10 moved the product World Info entry point to Native
+    // Worlds & Knowledge. This performance smoke intentionally exercises the
+    // retained mature World Info editor/runtime ABI behind that product
+    // boundary, so mount the compatibility workspace explicitly instead of
+    // driving the retired WIDrawerIcon product route.
+    const worldInfoMounted = await page.evaluate(async () => {
+        const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
+        let host = document.getElementById('atria-world-info-performance-smoke-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'atria-world-info-performance-smoke-host';
+            host.style.position = 'fixed';
+            host.style.inset = '0';
+            host.style.zIndex = '10000';
+            host.style.background = 'var(--SmartThemeBlurTintColor, #111)';
+            document.body.append(host);
         }
-        workspaceHost.openWorldInfo();
-        return true;
+        return Boolean(mountWorldInfoWorkspace(host, { embedded: true }));
     }).catch(() => false);
-
-    if (!worldInfoOpenedByShell) {
-        const wiDrawerIcon = page.locator('#WIDrawerIcon');
-        if (await wiDrawerIcon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true)) {
-            await wiDrawerIcon.click();
-        }
-    }
+    assert.equal(worldInfoMounted, true, 'World Info compatibility workspace did not mount');
     await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10000 });
     const authorBookName = 'atri-condition-author-ui-fixture';
     await page.waitForFunction((wanted) => {
