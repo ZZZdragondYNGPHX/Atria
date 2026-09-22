@@ -2,46 +2,16 @@ import express from 'express';
 import { createHash } from 'node:crypto';
 import { SessionCore } from '../native/session-core.js';
 import { PackageInstaller } from '../native/package-composition.js';
-import { NativeSaveSystem } from '../native/save-system.js';
-import { ProjectStore } from '../native/project-store.js';
-import { NativeProductUiService } from '../native/product-ui-service.js';
 import { createNativeId, assertNativeId } from '../native/identity.js';
-import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo, getWorldRepo } from '../storage/index.js';
-import { getUserDirectories } from '../users.js';
+import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo } from '../storage/index.js';
 
 function services() {
     const assets = getAssetStore();
     const sessionRepo = getSessionRepo();
-    const savePointRepo = getSavePointRepo();
-    const packageRepo = getPackageRepo();
-    const knowledgeRepo = getKnowledgeRepo();
-    const packageInstaller = new PackageInstaller({ packageRepo, assetStore: assets });
-    const core = new SessionCore({
-        sessionRepo,
-        savePointRepo,
-        packageInstaller,
-        knowledgeRepo,
-    });
-    const saveSystem = new NativeSaveSystem({
-        sessionCore: core,
-        sessionRepo,
-        savePointRepo,
-        packageInstaller,
-        assetStore: assets,
-        knowledgeRepo,
-    });
-    const product = new NativeProductUiService({
-        packageRepo,
-        worldRepo: getWorldRepo(),
-        knowledgeRepo,
-        sessionRepo,
-        savePointRepo,
-        packageInstaller,
-        saveSystem,
-        sessionCore: core,
-        projectStore: new ProjectStore({ directoriesByHandle: getUserDirectories }),
-    });
-    return { core, assets, sessionRepo, product };
+    const core = new SessionCore({ sessionRepo, savePointRepo: getSavePointRepo(),
+        packageInstaller: new PackageInstaller({ packageRepo: getPackageRepo(), assetStore: assets }),
+        knowledgeRepo: getKnowledgeRepo() });
+    return { core, assets, sessionRepo };
 }
 
 /** Authenticated handle is server-owned. No arbitrary repo method dispatch or legacy fallback. */
@@ -57,11 +27,7 @@ export function createNativeSessionRouter(getServices = services) {
         } catch (error) {
             const status = error.code?.includes('conflict') ? 409
                 : error instanceof TypeError ? 400 : error.name === 'NotFoundError' ? 404 : 500;
-            response.status(status).json({
-                error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed'),
-                ...(error.details === undefined ? {} : { details: error.details }),
-                ...(error.permissions === undefined ? {} : { permissions: error.permissions }),
-            });
+            response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
     };
     router.post('/create', route(async (req, res, { core }, handle) => {
@@ -131,91 +97,6 @@ export function createNativeSessionRouter(getServices = services) {
             limit,
         }));
     }));
-    // N9 Product UI routes are a thin projection over Native authorities.
-    router.get('/product/library', route(async (_req, res, { product }, handle) => {
-        res.json(await product.librarySnapshot(handle));
-    }));
-    router.post('/product/work/detail', route(async (req, res, { product }, handle) => {
-        res.json(await product.getWork(handle, req.body.packageId));
-    }));
-    router.post('/product/world/detail', route(async (req, res, { product }, handle) => {
-        res.json(await product.getWorld(handle, req.body.worldId));
-    }));
-    router.post('/product/world/create', route(async (req, res, { product }, handle) => {
-        res.json(await product.createWorld(handle, req.body));
-    }));
-    router.post('/product/world/delete', route(async (req, res, { product }, handle) => {
-        res.json({ deleted: await product.deleteWorld(handle, req.body.worldId) });
-    }));
-    router.post('/product/knowledge/detail', route(async (req, res, { product }, handle) => {
-        res.json(await product.getKnowledgeBase(handle, req.body.knowledgeBaseId));
-    }));
-    router.post('/product/knowledge/create', route(async (req, res, { product }, handle) => {
-        res.json(await product.createKnowledgeBase(handle, req.body));
-    }));
-    router.post('/product/knowledge/delete', route(async (req, res, { product }, handle) => {
-        res.json({ deleted: await product.deleteKnowledgeBase(handle, req.body.knowledgeBaseId) });
-    }));
-    router.post('/product/session/list', route(async (req, res, { product }, handle) => {
-        res.json(await product.listSessions(handle, req.body ?? {}));
-    }));
-    router.post('/product/session/detail', route(async (req, res, { product }, handle) => {
-        res.json(await product.getSession(handle, req.body.sessionId));
-    }));
-    router.post('/product/session/start', route(async (req, res, { product }, handle) => {
-        res.json(await product.startSession(handle, req.body));
-    }));
-    router.post('/product/session/continue', route(async (req, res, { product }, handle) => {
-        res.json(await product.continueSession(handle, req.body.sessionId));
-    }));
-    router.post('/product/session/delete', route(async (req, res, { product }, handle) => {
-        res.json({ deleted: await product.deleteSession(handle, req.body.sessionId) });
-    }));
-    router.post('/product/save', route(async (req, res, { product }, handle) => {
-        res.json(await product.saveSession(handle, req.body.sessionId, req.body));
-    }));
-    router.post('/product/save/load', route(async (req, res, { product }, handle) => {
-        res.json(await product.loadSave(
-            handle,
-            req.body.sessionId,
-            req.body.saveId,
-            req.body.expectedRevisionId,
-        ));
-    }));
-    router.post('/product/save/export', route(async (req, res, { product }, handle) => {
-        res.json(await product.exportSave(handle, req.body.sessionId, req.body));
-    }));
-    router.post('/product/save/import-preflight', route(async (req, res, { product }, handle) => {
-        res.json(await product.preflightSaveImport(handle, req.body.archiveBase64));
-    }));
-    router.post('/product/save/import', route(async (req, res, { product }, handle) => {
-        res.json(await product.importSave(handle, req.body.archiveBase64, req.body));
-    }));
-    router.post('/product/knowledge/promote', route(async (req, res, { product }, handle) => {
-        res.json(await product.promoteEmbeddedKnowledge(handle, req.body.sessionId, req.body));
-    }));
-    router.post('/product/package/preflight', route(async (req, res, { product }, handle) => {
-        res.json(await product.preflightPackage(handle, req.body.archiveBase64));
-    }));
-    router.post('/product/package/install', route(async (req, res, { product }, handle) => {
-        res.json(await product.installPackage(handle, req.body.archiveBase64, req.body));
-    }));
-    router.post('/product/package/delete', route(async (req, res, { product }, handle) => {
-        res.json({ deleted: await product.deletePackage(handle, req.body.packageId) });
-    }));
-    router.get('/product/projects', route(async (_req, res, { product }, handle) => {
-        res.json(await product.listProjects(handle));
-    }));
-    router.post('/product/project/detail', route(async (req, res, { product }, handle) => {
-        res.json(await product.getProject(handle, req.body.projectId));
-    }));
-    router.post('/product/project/dependencies', route(async (req, res, { product }, handle) => {
-        res.json(await product.updateProjectDependencies(handle, req.body.projectId, req.body.dependencies));
-    }));
-    router.post('/product/project/delete', route(async (req, res, { product }, handle) => {
-        res.json({ deleted: await product.deleteProject(handle, req.body.projectId) });
-    }));
-
     router.post('/attachment', route(async (req, res, { core, assets }, handle) => {
         const { sessionId, data, mediaType = 'application/octet-stream', displayName = 'Attachment' } = req.body;
         await core.load(handle, sessionId);
