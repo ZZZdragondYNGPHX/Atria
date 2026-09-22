@@ -3,7 +3,6 @@ import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 import {
-    createAndOpenNativeSession,
     seedNativeSessionDataRoot,
     snapshotLegacyPersistence,
 } from './_helpers.js';
@@ -35,11 +34,18 @@ test.describe.serial('N9 Native Product UI real-host acceptance', () => {
             window.Atria.shell.getWorkspaceHost().openLibrarySection('works');
         });
         await expect(page.locator('[data-atria-native-library="works"]')).toBeVisible();
-        await expect(page.locator('[data-atria-work-id]').first()).toBeVisible();
+        const workCard = page.locator('[data-atria-work-id]').first();
+        await expect(workCard).toBeVisible();
         await expect(page.locator('#right-nav-panel[data-atria-workspace-embedded="true"]')).toHaveCount(0);
 
-        await createAndOpenNativeSession(page, seeded.start);
+        // Product flow, not a test-only runtime shortcut: open the Native Work,
+        // choose its EntryPoint, create the Session, and transition to Play.
+        await workCard.getByRole('button', { name: 'Open', exact: true }).click();
+        const detail = page.locator('[data-atria-work-detail]').first();
+        await expect(detail).toBeVisible();
+        await detail.getByRole('button', { name: 'Start New', exact: true }).click();
         await expect(page.locator('body')).toHaveAttribute('data-atria-native-session-active', 'true');
+        await expect(page).toHaveURL(/atriaRoute=play/);
 
         const toolbar = page.locator('[data-atria-native-play-actions="true"]');
         await expect(toolbar).toBeVisible();
