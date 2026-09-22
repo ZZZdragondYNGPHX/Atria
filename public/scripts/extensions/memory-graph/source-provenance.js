@@ -272,9 +272,12 @@ export function createMemorySupportChecker(state, chat) {
     const valid = id => {
         if (!episodes.has(id)) {
             const episode = state.episodes[id]; const found = lookup.get(episode?.messageIds?.[0]);
-            if (found && !contents.has(found.floor)) contents.set(found.floor, sourceContent(found.message));
+            const nativeIdentity = Boolean(found?.message?.atri_native?.messageId);
+            const contentKey = nativeIdentity ? `message:${id}` : `floor:${found?.floor}`;
+            if (found && !contents.has(contentKey)) contents.set(contentKey, sourceContent(found.message));
+            const positionMatches = nativeIdentity || found?.floor === episode?.sourceFloor;
             episodes.set(id, Boolean(episode?.status === 'active' && episode.scopeId === state.scopeId && found
-                && found.floor === episode.sourceFloor && contents.get(found.floor) === episode.sourceContent));
+                && positionMatches && contents.get(contentKey) === episode.sourceContent));
         }
         return episodes.get(id);
     };
