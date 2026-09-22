@@ -2,7 +2,11 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 
 import AdmZip from 'adm-zip';
 
-import { assertAtriaPackageManifest } from './contracts.js';
+import {
+    ATRIA_PACKAGE_CAPABILITIES,
+    ATRIA_PACKAGE_PERMISSIONS,
+    assertAtriaPackageManifest,
+} from './contracts.js';
 
 export const ATRIA_PACKAGE_CONTAINER_FORMAT = 'atria-package-container';
 export const ATRIA_PACKAGE_CONTAINER_VERSION = 2;
@@ -274,6 +278,39 @@ function validateHeader(header) {
     }
     if (!Array.isArray(header.capabilities) || !Array.isArray(header.permissions)) {
         throw new Error('.atria preflight capability/permission metadata is malformed');
+    }
+    if (
+        new Set(header.capabilities).size !== header.capabilities.length
+        || header.capabilities.some(capability => !ATRIA_PACKAGE_CAPABILITIES.includes(capability))
+    ) {
+        throw new Error('.atria preflight contains unsupported capabilities');
+    }
+    const seenPermissions = new Set();
+    for (const item of header.permissions) {
+        if (
+            !item
+            || typeof item !== 'object'
+            || Array.isArray(item)
+            || !ATRIA_PACKAGE_PERMISSIONS.includes(item.permission)
+            || typeof item.required !== 'boolean'
+            || seenPermissions.has(item.permission)
+        ) {
+            throw new Error('.atria preflight contains unsupported or duplicate permissions');
+        }
+        seenPermissions.add(item.permission);
+        if (item.reason != null && (typeof item.reason !== 'string' || item.reason.length > 1024)) {
+            throw new Error('.atria preflight permission reason is malformed');
+        }
+    }
+    if (
+        typeof header.name !== 'string'
+        || !header.name
+        || header.name.length > 256
+        || typeof header.version !== 'string'
+        || !header.version
+        || header.version.length > 128
+    ) {
+        throw new Error('.atria preflight package presentation metadata is malformed');
     }
 }
 
