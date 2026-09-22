@@ -31,6 +31,17 @@ function formatTime(value) {
     return time ? new Date(time).toLocaleString() : '—';
 }
 
+function downloadBase64(documentRef, data, filename) {
+    const binary = atob(String(data || ''));
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+    const anchor = documentRef.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 function errorMessage(error) {
     const code = String(error?.code || '');
     if (code.includes('referenced')) return 'This item is still referenced by Native content or progress.';
@@ -129,30 +140,116 @@ function createInstallSurface(documentRef, onInstalled) {
 }
 
 function createSessionCard(documentRef, session, host, refresh) {
+    const dependency = session.dependency || { status: 'ready' };
+    const ready = dependency.status === 'ready';
     const card = createAtriaRuntimeCard(documentRef, {
         title: session.displayTitle || 'Game progress',
-        description: `Updated ${formatTime(session.updatedAt)}`,
-        status: session.headRevisionId ? 'Ready' : 'Initializing',
+        description: ready
+            ? `Updated ${formatTime(session.updatedAt)}`
+            : 'This Native Session is preserved, but its exact Package dependency is unavailable.',
+        status: ready
+            ? `${session.saveCount || 0} save(s) · Ready`
+            : `Package dependency: ${dependency.status}`,
+        tone: ready ? 'success' : 'warning',
     });
     card.dataset.atriaSessionId = session.sessionId;
+    card.dataset.atriaPackageDependency = dependency.status;
     const actions = createActions(documentRef);
     actions.append(
-        button(documentRef, 'Continue', () => openNativeSession(host, session.sessionId)),
+        button(documentRef, 'Continue', () => openNativeSession(host, session.sessionId), { disabled: !ready }),
+        button(documentRef, 'Export .atriasave', async () => {
+            const exported = await nativeProductClient.exportSave(session.sessionId);
+            downloadBase64(
+                documentRef,
+                exported.data,
+                `${session.displayTitle || session.sessionId}.atriasave`,
+            );
+        }, { disabled: !ready }),
         button(documentRef, 'Delete', async () => {
             if (!confirmAction('Delete this Native Session and all of its SavePoints?')) return;
             await nativeProductClient.deleteSession(session.sessionId);
             await refresh();
         }),
     );
+    if (!ready) {
+        const details = documentRef.createElement('pre');
+        details.className = 'atria-native-session-dependency';
+        details.textContent = JSON.stringify(dependency.required || dependency, null, 2);
+        card.append(details);
+    }
     card.append(actions);
     return card;
 }
 
-async function renderWorks(documentRef, root, host, refresh) {
-    const works = await nativeProductClient.listWorks();
-    const install = createInstallSurface(documentRef, refresh);
-    root.append(install);
+function createSaveImportSurface(documentRef, host, onImported) {
+    const root = documentRef.createElement('section');
+    root.className = 'atria-native-save-import';
+    root.dataset.atriaNativeSaveImport = 'true';
+    const label = documentRef.createElement('label');
+    label.textContent = translateShellText('Import .atriasave');
+    const input = documentRef.createElement('input');
+    input.type = 'file';
+    input.accept = '.atriasave,application/octet-stream';
+    label.append(input);
+    const result = documentRef.createElement('div');
+    result.className = 'atria-native-save-import__result';
 
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        result.replaceChildren(panel(documentRef, 'loading', 'Save preflight', 'Checking Native Save dependencies…'));
+        try {
+            const data = arrayBufferToBase64(await file.arrayBuffer());
+            const preflight = await nativeProductClient.preflightSaveImport(data);
+            const ready = preflight.dependency?.status === 'ready';
+            const card = createAtriaRuntimeCard(documentRef, {
+                title: 'Native Save',
+                description: ready
+                    ? 'Exact Package dependency is installed.'
+                    : 'Install the exact Package version/content required by this Save before importing.',
+                status: ready ? 'Ready to import' : `Package dependency: ${preflight.dependency?.status || 'unknown'}`,
+                tone: ready ? 'success' : 'warning',
+            });
+            card.dataset.atriaSavePreflight = preflight.dependency?.status || 'unknown';
+            if (!ready) {
+                const required = documentRef.createElement('pre');
+                required.textContent = JSON.stringify(
+                    preflight.dependency?.required || preflight.package || {},
+                    null,
+                    2,
+                );
+                card.append(required);
+            } else {
+                const importActions = createActions(documentRef);
+                importActions.append(button(documentRef, 'Import Save', async () => {
+                    const snapshot = await nativeProductClient.importSave(data);
+                    await onImported?.();
+                    await openNativeSession(host, snapshot.session.sessionId);
+                }));
+                card.append(importActions);
+            }
+            result.replaceChildren(card);
+        } catch (error) {
+            result.replaceChildren(panel(documentRef, 'error', 'Save import failed', errorMessage(error)));
+        }
+    });
+    root.append(label, result);
+    return root;
+}
+
+async function renderWorks(documentRef, root, host, refresh) {
+    const [works, sessions] = await Promise.all([
+        nativeProductClient.listWorks(),
+        nativeProductClient.listSessions(),
+    ]);
+    root.append(
+        createInstallSurface(documentRef, refresh),
+        createSaveImportSurface(documentRef, host, refresh),
+    );
+
+    const worksHeading = documentRef.createElement('h3');
+    worksHeading.textContent = translateShellText('Works');
+    root.append(worksHeading);
     if (!works.length) {
         root.append(panel(
             documentRef,
@@ -160,31 +257,43 @@ async function renderWorks(documentRef, root, host, refresh) {
             'No Works installed',
             'Install a .atria Package to add a Work to your Native Library.',
         ));
-        return;
+    } else {
+        const grid = documentRef.createElement('div');
+        grid.className = 'atria-library-games__grid';
+        grid.dataset.atriaNativeWorks = 'true';
+        for (const work of works) {
+            const manifest = work.manifest;
+            const card = createAtriaRuntimeCard(documentRef, {
+                title: work.package.displayName,
+                description: manifest?.description || 'Native Package',
+                status: work.status === 'ready'
+                    ? `v${work.packageVersion?.version || '?'} · ${work.sessionCount} game(s)`
+                    : work.status,
+                tone: work.status === 'ready' ? 'success' : 'warning',
+            });
+            card.dataset.atriaWorkId = work.package.packageId;
+            const actions = createActions(documentRef);
+            actions.append(button(documentRef, 'Open', () => {
+                host.openLibraryWork(work.package.packageId, work.package.displayName);
+            }));
+            card.append(actions);
+            grid.append(card);
+        }
+        root.append(grid);
     }
 
-    const grid = documentRef.createElement('div');
-    grid.className = 'atria-library-games__grid';
-    grid.dataset.atriaNativeWorks = 'true';
-    for (const work of works) {
-        const manifest = work.manifest;
-        const card = createAtriaRuntimeCard(documentRef, {
-            title: work.package.displayName,
-            description: manifest?.description || 'Native Package',
-            status: work.status === 'ready'
-                ? `v${work.packageVersion?.version || '?'} · ${work.sessionCount} game(s)`
-                : work.status,
-            tone: work.status === 'ready' ? 'success' : 'warning',
-        });
-        card.dataset.atriaWorkId = work.package.packageId;
-        const actions = createActions(documentRef);
-        actions.append(button(documentRef, 'Open', () => {
-            host.openLibraryWork(work.package.packageId, work.package.displayName);
-        }));
-        card.append(actions);
-        grid.append(card);
+    const gamesHeading = documentRef.createElement('h3');
+    gamesHeading.textContent = translateShellText('My Games');
+    root.append(gamesHeading);
+    const games = documentRef.createElement('div');
+    games.className = 'atria-library-games__grid';
+    games.dataset.atriaMyGames = 'true';
+    if (!sessions.length) {
+        games.append(panel(documentRef, 'empty', 'No Native games yet', 'Start a Work EntryPoint to create a Native Session.'));
+    } else {
+        for (const session of sessions) games.append(createSessionCard(documentRef, session, host, refresh));
     }
-    root.append(grid);
+    root.append(games);
 }
 
 async function renderWorkDetail(documentRef, root, host, packageId, refresh) {
@@ -367,6 +476,18 @@ async function renderWorlds(documentRef, root, route, host) {
     }
 
     const worlds = await nativeProductClient.listWorlds();
+    const create = createActions(documentRef);
+    const name = documentRef.createElement('input');
+    name.className = 'text_pole';
+    name.placeholder = translateShellText('New World name');
+    create.append(
+        name,
+        button(documentRef, 'Create World', async () => {
+            await nativeProductClient.createWorld(name.value);
+            host.openLibrarySection('worlds');
+        }),
+    );
+    root.append(create);
     const grid = documentRef.createElement('div');
     grid.className = 'atria-library-games__grid';
     grid.dataset.atriaWorldLibrary = 'true';
@@ -460,6 +581,18 @@ async function renderKnowledge(documentRef, root, route, host) {
     }
 
     const bases = await nativeProductClient.listKnowledge();
+    const create = createActions(documentRef);
+    const name = documentRef.createElement('input');
+    name.className = 'text_pole';
+    name.placeholder = translateShellText('New Knowledge Base name');
+    create.append(
+        name,
+        button(documentRef, 'Create Knowledge Base', async () => {
+            await nativeProductClient.createKnowledge(name.value);
+            host.openLibrarySection('knowledge');
+        }),
+    );
+    root.append(create);
     const grid = documentRef.createElement('div');
     grid.className = 'atria-library-games__grid';
     grid.dataset.atriaKnowledgeLibrary = 'true';
