@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { resolve, relative } from 'node:path';
+import { resolve, relative, sep } from 'node:path';
 
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { installFixture, sessionFixture } from '../../native/helpers/session-fixture.js';
@@ -15,7 +15,7 @@ function treeDigest(root) {
     const visit = (dir) => {
         for (const name of readdirSync(dir).sort()) {
             const full = resolve(dir, name);
-            const rel = relative(root, full).replaceAll('\\\\', '/');
+            const rel = relative(root, full).split(sep).join('/');
             const stat = statSync(full);
             if (stat.isDirectory()) {
                 hash.update(`D\0${rel}\0`);
@@ -37,7 +37,7 @@ export function snapshotLegacyPersistence(dataRoot) {
         chats: treeDigest(resolve(userRoot, 'chats')),
         characters: treeDigest(resolve(userRoot, 'characters')),
         worlds: treeDigest(resolve(userRoot, 'worlds')),
-        files: treeDigest(resolve(userRoot, 'user/files')),
+        files: treeDigest(resolve(userRoot, 'files')),
     });
 }
 
@@ -79,7 +79,7 @@ export async function seedNativeSessionDataRoot({ suffix = 'runtime' } = {}) {
         regex: [
             {
                 scriptName: 'n4-native-pre',
-                findRegex: '/\\\\[N4_PRE\\\\]/g',
+                findRegex: '/\\[N4_PRE\\]/g',
                 replaceString: 'N4_PRE_APPLIED',
                 placement: [1],
                 disabled: false,
