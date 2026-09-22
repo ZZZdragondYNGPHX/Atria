@@ -117,3 +117,5 @@ export {
 export { NativeSaveSystem } from './save-system.js';
 
 export { NativeProductUiService } from './product-ui-service.js';
+
+export { NativeProductService } from './product-service.js';
