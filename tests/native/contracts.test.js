@@ -181,6 +181,11 @@ function snapshotSave(overrides = {}) {
                 { namespace: 'atri_game_world', head: 'world_head_1', data: { hp: 90 } },
                 { namespace: 'atri_memory_graph', head: 'memory_head_1', data: { nodes: [] } },
                 { namespace: 'atri_orchestrator', head: 'orch_head_1', data: { round: 4 } },
+                {
+                    namespace: 'atri_knowledge',
+                    head: 'knowledge_set_1',
+                    data: { schemaVersion: 1, bindings: [], snapshots: [] },
+                },
             ],
             revisions: [revision],
             savePoints: [savePoint],
