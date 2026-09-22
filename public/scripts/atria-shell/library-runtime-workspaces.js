@@ -756,6 +756,14 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
     };
 }
 
+// N9 stops routing product Library traffic through these mature ST controllers.
+// Keep the adapters exported for compatibility seams until N10 decides their retirement scope.
+export const LEGACY_LIBRARY_ADAPTERS = Object.freeze({
+    characters: mountCharactersWorkspace,
+    games: mountGamesWorkspace,
+    worldInfo: mountWorldWorkspace,
+});
+
 async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
     if (section === 'works') return mountNativeWorksWorkspace(args);
