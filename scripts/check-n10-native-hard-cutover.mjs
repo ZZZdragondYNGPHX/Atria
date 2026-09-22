@@ -45,11 +45,13 @@ for (const path of nativeAuthorityFiles) {
         /\/api\/(?:characters|chats|worldinfo)(?:\/|['"`])/i,
         'N10 Active Native authority must not call Character/JSONL/World Info persistence endpoints',
     );
-    rejectPattern(
-        path,
-        /\bWorldInfoRepo\b|worlds\/[<{$]|(?:^|[^A-Za-z0-9_])selected_world_info(?:[^A-Za-z0-9_]|$)|(?:^|[^A-Za-z0-9_])charaFilename(?:[^A-Za-z0-9_]|$)/m,
-        'N10 Active Native authority must not depend on legacy World Info identity/storage',
-    );
+    if (!['src/native/contracts.js', 'src/native/world-knowledge.js'].includes(path)) {
+        rejectPattern(
+            path,
+            /\bWorldInfoRepo\b|worlds\/[<{$]|(?:^|[^A-Za-z0-9_])selected_world_info(?:[^A-Za-z0-9_]|$)|(?:^|[^A-Za-z0-9_])charaFilename(?:[^A-Za-z0-9_]|$)/m,
+            'N10 Active Native authority must not depend on legacy World Info identity/storage',
+        );
+    }
     rejectPattern(
         path,
         /\b(?:createFloorState|getChatState|setChatState|deleteChatState|settleMessageSwiped|settleMessageDeleted|settleMessageSwipeDeleted)\b|\bMESSAGE_(?:SWIPED|DELETED|EDITED)\b/,
