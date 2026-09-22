@@ -3,13 +3,13 @@
 ## Status
 
 - **Decision state:** product / data / storage / runtime / UX direction frozen
-- **Implementation state:** N0/N1/N2/N3 validated; N4 in-progress checkpoint `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`, not runtime-validated. Current validated implementation HEAD is `refactor/atria-native-content-session-architecture@c42ee3e98a27fbea97ded0917de081bcc8893680`
+- **Implementation state:** N0/N1/N2/N3 validated; N4 implementation has progressed through `refactor/atria-native-content-session-architecture@952410a3f3d200754b046ccc2868166282958094` but is not phase-validated. A frozen N4 design amendment now removes committed Edit/Delete/Swipe semantics from Native product authority and adds a bounded Native Context Architecture later in the program.
 - **Authoritative development baseline:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Working branch:** `refactor/atria-native-content-session-architecture`
 - **Branch creation point:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Document branch:** `docs`
-- **Implementation phases:** N0–N9
-- **Merge policy:** keep the long-lived refactor branch isolated until the complete Native Package/Session/World/Knowledge cutover is validated; merge to `main` only after N9.
+- **Implementation phases:** N0–N10
+- **Merge policy:** keep the long-lived refactor branch isolated until the complete Native Package/Session/World/Knowledge cutover is validated; merge to `main` only after N10.
 
 This plan is authoritative for the implementation conversation. Do not restart product design unless a concrete implementation contradiction is discovered.
 
@@ -864,6 +864,8 @@ SessionRevision
 
 SavePoints reference a revisionId.
 
+A SavePoint may point to a fully authoritative SessionRevision even when asynchronous derived Memory/Narrative/Context artifacts lag behind. Save/restore must preserve canonical authority first and carry the durable derived coverage/artifacts that already exist.
+
 A SessionRevision also records the exact resolved Knowledge binding-set head/reference used by that revision, so restoring a SavePoint cannot silently follow newer Library Knowledge.
 
 ### FS durability model
@@ -944,7 +946,10 @@ A snapshot export includes everything necessary to continue the selected SavePoi
 - Session-owned attachments required for restore;
 - the resolved Knowledge binding-set revision/head;
 - Session-local Knowledge;
-- snapshots of Library-owned Knowledge revisions required by the Session.
+- snapshots of Library-owned Knowledge revisions required by the Session;
+- durable Narrative Spine artifacts required for continuity;
+- Active Commitments and their provenance/lifecycle;
+- durable derived coverage/provenance metadata.
 
 It must not simply copy current FS sidecar filenames.
 
@@ -962,7 +967,10 @@ Do not export deterministic/rebuildable caches:
 - recent indexes;
 - thumbnails;
 - compiled caches;
-- transient agent context.
+- transient agent context;
+- ContextPlan cache;
+- token-count cache;
+- rebuildable derived retrieval indexes.
 
 Do not export account/global secrets:
 
@@ -1120,6 +1128,309 @@ No long-term Native↔legacy dual-write period.
 
 ---
 
+## 21A. Committed Timeline immutability
+
+Native Atria uses an immutable committed Timeline.
+
+This is a data-layer invariant, not merely a UI preference. It applies equally to:
+
+- users;
+- plugins/extensions;
+- Agents;
+- Package Runtime;
+- Atria-owned modules.
+
+Once a TimelineEntry is included in a committed SessionRevision, its canonical role/content/Actor/canonical attachment references/provenance and committed metadata cannot be edited, deleted, replaced, or switched to another committed Variant in place.
+
+The only mutable conversation surface is a **Draft** before commit:
+
+```text
+Composer Draft / Generation Draft
+        ↓ may mutate, stream, continue, abort
+commit boundary
+        ↓
+Immutable TimelineEntry
+        ↓
+SessionRevision
+```
+
+Changes to the past use only:
+
+- append a compensating/new TimelineEntry;
+- retry from a predecessor/post-user revision onto a new Branch;
+- re-enter a turn from its pre-user revision;
+- restart/fork from a historical revision;
+- load a historical SavePoint and continue on a derived Branch;
+- explicit destructive maintenance/privacy purge outside normal Play/runtime APIs.
+
+Normal Native APIs do not expose committed-history rewrite/delete/select-swipe capabilities.
+
+### 21A.1 Product semantics
+
+Native Play replaces historical SillyTavern mutation concepts with:
+
+- **Retry Reply** — fork from the revision after the same User message and generate a new Assistant TimelineEntry;
+- **Re-enter Turn** — fork from the revision before the User message and prefill the old User text as a Draft;
+- **Restart From Here** — fork from the selected historical predecessor revision;
+- **Load Save** — resume the SavePoint revision; when it is historical relative to the current route, continue on a derived Branch;
+- **Continue** — after a committed Assistant message, append a new continuation TimelineEntry rather than extending the old committed content;
+- **Stop** — acts only on Generation Draft; the user may commit the partial result or discard the Draft.
+
+Native product surfaces retire:
+
+- committed message Edit;
+- committed message Delete;
+- manual Swipe / Swipe picker;
+- Swipe deletion;
+- in-place Regenerate-to-Variant semantics.
+
+Branching may be created automatically by Retry/Load/Re-enter/Restart; ordinary users do not need to understand Branch mechanics before using those actions.
+
+### 21A.2 Variant boundary
+
+The existing Native Variant contract is retained during this refactor because N0–N3 already validate it and the SillyTavern generator may still use swipe-shaped candidate buffers internally.
+
+However:
+
+- a committed Native message does not expose later user-selectable Swipe semantics;
+- committed Variant selection cannot be changed in place;
+- retrying creates a new Branch/message instead of selecting/adding a historical Swipe;
+- ST `swipes[]`, `swipe_info`, and `swipe_id` may remain transient compatibility/generation implementation details until the final residual audit.
+
+N10 may remove or further narrow Variant if no remaining Native use justifies it.
+
+### 21A.3 Runtime write barrier
+
+The N4 compatibility projection is a mutable SillyTavern runtime workspace downstream of an immutable Native snapshot.
+
+At Native-open/commit boundaries, committed messages must retain canonical fingerprints over load-bearing fields such as:
+
+- messageId;
+- role;
+- actorId;
+- committed content;
+- canonical attachment references;
+- committed metadata/provenance.
+
+If legacy/plugin code mutates a committed projected message directly, the adapter must fail closed with a Native committed-history mutation error, reject the write, avoid any JSONL/chat fallback, and require projection reload/recovery.
+
+A difference in a committed projection is never translated into `revise`, `remove`, `removeVariant`, or committed `selectVariant` Native commands.
+
+### 21A.4 Annotation vs canonical history
+
+Immutability applies to canonical Timeline facts, not every UI/cache bit around a message.
+
+Non-canonical overlays may be separate resources:
+
+- presentation-only state (collapsed/favourite/render cache/translation cache) may mutate without SessionRevision when it cannot affect model/runtime semantics;
+- semantic annotations that can affect Prompt/Memory/Agents are revisioned Session State keyed by stable messageId;
+- hiding from the UI is presentation state; hiding from the model is a semantic/revisioned context-policy change.
+
+This avoids using Timeline mutation for annotations while preserving strict canonical history.
+
+---
+
+## 21B. Bounded Native Context Architecture
+
+Canonical history is not the model context.
+
+Atria permanently preserves the immutable Session Timeline while compiling a bounded, target-specific **Context Projection** for each model call.
+
+Formal rule:
+
+> No canonical history is deleted, rewritten, or summarized away for context-budget reasons. Context reduction operates only on derived projections.
+
+Conceptually:
+
+```text
+Immutable Timeline / Event Journal / Session State
+        │
+        ├─ Memory
+        ├─ Narrative Spine
+        ├─ Active Commitments
+        ├─ KnowledgePlan
+        └─ Recent Raw Timeline
+                ↓
+        SessionContextCompiler(target)
+                ↓
+             ContextPlan
+                ↓
+          Prompt Assembly / LLM
+```
+
+### 21B.1 History tiers
+
+Use a bounded three-tier working model:
+
+- **Hot** — recent raw complete TurnGroups selected by token budget, not a fixed message/floor count;
+- **Warm** — source-backed Narrative Spine and active/relevant commitments;
+- **Cold** — complete immutable Timeline/Event Journal/Memory that remains queryable by stable IDs/ranges and can be drilled back into exact original text.
+
+A model not seeing an old message does not mean that message has been removed from the Session.
+
+### 21B.2 Narrative Spine
+
+Narrative continuity uses immutable, source-backed hierarchy rather than one repeatedly overwritten mega-summary:
+
+```text
+Raw Timeline / Event Journal
+        ↓
+Scene
+        ↓
+Chapter
+        ↓
+Arc
+        ↓
+Campaign Synopsis
+```
+
+Every Narrative artifact records provenance such as:
+
+- branchId;
+- from/to revision;
+- source message IDs;
+- source event IDs;
+- child Narrative IDs;
+- coverage.
+
+Higher levels summarize bounded lower-level artifacts rather than re-reading the complete historical Timeline.
+
+Scene boundaries prefer deterministic/semantic boundaries (scene/location/battle/quest/day/chapter changes). Token thresholds provide a fallback. Fixed "every N floors" is not the primary strategy.
+
+Summary generation is asynchronous and never authoritatively writes World State. If a required summary is pending/failed, Context compilation preserves more uncovered Raw Timeline instead of losing history.
+
+### 21B.3 Active Commitments
+
+Open loops are independent of Narrative summaries.
+
+A Commitment may represent:
+
+- quest/mission obligation;
+- explicit promise;
+- unresolved mystery;
+- debt;
+- planned future action;
+- relationship obligation.
+
+It has stable identity, source provenance, open/closed/superseded lifecycle, importance and optional due/Actor/World references.
+
+Deterministic Runtime/Event transitions are preferred for open/close operations. Orchestrator/default semantic extraction may propose missing commitments conservatively. Pollution is worse than under-capture.
+
+Critical commitments receive guaranteed Context treatment; ordinary/background commitments compete by relevance and budget.
+
+### 21B.4 Derived processing and cost control
+
+Normal turns should require only the main generation call by default.
+
+Derived work follows:
+
+1. deterministic Runtime/State/Event updates synchronously when available;
+2. a cheap deterministic **Derivation Gate** decides whether semantic work is worth running;
+3. existing Runtime/Orchestrator-derived results are reused first;
+4. when needed, one bounded **Turn Distiller** may produce a structured TurnDigest containing durable-fact candidates, commitment proposals, narrative beats and a scene-boundary proposal;
+5. Memory performs cheap ingest first and heavier consolidation only on conflict/threshold/scene-close/compaction conditions;
+6. Scene/Chapter/Arc/Campaign summaries run only at their boundaries.
+
+Do not launch separate mandatory LLM calls every turn for Memory + Commitment + Scene detection + Summary.
+
+Utility-model failure must not block Session play.
+
+Atria may expose policy presets such as Economy/Balanced/Rich, but all modes share the same canonical Timeline/State/Event/Knowledge data model and save format.
+
+### 21B.5 Coverage
+
+Every durable derived artifact records the exact source coverage and branch/revision provenance.
+
+Examples:
+
+- Memory covered through revision X;
+- Narrative Spine covered through revision Y;
+- derived artifact covers specific message/event IDs.
+
+If Timeline HEAD is newer than derived coverage, uncovered committed history must remain represented through Raw Timeline/Event projection. A summary must never cause uncovered history to disappear from the model context.
+
+Branching reuses only common-ancestor derived coverage; branch-specific derived artifacts remain branch-scoped.
+
+### 21B.6 SessionContextCompiler
+
+N7 introduces one total-budget authority.
+
+Context providers emit structured candidates rather than independently injecting unlimited prompt text.
+
+Conceptual `ContextItem` fields include:
+
+- contextItemId;
+- lane;
+- authority;
+- priority/relevance;
+- content;
+- atomic/required;
+- sourceRefs;
+- visibility/target;
+- optional min/max retention.
+
+Required lanes include, as applicable:
+
+- Runtime/system contract;
+- tools;
+- current User input;
+- authoritative Current State/Event;
+- critical Commitments;
+- KnowledgePlan;
+- Recent Raw Timeline;
+- Narrative Spine;
+- Memory recall;
+- target-specific Agent context.
+
+Budgeting follows:
+
+1. model context limit;
+2. response reserve;
+3. safety/framing margin;
+4. **Hard Reserve** for non-negotiable material;
+5. **Minimum Guarantees** for essential lanes;
+6. **Elastic Pool** for remaining candidates.
+
+Authority and priority remain separate. Lower-authority material cannot displace authoritative current State merely by carrying a high priority.
+
+Recent Raw Timeline is selected in complete TurnGroups by tokens, never by fixed floor count as the primary rule.
+
+Existing subsystem budgets (for example Memory token budget) become lane caps/inputs to the total compiler, not independent guarantees that can collectively overflow the model.
+
+### 21B.7 ContextPlan and diagnostics
+
+The compiler emits a structured `ContextPlan` before Prompt assembly, including:
+
+- revisionId / branchId / target;
+- model context limit and response reserve;
+- per-lane included candidates;
+- rejected candidates and reasons;
+- token usage;
+- source refs/provenance;
+- derived coverage/lag diagnostics.
+
+Typical rejection reasons include budget, lower-authority conflict, superseded summary, visibility, or outside recent raw window.
+
+This plan should later be inspectable through diagnostics/logging so "why did the model forget X?" can be answered from evidence rather than guesswork.
+
+### 21B.8 Long-session storage/UI boundary
+
+A bounded model context does not by itself solve browser memory growth.
+
+Long term, Native Play must not require the entire Session Timeline to be projected into a permanently resident `chat[]`.
+
+The architectural direction is:
+
+```text
+SessionRepo complete Timeline
+        ↓ range/message-id reads
+Visible UI window / Prompt-selected ranges
+```
+
+N4 may still project a complete current test Session for compatibility while proving runtime seams; N7/N9 must preserve the ability to move toward range-based Context reads and bounded UI windows without changing identity.
+
+---
+
 ## 22. Product UX
 
 Keep the R7 primary shell:
@@ -1188,9 +1499,14 @@ Provide contextual actions such as:
 - Save;
 - Quick Save;
 - Load;
+- Retry Reply;
+- Re-enter Turn;
+- Restart From Here;
 - Timeline;
 - Game information;
 - Exit to Work.
+
+Native Play does not expose committed-message Edit/Delete/Swipe actions. Historical change is expressed as restore/fork/new continuation, not in-place mutation.
 
 Do not turn Play into a storage-management dashboard.
 
@@ -1415,52 +1731,107 @@ No production UI cutover yet.
 
 **Checkpoint A exit:** pure Native tests can create Package → EntryPoint → Session → Timeline → Branch → Revision and reload it without PNG/JSONL authority, while preserving exact World/Knowledge dependencies.
 
-### N4 — SillyTavern Runtime Projection
+### N4 — Native Runtime Projection & Write Barrier
 
-**In progress; exit not satisfied.** Checkpoint `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`; see the N4 checkpoint record below.
+**Status: in progress.** Preserve all N0–N3 validated work and the useful N4 runtime seams already implemented through the live branch. Current known work-branch HEAD at this design amendment is:
 
-Implement the one-way adapter from Native Package/Session into existing runtime shapes.
+`952410a3f3d200754b046ccc2868166282958094`
 
-Validate existing mature behavior against a Native Session:
+Do not reset/restart N4.
+
+Keep:
+
+- one-way Native Package/Session → transient ST runtime projection;
+- stable opaque message/Actor/Package/Asset mappings;
+- Native-only HTTP/command writes;
+- Send/Stop/generation host reuse;
+- Branch/switch/reload/historical revision view;
+- Package Regex contribution;
+- pinned Knowledge compatibility projection;
+- attachments through AssetStore;
+- R7 Play host identity/DOM reuse;
+- proof that Native writes do not fall back to `/api/chats/*`/JSONL.
+
+Change the Native command/acceptance boundary:
+
+- committed Timeline differences are not translated into Native `revise`, `remove`, `removeVariant`, or committed Variant selection;
+- introduce a committed-projection Write Barrier/fingerprint check;
+- direct legacy/plugin mutation of committed projected content fails closed and requires reload/recovery;
+- manual committed Edit/Delete/Swipe/Swipe-delete are not Native product capabilities;
+- ST swipe-shaped structures may remain transient Draft/generator compatibility only;
+- Native Retry Reply forks from the post-user revision and commits a new Assistant message;
+- committed Continue appends a continuation TimelineEntry instead of mutating prior content;
+- Stop operates on Draft, allowing partial commit or discard.
+
+Existing N4 browser/unit tests that prove Edit/Delete/Swipe mutation success must be rewritten into fail-closed/non-authoritative tests rather than carried forward as product requirements.
+
+**N4 positive acceptance:**
 
 - Send;
-- Stop;
-- Continue;
-- user/assistant edit;
-- Delete;
-- Swipe;
-- Regenerate;
-- Branch;
+- Stop/Draft behavior;
+- generation;
+- Continue-as-new-entry;
+- Retry Reply as Fork + new Assistant message;
+- Branch/switch;
+- historical revision view;
+- reload;
+- attachments;
 - prompt assembly;
 - Regex;
-- existing World Info compatibility;
-- generation;
-- attachments;
-- current R7 Play host identity/DOM invariants.
+- existing World Info/Knowledge compatibility;
+- R7 Play host invariants;
+- no legacy persistence fallback.
 
-Writes return to Native stores only.
+**N4 negative/fail-closed acceptance:**
 
-Do not implement the full Native KnowledgeCompiler in N4.
+- committed Edit;
+- committed Delete;
+- manual Swipe;
+- Swipe deletion;
+- committed Variant switch;
+- direct third-party `chat[]` committed-content mutation.
 
-**Exit:** Native Session can drive existing conversation/generation runtime without a second Conversation engine and without authoritative JSONL dual-write.
+These must not change Native authority or fall back to legacy storage.
 
-### N5 — Native Runtime State Integration
+Do not implement full N5 state integration, N6 KnowledgeCompiler, N7 ContextCompiler, N9 UI cutover, or N10 deletion of SillyTavern internals inside N4.
+
+**Exit:** mature ST generation/rendering can operate as a mutable Draft/runtime workspace downstream of an immutable Native committed Timeline, with a tested commit/write barrier and Native-only writes.
+
+### N5 — Native Runtime State & Revision Lifecycle
 
 Move Atria-owned durable runtime state to SessionState/Revision:
 
 - Game World + Event Journal;
-- Memory Graph;
+- Memory canonical/durable state;
 - Orchestrator;
 - Search;
-- Variables/op-log;
-- Floor/Timeline state;
+- Variables/op-log replacement where Native applies;
 - package-owned durable state.
 
-Preserve old public API names only as runtime compatibility wrappers where necessary.
+Native lifecycle anchors become stable IDs/revisions:
 
-This phase establishes the authoritative current-state/Event/Memory inputs required by the KnowledgeCompiler.
+- messageId;
+- revisionId;
+- branchId.
 
-**Exit:** structural operations (swipe/delete/branch/reload) keep Timeline and all authoritative runtime state coherent.
+Atria-owned Native state must stop treating `floor`, `swipeId`, `MESSAGE_EDITED`, `MESSAGE_DELETED`, or `MESSAGE_SWIPED` as authority.
+
+Introduce/standardize Native lifecycle concepts such as:
+
+- TIMELINE_APPENDED;
+- REVISION_COMMITTED;
+- REVISION_RESTORED;
+- BRANCH_ACTIVATED;
+- SESSION_LOADED;
+- DRAFT_ABORTED.
+
+FloorState and old structural-event handlers may remain for Legacy/ST sessions and compatibility, but Native authority moves to coherent SessionRevision snapshots.
+
+Preserve old public API names only as compatibility wrappers where necessary; they must route into Native revision/state semantics when a Native Session is active.
+
+This phase establishes authoritative current-State/Event/Memory inputs required by KnowledgeCompiler.
+
+**Exit:** append/fork/restore/reload keep Timeline and all authoritative Native state coherent without committed-message mutation or swipe-based rollback semantics.
 
 ### N6 — Native Knowledge Runtime Integration
 
@@ -1495,7 +1866,48 @@ Do **not** rewrite all keyword, regex, vector, probability, recursion, sticky/co
 7. visibility produces different target Context views;
 8. a Session remains pinned to Library Knowledge rev N when Library moves to rev N+1 unless explicitly upgraded.
 
-### N7 — Save System & `.atriasave`
+### N7 — Native Context Architecture
+
+Implement the bounded Context Projection described in §21B.
+
+Required components:
+
+- ContextProvider / ContextItem contract;
+- SessionContextCompiler;
+- structured ContextPlan;
+- model-aware total token budget with response reserve/safety margin;
+- Hard Reserve + Minimum Guarantees + Elastic Pool allocation;
+- token-budgeted complete TurnGroup recent window;
+- source-backed Narrative Spine: Scene → Chapter → Arc → Campaign;
+- Active Commitments;
+- Derivation Gate;
+- TurnDigest/Turn Distiller compatibility contract;
+- Runtime/Orchestrator/default-Utility provider reuse and de-duplication;
+- Memory cheap-ingest vs heavy-consolidation scheduling;
+- branch/revision/source provenance;
+- durable derived coverage and lag handling;
+- exact raw Timeline drill-down through sourceRefs;
+- Economy/Balanced/Rich policy without changing canonical data semantics;
+- ContextPlan diagnostics.
+
+Normal turns must not require multiple mandatory hidden model calls. Deterministic State/Event/Commitment updates run without LLMs. Semantic derivation is conditional, asynchronous where possible, and must not block ordinary Session play.
+
+Existing per-subsystem token budgets become lane caps/inputs to the total compiler rather than independent guaranteed prompt allocations.
+
+No canonical history may be removed or rewritten to satisfy model context limits.
+
+**Checkpoint C — Context Boundedness:**
+
+1. fixed model budget remains bounded as Timeline grows across synthetic 100 / 1,000 / 10,000+ turn cases;
+2. excluded raw history remains retrievable from SessionRepo by stable IDs/ranges;
+3. recalled ancient facts can drill through provenance to exact raw Timeline excerpts;
+4. derived lag preserves uncovered raw history/context instead of losing it;
+5. ContextPlan reports included/rejected items, reasons, lane tokens and coverage;
+6. target visibility/isolation holds across Narrator/Actor/Agent contexts;
+7. Narrative hierarchy is source-backed/branch-scoped and does not replace canonical history;
+8. Utility/derived-work failure degrades gracefully without blocking main play.
+
+### N8 — Save System & `.atriasave`
 
 Implement:
 
@@ -1511,18 +1923,25 @@ Implement:
 - resolved KnowledgeBindingSet persistence;
 - Session-local Knowledge export/import;
 - snapshots of Library Knowledge revisions required by the Session;
+- durable Narrative Spine artifacts;
+- Active Commitments;
+- durable derived coverage/provenance;
 - restore imported Library snapshots as Session-bound embedded Knowledge by default rather than silently polluting the target Library;
 - optional explicit "save to my Library" promotion;
 - optional password-protected AEAD mode;
 - missing-dependency UX contract.
 
-Package-contained Knowledge is already available through the pinned PackageVersion and need not be redundantly copied unless required by the chosen portable closure design.
+Do not save rebuildable embeddings/rerank indexes/token caches/ContextPlan caches/render caches.
 
-**Checkpoint B exit:** a Native Session can run, exit, restart, save, load, export `.atriasave`, re-import, and preserve World/Knowledge/Memory/Orchestrator/branch/variant consistency.
+Auto Save points to authoritative stable SessionRevision and must not wait for asynchronous Narrative/Memory consolidation to finish.
+
+Historical Save load is non-destructive: continuing from a historical revision creates/activates an appropriate derived Timeline Branch instead of overwriting the route that reached the current HEAD.
+
+**Checkpoint B exit:** a Native Session can run, exit, restart, save, load, export `.atriasave`, re-import, and preserve World/Knowledge/Memory/Orchestrator/Narrative/Commitment/branch consistency.
 
 Only after this checkpoint may product UI cut over.
 
-### N8 — Product UI Cutover
+### N9 — Product UI Cutover
 
 Switch Library/Studio/Play management surfaces to Native authorities.
 
@@ -1555,11 +1974,29 @@ Implement:
 - install/update preflight;
 - Package/session delete semantics.
 
+Native Play actions replace historical mutable-chat controls with:
+
+- Retry Reply;
+- Re-enter Turn;
+- Restart From Here;
+- Save / Quick Save / Load;
+- Timeline.
+
+Retire/hide Native product UI for:
+
+- Swipe arrows/counter/picker;
+- Swipe deletion;
+- committed floor Edit;
+- committed floor Delete;
+- traditional in-place Regenerate semantics.
+
+Expose ContextPlan/Context diagnostics through the appropriate diagnostics/logging surface so Context omission/selection can be debugged.
+
 Retain the R7 Shell and route authority.
 
 The existing `#WorldInfo` controller may remain as a transition/editor adapter but is no longer the Native Library data authority.
 
-### N9 — Hard Cutover & Legacy Retirement
+### N10 — Hard Cutover & Legacy Retirement
 
 Retire Native product dependence on historical formats/concepts:
 
@@ -1571,11 +2008,15 @@ Retire Native product dependence on historical formats/concepts:
 - retire `selected_world_info`, character primary/auxiliary lorebook, chat-lorebook and `charaFilename` binding as Native concepts;
 - retire world/book name and World Info numeric `uid` as Native identity;
 - retire WorldInfoRepo/`worlds/<name>.json` as Native authority;
-- establish residual guards preventing old persistence/content authority from returning.
+- retire Native committed Swipe/Variant-switch semantics;
+- retire Native committed message Edit/Delete;
+- retire Native floor/swipe structural-event authority;
+- retire FloorState as Native authority where SessionRevision has replaced it;
+- establish residual guards preventing old persistence/content/timeline authority from returning.
 
-Do not mechanically delete genuine SillyTavern runtime ABI or mature World Info selection machinery that the adapters still require.
+Do not mechanically delete genuine SillyTavern runtime ABI or mature World Info/generation machinery still required behind adapters.
 
-**Final exit:** active Native product flows use Package/World/Knowledge/Session authorities end-to-end; legacy persistence/content identity cannot silently become authoritative.
+**Final exit:** active Native product flows use Package/World/Knowledge/immutable Timeline/SessionRevision/bounded Context authorities end-to-end; legacy persistence/content/history mutation cannot silently become authoritative.
 
 
 ## 25. Verification strategy
@@ -1589,6 +2030,11 @@ Minimum relevant coverage over the program:
 - World/Knowledge immutable revision and identity tests;
 - KnowledgeBinding resolution/revision-pin tests;
 - Knowledge authority/visibility/exclusivity/identity-preservation tests;
+- bounded Context compilation tests across increasing Timeline sizes;
+- ContextPlan lane/rejection/coverage/visibility diagnostics tests;
+- Narrative Spine provenance/hierarchy/branch tests;
+- Active Commitment lifecycle/deduplication tests;
+- derived-coverage lag/fallback tests;
 - Package build/validate/install security tests;
 - malformed container / traversal / zip-bomb / integrity tests;
 - Package version immutability and GC reference tests;
@@ -1597,6 +2043,9 @@ Minimum relevant coverage over the program:
 - cross-engine round trips;
 - FS crash/partial-commit SessionRevision tests;
 - Session branch/timeline/variant tests;
+- committed Timeline immutability / Write Barrier tests;
+- direct projected `chat[]` mutation fail-closed tests;
+- Retry/Re-enter/Restart/Fork semantic tests;
 - runtime adapter message action tests;
 - existing generation/prompt/regex regressions;
 - World Runtime tests;
@@ -1621,7 +2070,7 @@ Do not report checks that were not actually run.
 
 ## 26. CI / development workflow
 
-For N0–N9:
+For N0–N10:
 
 1. work only on `refactor/atria-native-content-session-architecture`;
 2. keep `main` stable and untouched until final integration;
@@ -1635,7 +2084,7 @@ For N0–N9:
 
 At final completion:
 
-1. finish N9 residual scan/validation;
+1. finish N10 residual scan/validation;
 2. update permanent docs;
 3. create/update final PR to `main`;
 4. validate all required CI;
@@ -1657,7 +2106,10 @@ Do not turn this project into:
 - a compatibility migration project for historical local data;
 - a permanent dual-store architecture;
 - a reason to embed large asset blobs in SQL JSON;
-- a reason to hide every developer source file behind encrypted binary storage.
+- a reason to hide every developer source file behind encrypted binary storage;
+- a reason to preserve SillyTavern Swipe/Edit/Delete as Native product semantics;
+- a rolling-summary system that overwrites/deletes canonical Timeline history;
+- a design where every Memory/Narrative/Commitment subsystem independently reserves prompt tokens or launches mandatory per-turn LLM calls.
 
 ---
 
@@ -1684,25 +2136,45 @@ The following invariants are load-bearing and should receive automated guards wh
 17. Library Knowledge edits create new revisions; running Sessions remain pinned until explicit upgrade.
 18. Knowledge authority is separate from priority; Memory/augment content cannot override authoritative current state or deterministic Runtime mechanics.
 19. Build vendors exact World/Knowledge dependency snapshots into PackageVersion so runtime does not depend on live Library content.
-20. Future compatibility work must not weaken these invariants without an explicit new architecture decision.
+20. Committed Native Timeline is immutable for users, plugins, Agents, Package Runtime and Atria-owned writers; past changes use append/fork/restore, not in-place rewrite/delete/swipe.
+21. ST mutable `chat[]`/swipe structures are downstream Draft/runtime compatibility and cannot become Native authority; committed projection mutation fails closed.
+22. Context-budget pressure never deletes, rewrites, or summarizes away canonical Timeline history; only derived Context projections are reduced.
+23. Recent raw context is token-budgeted in complete TurnGroups, not governed primarily by fixed floor/message counts.
+24. Narrative/Memory/Commitment artifacts carry branch/revision/source provenance and explicit coverage; uncovered history cannot disappear behind stale summaries.
+25. One SessionContextCompiler owns the total model input budget. Subsystem budgets are caps/inputs, not independent guaranteed allocations.
+26. Derived semantic work is gated/reused/asynchronous where possible; normal play does not require multiple mandatory hidden model calls every turn.
+27. Presentation-only annotations may remain outside revisions, but any annotation/policy that can affect model/runtime semantics is revisioned state keyed by stable identity.
+28. Future compatibility work must not weaken these invariants without an explicit new architecture decision.
 
 ---
 
 ## 29. Next implementation action
 
-N3 is complete and validated at `c42ee3e98a27fbea97ded0917de081bcc8893680` by Native Content Session Dev Checks #44, run `35679448236` (success; N3 3 suites / 49 tests).
+N3 remains the last fully validated phase at `c42ee3e98a27fbea97ded0917de081bcc8893680` (Native Content Session Dev Checks #44, run `35679448236`, success).
 
-In the next conversation, continue N4 from the pushed checkpoint below (do not restart it or start N5):
+N4 has progressed further and is **not to be restarted or reset**. At the time of this architecture amendment, the live work branch is:
 
-1. fetch/re-read the live remote working-branch HEAD; never reset to a stale handoff SHA;
+`refactor/atria-native-content-session-architecture@952410a3f3d200754b046ccc2868166282958094`
+
+The commits from the original N4 projection work and live-runtime E2E are useful and must be preserved. Their acceptance semantics now change.
+
+Continue N4 as follows:
+
+1. fetch/re-read the live remote working-branch HEAD; if another conversation advanced beyond the SHA above, use the actual latest HEAD and never reset;
 2. read current `main:AGENTS.md`, `main:FORK_MAINTENANCE.md`, both docs handoffs and this Master Plan;
-3. preserve completed N0/N1/N2/N3 and inspect SessionCore, its immutable snapshots and the relevant current SillyTavern runtime paths;
-4. implement the one-way Native Package/Session → runtime projection with Native-only command writes;
-5. verify mature Send/Stop/Continue/Edit/Delete/Swipe/Regenerate/Branch, prompt/Regex/World Info/generation/attachments and R7 Play host invariants;
-6. do not begin full N5 state integration, N6 KnowledgeCompiler, N8 UI cutover or N9 retirement early;
-7. record N4 verification and stop at its phase boundary.
+3. preserve completed N0/N1/N2/N3 and all reusable N4 projection/generation/attachment/prompt/Regex/Knowledge/Branch/reload work;
+4. add the committed Timeline Write Barrier and fail-closed direct-projection mutation protection;
+5. remove committed `revise/remove/removeVariant/selectVariant` from the Native product command path rather than translating ST mutations into Native history changes;
+6. keep ST swipe-shaped structures only where the mutable Draft/generator ABI still needs them;
+7. change Native Retry Reply from Regenerate→Variant into Fork-from-post-user-revision → new Assistant message;
+8. change committed Continue into append-continuation semantics;
+9. rewrite N4 real-host tests: Edit/Delete/Swipe/Swipe-delete become negative/fail-closed cases; Send/Stop/Retry/Continue-as-append/Branch/reload/prompt/Regex/Knowledge/attachments remain positive acceptance;
+10. add a direct third-party/projected `chat[]` committed-content mutation test proving Native authority does not change and no `/api/chats/*` fallback occurs;
+11. do not begin N5 state migration, N6 KnowledgeCompiler, N7 Context Architecture, N9 UI cutover or N10 retirement early;
+12. record actual N4 verification/CI and stop at its phase boundary.
 
 Do not create another branch, merge to main, or introduce an old-store fallback.
+
 
 ---
 
