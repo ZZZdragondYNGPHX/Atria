@@ -405,11 +405,13 @@ export class NativeProductService {
     }
 
     async exportSession(handle, sessionId, options = {}) {
-        return this._saveSystem.exportSession(handle, sessionId, options);
+        const container = await this._saveSystem.exportSession(handle, sessionId, options);
+        return container.archive;
     }
 
     async exportSnapshot(handle, sessionId, saveId, options = {}) {
-        return this._saveSystem.exportSnapshot(handle, sessionId, saveId, options);
+        const container = await this._saveSystem.exportSnapshot(handle, sessionId, saveId, options);
+        return container.archive;
     }
 
     async preflightSaveImport(handle, archive) {
