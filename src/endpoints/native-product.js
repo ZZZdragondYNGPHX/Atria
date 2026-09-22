@@ -1,0 +1,198 @@
+import express from 'express';
+
+import { getUserDirectories } from '../users.js';
+import {
+    getAssetStore,
+    getKnowledgeRepo,
+    getPackageRepo,
+    getSavePointRepo,
+    getSessionRepo,
+    getWorldRepo,
+} from '../storage/index.js';
+import { PackageInstaller } from '../native/package-composition.js';
+import { ProjectStore } from '../native/project-store.js';
+import { NativeProductService } from '../native/product-service.js';
+import { NativeSaveSystem } from '../native/save-system.js';
+import { SessionCore } from '../native/session-core.js';
+
+const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
+
+function decodeArchive(value) {
+    if (typeof value !== 'string' || !value || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
+        throw new TypeError('Native Product archive must be base64');
+    }
+    const bytes = Buffer.from(value, 'base64');
+    if (!bytes.length || bytes.length > MAX_ARCHIVE_BYTES) {
+        throw new TypeError('Native Product archive is empty or oversized');
+    }
+    return bytes;
+}
+
+function services() {
+    const packageRepo = getPackageRepo();
+    const worldRepo = getWorldRepo();
+    const knowledgeRepo = getKnowledgeRepo();
+    const sessionRepo = getSessionRepo();
+    const savePointRepo = getSavePointRepo();
+    const assetStore = getAssetStore();
+    const packageInstaller = new PackageInstaller({ packageRepo, assetStore });
+    const sessionCore = new SessionCore({
+        sessionRepo,
+        savePointRepo,
+        packageInstaller,
+        knowledgeRepo,
+    });
+    const saveSystem = new NativeSaveSystem({
+        sessionCore,
+        sessionRepo,
+        savePointRepo,
+        packageInstaller,
+        assetStore,
+        knowledgeRepo,
+    });
+    const projectStore = new ProjectStore({ directoriesByHandle: getUserDirectories });
+    return {
+        product: new NativeProductService({
+            packageRepo,
+            worldRepo,
+            knowledgeRepo,
+            sessionRepo,
+            savePointRepo,
+            packageInstaller,
+            saveSystem,
+            sessionCore,
+            projectStore,
+        }),
+    };
+}
+
+export function createNativeProductRouter(getServices = services) {
+    const router = express.Router();
+    router.use((request, response, next) => {
+        if (!request.user?.profile?.handle) return response.sendStatus(401);
+        next();
+    });
+
+    const route = operation => async (request, response) => {
+        try {
+            await operation(
+                request,
+                response,
+                getServices(),
+                request.user.profile.handle,
+            );
+        } catch (error) {
+            const status = error?.name === 'ConflictError' || String(error?.code || '').includes('conflict')
+                || String(error?.code || '').includes('referenced')
+                ? 409
+                : error?.name === 'NotFoundError'
+                    ? 404
+                    : error instanceof TypeError
+                        ? 400
+                        : 500;
+            response.status(status).json({
+                error: error?.code || (
+                    status === 400 ? 'native_product_invalid_request'
+                        : status === 404 ? 'native_product_not_found'
+                            : status === 409 ? 'native_product_conflict'
+                                : 'native_product_failed'
+                ),
+                ...(error?.details === undefined ? {} : { details: error.details }),
+            });
+        }
+    };
+
+    router.get('/works', route(async (_req, res, { product }, handle) => {
+        res.json(await product.listWorks(handle));
+    }));
+    router.get('/works/:packageId', route(async (req, res, { product }, handle) => {
+        res.json(await product.getWork(handle, req.params.packageId));
+    }));
+    router.post('/works/:packageId/start', route(async (req, res, { product }, handle) => {
+        res.json(await product.startWork(handle, req.params.packageId, req.body || {}));
+    }));
+    router.delete('/works/:packageId', route(async (req, res, { product }, handle) => {
+        res.json({ deleted: await product.deleteWork(handle, req.params.packageId) });
+    }));
+
+    router.post('/packages/preflight', route(async (req, res, { product }) => {
+        res.json(product.preflightPackage(decodeArchive(req.body?.data)));
+    }));
+    router.post('/packages/install', route(async (req, res, { product }, handle) => {
+        res.json(await product.installPackage(handle, decodeArchive(req.body?.data), {
+            grantedPermissions: req.body?.grantedPermissions || [],
+        }));
+    }));
+
+    router.get('/worlds', route(async (_req, res, { product }, handle) => {
+        res.json(await product.listWorlds(handle));
+    }));
+    router.get('/worlds/:worldId', route(async (req, res, { product }, handle) => {
+        res.json(await product.getWorld(handle, req.params.worldId));
+    }));
+    router.delete('/worlds/:worldId', route(async (req, res, { product }, handle) => {
+        res.json({ deleted: await product.deleteWorld(handle, req.params.worldId) });
+    }));
+
+    router.get('/knowledge', route(async (_req, res, { product }, handle) => {
+        res.json(await product.listKnowledgeBases(handle));
+    }));
+    router.get('/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
+        res.json(await product.getKnowledgeBase(handle, req.params.knowledgeBaseId, {
+            revisionId: req.query.revisionId || null,
+        }));
+    }));
+    router.delete('/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
+        res.json({ deleted: await product.deleteKnowledgeBase(handle, req.params.knowledgeBaseId) });
+    }));
+
+    router.get('/sessions', route(async (req, res, { product }, handle) => {
+        res.json(await product.listSessions(handle, {
+            packageId: req.query.packageId || null,
+        }));
+    }));
+    router.get('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
+        res.json(await product.getSession(handle, req.params.sessionId));
+    }));
+    router.post('/sessions/:sessionId/save', route(async (req, res, { product }, handle) => {
+        res.json(await product.createSave(handle, req.params.sessionId, req.body || {}));
+    }));
+    router.post('/sessions/:sessionId/load', route(async (req, res, { product }, handle) => {
+        res.json(await product.restoreSave(
+            handle,
+            req.params.sessionId,
+            req.body?.saveId,
+            req.body?.expectedRevisionId,
+        ));
+    }));
+    router.post('/sessions/:sessionId/promote-knowledge', route(async (req, res, { product }, handle) => {
+        res.json(await product.promoteEmbeddedKnowledge(handle, req.params.sessionId, req.body || {}));
+    }));
+    router.delete('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
+        res.json({ deleted: await product.deleteSession(handle, req.params.sessionId) });
+    }));
+
+    router.get('/projects', route(async (_req, res, { product }, handle) => {
+        res.json(await product.listProjects(handle));
+    }));
+    router.post('/projects', route(async (req, res, { product }, handle) => {
+        res.json(await product.createProject(handle, req.body));
+    }));
+    router.get('/projects/:projectId', route(async (req, res, { product }, handle) => {
+        res.json(await product.getProject(handle, req.params.projectId));
+    }));
+    router.put('/projects/:projectId/dependencies', route(async (req, res, { product }, handle) => {
+        res.json(await product.updateProjectDependencies(
+            handle,
+            req.params.projectId,
+            req.body?.dependencies,
+        ));
+    }));
+    router.delete('/projects/:projectId', route(async (req, res, { product }, handle) => {
+        res.json({ deleted: await product.deleteProject(handle, req.params.projectId) });
+    }));
+
+    return router;
+}
+
+export const router = createNativeProductRouter();
