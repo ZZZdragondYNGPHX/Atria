@@ -119,8 +119,8 @@ describe('N2 ProjectStore', () => {
             await store.writeFile(h.handle, source.project.projectId, 'progress/live.json', '{}');
             await store.writeFile(h.handle, source.project.projectId, 'checkpoints/cp.json', '{}');
 
-            expect([...await store.readBuildFiles(h.handle, source.project.projectId).keys()])
-                .toEqual(['runtime/main.json']);
+            const buildFiles = await store.readBuildFiles(h.handle, source.project.projectId);
+            expect([...buildFiles.keys()]).toEqual(['runtime/main.json']);
         } finally {
             await h.cleanup();
         }
