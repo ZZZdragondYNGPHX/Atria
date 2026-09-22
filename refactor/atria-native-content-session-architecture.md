@@ -3114,3 +3114,100 @@ Character files, JSONL chats, legacy World Info files, mutable chat floors, Swip
 
 Mature SillyTavern generation/Character/World Info machinery remains where required as host/runtime ABI behind adapters. N10 is a hard product-authority cutover, not a total upstream runtime rewrite.
 
+---
+
+## Final integration record — merged 2026-09-22
+
+**Atria Native Content & Session Architecture Refactor N0–N10 is complete, validated, merged into `main`, and frozen.**
+
+### Final validated code
+
+- Final refactor HEAD: `7391fd7fb7868d7c5a2816ac922dea2142175a92`
+- Native workflow: **Native Content Session Dev Checks #245**
+- Native run: `35749007807`
+- Result: **success**
+- Final PR: **#83 — refactor: complete native content and session architecture**
+- Merge commit / integrated `main`: `fd9a493c9040b32f4892bd92531030e58b066244`
+- Integrated-main verification: `main` points exactly to the merge commit; final refactor HEAD is its direct ancestor.
+
+The earlier N10 phase-validation HEAD `031971954d907a930f0db8ed0bf1d1eefeaf43ef` remains a valid N10 checkpoint. The commits between that checkpoint and the final refactor HEAD are integration/acceptance hardening for the retained SillyTavern / World Info adapter ABI and R7 mobile embedded workspace. They do **not** restore Character, JSONL, legacy World Info file, Swipe/Variant-switch, FloorState, or other retired Native authorities.
+
+### Final Native validation
+
+Exact final HEAD `7391fd7fb7868d7c5a2816ac922dea2142175a92` passed:
+
+- N0 Native Contracts: success;
+- N1 Storage + N3/N5 Core + N4 Projection: success;
+- N2 Package Project Composition: success;
+- N4 real-host Chromium Native Session acceptance: success;
+- N5 Runtime State & Revision Lifecycle: success;
+- N6 Native Knowledge Runtime Integration: success;
+- N7 Native Context Architecture / Checkpoint C: success;
+- N8 Save System / Checkpoint B: success;
+- N9 Product UI Cutover: success;
+- N10 focused hard-cutover regression: **5 suites / 69 tests passed**;
+- N10 Native hard-cutover residual guard: **39 authority files scanned, passed**;
+- N10 R7 Shell unit regression: **13 suites / 58 tests passed**;
+- N10 R7 Shell real-host Chromium regression: **4 passed**;
+- complete Node regression: **758 suites / 8805 tests passed**;
+- frontend webpack build: success.
+
+The complete Node regression ran with MySQL/PostgreSQL services enabled.
+
+### Final PR validation
+
+PR #83 required integration checks all passed on final HEAD:
+
+- **Atria PR Checks #782** — success;
+- **Workspace UI #202** — success;
+- **Immersive Experience #49** — success;
+- **Worldbook Performance Foundation #390** — success.
+
+Worldbook #390 specifically passed:
+
+- focused regression: **22 suites / 255 tests**;
+- isolated real-host Chromium smoke: success;
+- legacy World Info runtime ABI acceptance: **20 passed**;
+- modern World Info workspace acceptance: **3 passed**;
+- mobile World Info startup/layout stress: **3/3 passed**.
+
+### World Info mobile / compatibility hardening
+
+Final PR validation exposed an old acceptance mismatch after the N9/N10 product cutover: historical World Info/Character E2E helpers still entered retired product routes, and the retained World Info editor adapter had an implicit mobile embedded-layout contract.
+
+The final integration hardening therefore:
+
+- runs legacy Character / World Info behavior ABI acceptance in the explicit R7 legacy recovery host;
+- keeps modern Atria product routing pointed at Native Worlds & Knowledge;
+- keeps the normal-shell real-host World Info adapter smoke;
+- gives embedded `#WorldInfo` an explicit root → `#wi-holder` → `#world_popup` → `#wi_workspace_shell` flex/height/visibility contract independent of legacy drawer rules;
+- makes `mountWorldInfoWorkspace()` explicitly preserve/restore `hidden` and `aria-hidden`;
+- adds an embedded layout contract regression;
+- stress-runs the mobile workspace startup/layout acceptance three times.
+
+The final mobile failure was diagnosed from real Chromium computed layout: the E2E compatibility host itself was `390 × 0`, collapsing all children. The host is now pinned to the actual Playwright viewport and fail-closes if it does not fill that viewport before the editor is mounted.
+
+This hardening preserves the frozen N10 boundary: mature SillyTavern World Info machinery remains adapter/runtime ABI only, while Native Worlds & Knowledge remains product and persistence authority.
+
+### Integrated architecture
+
+The merged Active Native product authority remains:
+
+```text
+Package / PackageVersion / EntryPoint
+        ↓
+WorldRevision + KnowledgeRevision + KnowledgeBinding
+        ↓
+Session / Branch
+        ↓
+immutable TimelineEntry + birth Variant
+        ↓
+SessionRevision
+        ↓
+SavePoint / .atriasave
+        ↓
+bounded ContextPlan + source-backed derived state
+```
+
+No hidden Character/JSONL/WorldInfo-file/Swipe/FloorState fallback authority was restored during final integration hardening.
+
