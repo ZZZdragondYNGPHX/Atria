@@ -151,6 +151,37 @@ export function mountNativePlayControls({
             }, null, 2);
             branches.append(branchesSummary, branchesPre);
             drawerBody.append(branches);
+
+            const embeddedBindings = (detail.snapshot?.knowledge?.bindings || [])
+                .filter(binding => binding.source?.kind === 'session');
+            if (embeddedBindings.length) {
+                const importedTitle = documentRef.createElement('h4');
+                importedTitle.textContent = 'Imported embedded Knowledge';
+                drawerBody.append(importedTitle);
+                for (const binding of embeddedBindings) {
+                    const row = documentRef.createElement('div');
+                    row.className = 'atria-native-play-drawer__row';
+                    row.dataset.atriaEmbeddedKnowledgeBinding = binding.knowledgeBindingId;
+                    const label = documentRef.createElement('span');
+                    label.textContent = binding.source?.knowledgeBaseId || binding.knowledgeBindingId;
+                    const promote = actionButton(documentRef, 'Save to my Library', () => run(
+                        'Saving Knowledge to Library',
+                        async () => {
+                            await nativeProductClient.promoteKnowledge(
+                                runtime.snapshot.session.sessionId,
+                                {
+                                    revisionId: currentRevisionId(),
+                                    knowledgeBindingId: binding.knowledgeBindingId,
+                                },
+                            );
+                            status.textContent = 'Knowledge saved to Library.';
+                            await showTimeline();
+                        },
+                    ));
+                    row.append(label, promote);
+                    drawerBody.append(row);
+                }
+            }
         } catch (error) {
             drawerBody.textContent = error?.message || String(error);
         }
