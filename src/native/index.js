@@ -117,3 +117,35 @@ export {
 export { NativeSaveSystem } from './save-system.js';
 
 export { NativeProductService } from './product-service.js';
+
+export {
+    ATRIA_AUTHORING_ORIGINS,
+    ATRIA_AUTHORING_SCHEMA_VERSION,
+    ATRIA_CHANGESET_VALIDATION_STATES,
+    ATRIA_COMPONENT_MODEL_VERSION,
+    ATRIA_EXPERIENCE_MODES,
+    ATRIA_NATIVE_SKILL_SCOPES,
+    ATRIA_PACKAGE_RUNTIME_FORMAT,
+    ATRIA_PACKAGE_RUNTIME_VERSION,
+    ATRIA_PLUGIN_API_VERSION,
+    ATRIA_PLUGIN_FORMAT,
+    ATRIA_PLUGIN_SCHEMA_VERSION,
+    ATRIA_PROJECT_CONFLICT_CODE,
+    ATRIA_RESOURCE_AUTHORITIES,
+    ATRIA_RESOURCE_CAPABILITIES,
+    ATRIA_RESOURCE_GRAPH_MODE,
+    ATRIA_RUNTIME_DESCRIPTOR_FORMAT,
+    ATRIA_RUNTIME_DESCRIPTOR_SCHEMA_VERSION,
+    assertAtriaPluginContract,
+    assertAuthoringChangeSet,
+    assertAuthoringOperation,
+    assertAuthoringWorkspace,
+    assertExperienceContract,
+    assertNativeRuntimeDescriptor,
+    assertNativeSkillScope,
+    assertPackageRuntimeV1,
+    assertProjectRevision,
+    assertProjectRevisionConflict,
+    assertResourceDescriptor,
+    assertResourceRegistryContract,
+} from './authoring-contracts.js';
