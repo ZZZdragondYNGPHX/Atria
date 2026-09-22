@@ -380,6 +380,22 @@ export class NativeProductService {
         };
     }
 
+    async exportSession(handle, sessionId, options = {}) {
+        return this._saveSystem.exportSession(handle, sessionId, options);
+    }
+
+    async exportSnapshot(handle, sessionId, saveId, options = {}) {
+        return this._saveSystem.exportSnapshot(handle, sessionId, saveId, options);
+    }
+
+    async preflightSaveImport(handle, archive) {
+        return this._saveSystem.preflightImport(handle, archive);
+    }
+
+    async importSave(handle, archive, options = {}) {
+        return this._saveSystem.importSave(handle, archive, options);
+    }
+
     async createSave(handle, sessionId, { kind = 'manual', displayName = undefined } = {}) {
         if (kind === 'quick') return this._saveSystem.quickSave(handle, sessionId, { displayName });
         if (kind === 'manual') return this._saveSystem.manualSave(handle, sessionId, { displayName });
