@@ -60,6 +60,13 @@ export async function openWorldInfoDrawer(page) {
             });
             document.body.append(host);
         }
+        const hostRect = host.getBoundingClientRect();
+        if (hostRect.width < Math.max(1, window.innerWidth - 1) || hostRect.height < Math.max(1, window.innerHeight - 1)) {
+            throw new Error(`World Info compatibility host did not fill viewport: ${JSON.stringify({
+                viewport: { width: window.innerWidth, height: window.innerHeight },
+                host: { width: hostRect.width, height: hostRect.height },
+            })}`);
+        }
         const api = mountWorldInfoWorkspace(host, { embedded: true });
         window.__atriaE2eWorldInfoCompatibilityMount = api || null;
         return Boolean(api);
