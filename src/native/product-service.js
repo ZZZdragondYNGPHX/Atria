@@ -407,20 +407,6 @@ export class NativeProductService {
         return this._core.restoreSavePoint(handle, sessionId, saveId, { expectedRevisionId });
     }
 
-    async exportSave(handle, sessionId, { saveId = null, password = undefined } = {}) {
-        return saveId
-            ? this._saveSystem.exportSnapshot(handle, sessionId, saveId, { password })
-            : this._saveSystem.exportSession(handle, sessionId, { password });
-    }
-
-    async preflightSaveImport(handle, archive) {
-        return this._saveSystem.preflightImport(handle, archive);
-    }
-
-    async importSave(handle, archive, { password = undefined } = {}) {
-        return this._saveSystem.importSave(handle, archive, { password });
-    }
-
     async deleteSession(handle, sessionId) {
         return this._sessions.delete(handle, sessionId);
     }
