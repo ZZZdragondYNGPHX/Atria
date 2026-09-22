@@ -203,18 +203,6 @@ export function createNativeProductRouter(getServices = services) {
     router.post('/sessions/:sessionId/promote-knowledge', route(async (req, res, { product }, handle) => {
         res.json(await product.promoteEmbeddedKnowledge(handle, req.params.sessionId, req.body || {}));
     }));
-    router.post('/sessions/:sessionId/export', route(async (req, res, { product }, handle) => {
-        const archive = await product.exportSave(handle, req.params.sessionId, req.body || {});
-        res.json({ data: Buffer.from(archive).toString('base64') });
-    }));
-    router.post('/saves/preflight-import', route(async (req, res, { product }, handle) => {
-        res.json(await product.preflightSaveImport(handle, decodeArchive(req.body?.data)));
-    }));
-    router.post('/saves/import', route(async (req, res, { product }, handle) => {
-        res.json(await product.importSave(handle, decodeArchive(req.body?.data), {
-            password: req.body?.password,
-        }));
-    }));
     router.delete('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
         res.json({ deleted: await product.deleteSession(handle, req.params.sessionId) });
     }));
