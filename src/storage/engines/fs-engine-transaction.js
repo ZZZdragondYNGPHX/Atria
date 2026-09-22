@@ -13,7 +13,6 @@ import { normalizeLookupText } from '../../util.js';
 import { appendFsChatMessages, invalidateFsChatRangeIndex, patchFsChatMessages, readFsChatInfo, readFsChatRange, recoverFsChatPatchJournal } from './fs-chat-range.js';
 import {
     NATIVE_STORAGE_KINDS,
-    decodeNativeResourceKey,
     encodeNativeResourceKey,
     nativeResourceFileId,
     nativeResourceMatchesFilter,
