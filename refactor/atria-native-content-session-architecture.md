@@ -3,7 +3,7 @@
 ## Status
 
 - **Decision state:** product / data / storage / runtime / UX direction frozen
-- **Implementation state:** N0 and N1 validated; N2 is next. Current validated implementation HEAD is `refactor/atria-native-content-session-architecture@fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
+- **Implementation state:** N0, N1 and N2 validated; N3 is next. Current validated implementation HEAD is `refactor/atria-native-content-session-architecture@bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
 - **Authoritative development baseline:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Working branch:** `refactor/atria-native-content-session-architecture`
 - **Branch creation point:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
@@ -1708,3 +1708,168 @@ Before editing:
 
 Do not redesign N0, do not replace N1 storage, do not create another branch, do not start N3/N6/N8/N9 early, and do not make old PNG/JSONL/World Info persistence a Native fallback.
 
+
+
+---
+
+## N2 implementation record — validated 2026-09-22
+
+N2 — **Package / Project / World & Knowledge Composition** is complete and validated on:
+
+`refactor/atria-native-content-session-architecture@bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
+
+Validation:
+
+- workflow: **Native Content Session Dev Checks #43**
+- run: `35677654858`
+- result: **success**
+- N2 focused validation: **5 suites / 30 tests passed**
+- N2 source ESLint: success
+- N0 contracts and adjacent regressions: success
+- full root ESLint: success
+- N1 Native storage contract/parity job: success, including FS / SQLite / MySQL / PostgreSQL
+
+### N2 Project source authority
+
+Implemented a filesystem/Git-oriented `ProjectStore` rooted at:
+
+`projects/<projectId>/`
+
+The editable source manifest is `atria.project.json` using `atria-project-source v1`.
+
+Native Studio source identity is exclusively opaque `projectId` / `packageId`; `characterId`, `charDir`, avatar names, filenames and paths are not identity. Project paths are authoring locations only.
+
+Project source may contain:
+
+- Project-owned immutable-shaped World source;
+- Project-owned Knowledge source;
+- Project-owned KnowledgeBindings;
+- exact Library WorldRevision references;
+- exact Library KnowledgeRevision references;
+- exact Library KnowledgeBinding references;
+- project asset source files.
+
+### N2 dependency closure
+
+Build resolves exact authoring dependencies and fails closed when exact immutable references are absent.
+
+Library resolution is by:
+
+- `worldId + worldRevisionId`;
+- `knowledgeBaseId + knowledgeRevisionId`;
+- `knowledgeBindingId`.
+
+Build never follows display names or Library "latest" as a substitute for a pinned revision.
+
+The resolver vendors:
+
+- exact World snapshots;
+- exact Knowledge snapshots and entries;
+- binding closure;
+- referenced immutable assets.
+
+Project/Library KnowledgeBindings are normalized to Package-owned binding sources inside the built PackageVersion.
+
+Knowledge `requiredEntryIds` are validated as a dependency graph. Missing relations fail composition and required-dependency cycles are rejected before packaging.
+
+### N2 self-contained PackageVersion
+
+`buildProjectPackage` composes the Source Project plus resolved closure into the frozen N0 `AtriaPackage v2` logical manifest and assigns a fresh opaque `packageVersionId`.
+
+The build invariant is now executable and covered by tests:
+
+> A built PackageVersion contains the exact World/Knowledge/asset closure required by its EntryPoints and does not need the author's live Library at runtime.
+
+The end-to-end test builds on an author store with Library World/Knowledge, installs on a second store with no corresponding WorldRepo/KnowledgeRepo records, and successfully reopens the exact vendored World/Knowledge/assets from Package content alone.
+
+Project-owned World/Knowledge is also covered independently and does not need to be published into Library first.
+
+### N2 `.atria` Package Container v2
+
+Native build/install uses a new **Package Container v2** implementation.
+
+The final artifact is not a renamed ZIP. It uses:
+
+- Atria binary magic/header;
+- container version 2;
+- bounded preflight metadata;
+- compressed inner payload;
+- AES-256-GCM authenticated obfuscation/envelope;
+- SHA-256 payload/content integrity;
+- explicit inventory;
+- entry-count / file-size / total-size limits;
+- path traversal / ambiguous path / case-conflict checks;
+- decompression-ratio checks;
+- Package manifest validation;
+- exact packaged AssetRef integrity checks.
+
+The protection layer intentionally raises casual reverse-engineering/editing cost and provides tamper detection; it is not treated as a secrecy boundary against a determined end user, consistent with this plan.
+
+Preflight exposes only bounded Package identity/capability/permission metadata. Capabilities and permissions are independently whitelist-validated before payload decryption.
+
+Required permissions must be explicitly granted to `PackageInstaller.install` or installation fails closed with `native_package_permission_required`.
+
+### N2 install / AssetStore authority
+
+Installed Package content is stored as an immutable content-addressed blob in `AssetStore` keyed by the PackageVersion `packageContentHash`.
+
+`PackageRepo` continues to own Package / immutable PackageVersion metadata and current-version pointers only.
+
+Install order preserves N1 FS semantics:
+
+1. publish immutable content blob;
+2. publish contained immutable assets;
+3. ensure Package root exists;
+4. commit immutable PackageVersion;
+5. publish current-version pointer last through PackageRepo.
+
+A failed metadata publication may leave only unreferenced immutable blob content, which remains GC-safe.
+
+AssetStore blob GC now treats every stored PackageVersion `packageContentHash` as a strong reference.
+
+`PackageInstaller.open` reopens installed Package content using only PackageRepo metadata + AssetStore blob data and verifies PackageVersion identity/hash consistency. It does not consult WorldRepo or KnowledgeRepo.
+
+### N2 Studio seams
+
+Implemented Native Studio core seams without starting N8 production UI cutover:
+
+- `StudioProjectRouter` opens Native Studio work by `projectId`;
+- `StudioPreviewHost` creates in-memory `preview_*` previews;
+- preview descriptors are explicitly `persisted: false`;
+- preview creation writes no `atri_session` resource and therefore does not contaminate the normal Session list.
+
+The existing character-bound CardApp Studio surface remains only as an adjacent pre-cutover surface to be retired/re-routed in its scheduled later phases. It is not a Native Project authority.
+
+### N2 coexistence boundary
+
+The existing `src/game-package/distribution.js` `atria-distribution v1` implementation is intentionally still exercised as an **adjacent Game Runtime regression surface** during this long-lived branch.
+
+It is not used by the N2 Native Source Project → Package build/install path and is not a Native fallback or dual-read authority.
+
+Removal/rerouting of the old product-facing distribution/character transport belongs to the scheduled UI/legacy cutover phases, especially N8/N9. N2 does not perform that retirement early.
+
+### Cross-realm JSON validation hardening
+
+N2 exposed a pre-existing validator edge case when Native documents crossed Jest/plugin/worker realms and were revalidated during composition.
+
+`contracts.js` and `world-knowledge.js` now identify plain JSON objects by object brand rather than same-realm prototype identity. This preserves rejection of Date/Map/Set/class instances while allowing ordinary JSON documents to move safely across runtime realms.
+
+### N2 exit status
+
+N2 exit criteria are satisfied:
+
+- ProjectStore exists and is keyed by `projectId`;
+- Native Studio core routing no longer requires character identity;
+- Project-owned and exact Library World/Knowledge sources compose;
+- exact dependency closure is resolved and validated;
+- missing/cyclic dependencies fail closed;
+- Source Project builds Package v2;
+- `.atria` Package Container v2 exists with authenticated envelope/security preflight;
+- exact World/Knowledge/assets are vendored;
+- Package install/reopen uses PackageRepo + AssetStore;
+- PackageVersion content is immutable/content-addressed;
+- Preview is ephemeral and outside SessionRepo.
+
+Next implementation phase: **N3 — Session Core**.
+
+Do not redo N0/N1/N2 and do not begin N6/N8/N9 work as part of N3.
