@@ -7937,7 +7937,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         ];
         const contextPlan = await nativeSessionRuntime.prepareContext({
             target: 'narrator',
-            policy: 'balanced',
+            policy: nativeSessionRuntime.readState('atri_context_policy')?.mode || 'balanced',
             modelContextLimit: getMaxContextTokens(),
             responseReserve: getMaxResponseTokens(),
             effectivePromptLimit: this_max_context,

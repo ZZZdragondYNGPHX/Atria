@@ -5,6 +5,7 @@ import {
     createContextDerivedState,
     evaluateDerivationGate,
     openCommitment,
+    runTurnDistiller,
     transitionCommitment,
     validateNarrativeSpine,
 } from '../../public/scripts/native/context-derived.js';
@@ -147,6 +148,43 @@ describe('N7 Native derived Context contracts', () => {
         });
         expect(reused.runTurnDistiller).toBe(false);
         expect(reused.reusableDigest).toEqual({ source: 'runtime', beats: ['already-derived'] });
+    });
+
+    test('bounded Turn Distiller is optional, provenance-preserving and non-blocking on failure', async () => {
+        const gate = evaluateDerivationGate({
+            policy: 'balanced',
+            turnsSinceDigest: 10,
+            memory: { pendingCount: 10 },
+        });
+        let received = null;
+        const result = await runTurnDistiller(gate, {
+            branchId: 'branch-root',
+            revisionId: 'revision-distill',
+            text: 'x'.repeat(90000),
+            maxInputChars: 4096,
+            sourceRefs: [timelineRef('message-distill', 20)],
+            coverage: { fromSequence: 20, toSequence: 20 },
+        }, async input => {
+            received = input;
+            return {
+                durableFacts: [{ fact: 'bounded' }],
+                narrativeBeats: ['beat'],
+                sceneBoundary: { detected: false },
+            };
+        });
+        expect(result.status).toBe('distilled');
+        expect(result.blocking).toBe(false);
+        expect(result.digest.sourceRefs[0].messageId).toBe('message-distill');
+        expect(received.text.length).toBe(4096);
+
+        const failed = await runTurnDistiller(gate, {
+            branchId: 'branch-root',
+            revisionId: 'revision-distill',
+            text: 'turn',
+            sourceRefs: [timelineRef('message-distill', 20)],
+            coverage: { fromSequence: 20, toSequence: 20 },
+        }, async () => { throw new Error('utility down'); });
+        expect(failed).toMatchObject({ status: 'failed', blocking: false, digest: null });
     });
 
     test('Utility failure is diagnostic only and never turns derivation into a blocking step', () => {

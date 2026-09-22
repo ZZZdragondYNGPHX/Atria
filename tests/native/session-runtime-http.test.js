@@ -17,7 +17,7 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
             req.user = { profile: { handle: h.handle } };
             next();
         });
-        app.use(createNativeSessionRouter(() => ({ core: f.core, assets: f.assetStore })));
+        app.use(createNativeSessionRouter(() => ({ core: f.core, assets: f.assetStore, sessionRepo: f.sessionRepo })));
         view = await f.core.create(h.handle, f.start);
     });
 
@@ -50,6 +50,41 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
             expectedRevisionId: appended.body.revision.revisionId,
             command: { type: 'deleteAll' },
         })).status).toBe(400);
+    });
+
+    test('N7 Timeline source route reads exact committed ranges and stable message IDs', async () => {
+        const appended = await request(app).post('/command').send({
+            sessionId: view.session.sessionId,
+            expectedRevisionId: view.revision.revisionId,
+            command: {
+                type: 'timeline',
+                commands: [{ type: 'append', draft: { role: 'user', content: 'Exact source text' } }],
+            },
+        });
+        expect(appended.status).toBe(200);
+        const message = appended.body.timeline.at(-1);
+
+        const range = await request(app).post('/timeline').send({
+            sessionId: view.session.sessionId,
+            revisionId: appended.body.revision.revisionId,
+            fromSequence: message.sequence,
+            toSequence: message.sequence + 1,
+        });
+        expect(range.status).toBe(200);
+        expect(range.body.entries).toHaveLength(1);
+        expect(range.body.entries[0]).toMatchObject({
+            messageId: message.messageId,
+            content: 'Exact source text',
+        });
+
+        const byId = await request(app).post('/timeline').send({
+            sessionId: view.session.sessionId,
+            revisionId: appended.body.revision.revisionId,
+            messageIds: [message.messageId],
+        });
+        expect(byId.status).toBe(200);
+        expect(byId.body.missingMessageIds).toEqual([]);
+        expect(byId.body.entries[0].content).toBe('Exact source text');
     });
 
     test('committed timeline mutation commands are rejected before publication', async () => {

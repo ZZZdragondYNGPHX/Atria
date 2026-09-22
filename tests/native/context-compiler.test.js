@@ -4,6 +4,7 @@ import {
     SessionContextCompiler,
     compileNativeContextPlan,
     createContextProvider,
+    filterNativeCoreChatForContext,
     replaceContextLaneReservation,
 } from '../../public/scripts/native/context-compiler.js';
 import { sessionFixture } from './helpers/session-fixture.js';
@@ -257,6 +258,26 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
             modelContextLimit: 1200,
             responseReserve: 300,
         }))).rejects.toMatchObject({ code: 'native_context_hard_reserve_overflow' });
+    });
+
+    test('prompt assembly seam keeps only ContextPlan-selected Native raw messages', async () => {
+        const snapshot = buildSnapshot(80);
+        const plan = await compileNativeContextPlan(snapshot, budget({
+            laneCaps: { [CONTEXT_LANES.recentRaw]: 450 },
+            minimumGuarantees: { [CONTEXT_LANES.recentRaw]: 300 },
+        }));
+        const coreChat = snapshot.timeline.map(entry => ({
+            mes: entry.content,
+            is_user: entry.role === 'user',
+            atri_native: { messageId: entry.messageId },
+        }));
+        coreChat.push({ mes: 'non-native framing injection', is_system: true });
+        const filtered = filterNativeCoreChatForContext(coreChat, plan);
+        const nativeIds = filtered
+            .map(item => item.atri_native?.messageId)
+            .filter(Boolean);
+        expect(nativeIds).toEqual(plan.sourceSelection.rawMessageIds);
+        expect(filtered.some(item => item.mes === 'non-native framing injection')).toBe(true);
     });
 
     test('provider/utility failure degrades gracefully without blocking Context compilation', async () => {

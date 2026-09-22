@@ -385,3 +385,62 @@ export function evaluateDerivationGate(input = {}) {
         reasons: Object.freeze(reasons),
     });
 }
+
+
+/**
+ * Compatibility boundary for an optional bounded Turn Distiller.
+ * The caller supplies the utility/orchestrator implementation; this function
+ * never makes a model call by itself and never blocks ordinary play on failure.
+ */
+export async function runTurnDistiller(gate, input = {}, distiller = null) {
+    if (!gate || gate.schemaVersion !== 1) throw new TypeError('Turn Distiller requires a Derivation Gate decision');
+    if (gate.reusableDigest) {
+        return Object.freeze({
+            status: 'reused',
+            blocking: false,
+            digest: clone(gate.reusableDigest),
+            error: null,
+        });
+    }
+    if (!gate.runTurnDistiller) {
+        return Object.freeze({ status: 'skipped', blocking: false, digest: null, error: null });
+    }
+    if (typeof distiller !== 'function') {
+        return Object.freeze({ status: 'unavailable', blocking: false, digest: null, error: 'distiller_unavailable' });
+    }
+    const maxInputChars = Math.max(1024, Math.min(65536, Math.floor(Number(input.maxInputChars) || 48000)));
+    const rawText = String(input.text ?? input.content ?? '');
+    const boundedText = rawText.length > maxInputChars ? rawText.slice(rawText.length - maxInputChars) : rawText;
+    const sourceRefs = normalizeContextSourceRefs(input.sourceRefs);
+    const branchId = text(input.branchId);
+    const revisionId = text(input.revisionId);
+    if (!branchId || !revisionId || !sourceRefs.length) {
+        throw new TypeError('Turn Distiller requires branch/revision/source provenance');
+    }
+    try {
+        const raw = await distiller(Object.freeze({
+            policy: gate.policy,
+            text: boundedText,
+            sourceRefs,
+            branchId,
+            revisionId,
+            coverage: normalizeCoverage(input.coverage),
+        }));
+        const digest = normalizeTurnDigest({
+            ...(raw && typeof raw === 'object' ? raw : {}),
+            branchId,
+            revisionId,
+            producer: text(raw?.producer) || 'distiller',
+            sourceRefs,
+            coverage: input.coverage,
+        });
+        return Object.freeze({ status: 'distilled', blocking: false, digest, error: null });
+    } catch (error) {
+        return Object.freeze({
+            status: 'failed',
+            blocking: false,
+            digest: null,
+            error: String(error?.message || error),
+        });
+    }
+}
