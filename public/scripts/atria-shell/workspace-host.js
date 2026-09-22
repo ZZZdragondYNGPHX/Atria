@@ -202,35 +202,9 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
     };
 }
 
-async function mountStudioWorkspace({ document: documentRef, slot, host }) {
-    const context = globalThis.Atria?.getContext?.();
-    const requested = host.consumeStudioCharacter();
-    const charId = requested ?? context?.characterId;
-    if (charId === undefined || charId === null || charId === '' || Number(charId) < 0) {
-        const panel = createLocalizedStatePanel(documentRef, 'empty', {
-            title: 'Game Studio',
-            message: 'Select a character or game project to open the existing Game Studio controller.',
-        });
-        slot.replaceChildren(panel);
-        return {
-            root: panel,
-            dispose() {
-                panel.remove();
-            },
-        };
-    }
-
-    const studio = await import('../extensions/character-editor-assistant/studio/studio.js');
-    const root = await studio.openCardAppStudio(charId, {
-        container: slot,
-        embedded: true,
-    });
-    return {
-        root,
-        dispose() {
-            return studio.closeCardAppStudio();
-        },
-    };
+async function mountStudioWorkspace(args) {
+    const studio = await import('../native/studio-workspace.js');
+    return studio.mountNativeStudioWorkspace(args);
 }
 
 async function mountDiagnosticsWorkspace({ slot }) {
@@ -273,7 +247,6 @@ export function createAtriaWorkspaceHost({
     let disposed = false;
     let sequence = 0;
     let active = null;
-    let pendingStudioCharacter = null;
     let lastRouteSignature = JSON.stringify(navigation.getRoute());
     const commandDisposers = [];
 
@@ -566,16 +539,35 @@ export function createAtriaWorkspaceHost({
         });
     }
 
-    function openStudio(characterId) {
-        const hasExplicitCharacter = characterId !== undefined && characterId !== null && characterId !== '';
-        if (hasExplicitCharacter) pendingStudioCharacter = characterId;
-
+    function openStudio(projectId = null, label = '') {
+        const id = String(projectId || '').trim();
         const route = navigation.getRoute();
-        if (route.domain === 'studio' && !route.child) {
-            if (hasExplicitCharacter) refreshActive();
+        if (!id) {
+            if (route.domain !== 'studio') {
+                return navigateToDomain('studio', { reason: 'workspace-studio' });
+            }
+            if (route.child) {
+                return navigation.clearChild({
+                    history: 'push',
+                    reason: 'workspace-studio-projects',
+                });
+            }
             return route;
         }
-        return navigateToDomain('studio', { reason: 'workspace-studio' });
+        if (route.domain !== 'studio') {
+            navigation.navigate('studio', {
+                reason: 'workspace-studio-domain',
+                history: 'push',
+            });
+        }
+        return navigation.navigateChild({
+            id: `project:${id}`,
+            label: String(label || 'Project'),
+            kind: 'detail',
+        }, {
+            reason: 'workspace-studio-project-detail',
+            history: 'push',
+        });
     }
 
     function openWorldInfo() {
@@ -640,12 +632,6 @@ export function createAtriaWorkspaceHost({
         return route;
     }
 
-    function consumeStudioCharacter() {
-        const value = pendingStudioCharacter;
-        pendingStudioCharacter = null;
-        return value;
-    }
-
     function refreshActive() {
         if (disposed) return;
         const previous = active;
@@ -700,7 +686,6 @@ export function createAtriaWorkspaceHost({
         openUtility,
         closeActive,
         refreshActive,
-        consumeStudioCharacter,
         getActiveWorkspace: () => active?.descriptor || null,
         isActive: key => active?.descriptor?.key === String(key || ''),
         isMounted: () => !disposed,
@@ -760,10 +745,10 @@ export function createAtriaWorkspaceHost({
         }),
         shell.registry.register({
             id: 'workspace.studio',
-            title: translateShellText('Open Game Studio'),
-            description: translateShellText('Open the existing Atria Game Studio'),
+            title: translateShellText('Open Studio Projects'),
+            description: translateShellText('Open Native ProjectStore authoring projects'),
             group: translateShellText('Workspaces'),
-            keywords: ['studio', 'game', 'editor'],
+            keywords: ['studio', 'projects', 'world', 'knowledge', 'editor'],
             run: () => openStudio(),
         }),
         shell.registry.register({
