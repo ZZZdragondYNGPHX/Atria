@@ -1,4 +1,9 @@
 import { assertNativeId } from './identity.js';
+import {
+    assertKnowledgeBinding,
+    assertPackagedKnowledgeSnapshot,
+    assertPackagedWorldSnapshot,
+} from './world-knowledge.js';
 
 export const NATIVE_SCHEMA_VERSION = 1;
 export const ATRIA_PACKAGE_FORMAT = 'atria-package';
@@ -38,6 +43,12 @@ export const NATIVE_RESOURCE_KINDS = Object.freeze({
     package: 'atri_package',
     packageVersion: 'atri_package_version',
     packageState: 'atri_package_state',
+    world: 'atri_world',
+    worldRevision: 'atri_world_revision',
+    knowledgeBase: 'atri_knowledge_base',
+    knowledgeRevision: 'atri_knowledge_revision',
+    knowledgeEntry: 'atri_knowledge_entry',
+    knowledgeBinding: 'atri_knowledge_binding',
     session: 'atri_session',
     branch: 'atri_session_branch',
     timelineEntry: 'atri_timeline_entry',
@@ -52,6 +63,12 @@ export const NATIVE_STORE_FAMILIES = Object.freeze([
     'packages',
     'package_versions',
     'package_states',
+    'worlds',
+    'world_revisions',
+    'knowledge_bases',
+    'knowledge_revisions',
+    'knowledge_entries',
+    'knowledge_bindings',
     'sessions',
     'session_branches',
     'timeline_entries',
@@ -198,6 +215,9 @@ export function assertActor(value) {
 
 export function assertEntryPoint(value) {
     noLegacyIdentity(value, 'EntryPoint');
+    if (Object.prototype.hasOwnProperty.call(value, 'world')) {
+        throw new TypeError('EntryPoint.world is retired; use worldIds/primaryWorldId');
+    }
     const entryPointId = assertNativeId(value.entryPointId, 'entryPoint', 'EntryPoint.entryPointId');
     const displayName = text(value.displayName, 'EntryPoint.displayName', { maxLength: 256 });
     const actorIds = uniqueIds(value.actorIds, 'actor', 'EntryPoint.actorIds');
@@ -207,10 +227,28 @@ export function assertEntryPoint(value) {
     if (primaryActorId && !actorIds.includes(primaryActorId)) {
         throw new TypeError('EntryPoint.primaryActorId must be listed in EntryPoint.actorIds');
     }
-    const result = { entryPointId, displayName, actorIds };
+    const worldIds = uniqueIds(value.worldIds, 'world', 'EntryPoint.worldIds');
+    const primaryWorldId = value.primaryWorldId == null
+        ? undefined
+        : assertNativeId(value.primaryWorldId, 'world', 'EntryPoint.primaryWorldId');
+    if (primaryWorldId && !worldIds.includes(primaryWorldId)) {
+        throw new TypeError('EntryPoint.primaryWorldId must be listed in EntryPoint.worldIds');
+    }
+    const knowledgeBindingIds = uniqueIds(
+        value.knowledgeBindingIds,
+        'knowledgeBinding',
+        'EntryPoint.knowledgeBindingIds',
+    );
+    const result = {
+        entryPointId,
+        displayName,
+        actorIds,
+        worldIds,
+        knowledgeBindingIds,
+    };
     if (primaryActorId) result.primaryActorId = primaryActorId;
+    if (primaryWorldId) result.primaryWorldId = primaryWorldId;
     for (const key of [
-        'world',
         'initialStateOverlay',
         'initialTimeline',
         'ui',
@@ -362,6 +400,7 @@ export function assertSessionRevision(value) {
         sessionId: assertNativeId(value.sessionId, 'session', 'SessionRevision.sessionId'),
         branchId: assertNativeId(value.branchId, 'branch', 'SessionRevision.branchId'),
         timelineHead,
+        knowledgeHead: assertStateHead(value.knowledgeHead, 'SessionRevision.knowledgeHead'),
         stateHeads: Object.freeze(stateHeads),
         createdAt: timestamp(value.createdAt, 'SessionRevision.createdAt'),
     });
@@ -411,6 +450,7 @@ const PACKAGE_KEYS = new Set([
     'permissions',
     'worlds',
     'knowledge',
+    'knowledgeBindings',
     'runtime',
     'orchestration',
     'memory',
@@ -444,10 +484,16 @@ export function assertAtriaPackageManifest(value) {
     const actors = value.actors.map(assertActor);
     const entryPoints = value.entryPoints.map(assertEntryPoint);
     const assets = value.assets.map(assertAssetRef);
+    const worlds = (value.worlds || []).map(assertPackagedWorldSnapshot);
+    const knowledge = (value.knowledge || []).map(assertPackagedKnowledgeSnapshot);
+    const knowledgeBindings = (value.knowledgeBindings || []).map(assertKnowledgeBinding);
     for (const [items, key, field] of [
         [actors, 'actorId', 'AtriaPackage.actors'],
         [entryPoints, 'entryPointId', 'AtriaPackage.entryPoints'],
         [assets, 'assetId', 'AtriaPackage.assets'],
+        [worlds.map(item => item.world), 'worldId', 'AtriaPackage.worlds'],
+        [knowledge.map(item => item.knowledgeBase), 'knowledgeBaseId', 'AtriaPackage.knowledge'],
+        [knowledgeBindings, 'knowledgeBindingId', 'AtriaPackage.knowledgeBindings'],
     ]) {
         const ids = items.map(item => item[key]);
         if (new Set(ids).size !== ids.length) throw new TypeError(field + ' contains duplicate IDs');
@@ -457,6 +503,38 @@ export function assertAtriaPackageManifest(value) {
     for (const entryPoint of entryPoints) {
         for (const actorId of entryPoint.actorIds) {
             if (!actorIds.has(actorId)) throw new TypeError('EntryPoint references unknown actorId ' + actorId);
+        }
+    }
+
+    const worldIds = new Set(worlds.map(item => item.world.worldId));
+    const assetIds = new Set(assets.map(item => item.assetId));
+    const bindingIds = new Set(knowledgeBindings.map(item => item.knowledgeBindingId));
+    const knowledgeRevisionKeys = new Set(knowledge.map(item => (
+        item.knowledgeBase.knowledgeBaseId + '@' + item.revision.knowledgeRevisionId
+    )));
+
+    for (const entryPoint of entryPoints) {
+        for (const worldId of entryPoint.worldIds) {
+            if (!worldIds.has(worldId)) throw new TypeError('EntryPoint references unknown worldId ' + worldId);
+        }
+        for (const bindingId of entryPoint.knowledgeBindingIds) {
+            if (!bindingIds.has(bindingId)) throw new TypeError('EntryPoint references unknown knowledgeBindingId ' + bindingId);
+        }
+    }
+
+    for (const snapshot of worlds) {
+        for (const bindingId of snapshot.revision.knowledgeBindingIds) {
+            if (!bindingIds.has(bindingId)) throw new TypeError('WorldRevision references unknown knowledgeBindingId ' + bindingId);
+        }
+        for (const assetId of snapshot.revision.assetIds) {
+            if (!assetIds.has(assetId)) throw new TypeError('WorldRevision references unknown assetId ' + assetId);
+        }
+    }
+
+    for (const binding of knowledgeBindings) {
+        const key = binding.source.knowledgeBaseId + '@' + binding.source.knowledgeRevisionId;
+        if (!knowledgeRevisionKeys.has(key)) {
+            throw new TypeError('KnowledgeBinding source must resolve to an immutable Knowledge snapshot in this Package');
         }
     }
 
@@ -494,13 +572,14 @@ export function assertAtriaPackageManifest(value) {
         entryPoints,
         capabilities,
         permissions,
+        worlds,
+        knowledge,
+        knowledgeBindings,
         assets,
     };
     for (const key of [
         'description',
         'author',
-        'worlds',
-        'knowledge',
         'runtime',
         'orchestration',
         'memory',
@@ -710,6 +789,12 @@ const RESOURCE_KEY_SPECS = Object.freeze({
     [NATIVE_RESOURCE_KINDS.package]: [['handle', 'handle'], ['packageId', 'package']],
     [NATIVE_RESOURCE_KINDS.packageVersion]: [['handle', 'handle'], ['packageId', 'package'], ['packageVersionId', 'packageVersion']],
     [NATIVE_RESOURCE_KINDS.packageState]: [['handle', 'handle'], ['packageId', 'package'], ['namespace', 'namespace']],
+    [NATIVE_RESOURCE_KINDS.world]: [['handle', 'handle'], ['worldId', 'world']],
+    [NATIVE_RESOURCE_KINDS.worldRevision]: [['handle', 'handle'], ['worldId', 'world'], ['worldRevisionId', 'worldRevision']],
+    [NATIVE_RESOURCE_KINDS.knowledgeBase]: [['handle', 'handle'], ['knowledgeBaseId', 'knowledgeBase']],
+    [NATIVE_RESOURCE_KINDS.knowledgeRevision]: [['handle', 'handle'], ['knowledgeBaseId', 'knowledgeBase'], ['knowledgeRevisionId', 'knowledgeRevision']],
+    [NATIVE_RESOURCE_KINDS.knowledgeEntry]: [['handle', 'handle'], ['knowledgeBaseId', 'knowledgeBase'], ['knowledgeRevisionId', 'knowledgeRevision'], ['knowledgeEntryId', 'knowledgeEntry']],
+    [NATIVE_RESOURCE_KINDS.knowledgeBinding]: [['handle', 'handle'], ['knowledgeBindingId', 'knowledgeBinding']],
     [NATIVE_RESOURCE_KINDS.session]: [['handle', 'handle'], ['sessionId', 'session']],
     [NATIVE_RESOURCE_KINDS.branch]: [['handle', 'handle'], ['sessionId', 'session'], ['branchId', 'branch']],
     [NATIVE_RESOURCE_KINDS.timelineEntry]: [['handle', 'handle'], ['sessionId', 'session'], ['branchId', 'branch'], ['messageId', 'message']],
