@@ -8,7 +8,6 @@ import {
     awaitMainUI,
     branchFromMessageViaUI,
     continueViaUI,
-    regenerateViaUI,
     sendMessageAndAwaitReply,
 } from '../_lib/page.js';
 import {
@@ -259,7 +258,12 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
         const preRetryRevisionId = state.revisionId;
         const preRetryBranchId = state.branchId;
         const retryTargetId = continuation.messageId;
-        await regenerateViaUI(page, { timeoutMs: 60_000 });
+        await page.locator('[data-atria-native-play-actions="true"]')
+            .getByRole('button', { name: 'Retry Reply', exact: true })
+            .click();
+        await expect.poll(async () => (await nativeRuntimeState(page)).branchId, {
+            timeout: 60_000,
+        }).not.toBe(preRetryBranchId);
         await waitForNativeIdle(page);
         state = await nativeRuntimeState(page);
         expect(state.branchId).not.toBe(preRetryBranchId);
