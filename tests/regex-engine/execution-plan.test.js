@@ -49,6 +49,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/regex/redos-reporter.j
 }));
 
 let engine;
+let nativeSessionRuntime;
 
 function script(overrides = {}) {
     return {
@@ -72,6 +73,7 @@ function script(overrides = {}) {
 
 beforeAll(async () => {
     engine = await import('../../public/scripts/extensions/regex/engine.js');
+    ({ nativeSessionRuntime } = await import('../../public/scripts/native/session-runtime.js'));
 });
 
 beforeEach(() => {
@@ -81,6 +83,7 @@ beforeEach(() => {
     regexFromStringMock.mockClear();
     engine.RegexProvider.instance.clear();
     engine.invalidateRegexExecutionPlans();
+    nativeSessionRuntime.snapshot = null;
 });
 
 describe('static regex execution plans', () => {
@@ -136,6 +139,27 @@ describe('static regex execution plans', () => {
 
         expect(engine.getRegexedString('A', 1)).toBe('C');
         expect(engine.getRegexExecutionPlanStats().builds).toBe(buildsAfterFirstRun + 1);
+    });
+
+    test('active Native Package regex participates in the dynamic execution path', () => {
+        nativeSessionRuntime.snapshot = {
+            manifest: {
+                processors: {
+                    regex: [
+                        script({
+                            id: 'native-package-rule',
+                            scriptName: 'native-package-rule',
+                            findRegex: '/A/g',
+                            replaceString: 'NATIVE',
+                            placement: [1],
+                        }),
+                    ],
+                },
+            },
+        };
+
+        expect(engine.getRegexedString('A', 1)).toBe('NATIVE');
+        expect(engine.getRegexScripts({ allowedOnly: true }).some(rule => rule.id === 'native-package-rule')).toBe(true);
     });
 
     test('plain runtime providers are evaluated on every call', () => {
