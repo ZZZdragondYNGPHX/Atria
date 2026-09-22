@@ -3,6 +3,7 @@ import {
     assertBranch,
     assertSession,
     assertSessionRevision,
+    assertSavePoint,
     assertTimelineEntry,
     assertVariant,
 } from '../contracts.js';
@@ -455,6 +456,85 @@ export class SessionRepo {
             if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
             await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
             await putMutable(tx, key, session, { expectedIntegrity: existing?.integrity ?? null });
+            return snapshot;
+        }));
+    }
+
+    async importClosure(handle, closure) {
+        assertWritable();
+        if (!closure || typeof closure !== 'object' || Array.isArray(closure)) {
+            throw new TypeError('Native Session import closure must be an object');
+        }
+        const session = assertSession(closure.session);
+        const branches = (closure.branches || []).map(assertBranch);
+        const entries = (closure.timelineEntries || []).map(assertTimelineEntry);
+        const variants = (closure.variants || []).map(assertVariant);
+        const revisions = (closure.revisions || []).map(assertSessionRevision);
+        const savePoints = (closure.savePoints || []).map(assertSavePoint);
+        const stateRecords = closure.stateRecords || [];
+        if (!Array.isArray(stateRecords)) throw new TypeError('Native Session import stateRecords must be an array');
+
+        const sessionId = session.sessionId;
+        if (!revisions.some(item => item.revisionId === session.headRevisionId)) {
+            throw new TypeError('Imported Session HEAD Revision is missing');
+        }
+
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+            const sessionKey = this._sessionKey(handle, sessionId);
+            if (await tx.getResource(sessionKey)) {
+                throw new ConflictError('native_session_import_conflict', { sessionId });
+            }
+
+            for (const branch of branches) {
+                if (branch.sessionId !== sessionId) throw new TypeError('Imported Branch Session mismatch');
+                await putImmutable(tx, this._branchKey(handle, sessionId, branch.branchId), branch);
+            }
+            for (const variant of variants) {
+                if (variant.sessionId !== sessionId) throw new TypeError('Imported Variant Session mismatch');
+                await putImmutable(tx, this._variantKey(handle, sessionId, variant.messageId, variant.variantId), variant);
+            }
+            for (const entry of entries) {
+                if (entry.sessionId !== sessionId) throw new TypeError('Imported Timeline Session mismatch');
+                await putImmutable(tx, this._timelineKey(handle, sessionId, entry.branchId, entry.messageId), entry);
+            }
+            const seenStates = new Set();
+            for (const record of stateRecords) {
+                if (!record || typeof record !== 'object' || Array.isArray(record)) {
+                    throw new TypeError('Imported Session state record must be an object');
+                }
+                const namespace = String(record.namespace || '');
+                const head = String(record.head || '');
+                const key = namespace + '\0' + head;
+                if (seenStates.has(key)) throw new TypeError('Duplicate imported Session state record');
+                seenStates.add(key);
+                if (hashNativeDocument(record.data) !== head) {
+                    throw new ConflictError('native_session_import_state_integrity', { namespace, head });
+                }
+                await putImmutable(tx, this._stateKey(handle, sessionId, namespace, head), record.data);
+            }
+            for (const revision of revisions) {
+                if (revision.sessionId !== sessionId) throw new TypeError('Imported Revision Session mismatch');
+                await putImmutable(tx, this._revisionKey(handle, sessionId, revision.revisionId), revision);
+            }
+            for (const savePoint of savePoints) {
+                if (savePoint.sessionId !== sessionId) throw new TypeError('Imported SavePoint Session mismatch');
+                await putImmutable(tx, {
+                    kind: NATIVE_RESOURCE_KINDS.savePoint,
+                    handle,
+                    sessionId,
+                    saveId: savePoint.saveId,
+                }, savePoint);
+            }
+
+            // Validate every imported Revision after all immutable dependencies
+            // exist, but before publishing the mutable Session commit marker.
+            for (const revision of revisions) {
+                await readSessionSnapshot(tx, handle, session, revision);
+            }
+            const head = revisions.find(item => item.revisionId === session.headRevisionId);
+            const snapshot = await readSessionSnapshot(tx, handle, session, head);
+
+            await putMutable(tx, sessionKey, session, { expectedIntegrity: null });
             return snapshot;
         }));
     }
