@@ -627,6 +627,34 @@ export class NativeSessionRuntime {
         return next.revision.branchId;
     }
 
+    async reenterTurn(index) {
+        this.assertWritable();
+        const targetIndex = Number(index);
+        const target = this.snapshot.timeline[targetIndex];
+        if (!Number.isInteger(targetIndex) || !target || target.role !== 'user') {
+            throw new Error('Native Re-enter Turn requires a committed user Timeline entry');
+        }
+        if (targetIndex <= 0) {
+            throw new Error('Native Re-enter Turn requires a predecessor Timeline boundary');
+        }
+        const draft = {
+            content: String(target.content ?? ''),
+            metadata: copy(target.metadata ?? {}),
+            sourceMessageId: target.messageId,
+        };
+        await this.fork(targetIndex - 1);
+        return draft;
+    }
+
+    async restartFrom(index) {
+        const targetIndex = Number(index);
+        if (!Number.isInteger(targetIndex) || !this.snapshot?.timeline?.[targetIndex]) {
+            throw new Error('Native Restart From Here requires a committed Timeline entry');
+        }
+        await this.fork(targetIndex);
+        return this.snapshot;
+    }
+
     async switchBranch(branchId) {
         if (!this.history) await this.persist();
         else this._assertBarrier();
