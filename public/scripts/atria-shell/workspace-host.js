@@ -501,12 +501,6 @@ export function createAtriaWorkspaceHost({
         );
     }
 
-    // N9 product routes no longer expose Character detail as Library authority.
-    // Keep this compatibility method until N10, but forward it to Native Works.
-    function openLibraryCharacter() {
-        return openLibrarySection('works');
-    }
-
     function openRuntimeSection(section = 'overview') {
         const requestedId = String(section || 'overview').trim().toLowerCase();
         // Retrieval used to be a duplicate Runtime tab pointing at the same
@@ -676,7 +670,6 @@ export function createAtriaWorkspaceHost({
         openAgents: openAgentSection,
         openAgentSection,
         openLibrarySection,
-        openLibraryCharacter,
         openLibraryWork,
         openLibraryWorld,
         openLibraryKnowledge,
