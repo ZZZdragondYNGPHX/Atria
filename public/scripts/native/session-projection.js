@@ -5,6 +5,82 @@ const EXTRA_FIELDS = ['bias', 'reasoning', 'reasoning_duration', 'reasoning_type
 const MESSAGE_FIELDS = ['send_date', 'gen_started', 'gen_finished', 'gen_id', 'is_name', 'force_avatar'];
 export const nativeAssetUrl = assetId => `/api/native/session/asset/${encodeURIComponent(assetId)}`;
 
+export class NativeCommittedTimelineMutationError extends Error {
+    constructor(message = 'Committed Native Timeline mutation detected') {
+        super(message);
+        this.name = 'NativeCommittedTimelineMutationError';
+        this.code = 'native_committed_timeline_mutation';
+    }
+}
+
+export function committedTimelineMutation(message) {
+    return new NativeCommittedTimelineMutationError(message);
+}
+
+function stableValue(value) {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.keys(value).sort().map(key => [key, stableValue(value[key])]));
+    }
+    return value;
+}
+
+function runtimeRole(message) {
+    return message?.is_system ? 'system' : message?.is_user ? 'user' : 'assistant';
+}
+
+function runtimeVariantMetadata(message, position) {
+    const selected = Number(message?.swipe_id ?? 0);
+    if (position === selected) return runtimeMetadata(message);
+    const swipeInfo = message?.swipe_info?.[position] ?? {};
+    return runtimeMetadata({
+        ...message,
+        ...swipeInfo,
+        mes: message?.swipes?.[position] ?? '',
+        extra: swipeInfo.extra ?? message?.extra ?? {},
+    });
+}
+
+export function committedMessageFingerprint(message) {
+    const ids = Array.isArray(message?.atri_native?.variantIds) ? message.atri_native.variantIds : [];
+    const swipes = Array.isArray(message?.swipes) && message.swipes.length ? message.swipes : [message?.mes ?? ''];
+    const selected = Number(message?.swipe_id ?? 0);
+    const canonical = {
+        messageId: message?.atri_native?.messageId ?? null,
+        role: runtimeRole(message),
+        actorId: message?.atri_native?.actorId ?? null,
+        selectedVariantId: Number.isInteger(selected) ? ids[selected] ?? null : null,
+        variantIds: [...ids],
+        variants: swipes.map((content, position) => ({
+            variantId: ids[position] ?? null,
+            content: position === selected ? (message?.mes ?? '') : content,
+            metadata: runtimeVariantMetadata(message, position),
+        })),
+        provenance: copy(message?.atri_native?.provenance ?? null),
+    };
+    return JSON.stringify(stableValue(canonical));
+}
+
+export function assertCommittedProjection(snapshot, messages) {
+    const projected = projectNativeSession(snapshot).chat;
+    if (!Array.isArray(messages) || messages.length < projected.length) {
+        throw committedTimelineMutation('Committed Native Timeline messages cannot be deleted');
+    }
+    for (let index = 0; index < projected.length; index++) {
+        const expected = projected[index];
+        const actual = messages[index];
+        if (actual?.atri_native?.messageId !== expected.atri_native.messageId) {
+            throw committedTimelineMutation('Committed Native Timeline order/identity changed');
+        }
+        const expectedFingerprint = expected.atri_native.committedFingerprint;
+        const actualFingerprint = committedMessageFingerprint(actual);
+        if (actualFingerprint !== expectedFingerprint) {
+            throw committedTimelineMutation(`Committed Native Timeline message ${expected.atri_native.messageId} changed`);
+        }
+    }
+    return projected.length;
+}
+
 export function runtimeMetadata(message) {
     const runtime = { extra: {} };
     for (const key of MESSAGE_FIELDS) if (message[key] !== undefined) runtime[key] = message[key];
@@ -53,69 +129,48 @@ export function projectNativeSession(snapshot) {
     const chat = snapshot.timeline.map(entry => {
         const messages = entry.variantIds.map(id => variantMessage(entry, variants.get(id), manifest.actors));
         const swipe_id = entry.variantIds.indexOf(entry.activeVariantId);
-        return { ...messages[swipe_id], swipes: messages.map(item => item.mes), swipe_id,
+        const activeVariant = variants.get(entry.activeVariantId);
+        const message = { ...messages[swipe_id], swipes: messages.map(item => item.mes), swipe_id,
             swipe_info: messages.map(item => ({ send_date: item.send_date, gen_started: item.gen_started,
                 gen_finished: item.gen_finished, extra: copy(item.extra) })),
-            atri_native: { messageId: entry.messageId, variantIds: [...entry.variantIds] } };
+            atri_native: {
+                messageId: entry.messageId,
+                variantIds: [...entry.variantIds],
+                actorId: entry.actorId ?? null,
+                role: entry.role,
+                provenance: copy(activeVariant?.metadata?.provenance ?? null),
+            } };
+        message.atri_native.committedFingerprint = committedMessageFingerprint(message);
+        return message;
     });
     return { character, chat, metadata: { integrity: revision.revisionId, tainted: true },
         sessionId: snapshot.session.sessionId, branchId: revision.branchId, revisionId: revision.revisionId };
 }
 
-/** Translate changes to a known projection into commands. This cannot import/reconstruct a Session. */
+/**
+ * Validate the immutable committed prefix and convert only trailing Draft
+ * messages into append commands. Any change to an already committed message
+ * is a write-barrier violation, never a request to revise Native history.
+ */
 export function timelineIntents(snapshot, messages) {
-    const projected = projectNativeSession(snapshot).chat;
-    const known = new Map(snapshot.timeline.map((entry, index) => [entry.messageId, { entry, message: projected[index] }]));
-    const seen = new Set();
+    const committedLength = assertCommittedProjection(snapshot, messages);
     const commands = [];
-    let previousIndex = -1;
-    for (let index = 0; index < messages.length; index++) {
-        const message = messages[index];
-        const messageId = message.atri_native?.messageId;
-        if (!messageId) {
-            const next = messages.slice(index + 1).find(item => item.atri_native?.messageId);
-            commands.push({ type: 'append', beforeMessageId: next?.atri_native.messageId,
-                draft: { role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant',
-                    ...(!message.is_user && !message.is_system && snapshot.entryPoint.actorIds.length
-                        ? { actorId: snapshot.entryPoint.primaryActorId ?? snapshot.entryPoint.actorIds[0] } : {}),
-                    content: message.mes ?? '', metadata: runtimeMetadata(message) } });
-            continue;
+    for (const message of messages.slice(committedLength)) {
+        if (message?.atri_native?.messageId) {
+            throw committedTimelineMutation('Committed Native Timeline messages cannot be reordered or reinserted');
         }
-        const existing = known.get(messageId);
-        if (!existing || seen.has(messageId)) throw new Error('Unknown or duplicated Native message identity');
-        seen.add(messageId);
-        const nativeIndex = snapshot.timeline.indexOf(existing.entry);
-        if (nativeIndex < previousIndex) throw new Error('Native message reorder requires an explicit command');
-        previousIndex = nativeIndex;
-        if (message.is_user !== existing.message.is_user || message.is_system !== existing.message.is_system) {
-            throw new Error('Native message role is immutable');
-        }
-        const swipes = message.swipes?.length ? message.swipes : [message.mes];
-        const selected = message.swipe_id ?? 0;
-        if (!Number.isInteger(selected) || selected < 0 || selected >= swipes.length) throw new Error('Invalid Native swipe selection');
-        const ids = message.atri_native.variantIds;
-        // Removal of a swipe updates this adapter-local ID vector at the explicit delete seam.
-        for (const id of existing.entry.variantIds) {
-            if (!ids.includes(id)) commands.push({ type: 'removeVariant', messageId, variantId: id });
-        }
-        for (let position = 0; position < swipes.length; position++) {
-            const id = ids[position];
-            const originalIndex = existing.entry.variantIds.indexOf(id);
-            if (id && originalIndex < 0) throw new Error('Unknown Native Variant identity');
-            const original = originalIndex < 0 ? null : existing.message.swipe_info[originalIndex];
-            const info = position === selected ? message : { ...message, ...(message.swipe_info?.[position] ?? {}), mes: swipes[position] };
-            const content = position === selected ? message.mes : swipes[position];
-            const metadata = runtimeMetadata(info);
-            const oldMetadata = original ? runtimeMetadata({ ...existing.message, ...original }) : null;
-            if (!id || content !== existing.message.swipes[originalIndex] || JSON.stringify(metadata) !== JSON.stringify(oldMetadata)) {
-                commands.push({ type: 'revise', messageId, replaceVariantId: id, select: position === selected,
-                    draft: { content, metadata } });
-            } else if (position === selected && id !== existing.entry.activeVariantId) {
-                commands.push({ type: 'select', messageId, variantId: id });
-            }
-        }
+        commands.push({
+            type: 'append',
+            draft: {
+                role: message.is_system ? 'system' : message.is_user ? 'user' : 'assistant',
+                ...(!message.is_user && !message.is_system && snapshot.entryPoint.actorIds.length
+                    ? { actorId: snapshot.entryPoint.primaryActorId ?? snapshot.entryPoint.actorIds[0] }
+                    : {}),
+                content: message.mes ?? '',
+                metadata: runtimeMetadata(message),
+            },
+        });
     }
-    for (const entry of snapshot.timeline) if (!seen.has(entry.messageId)) commands.unshift({ type: 'remove', messageId: entry.messageId });
     return commands;
 }
 
