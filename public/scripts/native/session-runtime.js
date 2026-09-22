@@ -211,7 +211,7 @@ export class NativeSessionRuntime {
         return type;
     }
 
-    async _persistContinuation(references, messages) {
+    async _persistContinuation(messages) {
         const draft = this.generation;
         const projected = projectNativeSession(this.snapshot).chat;
         if (
@@ -292,7 +292,7 @@ export class NativeSessionRuntime {
             const messages = copy(references);
 
             if (this.generation?.kind === 'continue') {
-                return this._persistContinuation(references, messages);
+                return this._persistContinuation(messages);
             }
 
             let commands;
