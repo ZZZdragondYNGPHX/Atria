@@ -53,6 +53,10 @@ export const nativeProductClient = Object.freeze({
     listWorlds: () => request('worlds'),
     createWorld: displayName => request('worlds', { method: 'POST', body: { displayName } }),
     getWorld: worldId => request(`worlds/${encode(worldId)}`),
+    updateWorld: (worldId, displayName) => request(`worlds/${encode(worldId)}`, {
+        method: 'PUT',
+        body: { displayName },
+    }),
     deleteWorld: worldId => request(`worlds/${encode(worldId)}`, { method: 'DELETE' }),
 
     listKnowledge: () => request('knowledge'),
@@ -60,6 +64,10 @@ export const nativeProductClient = Object.freeze({
     getKnowledge: (knowledgeBaseId, revisionId = null) => request(
         `knowledge/${encode(knowledgeBaseId)}${revisionId ? `?revisionId=${encode(revisionId)}` : ''}`,
     ),
+    updateKnowledge: (knowledgeBaseId, displayName) => request(`knowledge/${encode(knowledgeBaseId)}`, {
+        method: 'PUT',
+        body: { displayName },
+    }),
     deleteKnowledge: knowledgeBaseId => request(`knowledge/${encode(knowledgeBaseId)}`, { method: 'DELETE' }),
 
     preflightSave: data => request('saves/preflight', {
