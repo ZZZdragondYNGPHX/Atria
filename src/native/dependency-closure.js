@@ -87,6 +87,7 @@ export async function resolveProjectDependencyClosure({
     const knowledge = new Map();
     const bindings = new Map();
     const assets = new Map();
+    const projectAssetIds = new Set((source.assetFiles || []).map(item => item.assetId));
 
     const addKnowledgeSnapshot = (snapshot) => {
         const parsed = assertPackagedKnowledgeSnapshot(snapshot);
@@ -244,7 +245,7 @@ export async function resolveProjectDependencyClosure({
             if (!bindings.has(bindingId)) await loadBinding(bindingId);
         }
         for (const assetId of snapshot.revision.assetIds) {
-            if (!assets.has(assetId)) await loadAsset(assetId);
+            if (!assets.has(assetId) && !projectAssetIds.has(assetId)) await loadAsset(assetId);
         }
     }
 
