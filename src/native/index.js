@@ -102,3 +102,16 @@ export {
 
 export { SessionCore } from './session-core.js';
 export { resolveSessionKnowledge, validateKnowledgeBindingSet } from './session-knowledge.js';
+
+export {
+    ATRIA_SAVE_CONTAINER_FORMAT,
+    ATRIA_SAVE_CONTAINER_LIMITS,
+    ATRIA_SAVE_CONTAINER_MAGIC,
+    ATRIA_SAVE_CONTAINER_VERSION,
+    buildAtriaSaveContainer,
+    hashAtriaSaveContainer,
+    inspectAtriaSaveContainer,
+    preflightAtriaSaveContainer,
+} from './save-container.js';
+
+export { NativeSaveSystem } from './save-system.js';
