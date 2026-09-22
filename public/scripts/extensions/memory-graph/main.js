@@ -16268,15 +16268,30 @@ jQuery(() => {
     ]) {
         onNativeSessionLifecycle(lifecycle, refreshNativeMemoryRevisionState);
     }
-    onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, event => {
+    onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, async event => {
         if (!nativeSessionRuntime.active) return;
         const appended = new Set(Array.isArray(event?.messageIds) ? event.messageIds : []);
         const runtimeContext = getContext();
-        const hasAssistant = (runtimeContext?.chat || []).some(message =>
-            appended.has(String(message?.atri_native?.messageId || ''))
-            && !message?.is_user
-            && !message?.is_system);
-        if (hasAssistant) scheduleExtraction(runtimeContext);
+        const assistantFloors = (runtimeContext?.chat || [])
+            .map((message, floor) => ({ message, floor }))
+            .filter(({ message }) =>
+                appended.has(String(message?.atri_native?.messageId || ''))
+                && !message?.is_user
+                && !message?.is_system)
+            .map(({ floor }) => floor);
+        if (!assistantFloors.length) return;
+
+        // N7 cheap-ingest path: provenance/source capture is deterministic and
+        // performs no model call. Heavy semantic extraction is decided later
+        // by runScheduledExtractionPass through the Derivation Gate.
+        if (isMemoryOsEnabled(getEffectiveSettings(runtimeContext, getSettings()))) {
+            try {
+                await sourceLifecycle.capture(runtimeContext, assistantFloors);
+            } catch (error) {
+                console.warn(`[${MODULE_NAME}] Native cheap Memory ingest failed; raw Timeline remains authoritative`, error);
+            }
+        }
+        scheduleExtraction(runtimeContext);
     });
 
     const wiBeforeEvent = context.eventTypes.GENERATION_BEFORE_WORLD_INFO_SCAN;
