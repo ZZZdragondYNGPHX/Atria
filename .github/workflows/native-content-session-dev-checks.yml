@@ -30,6 +30,7 @@ jobs:
           npm run test:unit --prefix tests --
           --runInBand
           native/contracts.test.js
+          native/world-knowledge.test.js
       - name: Run N0 adjacent regressions
         run: >-
           npm run test:unit --prefix tests --
