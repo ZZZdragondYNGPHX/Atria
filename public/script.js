@@ -12782,6 +12782,16 @@ export async function setVariable(name, value, options = {}) {
     if (!Number.isInteger(messageId) || messageId < 0 || messageId >= chat.length) {
         throw new Error(`[setVariable] floor ${floorOption} out of range (chat length ${chat.length})`);
     }
+    // The legacy API keeps accepting a numeric message index, but Native
+    // authority binds the operation to the projected messageId and persists
+    // only the resulting atri_variables Revision state. pushFloorVarOp()
+    // deliberately does not mutate committed message/swipe data in Native.
+    const nativeMessageId = nativeSessionRuntime.active
+        ? String(chat[messageId]?.atri_native?.messageId || '').trim()
+        : '';
+    if (nativeSessionRuntime.active && !nativeMessageId) {
+        throw new Error('[setVariable] Native floor must resolve to a committed messageId');
+    }
     const dot = name.indexOf('.');
     /** @type {import('./scripts/variable-op-log/apply.js').VarOp} */
     const op = dot >= 0
