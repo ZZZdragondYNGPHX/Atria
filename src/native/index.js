@@ -99,3 +99,6 @@ export {
     StudioPreviewHost,
     StudioProjectRouter,
 } from './studio-preview.js';
+
+export { SessionCore } from './session-core.js';
+export { resolveSessionKnowledge, validateKnowledgeBindingSet } from './session-knowledge.js';

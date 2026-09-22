@@ -46,7 +46,7 @@ jobs:
         run: npm run lint
 
   n1-storage:
-    name: N1 Native Storage Foundation
+    name: N1 Storage + N3 Session Core
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -99,6 +99,16 @@ jobs:
           storage/engines/postgres-schema.test.js
           storage/engines/dump-restore.parity.test.js
           storage/engines/delete-user.parity.test.js
+      - name: Run N3 Native Session Core and Checkpoint A
+        env:
+          ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/session-core.contract.test.js
+          native/session-durability.test.js
+          native/session-knowledge.test.js
       - name: Run N1 source lint
         run: >-
           npx eslint

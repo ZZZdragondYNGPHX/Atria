@@ -10,11 +10,31 @@ import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import {
     cloneNativeDocument,
+    hashNativeDocument,
     getNativeDocument,
     listNativeDocuments,
     putImmutable,
     putMutable,
 } from './common.js';
+
+import {
+    SESSION_CORE_NAMESPACE, readCheckedDocument, readSessionSnapshot,
+} from '../session-snapshot.js';
+
+// FS transactions are commit-last, not rollback transactions. Serialize publication
+// across repo/engine instances in the server process, then perform HEAD CAS. SQL
+// also retains its native transaction/CAS protection. Multi-process FS writers are
+// not supported by the storage engine.
+const sessionWrites = new Map();
+async function withSessionWrite(handle, sessionId, operation) {
+    const key = JSON.stringify([handle, sessionId]);
+    const previous = sessionWrites.get(key) || Promise.resolve();
+    const next = previous.catch(() => {}).then(operation);
+    sessionWrites.set(key, next);
+    try { return await next; } finally {
+        if (sessionWrites.get(key) === next) sessionWrites.delete(key);
+    }
+}
 
 export class SessionRepo {
     constructor({ engine }) {
@@ -46,6 +66,13 @@ export class SessionRepo {
         return { kind: NATIVE_RESOURCE_KINDS.sessionRevision, handle, sessionId, revisionId };
     }
 
+    async _isCoreSession(tx, handle, sessionId) {
+        const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
+        if (!session?.headRevisionId) return false;
+        const revision = await getNativeDocument(tx, this._revisionKey(handle, sessionId, session.headRevisionId));
+        return Boolean(revision?.stateHeads?.[SESSION_CORE_NAMESPACE]);
+    }
+
     async get(handle, sessionId) {
         return this._engine.withTransaction(handle, tx => getNativeDocument(tx, this._sessionKey(handle, sessionId)));
     }
@@ -72,12 +99,12 @@ export class SessionRepo {
     async save(handle, value, options = {}) {
         assertWritable();
         const session = assertSession(value);
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            this._sessionKey(handle, session.sessionId),
-            session,
-            options,
-        ));
+        return this._engine.withTransaction(handle, async tx => {
+            if (await this._isCoreSession(tx, handle, session.sessionId)) {
+                throw new ConflictError('native_session_requires_snapshot');
+            }
+            return putMutable(tx, this._sessionKey(handle, session.sessionId), session, options);
+        });
     }
 
     async getBranch(handle, sessionId, branchId) {
@@ -99,12 +126,12 @@ export class SessionRepo {
     async saveBranch(handle, value, options = {}) {
         assertWritable();
         const branch = assertBranch(value);
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            this._branchKey(handle, branch.sessionId, branch.branchId),
-            branch,
-            options,
-        ));
+        return this._engine.withTransaction(handle, async tx => {
+            if (await this._isCoreSession(tx, handle, branch.sessionId)) {
+                return putImmutable(tx, this._branchKey(handle, branch.sessionId, branch.branchId), branch);
+            }
+            return putMutable(tx, this._branchKey(handle, branch.sessionId, branch.branchId), branch, options);
+        });
     }
 
     async getTimelineEntry(handle, sessionId, branchId, messageId) {
@@ -129,12 +156,12 @@ export class SessionRepo {
     async saveTimelineEntry(handle, value, options = {}) {
         assertWritable();
         const entry = assertTimelineEntry(value);
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            this._timelineKey(handle, entry.sessionId, entry.branchId, entry.messageId),
-            entry,
-            options,
-        ));
+        return this._engine.withTransaction(handle, async tx => {
+            if (await this._isCoreSession(tx, handle, entry.sessionId)) {
+                return putImmutable(tx, this._timelineKey(handle, entry.sessionId, entry.branchId, entry.messageId), entry);
+            }
+            return putMutable(tx, this._timelineKey(handle, entry.sessionId, entry.branchId, entry.messageId), entry, options);
+        });
     }
 
     async getVariant(handle, sessionId, messageId, variantId) {
@@ -214,6 +241,9 @@ export class SessionRepo {
             const sessionKey = this._sessionKey(handle, revision.sessionId);
             const session = await getNativeDocument(tx, sessionKey);
             if (!session) throw new NotFoundError('native session', { sessionId: revision.sessionId });
+            if (await this._isCoreSession(tx, handle, revision.sessionId)) {
+                throw new ConflictError('native_session_requires_snapshot');
+            }
             const branch = await getNativeDocument(
                 tx,
                 this._branchKey(handle, revision.sessionId, revision.branchId),
@@ -240,6 +270,105 @@ export class SessionRepo {
         });
     }
 
+    // N3 coherent publication. Every dependency is immutable and checked before
+    // publishing the revision manifest; the Session record is the final commit marker.
+    async commitSnapshot(handle, { session: sessionValue, revision: revisionValue,
+        branches = [], entries = [], variants = [], states, expectedRevisionId }) {
+        assertWritable();
+        const session = assertSession(sessionValue);
+        const revision = assertSessionRevision(revisionValue);
+        if (session.headRevisionId !== revision.revisionId || session.activeBranchId !== revision.branchId) {
+            throw new TypeError('Session HEAD must match committed Revision');
+        }
+        return withSessionWrite(handle, session.sessionId, () => this._engine.withTransaction(handle, async tx => {
+            const key = this._sessionKey(handle, session.sessionId);
+            const existing = await tx.getResource(key);
+            if (expectedRevisionId === undefined || (existing?.doc.headRevisionId ?? null) !== expectedRevisionId
+                || (!existing && expectedRevisionId !== null)) {
+                throw new ConflictError('native_session_head_conflict', { sessionId: session.sessionId });
+            }
+            if (existing) {
+                for (const field of ['sessionId', 'packageId', 'packageVersionId', 'packageVersion',
+                    'packageContentHash', 'entryPointId', 'createdAt']) {
+                    if (existing.doc[field] !== session[field]) throw new TypeError('Session dependency identity is immutable');
+                }
+            }
+            for (const value of branches) {
+                const branch = assertBranch(value);
+                if (branch.sessionId !== session.sessionId) throw new TypeError('Branch Session mismatch');
+                await putImmutable(tx, this._branchKey(handle, session.sessionId, branch.branchId), branch);
+            }
+            for (const value of variants) {
+                const variant = assertVariant(value);
+                if (variant.sessionId !== session.sessionId) throw new TypeError('Variant Session mismatch');
+                await putImmutable(tx, this._variantKey(handle, session.sessionId, variant.messageId, variant.variantId), variant);
+            }
+            for (const value of entries) {
+                const entry = assertTimelineEntry(value);
+                if (entry.sessionId !== session.sessionId) throw new TypeError('Timeline Session mismatch');
+                await putImmutable(tx, this._timelineKey(handle, session.sessionId, entry.branchId, entry.messageId), entry);
+            }
+            for (const [namespace, value] of Object.entries(states)) {
+                await putImmutable(tx, this._stateKey(handle, session.sessionId, namespace, hashNativeDocument(value)), value);
+            }
+            const snapshot = await readSessionSnapshot(tx, handle, session, revision);
+            if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
+            await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
+            await putMutable(tx, key, session, { expectedIntegrity: existing?.integrity ?? null });
+            return snapshot;
+        }));
+    }
+
+    async _reachableRevisions(tx, handle, sessionId) {
+        const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
+        const pending = session?.headRevisionId ? [session.headRevisionId] : [];
+        for (const save of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId })) {
+            pending.push(save.doc.revisionId);
+        }
+        const reachable = new Set();
+        while (pending.length) {
+            const revisionId = pending.pop();
+            if (reachable.has(revisionId)) continue;
+            reachable.add(revisionId);
+            const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+            const coreHead = revision.stateHeads?.[SESSION_CORE_NAMESPACE];
+            if (!coreHead) continue; // N1 low-level storage fixtures have no N3 snapshot.
+            const core = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, coreHead));
+            if (hashNativeDocument(core) !== coreHead) throw new Error('Session Core head integrity mismatch');
+            if (core.parentRevisionId) pending.push(core.parentRevisionId);
+            for (const node of core.branches) {
+                pending.push(node.headRevisionId);
+                if (node.forkRevisionId) pending.push(node.forkRevisionId);
+            }
+        }
+        return reachable;
+    }
+
+    async isCommittedRevision(handle, sessionId, revisionId) {
+        return this._engine.withTransaction(handle, async tx => {
+            const target = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+            if (!target?.stateHeads?.[SESSION_CORE_NAMESPACE] && !await this._isCoreSession(tx, handle, sessionId)) return true;
+            return (await this._reachableRevisions(tx, handle, sessionId)).has(revisionId);
+        });
+    }
+
+    async loadSnapshot(handle, sessionId, { revisionId = null } = {}) {
+        return this._engine.withTransaction(handle, async tx => {
+            const session = assertSession(await readCheckedDocument(tx, this._sessionKey(handle, sessionId)));
+            if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
+            const target = revisionId || session.headRevisionId;
+            if (!target) throw new NotFoundError('committed native session revision', { sessionId });
+            if (revisionId && !(await this._reachableRevisions(tx, handle, sessionId)).has(revisionId)) {
+                throw new NotFoundError('committed native session revision', { sessionId, revisionId });
+            }
+            const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, target));
+            if (revision.revisionId !== target || (!revisionId && revision.branchId !== session.activeBranchId)) {
+                throw new TypeError('Session HEAD identity mismatch');
+            }
+            return readSessionSnapshot(tx, handle, session, revision);
+        });
+    }
+
     async _revisionReferences(tx, handle, sessionId, revisionId) {
         const references = [];
         const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
@@ -258,6 +387,9 @@ export class SessionRepo {
                 });
             }
         }
+        if (!references.length && (await this._reachableRevisions(tx, handle, sessionId)).has(revisionId)) {
+            references.push({ kind: 'session-history', sessionId });
+        }
         return references;
     }
 
@@ -272,7 +404,7 @@ export class SessionRepo {
 
     async deleteRevision(handle, sessionId, revisionId) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
             const references = await this._revisionReferences(tx, handle, sessionId, revisionId);
             if (references.length) {
                 throw new ConflictError('native_session_revision_referenced', {
@@ -282,13 +414,13 @@ export class SessionRepo {
                 });
             }
             return tx.deleteResource(this._revisionKey(handle, sessionId, revisionId));
-        });
+        }));
     }
 
     async gcRevisions(handle, sessionId, { retainRevisionIds = [] } = {}) {
         assertWritable();
         const retained = new Set(retainRevisionIds);
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
             const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
             if (session?.headRevisionId) retained.add(session.headRevisionId);
             for (const savePoint of await tx.listResources({
@@ -299,6 +431,7 @@ export class SessionRepo {
                 if (savePoint.doc?.revisionId) retained.add(savePoint.doc.revisionId);
             }
 
+            for (const revisionId of await this._reachableRevisions(tx, handle, sessionId)) retained.add(revisionId);
             const deleted = [];
             for (const record of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.sessionRevision,
@@ -310,12 +443,16 @@ export class SessionRepo {
                 if (await tx.deleteResource(record.key)) deleted.push(revisionId);
             }
             return deleted;
-        });
+        }));
     }
 
     async deleteBranch(handle, sessionId, branchId) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+            for (const revisionId of await this._reachableRevisions(tx, handle, sessionId)) {
+                const revision = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+                if (revision.branchId === branchId) throw new ConflictError('native_session_branch_referenced');
+            }
             for (const record of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.timelineEntry,
                 handle,
@@ -325,12 +462,12 @@ export class SessionRepo {
                 await tx.deleteResource(record.key);
             }
             return tx.deleteResource(this._branchKey(handle, sessionId, branchId));
-        });
+        }));
     }
 
     async delete(handle, sessionId) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
             for (const kind of [
                 NATIVE_RESOURCE_KINDS.savePoint,
                 NATIVE_RESOURCE_KINDS.sessionRevision,
@@ -344,6 +481,6 @@ export class SessionRepo {
                 }
             }
             return tx.deleteResource(this._sessionKey(handle, sessionId));
-        });
+        }));
     }
 }

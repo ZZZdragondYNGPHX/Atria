@@ -17,7 +17,7 @@ function keyKnowledge(knowledgeBaseId, knowledgeRevisionId) {
     return knowledgeBaseId + '@' + knowledgeRevisionId;
 }
 
-function validateRequiredEntryGraph(snapshot) {
+export function validateRequiredEntryGraph(snapshot) {
     const entries = new Map(snapshot.entries.map(entry => [entry.knowledgeEntryId, entry]));
     for (const entry of snapshot.entries) {
         for (const field of ['requiredEntryIds', 'relatedEntryIds']) {

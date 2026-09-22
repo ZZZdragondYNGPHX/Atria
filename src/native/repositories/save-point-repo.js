@@ -1,3 +1,4 @@
+import { SessionRepo } from './session-repo.js';
 import { NATIVE_RESOURCE_KINDS, assertSavePoint } from '../contracts.js';
 import { NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
@@ -32,6 +33,9 @@ export class SavePointRepo {
     async create(handle, value) {
         assertWritable();
         const savePoint = assertSavePoint(value);
+        if (!await new SessionRepo({ engine: this._engine }).isCommittedRevision(handle, savePoint.sessionId, savePoint.revisionId)) {
+            throw new NotFoundError('committed native session revision', { revisionId: savePoint.revisionId });
+        }
         return this._engine.withTransaction(handle, async (tx) => {
             const revision = await getNativeDocument(tx, {
                 kind: NATIVE_RESOURCE_KINDS.sessionRevision,
