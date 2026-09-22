@@ -1,83 +1,83 @@
-# Active checkpoint: Native architecture refactor integrated
+# Active checkpoint: Native Authoring Platform refactor ready for A0
 
 ## Status
 
-**Atria Native Content & Session Architecture Refactor N0–N10 is complete, fully validated, and merged into `main`. Do not redo N0–N10.**
+**Atria Native Content & Session Architecture N0–N10 is complete and remains frozen. A new hard-cutover refactor has completed design and is ready to start A0 implementation.**
 
-- Final refactor HEAD: `7391fd7fb7868d7c5a2816ac922dea2142175a92`
-- Final Native workflow: **Native Content Session Dev Checks #245**
-- Run: `35749007807`
-- Result: **success**
-- Final PR: **#83**
-- Integrated `main` HEAD: `fd9a493c9040b32f4892bd92531030e58b066244`
-- PR checks:
-  - Atria PR Checks #782 — success
-  - Workspace UI #202 — success
-  - Immersive Experience #49 — success
-  - Worldbook Performance Foundation #390 — success
-- Formal record: `refactor/atria-native-content-session-architecture.md`
-- Detailed record: `handoff/atria-native-content-session-architecture.md`
+New task:
 
-## Final validation
+**Atria Native Authoring Platform & Product Frontend Refactor**
 
-Final HEAD `7391fd7fb7868d7c5a2816ac922dea2142175a92` passed:
+- Baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
+- Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
+- Branch was created directly from the baseline above.
+- Implementation status: **not started**
+- Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
+- Detailed handoff: `handoff/atria-native-authoring-platform-product-frontend.md`
 
-- N0–N9 phase gates: success
-- N10 focused regression: **5 suites / 69 tests**
-- N10 residual guard: **39 authority files scanned**
-- N10 R7 Shell unit regression: **13 suites / 58 tests**
-- N10 R7 Shell Chromium regression: **4 passed**
-- complete Node regression: **758 suites / 8805 tests**
-- frontend webpack build: success
-- Worldbook focused regression: **22 suites / 255 tests**
-- legacy World Info ABI acceptance: **20 passed**
-- modern World Info Workspace acceptance: **3 passed**
-- mobile World Info startup/layout stress: **3/3 passed**
+Do not redo N0–N10 and do not redesign the new task from scratch.
 
-## Frozen authority boundary
+## Frozen direction
 
-Active Native authority remains:
+This is a hard cutover, not a compatibility upgrade.
 
-- Package / PackageVersion / EntryPoint
-- World / WorldRevision
-- KnowledgeBase / KnowledgeRevision / KnowledgeEntry / KnowledgeBinding
-- ProjectStore
-- Session / Branch
-- immutable TimelineEntry + single birth Variant
-- SessionRevision
-- SavePoint / `.atriasave`
-- SessionRevision-backed runtime and derived state
-- bounded ContextPlan with source provenance
+Key frozen decisions:
 
-Retired Native authorities remain retired:
+- primary product domains become Play / Library / Build / Agents / Runtime;
+- Studio becomes the project workspace inside Build;
+- Experience is explicitly Text / Component / Hybrid / Full;
+- Component / Hybrid / Full share one component model;
+- World / Knowledge / worldbook authoring is a first-class game-asset workflow;
+- Library supports reusable asset attachment/forking with exact immutable revisions;
+- Resource Graph is derived only, never a second authority;
+- Human editors and Project Agent share Authoring Operations / Workspace / ChangeSet;
+- Plugin and Skill are separate concepts;
+- package runtime v1 executes no arbitrary package JavaScript;
+- `game.json`, charId game-package identity, swipe-derived game-world branches and Chat State game-world authority are retired through the new Runtime Descriptor + Native Session model;
+- old CardApp Studio / `/api/card-app/*` / old Studio AI paths are migrated for useful capability and then deleted without compatibility aliases;
+- official product surfaces converge on an Atria-native Product UI System;
+- final Play UI must stop depending on reparented SillyTavern chat/composer DOM as the official product implementation.
 
-- Character PNG/JSON/CharX/BYAF product identity
-- Character/Game Library authority
-- CardApp identity for Native projected Character
-- JSONL chat / Manage Chat Files / Checkpoint Chat
-- legacy World Info file/name/numeric-uid identity
-- WorldInfoRepo as Native authority
-- committed Swipe/Variant switching
-- committed in-place Edit/Delete/Regenerate
-- FloorState / structural-event Native authority
+## Implementation phases
 
-Mature SillyTavern Character / generation / World Info machinery may remain behind adapters for legacy/non-Native behavior and runtime ABI only.
+Use the same branch for all phases:
 
-## Integration hardening
+- A0 — Contracts & Hard-cutover Guards
+- A1 — Native Authoring Backend
+- A2 — Library & Resource Architecture
+- A3 — Native Game Runtime Cutover
+- A4 — Experience Runtime
+- A5 — Plugin & Skill Platform
+- A6 — Native Product Frontend
+- A7 — Studio Authoring UX
+- A8 — Project Agent / Vibe Coding
+- A9 — Hard Cutover & Product Finalization
 
-The final PR included World Info acceptance/mobile hardening required by the N9/N10 product cutover:
-
-- old Character / World Info behavior tests use explicit legacy recovery;
-- modern Atria product routing stays on Native Worlds & Knowledge;
-- embedded World Info has an explicit mobile-safe flex/visibility contract;
-- mobile acceptance is stress-run three times.
-
-The hardening does not introduce a second Native persistence/content/timeline authority.
+After every phase: validate, commit/push, update docs/handoff, stop, and provide the next-phase takeover prompt. Do not create a new phase branch and do not merge `main` until the entire refactor reaches final integration.
 
 ## Next action
 
-The implementation branch is no longer needed. After this handoff update, delete:
+Start **A0 — Contracts & Hard-cutover Guards** only.
 
-`refactor/atria-native-content-session-architecture`
+Before editing, re-read:
 
-Future work should start from current `main@fd9a493c9040b32f4892bd92531030e58b066244` using the normal task-branch conventions.
+1. `main:AGENTS.md`
+2. `main:FORK_MAINTENANCE.md`
+3. this latest handoff
+4. `docs:refactor/atria-native-authoring-platform-product-frontend.md`
+5. `docs:handoff/atria-native-authoring-platform-product-frontend.md`
+
+Fetch the implementation branch and use its actual latest HEAD.
+
+A0 should freeze/test:
+
+- Experience contract;
+- Resource Descriptor / Registry contracts;
+- Authoring Operation / Workspace / ChangeSet contracts;
+- project revision/conflict semantics;
+- Runtime Descriptor contract;
+- Atria Plugin + package-runtime-v1 restrictions;
+- Native Skill scope contract;
+- residual guards preventing retired authorities from reappearing.
+
+Do not start broad backend or UI implementation during A0.
