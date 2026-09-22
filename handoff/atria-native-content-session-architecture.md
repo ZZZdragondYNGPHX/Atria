@@ -2,87 +2,94 @@
 
 ## Current state
 
-The original Package/Session architecture is frozen. N0 implementation is in progress, and a newly frozen World/Knowledge extension must be added to the existing N0 contracts before N0 is considered final.
-
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- Current implementation phase: **N0 — Native Contracts & Identity**
-- Current known N0 HEAD: `6be4f7e12e6c0e23faf27e2c4292823191060953`
-- Existing N0 commits must be preserved; continue forward from the live branch HEAD
+- Current phase status: **N0 — Native Contracts & Identity validated**
+- Final N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
+- Next phase: **N1 — Native Storage Foundation**
 - Formal plan: `docs:refactor/atria-native-content-session-architecture.md`
+- Implementation sequence: **N0–N9**
 
-The branch was created from the exact baseline above. N0 now contains the initial Native contracts, lint cleanup and expanded N0 CI validation. Do not reset to the creation baseline.
+Do not merge to `main` yet. This long-lived refactor branch remains isolated through N9.
 
-## Frozen decisions
+## N0 completed
 
-- Replace Character Card as Atria's top-level product object with Package.
-- Actors are assets/entities inside a Package.
-- `.atria` becomes the Native Package distribution artifact.
-- `.atriasave` becomes the Native portable Session/save artifact.
-- Session is an entire run; Timeline is message history; SavePoint is a revision-backed save.
-- PackageRepo / AssetStore / SessionRepo / SavePointRepo / ProjectStore are separate authorities.
-- Stable opaque IDs replace filename/name/`charDir`/message-index identity.
-- Installed Package versions are immutable.
-- Studio Source Project is separate from installed Package.
-- SessionRevision provides a coherent multi-state commit point.
-- Branch/Checkpoint chat-file copies are replaced by BranchGraph + SavePoint semantics.
-- Native data does not dual-read/dual-write/fallback to old PNG/JSONL persistence.
-- Old local data migration is not guaranteed and must not shape the Native schema.
-- SillyTavern is retained as a runtime ABI behind a one-way compatibility adapter.
-- R7 Shell primary domains remain Play / Library / Studio / Agents / Runtime.
-- World / Knowledge are now first-class Native content assets rather than filename-scoped World Info authority.
-- World uses stable World + immutable WorldRevision identity; Knowledge uses KnowledgeBase + immutable KnowledgeRevision + stable KnowledgeEntry identity.
-- Knowledge scope is expressed by KnowledgeBinding, not `global` / character / character_aux / chat ownership.
-- Package/World Knowledge is canonical immutable baseline; current truth belongs to Session World State/Event Journal.
-- Library Knowledge is revisioned and running Sessions pin exact revisions until explicit upgrade.
-- Knowledge authority is separate from priority; Memory and augment content cannot override current State or deterministic Runtime mechanics.
-- Package Build vendors exact World/Knowledge dependency snapshots into PackageVersion, so runtime does not depend on live Library content.
-- The mature World Info selection engine should initially be reused behind a Native Knowledge Runtime Adapter; do not rewrite keyword/regex/vector/sticky/cooldown/delay without a concrete need.
-- No UI cutover before the Native Store + runtime adapter + Native Knowledge runtime + save system are proven.
+N0 froze and implemented:
 
-## Implementation sequence
+- opaque Native IDs for Package / PackageVersion / Actor / EntryPoint / Project / Session / Branch / TimelineEntry / Variant / SessionRevision / SavePoint / AssetRef;
+- World IDs: `world_*`, `worldv_*`;
+- Knowledge IDs: `kb_*`, `kbv_*`, `kentry_*`, `kbind_*`;
+- Native entity and identity invariants;
+- Package v2 logical manifest/schema;
+- `.atriasave v1` logical manifest/schema;
+- capability / permission vocabularies;
+- Native Store schema v1 resource identities;
+- World / immutable WorldRevision;
+- KnowledgeBase / immutable KnowledgeRevision / stable KnowledgeEntry / KnowledgeBinding;
+- optional Knowledge discovery / applicability / lifecycle / relations / delivery semantics;
+- immutable Package World/Knowledge snapshots and reference-integrity checks;
+- EntryPoint `worldIds[]`, optional `primaryWorldId`, `knowledgeBindingIds[]`;
+- SessionRevision `knowledgeHead` for resolved Knowledge dependency pinning;
+- first-class Native Store World/Knowledge families and resource keys;
+- guards rejecting name/filename/path/index identity, World Info numeric `uid`, world/book name identity, and character/chat/global Knowledge scope as Native authority.
 
-- N0 Native Contracts & Identity
-- N1 Native Storage Foundation
-- N2 Package / Project / World & Knowledge Composition
-- N3 Native Session Core
-- N4 SillyTavern Runtime Projection
-- N5 Native Runtime State Integration
-- N6 Native Knowledge Runtime Integration
-- N7 Save System & `.atriasave`
-- N8 Product UI Cutover
-- N9 Hard Cutover & Legacy Retirement
+Important N0 boundaries:
 
-Checkpoint A: after N3, prove pure Native Package → Session → Timeline → Branch → Revision without PNG/JSONL authority and with exact World/Knowledge dependencies pinned.
+- Package/World Knowledge is immutable authored canon, not current Session truth.
+- current World state and Event Journal remain Session authority.
+- Library Knowledge revisions are immutable and Sessions must pin exact revisions.
+- Knowledge `augment`/`override` never grants deterministic Runtime/current-state authority.
+- Project/Package/Library/Session Knowledge lifecycles remain distinct.
+- mature World Info selection machinery is not replaced in N0.
 
-Checkpoint K: after N6, prove Knowledge authority, revision pinning, visibility, identity preservation and State-over-stale-Knowledge semantics.
+## Validation
 
-Checkpoint B: after N7, prove restart/save/load/export/import consistency across World/Knowledge/Memory/Orchestrator/Branch/Variant state before UI cutover.
+- Workflow: **Native Content Session Dev Checks #12**
+- Run: `35673592841`
+- Result: **success**
+- Native contract suites: **2 passed / 52 tests passed**
+- Adjacent `.atria` / Game Runtime package/session / Storage naming suites: **5 passed / 42 tests passed**
+- `src/native/*.js` ESLint: success
+- full root ESLint: success
+- Android/Docker: not run; not required by N0 touched surfaces
 
-## N0 World / Knowledge incremental change
+## Do not redo
 
-The current N0 implementation through `6be4f7e12e6c0e23faf27e2c4292823191060953` remains valid. Do not revert it.
+- Do not recreate N0 IDs or parallel schemas.
+- Do not restore arbitrary Package `worlds` / `knowledge` JSON slots.
+- Do not restore EntryPoint `world` payloads.
+- Do not use World/Knowledge names, files, `uid`, character/chat scope, or array indexes as Native identity.
+- Do not put Native World/Knowledge runtime authority into `named_docs`.
+- Do not introduce PNG/JSONL/World Info fallback authority.
 
-Before N0 final validation / N1:
+## N1 target
 
-- add Native ID families for World, WorldRevision, KnowledgeBase, KnowledgeRevision, KnowledgeEntry and KnowledgeBinding;
-- add strong Native contracts for those entities;
-- replace arbitrary Package `worlds` / `knowledge` JSON slots with validated immutable Package snapshot contracts;
-- update EntryPoint to reference Package World IDs / primary World and KnowledgeBinding IDs rather than embedding arbitrary World payloads;
-- add a resolved Knowledge binding-set reference/head to SessionRevision;
-- reserve Native Store schema-v1 resource kinds/families for Library World/Knowledge authorities;
-- add tests proving old World Info name/filename/`uid`/character-chat-global scope is not Native identity or ownership.
+N1 implements the storage foundation only:
 
-## Next action
+- PackageRepo;
+- WorldRepo for **Library World authority only**;
+- KnowledgeRepo for **Library Knowledge authority only**;
+- SessionRepo skeleton/records;
+- SavePointRepo;
+- AssetStore;
+- Native StorageTransaction resource kinds;
+- FS / SQLite / MySQL / PostgreSQL parity;
+- immutable revision and commit-last primitives;
+- World/Knowledge revision/reference/GC primitives;
+- focused contract / round-trip / chaos coverage.
 
-Continue N0 from the live branch HEAD. Do not redesign the product model and do not create another task branch.
+WorldRepo must not own Package World snapshots or Session World state. KnowledgeRepo must not own Package Knowledge snapshots or Session-local Knowledge.
 
-Read, in order:
+## Start N1 by reading
 
 1. `main:AGENTS.md`
 2. `main:FORK_MAINTENANCE.md`
 3. `docs:handoff/latest-handoff.md`
-4. `docs:refactor/atria-native-content-session-architecture.md`
+4. `docs:handoff/atria-native-content-session-architecture.md`
+5. `docs:refactor/atria-native-content-session-architecture.md`
+6. current `src/native/*`
+7. current `src/storage/engines/types.js`
+8. current engine implementations / transaction layers / parity harnesses
 
-Then inspect the live working branch and implement the N0 World/Knowledge contract extension before declaring N0 final.
+Preserve `refactor/atria-native-content-session-architecture@e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6` as the validated N0 baseline. Continue on the same branch; do not create another task branch.
