@@ -225,7 +225,12 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
             expect(attachment.ref).toEqual(ref);
             expect(attachment.bytes).toEqual(bytes);
             expect(fs.readdirSync(target.chatsDir)).toEqual([]);
+            expect(fs.readdirSync(target.chatsDir).some(name => name.endsWith('.jsonl'))).toBe(false);
             expect(fs.readdirSync(target.charsDir)).toEqual([]);
+            const worldInfoFiles = fs.existsSync(target.dirs.worlds)
+                ? fs.readdirSync(target.dirs.worlds)
+                : [];
+            expect(worldInfoFiles).toEqual([]);
         } finally {
             await source.cleanup();
             await target.cleanup();
