@@ -14,7 +14,6 @@
  */
 
 import {
-    getNativeMessageAt,
     getPlayableFloorAtIndex,
     getPlayableMessageAt,
     isAnchoredSnapshotStillValid,
