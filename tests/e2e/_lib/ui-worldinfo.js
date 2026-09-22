@@ -15,15 +15,28 @@ import '@playwright/test';
 export async function openWorldInfoDrawer(page) {
     const recoveryMode = await page.locator('body').getAttribute('data-atria-shell-recovery').catch(() => null);
 
-    const mountedCompatibilityWorkspace = recoveryMode === 'legacy'
-        ? false
-        : await page.evaluate(async () => {
-        // N9/N10 route the product World Info entry point to Native Worlds &
-        // Knowledge. These tests intentionally cover the retained mature ST
-        // World Info editor/runtime ABI, so mount that compatibility surface
-        // explicitly without reviving the retired product route. The
-        // compatibility workspace only requires the initialized ST DOM; it
-        // must not depend on R7 Shell mount timing (notably on compact/mobile).
+    if (recoveryMode === 'legacy') {
+        const icon = page.locator('#WIDrawerIcon');
+        const isClosed = await icon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
+        if (isClosed) {
+            await icon.click();
+        }
+        await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+        return;
+    }
+
+    // In the normal Atria product host, Shell startup owns/reclassifies the
+    // compatibility DOM. Mounting World Info before Shell finishes can race
+    // with that reparenting (especially on compact/mobile) and leave the
+    // editor hidden. Wait for the authoritative Shell mount first, then mount
+    // the retained mature World Info workspace ABI explicitly.
+    await page.waitForFunction(
+        () => Boolean(window.Atria?.shell?.isMounted?.()),
+        null,
+        { timeout: 30_000 },
+    );
+
+    const mountedCompatibilityWorkspace = await page.evaluate(async () => {
         const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
         let host = document.getElementById('atria-e2e-world-info-compat-host');
         if (!host) {
@@ -38,17 +51,13 @@ export async function openWorldInfoDrawer(page) {
         const api = mountWorldInfoWorkspace(host, { embedded: true });
         window.__atriaE2eWorldInfoCompatibilityMount = api || null;
         return Boolean(api);
-    }).catch(() => false);
+    });
 
     if (!mountedCompatibilityWorkspace) {
-        const icon = page.locator('#WIDrawerIcon');
-        const isClosed = await icon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
-        if (isClosed) {
-            await icon.click();
-        }
+        throw new Error('World Info compatibility workspace did not mount after Atria Shell startup');
     }
 
-    await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('#WorldInfo.openDrawer #world_popup').waitFor({ state: 'visible', timeout: 10_000 });
 }
 
 /**
