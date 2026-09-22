@@ -13,6 +13,12 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     revision: 'rev',
     savePoint: 'save',
     asset: 'asset',
+    world: 'world',
+    worldRevision: 'worldv',
+    knowledgeBase: 'kb',
+    knowledgeRevision: 'kbv',
+    knowledgeEntry: 'kentry',
+    knowledgeBinding: 'kbind',
 });
 
 const FAMILY_BY_PREFIX = Object.freeze(Object.fromEntries(
