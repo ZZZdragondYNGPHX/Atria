@@ -1,62 +1,70 @@
-# Active checkpoint: N6 validated — N7 next
+# Active checkpoint: N7 validated — N8 next
 
 ## Status
 
-**N6 — Native Knowledge Runtime Integration is complete and validated. Do not redo N0–N6.**
+**N7 — Native Context Architecture is complete and validated. Do not redo N0–N7.**
 
 - Working branch: `refactor/atria-native-content-session-architecture`
-- N6 validated HEAD: `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1`
-- Workflow: **Native Content Session Dev Checks #118**
-- Run: `35703649183`
+- N7 validated HEAD: `8fa25d1175603da905a45b9de7b8de5a8d4b776f`
+- Workflow: **Native Content Session Dev Checks #121**
+- Run: `35711043211`
 - Result: **success**
-- N0–N6 are frozen.
+- N0–N7 are frozen.
 - `main` remains untouched.
 - Continue on the same long-lived refactor branch; do not create a new branch.
 - Formal plan: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
-- N7 startup prompt: `handoff/atria-native-session-n7-prompt.md`
+- N8 startup prompt: `handoff/atria-native-session-n8-prompt.md`
 
-## N6 final boundary
+## N7 final boundary
 
-N6 established the Native Knowledge runtime layer above the exact revision-pinned binding set created in N3:
+N7 established the bounded Native Context architecture without changing canonical Session authority:
 
-- deterministic `KnowledgeCompiler` / target-aware `KnowledgePlan`;
-- authority separate from priority;
-- explicit authority classes for Runtime mechanics, current Session State, committed Event Journal, Knowledge override, Package canon, Library augment, Session augment and Memory/history evidence;
-- Package / Library / Session exact source resolution without following mutable Library current pointers;
-- Narrator / Actor / Agent / User target and visibility filtering;
-- current committed `atri_*` SessionState exposed as read-only Knowledge state providers;
-- `atri_game_world` current state and committed Event Journal precedence;
-- stale Knowledge with deterministically false current-state applicability is rejected;
-- explicit Knowledge override outranks ordinary Knowledge but still cannot bypass current-state applicability;
-- Library augment cannot displace higher-authority Package canon within explicit exclusive groups;
-- Memory/history state claims conflicting with committed current state are rejected as stale evidence;
-- required dependencies, related entries and exclusive groups preserve stable Native identities;
-- Native Knowledge candidates enter the existing World Info keyword/regex/probability/recursion/sticky/cooldown/delay machinery instead of replacing it;
-- stable Knowledge identity survives through World Info prompt provenance even when rendered bodies are identical;
-- Native World Info state-event baselines use revision/branch/message identity and SessionState instead of floor/swipe authority;
-- generation-local state-event baselines are Draft-local and commit atomically with an accepted Assistant Timeline append; Stop/abort discards them;
-- exact Library Knowledge revision pinning is proven: Library N → N+1 does not move an existing Session until explicit Knowledge update creates a new SessionRevision.
+- one `SessionContextCompiler` owns the model-input budget;
+- structured `ContextProvider` / `ContextItem` / `ContextPlan` contracts;
+- model context limit → response reserve → safety/framing margin → Hard Reserve → Minimum Guarantees → Elastic Pool;
+- Runtime/System and tool-schema accounting participate in the same total budget;
+- complete token-budgeted TurnGroups instead of fixed floor counts or partial-message trimming;
+- generation-processed prompt text is used for raw token accounting while sourceRefs remain canonical Timeline identities;
+- N6 KnowledgePlan is consumed as a stable-identity Knowledge lane, with mature World Info selection retained under the Context lane cap;
+- current Native World / Game World / Event Journal state has authority above stale Knowledge/Memory evidence;
+- source-backed Narrative Spine: Scene → Chapter → Arc → Campaign;
+- Active Commitments with stable identity and explicit open/closed/superseded lifecycle;
+- Derivation Gate + bounded Turn Distiller compatibility contract;
+- Runtime/Orchestrator/Utility digest reuse before optional extra derivation;
+- Native Memory cheap provenance ingest on normal turns and gated heavy extraction/consolidation;
+- branch/revision/source provenance, derived coverage and lag diagnostics;
+- ancestor-derived Narrative/Commitments remain reusable after fork while sibling branches stay isolated;
+- stale asynchronous derived work degrades to `stale_revision` rather than poisoning Session runtime;
+- exact raw Timeline drill-down by revision/range/stable messageId;
+- Memory recall provenance can drill down to immutable raw Timeline text;
+- Narrator / Actor / Agent target isolation;
+- Economy / Balanced / Rich context policies without changing canonical data semantics;
+- Utility/provider failure is non-blocking and diagnostic;
+- canonical Timeline remains complete and immutable; Context is only a bounded derived projection.
 
-## Validation
+## Checkpoint C validation
 
-Exact HEAD `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1` passed:
+Exact HEAD `8fa25d1175603da905a45b9de7b8de5a8d4b776f` passed:
 
 - N0 Native Contracts: success;
 - N1 Storage + N3/N5 Core + N4 Projection: success;
 - N2 Package Project Composition: success;
-- N4 real-host Chromium Native Session acceptance: success;
+- N4 real-host Chromium Native Session acceptance: **4 passed**;
 - N5 Runtime State & Revision Lifecycle: success;
-- N6 Checkpoint K / Knowledge + World Info integration: **7 suites / 99 tests passed**;
-- N6 source lint: success;
+- N6 Native Knowledge Runtime Integration: success;
+- N7 Checkpoint C: **6 suites / 53 tests passed**;
+- N7 source lint: success;
 - full root lint: success;
-- complete Node regression: **749 suites / 8750 tests passed**;
+- complete Node regression: **752 suites / 8777 tests passed**;
 - frontend webpack build: success.
+
+Checkpoint C is satisfied for bounded 100 / 1,000 / 10,000+ turn contexts, raw-history retrievability, exact provenance drill-down, derived-lag fallback, target isolation, source-backed Narrative hierarchy and graceful derived-work failure.
 
 ## Next action
 
-Start **N7 — Native Context Architecture**.
+Start **N8 — Save System & `.atriasave`**.
 
-N7 owns the bounded derived model context: ContextProvider/ContextItem, SessionContextCompiler, total token-budget authority, ContextPlan diagnostics, complete TurnGroup recent history, Narrative Spine, Active Commitments, Derivation Gate, derived coverage/lag and raw Timeline drill-down.
+N8 owns Auto / Quick / Manual Save, revision-backed SavePoints, portable snapshot/full-session export/import, dependency closure, embedded Session-bound Knowledge snapshots, Narrative/Commitment/coverage persistence, optional AEAD protection and missing-dependency handling.
 
-Do not start N8 Save System / `.atriasave`, N9 Product UI Cutover or N10 Hard Cutover / Legacy Retirement early. Do not merge `main`.
+Do not start N9 Product UI Cutover or N10 Hard Cutover / Legacy Retirement early. Do not merge `main`.

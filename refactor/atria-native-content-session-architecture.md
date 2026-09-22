@@ -2001,6 +2001,48 @@ No canonical history may be removed or rewritten to satisfy model context limits
 7. Narrative hierarchy is source-backed/branch-scoped and does not replace canonical history;
 8. Utility/derived-work failure degrades gracefully without blocking main play.
 
+#### N7 validated implementation record — 2026-09-22
+
+N7 is complete and frozen at:
+
+- validated HEAD: `8fa25d1175603da905a45b9de7b8de5a8d4b776f`;
+- workflow: **Native Content Session Dev Checks #121**;
+- run: `35711043211`;
+- result: **success**.
+
+Implemented and validated:
+
+- one `SessionContextCompiler` owns total Native model-input budgeting;
+- ContextProvider / ContextItem / ContextPlan structured contracts;
+- Hard Reserve + Minimum Guarantees + Elastic Pool allocation;
+- runtime/system/tool framing accounted inside the same total budget;
+- complete token-budgeted TurnGroups with processed-prompt token accounting;
+- N6 KnowledgePlan as a stable-identity Knowledge lane with World Info lane-cap integration;
+- authoritative Native World/Game World/Event Journal context;
+- source-backed Scene → Chapter → Arc → Campaign Narrative Spine;
+- Active Commitments;
+- Derivation Gate + bounded Turn Distiller compatibility;
+- Runtime/Orchestrator/Utility result reuse;
+- Memory cheap ingest and gated heavy consolidation;
+- durable branch/revision/source provenance and derived coverage;
+- stale asynchronous derived publication degrades safely;
+- exact Timeline range/message-id drill-down;
+- Memory provenance drill-down to immutable raw Timeline;
+- Economy / Balanced / Rich policies;
+- Narrator / Actor / Agent isolation;
+- graceful non-blocking utility/provider failure.
+
+Validation:
+
+- N7 focused Checkpoint C: **6 suites / 53 tests passed**;
+- N4 real-host Chromium Native Session acceptance: **4 passed**;
+- full root lint: success;
+- complete Node regression: **752 suites / 8777 tests passed**;
+- frontend webpack build: success;
+- all prerequisite N0/N1/N2/N5/N6 jobs: success.
+
+Checkpoint C is satisfied. N8 may start from this frozen boundary.
+
 ### N8 — Save System & `.atriasave`
 
 Implement:

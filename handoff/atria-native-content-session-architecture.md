@@ -5,19 +5,21 @@
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- Current phase status: **N5 complete and validated; N6 is next**
+- Current phase status: **N7 complete and validated; N8 is next**
 - N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
 - N1 validated HEAD: `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
 - N2 validated HEAD: `bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
 - N3 validated HEAD: `c42ee3e98a27fbea97ded0917de081bcc8893680`
 - N4 validated HEAD: `ec95a260f4a26a4c23091227f77865dba1ae2273`
 - N5 validated HEAD: `70f59bf2894c77defa46d75e48c79485a4bc5d74`
-- N5 workflow: **Native Content Session Dev Checks #107**
-- N5 run: `35700429886`
-- N5 result: **success**
-- Next action: **N6 — Native Knowledge Runtime Integration**
+- N6 validated HEAD: `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1`
+- N7 validated HEAD: `8fa25d1175603da905a45b9de7b8de5a8d4b776f`
+- N7 workflow: **Native Content Session Dev Checks #121**
+- N7 run: `35711043211`
+- N7 result: **success**
+- Next action: **N8 — Save System & `.atriasave`**
 - Formal plan: `docs:refactor/atria-native-content-session-architecture.md`
-- N6 prompt: `docs:handoff/atria-native-session-n6-prompt.md`
+- N8 prompt: `docs:handoff/atria-native-session-n8-prompt.md`
 - Implementation sequence: **N0–N10**
 
 Do not merge to `main` yet. Keep the long-lived refactor branch isolated through N10.
@@ -819,3 +821,123 @@ Those belong to **N7 — Native Context Architecture**.
 N7 must consume N6 KnowledgePlan as one structured lane; it must not collapse Knowledge back into body-text-only identity, and it must preserve N5/N6 Revision/branch/source provenance.
 
 No N8 `.atriasave`, N9 UI cutover, N10 retirement or `main` merge was performed in N6.
+
+
+---
+
+## N7 implementation record — validated 2026-09-22
+
+**Status: N7 complete and validated. Stop N7 development. N8 is next.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Validated HEAD: `8fa25d1175603da905a45b9de7b8de5a8d4b776f`
+- Workflow: **Native Content Session Dev Checks #121**
+- Run: `35711043211`
+- Result: **success**
+- `main` remains untouched.
+
+### Context compiler and total budget authority
+
+N7 adds `public/scripts/native/context-compiler.js` and makes one `SessionContextCompiler` the Native model-context allocator.
+
+It now owns:
+
+- structured `ContextProvider` / `ContextItem` contracts;
+- structured `ContextPlan` diagnostics;
+- model context limit and response reserve;
+- safety/framing margin;
+- Hard Reserve;
+- per-lane Minimum Guarantees;
+- Elastic Pool allocation;
+- lane caps for Knowledge, Memory and target-specific material;
+- required runtime/system/tool accounting;
+- included/rejected items with reasons and source provenance.
+
+Authority and priority remain separate. Required runtime/current-user/current-state/critical-commitment material fails closed if the hard reserve cannot fit instead of being silently dropped.
+
+### Recent raw Timeline
+
+Native recent history is selected as complete user-led TurnGroups under token budget, not a fixed number of floors and not per-message truncation.
+
+Canonical Timeline identity/provenance remains in `sourceRefs`. Token accounting uses generation-processed prompt text so Regex/attachment/reasoning expansion cannot silently escape the Context budget.
+
+Excluded history remains immutable and retrievable from SessionRepo.
+
+### Narrative / Commitments / derived coverage
+
+N7 adds `public/scripts/native/context-derived.js` with:
+
+- source-backed Narrative Spine: Scene → Chapter → Arc → Campaign;
+- bounded higher-level summaries over lower-level artifacts;
+- Active Commitments with stable identity and open/closed/superseded state;
+- TurnDigest;
+- Derivation Gate;
+- optional bounded Turn Distiller compatibility contract;
+- Economy / Balanced / Rich policy;
+- branch/revision/source provenance and coverage.
+
+Forks may reuse inherited ancestor-derived material while sibling-branch artifacts remain isolated.
+
+If asynchronous derived work returns after the source Revision has moved, publication degrades to `stale_revision`; it does not overwrite newer authority or mark the Session fatal.
+
+### Knowledge / World Info integration
+
+N6 `KnowledgePlan` is consumed directly as the structured Knowledge lane.
+
+Selected Knowledge identities gate the mature World Info selector; the World Info subsystem receives the Context lane cap as its budget ceiling. Exact-fit candidates remain admissible while unselected Knowledge does not re-enter through body-text matching.
+
+Current `atri_game_world` or base `atri_world_state` state has higher authority than Knowledge/Memory history.
+
+### Memory scheduling
+
+Native normal turns perform cheap provenance/source ingest without an extra mandatory model call.
+
+Heavy Memory extraction/consolidation is controlled by the Derivation Gate and runs only for conflict, compaction, scene/semantic boundaries or policy thresholds. Journal semantic events are consumed as new events rather than repeatedly retriggering old scene-close events.
+
+Memory recall consumes the reserved Memory lane and records sourceRefs/token diagnostics back into ContextPlan.
+
+### Exact source drill-down
+
+SessionRepo now supports exact immutable Timeline reads by:
+
+- committed Revision;
+- sequence range;
+- stable messageId.
+
+The Native HTTP/runtime seam exposes this for Context provenance drill-down. Ancient Memory evidence can resolve through sourceRefs back to the exact raw Timeline entry.
+
+### Checkpoint C validation
+
+Exact validated HEAD `8fa25d1175603da905a45b9de7b8de5a8d4b776f`:
+
+- N0 Native Contracts: success;
+- N1 Storage + N3/N5 Core + N4 Projection: success;
+- N2 Package Project Composition: success;
+- N4 real-host Chromium acceptance: **4 passed**;
+- N5 Runtime State & Revision Lifecycle: success;
+- N6 Native Knowledge Runtime Integration: success;
+- N7 focused Checkpoint C: **6 suites / 53 tests passed**;
+- N7 source lint: success;
+- full root lint: success;
+- complete Node regression: **752 suites / 8777 tests passed**;
+- frontend webpack build: success.
+
+Checkpoint C is satisfied, including bounded 100 / 1,000 / 10,000+ turn synthetic contexts, exact excluded-history retrieval, ancient-memory provenance drill-down, derived-lag raw fallback, ContextPlan diagnostics, Narrator/Actor/Agent isolation, source-backed branch-scoped Narrative and graceful provider/derived failure.
+
+### N8 boundary
+
+N7 deliberately does not implement portable save/export/import or product UI cutover.
+
+N8 owns **Save System & `.atriasave`**:
+
+- Auto / Quick / Manual Save;
+- revision-backed SavePoints;
+- portable snapshot/full-session closure;
+- engine-independent logical serialization;
+- import/restore and dependency handling;
+- Session-bound embedded Knowledge snapshots;
+- Narrative/Commitment/derived coverage persistence;
+- optional password-protected AEAD;
+- missing-dependency UX contract.
+
+Do not start N9 UI cutover or N10 Legacy retirement during N8.
