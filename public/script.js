@@ -6364,38 +6364,24 @@ export function isStreamingEnabled() {
 }
 
 let activeGenerationTypeForStopButton = '';
-let pendingNativeGenerationEnd = false;
 
 function showStopButton(generationType = '') {
     if (typeof generationType === 'string' && generationType.length > 0) {
         activeGenerationTypeForStopButton = generationType;
     }
-    if (nativeSessionRuntime.active) pendingNativeGenerationEnd = false;
     $('#mes_stop').css({ 'display': 'flex' });
 }
 
 function hideStopButton() {
-    const wasVisible = $('#mes_stop').css('display') !== 'none';
-    if (wasVisible) {
+    // GENERATION_ENDED is the existing ST/R7 UI compatibility event. Native
+    // authority has its own commit barrier and must not redefine this event's
+    // timing in N4.
+    if ($('#mes_stop').css('display') !== 'none') {
         if (activeGenerationTypeForStopButton && activeGenerationTypeForStopButton !== 'quiet') {
             consumeEphemeralScriptInjectsForMainGeneration();
         }
         activeGenerationTypeForStopButton = '';
         $('#mes_stop').css({ 'display': 'none' });
-    }
-
-    // Native completion is a committed boundary, not merely a UI boundary.
-    // Some provider paths call unblockGeneration before the final Native
-    // persist. Suppress the public GENERATION_ENDED signal while a Draft is
-    // still active, then emit it exactly once when a later unblock observes
-    // that the Draft has committed/discarded.
-    if (nativeSessionRuntime.active && nativeSessionRuntime.generation !== null) {
-        if (wasVisible) pendingNativeGenerationEnd = true;
-        return;
-    }
-
-    if (wasVisible || pendingNativeGenerationEnd) {
-        pendingNativeGenerationEnd = false;
         eventSource.emit(event_types.GENERATION_ENDED, chat.length);
     }
 }
