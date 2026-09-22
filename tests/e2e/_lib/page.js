@@ -34,8 +34,14 @@ export async function awaitMainUI(page, baseURL) {
     page.on('pageerror', onPageError);
     page.on('console', onConsole);
 
-    if (baseURL) await page.goto(baseURL);
-    else await page.goto('/');
+    const useLegacyRecovery = process.env.ATRIA_E2E_SHELL_RECOVERY === 'legacy';
+    if (baseURL) {
+        const target = new URL(baseURL);
+        if (useLegacyRecovery) target.searchParams.set('atriaShellRecovery', 'legacy');
+        await page.goto(target.href);
+    } else {
+        await page.goto(useLegacyRecovery ? '/?atriaShellRecovery=legacy' : '/');
+    }
     const gate = page.locator('#userList .userSelect:last-child');
     try {
         await gate.waitFor({ state: 'visible', timeout: 2000 });
