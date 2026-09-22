@@ -9030,6 +9030,49 @@ async function injectMemoryPrompts(context, payload) {
         corePacket,
         focusPacket: hybrid ? hybrid.text : normalizeMultilineText(buildFocusTablesText(selectedNodes, settings, { tablePrefix: 'Recall' }, context)),
     };
+    if (nativeSessionRuntime.active) {
+        const revisionId = String(nativeSessionRuntime.snapshot?.revision?.revisionId || '');
+        const branchId = String(nativeSessionRuntime.snapshot?.revision?.branchId || '');
+        const sourceMessageIds = new Set(Array.isArray(hybrid?.sourceMessageIds) ? hybrid.sourceMessageIds : []);
+        if (sourceSnapshot?.state?.episodes) {
+            for (const node of persistentSync.alwaysInjectNodes || []) {
+                for (const episodeId of node?.memoryOsEvidence?.episodeIds || []) {
+                    for (const messageId of sourceSnapshot.state.episodes?.[episodeId]?.messageIds || []) {
+                        sourceMessageIds.add(String(messageId || ''));
+                    }
+                }
+            }
+        }
+        const packet = [blocks.corePacket, blocks.focusPacket].filter(Boolean).join('\n');
+        if (packet) {
+            const count = memoryTokenCounter(context);
+            const tokenEstimate = hybrid?.tokenCount ?? await count(packet);
+            const sourceRefs = [...sourceMessageIds].filter(Boolean).map(messageId => ({
+                kind: 'timeline',
+                messageId,
+                revisionId,
+                branchId,
+            }));
+            nativeSessionRuntime.recordContextLane('memory', [{
+                contextItemId: 'memory:recall:' + revisionId,
+                authority: 'memory_history_evidence',
+                authorityRank: 200,
+                priority: 100,
+                content: packet,
+                tokenEstimate,
+                sourceRefs: sourceRefs.length ? sourceRefs : [{
+                    kind: 'memory',
+                    memoryId: 'memory-graph-recall',
+                    revisionId,
+                    branchId,
+                }],
+                metadata: {
+                    selectedNodeIds: hybrid?.selected ?? selectedNodes.map(node => String(node?.id || '')).filter(Boolean),
+                    tokenCounting: hybrid?.tokenCounting || 'memory_token_counter',
+                },
+            }]);
+        }
+    }
     store.lastRecallProjection = {
         at: Date.now(),
         blocks,

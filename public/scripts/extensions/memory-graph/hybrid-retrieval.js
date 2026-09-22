@@ -361,7 +361,13 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
     const accessed = result.candidates.filter(doc => composition.selected.includes(doc.id)).flatMap(doc => doc.kind === 'fact'
         ? [doc.factId] : doc.kind === 'relation' ? doc.supports.map(ref => ref.factId) : []);
     if (accessed.length && snapshot.recordAccess) { await snapshot.recordAccess(accessed); guard(); }
-    return { ...composition, plan: result.plan, diagnostics,
+    const selectedDocuments = result.candidates.filter(doc => composition.selected.includes(doc.id));
+    const selectedEpisodeIds = [...new Set(selectedDocuments.flatMap(doc => doc.episodeIds || []))];
+    const sourceMessageIds = [...new Set(selectedEpisodeIds.flatMap(id =>
+        Array.isArray(snapshot.state?.episodes?.[id]?.messageIds)
+            ? snapshot.state.episodes[id].messageIds
+            : []))];
+    return { ...composition, plan: result.plan, diagnostics, sourceMessageIds,
         metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
             corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, totalMs: performance.now() - started },
         providers: corpus.providers.map(provider => ({ providerId: provider.providerId, status: provider.status })), assertCurrent: guard };

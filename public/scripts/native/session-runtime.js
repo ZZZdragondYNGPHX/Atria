@@ -15,6 +15,7 @@ import {
     compileNativeContextPlan,
     filterNativeCoreChatForContext,
     getContextLaneBudget,
+    replaceContextLaneReservation,
 } from './context-compiler.js';
 
 function copy(value) {
@@ -684,6 +685,12 @@ export class NativeSessionRuntime {
 
     contextLaneBudget(lane) {
         return getContextLaneBudget(this.lastContextPlan, lane);
+    }
+
+    recordContextLane(lane, items = []) {
+        if (!this.lastContextPlan) return null;
+        this.lastContextPlan = replaceContextLaneReservation(this.lastContextPlan, lane, items);
+        return copy(this.lastContextPlan);
     }
 
     filterCoreChatForContext(coreChat, plan = this.lastContextPlan) {

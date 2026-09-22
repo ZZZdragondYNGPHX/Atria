@@ -965,3 +965,66 @@ export function getContextLaneBudget(plan, lane) {
         minimumGuarantee: Number(usage.minimumGuarantee || 0),
     } : null;
 }
+
+
+/**
+ * Replace a deferred lane reservation with material that became available
+ * later in the same generation (for example Memory recall after WI scan).
+ * The replacement can consume only the lane reservation plus still-unspent
+ * global budget; it can never expand the total ContextPlan budget.
+ */
+export function replaceContextLaneReservation(planValue, lane, values = []) {
+    if (!planValue || planValue.schemaVersion !== CONTEXT_PLAN_SCHEMA_VERSION || !LANE_VALUES.has(lane)) {
+        throw new TypeError('Invalid ContextPlan lane replacement');
+    }
+    const plan = clone(planValue);
+    const laneUsage = plan.laneUsage?.[lane];
+    if (!laneUsage) throw new TypeError('ContextPlan lane is unavailable');
+    const reserves = plan.included.filter(item => item.lane === lane && item.metadata?.deferredReserve === true);
+    const reservedTokens = reserves.reduce((sum, item) => sum + Number(item.tokenCount || 0), 0);
+    const baseLaneTokens = Math.max(0, Number(laneUsage.tokens || 0) - reservedTokens);
+    const available = Math.max(
+        0,
+        Math.min(
+            Number(laneUsage.cap || 0) - baseLaneTokens,
+            reservedTokens + Number(plan.budget?.remainingTokens || 0),
+        ),
+    );
+    const admitted = [];
+    const rejected = [];
+    let used = 0;
+    for (const raw of Array.isArray(values) ? values : []) {
+        const normalized = normalizeContextItem({ ...raw, lane });
+        const tokenCount = Number.isFinite(Number(normalized.tokenEstimate)) && Number(normalized.tokenEstimate) > 0
+            ? Math.floor(Number(normalized.tokenEstimate))
+            : defaultCountTokens(normalized.content);
+        const item = { ...normalized, tokenCount, allocation: 'deferred_actual' };
+        if (used + tokenCount <= available) {
+            admitted.push(item);
+            used += tokenCount;
+        } else {
+            rejected.push({
+                contextItemId: item.contextItemId,
+                lane,
+                reason: 'lane_cap',
+                tokenCount,
+                sourceRefs: item.sourceRefs,
+                metadata: clone(item.metadata),
+            });
+        }
+    }
+    plan.included = [
+        ...plan.included.filter(item => !(item.lane === lane && item.metadata?.deferredReserve === true)),
+        ...admitted,
+    ];
+    plan.rejected = [...plan.rejected, ...rejected].sort((a, b) =>
+        String(a.lane).localeCompare(String(b.lane))
+        || String(a.contextItemId).localeCompare(String(b.contextItemId)));
+    laneUsage.tokens = baseLaneTokens + used;
+    laneUsage.items = plan.included.filter(item => item.lane === lane).length;
+    const oldUsed = Number(plan.budget.usedTokens || 0);
+    plan.budget.usedTokens = Math.max(0, oldUsed - reservedTokens + used);
+    plan.budget.remainingTokens = Math.max(0, Number(plan.budget.promptBudget || 0) - plan.budget.usedTokens);
+    plan.renderedWarmContext = renderWarmBlock(plan.included);
+    return Object.freeze(plan);
+}
