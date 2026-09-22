@@ -3,13 +3,13 @@
 ## Status
 
 - **Decision state:** product / data / storage / runtime / UX direction frozen
-- **Implementation state:** not started
+- **Implementation state:** N0 in progress; existing Native contracts are implemented through `refactor/atria-native-content-session-architecture@6be4f7e12e6c0e23faf27e2c4292823191060953`, but N0 is not final until the World/Knowledge contract extension is implemented and validated
 - **Authoritative development baseline:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Working branch:** `refactor/atria-native-content-session-architecture`
 - **Branch creation point:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Document branch:** `docs`
-- **Implementation phases:** N0–N8
-- **Merge policy:** keep the long-lived refactor branch isolated until the complete Native Package/Session cutover is validated; merge to `main` only after N8.
+- **Implementation phases:** N0–N9
+- **Merge policy:** keep the long-lived refactor branch isolated until the complete Native Package/Session/World/Knowledge cutover is validated; merge to `main` only after N9.
 
 This plan is authoritative for the implementation conversation. Do not restart product design unless a concrete implementation contradiction is discovered.
 
@@ -74,6 +74,9 @@ The following are explicitly outside the Native schema compatibility contract:
 - legacy CardApp directories keyed by character basename.
 - legacy chat-file Checkpoint / Branch naming.
 - old JSON / JSONL import/export as native Atria exchange formats.
+- World Info filename/name as Native identity.
+- World Info `uid` as Native cross-version identity.
+- `selected_world_info`, `world_info.charLore`, character primary/auxiliary lorebook ownership, and chat-lorebook scope as Native ownership concepts.
 - automatic startup migration from old local data.
 - dual read.
 - dual write.
@@ -95,6 +98,9 @@ Native migration history starts at **Native schema v1**. Future migrations are N
 ### User-facing vocabulary
 
 - 作品
+- 世界
+- 知识库
+- 知识条目
 - 角色
 - 开局
 - 游戏进度
@@ -107,6 +113,13 @@ Native migration history starts at **Native schema v1**. Future migrations are N
 
 - Package
 - PackageVersion
+- World
+- WorldRevision
+- KnowledgeBase
+- KnowledgeRevision
+- KnowledgeEntry
+- KnowledgeBinding
+- KnowledgePlan
 - Actor
 - EntryPoint
 - Project
@@ -153,6 +166,12 @@ Recommended ID families:
 - `rev_*` — SessionRevision
 - `save_*` — SavePoint
 - `asset_*` — logical asset reference
+- `world_*` — Library/Package World identity
+- `worldv_*` — immutable World revision
+- `kb_*` — KnowledgeBase identity
+- `kbv_*` — immutable Knowledge revision
+- `kentry_*` — stable KnowledgeEntry identity
+- `kbind_*` — KnowledgeBinding identity
 
 Renaming a work, actor, save, branch, avatar file, or source file must never move or rewrite unrelated persistence solely to preserve identity.
 
@@ -230,7 +249,8 @@ An EntryPoint may specify:
 
 - initial actors;
 - playable/user identity hints;
-- World definition;
+- `worldIds[]` and an optional `primaryWorldId` referencing Package-contained immutable World snapshots;
+- optional KnowledgeBinding IDs active for this start;
 - World State overlay;
 - initial Timeline;
 - Package UI mode;
@@ -422,6 +442,248 @@ Asset GC must be reference-aware.
 
 ---
 
+## 10A. Native World & Knowledge architecture
+
+World Info is not carried forward as a filename-scoped Native authority. Native content uses first-class World and Knowledge entities while the mature World Info selection engine remains reusable behind a runtime adapter.
+
+### 10A.1 World
+
+A `World` describes a reusable content domain: what a world is, not what has happened in one player's current run.
+
+A Library World has:
+
+- stable `worldId`;
+- immutable `WorldRevision` records identified by `worldRevisionId`;
+- display identity/description;
+- optional World Schema;
+- immutable baseline initial state;
+- Knowledge bindings;
+- maps/media/assets;
+- world metadata and intrinsic declarative constraints.
+
+A World does **not** own:
+
+- EntryPoints;
+- Package UI;
+- Agent orchestration;
+- model-role routing;
+- Package permissions;
+- the executable game loop;
+- current Session progress.
+
+A Package may contain zero, one, or many World snapshots.
+
+Library World revisions are authoring dependencies. Package build pins an exact WorldRevision and vendors the required immutable snapshot into the PackageVersion. Runtime therefore does not depend on the target machine's Library still containing that World.
+
+```text
+Library WorldRevision
+        ↓ authoring reference
+Studio Project
+        ↓ Build / dependency closure
+PackageVersion World Snapshot
+        ↓ EntryPoint overlay
+Session World State
+```
+
+The Package snapshot is immutable baseline content. Current mutable facts belong only to Session State / Event Journal.
+
+### 10A.2 KnowledgeBase / KnowledgeRevision / KnowledgeEntry
+
+A traditional Lorebook/World Info book becomes a `KnowledgeBase`.
+
+A Library KnowledgeBase has:
+
+- stable `knowledgeBaseId`;
+- immutable revisions identified by `knowledgeRevisionId`;
+- a stable set/order of entries for that revision;
+- metadata/provenance.
+
+Every `KnowledgeEntry` has a stable `knowledgeEntryId`. Neither legacy numeric `uid`, book name, filename, nor entry body is Native identity.
+
+A KnowledgeEntry contract may represent:
+
+- content;
+- discovery: keywords, aliases, regex, semantic/vector hints;
+- applicability: stateConditions, stateEvents, stateActivation;
+- lifecycle: probability, sticky, cooldown, delay;
+- relations: required dependencies, related entries, exclusive groups;
+- delivery: insertion target/position, priority, visibility;
+- metadata.
+
+Simple authors must still be able to create natural-language entries with minimal discovery fields. Structured claims are optional advanced metadata, not a mandatory database-authoring model.
+
+### 10A.3 Knowledge ownership
+
+Knowledge has three runtime/content ownership classes plus Project source:
+
+1. **Package-owned Knowledge**
+   - authored or vendored into an immutable PackageVersion;
+   - canonical baseline for that Package;
+   - read-only during Sessions.
+
+2. **Library-owned Knowledge**
+   - reusable user-owned KnowledgeBase revisions;
+   - may be referenced by many Projects/Sessions;
+   - editing creates a new immutable revision;
+   - an existing Session remains pinned to its previous revision until explicitly upgraded.
+
+3. **Session-local Knowledge**
+   - belongs only to one Session;
+   - is saved/exported with the Session;
+   - may hold explicit player-authored notes/rules/reference material;
+   - does not mutate Package or Library content.
+
+4. **Project-owned Knowledge Source**
+   - editable Studio source;
+   - Build converts it into immutable Package Knowledge.
+
+Session-local Knowledge is distinct from Memory. Knowledge is explicit editable reference/policy material; Memory represents historical evidence, recalled experience, extracted facts and provenance.
+
+### 10A.4 KnowledgeBinding
+
+Knowledge scope is expressed by a first-class `KnowledgeBinding`, not by properties such as "global", "character", "character_aux", or "chat".
+
+A binding identifies:
+
+- stable `knowledgeBindingId`;
+- an exact Knowledge source/revision;
+- target/scope;
+- enabled state;
+- binding mode;
+- visibility;
+- optional priority/selection policy.
+
+At minimum, binding mode distinguishes:
+
+- `augment` — supplement canonical content without implicitly overriding it;
+- `override` — explicit user/package-author intent to override ordinary Knowledge at the Knowledge layer.
+
+A Knowledge override never gains authority to mutate or override deterministic Runtime mechanics or authoritative Session State.
+
+Library-wide automatic behavior is modeled as an explicit binding policy, not as a KnowledgeBase intrinsically becoming "global".
+
+### 10A.5 Session revision pinning
+
+Session creation resolves Package defaults, EntryPoint bindings, Library binding policies and Session-local bindings into an immutable/resolved binding set.
+
+The Session pins exact Knowledge revisions and does not follow Library "latest" automatically.
+
+Updating a running Session to a newer Library Knowledge revision is an explicit action and must produce a new SessionRevision.
+
+SessionRevision therefore includes a Knowledge binding-set head/reference in addition to Timeline and state heads so old SavePoints restore the exact knowledge dependency set used at that revision.
+
+### 10A.6 Knowledge authority and prompt compilation
+
+Native Knowledge does not use "last text wins" semantics.
+
+Authority is separate from per-layer priority.
+
+The conceptual authority order is:
+
+1. deterministic Runtime mechanics/contracts;
+2. authoritative current Session World State;
+3. committed Event Journal;
+4. explicit Session Knowledge overrides;
+5. Package/World canonical Knowledge;
+6. Library augment Knowledge;
+7. Session augment Knowledge;
+8. Memory/history evidence;
+9. raw conversation text as narrative input.
+
+Priority only orders/selects content **within the same authority class**. A high-priority Memory item cannot override current World State.
+
+### 10A.7 KnowledgeCompiler / KnowledgePlan
+
+N6 introduces a deterministic `KnowledgeCompiler` stage:
+
+```text
+Package Knowledge
+Library bindings
+Session-local Knowledge
+Memory recall
+World State
+Event Journal
+        ↓
+KnowledgeCompiler
+        ↓
+KnowledgePlan(target)
+        ↓
+Knowledge Runtime Adapter
+        ↓
+existing World Info selection / prompt assembly machinery
+```
+
+The compiler resolves:
+
+- exact revisions/bindings;
+- applicability;
+- visibility;
+- authority;
+- explicit override/exclusivity;
+- dependencies;
+- identity-based dedupe;
+- budget selection;
+- rejection/selection reasons.
+
+The intermediate/final plan preserves at least:
+
+- knowledgeBaseId;
+- knowledgeRevisionId;
+- knowledgeEntryId;
+- knowledgeBindingId;
+- source;
+- authority;
+- target/visibility;
+- selection reason;
+- state evidence;
+- budget cost.
+
+Entry body text must never be used to reconstruct identity/source after selection.
+
+Different Actors/Agents may receive different KnowledgePlans from the same Session because visibility is target-aware.
+
+### 10A.8 Reuse of the existing World Info engine
+
+This refactor does **not** require rewriting every mature World Info selection capability.
+
+The existing runtime should initially remain responsible for suitable existing mechanics such as:
+
+- keyword/secondary-key scanning;
+- regex matching;
+- optional vector/semantic candidate generation;
+- probability/group behavior;
+- recursion;
+- sticky/cooldown/delay;
+- insertion positions;
+- state conditions/events/stateActivation;
+- activation tracing;
+- existing prompt-injection compatibility.
+
+Native World/Knowledge replaces identity, ownership, versioning, binding and authority above that engine.
+
+Legacy runtime `uid` may exist as an adapter-local transient handle but must not escape as Native identity.
+
+### 10A.9 Library UX target
+
+The final Library structure remains:
+
+```text
+Library
+├─ 作品
+├─ 世界与知识
+│  ├─ 世界
+│  └─ 知识库
+└─ 技能
+```
+
+World detail may expose Overview / Knowledge / Schema / Baseline / Maps & Assets / References / Revision History.
+
+KnowledgeBase detail may expose Overview / Entries / Bindings / References / Revision History.
+
+The Native UI no longer treats the existing `#WorldInfo` controller as the Library data authority; it may remain an adapter/editor implementation during transition.
+
+---
+
 ## 11. Session model
 
 A Session is an entire playable/interactive run.
@@ -602,6 +864,8 @@ SessionRevision
 
 SavePoints reference a revisionId.
 
+A SessionRevision also records the exact resolved Knowledge binding-set head/reference used by that revision, so restoring a SavePoint cannot silently follow newer Library Knowledge.
+
 ### FS durability model
 
 Current FsEngine does not provide true cross-resource rollback.
@@ -677,7 +941,10 @@ A snapshot export includes everything necessary to continue the selected SavePoi
 - variables/op-log;
 - canonical Memory and user corrections/provenance;
 - durable Orchestrator/package state;
-- Session-owned attachments required for restore.
+- Session-owned attachments required for restore;
+- the resolved Knowledge binding-set revision/head;
+- Session-local Knowledge;
+- snapshots of Library-owned Knowledge revisions required by the Session.
 
 It must not simply copy current FS sidecar filenames.
 
@@ -762,6 +1029,14 @@ Primary identity: `handle + packageId`.
 
 Owns immutable content-addressed blobs and reference metadata.
 
+### WorldRepo
+
+Owns **Library authority only** for World records and immutable WorldRevisions, current-revision pointers, reference tracking and GC eligibility. Package-contained World snapshots live inside PackageVersion; current mutable world facts live in Session State.
+
+### KnowledgeRepo
+
+Owns **Library authority only** for KnowledgeBase, immutable KnowledgeRevision, stable KnowledgeEntry records/revisions, reference tracking and GC eligibility. Package-contained Knowledge snapshots live inside PackageVersion; Session-local Knowledge lives in SessionRepo.
+
 ### SessionRepo
 
 Owns:
@@ -799,7 +1074,13 @@ Exact physical schema is finalized in N0/N1, but the architecture expects dedica
 - session_states;
 - session_revisions;
 - save_points;
-- asset_refs.
+- asset_refs;
+- worlds;
+- world_revisions;
+- knowledge_bases;
+- knowledge_revisions;
+- knowledge_entries;
+- knowledge_bindings.
 
 Large asset blobs should remain in AssetStore instead of SQL JSON columns.
 
@@ -1004,51 +1285,74 @@ Do not merge partial N-phases into `main`. Each phase receives its own commits, 
 
 ### N0 — Native Contracts & Identity
 
-Freeze and implement:
+Current N0 implementation already exists through:
 
-- Native entity schemas;
-- opaque ID utilities/contracts;
-- Package v2 logical manifest/schema;
-- `.atriasave v1` logical manifest/schema;
-- permission/capability schema;
-- Native Store schema v1;
-- invariants forbidding filename/name/index identity.
+- `ad4b15285163aee94c5db67a874db7fef39f8ce7` — initial Native content contracts;
+- `94c61fa1802016548dac9001c3265635b7a13b34` — contract lint cleanup;
+- `6be4f7e12e6c0e23faf27e2c4292823191060953` — broadened N0 validation.
+
+These commits remain valid and must not be reverted.
+
+N0 is **not yet final**. Before N1, extend the current contract set with:
+
+- `World` / `WorldRevision`;
+- `KnowledgeBase` / `KnowledgeRevision` / `KnowledgeEntry`;
+- `KnowledgeBinding`;
+- stable Native ID families `world_*`, `worldv_*`, `kb_*`, `kbv_*`, `kentry_*`, `kbind_*`;
+- strongly typed Package-contained World/Knowledge snapshots instead of arbitrary JSON slots;
+- EntryPoint `worldIds[]`, optional `primaryWorldId`, and KnowledgeBinding references;
+- Knowledge binding-set reference/head in SessionRevision;
+- Native Store schema-v1 World/Knowledge resource kinds/families;
+- invariants rejecting legacy World Info name/`uid`/character-chat-global scope as Native identity/ownership.
+
+Continue to cover the existing entity schemas, Package v2 logical manifest, `.atriasave v1`, capability/permission vocabulary and filename/name/index identity guards.
 
 Do not switch production UI.
 
-**Exit:** contract/schema tests green; later phases do not invent identity ad hoc.
+**Exit:** all Native identity/content contracts, including World/Knowledge, are frozen and tested before storage implementation begins.
 
 ### N1 — Native Storage Foundation
 
 Implement:
 
 - PackageRepo;
+- WorldRepo for Library World authority;
+- KnowledgeRepo for Library Knowledge authority;
 - SessionRepo skeleton/records;
 - SavePointRepo;
 - AssetStore;
 - required StorageTransaction resource kinds;
 - FS / SQLite / MySQL / PostgreSQL parity;
 - immutable revision + commit-last primitives;
+- World/Knowledge immutable revision and reference/GC primitives;
 - contract/round-trip/chaos coverage.
 
-Do not read old PNG/JSONL as a fallback.
+WorldRepo/KnowledgeRepo do not become authorities for Package snapshots or Session-local content.
 
-**Exit:** create/read/update/list/delete native resources consistently across supported storage engines.
+Do not read old PNG/JSONL/World Info files as a fallback.
 
-### N2 — Package / Project Separation
+**Exit:** create/read/update/list/delete Native resources consistently across supported storage engines.
+
+### N2 — Package / Project / World & Knowledge Composition
 
 Implement:
 
 - ProjectStore keyed by projectId;
 - Studio project routing away from `characterId`;
+- Project-owned World/Knowledge source;
+- exact Library WorldRevision/KnowledgeRevision authoring references;
+- dependency-closure resolution and cycle/missing dependency validation;
 - Source Project → build flow;
 - `.atria` Package Container v2;
+- vendoring exact World/Knowledge snapshots into immutable PackageVersion;
 - install into PackageRepo + AssetStore;
 - immutable PackageVersion;
 - package validation/security/permission preflight;
 - Studio Preview ephemeral-session seam.
 
-**Exit:** a project can build, validate, install, reopen and run package metadata without Character PNG as authority.
+Runtime must not depend on the target Library containing the authoring-time World/Knowledge dependencies.
+
+**Exit:** a project can build, validate, install and reopen self-contained Package metadata/content without Character PNG or live Library dependencies as runtime authority.
 
 ### N3 — Native Session Core
 
@@ -1061,12 +1365,13 @@ Implement:
 - SessionState base;
 - SessionRevision;
 - SavePoint primitive;
+- resolved KnowledgeBindingSet pinned to exact revisions;
 - load/reload behavior;
 - branching using IDs, not copied chat filenames.
 
 No production UI cutover yet.
 
-**Checkpoint A exit:** pure Native tests can create Package → EntryPoint → Session → Timeline → Branch → Revision and reload it without PNG/JSONL authority.
+**Checkpoint A exit:** pure Native tests can create Package → EntryPoint → Session → Timeline → Branch → Revision and reload it without PNG/JSONL authority, while preserving exact World/Knowledge dependencies.
 
 ### N4 — SillyTavern Runtime Projection
 
@@ -1084,12 +1389,14 @@ Validate existing mature behavior against a Native Session:
 - Branch;
 - prompt assembly;
 - Regex;
-- World Info;
+- existing World Info compatibility;
 - generation;
 - attachments;
 - current R7 Play host identity/DOM invariants.
 
 Writes return to Native stores only.
+
+Do not implement the full Native KnowledgeCompiler in N4.
 
 **Exit:** Native Session can drive existing conversation/generation runtime without a second Conversation engine and without authoritative JSONL dual-write.
 
@@ -1107,9 +1414,44 @@ Move Atria-owned durable runtime state to SessionState/Revision:
 
 Preserve old public API names only as runtime compatibility wrappers where necessary.
 
-**Exit:** structural operations (swipe/delete/branch/reload) keep Timeline and all authoritative state coherent.
+This phase establishes the authoritative current-state/Event/Memory inputs required by the KnowledgeCompiler.
 
-### N6 — Save System & `.atriasave`
+**Exit:** structural operations (swipe/delete/branch/reload) keep Timeline and all authoritative runtime state coherent.
+
+### N6 — Native Knowledge Runtime Integration
+
+Implement:
+
+- KnowledgeBinding resolution across Package, EntryPoint, Library policy and Session-local sources;
+- exact revision pinning;
+- KnowledgeCompiler;
+- target-aware KnowledgePlan;
+- authority-vs-priority rules;
+- current-state/Event-Journal precedence;
+- Package/World canonical Knowledge;
+- Library/Session augment vs explicit override semantics;
+- Memory as evidence/history, not current-state authority;
+- applicability using the existing stateConditions/stateEvents/stateActivation capabilities;
+- stable identity preservation to final prompt assembly;
+- required dependencies / related entries / exclusive groups;
+- target visibility for Narrator/Actor/Agent contexts;
+- adapter into the existing World Info selection/prompt machinery;
+- deterministic diagnostics/rejection reasons.
+
+Do **not** rewrite all keyword, regex, vector, probability, recursion, sticky/cooldown/delay, prompt assembly, or authoring semantics without a concrete need. Do not require structured claims for ordinary authors and do not introduce a graph database.
+
+**Checkpoint K exit:** prove at minimum:
+
+1. Package canonical Knowledge reaches the target Context.
+2. authoritative current Session State suppresses stale applicable canonical content when conditions make the conflict deterministic;
+3. Library `augment` cannot silently override Package canon;
+4. explicit Knowledge `override` can override ordinary Knowledge but cannot mutate/override deterministic Runtime mechanics or current state;
+5. old Memory evidence cannot override current state;
+6. equal entry bodies from different IDs/sources remain distinguishable;
+7. visibility produces different target Context views;
+8. a Session remains pinned to Library Knowledge rev N when Library moves to rev N+1 unless explicitly upgraded.
+
+### N7 — Save System & `.atriasave`
 
 Implement:
 
@@ -1122,18 +1464,42 @@ Implement:
 - engine-independent logical state serialization;
 - import/restore;
 - Package dependency resolution;
+- resolved KnowledgeBindingSet persistence;
+- Session-local Knowledge export/import;
+- snapshots of Library Knowledge revisions required by the Session;
+- restore imported Library snapshots as Session-bound embedded Knowledge by default rather than silently polluting the target Library;
+- optional explicit "save to my Library" promotion;
 - optional password-protected AEAD mode;
 - missing-dependency UX contract.
 
-**Checkpoint B exit:** a Native Session can run, exit, restart, save, load, export `.atriasave`, re-import, and preserve World/Memory/Orchestrator/branch/variant consistency.
+Package-contained Knowledge is already available through the pinned PackageVersion and need not be redundantly copied unless required by the chosen portable closure design.
+
+**Checkpoint B exit:** a Native Session can run, exit, restart, save, load, export `.atriasave`, re-import, and preserve World/Knowledge/Memory/Orchestrator/branch/variant consistency.
 
 Only after this checkpoint may product UI cut over.
 
-### N7 — Product UI Cutover
+### N8 — Product UI Cutover
 
-Switch Library/Studio/Play management surfaces to Native authorities:
+Switch Library/Studio/Play management surfaces to Native authorities.
+
+Library becomes:
+
+```text
+Library
+├─ 作品
+├─ 世界与知识
+│  ├─ 世界
+│  └─ 知识库
+└─ 技能
+```
+
+Implement:
 
 - Works Library;
+- World Library;
+- KnowledgeBase Library;
+- World detail and revision history;
+- KnowledgeBase detail / Entries / Bindings / references / revision history;
 - work detail;
 - EntryPoint start flow;
 - Continue;
@@ -1141,12 +1507,15 @@ Switch Library/Studio/Play management surfaces to Native authorities:
 - Save/Load;
 - Timeline;
 - Studio Projects;
+- Project World/Knowledge dependency management;
 - install/update preflight;
 - Package/session delete semantics.
 
 Retain the R7 Shell and route authority.
 
-### N8 — Hard Cutover & Legacy Retirement
+The existing `#WorldInfo` controller may remain as a transition/editor adapter but is no longer the Native Library data authority.
+
+### N9 — Hard Cutover & Legacy Retirement
 
 Retire Native product dependence on historical formats/concepts:
 
@@ -1155,13 +1524,15 @@ Retire Native product dependence on historical formats/concepts:
 - retire CardApp as Atria product identity;
 - retire Native identity by avatar_url/charDir/characterId;
 - retire Manage Chat Files / Checkpoint Chat from Native product flow;
-- establish residual guards preventing old persistence authority from returning.
+- retire `selected_world_info`, character primary/auxiliary lorebook, chat-lorebook and `charaFilename` binding as Native concepts;
+- retire world/book name and World Info numeric `uid` as Native identity;
+- retire WorldInfoRepo/`worlds/<name>.json` as Native authority;
+- establish residual guards preventing old persistence/content authority from returning.
 
-Do not mechanically delete genuine SillyTavern runtime ABI that the adapter still requires.
+Do not mechanically delete genuine SillyTavern runtime ABI or mature World Info selection machinery that the adapters still require.
 
-**Final exit:** active Native product flows use Package/Session authorities end-to-end; legacy persistence cannot silently become authoritative.
+**Final exit:** active Native product flows use Package/World/Knowledge/Session authorities end-to-end; legacy persistence/content identity cannot silently become authoritative.
 
----
 
 ## 25. Verification strategy
 
@@ -1170,7 +1541,10 @@ Every phase gets targeted checks plus the broader relevant regression surface.
 Minimum relevant coverage over the program:
 
 - Native schema/invariant tests;
-- opaque-ID tests;
+- opaque-ID tests including World/Knowledge families;
+- World/Knowledge immutable revision and identity tests;
+- KnowledgeBinding resolution/revision-pin tests;
+- Knowledge authority/visibility/exclusivity/identity-preservation tests;
 - Package build/validate/install security tests;
 - malformed container / traversal / zip-bomb / integrity tests;
 - Package version immutability and GC reference tests;
@@ -1191,6 +1565,7 @@ Minimum relevant coverage over the program:
 - R7 Shell / Workspace / Native Play browser smokes;
 - Studio Project/build/preview tests;
 - Library works/session UX tests;
+- World/Knowledge Library and Studio dependency UX tests;
 - full Node unit suite and frontend build at major checkpoints;
 - Native authority residual guard.
 
@@ -1202,7 +1577,7 @@ Do not report checks that were not actually run.
 
 ## 26. CI / development workflow
 
-For N0–N8:
+For N0–N9:
 
 1. work only on `refactor/atria-native-content-session-architecture`;
 2. keep `main` stable and untouched until final integration;
@@ -1216,7 +1591,7 @@ For N0–N8:
 
 At final completion:
 
-1. finish N8 residual scan/validation;
+1. finish N9 residual scan/validation;
 2. update permanent docs;
 3. create/update final PR to `main`;
 4. validate all required CI;
@@ -1260,13 +1635,18 @@ The following invariants are load-bearing and should receive automated guards wh
 12. Normal user exchange paths do not expose raw PNG/JSON/JSONL as Native formats.
 13. R7 Play/Library/Studio/Agents/Runtime shell ownership remains intact.
 14. Old local data must not silently activate a fallback Native authority.
-15. Future compatibility work must not weaken these invariants without an explicit new architecture decision.
+15. World/Knowledge names, filenames, legacy World Info `uid`, character/chat/global scope, or entry body text are never Native identity.
+16. Package/World Knowledge is immutable canonical baseline; current mutable facts belong to Session State/Event Journal.
+17. Library Knowledge edits create new revisions; running Sessions remain pinned until explicit upgrade.
+18. Knowledge authority is separate from priority; Memory/augment content cannot override authoritative current state or deterministic Runtime mechanics.
+19. Build vendors exact World/Knowledge dependency snapshots into PackageVersion so runtime does not depend on live Library content.
+20. Future compatibility work must not weaken these invariants without an explicit new architecture decision.
 
 ---
 
 ## 29. First implementation action
 
-The next implementation conversation starts at **N0 — Native Contracts & Identity**.
+The current implementation conversation is already in **N0 — Native Contracts & Identity**. Continue from the live branch HEAD; do not restart N0 or revert the existing N0 commits.
 
 Before editing:
 
@@ -1277,6 +1657,7 @@ Before editing:
 5. read `docs:handoff/latest-handoff.md`;
 6. read this Master Plan;
 7. inspect current storage/game-package/session-adjacent code from live branch;
-8. begin N0 implementation directly.
+8. preserve the existing N0 work through `6be4f7e12e6c0e23faf27e2c4292823191060953`;
+9. implement the World/Knowledge N0 contract extension described in this plan before declaring N0 final or entering N1.
 
-Do not restart the six-round product discussion.
+Do not restart the product discussion.
