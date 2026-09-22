@@ -1,45 +1,33 @@
 # Atria Native Content & Session Architecture — active implementation handoff
 
 - Architecture: **Package/Session + World/Knowledge contracts frozen**
-- Implementation: **N0 + N1 + N2 validated; N3 next**
+- Implementation: **N0/N1/N2/N3 validated; N4 next**
 - Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
-- N1 validated HEAD: `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
 - N2 validated HEAD: `bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
-- N2 validation: **Native Content Session Dev Checks #43**, run `35677654858`, success
+- N3 validated HEAD: `c42ee3e98a27fbea97ded0917de081bcc8893680`
+- N3 CI: **Native Content Session Dev Checks #44**, run `35679448236`, **success**
 - Formal Master Plan: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
-- Implementation phases: **N0–N9**
+- Merge policy: keep this branch isolated; **no main merge until N9**.
 
-Current directive:
+N3 delivered:
 
-- Preserve validated N0/N1/N2; do not redesign or recreate their contracts/storage/composition foundation.
-- Continue on the same long-lived branch; do not merge to `main` before N9.
-- Start **N3 — Native Session Core** only.
-- Build on the N1 SessionRepo/SavePointRepo foundation and N2 self-contained PackageVersion.
-- Implement Session / BranchGraph / TimelineEntry / Variant / SessionState base / SessionRevision / SavePoint primitive.
-- Resolve and pin the Session KnowledgeBindingSet to exact revisions.
-- Implement load/reload and opaque-ID branching without chat filenames.
-- Checkpoint A must prove Package → EntryPoint → Session → Timeline → Branch → Revision reload with exact World/Knowledge dependencies and no PNG/JSONL authority.
-- Do not start N4 full runtime projection, N6 KnowledgeCompiler, N8 UI cutover, or N9 legacy retirement early.
+- SessionCore creation from an exact installed PackageVersion + EntryPoint;
+- immutable BranchGraph/Timeline/Variant snapshots, opaque identities, inherited message references rather than copied branch messages;
+- base SessionState and exact Package/World dependency validation;
+- resolved KnowledgeBindingSet with exact Package/Library/Session-local revisions;
+- explicit Knowledge updates creating new revisions; reload never follows Library latest;
+- coherent SessionRevision and commit-last/HEAD-CAS publication;
+- immutable auto/quick/manual SavePoint primitives and coherent restore;
+- history/branch reference retention, orphan-revision rejection and integrity checks;
+- Checkpoint A FS/SQLite verification and four-engine CI coverage.
 
-N2 verification summary:
+Local evidence: N3 **3 suites / 35 tests passed**; broader native/adjacent **22 suites / 174 tests passed** before the last three added SavePoint-kind tests (2 suites / 12 tests intentionally skipped without local MySQL/PostgreSQL); full root ESLint passed.
 
-- N2 Package Project Composition: **5 suites / 30 tests passed**
-- N2 source ESLint: success
-- N0 Native Contracts job: success
-- full root ESLint: success
-- N1 Native Storage Foundation job: success
-- FS / SQLite / MySQL / PostgreSQL parity preserved
-- ProjectStore is keyed by `projectId`
-- exact WorldRevision / KnowledgeRevision closure is vendored into PackageVersion
-- `.atria` Package Container v2 uses an authenticated binary envelope
-- Package install/reopen uses PackageRepo + AssetStore and does not require target Library World/Knowledge
-- Studio Preview seam is ephemeral and writes no Session resource
-- Native `src/native/*` hard-cutover scan found no Character/JSONL/PNG/World Info/`named_docs` authority
+Current action: **N3 is complete; stop development here**. The next conversation starts **N4 — SillyTavern Runtime Projection**. CI N3: **3 suites / 49 tests passed** across all four engines; N1 storage/parity: **9 suites / 64 tests passed**. N0, N2, source lint and full root lint all passed.
 
-Next action: begin N3 from the live remote working-branch HEAD after re-reading the Master Plan and detailed handoff.
+N4 must preserve N0–N3, reuse mature conversation/generation runtime through a one-way projection, and route writes only through Native commands. No new branch, redesign, PNG/JSONL/World Info authority, dual persistence, premature KnowledgeCompiler or UI cutover.
 
 ---
 
