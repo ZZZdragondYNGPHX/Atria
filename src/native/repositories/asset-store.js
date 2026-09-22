@@ -40,6 +40,36 @@ export class AssetStore {
         return path.join(this._blobRoot(handle), contentHash.slice(0, 2), contentHash);
     }
 
+    async putBlob(handle, bytesValue) {
+        assertWritable();
+        const bytes = toBuffer(bytesValue);
+        const contentHash = digest(bytes);
+        const blobPath = this._blobPath(handle, contentHash);
+        fs.mkdirSync(path.dirname(blobPath), { recursive: true });
+        if (!fs.existsSync(blobPath)) writeFileAtomic(blobPath, bytes);
+        return contentHash;
+    }
+
+    async hasBlob(handle, contentHash) {
+        if (!/^[a-f0-9]{64}$/.test(String(contentHash || ''))) {
+            throw new TypeError('AssetStore contentHash must be a lowercase SHA-256 digest');
+        }
+        return fs.existsSync(this._blobPath(handle, contentHash));
+    }
+
+    async readBlob(handle, contentHash) {
+        if (!/^[a-f0-9]{64}$/.test(String(contentHash || ''))) {
+            throw new TypeError('AssetStore contentHash must be a lowercase SHA-256 digest');
+        }
+        const blobPath = this._blobPath(handle, contentHash);
+        if (!fs.existsSync(blobPath)) return null;
+        const bytes = fs.readFileSync(blobPath);
+        if (digest(bytes) !== contentHash) {
+            throw new ConflictError('native_asset_blob_corrupt', { contentHash });
+        }
+        return bytes;
+    }
+
     async getRef(handle, assetId) {
         return this._engine.withTransaction(handle, tx => getNativeDocument(
             tx,
@@ -71,9 +101,7 @@ export class AssetStore {
 
         // Blob first, logical reference last. A crash between these operations
         // leaves only an unreferenced content-addressed blob, which GC can reap.
-        const blobPath = this._blobPath(handle, ref.contentHash);
-        fs.mkdirSync(path.dirname(blobPath), { recursive: true });
-        if (!fs.existsSync(blobPath)) writeFileAtomic(blobPath, bytes);
+        await this.putBlob(handle, bytes);
 
         await this._engine.withTransaction(handle, tx => putImmutable(
             tx,
@@ -151,6 +179,13 @@ export class AssetStore {
         assertWritable();
         const referenced = new Set(retainHashes);
         for (const ref of await this.listRefs(handle)) referenced.add(ref.contentHash);
+
+        for (const record of await this._engine.withTransaction(handle, tx => tx.listResources({
+            kind: NATIVE_RESOURCE_KINDS.packageVersion,
+            handle,
+        }))) {
+            if (record.doc?.packageContentHash) referenced.add(record.doc.packageContentHash);
+        }
 
         const root = this._blobRoot(handle);
         if (!fs.existsSync(root)) return [];
