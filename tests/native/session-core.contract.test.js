@@ -257,4 +257,67 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
     });
 
 
+    test('N5 Retry and message-scoped Fork use the exact Timeline boundary, not later state-only revisions', async () => {
+        let view = await f.core.create(h.handle, f.start);
+        const sessionId = view.session.sessionId;
+
+        view = await f.core.applyRuntimeCommit(h.handle, sessionId, {
+            commands: [{ type: 'append', draft: { role: 'user', content: 'Boundary user' } }],
+            statePatch: {
+                atri_variables: { schemaVersion: 1, values: { phase: 'post-user' } },
+                atri_memory_graph: { marker: 'post-user' },
+            },
+        }, { expectedRevisionId: view.revision.revisionId });
+        const exactPostUserRevisionId = view.revision.revisionId;
+        const userMessageId = view.timeline.at(-1).messageId;
+
+        view = await f.core.updateState(h.handle, sessionId, {
+            atri_variables: { schemaVersion: 1, values: { phase: 'late-state-only' } },
+            atri_memory_graph: { marker: 'late-state-only' },
+        }, { expectedRevisionId: view.revision.revisionId });
+        const lateStateRevisionId = view.revision.revisionId;
+        expect(view.revision.timelineHead.messageId).toBe(userMessageId);
+
+        view = await f.core.applyRuntimeCommit(h.handle, sessionId, {
+            commands: [{
+                type: 'append',
+                draft: {
+                    role: 'assistant',
+                    actorId: view.entryPoint.primaryActorId ?? view.entryPoint.actorIds[0],
+                    content: 'Answer after late state',
+                },
+            }],
+            statePatch: {
+                atri_variables: { schemaVersion: 1, values: { phase: 'assistant' } },
+            },
+        }, { expectedRevisionId: lateStateRevisionId });
+        const assistantMessageId = view.timeline.at(-1).messageId;
+
+        const retry = await f.core.retryReply(h.handle, sessionId, {
+            messageId: assistantMessageId,
+            expectedRevisionId: view.revision.revisionId,
+        });
+        expect(retry.timeline.at(-1).messageId).toBe(userMessageId);
+        expect(retry.states.atri_variables.values.phase).toBe('post-user');
+        expect(retry.states.atri_memory_graph.marker).toBe('post-user');
+        expect(retry.graph.at(-1).forkRevisionId).toBe(exactPostUserRevisionId);
+
+        const retryHead = retry.revision.revisionId;
+        const childLate = await f.core.updateState(h.handle, sessionId, {
+            atri_variables: { schemaVersion: 1, values: { phase: 'child-late' } },
+        }, { expectedRevisionId: retryHead });
+        expect(childLate.revision.timelineHead.messageId).toBe(userMessageId);
+
+        const forked = await f.core.forkBranch(h.handle, sessionId, {
+            messageId: userMessageId,
+            expectedRevisionId: childLate.revision.revisionId,
+        });
+        expect(forked.timeline.at(-1).messageId).toBe(userMessageId);
+        expect(forked.states.atri_variables.values.phase).toBe('post-user');
+        // The nearest ancestry block is the Retry fork boundary, not the
+        // state-only child revision that followed it.
+        expect(forked.graph.at(-1).forkRevisionId).toBe(retryHead);
+    });
+
+
 });

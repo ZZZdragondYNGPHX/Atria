@@ -212,6 +212,43 @@ export class SessionCore {
         return base;
     }
 
+    async _findTimelineBoundary(handle, sessionId, source, messageId, variantId = undefined) {
+        assertNativeId(messageId, 'message');
+        if (variantId !== undefined) assertNativeId(variantId, 'variant');
+
+        let cursor = source;
+        let boundary = null;
+        const visited = new Set();
+        while (cursor?.revision) {
+            const revisionId = cursor.revision.revisionId;
+            if (visited.has(revisionId)) throw new TypeError('Native Session revision ancestry cycle');
+            visited.add(revisionId);
+
+            const last = cursor.timeline.at(-1);
+            const matchesMessage = cursor.revision.timelineHead?.messageId === messageId
+                && last?.messageId === messageId;
+            const matchesVariant = variantId === undefined
+                || (last?.variantIds?.includes(variantId) && last?.activeVariantId === variantId);
+
+            if (matchesMessage && matchesVariant) {
+                boundary = cursor;
+            } else if (boundary) {
+                break;
+            }
+
+            const parentRevisionId = cursor.core?.parentRevisionId;
+            if (!parentRevisionId) break;
+            cursor = await this.load(handle, sessionId, { revisionId: parentRevisionId });
+        }
+        if (!boundary) {
+            throw new NotFoundError('native timeline boundary revision', {
+                messageId,
+                ...(variantId === undefined ? {} : { variantId }),
+            });
+        }
+        return boundary;
+    }
+
     async appendTimeline(handle, sessionId, draft, { expectedRevisionId } = {}) {
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const { entry, variant } = this._newEntry(base, draft);
@@ -306,39 +343,37 @@ export class SessionCore {
         if (userIndex < 0) throw new TypeError('Native Retry Reply requires a preceding committed user turn');
         const userMessageId = current.timeline[userIndex].messageId;
 
-        let cursor = current;
-        const visited = new Set();
-        while (cursor?.revision) {
-            const revisionId = cursor.revision.revisionId;
-            if (visited.has(revisionId)) throw new TypeError('Native Session revision ancestry cycle');
-            visited.add(revisionId);
-            if (
-                cursor.revision.timelineHead?.messageId === userMessageId
-                && cursor.timeline.at(-1)?.messageId === userMessageId
-            ) {
-                return this.forkBranch(handle, sessionId, {
-                    revisionId,
-                    expectedRevisionId: current.session.headRevisionId,
-                });
-            }
-            const parentRevisionId = cursor.core?.parentRevisionId;
-            if (!parentRevisionId) break;
-            cursor = await this.load(handle, sessionId, { revisionId: parentRevisionId });
-        }
-        throw new NotFoundError('native retry post-user revision', { messageId, userMessageId });
+        const postUser = await this._findTimelineBoundary(handle, sessionId, current, userMessageId);
+        return this.forkBranch(handle, sessionId, {
+            revisionId: postUser.revision.revisionId,
+            expectedRevisionId: current.session.headRevisionId,
+        });
     }
 
     async forkBranch(handle, sessionId, { revisionId, messageId, variantId, displayName, expectedRevisionId } = {}) {
         const current = await this._current(handle, sessionId, expectedRevisionId);
-        const source = revisionId ? await this.load(handle, sessionId, { revisionId }) : current;
+        let source = revisionId ? await this.load(handle, sessionId, { revisionId }) : current;
         let timeline = source.timeline;
         if (messageId !== undefined) {
-            const index = timeline.findIndex(item => item.messageId === messageId);
-            if (index < 0) throw new NotFoundError('native fork message');
-            timeline = timeline.slice(0, index + 1);
-            const last = timeline.at(-1);
-            if (variantId && !last.variantIds.includes(variantId)) throw new NotFoundError('native fork variant');
-            timeline[index] = { ...last, activeVariantId: variantId ?? last.activeVariantId };
+            const selected = timeline.find(item => item.messageId === messageId);
+            if (!selected) throw new NotFoundError('native fork message');
+            const selectedVariantId = variantId ?? selected.activeVariantId;
+            if (selectedVariantId && !selected.variantIds.includes(selectedVariantId)) {
+                throw new NotFoundError('native fork variant');
+            }
+            // A message-scoped fork means "fork from the coherent Revision at
+            // that Timeline boundary", not "slice old text while inheriting
+            // later state". Walk back across state-only revisions whose
+            // Timeline HEAD stayed on the same message and pick the earliest
+            // boundary in the nearest ancestry block.
+            source = await this._findTimelineBoundary(
+                handle,
+                sessionId,
+                source,
+                messageId,
+                selectedVariantId ?? undefined,
+            );
+            timeline = source.timeline;
         } else if (variantId !== undefined) throw new TypeError('Fork Variant requires messageId');
         const last = timeline.at(-1);
         const forkPoint = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
