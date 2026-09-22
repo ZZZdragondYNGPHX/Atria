@@ -110,6 +110,20 @@ export async function seedNativeSessionDataRoot({ suffix = 'runtime' } = {}) {
         },
     });
     const installed = await installFixture({ engine, handle: HANDLE, dirs }, fixture);
+
+    // Seed one separate compatibility Session with two committed Variants
+    // using the already-validated N3 primitive. N4 browser acceptance opens
+    // this only to prove that manual Variant switch/delete is rejected.
+    const compatibility = await installed.core.create(HANDLE, installed.start);
+    const greeting = compatibility.timeline[0];
+    const compatibilityWithVariant = await installed.core.addVariant(
+        HANDLE,
+        compatibility.session.sessionId,
+        greeting.messageId,
+        { content: 'Opening compatibility candidate', metadata: {} },
+        { expectedRevisionId: compatibility.revision.revisionId },
+    );
+
     await engine.close();
 
     return {
@@ -117,6 +131,14 @@ export async function seedNativeSessionDataRoot({ suffix = 'runtime' } = {}) {
         handle: HANDLE,
         start: installed.start,
         fixture,
+        compatibilitySession: {
+            sessionId: compatibilityWithVariant.session.sessionId,
+            revisionId: compatibilityWithVariant.revision.revisionId,
+            branchId: compatibilityWithVariant.revision.branchId,
+            messageId: compatibilityWithVariant.timeline[0].messageId,
+            activeVariantId: compatibilityWithVariant.timeline[0].activeVariantId,
+            variantIds: [...compatibilityWithVariant.timeline[0].variantIds],
+        },
     };
 }
 
