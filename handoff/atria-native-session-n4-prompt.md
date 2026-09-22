@@ -1,52 +1,26 @@
-# Copyable N4 handoff prompt
+# Copyable N4 continuation prompt — in-progress checkpoint
 
-你现在接手 GitHub 项目：
-https://github.com/ZZZdragondYNGPHX/Atria
-
-当前实施 Atria Native Content & Session Architecture Refactor。
-不要重新讨论产品设计，不要重做 N0/N1/N2/N3，不要创建新分支，也不要合并到 main。
+你现在接手 GitHub 项目 https://github.com/ZZZdragondYNGPHX/Atria。
+当前任务：Atria Native Content & Session Architecture Refactor，继续 N4，不是 N5。
 
 工作分支：refactor/atria-native-content-session-architecture
-N3 validated HEAD：c42ee3e98a27fbea97ded0917de081bcc8893680
-N3 CI：Native Content Session Dev Checks #44
-Run：35679448236，success
-N3：3 suites / 49 tests passed，覆盖 FS / SQLite / MySQL / PostgreSQL。
-N1：9 suites / 64 tests passed；N0、N2、source ESLint、full root ESLint 均成功。
+N4 已推送检查点：f3ac20f80f4691eee1d3c7ccab555a39e4322d3b
+最后完整验收阶段仍为 N3：c42ee3e98a27fbea97ded0917de081bcc8893680
+上一会话因用户额度不足提前收束；N4 尚未完成，切勿把检查点说成 validated HEAD。
 
-开始前 fetch 并重新读取远端工作分支，以实际最新 HEAD 为准；其他会话若已推进，不要回退。
-依次读取：
-1. main:AGENTS.md
-2. main:FORK_MAINTENANCE.md
-3. docs:handoff/latest-handoff.md
-4. docs:handoff/atria-native-content-session-architecture.md
-5. docs:refactor/atria-native-content-session-architecture.md
-6. src/native/session-core.js、session-snapshot.js、session-knowledge.js
-7. SessionRepo / SavePointRepo、N3 三组测试及当前相关 runtime / projection / R7 Play host 代码。
-Master Plan 是最高实施依据。
+先 fetch，使用远端实际最新工作分支与 docs，不回退，不新建分支，不合并 main。
+依次读 main:AGENTS.md、main:FORK_MAINTENANCE.md、docs:handoff/latest-handoff.md、docs:handoff/atria-native-content-session-architecture.md、docs:refactor/atria-native-content-session-architecture.md、docs:handoff/atria-native-session-n4-prompt.md。
+Master Plan 是最高依据。不要重做 N0–N3，不要重开产品设计。
 
-N3 已完成：SessionCore、BranchGraph、Timeline/Variant、SessionState base、SessionRevision、SavePoint primitive、精确 KnowledgeBindingSet、load/reload、opaque-ID 分支、commit-last/HEAD CAS、历史与引用保护、Checkpoint A。
-使用现有 SessionCore 命令，不要另建 Conversation engine，也不要用 N1 低层原语另拼一条运行时持久化路径。
-当前 Session descriptor 与历史 revision 要区分；历史视图以返回的 revision/snapshot 为准。
+已落地：SessionCore 原子 Timeline intents、指定消息/Variant fork、单向 Native runtime projection、Native HTTP 入口、现有 script.js 的 append/patch/save/reload 接线、Branch/Regex/World Info候选/AssetStore附件接线、失败锁与历史只读、N4单测及CI接入。
+检查 c42ee3e98..f3ac20f80f4691eee1d3c7ccab555a39e4322d3b 的完整 diff；这些是真实代码，但尚未完成实际 SPA 会话流程验收。
 
-现在进入 N4 — SillyTavern Runtime Projection：
-- 实现 Native Package/Session → SillyTavern runtime 的单向 compatibility adapter；
-- 复用 characters[] / this_chid / chat[] / chat_metadata / swipe 等运行时 ABI；这些不是持久化 authority；
-- 用户操作回写必须转成 Native command，只写 Native stores；
-- 验证 Send、Stop、Continue、用户/助手编辑、Delete、Swipe、Regenerate、Branch；
-- 验证 prompt assembly、Regex、现有 World Info compatibility、generation、attachments；
-- 保持 R7 Play host 的身份/DOM 不变量；
-- 精确 API 查当前代码，不凭记忆填写；真机才能证明的行为保留真实运行验证。
+本地证据：17 suites / 139 tests passed；full root ESLint、git diff --check passed。仅 FS/SQLite；MySQL/PostgreSQL 本地显式禁用。CI由推送触发，运行结果待查。未跑完整 Node suite、frontend build 或 live browser；未用真实模型。没有 Android/Docker build。
 
-继续保持：
-- 精确 PackageVersion / WorldRevision / KnowledgeRevision，不跟随 Library latest；
-- Package 依赖自包含，运行时不依赖作者机器 Library；
-- Studio Native identity 只认 projectId；
-- 不读 PNG / Character JSON / JSONL / World Info 作为 Native authority；
-- 不双读、不双写，不以 name / filename / path / uid / charDir / characterId 作为 Native identity。
+优先补真实 Atria server/SPA + mock LLM 浏览器测试，使用全新隔离数据根，不复制用户私有 data，不用用户真实服务。
+验证 Send、Stop、Continue、用户/助手 Edit、Delete、Swipe、Regenerate、Branch、reload、历史 revision.branchId、prompt assembly、Regex、World Info、attachments；抓请求证明 Native 只写 Native stores、不落入旧 chat/character/worldinfo 持久化。特别核验 regenerate->swipe 生命周期、streaming下消息/variant ID绑定、异步保存和切换/失败恢复。
+保持 R7 DOM 节点身份与唯一性。纯投影单测不能代替 live runtime 证据。
+N4的World Info候选映射不是N6，目标/visibility/override暂时fail-closed跳过；完整状态后端为N5，当前不能宣称完整Runtime State Integration。
 
-不要提前做 N5 完整 Runtime State Integration、N6 KnowledgeCompiler、N7 完整便携存档系统、N8 UI Cutover 或 N9 Legacy Retirement。
-普通代码/测试/CI 问题自行修复并继续；不运行未明确要求的 Android / Docker build 或额外 Docker 验证。
-遵守 Master Plan 的长 CI 等待与真实环境外部输入停点。
-
-N4 完成并验证后，更新正式方案和 docs/handoff，记录 HEAD、完成/未完成项、关键决策、CI，停止开发并给出 N5 可复制接手提示词。
-现在直接开始 N4。
+普通代码/测试/CI问题自行修复；长CI按Master Plan停止轮询等待用户确认；权限/Secrets/真实环境外部输入才停下询问。
+不要提前进入N5/N6/N7/N8/N9。完成并验证N4后更新正式方案和handoff、记录准确HEAD和CI、停止开发，再给N5接手提示词。

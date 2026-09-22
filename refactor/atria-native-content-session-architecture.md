@@ -3,7 +3,7 @@
 ## Status
 
 - **Decision state:** product / data / storage / runtime / UX direction frozen
-- **Implementation state:** N0/N1/N2/N3 validated; N4 is next. Current validated implementation HEAD is `refactor/atria-native-content-session-architecture@c42ee3e98a27fbea97ded0917de081bcc8893680`
+- **Implementation state:** N0/N1/N2/N3 validated; N4 in-progress checkpoint `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`, not runtime-validated. Current validated implementation HEAD is `refactor/atria-native-content-session-architecture@c42ee3e98a27fbea97ded0917de081bcc8893680`
 - **Authoritative development baseline:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Working branch:** `refactor/atria-native-content-session-architecture`
 - **Branch creation point:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
@@ -1417,6 +1417,8 @@ No production UI cutover yet.
 
 ### N4 — SillyTavern Runtime Projection
 
+**In progress; exit not satisfied.** Checkpoint `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`; see the N4 checkpoint record below.
+
 Implement the one-way adapter from Native Package/Session into existing runtime shapes.
 
 Validate existing mature behavior against a Native Session:
@@ -1690,7 +1692,7 @@ The following invariants are load-bearing and should receive automated guards wh
 
 N3 is complete and validated at `c42ee3e98a27fbea97ded0917de081bcc8893680` by Native Content Session Dev Checks #44, run `35679448236` (success; N3 3 suites / 49 tests).
 
-In the next conversation, start N4 only:
+In the next conversation, continue N4 from the pushed checkpoint below (do not restart it or start N5):
 
 1. fetch/re-read the live remote working-branch HEAD; never reset to a stale handoff SHA;
 2. read current `main:AGENTS.md`, `main:FORK_MAINTENANCE.md`, both docs handoffs and this Master Plan;
@@ -1991,3 +1993,55 @@ The next phase is **N4 — SillyTavern Runtime Projection**, on the same working
 ### Engineering guidance receipt
 
 `tavern-card-builder` startup route used; TavernWeave library snapshot `2026-08-18`, standing `ST-A0` read for scope/red lines/acceptance. The existing Master Plan and current Native source are the implementation authority. No design catalog candidate, card-format adapter or version-sensitive host API was adopted in N3. Host API/projection acceptance remains N4.
+
+
+## N4 in-progress checkpoint — 2026-09-22
+
+**Status: implementation checkpoint only; N4 exit NOT satisfied.** The user requested an immediate push and handoff because their usage quota was nearly exhausted. Stop at this checkpoint; the next conversation must continue N4, not start N5.
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Pushed checkpoint HEAD: `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`
+- Last completely validated phase: N3 at `c42ee3e98a27fbea97ded0917de081bcc8893680`
+- main remains untouched; no new branch or main merge.
+- CI: push triggers `Native Content Session Dev Checks`; current run/result not yet verified. Do not carry N3 #44 success forward as N4 evidence.
+
+### Implemented at the checkpoint
+
+- `SessionCore.applyTimelineCommands`: explicit append/revise/select/remove/removeVariant intents in one immutable revision and HEAD-CAS publication; reuses `_publish`/SessionRepo, no second persistence engine.
+- `forkBranch` optionally accepts an exact message/variant within the selected revision. Fork validation checks the referenced immutable Timeline snapshot. Earlier full-revision forks remain covered by N3 regressions.
+- `public/scripts/native/session-projection.js`: Package Actor profile and selected Session revision -> transient character/chat/swipe ABI, stable opaque message/variant mappings, changes to a known projection -> explicit commands. Not a Session importer or authoritative whole-chat save.
+- `public/scripts/native/session-runtime.js`: explicit open/reload/close/fork/switch seam, serialized Timeline writes, CAS failure latch, read-only historical projection, native upload transport.
+- `src/endpoints/native-session.js`: authenticated server-owned handle, create/load/allowlisted command/upload/read routes. Runtime writes require expectedRevisionId. No arbitrary repository method dispatch.
+- `public/script.js`: exported `openNativeSession` seam and Native interception of append/patch/save/reload; projected characters occupy a transient array slot; DOM host itself is not replaced. Native regenerate is routed toward the existing swipe generator; browser behavior still needs proof.
+- bookmarks branch routing, Package Regex provider contribution, Native pinned Knowledge candidates entering existing World Info selection without loading legacy books.
+- `populateFileAttachment` routes uploads to AssetStore in Native mode; logical assetId is retained in Timeline variant metadata, download URL is derived. AssetRef deletion retains immutable Timeline variant references.
+- Native character-state calls return `native_state_integration_pending`; chat state resolves no legacy target. Full state backend integration remains N5. Compatibility metadata is currently transient rather than fully persisted.
+- N4 unit/HTTP tests added to the existing four-engine CI job; no Android/Docker build or extra Docker validation added.
+
+### Executed verification
+
+- `npm run lint`: **passed**, full root source/frontend lint.
+- `npm run test:unit --prefix tests -- --runInBand native atria-shell/native-play-host.test.js`: **17 suites / 139 tests passed**.
+- This Jest pattern also selected `game-runtime/ui-native-components.test.js`; this is unit/DOM coverage, NOT a live R7/browser smoke.
+- Local test environment explicitly disabled MySQL/PostgreSQL with `ATRIA_DISABLE_MYSQL_TESTS=1` and `ATRIA_DISABLE_POSTGRES_TESTS=1`. Local parameterized Native tests exercised FS and SQLite only. Four-engine N4 evidence remains CI-pending.
+- Earlier focused checks: N3 + projection **4 suites / 47 tests**; Native runtime HTTP **1 suite / 4 tests**, passed.
+- An initial test attempt used the wrong database-disable variable names and failed with local DB connection refusals. It was rerun successfully with the correct flags above; no DB service or Docker was started.
+- `git diff --check`: passed before commit.
+- No frontend build, full repository Node regression, live browser, real provider, mobile, Android or Docker validation was executed for N4.
+
+### Required continuation — do not report N4 done
+
+1. Fetch and read the live remote work branch and docs again; do not reset to this SHA if another session advanced it.
+2. Inspect the whole checkpoint diff against N3, especially runtime write timing, identity binding across streaming/swipe/edit, early-save callbacks, switching/closing during queued operations, failure/reload behavior and remaining direct legacy endpoint calls. Unit pass is not sufficient evidence for these seams.
+3. Add isolated real-host browser coverage using the actual Atria server/SPA and existing mock-LLM helpers. Prefer a fresh test-owned data root; do not copy private developer data or use their real configured provider. Existing `_lib/server.js` supports `useExistingDataRoot`; its default clone path uses Unix `cp`, so Windows needs the explicit fresh-root route. No live host was started here.
+4. Verify Send, Stop, Continue, user/assistant Edit, Delete (message and swipe), Swipe, Regenerate, Branch, historical views, reload, exact dependencies, prompt assembly, Regex, World Info compatibility and file/media attachments. Capture Native writes and assert no `/api/chats/*`, Character/World Info persistence fallback or duplicate writes for Native operations.
+5. Specifically prove the Native regenerate-to-swipe mapping uses the real generation lifecycle correctly; do not infer acceptance from pure adapter tests. Check native draft identity survives the runtime's message/swipe object updates.
+6. Preserve R7 original node identities and uniqueness for `#sheld`, `#chat`, `#form_sheld`, `#send_form`, `#send_textarea`; existing unit tests do not establish actual browser lifecycle behavior.
+7. N4 Knowledge projection is intentionally NOT N6: target/visibility-scoped and override bindings are skipped fail-closed; full authority/visibility/KnowledgePlan diagnostics remain N6. Review compatibility field mapping with real selector fixtures before claiming World Info compatibility.
+8. Full N5 state integration, N7 saves, N8 UI cutover and N9 retirement remain unimplemented. Do not promote this development seam to production UI yet. Verify residual legacy paths rather than assuming this checkpoint exhaustively fences every extension route.
+9. Read/fix CI at the exact work-branch HEAD, run broader relevant tests and frontend build, then perform the N4 real-runtime acceptance matrix. Obey the Master Plan long-CI/external-input stop rules.
+10. Only after N4 completion and verification update the formal plan/handoffs and produce an N5 prompt. The present handoff is an N4 continuation prompt.
+
+### Guidance receipt
+
+`tavern-card-builder` and focused API/runtime skills read; library route `tavern-card-builder`, snapshot `2026-08-18`, ST-A0 opening gates used. Current repository source, not recalled upstream signatures, supplied API provenance. No design catalog candidate was adopted. Real-host execution remains explicitly unverified.
