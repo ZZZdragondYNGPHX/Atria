@@ -289,9 +289,9 @@ export function createAtriaWorkspaceHost({
         const detail = descriptor.kind === 'agents'
             ? formatShellText('Current Agents view: ${0}', [translateShellText(AGENT_SECTION_LABELS[descriptor.section] || descriptor.section)], undefined, 'atria.shell.context.agents')
             : descriptor.kind === 'studio'
-                ? translateShellText('Project, editor and simulation details share the existing Studio controller.')
+                ? translateShellText('Native Studio Projects and exact World / Knowledge dependencies use ProjectStore authority.')
                 : descriptor.kind === 'library'
-                    ? formatShellText('Library / ${0} reuses existing character, Game Package, World Info and Skill authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
+                    ? formatShellText('Library / ${0} uses Native Package, World and Knowledge authorities; Skills keep their existing manager.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
                     : descriptor.kind === 'runtime'
                         ? formatShellText('Runtime / ${0} projects the existing Runtime Role, API connection and preset authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.runtime')
                         : descriptor.kind === 'diagnostics'
@@ -451,51 +451,87 @@ export function createAtriaWorkspaceHost({
         return navigateToDomain('play', { reason: 'workspace-play' });
     }
 
-    function openLibrarySection(section = 'characters') {
-        const id = String(section || 'characters').trim().toLowerCase();
-        const item = LIBRARY_SECTIONS.find(candidate => candidate.id === id) || LIBRARY_SECTIONS[0];
+    function openLibrarySection(section = 'works') {
+        const requested = String(section || 'works').trim().toLowerCase();
+        const child = requested === 'worlds' || requested === 'knowledge'
+            ? requested
+            : null;
+        const item = child
+            ? LIBRARY_SECTIONS.find(candidate => candidate.id === 'worlds-knowledge')
+            : LIBRARY_SECTIONS.find(candidate => candidate.id === requested) || LIBRARY_SECTIONS[0];
         if (navigation.getRoute().domain !== 'library') {
             navigation.navigate('library', {
                 reason: 'workspace-library-domain',
                 history: 'push',
             });
         }
-        if (item.id === 'characters') {
+        if (item.id === 'works' && !child) {
             if (navigation.getRoute().child) {
                 return navigation.clearChild({
                     history: 'push',
-                    reason: 'workspace-library-characters',
+                    reason: 'workspace-library-works',
                 });
             }
             return navigation.getRoute();
         }
         return navigation.navigateChild({
-            id: item.id,
-            label: item.label,
+            id: child || item.id,
+            label: child === 'worlds' ? 'Worlds' : child === 'knowledge' ? 'Knowledge Bases' : item.label,
             kind: 'workspace',
         }, {
-            reason: `workspace-library-${item.id}`,
+            reason: `workspace-library-${child || item.id}`,
             history: 'push',
         });
     }
 
-    function openLibraryCharacter(characterId, label = '') {
-        const id = Number(characterId);
-        if (!Number.isInteger(id) || id < 0) return openLibrarySection('characters');
+    function openLibraryDetail(id, label, kind, reason) {
         if (navigation.getRoute().domain !== 'library') {
             navigation.navigate('library', {
-                reason: 'workspace-library-character-domain',
+                reason: reason + '-domain',
                 history: 'push',
             });
         }
         return navigation.navigateChild({
-            id: `character:${id}`,
-            label: String(label || `Character ${id}`),
-            kind: 'detail',
+            id,
+            label: String(label || id),
+            kind,
         }, {
-            reason: 'workspace-library-character-detail',
+            reason,
             history: 'push',
         });
+    }
+
+    function openLibraryWork(packageId, label = '') {
+        return openLibraryDetail(
+            `work:${String(packageId || '').trim()}`,
+            label || 'Work',
+            'detail',
+            'workspace-library-work-detail',
+        );
+    }
+
+    function openLibraryWorld(worldId, label = '') {
+        return openLibraryDetail(
+            `world:${String(worldId || '').trim()}`,
+            label || 'World',
+            'detail',
+            'workspace-library-world-detail',
+        );
+    }
+
+    function openLibraryKnowledge(knowledgeBaseId, label = '') {
+        return openLibraryDetail(
+            `knowledge:${String(knowledgeBaseId || '').trim()}`,
+            label || 'Knowledge Base',
+            'detail',
+            'workspace-library-knowledge-detail',
+        );
+    }
+
+    // N9 product routes no longer expose Character detail as Library authority.
+    // Keep this compatibility method until N10, but forward it to Native Works.
+    function openLibraryCharacter() {
+        return openLibrarySection('works');
     }
 
     function openRuntimeSection(section = 'overview') {
@@ -543,7 +579,7 @@ export function createAtriaWorkspaceHost({
     }
 
     function openWorldInfo() {
-        return openLibrarySection('world-info');
+        return openLibrarySection('worlds');
     }
 
     function openUtility(id) {
@@ -638,8 +674,8 @@ export function createAtriaWorkspaceHost({
         event.preventDefault();
         event.stopImmediatePropagation();
 
-        if (target.id === 'rightNavDrawerIcon') openLibrarySection('characters');
-        else if (target.id === 'WIDrawerIcon') openWorldInfo();
+        if (target.id === 'rightNavDrawerIcon') openLibrarySection('works');
+        else if (target.id === 'WIDrawerIcon') openLibrarySection('worlds');
         else if (target.id === 'server_logs_button') openUtility('diagnostics');
         else if (target.id === 'account_button') openUtility('account');
         else if (target.closest?.('#extensions-settings-button')) openUtility('plugins');
@@ -655,6 +691,9 @@ export function createAtriaWorkspaceHost({
         openAgentSection,
         openLibrarySection,
         openLibraryCharacter,
+        openLibraryWork,
+        openLibraryWorld,
+        openLibraryKnowledge,
         openRuntimeSection,
         openStudio,
         openWorldInfo,
@@ -728,20 +767,28 @@ export function createAtriaWorkspaceHost({
             run: () => openStudio(),
         }),
         shell.registry.register({
-            id: 'workspace.characters',
-            title: translateShellText('Open Character Library'),
-            description: translateShellText('Open the existing Character controller inside Library'),
+            id: 'workspace.works',
+            title: translateShellText('Open Works Library'),
+            description: translateShellText('Browse installed Native Works and game progress'),
             group: translateShellText('Workspaces'),
-            keywords: ['library', 'characters', 'cards'],
-            run: () => openLibrarySection('characters'),
+            keywords: ['library', 'works', 'packages', 'games'],
+            run: () => openLibrarySection('works'),
         }),
         shell.registry.register({
-            id: 'workspace.games',
-            title: translateShellText('Open Game Library'),
-            description: translateShellText('Discover existing Game Packages without opening Studio'),
+            id: 'workspace.worlds',
+            title: translateShellText('Open Worlds Library'),
+            description: translateShellText('Browse Native Worlds and immutable revision history'),
             group: translateShellText('Workspaces'),
-            keywords: ['library', 'games', 'packages'],
-            run: () => openLibrarySection('games'),
+            keywords: ['library', 'worlds', 'revisions'],
+            run: () => openLibrarySection('worlds'),
+        }),
+        shell.registry.register({
+            id: 'workspace.knowledge',
+            title: translateShellText('Open Knowledge Library'),
+            description: translateShellText('Browse Native Knowledge Bases, entries, bindings and references'),
+            group: translateShellText('Workspaces'),
+            keywords: ['library', 'knowledge', 'bindings', 'entries'],
+            run: () => openLibrarySection('knowledge'),
         }),
         shell.registry.register({
             id: 'workspace.skills',
