@@ -175,5 +175,20 @@ requirePattern(
     /WORLD_KNOWLEDGE_FORBIDDEN_IDENTITY_FIELDS[\s\S]*uid[\s\S]*worldBookName[\s\S]*charaFilename[\s\S]*selected_world_info/,
     'N10 World/Knowledge contracts must reject legacy book/file identity',
 );
+requirePattern(
+    'public/scripts/world-info.js',
+    /getSortedEntries[\s\S]{0,500}nativeSessionRuntime\.active[\s\S]{0,500}nativeSessionRuntime\.knowledgeEntries/,
+    'N10 Native World Info adapter must source candidates from pinned Native Knowledge',
+);
+requirePattern(
+    'public/scripts/world-info.js',
+    /getWorldInfoEventRuntimeState[\s\S]{0,320}nativeSessionRuntime\.active[\s\S]{0,220}nativeSessionRuntime\.readState[\s\S]{0,260}getWorldInfoEventFloorState/,
+    'N10 Native World Info state must read SessionRevision state before the non-Native FloorState branch',
+);
+requirePattern(
+    'public/scripts/world-info.js',
+    /if \(nativeSessionRuntime\.active\)[\s\S]{0,700}nativeSessionRuntime\.stageState[\s\S]{0,500}nativeSessionRuntime\.updateState[\s\S]{0,500}else \{[\s\S]{0,300}getWorldInfoEventFloorState/,
+    'N10 Native World Info events must commit through SessionRevision state, not FloorState',
+);
 
 console.log(`N10 Native hard-cutover residual guard passed (${nativeAuthorityFiles.length} authority files scanned).`);
