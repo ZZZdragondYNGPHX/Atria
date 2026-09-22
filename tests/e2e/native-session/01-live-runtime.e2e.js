@@ -133,54 +133,6 @@ async function attachTextFile(page, text) {
     await page.locator('#file_form:not(.displayNone)').waitFor({ state: 'visible', timeout: 10_000 });
 }
 
-async function clickCommittedEditAndConfirm(page, mesid, replacement) {
-    const row = page.locator(`.mes[mesid="${mesid}"]`);
-    await row.locator('.mes_edit').first().click({ force: true });
-    const textarea = row.locator('.edit_textarea').first();
-    await textarea.waitFor({ state: 'visible', timeout: 5000 });
-    await textarea.fill(replacement);
-    await row.locator('.mes_edit_done').first().click();
-    await page.waitForTimeout(300);
-}
-
-async function clickCommittedDelete(page, mesid) {
-    const row = page.locator(`.mes[mesid="${mesid}"]`);
-    await row.locator('.mes_edit').first().click({ force: true });
-    await row.locator('.mes_edit_delete').first().click({ force: true });
-    await page.waitForTimeout(300);
-    const cancel = row.locator('.mes_edit_cancel').first();
-    if (await cancel.isVisible().catch(() => false)) await cancel.click();
-}
-
-async function clickManualSwipe(page, direction = 'left') {
-    await page.evaluate(direction => {
-        const selector = direction === 'left' ? '.last_mes .swipe_left' : '.last_mes .swipe_right';
-        const el = document.querySelector(selector);
-        if (!el) throw new Error(`${selector} not present`);
-        el.click();
-    }, direction);
-    await page.waitForTimeout(300);
-}
-
-async function attemptSwipeDeleteViaPicker(page, swipeIndex = 0) {
-    const counter = page.locator('#chat .last_mes .swipes-counter.swipe-picker-enabled').first();
-    await counter.waitFor({ state: 'visible', timeout: 10_000 });
-    await counter.click();
-    const picker = page.locator('dialog.swipe_picker_popup[open]').last();
-    await picker.waitFor({ state: 'visible', timeout: 10_000 });
-    const row = picker.locator(`.swipe_picker_block[data-swipe-id="${swipeIndex}"]`);
-    const del = row.locator('.swipe_picker_delete:not(.disabled)');
-    await del.waitFor({ state: 'visible', timeout: 5000 });
-    await del.click();
-
-    const confirm = page.locator('dialog.popup[open]').filter({ hasText: /delete swipe/i }).last();
-    if (await confirm.isVisible().catch(() => false)) {
-        await confirm.locator('.popup-button-ok').click();
-    }
-    await page.waitForTimeout(300);
-    await page.keyboard.press('Escape').catch(() => {});
-}
-
 test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
     test.beforeAll(async () => {
         seeded = await seedNativeSessionDataRoot({ suffix: 'immutable-live' });
@@ -405,23 +357,21 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
         let state = await nativeRuntimeState(page);
         const assistantIndex = state.messages.findLastIndex(message => !message.is_user);
         const assistantText = state.messages[assistantIndex].mes;
-        await clickCommittedEditAndConfirm(page, assistantIndex, 'N4_FORBIDDEN_EDIT');
+        const assistantRow = page.locator(`.mes[mesid="${assistantIndex}"]`);
+
+        // N9 retires committed in-place mutation controls at the product
+        // surface instead of inviting a click that N4 then has to reject.
+        await expect(assistantRow.locator('.mes_edit').first()).toBeHidden();
+        await expect(assistantRow.locator('.mes_edit_delete').first()).toBeHidden();
         state = await nativeRuntimeState(page);
         expect(state.messages[assistantIndex].mes).toBe(assistantText);
         let after = await loadNativeSnapshot(page, mainSessionId);
         expect(after.revision.revisionId).toBe(before.revision.revisionId);
         expect(requests.trace.filter(item => item.path === '/api/native/session/command')).toHaveLength(commandCount);
 
-        const lengthBeforeDelete = state.messages.length;
-        await clickCommittedDelete(page, assistantIndex);
-        state = await nativeRuntimeState(page);
-        expect(state.messages).toHaveLength(lengthBeforeDelete);
-        after = await loadNativeSnapshot(page, mainSessionId);
-        expect(after.revision.revisionId).toBe(before.revision.revisionId);
-        expect(requests.trace.filter(item => item.path === '/api/native/session/command')).toHaveLength(commandCount);
-
-        // Open the N3-seeded two-Variant compatibility Session. N4 must render
-        // it, but neither manual switch nor Swipe Delete may alter authority.
+        // Open the N3-seeded two-Variant compatibility Session. N4 still
+        // projects its selected Variant, while N9 removes Swipe/Picker
+        // mutation affordances entirely.
         await openNativeSession(page, seeded.compatibilitySession.sessionId);
         before = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
         state = await nativeRuntimeState(page);
@@ -430,17 +380,12 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
         const selectedText = state.messages[0].mes;
 
         commandCount = requests.trace.filter(item => item.path === '/api/native/session/command').length;
-        await clickManualSwipe(page, 'left');
+        await expect(page.locator('#chat .last_mes .swipe_left').first()).toBeHidden();
+        await expect(page.locator('#chat .last_mes .swipe_right').first()).toBeHidden();
+        await expect(page.locator('#chat .last_mes .swipes-counter').first()).toBeHidden();
+        await expect(page.locator('dialog.swipe_picker_popup[open]')).toHaveCount(0);
         state = await nativeRuntimeState(page);
         expect(state.messages[0].swipe_id).toBe(1);
-        expect(state.messages[0].mes).toBe(selectedText);
-        after = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
-        expect(after.revision.revisionId).toBe(before.revision.revisionId);
-        expect(requests.trace.filter(item => item.path === '/api/native/session/command')).toHaveLength(commandCount);
-
-        await attemptSwipeDeleteViaPicker(page, 0);
-        state = await nativeRuntimeState(page);
-        expect(state.messages[0].variantIds).toHaveLength(2);
         expect(state.messages[0].mes).toBe(selectedText);
         after = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
         expect(after.revision.revisionId).toBe(before.revision.revisionId);
