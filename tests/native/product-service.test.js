@@ -272,7 +272,7 @@ describe('N9 Native Product UI service', () => {
                 entryPointId: f.entryPointId,
             });
             const save = await product.createSave(h.handle, started.session.sessionId, { kind: 'manual' });
-            const archive = await product.exportSave(h.handle, started.session.sessionId, { saveId: save.saveId });
+            const archive = await product.exportSnapshot(h.handle, started.session.sessionId, save.saveId);
             expect(Buffer.isBuffer(archive)).toBe(true);
             expect((await product.preflightSaveImport(h.handle, archive)).dependency.status).toBe('ready');
 
