@@ -11032,12 +11032,17 @@ export async function saveReply({ type, getMessage, fromStreaming = false, title
         type = 'normal';
     }
 
-    if (chat.length && (!lastMessage.extra || typeof lastMessage.extra !== 'object')) {
+    // Only normalize the existing tail when this save mode actually edits
+    // that tail. A normal reply creates a new assistant entry below, so
+    // touching the preceding committed user message here would violate the
+    // Native immutable Timeline barrier (and is unnecessary for legacy too).
+    const editsExistingTail = ['swipe', 'append', 'continue', 'appendFinal'].includes(type);
+    if (chat.length && editsExistingTail && (!lastMessage.extra || typeof lastMessage.extra !== 'object')) {
         lastMessage.extra = {};
     }
 
-    // Coerce null/undefined to empty string
-    if (chat.length && !lastMessage.extra.reasoning) {
+    // Coerce null/undefined to empty string only on the message being edited.
+    if (chat.length && editsExistingTail && !lastMessage.extra.reasoning) {
         lastMessage.extra.reasoning = '';
     }
 
