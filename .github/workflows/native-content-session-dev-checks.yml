@@ -192,6 +192,7 @@ jobs:
           memory-graph/adapter.test.js
           memory-graph/source-provenance.test.js
           memory-graph/source-lifecycle.test.js
+          memory-graph/optimization.test.js
           search-tools/persistence.test.js
           orchestrator/persistence.test.js
           orchestrator/snapshot-cache-hits-invalidates.test.js
@@ -208,6 +209,7 @@ jobs:
           public/scripts/extensions/memory-graph/persistence.js
           public/scripts/extensions/memory-graph/source-provenance.js
           public/scripts/extensions/memory-graph/source-lifecycle.js
+          public/scripts/extensions/memory-graph/inspector-compute.js
           public/scripts/extensions/orchestrator/anchors.js
           public/scripts/extensions/orchestrator/persistence.js
           public/scripts/extensions/orchestrator/snapshot-cache.js
