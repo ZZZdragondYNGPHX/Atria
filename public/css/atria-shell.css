@@ -1597,3 +1597,26 @@ body[data-atria-native-session-active="true"] #option_regenerate {
         flex-direction: column;
     }
 }
+
+
+.atria-native-play-landing {
+    display: grid;
+    gap: 0.75rem;
+    padding: clamp(1rem, 3vw, 2rem);
+    overflow: auto;
+}
+
+.atria-native-play-landing[hidden] {
+    display: none !important;
+}
+
+.atria-native-portable-save {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.65rem 0;
+}
+
+.atria-native-portable-save__result pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
