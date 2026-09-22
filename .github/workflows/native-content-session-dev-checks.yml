@@ -320,8 +320,6 @@ jobs:
 
   n8-save-system:
     name: N8 Save System / Checkpoint B
-    needs:
-      - n7-context
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
