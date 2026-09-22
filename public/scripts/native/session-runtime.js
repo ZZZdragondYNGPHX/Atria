@@ -19,6 +19,21 @@ function isEmptyGenerationDraft(command) {
     return ['', '...'].includes(content.trim()) && attachments.length === 0 && reasoning.trim() === '';
 }
 
+function bindCommittedRuntimeObject(target, canonical) {
+    // Preserve object identity owned by the generation/editor host while
+    // normalizing every authority-bearing compatibility field to the exact
+    // projection returned by Native commit.
+    for (const key of [
+        'name', 'is_user', 'is_system', 'mes', 'send_date', 'gen_started',
+        'gen_finished', 'gen_id', 'is_name', 'force_avatar', 'swipes',
+        'swipe_id', 'swipe_info', 'extra',
+    ]) {
+        if (canonical[key] === undefined) delete target[key];
+        else target[key] = copy(canonical[key]);
+    }
+    target.atri_native = copy(canonical.atri_native);
+}
+
 /** One active downstream projection. Generation/rendering remain owned by the existing ST host. */
 export class NativeSessionRuntime {
     constructor() {
@@ -302,6 +317,7 @@ export class NativeSessionRuntime {
             }
 
             try {
+                const committedLength = this.snapshot.timeline.length;
                 const next = await this.request('command', {
                     sessionId,
                     expectedRevisionId: this.snapshot.revision.revisionId,
@@ -309,12 +325,14 @@ export class NativeSessionRuntime {
                 });
                 this.snapshot = next;
                 const projection = projectNativeSession(next);
-                // Ordinary append keeps the generator-owned runtime objects
-                // alive; bind only the returned opaque IDs.
+                // Existing committed objects already passed the barrier. Newly
+                // committed Draft objects keep their JS identity but are
+                // normalized in place to the exact canonical projection.
                 references.forEach((message, index) => {
-                    if (projection.chat[index]?.atri_native) {
-                        message.atri_native = projection.chat[index].atri_native;
-                    }
+                    const canonical = projection.chat[index];
+                    if (!canonical?.atri_native) return;
+                    if (index >= committedLength) bindCommittedRuntimeObject(message, canonical);
+                    else message.atri_native = copy(canonical.atri_native);
                 });
                 this.host.revision(projection);
                 this.generation = null;
