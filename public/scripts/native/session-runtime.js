@@ -454,19 +454,10 @@ export class NativeSessionRuntime {
             // the already-committed post-user revision.
             if (this.generation && commands.length > 0 && commands.every(isEmptyGenerationDraft)) {
                 const aborted = this.generation;
-                if (Object.keys(statePatch).length > 0) {
-                    const previous = this.snapshot;
-                    const next = await this.request('command', {
-                        sessionId,
-                        expectedRevisionId: previous.revision.revisionId,
-                        command: { type: 'runtime', statePatch },
-                    });
-                    this.snapshot = next;
-                    this.host?.revision?.(projectNativeSession(next));
-                    await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
-                        stateNamespaces: Object.keys(statePatch),
-                    });
-                }
+                // Draft-local runtime mutations are not a committed boundary.
+                // Stop/empty output must leave HEAD at the exact post-user
+                // Revision, so discard the draft and reinstall canonical
+                // SessionState instead of publishing a state-only Revision.
                 this.generation = null;
                 await this.host.install(projectNativeSession(this.snapshot));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
@@ -475,10 +466,15 @@ export class NativeSessionRuntime {
                 return true;
             }
 
+            if (!commands.length && this.generation) {
+                // A generation with no assistant Draft object is still
+                // uncommitted. Ignore host-side runtime-state drift here;
+                // finalizeStoppedGeneration() will discard the Draft and
+                // reinstall the canonical post-user Revision.
+                return true;
+            }
+
             if (!commands.length && Object.keys(statePatch).length === 0) {
-                // A no-op save during generation must not end the Draft
-                // lifecycle. The Draft is terminal only when an assistant
-                // entry commits or Stop discards it.
                 return true;
             }
 

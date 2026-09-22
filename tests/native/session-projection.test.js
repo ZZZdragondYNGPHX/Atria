@@ -224,6 +224,29 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect(messages.at(-1).is_user).toBe(true);
     });
 
+    test('Stop discards draft-local runtime state and does not advance past post-user Revision', async () => {
+        expect(await runtime.prepareGeneration('normal')).toBe('normal');
+
+        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'Keep exact post-user state', extra: {} });
+        await runtime.persist();
+        const postUserRevision = runtime.snapshot.revision.revisionId;
+        expect(runtime.snapshot.states.atri_variables).toBeUndefined();
+
+        runtime.host.runtimeState = () => ({
+            atri_variables: { schemaVersion: 1, values: { phase: 'draft-only' } },
+        });
+        await runtime.finalizeStoppedGeneration();
+
+        expect(runtime.snapshot.revision.revisionId).toBe(postUserRevision);
+        expect(runtime.snapshot.states.atri_variables).toBeUndefined();
+        expect(projection.metadata.variables).toEqual({});
+        expect(runtime.generation).toBeNull();
+
+        const stored = await f.core.load(h.handle, runtime.snapshot.session.sessionId);
+        expect(stored.revision.revisionId).toBe(postUserRevision);
+        expect(stored.states.atri_variables).toBeUndefined();
+    });
+
     test('empty assistant Draft after committed user turn is discarded without advancing HEAD', async () => {
         expect(await runtime.prepareGeneration('normal')).toBe('normal');
 
