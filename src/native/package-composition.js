@@ -57,7 +57,6 @@ export async function buildProjectPackage({
     worldRepo,
     knowledgeRepo,
     assetStore,
-    now = Date.now,
     idFactory = createNativeId,
 }) {
     if (!projectStore) throw new TypeError('buildProjectPackage requires ProjectStore');
@@ -104,7 +103,6 @@ export async function buildProjectPackage({
         packageId: manifest.packageId,
         version: manifest.version,
         packageContentHash,
-        createdAt: Number(now()),
     });
 
     return Object.freeze({
@@ -147,7 +145,6 @@ export class PackageInstaller {
             packageId: manifest.packageId,
             version: manifest.version,
             packageContentHash,
-            createdAt: Date.now(),
         });
 
         // Blob/content first. If any later metadata operation fails on FS, the
@@ -168,8 +165,8 @@ export class PackageInstaller {
                 packageId: manifest.packageId,
                 displayName: manifest.name,
                 currentVersionId: null,
-                createdAt: packageVersion.createdAt,
-                updatedAt: packageVersion.createdAt,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
             }));
         } else if (existing.displayName !== manifest.name) {
             await this._packageRepo.save(handle, assertPackageRecord({
