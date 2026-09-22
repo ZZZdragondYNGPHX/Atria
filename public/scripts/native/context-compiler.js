@@ -649,18 +649,21 @@ async function tokenizeItems(items, countTokens, diagnostics) {
 }
 
 function selectedRawMessageIds(included) {
-    const ids = [];
-    const seen = new Set();
+    const refs = new Map();
     for (const item of included) {
         if (![CONTEXT_LANES.currentUser, CONTEXT_LANES.recentRaw].includes(item.lane)) continue;
         for (const ref of item.sourceRefs) {
-            if (ref.kind === 'timeline' && ref.messageId && !seen.has(ref.messageId)) {
-                seen.add(ref.messageId);
-                ids.push(ref.messageId);
+            if (ref.kind !== 'timeline' || !ref.messageId) continue;
+            const existing = refs.get(ref.messageId);
+            if (!existing || Number(ref.sequence ?? Number.MAX_SAFE_INTEGER) < Number(existing.sequence ?? Number.MAX_SAFE_INTEGER)) {
+                refs.set(ref.messageId, ref);
             }
         }
     }
-    return ids;
+    return [...refs.values()]
+        .sort((a, b) => Number(a.sequence ?? Number.MAX_SAFE_INTEGER) - Number(b.sequence ?? Number.MAX_SAFE_INTEGER)
+            || String(a.messageId).localeCompare(String(b.messageId)))
+        .map(ref => ref.messageId);
 }
 
 function coverageDiagnostics(snapshot, state) {

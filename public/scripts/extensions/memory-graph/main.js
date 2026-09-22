@@ -488,6 +488,7 @@ const memoryStoreTargets = new Map();
 const memoryLoadTasks = new Map();
 const rollbackHistoryCache = new Map();
 const scheduledExtractionSingleFlightStates = new Map();
+const nativeDerivationJournalSeqBySession = new Map();
 let activeExtractionToast = null;
 let activeRecallToast = null;
 let activePersistentRuntimeNoticeToast = null;
@@ -9329,9 +9330,20 @@ async function runScheduledExtractionPass(chatKey) {
             const journalEvents = Array.isArray(worldState?.journal?.events)
                 ? worldState.journal.events.slice(-32)
                 : [];
+            const sessionId = getNativeMemorySessionId();
+            const previousJournalSeq = sessionId
+                ? Number(nativeDerivationJournalSeqBySession.get(sessionId) || 0)
+                : 0;
+            const newJournalEvents = journalEvents.filter(event =>
+                Number.isInteger(Number(event?.seq)) && Number(event.seq) > previousJournalSeq);
+            const latestJournalSeq = Math.max(
+                previousJournalSeq,
+                ...journalEvents.map(event => Number.isInteger(Number(event?.seq)) ? Number(event.seq) : 0),
+            );
+            if (sessionId) nativeDerivationJournalSeqBySession.set(sessionId, latestJournalSeq);
             const decision = evaluateDerivationGate({
                 policy: nativeSessionRuntime.currentContextPlan()?.policy || 'balanced',
-                events: journalEvents,
+                events: newJournalEvents,
                 turnsSinceDigest: preview.gap,
                 memory: {
                     pendingCount: preview.gap,
@@ -16216,6 +16228,14 @@ async function refreshNativeMemoryRevisionState() {
     if (!nativeSessionRuntime.active) return;
     latestRecallSnapshot = null;
     const runtimeContext = getContext();
+    const sessionId = getNativeMemorySessionId();
+    const worldState = nativeSessionRuntime.readState('atri_game_world');
+    const journalEvents = Array.isArray(worldState?.journal?.events) ? worldState.journal.events : [];
+    const latestJournalSeq = Math.max(
+        0,
+        ...journalEvents.map(event => Number.isInteger(Number(event?.seq)) ? Number(event.seq) : 0),
+    );
+    if (sessionId) nativeDerivationJournalSeqBySession.set(sessionId, latestJournalSeq);
     const target = buildMemoryTargetFromContext(runtimeContext);
     const chatKey = getChatKey(runtimeContext);
     if (!target || !chatKey || chatKey === 'invalid_target') return;

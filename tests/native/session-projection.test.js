@@ -76,6 +76,47 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         return messages.at(-1);
     }
 
+    test('N7 derived publication stages with Draft and degrades stale async work without failing Session', async () => {
+        const sourceRevisionId = runtime.snapshot.revision.revisionId;
+        const sourceMessage = runtime.snapshot.timeline[0];
+
+        runtime.generation = { kind: 'append' };
+        const staged = await runtime.openCommitment({
+            commitmentId: 'commitment-native-test',
+            content: 'Keep the harbor gate open.',
+            importance: 95,
+            sourceRefs: [{
+                kind: 'timeline',
+                messageId: sourceMessage.messageId,
+                branchId: sourceMessage.branchId,
+                revisionId: sourceRevisionId,
+                sequence: sourceMessage.sequence,
+            }],
+        });
+        expect(staged).toMatchObject({ ok: true, staged: true, published: false });
+        expect(runtime.readState('atri_context_derived').commitments[0].commitmentId)
+            .toBe('commitment-native-test');
+
+        runtime.generation = null;
+        runtime._clearStagedStates();
+        const previous = runtime.snapshot;
+        await runtime.updateState('atri_test_advance', current => ({ ...current, turn: 1 }));
+        const stale = await runtime.appendTurnDigest({
+            revisionId: previous.revision.revisionId,
+            producer: 'utility',
+            sourceRefs: [{
+                kind: 'timeline',
+                messageId: sourceMessage.messageId,
+                branchId: sourceMessage.branchId,
+                revisionId: previous.revision.revisionId,
+                sequence: sourceMessage.sequence,
+            }],
+            coverage: { fromSequence: 0, toSequence: 0 },
+        });
+        expect(stale).toMatchObject({ ok: false, published: false, reason: 'stale_revision' });
+        expect(runtime.failed).toBe(false);
+    });
+
     test('Draft-local staged SessionState commits with accepted assistant and is discarded on Stop', async () => {
         await appendUser('Stage state');
         const postUserRevisionId = runtime.snapshot.revision.revisionId;

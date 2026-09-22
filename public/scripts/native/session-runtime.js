@@ -685,48 +685,139 @@ export class NativeSessionRuntime {
         return normalizeContextDerivedState(this.readState(CONTEXT_DERIVED_NAMESPACE));
     }
 
+    async _publishDerivedTransform(sourceRevisionId, transform) {
+        if (!this.active || this.history || this.failed) {
+            return { ok: false, published: false, reason: 'session_not_writable' };
+        }
+        const sessionId = this.snapshot.session.sessionId;
+        if (this.snapshot.revision.revisionId !== sourceRevisionId) {
+            return { ok: false, published: false, reason: 'stale_revision' };
+        }
+
+        if (this.generation) {
+            try {
+                const current = normalizeContextDerivedState(this.readState(CONTEXT_DERIVED_NAMESPACE));
+                const nextValue = transform(current);
+                const staged = this.stageState(CONTEXT_DERIVED_NAMESPACE, nextValue);
+                return {
+                    ok: true,
+                    published: false,
+                    staged: true,
+                    updated: staged.updated,
+                    state: staged.state,
+                };
+            } catch (error) {
+                return {
+                    ok: false,
+                    published: false,
+                    reason: 'derived_stage_failed',
+                    error: String(error?.message || error),
+                };
+            }
+        }
+
+        return this._queue(async () => {
+            if (!this.active || this.history || this.failed
+                || this.snapshot.session.sessionId !== sessionId
+                || this.snapshot.revision.revisionId !== sourceRevisionId) {
+                return { ok: false, published: false, reason: 'stale_revision' };
+            }
+            const current = normalizeContextDerivedState(this.readState(CONTEXT_DERIVED_NAMESPACE));
+            let nextValue;
+            try {
+                nextValue = transform(current);
+            } catch (error) {
+                return {
+                    ok: false,
+                    published: false,
+                    reason: 'derived_transform_failed',
+                    error: String(error?.message || error),
+                };
+            }
+            if (equalJson(current, nextValue)) {
+                return { ok: true, published: false, updated: false, state: copy(current) };
+            }
+            const previous = this.snapshot;
+            try {
+                const next = await this.request('command', {
+                    sessionId,
+                    expectedRevisionId: sourceRevisionId,
+                    command: {
+                        type: 'runtime',
+                        statePatch: { [CONTEXT_DERIVED_NAMESPACE]: copy(nextValue) },
+                    },
+                });
+                this.snapshot = next;
+                this._clearStagedStates([CONTEXT_DERIVED_NAMESPACE]);
+                this.lastContextPlan = null;
+                this.host?.revision?.(projectNativeSession(next));
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
+                    stateNamespaces: [CONTEXT_DERIVED_NAMESPACE],
+                    derived: true,
+                });
+                return {
+                    ok: true,
+                    published: true,
+                    updated: true,
+                    state: copy(next.states?.[CONTEXT_DERIVED_NAMESPACE] ?? nextValue),
+                };
+            } catch (error) {
+                if (error?.status === 409 || error?.code === 'native_session_head_conflict') {
+                    return { ok: false, published: false, reason: 'stale_revision' };
+                }
+                console.warn('[native-session] derived Context publication failed gracefully', error);
+                return {
+                    ok: false,
+                    published: false,
+                    reason: 'derived_publish_failed',
+                    error: String(error?.message || error),
+                };
+            }
+        });
+    }
+
     async appendNarrativeArtifact(artifact) {
-        this.assertWritable();
-        const revisionId = this.snapshot.revision.revisionId;
-        const branchId = this.snapshot.revision.branchId;
-        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => appendNarrativeArtifact(current, {
+        if (!this.active) return { ok: false, published: false, reason: 'session_not_writable' };
+        const revisionId = artifact?.revisionId || this.snapshot.revision.revisionId;
+        const branchId = artifact?.branchId || this.snapshot.revision.branchId;
+        return this._publishDerivedTransform(revisionId, current => appendNarrativeArtifact(current, {
             ...artifact,
-            branchId: artifact?.branchId || branchId,
-            revisionId: artifact?.revisionId || revisionId,
+            branchId,
+            revisionId,
             fromRevisionId: artifact?.fromRevisionId || revisionId,
             toRevisionId: artifact?.toRevisionId || revisionId,
         }));
     }
 
     async openCommitment(commitment) {
-        this.assertWritable();
-        const revisionId = this.snapshot.revision.revisionId;
-        const branchId = this.snapshot.revision.branchId;
-        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => openDerivedCommitment(current, {
+        if (!this.active) return { ok: false, published: false, reason: 'session_not_writable' };
+        const revisionId = commitment?.revisionId || this.snapshot.revision.revisionId;
+        const branchId = commitment?.branchId || this.snapshot.revision.branchId;
+        return this._publishDerivedTransform(revisionId, current => openDerivedCommitment(current, {
             ...commitment,
-            branchId: commitment?.branchId || branchId,
-            revisionId: commitment?.revisionId || revisionId,
+            branchId,
+            revisionId,
         }));
     }
 
     async transitionCommitment(commitmentId, transition) {
-        this.assertWritable();
-        const revisionId = this.snapshot.revision.revisionId;
-        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => transitionDerivedCommitment(
+        if (!this.active) return { ok: false, published: false, reason: 'session_not_writable' };
+        const revisionId = transition?.revisionId || this.snapshot.revision.revisionId;
+        return this._publishDerivedTransform(revisionId, current => transitionDerivedCommitment(
             current,
             commitmentId,
-            { ...transition, revisionId: transition?.revisionId || revisionId },
+            { ...transition, revisionId },
         ));
     }
 
     async appendTurnDigest(digest) {
-        this.assertWritable();
-        const revisionId = this.snapshot.revision.revisionId;
-        const branchId = this.snapshot.revision.branchId;
-        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => appendTurnDigest(current, {
+        if (!this.active) return { ok: false, published: false, reason: 'session_not_writable' };
+        const revisionId = digest?.revisionId || this.snapshot.revision.revisionId;
+        const branchId = digest?.branchId || this.snapshot.revision.branchId;
+        return this._publishDerivedTransform(revisionId, current => appendTurnDigest(current, {
             ...digest,
-            branchId: digest?.branchId || branchId,
-            revisionId: digest?.revisionId || revisionId,
+            branchId,
+            revisionId,
         }));
     }
 
