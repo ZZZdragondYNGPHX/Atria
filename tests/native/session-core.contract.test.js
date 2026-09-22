@@ -26,7 +26,6 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         expect(view.timeline.map(entry => entry.messageId)).toEqual([openingId, rootMessageId]);
         expect(view.graph.find(node => node.branchId === childBranchId).branch.parentBranchId).toBe(rootBranchId);
         view = await core.appendTimeline(h.handle, sessionId, { role: 'assistant', content: 'Child route' });
-        view = await core.addVariant(h.handle, sessionId, view.timeline[2].messageId, { content: 'Child alternate' });
         view = await core.updateState(h.handle, sessionId, { atri_test: { hp: 4 } });
         const revisionId = view.revision.revisionId;
         const reloaded = await services(h).core.load(h.handle, sessionId);
@@ -48,7 +47,7 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         expect(root.timeline.map(entry => entry.content)).toEqual(['Opening', 'Explore']);
         expect(root.states.atri_test).toBeUndefined();
         const child = await core.switchBranch(h.handle, sessionId, childBranchId);
-        expect(child.timeline.at(-1).content).toBe('Child alternate');
+        expect(child.timeline.at(-1).content).toBe('Child route');
         expect(child.states.atri_test).toEqual({ hp: 4 });
         // No fork copies of ancestor message records; only three native births.
         const records = await h.engine.withTransaction(h.handle, tx => tx.listResources({ kind: 'atri_timeline_entry', handle: h.handle, sessionId }));
@@ -57,26 +56,34 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         await expect(f.sessionRepo.deleteRevision(h.handle, sessionId, initialRevisionId)).rejects.toMatchObject({ code: 'native_session_revision_referenced' });
     });
 
-    test('Variant selection is revision-local; forking an old revision keeps exact selections and state', async () => {
+    test('committed Timeline entries keep one immutable birth Variant across Revision forks', async () => {
         let view = await f.core.create(h.handle, f.start);
         const sessionId = view.session.sessionId;
-        const root = view.revision.branchId;
-        const messageId = view.timeline[0].messageId;
-        const original = view.timeline[0].activeVariantId;
+        const rootBranchId = view.revision.branchId;
+        const opening = view.timeline[0];
+        expect(opening.variantIds).toEqual([opening.activeVariantId]);
+
         view = await f.core.updateState(h.handle, sessionId, { atri_progress: { turn: 1 } });
         const oldRevisionId = view.revision.revisionId;
-        view = await f.core.addVariant(h.handle, sessionId, messageId, { content: 'Different opening' });
-        const alternate = view.timeline[0].activeVariantId;
-        await f.core.selectVariant(h.handle, sessionId, messageId, original);
-        expect((await f.core.load(h.handle, sessionId)).timeline[0].content).toBe('Opening');
-        await f.core.selectVariant(h.handle, sessionId, messageId, alternate);
-        const child = await f.core.forkBranch(h.handle, sessionId, { revisionId: oldRevisionId });
-        expect(child.timeline[0].variantIds).toEqual([original]);
+        view = await f.core.appendTimeline(h.handle, sessionId, { role: 'user', content: 'Later root turn' });
+        expect(view.timeline.every(entry => entry.variantIds.length === 1)).toBe(true);
+
+        const child = await f.core.forkBranch(h.handle, sessionId, {
+            revisionId: oldRevisionId,
+            displayName: 'Revision fork',
+            expectedRevisionId: view.revision.revisionId,
+        });
+        expect(child.timeline).toHaveLength(1);
+        expect(child.timeline[0].variantIds).toEqual([opening.activeVariantId]);
         expect(child.states.atri_progress).toEqual({ turn: 1 });
-        await expect(f.core.selectVariant(h.handle, sessionId, messageId, alternate)).rejects.toThrow('native timeline variant');
-        const resumed = await f.core.switchBranch(h.handle, sessionId, root);
-        expect(resumed.timeline[0].activeVariantId).toBe(alternate);
-        expect((await f.core.load(h.handle, sessionId, { revisionId: oldRevisionId })).timeline[0].activeVariantId).toBe(original);
+
+        const root = await f.core.switchBranch(h.handle, sessionId, rootBranchId, {
+            expectedRevisionId: child.revision.revisionId,
+        });
+        expect(root.timeline.at(-1).content).toBe('Later root turn');
+        const historical = await f.core.load(h.handle, sessionId, { revisionId: oldRevisionId });
+        expect(historical.timeline[0].activeVariantId).toBe(opening.activeVariantId);
+        expect(historical.timeline[0].variantIds).toEqual([opening.activeVariantId]);
     });
 
     test('SavePoints restore coherent state and exact Knowledge after explicit Library upgrade', async () => {
@@ -158,7 +165,7 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
     test('Native resource round-trip into a fresh FS engine preserves the entire committed Session', async () => {
         let view = await f.core.create(h.handle, f.start);
         view = await f.core.forkBranch(h.handle, view.session.sessionId);
-        view = await f.core.addVariant(h.handle, view.session.sessionId, view.timeline[0].messageId, { content: 'Round-trip' });
+        view = await f.core.appendTimeline(h.handle, view.session.sessionId, { role: 'user', content: 'Round-trip' });
         const save = await f.core.createSavePoint(h.handle, view.session.sessionId);
         const target = await makeTempFsEngineHarness();
         try {
