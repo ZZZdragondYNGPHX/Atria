@@ -17,13 +17,17 @@ export const WORLD_KNOWLEDGE_FORBIDDEN_IDENTITY_FIELDS = Object.freeze([
 ]);
 
 function plain(value, field) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    if (
+        !value
+        || typeof value !== 'object'
+        || Array.isArray(value)
+        || Object.prototype.toString.call(value) !== '[object Object]'
+    ) {
         throw new TypeError(field + ' must be a plain object');
     }
-    const proto = Object.getPrototypeOf(value);
-    if (proto !== Object.prototype && proto !== null) {
-        throw new TypeError(field + ' must be a plain object');
-    }
+    // Native documents may cross Jest VM/plugin/worker realms. A direct
+    // prototype identity check rejects otherwise ordinary JSON objects from
+    // another realm, while the object brand still excludes Date/Map/Set/etc.
     return value;
 }
 
