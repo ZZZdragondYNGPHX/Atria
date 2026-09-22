@@ -91,7 +91,9 @@ describe('N9 Native Product UI service', () => {
                 displayTitle: 'N9 Run',
             });
             expect(started.session.displayTitle).toBe('N9 Run');
-            expect((await product.listSessions(h.handle))[0].sessionId).toBe(started.session.sessionId);
+            const listedSession = (await product.listSessions(h.handle))[0];
+            expect(listedSession.sessionId).toBe(started.session.sessionId);
+            expect(listedSession.dependency.status).toBe('ready');
 
             const quick = await product.createSave(h.handle, started.session.sessionId, { kind: 'quick' });
             expect(quick).toMatchObject({
@@ -117,6 +119,8 @@ describe('N9 Native Product UI service', () => {
             expect(restored.timeline).toHaveLength(started.timeline.length);
 
             const detail = await product.getSession(h.handle, started.session.sessionId);
+            expect(detail.dependency.status).toBe('ready');
+            expect(detail.snapshot.session.sessionId).toBe(started.session.sessionId);
             expect(detail.saves.map(item => item.saveId)).toContain(quick.saveId);
             expect(detail.branches.length).toBeGreaterThanOrEqual(2);
             expect(detail.revisions.length).toBeGreaterThanOrEqual(3);
@@ -245,4 +249,62 @@ describe('N9 Native Product UI service', () => {
             await h.cleanup();
         }
     });
+
+    test('surfaces missing Package dependencies and delegates save import/export to N8', async () => {
+        const h = await makeTempFsEngineHarness();
+        try {
+            const f = await installFixture(h);
+            const worldRepo = new WorldRepo({ engine: h.engine });
+            const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
+            const product = new NativeProductService({
+                packageRepo: f.packageRepo,
+                worldRepo,
+                knowledgeRepo: f.knowledgeRepo,
+                sessionRepo: f.sessionRepo,
+                savePointRepo: f.savePointRepo,
+                packageInstaller: f.packageInstaller,
+                saveSystem: f.saveSystem,
+                sessionCore: f.core,
+                projectStore,
+            });
+
+            const started = await product.startWork(h.handle, f.manifest.packageId, {
+                entryPointId: f.entryPointId,
+            });
+            const save = await product.createSave(h.handle, started.session.sessionId, { kind: 'manual' });
+            const archive = await product.exportSave(h.handle, started.session.sessionId, { saveId: save.saveId });
+            expect(Buffer.isBuffer(archive)).toBe(true);
+            expect((await product.preflightSaveImport(h.handle, archive)).dependency.status).toBe('ready');
+
+            const missingSessionId = createNativeId('session');
+            await f.sessionRepo.create(h.handle, {
+                sessionId: missingSessionId,
+                packageId: createNativeId('package'),
+                packageVersionId: createNativeId('packageVersion'),
+                packageVersion: '9.9.9',
+                packageContentHash: 'f'.repeat(64),
+                entryPointId: createNativeId('entryPoint'),
+                activeBranchId: createNativeId('branch'),
+                headRevisionId: null,
+                createdAt: 100,
+                updatedAt: 100,
+            });
+            const missing = await product.getSession(h.handle, missingSessionId);
+            expect(missing.dependency).toMatchObject({
+                status: 'missing',
+                code: 'native_session_package_missing',
+            });
+            expect(missing.snapshot).toBeNull();
+            expect((await product.listSessions(h.handle)).find(item => item.sessionId === missingSessionId))
+                .toMatchObject({ dependency: { status: 'missing' } });
+
+            const createdWorld = await product.createWorld(h.handle, { displayName: 'Created in N9' });
+            const createdKnowledge = await product.createKnowledgeBase(h.handle, { displayName: 'Created KB in N9' });
+            expect(createdWorld).toMatchObject({ displayName: 'Created in N9', currentRevisionId: null });
+            expect(createdKnowledge).toMatchObject({ displayName: 'Created KB in N9', currentRevisionId: null });
+        } finally {
+            await h.cleanup();
+        }
+    });
+
 });
