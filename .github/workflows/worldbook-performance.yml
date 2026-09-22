@@ -113,6 +113,7 @@ jobs:
           world-info/state-events-floor-state.test.js
           world-info/selection-strategy.test.js
           world-info/workspace-diagnostics.test.js
+          world-info/workspace-embedded-contract.test.js
           --runInBand
 
       - name: Capture synthetic offline baseline
