@@ -21151,6 +21151,11 @@ jQuery(async function () {
         });
 
         if (id == 'option_select_chat') {
+            if (nativeSessionRuntime.active) {
+                nativeSessionRuntime.denyCommittedAction('Manage Chat Files');
+                hideMenu();
+                return;
+            }
             if (this_chid === undefined && !is_send_press && !selected_group) {
                 await openPermanentAssistantCard();
             }
