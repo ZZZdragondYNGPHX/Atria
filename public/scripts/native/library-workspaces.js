@@ -158,7 +158,7 @@ function createSessionCard(documentRef, session, host, refresh) {
     actions.append(
         button(documentRef, 'Continue', () => openNativeSession(host, session.sessionId), { disabled: !ready }),
         button(documentRef, 'Export .atriasave', async () => {
-            const exported = await nativeProductClient.exportSave(session.sessionId);
+            const exported = await nativeProductClient.exportSession(session.sessionId);
             downloadBase64(
                 documentRef,
                 exported.data,
@@ -200,7 +200,7 @@ function createSaveImportSurface(documentRef, host, onImported) {
         result.replaceChildren(panel(documentRef, 'loading', 'Save preflight', 'Checking Native Save dependencies…'));
         try {
             const data = arrayBufferToBase64(await file.arrayBuffer());
-            const preflight = await nativeProductClient.preflightSaveImport(data);
+            const preflight = await nativeProductClient.preflightSave(data);
             const ready = preflight.dependency?.status === 'ready';
             const card = createAtriaRuntimeCard(documentRef, {
                 title: 'Native Save',
