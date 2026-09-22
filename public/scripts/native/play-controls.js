@@ -1,4 +1,7 @@
-import { nativeProductClient } from './product-client.js';
+import {
+    arrayBufferToBase64,
+    nativeProductClient,
+} from './product-client.js';
 
 function actionButton(documentRef, label, handler) {
     const node = documentRef.createElement('button');
@@ -26,10 +29,6 @@ function currentSessionId() {
     return activeRuntime()?.snapshot?.session?.sessionId || null;
 }
 
-function currentRevisionId() {
-    return activeRuntime()?.snapshot?.revision?.revisionId || null;
-}
-
 function latestIndex(role) {
     const timeline = activeRuntime()?.snapshot?.timeline || [];
     for (let index = timeline.length - 1; index >= 0; index--) {
@@ -38,11 +37,49 @@ function latestIndex(role) {
     return -1;
 }
 
+function downloadBase64(documentRef, payload) {
+    const binary = atob(payload.data);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+    const url = URL.createObjectURL(new Blob([bytes], {
+        type: payload.mediaType || 'application/octet-stream',
+    }));
+    const anchor = documentRef.createElement('a');
+    anchor.href = url;
+    anchor.download = payload.fileName || 'save.atriasave';
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function dependencyMessage(preflight) {
+    const dependency = preflight?.dependency;
+    if (!dependency || dependency.status === 'ready') return 'Exact Package dependency is installed.';
+    const required = dependency.required || {};
+    return [
+        dependency.status === 'missing'
+            ? 'Required Package is not installed.'
+            : 'Installed Package does not match this Save.',
+        `packageId: ${required.packageId || 'unknown'}`,
+        `packageVersionId: ${required.packageVersionId || 'unknown'}`,
+        `version: ${required.packageVersion || 'unknown'}`,
+        `content hash: ${required.packageContentHash || 'unknown'}`,
+        'Install/update that exact .atria Package in Library before importing.',
+    ].join('\n');
+}
+
 export function mountNativePlayControls({
     document: documentRef = globalThis.document,
     root,
 } = {}) {
     if (!documentRef?.body || !root) throw new Error('Native Play controls require document and host root');
+
+    const sheld = root.querySelector('#sheld');
+    const previousSheldDisplay = sheld?.style?.display ?? '';
+
+    const landing = documentRef.createElement('section');
+    landing.className = 'atria-native-play-landing';
+    landing.dataset.atriaNativePlayLanding = 'true';
+    landing.hidden = true;
 
     const toolbar = documentRef.createElement('div');
     toolbar.id = 'atria-native-play-actions';
@@ -82,15 +119,79 @@ export function mountNativePlayControls({
         }
     }
 
+    async function importPortableSave(file, target) {
+        target.textContent = 'Inspecting .atriasave…';
+        const data = arrayBufferToBase64(await file.arrayBuffer());
+        const preflight = await nativeProductClient.preflightSave(data);
+        target.replaceChildren();
+
+        const message = documentRef.createElement('pre');
+        message.dataset.atriaSavePreflight = preflight.dependency?.status || 'unknown';
+        message.textContent = dependencyMessage(preflight);
+        target.append(message);
+
+        if (preflight.dependency?.status !== 'ready') return;
+
+        const importButton = actionButton(documentRef, 'Import & Open', async () => {
+            importButton.disabled = true;
+            try {
+                const password = typeof globalThis.prompt === 'function'
+                    ? globalThis.prompt('Save password (leave blank if none)', '') || undefined
+                    : undefined;
+                const imported = await nativeProductClient.importSave(data, password);
+                await globalThis.Atria.openNativeSession(imported.session.sessionId);
+                drawer.hidden = true;
+            } catch (error) {
+                const failure = documentRef.createElement('pre');
+                failure.textContent = error?.message || String(error);
+                target.append(failure);
+            } finally {
+                importButton.disabled = false;
+            }
+        });
+        target.append(importButton);
+    }
+
+    function appendPortableImport(documentTarget) {
+        const section = documentRef.createElement('section');
+        section.className = 'atria-native-portable-save';
+        const title = documentRef.createElement('h4');
+        title.textContent = 'Import .atriasave';
+        const input = documentRef.createElement('input');
+        input.type = 'file';
+        input.accept = '.atriasave,application/octet-stream';
+        input.dataset.atriaSaveImport = 'true';
+        const result = documentRef.createElement('div');
+        result.className = 'atria-native-portable-save__result';
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+            if (file) void importPortableSave(file, result);
+        });
+        section.append(title, input, result);
+        documentTarget.append(section);
+    }
+
     async function showTimeline() {
         const runtime = activeRuntime();
         if (!runtime?.active) return;
         drawer.hidden = false;
-        drawerTitle.textContent = 'Timeline';
+        drawerTitle.textContent = 'Timeline / Saves';
         drawerBody.textContent = 'Loading…';
         try {
             const detail = await nativeProductClient.getSession(runtime.snapshot.session.sessionId);
             drawerBody.replaceChildren();
+
+            const portableActions = documentRef.createElement('div');
+            portableActions.className = 'atria-domain-workspace__actions';
+            portableActions.append(actionButton(documentRef, 'Export Session .atriasave', () => run(
+                'Exporting session',
+                async () => downloadBase64(
+                    documentRef,
+                    await nativeProductClient.exportSession(detail.snapshot.session.sessionId),
+                ),
+            )));
+            drawerBody.append(portableActions);
+            appendPortableImport(drawerBody);
 
             const savesTitle = documentRef.createElement('h4');
             savesTitle.textContent = 'Saves';
@@ -106,12 +207,56 @@ export function mountNativePlayControls({
                 row.dataset.atriaSaveId = save.saveId;
                 const label = documentRef.createElement('span');
                 label.textContent = `${save.displayName || save.kind} · ${new Date(save.createdAt).toLocaleString()}`;
+                const saveActions = documentRef.createElement('div');
+                saveActions.className = 'atria-native-play-timeline-row__actions';
                 const load = actionButton(documentRef, 'Load', () => run('Loading save', async () => {
                     await runtime.restoreSavePoint(save.saveId);
                     await showTimeline();
                 }));
-                row.append(label, load);
+                const exportSave = actionButton(documentRef, 'Export', () => run('Exporting save', async () => (
+                    downloadBase64(
+                        documentRef,
+                        await nativeProductClient.exportSave(detail.snapshot.session.sessionId, save.saveId),
+                    )
+                )));
+                saveActions.append(load, exportSave);
+                row.append(label, saveActions);
                 drawerBody.append(row);
+            }
+
+            const embedded = (detail.snapshot.knowledge?.bindings || []).filter(binding => (
+                binding.source?.kind === 'session'
+            ));
+            if (embedded.length) {
+                const embeddedTitle = documentRef.createElement('h4');
+                embeddedTitle.textContent = 'Embedded Knowledge';
+                drawerBody.append(embeddedTitle);
+                for (const binding of embedded) {
+                    const row = documentRef.createElement('div');
+                    row.className = 'atria-native-play-drawer__row';
+                    row.dataset.atriaEmbeddedKnowledge = binding.knowledgeBindingId;
+                    const label = documentRef.createElement('span');
+                    label.textContent = binding.knowledgeBindingId;
+                    const promote = actionButton(documentRef, 'Save to my Library', async () => {
+                        promote.disabled = true;
+                        const displayName = typeof globalThis.prompt === 'function'
+                            ? globalThis.prompt('Knowledge Base name', '') || undefined
+                            : undefined;
+                        try {
+                            await nativeProductClient.promoteKnowledge(detail.snapshot.session.sessionId, {
+                                revisionId: detail.snapshot.revision.revisionId,
+                                knowledgeBindingId: binding.knowledgeBindingId,
+                                displayName,
+                            });
+                            promote.textContent = 'Saved to Library';
+                        } catch (error) {
+                            status.textContent = error?.message || String(error);
+                            promote.disabled = false;
+                        }
+                    });
+                    row.append(label, promote);
+                    drawerBody.append(row);
+                }
             }
 
             const timelineTitle = documentRef.createElement('h4');
@@ -151,37 +296,6 @@ export function mountNativePlayControls({
             }, null, 2);
             branches.append(branchesSummary, branchesPre);
             drawerBody.append(branches);
-
-            const embeddedBindings = (detail.snapshot?.knowledge?.bindings || [])
-                .filter(binding => binding.source?.kind === 'session');
-            if (embeddedBindings.length) {
-                const importedTitle = documentRef.createElement('h4');
-                importedTitle.textContent = 'Imported embedded Knowledge';
-                drawerBody.append(importedTitle);
-                for (const binding of embeddedBindings) {
-                    const row = documentRef.createElement('div');
-                    row.className = 'atria-native-play-drawer__row';
-                    row.dataset.atriaEmbeddedKnowledgeBinding = binding.knowledgeBindingId;
-                    const label = documentRef.createElement('span');
-                    label.textContent = binding.source?.knowledgeBaseId || binding.knowledgeBindingId;
-                    const promote = actionButton(documentRef, 'Save to my Library', () => run(
-                        'Saving Knowledge to Library',
-                        async () => {
-                            await nativeProductClient.promoteKnowledge(
-                                runtime.snapshot.session.sessionId,
-                                {
-                                    revisionId: currentRevisionId(),
-                                    knowledgeBindingId: binding.knowledgeBindingId,
-                                },
-                            );
-                            status.textContent = 'Knowledge saved to Library.';
-                            await showTimeline();
-                        },
-                    ));
-                    row.append(label, promote);
-                    drawerBody.append(row);
-                }
-            }
         } catch (error) {
             drawerBody.textContent = error?.message || String(error);
         }
@@ -199,6 +313,72 @@ export function mountNativePlayControls({
             ? JSON.stringify(plan, null, 2)
             : 'No ContextPlan has been compiled for the current revision yet.';
         drawerBody.append(pre);
+    }
+
+    async function renderLanding() {
+        landing.replaceChildren();
+        const title = documentRef.createElement('h2');
+        title.textContent = 'Play';
+        const description = documentRef.createElement('p');
+        description.textContent = 'Continue a Native game, start from Library, or import an .atriasave.';
+        landing.append(title, description);
+
+        const hostActions = documentRef.createElement('div');
+        hostActions.className = 'atria-domain-workspace__actions';
+        hostActions.append(actionButton(documentRef, 'Browse Library', () => (
+            globalThis.Atria?.shell?.getWorkspaceHost?.()?.openLibrarySection?.('works')
+        )));
+        landing.append(hostActions);
+        appendPortableImport(landing);
+
+        try {
+            const [sessions, works] = await Promise.all([
+                nativeProductClient.listSessions(),
+                nativeProductClient.listWorks(),
+            ]);
+            const recentTitle = documentRef.createElement('h3');
+            recentTitle.textContent = 'Continue';
+            landing.append(recentTitle);
+            if (sessions.length) {
+                for (const session of sessions.slice(0, 5)) {
+                    const row = documentRef.createElement('div');
+                    row.className = 'atria-native-play-drawer__row';
+                    row.dataset.atriaLandingSession = session.sessionId;
+                    const label = documentRef.createElement('span');
+                    label.textContent = session.displayTitle || session.sessionId;
+                    row.append(label, actionButton(documentRef, 'Continue', () => (
+                        globalThis.Atria.openNativeSession(session.sessionId)
+                    )));
+                    landing.append(row);
+                }
+            } else {
+                const empty = documentRef.createElement('p');
+                empty.textContent = 'No Native game progress yet.';
+                landing.append(empty);
+            }
+
+            const worksTitle = documentRef.createElement('h3');
+            worksTitle.textContent = 'Recent Works';
+            landing.append(worksTitle);
+            for (const work of works.slice(0, 5)) {
+                const row = documentRef.createElement('div');
+                row.className = 'atria-native-play-drawer__row';
+                row.dataset.atriaLandingWork = work.package.packageId;
+                const label = documentRef.createElement('span');
+                label.textContent = work.package.displayName;
+                row.append(label, actionButton(documentRef, 'Open', () => (
+                    globalThis.Atria?.shell?.getWorkspaceHost?.()?.openLibraryWork?.(
+                        work.package.packageId,
+                        work.package.displayName,
+                    )
+                )));
+                landing.append(row);
+            }
+        } catch (error) {
+            const failure = documentRef.createElement('pre');
+            failure.textContent = error?.message || String(error);
+            landing.append(failure);
+        }
     }
 
     const retry = actionButton(documentRef, 'Retry Reply', () => run('Retrying reply', () => (
@@ -240,15 +420,23 @@ export function mountNativePlayControls({
     const context = actionButton(documentRef, 'Context', showContext);
 
     toolbar.append(retry, reenter, restart, save, quickSave, load, timeline, context, status);
-    root.prepend(toolbar);
+    root.prepend(landing, toolbar);
     root.append(drawer);
 
+    let landingRender = null;
     function sync() {
         const active = documentRef.body.dataset.atriaNativeSessionActive === 'true';
         toolbar.hidden = !active;
+        landing.hidden = active;
+        if (sheld) sheld.style.display = active ? previousSheldDisplay : 'none';
         if (!active) {
             drawer.hidden = true;
             status.textContent = '';
+            if (!landingRender) {
+                landingRender = renderLanding().finally(() => {
+                    landingRender = null;
+                });
+            }
         }
         const runtime = activeRuntime();
         const writable = Boolean(active && runtime?.active && !runtime.history && !runtime.failed);
@@ -271,11 +459,14 @@ export function mountNativePlayControls({
 
     return Object.freeze({
         root: toolbar,
+        landing,
         drawer,
         sync,
         dispose() {
             observer.disconnect();
+            if (sheld) sheld.style.display = previousSheldDisplay;
             toolbar.remove();
+            landing.remove();
             drawer.remove();
         },
     });
