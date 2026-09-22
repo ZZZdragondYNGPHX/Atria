@@ -14,22 +14,16 @@ import '@playwright/test';
  */
 export async function openWorldInfoDrawer(page) {
     const recoveryMode = await page.locator('body').getAttribute('data-atria-shell-recovery').catch(() => null);
-    if (recoveryMode !== 'legacy') {
-        await page.waitForFunction(
-            () => Boolean(window.Atria?.shell?.isMounted?.()),
-            null,
-            { timeout: 10_000 },
-        ).catch(() => {});
-    }
 
-    const mountedCompatibilityWorkspace = await page.evaluate(async () => {
-        const shell = window.Atria?.shell;
-        if (!shell?.isMounted?.()) return false;
-
+    const mountedCompatibilityWorkspace = recoveryMode === 'legacy'
+        ? false
+        : await page.evaluate(async () => {
         // N9/N10 route the product World Info entry point to Native Worlds &
         // Knowledge. These tests intentionally cover the retained mature ST
         // World Info editor/runtime ABI, so mount that compatibility surface
-        // explicitly without reviving the retired product route.
+        // explicitly without reviving the retired product route. The
+        // compatibility workspace only requires the initialized ST DOM; it
+        // must not depend on R7 Shell mount timing (notably on compact/mobile).
         const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
         let host = document.getElementById('atria-e2e-world-info-compat-host');
         if (!host) {
