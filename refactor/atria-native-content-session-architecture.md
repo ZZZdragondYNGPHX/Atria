@@ -1864,6 +1864,35 @@ This phase establishes authoritative current-State/Event/Memory inputs required 
 
 **Exit:** append/fork/restore/reload keep Timeline and all authoritative Native state coherent without committed-message mutation or swipe-based rollback semantics.
 
+### N5 validation receipt — 2026-09-22
+
+N5 is complete and frozen at:
+
+- validated HEAD: `70f59bf2894c77defa46d75e48c79485a4bc5d74`;
+- workflow: **Native Content Session Dev Checks #107**;
+- run: `35700429886`;
+- result: **success**.
+
+Validation on that exact HEAD:
+
+- N5 focused state/lifecycle: **15 suites / 307 tests passed**;
+- N0/N1/N2/N3/N4 compatibility gates: success;
+- full root ESLint: success;
+- real-host Chromium Native Session acceptance: success;
+- complete Node regression: **748 suites / 8734 tests passed**;
+- frontend build: success.
+
+Delivered authority boundary:
+
+- coherent Timeline + SessionState runtime commits;
+- stable `messageId` / `revisionId` / `branchId` lifecycle;
+- Game World + Event Journal, Memory, Orchestrator, Search, Variables and package runtime Session state integrated;
+- exact Timeline-boundary Retry/Fork semantics in the presence of state-only Revisions;
+- Native structural rollback no longer depends on floor/swipe events;
+- Legacy/ST compatibility remains isolated outside Native authority.
+
+N6 starts from this frozen boundary.
+
 ### N6 — Native Knowledge Runtime Integration
 
 Implement:

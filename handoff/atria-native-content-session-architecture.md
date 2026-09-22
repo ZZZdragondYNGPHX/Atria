@@ -5,19 +5,19 @@
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- Current phase status: **N4 in progress under the immutable-Timeline design amendment; N3 remains the last fully validated phase**
-- Current known N4 work HEAD: `952410a3f3d200754b046ccc2868166282958094`
-- Earlier N4 checkpoint: `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`
-- Preserve all N4 commits through the live remote HEAD; do not reset to either recorded SHA
+- Current phase status: **N5 complete and validated; N6 is next**
 - N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
 - N1 validated HEAD: `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
 - N2 validated HEAD: `bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
-- N2 workflow: **Native Content Session Dev Checks #43**
-- N2 run: `35677654858`
 - N3 validated HEAD: `c42ee3e98a27fbea97ded0917de081bcc8893680`
-- N3 workflow: **Native Content Session Dev Checks #44**, run `35679448236`, **success**
-- Next action: **Continue N4 — Native Runtime Projection & Write Barrier under the amended semantics; do not start N5**
+- N4 validated HEAD: `ec95a260f4a26a4c23091227f77865dba1ae2273`
+- N5 validated HEAD: `70f59bf2894c77defa46d75e48c79485a4bc5d74`
+- N5 workflow: **Native Content Session Dev Checks #107**
+- N5 run: `35700429886`
+- N5 result: **success**
+- Next action: **N6 — Native Knowledge Runtime Integration**
 - Formal plan: `docs:refactor/atria-native-content-session-architecture.md`
+- N6 prompt: `docs:handoff/atria-native-session-n6-prompt.md`
 - Implementation sequence: **N0–N10**
 
 Do not merge to `main` yet. Keep the long-lived refactor branch isolated through N10.
@@ -607,3 +607,85 @@ For Native authority, stop treating floor/swipe IDs and `MESSAGE_EDITED` / `MESS
 N5 must preserve the N4 immutable Timeline and Write Barrier. Do not implement N6 KnowledgeCompiler, N7 ContextCompiler, N8 save system, N9 UI cutover, or N10 hard retirement early.
 
 N5 exit: append/fork/restore/reload keep Timeline and all authoritative Native state coherent without committed-message mutation or swipe-based rollback semantics.
+
+
+---
+
+## N5 implementation record — validated 2026-09-22
+
+**Status: N5 complete and validated. Stop N5 development. N6 is next.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Validated HEAD: `70f59bf2894c77defa46d75e48c79485a4bc5d74`
+- Workflow: **Native Content Session Dev Checks #107**
+- Run: `35700429886`
+- Result: **success**
+- `main` remains untouched; no new development branch was created.
+
+### SessionState / SessionRevision authority
+
+N5 upgrades the N3/N4 Session Core so a runtime commit can publish Timeline appends and multiple Atria-owned SessionState namespaces in the same coherent SessionRevision.
+
+Implemented:
+
+- atomic runtime command with append-only Timeline commands plus `statePatch` / namespace deletion;
+- Native ChatState/FloorState compatibility wrappers route into SessionState instead of legacy `/api/chats/*`;
+- state-only commits remain normal immutable SessionRevisions;
+- restore/fork/reload materialize the exact Timeline + state closure of the selected Revision;
+- message-scoped Fork/Retry finds the exact Timeline-boundary Revision rather than inheriting later state-only commits.
+
+### Native lifecycle
+
+Standard lifecycle bus:
+
+- `TIMELINE_APPENDED`
+- `REVISION_COMMITTED`
+- `REVISION_RESTORED`
+- `BRANCH_ACTIVATED`
+- `SESSION_LOADED`
+- `DRAFT_ABORTED`
+
+Search, Orchestrator, Memory and Game Runtime use Native lifecycle events for Native reload/branch/restore behavior. Legacy/ST structural events remain compatibility-only.
+
+### Runtime state migration
+
+- **Game World:** `atri_game_world` stores authoritative current World state together with Event Journal in Native Sessions. Legacy/ST keeps its prior journal shape.
+- **Memory:** graph/meta/provenance are SessionState-backed. Native source identity is stable `messageId`; committed messages are not mutated with `memory_os_source_id`. Memory inspector payload retains Native message identity.
+- **Orchestrator:** durable snapshots use stable `messageId` keys in Native Sessions. Loop Notes keep stable note IDs; their floor argument is Legacy compatibility metadata only.
+- **Search:** durable snapshots use stable `messageId` keys in Native Sessions.
+- **Variables:** Native variables persist in `atri_variables`; variable op structural rollback is Legacy-only. The old per-message var-op editor is read-only/hidden for committed Native Timeline messages.
+- **Package-owned runtime state:** live Package progress belongs to SessionState. PackageRepo/PackageState remains only for installed-Package user preferences.
+
+### Preserved N4 invariants
+
+- committed Timeline remains immutable;
+- product/runtime Timeline writes remain append-only;
+- Write Barrier remains fail-closed;
+- Continue remains a new TimelineEntry;
+- Retry Reply remains Fork + new Assistant;
+- Stop owns Draft lifecycle only;
+- an empty/no-placeholder Stop does not advance HEAD or publish Draft-local runtime state;
+- no Native JSONL/`/api/chats/*`/Character/World Info authority fallback;
+- direct committed `chat[]` mutation remains rejected.
+
+### Validation
+
+Exact validated HEAD `70f59bf2894c77defa46d75e48c79485a4bc5d74`:
+
+- N0 Native Contracts: success;
+- N1 Storage + N3/N5 Core + N4 Projection: success;
+- N2 Package Project Composition: success;
+- N5 focused state/lifecycle gate: **15 suites / 307 tests passed**;
+- N5 source lint: success;
+- full root ESLint: success;
+- real-host Chromium Native Session acceptance: success;
+- complete Node regression: **748 suites / 8734 tests passed**;
+- frontend build: success.
+
+### N5 exit
+
+The N5 exit criterion is satisfied: append / fork / restore / reload keep Timeline and authoritative Native state coherent without committed-message mutation or swipe-based rollback authority.
+
+### Remaining boundary
+
+N6 owns Knowledge runtime integration. N5 deliberately does **not** implement KnowledgeCompiler/KnowledgePlan, bounded Context compilation, `.atriasave`, product UI cutover or Legacy retirement.
