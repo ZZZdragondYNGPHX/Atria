@@ -99,13 +99,17 @@ const STATE_HEAD_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const NAMESPACE_RE = /^atri_[a-z0-9][a-z0-9_.-]*$/;
 
 function plain(value, field) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    if (
+        !value
+        || typeof value !== 'object'
+        || Array.isArray(value)
+        || Object.prototype.toString.call(value) !== '[object Object]'
+    ) {
         throw new TypeError(field + ' must be a plain object');
     }
-    const proto = Object.getPrototypeOf(value);
-    if (proto !== Object.prototype && proto !== null) {
-        throw new TypeError(field + ' must be a plain object');
-    }
+    // Native JSON contracts cross plugin/worker/Jest VM realms. Object-brand
+    // validation accepts ordinary JSON objects across those boundaries while
+    // still rejecting Date/Map/Set/class instances.
     return value;
 }
 
