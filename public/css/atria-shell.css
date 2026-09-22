@@ -1473,3 +1473,127 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     display: flex;
     flex-direction: column;
 }
+
+
+/* N9 Native Product UI cutover */
+.atria-native-play-actions[hidden],
+.atria-native-play-drawer[hidden] {
+    display: none !important;
+}
+
+.atria-native-play-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    background: var(--SmartThemeBlurTintColor);
+}
+
+.atria-native-play-actions__button {
+    min-height: 2.2rem;
+}
+
+.atria-native-play-actions__status {
+    flex: 1 1 12rem;
+    min-width: 0;
+    opacity: 0.8;
+}
+
+.atria-native-play-drawer {
+    margin: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 0.6rem;
+    background: var(--SmartThemeBlurTintColor);
+    max-height: min(70vh, 760px);
+    overflow: auto;
+}
+
+.atria-native-play-drawer__header,
+.atria-native-play-drawer__row,
+.atria-native-play-timeline-row,
+.atria-native-play-timeline-row__actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.atria-native-play-drawer__header,
+.atria-native-play-drawer__row {
+    justify-content: space-between;
+}
+
+.atria-native-play-timeline-row {
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);
+}
+
+.atria-native-play-timeline-row__content {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+}
+
+.atria-native-play-timeline-row__actions {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+}
+
+.atria-native-library,
+.atria-native-studio,
+.atria-native-project-dependencies {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.atria-native-install,
+.atria-native-project-dependency {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.atria-native-project-dependency {
+    grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1fr);
+    align-items: center;
+}
+
+.atria-native-revision pre,
+.atria-native-project-source pre,
+.atria-native-play-drawer pre,
+.atria-native-work-summary pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+body[data-atria-native-session-active="true"] #chat .swipe_left,
+body[data-atria-native-session-active="true"] #chat .swipe_right,
+body[data-atria-native-session-active="true"] #chat .swipes-counter,
+body[data-atria-native-session-active="true"] #chat .swipe_picker_block,
+body[data-atria-native-session-active="true"] #chat .mes_edit,
+body[data-atria-native-session-active="true"] #chat .mes_edit_delete,
+body[data-atria-native-session-active="true"] #option_regenerate {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .atria-native-play-actions {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .atria-native-play-actions__button {
+        flex: 0 0 auto;
+    }
+
+    .atria-native-project-dependency {
+        grid-template-columns: 1fr;
+    }
+
+    .atria-native-play-timeline-row {
+        flex-direction: column;
+    }
+}
