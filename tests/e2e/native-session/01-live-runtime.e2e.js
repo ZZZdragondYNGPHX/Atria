@@ -92,12 +92,33 @@ function assertOpaqueIds(state) {
     }
 }
 
-async function waitForNativeIdle(page) {
-    await page.waitForFunction(() => {
-        const stop = document.querySelector('#mes_stop');
-        return !stop || getComputedStyle(stop).display === 'none';
-    }, { timeout: 30_000 });
-    await page.waitForTimeout(150);
+async function waitForNativeIdle(page, { timeoutMs = 30_000 } = {}) {
+    await expect.poll(async () => {
+        const state = await nativeRuntimeState(page);
+        const stopHidden = await page.locator('#mes_stop').evaluate(el => getComputedStyle(el).display === 'none').catch(() => true);
+        const unbound = state.messages.filter(message => {
+            const selected = Number(message.swipe_id ?? 0);
+            return !message.messageId
+                || message.variantIds.length === 0
+                || !message.variantIds[selected];
+        }).length;
+        return {
+            active: state.active,
+            failed: state.failed,
+            generation: state.generation,
+            stopHidden,
+            unbound,
+        };
+    }, {
+        timeout: timeoutMs,
+        message: 'Native authority did not settle after ST generation UI completed',
+    }).toEqual({
+        active: true,
+        failed: false,
+        generation: null,
+        stopHidden: true,
+        unbound: 0,
+    });
 }
 
 async function attachTextFile(page, text) {
