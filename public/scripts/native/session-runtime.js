@@ -211,6 +211,19 @@ export class NativeSessionRuntime {
         return type;
     }
 
+    /**
+     * Commit a user message that the ST host has just appended before the
+     * provider request begins. Re-arm the same assistant generation Draft
+     * afterward so Stop/commit semantics still apply to the upcoming reply.
+     */
+    async commitUserTurnBeforeGeneration() {
+        if (!this.active || !this.generation || this.generation.kind !== 'append') return false;
+        const generation = this.generation;
+        await this.persist();
+        this.generation = generation;
+        return true;
+    }
+
     async _persistContinuation(messages) {
         const draft = this.generation;
         const projected = projectNativeSession(this.snapshot).chat;
