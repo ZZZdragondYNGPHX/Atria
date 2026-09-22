@@ -1120,3 +1120,115 @@ N9 must switch the product management surfaces to Native authorities while retai
 - ContextPlan diagnostics exposure.
 
 N9 must hide/retire Native product UI for Swipe controls and committed in-place Edit/Delete/Regenerate semantics, but must not perform N10's deeper hard-cutover/legacy code retirement early.
+
+
+---
+
+## N9 implementation record — validated 2026-09-22
+
+**Status: N9 complete and validated. Stop N9 development. N10 is next.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Validated HEAD: `503fbb4da05c90a1e6d2022e17df0c6bac79b1ee`
+- Workflow: **Native Content Session Dev Checks #193**
+- Run: `35723060389`
+- Result: **success**
+- `main` remains untouched.
+- N0–N9 are frozen.
+- Next phase: **N10 — Hard Cutover & Legacy Retirement**.
+
+### Product UI cutover delivered
+
+N9 moved the active product management surfaces onto the existing Native authorities without creating a second persistence/runtime stack.
+
+Library now exposes the Native product model:
+
+- Works Library backed by Package authority;
+- Work detail with EntryPoint start flow;
+- Continue and My Games backed by Native Session authority;
+- Package install/update preflight;
+- exact missing-Package dependency state for existing Sessions;
+- Package deletion keeps referenced Package versions protected;
+- Session deletion delegates to Native Session cleanup semantics;
+- portable `.atriasave` preflight/import/export through the N8 Save System;
+- World Library with create/read/rename/delete and read-only revision history;
+- KnowledgeBase Library with create/read/rename/delete, Entries, Bindings/references and read-only revision history;
+- explicit imported embedded Knowledge **Save to my Library** promotion seam.
+
+Studio now uses ProjectStore as the product authority and exposes exact dependency selection for:
+
+- WorldRevision;
+- KnowledgeRevision;
+- KnowledgeBinding.
+
+Native Play now exposes:
+
+- Retry Reply;
+- Re-enter Turn;
+- Restart From Here;
+- Save;
+- Quick Save;
+- Load;
+- Timeline;
+- ContextPlan diagnostics.
+
+Native product UI retires/hides the old committed mutation affordances:
+
+- Swipe arrows/counter/picker and Swipe deletion;
+- committed message Edit/Delete;
+- traditional in-place Regenerate.
+
+The underlying immutable Timeline / SessionRevision / Write Barrier remains authoritative. Direct third-party mutation of projected `chat[]` is still rejected fail-closed; N9 did not weaken the N4 barrier.
+
+### R7 Shell and authority boundary
+
+N9 retained the existing R7 Shell and route authority.
+
+- Library routing now defaults to Works and routes World/Knowledge through Native workspaces.
+- Studio routes to the Native Project workspace.
+- Play keeps the single existing Conversation DOM host.
+- The N9 real-host acceptance also exercises the compact/mobile viewport.
+- N9 Shell CSS consumes `--atri-*` semantic tokens and does not bind directly to SmartTheme compatibility variables.
+- Existing mature SillyTavern generation / World Info runtime machinery was not mechanically deleted.
+- `#WorldInfo` may remain as a transition/editor adapter, but it is not Native Library authority.
+- Native Product code has residual guards against Character / JSONL / World Info storage fallback.
+
+### N9 save and dependency seams
+
+N9 reuses N8 rather than inventing a second save format/API:
+
+- Save / Quick Save / Load delegate to `NativeSaveSystem`;
+- N9 portable export unwraps the N8 save container's authenticated `archive` bytes;
+- historical Save continuation keeps N8 derived-Branch semantics;
+- import preflight surfaces missing/mismatched exact Package dependencies;
+- imported embedded Library-origin Knowledge remains Session-bound until the user explicitly promotes it.
+
+### Product UI Cutover validation
+
+Exact HEAD `503fbb4da05c90a1e6d2022e17df0c6bac79b1ee` passed:
+
+- N0 Native Contracts: success;
+- N1 Storage + N3/N5 Core + N4 Projection: success;
+- N2 Package Project Composition: success;
+- N4 real-host Chromium Native Session acceptance: **4 passed**;
+- N5 Runtime State & Revision Lifecycle: success;
+- N6 Native Knowledge Runtime Integration: success;
+- N7 Native Context Architecture / Checkpoint C: success;
+- N8 Save System / Checkpoint B: success;
+- N9 Product UI unit/integration: **6 suites / 22 tests passed**;
+- N9 Native Product authority residual guard: success;
+- N9 source lint / guard syntax: success;
+- N9 real-host Chromium Product UI acceptance: **1 passed**;
+- full root lint: success;
+- complete Node regression: **757 suites / 8802 tests passed**;
+- frontend webpack build: success.
+
+The complete regression ran with MySQL/PostgreSQL services enabled. The real-host acceptance verifies Native Retry through the N9 product action, retired committed mutation controls, EntryPoint start through Library → Work detail → Play, Native Timeline/Context controls, and compact/mobile layout survival.
+
+### N9 boundary / N10 next
+
+N9 completed the product-surface cutover but deliberately did **not** perform N10's deeper hard retirement.
+
+N10 must now remove residual Native product dependence on legacy identities/formats/authorities while preserving mature runtime ABI machinery that remains necessary behind adapters.
+
+N10 scope is the frozen Master Plan section **N10 — Hard Cutover & Legacy Retirement**. Do not redesign N0–N9.
