@@ -22375,6 +22375,7 @@ export async function openNativeSession(sessionId, options = {}) {
             chat_metadata.variables = cloneJsonValue(projection.metadata?.variables ?? {}) ?? {};
         },
         install: async projection => {
+            document.body.dataset.atriaNativeSessionActive = 'true';
             cancelDebouncedChatSave();
             cancelDebouncedMetadataSave();
             closeMessageEditor();
@@ -22395,6 +22396,7 @@ export async function openNativeSession(sessionId, options = {}) {
             await eventSource.emit(event_types.CHAT_LOADED, { detail: { id: this_chid, character: characters[this_chid] } });
         },
         clear: async () => {
+            delete document.body.dataset.atriaNativeSessionActive;
             cancelDebouncedChatSave();
             cancelDebouncedMetadataSave();
             const index = characters.findIndex(character => character.atri_native);
@@ -22410,4 +22412,34 @@ export async function openNativeSession(sessionId, options = {}) {
     });
     return nativeSessionRuntime.open(sessionId, options);
 }
+
+export async function retryNativeReply() {
+    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
+    return Generate('regenerate');
+}
+
+export async function reenterNativeTurn(index) {
+    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
+    const draft = await nativeSessionRuntime.reenterTurn(index);
+    const composer = document.getElementById('send_textarea');
+    if (!composer) throw new Error('Native composer is unavailable');
+    composer.value = draft.content;
+    composer.dispatchEvent(new Event('input', { bubbles: true }));
+    composer.focus();
+    return draft;
+}
+
+export async function restartNativeFrom(index) {
+    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
+    return nativeSessionRuntime.restartFrom(index);
+}
+
+if (globalThis.Atria) {
+    globalThis.Atria.openNativeSession = openNativeSession;
+    globalThis.Atria.nativeSessionRuntime = nativeSessionRuntime;
+    globalThis.Atria.retryNativeReply = retryNativeReply;
+    globalThis.Atria.reenterNativeTurn = reenterNativeTurn;
+    globalThis.Atria.restartNativeFrom = restartNativeFrom;
+}
+
 export { nativeSessionRuntime };
