@@ -270,6 +270,129 @@ describe('N2 Source Project -> build -> install -> reopen', () => {
     });
 });
 
+
+describe('N2 Project-owned World/Knowledge composition', () => {
+    test('builds Project source directly into immutable Package-owned snapshots', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
+            const worldId = createNativeId('world');
+            const worldRevisionId = createNativeId('worldRevision');
+            const knowledgeBaseId = createNativeId('knowledgeBase');
+            const knowledgeRevisionId = createNativeId('knowledgeRevision');
+            const knowledgeEntryId = createNativeId('knowledgeEntry');
+            const knowledgeBindingId = createNativeId('knowledgeBinding');
+            const assetId = createNativeId('asset');
+            const projectId = createNativeId('project');
+            const packageId = createNativeId('package');
+            const entryPointId = createNativeId('entryPoint');
+
+            const source = {
+                format: 'atria-project-source',
+                schemaVersion: 1,
+                project: { projectId, packageId, displayName: 'Project-owned content' },
+                package: {
+                    name: 'Project-only Work',
+                    version: '1.0.0',
+                    actors: [],
+                    entryPoints: [{
+                        entryPointId,
+                        displayName: 'Main',
+                        actorIds: [],
+                        worldIds: [worldId],
+                        primaryWorldId: worldId,
+                        knowledgeBindingIds: [knowledgeBindingId],
+                    }],
+                    capabilities: ['narrative', 'knowledge'],
+                    permissions: [],
+                },
+                worlds: [{
+                    world: {
+                        worldId,
+                        displayName: 'Project World',
+                        currentRevisionId: worldRevisionId,
+                    },
+                    revision: {
+                        worldId,
+                        worldRevisionId,
+                        baseline: { location: 'project' },
+                        knowledgeBindingIds: [knowledgeBindingId],
+                        assetIds: [assetId],
+                        metadata: {},
+                    },
+                }],
+                knowledge: [{
+                    knowledgeBase: {
+                        knowledgeBaseId,
+                        displayName: 'Project Knowledge',
+                        currentRevisionId: knowledgeRevisionId,
+                    },
+                    revision: {
+                        knowledgeBaseId,
+                        knowledgeRevisionId,
+                        entryIds: [knowledgeEntryId],
+                        metadata: {},
+                    },
+                    entries: [{
+                        knowledgeEntryId,
+                        content: 'Project-owned exact knowledge.',
+                        metadata: {},
+                    }],
+                }],
+                knowledgeBindings: [{
+                    knowledgeBindingId,
+                    source: {
+                        kind: 'project',
+                        knowledgeBaseId,
+                        knowledgeRevisionId,
+                    },
+                    enabled: true,
+                    mode: 'augment',
+                    metadata: {},
+                }],
+                dependencies: {
+                    worlds: [],
+                    knowledge: [],
+                    knowledgeBindings: [],
+                },
+                assetFiles: [{
+                    assetId,
+                    path: 'assets/project.txt',
+                    mediaType: 'text/plain',
+                    logicalName: 'project.txt',
+                }],
+            };
+            const assetBytes = Buffer.from('project asset bytes');
+            await projectStore.create(h.handle, source, {
+                files: new Map([['assets/project.txt', assetBytes]]),
+            });
+
+            const built = await buildProjectPackage({
+                handle: h.handle,
+                projectId,
+                projectStore,
+                worldRepo: new WorldRepo({ engine: h.engine }),
+                knowledgeRepo: new KnowledgeRepo({ engine: h.engine }),
+                assetStore: new AssetStore({ engine: h.engine, directoriesByHandle: () => h.dirs }),
+            });
+
+            expect(built.manifest.worlds[0].revision.baseline)
+                .toEqual({ location: 'project' });
+            expect(built.manifest.knowledge[0].entries[0].content)
+                .toBe('Project-owned exact knowledge.');
+            expect(built.manifest.knowledgeBindings[0].source.kind)
+                .toBe('package');
+            expect(built.manifest.assets[0]).toMatchObject({
+                assetId,
+                contentHash: digest(assetBytes),
+                size: assetBytes.length,
+            });
+        } finally {
+            await h.cleanup();
+        }
+    });
+});
+
 describe('N2 Native Studio project/preview seams', () => {
     test('routes Studio by projectId and keeps previews outside SessionRepo authority', async () => {
         const h = await makeTempFsEngine();
