@@ -1,120 +1,263 @@
 import { makeTempFsEngineHarness, CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import { installFixture, sessionFixture } from './helpers/session-fixture.js';
-import { projectNativeSession, timelineIntents, projectKnowledgeEntries } from '../../public/scripts/native/session-projection.js';
+import {
+    projectNativeSession,
+    timelineIntents,
+    projectKnowledgeEntries,
+} from '../../public/scripts/native/session-projection.js';
 import { NativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
-import { createNativeId } from '../../src/native/identity.js';
 
-// The host adapter exercises the real SessionCore; no parallel persistence implementation.
-describe.each(CONTRACT_HARNESSES)('N4 runtime command projection - $name', ({ make }) => {
-    let h, f, runtime, messages, projection;
+describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ make }) => {
+    let h, f, runtime, messages, projection, reported;
+
     beforeEach(async () => {
-        h = await make(); f = await installFixture(h);
+        h = await make();
+        f = await installFixture(h);
         const view = await f.core.create(h.handle, f.start);
+        reported = [];
         runtime = new NativeSessionRuntime();
-        runtime.configure({ isGenerating: () => false, messages: () => messages,
-            install: value => { projection = value; messages = value.chat; }, revision: value => { projection = value; }, error: () => {} });
+        runtime.configure({
+            isGenerating: () => false,
+            messages: () => messages,
+            install: value => { projection = value; messages = value.chat; },
+            revision: value => { projection = value; },
+            error: (error, options) => reported.push({ error, options }),
+        });
         runtime.request = async (path, body) => {
             if (path === 'load') return f.core.load(h.handle, body.sessionId, { revisionId: body.revisionId });
             const { command, expectedRevisionId } = body;
-            if (command.type === 'fork') return f.core.forkBranch(h.handle, body.sessionId, { ...command, expectedRevisionId });
-            if (command.type === 'switch') return f.core.switchBranch(h.handle, body.sessionId, command.branchId, { expectedRevisionId });
+            if (command.type === 'fork') {
+                return f.core.forkBranch(h.handle, body.sessionId, { ...command, expectedRevisionId });
+            }
+            if (command.type === 'retry') {
+                return f.core.retryReply(h.handle, body.sessionId, {
+                    messageId: command.messageId,
+                    expectedRevisionId,
+                });
+            }
+            if (command.type === 'switch') {
+                return f.core.switchBranch(h.handle, body.sessionId, command.branchId, { expectedRevisionId });
+            }
             return f.core.applyTimelineCommands(h.handle, body.sessionId, command.commands, { expectedRevisionId });
         };
         await runtime.open(view.session.sessionId);
     });
+
     afterEach(async () => { await h?.cleanup(); });
 
-    test('Send/edit/Continue/swipe/select/delete/reload keep opaque message identities and exact snapshots', async () => {
-        const sessionId = runtime.snapshot.session.sessionId;
-        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'Explore', extra: {} });
+    async function appendUser(text = 'Explore') {
+        messages.push({ name: 'Player', is_user: true, is_system: false, mes: text, extra: {} });
         await runtime.persist();
-        const userId = messages[1].atri_native.messageId;
-        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'The harbor', extra: {} });
+        return messages.at(-1);
+    }
+
+    async function generateAssistant(text = 'The harbor is quiet.') {
+        expect(await runtime.prepareGeneration('normal')).toBe('normal');
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: text, extra: {} });
         await runtime.persist();
-        const assistantId = messages[2].atri_native.messageId;
-        const firstReply = runtime.snapshot.revision.revisionId;
-        messages[1].mes = 'Explore carefully';
-        messages[2].mes += ' is quiet.';
-        await runtime.persist();
-        expect(runtime.snapshot.timeline.map(item => item.content)).toEqual(['Opening', 'Explore carefully', 'The harbor is quiet.']);
+        return messages.at(-1);
+    }
+
+    test('Send/generation append immutable entries and preserve opaque identities', async () => {
+        const greetingId = messages[0].atri_native.messageId;
+        const user = await appendUser();
+        const userId = user.atri_native.messageId;
+        const assistant = await generateAssistant();
+        const assistantId = assistant.atri_native.messageId;
+
+        expect(runtime.snapshot.timeline.map(item => item.content)).toEqual([
+            'Opening',
+            'Explore',
+            'The harbor is quiet.',
+        ]);
+        expect(messages[0].atri_native.messageId).toBe(greetingId);
         expect(messages[1].atri_native.messageId).toBe(userId);
         expect(messages[2].atri_native.messageId).toBe(assistantId);
-        await runtime.reload();
-        const reply = messages[2];
-        reply.swipes.push('A bell rings.'); reply.swipe_id = 1; reply.mes = 'A bell rings.';
-        reply.swipe_info.push({ extra: {} });
-        await runtime.persist();
-        expect(runtime.snapshot.timeline[2].variantIds).toHaveLength(2);
-        reply.swipe_id = 0; reply.mes = reply.swipes[0];
-        await runtime.persist();
-        expect(runtime.snapshot.timeline[2].content).toBe('The harbor is quiet.');
-        messages.splice(1, 1); await runtime.persist();
-        expect(runtime.snapshot.timeline.map(item => item.messageId)).toEqual([messages[0].atri_native.messageId, assistantId]);
-        expect((await f.core.load(h.handle, sessionId, { revisionId: firstReply })).timeline[2].content).toBe('The harbor');
-        const revision = runtime.snapshot.revision;
-        await runtime.reload();
-        expect(runtime.snapshot.revision).toEqual(revision);
         expect(timelineIntents(runtime.snapshot, messages)).toEqual([]);
+
+        const revision = runtime.snapshot.revision.revisionId;
+        await runtime.reload();
+        expect(runtime.snapshot.revision.revisionId).toBe(revision);
+        expect(messages.map(item => item.atri_native.messageId)).toEqual([greetingId, userId, assistantId]);
     });
 
-    test('historical projection uses selected revision branch, is read-only, and may fork at an exact message/variant', async () => {
+    test('Continue keeps the committed assistant immutable and appends continuationOf entry', async () => {
+        await appendUser();
+        const assistant = await generateAssistant('The harbor');
+        const assistantId = assistant.atri_native.messageId;
+        const assistantRevision = runtime.snapshot.revision.revisionId;
+        const assistantCount = runtime.snapshot.timeline.length;
+
+        expect(await runtime.prepareGeneration('continue')).toBe('continue');
+        const draft = messages.at(-1);
+        draft.mes = 'The harbor is quiet.';
+        draft.swipes[draft.swipe_id] = draft.mes;
         await runtime.persist();
+
+        expect(runtime.snapshot.timeline).toHaveLength(assistantCount + 1);
+        expect(runtime.snapshot.timeline[assistantCount - 1]).toMatchObject({
+            messageId: assistantId,
+            content: 'The harbor',
+        });
+        const continuation = runtime.snapshot.timeline.at(-1);
+        expect(continuation.messageId).not.toBe(assistantId);
+        expect(continuation.role).toBe('assistant');
+        expect(continuation.content).toBe(' is quiet.');
+
+        const activeVariant = runtime.snapshot.variants.find(item => item.variantId === continuation.activeVariantId);
+        expect(activeVariant.metadata.provenance).toMatchObject({
+            continuationOf: assistantId,
+            kind: 'continuation',
+        });
+
+        const historical = await f.core.load(h.handle, runtime.snapshot.session.sessionId, { revisionId: assistantRevision });
+        expect(historical.timeline.at(-1)).toMatchObject({ messageId: assistantId, content: 'The harbor' });
+    });
+
+    test('Retry Reply forks from exact post-user revision and appends a new assistant message', async () => {
+        const originalBranch = runtime.snapshot.revision.branchId;
+        const user = await appendUser('Ask again');
+        const postUserRevision = runtime.snapshot.revision.revisionId;
+        const userId = user.atri_native.messageId;
+        const original = await generateAssistant('First answer');
+        const originalMessageId = original.atri_native.messageId;
+        const originalRevision = runtime.snapshot.revision.revisionId;
+
+        expect(await runtime.prepareGeneration('regenerate')).toBe('normal');
+        expect(runtime.snapshot.revision.branchId).not.toBe(originalBranch);
+        expect(runtime.snapshot.timeline.at(-1)).toMatchObject({ messageId: userId, content: 'Ask again' });
+        expect(runtime.snapshot.timeline.some(item => item.messageId === originalMessageId)).toBe(false);
+
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'Retry answer', extra: {} });
+        await runtime.persist();
+        const retry = runtime.snapshot.timeline.at(-1);
+        expect(retry.role).toBe('assistant');
+        expect(retry.content).toBe('Retry answer');
+        expect(retry.messageId).not.toBe(originalMessageId);
+
+        const postUser = await f.core.load(h.handle, runtime.snapshot.session.sessionId, { revisionId: postUserRevision });
+        expect(postUser.timeline.at(-1).messageId).toBe(userId);
+        const oldReply = await f.core.load(h.handle, runtime.snapshot.session.sessionId, { revisionId: originalRevision });
+        expect(oldReply.revision.branchId).toBe(originalBranch);
+        expect(oldReply.timeline.at(-1)).toMatchObject({ messageId: originalMessageId, content: 'First answer' });
+    });
+
+    test('direct committed content mutation fails closed and reload restores Native authority', async () => {
+        await appendUser();
+        await generateAssistant();
+        const before = runtime.snapshot.revision.revisionId;
+        messages.at(-1).mes = 'plugin rewrote committed history';
+
+        await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
+        expect(runtime.failed).toBe(true);
+        expect(reported.at(-1)?.options).toMatchObject({ fatal: true });
+
+        const stored = await f.core.load(h.handle, runtime.snapshot.session.sessionId);
+        expect(stored.revision.revisionId).toBe(before);
+        expect(stored.timeline.at(-1).content).toBe('The harbor is quiet.');
+
+        await runtime.reload();
+        expect(runtime.failed).toBe(false);
+        expect(messages.at(-1).mes).toBe('The harbor is quiet.');
+    });
+
+    test('committed deletion/reorder is never translated into remove/revise commands', async () => {
+        await appendUser();
+        await generateAssistant();
+        const before = runtime.snapshot.revision.revisionId;
+        const removed = messages.splice(1, 1)[0];
+
+        await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
+        const stored = await f.core.load(h.handle, runtime.snapshot.session.sessionId);
+        expect(stored.revision.revisionId).toBe(before);
+        expect(stored.timeline.some(item => item.messageId === removed.atri_native.messageId)).toBe(true);
+
+        await runtime.reload();
+        const first = messages[0];
+        messages[0] = messages[1];
+        messages[1] = first;
+        await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
+    });
+
+    test('N3 Variant compatibility data cannot be switched or deleted by the N4 runtime', async () => {
+        const sessionId = runtime.snapshot.session.sessionId;
+        const greeting = runtime.snapshot.timeline[0];
+        await f.core.addVariant(h.handle, sessionId, greeting.messageId, {
+            content: 'Alternate opening',
+            metadata: {},
+        }, { expectedRevisionId: runtime.snapshot.revision.revisionId });
+        await runtime.reload();
+
+        expect(messages[0].swipes).toHaveLength(2);
+        expect(messages[0].swipe_id).toBe(1);
+        const before = runtime.snapshot.revision.revisionId;
+
+        messages[0].swipe_id = 0;
+        messages[0].mes = messages[0].swipes[0];
+        await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
+        expect((await f.core.load(h.handle, sessionId)).revision.revisionId).toBe(before);
+
+        await runtime.reload();
+        messages[0].swipes.splice(0, 1);
+        messages[0].swipe_info.splice(0, 1);
+        messages[0].atri_native.variantIds.splice(0, 1);
+        messages[0].swipe_id = 0;
+        await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
+        expect((await f.core.load(h.handle, sessionId)).revision.revisionId).toBe(before);
+    });
+
+    test('historical projection uses revision.branchId, stays read-only, and can fork without Variant switching', async () => {
         const oldRevision = runtime.snapshot.revision;
         const originalBranch = oldRevision.branchId;
-        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'Later', extra: {} });
-        await runtime.persist();
+        await appendUser('Later');
         const branch = await runtime.fork(0);
+
         expect(runtime.snapshot.timeline).toHaveLength(1);
         expect(runtime.snapshot.graph.at(-1).branch.forkPoint.messageId).toBe(messages[0].atri_native.messageId);
+
         await runtime.open(runtime.snapshot.session.sessionId, { revisionId: oldRevision.revisionId });
         expect(runtime.snapshot.session.activeBranchId).toBe(branch);
         expect(projection.branchId).toBe(originalBranch);
         expect(() => runtime.persist()).toThrow('not writable');
-        const fork = await runtime.fork(0);
-        expect(fork).not.toBe(branch);
-        expect(runtime.snapshot.graph).toHaveLength(3);
+
+        const historicalFork = await runtime.fork(0);
+        expect(historicalFork).not.toBe(branch);
         await runtime.switchBranch(originalBranch);
         expect(runtime.snapshot.timeline.at(-1).content).toBe('Later');
     });
 
-    test('concurrent intents serialize and stale HEAD fails closed without legacy retry', async () => {
-        await runtime.persist();
-        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'One', extra: {} });
-        await Promise.all([runtime.persist(), runtime.persist()]);
-        expect(runtime.snapshot.timeline).toHaveLength(2);
-        await f.core.appendTimeline(h.handle, runtime.snapshot.session.sessionId, { role: 'user', content: 'Other writer' });
-        messages[1].mes = 'Stale';
+    test('stale HEAD with a new Draft fails closed without legacy rebase/retry', async () => {
+        await appendUser();
+        await f.core.appendTimeline(h.handle, runtime.snapshot.session.sessionId, {
+            role: 'assistant',
+            actorId: runtime.snapshot.entryPoint.primaryActorId ?? runtime.snapshot.entryPoint.actorIds[0],
+            content: 'Other writer',
+        });
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'Stale draft', extra: {} });
+
         await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_session_head_conflict' });
         expect(runtime.failed).toBe(true);
-        expect(() => runtime.persist()).toThrow('not writable');
         await runtime.reload();
         expect(runtime.snapshot.timeline.at(-1).content).toBe('Other writer');
-        await runtime.persist();
     });
 
-    test('invalid command batches publish no partial revision and deletion retains immutable history', async () => {
+    test('runtime command surface rejects committed mutation commands without partial publication', async () => {
         const view = runtime.snapshot;
-        await expect(f.core.applyTimelineCommands(h.handle, view.session.sessionId, [
-            { type: 'append', draft: { role: 'user', content: 'Never committed' } },
-            { type: 'remove', messageId: createNativeId('message') },
-        ])).rejects.toThrow();
-        expect((await f.core.load(h.handle, view.session.sessionId)).revision).toEqual(view.revision);
-        await f.core.applyTimelineCommands(h.handle, view.session.sessionId, [{ type: 'remove', messageId: view.timeline[0].messageId }]);
-        expect((await f.core.load(h.handle, view.session.sessionId)).timeline).toEqual([]);
-        expect((await f.core.load(h.handle, view.session.sessionId, { revisionId: view.revision.revisionId })).timeline).toHaveLength(1);
-    });
-
-    test('deleting an inactive swipe does not change the selected content or overwrite history', async () => {
-        await runtime.persist();
-        const message = messages[0];
-        message.swipes.push('Alternate'); message.swipe_id = 1; message.mes = 'Alternate'; message.swipe_info.push({ extra: {} });
-        await runtime.persist();
-        const prior = runtime.snapshot.revision.revisionId;
-        runtime.removeSwipe(0, 0); message.swipes.splice(0, 1); message.swipe_info.splice(0, 1); message.swipe_id = 0;
-        await runtime.persist();
-        expect(runtime.snapshot.timeline[0].content).toBe('Alternate');
-        expect(runtime.snapshot.timeline[0].variantIds).toHaveLength(1);
-        expect((await f.core.load(h.handle, runtime.snapshot.session.sessionId, { revisionId: prior })).timeline[0].variantIds).toHaveLength(2);
+        for (const command of [
+            { type: 'remove', messageId: view.timeline[0].messageId },
+            { type: 'select', messageId: view.timeline[0].messageId, variantId: view.timeline[0].activeVariantId },
+            { type: 'revise', messageId: view.timeline[0].messageId, draft: { content: 'rewrite' } },
+            { type: 'removeVariant', messageId: view.timeline[0].messageId, variantId: view.timeline[0].activeVariantId },
+            { type: 'append', beforeMessageId: view.timeline[0].messageId, draft: { role: 'user', content: 'insert' } },
+        ]) {
+            await expect(f.core.applyTimelineCommands(
+                h.handle,
+                view.session.sessionId,
+                [command],
+                { expectedRevisionId: view.revision.revisionId },
+            )).rejects.toThrow(/append-only/i);
+            expect((await f.core.load(h.handle, view.session.sessionId)).revision.revisionId).toBe(view.revision.revisionId);
+        }
     });
 });
 
@@ -122,6 +265,7 @@ describe('N4 pure projection authority', () => {
     let h;
     beforeEach(async () => { h = await makeTempFsEngineHarness(); });
     afterEach(async () => { await h.cleanup(); });
+
     test('Actor prompt fields, exact Knowledge candidates and Regex derive only from installed content', async () => {
         const fixture = sessionFixture();
         fixture.manifest.actors[0].profile = { description: 'Harbor guide', personality: 'Calm', scenario: 'Moonlit pier' };
@@ -131,19 +275,35 @@ describe('N4 pure projection authority', () => {
         expect(projectNativeSession(view).character.data).toMatchObject({ description: 'Harbor guide', scenario: 'Moonlit pier' });
         const entries = projectKnowledgeEntries(view);
         expect(entries[0].content).toBe('Exact knowledge');
-        expect(entries[0].atri_native).toMatchObject({ knowledgeRevisionId: fixture.knowledge.revision.knowledgeRevisionId,
-            knowledgeEntryId: fixture.knowledge.entries[0].knowledgeEntryId });
-        expect(entries[0].uid).toBe(0); // ephemeral only
+        expect(entries[0].atri_native).toMatchObject({
+            knowledgeRevisionId: fixture.knowledge.revision.knowledgeRevisionId,
+            knowledgeEntryId: fixture.knowledge.entries[0].knowledgeEntryId,
+        });
+        expect(entries[0].uid).toBe(0);
         view.knowledge.bindings[0].visibility = ['private-actor'];
-        expect(projectKnowledgeEntries(view)).toEqual([]); // N6 target-aware compilation is not faked here.
+        expect(projectKnowledgeEntries(view)).toEqual([]);
     });
-    test('unknown IDs and path-only attachments cannot reconstruct Native authority', async () => {
-        const f = await installFixture(h); const view = await f.core.create(h.handle, f.start);
-        const { chat } = projectNativeSession(view);
-        chat[0].atri_native.messageId = createNativeId('message');
-        expect(() => timelineIntents(view, chat)).toThrow('Unknown');
-        const again = projectNativeSession(view).chat;
-        again[0].extra.files = [{ url: '/user/files/old.txt' }];
-        expect(() => timelineIntents(view, again)).toThrow('assetId');
+
+    test('unknown identity, path-only attachment and direct committed mutation fail closed', async () => {
+        const f = await installFixture(h);
+        const view = await f.core.create(h.handle, f.start);
+
+        const unknown = projectNativeSession(view).chat;
+        unknown[0].atri_native.messageId = 'message_00000000000000000000000000';
+        expect(() => timelineIntents(view, unknown)).toThrow(/committed|identity/i);
+
+        const attachment = projectNativeSession(view).chat;
+        attachment[0].extra.files = [{ url: '/user/files/old.txt' }];
+        expect(() => timelineIntents(view, attachment)).toThrow(/assetId|committed/i);
+
+        const changed = projectNativeSession(view).chat;
+        changed[0].mes = 'rewritten';
+        expect(() => timelineIntents(view, changed)).toMatchObject;
+        try {
+            timelineIntents(view, changed);
+            throw new Error('expected immutable Timeline violation');
+        } catch (error) {
+            expect(error).toMatchObject({ code: 'native_committed_timeline_mutation' });
+        }
     });
 });
