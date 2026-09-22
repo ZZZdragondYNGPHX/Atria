@@ -186,14 +186,22 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
                 },
             }, { expectedRevisionId: view.revision.revisionId });
 
-            const save = await f.saveSystem.manualSave(source.handle, sessionId, { displayName: 'Portable' });
-            const savedView = await f.core.load(source.handle, sessionId, { revisionId: save.revisionId });
+            // Simulate process/service restart before the Save is created:
+            // new repositories/core/service reconstruct authority exclusively
+            // from Native storage.
+            const restarted = services(source);
+            const restartedView = await restarted.core.load(source.handle, sessionId);
+            expect(restartedView.revision.revisionId).toBe(view.revision.revisionId);
+            expect(restartedView.states.atri_context_derived).toEqual(view.states.atri_context_derived);
 
-            await f.core.updateState(source.handle, sessionId, {
+            const save = await restarted.saveSystem.manualSave(source.handle, sessionId, { displayName: 'Portable' });
+            const savedView = await restarted.core.load(source.handle, sessionId, { revisionId: save.revisionId });
+
+            await restarted.core.updateState(source.handle, sessionId, {
                 atri_memory_graph: { nodes: { harbor: { fact: 'changed later' } } },
             });
 
-            const exported = await f.saveSystem.exportSnapshot(source.handle, sessionId, save.saveId);
+            const exported = await restarted.saveSystem.exportSnapshot(source.handle, sessionId, save.saveId);
             const inspected = inspectAtriaSaveContainer(exported.archive);
             expect(inspected.save.scope).toBe('snapshot');
             expect(inspected.save.root.revisionId).toBe(save.revisionId);
@@ -208,6 +216,7 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
             const imported = await other.saveSystem.importSave(target.handle, exported.archive);
 
             expect(imported.timeline).toEqual(savedView.timeline);
+            expect(imported.states.atri_world_state).toEqual(savedView.states.atri_world_state);
             expect(imported.states.atri_memory_graph).toEqual(savedView.states.atri_memory_graph);
             expect(imported.states.atri_orchestrator_anchors).toEqual(savedView.states.atri_orchestrator_anchors);
             expect(imported.states.atri_context_derived).toEqual(savedView.states.atri_context_derived);
