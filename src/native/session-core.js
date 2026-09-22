@@ -193,56 +193,28 @@ export class SessionCore {
             ? { ...item, activeVariantId: variantId, content: variant.content } : item) });
     }
 
-    /** Apply explicit runtime intents in one revision, never accept an authoritative chat buffer. */
+    /**
+     * Publish runtime Drafts as one append-only revision.
+     * Committed Timeline entries/Variants are immutable at the Native product
+     * boundary; N3 low-level Variant primitives remain for their validated
+     * contract but are not exposed through this N4 runtime command path.
+     */
     async applyTimelineCommands(handle, sessionId, commands, { expectedRevisionId } = {}) {
         if (!Array.isArray(commands) || !commands.length || commands.length > 1000) {
-            throw new TypeError('Expected 1..1000 Native Timeline commands');
+            throw new TypeError('Expected 1..1000 Native Timeline append commands');
         }
         const base = await this._current(handle, sessionId, expectedRevisionId);
-        let timeline = base.timeline.map(entry => ({ ...entry, variantIds: [...entry.variantIds] }));
+        const timeline = [...base.timeline];
         const entries = [];
         const variants = [];
         for (const command of commands) {
-            if (command.type === 'append') {
-                const created = this._newEntry(base, command.draft, timeline.length);
-                const index = command.beforeMessageId == null ? timeline.length
-                    : timeline.findIndex(item => item.messageId === command.beforeMessageId);
-                if (index < 0) throw new NotFoundError('native timeline insertion point');
-                timeline.splice(index, 0, created.entry);
-                entries.push(created.entry);
-                variants.push(created.variant);
-                continue;
+            if (!command || command.type !== 'append' || command.beforeMessageId !== undefined) {
+                throw new TypeError('Native runtime Timeline commands are append-only');
             }
-            const index = timeline.findIndex(item => item.messageId === command.messageId);
-            if (index < 0) throw new NotFoundError('native timeline entry', { messageId: command.messageId });
-            const entry = timeline[index];
-            if (command.type === 'remove') {
-                timeline.splice(index, 1);
-            } else if (command.type === 'select') {
-                if (!entry.variantIds.includes(command.variantId)) throw new NotFoundError('native timeline variant');
-                entry.activeVariantId = command.variantId;
-            } else if (command.type === 'revise') {
-                const variant = assertVariant({ ...command.draft, sessionId, messageId: entry.messageId,
-                    variantId: createNativeId('variant'), createdAt: Date.now() });
-                if (command.replaceVariantId) {
-                    const position = entry.variantIds.indexOf(command.replaceVariantId);
-                    if (position < 0) throw new NotFoundError('native timeline variant');
-                    entry.variantIds[position] = variant.variantId;
-                    if (entry.activeVariantId === command.replaceVariantId) entry.activeVariantId = variant.variantId;
-                } else {
-                    entry.variantIds.push(variant.variantId);
-                }
-                if (command.select !== false) entry.activeVariantId = variant.variantId;
-                variants.push(variant);
-            } else if (command.type === 'removeVariant') {
-                if (!entry.variantIds.includes(command.variantId) || entry.variantIds.length < 2) {
-                    throw new TypeError('Cannot remove missing or sole Native Variant');
-                }
-                entry.variantIds = entry.variantIds.filter(id => id !== command.variantId);
-                if (entry.activeVariantId === command.variantId) entry.activeVariantId = entry.variantIds[0];
-            } else {
-                throw new TypeError('Unsupported Native Timeline command');
-            }
+            const created = this._newEntry(base, command.draft, timeline.length);
+            timeline.push(created.entry);
+            entries.push(created.entry);
+            variants.push(created.variant);
         }
         return this._publish(handle, base, { timeline, entries, variants });
     }
@@ -265,6 +237,47 @@ export class SessionCore {
         const knowledge = await resolveSessionKnowledge({ ...options, handle, manifest: base.manifest,
             entryPoint: base.entryPoint, knowledgeRepo: this._knowledge });
         return this._publish(handle, base, { knowledge });
+    }
+
+    /**
+     * Retry the current committed assistant reply without creating a Native
+     * Variant. Find the exact ancestor revision whose Timeline HEAD is the
+     * preceding user message, then fork from that post-user revision.
+     */
+    async retryReply(handle, sessionId, { messageId, expectedRevisionId } = {}) {
+        assertNativeId(messageId, 'message');
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        const assistantIndex = current.timeline.findIndex(item => item.messageId === messageId);
+        if (assistantIndex < 0) throw new NotFoundError('native retry assistant message', { messageId });
+        const assistant = current.timeline[assistantIndex];
+        if (assistant.role !== 'assistant' || assistantIndex !== current.timeline.length - 1) {
+            throw new TypeError('Native Retry Reply requires the current committed assistant reply');
+        }
+        let userIndex = assistantIndex - 1;
+        while (userIndex >= 0 && current.timeline[userIndex].role !== 'user') userIndex--;
+        if (userIndex < 0) throw new TypeError('Native Retry Reply requires a preceding committed user turn');
+        const userMessageId = current.timeline[userIndex].messageId;
+
+        let cursor = current;
+        const visited = new Set();
+        while (cursor?.revision) {
+            const revisionId = cursor.revision.revisionId;
+            if (visited.has(revisionId)) throw new TypeError('Native Session revision ancestry cycle');
+            visited.add(revisionId);
+            if (
+                cursor.revision.timelineHead?.messageId === userMessageId
+                && cursor.timeline.at(-1)?.messageId === userMessageId
+            ) {
+                return this.forkBranch(handle, sessionId, {
+                    revisionId,
+                    expectedRevisionId: current.session.headRevisionId,
+                });
+            }
+            const parentRevisionId = cursor.core?.parentRevisionId;
+            if (!parentRevisionId) break;
+            cursor = await this.load(handle, sessionId, { revisionId: parentRevisionId });
+        }
+        throw new NotFoundError('native retry post-user revision', { messageId, userMessageId });
     }
 
     async forkBranch(handle, sessionId, { revisionId, messageId, variantId, displayName, expectedRevisionId } = {}) {
