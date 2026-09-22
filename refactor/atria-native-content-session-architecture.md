@@ -3,7 +3,7 @@
 ## Status
 
 - **Decision state:** product / data / storage / runtime / UX direction frozen
-- **Implementation state:** N0 in progress; existing Native contracts are implemented through `refactor/atria-native-content-session-architecture@6be4f7e12e6c0e23faf27e2c4292823191060953`, but N0 is not final until the World/Knowledge contract extension is implemented and validated
+- **Implementation state:** N0 and N1 validated; N2 is next. Current validated implementation HEAD is `refactor/atria-native-content-session-architecture@fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
 - **Authoritative development baseline:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - **Working branch:** `refactor/atria-native-content-session-architecture`
 - **Branch creation point:** `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
@@ -1326,25 +1326,52 @@ N0 deliberately did **not** implement repositories, storage-engine resource pers
 **Exit satisfied:** Native identity/content contracts including World/Knowledge are frozen and tested. Later phases must consume these contracts rather than inventing parallel identity.
 ### N1 — Native Storage Foundation
 
-Implement:
+**Status: validated.**
+
+Validated HEAD:
+
+`fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
+
+Validation:
+
+- workflow: **Native Content Session Dev Checks #23**
+- run: `35676169036`
+- N1 storage suites: **9 passed / 64 tests passed**
+- N0 Native contract suites preserved: **2 passed / 52 tests passed**
+- adjacent `.atria` / Game Runtime / Storage regressions preserved: **5 passed / 42 tests passed**
+- N1 source ESLint: success
+- full root ESLint: success
+- Android/Docker: not run; N1 changed JS/storage only
+
+N1 implemented:
 
 - PackageRepo;
-- WorldRepo for Library World authority;
-- KnowledgeRepo for Library Knowledge authority;
-- SessionRepo skeleton/records;
+- WorldRepo as Library World authority only;
+- KnowledgeRepo as Library Knowledge authority only;
+- SessionRepo foundation;
 - SavePointRepo;
-- AssetStore;
-- required StorageTransaction resource kinds;
+- content-addressed AssetStore;
+- first-class Native StorageTransaction resource kinds for all N0-frozen Native resource families;
+- dedicated FS Native resource layout under `atria-native/resources/<kind>/`;
+- dedicated SQL `native_resources` storage through additive schema-v2 migrations;
 - FS / SQLite / MySQL / PostgreSQL parity;
-- immutable revision + commit-last primitives;
-- World/Knowledge immutable revision and reference/GC primitives;
-- contract/round-trip/chaos coverage.
+- SQL transaction-aware Native OCC and FS best-effort OCC under the existing FS semantics;
+- immutable PackageVersion / WorldRevision / KnowledgeRevision / KnowledgeEntry / Variant / SessionState / SessionRevision / SavePoint primitives;
+- FS immutable-write + commit-last publication semantics;
+- PackageVersion / WorldRevision / KnowledgeRevision / SessionRevision reference-aware GC foundations;
+- WorldRevision validation of Library KnowledgeBinding and AssetRef references;
+- KnowledgeEntry relation closure inside one immutable revision;
+- KnowledgeBase / KnowledgeBinding / AssetRef deletion protection where referenced;
+- Asset blob deduplication, integrity verification and reference-aware blob GC;
+- MySQL/PostgreSQL dump/restore and delete-user coverage for Native resources;
+- 17-kind cross-engine Native round-trip coverage;
+- FS commit-last chaos coverage for Session, World and Knowledge authority pointers.
 
-WorldRepo/KnowledgeRepo do not become authorities for Package snapshots or Session-local content.
+WorldRepo/KnowledgeRepo remain strictly Library authorities. Package snapshots and Session-local/current state remain assigned to their later phase owners.
 
-Do not read old PNG/JSONL/World Info files as a fallback.
+No old PNG / Character JSON / JSONL / World Info file was introduced as Native fallback, and no dual-read/dual-write path was added.
 
-**Exit:** create/read/update/list/delete Native resources consistently across supported storage engines.
+**Exit satisfied:** Native resources can be created/read/updated/listed/deleted consistently across supported storage engines; immutable revision/commit-last and reference/GC primitives required by later phases are established and tested.
 
 ### N2 — Package / Project / World & Knowledge Composition
 
@@ -1659,22 +1686,25 @@ The following invariants are load-bearing and should receive automated guards wh
 
 ## 29. Next implementation action
 
-N0 is complete and validated at:
+N0 and N1 are complete and validated.
 
-`refactor/atria-native-content-session-architecture@e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
+Current validated branch HEAD:
 
-The next implementation conversation starts at **N1 — Native Storage Foundation**.
+`refactor/atria-native-content-session-architecture@fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
+
+The next implementation conversation starts at **N2 — Package / Project / World & Knowledge Composition**.
 
 Before editing:
 
 1. verify the live HEAD of `refactor/atria-native-content-session-architecture`;
-2. preserve the complete validated N0 history through `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`;
+2. preserve the complete validated N0/N1 history through `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`;
 3. read current `main:AGENTS.md`;
 4. read current `main:FORK_MAINTENANCE.md`;
 5. read `docs:handoff/latest-handoff.md`;
 6. read `docs:handoff/atria-native-content-session-architecture.md`;
 7. read this Master Plan;
-8. inspect current Storage Engine resource-key/transaction contracts and engine parity harnesses;
-9. implement N1 only: PackageRepo, WorldRepo, KnowledgeRepo, SessionRepo foundation, SavePointRepo, AssetStore and cross-engine Native storage primitives.
+8. inspect current `src/native/*`, `src/native/repositories/*`, the N1 Native storage engine implementation, and current Project/Studio/build/`.atria` code;
+9. implement N2 only: ProjectStore, authoring dependency closure, Package Container v2 build/install, exact World/Knowledge snapshot vendoring, Package validation/security and ephemeral Preview seam.
 
-Do not redesign N0 contracts, do not create another branch, do not start N2 composition/UI work, and do not make old PNG/JSONL/World Info persistence a Native fallback.
+Do not redesign N0, do not replace N1 storage, do not create another branch, do not start N3/N6/N8/N9 early, and do not make old PNG/JSONL/World Info persistence a Native fallback.
+

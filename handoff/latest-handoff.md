@@ -1,36 +1,40 @@
 # Atria Native Content & Session Architecture — active implementation handoff
 
 - Architecture: **Package/Session + World/Knowledge contracts frozen**
-- Implementation: **N0 validated; N1 next**
-- Authoritative baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
+- Implementation: **N0 + N1 validated; N2 next**
+- Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- Final N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
-- Validation: **Native Content Session Dev Checks #12**, run `35673592841`, success
+- N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
+- N1 validated HEAD: `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
+- N1 validation: **Native Content Session Dev Checks #23**, run `35676169036`, success
 - Formal Master Plan: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
 - Implementation phases: **N0–N9**
 
 Current directive:
 
-- Preserve validated N0; do not redesign or recreate its contracts.
-- Continue on the same branch; do not merge to `main` before N9.
-- Start **N1 — Native Storage Foundation**.
-- Implement PackageRepo, WorldRepo, KnowledgeRepo, SessionRepo foundation, SavePointRepo and AssetStore.
-- Add first-class Native storage resources across FS / SQLite / MySQL / PostgreSQL with parity.
-- WorldRepo is Library World authority only; it must not own Package snapshots or Session current World state.
-- KnowledgeRepo is Library Knowledge authority only; it must not own Package snapshots or Session-local Knowledge.
-- Use immutable revisions and commit-last semantics; do not depend on FS rollback.
-- Do not use old PNG/JSONL/World Info persistence as Native fallback.
-- Do not start N2 composition, N6 KnowledgeCompiler, N8 UI cutover, or N9 retirement work early.
+- Preserve validated N0 and N1; do not redesign or recreate their contracts/storage foundation.
+- Continue on the same long-lived branch; do not merge to `main` before N9.
+- Start **N2 — Package / Project / World & Knowledge Composition**.
+- Build on PackageRepo / WorldRepo / KnowledgeRepo / SessionRepo / SavePointRepo / AssetStore from N1.
+- Implement ProjectStore keyed only by `projectId`.
+- Resolve exact Library WorldRevision / KnowledgeRevision dependencies and vendor immutable snapshots into PackageVersion at build time.
+- Evolve `.atria` into Package Container v2; do not restore PNG/Character JSON/JSONL/World Info authority or any dual-read/dual-write path.
+- Runtime must not depend on live Library World/Knowledge content after Package build/install.
+- Keep Studio Preview ephemeral; do not contaminate normal Session lists.
+- Do not start N3 Session full core, N6 KnowledgeCompiler, N8 UI cutover, or N9 retirement work early.
 
-N0 verification summary:
+N1 verification summary:
 
-- Native contracts: 52 tests passed
-- adjacent `.atria` / Game Runtime / Storage regressions: 42 tests passed
-- Native source lint: success
+- N1 storage foundation: **9 suites / 64 tests passed**
+- N0 Native contracts preserved: **2 suites / 52 tests passed**
+- adjacent `.atria` / Game Runtime / Storage regressions preserved: **5 suites / 42 tests passed**
+- N1 source lint: success
 - full root lint: success
+- FS / SQLite / MySQL / PostgreSQL Native resource parity: success
+- Android/Docker: not run; N1 touched JS/storage only and did not require those surfaces
 
-Next action: begin N1 from the live remote HEAD after reading the current Master Plan and handoff.
+Next action: begin N2 from the live remote HEAD after re-reading the Master Plan and this handoff.
 
 ---
 
