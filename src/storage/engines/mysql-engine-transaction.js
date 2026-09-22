@@ -6,7 +6,6 @@ import {
     NATIVE_STORAGE_KINDS,
     decodeNativeResourceKey,
     encodeNativeResourceKey,
-    nativeResourceFileId,
     nativeResourceMatchesFilter,
     normalizeNativeResourceKey,
     sortAndLimitNativeRecords,
