@@ -51,10 +51,12 @@ export const nativeProductClient = Object.freeze({
     }),
 
     listWorlds: () => request('worlds'),
+    createWorld: displayName => request('worlds', { method: 'POST', body: { displayName } }),
     getWorld: worldId => request(`worlds/${encode(worldId)}`),
     deleteWorld: worldId => request(`worlds/${encode(worldId)}`, { method: 'DELETE' }),
 
     listKnowledge: () => request('knowledge'),
+    createKnowledge: displayName => request('knowledge', { method: 'POST', body: { displayName } }),
     getKnowledge: (knowledgeBaseId, revisionId = null) => request(
         `knowledge/${encode(knowledgeBaseId)}${revisionId ? `?revisionId=${encode(revisionId)}` : ''}`,
     ),
@@ -73,6 +75,18 @@ export const nativeProductClient = Object.freeze({
     promoteKnowledge: (sessionId, options) => request(`sessions/${encode(sessionId)}/promote-knowledge`, {
         method: 'POST',
         body: options,
+    }),
+    exportSave: (sessionId, options = {}) => request(`sessions/${encode(sessionId)}/export`, {
+        method: 'POST',
+        body: options,
+    }),
+    preflightSaveImport: data => request('saves/preflight-import', {
+        method: 'POST',
+        body: { data },
+    }),
+    importSave: (data, password = undefined) => request('saves/import', {
+        method: 'POST',
+        body: { data, ...(password === undefined ? {} : { password }) },
     }),
     deleteSession: sessionId => request(`sessions/${encode(sessionId)}`, { method: 'DELETE' }),
 
