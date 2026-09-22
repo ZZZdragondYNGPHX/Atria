@@ -584,17 +584,11 @@ jobs:
       - name: Install Chromium
         working-directory: tests
         run: npx playwright install --with-deps chromium
-      - name: Run R7 Shell desktop/mobile browser regression
+      - name: Run current R7 Shell desktop/mobile browser regression
         working-directory: tests
         run: >-
           npx playwright test
-          e2e/atria-shell/01-foundation.e2e.js
-          e2e/atria-shell/02-native-actions.e2e.js
-          e2e/atria-shell/03-game-surfaces.e2e.js
-          e2e/atria-shell/04-navigation.e2e.js
-          e2e/atria-shell/05-workspaces.e2e.js
-          e2e/atria-shell/06-library-runtime.e2e.js
-          e2e/atria-shell/07-plugins-settings.e2e.js
+          e2e/native-session/02-product-ui.e2e.js
           e2e/atria-shell/08-final-hardening.e2e.js
           --project=e2e
           --workers=1
