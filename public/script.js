@@ -9565,9 +9565,11 @@ export function stopGeneration() {
         abortController.abort('Clicked stop button');
         stopped = true;
     }
-    if (stopped) {
-        // Release the UI lock immediately after a user-driven stop. If the aborted request never
-        // settles cleanly, waiting for Generate() cleanup leaves both send and stop controls hidden.
+    if (stopped && !nativeSessionRuntime.active) {
+        // Legacy/ST releases the UI lock immediately after a user-driven stop.
+        // Native must wait for the aborted streaming path to commit a partial
+        // Assistant Draft or discard an empty Draft before GENERATION_ENDED is
+        // observable; onFinishStreaming performs that authoritative unlock.
         forceUnblockGenerationUi();
     }
     eventSource.emit(event_types.GENERATION_STOPPED);
