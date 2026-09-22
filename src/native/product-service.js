@@ -195,6 +195,18 @@ export class NativeProductService {
         });
     }
 
+    async updateWorld(handle, worldId, { displayName }) {
+        const world = await this._worlds.get(handle, worldId);
+        if (!world) throw new NotFoundError('native world', { worldId });
+        const name = String(displayName || '').trim();
+        if (!name) throw new TypeError('Native World displayName is required');
+        return this._worlds.save(handle, {
+            ...world,
+            displayName: name,
+            updatedAt: Math.max(Date.now(), Number(world.updatedAt || 0)),
+        });
+    }
+
     async deleteWorld(handle, worldId) {
         const refs = [];
         for (const source of await this._projectSources(handle)) {
@@ -280,6 +292,18 @@ export class NativeProductService {
             currentRevisionId: null,
             createdAt: now,
             updatedAt: now,
+        });
+    }
+
+    async updateKnowledgeBase(handle, knowledgeBaseId, { displayName }) {
+        const knowledgeBase = await this._knowledge.get(handle, knowledgeBaseId);
+        if (!knowledgeBase) throw new NotFoundError('native knowledge base', { knowledgeBaseId });
+        const name = String(displayName || '').trim();
+        if (!name) throw new TypeError('Native KnowledgeBase displayName is required');
+        return this._knowledge.save(handle, {
+            ...knowledgeBase,
+            displayName: name,
+            updatedAt: Math.max(Date.now(), Number(knowledgeBase.updatedAt || 0)),
         });
     }
 
