@@ -1,62 +1,62 @@
-# Active checkpoint: N5 validated — N6 next
+# Active checkpoint: N6 validated — N7 next
 
 ## Status
 
-**N5 — Native Runtime State & Revision Lifecycle is complete and validated. Do not redo N0–N5.**
+**N6 — Native Knowledge Runtime Integration is complete and validated. Do not redo N0–N6.**
 
 - Working branch: `refactor/atria-native-content-session-architecture`
-- N5 validated HEAD: `70f59bf2894c77defa46d75e48c79485a4bc5d74`
-- Workflow: **Native Content Session Dev Checks #107**
-- Run: `35700429886`
+- N6 validated HEAD: `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1`
+- Workflow: **Native Content Session Dev Checks #118**
+- Run: `35703649183`
 - Result: **success**
-- N0–N5 are frozen.
+- N0–N6 are frozen.
 - `main` remains untouched.
 - Continue on the same long-lived refactor branch; do not create a new branch.
 - Formal plan: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
-- N6 startup prompt: `handoff/atria-native-session-n6-prompt.md`
+- N7 startup prompt: `handoff/atria-native-session-n7-prompt.md`
 
-## N5 final boundary
+## N6 final boundary
 
-N5 established coherent Native SessionState / SessionRevision authority for:
+N6 established the Native Knowledge runtime layer above the exact revision-pinned binding set created in N3:
 
-- Game World + Event Journal through `atri_game_world`;
-- Memory graph/meta/provenance with Native `messageId` source identity;
-- Orchestrator durable state and loop notes;
-- Search durable state;
-- Variables through `atri_variables`;
-- package-owned Session runtime namespaces.
-
-Native lifecycle is standardized around:
-
-- `TIMELINE_APPENDED`;
-- `REVISION_COMMITTED`;
-- `REVISION_RESTORED`;
-- `BRANCH_ACTIVATED`;
-- `SESSION_LOADED`;
-- `DRAFT_ABORTED`.
-
-Native authority no longer uses floor/swipe structural events as rollback identity. Legacy/ST FloorState and structural-event compatibility remain available outside Native Sessions.
-
-Retry/Fork now resolve the exact Timeline boundary Revision, so later state-only Revisions cannot leak into historical forks. Stop discards uncommitted Draft-local state and remains at the exact post-user Revision.
+- deterministic `KnowledgeCompiler` / target-aware `KnowledgePlan`;
+- authority separate from priority;
+- explicit authority classes for Runtime mechanics, current Session State, committed Event Journal, Knowledge override, Package canon, Library augment, Session augment and Memory/history evidence;
+- Package / Library / Session exact source resolution without following mutable Library current pointers;
+- Narrator / Actor / Agent / User target and visibility filtering;
+- current committed `atri_*` SessionState exposed as read-only Knowledge state providers;
+- `atri_game_world` current state and committed Event Journal precedence;
+- stale Knowledge with deterministically false current-state applicability is rejected;
+- explicit Knowledge override outranks ordinary Knowledge but still cannot bypass current-state applicability;
+- Library augment cannot displace higher-authority Package canon within explicit exclusive groups;
+- Memory/history state claims conflicting with committed current state are rejected as stale evidence;
+- required dependencies, related entries and exclusive groups preserve stable Native identities;
+- Native Knowledge candidates enter the existing World Info keyword/regex/probability/recursion/sticky/cooldown/delay machinery instead of replacing it;
+- stable Knowledge identity survives through World Info prompt provenance even when rendered bodies are identical;
+- Native World Info state-event baselines use revision/branch/message identity and SessionState instead of floor/swipe authority;
+- generation-local state-event baselines are Draft-local and commit atomically with an accepted Assistant Timeline append; Stop/abort discards them;
+- exact Library Knowledge revision pinning is proven: Library N → N+1 does not move an existing Session until explicit Knowledge update creates a new SessionRevision.
 
 ## Validation
 
-Exact HEAD `70f59bf2894c77defa46d75e48c79485a4bc5d74` passed:
+Exact HEAD `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1` passed:
 
 - N0 Native Contracts: success;
 - N1 Storage + N3/N5 Core + N4 Projection: success;
 - N2 Package Project Composition: success;
-- N5 focused state/lifecycle gate: **15 suites / 307 tests passed**;
-- full root ESLint: success;
-- real-host Chromium Native Session acceptance: success;
-- complete Node regression: **748 suites / 8734 tests passed**;
-- frontend build: success.
+- N4 real-host Chromium Native Session acceptance: success;
+- N5 Runtime State & Revision Lifecycle: success;
+- N6 Checkpoint K / Knowledge + World Info integration: **7 suites / 99 tests passed**;
+- N6 source lint: success;
+- full root lint: success;
+- complete Node regression: **749 suites / 8750 tests passed**;
+- frontend webpack build: success.
 
 ## Next action
 
-Start **N6 — Native Knowledge Runtime Integration**.
+Start **N7 — Native Context Architecture**.
 
-N6 owns KnowledgeBinding resolution/runtime compilation, exact revision pinning, KnowledgeCompiler, KnowledgePlan, authority-vs-priority, target visibility, current-state/Event-Journal precedence, Memory evidence precedence, stable Knowledge identity and deterministic diagnostics.
+N7 owns the bounded derived model context: ContextProvider/ContextItem, SessionContextCompiler, total token-budget authority, ContextPlan diagnostics, complete TurnGroup recent history, Narrative Spine, Active Commitments, Derivation Gate, derived coverage/lag and raw Timeline drill-down.
 
-Do not start N7 Context Architecture, N8 Save System, N9 Product UI Cutover or N10 Hard Cutover early. Do not merge `main`.
+Do not start N8 Save System / `.atriasave`, N9 Product UI Cutover or N10 Hard Cutover / Legacy Retirement early. Do not merge `main`.

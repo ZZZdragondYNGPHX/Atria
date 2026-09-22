@@ -1895,6 +1895,8 @@ N6 starts from this frozen boundary.
 
 ### N6 — Native Knowledge Runtime Integration
 
+**Status: complete and validated — 2026-09-22.**
+
 Implement:
 
 - KnowledgeBinding resolution across Package, EntryPoint, Library policy and Session-local sources;
@@ -1925,6 +1927,38 @@ Do **not** rewrite all keyword, regex, vector, probability, recursion, sticky/co
 6. equal entry bodies from different IDs/sources remain distinguishable;
 7. visibility produces different target Context views;
 8. a Session remains pinned to Library Knowledge rev N when Library moves to rev N+1 unless explicitly upgraded.
+
+
+#### N6 validated implementation record
+
+Validated HEAD: `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1`  
+Workflow: **Native Content Session Dev Checks #118**  
+Run: `35703649183`
+
+Implemented:
+
+- deterministic `KnowledgeCompiler` and target-aware `KnowledgePlan`;
+- authority-vs-priority separation and deterministic rejection diagnostics;
+- committed SessionState/Event-Journal precedence over stale Knowledge;
+- explicit Knowledge override semantics without Runtime/current-state authority escalation;
+- Package canonical vs Library/Session augment ordering;
+- Memory/history evidence as lower-authority evidence;
+- stable Knowledge identity through existing World Info selection and prompt provenance;
+- required/related/exclusive relation adaptation;
+- Narrator/Actor/Agent visibility views;
+- exact Library revision pinning and explicit upgrade behavior;
+- Native World Info transition baseline moved from floor/swipe authority to revision/branch/message-scoped SessionState;
+- Draft-local state-event baseline commits atomically with accepted generation and is discarded on Stop.
+
+Validation:
+
+- N6 focused integration: **7 suites / 99 tests passed**;
+- complete Node regression: **749 suites / 8750 tests passed**;
+- full root lint: success;
+- real-host Chromium Native Session acceptance: success;
+- frontend webpack build: success.
+
+Checkpoint K is satisfied. N7 remains responsible for total-budget bounded Context compilation, Narrative Spine, Commitments, derived coverage and ContextPlan diagnostics.
 
 ### N7 — Native Context Architecture
 

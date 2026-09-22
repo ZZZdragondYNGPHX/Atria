@@ -689,3 +689,133 @@ The N5 exit criterion is satisfied: append / fork / restore / reload keep Timeli
 ### Remaining boundary
 
 N6 owns Knowledge runtime integration. N5 deliberately does **not** implement KnowledgeCompiler/KnowledgePlan, bounded Context compilation, `.atriasave`, product UI cutover or Legacy retirement.
+
+
+---
+
+## N6 implementation record — validated 2026-09-22
+
+**Status: N6 complete and validated. Stop N6 development. N7 is next.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Validated HEAD: `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1`
+- Workflow: **Native Content Session Dev Checks #118**
+- Run: `35703649183`
+- Result: **success**
+- `main` remains untouched; no new development branch was created.
+
+### KnowledgeCompiler / KnowledgePlan
+
+Added the deterministic Native Knowledge runtime layer in `public/scripts/native/knowledge-runtime.js`.
+
+The compiler consumes the exact immutable/resolved KnowledgeBindingSet already pinned by N3 and emits a target-aware KnowledgePlan without reading Library latest/current pointers.
+
+Authority is distinct from priority. The implemented authority order follows the Master Plan:
+
+1. Runtime mechanics/contracts;
+2. authoritative current Session State;
+3. committed Event Journal;
+4. explicit Knowledge override;
+5. Package/World canonical Knowledge;
+6. Library augment Knowledge;
+7. Session augment Knowledge;
+8. Memory/history evidence.
+
+Priority is used only within an authority class / explicit selection group. Lower-authority material cannot displace current state merely by using a higher numeric priority.
+
+### Target visibility and stable identity
+
+Knowledge compilation supports Narrator / Actor / Agent / User targets.
+
+Binding and entry delivery visibility/target filters are applied before World Info selection. The KnowledgePlan keeps:
+
+- `knowledgeBindingId`;
+- `knowledgeBaseId`;
+- `knowledgeRevisionId`;
+- `knowledgeEntryId`;
+- exact source kind/revision;
+- authority;
+- priority;
+- target;
+- selection reason;
+- state evidence;
+- source-entry identity.
+
+Equal rendered bodies from different Knowledge IDs remain distinct. Native identity is carried into World Info candidates and prompt provenance; no reverse lookup from body text is required.
+
+### Current-state / Event-Journal precedence
+
+Committed Native `atri_*` SessionState namespaces are exposed as detached read-only Knowledge state providers.
+
+`atri_game_world` exposes authoritative current World state. Its committed journal is separately represented as `atri_event_journal` evidence.
+
+Knowledge entries whose explicit state conditions are deterministically false against committed current Session State are rejected with deterministic diagnostics. Unknown provider/field state remains fail-closed rather than being coerced into an override.
+
+Explicit Knowledge `override` outranks ordinary Knowledge, but it is still rejected when its own applicability conflicts with current state. Runtime mechanics/current state are never mutated by Knowledge compilation.
+
+Memory/history evidence remains lower authority. A state claim that conflicts with current committed state is diagnosed/rejected rather than replacing current state.
+
+### World Info reuse
+
+N6 does not reimplement mature World Info scanning.
+
+Compiled Native Knowledge candidates enter the existing selector with their discovery/lifecycle/applicability/relations/delivery metadata:
+
+- keyword/alias/regex discovery;
+- existing probability/recursion behavior;
+- sticky/cooldown/delay;
+- required dependencies;
+- related entries;
+- exclusive groups;
+- existing budget/selection machinery.
+
+The adapter preserves stable Native identity in `atri_native` metadata and World Info provenance.
+
+### Native state-event authority
+
+World Info transition-state baselines no longer use floor/swipe authority in Native Sessions.
+
+Native event scope is revision/branch/message based. The `atri_world_info_events` baseline is read from SessionState. During generation, accepted transition baseline changes are staged as Draft-local Native state and commit atomically with the accepted Assistant Timeline append. Stop/abort clears staged state and keeps the exact post-user Revision.
+
+Legacy/ST sessions keep their existing FloorState behavior.
+
+### Exact Library revision pinning
+
+A Session that resolved Library Knowledge revision N remains on revision N even if the Library's mutable current pointer advances to N+1.
+
+Only an explicit Knowledge update using the new exact revision creates a new SessionRevision and upgrades the pinned snapshot.
+
+### Checkpoint K
+
+Checkpoint K is satisfied:
+
+1. Package canonical Knowledge reaches the target Knowledge/World Info context.
+2. Current Session State suppresses stale canonical content when explicit conditions deterministically conflict.
+3. Library augment cannot displace Package canon through explicit exclusivity.
+4. Explicit Knowledge override outranks ordinary Knowledge but not Runtime/current-state authority.
+5. Old Memory evidence cannot override current state.
+6. Equal bodies with different Knowledge IDs/sources stay distinguishable.
+7. Narrator/Actor/Agent visibility produces different KnowledgePlan views.
+8. Library revision pinning does not drift without explicit upgrade.
+
+### Validation
+
+Exact HEAD `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1`:
+
+- N6 focused gate: **7 suites / 99 tests passed**;
+- N6 source lint: success;
+- N0/N1/N2/N4/N5 prerequisite jobs: success;
+- N4 real-host Chromium Native Session acceptance: success;
+- full root lint: success;
+- complete Node regression: **749 suites / 8750 tests passed**;
+- frontend webpack build: success.
+
+### N7 boundary
+
+N6 does not implement total model-context budgeting, bounded raw-history selection, Narrative Spine, Active Commitments, Derivation Gate, Turn Distiller scheduling, derived coverage/lag, or the final ContextPlan lane allocator.
+
+Those belong to **N7 — Native Context Architecture**.
+
+N7 must consume N6 KnowledgePlan as one structured lane; it must not collapse Knowledge back into body-text-only identity, and it must preserve N5/N6 Revision/branch/source provenance.
+
+No N8 `.atriasave`, N9 UI cutover, N10 retirement or `main` merge was performed in N6.
