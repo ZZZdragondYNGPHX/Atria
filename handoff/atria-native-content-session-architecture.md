@@ -5,8 +5,10 @@
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- Current phase status: **N4 in-progress checkpoint; N3 remains the last fully validated phase**
-- N4 checkpoint HEAD: `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`
+- Current phase status: **N4 in progress under the immutable-Timeline design amendment; N3 remains the last fully validated phase**
+- Current known N4 work HEAD: `952410a3f3d200754b046ccc2868166282958094`
+- Earlier N4 checkpoint: `f3ac20f80f4691eee1d3c7ccab555a39e4322d3b`
+- Preserve all N4 commits through the live remote HEAD; do not reset to either recorded SHA
 - N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
 - N1 validated HEAD: `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
 - N2 validated HEAD: `bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
@@ -14,11 +16,115 @@
 - N2 run: `35677654858`
 - N3 validated HEAD: `c42ee3e98a27fbea97ded0917de081bcc8893680`
 - N3 workflow: **Native Content Session Dev Checks #44**, run `35679448236`, **success**
-- Next action: **Continue N4 — SillyTavern Runtime Projection; do not start N5**
+- Next action: **Continue N4 — Native Runtime Projection & Write Barrier under the amended semantics; do not start N5**
 - Formal plan: `docs:refactor/atria-native-content-session-architecture.md`
-- Implementation sequence: **N0–N9**
+- Implementation sequence: **N0–N10**
 
-Do not merge to `main` yet. Keep the long-lived refactor branch isolated through N9.
+Do not merge to `main` yet. Keep the long-lived refactor branch isolated through N10.
+
+## Frozen design amendment — Immutable Timeline + Bounded Context
+
+This amendment supersedes the original N4 assumption that Native must preserve SillyTavern committed Edit/Delete/Swipe semantics.
+
+### Committed Timeline invariant
+
+Committed Native Timeline is immutable for:
+
+- users;
+- plugins/extensions;
+- Agents;
+- Package Runtime;
+- Atria-owned modules.
+
+Once a message is committed into a SessionRevision, its canonical role/content/Actor/attachment references/provenance cannot be edited, deleted, replaced, swipe-switched, or variant-switched in place.
+
+Normal changes to history use:
+
+- append;
+- Retry Reply = fork from post-user revision + new Assistant message;
+- Re-enter Turn = fork from pre-user revision + prefilled Draft;
+- Restart From Here = fork from historical predecessor revision;
+- Load historical Save = continue from a derived Branch;
+- revisioned Session State changes.
+
+A destructive privacy/maintenance purge is a separate maintenance workflow, not a normal Play/runtime API.
+
+### Draft boundary
+
+SillyTavern remains a mutable generation/runtime workspace **before commit**.
+
+ST `chat[]`, `swipes[]`, `swipe_info`, `swipe_id` may remain transient Draft/generator ABI while required.
+
+At the commit boundary:
+
+```text
+mutable ST Draft/runtime
+        ↓
+Native append/commit
+        ↓
+immutable TimelineEntry
+        ↓
+SessionRevision
+```
+
+Committed projected messages receive a Write Barrier/fingerprint guard. Direct legacy/plugin mutation must fail closed; it is not translated into Native revise/remove/select commands and must never fall back to JSONL/chat persistence.
+
+### N4 acceptance change
+
+Preserve useful work already implemented through the live N4 HEAD, including:
+
+- Native Session → ST projection;
+- Native HTTP/command transport;
+- generation host reuse;
+- Branch/switch/reload/historical views;
+- Package Regex/Knowledge compatibility;
+- attachments/AssetStore;
+- no legacy persistence fallback;
+- real-host test infrastructure.
+
+Change tests/commands:
+
+- committed Edit/Delete/Swipe/Swipe-delete/Variant switch become fail-closed/non-authoritative;
+- `timelineIntents` no longer maps committed projection diffs to `revise/remove/removeVariant/selectVariant`;
+- Native `removeSwipe()` product behavior is retired;
+- Regenerate→Variant becomes Retry Reply→Fork→new Assistant TimelineEntry;
+- committed Continue appends a continuation TimelineEntry;
+- direct third-party `chat[]` committed-content mutation must be rejected and leave Native authority unchanged.
+
+### Revised later phases
+
+- N5 — Native Runtime State & Revision Lifecycle
+- N6 — Native Knowledge Runtime Integration
+- N7 — Native Context Architecture
+- N8 — Save System & `.atriasave`
+- N9 — Product UI Cutover
+- N10 — Hard Cutover & Legacy Retirement
+
+### N7 Native Context Architecture
+
+Canonical Timeline is permanent; model context is a bounded derived projection.
+
+N7 will implement:
+
+- SessionContextCompiler;
+- ContextProvider/ContextItem;
+- ContextPlan with included/rejected reasons and per-lane token accounting;
+- token-budgeted complete TurnGroup recent history;
+- source-backed Narrative Spine: Scene → Chapter → Arc → Campaign;
+- Active Commitments;
+- Derivation Gate / bounded Turn Distiller;
+- Runtime/Orchestrator/Utility result reuse;
+- Memory cheap ingest vs heavy consolidation;
+- branch/revision/source provenance and coverage;
+- exact raw-history drill-down;
+- Economy/Balanced/Rich policies.
+
+No canonical message may be deleted/rewritten/summarized away to satisfy context limits.
+
+Normal turns must not incur mandatory Memory + Commitment + Summary LLM calls. Deterministic State/Event updates are preferred; semantic derived work is gated and may lag without blocking Play.
+
+Checkpoint C after N7 proves bounded context under long Timeline growth, source retrievability, coverage-gap fallback, target isolation and ContextPlan diagnostics.
+
 
 ## Frozen history — do not redo
 
