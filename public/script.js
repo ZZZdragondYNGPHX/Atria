@@ -7439,12 +7439,15 @@ function applyFinalizedAuthorsNoteInjections(anBefore = [], anAfter = []) {
  * @returns {Promise<any>} Returns a promise that resolves when the text is done generating.
  */
 export async function Generate(type, { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage, quietName, jsonSchema = null, depth = 0 } = {}, dryRun = false) {
+    const nativeGenerationIntent = nativeSessionRuntime.active && !dryRun ? type : null;
     if (nativeSessionRuntime.active && !dryRun) {
         // Native lifecycle owns the committed boundary. SillyTavern remains
         // the mutable generation workspace, but Retry/Continue are translated
         // before any legacy regenerate/swipe bookkeeping can rewrite history.
         type = await nativeSessionRuntime.prepareGeneration(type);
     }
+    const isNativeRetry = nativeGenerationIntent === 'regenerate'
+        && nativeSessionRuntime.generation?.kind === 'retry';
     console.log('Generate entered');
     setGenerationProgress(0);
     generation_started = new Date();
@@ -7485,7 +7488,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     const isInstruct = power_user.instruct.enabled && main_api !== 'openai';
     const isImpersonate = type == 'impersonate';
 
-    if (!(dryRun || depth || type == 'regenerate' || type == 'swipe' || type == 'quiet')) {
+    if (!(dryRun || depth || isNativeRetry || type == 'regenerate' || type == 'swipe' || type == 'quiet')) {
         const interruptedByCommand = await processCommands(String($('#send_textarea').val()));
 
         if (interruptedByCommand) {
@@ -7501,7 +7504,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     // Compatibility bridge for scripts that rewrite #send_textarea during GENERATION_AFTER_COMMANDS.
     // v1.4.0 snapshots textarea early to protect IME input; if a listener intentionally rewrites the
     // textarea text in this phase, sync the one-shot pending input with the rewritten value.
-    if (!dryRun && type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate) {
+    if (!dryRun && !isNativeRetry && type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate) {
         const currentTextareaText = String($('#send_textarea').val());
         const textareaChangedAfterSnapshot = typeof pendingUserInputText === 'string'
             && currentTextareaText !== pendingUserInputText;
@@ -7594,7 +7597,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     const lastMessage = chat[chat.length - 1];
 
     let textareaText;
-    if (type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate && !dryRun && !depth) {
+    if (!isNativeRetry && type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate && !dryRun && !depth) {
         is_send_press = true;
         if (typeof pendingUserInputText === 'string') {
             textareaText = pendingUserInputText;
@@ -7667,14 +7670,14 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         'continue',
     ];
     //for normal messages sent from user..
-    if ((textareaText != '' || (hasPendingFileAttachment() && !noAttachTypes.includes(type))) && !automatic_trigger && type !== 'quiet' && !dryRun && !depth) {
+    if (!isNativeRetry && (textareaText != '' || (hasPendingFileAttachment() && !noAttachTypes.includes(type))) && !automatic_trigger && type !== 'quiet' && !dryRun && !depth) {
         // If user message contains no text other than bias - send as a system message
         if (messageBias && !removeMacros(textareaText)) {
             sendSystemMessage(system_message_types.GENERIC, ' ', { bias: messageBias });
         } else {
             await sendMessageAsUser(textareaText, messageBias);
         }
-    } else if (textareaText == '' && !automatic_trigger && !dryRun && [undefined, 'normal'].includes(type) && main_api == 'openai' && oai_settings.send_if_empty.trim().length > 0 && !depth) {
+    } else if (!isNativeRetry && textareaText == '' && !automatic_trigger && !dryRun && [undefined, 'normal'].includes(type) && main_api == 'openai' && oai_settings.send_if_empty.trim().length > 0 && !depth) {
         // Use send_if_empty if set and the user message is empty. Only when sending messages normally
         await sendMessageAsUser(oai_settings.send_if_empty.trim(), messageBias);
     }
