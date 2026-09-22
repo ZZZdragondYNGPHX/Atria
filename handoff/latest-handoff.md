@@ -1,25 +1,31 @@
 # Atria Native Content & Session Architecture — active implementation handoff
 
-- Architecture discussion: **frozen**
-- Implementation: **not started**
+- Architecture: **Package/Session baseline frozen; World/Knowledge extension now also frozen**
+- Implementation: **N0 in progress**
 - Authoritative baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- First phase: **N0 — Native Contracts & Identity**
+- Current known N0 HEAD: `6be4f7e12e6c0e23faf27e2c4292823191060953`
 - Formal Master Plan: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
+- Implementation phases: **N0–N9**
 
-Core direction:
+Current directive:
 
-- Package replaces Character Card as Atria's top-level content authority.
-- Session replaces Chat as Atria's top-level runtime-progress authority.
-- `.atria` is the Native Package artifact; `.atriasave` is the Native save/session artifact.
-- PackageRepo / AssetStore / SessionRepo / SavePointRepo / ProjectStore are distinct authorities.
-- Native identity uses opaque IDs, never filename / avatar / `charDir` / array index.
-- No automatic old-data migration, dual read, dual write, or PNG/JSONL fallback.
-- SillyTavern remains only as a downstream runtime ABI through a one-way Native compatibility adapter.
-- Implementation phases are N0–N8; no product UI cutover before Checkpoint B after N6.
+- Preserve the existing N0 commits; do not reset or create another branch.
+- N0 is not final until Native World/Knowledge contracts are added.
+- Add World / WorldRevision and KnowledgeBase / KnowledgeRevision / KnowledgeEntry / KnowledgeBinding stable Native identities.
+- Replace arbitrary Package `worlds` / `knowledge` JSON slots with validated immutable Package snapshots.
+- EntryPoint must reference Package World IDs / primary World and KnowledgeBinding IDs rather than own arbitrary World payloads.
+- SessionRevision must pin the resolved Knowledge binding-set revision/head.
+- N1 will add WorldRepo / KnowledgeRepo for **Library authority only**.
+- Package Build vendors exact World/Knowledge revision snapshots; runtime never follows live Library "latest".
+- Native Knowledge scope uses KnowledgeBinding, not `selected_world_info`, character primary/auxiliary lorebook or chat/global ownership.
+- N6 is the dedicated Native Knowledge Runtime stage with KnowledgeCompiler / KnowledgePlan and existing World Info selection-engine reuse.
+- Checkpoint K after N6 validates State authority, Knowledge revision pinning, visibility and identity preservation.
+- N7 handles `.atriasave`; N8 UI cutover; N9 final hard cutover.
+- Do not rewrite mature keyword/regex/vector/sticky/cooldown/delay behavior without a concrete need.
 
-Next implementation conversation must read the Master Plan and start N0 directly. Do not repeat product design.
+Next action: continue the live N0 implementation from the current remote HEAD and implement the World/Knowledge contract extension before N1.
 
 ---
 
