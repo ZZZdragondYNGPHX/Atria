@@ -30,5 +30,16 @@ jobs:
           npm run test:unit --prefix tests --
           --runInBand
           native/contracts.test.js
+      - name: Run N0 adjacent regressions
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          game-runtime/atria-distribution.test.js
+          game-runtime/package-manifest.test.js
+          game-runtime/package-transport.test.js
+          game-runtime/world-session.test.js
+          storage/name-validation.test.js
       - name: Run N0 source lint
         run: npx eslint src/native/*.js
+      - name: Run full root lint
+        run: npm run lint
