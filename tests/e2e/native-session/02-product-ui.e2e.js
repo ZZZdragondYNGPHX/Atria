@@ -92,9 +92,65 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
         await toolbar.getByRole('button', { name: 'Context', exact: true }).click();
         await expect(page.locator('[data-atria-context-plan="true"]')).toBeVisible();
 
+        // N10 revalidates the still-current R7 Shell contract instead of the
+        // retired pre-N9 Character/Game Library product semantics.
+        expect(await page.evaluate(() => ({
+            shell: document.querySelectorAll('#atria-app-shell').length,
+            sheld: document.querySelectorAll('#sheld').length,
+            chat: document.querySelectorAll('#chat').length,
+            sendForm: document.querySelectorAll('#send_form').length,
+            textarea: document.querySelectorAll('#send_textarea').length,
+            shellOwnsSheld: Boolean(document.querySelector('#atria-app-shell #sheld')),
+            nativeHostOwnsSheld: Boolean(document.querySelector('#atria-native-play-host > #sheld')),
+        }))).toEqual({
+            shell: 1,
+            sheld: 1,
+            chat: 1,
+            sendForm: 1,
+            textarea: 1,
+            shellOwnsSheld: true,
+            nativeHostOwnsSheld: true,
+        });
+
+        const navigate = async (method, ...args) => {
+            await page.evaluate(({ method, args }) => {
+                const host = window.Atria.shell.getWorkspaceHost();
+                host[method](...args);
+            }, { method, args });
+        };
+
+        await navigate('openLibrarySection', 'worlds');
+        await expect(page.locator('[data-atria-native-library="worlds-knowledge"]')).toBeVisible();
+
+        await navigate('openStudio');
+        await expect(page.locator('[data-atria-native-studio="true"]')).toBeVisible();
+
+        await navigate('openRuntimeSection', 'overview');
+        await expect(page.locator('[data-atria-domain-workspace="runtime"]')).toBeVisible();
+
+        await navigate('openUtility', 'plugins');
+        await expect(page.locator('[data-atria-utility-workspace="plugins"]')).toBeVisible();
+
+        await navigate('openUtility', 'settings');
+        await expect(page.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
+
+        await navigate('openPlay');
+        await expect(toolbar).toBeVisible();
+        await expect(page.locator('#atria-native-play-host > #sheld')).toBeVisible();
+
         await page.setViewportSize({ width: 390, height: 844 });
         await expect(toolbar).toBeVisible();
         await expect(page.locator('#atria-native-play-host')).toBeVisible();
+        await expect(page.locator('#atria-app-shell')).toHaveAttribute('data-atria-viewport', 'compact');
+        await expect(page.locator('[data-atria-primitive="BottomNavigation"]')).toBeVisible();
+        await expect(page.locator('#atria-native-play-host > #sheld')).toBeVisible();
+
+        expect(await page.evaluate(() => ({
+            sheld: document.querySelectorAll('#sheld').length,
+            chat: document.querySelectorAll('#chat').length,
+            sendForm: document.querySelectorAll('#send_form').length,
+            textarea: document.querySelectorAll('#send_textarea').length,
+        }))).toEqual({ sheld: 1, chat: 1, sendForm: 1, textarea: 1 });
 
         expect(snapshotLegacyPersistence(server.dataRoot)).toEqual(legacyBaseline);
     });
