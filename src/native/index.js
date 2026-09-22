@@ -78,3 +78,24 @@ export {
     NativeDependencyError,
     resolveProjectDependencyClosure,
 } from './dependency-closure.js';
+
+export {
+    ATRIA_PACKAGE_CONTAINER_FORMAT,
+    ATRIA_PACKAGE_CONTAINER_LIMITS,
+    ATRIA_PACKAGE_CONTAINER_MAGIC,
+    ATRIA_PACKAGE_CONTAINER_VERSION,
+    buildAtriaPackageContainer,
+    hashAtriaPackageContainer,
+    inspectAtriaPackageContainer,
+    preflightAtriaPackageContainer,
+} from './package-container.js';
+
+export {
+    PackageInstaller,
+    buildProjectPackage,
+} from './package-composition.js';
+
+export {
+    StudioPreviewHost,
+    StudioProjectRouter,
+} from './studio-preview.js';
