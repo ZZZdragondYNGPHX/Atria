@@ -211,19 +211,6 @@ export class NativeSessionRuntime {
         return type;
     }
 
-    /**
-     * Commit a user message that the ST host has just appended before the
-     * provider request begins. Re-arm the same assistant generation Draft
-     * afterward so Stop/commit semantics still apply to the upcoming reply.
-     */
-    async commitUserTurnBeforeGeneration() {
-        if (!this.active || !this.generation || this.generation.kind !== 'append') return false;
-        const generation = this.generation;
-        await this.persist();
-        this.generation = generation;
-        return true;
-    }
-
     async _persistContinuation(messages) {
         const draft = this.generation;
         const projected = projectNativeSession(this.snapshot).chat;
@@ -325,11 +312,16 @@ export class NativeSessionRuntime {
             }
 
             if (!commands.length) {
-                if (this.generation) this.generation = null;
+                // A no-op save during generation must not end the Draft
+                // lifecycle. The Draft is terminal only when an assistant
+                // entry commits or Stop discards it.
                 return true;
             }
 
             try {
+                const generationAtCommit = this.generation;
+                const keepAssistantDraftOpen = generationAtCommit?.kind === 'append'
+                    && commands.every(command => command?.type === 'append' && command?.draft?.role !== 'assistant');
                 const committedLength = this.snapshot.timeline.length;
                 const next = await this.request('command', {
                     sessionId,
@@ -348,7 +340,7 @@ export class NativeSessionRuntime {
                     else message.atri_native = copy(canonical.atri_native);
                 });
                 this.host.revision(projection);
-                this.generation = null;
+                this.generation = keepAssistantDraftOpen ? generationAtCommit : null;
                 return true;
             } catch (error) {
                 throw this._report(error, { fatal: true });
