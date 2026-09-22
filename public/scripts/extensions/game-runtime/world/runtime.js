@@ -105,10 +105,19 @@ export function createWorldRuntime(options = {}) {
                 branchPath: [...branchPath],
                 journal: clone(journal),
             };
-            return journal;
+            return persistence.nativeAuthority
+                ? {
+                    schemaVersion: 1,
+                    state: clone(projected.state),
+                    journal: clone(journal),
+                }
+                : journal;
         });
 
-        currentJournal = normalizeWorldJournal(persisted ?? committedResult?.journal);
+        const persistedJournal = persisted && typeof persisted === 'object' && persisted.schemaVersion === 1
+            ? persisted.journal
+            : persisted;
+        currentJournal = normalizeWorldJournal(persistedJournal ?? committedResult?.journal);
         const projected = replay(currentJournal, branchPath);
         activeBranchPath = branchPath;
         currentState = projected.state;

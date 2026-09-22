@@ -382,6 +382,11 @@ describe('Game World session', () => {
         await session.commitEventsInternal([{ type: 'DamageDealt', payload: { amount: 5 } }]);
         expect(session.getState()).toEqual({ hp: 15 });
         expect(session.getBranchPath()).toEqual([]);
+        expect(context._store.get('atri_game_world')).toMatchObject({
+            schemaVersion: 1,
+            state: { hp: 15 },
+            journal: { events: [{ type: 'DamageDealt' }] },
+        });
 
         chatRef.value[0].swipe_id = 7;
         await session.syncBranch();
