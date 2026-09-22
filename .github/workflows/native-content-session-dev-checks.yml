@@ -487,8 +487,60 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  n10-hard-cutover:
+    name: N10 Hard Cutover & Legacy Retirement
+    needs:
+      - n4-live-runtime
+      - n9-product-ui
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N10 hard-cutover focused regression
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/session-core.contract.test.js
+          native/session-projection.test.js
+          native/session-runtime-http.test.js
+          atria-shell/library-runtime-workspaces.test.js
+          atria-shell/native-play-controls.test.js
+      - name: Run N10 Native authority residual guard
+        run: node scripts/check-n10-native-hard-cutover.mjs
+      - name: Check N10 guard syntax
+        run: node --check scripts/check-n10-native-hard-cutover.mjs
+      - name: Run N10 source lint
+        run: >-
+          npx eslint
+          src/native/session-core.js
+          src/endpoints/native-session.js
+          public/scripts/native/*.js
+          public/scripts/atria-shell/library-runtime-workspaces.js
+          public/scripts/bookmarks.js
+          public/script.js
+          tests/native/session-core.contract.test.js
+          tests/native/session-projection.test.js
+          tests/native/session-runtime-http.test.js
+          tests/atria-shell/library-runtime-workspaces.test.js
+          tests/e2e/native-session/01-live-runtime.e2e.js
+          tests/e2e/native-session/02-product-ui.e2e.js
+          scripts/check-n10-native-hard-cutover.mjs
+
   n4-final-regression:
-    name: N9 Complete Node Regression and Frontend Build
+    name: N10 Complete Node Regression and Frontend Build
     needs:
       - n4-live-runtime
       - n5-runtime-state
@@ -496,6 +548,7 @@ jobs:
       - n7-context
       - n8-save-system
       - n9-product-ui
+      - n10-hard-cutover
     runs-on: ubuntu-latest
     timeout-minutes: 40
     services:
