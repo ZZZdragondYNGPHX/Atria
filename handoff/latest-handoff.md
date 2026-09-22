@@ -1,31 +1,36 @@
 # Atria Native Content & Session Architecture — active implementation handoff
 
-- Architecture: **Package/Session baseline frozen; World/Knowledge extension now also frozen**
-- Implementation: **N0 in progress**
+- Architecture: **Package/Session + World/Knowledge contracts frozen**
+- Implementation: **N0 validated; N1 next**
 - Authoritative baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- Current known N0 HEAD: `6be4f7e12e6c0e23faf27e2c4292823191060953`
+- Final N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
+- Validation: **Native Content Session Dev Checks #12**, run `35673592841`, success
 - Formal Master Plan: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
 - Implementation phases: **N0–N9**
 
 Current directive:
 
-- Preserve the existing N0 commits; do not reset or create another branch.
-- N0 is not final until Native World/Knowledge contracts are added.
-- Add World / WorldRevision and KnowledgeBase / KnowledgeRevision / KnowledgeEntry / KnowledgeBinding stable Native identities.
-- Replace arbitrary Package `worlds` / `knowledge` JSON slots with validated immutable Package snapshots.
-- EntryPoint must reference Package World IDs / primary World and KnowledgeBinding IDs rather than own arbitrary World payloads.
-- SessionRevision must pin the resolved Knowledge binding-set revision/head.
-- N1 will add WorldRepo / KnowledgeRepo for **Library authority only**.
-- Package Build vendors exact World/Knowledge revision snapshots; runtime never follows live Library "latest".
-- Native Knowledge scope uses KnowledgeBinding, not `selected_world_info`, character primary/auxiliary lorebook or chat/global ownership.
-- N6 is the dedicated Native Knowledge Runtime stage with KnowledgeCompiler / KnowledgePlan and existing World Info selection-engine reuse.
-- Checkpoint K after N6 validates State authority, Knowledge revision pinning, visibility and identity preservation.
-- N7 handles `.atriasave`; N8 UI cutover; N9 final hard cutover.
-- Do not rewrite mature keyword/regex/vector/sticky/cooldown/delay behavior without a concrete need.
+- Preserve validated N0; do not redesign or recreate its contracts.
+- Continue on the same branch; do not merge to `main` before N9.
+- Start **N1 — Native Storage Foundation**.
+- Implement PackageRepo, WorldRepo, KnowledgeRepo, SessionRepo foundation, SavePointRepo and AssetStore.
+- Add first-class Native storage resources across FS / SQLite / MySQL / PostgreSQL with parity.
+- WorldRepo is Library World authority only; it must not own Package snapshots or Session current World state.
+- KnowledgeRepo is Library Knowledge authority only; it must not own Package snapshots or Session-local Knowledge.
+- Use immutable revisions and commit-last semantics; do not depend on FS rollback.
+- Do not use old PNG/JSONL/World Info persistence as Native fallback.
+- Do not start N2 composition, N6 KnowledgeCompiler, N8 UI cutover, or N9 retirement work early.
 
-Next action: continue the live N0 implementation from the current remote HEAD and implement the World/Knowledge contract extension before N1.
+N0 verification summary:
+
+- Native contracts: 52 tests passed
+- adjacent `.atria` / Game Runtime / Storage regressions: 42 tests passed
+- Native source lint: success
+- full root lint: success
+
+Next action: begin N1 from the live remote HEAD after reading the current Master Plan and handoff.
 
 ---
 
