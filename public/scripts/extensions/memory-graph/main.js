@@ -9036,7 +9036,11 @@ async function injectMemoryPrompts(context, payload) {
         const branchId = String(nativeSessionRuntime.snapshot?.revision?.branchId || '');
         const sourceMessageIds = new Set(Array.isArray(hybrid?.sourceMessageIds) ? hybrid.sourceMessageIds : []);
         if (sourceSnapshot?.state?.episodes) {
-            for (const node of persistentSync.alwaysInjectNodes || []) {
+            const sourceBackedNodes = [
+                ...(persistentSync.alwaysInjectNodes || []),
+                ...selectedNodes,
+            ];
+            for (const node of sourceBackedNodes) {
                 for (const episodeId of node?.memoryOsEvidence?.episodeIds || []) {
                     for (const messageId of sourceSnapshot.state.episodes?.[episodeId]?.messageIds || []) {
                         sourceMessageIds.add(String(messageId || ''));
@@ -9260,6 +9264,7 @@ async function captureLatestAssistantAfterGeneration() {
         return;
     }
     await ensureMemoryStoreLoaded(context);
+    if (isNativeMemorySession(context)) return;
     scheduleExtraction(context);
 }
 

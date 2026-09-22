@@ -344,15 +344,29 @@ export function evaluateDerivationGate(input = {}) {
     const rules = DERIVATION_POLICY[policy];
     const events = Array.isArray(input.events) ? input.events : [];
     const eventTypes = new Set(events.map(item => text(item?.type || item)).filter(Boolean));
-    const deterministicSceneBoundary = input.sceneBoundary === true || [
+    const explicitSummaryLevels = [];
+    if (eventTypes.has('campaign_close') || eventTypes.has('campaign_change')) {
+        explicitSummaryLevels.push('scene', 'chapter', 'arc', 'campaign');
+    } else if (eventTypes.has('arc_close') || eventTypes.has('arc_change')) {
+        explicitSummaryLevels.push('scene', 'chapter', 'arc');
+    } else if (eventTypes.has('chapter_close') || eventTypes.has('chapter_change')) {
+        explicitSummaryLevels.push('scene', 'chapter');
+    } else if (input.sceneBoundary === true || [
         'scene_close',
         'scene_change',
-        'chapter_change',
         'location_change',
         'battle_end',
         'quest_complete',
         'day_change',
-    ].some(type => eventTypes.has(type));
+    ].some(type => eventTypes.has(type))) {
+        explicitSummaryLevels.push('scene');
+    }
+    const sceneTokenCount = Math.max(0, Number(input.sceneTokenCount) || 0);
+    const sceneTokenThreshold = Math.max(0, Number(input.sceneTokenThreshold) || 0);
+    if (!explicitSummaryLevels.length && sceneTokenThreshold > 0 && sceneTokenCount >= sceneTokenThreshold) {
+        explicitSummaryLevels.push('scene');
+    }
+    const deterministicSceneBoundary = explicitSummaryLevels.length > 0;
     const hasSignificantEvent = events.some(item => item?.significant === true)
         || ['quest_open', 'quest_complete', 'promise', 'commitment', 'irreversible_outcome']
             .some(type => eventTypes.has(type));
@@ -380,7 +394,7 @@ export function evaluateDerivationGate(input = {}) {
         reusableDigest: reusableDigest ? clone(reusableDigest) : null,
         runTurnDistiller,
         runMemoryConsolidation,
-        summaryLevels: Object.freeze(deterministicSceneBoundary ? ['scene'] : []),
+        summaryLevels: Object.freeze([...explicitSummaryLevels]),
         cheapMemoryIngest: input.hasCommittedEvidence === true,
         reasons: Object.freeze(reasons),
     });

@@ -141,6 +141,31 @@ describe('N7 Native derived Context contracts', () => {
         expect(boundary.summaryLevels).toEqual(['scene']);
         expect(boundary.runMemoryConsolidation).toBe(true);
 
+        const chapter = evaluateDerivationGate({
+            policy: 'balanced',
+            events: [{ type: 'chapter_change' }],
+        });
+        expect(chapter.summaryLevels).toEqual(['scene', 'chapter']);
+
+        const arc = evaluateDerivationGate({
+            policy: 'balanced',
+            events: [{ type: 'arc_close' }],
+        });
+        expect(arc.summaryLevels).toEqual(['scene', 'chapter', 'arc']);
+
+        const campaign = evaluateDerivationGate({
+            policy: 'balanced',
+            events: [{ type: 'campaign_close' }],
+        });
+        expect(campaign.summaryLevels).toEqual(['scene', 'chapter', 'arc', 'campaign']);
+
+        const tokenBoundary = evaluateDerivationGate({
+            policy: 'balanced',
+            sceneTokenCount: 5000,
+            sceneTokenThreshold: 4096,
+        });
+        expect(tokenBoundary.summaryLevels).toEqual(['scene']);
+
         const reused = evaluateDerivationGate({
             policy: 'rich',
             runtimeDigest: { source: 'runtime', beats: ['already-derived'] },

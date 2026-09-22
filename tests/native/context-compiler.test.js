@@ -180,6 +180,7 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
         }));
         expect(plan.coverage.hasDerivedLag).toBe(true);
         expect(plan.coverage.uncoveredFromSequence).toBe(2);
+        expect(plan.coverage).toHaveProperty('memoryCoveredAssistantSeq');
         expect(plan.included.filter(item => item.lane === CONTEXT_LANES.recentRaw).every(item => item.metadata.uncovered)).toBe(true);
         expect(plan.rejected.some(item => item.lane === CONTEXT_LANES.recentRaw && item.reason === 'derived_lag_budget')).toBe(true);
     });
@@ -239,6 +240,26 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
             expect.objectContaining({ contextItemId: 'narrative:scene-other', reason: 'branch_mismatch' }),
         ]));
         expect(plan.sourceSelection.rawMessageIds.length).toBeGreaterThan(0);
+    });
+
+    test('canonical atri_world_state remains authoritative when Game Runtime world state is absent', async () => {
+        const snapshot = buildSnapshot(4);
+        delete snapshot.states.atri_game_world;
+        snapshot.states.atri_world_state = {
+            primaryWorldId: 'world-native',
+            worlds: {
+                'world-native': {
+                    worldRevisionId: 'worldv-native',
+                    state: { location: 'library', hp: 9 },
+                },
+            },
+        };
+        const plan = await compileNativeContextPlan(snapshot, budget());
+        const world = plan.included.find(item => item.contextItemId === 'state:atri_world_state');
+        expect(world).toBeDefined();
+        expect(world.required).toBe(true);
+        expect(world.content).toContain('"location":"library"');
+        expect(plan.included.some(item => item.contextItemId === 'state:atri_game_world')).toBe(false);
     });
 
     test('Narrator / Actor / Agent Context views preserve target isolation and Knowledge identity', async () => {

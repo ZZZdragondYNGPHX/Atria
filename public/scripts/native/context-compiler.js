@@ -294,11 +294,12 @@ function groupTimeline(timeline, revision, narrativeThroughSequence, promptConte
 function currentStateItems(snapshot) {
     const states = snapshot?.states && typeof snapshot.states === 'object' ? snapshot.states : {};
     const result = [];
-    const world = states.atri_game_world;
-    if (world && typeof world === 'object') {
-        const worldState = world.schemaVersion === 1 && world.state && typeof world.state === 'object'
-            ? world.state
-            : world;
+    const gameWorld = states.atri_game_world;
+    const nativeWorld = states.atri_world_state;
+    if (gameWorld && typeof gameWorld === 'object') {
+        const worldState = gameWorld.schemaVersion === 1 && gameWorld.state && typeof gameWorld.state === 'object'
+            ? gameWorld.state
+            : gameWorld;
         result.push(normalizeContextItem({
             contextItemId: 'state:atri_game_world',
             lane: CONTEXT_LANES.currentState,
@@ -314,7 +315,7 @@ function currentStateItems(snapshot) {
                 branchId: snapshot?.revision?.branchId,
             }],
         }));
-        const events = Array.isArray(world?.journal?.events) ? world.journal.events.slice(-16) : [];
+        const events = Array.isArray(gameWorld?.journal?.events) ? gameWorld.journal.events.slice(-16) : [];
         if (events.length) {
             result.push(normalizeContextItem({
                 contextItemId: 'state:atri_event_journal:' + String(events.at(-1)?.id || events.length),
@@ -328,6 +329,22 @@ function currentStateItems(snapshot) {
                     .map(event => eventSourceRef(event, snapshot?.revision)),
             }));
         }
+    } else if (nativeWorld && typeof nativeWorld === 'object') {
+        result.push(normalizeContextItem({
+            contextItemId: 'state:atri_world_state',
+            lane: CONTEXT_LANES.currentState,
+            authority: KNOWLEDGE_AUTHORITY.currentState.id,
+            authorityRank: KNOWLEDGE_AUTHORITY.currentState.rank,
+            priority: 1000,
+            content: 'Authoritative current Native world state:\n' + JSON.stringify(nativeWorld),
+            required: true,
+            sourceRefs: [{
+                kind: 'state',
+                providerId: 'atri_world_state',
+                revisionId: snapshot?.revision?.revisionId,
+                branchId: snapshot?.revision?.branchId,
+            }],
+        }));
     }
     const variables = states.atri_variables?.values;
     if (variables && typeof variables === 'object' && Object.keys(variables).length) {
@@ -685,6 +702,20 @@ function selectedRawMessageIds(included) {
         .map(ref => ref.messageId);
 }
 
+function memoryAssistantCoverage(snapshot) {
+    const graph = snapshot?.states?.atri_memory_graph;
+    if (!graph || typeof graph !== 'object' || Array.isArray(graph)) return -1;
+    const nodeCoverage = Object.values(graph.nodes || {}).reduce((max, node) =>
+        Math.max(max, Number.isFinite(Number(node?.seqTo)) ? Number(node.seqTo) : -1), -1);
+    return Math.max(
+        -1,
+        Number.isFinite(Number(graph.appliedSeqTo)) ? Number(graph.appliedSeqTo) : -1,
+        Number.isFinite(Number(graph.loggedSeqTo)) ? Number(graph.loggedSeqTo) : -1,
+        Number.isFinite(Number(graph.coveredAssistantSeq)) ? Number(graph.coveredAssistantSeq) : -1,
+        nodeCoverage,
+    );
+}
+
 function coverageDiagnostics(snapshot, state) {
     const headSequence = Math.max(-1, ...(snapshot?.timeline ?? []).map(item => Number(item.sequence ?? -1)));
     const narrativeThrough = state.coverage.narrativeThroughSequence;
@@ -693,6 +724,7 @@ function coverageDiagnostics(snapshot, state) {
         narrativeThroughSequence: narrativeThrough,
         commitmentsThroughSequence: state.coverage.commitmentsThroughSequence,
         memoryThroughSequence: state.coverage.memoryThroughSequence,
+        memoryCoveredAssistantSeq: memoryAssistantCoverage(snapshot),
         digestThroughSequence: state.coverage.digestThroughSequence,
         narrativeLag: Math.max(0, headSequence - narrativeThrough),
         uncoveredFromSequence: Math.min(headSequence + 1, Math.max(0, narrativeThrough + 1)),
