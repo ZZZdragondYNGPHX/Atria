@@ -118,6 +118,50 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
     });
 
 
+    test('N5 restore publishes lifecycle and reinstalls Revision-backed state projection', async () => {
+        const events = [];
+        for (const type of Object.values(NATIVE_SESSION_LIFECYCLE)) {
+            onNativeSessionLifecycle(type, event => events.push(event));
+        }
+
+        await runtime.updateState('atri_variables', () => ({
+            schemaVersion: 1,
+            values: { route: 'saved' },
+        }));
+        const savedRevisionId = runtime.snapshot.revision.revisionId;
+        const save = await f.core.createSavePoint(
+            h.handle,
+            runtime.snapshot.session.sessionId,
+            { revisionId: savedRevisionId, kind: 'quick' },
+        );
+
+        await runtime.updateState('atri_variables', () => ({
+            schemaVersion: 1,
+            values: { route: 'later' },
+        }));
+        expect(runtime.snapshot.states.atri_variables.values.route).toBe('later');
+
+        const beforeRestoreEvents = events.length;
+        await runtime.restoreSavePoint(save.saveId);
+
+        expect(runtime.snapshot.states.atri_variables.values.route).toBe('saved');
+        expect(projection.metadata.variables.route).toBe('saved');
+        const restoreEvents = events.slice(beforeRestoreEvents);
+        expect(restoreEvents.map(event => event.type)).toEqual(expect.arrayContaining([
+            NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
+            NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
+            NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED,
+        ]));
+        const restoredEvent = restoreEvents.find(event => event.type === NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED);
+        expect(restoredEvent).toMatchObject({
+            sessionId: runtime.snapshot.session.sessionId,
+            revisionId: runtime.snapshot.revision.revisionId,
+            branchId: runtime.snapshot.revision.branchId,
+            saveId: save.saveId,
+        });
+        expect(restoredEvent.previousRevisionId).not.toBe(runtime.snapshot.revision.revisionId);
+    });
+
     test('Send/generation append immutable entries and preserve opaque identities', async () => {
         const greetingId = messages[0].atri_native.messageId;
         const user = await appendUser();
