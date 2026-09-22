@@ -1,65 +1,80 @@
-# Active checkpoint: N9 validated — N10 next
+# Active checkpoint: N10 validated — final integration next
 
 ## Status
 
-**N9 — Product UI Cutover is complete and validated. Do not redo N0–N9.**
+**Atria Native Content & Session Architecture Refactor N0–N10 is complete and validated. Do not redo N0–N10.**
 
 - Working branch: `refactor/atria-native-content-session-architecture`
-- N9 validated HEAD: `503fbb4da05c90a1e6d2022e17df0c6bac79b1ee`
-- Workflow: **Native Content Session Dev Checks #193**
-- Run: `35723060389`
+- N10 validated HEAD: `031971954d907a930f0db8ed0bf1d1eefeaf43ef`
+- Workflow: **Native Content Session Dev Checks #224**
+- Run: `35733418199`
 - Result: **success**
-- N0–N9 are frozen.
-- `main` remains untouched.
-- Continue on the same long-lived refactor branch; do not create a new branch.
-- Formal plan: `refactor/atria-native-content-session-architecture.md`
+- N0–N10 are frozen.
+- `main` is still untouched by this refactor at this checkpoint.
+- Formal record: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
-- N10 startup prompt: `handoff/atria-native-session-n10-prompt.md`
 
-## N9 final boundary
+## N10 final boundary
 
-N9 cut the active product surfaces over to the existing Native authorities:
+Active Native product authority is now end-to-end:
 
-- Works / World / KnowledgeBase Library;
-- Work detail / EntryPoint Start / Continue / My Games;
-- Save / Quick Save / Load / Timeline;
-- Studio Projects and exact WorldRevision / KnowledgeRevision / KnowledgeBinding dependencies;
-- Package install/update preflight and missing exact Package dependency UX;
-- Package/Session delete semantics;
-- embedded Knowledge explicit **Save to my Library** promotion seam;
-- ContextPlan diagnostics;
-- Native Play Retry Reply / Re-enter Turn / Restart From Here.
+- Package / PackageVersion / EntryPoint;
+- World / WorldRevision;
+- KnowledgeBase / KnowledgeRevision / KnowledgeEntry / KnowledgeBinding;
+- ProjectStore for Studio;
+- Session / Branch;
+- immutable TimelineEntry with single birth Variant;
+- SessionRevision;
+- SavePoint / `.atriasave`;
+- SessionRevision-backed World/Event/Memory/Orchestrator/derived state;
+- bounded ContextPlan with exact source provenance.
 
-Native product UI now hides retired committed Swipe / Edit / Delete / in-place Regenerate affordances while the immutable Timeline / SessionRevision Write Barrier remains authoritative.
+Retired from Active Native product authority:
 
-N9 did not perform N10's deeper hard retirement and did not mechanically delete mature SillyTavern generation/World Info ABI machinery still required behind adapters.
+- Character PNG/JSON/CharX/BYAF import/export identity;
+- `characterId`, `charDir`, `avatar_url`;
+- Characters/Games dual Library authority;
+- CardApp/Character editor identity for the transient Native projection;
+- JSONL chat / Manage Chat Files / Checkpoint Chat;
+- `selected_world_info`, character/chat lorebook binding identity and `charaFilename`;
+- world/book filename/name and numeric World Info `uid` identity;
+- WorldInfoRepo / `worlds/<name>.json` authority;
+- committed Swipe/Variant switching;
+- committed in-place Edit/Delete/Regenerate;
+- floor/swipe structural-event authority;
+- FloorState as Native Session authority where SessionRevision now owns state.
 
-## N9 validation
+Genuine SillyTavern generation / Character / World Info runtime ABI remains behind adapters where needed; N10 does not rewrite the whole upstream runtime.
 
-Exact HEAD `503fbb4da05c90a1e6d2022e17df0c6bac79b1ee` passed:
+## Final validation
+
+Exact HEAD `031971954d907a930f0db8ed0bf1d1eefeaf43ef` passed:
 
 - N0 Native Contracts: success
 - N1 Storage + N3/N5 Core + N4 Projection: success
 - N2 Package Project Composition: success
-- N4 real-host Chromium Native Session acceptance: **4 passed**
+- N4 real-host Chromium Native Session acceptance: success
 - N5 Runtime State & Revision Lifecycle: success
 - N6 Native Knowledge Runtime Integration: success
 - N7 Native Context Architecture / Checkpoint C: success
 - N8 Save System / Checkpoint B: success
-- N9 Product UI unit/integration: **6 suites / 22 tests passed**
-- N9 Native Product authority residual guard: success
-- N9 source lint / guard syntax: success
-- N9 real-host Chromium Product UI acceptance: **1 passed**
-- full root lint: success
-- complete Node regression: **757 suites / 8802 tests passed**
+- N9 Product UI Cutover: success
+- N10 focused regression: **5 suites / 69 tests passed**
+- N10 residual guard: **39 authority files scanned, passed**
+- N10 R7 Shell unit regression: **13 suites / 58 tests passed**
+- N10 R7 Shell Chromium regression: **4 passed**
+- complete Node regression: **757 suites / 8803 tests passed**
 - frontend webpack build: success
 
 ## Next action
 
-Start **N10 — Hard Cutover & Legacy Retirement**.
+Follow the frozen final-completion sequence only:
 
-Use the frozen N10 scope in the formal Master Plan. Remove residual Native product dependence on legacy formats, identities, Library authorities, World Info authority, committed Swipe/Edit/Delete semantics, and obsolete floor/history authority.
+1. create or update the final PR from `refactor/atria-native-content-session-architecture` to `main`;
+2. validate required PR CI;
+3. merge only after required CI is green;
+4. verify integrated `main`;
+5. update permanent docs/handoff with the integrated main SHA;
+6. delete `refactor/atria-native-content-session-architecture` only after successful main verification.
 
-Do **not** turn N10 into a total SillyTavern runtime rewrite. Retain genuine mature generation / World Info runtime ABI machinery where it is still required behind adapters.
-
-Keep `main` untouched during N10 implementation and validation. After N10 residual scan and phase validation succeed, follow the Master Plan final-integration sequence: update permanent docs, create/update the PR to `main`, validate required CI, merge, verify integrated `main`, then delete the temporary refactor branch only after successful integration.
+Do not reopen product design or N0–N10 implementation during this final integration unless integration itself exposes a real regression.
