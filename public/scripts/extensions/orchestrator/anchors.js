@@ -158,10 +158,12 @@ export function buildLastUserAnchorFromMessages(messages) {
         .reduce((count, item) => count + (item && !item.is_system ? 1 : 0), 0);
     const swipeIdRaw = message.swipe_id;
     const swipeId = Number.isInteger(swipeIdRaw) && swipeIdRaw >= 0 ? swipeIdRaw : 0;
+    const messageId = String(message?.atri_native?.messageId || '').trim();
     return {
         chatIndex: index,
         playableFloor,
         swipeId,
+        ...(messageId ? { messageId } : {}),
         hash: String(hashStringForAnchor(hashSource)),
     };
 }
@@ -233,6 +235,8 @@ export function normalizeOrchestrationSnapshot(raw) {
     }
     return {
         anchorHash: String(source.anchorHash || '').trim(),
+        ...(typeof source.anchorMessageId === 'string' && source.anchorMessageId ? { anchorMessageId: source.anchorMessageId } : {}),
+        ...(normalizeAnchorPlayableFloor(source.anchorPlayableFloor) ? { anchorPlayableFloor: normalizeAnchorPlayableFloor(source.anchorPlayableFloor) } : {}),
         capsuleText,
         ...(typeof source.executionIdentity === 'string' && source.executionIdentity ? { executionIdentity: source.executionIdentity } : {}),
         stageOutputs: Array.isArray(source.stageOutputs) ? structuredClone(source.stageOutputs) : [],
@@ -264,6 +268,23 @@ export function isStoredOrchestrationSnapshotValidForMessages(anchorPlayableFloo
     }
     const currentHash = String(hashStringForAnchor(buildAnchorHashSource(messages, target.index)));
     return currentHash === storedHash;
+}
+
+export function getNativeMessageAt(messages, messageId) {
+    const id = String(messageId || '').trim();
+    if (!id || !Array.isArray(messages)) return null;
+    const index = messages.findIndex(message => String(message?.atri_native?.messageId || '') === id);
+    return index >= 0 ? { index, message: messages[index] } : null;
+}
+
+export function isStoredOrchestrationSnapshotValidForMessageId(messageId, snapshot, messages) {
+    const normalizedSnapshot = normalizeOrchestrationSnapshot(snapshot);
+    if (!normalizedSnapshot) return false;
+    const target = getNativeMessageAt(messages, messageId);
+    if (!target?.message || target.message.is_system || !target.message.is_user) return false;
+    const storedHash = String(normalizedSnapshot.anchorHash || '').trim();
+    if (!storedHash) return false;
+    return String(hashStringForAnchor(buildAnchorHashSource(messages, target.index))) === storedHash;
 }
 
 /**

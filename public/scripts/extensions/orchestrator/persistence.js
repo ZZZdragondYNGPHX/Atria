@@ -11,6 +11,8 @@
  */
 
 import {
+    getNativeMessageAt,
+    isStoredOrchestrationSnapshotValidForMessageId,
     isStoredOrchestrationSnapshotValidForMessages,
     normalizeAnchorPlayableFloor,
     normalizeOrchestrationSnapshot,
@@ -529,9 +531,20 @@ export async function commitAnchorSnapshot(context, anchor, snapshot) {
     if (!normalizedSnapshot) {
         return { ok: false, reason: 'VALIDATION_ARGS', hint: 'snapshot normalization failed' };
     }
+    const messages = Array.isArray(context?.chat) ? context.chat : [];
+    const nativeTarget = String(anchor?.messageId || '').trim()
+        ? getNativeMessageAt(messages, anchor.messageId)
+        : null;
+    const messageId = String(anchor?.messageId || nativeTarget?.message?.atri_native?.messageId || '').trim();
+    const persisted = messageId
+        ? { ...normalizedSnapshot, anchorMessageId: messageId, anchorPlayableFloor: playableFloor }
+        : normalizedSnapshot;
     const fs = await getFloorStateInstance(context);
+    if (messageId) {
+        return fs.patch([{ op: 'add', path: `/${messageId}`, value: persisted }]);
+    }
     return fs.patch(
-        [{ op: 'add', path: `/${playableFloor}`, value: normalizedSnapshot }],
+        [{ op: 'add', path: `/${playableFloor}`, value: persisted }],
         { floor: chatIndex, swipeId: Number.isInteger(swipeId) && swipeId >= 0 ? swipeId : 0 },
     );
 }
@@ -550,6 +563,19 @@ export async function commitAnchorSnapshot(context, anchor, snapshot) {
 export function pickLatestValidSnapshot(context, anchorMap) {
     if (!anchorMap || typeof anchorMap !== 'object') return null;
     const messages = Array.isArray(context?.chat) ? context.chat : [];
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+        const messageId = String(message?.atri_native?.messageId || '').trim();
+        if (!message?.is_user || !messageId) continue;
+        const snapshot = normalizeOrchestrationSnapshot(anchorMap[messageId]);
+        if (!snapshot) continue;
+        if (!isStoredOrchestrationSnapshotValidForMessageId(messageId, snapshot, messages)) continue;
+        const playableFloor = messages.slice(0, index + 1)
+            .reduce((count, item) => count + (item && !item.is_system ? 1 : 0), 0);
+        return { playableFloor, messageId, snapshot };
+    }
+
     const sortedFloors = Object.keys(anchorMap)
         .map(Number)
         .filter(Number.isInteger)

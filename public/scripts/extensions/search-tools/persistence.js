@@ -14,8 +14,11 @@
  */
 
 import {
+    getNativeMessageAt,
+    getPlayableFloorAtIndex,
     getPlayableMessageAt,
     isAnchoredSnapshotStillValid,
+    isNativeAnchoredSnapshotStillValid,
     normalizeAnchorPlayableFloor,
 } from './anchors.js';
 import { STATE_ERROR_REASONS, makeStateError } from '../../state-errors.js';
@@ -157,15 +160,21 @@ export async function commitAnchorSnapshot(context, anchor, snapshot) {
     const messages = Array.isArray(context?.chat) ? context.chat : [];
     const target = getPlayableMessageAt(messages, playableFloor);
     if (!target?.message || !target.message.is_user) {
-        return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET, 'anchored user message no longer present at playable floor');
+        return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET, 'anchored user message no longer present');
     }
-
-    const swipeIdRaw = target.message.swipe_id;
-    const swipeId = Number.isInteger(swipeIdRaw) && swipeIdRaw >= 0 ? swipeIdRaw : 0;
+    const messageId = String(anchor?.messageId || target.message?.atri_native?.messageId || '').trim();
+    const nextSnapshot = messageId
+        ? { ...snapshot, anchorMessageId: messageId, anchorPlayableFloor: playableFloor }
+        : snapshot;
 
     const fs = await getFloorStateInstance(context);
+    if (messageId) {
+        return fs.patch([{ op: 'add', path: `/${messageId}`, value: nextSnapshot }]);
+    }
+    const swipeIdRaw = target.message.swipe_id;
+    const swipeId = Number.isInteger(swipeIdRaw) && swipeIdRaw >= 0 ? swipeIdRaw : 0;
     return fs.patch(
-        [{ op: 'add', path: `/${playableFloor}`, value: snapshot }],
+        [{ op: 'add', path: `/${playableFloor}`, value: nextSnapshot }],
         { floor: target.index, swipeId },
     );
 }
@@ -184,6 +193,24 @@ export async function commitAnchorSnapshot(context, anchor, snapshot) {
 export function pickLatestValidSnapshot(context, anchorMap) {
     if (!anchorMap || typeof anchorMap !== 'object') return null;
     const messages = Array.isArray(context?.chat) ? context.chat : [];
+
+    // Native authority: stable messageId keys. Revision fork/restore already
+    // selects the exact state snapshot, so no swipe rollback is involved.
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+        const messageId = String(message?.atri_native?.messageId || '').trim();
+        if (!message?.is_user || !messageId) continue;
+        const snapshot = anchorMap[messageId];
+        if (!snapshot || typeof snapshot !== 'object') continue;
+        if (!isNativeAnchoredSnapshotStillValid(messages, messageId, snapshot.anchorHash)) continue;
+        return {
+            playableFloor: getPlayableFloorAtIndex(messages, index),
+            messageId,
+            snapshot,
+        };
+    }
+
+    // Legacy/ST compatibility path.
     const sortedFloors = Object.keys(anchorMap)
         .map(Number)
         .filter(Number.isInteger)
