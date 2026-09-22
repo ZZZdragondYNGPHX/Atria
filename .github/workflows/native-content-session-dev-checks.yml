@@ -405,14 +405,96 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  n9-product-ui:
+    name: N9 Product UI Cutover
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+      - n5-runtime-state
+      - n6-knowledge-runtime
+      - n7-context
+      - n8-save-system
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N9 Product UI unit and integration tests
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/product-service.test.js
+          native/product-http.test.js
+          atria-shell/library-runtime-workspaces.test.js
+          atria-shell/native-product-workspaces.test.js
+          atria-shell/native-play-controls.test.js
+          atria-shell/workspace-host.test.js
+      - name: Run N9 Product authority residual guard
+        run: node scripts/check-n9-native-product-authority.mjs
+      - name: Run N9 source lint
+        run: >-
+          npx eslint
+          src/native/product-service.js
+          src/endpoints/native-product.js
+          public/scripts/native/product-client.js
+          public/scripts/native/library-workspaces.js
+          public/scripts/native/studio-workspace.js
+          public/scripts/native/play-controls.js
+          public/scripts/native/session-runtime.js
+          public/scripts/atria-shell/library-runtime-workspaces.js
+          public/scripts/atria-shell/workspace-host.js
+          public/scripts/atria-shell/native-play-host.js
+          tests/native/product-service.test.js
+          tests/native/product-http.test.js
+          tests/atria-shell/library-runtime-workspaces.test.js
+          tests/atria-shell/native-product-workspaces.test.js
+          tests/atria-shell/native-play-controls.test.js
+          tests/atria-shell/workspace-host.test.js
+          tests/e2e/native-session/02-product-ui.e2e.js
+          scripts/check-n9-native-product-authority.mjs
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Initialize Atria config
+        run: npm run init
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Run N9 real-host Product UI acceptance
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/native-session/02-product-ui.e2e.js
+          --project=e2e
+          --workers=1
+      - name: Upload N9 Playwright failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n9-product-ui-playwright-${{ github.run_id }}
+          path: tests/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
   n4-final-regression:
-    name: N8 Complete Node Regression and Frontend Build
+    name: N9 Complete Node Regression and Frontend Build
     needs:
       - n4-live-runtime
       - n5-runtime-state
       - n6-knowledge-runtime
       - n7-context
       - n8-save-system
+      - n9-product-ui
     runs-on: ubuntu-latest
     timeout-minutes: 40
     services:
