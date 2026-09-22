@@ -12,6 +12,14 @@ import {
 } from './session-lifecycle.js';
 import { compileNativeKnowledgeEntries, compileNativeKnowledgePlan } from './knowledge-runtime.js';
 import {
+    CONTEXT_DERIVED_NAMESPACE,
+    appendNarrativeArtifact,
+    appendTurnDigest,
+    normalizeContextDerivedState,
+    openCommitment as openDerivedCommitment,
+    transitionCommitment as transitionDerivedCommitment,
+} from './context-derived.js';
+import {
     compileNativeContextPlan,
     filterNativeCoreChatForContext,
     getContextLaneBudget,
@@ -670,6 +678,56 @@ export class NativeSessionRuntime {
         if (!sameContext) return compiled.entries;
         const allowed = new Set(plan.sourceSelection?.selectedKnowledgeIdentities ?? []);
         return compiled.entries.filter(entry => allowed.has(entry.atri_native?.identity));
+    }
+
+    contextDerivedState() {
+        if (!this.active) return null;
+        return normalizeContextDerivedState(this.readState(CONTEXT_DERIVED_NAMESPACE));
+    }
+
+    async appendNarrativeArtifact(artifact) {
+        this.assertWritable();
+        const revisionId = this.snapshot.revision.revisionId;
+        const branchId = this.snapshot.revision.branchId;
+        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => appendNarrativeArtifact(current, {
+            ...artifact,
+            branchId: artifact?.branchId || branchId,
+            revisionId: artifact?.revisionId || revisionId,
+            fromRevisionId: artifact?.fromRevisionId || revisionId,
+            toRevisionId: artifact?.toRevisionId || revisionId,
+        }));
+    }
+
+    async openCommitment(commitment) {
+        this.assertWritable();
+        const revisionId = this.snapshot.revision.revisionId;
+        const branchId = this.snapshot.revision.branchId;
+        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => openDerivedCommitment(current, {
+            ...commitment,
+            branchId: commitment?.branchId || branchId,
+            revisionId: commitment?.revisionId || revisionId,
+        }));
+    }
+
+    async transitionCommitment(commitmentId, transition) {
+        this.assertWritable();
+        const revisionId = this.snapshot.revision.revisionId;
+        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => transitionDerivedCommitment(
+            current,
+            commitmentId,
+            { ...transition, revisionId: transition?.revisionId || revisionId },
+        ));
+    }
+
+    async appendTurnDigest(digest) {
+        this.assertWritable();
+        const revisionId = this.snapshot.revision.revisionId;
+        const branchId = this.snapshot.revision.branchId;
+        return this.updateState(CONTEXT_DERIVED_NAMESPACE, current => appendTurnDigest(current, {
+            ...digest,
+            branchId: digest?.branchId || branchId,
+            revisionId: digest?.revisionId || revisionId,
+        }));
     }
 
     async prepareContext(options = {}) {

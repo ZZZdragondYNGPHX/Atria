@@ -411,12 +411,30 @@ function knowledgeItems(snapshot, target, memoryEvidence) {
     return { plan, items, rejected };
 }
 
-function narrativeItems(state, branchId) {
+function currentBranchScope(snapshot) {
+    const current = String(snapshot?.revision?.branchId || '');
+    const scope = new Set(current ? [current] : []);
+    const byId = new Map((Array.isArray(snapshot?.graph) ? snapshot.graph : [])
+        .map(node => [String(node?.branchId || ''), node]));
+    let cursor = byId.get(current);
+    const seen = new Set();
+    while (cursor && !seen.has(cursor.branchId)) {
+        seen.add(cursor.branchId);
+        scope.add(String(cursor.branchId));
+        const parentId = String(cursor?.branch?.parentBranchId || '');
+        if (!parentId) break;
+        scope.add(parentId);
+        cursor = byId.get(parentId);
+    }
+    return scope;
+}
+
+function narrativeItems(state, branchScope) {
     const included = [];
     const rejected = [];
     const levels = new Map();
     for (const artifact of state.narrative) {
-        if (artifact.branchId !== branchId) {
+        if (!branchScope.has(artifact.branchId)) {
             rejected.push({
                 contextItemId: 'narrative:' + artifact.narrativeId,
                 lane: CONTEXT_LANES.narrative,
@@ -476,12 +494,12 @@ function narrativeItems(state, branchId) {
     return { included, rejected };
 }
 
-function commitmentItems(state, target, branchId) {
+function commitmentItems(state, target, branchScope) {
     const included = [];
     const rejected = [];
     for (const commitment of state.commitments) {
         const id = 'commitment:' + commitment.commitmentId;
-        if (commitment.branchId !== branchId) {
+        if (!branchScope.has(commitment.branchId)) {
             rejected.push({ contextItemId: id, lane: CONTEXT_LANES.commitments, reason: 'branch_mismatch', sourceRefs: commitment.sourceRefs });
             continue;
         }
@@ -728,8 +746,9 @@ export class SessionContextCompiler {
         const coverage = coverageDiagnostics(snapshot, derivedState);
         const raw = groupTimeline(snapshot.timeline, snapshot.revision, coverage.narrativeThroughSequence);
         const knowledge = knowledgeItems(snapshot, target, options.memoryEvidence);
-        const narrative = narrativeItems(derivedState, snapshot.revision.branchId);
-        const commitments = commitmentItems(derivedState, target, snapshot.revision.branchId);
+        const branchScope = currentBranchScope(snapshot);
+        const narrative = narrativeItems(derivedState, branchScope);
+        const commitments = commitmentItems(derivedState, target, branchScope);
 
         const rejectedMemoryIds = new Set(
             (knowledge.plan.authorityEvidence?.memory?.rejected ?? []).map(item => String(item.memoryId || '')),

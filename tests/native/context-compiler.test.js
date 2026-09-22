@@ -31,7 +31,7 @@ function timeline(turns, branchId = 'branch-root') {
     return result;
 }
 
-function buildSnapshot(turns = 20, { branchId = 'branch-root', derived = null } = {}) {
+function buildSnapshot(turns = 20, { branchId = 'branch-root', derived = null, graph = null } = {}) {
     const fixture = sessionFixture();
     return {
         manifest: structuredClone(fixture.manifest),
@@ -52,6 +52,7 @@ function buildSnapshot(turns = 20, { branchId = 'branch-root', derived = null } 
             ...(derived ? { atri_context_derived: derived } : {}),
         },
         revision: { revisionId: 'revision-current', branchId },
+        graph: graph ?? [{ branchId, branch: { branchId, parentBranchId: null } }],
         timeline: timeline(turns, branchId),
     };
 }
@@ -195,7 +196,19 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
                 digestThroughSequence: -1,
             },
         };
-        const plan = await compileNativeContextPlan(buildSnapshot(12, { derived }), budget());
+        const childGraph = [
+            { branchId: 'branch-root', branch: { branchId: 'branch-root', parentBranchId: null } },
+            { branchId: 'branch-child', branch: { branchId: 'branch-child', parentBranchId: 'branch-root' } },
+        ];
+        const snapshot = buildSnapshot(12, {
+            branchId: 'branch-child',
+            derived,
+            graph: childGraph,
+        });
+        snapshot.timeline = timeline(12, 'branch-child');
+        const plan = await compileNativeContextPlan(snapshot, budget());
+        // Common-ancestor derived material is inherited through the Revision,
+        // while sibling/non-ancestor artifacts remain isolated.
         expect(plan.included.some(item => item.contextItemId === 'narrative:scene-root')).toBe(true);
         expect(plan.included.some(item => item.contextItemId === 'narrative:scene-other')).toBe(false);
         expect(plan.rejected).toEqual(expect.arrayContaining([
