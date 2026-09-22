@@ -1580,7 +1580,13 @@ body[data-atria-native-session-active="true"] #chat .mes_bookmark,
 body[data-atria-native-session-active="true"] #option_regenerate,
 body[data-atria-native-session-active="true"] #option_select_chat,
 body[data-atria-native-session-active="true"] #option_new_bookmark,
-body[data-atria-native-session-active="true"] #option_back_to_main {
+body[data-atria-native-session-active="true"] #option_back_to_main,
+body[data-atria-native-session-active="true"] #character_import_button,
+body[data-atria-native-session-active="true"] #export_button,
+body[data-atria-native-session-active="true"] #export_format_popup,
+body[data-atria-native-session-active="true"] #delete_button,
+body[data-atria-native-session-active="true"] #dupe_button,
+body[data-atria-native-session-active="true"] #char_connections_button {
     display: none !important;
 }
 
