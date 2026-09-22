@@ -5,7 +5,7 @@
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
-- Current phase status: **N7 complete and validated; N8 is next**
+- Current phase status: **N8 complete and validated; N9 is next**
 - N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
 - N1 validated HEAD: `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
 - N2 validated HEAD: `bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
@@ -14,12 +14,16 @@
 - N5 validated HEAD: `70f59bf2894c77defa46d75e48c79485a4bc5d74`
 - N6 validated HEAD: `b1043b2e0158cf4d5ade4d057570efe2a7af8ac1`
 - N7 validated HEAD: `8fa25d1175603da905a45b9de7b8de5a8d4b776f`
+- N8 validated HEAD: `f6f629800f8dae2da5c9870f6c0d6965920ea960`
 - N7 workflow: **Native Content Session Dev Checks #121**
 - N7 run: `35711043211`
 - N7 result: **success**
-- Next action: **N8 — Save System & `.atriasave`**
+- N8 workflow: **Native Content Session Dev Checks #136**
+- N8 run: `35715208736`
+- N8 result: **success**
+- Next action: **N9 — Product UI Cutover**
 - Formal plan: `docs:refactor/atria-native-content-session-architecture.md`
-- N8 prompt: `docs:handoff/atria-native-session-n8-prompt.md`
+- N9 prompt: `docs:handoff/atria-native-session-n9-prompt.md`
 - Implementation sequence: **N0–N10**
 
 Do not merge to `main` yet. Keep the long-lived refactor branch isolated through N10.
@@ -941,3 +945,178 @@ N8 owns **Save System & `.atriasave`**:
 - missing-dependency UX contract.
 
 Do not start N9 UI cutover or N10 Legacy retirement during N8.
+
+
+---
+
+## N8 implementation record — validated 2026-09-22
+
+**Status: N8 complete and validated. Stop N8 development. N9 is next.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Validated HEAD: `f6f629800f8dae2da5c9870f6c0d6965920ea960`
+- Workflow: **Native Content Session Dev Checks #136**
+- Run: `35715208736`
+- Result: **success**
+- `main` remains untouched.
+- N0–N8 are frozen.
+- Next phase: **N9 — Product UI Cutover**.
+
+### SavePoint authority and historical-load semantics
+
+N8 keeps Auto / Quick / Manual SavePoints as immutable local pointers to stable authoritative `SessionRevision` records.
+
+- Auto Save does not wait for asynchronous Narrative/Memory consolidation.
+- Save creation never snapshots mutable runtime buffers independently of the Revision boundary.
+- Historical Save load is non-destructive.
+- Continuing from a historical Save creates and activates a derived Branch rooted at the exact saved Revision.
+- The Branch that reached the former current HEAD keeps its own HEAD and history intact.
+- Loading a Save already equal to the active HEAD is a no-op rather than manufacturing a redundant Branch.
+
+### `.atriasave` logical container
+
+Added:
+
+- `src/native/save-container.js`
+- `src/native/save-system.js`
+
+The container is a Native logical artifact, not a renamed JSONL or a copy of FS/SQL physical storage.
+
+It provides:
+
+- snapshot scope for one SavePoint closure;
+- full-session scope for the complete Session/Branch/Save history closure;
+- authenticated binary envelope;
+- authenticated inventory and per-entry SHA-256 integrity;
+- default Atria portable protection;
+- optional password mode using scrypt + AES-256-GCM;
+- wrong password / tamper fail-closed behavior;
+- preflight metadata without exposing decrypted conversation payload.
+
+The export closure contains the exact logical resources required by the exported Revision(s):
+
+- Session descriptor;
+- Branch graph ancestry and exact Branch records;
+- immutable Timeline entries and Variants;
+- exact SessionRevision manifests;
+- engine-independent Session state records;
+- pinned resolved KnowledgeBindingSet;
+- Session-local Knowledge;
+- pinned Library Knowledge revision snapshots required by the Session;
+- durable World / Event Journal state;
+- canonical Memory and provenance;
+- durable Orchestrator state;
+- `atri_context_derived` Narrative Spine / Active Commitments / coverage / provenance;
+- referenced Session attachment AssetRefs and bytes;
+- snapshot/full-session SavePoint records as appropriate.
+
+Rebuildable caches are not portable authority. N8 explicitly excludes namespaces for embeddings, rerank/search indexes, ContextPlan/token/render/recent/thumbnail/compiled caches.
+
+### Exact Package dependency handling
+
+Import requires the exact:
+
+- `packageId`;
+- `packageVersionId`;
+- Package semantic version;
+- Package container content hash;
+- EntryPoint identity.
+
+A matching display name, Package ID with a different content hash, or a different installed version is not accepted.
+
+Preflight returns structured dependency states such as:
+
+- ready;
+- missing;
+- mismatch;
+- invalid local dependency.
+
+Missing or mismatched dependencies fail closed before Session mutation. N8 does not silently pick a similar/latest Package.
+
+### Commit-last import
+
+`SessionRepo.importClosure` imports the logical closure using the same Native immutable-resource model:
+
+1. validate logical contract;
+2. write immutable Branch / Variant / Timeline / state / Revision / SavePoint resources;
+3. verify every imported Revision against the imported immutable closure;
+4. publish the mutable Session record last as the commit marker.
+
+A failed FS import can leave only unreferenced immutable fragments; it cannot expose a half-imported Session.
+
+The import path does not reconstruct authority from:
+
+- Character files;
+- JSONL chats;
+- legacy World Info files;
+- mutable frontend runtime buffers.
+
+Tests assert the Character/chat/World Info fallback surfaces stay untouched during Native import.
+
+### Knowledge portability policy
+
+Export retains exact Knowledge identities/revisions needed by the Session.
+
+On import:
+
+- Package Knowledge remains Package authority through the exact installed PackageVersion.
+- Session-local Knowledge remains Session-bound.
+- snapshots that originated from another user's Library are converted to Session-bound embedded Knowledge by default.
+- import does **not** create/update the target user's Library automatically.
+
+`NativeSaveSystem.promoteEmbeddedKnowledge` is an explicit promotion seam for a later UI action such as **Save to my Library**. Promotion creates Library authority only when explicitly invoked and does not silently rewrite the imported Session's pinned binding policy.
+
+### Checkpoint B validation
+
+Exact HEAD `f6f629800f8dae2da5c9870f6c0d6965920ea960` passed:
+
+- N0 Native Contracts: success;
+- N1 Storage + N3/N5 Core + N4 Projection: success;
+- N2 Package Project Composition: success;
+- N4 real-host Chromium Native Session acceptance: **4 passed**;
+- N5 Runtime State & Revision Lifecycle: success;
+- N6 Native Knowledge Runtime Integration: success;
+- N7 Native Context Architecture / Checkpoint C: success;
+- N8 Save System / Checkpoint B: **5 suites / 53 tests passed**;
+- N8 source lint: success;
+- full root lint: success;
+- complete Node regression: **753 suites / 8791 tests passed**;
+- frontend webpack build: success.
+
+The complete Node regression ran with MySQL/PostgreSQL services enabled. N8 clean-store import parity uses `CONTRACT_HARNESSES`, so the final regression covered the active Native storage engines including FS / SQLite / MySQL / PostgreSQL.
+
+Checkpoint B is satisfied for:
+
+```text
+Native Session
+  → exit / recreate service layer
+  → reload
+  → SavePoint
+  → historical load / derived Branch
+  → snapshot or full-session export
+  → .atriasave
+  → clean-store import
+  → exact dependency validation
+  → coherent continue state
+```
+
+World / Knowledge / Memory / Orchestrator / Narrative / Commitment / Branch state remains coherent across the portable round trip. Durable provenance/coverage survives; rebuildable caches do not become portable authority.
+
+### N8 boundary / N9 next
+
+N8 did **not** implement Product UI cutover and did **not** perform legacy retirement.
+
+N9 must switch the product management surfaces to Native authorities while retaining the R7 Shell and route authority:
+
+- Works Library;
+- World / KnowledgeBase Library and revision detail;
+- work detail / EntryPoint start;
+- Continue / My Games;
+- Save / Load / Timeline;
+- Studio Projects and dependency management;
+- Package install/update preflight;
+- Package/Session delete semantics;
+- Native Play actions: Retry Reply, Re-enter Turn, Restart From Here, Save, Quick Save, Load, Timeline;
+- ContextPlan diagnostics exposure.
+
+N9 must hide/retire Native product UI for Swipe controls and committed in-place Edit/Delete/Regenerate semantics, but must not perform N10's deeper hard-cutover/legacy code retirement early.
