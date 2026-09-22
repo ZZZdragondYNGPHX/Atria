@@ -1213,9 +1213,15 @@ export function getRegexedString(rawString, placement, { characterOverride, isMa
     const staticPlan = getStaticRegexExecutionPlan();
     const staticCandidates = getRegexExecutionCandidates(staticPlan, placement, executionParams);
 
-    // Runtime provider callbacks remain dynamic by contract. Evaluate them on
-    // every call, but still narrow them by placement/lane before execution.
-    const runtimeScripts = collectRuntimeRegexScripts({ allowedOnly: true });
+    // Runtime provider callbacks and the active Native Package projection
+    // are dynamic by contract. Evaluate them on every call, but still narrow
+    // them by placement/lane before execution. Keep the same ordering exposed
+    // by getRegexScripts(): registered runtime providers first, Native Package
+    // processors last.
+    const runtimeScripts = [
+        ...collectRuntimeRegexScripts({ allowedOnly: true }),
+        ...nativeSessionRuntime.regexScripts().map(script => ({ ...script, __runtime_owner: 'native-session' })),
+    ];
     const runtimeCandidates = runtimeScripts.length > 0
         ? getRegexExecutionCandidates(
             createRegexExecutionPlan(runtimeScripts, { warnInvalidPlacement: true }),
