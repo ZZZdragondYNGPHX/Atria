@@ -350,6 +350,24 @@ export class NativeSessionRuntime {
         return this.queue;
     }
 
+    /**
+     * Finalize a user-driven Stop at the Native Draft boundary.
+     * Existing partial/empty Drafts flow through persist(); if the provider
+     * aborted before an assistant Draft object existed, clear the lifecycle
+     * latch and restore the canonical committed projection explicitly.
+     */
+    async finalizeStoppedGeneration() {
+        if (!this.active || !this.generation) return true;
+        const sessionId = this.snapshot.session.sessionId;
+        await this.persist();
+        if (!this.active || this.snapshot.session.sessionId !== sessionId) return true;
+        if (this.generation) {
+            this.generation = null;
+            await this.host.install(projectNativeSession(this.snapshot));
+        }
+        return true;
+    }
+
     async fork(index, { swipeId = null } = {}) {
         if (!this.history) await this.persist();
         else this._assertBarrier();
