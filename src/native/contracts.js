@@ -140,15 +140,10 @@ function noLegacyIdentity(value, label) {
     plain(value, label);
     for (const field of FORBIDDEN_NATIVE_IDENTITY_FIELDS) {
         if (Object.prototype.hasOwnProperty.call(value, field)) {
-            throw new TypeError(label + " must not use legacy identity field '" + field + "'");
+            throw new TypeError(`${label} must not use legacy identity field '${field}'`);
         }
     }
     return value;
-}
-
-function optionalText(value, field, options) {
-    if (value === undefined || value === null) return undefined;
-    return text(value, field, options);
 }
 
 function uniqueIds(values, kind, field) {
@@ -174,7 +169,7 @@ function assertStateHead(value, field) {
 
 function assertOnlyKeys(value, allowed, field) {
     for (const key of Object.keys(value)) {
-        if (!allowed.has(key)) throw new TypeError(field + " contains unsupported field '" + key + "'");
+        if (!allowed.has(key)) throw new TypeError(`${field} contains unsupported field '${key}'`);
     }
 }
 
@@ -183,7 +178,7 @@ function assertKnownUniqueStrings(values, allowed, field) {
     const result = values.map((value, index) => text(value, field + '[' + index + ']', { maxLength: 128 }));
     if (new Set(result).size !== result.length) throw new TypeError(field + ' must not contain duplicates');
     for (const value of result) {
-        if (!allowed.includes(value)) throw new TypeError(field + " contains unsupported value '" + value + "'");
+        if (!allowed.includes(value)) throw new TypeError(`${field} contains unsupported value '${value}'`);
     }
     return result;
 }
@@ -431,7 +426,7 @@ const PACKAGE_KEYS = new Set([
 export function assertAtriaPackageManifest(value) {
     noLegacyIdentity(value, 'AtriaPackage');
     assertOnlyKeys(value, PACKAGE_KEYS, 'AtriaPackage');
-    if (value.format !== ATRIA_PACKAGE_FORMAT) throw new TypeError("AtriaPackage.format must be '" + ATRIA_PACKAGE_FORMAT + "'");
+    if (value.format !== ATRIA_PACKAGE_FORMAT) throw new TypeError(`AtriaPackage.format must be '${ATRIA_PACKAGE_FORMAT}'`);
     if (value.schemaVersion !== ATRIA_PACKAGE_SCHEMA_VERSION) throw new TypeError('AtriaPackage.schemaVersion must be 2');
     if (value.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION) throw new TypeError('AtriaPackage.nativeSchemaVersion must be 1');
 
@@ -474,7 +469,7 @@ export function assertAtriaPackageManifest(value) {
     const permissions = value.permissions.map((item, index) => {
         plain(item, 'AtriaPackage.permissions[' + index + ']');
         const permission = text(item.permission, 'AtriaPackage.permissions[' + index + '].permission', { maxLength: 128 });
-        if (!ATRIA_PACKAGE_PERMISSIONS.includes(permission)) throw new TypeError("Unsupported AtriaPackage permission '" + permission + "'");
+        if (!ATRIA_PACKAGE_PERMISSIONS.includes(permission)) throw new TypeError(`Unsupported AtriaPackage permission '${permission}'`);
         if (typeof item.required !== 'boolean') throw new TypeError('AtriaPackage permission required must be boolean');
         return Object.freeze({
             permission,
@@ -584,7 +579,7 @@ export function assertAtriaSave(value) {
     plain(value, '.atriasave');
     noLegacyIdentity(value, '.atriasave');
     assertOnlyKeys(value, SAVE_KEYS, '.atriasave');
-    if (value.format !== ATRIA_SAVE_FORMAT) throw new TypeError(".atriasave format must be '" + ATRIA_SAVE_FORMAT + "'");
+    if (value.format !== ATRIA_SAVE_FORMAT) throw new TypeError(`.atriasave format must be '${ATRIA_SAVE_FORMAT}'`);
     if (value.schemaVersion !== ATRIA_SAVE_SCHEMA_VERSION) throw new TypeError('.atriasave schemaVersion must be 1');
     if (value.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION) throw new TypeError('.atriasave nativeSchemaVersion must be 1');
     if (!ATRIA_SAVE_SCOPES.includes(value.scope)) throw new TypeError('.atriasave scope must be snapshot or session');
@@ -735,10 +730,10 @@ function assertResourceKeyField(value, type, field) {
 export function assertNativeResourceKey(key) {
     plain(key, 'Native resource key');
     const spec = RESOURCE_KEY_SPECS[key.kind];
-    if (!spec) throw new TypeError("Unsupported Native resource kind '" + String(key.kind) + "'");
+    if (!spec) throw new TypeError(`Unsupported Native resource kind '${String(key.kind)}'`);
     const allowed = new Set(['kind', ...spec.map(([field]) => field)]);
     for (const field of Object.keys(key)) {
-        if (!allowed.has(field)) throw new TypeError("Native resource key '" + key.kind + "' must not contain field '" + field + "'");
+        if (!allowed.has(field)) throw new TypeError(`Native resource key '${key.kind}' must not contain field '${field}'`);
     }
     const result = { kind: key.kind };
     for (const [field, type] of spec) result[field] = assertResourceKeyField(key[field], type, key.kind + '.' + field);
@@ -747,6 +742,6 @@ export function assertNativeResourceKey(key) {
 
 export function getNativeResourceKeyFields(kind) {
     const spec = RESOURCE_KEY_SPECS[kind];
-    if (!spec) throw new TypeError("Unsupported Native resource kind '" + String(kind) + "'");
+    if (!spec) throw new TypeError(`Unsupported Native resource kind '${String(kind)}'`);
     return Object.freeze(spec.map(([field]) => field));
 }
