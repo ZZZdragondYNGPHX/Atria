@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: native-content-session-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   n0-contracts:
     name: N0 Native Contracts
