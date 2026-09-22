@@ -81,6 +81,28 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect(messages.map(item => item.atri_native.messageId)).toEqual([greetingId, userId, assistantId]);
     });
 
+    test('real send lifecycle commits user revision before assistant while keeping generation Draft open', async () => {
+        expect(await runtime.prepareGeneration('normal')).toBe('normal');
+        expect(runtime.generation).toMatchObject({ kind: 'append' });
+
+        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'Real UI user turn', extra: {} });
+        await runtime.persist();
+        const postUserRevision = runtime.snapshot.revision.revisionId;
+        const userId = runtime.snapshot.timeline.at(-1).messageId;
+        expect(runtime.snapshot.timeline.at(-1)).toMatchObject({ role: 'user', content: 'Real UI user turn' });
+        expect(runtime.generation).toMatchObject({ kind: 'append' });
+
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'Real UI assistant reply', extra: {} });
+        await runtime.persist();
+        expect(runtime.snapshot.revision.revisionId).not.toBe(postUserRevision);
+        expect(runtime.snapshot.timeline.at(-1)).toMatchObject({ role: 'assistant', content: 'Real UI assistant reply' });
+        expect(runtime.generation).toBeNull();
+
+        const exactPostUser = await f.core.load(h.handle, runtime.snapshot.session.sessionId, { revisionId: postUserRevision });
+        expect(exactPostUser.timeline.at(-1).messageId).toBe(userId);
+        expect(exactPostUser.timeline.at(-1).role).toBe('user');
+    });
+
     test('Continue keeps the committed assistant immutable and appends continuationOf entry', async () => {
         await appendUser();
         const assistant = await generateAssistant('The harbor');
