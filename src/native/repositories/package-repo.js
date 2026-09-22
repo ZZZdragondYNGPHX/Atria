@@ -187,6 +187,36 @@ export class PackageRepo {
         });
     }
 
+    async gcVersions(handle, packageId, { retainVersionIds = [] } = {}) {
+        assertWritable();
+        const retained = new Set(retainVersionIds);
+        return this._engine.withTransaction(handle, async (tx) => {
+            const root = await getNativeDocument(tx, this._packageKey(handle, packageId));
+            if (root?.currentVersionId) retained.add(root.currentVersionId);
+
+            for (const session of await tx.listResources({
+                kind: NATIVE_RESOURCE_KINDS.session,
+                handle,
+            })) {
+                if (session.doc?.packageId === packageId && session.doc?.packageVersionId) {
+                    retained.add(session.doc.packageVersionId);
+                }
+            }
+
+            const deleted = [];
+            for (const record of await tx.listResources({
+                kind: NATIVE_RESOURCE_KINDS.packageVersion,
+                handle,
+                packageId,
+            })) {
+                const packageVersionId = record.key.packageVersionId;
+                if (retained.has(packageVersionId)) continue;
+                if (await tx.deleteResource(record.key)) deleted.push(packageVersionId);
+            }
+            return deleted;
+        });
+    }
+
     async delete(handle, packageId) {
         assertWritable();
         return this._engine.withTransaction(handle, async (tx) => {

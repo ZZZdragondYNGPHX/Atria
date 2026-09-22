@@ -6,7 +6,7 @@ import {
     assertTimelineEntry,
     assertVariant,
 } from '../contracts.js';
-import { NotFoundError } from '../../storage/errors.js';
+import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import {
     cloneNativeDocument,
@@ -237,6 +237,79 @@ export class SessionRepo {
             });
             await putMutable(tx, sessionKey, next);
             return revision;
+        });
+    }
+
+    async _revisionReferences(tx, handle, sessionId, revisionId) {
+        const references = [];
+        const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
+        if (session?.headRevisionId === revisionId) {
+            references.push({ kind: 'session-head', sessionId });
+        }
+        for (const savePoint of await tx.listResources({
+            kind: NATIVE_RESOURCE_KINDS.savePoint,
+            handle,
+            sessionId,
+        })) {
+            if (savePoint.doc?.revisionId === revisionId) {
+                references.push({
+                    kind: 'save-point',
+                    saveId: savePoint.doc.saveId,
+                });
+            }
+        }
+        return references;
+    }
+
+    async getRevisionReferences(handle, sessionId, revisionId) {
+        return this._engine.withTransaction(handle, tx => this._revisionReferences(
+            tx,
+            handle,
+            sessionId,
+            revisionId,
+        ));
+    }
+
+    async deleteRevision(handle, sessionId, revisionId) {
+        assertWritable();
+        return this._engine.withTransaction(handle, async (tx) => {
+            const references = await this._revisionReferences(tx, handle, sessionId, revisionId);
+            if (references.length) {
+                throw new ConflictError('native_session_revision_referenced', {
+                    sessionId,
+                    revisionId,
+                    references,
+                });
+            }
+            return tx.deleteResource(this._revisionKey(handle, sessionId, revisionId));
+        });
+    }
+
+    async gcRevisions(handle, sessionId, { retainRevisionIds = [] } = {}) {
+        assertWritable();
+        const retained = new Set(retainRevisionIds);
+        return this._engine.withTransaction(handle, async (tx) => {
+            const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
+            if (session?.headRevisionId) retained.add(session.headRevisionId);
+            for (const savePoint of await tx.listResources({
+                kind: NATIVE_RESOURCE_KINDS.savePoint,
+                handle,
+                sessionId,
+            })) {
+                if (savePoint.doc?.revisionId) retained.add(savePoint.doc.revisionId);
+            }
+
+            const deleted = [];
+            for (const record of await tx.listResources({
+                kind: NATIVE_RESOURCE_KINDS.sessionRevision,
+                handle,
+                sessionId,
+            })) {
+                const revisionId = record.key.revisionId;
+                if (retained.has(revisionId)) continue;
+                if (await tx.deleteResource(record.key)) deleted.push(revisionId);
+            }
+            return deleted;
         });
     }
 
