@@ -61,8 +61,9 @@ export function committedMessageFingerprint(message) {
     return JSON.stringify(stableValue(canonical));
 }
 
-export function assertCommittedProjection(snapshot, messages) {
+export function assertCommittedProjection(snapshot, messages, { allowMessageIds = [] } = {}) {
     const projected = projectNativeSession(snapshot).chat;
+    const allowed = new Set(allowMessageIds);
     if (!Array.isArray(messages) || messages.length < projected.length) {
         throw committedTimelineMutation('Committed Native Timeline messages cannot be deleted');
     }
@@ -72,6 +73,7 @@ export function assertCommittedProjection(snapshot, messages) {
         if (actual?.atri_native?.messageId !== expected.atri_native.messageId) {
             throw committedTimelineMutation('Committed Native Timeline order/identity changed');
         }
+        if (allowed.has(expected.atri_native.messageId)) continue;
         const expectedFingerprint = expected.atri_native.committedFingerprint;
         const actualFingerprint = committedMessageFingerprint(actual);
         if (actualFingerprint !== expectedFingerprint) {
