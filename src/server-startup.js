@@ -1,4 +1,5 @@
 import { router as nativeSessionRouter } from './endpoints/native-session.js';
+import { router as nativeProductRouter } from './endpoints/native-product.js';
 import https from 'node:https';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -101,6 +102,7 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/characters', charactersRouter);
     app.use('/api/chats', chatsRouter);
     app.use('/api/native/session', nativeSessionRouter);
+    app.use('/api/native/product', nativeProductRouter);
     app.use('/api/groups', groupsRouter);
     app.use('/api/worldinfo', worldInfoRouter);
     app.use('/api/stats', statsRouter);
