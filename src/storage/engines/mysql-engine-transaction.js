@@ -2,6 +2,15 @@ import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
+import {
+    NATIVE_STORAGE_KINDS,
+    decodeNativeResourceKey,
+    encodeNativeResourceKey,
+    nativeResourceFileId,
+    nativeResourceMatchesFilter,
+    normalizeNativeResourceKey,
+    sortAndLimitNativeRecords,
+} from './native-resource-key.js';
 
 // MysqlTransaction — mysql2/promise port of SqliteTransaction. Same handler
 // surface and per-kind methods so Repos remain engine-agnostic. Differences
@@ -29,6 +38,7 @@ export class MysqlTransaction {
         registerNamedDocHandler(this);
         registerGroupHandler(this);
         registerStatsHandler(this);
+        registerNativeResourceHandlers(this);
     }
 
     _h(kind, method) {
@@ -63,6 +73,10 @@ export class MysqlTransaction {
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
 
     async putResourceIfMatch(key, expectedIntegrity, record) {
+        const handler = this._h(key.kind, 'putResourceIfMatch');
+        if (typeof handler.putIfMatch === 'function') {
+            return handler.putIfMatch(key, expectedIntegrity, record);
+        }
         const existing = await this.getResource(key);
         if (expectedIntegrity === null) {
             if (existing !== null) return { updated: false };
@@ -994,4 +1008,115 @@ export function registerStatsHandler(tx) {
         },
         list() { throw new Error('MysqlTransaction.list: stats is a singleton'); },
     });
+}
+
+export function registerNativeResourceHandlers(tx) {
+    const conn = tx._conn;
+    const params = (key) => {
+        const normalized = normalizeNativeResourceKey(key);
+        return { key: normalized, resourceKey: encodeNativeResourceKey(normalized) };
+    };
+    const parseRow = (kind, handle, resourceKey, row) => {
+        if (!row) return null;
+        const doc = coerceJson(row.doc);
+        if (doc === null) return null;
+        return {
+            key: decodeNativeResourceKey(kind, handle, resourceKey),
+            doc,
+            integrity: String(row.integrity || ''),
+            updatedAt: Number(row.updated_at || 0),
+            createdAt: Number(row.created_at || 0),
+        };
+    };
+    const handler = {
+        async get(key) {
+            const p = params(key);
+            const [rows] = await conn.execute(
+                `SELECT doc, integrity, updated_at, created_at FROM native_resources
+                 WHERE handle=? AND kind=? AND resource_key=?`,
+                [p.key.handle, p.key.kind, p.resourceKey],
+            );
+            return rows.length ? parseRow(p.key.kind, p.key.handle, p.resourceKey, rows[0]) : null;
+        },
+        async put(key, record) {
+            const p = params(key);
+            const now = Date.now();
+            const [existingRows] = await conn.execute(
+                'SELECT created_at FROM native_resources WHERE handle=? AND kind=? AND resource_key=?',
+                [p.key.handle, p.key.kind, p.resourceKey],
+            );
+            await conn.execute(
+                `INSERT INTO native_resources
+                 (handle, kind, resource_key, doc, integrity, updated_at, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?) AS new
+                 ON DUPLICATE KEY UPDATE
+                    doc=new.doc, integrity=new.integrity, updated_at=new.updated_at`,
+                [
+                    p.key.handle,
+                    p.key.kind,
+                    p.resourceKey,
+                    JSON.stringify(record.doc),
+                    String(record.integrity || ''),
+                    Number(record.updatedAt ?? now),
+                    Number(record.createdAt ?? existingRows[0]?.created_at ?? now),
+                ],
+            );
+        },
+        async putIfMatch(key, expectedIntegrity, record) {
+            const p = params(key);
+            const now = Date.now();
+            if (expectedIntegrity === null) {
+                const [result] = await conn.execute(
+                    `INSERT IGNORE INTO native_resources
+                     (handle, kind, resource_key, doc, integrity, updated_at, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        p.key.handle,
+                        p.key.kind,
+                        p.resourceKey,
+                        JSON.stringify(record.doc),
+                        String(record.integrity || ''),
+                        Number(record.updatedAt ?? now),
+                        Number(record.createdAt ?? now),
+                    ],
+                );
+                return { updated: result.affectedRows === 1 };
+            }
+            const [result] = await conn.execute(
+                `UPDATE native_resources SET doc=?, integrity=?, updated_at=?
+                 WHERE handle=? AND kind=? AND resource_key=? AND integrity=?`,
+                [
+                    JSON.stringify(record.doc),
+                    String(record.integrity || ''),
+                    Number(record.updatedAt ?? now),
+                    p.key.handle,
+                    p.key.kind,
+                    p.resourceKey,
+                    String(expectedIntegrity),
+                ],
+            );
+            return { updated: result.affectedRows === 1 };
+        },
+        async delete(key) {
+            const p = params(key);
+            const [result] = await conn.execute(
+                'DELETE FROM native_resources WHERE handle=? AND kind=? AND resource_key=?',
+                [p.key.handle, p.key.kind, p.resourceKey],
+            );
+            return result.affectedRows > 0;
+        },
+        async list(filter) {
+            const [rows] = await conn.execute(
+                `SELECT resource_key, doc, integrity, updated_at, created_at
+                 FROM native_resources WHERE handle=? AND kind=?`,
+                [filter.handle, filter.kind],
+            );
+            const records = rows
+                .map(row => parseRow(filter.kind, filter.handle, row.resource_key, row))
+                .filter(Boolean)
+                .filter(record => nativeResourceMatchesFilter(record.key, filter));
+            return sortAndLimitNativeRecords(records, filter);
+        },
+    };
+    for (const kind of NATIVE_STORAGE_KINDS) tx._handlers.set(kind, handler);
 }

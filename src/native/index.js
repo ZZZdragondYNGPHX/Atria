@@ -54,3 +54,12 @@ export {
     assertWorld,
     assertWorldRevision,
 } from './world-knowledge.js';
+
+export {
+    AssetStore,
+    KnowledgeRepo,
+    PackageRepo,
+    SavePointRepo,
+    SessionRepo,
+    WorldRepo,
+} from './repositories/index.js';

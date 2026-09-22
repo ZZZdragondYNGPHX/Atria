@@ -9,6 +9,14 @@ import { WorldInfoRepo } from './repositories/world-info-repo.js';
 import { NamedDocRepo } from './repositories/named-doc-repo.js';
 import { GroupRepo } from './repositories/group-repo.js';
 import { StatsRepo } from './repositories/stats-repo.js';
+import {
+    AssetStore,
+    KnowledgeRepo,
+    PackageRepo,
+    SavePointRepo,
+    SessionRepo,
+    WorldRepo,
+} from '../native/repositories/index.js';
 
 export { setReadOnly, isReadOnly, withReadOnlyBypass } from './read-only-mode.js';
 
@@ -20,6 +28,12 @@ let _worldInfoRepo = null;
 let _namedDocRepo = null;
 let _groupRepo = null;
 let _statsRepo = null;
+let _packageRepo = null;
+let _worldRepo = null;
+let _knowledgeRepo = null;
+let _sessionRepo = null;
+let _savePointRepo = null;
+let _assetStore = null;
 
 export function initStorage({
     mode = 'fs',
@@ -63,6 +77,12 @@ export function initStorage({
     _namedDocRepo = new NamedDocRepo({ engine: _engine });
     _groupRepo = new GroupRepo({ engine: _engine });
     _statsRepo = new StatsRepo({ engine: _engine });
+    _packageRepo = new PackageRepo({ engine: _engine });
+    _worldRepo = new WorldRepo({ engine: _engine });
+    _knowledgeRepo = new KnowledgeRepo({ engine: _engine });
+    _sessionRepo = new SessionRepo({ engine: _engine });
+    _savePointRepo = new SavePointRepo({ engine: _engine });
+    _assetStore = new AssetStore({ engine: _engine, directoriesByHandle });
 }
 
 export function getChatRepo() {
@@ -103,4 +123,34 @@ export function getStatsRepo() {
 export function getStorageEngine() {
     if (!_engine) throw new Error('storage not initialized; call initStorage() first');
     return _engine;
+}
+
+export function getPackageRepo() {
+    if (!_packageRepo) throw new Error('storage not initialized; call initStorage() first');
+    return _packageRepo;
+}
+
+export function getWorldRepo() {
+    if (!_worldRepo) throw new Error('storage not initialized; call initStorage() first');
+    return _worldRepo;
+}
+
+export function getKnowledgeRepo() {
+    if (!_knowledgeRepo) throw new Error('storage not initialized; call initStorage() first');
+    return _knowledgeRepo;
+}
+
+export function getSessionRepo() {
+    if (!_sessionRepo) throw new Error('storage not initialized; call initStorage() first');
+    return _sessionRepo;
+}
+
+export function getSavePointRepo() {
+    if (!_savePointRepo) throw new Error('storage not initialized; call initStorage() first');
+    return _savePointRepo;
+}
+
+export function getAssetStore() {
+    if (!_assetStore) throw new Error('storage not initialized; call initStorage() first');
+    return _assetStore;
 }

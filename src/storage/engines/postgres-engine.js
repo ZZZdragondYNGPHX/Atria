@@ -23,6 +23,7 @@ const DEFAULT_RETRIES = { transient: 3 };
 const DUMP_TABLES = Object.freeze([
     { name: 'settings', cols: ['handle', 'doc', 'updated_at'] },
     { name: 'stats', cols: ['handle', 'doc', 'updated_at'] },
+    { name: 'native_resources', cols: ['handle', 'kind', 'resource_key', 'doc', 'integrity', 'updated_at', 'created_at'] },
     { name: 'groups_table', cols: ['handle', 'id', 'doc', 'updated_at', 'created_at'] },
     { name: 'named_docs', cols: ['handle', 'bucket', 'name', 'doc', 'updated_at'] },
     { name: 'worlds', cols: ['handle', 'name', 'doc', 'updated_at'] },
@@ -164,7 +165,7 @@ export class PgEngine {
                         for (const table of [
                             'chat_states', 'preset_states',
                             'chats', 'presets', 'worlds',
-                            'named_docs', 'groups_table',
+                            'named_docs', 'groups_table', 'native_resources',
                             'settings', 'stats',
                         ]) {
                             await client.query(`DELETE FROM ${table} WHERE handle = $1`, [handle]);

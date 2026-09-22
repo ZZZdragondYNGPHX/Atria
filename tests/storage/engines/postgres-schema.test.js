@@ -14,11 +14,11 @@ describePg('PgEngine schema bootstrap', () => {
         if (harness) await harness.cleanup();
     });
 
-    test('CURRENT_SCHEMA_VERSION is 1', () => {
-        expect(CURRENT_SCHEMA_VERSION).toBe(1);
+    test('CURRENT_SCHEMA_VERSION is 2', () => {
+        expect(CURRENT_SCHEMA_VERSION).toBe(2);
     });
 
-    test('all expected tables exist (9 storage + _storage_meta)', async () => {
+    test('all expected tables exist (10 storage + _storage_meta)', async () => {
         const r = await harness.engine._pool.query(
             `SELECT table_name FROM information_schema.tables
              WHERE table_schema = current_schema() ORDER BY table_name`,
@@ -27,11 +27,10 @@ describePg('PgEngine schema bootstrap', () => {
         expect(names).toEqual(expect.arrayContaining([
             '_storage_meta',
             'chats', 'chat_states', 'settings', 'presets', 'preset_states',
-            'worlds', 'named_docs', 'groups_table', 'stats',
+            'worlds', 'named_docs', 'groups_table', 'stats', 'native_resources',
         ]));
-        // Storage tables (9: chats, chat_states, settings, presets,
-        // preset_states, worlds, named_docs, groups_table, stats) + meta = 10.
-        expect(names.length).toBe(10);
+        // Ten storage tables, including first-class Native resources, plus meta.
+        expect(names.length).toBe(11);
     });
 
     test('chats.integrity is a STORED GENERATED column on doc #>> path', async () => {
@@ -73,22 +72,22 @@ describePg('PgEngine schema bootstrap', () => {
         expect(r.rows[0].integrity).toBe('abc-123');
     });
 
-    test('_storage_meta.schema_version reads "1" after initSchema', async () => {
+    test('_storage_meta.schema_version reads "2" after initSchema', async () => {
         const r = await harness.engine._pool.query(
             'SELECT value FROM _storage_meta WHERE "key" = \'schema_version\'',
         );
         expect(r.rows.length).toBe(1);
-        expect(r.rows[0].value).toBe('1');
+        expect(r.rows[0].value).toBe('2');
     });
 
     test('initSchema is idempotent — second call is a no-op', async () => {
         // First call already ran via ping. Second direct call must not throw.
         await expect(initSchema(harness.engine._pool)).resolves.toBeUndefined();
-        // And the version row stays at 1 (not duplicated, not bumped).
+        // And the version row stays at 2 (not duplicated, not bumped).
         const r = await harness.engine._pool.query(
             'SELECT value FROM _storage_meta WHERE "key" = \'schema_version\'',
         );
         expect(r.rows.length).toBe(1);
-        expect(r.rows[0].value).toBe('1');
+        expect(r.rows[0].value).toBe('2');
     });
 });
