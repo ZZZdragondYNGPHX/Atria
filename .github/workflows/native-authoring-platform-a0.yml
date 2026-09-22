@@ -47,6 +47,5 @@ jobs:
           src/native/authoring-contracts.js
           src/native/index.js
           tests/native/authoring-contracts.test.js
-          scripts/check-a0-native-authoring-hard-cutover.mjs
       - name: Run full root lint
         run: npm run lint
