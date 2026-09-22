@@ -7,10 +7,11 @@ import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKno
 
 function services() {
     const assets = getAssetStore();
-    const core = new SessionCore({ sessionRepo: getSessionRepo(), savePointRepo: getSavePointRepo(),
+    const sessionRepo = getSessionRepo();
+    const core = new SessionCore({ sessionRepo, savePointRepo: getSavePointRepo(),
         packageInstaller: new PackageInstaller({ packageRepo: getPackageRepo(), assetStore: assets }),
         knowledgeRepo: getKnowledgeRepo() });
-    return { core, assets };
+    return { core, assets, sessionRepo };
 }
 
 /** Authenticated handle is server-owned. No arbitrary repo method dispatch or legacy fallback. */
@@ -72,6 +73,29 @@ export function createNativeSessionRouter(getServices = services) {
         } else if (command?.type === 'switch') {
             res.json(await core.switchBranch(handle, sessionId, command.branchId, { expectedRevisionId }));
         } else throw new TypeError('Unsupported Native runtime command');
+    }));
+    router.post('/timeline', route(async (req, res, { sessionRepo }, handle) => {
+        if (!sessionRepo) throw new TypeError('Native SessionRepo timeline reader is unavailable');
+        const {
+            sessionId,
+            revisionId = null,
+            messageIds,
+            fromSequence = 0,
+            toSequence = null,
+            limit = 256,
+        } = req.body ?? {};
+        if (typeof sessionId !== 'string' || !sessionId) throw new TypeError('Native Timeline read requires sessionId');
+        if (revisionId !== null) assertNativeId(revisionId, 'revision');
+        if (messageIds !== undefined) {
+            res.json(await sessionRepo.readTimelineByMessageIds(handle, sessionId, messageIds, { revisionId }));
+            return;
+        }
+        res.json(await sessionRepo.readTimelineRange(handle, sessionId, {
+            revisionId,
+            fromSequence,
+            toSequence,
+            limit,
+        }));
     }));
     router.post('/attachment', route(async (req, res, { core, assets }, handle) => {
         const { sessionId, data, mediaType = 'application/octet-stream', displayName = 'Attachment' } = req.body;

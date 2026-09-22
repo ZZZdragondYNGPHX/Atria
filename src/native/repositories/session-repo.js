@@ -18,7 +18,7 @@ import {
 } from './common.js';
 
 import {
-    SESSION_CORE_NAMESPACE, readCheckedDocument, readSessionSnapshot,
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, readCheckedDocument, readSessionSnapshot,
 } from '../session-snapshot.js';
 
 // FS transactions are commit-last, not rollback transactions. Serialize publication
@@ -150,6 +150,145 @@ export class SessionRepo {
                 branchId,
             });
             return records.map(record => record.doc).sort((a, b) => a.sequence - b.sequence);
+        });
+    }
+
+    async _readTimelineProjection(tx, handle, sessionId, revisionId = null) {
+        const session = assertSession(await readCheckedDocument(tx, this._sessionKey(handle, sessionId)));
+        if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
+        const target = revisionId || session.headRevisionId;
+        if (!target) throw new NotFoundError('committed native session revision', { sessionId });
+        if (revisionId && !(await this._reachableRevisions(tx, handle, sessionId)).has(revisionId)) {
+            throw new NotFoundError('committed native session revision', { sessionId, revisionId });
+        }
+        const revision = assertSessionRevision(await readCheckedDocument(
+            tx,
+            this._revisionKey(handle, sessionId, target),
+        ));
+        if (revision.revisionId !== target) throw new TypeError('Session Revision identity mismatch');
+        const timelineHead = revision.stateHeads?.[TIMELINE_NAMESPACE];
+        if (!timelineHead) throw new TypeError('Revision does not contain Native Timeline state');
+        const selections = await readCheckedDocument(tx, this._stateKey(
+            handle,
+            sessionId,
+            TIMELINE_NAMESPACE,
+            timelineHead,
+        ));
+        if (hashNativeDocument(selections) !== timelineHead || !Array.isArray(selections)) {
+            throw new Error('Timeline state head integrity mismatch');
+        }
+        return { session, revision, selections };
+    }
+
+    async _materializeTimelineSelections(tx, handle, sessionId, selections) {
+        const result = [];
+        for (const selection of selections) {
+            const entry = assertTimelineEntry(await readCheckedDocument(tx, this._timelineKey(
+                handle,
+                sessionId,
+                selection.branchId,
+                selection.messageId,
+            )));
+            if (entry.sessionId !== sessionId || entry.messageId !== selection.messageId
+                || entry.branchId !== selection.branchId) {
+                throw new TypeError('Timeline identity mismatch');
+            }
+            if (!Array.isArray(selection.variantIds) || !selection.variantIds.length) {
+                throw new TypeError('Missing Timeline variants');
+            }
+            const variant = assertVariant(await readCheckedDocument(tx, this._variantKey(
+                handle,
+                sessionId,
+                entry.messageId,
+                selection.activeVariantId,
+            )));
+            if (variant.sessionId !== sessionId || variant.messageId !== entry.messageId
+                || variant.variantId !== selection.activeVariantId
+                || !selection.variantIds.includes(variant.variantId)) {
+                throw new TypeError('Timeline active Variant mismatch');
+            }
+            result.push(assertTimelineEntry({
+                ...entry,
+                sequence: Number(selection.sequence ?? entry.sequence),
+                content: variant.content,
+                variantIds: [...selection.variantIds],
+                activeVariantId: variant.variantId,
+            }));
+        }
+        return result;
+    }
+
+    /**
+     * Read an exact immutable Timeline slice from one committed SessionRevision.
+     * Range indexes are canonical Timeline sequence indexes; toSequence is exclusive.
+     */
+    async readTimelineRange(handle, sessionId, {
+        revisionId = null,
+        fromSequence = 0,
+        toSequence = null,
+        limit = 256,
+    } = {}) {
+        const start = Number(fromSequence);
+        const end = toSequence === null || toSequence === undefined ? null : Number(toSequence);
+        const boundedLimit = Number(limit);
+        if (!Number.isInteger(start) || start < 0
+            || (end !== null && (!Number.isInteger(end) || end < start))
+            || !Number.isInteger(boundedLimit) || boundedLimit < 1 || boundedLimit > 1000) {
+            throw new TypeError('Invalid Native Timeline range');
+        }
+        return this._engine.withTransaction(handle, async tx => {
+            const { revision, selections } = await this._readTimelineProjection(
+                tx,
+                handle,
+                sessionId,
+                revisionId,
+            );
+            const stop = Math.min(
+                selections.length,
+                end === null ? selections.length : end,
+                start + boundedLimit,
+            );
+            const selected = selections.slice(start, stop);
+            return {
+                sessionId,
+                revisionId: revision.revisionId,
+                branchId: revision.branchId,
+                totalEntries: selections.length,
+                fromSequence: start,
+                toSequence: stop,
+                entries: await this._materializeTimelineSelections(tx, handle, sessionId, selected),
+            };
+        });
+    }
+
+    /**
+     * Resolve stable Timeline sourceRefs without scanning rendered prompt text.
+     * Results follow canonical order in the requested committed Revision.
+     */
+    async readTimelineByMessageIds(handle, sessionId, messageIds, { revisionId = null } = {}) {
+        if (!Array.isArray(messageIds) || messageIds.length < 1 || messageIds.length > 1000
+            || messageIds.some(id => typeof id !== 'string' || !id.trim())) {
+            throw new TypeError('Native Timeline source read requires 1..1000 message IDs');
+        }
+        const requested = new Set(messageIds);
+        return this._engine.withTransaction(handle, async tx => {
+            const { revision, selections } = await this._readTimelineProjection(
+                tx,
+                handle,
+                sessionId,
+                revisionId,
+            );
+            const selected = selections.filter(item => requested.has(item.messageId));
+            const found = new Set(selected.map(item => item.messageId));
+            const missingMessageIds = [...requested].filter(id => !found.has(id));
+            return {
+                sessionId,
+                revisionId: revision.revisionId,
+                branchId: revision.branchId,
+                totalEntries: selections.length,
+                entries: await this._materializeTimelineSelections(tx, handle, sessionId, selected),
+                missingMessageIds,
+            };
         });
     }
 
