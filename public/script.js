@@ -580,6 +580,7 @@ function applyAtriaGenerationMetaFromHeaders(api, response) {
 }
 
 export function getLastAtriaGenerationIdForApi(api = main_api) {
+    if (nativeSessionRuntime.active) return '';
     if (api === 'openai') {
         return getLastOpenAIGenerationId();
     }
@@ -590,6 +591,7 @@ export function getLastAtriaGenerationIdForApi(api = main_api) {
 }
 
 function isLastAtriaReplyPersistedByServerForApi(api = main_api) {
+    if (nativeSessionRuntime.active) return false;
     if (api === 'openai') {
         return isLastOpenAIReplyPersistedByServer();
     }
@@ -600,7 +602,7 @@ function isLastAtriaReplyPersistedByServerForApi(api = main_api) {
 }
 
 function shouldUseAtriaServerPersistenceForType(type) {
-    return type === 'normal' || type === 'regenerate';
+    return !nativeSessionRuntime.active && (type === 'normal' || type === 'regenerate');
 }
 
 function buildAtriaGenerationRequestOptions(type, api = main_api) {
