@@ -12812,6 +12812,26 @@ export async function getChatStateBatch(namespaces, options = {}) {
     if (cleaned.length === 0) {
         return { ok: true, results: new Map() };
     }
+    if (nativeSessionRuntime.active) {
+        if (options?.target) {
+            return { ok: false, results: new Map(),
+                reason: STATE_ERROR_REASONS.VALIDATION_TARGET,
+                hint: formatValidationTargetHint('Native Session state cannot address a legacy chat target') };
+        }
+        try {
+            return {
+                ok: true,
+                results: new Map(cleaned.map(namespace => [namespace, {
+                    ok: true,
+                    state: nativeSessionRuntime.readState(namespace),
+                }])),
+            };
+        } catch (error) {
+            return { ok: false, results: new Map(),
+                reason: STATE_ERROR_REASONS.VALIDATION_ARGS,
+                hint: formatValidationArgsHint('namespace', error?.message || error) };
+        }
+    }
     const target = resolveChatStateTarget(options?.target || null);
     if (!target) {
         return { ok: false, results: new Map(),
@@ -12935,6 +12955,18 @@ export async function patchChatState(namespace, operations, options = {}) {
         if (operations.length === 0) {
             return makeStateOk();
         }
+        if (nativeSessionRuntime.active) {
+            if (options?.target) {
+                return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
+                    formatValidationTargetHint('Native Session state cannot address a legacy chat target'));
+            }
+            const result = await nativeSessionRuntime.updateState(stateNamespace, (current) => {
+                const document = normalizeJsonObject(current);
+                const applied = applyJsonPatch(document, operations, true, false);
+                return normalizeJsonObject(applied?.newDocument);
+            });
+            return makeStateOk({ state: result.state ?? null, updated: Boolean(result.updated) });
+        }
         const target = resolveChatStateTarget(options?.target || null);
         if (!target) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
@@ -13015,6 +13047,34 @@ export async function updateChatState(namespace, updater, options = {}) {
                 formatValidationArgsHint('updater', `must be a function (got: ${typeof updater})`));
         }
 
+        if (nativeSessionRuntime.active) {
+            if (options?.target) {
+                return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
+                    formatValidationTargetHint('Native Session state cannot address a legacy chat target'));
+            }
+            const result = await nativeSessionRuntime.updateState(stateNamespace, async (current, meta) => {
+                const currentState = normalizeJsonObject(current);
+                let nextStateRaw;
+                try {
+                    nextStateRaw = await updater(cloneJsonValue(currentState), {
+                        attempt: 0,
+                        target: {
+                            native_session: true,
+                            sessionId: meta.sessionId,
+                            revisionId: meta.revisionId,
+                            branchId: meta.branchId,
+                        },
+                        namespace: stateNamespace,
+                    });
+                } catch (reducerError) {
+                    throw new TypeError(`reducer threw: ${String(reducerError?.message || reducerError).slice(0, 80)}`);
+                }
+                if (nextStateRaw === undefined || nextStateRaw === null) return undefined;
+                return normalizeJsonObject(nextStateRaw);
+            });
+            return makeStateOk({ state: result.state ?? null, updated: Boolean(result.updated) });
+        }
+
         const target = resolveChatStateTarget(options?.target || null);
         if (!target) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
@@ -13093,6 +13153,14 @@ export async function deleteChatState(namespace, options = {}) {
         if (!stateNamespace) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_ARGS,
                 formatValidationArgsHint('namespace', 'must be a non-empty string'));
+        }
+        if (nativeSessionRuntime.active) {
+            if (options?.target) {
+                return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
+                    formatValidationTargetHint('Native Session state cannot address a legacy chat target'));
+            }
+            const result = await nativeSessionRuntime.deleteState(stateNamespace);
+            return makeStateOk({ updated: Boolean(result.updated) });
         }
         const target = resolveChatStateTarget(options?.target || null);
         if (!target) {
@@ -14502,7 +14570,7 @@ async function saveChatMetadataInternal(withMetadata = undefined, retryCount = 0
 }
 
 export async function saveChatMetadata(withMetadata = undefined, retryCount = 0) {
-    if (nativeSessionRuntime.active) return true; // Transient compatibility metadata; N5 integrates durable namespaces.
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.persist();
     const metadataPatch = cloneJsonValue(withMetadata) ?? withMetadata;
     return await runSerializedChatWrite(() => saveChatMetadataInternal(metadataPatch, retryCount));
 }
@@ -22193,7 +22261,17 @@ export async function openNativeSession(sessionId, options = {}) {
             if (fatal) stopGeneration();
             toastr.error(error.message, fatal ? 'Native Session write failed' : 'Native committed Timeline is immutable');
         },
-        revision: projection => { chat_metadata.integrity = projection.revisionId; },
+        runtimeState: () => {
+            const values = cloneJsonValue(chat_metadata?.variables ?? {}) ?? {};
+            const hasState = Object.prototype.hasOwnProperty.call(nativeSessionRuntime.snapshot?.states ?? {}, 'atri_variables');
+            return hasState || Object.keys(values).length > 0
+                ? { atri_variables: { schemaVersion: 1, values } }
+                : {};
+        },
+        revision: projection => {
+            chat_metadata.integrity = projection.revisionId;
+            chat_metadata.variables = cloneJsonValue(projection.metadata?.variables ?? {}) ?? {};
+        },
         install: async projection => {
             cancelDebouncedChatSave();
             cancelDebouncedMetadataSave();

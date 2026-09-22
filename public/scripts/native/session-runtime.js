@@ -7,9 +7,34 @@ import {
     runtimeMetadata,
     timelineIntents,
 } from './session-projection.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    emitNativeSessionLifecycle,
+} from './session-lifecycle.js';
 
 function copy(value) {
     return JSON.parse(JSON.stringify(value));
+}
+
+function stableValue(value) {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.keys(value).sort().map(key => [key, stableValue(value[key])]));
+    }
+    return value;
+}
+
+function equalJson(left, right) {
+    return JSON.stringify(stableValue(left)) === JSON.stringify(stableValue(right));
+}
+
+export function normalizeNativeStateNamespace(value) {
+    let namespace = String(value || '').trim().toLowerCase();
+    if (namespace.startsWith('atria_')) namespace = 'atri_' + namespace.slice('atria_'.length);
+    if (!/^atri_[a-z0-9][a-z0-9_.-]*$/.test(namespace)) {
+        throw new TypeError('Native runtime state namespace must be Atria-owned atri_*');
+    }
+    return namespace;
 }
 
 function isEmptyGenerationDraft(command) {
@@ -48,6 +73,112 @@ export class NativeSessionRuntime {
     get active() { return this.snapshot !== null; }
 
     configure(host) { this.host = host; }
+
+    readState(namespace) {
+        if (!this.active) return null;
+        const key = normalizeNativeStateNamespace(namespace);
+        const value = this.snapshot?.states?.[key];
+        return value === undefined ? null : copy(value);
+    }
+
+    _runtimeStatePatch() {
+        const source = this.host?.runtimeState?.();
+        if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+        const patch = {};
+        for (const [rawNamespace, rawValue] of Object.entries(source)) {
+            if (rawValue === undefined) continue;
+            const namespace = normalizeNativeStateNamespace(rawNamespace);
+            const value = copy(rawValue);
+            if (!equalJson(this.snapshot?.states?.[namespace] ?? null, value)) patch[namespace] = value;
+        }
+        return patch;
+    }
+
+    _lifecyclePayload(next = this.snapshot, previous = null, extra = {}) {
+        return {
+            sessionId: next?.session?.sessionId ?? previous?.session?.sessionId ?? null,
+            revisionId: next?.revision?.revisionId ?? null,
+            branchId: next?.revision?.branchId ?? null,
+            previousRevisionId: previous?.revision?.revisionId ?? null,
+            ...extra,
+        };
+    }
+
+    async _emit(type, next = this.snapshot, previous = null, extra = {}) {
+        await emitNativeSessionLifecycle(type, this._lifecyclePayload(next, previous, extra));
+    }
+
+    _queue(run) {
+        this.queue = this.queue.then(run);
+        return this.queue;
+    }
+
+    updateState(namespace, updater) {
+        this.assertWritable();
+        const key = normalizeNativeStateNamespace(namespace);
+        if (typeof updater !== 'function') throw new TypeError('Native state updater must be a function');
+        const sessionId = this.snapshot.session.sessionId;
+        return this._queue(async () => {
+            this.assertWritable();
+            if (this.snapshot.session.sessionId !== sessionId) {
+                this._failBarrier(committedTimelineMutation('Native Session changed during a queued state write'));
+            }
+            const current = this.readState(key) ?? {};
+            const nextValue = await updater(copy(current), {
+                sessionId,
+                revisionId: this.snapshot.revision.revisionId,
+                branchId: this.snapshot.revision.branchId,
+                namespace: key,
+            });
+            if (nextValue === undefined || nextValue === null || equalJson(current, nextValue)) {
+                return { ok: true, state: copy(current), updated: false };
+            }
+            const previous = this.snapshot;
+            try {
+                const next = await this.request('command', {
+                    sessionId,
+                    expectedRevisionId: previous.revision.revisionId,
+                    command: { type: 'runtime', statePatch: { [key]: copy(nextValue) } },
+                });
+                this.snapshot = next;
+                this.host?.revision?.(projectNativeSession(next));
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
+                    stateNamespaces: [key],
+                });
+                return { ok: true, state: copy(next.states?.[key] ?? nextValue), updated: true };
+            } catch (error) {
+                throw this._report(error, { fatal: true });
+            }
+        });
+    }
+
+    deleteState(namespace) {
+        this.assertWritable();
+        const key = normalizeNativeStateNamespace(namespace);
+        const sessionId = this.snapshot.session.sessionId;
+        return this._queue(async () => {
+            this.assertWritable();
+            if (!Object.prototype.hasOwnProperty.call(this.snapshot.states ?? {}, key)) {
+                return { ok: true, updated: false };
+            }
+            const previous = this.snapshot;
+            try {
+                const next = await this.request('command', {
+                    sessionId,
+                    expectedRevisionId: previous.revision.revisionId,
+                    command: { type: 'runtime', deleteNamespaces: [key] },
+                });
+                this.snapshot = next;
+                this.host?.revision?.(projectNativeSession(next));
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
+                    deletedStateNamespaces: [key],
+                });
+                return { ok: true, updated: true };
+            } catch (error) {
+                throw this._report(error, { fatal: true });
+            }
+        });
+    }
 
     async request(path, body) {
         const response = await fetch(`/api/native/session/${path}`, {
@@ -114,6 +245,9 @@ export class NativeSessionRuntime {
         this.failed = false;
         this.generation = null;
         await this.host.install(projectNativeSession(snapshot));
+        await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, snapshot, null, {
+            historical: revisionId !== undefined,
+        });
         return snapshot;
     }
 
@@ -173,9 +307,12 @@ export class NativeSessionRuntime {
                     expectedRevisionId: this.snapshot.revision.revisionId,
                     command: { type: 'retry', messageId: target.messageId },
                 });
+                const previous = this.snapshot;
                 this.snapshot = next;
                 this.history = false;
                 await this.host.install(projectNativeSession(next));
+                await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'retry' });
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'retry' });
                 this.generation = { kind: 'retry', sourceMessageId: target.messageId };
                 // The retry branch ends at the post-user revision, so the
                 // existing generator can run its ordinary append path.
@@ -243,8 +380,13 @@ export class NativeSessionRuntime {
 
         const continuation = String(actual.mes ?? '').slice(draft.sourceContent.length);
         if (['', '...'].includes(continuation.trim())) {
+            const aborted = this.generation;
             this.generation = null;
             await this.host.install(projectNativeSession(this.snapshot));
+            await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
+                kind: aborted?.kind ?? 'continue',
+                sourceMessageId: aborted?.sourceMessageId ?? null,
+            });
             return true;
         }
 
@@ -265,14 +407,18 @@ export class NativeSessionRuntime {
         };
 
         try {
+            const previous = this.snapshot;
             const next = await this.request('command', {
-                sessionId: this.snapshot.session.sessionId,
-                expectedRevisionId: this.snapshot.revision.revisionId,
-                command: { type: 'timeline', commands: [command] },
+                sessionId: previous.session.sessionId,
+                expectedRevisionId: previous.revision.revisionId,
+                command: { type: 'runtime', commands: [command], statePatch: this._runtimeStatePatch() },
             });
             this.snapshot = next;
             this.generation = null;
             await this.host.install(projectNativeSession(next));
+            const appended = next.timeline.slice(previous.timeline.length).map(item => item.messageId);
+            await this._emit(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, next, previous, { messageIds: appended });
+            await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { messageIds: appended });
             return true;
         } catch (error) {
             throw this._report(error, { fatal: true });
@@ -301,17 +447,35 @@ export class NativeSessionRuntime {
             } catch (error) {
                 this._failBarrier(error);
             }
+            const statePatch = this._runtimeStatePatch();
 
             // Generation placeholders are Draft-only. If Stop/abort produced
             // no useful assistant content, discard the Draft and keep HEAD at
             // the already-committed post-user revision.
             if (this.generation && commands.length > 0 && commands.every(isEmptyGenerationDraft)) {
+                const aborted = this.generation;
+                if (Object.keys(statePatch).length > 0) {
+                    const previous = this.snapshot;
+                    const next = await this.request('command', {
+                        sessionId,
+                        expectedRevisionId: previous.revision.revisionId,
+                        command: { type: 'runtime', statePatch },
+                    });
+                    this.snapshot = next;
+                    this.host?.revision?.(projectNativeSession(next));
+                    await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
+                        stateNamespaces: Object.keys(statePatch),
+                    });
+                }
                 this.generation = null;
                 await this.host.install(projectNativeSession(this.snapshot));
+                await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
+                    kind: aborted?.kind ?? 'append',
+                });
                 return true;
             }
 
-            if (!commands.length) {
+            if (!commands.length && Object.keys(statePatch).length === 0) {
                 // A no-op save during generation must not end the Draft
                 // lifecycle. The Draft is terminal only when an assistant
                 // entry commits or Stop discards it.
@@ -322,11 +486,12 @@ export class NativeSessionRuntime {
                 const generationAtCommit = this.generation;
                 const keepAssistantDraftOpen = generationAtCommit?.kind === 'append'
                     && commands.every(command => command?.type === 'append' && command?.draft?.role !== 'assistant');
-                const committedLength = this.snapshot.timeline.length;
+                const previous = this.snapshot;
+                const committedLength = previous.timeline.length;
                 const next = await this.request('command', {
                     sessionId,
-                    expectedRevisionId: this.snapshot.revision.revisionId,
-                    command: { type: 'timeline', commands },
+                    expectedRevisionId: previous.revision.revisionId,
+                    command: { type: 'runtime', commands, statePatch },
                 });
                 this.snapshot = next;
                 const projection = projectNativeSession(next);
@@ -341,6 +506,14 @@ export class NativeSessionRuntime {
                 });
                 this.host.revision(projection);
                 this.generation = keepAssistantDraftOpen ? generationAtCommit : null;
+                const appended = next.timeline.slice(committedLength).map(item => item.messageId);
+                if (appended.length) {
+                    await this._emit(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, next, previous, { messageIds: appended });
+                }
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
+                    messageIds: appended,
+                    stateNamespaces: Object.keys(statePatch),
+                });
                 return true;
             } catch (error) {
                 throw this._report(error, { fatal: true });
@@ -362,8 +535,13 @@ export class NativeSessionRuntime {
         await this.persist();
         if (!this.active || this.snapshot.session.sessionId !== sessionId) return true;
         if (this.generation) {
+            const aborted = this.generation;
             this.generation = null;
             await this.host.install(projectNativeSession(this.snapshot));
+            await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
+                kind: aborted?.kind ?? 'append',
+                sourceMessageId: aborted?.sourceMessageId ?? null,
+            });
         }
         return true;
     }
@@ -378,12 +556,13 @@ export class NativeSessionRuntime {
         if (swipeId !== null && Number(swipeId) !== activeIndex) {
             throw this._report(committedTimelineMutation('Native Branch cannot switch a committed Variant'));
         }
+        const previous = this.snapshot;
         const next = await this.request('command', {
-            sessionId: this.snapshot.session.sessionId,
-            expectedRevisionId: this.snapshot.session.headRevisionId,
+            sessionId: previous.session.sessionId,
+            expectedRevisionId: previous.session.headRevisionId,
             command: {
                 type: 'fork',
-                revisionId: this.snapshot.revision.revisionId,
+                revisionId: previous.revision.revisionId,
                 messageId: message.messageId,
                 variantId: message.activeVariantId,
             },
@@ -392,21 +571,45 @@ export class NativeSessionRuntime {
         this.history = false;
         this.generation = null;
         await this.host.install(projectNativeSession(next));
+        await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'fork' });
+        await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'fork' });
         return next.revision.branchId;
     }
 
     async switchBranch(branchId) {
         if (!this.history) await this.persist();
         else this._assertBarrier();
+        const previous = this.snapshot;
         const next = await this.request('command', {
-            sessionId: this.snapshot.session.sessionId,
-            expectedRevisionId: this.snapshot.session.headRevisionId,
+            sessionId: previous.session.sessionId,
+            expectedRevisionId: previous.session.headRevisionId,
             command: { type: 'switch', branchId },
         });
         this.snapshot = next;
         this.history = false;
         this.generation = null;
         await this.host.install(projectNativeSession(next));
+        await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'switch' });
+        await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'switch' });
+    }
+
+    async restoreSavePoint(saveId) {
+        this.assertWritable();
+        await this.persist();
+        const previous = this.snapshot;
+        const next = await this.request('command', {
+            sessionId: previous.session.sessionId,
+            expectedRevisionId: previous.revision.revisionId,
+            command: { type: 'restore', saveId },
+        });
+        this.snapshot = next;
+        this.history = false;
+        this.generation = null;
+        await this.host.install(projectNativeSession(next));
+        await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED, next, previous, { saveId });
+        await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'restore', saveId });
+        await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'restore', saveId });
+        return next;
     }
 
     knowledgeEntries() { return this.active ? projectKnowledgeEntries(this.snapshot) : null; }

@@ -49,6 +49,50 @@ function validateWorldState(states, manifest, entryPoint) {
     }
 }
 
+function validateRuntimeStateChanges(handle, sessionId, statePatch = {}, deleteNamespaces = []) {
+    const values = cloneNativeDocument(statePatch, 'Native runtime state patch');
+    if (!values || Array.isArray(values) || typeof values !== 'object') {
+        throw new TypeError('Native runtime state patch must be an object');
+    }
+    if (!Array.isArray(deleteNamespaces)) throw new TypeError('Native runtime deleteNamespaces must be an array');
+    const deletes = [...new Set(deleteNamespaces.map(namespace => String(namespace || '').trim()))];
+    for (const namespace of [...Object.keys(values), ...deletes]) {
+        if (RESERVED_SESSION_NAMESPACES.includes(namespace)) throw new TypeError('Reserved Session Core namespace');
+        assertNativeResourceKey({
+            kind: NATIVE_RESOURCE_KINDS.sessionState,
+            handle,
+            sessionId,
+            namespace,
+            head: 'validate',
+        });
+    }
+    for (const namespace of deletes) {
+        if (Object.prototype.hasOwnProperty.call(values, namespace)) {
+            throw new TypeError('Native runtime state namespace cannot be updated and deleted in one commit');
+        }
+    }
+    return { values, deletes };
+}
+
+function appendRuntimeTimeline(core, base, commands = []) {
+    if (!Array.isArray(commands) || commands.length > 1000) {
+        throw new TypeError('Expected 0..1000 Native Timeline append commands');
+    }
+    const timeline = [...base.timeline];
+    const entries = [];
+    const variants = [];
+    for (const command of commands) {
+        if (!command || command.type !== 'append' || command.beforeMessageId !== undefined) {
+            throw new TypeError('Native runtime Timeline commands are append-only');
+        }
+        const created = core._newEntry(base, command.draft, timeline.length);
+        timeline.push(created.entry);
+        entries.push(created.entry);
+        variants.push(created.variant);
+    }
+    return { timeline, entries, variants };
+}
+
 /** Native commands only. Runtime projection, generation and state providers are later phases. */
 export class SessionCore {
     constructor({ sessionRepo, savePointRepo, packageInstaller, knowledgeRepo = null }) {
@@ -199,37 +243,41 @@ export class SessionCore {
      * boundary; N3 low-level Variant primitives remain for their validated
      * contract but are not exposed through this N4 runtime command path.
      */
+    async applyRuntimeCommit(handle, sessionId, {
+        commands = [],
+        statePatch = {},
+        deleteNamespaces = [],
+    } = {}, { expectedRevisionId } = {}) {
+        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const timelineChanges = appendRuntimeTimeline(this, base, commands);
+        const { values, deletes } = validateRuntimeStateChanges(handle, sessionId, statePatch, deleteNamespaces);
+        const states = { ...base.states, ...values };
+        for (const namespace of deletes) delete states[namespace];
+
+        const changedState = Object.keys(values).some(namespace =>
+            hashNativeDocument(base.states[namespace] ?? null) !== hashNativeDocument(values[namespace]))
+            || deletes.some(namespace => Object.prototype.hasOwnProperty.call(base.states, namespace));
+        if (timelineChanges.entries.length === 0 && !changedState) return base;
+
+        return this._publish(handle, base, {
+            timeline: timelineChanges.timeline,
+            entries: timelineChanges.entries,
+            variants: timelineChanges.variants,
+            states,
+        });
+    }
+
     async applyTimelineCommands(handle, sessionId, commands, { expectedRevisionId } = {}) {
         if (!Array.isArray(commands) || !commands.length || commands.length > 1000) {
             throw new TypeError('Expected 1..1000 Native Timeline append commands');
         }
-        const base = await this._current(handle, sessionId, expectedRevisionId);
-        const timeline = [...base.timeline];
-        const entries = [];
-        const variants = [];
-        for (const command of commands) {
-            if (!command || command.type !== 'append' || command.beforeMessageId !== undefined) {
-                throw new TypeError('Native runtime Timeline commands are append-only');
-            }
-            const created = this._newEntry(base, command.draft, timeline.length);
-            timeline.push(created.entry);
-            entries.push(created.entry);
-            variants.push(created.variant);
-        }
-        return this._publish(handle, base, { timeline, entries, variants });
+        return this.applyRuntimeCommit(handle, sessionId, { commands }, { expectedRevisionId });
     }
 
-    // Base namespace replacement only; N5 supplies runtime-specific state writers.
     async updateState(handle, sessionId, patch, { expectedRevisionId } = {}) {
-        const base = await this._current(handle, sessionId, expectedRevisionId);
-        const values = cloneNativeDocument(patch, 'SessionState patch');
-        if (!values || Array.isArray(values) || typeof values !== 'object') throw new TypeError('SessionState patch must be an object');
-        for (const namespace of Object.keys(values)) {
-            if (RESERVED_SESSION_NAMESPACES.includes(namespace)) throw new TypeError('Reserved Session Core namespace');
-            assertNativeResourceKey({ kind: NATIVE_RESOURCE_KINDS.sessionState, handle, sessionId, namespace, head: 'validate' });
-        }
-        return this._publish(handle, base, { states: { ...base.states, ...values } });
+        return this.applyRuntimeCommit(handle, sessionId, { statePatch: patch }, { expectedRevisionId });
     }
+
 
     // Explicit replacement of external bindings, not a follow-latest policy.
     async updateKnowledge(handle, sessionId, options, { expectedRevisionId } = {}) {

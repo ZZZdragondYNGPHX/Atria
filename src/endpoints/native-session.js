@@ -39,17 +39,29 @@ export function createNativeSessionRouter(getServices = services) {
         const { sessionId, expectedRevisionId, command } = req.body;
         // Runtime writes must name their projected revision. Never silently rebase a stale client.
         assertNativeId(expectedRevisionId, 'revision');
-        if (command?.type === 'timeline') {
-            if (!Array.isArray(command.commands) || command.commands.some(item => item?.type !== 'append' || item.beforeMessageId !== undefined)) {
+        if (command?.type === 'timeline' || command?.type === 'runtime') {
+            const commands = command?.type === 'timeline' ? command.commands : (command.commands ?? []);
+            if (!Array.isArray(commands) || commands.some(item => item?.type !== 'append' || item.beforeMessageId !== undefined)) {
                 throw new TypeError('Native runtime Timeline commands are append-only');
             }
-            for (const item of command.commands) {
+            for (const item of commands) {
                 for (const attachment of item.draft?.metadata?.attachments ?? []) {
                     assertNativeId(attachment.assetId, 'asset');
                     if (!await assets.getRef(handle, attachment.assetId)) throw new TypeError('Missing Native attachment');
                 }
             }
-            res.json(await core.applyTimelineCommands(handle, sessionId, command.commands, { expectedRevisionId }));
+            if (command?.type === 'runtime') {
+                res.json(await core.applyRuntimeCommit(handle, sessionId, {
+                    commands,
+                    statePatch: command.statePatch ?? {},
+                    deleteNamespaces: command.deleteNamespaces ?? [],
+                }, { expectedRevisionId }));
+            } else {
+                res.json(await core.applyTimelineCommands(handle, sessionId, commands, { expectedRevisionId }));
+            }
+        } else if (command?.type === 'restore') {
+            if (typeof command.saveId !== 'string') throw new TypeError('Native restore requires saveId');
+            res.json(await core.restoreSavePoint(handle, sessionId, command.saveId, { expectedRevisionId }));
         } else if (command?.type === 'fork') {
             res.json(await core.forkBranch(handle, sessionId, { ...command, expectedRevisionId }));
         } else if (command?.type === 'retry') {

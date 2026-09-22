@@ -161,7 +161,11 @@ export function projectNativeSession(snapshot) {
         message.atri_native.committedFingerprint = committedMessageFingerprint(message);
         return message;
     });
-    return { character, chat, metadata: { integrity: revision.revisionId, tainted: true },
+    const nativeVariables = snapshot.states?.atri_variables?.values;
+    const variables = nativeVariables && typeof nativeVariables === 'object' && !Array.isArray(nativeVariables)
+        ? copy(nativeVariables)
+        : {};
+    return { character, chat, metadata: { integrity: revision.revisionId, tainted: true, variables },
         sessionId: snapshot.session.sessionId, branchId: revision.branchId, revisionId: revision.revisionId };
 }
 
