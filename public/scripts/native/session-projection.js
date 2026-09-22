@@ -41,6 +41,17 @@ function runtimeVariantMetadata(message, position) {
     });
 }
 
+function authorityVariantMetadata(message, position) {
+    const metadata = runtimeVariantMetadata(message, position);
+    // Presentation overlays are not Timeline authority. In particular,
+    // translation extensions use extra.display_text as a cache/view override;
+    // changing it must never become a committed-history mutation.
+    if (metadata?.runtime?.extra) {
+        delete metadata.runtime.extra.display_text;
+    }
+    return metadata;
+}
+
 export function committedMessageFingerprint(message) {
     const ids = Array.isArray(message?.atri_native?.variantIds) ? message.atri_native.variantIds : [];
     const swipes = Array.isArray(message?.swipes) && message.swipes.length ? message.swipes : [message?.mes ?? ''];
@@ -54,7 +65,7 @@ export function committedMessageFingerprint(message) {
         variants: swipes.map((content, position) => ({
             variantId: ids[position] ?? null,
             content: position === selected ? (message?.mes ?? '') : content,
-            metadata: runtimeVariantMetadata(message, position),
+            metadata: authorityVariantMetadata(message, position),
         })),
         provenance: copy(message?.atri_native?.provenance ?? null),
     };
@@ -75,7 +86,12 @@ export function assertCommittedProjection(snapshot, messages, { allowMessageIds 
         }
         if (allowed.has(expected.atri_native.messageId)) continue;
         const expectedFingerprint = expected.atri_native.committedFingerprint;
-        const actualFingerprint = committedMessageFingerprint(actual);
+        let actualFingerprint;
+        try {
+            actualFingerprint = committedMessageFingerprint(actual);
+        } catch {
+            throw committedTimelineMutation(`Committed Native Timeline message ${expected.atri_native.messageId} became non-canonical`);
+        }
         if (actualFingerprint !== expectedFingerprint) {
             throw committedTimelineMutation(`Committed Native Timeline message ${expected.atri_native.messageId} changed`);
         }
