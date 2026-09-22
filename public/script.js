@@ -9572,11 +9572,16 @@ export function stopGeneration() {
         abortController.abort('Clicked stop button');
         stopped = true;
     }
-    if (stopped && !nativeSessionRuntime.active) {
-        // Legacy/ST releases the UI lock immediately after a user-driven stop.
-        // Native must wait for the aborted streaming path to commit a partial
-        // Assistant Draft or discard an empty Draft before GENERATION_ENDED is
-        // observable; onFinishStreaming performs that authoritative unlock.
+    if (stopped && nativeSessionRuntime.active) {
+        // Native Stop is a Draft lifecycle boundary. Finalize/discard the
+        // Native Draft first, then release the existing ST/R7 UI lock. This
+        // also covers the no-placeholder case where the provider is aborted
+        // before any assistant object exists.
+        void nativeSessionRuntime.finalizeStoppedGeneration()
+            .then(() => forceUnblockGenerationUi())
+            .catch(error => console.error('[Native Session] Failed to finalize stopped generation', error));
+    } else if (stopped) {
+        // Legacy/ST keeps its historical immediate unlock behavior.
         forceUnblockGenerationUi();
     }
     eventSource.emit(event_types.GENERATION_STOPPED);
