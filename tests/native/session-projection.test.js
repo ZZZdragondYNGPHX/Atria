@@ -558,20 +558,22 @@ describe('N4 pure projection authority', () => {
 
         const attachment = projectNativeSession(view).chat;
         attachment[0].extra.files = [{ url: '/user/files/old.txt' }];
+        let attachmentError = null;
         try {
             timelineIntents(view, attachment);
-            throw new Error('expected non-canonical attachment violation');
         } catch (error) {
-            expect(error).toMatchObject({ code: 'native_committed_timeline_mutation' });
+            attachmentError = error;
         }
+        expect(attachmentError).toMatchObject({ code: 'native_committed_timeline_mutation' });
 
         const changed = projectNativeSession(view).chat;
         changed[0].mes = 'rewritten';
+        let mutationError = null;
         try {
             timelineIntents(view, changed);
-            throw new Error('expected immutable Timeline violation');
         } catch (error) {
-            expect(error).toMatchObject({ code: 'native_committed_timeline_mutation' });
+            mutationError = error;
         }
+        expect(mutationError).toMatchObject({ code: 'native_committed_timeline_mutation' });
     });
 });
