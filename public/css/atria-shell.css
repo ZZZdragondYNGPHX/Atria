@@ -1487,8 +1487,8 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     gap: 0.45rem;
     align-items: center;
     padding: 0.5rem 0.65rem;
-    border-bottom: 1px solid var(--SmartThemeBorderColor);
-    background: var(--SmartThemeBlurTintColor);
+    border-bottom: 1px solid var(--atri-color-border);
+    background: var(--atri-color-surface);
 }
 
 .atria-native-play-actions__button {
@@ -1504,9 +1504,9 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 .atria-native-play-drawer {
     margin: 0.5rem;
     padding: 0.75rem;
-    border: 1px solid var(--SmartThemeBorderColor);
+    border: 1px solid var(--atri-color-border);
     border-radius: 0.6rem;
-    background: var(--SmartThemeBlurTintColor);
+    background: var(--atri-color-surface);
     max-height: min(70vh, 760px);
     overflow: auto;
 }
@@ -1529,7 +1529,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     align-items: flex-start;
     justify-content: space-between;
     padding: 0.45rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--atri-color-border) 65%, transparent);
 }
 
 .atria-native-play-timeline-row__content {
