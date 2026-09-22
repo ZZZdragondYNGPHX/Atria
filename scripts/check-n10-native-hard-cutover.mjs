@@ -128,6 +128,11 @@ rejectPattern(
     /mountCharactersWorkspace|mountGamesWorkspace|mountWorldWorkspace|LEGACY_LIBRARY_ADAPTERS|selectCharacterById/,
     'N10 Product Library must not retain Characters/Games/WorldInfo authority adapters',
 );
+rejectPattern(
+    'public/scripts/atria-shell/workspace-host.js',
+    /openLibraryCharacter/,
+    'N10 R7 route host must not retain Character Library authority aliases',
+);
 requirePattern(
     'public/scripts/atria-shell/library-runtime-workspaces.js',
     /id: ['"]works['"][\s\S]*id: ['"]worlds-knowledge['"][\s\S]*id: ['"]skills['"]/,
