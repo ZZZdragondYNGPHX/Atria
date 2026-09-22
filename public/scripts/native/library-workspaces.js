@@ -454,11 +454,23 @@ async function renderWorlds(documentRef, root, route, host) {
         });
         hero.dataset.atriaWorldDetail = worldId;
         const actions = createActions(documentRef);
-        actions.append(button(documentRef, 'Delete World', async () => {
-            if (!confirmAction('Delete this Native World?')) return;
-            await nativeProductClient.deleteWorld(worldId);
-            host.openLibrarySection('worlds');
-        }));
+        const rename = documentRef.createElement('input');
+        rename.className = 'text_pole';
+        rename.value = detail.world.displayName;
+        rename.setAttribute('aria-label', translateShellText('World name'));
+        actions.append(
+            rename,
+            button(documentRef, 'Rename World', async () => {
+                const updated = await nativeProductClient.updateWorld(worldId, rename.value);
+                hero.querySelector('.atria-runtime-card__title').textContent = updated.displayName;
+                rename.value = updated.displayName;
+            }),
+            button(documentRef, 'Delete World', async () => {
+                if (!confirmAction('Delete this Native World?')) return;
+                await nativeProductClient.deleteWorld(worldId);
+                host.openLibrarySection('worlds');
+            }),
+        );
         hero.append(actions);
         root.append(hero);
         const history = documentRef.createElement('section');
@@ -522,11 +534,23 @@ async function renderKnowledge(documentRef, root, route, host) {
         });
         hero.dataset.atriaKnowledgeDetail = knowledgeBaseId;
         const actions = createActions(documentRef);
-        actions.append(button(documentRef, 'Delete Knowledge Base', async () => {
-            if (!confirmAction('Delete this Native Knowledge Base?')) return;
-            await nativeProductClient.deleteKnowledge(knowledgeBaseId);
-            host.openLibrarySection('knowledge');
-        }));
+        const rename = documentRef.createElement('input');
+        rename.className = 'text_pole';
+        rename.value = detail.knowledgeBase.displayName;
+        rename.setAttribute('aria-label', translateShellText('Knowledge Base name'));
+        actions.append(
+            rename,
+            button(documentRef, 'Rename Knowledge Base', async () => {
+                const updated = await nativeProductClient.updateKnowledge(knowledgeBaseId, rename.value);
+                hero.querySelector('.atria-runtime-card__title').textContent = updated.displayName;
+                rename.value = updated.displayName;
+            }),
+            button(documentRef, 'Delete Knowledge Base', async () => {
+                if (!confirmAction('Delete this Native Knowledge Base?')) return;
+                await nativeProductClient.deleteKnowledge(knowledgeBaseId);
+                host.openLibrarySection('knowledge');
+            }),
+        );
         hero.append(actions);
         root.append(hero);
 
