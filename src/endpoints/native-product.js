@@ -133,6 +133,9 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/worlds/:worldId', route(async (req, res, { product }, handle) => {
         res.json(await product.getWorld(handle, req.params.worldId));
     }));
+    router.put('/worlds/:worldId', route(async (req, res, { product }, handle) => {
+        res.json(await product.updateWorld(handle, req.params.worldId, req.body || {}));
+    }));
     router.delete('/worlds/:worldId', route(async (req, res, { product }, handle) => {
         res.json({ deleted: await product.deleteWorld(handle, req.params.worldId) });
     }));
@@ -147,6 +150,9 @@ export function createNativeProductRouter(getServices = services) {
         res.json(await product.getKnowledgeBase(handle, req.params.knowledgeBaseId, {
             revisionId: req.query.revisionId || null,
         }));
+    }));
+    router.put('/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
+        res.json(await product.updateKnowledgeBase(handle, req.params.knowledgeBaseId, req.body || {}));
     }));
     router.delete('/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
         res.json({ deleted: await product.deleteKnowledgeBase(handle, req.params.knowledgeBaseId) });
