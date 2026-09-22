@@ -82,6 +82,9 @@ describe('N9 Library / Runtime domain adapters', () => {
                     sessionCount: 0,
                 }]);
             }
+            if (value.endsWith('/api/native/product/sessions')) {
+                return jsonResponse([]);
+            }
             throw new Error('Unexpected fetch: ' + value);
         });
     });
