@@ -11,12 +11,12 @@ let server;
 let seeded;
 let legacyBaseline;
 
-test.describe.serial('N9 Native Product UI real-host acceptance', () => {
+test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
     test.beforeAll(async () => {
         seeded = await seedNativeSessionDataRoot({ suffix: 'n9-product-ui' });
         server = await startServer({
             batchKey: 'chat',
-            scenarioId: 'native-session-n9-product-ui',
+            scenarioId: 'native-session-n10-product-ui',
             useExistingDataRoot: seeded.dataRoot,
         });
         legacyBaseline = snapshotLegacyPersistence(server.dataRoot);
@@ -69,7 +69,12 @@ test.describe.serial('N9 Native Product UI real-host acceptance', () => {
             '#chat .swipe_picker_block',
             '#chat .mes_edit',
             '#chat .mes_edit_delete',
+            '#chat .mes_create_bookmark',
+            '#chat .mes_bookmark',
             '#option_regenerate',
+            '#option_select_chat',
+            '#option_new_bookmark',
+            '#option_back_to_main',
         ]) {
             await expect(page.locator(selector).first()).toBeHidden();
         }
