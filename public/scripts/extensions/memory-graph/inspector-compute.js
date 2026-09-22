@@ -7,7 +7,7 @@ export function inspectorPayload(snapshot, mode) {
     // Chat variable tables and rollback backups are not inputs to source validation.
     const chat = snapshot.chat.map(({ memory_os_source_id, atri_native, mes, name, is_user, is_system, swipe_id }) => ({
         memory_os_source_id,
-        ...(atria_native?.messageId ? { atri_native: { messageId: atri_native.messageId } } : {}),
+        ...(atri_native?.messageId ? { atri_native: { messageId: atri_native.messageId } } : {}),
         mes,
         name,
         is_user,
