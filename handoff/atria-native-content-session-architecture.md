@@ -533,3 +533,77 @@ Read live remote main instructions, both docs handoffs, the Master Plan, `src/na
 ### Guidance receipt
 
 `tavern-card-builder` and focused API/runtime skills read; library route `tavern-card-builder`, snapshot `2026-08-18`, ST-A0 opening gates used. Current repository source, not recalled upstream signatures, supplied API provenance. No design catalog candidate was adopted. Real-host execution remains explicitly unverified.
+
+
+---
+
+## N4 validated handoff — 2026-09-22
+
+**Status: N4 complete and validated. Stop N4 development. N5 is next.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- N4 validated HEAD: `ec95a260f4a26a4c23091227f77865dba1ae2273`
+- Workflow: **Native Content Session Dev Checks #87**
+- Run: `35693455407`
+- Result: **success**
+- main remains untouched.
+- No new task branch was created.
+- N0–N4 are now the frozen implementation baseline for N5.
+
+### N4 delivered
+
+- Native committed Timeline is immutable and product/runtime writes are append-only.
+- Write Barrier fingerprints committed message identity, role, actor, canonical content, attachment refs and provenance; presentation-only overlays are excluded.
+- Direct committed `chat[]` mutation fails closed as `native_committed_timeline_mutation`.
+- Native committed Edit/Delete/manual Swipe/Swipe Delete/Variant switching are rejected rather than converted into history rewrites.
+- Send creates an exact post-user Revision before Assistant generation.
+- Continue appends a new Assistant TimelineEntry with `continuationOf` provenance.
+- Retry Reply forks from the exact post-user Revision, then appends a new Assistant reply; unsent Composer state is isolated from Retry.
+- Stop owns Generation Draft lifecycle and correctly handles partial, empty, and no-placeholder aborts without contaminating committed Timeline.
+- Package Regex executes in the real hot path.
+- Native Knowledge remains a compatibility projection only; N6 still owns full KnowledgeCompiler semantics.
+- Attachments use AssetStore identity and Native asset routes.
+- R7 Play host nodes retain identity/uniqueness.
+- Native generation disables legacy server-side chat persistence and never falls back to JSONL/`/api/chats/*`.
+
+### N4 verification
+
+Exact HEAD `ec95a260f4a26a4c23091227f77865dba1ae2273` passed:
+
+- N0 Native Contracts;
+- N2 Package Project Composition;
+- N1 Storage + N3 Core + N4 Projection across the existing storage parity matrix;
+- full root ESLint;
+- N4 real-host Chromium Native Session acceptance;
+- complete Node regression: **748 suites / 8705 tests passed**;
+- frontend build.
+
+The browser acceptance covers positive Send/Continue/Retry/Branch/Switch/History/reload/attachments/prompt/Regex/Knowledge compatibility and R7 host identity, plus negative committed Edit/Delete/Swipe/Swipe Delete/Variant/direct-mutation barriers, stale-write recovery and Stop/Draft handling.
+
+### N5 next-phase boundary
+
+N5 is **Native Runtime State & Revision Lifecycle**.
+
+Move Atria-owned durable runtime state into coherent SessionState/SessionRevision semantics:
+
+- Game World + Event Journal;
+- Memory canonical/durable state;
+- Orchestrator;
+- Search;
+- Variables/op-log replacement where Native applies;
+- package-owned durable state.
+
+Native lifecycle anchors are stable `messageId`, `revisionId`, and `branchId`, with lifecycle concepts such as:
+
+- `TIMELINE_APPENDED`;
+- `REVISION_COMMITTED`;
+- `REVISION_RESTORED`;
+- `BRANCH_ACTIVATED`;
+- `SESSION_LOADED`;
+- `DRAFT_ABORTED`.
+
+For Native authority, stop treating floor/swipe IDs and `MESSAGE_EDITED` / `MESSAGE_DELETED` / `MESSAGE_SWIPED` as authoritative lifecycle events. Legacy/ST compatibility may remain for non-Native sessions.
+
+N5 must preserve the N4 immutable Timeline and Write Barrier. Do not implement N6 KnowledgeCompiler, N7 ContextCompiler, N8 save system, N9 UI cutover, or N10 hard retirement early.
+
+N5 exit: append/fork/restore/reload keep Timeline and all authoritative Native state coherent without committed-message mutation or swipe-based rollback semantics.
