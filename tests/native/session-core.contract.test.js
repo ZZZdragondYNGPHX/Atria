@@ -190,6 +190,7 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
                 atri_orchestrator_anchors: { active: { capsuleText: 'Plan A' } },
                 atri_search_tools_anchors: { result: { query: 'harbor' } },
                 atri_variables: { schemaVersion: 1, values: { route: 'A' } },
+                'atri_package.runtime': { questFlags: { harborGate: true } },
             },
         }, { expectedRevisionId: initialRevisionId });
 
@@ -198,11 +199,13 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         expect(view.revision.timelineHead.messageId).toBe(userMessageId);
         expect(view.states.atri_variables.values.route).toBe('A');
         expect(view.states.atri_memory_graph.nodes.harbor.fact).toBe('open');
+        expect(view.states['atri_package.runtime'].questFlags.harborGate).toBe(true);
         expect(Object.keys(view.revision.stateHeads)).toEqual(expect.arrayContaining([
             'atri_memory_graph',
             'atri_orchestrator_anchors',
             'atri_search_tools_anchors',
             'atri_variables',
+            'atri_package.runtime',
         ]));
 
         const save = await f.core.createSavePoint(h.handle, sessionId, {
@@ -245,6 +248,7 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         expect(restored.timeline.at(-1).messageId).toBe(userMessageId);
         expect(restored.states.atri_variables.values.route).toBe('A');
         expect(restored.states.atri_search_tools_anchors.result.query).toBe('harbor');
+        expect(restored.states['atri_package.runtime'].questFlags.harborGate).toBe(true);
 
         const reloaded = await services(h).core.load(h.handle, sessionId);
         expect(reloaded.revision).toEqual(restored.revision);

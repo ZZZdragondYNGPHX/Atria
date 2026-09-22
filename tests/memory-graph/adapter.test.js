@@ -774,3 +774,32 @@ describe('main.js sequencing: branch inheritance', () => {
         expect(store._rawFor(SOURCE).get(adapterConstants.META_NAMESPACE).lastRecallTrace).toEqual([{ step: 'on-source-chat' }]);
     });
 });
+
+
+describe('N5 Native memory SessionState authority', () => {
+    test('meta sidecar ignores legacy target coordinates when current chat is Native', async () => {
+        const store = makeStore();
+        const legacyTarget = { is_group: false, avatar_url: 'legacy.png', file_name: 'legacy-chat' };
+        const context = {
+            chat: [{
+                is_user: true,
+                mes: 'native',
+                atri_native: { messageId: 'msg_0123456789abcdef0123456789abcdef' },
+            }],
+            getChatState: store.getChatState.bind(store),
+            updateChatState: store.updateChatState.bind(store),
+        };
+
+        const meta = {
+            schemaVersion: 2,
+            sourceMessageCount: 3,
+            lastRecallTrace: [{ step: 'native' }],
+            lastRecallProjection: null,
+        };
+        const result = await persistMetaFields(context, meta, legacyTarget);
+        expect(result.ok).toBe(true);
+        expect(store._raw.get(adapterConstants.META_NAMESPACE)).toEqual(meta);
+        expect(store._rawFor(legacyTarget).has(adapterConstants.META_NAMESPACE)).toBe(false);
+        expect(await loadMetaFields(context, legacyTarget)).toEqual(meta);
+    });
+});

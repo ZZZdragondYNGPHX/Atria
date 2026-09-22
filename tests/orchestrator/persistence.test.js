@@ -132,7 +132,7 @@ async function buildObjectPatchOperationsAsync(prev, next) {
     return compare(prev ?? {}, next ?? {});
 }
 
-function makeContext(chatRef) {
+function makeContext(chatRef, { native = false } = {}) {
     const store = makeStore();
     const eventSource = makeEventSource();
     const fsDeps = {
@@ -143,6 +143,7 @@ function makeContext(chatRef) {
         eventSource,
         event_types,
         getChat: () => chatRef.value,
+        isNativeSession: () => native,
     };
     let createdInstance = null;
     const context = {
@@ -504,5 +505,36 @@ describe('Atria orchestrator namespace hard cutover', () => {
         expect(bindingConstants).toEqual({
             STATE_NAMESPACE: 'atri_orchestrator_anchors',
         });
+    });
+});
+
+
+describe('N5 Native orchestrator snapshot identity', () => {
+    test('keys the durable capsule by messageId and ignores swipe-id rollback semantics', async () => {
+        const messageId = 'msg_fedcba9876543210fedcba9876543210';
+        const nativeUser = {
+            ...userMsg('native plan', { swipe_id: 0 }),
+            atri_native: { messageId },
+        };
+        const chatRef = { value: [nativeUser] };
+        const { context } = makeContext(chatRef, { native: true });
+        const anchor = buildAnchorAt(chatRef.value, 0);
+        expect(anchor).toMatchObject({ messageId, playableFloor: 1 });
+
+        const result = await commitAnchorSnapshot(context, anchor, {
+            anchorHash: anchor.hash,
+            capsuleText: 'native capsule',
+            stageOutputs: [],
+        });
+        expect(result.ok).toBe(true);
+        let map = await loadAnchorMap(context);
+        expect(map[messageId]).toMatchObject({ anchorMessageId: messageId, capsuleText: 'native capsule' });
+        expect(map['1']).toBeUndefined();
+
+        chatRef.value[0] = { ...nativeUser, swipe_id: 9 };
+        map = await loadAnchorMap(context);
+        const pick = pickLatestValidSnapshot(context, map);
+        expect(pick).toMatchObject({ messageId, playableFloor: 1 });
+        expect(pick.snapshot.capsuleText).toBe('native capsule');
     });
 });

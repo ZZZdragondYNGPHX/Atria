@@ -358,4 +358,37 @@ describe('Game World session', () => {
 
         expect(session).toBeNull();
     });
+    test('N5 Native world journal does not use committed swipe ids as branch authority', async () => {
+        const chatRef = {
+            value: [{
+                is_user: true,
+                swipe_id: 0,
+                atri_native: { messageId: 'msg_0123456789abcdef0123456789abcdef' },
+            }],
+        };
+        const context = makeContext(chatRef);
+        const fetchImpl = jest.fn(async (url) => {
+            if (url.endsWith('/world/schema.json')) return response(schema);
+            return response({ hp: 20 });
+        });
+        const session = await createGameWorldSession({
+            packageState,
+            context,
+            getChat: () => chatRef.value,
+            fetchImpl,
+            reducers,
+        });
+
+        await session.commitEventsInternal([{ type: 'DamageDealt', payload: { amount: 5 } }]);
+        expect(session.getState()).toEqual({ hp: 15 });
+        expect(session.getBranchPath()).toEqual([]);
+
+        chatRef.value[0].swipe_id = 7;
+        await session.syncBranch();
+        expect(session.getBranchPath()).toEqual([]);
+        expect(session.getState()).toEqual({ hp: 15 });
+        expect(session.getJournal().events).toHaveLength(1);
+    });
+
+
 });

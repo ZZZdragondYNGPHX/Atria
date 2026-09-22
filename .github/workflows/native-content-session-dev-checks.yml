@@ -99,7 +99,7 @@ jobs:
           storage/engines/postgres-schema.test.js
           storage/engines/dump-restore.parity.test.js
           storage/engines/delete-user.parity.test.js
-      - name: Run N3 Native Session Core and Checkpoint A
+      - name: Run N3/N5 Native Session Core and revision coherence
         env:
           ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
           ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
@@ -157,6 +157,66 @@ jobs:
           src/native/*.js
           src/native/repositories/*.js
 
+  n5-runtime-state:
+    name: N5 Runtime State & Revision Lifecycle
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+      - n5-runtime-state
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N5 state and lifecycle tests
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/session-core.contract.test.js
+          native/session-projection.test.js
+          native/session-runtime-http.test.js
+          floor-state/instance.test.js
+          memory-graph/adapter.test.js
+          search-tools/persistence.test.js
+          orchestrator/persistence.test.js
+          orchestrator/snapshot-cache-hits-invalidates.test.js
+          game-runtime/world-session.test.js
+          variable-op-log/integration.test.js
+          variable-op-log/rebuilder.test.js
+          variables/path.test.js
+      - name: Run N5 source lint
+        run: >-
+          npx eslint
+          public/scripts/native/*.js
+          public/scripts/floor-state.js
+          public/scripts/extensions/memory-graph/main.js
+          public/scripts/extensions/memory-graph/persistence.js
+          public/scripts/extensions/orchestrator/anchors.js
+          public/scripts/extensions/orchestrator/persistence.js
+          public/scripts/extensions/orchestrator/snapshot-cache.js
+          public/scripts/extensions/search-tools/anchors.js
+          public/scripts/extensions/search-tools/persistence.js
+          public/scripts/extensions/search-tools/main.js
+          public/scripts/extensions/game-runtime/index.js
+          public/scripts/extensions/game-runtime/world/session.js
+          public/scripts/variable-op-log/index.js
+          src/native/session-core.js
+          src/endpoints/native-session.js
+
   n4-live-runtime:
     name: N4 Live Native Session Browser Acceptance
     needs:
@@ -206,9 +266,10 @@ jobs:
           retention-days: 7
 
   n4-final-regression:
-    name: N4 Complete Node Regression and Frontend Build
+    name: N5 Complete Node Regression and Frontend Build
     needs:
       - n4-live-runtime
+      - n5-runtime-state
     runs-on: ubuntu-latest
     timeout-minutes: 40
     services:
