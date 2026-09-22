@@ -10022,10 +10022,13 @@ async function getPersonaLore() {
     return entries;
 }
 
-export async function getSortedEntries() {
+export async function getSortedEntries(options = {}) {
     if (nativeSessionRuntime.active) {
-        // Exact pinned Native candidates enter the mature selector without reading any World Info book.
-        return nativeSessionRuntime.knowledgeEntries().map(entry => {
+        // N6 compiles exact pinned Native Knowledge for the requested target,
+        // then hands candidates to the mature selector without reading a World
+        // Info book or reconstructing identity from rendered text.
+        const target = options?.target ?? 'narrator';
+        return nativeSessionRuntime.knowledgeEntries({ target }).map(entry => {
             const [decorators, content] = parseDecorators(entry.content || '');
             return { ...entry, decorators, content, hash: getStringHash(JSON.stringify(entry)) };
         });
@@ -10170,6 +10173,7 @@ function buildWorldInfoStateProviderContext(context, trigger = 'normal') {
             ? context.getCurrentChatId.bind(context)
             : getCurrentChatId,
         memoryOsGenerationType: String(trigger || 'normal'),
+        nativeSnapshot: nativeSessionRuntime.active ? nativeSessionRuntime.snapshot : null,
     };
 }
 
