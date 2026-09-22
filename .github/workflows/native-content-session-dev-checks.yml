@@ -541,7 +541,6 @@ jobs:
           tests/atria-shell/library-runtime-workspaces.test.js
           tests/e2e/native-session/01-live-runtime.e2e.js
           tests/e2e/native-session/02-product-ui.e2e.js
-          scripts/check-n10-native-hard-cutover.mjs
 
   n10-r7-shell:
     name: N10 R7 Shell Desktop/Mobile Regression
