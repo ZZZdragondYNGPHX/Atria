@@ -108,3 +108,34 @@ jobs:
           src/storage/engines/*-engine-transaction.js
           src/storage/engines/*-schema.js
           src/storage/index.js
+
+
+  n2-package-project:
+    name: N2 Package Project Composition
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N2 Project Package tests
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/project-composition.test.js
+          native/package-container.test.js
+          native/package-build-install.test.js
+          game-runtime/atria-distribution.test.js
+          game-runtime/package-manifest.test.js
+      - name: Run N2 source lint
+        run: >-
+          npx eslint
+          src/native/*.js
+          src/native/repositories/*.js
