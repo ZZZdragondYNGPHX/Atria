@@ -1,40 +1,45 @@
 # Atria Native Content & Session Architecture — active implementation handoff
 
 - Architecture: **Package/Session + World/Knowledge contracts frozen**
-- Implementation: **N0 + N1 validated; N2 next**
+- Implementation: **N0 + N1 + N2 validated; N3 next**
 - Authoritative creation baseline: `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a`
 - Working branch: `refactor/atria-native-content-session-architecture`
 - N0 validated HEAD: `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
 - N1 validated HEAD: `fd6ad1b423b6cd18fcb5da184f75ed82d7117368`
-- N1 validation: **Native Content Session Dev Checks #23**, run `35676169036`, success
+- N2 validated HEAD: `bfa048dd2adc5bf6e90cfea47812be7bf7f4dcdb`
+- N2 validation: **Native Content Session Dev Checks #43**, run `35677654858`, success
 - Formal Master Plan: `refactor/atria-native-content-session-architecture.md`
 - Detailed handoff: `handoff/atria-native-content-session-architecture.md`
 - Implementation phases: **N0–N9**
 
 Current directive:
 
-- Preserve validated N0 and N1; do not redesign or recreate their contracts/storage foundation.
+- Preserve validated N0/N1/N2; do not redesign or recreate their contracts/storage/composition foundation.
 - Continue on the same long-lived branch; do not merge to `main` before N9.
-- Start **N2 — Package / Project / World & Knowledge Composition**.
-- Build on PackageRepo / WorldRepo / KnowledgeRepo / SessionRepo / SavePointRepo / AssetStore from N1.
-- Implement ProjectStore keyed only by `projectId`.
-- Resolve exact Library WorldRevision / KnowledgeRevision dependencies and vendor immutable snapshots into PackageVersion at build time.
-- Evolve `.atria` into Package Container v2; do not restore PNG/Character JSON/JSONL/World Info authority or any dual-read/dual-write path.
-- Runtime must not depend on live Library World/Knowledge content after Package build/install.
-- Keep Studio Preview ephemeral; do not contaminate normal Session lists.
-- Do not start N3 Session full core, N6 KnowledgeCompiler, N8 UI cutover, or N9 retirement work early.
+- Start **N3 — Native Session Core** only.
+- Build on the N1 SessionRepo/SavePointRepo foundation and N2 self-contained PackageVersion.
+- Implement Session / BranchGraph / TimelineEntry / Variant / SessionState base / SessionRevision / SavePoint primitive.
+- Resolve and pin the Session KnowledgeBindingSet to exact revisions.
+- Implement load/reload and opaque-ID branching without chat filenames.
+- Checkpoint A must prove Package → EntryPoint → Session → Timeline → Branch → Revision reload with exact World/Knowledge dependencies and no PNG/JSONL authority.
+- Do not start N4 full runtime projection, N6 KnowledgeCompiler, N8 UI cutover, or N9 legacy retirement early.
 
-N1 verification summary:
+N2 verification summary:
 
-- N1 storage foundation: **9 suites / 64 tests passed**
-- N0 Native contracts preserved: **2 suites / 52 tests passed**
-- adjacent `.atria` / Game Runtime / Storage regressions preserved: **5 suites / 42 tests passed**
-- N1 source lint: success
-- full root lint: success
-- FS / SQLite / MySQL / PostgreSQL Native resource parity: success
-- Android/Docker: not run; N1 touched JS/storage only and did not require those surfaces
+- N2 Package Project Composition: **5 suites / 30 tests passed**
+- N2 source ESLint: success
+- N0 Native Contracts job: success
+- full root ESLint: success
+- N1 Native Storage Foundation job: success
+- FS / SQLite / MySQL / PostgreSQL parity preserved
+- ProjectStore is keyed by `projectId`
+- exact WorldRevision / KnowledgeRevision closure is vendored into PackageVersion
+- `.atria` Package Container v2 uses an authenticated binary envelope
+- Package install/reopen uses PackageRepo + AssetStore and does not require target Library World/Knowledge
+- Studio Preview seam is ephemeral and writes no Session resource
+- Native `src/native/*` hard-cutover scan found no Character/JSONL/PNG/World Info/`named_docs` authority
 
-Next action: begin N2 from the live remote HEAD after re-reading the Master Plan and this handoff.
+Next action: begin N3 from the live remote working-branch HEAD after re-reading the Master Plan and detailed handoff.
 
 ---
 
