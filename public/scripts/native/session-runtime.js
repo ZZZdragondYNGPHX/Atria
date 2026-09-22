@@ -598,15 +598,14 @@ export class NativeSessionRuntime {
     }
 
     async fork(index, { swipeId = null } = {}) {
+        if (swipeId !== null) {
+            throw this._report(committedTimelineMutation('Native Branch cannot select a committed Swipe/Variant'));
+        }
         if (!this.history) await this.persist();
         else this._assertBarrier();
         if (this.failed) throw new Error('Reload required before branching');
         const message = this.snapshot.timeline[index];
         if (!message) throw new Error('Invalid Native fork message');
-        const activeIndex = message.variantIds.indexOf(message.activeVariantId);
-        if (swipeId !== null && Number(swipeId) !== activeIndex) {
-            throw this._report(committedTimelineMutation('Native Branch cannot switch a committed Variant'));
-        }
         const previous = this.snapshot;
         const next = await this.request('command', {
             sessionId: previous.session.sessionId,
@@ -615,7 +614,6 @@ export class NativeSessionRuntime {
                 type: 'fork',
                 revisionId: previous.revision.revisionId,
                 messageId: message.messageId,
-                variantId: message.activeVariantId,
             },
         });
         this.snapshot = next;
