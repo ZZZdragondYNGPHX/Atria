@@ -75,6 +75,12 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
             '#option_select_chat',
             '#option_new_bookmark',
             '#option_back_to_main',
+            '#character_import_button',
+            '#export_button',
+            '#export_format_popup',
+            '#delete_button',
+            '#dupe_button',
+            '#char_connections_button',
         ]) {
             await expect(page.locator(selector).first()).toBeHidden();
         }
