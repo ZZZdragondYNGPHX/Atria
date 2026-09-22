@@ -7935,6 +7935,11 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
                 }] : [],
             },
         ];
+        const promptContentByMessageId = Object.fromEntries(
+            coreChat
+                .map(message => [String(message?.atri_native?.messageId || ''), String(message?.mes ?? '')])
+                .filter(([messageId]) => messageId),
+        );
         const contextPlan = await nativeSessionRuntime.prepareContext({
             target: 'narrator',
             policy: nativeSessionRuntime.readState('atri_context_policy')?.mode || 'balanced',
@@ -7945,6 +7950,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             laneCaps: { knowledge: Math.max(0, Math.floor(knowledgeLaneCap)) },
             deferredLanes: ['memory'],
             providers: contextProviders,
+            promptContentByMessageId,
             countTokens: value => getTokenCountAsync(String(value ?? ''), 0),
         });
         coreChat = nativeSessionRuntime.filterCoreChatForContext(coreChat, contextPlan);

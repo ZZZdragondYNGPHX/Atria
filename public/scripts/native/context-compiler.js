@@ -218,11 +218,22 @@ function roleLabel(entry) {
     return String(entry.role || 'System');
 }
 
-function renderTurnGroup(entries) {
-    return entries.map(entry => roleLabel(entry) + ': ' + String(entry.content ?? '')).join('\n');
+function promptEntryContent(entry, promptContentByMessageId) {
+    if (promptContentByMessageId instanceof Map && promptContentByMessageId.has(entry.messageId)) {
+        return String(promptContentByMessageId.get(entry.messageId) ?? '');
+    }
+    if (promptContentByMessageId && typeof promptContentByMessageId === 'object'
+        && Object.prototype.hasOwnProperty.call(promptContentByMessageId, entry.messageId)) {
+        return String(promptContentByMessageId[entry.messageId] ?? '');
+    }
+    return String(entry.content ?? '');
 }
 
-function groupTimeline(timeline, revision, narrativeThroughSequence) {
+function renderTurnGroup(entries, promptContentByMessageId = null) {
+    return entries.map(entry => roleLabel(entry) + ': ' + promptEntryContent(entry, promptContentByMessageId)).join('\n');
+}
+
+function groupTimeline(timeline, revision, narrativeThroughSequence, promptContentByMessageId = null) {
     const groups = [];
     let current = null;
     for (const entry of Array.isArray(timeline) ? timeline : []) {
@@ -250,7 +261,7 @@ function groupTimeline(timeline, revision, narrativeThroughSequence) {
             authority: 'committed_timeline',
             authorityRank: 650,
             priority: (uncovered ? 1000000 : 0) + Number(last.sequence || 0),
-            content: renderTurnGroup(group.entries),
+            content: renderTurnGroup(group.entries, promptContentByMessageId),
             atomic: true,
             sourceRefs: group.entries.map(entry => timelineSourceRef(entry, revision)),
             metadata: {
@@ -267,7 +278,7 @@ function groupTimeline(timeline, revision, narrativeThroughSequence) {
         authority: 'current_user_input',
         authorityRank: 950,
         priority: 1000000,
-        content: renderTurnGroup(currentGroup.entries),
+        content: renderTurnGroup(currentGroup.entries, promptContentByMessageId),
         required: true,
         atomic: true,
         sourceRefs: currentGroup.entries.map(entry => timelineSourceRef(entry, revision)),
@@ -396,7 +407,15 @@ function knowledgeItems(snapshot, target, memoryEvidence) {
         contextItemId: 'knowledge:' + item.identity,
         lane: CONTEXT_LANES.knowledge,
         reason: item.reason,
-        sourceRefs: [],
+        sourceRefs: item.knowledgeEntryId ? normalizeContextSourceRefs([{
+            kind: 'knowledge',
+            knowledgeBindingId: item.knowledgeBindingId,
+            knowledgeBaseId: item.knowledgeBaseId,
+            knowledgeRevisionId: item.knowledgeRevisionId,
+            knowledgeEntryId: item.knowledgeEntryId,
+            revisionId: snapshot?.revision?.revisionId,
+            branchId: snapshot?.revision?.branchId,
+        }]) : [],
         metadata: clone(item),
     }));
     for (const item of plan.authorityEvidence?.memory?.rejected ?? []) {
@@ -747,7 +766,12 @@ export class SessionContextCompiler {
             });
         }
         const coverage = coverageDiagnostics(snapshot, derivedState);
-        const raw = groupTimeline(snapshot.timeline, snapshot.revision, coverage.narrativeThroughSequence);
+        const raw = groupTimeline(
+            snapshot.timeline,
+            snapshot.revision,
+            coverage.narrativeThroughSequence,
+            options.promptContentByMessageId,
+        );
         const knowledge = knowledgeItems(snapshot, target, options.memoryEvidence);
         const branchScope = currentBranchScope(snapshot);
         const narrative = narrativeItems(derivedState, branchScope);

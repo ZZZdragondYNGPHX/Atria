@@ -16288,7 +16288,7 @@ jQuery(() => {
     ]) {
         onNativeSessionLifecycle(lifecycle, refreshNativeMemoryRevisionState);
     }
-    onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, async event => {
+    onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, event => {
         if (!nativeSessionRuntime.active) return;
         const appended = new Set(Array.isArray(event?.messageIds) ? event.messageIds : []);
         const runtimeContext = getContext();
@@ -16301,17 +16301,20 @@ jQuery(() => {
             .map(({ floor }) => floor);
         if (!assistantFloors.length) return;
 
-        // N7 cheap-ingest path: provenance/source capture is deterministic and
-        // performs no model call. Heavy semantic extraction is decided later
-        // by runScheduledExtractionPass through the Derivation Gate.
-        if (isMemoryOsEnabled(getEffectiveSettings(runtimeContext, getSettings()))) {
-            try {
-                await sourceLifecycle.capture(runtimeContext, assistantFloors);
-            } catch (error) {
-                console.warn(`[${MODULE_NAME}] Native cheap Memory ingest failed; raw Timeline remains authoritative`, error);
+        // Lifecycle dispatch happens inside the Native Session write queue.
+        // Never await another SessionState write from this listener: doing so
+        // would queue behind the commit that is waiting for this listener.
+        // Cheap ingest runs detached, then schedules gated heavy work.
+        void (async () => {
+            if (isMemoryOsEnabled(getEffectiveSettings(runtimeContext, getSettings()))) {
+                try {
+                    await sourceLifecycle.capture(runtimeContext, assistantFloors);
+                } catch (error) {
+                    console.warn(`[${MODULE_NAME}] Native cheap Memory ingest failed; raw Timeline remains authoritative`, error);
+                }
             }
-        }
-        scheduleExtraction(runtimeContext);
+            scheduleExtraction(runtimeContext);
+        })();
     });
 
     const wiBeforeEvent = context.eventTypes.GENERATION_BEFORE_WORLD_INFO_SCAN;

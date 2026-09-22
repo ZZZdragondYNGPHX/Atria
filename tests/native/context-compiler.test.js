@@ -99,6 +99,29 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
         }
     }, 30000);
 
+    test('Recent Raw token accounting uses generation-processed prompt text while retaining canonical sourceRefs', async () => {
+        const snapshot = buildSnapshot(4);
+        const target = snapshot.timeline.at(-1);
+        const expanded = 'REGEX_EXPANDED '.repeat(160);
+        const plan = await compileNativeContextPlan(snapshot, budget({
+            laneCaps: { [CONTEXT_LANES.recentRaw]: 520 },
+            minimumGuarantees: { [CONTEXT_LANES.recentRaw]: 300 },
+            promptContentByMessageId: { [target.messageId]: expanded },
+        }));
+        const group = [
+            ...plan.included,
+            ...plan.rejected,
+        ].find(item => item.sourceRefs?.some(ref => ref.messageId === target.messageId));
+        expect(group).toBeDefined();
+        expect(group.sourceRefs.some(ref => ref.messageId === target.messageId)).toBe(true);
+        if (plan.included.includes(group)) {
+            expect(group.tokenCount).toBeGreaterThan(300);
+        } else {
+            expect(['budget', 'lane_cap', 'derived_lag_budget', 'outside_recent_raw_window'])
+                .toContain(group.reason);
+        }
+    });
+
     test('Recent Raw uses complete TurnGroups and never partial-message trimming', async () => {
         const snapshot = buildSnapshot(50);
         snapshot.timeline.push({
