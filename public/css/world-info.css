@@ -3640,7 +3640,10 @@ select.keyselect+span.select2-container .select2-selection--multiple {
    Keeping #WorldInfo as the mounted root preserves every existing selector,
    listener and data owner while removing legacy drawer positioning. */
 #WorldInfo[data-atria-workspace-embedded="true"] {
+    display: flex !important;
     position: relative !important;
+    flex: 1 1 0;
+    flex-direction: column;
     inset: auto !important;
     top: auto !important;
     right: auto !important;
@@ -3654,18 +3657,55 @@ select.keyselect+span.select2-container .select2-selection--multiple {
     min-width: 0 !important;
     min-height: 0 !important;
     margin: 0 !important;
+    overflow: hidden !important;
     transform: none !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
 }
 
-#WorldInfo[data-atria-workspace-embedded="true"] #world_popup,
+/* Embedded World Info is a first-class workspace, not a legacy drawer.
+   Define the complete height/flex chain here so compact/mobile rendering
+   never depends on inherited drawer rules or viewport-specific ordering. */
+#WorldInfo[data-atria-workspace-embedded="true"] > #WorldInfoheader,
+#WorldInfo[data-atria-workspace-embedded="true"] > .flex-container:first-of-type,
+#WorldInfo[data-atria-workspace-embedded="true"] #wiTopBlock {
+    display: none !important;
+}
+
+#WorldInfo[data-atria-workspace-embedded="true"] > #wi-holder {
+    display: flex !important;
+    flex: 1 1 0;
+    flex-direction: column;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
+
+#WorldInfo[data-atria-workspace-embedded="true"] #world_popup {
+    display: flex !important;
+    flex: 1 1 0;
+    flex-direction: column;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
 #WorldInfo[data-atria-workspace-embedded="true"] #wi_workspace_shell {
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
+    display: flex !important;
+    flex: 1 1 0;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden;
 }
 
 #WorldInfo[data-atria-workspace-embedded="true"] #wi_workspace_close {
