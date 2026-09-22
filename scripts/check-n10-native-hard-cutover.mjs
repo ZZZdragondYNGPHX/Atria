@@ -140,13 +140,23 @@ requirePattern(
     'N10 Manage Chat Files must fail closed during an active Native Session',
 );
 requirePattern(
+    'public/script.js',
+    /select_selected_character[\s\S]{0,260}nativeSessionRuntime\.active[\s\S]{0,220}Character\/CardApp editor/,
+    'N10 transient Native Character projection must not open the Character/CardApp editor',
+);
+requirePattern(
+    'public/script.js',
+    /#export_button[\s\S]{0,260}nativeSessionRuntime\.active[\s\S]{0,220}PNG\/JSON\/CharX\/BYAF export/,
+    'N10 Character export must fail closed during an active Native Session',
+);
+requirePattern(
     'public/scripts/bookmarks.js',
     /function nativeCheckpointRetired[\s\S]*nativeSessionRuntime\.active[\s\S]*createNewBookmark[\s\S]*nativeCheckpointRetired/,
     'N10 Checkpoint Chat must fail closed during an active Native Session',
 );
 requirePattern(
     'public/css/atria-shell.css',
-    /data-atria-native-session-active[\s\S]*#option_select_chat[\s\S]*#option_new_bookmark[\s\S]*#option_back_to_main/,
+    /data-atria-native-session-active[\s\S]*#option_select_chat[\s\S]*#option_new_bookmark[\s\S]*#option_back_to_main[\s\S]*#character_import_button[\s\S]*#export_button/,
     'N10 retired Native chat-file/checkpoint controls must remain hidden',
 );
 
