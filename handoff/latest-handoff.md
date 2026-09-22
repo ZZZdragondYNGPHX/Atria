@@ -1,63 +1,55 @@
-# Active checkpoint: Native Authoring Platform refactor ready for A0
+# Active checkpoint: Native Authoring Platform A0 complete; ready for A1
 
 ## Status
 
-**Atria Native Content & Session Architecture N0–N10 is complete and remains frozen. A new hard-cutover refactor has completed design and is ready to start A0 implementation.**
+**Atria Native Authoring Platform & Product Frontend Refactor has completed A0 — Contracts & Hard-cutover Guards.**
 
-New task:
+Prior Atria Native Content & Session Architecture N0–N10 remains complete and frozen.
 
-**Atria Native Authoring Platform & Product Frontend Refactor**
-
-- Baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
+- Repository: `ZZZdragondYNGPHX/Atria`
+- Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- Branch was created directly from the baseline above.
-- Implementation status: **not started**
+- A0 validated HEAD: `1e7d32ac74411e98a5003be72c5dc06d8d72966e`
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Detailed handoff: `handoff/atria-native-authoring-platform-product-frontend.md`
+- Next phase: **A1 — Native Authoring Backend**
+- Do not create a new implementation branch and do not merge `main`.
 
-Do not redo N0–N10 and do not redesign the new task from scratch.
+## A0 frozen contracts
 
-## Frozen direction
+A0 now freezes and tests:
 
-This is a hard cutover, not a compatibility upgrade.
+- Experience: Text / Component / Hybrid / Full;
+- shared Component Model version for Component / Hybrid / Full;
+- Resource Descriptor / Resource Registry;
+- Resource Graph = `derived-readonly`;
+- shared Authoring Operation / Workspace / ChangeSet path for human / agent / plugin origins;
+- optimistic Project revision/conflict contract, with revision represented as an opaque token;
+- Native Runtime Descriptor using existing Package / PackageVersion / EntryPoint authority and existing Package capabilities;
+- Atria Plugin contract;
+- package-runtime-v1 = declarative only, no arbitrary package JavaScript execution;
+- Native Skill scopes = global / project / package;
+- hard-cutover guard preventing new Native authoring code from restoring CardApp, `game.json`, charId, swipe or Chat State/FloorState game authority.
 
-Key frozen decisions:
+No second Manifest, ProjectStore, Session, World, Timeline, Resource Graph persistence authority or Package capability vocabulary was introduced.
 
-- primary product domains become Play / Library / Build / Agents / Runtime;
-- Studio becomes the project workspace inside Build;
-- Experience is explicitly Text / Component / Hybrid / Full;
-- Component / Hybrid / Full share one component model;
-- World / Knowledge / worldbook authoring is a first-class game-asset workflow;
-- Library supports reusable asset attachment/forking with exact immutable revisions;
-- Resource Graph is derived only, never a second authority;
-- Human editors and Project Agent share Authoring Operations / Workspace / ChangeSet;
-- Plugin and Skill are separate concepts;
-- package runtime v1 executes no arbitrary package JavaScript;
-- `game.json`, charId game-package identity, swipe-derived game-world branches and Chat State game-world authority are retired through the new Runtime Descriptor + Native Session model;
-- old CardApp Studio / `/api/card-app/*` / old Studio AI paths are migrated for useful capability and then deleted without compatibility aliases;
-- official product surfaces converge on an Atria-native Product UI System;
-- final Play UI must stop depending on reparented SillyTavern chat/composer DOM as the official product implementation.
+## A0 validation
 
-## Implementation phases
+Validated at `1e7d32ac74411e98a5003be72c5dc06d8d72966e`:
 
-Use the same branch for all phases:
+- Workflow: **Native Authoring Platform A0 Checks #4**
+- Run: **35799024194**
+- focused/adjacent tests: **5 suites / 50 tests passed**
+- A0 hard-cutover residual guard: **success**
+- guard syntax: **success**
+- focused ESLint: **success**
+- full root lint: **success**
 
-- A0 — Contracts & Hard-cutover Guards
-- A1 — Native Authoring Backend
-- A2 — Library & Resource Architecture
-- A3 — Native Game Runtime Cutover
-- A4 — Experience Runtime
-- A5 — Plugin & Skill Platform
-- A6 — Native Product Frontend
-- A7 — Studio Authoring UX
-- A8 — Project Agent / Vibe Coding
-- A9 — Hard Cutover & Product Finalization
+Formal plan design did not change, so the plan file was not mechanically edited.
 
-After every phase: validate, commit/push, update docs/handoff, stop, and provide the next-phase takeover prompt. Do not create a new phase branch and do not merge `main` until the entire refactor reaches final integration.
+## Next action — A1 only
 
-## Next action
-
-Start **A0 — Contracts & Hard-cutover Guards** only.
+Start **A1 — Native Authoring Backend** on the same branch.
 
 Before editing, re-read:
 
@@ -66,18 +58,10 @@ Before editing, re-read:
 3. this latest handoff
 4. `docs:refactor/atria-native-authoring-platform-product-frontend.md`
 5. `docs:handoff/atria-native-authoring-platform-product-frontend.md`
+6. `src/native/authoring-contracts.js`
 
-Fetch the implementation branch and use its actual latest HEAD.
+Fetch the implementation branch and use its actual latest remote HEAD. Preserve all A0 contracts and guards.
 
-A0 should freeze/test:
+A1 should implement the dedicated Native authoring backend boundary (StudioService / `/api/native/studio/*` or equivalent), project source CRUD, batch/transactional Authoring Operations, Workspace/ChangeSet execution, validation/diagnostic seams, optimistic revision conflict handling, and build/preview/history seams using existing Native authorities.
 
-- Experience contract;
-- Resource Descriptor / Registry contracts;
-- Authoring Operation / Workspace / ChangeSet contracts;
-- project revision/conflict semantics;
-- Runtime Descriptor contract;
-- Atria Plugin + package-runtime-v1 restrictions;
-- Native Skill scope contract;
-- residual guards preventing retired authorities from reappearing.
-
-Do not start broad backend or UI implementation during A0.
+Do not start A2 Resource Graph/Library architecture, broad Studio UI, Product Frontend, Runtime cutover or Plugin platform implementation during A1.
