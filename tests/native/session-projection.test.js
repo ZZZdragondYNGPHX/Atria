@@ -103,6 +103,23 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect(exactPostUser.timeline.at(-1).role).toBe('user');
     });
 
+    test('empty assistant Draft after committed user turn is discarded without advancing HEAD', async () => {
+        expect(await runtime.prepareGeneration('normal')).toBe('normal');
+
+        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'Stop after this user turn', extra: {} });
+        await runtime.persist();
+        const postUserRevision = runtime.snapshot.revision.revisionId;
+        expect(runtime.generation).toMatchObject({ kind: 'append' });
+
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: '...', extra: {} });
+        await runtime.persist();
+
+        expect(runtime.snapshot.revision.revisionId).toBe(postUserRevision);
+        expect(runtime.snapshot.timeline.at(-1)).toMatchObject({ role: 'user', content: 'Stop after this user turn' });
+        expect(messages.at(-1).is_user).toBe(true);
+        expect(runtime.generation).toBeNull();
+    });
+
     test('Continue keeps the committed assistant immutable and appends continuationOf entry', async () => {
         await appendUser();
         const assistant = await generateAssistant('The harbor');
