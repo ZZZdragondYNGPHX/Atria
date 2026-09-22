@@ -92,6 +92,29 @@ export function isAnchoredSnapshotStillValid(messages, playableFloor, anchorHash
     return stored === live;
 }
 
+export function getNativeMessageAt(messages, messageId) {
+    const id = String(messageId || '').trim();
+    if (!id || !Array.isArray(messages)) return null;
+    const index = messages.findIndex(message => String(message?.atri_native?.messageId || '') === id);
+    return index >= 0 ? { index, message: messages[index] } : null;
+}
+
+export function getPlayableFloorAtIndex(messages, endIndex) {
+    if (!Array.isArray(messages) || !Number.isInteger(endIndex) || endIndex < 0 || endIndex >= messages.length) return 0;
+    return messages.slice(0, endIndex + 1).reduce(
+        (count, message) => count + (message && !message.is_system ? 1 : 0),
+        0,
+    );
+}
+
+export function isNativeAnchoredSnapshotStillValid(messages, messageId, anchorHash) {
+    const target = getNativeMessageAt(messages, messageId);
+    if (!target?.message || target.message.is_system || !target.message.is_user) return false;
+    const stored = String(anchorHash || '').trim();
+    if (!stored) return false;
+    return stored === String(hashAnchorText(String(target.message.mes ?? '')));
+}
+
 /**
  * Find the last user message in `messages`. Returns
  * `{ index: -1, message: null }` when the chat has no user message yet.
@@ -108,9 +131,9 @@ export function extractLastUserMessage(messages) {
 
 /**
  * Build a content-hashed anchor at the last user turn in `messages`. The
- * shape is intentionally minimal — the persistence layer derives chatIndex
- * + swipeId from the live chat at commit time, so anchors can travel
- * through layers that don't know the live chat.
+ * Native projections also carry an opaque `messageId`; persistence uses
+ * that stable ID as the authoritative key. Legacy/ST callers keep the
+ * playable-floor compatibility coordinates.
  */
 export function buildLastUserAnchorFromMessages(messages) {
     const { index, message } = extractLastUserMessage(messages);
@@ -125,9 +148,11 @@ export function buildLastUserAnchorFromMessages(messages) {
             playableSeq += 1;
         }
     }
+    const messageId = String(message?.atri_native?.messageId || '').trim();
     return {
         floor: index + 1,
         playableFloor: normalizeAnchorPlayableFloor(playableSeq),
+        ...(messageId ? { messageId } : {}),
         hash: String(hashAnchorText(text)),
     };
 }

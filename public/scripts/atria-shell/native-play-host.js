@@ -1,3 +1,5 @@
+import { mountNativePlayControls } from '../native/play-controls.js';
+
 const REQUIRED_NATIVE_IDS = Object.freeze([
     'sheld',
     'chat',
@@ -88,6 +90,7 @@ export function mountNativePlayHost({
 
     stage.replaceChildren(root);
     root.appendChild(native.sheld);
+    const productControls = mountNativePlayControls({ document: documentRef, root });
     stage.dataset.atriaNativePlayMounted = 'true';
     native.sheld.dataset.atriaNativePlayMounted = 'true';
 
@@ -253,10 +256,12 @@ export function mountNativePlayHost({
         getActiveNativeComponents: () => [...nativeComponentMounts.keys()],
         acquireStageOwnership,
         getStageOwner: () => stageOwnership?.owner || null,
+        productControls,
         unmount() {
             if (!mounted) return false;
 
             restoreNativeComponents();
+            productControls.dispose();
             stageOwnership?.release();
             stageOwnership = null;
 

@@ -2,6 +2,14 @@ import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
+import {
+    NATIVE_STORAGE_KINDS,
+    decodeNativeResourceKey,
+    encodeNativeResourceKey,
+    nativeResourceMatchesFilter,
+    normalizeNativeResourceKey,
+    sortAndLimitNativeRecords,
+} from './native-resource-key.js';
 
 export class SqliteTransaction {
     constructor({ db, handle, directoriesByHandle }) {
@@ -16,6 +24,7 @@ export class SqliteTransaction {
         registerNamedDocHandler(this);
         registerGroupHandler(this);
         registerStatsHandler(this);
+        registerNativeResourceHandlers(this);
     }
 
     _h(kind, method) {
@@ -54,6 +63,10 @@ export class SqliteTransaction {
     async listResources(filter)  { return this._h(filter.kind, 'listResources').list(filter); }
 
     async putResourceIfMatch(key, expectedIntegrity, record) {
+        const handler = this._h(key.kind, 'putResourceIfMatch');
+        if (typeof handler.putIfMatch === 'function') {
+            return handler.putIfMatch(key, expectedIntegrity, record);
+        }
         const existing = await this.getResource(key);
         if (expectedIntegrity === null) {
             if (existing !== null) return { updated: false };
@@ -887,4 +900,108 @@ export function registerStatsHandler(tx) {
         },
         list() { throw new Error('SqliteTransaction.list: stats is a singleton'); },
     });
+}
+
+export function registerNativeResourceHandlers(tx) {
+    const db = tx._db;
+    const getStmt = db.prepare(`SELECT doc, integrity, updated_at, created_at
+        FROM native_resources WHERE handle=? AND kind=? AND resource_key=?`);
+    const upsertStmt = db.prepare(`INSERT INTO native_resources
+        (handle, kind, resource_key, doc, integrity, updated_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(handle, kind, resource_key) DO UPDATE SET
+            doc=excluded.doc, integrity=excluded.integrity, updated_at=excluded.updated_at`);
+    const insertIfAbsentStmt = db.prepare(`INSERT INTO native_resources
+        (handle, kind, resource_key, doc, integrity, updated_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(handle, kind, resource_key) DO NOTHING`);
+    const updateIfMatchStmt = db.prepare(`UPDATE native_resources
+        SET doc=?, integrity=?, updated_at=?
+        WHERE handle=? AND kind=? AND resource_key=? AND integrity=?`);
+    const deleteStmt = db.prepare(
+        'DELETE FROM native_resources WHERE handle=? AND kind=? AND resource_key=?',
+    );
+    const listStmt = db.prepare(`SELECT resource_key, doc, integrity, updated_at, created_at
+        FROM native_resources WHERE handle=? AND kind=?`);
+
+    const params = (key) => {
+        const normalized = normalizeNativeResourceKey(key);
+        return {
+            key: normalized,
+            resourceKey: encodeNativeResourceKey(normalized),
+        };
+    };
+    const parseRow = (kind, handle, row) => {
+        if (!row) return null;
+        let doc;
+        try { doc = JSON.parse(row.doc); } catch { return null; }
+        return {
+            key: decodeNativeResourceKey(kind, handle, row.resource_key),
+            doc,
+            integrity: String(row.integrity || ''),
+            updatedAt: Number(row.updated_at || 0),
+            createdAt: Number(row.created_at || 0),
+        };
+    };
+    const handler = {
+        get(key) {
+            const p = params(key);
+            const row = getStmt.get(p.key.handle, p.key.kind, p.resourceKey);
+            if (!row) return null;
+            return parseRow(p.key.kind, p.key.handle, { ...row, resource_key: p.resourceKey });
+        },
+        put(key, record) {
+            const p = params(key);
+            const now = Date.now();
+            const existing = getStmt.get(p.key.handle, p.key.kind, p.resourceKey);
+            upsertStmt.run(
+                p.key.handle,
+                p.key.kind,
+                p.resourceKey,
+                JSON.stringify(record.doc),
+                String(record.integrity || ''),
+                Number(record.updatedAt ?? now),
+                Number(record.createdAt ?? existing?.created_at ?? now),
+            );
+        },
+        putIfMatch(key, expectedIntegrity, record) {
+            const p = params(key);
+            const now = Date.now();
+            if (expectedIntegrity === null) {
+                const result = insertIfAbsentStmt.run(
+                    p.key.handle,
+                    p.key.kind,
+                    p.resourceKey,
+                    JSON.stringify(record.doc),
+                    String(record.integrity || ''),
+                    Number(record.updatedAt ?? now),
+                    Number(record.createdAt ?? now),
+                );
+                return { updated: result.changes === 1 };
+            }
+            const result = updateIfMatchStmt.run(
+                JSON.stringify(record.doc),
+                String(record.integrity || ''),
+                Number(record.updatedAt ?? now),
+                p.key.handle,
+                p.key.kind,
+                p.resourceKey,
+                String(expectedIntegrity),
+            );
+            return { updated: result.changes === 1 };
+        },
+        delete(key) {
+            const p = params(key);
+            return deleteStmt.run(p.key.handle, p.key.kind, p.resourceKey).changes > 0;
+        },
+        list(filter) {
+            const rows = listStmt.all(filter.handle, filter.kind);
+            const records = rows
+                .map(row => parseRow(filter.kind, filter.handle, row))
+                .filter(Boolean)
+                .filter(record => nativeResourceMatchesFilter(record.key, filter));
+            return sortAndLimitNativeRecords(records, filter);
+        },
+    };
+    for (const kind of NATIVE_STORAGE_KINDS) tx._handlers.set(kind, handler);
 }

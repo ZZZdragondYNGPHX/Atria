@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import {
+    LIBRARY_SECTIONS,
     mountLibraryDomainWorkspace,
     mountRuntimeDomainWorkspace,
     normalizeLibrarySection,
@@ -16,18 +17,23 @@ async function flush() {
     await new Promise(resolve => setTimeout(resolve, 0));
 }
 
-describe('R7F Library / Runtime domain adapters', () => {
+function jsonResponse(payload, status = 200) {
+    return {
+        ok: status >= 200 && status < 300,
+        status,
+        async json() {
+            return payload;
+        },
+    };
+}
+
+describe('N9 Library / Runtime domain adapters', () => {
     let context;
 
     beforeEach(() => {
         document.body.innerHTML = `
             <div id="legacy-character-home">
-                <section id="right-nav-panel" class="drawer-content closedDrawer" aria-hidden="true">
-                    <button id="rm_button_characters"></button>
-                    <div id="rm_print_characters_block">
-                        <button class="character_select" chid="1">Alice</button>
-                    </div>
-                </section>
+                <section id="right-nav-panel" class="drawer-content closedDrawer" aria-hidden="true"></section>
             </div>
             <div id="legacy-api-home">
                 <div id="rm_api_block" class="drawer-content closedDrawer" aria-hidden="true">
@@ -44,14 +50,6 @@ describe('R7F Library / Runtime domain adapters', () => {
         `;
 
         context = {
-            characterId: 0,
-            characters: [
-                { name: 'Zero', avatar: 'zero.png' },
-                { name: 'Alice', avatar: 'alice.png' },
-            ],
-            selectCharacterById: jest.fn(async id => {
-                context.characterId = id;
-            }),
             extensionSettings: {
                 connectionManager: {
                     profiles: [],
@@ -59,31 +57,66 @@ describe('R7F Library / Runtime domain adapters', () => {
                 },
             },
             getExtensionApi: jest.fn(() => null),
+            getRequestHeaders: jest.fn(() => ({ 'X-CSRF-Token': 'test' })),
         };
         globalThis.Atria = { getContext: () => context };
+        globalThis.fetch = jest.fn(async (url) => {
+            const value = String(url);
+            if (value.endsWith('/api/native/product/works')) {
+                return jsonResponse([{
+                    package: {
+                        packageId: 'pkg_11111111111111111111111111111111',
+                        displayName: 'Native Work',
+                        currentVersionId: 'pkgv_11111111111111111111111111111111',
+                    },
+                    packageVersion: {
+                        packageVersionId: 'pkgv_11111111111111111111111111111111',
+                        version: '1.0.0',
+                    },
+                    manifest: {
+                        name: 'Native Work',
+                        description: 'Native authority',
+                        entryPoints: [],
+                    },
+                    status: 'ready',
+                    sessionCount: 0,
+                }]);
+            }
+            if (value.endsWith('/api/native/product/sessions')) {
+                return jsonResponse([]);
+            }
+            throw new Error('Unexpected fetch: ' + value);
+        });
     });
 
     afterEach(() => {
         delete globalThis.Atria;
+        delete globalThis.fetch;
     });
 
-    test('normalizes Library and Runtime child routes without defining another router', () => {
-        expect(normalizeLibrarySection({ child: null })).toBe('characters');
-        expect(normalizeLibrarySection({ child: { id: 'character:12' } })).toBe('characters');
-        expect(normalizeLibrarySection({ child: { id: 'world-info' } })).toBe('world-info');
+    test('normalizes Native Library and existing Runtime child routes without defining another router', () => {
+        expect(normalizeLibrarySection({ child: null })).toBe('works');
+        expect(normalizeLibrarySection({ child: { id: 'work:pkg_1' } })).toBe('works');
+        expect(normalizeLibrarySection({ child: { id: 'worlds' } })).toBe('worlds-knowledge');
+        expect(normalizeLibrarySection({ child: { id: 'world:world_1' } })).toBe('worlds-knowledge');
+        expect(normalizeLibrarySection({ child: { id: 'knowledge' } })).toBe('worlds-knowledge');
+        expect(normalizeLibrarySection({ child: { id: 'knowledge:kb_1' } })).toBe('worlds-knowledge');
+        expect(LIBRARY_SECTIONS.map(section => section.id)).toEqual(['works', 'worlds-knowledge', 'skills']);
+
         expect(normalizeRuntimeSection({ child: null })).toBe('overview');
         expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('connections');
         expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['overview', 'roles', 'connections', 'presets']);
     });
 
-    test('Characters reparents the existing controller root and restores the exact node on dispose', async () => {
+    test('Works is the default Library authority and does not mount the Character controller', async () => {
         const slot = document.getElementById('slot');
-        const original = document.getElementById('right-nav-panel');
-        const originalParent = original.parentNode;
+        const characterRoot = document.getElementById('right-nav-panel');
+        const characterParent = characterRoot.parentNode;
         const host = {
             openLibrarySection: jest.fn(),
-            openLibraryCharacter: jest.fn(),
-            openStudio: jest.fn(),
+            openLibraryWork: jest.fn(),
+            openLibraryWorld: jest.fn(),
+            openLibraryKnowledge: jest.fn(),
             openPlay: jest.fn(),
         };
 
@@ -95,28 +128,19 @@ describe('R7F Library / Runtime domain adapters', () => {
         });
         await flush();
 
-        expect(document.getElementById('right-nav-panel')).toBe(original);
-        expect(slot.contains(original)).toBe(true);
-        expect(original.dataset.atriaWorkspaceEmbedded).toBe('true');
-        expect(original.classList.contains('openDrawer')).toBe(true);
+        expect(slot.querySelector('[data-atria-native-library="works"]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-native-works="true"]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-work-id]')).not.toBeNull();
+        expect(characterRoot.parentNode).toBe(characterParent);
+        expect(characterRoot.dataset.atriaWorkspaceEmbedded).toBeUndefined();
 
-        original.querySelector('.character_select').click();
-        await flush();
-        expect(host.openLibraryCharacter).toHaveBeenCalledWith(1, 'Alice');
-
-        controller.updateRoute({
-            domain: 'library',
-            child: { id: 'character:1', label: 'Alice', kind: 'detail' },
-        });
-        await flush();
-        expect(context.selectCharacterById).toHaveBeenCalledWith(1);
+        slot.querySelector('[data-atria-work-id] button').click();
+        expect(host.openLibraryWork).toHaveBeenCalledWith(
+            'pkg_11111111111111111111111111111111',
+            'Native Work',
+        );
 
         controller.dispose();
-        await flush();
-        expect(original.parentNode).toBe(originalParent);
-        expect(original.className).toBe('drawer-content closedDrawer');
-        expect(original.getAttribute('aria-hidden')).toBe('true');
-        expect(original.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 
     test('Connections embeds the complete native API authority and keeps old Retrieval routes inside it', async () => {

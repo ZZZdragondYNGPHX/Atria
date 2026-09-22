@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
-    SOURCE_ID_FIELD, normalizeProvenance, emptyProvenance, sourceContent,
+    SOURCE_ID_FIELD, normalizeProvenance, emptyProvenance, sourceContent, sourceMessageId,
     reconcileSources, reconcileExternalSources, captureEpisodes, episodesAreCurrent,
     externalSourcesAreCurrent, bindDerivedChanges, projectCurrentSources,
 } from './source-provenance.js';
@@ -12,6 +12,20 @@ import { historyData } from './history-build.js';
 import { reconcileProviders } from './provider-provenance.js';
 
 export const PROVENANCE_NAMESPACE = 'memory_graph__provenance';
+export const NATIVE_PROVENANCE_NAMESPACE = 'atri_memory_graph.provenance';
+
+function isNativeSessionContext(context) {
+    return Array.isArray(context?.chat)
+        && context.chat.some(message => String(message?.atri_native?.messageId || '').trim());
+}
+
+function provenanceNamespace(context) {
+    return isNativeSessionContext(context) ? NATIVE_PROVENANCE_NAMESPACE : PROVENANCE_NAMESPACE;
+}
+
+function provenanceOptions(context, target) {
+    return isNativeSessionContext(context) ? {} : { target };
+}
 
 let configuredLifecycle = null;
 export function configureSourceLifecycle(options) {
@@ -71,7 +85,7 @@ export function createSourceLifecycle({
 
     function observeMutation(context, floor) {
         const key = resolveScope(context)?.key;
-        const id = context.chat?.[floor]?.[SOURCE_ID_FIELD];
+        const id = sourceMessageId(context.chat?.[floor]);
         if (!key || !id) return;
         const observationKey = `${key}:${id}`;
         const content = sourceContent(context.chat[floor]);
@@ -114,7 +128,8 @@ export function createSourceLifecycle({
         const scope = session(context);
         return enqueue(scope.key, async () => {
             scope.assertLive();
-            const result = await context.getChatState(PROVENANCE_NAMESPACE, { target: scope.target });
+            const namespace = provenanceNamespace(context);
+            const result = await context.getChatState(namespace, provenanceOptions(context, scope.target));
             scope.assertLive();
             if (!result?.ok) throw new Error('Memory provenance read failed');
             if (result.state && result.state.version !== 1) throw new Error('Unsupported memory provenance version');
@@ -150,13 +165,13 @@ export function createSourceLifecycle({
             validate();
             validateSources();
             if (before !== JSON.stringify(state)) {
-                const saved = await context.updateChatState(PROVENANCE_NAMESPACE, currentState => {
+                const saved = await context.updateChatState(namespace, currentState => {
                     scope.assertLive();
                     validate();
                     validateSources();
                     if (validateStored) validateStored(normalizeProvenance(currentState));
                     return state;
-                }, { target: scope.target });
+                }, provenanceOptions(context, scope.target));
                 scope.assertLive();
                 if (!saved?.ok) throw new Error('Memory provenance write failed');
             }
@@ -204,8 +219,14 @@ export function createSourceLifecycle({
         for (const floor of selected) {
             const message = scope.chat[floor];
             if (expected && expected[floor] !== sourceContent(message)) throw abort();
-            const id = message[SOURCE_ID_FIELD];
-            if (typeof id !== 'string' || !id || scope.chat.filter(item => item?.[SOURCE_ID_FIELD] === id).length !== 1) {
+            const id = sourceMessageId(message);
+            const occurrences = id
+                ? scope.chat.filter(item => sourceMessageId(item) === id).length
+                : 0;
+            if (!id || occurrences !== 1) {
+                if (String(message?.atri_native?.messageId || '').trim()) {
+                    throw new Error('Native memory source requires a unique messageId');
+                }
                 message[SOURCE_ID_FIELD] = newId();
                 changed = true;
             }
@@ -251,6 +272,7 @@ export function createSourceLifecycle({
     }
 
     async function inherit(context, payload) {
+        if (isNativeSessionContext(context)) return;
         if (!enabled(context) || !payload?.sourceTarget || !payload?.targetTarget) return;
         const target = resolveScope(context, payload.targetTarget);
         await enqueue(target.key, async () => {

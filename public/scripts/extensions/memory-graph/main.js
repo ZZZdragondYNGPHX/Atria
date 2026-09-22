@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 import { collectExtractTransaction, logExtractResponse } from './extract-transaction.js';
+import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    onNativeSessionLifecycle,
+} from '../../native/session-lifecycle.js';
 
 const __ctx = Atria.getContext();
 const event_types = __ctx.eventTypes;
@@ -66,6 +71,7 @@ import { openHistoryBuildPopup } from './history-build-ui.js';
 import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
+import { evaluateDerivationGate } from '../../native/context-derived.js';
 import { FACT_TOOL_NAME, factExtractionTool, factExtractionContext, readFactToolCalls } from './fact-extraction.js';
 import { temporalExtractionContext, readTemporalToolCalls } from './temporal-extraction.js';
 import {
@@ -104,6 +110,16 @@ import { cloneRollbackNodeSnapshot, cloneRollbackEdgeSnapshot, addEdge, removeEd
 import { __recordInjectedNodeIds } from './external-api.js';
 
 const MODULE_NAME = 'memory_graph';
+
+function isNativeMemorySession(context = getContext()) {
+    return Boolean(nativeSessionRuntime.active)
+        || (Array.isArray(context?.chat)
+            && context.chat.some(message => String(message?.atri_native?.messageId || '').trim()));
+}
+
+function getNativeMemorySessionId() {
+    return String(nativeSessionRuntime.snapshot?.session?.sessionId || '').trim();
+}
 const sourceLifecycle = configureSourceLifecycle({
     getContext,
     resolveScope: (context, target = null) => ({
@@ -472,6 +488,7 @@ const memoryStoreTargets = new Map();
 const memoryLoadTasks = new Map();
 const rollbackHistoryCache = new Map();
 const scheduledExtractionSingleFlightStates = new Map();
+const nativeDerivationJournalSeqBySession = new Map();
 let activeExtractionToast = null;
 let activeRecallToast = null;
 let activePersistentRuntimeNoticeToast = null;
@@ -1112,6 +1129,10 @@ function refreshOpenAIPresetSelectors(root, context, settings) {
 }
 
 function getChatKey(context, explicitTarget = null) {
+    if (isNativeMemorySession(context)) {
+        const sessionId = getNativeMemorySessionId();
+        return sessionId ? `native:${sessionId}` : 'invalid_target';
+    }
     const target = buildMemoryTargetFromContext(context, explicitTarget);
     if (!target) {
         return 'invalid_target';
@@ -1157,6 +1178,12 @@ function normalizeResolvedMemoryTarget(target) {
 }
 
 function buildMemoryTargetFromContext(context, explicitTarget = null) {
+    if (isNativeMemorySession(context)) {
+        const sessionId = getNativeMemorySessionId();
+        return sessionId
+            ? { is_group: false, avatar_url: 'atria-native', file_name: sessionId }
+            : null;
+    }
     const resolvedTarget = resolveChatStateTarget(explicitTarget);
     return normalizeResolvedMemoryTarget(resolvedTarget);
 }
@@ -1339,7 +1366,10 @@ async function deleteMemoryStoreByTarget(context, target) {
     // a fresh instance bound to the (now-empty) namespace.
     resetFloorStateInstance();
     try {
-        const metaResult = await context.deleteChatState(META_NAMESPACE, { target });
+        const metaResult = await context.deleteChatState(
+            META_NAMESPACE,
+            isNativeMemorySession(context) ? {} : { target },
+        );
         if (metaResult && metaResult.ok === false) {
             partial.meta = metaResult.reason;
             console.warn(`[${MODULE_NAME}] meta sidecar delete failed (reason=${metaResult.reason}, hint=${metaResult.hint})`);
@@ -1428,10 +1458,22 @@ async function replaceGraphLogForTarget(context, store, seq, floor) {
     finalPayload.appliedSeqTo = Math.max(finalPayload.appliedSeqTo, normalizedSeq);
     finalPayload.loggedSeqTo = Math.max(finalPayload.loggedSeqTo, normalizedSeq);
 
+    const nativeAuthority = isNativeMemorySession(context);
     const floorResolved = Number.isInteger(floor) && floor >= 0;
     const swipeId = floorResolved ? (activeSwipeIdAtFloor(context, floor) ?? 0) : 0;
     const buildObjectPatchOperationsAsync = context.buildObjectPatchOperationsAsync;
     const patches = await buildObjectPatchOperationsAsync({}, finalPayload);
+
+    if (nativeAuthority && Array.isArray(patches) && patches.length > 0) {
+        const result = await fs.update(() => finalPayload);
+        return {
+            payload: finalPayload,
+            hasCommit: result.ok && result.updated !== false,
+            skipped: !result.ok,
+            reason: result.ok ? null : result.reason,
+            hint: result.ok ? null : result.hint,
+        };
+    }
 
     if (Array.isArray(patches) && patches.length > 0 && floorResolved) {
         const result = await fs.reset([{ floor, swipeId, patches }], { validate: sourceLifecycle.commitGuard(context, normalizedStore) });
@@ -1444,7 +1486,7 @@ async function replaceGraphLogForTarget(context, store, seq, floor) {
         };
     }
 
-    if (!floorResolved) {
+    if (!floorResolved && !nativeAuthority) {
         console.warn(`[${MODULE_NAME}] replace skipped: caller did not supply a valid trigger floor (seq=${normalizedSeq}, floor=${floor}).`);
         return {
             payload: finalPayload,
@@ -1452,6 +1494,17 @@ async function replaceGraphLogForTarget(context, store, seq, floor) {
             skipped: true,
             reason: STATE_ERROR_REASONS.VALIDATION_ARGS,
             hint: 'caller did not supply a valid trigger floor',
+        };
+    }
+
+    if (nativeAuthority) {
+        const result = await fs.update(() => finalPayload);
+        return {
+            payload: finalPayload,
+            hasCommit: result.ok && result.updated !== false,
+            skipped: !result.ok,
+            reason: result.ok ? null : result.reason,
+            hint: result.ok ? null : result.hint,
         };
     }
 
@@ -1501,8 +1554,10 @@ async function loadMemoryStoreByTarget(context, target) {
         throw new Error('Chat state API is unavailable in extension context.');
     }
 
-    const metaResult = await context.getChatState(META_NAMESPACE, { target });
-    const meta = metaResult?.ok ? metaResult.state : null;
+    // Native SessionState has no legacy chat target. The persistence helper
+    // deliberately drops explicit targets while Native is active; Legacy/ST
+    // still reads the selected chat sidecar through the supplied target.
+    const meta = await loadMetaFields(context, target);
 
     // Hard cutover: the current Atria FloorState namespace is the only graph
     // source. Missing current metadata means a fresh Atria graph, not a cue to
@@ -1569,7 +1624,7 @@ async function commitMemoryStoreReplaceByChatKey(context, chatKey, store, seq, {
     if (!target) {
         throw new Error('Memory store target is unavailable.');
     }
-    if (Number.isInteger(floor)) {
+    if (!isNativeMemorySession(context) && Number.isInteger(floor)) {
         const ticket = await sourceLifecycle.capture(context, [Math.max(0, floor - 1), floor]);
         if (ticket) await sourceLifecycle.bind(context, { nodes: {}, edges: [] }, store, ticket);
     }
@@ -1635,7 +1690,7 @@ async function commitMemoryStoreDiffByChatKey(context, chatKey, beforeStore, aft
     if (!target) {
         throw new Error('Memory store target is unavailable.');
     }
-    if (Number.isInteger(floor)) {
+    if (!isNativeMemorySession(context) && Number.isInteger(floor)) {
         const ticket = await sourceLifecycle.capture(context, [Math.max(0, floor - 1), floor]);
         if (ticket) await sourceLifecycle.bind(context, beforeStore, afterStore, ticket);
     }
@@ -1673,14 +1728,17 @@ async function commitMemoryStoreDiffByChatKey(context, chatKey, beforeStore, aft
         // Missing floor is an MG-internal precondition violation (the caller
         // forgot to derive one), NOT a state-API failure. Log + throw a
         // developer-shaped error — the user can't fix it.
-        if (!Number.isInteger(floor) || floor < 0) {
+        const nativeAuthority = isNativeMemorySession(context);
+        if (!nativeAuthority && (!Number.isInteger(floor) || floor < 0)) {
             const internalMsg = `[${MODULE_NAME}] commit-diff caller did not supply a valid floor (seq=${normalizedSeq}, floor=${floor === null ? 'missing' : String(floor)}, chatLen=${chatLen}); commits must be anchored at the chat slot the covered seq maps to`;
             console.error(internalMsg);
             throw new Error(internalMsg);
         }
         let committed;
         try {
-            committed = await fs.update(() => afterPayload, { floor, validate: sourceLifecycle.commitGuard(context, normalizedAfter) });
+            committed = nativeAuthority
+                ? await fs.update(() => afterPayload)
+                : await fs.update(() => afterPayload, { floor, validate: sourceLifecycle.commitGuard(context, normalizedAfter) });
         } catch (error) {
             // fs.update is envelope-typed now and shouldn't throw, but if a
             // dep injection bug or older build leaks through we still
@@ -2014,6 +2072,7 @@ async function persistRecallMetadataByChatKey(context, chatKey, { trace, project
  * and clear runtime caches that might have been populated speculatively.
  */
 async function inheritMemoryStoreForBranch(context, payload) {
+    if (isNativeMemorySession(context)) return;
     const sourceTarget = normalizeExplicitChatStateTarget(payload?.sourceTarget);
     const targetTarget = normalizeExplicitChatStateTarget(payload?.targetTarget);
     if (!sourceTarget || !targetTarget) {
@@ -8183,7 +8242,14 @@ async function syncPersistentLorebookProjection(context, settings, store, assert
     );
     if (isMemoryOsEnabled(settings)) {
         const count = memoryTokenCounter(context);
-        const budget = Math.max(0, memoryTokenBudget(settings) - await count(existingStatePrompt(context, settings)));
+        const contextBudget = nativeSessionRuntime.active
+            ? nativeSessionRuntime.contextLaneBudget('memory')
+            : null;
+        const laneCap = contextBudget ? Math.max(0, Number(contextBudget.tokens) || 0) : Number.POSITIVE_INFINITY;
+        const budget = Math.max(
+            0,
+            Math.min(memoryTokenBudget(settings), laneCap) - await count(existingStatePrompt(context, settings)),
+        );
         while (alwaysInjectNodes.length && await count(corePacket) > budget) {
             assertCurrent();
             alwaysInjectNodes.pop();
@@ -8965,6 +9031,53 @@ async function injectMemoryPrompts(context, payload) {
         corePacket,
         focusPacket: hybrid ? hybrid.text : normalizeMultilineText(buildFocusTablesText(selectedNodes, settings, { tablePrefix: 'Recall' }, context)),
     };
+    if (nativeSessionRuntime.active) {
+        const revisionId = String(nativeSessionRuntime.snapshot?.revision?.revisionId || '');
+        const branchId = String(nativeSessionRuntime.snapshot?.revision?.branchId || '');
+        const sourceMessageIds = new Set(Array.isArray(hybrid?.sourceMessageIds) ? hybrid.sourceMessageIds : []);
+        if (sourceSnapshot?.state?.episodes) {
+            const sourceBackedNodes = [
+                ...(persistentSync.alwaysInjectNodes || []),
+                ...selectedNodes,
+            ];
+            for (const node of sourceBackedNodes) {
+                for (const episodeId of node?.memoryOsEvidence?.episodeIds || []) {
+                    for (const messageId of sourceSnapshot.state.episodes?.[episodeId]?.messageIds || []) {
+                        sourceMessageIds.add(String(messageId || ''));
+                    }
+                }
+            }
+        }
+        const packet = [blocks.corePacket, blocks.focusPacket].filter(Boolean).join('\n');
+        if (packet) {
+            const count = memoryTokenCounter(context);
+            const tokenEstimate = hybrid?.tokenCount ?? await count(packet);
+            const sourceRefs = [...sourceMessageIds].filter(Boolean).map(messageId => ({
+                kind: 'timeline',
+                messageId,
+                revisionId,
+                branchId,
+            }));
+            nativeSessionRuntime.recordContextLane('memory', [{
+                contextItemId: 'memory:recall:' + revisionId,
+                authority: 'memory_history_evidence',
+                authorityRank: 200,
+                priority: 100,
+                content: packet,
+                tokenEstimate,
+                sourceRefs: sourceRefs.length ? sourceRefs : [{
+                    kind: 'memory',
+                    memoryId: 'memory-graph-recall',
+                    revisionId,
+                    branchId,
+                }],
+                metadata: {
+                    selectedNodeIds: hybrid?.selected ?? selectedNodes.map(node => String(node?.id || '')).filter(Boolean),
+                    tokenCounting: hybrid?.tokenCounting || 'memory_token_counter',
+                },
+            }]);
+        }
+    }
     store.lastRecallProjection = {
         at: Date.now(),
         blocks,
@@ -9151,6 +9264,7 @@ async function captureLatestAssistantAfterGeneration() {
         return;
     }
     await ensureMemoryStoreLoaded(context);
+    if (isNativeMemorySession(context)) return;
     scheduleExtraction(context);
 }
 
@@ -9216,6 +9330,59 @@ async function runScheduledExtractionPass(chatKey) {
             refreshUiStats();
             return;
         }
+        if (isNativeMemorySession(runtimeContext)) {
+            const worldState = nativeSessionRuntime.readState('atri_game_world');
+            const journalEvents = Array.isArray(worldState?.journal?.events)
+                ? worldState.journal.events.slice(-32)
+                : [];
+            const sessionId = getNativeMemorySessionId();
+            const previousJournalSeq = sessionId
+                ? Number(nativeDerivationJournalSeqBySession.get(sessionId) || 0)
+                : 0;
+            const newJournalEvents = journalEvents.filter(event =>
+                Number.isInteger(Number(event?.seq)) && Number(event.seq) > previousJournalSeq);
+            const latestJournalSeq = Math.max(
+                previousJournalSeq,
+                ...journalEvents.map(event => Number.isInteger(Number(event?.seq)) ? Number(event.seq) : 0),
+            );
+            if (sessionId) nativeDerivationJournalSeqBySession.set(sessionId, latestJournalSeq);
+            const decision = evaluateDerivationGate({
+                policy: nativeSessionRuntime.currentContextPlan()?.policy || 'balanced',
+                events: newJournalEvents,
+                turnsSinceDigest: preview.gap,
+                memory: {
+                    pendingCount: preview.gap,
+                    conflict: Boolean(store?.lastExtractionDebug?.conflict),
+                    compactionDue: Boolean(store?.lastExtractionDebug?.compactionDue),
+                },
+                hasCommittedEvidence: preview.gap > 0,
+            });
+            if (!decision.runMemoryConsolidation) {
+                store.lastExtractionDebug = {
+                    beginSeq: preview.beginSeq,
+                    latestSeq: preview.latestSeq,
+                    coveredSeqTo: preview.coveredSeqTo,
+                    extracted: false,
+                    reason: 'derivation_gate_deferred',
+                    derivation: {
+                        policy: decision.policy,
+                        cheapMemoryIngest: decision.cheapMemoryIngest,
+                        reasons: [...decision.reasons],
+                    },
+                    at: Date.now(),
+                };
+                updateUiStatus(i18nFormat(
+                    'Extraction ${0}: begin=${1} latest=${2} covered=${3}',
+                    'deferred',
+                    Number(preview.beginSeq || 0),
+                    Number(preview.latestSeq || 0),
+                    Number(preview.coveredSeqTo || 0),
+                ));
+                refreshUiStats();
+                return;
+            }
+        }
+
         const workingStore = normalizeStoreForRuntime(store);
         let committedStore = normalizeStoreForRuntime(store);
         // Publish the pass's scope so `applyMutationInvalidationImpl`
@@ -16062,6 +16229,35 @@ export function _setPersistentDrainHookForTest(hook) {
 export { buildRoleSplitChatMessages as _buildRoleSplitChatMessagesForTest };
 export { processPendingMessageBatchWithLLM as _processPendingMessageBatchWithLLMForTest };
 
+async function refreshNativeMemoryRevisionState() {
+    if (!nativeSessionRuntime.active) return;
+    latestRecallSnapshot = null;
+    const runtimeContext = getContext();
+    const sessionId = getNativeMemorySessionId();
+    const worldState = nativeSessionRuntime.readState('atri_game_world');
+    const journalEvents = Array.isArray(worldState?.journal?.events) ? worldState.journal.events : [];
+    const latestJournalSeq = Math.max(
+        0,
+        ...journalEvents.map(event => Number.isInteger(Number(event?.seq)) ? Number(event.seq) : 0),
+    );
+    if (sessionId) nativeDerivationJournalSeqBySession.set(sessionId, latestJournalSeq);
+    const target = buildMemoryTargetFromContext(runtimeContext);
+    const chatKey = getChatKey(runtimeContext);
+    if (!target || !chatKey || chatKey === 'invalid_target') return;
+    memoryStoreTargets.set(chatKey, target);
+    try {
+        const store = await refreshMemoryStoreCacheFromFloorState(runtimeContext, chatKey);
+        if (store) {
+            await refreshMemorySources(runtimeContext, store);
+            updateStoreSourceState(store, runtimeContext);
+        }
+        refreshUiStats();
+        void syncPersistentProjectionForCurrentChat();
+    } catch (error) {
+        console.warn(`[${MODULE_NAME}] Failed to refresh Native memory revision state`, error);
+    }
+}
+
 jQuery(() => {
     const context = getContext();
     registerLocaleData();
@@ -16088,6 +16284,42 @@ jQuery(() => {
     // is intentionally invisible after the namespace hard cutover.
     void getFloorStateInstance(context).catch((error) => {
         console.warn(`[${MODULE_NAME}] Failed to mount floor-state singleton`, error);
+    });
+
+    for (const lifecycle of [
+        NATIVE_SESSION_LIFECYCLE.SESSION_LOADED,
+        NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
+        NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
+    ]) {
+        onNativeSessionLifecycle(lifecycle, refreshNativeMemoryRevisionState);
+    }
+    onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, event => {
+        if (!nativeSessionRuntime.active) return;
+        const appended = new Set(Array.isArray(event?.messageIds) ? event.messageIds : []);
+        const runtimeContext = getContext();
+        const assistantFloors = (runtimeContext?.chat || [])
+            .map((message, floor) => ({ message, floor }))
+            .filter(({ message }) =>
+                appended.has(String(message?.atri_native?.messageId || ''))
+                && !message?.is_user
+                && !message?.is_system)
+            .map(({ floor }) => floor);
+        if (!assistantFloors.length) return;
+
+        // Lifecycle dispatch happens inside the Native Session write queue.
+        // Never await another SessionState write from this listener: doing so
+        // would queue behind the commit that is waiting for this listener.
+        // Cheap ingest runs detached, then schedules gated heavy work.
+        void (async () => {
+            if (isMemoryOsEnabled(getEffectiveSettings(runtimeContext, getSettings()))) {
+                try {
+                    await sourceLifecycle.capture(runtimeContext, assistantFloors);
+                } catch (error) {
+                    console.warn(`[${MODULE_NAME}] Native cheap Memory ingest failed; raw Timeline remains authoritative`, error);
+                }
+            }
+            scheduleExtraction(runtimeContext);
+        })();
     });
 
     const wiBeforeEvent = context.eventTypes.GENERATION_BEFORE_WORLD_INFO_SCAN;
@@ -16121,6 +16353,7 @@ jQuery(() => {
     }
     if (context.eventTypes.CHAT_BRANCH_CREATED) {
         context.eventSource.on(context.eventTypes.CHAT_BRANCH_CREATED, async (payload) => {
+            if (isNativeMemorySession(getContext())) return;
             try {
                 await sourceLifecycle.inherit(getContext(), payload);
                 await inheritMemoryStoreForBranch(getContext(), payload);
@@ -16137,6 +16370,7 @@ jQuery(() => {
     // `pendingMutationInvalidation` — see `_handleWiBeforeScan`.
     context.eventSource.on(context.eventTypes.MESSAGE_DELETED, (_messageCount, mutationMeta) => {
         const runtimeContext = getContext();
+        if (isNativeMemorySession(runtimeContext)) return;
         const assistantFromSeq = Number(mutationMeta?.deletedAssistantSeqFrom || 0);
         const playableFromSeq = Number(mutationMeta?.deletedPlayableSeqFrom || 0);
         const fromSeq = Number.isFinite(assistantFromSeq) && assistantFromSeq > 0
@@ -16146,6 +16380,7 @@ jQuery(() => {
     });
     if (context.eventTypes.MESSAGE_EDITED) {
         context.eventSource.on(context.eventTypes.MESSAGE_EDITED, messageId => {
+            if (isNativeMemorySession(getContext())) return;
             sourceLifecycle.observeMutation(getContext(), Number(messageId));
             if (!isMemoryOsEnabled(getSettings())) return;
             scheduleMutationInvalidation(findAffectedAssistantSeqFromMessageIndex(getContext(), messageId), 'refresh');
@@ -16153,6 +16388,7 @@ jQuery(() => {
     }
     if (context.eventTypes.MESSAGE_SWIPE_DELETED) {
         context.eventSource.on(context.eventTypes.MESSAGE_SWIPE_DELETED, payload => {
+            if (isNativeMemorySession(getContext())) return;
             sourceLifecycle.observeMutation(getContext(), Number(payload?.messageId));
             if (!isMemoryOsEnabled(getSettings())) return;
             scheduleMutationInvalidation(null, 'refresh');
@@ -16160,6 +16396,7 @@ jQuery(() => {
     }
     if (context.eventTypes.MESSAGE_SWIPED) {
         context.eventSource.on(context.eventTypes.MESSAGE_SWIPED, (messageId, _meta) => {
+            if (isNativeMemorySession(getContext())) return;
             sourceLifecycle.observeMutation(getContext(), Number(messageId));
             // chat[0] is first_mes; its swipe deck IS the character card's
             // alternate_greetings array, so a swipe here only swaps opening
@@ -16172,6 +16409,7 @@ jQuery(() => {
     }
     if (context.eventTypes.MESSAGE_RECEIVED) {
         context.eventSource.on(context.eventTypes.MESSAGE_RECEIVED, (messageId, generationType) => {
+            if (isNativeMemorySession(getContext())) return;
             sourceLifecycle.observeMutation(getContext(), Number(messageId));
             const normalizedType = String(generationType || '').trim().toLowerCase();
             if (!['swipe', 'continue', 'append', 'appendfinal'].includes(normalizedType)) {
@@ -16198,6 +16436,7 @@ jQuery(() => {
         context.eventSource.on(eventName, () => ensureUi());
     }
     context.eventSource.on(context.eventTypes.CHAT_CHANGED, async () => {
+        if (isNativeMemorySession(getContext())) return;
         // Core settles every mounted FloorState instance before extension
         // listeners observe the new chat, so the current Atria namespace is
         // ready to reload directly. No predecessor-state migration runs.

@@ -19,6 +19,27 @@ describe('Memory OS optimization invariants and retrieval replay', () => {
         expect(inspectorPayload(snapshot, 'batch').state.historyBuild.before).toBeUndefined();
         expect(snapshot.state).toEqual(before);
     });
+    test('compact worker payload preserves Native message identity without copying unrelated runtime metadata', () => {
+        const snapshot = largeMemory(1);
+        snapshot.chat[0] = {
+            ...snapshot.chat[0],
+            memory_os_source_id: undefined,
+            atri_native: {
+                messageId: 'msg_0123456789abcdef0123456789abcdef',
+                actorId: 'actor_0123456789abcdef0123456789abcdef',
+                variantIds: ['var_0123456789abcdef0123456789abcdef'],
+            },
+            extra: { runtimeOnly: true },
+        };
+
+        const payload = inspectorPayload(snapshot, 'batch');
+        expect(payload.chat[0].atri_native).toEqual({
+            messageId: 'msg_0123456789abcdef0123456789abcdef',
+        });
+        expect(payload.chat[0].memory_os_source_id).toBeUndefined();
+        expect(payload.chat[0].extra).toBeUndefined();
+    });
+
     test('projection reads source content linearly and a fresh projection sees edits', () => {
         const snapshot = largeMemory(300); let reads = 0;
         snapshot.chat.forEach(message => { const value = message.mes; Object.defineProperty(message, 'mes', { configurable: true, get: () => { reads++; return value; } }); });

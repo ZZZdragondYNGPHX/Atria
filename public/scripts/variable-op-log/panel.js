@@ -1,7 +1,9 @@
 /**
  * @file Variable operation panel
  *
- * The panel exposes a per-message view of `extra.var_ops`. Users can:
+ * Legacy/ST-only editor for per-message `extra.var_ops`. Native committed
+ * messages use revision-backed `atri_variables` and never mutate message
+ * `extra.var_ops` / swipe metadata in place. Users can:
  *   • see exactly what variable operations the AI (or themselves) recorded
  *     for this message
  *   • edit an op's key or value
@@ -37,6 +39,12 @@ function opHasValue(opType) {
 export async function openVarOpsPanel(messageId) {
     const message = chat[messageId];
     if (!message) return;
+    if (String(message?.atri_native?.messageId || '').trim()) {
+        // Committed Native Timeline entries are immutable. The compatibility
+        // panel is intentionally unavailable; current variables live in the
+        // revision-backed atri_variables SessionState namespace.
+        return;
+    }
 
     if (!message.extra) message.extra = {};
     if (!Array.isArray(message.extra.var_ops)) message.extra.var_ops = [];
@@ -235,7 +243,10 @@ function refreshButtonVisibility(messageId) {
     if (typeof messageId !== 'number') return;
     const message = chat[messageId];
     if (!message) return;
-    const hasOps = Array.isArray(message?.extra?.var_ops) && message.extra.var_ops.length > 0;
+    const isNativeCommitted = Boolean(String(message?.atri_native?.messageId || '').trim());
+    const hasOps = !isNativeCommitted
+        && Array.isArray(message?.extra?.var_ops)
+        && message.extra.var_ops.length > 0;
     const $btn = $(`.mes[mesid="${messageId}"] .mes_var_ops`);
     $btn.toggle(hasOps);
 }

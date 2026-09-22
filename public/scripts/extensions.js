@@ -1,3 +1,4 @@
+import { nativeSessionRuntime } from './native/session-runtime.js';
 import { Popper } from '../lib.js';
 
 import { eventSource, event_types, saveSettings, saveSettingsDebounced, getRequestHeaders, animation_duration, EXTENSIONS_CLIENT_VERSION, buildObjectPatchOperationsAsync, buildObjectPatchOperations, cloneJsonValue } from '../script.js';
@@ -2317,6 +2318,7 @@ export async function writeExtensionField(characterId, key, value) {
  *          Envelope: `{ok: true, state}` on hit or empty miss; `{ok: false, state: null, reason, hint}` on failure.
  */
 export async function getCharacterState(avatar, namespace) {
+    if (nativeSessionRuntime.active) return { ok: false, state: null, reason: 'native_state_integration_pending' };
     const safeAvatar = String(avatar || '').trim();
     const safeNamespace = String(namespace || '').trim();
     if (!safeAvatar) {
@@ -2363,6 +2365,7 @@ export async function getCharacterState(avatar, namespace) {
  *          Envelope: `{ok: true, state}` on success; `{ok: false, reason, hint}` on failure.
  */
 export async function setCharacterState(avatar, namespace, data) {
+    if (nativeSessionRuntime.active) return { ok: false, state: null, reason: 'native_state_integration_pending' };
     const safeAvatar = String(avatar || '').trim();
     const safeNamespace = String(namespace || '').trim();
     if (!safeAvatar) {
@@ -2409,6 +2412,7 @@ export async function setCharacterState(avatar, namespace, data) {
  * @returns {Promise<{ok: boolean, applied?: number, created?: boolean, reason?: string, hint?: string}>}
  */
 export async function patchCharacterState(avatar, namespace, operations) {
+    if (nativeSessionRuntime.active) return { ok: false, state: null, reason: 'native_state_integration_pending' };
     const safeAvatar = String(avatar || '').trim();
     const safeNamespace = String(namespace || '').trim();
     if (!safeAvatar) {
@@ -2461,6 +2465,7 @@ export async function patchCharacterState(avatar, namespace, operations) {
  * @returns {Promise<{ok: boolean, results: Map<string, {ok: boolean, state: object|null, reason?: string, hint?: string}>, reason?: string, hint?: string}>}
  */
 export async function getCharacterStateBatch(avatar, namespaces) {
+    if (nativeSessionRuntime.active) return { ok: false, results: new Map(), reason: 'native_state_integration_pending' };
     const safeAvatar = String(avatar || '').trim();
     if (!safeAvatar) {
         return { ok: false, results: new Map(),
@@ -2534,6 +2539,7 @@ export async function getCharacterStateBatch(avatar, namespaces) {
  * @returns {Promise<{ok: boolean, state?: object|null, updated?: boolean, created?: boolean, reason?: string, hint?: string}>}
  */
 export async function updateCharacterState(avatar, namespace, updater, options = {}) {
+    if (nativeSessionRuntime.active) return { ok: false, state: null, reason: 'native_state_integration_pending' };
     const safeAvatar = String(avatar || '').trim();
     const safeNamespace = String(namespace || '').trim();
     if (!safeAvatar || !safeNamespace || typeof updater !== 'function') {
@@ -2604,6 +2610,7 @@ export async function updateCharacterState(avatar, namespace, updater, options =
  * @returns {Promise<{ok: boolean, reason?: string, hint?: string}>}
  */
 export async function deleteCharacterState(avatar, namespace) {
+    if (nativeSessionRuntime.active) return { ok: false, state: null, reason: 'native_state_integration_pending' };
     const safeAvatar = String(avatar || '').trim();
     const safeNamespace = String(namespace || '').trim();
     if (!safeAvatar || !safeNamespace) {

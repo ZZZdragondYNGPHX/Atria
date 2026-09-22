@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { SqliteEngine } from '../../../src/storage/engines/sqlite-engine.js';
+import { CURRENT_SCHEMA_VERSION } from '../../../src/storage/engines/sqlite-schema.js';
 
 describe('SqliteEngine scaffolding', () => {
     let tmpDir, dbPath, engine;
@@ -47,9 +48,9 @@ describe('SqliteEngine scaffolding', () => {
         engine2.close();
     });
 
-    test('schema is initialized on first open (user_version === 1)', () => {
+    test('schema is initialized on first open at the current version', () => {
         engine._dbFor(handle);
-        expect(engine._dbs.get(handle).pragma('user_version', { simple: true })).toBe(1);
+        expect(engine._dbs.get(handle).pragma('user_version', { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
     });
 
     test('schema is idempotent — reopen on existing db does not error', () => {

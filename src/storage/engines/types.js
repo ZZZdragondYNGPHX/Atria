@@ -36,8 +36,9 @@
  * @property {(resource: ResourceKey, record: ResourceRecord) => Promise<void>} putResource
  *   Write or replace a single resource. Caller must do OCC checks via getResource first if needed.
  * @property {(resource: ResourceKey, expectedIntegrity: string | null, record: ResourceRecord) => Promise<{updated: boolean}>} putResourceIfMatch
- *   Atomic OCC write: succeeds only if the stored integrity matches expectedIntegrity.
- *   expectedIntegrity=null means "must not currently exist".
+ *   OCC write: succeeds only if the stored integrity matches expectedIntegrity.
+ *   expectedIntegrity=null means "must not currently exist". SQL Native handlers perform this
+ *   atomically inside the engine transaction; FsEngine provides best-effort compare-then-write.
  * @property {(resource: ResourceKey) => Promise<void>} deleteResource
  *   Delete a resource. Cascades any sub-records (sidecars in FsEngine; FK CASCADE in SqlEngine).
  * @property {(filter: ResourceListFilter) => Promise<ResourceRecord[]>} listResources
@@ -107,11 +108,12 @@
 /**
  * @typedef {{
  *   key: ResourceKey,
- *   header: object,
- *   body: object[],
- *   integrity: string,
- *   updatedAt: number,
- *   createdAt: number,
+ *   header?: object,
+ *   body?: object[],
+ *   doc?: any,
+ *   integrity?: string,
+ *   updatedAt?: number,
+ *   createdAt?: number,
  * }} ResourceRecord
  */
 
@@ -119,8 +121,9 @@
  * @typedef {{
  *   kind: string,
  *   handle: string,
- *   orderBy?: 'updatedAt' | 'name',
+ *   orderBy?: 'updatedAt' | 'createdAt' | 'name',
  *   limit?: number,
+ *   [key: string]: any,
  * }} ResourceListFilter
  */
 

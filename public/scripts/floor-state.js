@@ -67,6 +67,7 @@ async function makeDefaultDeps() {
         deleteChatState: script.deleteChatState,
         buildObjectPatchOperationsAsync: script.buildObjectPatchOperationsAsync,
         getChat: () => script.chat,
+        isNativeSession: () => Boolean(script.nativeSessionRuntime?.active),
     };
 }
 
@@ -175,6 +176,51 @@ export function createFloorStateWithDeps(options, deps) {
     }
     const logNamespace = `${namespace}${LOG_SUFFIX}`;
     const runtime = deps;
+
+    const isNativeSession = () => Boolean(runtime?.isNativeSession?.());
+
+    async function readNativeState() {
+        const result = await runtime.getChatState(namespace);
+        if (!result?.ok) return result;
+        return { ok: true, state: result.state ?? null };
+    }
+
+    async function updateNativeState(reducer) {
+        const result = await runtime.updateChatState(namespace, async current => {
+            const source = current && typeof current === 'object' && !Array.isArray(current)
+                ? structuredClone(current)
+                : {};
+            return await reducer(source);
+        });
+        return result?.ok
+            ? makeStateOk({ state: result.state ?? null, updated: Boolean(result.updated) })
+            : result;
+    }
+
+    async function patchNativeState(operations) {
+        return updateNativeState(current => {
+            const result = applyPatch(current, operations, true, false);
+            const next = result?.newDocument;
+            if (!next || typeof next !== 'object' || Array.isArray(next)) {
+                throw new TypeError('Native FloorState patch must materialize an object');
+            }
+            return next;
+        });
+    }
+
+    async function resetNativeState(commits) {
+        const next = {};
+        for (const commit of commits) {
+            if (!isValidCommit(commit)) {
+                return makeStateError(STATE_ERROR_REASONS.VALIDATION_COMMIT, 'malformed Native compatibility commit');
+            }
+            applyPatch(next, commit.patches, true, true);
+        }
+        const result = await runtime.updateChatState(namespace, () => next);
+        return result?.ok
+            ? makeStateOk({ state: result.state ?? next, updated: Boolean(result.updated) })
+            : result;
+    }
 
     let destroyed = false;
 
@@ -344,6 +390,7 @@ export function createFloorStateWithDeps(options, deps) {
      */
     async function handleMessageDeleted(newChatLength) {
         if (destroyed) return;
+        if (isNativeSession()) return;
         return enqueueWrite(async () => {
             if (destroyed) return;
             beginPending();
@@ -373,6 +420,7 @@ export function createFloorStateWithDeps(options, deps) {
      */
     async function handleSwipeDeleted(payload) {
         if (destroyed) return;
+        if (isNativeSession()) return;
         const messageId = Number(payload?.messageId);
         const swipeId = Number(payload?.swipeId);
         if (!Number.isInteger(messageId) || !Number.isInteger(swipeId)) return;
@@ -412,6 +460,7 @@ export function createFloorStateWithDeps(options, deps) {
      */
     async function handleBranchCreated(payload) {
         if (destroyed) return;
+        if (isNativeSession()) return;
         const sourceTarget = payload?.sourceTarget;
         const targetTarget = payload?.targetTarget;
         const mesId = Number(payload?.mesId);
@@ -444,11 +493,11 @@ export function createFloorStateWithDeps(options, deps) {
     // --- structural-event handlers (driven by core via settle* exports) ---
 
     const __handleChatChanged = async () => {
-        if (destroyed) return;
+        if (destroyed || isNativeSession()) return;
         invalidateCache();
     };
     const __handleMessageSwiped = async () => {
-        if (destroyed) return;
+        if (destroyed || isNativeSession()) return;
         invalidateCache();
     };
     const __handleMessageDeleted = (newChatLength) => handleMessageDeleted(newChatLength);
@@ -500,6 +549,9 @@ export function createFloorStateWithDeps(options, deps) {
         }
         if (operations.length === 0) {
             return makeStateOk({ updated: false });
+        }
+        if (isNativeSession()) {
+            return enqueueWrite(() => patchNativeState(operations));
         }
         return enqueueWrite(async () => {
             if (destroyed) {
@@ -598,6 +650,9 @@ export function createFloorStateWithDeps(options, deps) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_ARGS,
                 `updater must be a function (got: ${typeof reducer})`);
         }
+        if (isNativeSession()) {
+            return enqueueWrite(() => updateNativeState(reducer));
+        }
         return enqueueWrite(async () => {
             if (destroyed) {
                 return makeStateError(STATE_ERROR_REASONS.INSTANCE_DESTROYED,
@@ -653,6 +708,9 @@ export function createFloorStateWithDeps(options, deps) {
         }
         if (!Array.isArray(commits)) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_ARGS, 'commits must be an array');
+        }
+        if (isNativeSession()) {
+            return enqueueWrite(() => resetNativeState(commits));
         }
         return enqueueWrite(async () => {
             if (destroyed) {
@@ -710,6 +768,9 @@ export function createFloorStateWithDeps(options, deps) {
             return { ok: false, state: null,
                 reason: STATE_ERROR_REASONS.INSTANCE_DESTROYED,
                 hint: `floor-state instance for namespace=${namespace} was destroyed` };
+        }
+        if (isNativeSession()) {
+            return readNativeState();
         }
         await migrateIfNeeded();
         if (cachedReplay !== CACHE_UNSET) {
@@ -922,6 +983,10 @@ export function createFloorStateWithDeps(options, deps) {
         if (pendingResolver) { const r = pendingResolver; pendingResolver = null; r(); }
         invalidateCache();
         if (!purge) return makeStateOk();
+        if (isNativeSession()) {
+            const result = await runtime.deleteChatState(namespace);
+            return result?.ok ? makeStateOk() : result;
+        }
         if (typeof runtime.deleteChatState !== 'function') {
             console.warn(`[floor-state:${namespace}] destroy(purge): deleteChatState unavailable`);
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_ARGS,
@@ -953,6 +1018,10 @@ export function createFloorStateWithDeps(options, deps) {
      */
     async function getLogSize() {
         if (destroyed) return 0;
+        if (isNativeSession()) {
+            const result = await readNativeState();
+            return result?.ok && result.state != null ? 1 : 0;
+        }
         try {
             const log = await readLog();
             return Array.isArray(log?.commits) ? log.commits.length : 0;

@@ -202,17 +202,40 @@ export function evaluateWorldInfoStateEvents(events, previousSnapshot, currentSn
     return { status: WORLD_INFO_CONDITION_RESULT.TRUE, logic: normalizedLogic, results, reason: 'matched' };
 }
 
+function normalizeEventScope(scope) {
+    const revisionId = String(scope?.revisionId || '').trim();
+    const branchId = String(scope?.branchId || '').trim();
+    const messageId = String(scope?.messageId || '').trim();
+    if (revisionId || branchId || messageId) {
+        return {
+            ...(revisionId ? { revisionId } : {}),
+            ...(branchId ? { branchId } : {}),
+            ...(messageId ? { messageId } : {}),
+        };
+    }
+    return {
+        floor: Number(scope?.floor ?? -1),
+        swipeId: Number(scope?.swipeId ?? 0),
+    };
+}
+
+function sameEventScope(left, right) {
+    const a = normalizeEventScope(left);
+    const b = normalizeEventScope(right);
+    return JSON.stringify(a) === JSON.stringify(b);
+}
+
 /**
- * Reuse a committed transition on retries/regenerations anchored to the same
- * floor/swipe and same current provider snapshot.
+ * Reuse a committed transition only for the same authority scope and same
+ * current provider snapshot. Native scopes use revision/branch/message IDs;
+ * classic ST scopes retain floor/swipe identity.
  */
 export function resolveWorldInfoEventComparisonBaseline(runtimeState, currentSnapshot, scope) {
     const state = runtimeState && typeof runtimeState === 'object' && !Array.isArray(runtimeState)
         ? runtimeState
         : {};
     const transition = state.transition;
-    const sameScope = Number(transition?.scope?.floor) === Number(scope?.floor)
-        && Number(transition?.scope?.swipeId ?? 0) === Number(scope?.swipeId ?? 0);
+    const sameScope = sameEventScope(transition?.scope, scope);
     const sameCurrent = transition?.after
         && fingerprintWorldInfoStateSnapshot(transition.after) === fingerprintWorldInfoStateSnapshot(currentSnapshot);
     if (sameScope && sameCurrent && transition.before) {
@@ -233,10 +256,7 @@ export function buildWorldInfoEventRuntimeState(previousState, comparisonBaselin
         version: 1,
         baseline: normalizedCurrent,
         transition: changed ? {
-            scope: {
-                floor: Number(scope?.floor ?? -1),
-                swipeId: Number(scope?.swipeId ?? 0),
-            },
+            scope: normalizeEventScope(scope),
             before,
             after: normalizedCurrent,
         } : null,

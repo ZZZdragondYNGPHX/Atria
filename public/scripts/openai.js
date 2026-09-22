@@ -36,6 +36,7 @@ import {
     this_chid,
 } from '../script.js';
 import { getGroupNames, groups, selected_group } from './group-chats.js';
+import { nativeSessionRuntime } from './native/session-runtime.js';
 
 import {
     chatCompletionDefaultPrompts,
@@ -476,7 +477,9 @@ function buildAtriaPersistTarget() {
 }
 
 function shouldUseAtriaServerPersistence(type, source = oai_settings.chat_completion_source) {
-    return (type === 'normal' || type === 'regenerate') && isAtriaServerPersistenceSupported(source);
+    return !nativeSessionRuntime.active
+        && (type === 'normal' || type === 'regenerate')
+        && isAtriaServerPersistenceSupported(source);
 }
 
 function isLastOpenAIReplyPersistedByServer() {

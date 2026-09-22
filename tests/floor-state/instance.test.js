@@ -1804,3 +1804,37 @@ describe('concurrency: all write ops must serialize', () => {
         expect(finalLog.commits[0].patches[0].path).toBe('/baseline');
     });
 });
+
+
+describe('N5 Native FloorState compatibility wrapper', () => {
+    test('stores materialized state in SessionState and ignores floor/swipe structural rollback', async () => {
+        const store = makeStore();
+        let chat = [
+            { is_user: true, mes: 'u', swipe_id: 0, swipes: ['u'], swipe_info: [{}] },
+            { is_user: false, mes: 'a', swipe_id: 1, swipes: ['a0', 'a1'], swipe_info: [{}, {}] },
+        ];
+        const deps = {
+            ...store,
+            isNativeSession: () => true,
+            getChat: () => chat,
+            buildObjectPatchOperationsAsync: async () => [],
+        };
+        const fs = createFloorStateWithDeps({ namespace: 'atri_native_test' }, deps);
+
+        expect(await fs.patch([{ op: 'add', path: '/value', value: 1 }], { floor: 1, swipeId: 99 }))
+            .toMatchObject({ ok: true });
+        expect(store._raw.get('atri_native_test')).toEqual({ value: 1 });
+        expect(store._raw.has('atri_native_test__floor_log')).toBe(false);
+
+        chat[1].swipe_id = 0;
+        await fs.__handleMessageSwiped();
+        await fs.__handleMessageDeleted(1);
+        await fs.__handleSwipeDeleted({ messageId: 1, swipeId: 0 });
+        expect((await fs.get()).state).toEqual({ value: 1 });
+
+        expect(await fs.update(current => ({ ...current, value: 2 }), { floor: 0, swipeId: 0 }))
+            .toMatchObject({ ok: true });
+        expect((await fs.get()).state).toEqual({ value: 2 });
+        expect(await fs.getLogSize()).toBe(1);
+    });
+});

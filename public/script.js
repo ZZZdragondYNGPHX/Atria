@@ -1,3 +1,4 @@
+import { nativeSessionRuntime } from './scripts/native/session-runtime.js';
 import { createLogger } from './scripts/logging/logger.js';
 import { ChatSnapshotCache } from './scripts/atri-chat-snapshot-cache.js';
 import { createWorldInfoDispatchAttribution, markWorldInfoDispatch } from './scripts/atri-world-info-provenance.js';
@@ -56,6 +57,8 @@ import {
     charUpdatePrimaryWorld,
     charSetAuxWorlds,
     deleteWorldInfoWithUndo,
+    world_info_budget,
+    world_info_budget_cap,
 } from './scripts/world-info.js';
 import { initWorldInfoWorkspace } from './scripts/world-info/workspace.js';
 
@@ -579,6 +582,7 @@ function applyAtriaGenerationMetaFromHeaders(api, response) {
 }
 
 export function getLastAtriaGenerationIdForApi(api = main_api) {
+    if (nativeSessionRuntime.active) return '';
     if (api === 'openai') {
         return getLastOpenAIGenerationId();
     }
@@ -589,6 +593,7 @@ export function getLastAtriaGenerationIdForApi(api = main_api) {
 }
 
 function isLastAtriaReplyPersistedByServerForApi(api = main_api) {
+    if (nativeSessionRuntime.active) return false;
     if (api === 'openai') {
         return isLastOpenAIReplyPersistedByServer();
     }
@@ -599,7 +604,7 @@ function isLastAtriaReplyPersistedByServerForApi(api = main_api) {
 }
 
 function shouldUseAtriaServerPersistenceForType(type) {
-    return type === 'normal' || type === 'regenerate';
+    return !nativeSessionRuntime.active && (type === 'normal' || type === 'regenerate');
 }
 
 function buildAtriaGenerationRequestOptions(type, api = main_api) {
@@ -1501,6 +1506,7 @@ export function reloadMarkdownProcessor() {
 }
 
 export function getCurrentChatId() {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.snapshot.session.sessionId;
     if (selected_group) {
         return groups.find(x => x.id == selected_group)?.chat_id;
     } else if (this_chid !== undefined) {
@@ -2380,6 +2386,7 @@ function getMessageDeletionStartId(id, deleteToolCalls = true) {
  * @returns {Promise<void>} A promise that resolves when the character is switched.
  */
 export async function selectCharacterById(id, { switchMenu = true } = {}) {
+    if (nativeSessionRuntime.active) throw new Error('Close Native Session before selecting a legacy character');
     if (characters[id] === undefined) {
         return;
     }
@@ -3748,6 +3755,10 @@ async function maybeDeleteCharacterBoundImportedLorebook(character, { alreadyPro
  */
 export async function deleteMessage(id, swipeDeletionIndex = undefined, askConfirmation = false, deleteToolCalls = true) {
     const canDeleteSwipe = swipeDeletionIndex !== undefined && swipeDeletionIndex !== null;
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(Number(id))) {
+        nativeSessionRuntime.denyCommittedAction(canDeleteSwipe ? 'Swipe Delete' : 'Delete', Number(id));
+        return;
+    }
     if (canDeleteSwipe) {
         if (swipeDeletionIndex < 0) {
             throw new Error('Swipe index cannot be negative');
@@ -3839,6 +3850,7 @@ export const reloadCurrentChat = reloadChatMutex.update.bind(reloadChatMutex);
  * @returns {Promise<void>} A promise that resolves when the chat is reloaded.
  */
 export async function reloadCurrentChatUnsafe() {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.reload();
     preserveNeutralChat();
     await clearChat({ clearData: true });
 
@@ -6363,7 +6375,9 @@ function showStopButton(generationType = '') {
 }
 
 function hideStopButton() {
-    // prevent NOOP, because hideStopButton() gets called multiple times
+    // GENERATION_ENDED is the existing ST/R7 UI compatibility event. Native
+    // authority has its own commit barrier and must not redefine this event's
+    // timing in N4.
     if ($('#mes_stop').css('display') !== 'none') {
         if (activeGenerationTypeForStopButton && activeGenerationTypeForStopButton !== 'quiet') {
             consumeEphemeralScriptInjectsForMainGeneration();
@@ -6709,8 +6723,14 @@ class StreamingProcessor {
         // Defer the MESSAGE_RECEIVED/CHARACTER_MESSAGE_RENDERED emits to AFTER
         // the persist below so extension listeners can't race us into a
         // double-write that BE then dedups (producing a snapshot phantom).
-        // See commit 6c99b32d0 (HAR analysis) for the race details.
-        await this.finalizeIntermediaryMessage(messageId, text, { unlockUI: true, deferEmit: true });
+        // Native also defers UI unlock: hideStopButton() emits GENERATION_ENDED,
+        // so Native must commit the Draft and bind opaque IDs before that
+        // completion boundary becomes externally observable.
+        const deferNativeGenerationEnd = nativeSessionRuntime.active;
+        await this.finalizeIntermediaryMessage(messageId, text, {
+            unlockUI: !deferNativeGenerationEnd,
+            deferEmit: true,
+        });
 
         const isAborted = this.abortController.signal.aborted;
         if (!isAborted && power_user.auto_swipe && generatedTextFiltered(text)) {
@@ -6751,6 +6771,10 @@ class StreamingProcessor {
         if (this.type !== 'impersonate') {
             await eventSource.emit(event_types.MESSAGE_RECEIVED, this.messageId, this.type);
             await eventSource.emit(event_types.CHARACTER_MESSAGE_RENDERED, this.messageId, this.type);
+        }
+
+        if (deferNativeGenerationEnd) {
+            this.markUIGenStopped();
         }
 
         playMessageSound();
@@ -7417,6 +7441,15 @@ function applyFinalizedAuthorsNoteInjections(anBefore = [], anAfter = []) {
  * @returns {Promise<any>} Returns a promise that resolves when the text is done generating.
  */
 export async function Generate(type, { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage, quietName, jsonSchema = null, depth = 0 } = {}, dryRun = false) {
+    const nativeGenerationIntent = nativeSessionRuntime.active && !dryRun ? type : null;
+    if (nativeSessionRuntime.active && !dryRun) {
+        // Native lifecycle owns the committed boundary. SillyTavern remains
+        // the mutable generation workspace, but Retry/Continue are translated
+        // before any legacy regenerate/swipe bookkeeping can rewrite history.
+        type = await nativeSessionRuntime.prepareGeneration(type);
+    }
+    const isNativeRetry = nativeGenerationIntent === 'regenerate'
+        && nativeSessionRuntime.generation?.kind === 'retry';
     console.log('Generate entered');
     setGenerationProgress(0);
     generation_started = new Date();
@@ -7457,7 +7490,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     const isInstruct = power_user.instruct.enabled && main_api !== 'openai';
     const isImpersonate = type == 'impersonate';
 
-    if (!(dryRun || depth || type == 'regenerate' || type == 'swipe' || type == 'quiet')) {
+    if (!(dryRun || depth || isNativeRetry || type == 'regenerate' || type == 'swipe' || type == 'quiet')) {
         const interruptedByCommand = await processCommands(String($('#send_textarea').val()));
 
         if (interruptedByCommand) {
@@ -7473,7 +7506,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     // Compatibility bridge for scripts that rewrite #send_textarea during GENERATION_AFTER_COMMANDS.
     // v1.4.0 snapshots textarea early to protect IME input; if a listener intentionally rewrites the
     // textarea text in this phase, sync the one-shot pending input with the rewritten value.
-    if (!dryRun && type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate) {
+    if (!dryRun && !isNativeRetry && type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate) {
         const currentTextareaText = String($('#send_textarea').val());
         const textareaChangedAfterSnapshot = typeof pendingUserInputText === 'string'
             && currentTextareaText !== pendingUserInputText;
@@ -7566,7 +7599,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     const lastMessage = chat[chat.length - 1];
 
     let textareaText;
-    if (type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate && !dryRun && !depth) {
+    if (!isNativeRetry && type !== 'regenerate' && type !== 'swipe' && type !== 'quiet' && !isImpersonate && !dryRun && !depth) {
         is_send_press = true;
         if (typeof pendingUserInputText === 'string') {
             textareaText = pendingUserInputText;
@@ -7639,14 +7672,14 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         'continue',
     ];
     //for normal messages sent from user..
-    if ((textareaText != '' || (hasPendingFileAttachment() && !noAttachTypes.includes(type))) && !automatic_trigger && type !== 'quiet' && !dryRun && !depth) {
+    if (!isNativeRetry && (textareaText != '' || (hasPendingFileAttachment() && !noAttachTypes.includes(type))) && !automatic_trigger && type !== 'quiet' && !dryRun && !depth) {
         // If user message contains no text other than bias - send as a system message
         if (messageBias && !removeMacros(textareaText)) {
             sendSystemMessage(system_message_types.GENERIC, ' ', { bias: messageBias });
         } else {
             await sendMessageAsUser(textareaText, messageBias);
         }
-    } else if (textareaText == '' && !automatic_trigger && !dryRun && [undefined, 'normal'].includes(type) && main_api == 'openai' && oai_settings.send_if_empty.trim().length > 0 && !depth) {
+    } else if (!isNativeRetry && textareaText == '' && !automatic_trigger && !dryRun && [undefined, 'normal'].includes(type) && main_api == 'openai' && oai_settings.send_if_empty.trim().length > 0 && !depth) {
         // Use send_if_empty if set and the user message is empty. Only when sending messages normally
         await sendMessageAsUser(oai_settings.send_if_empty.trim(), messageBias);
     }
@@ -7842,6 +7875,96 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             this_max_context -= decrement;
             console.log(`Max context reduced by ${decrement} tokens of CFG prompt (${previousMaxContext} -> ${this_max_context})`);
         }
+    }
+
+    if (nativeSessionRuntime.active) {
+        const systemContractText = [system, jailbreak].map(value => String(value ?? '')).filter(Boolean).join('\n');
+        const extensionFramingText = Object.entries(extension_prompts || {})
+            .filter(([key]) => key !== 'atria_native_context')
+            .map(([, value]) => String(value?.value ?? ''))
+            .filter(Boolean)
+            .join('\n');
+        const framingReserveText = [
+            description,
+            personality,
+            persona,
+            scenario,
+            charDepthPrompt,
+            creatorNotes,
+            mesExamples,
+            quiet_prompt,
+            promptBias,
+            extensionFramingText,
+        ].map(value => String(value ?? '')).filter(Boolean).join('\n');
+        const framingReserveTokens = framingReserveText
+            ? await getTokenCountAsync(framingReserveText, 0)
+            : 0;
+        const activeToolSchemas = canUseTools
+            ? (await Promise.all(ToolManager.tools.map(async tool =>
+                await tool.shouldRegister() ? tool.toFunctionOpenAI() : null))).filter(Boolean)
+            : [];
+        let knowledgeLaneCap = Math.round(Number(world_info_budget || 0) * this_max_context / 100) || 1;
+        if (Number(world_info_budget_cap) > 0) {
+            knowledgeLaneCap = Math.min(knowledgeLaneCap, Number(world_info_budget_cap));
+        }
+        const contextProviders = [
+            {
+                providerId: 'native-runtime-contract',
+                provide: () => systemContractText ? [{
+                    contextItemId: 'runtime:system-contract',
+                    lane: 'runtime_system',
+                    authority: 'runtime_mechanics',
+                    authorityRank: 900,
+                    priority: 1000,
+                    content: systemContractText,
+                    required: true,
+                    metadata: { accountingOnly: true },
+                }] : [],
+            },
+            {
+                providerId: 'native-tool-contracts',
+                provide: () => activeToolSchemas.length ? [{
+                    contextItemId: 'tools:registered-schemas',
+                    lane: 'tools',
+                    authority: 'runtime_mechanics',
+                    authorityRank: 900,
+                    priority: 900,
+                    content: JSON.stringify(activeToolSchemas),
+                    required: true,
+                    metadata: { accountingOnly: true, toolCount: activeToolSchemas.length },
+                }] : [],
+            },
+        ];
+        const promptContentByMessageId = Object.fromEntries(
+            coreChat
+                .map(message => [String(message?.atri_native?.messageId || ''), String(message?.mes ?? '')])
+                .filter(([messageId]) => messageId),
+        );
+        const contextPlan = await nativeSessionRuntime.prepareContext({
+            target: 'narrator',
+            policy: nativeSessionRuntime.readState('atri_context_policy')?.mode || 'balanced',
+            modelContextLimit: getMaxContextTokens(),
+            responseReserve: getMaxResponseTokens(),
+            effectivePromptLimit: this_max_context,
+            externalHardReserveTokens: framingReserveTokens,
+            laneCaps: { knowledge: Math.max(0, Math.floor(knowledgeLaneCap)) },
+            deferredLanes: ['memory'],
+            providers: contextProviders,
+            promptContentByMessageId,
+            countTokens: value => getTokenCountAsync(String(value ?? ''), 0),
+        });
+        coreChat = nativeSessionRuntime.filterCoreChatForContext(coreChat, contextPlan);
+        setExtensionPrompt(
+            'atria_native_context',
+            contextPlan.renderedWarmContext || '',
+            extension_prompt_types.IN_PROMPT,
+            0,
+            false,
+            extension_prompt_roles.SYSTEM,
+        );
+        this_max_context = Math.min(this_max_context, contextPlan.budget.promptCeiling);
+    } else {
+        setExtensionPrompt('atria_native_context', '', extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
     }
 
     const generationContextPayload = {
@@ -9541,9 +9664,16 @@ export function stopGeneration() {
         abortController.abort('Clicked stop button');
         stopped = true;
     }
-    if (stopped) {
-        // Release the UI lock immediately after a user-driven stop. If the aborted request never
-        // settles cleanly, waiting for Generate() cleanup leaves both send and stop controls hidden.
+    if (stopped && nativeSessionRuntime.active) {
+        // Native Stop is a Draft lifecycle boundary. Finalize/discard the
+        // Native Draft first, then release the existing ST/R7 UI lock. This
+        // also covers the no-placeholder case where the provider is aborted
+        // before any assistant object exists.
+        void nativeSessionRuntime.finalizeStoppedGeneration()
+            .then(() => forceUnblockGenerationUi())
+            .catch(error => console.error('[Native Session] Failed to finalize stopped generation', error));
+    } else if (stopped) {
+        // Legacy/ST keeps its historical immediate unlock behavior.
         forceUnblockGenerationUi();
     }
     eventSource.emit(event_types.GENERATION_STOPPED);
@@ -9953,7 +10083,7 @@ export async function sendMessageAsUser(messageText, messageBias, insertAt = nul
     }
 
     await populateFileAttachment(message);
-    statMesProcess(message, 'user', characters, this_chid, '');
+    if (!nativeSessionRuntime.active) statMesProcess(message, 'user', characters, this_chid, '');
 
     chat_metadata.tainted = true;
 
@@ -11002,12 +11132,17 @@ export async function saveReply({ type, getMessage, fromStreaming = false, title
         type = 'normal';
     }
 
-    if (chat.length && (!lastMessage.extra || typeof lastMessage.extra !== 'object')) {
+    // Only normalize the existing tail when this save mode actually edits
+    // that tail. A normal reply creates a new assistant entry below, so
+    // touching the preceding committed user message here would violate the
+    // Native immutable Timeline barrier (and is unnecessary for legacy too).
+    const editsExistingTail = ['swipe', 'append', 'continue', 'appendFinal'].includes(type);
+    if (chat.length && editsExistingTail && (!lastMessage.extra || typeof lastMessage.extra !== 'object')) {
         lastMessage.extra = {};
     }
 
-    // Coerce null/undefined to empty string
-    if (chat.length && !lastMessage.extra.reasoning) {
+    // Coerce null/undefined to empty string only on the message being edited.
+    if (chat.length && editsExistingTail && !lastMessage.extra.reasoning) {
         lastMessage.extra.reasoning = '';
     }
 
@@ -11219,7 +11354,7 @@ export async function saveReply({ type, getMessage, fromStreaming = false, title
         item.swipe_info.push(...swipeInfoArray);
     }
 
-    statMesProcess(item, type, characters, this_chid, oldMessage);
+    if (!nativeSessionRuntime.active) statMesProcess(item, type, characters, this_chid, oldMessage);
     return { type, getMessage };
 }
 
@@ -11819,6 +11954,7 @@ export function saveChatDebounced() {
  * @returns {object|null} Request target payload or null when no active chat target is available.
  */
 export function resolveChatStateTarget(target = null) {
+    if (nativeSessionRuntime.active) return null; // N5 owns Native state-provider integration; no legacy target.
     if (target && typeof target === 'object') {
         if (target.is_group) {
             const id = String(target.id || '').trim();
@@ -12738,6 +12874,16 @@ export async function setVariable(name, value, options = {}) {
     if (!Number.isInteger(messageId) || messageId < 0 || messageId >= chat.length) {
         throw new Error(`[setVariable] floor ${floorOption} out of range (chat length ${chat.length})`);
     }
+    // The legacy API keeps accepting a numeric message index, but Native
+    // authority binds the operation to the projected messageId and persists
+    // only the resulting atri_variables Revision state. pushFloorVarOp()
+    // deliberately does not mutate committed message/swipe data in Native.
+    const nativeMessageId = nativeSessionRuntime.active
+        ? String(chat[messageId]?.atri_native?.messageId || '').trim()
+        : '';
+    if (nativeSessionRuntime.active && !nativeMessageId) {
+        throw new Error('[setVariable] Native floor must resolve to a committed messageId');
+    }
     const dot = name.indexOf('.');
     /** @type {import('./scripts/variable-op-log/apply.js').VarOp} */
     const op = dot >= 0
@@ -12767,6 +12913,26 @@ export async function getChatStateBatch(namespaces, options = {}) {
     ));
     if (cleaned.length === 0) {
         return { ok: true, results: new Map() };
+    }
+    if (nativeSessionRuntime.active) {
+        if (options?.target) {
+            return { ok: false, results: new Map(),
+                reason: STATE_ERROR_REASONS.VALIDATION_TARGET,
+                hint: formatValidationTargetHint('Native Session state cannot address a legacy chat target') };
+        }
+        try {
+            return {
+                ok: true,
+                results: new Map(cleaned.map(namespace => [namespace, {
+                    ok: true,
+                    state: nativeSessionRuntime.readState(namespace),
+                }])),
+            };
+        } catch (error) {
+            return { ok: false, results: new Map(),
+                reason: STATE_ERROR_REASONS.VALIDATION_ARGS,
+                hint: formatValidationArgsHint('namespace', error?.message || error) };
+        }
     }
     const target = resolveChatStateTarget(options?.target || null);
     if (!target) {
@@ -12891,6 +13057,18 @@ export async function patchChatState(namespace, operations, options = {}) {
         if (operations.length === 0) {
             return makeStateOk();
         }
+        if (nativeSessionRuntime.active) {
+            if (options?.target) {
+                return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
+                    formatValidationTargetHint('Native Session state cannot address a legacy chat target'));
+            }
+            const result = await nativeSessionRuntime.updateState(stateNamespace, (current) => {
+                const document = normalizeJsonObject(current);
+                const applied = applyJsonPatch(document, operations, true, false);
+                return normalizeJsonObject(applied?.newDocument);
+            });
+            return makeStateOk({ state: result.state ?? null, updated: Boolean(result.updated) });
+        }
         const target = resolveChatStateTarget(options?.target || null);
         if (!target) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
@@ -12971,6 +13149,34 @@ export async function updateChatState(namespace, updater, options = {}) {
                 formatValidationArgsHint('updater', `must be a function (got: ${typeof updater})`));
         }
 
+        if (nativeSessionRuntime.active) {
+            if (options?.target) {
+                return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
+                    formatValidationTargetHint('Native Session state cannot address a legacy chat target'));
+            }
+            const result = await nativeSessionRuntime.updateState(stateNamespace, async (current, meta) => {
+                const currentState = normalizeJsonObject(current);
+                let nextStateRaw;
+                try {
+                    nextStateRaw = await updater(cloneJsonValue(currentState), {
+                        attempt: 0,
+                        target: {
+                            native_session: true,
+                            sessionId: meta.sessionId,
+                            revisionId: meta.revisionId,
+                            branchId: meta.branchId,
+                        },
+                        namespace: stateNamespace,
+                    });
+                } catch (reducerError) {
+                    throw new TypeError(`reducer threw: ${String(reducerError?.message || reducerError).slice(0, 80)}`);
+                }
+                if (nextStateRaw === undefined || nextStateRaw === null) return undefined;
+                return normalizeJsonObject(nextStateRaw);
+            });
+            return makeStateOk({ state: result.state ?? null, updated: Boolean(result.updated) });
+        }
+
         const target = resolveChatStateTarget(options?.target || null);
         if (!target) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
@@ -13049,6 +13255,14 @@ export async function deleteChatState(namespace, options = {}) {
         if (!stateNamespace) {
             return makeStateError(STATE_ERROR_REASONS.VALIDATION_ARGS,
                 formatValidationArgsHint('namespace', 'must be a non-empty string'));
+        }
+        if (nativeSessionRuntime.active) {
+            if (options?.target) {
+                return makeStateError(STATE_ERROR_REASONS.VALIDATION_TARGET,
+                    formatValidationTargetHint('Native Session state cannot address a legacy chat target'));
+            }
+            const result = await nativeSessionRuntime.deleteState(stateNamespace);
+            return makeStateOk({ updated: Boolean(result.updated) });
         }
         const target = resolveChatStateTarget(options?.target || null);
         if (!target) {
@@ -14072,6 +14286,7 @@ async function appendChatMessagesInternal(messages, retryCount = 0) {
 }
 
 export async function appendChatMessages(messages, retryCount = 0) {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.persist();
     const queuedMessages = cloneJsonValue(messages) ?? messages;
     return await runSerializedChatWrite(() => appendChatMessagesInternal(queuedMessages, retryCount));
 }
@@ -14222,6 +14437,7 @@ async function patchChatMessagesInternal(operations, retryCount = 0) {
 }
 
 export async function patchChatMessages(operations, retryCount = 0) {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.persist();
     const queuedOperations = cloneJsonValue(operations) ?? operations;
     return await runSerializedChatWrite(() => patchChatMessagesInternal(queuedOperations, retryCount));
 }
@@ -14456,6 +14672,7 @@ async function saveChatMetadataInternal(withMetadata = undefined, retryCount = 0
 }
 
 export async function saveChatMetadata(withMetadata = undefined, retryCount = 0) {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.persist();
     const metadataPatch = cloneJsonValue(withMetadata) ?? withMetadata;
     return await runSerializedChatWrite(() => saveChatMetadataInternal(metadataPatch, retryCount));
 }
@@ -14688,6 +14905,12 @@ async function saveChatInternal({ chatName, withMetadata, mesId, force = false, 
 }
 
 export async function saveChat() {
+    if (nativeSessionRuntime.active) {
+        if (arguments[0]?.chatName || arguments[0]?.chatData || arguments[0]?.mesId !== undefined) {
+            throw new Error('Use Native Branch/Timeline commands, not chat-file snapshots');
+        }
+        return nativeSessionRuntime.persist();
+    }
     const args = cloneJsonValue(Array.from(arguments)) ?? Array.from(arguments);
     return await runSerializedChatWrite(() => saveChatInternal(...args));
 }
@@ -14847,6 +15070,7 @@ export async function unshallowCharacter(characterId) {
 }
 
 export async function getChat() {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.reload();
     try {
         await unshallowCharacter(this_chid);
 
@@ -15013,6 +15237,7 @@ export async function refreshFirstMessageOnEmptyCharacterChat() {
 }
 
 export async function openCharacterChat(file_name) {
+    if (nativeSessionRuntime.active) throw new Error('Close Native Session before opening a legacy chat');
     // API list endpoints return `file_name` with the `.jsonl` extension baked
     // in (see src/endpoints/chats.js:3999 etc). Historical callers passed that
     // raw string straight into here from DOM attributes on chat list rows and
@@ -16006,6 +16231,11 @@ function openMessageDelete(fromSlashCommand, deleteToolCalls = true) {
 }
 
 function messageEditAuto(div) {
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(Number(this_edit_mes_id))) {
+        nativeSessionRuntime.denyCommittedAction('Edit', Number(this_edit_mes_id));
+        void messageEditCancel(this_edit_mes_id);
+        return;
+    }
     const { mesBlock, text, mes, bias } = updateMessage(div);
 
     mesBlock.find('.mes_text').val('');
@@ -16133,6 +16363,12 @@ async function messageEditCancel(messageId = this_edit_mes_id) {
  * @returns {Promise<boolean>} True if the messages were moved, false otherwise
  */
 async function messageEditMove(sourceId, targetId) {
+    if (nativeSessionRuntime.active
+        && (nativeSessionRuntime.isCommittedMessage(Number(sourceId))
+            || nativeSessionRuntime.isCommittedMessage(Number(targetId)))) {
+        nativeSessionRuntime.denyCommittedAction('Reorder', Number(sourceId));
+        return false;
+    }
     if (is_send_press) {
         console.warn(`The message #${sourceId} was not moved to #${targetId} because a generation is in progress.`);
         return false;
@@ -16188,6 +16424,12 @@ async function messageEditDone(div) {
         return;
     }
     const editedMessageId = Number(this_edit_mes_id);
+
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(editedMessageId)) {
+        nativeSessionRuntime.denyCommittedAction('Edit', editedMessageId);
+        await messageEditCancel(editedMessageId);
+        return;
+    }
 
     let { mesBlock, bias } = updateMessage(div);
 
@@ -16635,6 +16877,10 @@ export function select_rm_info(type, charId, previousCharId = null) {
  * @param {boolean} [param1.switchMenu=true] Whether to switch the menu
  */
 export function select_selected_character(chid, { switchMenu = true } = {}) {
+    if (nativeSessionRuntime.active) {
+        nativeSessionRuntime.denyCommittedAction('Character/CardApp editor');
+        return;
+    }
     const character = characters[chid];
     //character select
     //console.log('select_selected_character() -- starting with input of -- ' + chid + ' (name:' + characters[chid].name + ')');
@@ -17233,6 +17479,11 @@ export async function deleteSwipe(swipeId = null, messageId = chat.length - 1) {
         return;
     }
 
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(Number(messageId))) {
+        nativeSessionRuntime.denyCommittedAction('Swipe Delete', Number(messageId));
+        return;
+    }
+
     if (message.swipes.length <= 1) {
         toastr.warning(t`Can't delete the last swipe.`);
         return;
@@ -17326,6 +17577,7 @@ export async function saveMetadata(options = {}) {
 }
 
 export async function saveChatConditional() {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.persist();
     try {
         cancelDebouncedChatSave();
         const saveContext = buildActiveChatSaveContext();
@@ -18153,6 +18405,11 @@ export async function swipe(event, direction, { source, repeated, message = chat
     }
 
     const mesId = Number(forceMesId ?? event?.currentTarget?.closest('.mes')?.getAttribute('mesid') ?? messageIndex ?? chat.length - 1);
+
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(mesId)) {
+        nativeSessionRuntime.denyCommittedAction('Manual Swipe / Variant switch', mesId);
+        return;
+    }
 
     if ([SWIPE_SOURCE.DELETE, SWIPE_SOURCE.BACK, SWIPE_SOURCE.AUTO_SWIPE, SWIPE_SOURCE.SLASH_COMMAND, SWIPE_SOURCE.SWIPE_PICKER].includes(source)) {
         console.info(`The ${direction} swipe source on message #${mesId} is ${source}, Most checks have been bypassed. `);
@@ -20898,6 +21155,11 @@ jQuery(async function () {
         });
 
         if (id == 'option_select_chat') {
+            if (nativeSessionRuntime.active) {
+                nativeSessionRuntime.denyCommittedAction('Manage Chat Files');
+                hideMenu();
+                return;
+            }
             if (this_chid === undefined && !is_send_press && !selected_group) {
                 await openPermanentAssistantCard();
             }
@@ -21303,10 +21565,19 @@ jQuery(async function () {
 
     //**************************CHARACTER IMPORT EXPORT*************************//
     $('#character_import_button').on('click', function () {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character import');
+            return;
+        }
         $('#character_import_file').trigger('click');
     });
 
     $('#character_import_file').on('change', async function (e) {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character import');
+            e.target.value = '';
+            return;
+        }
         $('#rm_info_avatar').html('');
 
         if (!(e.target instanceof HTMLInputElement)) {
@@ -21338,12 +21609,20 @@ jQuery(async function () {
     });
 
     $('#export_button').on('click', function () {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character PNG/JSON/CharX/BYAF export');
+            return;
+        }
         isExportPopupOpen = !isExportPopupOpen;
         $('#export_format_popup').toggle(isExportPopupOpen);
         exportPopper.update();
     });
 
     $(document).on('click', '.export_format', async function () {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character PNG/JSON/CharX/BYAF export');
+            return;
+        }
         const format = $(this).data('format');
 
         if (!format) {
@@ -22098,3 +22377,95 @@ jQuery(async function () {
         }
     });
 });
+
+
+/** N4 explicit Native Session seam; the R7 host subtree and existing conversation engine stay intact. */
+export async function openNativeSession(sessionId, options = {}) {
+    nativeSessionRuntime.configure({
+        headers: getRequestHeaders,
+        messages: () => chat,
+        isGenerating: () => is_send_press || is_group_generating,
+        error: (error, { fatal = true } = {}) => {
+            if (fatal) stopGeneration();
+            toastr.error(error.message, fatal ? 'Native Session write failed' : 'Native committed Timeline is immutable');
+        },
+        runtimeState: () => {
+            const values = cloneJsonValue(chat_metadata?.variables ?? {}) ?? {};
+            const hasState = Object.prototype.hasOwnProperty.call(nativeSessionRuntime.snapshot?.states ?? {}, 'atri_variables');
+            return hasState || Object.keys(values).length > 0
+                ? { atri_variables: { schemaVersion: 1, values } }
+                : {};
+        },
+        revision: projection => {
+            chat_metadata.integrity = projection.revisionId;
+            chat_metadata.variables = cloneJsonValue(projection.metadata?.variables ?? {}) ?? {};
+        },
+        install: async projection => {
+            document.body.dataset.atriaNativeSessionActive = 'true';
+            cancelDebouncedChatSave();
+            cancelDebouncedMetadataSave();
+            closeMessageEditor();
+            setActiveGroup(null);
+            let index = characters.findIndex(character => character.atri_native);
+            if (index < 0) index = characters.length;
+            characters[index] = projection.character;
+            setCharacterId(index);
+            setCharacterName(projection.character.name);
+            chat.splice(0, chat.length, ...projection.chat);
+            chat_metadata = projection.metadata;
+            extension_prompts = {};
+            itemizedPrompts.length = 0;
+            setChatServerState({ totalMessages: chat.length });
+            await printMessages();
+            await settleChatChanged();
+            await eventSource.emit(event_types.CHAT_CHANGED, projection.sessionId);
+            await eventSource.emit(event_types.CHAT_LOADED, { detail: { id: this_chid, character: characters[this_chid] } });
+        },
+        clear: async () => {
+            delete document.body.dataset.atriaNativeSessionActive;
+            cancelDebouncedChatSave();
+            cancelDebouncedMetadataSave();
+            const index = characters.findIndex(character => character.atri_native);
+            if (index >= 0) characters.splice(index, 1);
+            setCharacterId(undefined);
+            chat.splice(0);
+            chat_metadata = {};
+            extension_prompts = {};
+            await printMessages();
+            await settleChatChanged();
+            await eventSource.emit(event_types.CHAT_CHANGED, undefined);
+        },
+    });
+    return nativeSessionRuntime.open(sessionId, options);
+}
+
+export async function retryNativeReply() {
+    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
+    return Generate('regenerate');
+}
+
+export async function reenterNativeTurn(index) {
+    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
+    const draft = await nativeSessionRuntime.reenterTurn(index);
+    const composer = document.getElementById('send_textarea');
+    if (!composer) throw new Error('Native composer is unavailable');
+    composer.value = draft.content;
+    composer.dispatchEvent(new Event('input', { bubbles: true }));
+    composer.focus();
+    return draft;
+}
+
+export async function restartNativeFrom(index) {
+    if (!nativeSessionRuntime.active) throw new Error('No Native Session is open');
+    return nativeSessionRuntime.restartFrom(index);
+}
+
+if (globalThis.Atria) {
+    globalThis.Atria.openNativeSession = openNativeSession;
+    globalThis.Atria.nativeSessionRuntime = nativeSessionRuntime;
+    globalThis.Atria.retryNativeReply = retryNativeReply;
+    globalThis.Atria.reenterNativeTurn = reenterNativeTurn;
+    globalThis.Atria.restartNativeFrom = restartNativeFrom;
+}
+
+export { nativeSessionRuntime };

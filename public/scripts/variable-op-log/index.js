@@ -27,6 +27,8 @@ import { rebuildVariables } from './rebuilder.js';
 import { mirrorMessageExtraToCurrentSwipe, pushFloorVarOp as pushFloorVarOpPure } from './floor-ops.js';
 import { getLastMessageId } from '../macros.js';
 import { getLocalVariable } from '../variables.js';
+import { applyOp } from './apply.js';
+import { nativeSessionRuntime } from '../native/session-runtime.js';
 
 /**
  * Build a fresh display-resolve env keyed off the current ST runtime state.
@@ -85,6 +87,7 @@ export function extractMessageById(messageId) {
     if (typeof messageId !== 'number') return;
     const message = chat[messageId];
     if (!message || typeof message.mes !== 'string') return;
+    if (nativeSessionRuntime.active && message?.atri_native?.messageId) return;
 
     if (!chat_metadata.variables || typeof chat_metadata.variables !== 'object') {
         chat_metadata.variables = {};
@@ -119,6 +122,15 @@ export function pushFloorVarOp(messageId, op) {
     if (!chat_metadata.variables || typeof chat_metadata.variables !== 'object') {
         chat_metadata.variables = {};
     }
+    if (nativeSessionRuntime.active) {
+        const message = chat[messageId];
+        if (!message) throw new Error(`No message at Native variable anchor ${messageId}`);
+        // SessionRevision is the rollback boundary in Native sessions. Apply
+        // the op to the canonical variable snapshot without writing var_ops
+        // into a committed message or swipe_info.
+        applyOp(chat_metadata.variables, op);
+        return;
+    }
     pushFloorVarOpPure(chat, chat_metadata.variables, messageId, op);
 }
 
@@ -130,6 +142,7 @@ export function rebuildVariablesFromChat() {
     if (!chat_metadata.variables || typeof chat_metadata.variables !== 'object') {
         chat_metadata.variables = {};
     }
+    if (nativeSessionRuntime.active) return;
     rebuildVariables(chat, chat_metadata.variables);
 }
 
@@ -137,7 +150,10 @@ export function rebuildVariablesFromChat() {
  * Wire up event listeners. Called once during init.
  */
 export function initVariableOpLog() {
-    const onStructuralChange = () => rebuildVariablesFromChat();
+    const onStructuralChange = () => {
+        if (nativeSessionRuntime.active) return;
+        rebuildVariablesFromChat();
+    };
 
     eventSource.on(event_types.CHAT_CHANGED, onStructuralChange);
     eventSource.on(event_types.MESSAGE_DELETED, onStructuralChange);

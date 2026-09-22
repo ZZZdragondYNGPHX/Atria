@@ -5,12 +5,46 @@ import {
     filterWorldInfoByProvenance,
     markWorldInfoDispatch,
     snapshotWorldInfoProvenance,
+    worldInfoSource,
 } from '../../public/scripts/atri-world-info-provenance.js';
 import { positions, makeEntry, makePayload } from './prompt-fixture.js';
 
 const filter = { bookPattern: '^private$', entryPattern: '' };
 
 describe('rendered world info occurrence identity', () => {
+    test('Native Knowledge provenance uses stable identity even when rendered bodies are equal', () => {
+        const one = worldInfoSource({
+            world: 'kbind_one',
+            uid: 0,
+            atri_native: {
+                identity: 'native-knowledge-one',
+                knowledgeBindingId: 'kbind_one',
+                knowledgeBaseId: 'kb_one',
+                knowledgeRevisionId: 'kbv_one',
+                knowledgeEntryId: 'kentry_one',
+                authority: 'package_canonical',
+            },
+        }, 'same body');
+        const two = worldInfoSource({
+            world: 'kbind_two',
+            uid: 0,
+            atri_native: {
+                identity: 'native-knowledge-two',
+                knowledgeBindingId: 'kbind_two',
+                knowledgeBaseId: 'kb_two',
+                knowledgeRevisionId: 'kbv_two',
+                knowledgeEntryId: 'kentry_two',
+                authority: 'library_augment',
+            },
+        }, 'same body');
+
+        expect(one.content).toBe(two.content);
+        expect(one.id).toBe('native-knowledge-one');
+        expect(two.id).toBe('native-knowledge-two');
+        expect(one.atri_native.knowledgeEntryId).toBe('kentry_one');
+        expect(two.atri_native.knowledgeEntryId).toBe('kentry_two');
+    });
+
     test('ambiguous legacy bodies cannot silently choose the first source', () => {
         const payload = { worldInfoBeforeEntries: ['shared body', 'shared body'], worldInfoResolution: {
             activatedEntries: [makeEntry('public', 1), makeEntry('private', 2)],

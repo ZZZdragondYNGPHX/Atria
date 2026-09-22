@@ -1,0 +1,658 @@
+name: Native Content Session Dev Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-content-session-architecture
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-content-session-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  n0-contracts:
+    name: N0 Native Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N0 contract tests
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/contracts.test.js
+          native/world-knowledge.test.js
+      - name: Run N0 adjacent regressions
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          game-runtime/atria-distribution.test.js
+          game-runtime/package-manifest.test.js
+          game-runtime/package-transport.test.js
+          game-runtime/world-session.test.js
+          storage/name-validation.test.js
+      - name: Run N0 source lint
+        run: npx eslint src/native/*.js
+      - name: Run full root lint
+        run: npm run lint
+
+  n1-storage:
+    name: N1 Storage + N3 Core + N4 Projection
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atria
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atria_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready -U atria -d atria_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N1 Native storage contracts
+        env:
+          ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/storage-foundation.contract.test.js
+          native/storage-references.contract.test.js
+          native/storage-gc.contract.test.js
+          native/storage-round-trip.test.js
+          native/storage-commit-last.test.js
+          storage/engines/mysql-schema.test.js
+          storage/engines/postgres-schema.test.js
+          storage/engines/dump-restore.parity.test.js
+          storage/engines/delete-user.parity.test.js
+      - name: Run N3/N5 Native Session Core and revision coherence
+        env:
+          ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/session-core.contract.test.js
+          native/session-durability.test.js
+          native/session-knowledge.test.js
+          native/session-projection.test.js
+          native/session-runtime-http.test.js
+      - name: Run N4 adapter source lint
+        run: >-
+          npx eslint
+          public/scripts/native/*.js
+          src/endpoints/native-session.js
+      - name: Run N1 source lint
+        run: >-
+          npx eslint
+          src/native/*.js
+          src/native/repositories/*.js
+          src/storage/engines/native-resource-key.js
+          src/storage/engines/*-engine-transaction.js
+          src/storage/engines/*-schema.js
+          src/storage/index.js
+
+
+  n2-package-project:
+    name: N2 Package Project Composition
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N2 Project Package tests
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/project-composition.test.js
+          native/package-container.test.js
+          native/package-build-install.test.js
+          game-runtime/atria-distribution.test.js
+          game-runtime/package-manifest.test.js
+      - name: Run N2 source lint
+        run: >-
+          npx eslint
+          src/native/*.js
+          src/native/repositories/*.js
+
+  n5-runtime-state:
+    name: N5 Runtime State & Revision Lifecycle
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N5 state and lifecycle tests
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/session-core.contract.test.js
+          native/session-projection.test.js
+          native/session-runtime-http.test.js
+          floor-state/instance.test.js
+          memory-graph/adapter.test.js
+          memory-graph/source-provenance.test.js
+          memory-graph/source-lifecycle.test.js
+          memory-graph/optimization.test.js
+          search-tools/persistence.test.js
+          orchestrator/persistence.test.js
+          orchestrator/snapshot-cache-hits-invalidates.test.js
+          game-runtime/world-session.test.js
+          variable-op-log/integration.test.js
+          variable-op-log/rebuilder.test.js
+          variables/path.test.js
+      - name: Run N5 source lint
+        run: >-
+          npx eslint
+          public/scripts/native/*.js
+          public/scripts/floor-state.js
+          public/scripts/extensions/memory-graph/main.js
+          public/scripts/extensions/memory-graph/persistence.js
+          public/scripts/extensions/memory-graph/source-provenance.js
+          public/scripts/extensions/memory-graph/source-lifecycle.js
+          public/scripts/extensions/memory-graph/inspector-compute.js
+          public/scripts/extensions/orchestrator/anchors.js
+          public/scripts/extensions/orchestrator/persistence.js
+          public/scripts/extensions/orchestrator/snapshot-cache.js
+          public/scripts/extensions/search-tools/anchors.js
+          public/scripts/extensions/search-tools/persistence.js
+          public/scripts/extensions/search-tools/main.js
+          public/scripts/extensions/game-runtime/index.js
+          public/scripts/extensions/game-runtime/world/session.js
+          public/scripts/extensions/game-runtime/world/persistence.js
+          public/scripts/extensions/game-runtime/world/runtime.js
+          public/scripts/variable-op-log/index.js
+          public/scripts/variable-op-log/panel.js
+          src/native/session-core.js
+          src/endpoints/native-session.js
+
+  n6-knowledge-runtime:
+    name: N6 Native Knowledge Runtime Integration
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N6 Checkpoint K and Knowledge/WI integration
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/knowledge-runtime.test.js
+          native/session-knowledge.test.js
+          native/session-projection.test.js
+          world-info/state-conditions.test.js
+          world-info/state-events.test.js
+          world-info/provenance.test.js
+          world-info/selection-strategy.test.js
+      - name: Run N6 source lint
+        run: >-
+          npx eslint
+          public/scripts/native/*.js
+          public/scripts/world-info.js
+          public/scripts/atri-world-info-provenance.js
+          public/scripts/atri-world-info-state-events.js
+          public/scripts/extensions/memory-graph/state-providers.js
+          tests/native/knowledge-runtime.test.js
+
+  n7-context:
+    name: N7 Native Context Architecture / Checkpoint C
+    needs:
+      - n5-runtime-state
+      - n6-knowledge-runtime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N7 Checkpoint C
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/context-derived.test.js
+          native/context-compiler.test.js
+          native/context-history.test.js
+          native/knowledge-runtime.test.js
+          memory-graph/hybrid-retrieval.test.js
+          memory-graph/wi-scan-listeners.test.js
+      - name: Run N7 source lint
+        run: >-
+          npx eslint
+          public/scripts/native/*.js
+          public/scripts/extensions/memory-graph/main.js
+          public/scripts/extensions/memory-graph/hybrid-runtime.js
+          public/scripts/extensions/memory-graph/hybrid-retrieval.js
+          public/scripts/world-info.js
+          public/script.js
+          src/native/repositories/session-repo.js
+          src/endpoints/native-session.js
+          tests/native/context-derived.test.js
+          tests/native/context-compiler.test.js
+          tests/native/context-history.test.js
+
+  n8-save-system:
+    name: N8 Save System / Checkpoint B
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N8 Checkpoint B
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/save-system.test.js
+          native/session-core.contract.test.js
+          native/session-durability.test.js
+          native/session-knowledge.test.js
+          native/storage-round-trip.test.js
+      - name: Run N8 source lint
+        run: >-
+          npx eslint
+          src/native/save-container.js
+          src/native/save-system.js
+          src/native/session-core.js
+          src/native/contracts.js
+          src/native/repositories/session-repo.js
+          tests/native/save-system.test.js
+
+  n4-live-runtime:
+    name: N4 Live Native Session Browser Acceptance
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Initialize Atria config
+        run: npm run init
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Lint N4 live acceptance
+        working-directory: tests
+        run: npx eslint "e2e/native-session/**/*.js"
+      - name: Run N4 real-host Native Session acceptance
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/native-session/01-live-runtime.e2e.js
+          --project=e2e
+          --workers=1
+      - name: Upload N4 Playwright failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n4-native-session-playwright-${{ github.run_id }}
+          path: tests/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  n9-product-ui:
+    name: N9 Product UI Cutover
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+      - n5-runtime-state
+      - n6-knowledge-runtime
+      - n7-context
+      - n8-save-system
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N9 Product UI unit and integration tests
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/product-service.test.js
+          native/product-http.test.js
+          atria-shell/library-runtime-workspaces.test.js
+          atria-shell/native-product-workspaces.test.js
+          atria-shell/native-play-controls.test.js
+          atria-shell/workspace-host.test.js
+      - name: Run N9 Product authority residual guard
+        run: node scripts/check-n9-native-product-authority.mjs
+      - name: Run N9 source lint
+        run: >-
+          npx eslint
+          src/native/product-service.js
+          src/endpoints/native-product.js
+          public/scripts/native/product-client.js
+          public/scripts/native/library-workspaces.js
+          public/scripts/native/studio-workspace.js
+          public/scripts/native/play-controls.js
+          public/scripts/native/session-runtime.js
+          public/scripts/atria-shell/library-runtime-workspaces.js
+          public/scripts/atria-shell/workspace-host.js
+          public/scripts/atria-shell/native-play-host.js
+          tests/native/product-service.test.js
+          tests/native/product-http.test.js
+          tests/atria-shell/library-runtime-workspaces.test.js
+          tests/atria-shell/native-product-workspaces.test.js
+          tests/atria-shell/native-play-controls.test.js
+          tests/atria-shell/workspace-host.test.js
+          tests/e2e/native-session/02-product-ui.e2e.js
+      - name: Check N9 guard syntax
+        run: node --check scripts/check-n9-native-product-authority.mjs
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Initialize Atria config
+        run: npm run init
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Run N9 real-host Product UI acceptance
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/native-session/02-product-ui.e2e.js
+          --project=e2e
+          --workers=1
+      - name: Upload N9 Playwright failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n9-product-ui-playwright-${{ github.run_id }}
+          path: tests/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  n10-hard-cutover:
+    name: N10 Hard Cutover & Legacy Retirement
+    needs:
+      - n4-live-runtime
+      - n9-product-ui
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N10 hard-cutover focused regression
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/session-core.contract.test.js
+          native/session-projection.test.js
+          native/session-runtime-http.test.js
+          atria-shell/library-runtime-workspaces.test.js
+          atria-shell/native-play-controls.test.js
+      - name: Run N10 Native authority residual guard
+        run: node scripts/check-n10-native-hard-cutover.mjs
+      - name: Check N10 guard syntax
+        run: node --check scripts/check-n10-native-hard-cutover.mjs
+      - name: Run N10 source lint
+        run: >-
+          npx eslint
+          src/native/session-core.js
+          src/endpoints/native-session.js
+          public/scripts/native/*.js
+          public/scripts/atria-shell/library-runtime-workspaces.js
+          public/scripts/bookmarks.js
+          public/script.js
+          tests/native/session-core.contract.test.js
+          tests/native/session-projection.test.js
+          tests/native/session-runtime-http.test.js
+          tests/atria-shell/library-runtime-workspaces.test.js
+          tests/e2e/native-session/01-live-runtime.e2e.js
+          tests/e2e/native-session/02-product-ui.e2e.js
+
+  n10-r7-shell:
+    name: N10 R7 Shell Desktop/Mobile Regression
+    needs:
+      - n9-product-ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run R7 Shell unit regression
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          atria-shell
+      - name: Lint R7 Shell and N10 bridge surfaces
+        run: >-
+          npx eslint
+          public/script.js
+          "public/scripts/atria-shell/*.js"
+          public/scripts/bookmarks.js
+          tests/atria-shell
+          "tests/e2e/atria-shell/**/*.e2e.js"
+          tests/e2e/native-session/01-live-runtime.e2e.js
+          tests/e2e/native-session/02-product-ui.e2e.js
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Initialize Atria config
+        run: npm run init
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Run current R7 Shell desktop/mobile browser regression
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/native-session/02-product-ui.e2e.js
+          e2e/atria-shell/08-final-hardening.e2e.js
+          --project=e2e
+          --workers=1
+      - name: Upload N10 R7 Shell failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n10-r7-shell-playwright-${{ github.run_id }}
+          path: tests/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  n4-final-regression:
+    name: N10 Complete Node Regression and Frontend Build
+    needs:
+      - n4-live-runtime
+      - n5-runtime-state
+      - n6-knowledge-runtime
+      - n7-context
+      - n8-save-system
+      - n9-product-ui
+      - n10-hard-cutover
+      - n10-r7-shell
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atria
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atria_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready -U atria -d atria_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run complete Node unit regression
+        env:
+          ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
+        run: npm run test:unit:serial --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js

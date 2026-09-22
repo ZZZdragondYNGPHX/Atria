@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Optional adapters. Pinned source contracts and runtime boundaries: Phase 6 record.
 import { sourceContent } from './source-provenance.js';
+import { buildNativeKnowledgeStateProviders } from '../../native/knowledge-runtime.js';
 const PREPARE_EVENT = 'prompt_template_prepare';
 const blocked = new Set(['__proto__', 'constructor', 'prototype']);
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -33,6 +34,9 @@ function fieldsFor(state, providerId, settings) {
 
 /** Reads detached committed state; never runs parsers or replaces variables. */
 export function readStateProviders(context, settings = {}, host = globalThis) {
+    const nativeProviders = context?.nativeSnapshot
+        ? buildNativeKnowledgeStateProviders(context.nativeSnapshot)
+        : [];
     const chat = context.chat || [];
     const floor = chat.findLastIndex(message => !message.is_user && !message.is_system);
     const mvu = host.Mvu;
@@ -77,7 +81,7 @@ export function readStateProviders(context, settings = {}, host = globalThis) {
             }
         } catch { lore.status = 'error'; }
     }
-    return [mv, lore];
+    return [...nativeProviders, mv, lore];
 }
 
 /** Explicit field ownership; provider names alone never choose a winner. */

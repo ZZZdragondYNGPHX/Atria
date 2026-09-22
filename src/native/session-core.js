@@ -1,0 +1,406 @@
+import {
+    assertNativeResourceKey, assertSession, assertSessionRevision, assertTimelineEntry, assertVariant,
+    NATIVE_RESOURCE_KINDS,
+} from './contracts.js';
+import { createNativeId, assertNativeId } from './identity.js';
+import { resolveSessionKnowledge, validateKnowledgeBindingSet } from './session-knowledge.js';
+import { cloneNativeDocument, hashNativeDocument } from './repositories/common.js';
+import {
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
+} from './session-snapshot.js';
+import { ConflictError, NotFoundError } from '../storage/errors.js';
+
+function timelineSelection(entry) {
+    return { messageId: entry.messageId, branchId: entry.branchId,
+        variantIds: entry.variantIds, activeVariantId: entry.activeVariantId };
+}
+
+function initialWorldState(manifest, entryPoint) {
+    const worlds = manifest.worlds.filter(item => entryPoint.worldIds.includes(item.world.worldId));
+    const overlay = cloneNativeDocument(entryPoint.initialStateOverlay ?? {});
+    const primaryWorldId = entryPoint.primaryWorldId ?? (worlds.length === 1 ? worlds[0].world.worldId : null);
+    if (Object.prototype.toString.call(overlay) !== '[object Object]') throw new TypeError('EntryPoint initialStateOverlay must be an object');
+    if (worlds.length > 1 && !primaryWorldId && Object.keys(overlay).length) {
+        throw new TypeError('A multi-World EntryPoint overlay requires primaryWorldId');
+    }
+    return {
+        primaryWorldId,
+        worlds: Object.fromEntries(worlds.map(item => {
+            const worldId = item.world.worldId;
+            const baseline = cloneNativeDocument(item.revision.baseline ?? {});
+            return [worldId, { worldRevisionId: item.revision.worldRevisionId,
+                state: worldId === primaryWorldId ? { ...baseline, ...overlay } : baseline }];
+        })),
+        // World-less narrative starts may still carry an initial state overlay.
+        ...(worlds.length ? {} : { initialState: overlay }),
+    };
+}
+
+function validateWorldState(states, manifest, entryPoint) {
+    const expected = initialWorldState(manifest, entryPoint);
+    const actual = states.atri_world_state;
+    if (!actual || actual.primaryWorldId !== expected.primaryWorldId || !actual.worlds
+        || Object.keys(actual.worlds).length !== Object.keys(expected.worlds).length) {
+        throw new TypeError('Session World dependency mismatch');
+    }
+    for (const [worldId, world] of Object.entries(expected.worlds)) {
+        if (actual.worlds[worldId]?.worldRevisionId !== world.worldRevisionId
+            || !Object.hasOwn(actual.worlds[worldId], 'state')) throw new TypeError('Session World dependency mismatch');
+    }
+}
+
+function validateRuntimeStateChanges(handle, sessionId, statePatch = {}, deleteNamespaces = []) {
+    const values = cloneNativeDocument(statePatch, 'Native runtime state patch');
+    if (!values || Array.isArray(values) || typeof values !== 'object') {
+        throw new TypeError('Native runtime state patch must be an object');
+    }
+    if (!Array.isArray(deleteNamespaces)) throw new TypeError('Native runtime deleteNamespaces must be an array');
+    const deletes = [...new Set(deleteNamespaces.map(namespace => String(namespace || '').trim()))];
+    for (const namespace of [...Object.keys(values), ...deletes]) {
+        if (RESERVED_SESSION_NAMESPACES.includes(namespace)) throw new TypeError('Reserved Session Core namespace');
+        assertNativeResourceKey({
+            kind: NATIVE_RESOURCE_KINDS.sessionState,
+            handle,
+            sessionId,
+            namespace,
+            head: 'validate',
+        });
+    }
+    for (const namespace of deletes) {
+        if (Object.prototype.hasOwnProperty.call(values, namespace)) {
+            throw new TypeError('Native runtime state namespace cannot be updated and deleted in one commit');
+        }
+    }
+    return { values, deletes };
+}
+
+function appendRuntimeTimeline(core, base, commands = []) {
+    if (!Array.isArray(commands) || commands.length > 1000) {
+        throw new TypeError('Expected 0..1000 Native Timeline append commands');
+    }
+    const timeline = [...base.timeline];
+    const entries = [];
+    const variants = [];
+    for (const command of commands) {
+        if (!command || command.type !== 'append' || command.beforeMessageId !== undefined) {
+            throw new TypeError('Native runtime Timeline commands are append-only');
+        }
+        const created = core._newEntry(base, command.draft, timeline.length);
+        timeline.push(created.entry);
+        entries.push(created.entry);
+        variants.push(created.variant);
+    }
+    return { timeline, entries, variants };
+}
+
+/** Native commands only. Runtime projection, generation and state providers are later phases. */
+export class SessionCore {
+    constructor({ sessionRepo, savePointRepo, packageInstaller, knowledgeRepo = null }) {
+        if (!sessionRepo || !savePointRepo || !packageInstaller) {
+            throw new TypeError('SessionCore requires SessionRepo, SavePointRepo and PackageInstaller');
+        }
+        this._sessions = sessionRepo;
+        this._saves = savePointRepo;
+        this._packages = packageInstaller;
+        this._knowledge = knowledgeRepo;
+    }
+
+    async _openPackage(handle, packageId, packageVersionId, entryPointId) {
+        assertNativeId(packageId, 'package');
+        assertNativeId(packageVersionId, 'packageVersion');
+        assertNativeId(entryPointId, 'entryPoint');
+        const installed = await this._packages.open(handle, packageId, packageVersionId);
+        if (!installed) throw new NotFoundError('native package version', { packageId, packageVersionId });
+        const entryPoint = installed.manifest.entryPoints.find(item => item.entryPointId === entryPointId);
+        if (!entryPoint) throw new NotFoundError('native entry point', { entryPointId });
+        return { ...installed, entryPoint };
+    }
+
+    async load(handle, sessionId, options = {}) {
+        assertNativeId(sessionId, 'session');
+        if (options.revisionId) assertNativeId(options.revisionId, 'revision');
+        const snapshot = await this._sessions.loadSnapshot(handle, sessionId, options);
+        const { session } = snapshot;
+        const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
+        if (installed.packageVersion.packageContentHash !== session.packageContentHash
+            || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
+        validateWorldState(snapshot.states, installed.manifest, installed.entryPoint);
+        const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
+        const worlds = installed.manifest.worlds.filter(item => installed.entryPoint.worldIds.includes(item.world.worldId));
+        return { ...snapshot, knowledge, manifest: installed.manifest, entryPoint: installed.entryPoint, worlds };
+    }
+
+    async create(handle, { packageId, packageVersionId, entryPointId, displayTitle,
+        libraryBindingIds = [], sessionBindings = [], sessionKnowledge = [] }) {
+        const installed = await this._openPackage(handle, packageId, packageVersionId, entryPointId);
+        const now = Date.now();
+        const sessionId = createNativeId('session');
+        const branchId = createNativeId('branch');
+        const session = assertSession({
+            sessionId, packageId, packageVersionId, packageVersion: installed.packageVersion.version,
+            packageContentHash: installed.packageVersion.packageContentHash, entryPointId,
+            activeBranchId: branchId, headRevisionId: null, createdAt: now, updatedAt: now,
+            ...(displayTitle === undefined ? {} : { displayTitle }),
+        });
+        const branch = { sessionId, branchId, parentBranchId: null, forkPoint: null, createdAt: now };
+        const base = { session, revision: null, timeline: [], graph: [{ branchId, forkRevisionId: null, branch }],
+            states: { atri_world_state: initialWorldState(installed.manifest, installed.entryPoint) },
+            manifest: installed.manifest, entryPoint: installed.entryPoint,
+            knowledge: await resolveSessionKnowledge({ handle, manifest: installed.manifest,
+                entryPoint: installed.entryPoint, knowledgeRepo: this._knowledge,
+                libraryBindingIds, sessionBindings, sessionKnowledge }),
+        };
+        const initial = installed.entryPoint.initialTimeline ?? [];
+        if (!Array.isArray(initial)) throw new TypeError('EntryPoint initialTimeline must be an array');
+        const entries = [];
+        const variants = [];
+        for (const draft of initial) {
+            const created = this._newEntry(base, draft, entries.length);
+            entries.push(created.entry);
+            variants.push(created.variant);
+        }
+        return this._publish(handle, base, { timeline: entries, entries, variants, branches: [branch] });
+    }
+
+    _newEntry(base, draft, sequence = base.timeline.length) {
+        const messageId = createNativeId('message');
+        const variantId = createNativeId('variant');
+        if (draft.actorId && !base.manifest.actors.some(actor => actor.actorId === draft.actorId)) {
+            throw new TypeError('Timeline actor must belong to exact PackageVersion');
+        }
+        const entry = assertTimelineEntry({ ...draft, sessionId: base.session.sessionId,
+            branchId: base.revision?.branchId ?? base.session.activeBranchId, messageId, sequence,
+            variantIds: [variantId], activeVariantId: variantId });
+        const variant = assertVariant({ sessionId: entry.sessionId, messageId, variantId,
+            content: entry.content, metadata: entry.metadata, createdAt: Date.now() });
+        return { entry, variant };
+    }
+
+    async _publish(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
+        graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
+        entries = [], variants = [], branches = [] } = {}) {
+        validateWorldState(states, base.manifest, base.entryPoint);
+        const revisionId = createNativeId('revision');
+        const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
+            branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
+                headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
+        const documents = { ...states,
+            [SESSION_CORE_NAMESPACE]: core,
+            [TIMELINE_NAMESPACE]: timeline.map(timelineSelection),
+            [KNOWLEDGE_NAMESPACE]: validateKnowledgeBindingSet(knowledge, base.manifest, base.entryPoint),
+        };
+        const stateHeads = Object.fromEntries(Object.entries(documents)
+            .filter(([namespace]) => namespace !== KNOWLEDGE_NAMESPACE)
+            .map(([namespace, value]) => [namespace, hashNativeDocument(value)]));
+        const last = timeline.at(-1);
+        const revision = assertSessionRevision({ revisionId, sessionId: base.session.sessionId, branchId,
+            timelineHead: last ? { messageId: last.messageId, variantId: last.activeVariantId } : null,
+            stateHeads, knowledgeHead: hashNativeDocument(documents[KNOWLEDGE_NAMESPACE]), createdAt: Date.now() });
+        const session = assertSession({ ...base.session, activeBranchId: branchId, headRevisionId: revisionId,
+            updatedAt: Math.max(Date.now(), base.session.updatedAt) });
+        const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
+            entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
+        return { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
+            worlds: base.manifest.worlds.filter(item => base.entryPoint.worldIds.includes(item.world.worldId)) };
+    }
+
+    async _current(handle, sessionId, expectedRevisionId) {
+        const base = await this.load(handle, sessionId);
+        if (expectedRevisionId !== undefined && base.session.headRevisionId !== expectedRevisionId) {
+            throw new ConflictError('native_session_head_conflict', { sessionId });
+        }
+        return base;
+    }
+
+    async _findTimelineBoundary(handle, sessionId, source, messageId) {
+        assertNativeId(messageId, 'message');
+
+        let cursor = source;
+        let boundary = null;
+        const visited = new Set();
+        while (cursor?.revision) {
+            const revisionId = cursor.revision.revisionId;
+            if (visited.has(revisionId)) throw new TypeError('Native Session revision ancestry cycle');
+            visited.add(revisionId);
+
+            const last = cursor.timeline.at(-1);
+            const matchesMessage = cursor.revision.timelineHead?.messageId === messageId
+                && last?.messageId === messageId;
+
+            if (matchesMessage) {
+                boundary = cursor;
+            } else if (boundary) {
+                break;
+            }
+
+            const parentRevisionId = cursor.core?.parentRevisionId;
+            if (!parentRevisionId) break;
+            cursor = await this.load(handle, sessionId, { revisionId: parentRevisionId });
+        }
+        if (!boundary) {
+            throw new NotFoundError('native timeline boundary revision', { messageId });
+        }
+        return boundary;
+    }
+
+    async appendTimeline(handle, sessionId, draft, { expectedRevisionId } = {}) {
+        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const { entry, variant } = this._newEntry(base, draft);
+        return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant] });
+    }
+
+    /**
+     * Publish runtime Drafts as one append-only revision.
+     * Committed Timeline entries and their single birth Variant are immutable
+     * Native authority. Retry/re-entry create derived Branches/Revisions;
+     * there is no post-commit Variant add/select mutation surface.
+     */
+    async applyRuntimeCommit(handle, sessionId, {
+        commands = [],
+        statePatch = {},
+        deleteNamespaces = [],
+    } = {}, { expectedRevisionId } = {}) {
+        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const timelineChanges = appendRuntimeTimeline(this, base, commands);
+        const { values, deletes } = validateRuntimeStateChanges(handle, sessionId, statePatch, deleteNamespaces);
+        const states = { ...base.states, ...values };
+        for (const namespace of deletes) delete states[namespace];
+
+        const changedState = Object.keys(values).some(namespace =>
+            hashNativeDocument(base.states[namespace] ?? null) !== hashNativeDocument(values[namespace]))
+            || deletes.some(namespace => Object.prototype.hasOwnProperty.call(base.states, namespace));
+        if (timelineChanges.entries.length === 0 && !changedState) return base;
+
+        return this._publish(handle, base, {
+            timeline: timelineChanges.timeline,
+            entries: timelineChanges.entries,
+            variants: timelineChanges.variants,
+            states,
+        });
+    }
+
+    async applyTimelineCommands(handle, sessionId, commands, { expectedRevisionId } = {}) {
+        if (!Array.isArray(commands) || !commands.length || commands.length > 1000) {
+            throw new TypeError('Expected 1..1000 Native Timeline append commands');
+        }
+        return this.applyRuntimeCommit(handle, sessionId, { commands }, { expectedRevisionId });
+    }
+
+    async updateState(handle, sessionId, patch, { expectedRevisionId } = {}) {
+        return this.applyRuntimeCommit(handle, sessionId, { statePatch: patch }, { expectedRevisionId });
+    }
+
+
+    // Explicit replacement of external bindings, not a follow-latest policy.
+    async updateKnowledge(handle, sessionId, options, { expectedRevisionId } = {}) {
+        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const knowledge = await resolveSessionKnowledge({ ...options, handle, manifest: base.manifest,
+            entryPoint: base.entryPoint, knowledgeRepo: this._knowledge });
+        return this._publish(handle, base, { knowledge });
+    }
+
+    /**
+     * Retry the current committed assistant reply without creating a Native
+     * Variant. Find the exact ancestor revision whose Timeline HEAD is the
+     * preceding user message, then fork from that post-user revision.
+     */
+    async retryReply(handle, sessionId, { messageId, expectedRevisionId } = {}) {
+        assertNativeId(messageId, 'message');
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        const assistantIndex = current.timeline.findIndex(item => item.messageId === messageId);
+        if (assistantIndex < 0) throw new NotFoundError('native retry assistant message', { messageId });
+        const assistant = current.timeline[assistantIndex];
+        if (assistant.role !== 'assistant' || assistantIndex !== current.timeline.length - 1) {
+            throw new TypeError('Native Retry Reply requires the current committed assistant reply');
+        }
+        let userIndex = assistantIndex - 1;
+        while (userIndex >= 0 && current.timeline[userIndex].role !== 'user') userIndex--;
+        if (userIndex < 0) throw new TypeError('Native Retry Reply requires a preceding committed user turn');
+        const userMessageId = current.timeline[userIndex].messageId;
+
+        const postUser = await this._findTimelineBoundary(handle, sessionId, current, userMessageId);
+        return this.forkBranch(handle, sessionId, {
+            revisionId: postUser.revision.revisionId,
+            expectedRevisionId: current.session.headRevisionId,
+        });
+    }
+
+    async forkBranch(handle, sessionId, { revisionId, messageId, displayName, expectedRevisionId } = {}) {
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        let source = revisionId ? await this.load(handle, sessionId, { revisionId }) : current;
+        let timeline = source.timeline;
+        if (messageId !== undefined) {
+            const selected = timeline.find(item => item.messageId === messageId);
+            if (!selected) throw new NotFoundError('native fork message');
+            // A message-scoped fork means "fork from the coherent Revision at
+            // that Timeline boundary", not "slice old text while inheriting
+            // later state". Walk back across state-only revisions whose
+            // Timeline HEAD stayed on the same message and pick the earliest
+            // boundary in the nearest ancestry block.
+            source = await this._findTimelineBoundary(handle, sessionId, source, messageId);
+            timeline = source.timeline;
+        }
+        const last = timeline.at(-1);
+        const forkPoint = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
+        const branchId = createNativeId('branch');
+        const branch = { branchId, sessionId, parentBranchId: source.revision.branchId,
+            forkPoint, createdAt: Date.now(),
+            ...(displayName === undefined ? {} : { displayName }) };
+        return this._publish(handle, { ...source, session: current.session }, {
+            branchId, timeline, branches: [branch], graph: [...current.graph,
+                { branchId, forkRevisionId: source.revision.revisionId, branch }],
+        });
+    }
+
+    async switchBranch(handle, sessionId, branchId, { expectedRevisionId } = {}) {
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        const node = current.graph.find(item => item.branchId === branchId);
+        if (!node) throw new NotFoundError('native branch', { branchId });
+        const source = await this.load(handle, sessionId, { revisionId: node.headRevisionId });
+        return this._publish(handle, { ...source, session: current.session }, { graph: current.graph });
+    }
+
+    async createSavePoint(handle, sessionId, { revisionId, kind = 'manual', displayName } = {}) {
+        const source = await this.load(handle, sessionId, { revisionId });
+        return this._saves.create(handle, { saveId: createNativeId('savePoint'), sessionId,
+            branchId: source.revision.branchId, revisionId: source.revision.revisionId, kind, createdAt: Date.now(),
+            ...(displayName === undefined ? {} : { displayName }) });
+    }
+
+    async restoreSavePoint(handle, sessionId, saveId, { expectedRevisionId } = {}) {
+        const save = await this._saves.get(handle, sessionId, saveId);
+        if (!save) throw new NotFoundError('native save point', { saveId });
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        if (
+            current.session.headRevisionId === save.revisionId
+            && current.session.activeBranchId === save.branchId
+        ) {
+            return current;
+        }
+
+        // Loading a historical Save is non-destructive. The saved Revision is
+        // an immutable source root; continuing publishes a new derived Branch
+        // and leaves every pre-existing Branch HEAD untouched.
+        const source = await this.load(handle, sessionId, { revisionId: save.revisionId });
+        const last = source.timeline.at(-1);
+        const forkPoint = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
+        const branchId = createNativeId('branch');
+        const branch = {
+            branchId,
+            sessionId,
+            parentBranchId: source.revision.branchId,
+            forkPoint,
+            createdAt: Date.now(),
+            ...(save.displayName === undefined ? {} : { displayName: save.displayName }),
+        };
+        return this._publish(handle, { ...source, session: current.session }, {
+            branchId,
+            timeline: source.timeline,
+            branches: [branch],
+            graph: [
+                ...current.graph,
+                { branchId, forkRevisionId: source.revision.revisionId, branch },
+            ],
+        });
+    }
+}

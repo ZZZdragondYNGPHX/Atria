@@ -131,8 +131,13 @@ export function resetFloorStateInstanceForTesting() {
  * had — leaking the envelope poisons every consumer that spreads or
  * indexes the result.
  */
+function isNativeSessionContext(context) {
+    return Array.isArray(context?.chat)
+        && context.chat.some(message => String(message?.atri_native?.messageId || '').trim());
+}
+
 export async function loadMetaFields(context, target = undefined) {
-    const options = target ? { target } : undefined;
+    const options = target && !isNativeSessionContext(context) ? { target } : undefined;
     const result = await context.getChatState(META_NAMESPACE, options);
     return result?.ok ? result.state : null;
 }
@@ -147,7 +152,9 @@ export async function loadMetaFields(context, target = undefined) {
  * deserve an error.
  */
 export async function persistMetaFields(context, meta, target = undefined) {
-    const options = target ? { target, maxOperations: 16000 } : { maxOperations: 16000 };
+    const options = target && !isNativeSessionContext(context)
+        ? { target, maxOperations: 16000 }
+        : { maxOperations: 16000 };
     return await context.updateChatState(META_NAMESPACE, () => meta, options);
 }
 

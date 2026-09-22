@@ -113,6 +113,7 @@ jobs:
           world-info/state-events-floor-state.test.js
           world-info/selection-strategy.test.js
           world-info/workspace-diagnostics.test.js
+          world-info/workspace-embedded-contract.test.js
           --runInBand
 
       - name: Capture synthetic offline baseline
@@ -125,8 +126,10 @@ jobs:
       - name: Run isolated real-host Chromium smoke
         run: node tests/performance/runtime-smoke.mjs
 
-      - name: Run World Info runtime and workspace acceptance
+      - name: Run legacy World Info runtime ABI acceptance
         working-directory: tests
+        env:
+          ATRIA_E2E_SHELL_RECOVERY: legacy
         run: >-
           npx playwright test
           e2e/worldinfo/25-activation-strategies.e2e.js
@@ -138,8 +141,23 @@ jobs:
           e2e/worldinfo/31-recursive-activation.e2e.js
           e2e/worldinfo/32-vectorized-entries.e2e.js
           e2e/worldinfo/33-import-array-form-entries.e2e.js
-          e2e/worldinfo/34-workspace-ui.e2e.js
           --workers=2
+
+      - name: Run modern World Info workspace acceptance
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/worldinfo/34-workspace-ui.e2e.js
+          --workers=1
+
+      - name: Stress mobile World Info Workspace startup ordering
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/worldinfo/34-workspace-ui.e2e.js
+          --grep "mobile workspace uses drill-down"
+          --repeat-each=3
+          --workers=1
 
       - name: Upload synthetic baseline
         if: always()

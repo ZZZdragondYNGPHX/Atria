@@ -21,6 +21,7 @@
 
 import fs from 'node:fs';
 import { CONTRACT_HARNESSES } from '../harness/contract-harness.js';
+import { NATIVE_RESOURCE_KINDS, createNativeId } from '../../../src/native/index.js';
 
 describe.each(CONTRACT_HARNESSES)('engine.deleteUser on $name', ({ make }) => {
     let h;
@@ -68,6 +69,8 @@ describe.each(CONTRACT_HARNESSES)('engine.deleteUser on $name', ({ make }) => {
 
     test('all-tables probe: db engines wipe every Repo-backed table, fs/sqlite leave them intact', async () => {
         const handle = h.handle;
+        const nativePackageId = createNativeId('package');
+        const nativeKey = { kind: NATIVE_RESOURCE_KINDS.package, handle, packageId: nativePackageId };
         // Write at least one row to every user-data table inside one
         // transaction. The chat resource uses the flat
         // {header, body, integrity} shape because the chat handler reads
@@ -127,6 +130,12 @@ describe.each(CONTRACT_HARNESSES)('engine.deleteUser on $name', ({ make }) => {
                 { kind: 'stats', handle },
                 { doc: { totalChats: 0 } },
             );
+            await tx.putResource(nativeKey, {
+                doc: { packageId: nativePackageId },
+                integrity: 'c'.repeat(64),
+                createdAt: 1,
+                updatedAt: 1,
+            });
         });
 
         // Sanity: at least one resource we just wrote is visible BEFORE
@@ -149,6 +158,7 @@ describe.each(CONTRACT_HARNESSES)('engine.deleteUser on $name', ({ make }) => {
             out.group = await tx.getResource({ kind: 'group', handle, id: 'g1' });
             out.settings = await tx.getResource({ kind: 'settings', handle });
             out.stats = await tx.getResource({ kind: 'stats', handle });
+            out.native = await tx.getResource(nativeKey);
             return out;
         });
 

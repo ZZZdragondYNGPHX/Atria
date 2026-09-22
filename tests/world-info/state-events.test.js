@@ -117,6 +117,26 @@ describe('W-03b world info state transition events', () => {
             .toBe(fingerprintWorldInfoStateSnapshot(after));
     });
 
+    test('Native transition replay is scoped by revision/message identity instead of floor/swipe', () => {
+        const before = snapshotWorldInfoStateProviders(providers('tavern'));
+        const after = snapshotWorldInfoStateProviders(providers('clocktower'));
+        const scope = {
+            revisionId: 'rev_native_a',
+            branchId: 'branch_native_a',
+            messageId: 'msg_native_a',
+        };
+        const state = buildWorldInfoEventRuntimeState({}, before, after, scope);
+        expect(state.transition.scope).toEqual(scope);
+        expect(state.transition.scope).not.toHaveProperty('floor');
+        expect(state.transition.scope).not.toHaveProperty('swipeId');
+
+        expect(resolveWorldInfoEventComparisonBaseline(state, after, scope).replay).toBe(true);
+        expect(resolveWorldInfoEventComparisonBaseline(state, after, {
+            ...scope,
+            revisionId: 'rev_native_b',
+        }).replay).toBe(false);
+    });
+
     test('no baseline seeds current state without inventing a transition record', () => {
         const after = snapshotWorldInfoStateProviders(providers('clocktower'));
         const state = buildWorldInfoEventRuntimeState({}, null, after, { floor: 2, swipeId: 0 });

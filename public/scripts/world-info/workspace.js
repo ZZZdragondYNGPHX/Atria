@@ -1282,12 +1282,15 @@ export function mountWorldInfoWorkspace(container, { embedded = true } = {}) {
     const originalNextSibling = root.nextSibling;
     const originalClassName = root.className;
     const originalStyle = root.getAttribute('style');
+    const originalAriaHidden = root.getAttribute('aria-hidden');
+    const originalHidden = root.hidden;
 
     container.replaceChildren(root);
     root.dataset.atriaWorkspaceEmbedded = String(Boolean(embedded));
     root.classList.add('openDrawer');
     root.classList.remove('closedDrawer');
     root.hidden = false;
+    root.setAttribute('aria-hidden', 'false');
 
     let disposed = false;
     const api = {
@@ -1299,6 +1302,9 @@ export function mountWorldInfoWorkspace(container, { embedded = true } = {}) {
             root.className = originalClassName;
             if (originalStyle === null) root.removeAttribute('style');
             else root.setAttribute('style', originalStyle);
+            root.hidden = originalHidden;
+            if (originalAriaHidden === null) root.removeAttribute('aria-hidden');
+            else root.setAttribute('aria-hidden', originalAriaHidden);
 
             if (originalParent?.isConnected) {
                 if (originalNextSibling?.parentNode === originalParent) {

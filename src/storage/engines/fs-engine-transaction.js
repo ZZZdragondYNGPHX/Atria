@@ -11,6 +11,14 @@ import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
 import { appendFsChatMessages, invalidateFsChatRangeIndex, patchFsChatMessages, readFsChatInfo, readFsChatRange, recoverFsChatPatchJournal } from './fs-chat-range.js';
+import {
+    NATIVE_STORAGE_KINDS,
+    encodeNativeResourceKey,
+    nativeResourceFileId,
+    nativeResourceMatchesFilter,
+    normalizeNativeResourceKey,
+    sortAndLimitNativeRecords,
+} from './native-resource-key.js';
 
 export class FsTransaction {
     constructor({ directoriesByHandle }) {
@@ -23,6 +31,7 @@ export class FsTransaction {
         registerNamedDocHandler(this);
         registerGroupHandler(this);
         registerStatsHandler(this);
+        registerNativeResourceHandlers(this);
     }
 
     _h(kind, method) {
@@ -744,4 +753,116 @@ function registerStatsHandler(tx) {
         },
         list() { throw new Error('FsTransaction.list: stats is a singleton'); },
     });
+}
+
+function registerNativeResourceHandlers(tx) {
+    const rootFor = (key) => path.join(
+        tx._directoriesByHandle(key.handle).root,
+        'atria-native',
+        'resources',
+        key.kind,
+    );
+    const filePath = (key) => path.join(rootFor(key), `${nativeResourceFileId(key)}.json`);
+
+    const readEnvelope = (key) => {
+        const normalized = normalizeNativeResourceKey(key);
+        const fp = filePath(normalized);
+        if (!fs.existsSync(fp)) return null;
+        let envelope;
+        try {
+            envelope = JSON.parse(fs.readFileSync(fp, 'utf-8'));
+        } catch {
+            return null;
+        }
+        if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) return null;
+        let storedKey;
+        try {
+            storedKey = normalizeNativeResourceKey(envelope.key);
+        } catch {
+            return null;
+        }
+        if (
+            storedKey.kind !== normalized.kind
+            || storedKey.handle !== normalized.handle
+            || encodeNativeResourceKey(storedKey) !== encodeNativeResourceKey(normalized)
+        ) {
+            return null;
+        }
+        return {
+            key: storedKey,
+            doc: envelope.doc,
+            integrity: String(envelope.integrity || ''),
+            updatedAt: Number(envelope.updatedAt || 0),
+            createdAt: Number(envelope.createdAt || 0),
+        };
+    };
+
+    const handler = {
+        get(key) {
+            return readEnvelope(key);
+        },
+        put(key, record) {
+            const normalized = normalizeNativeResourceKey(key);
+            const existing = readEnvelope(normalized);
+            const now = Date.now();
+            const envelope = {
+                key: normalized,
+                doc: record.doc,
+                integrity: String(record.integrity || ''),
+                updatedAt: Number(record.updatedAt ?? now),
+                createdAt: Number(record.createdAt ?? existing?.createdAt ?? now),
+            };
+            const fp = filePath(normalized);
+            fs.mkdirSync(path.dirname(fp), { recursive: true });
+            writeFileAtomic(fp, JSON.stringify(envelope));
+        },
+        delete(key) {
+            const normalized = normalizeNativeResourceKey(key);
+            const fp = filePath(normalized);
+            if (!fs.existsSync(fp)) return false;
+            fs.unlinkSync(fp);
+            return true;
+        },
+        list(filter) {
+            if (!filter || !NATIVE_STORAGE_KINDS.includes(filter.kind)) {
+                throw new Error('FsTransaction native list requires a Native resource kind');
+            }
+            const normalizedFilter = { ...filter, handle: String(filter.handle || '') };
+            const dir = path.join(
+                tx._directoriesByHandle(normalizedFilter.handle).root,
+                'atria-native',
+                'resources',
+                normalizedFilter.kind,
+            );
+            if (!fs.existsSync(dir)) return [];
+            const records = [];
+            for (const entry of fs.readdirSync(dir)) {
+                if (!entry.endsWith('.json')) continue;
+                let envelope;
+                try {
+                    envelope = JSON.parse(fs.readFileSync(path.join(dir, entry), 'utf-8'));
+                } catch {
+                    continue;
+                }
+                if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) continue;
+                let key;
+                try {
+                    key = normalizeNativeResourceKey(envelope.key);
+                } catch {
+                    continue;
+                }
+                if (!nativeResourceMatchesFilter(key, normalizedFilter)) continue;
+                records.push({
+                    key,
+                    doc: envelope.doc,
+                    integrity: String(envelope.integrity || ''),
+                    updatedAt: Number(envelope.updatedAt || 0),
+                    createdAt: Number(envelope.createdAt || 0),
+                });
+            }
+            return sortAndLimitNativeRecords(records, normalizedFilter);
+        },
+    };
+
+    for (const kind of NATIVE_STORAGE_KINDS) tx._handlers.set(kind, handler);
 }

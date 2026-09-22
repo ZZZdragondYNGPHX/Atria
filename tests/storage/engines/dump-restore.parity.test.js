@@ -6,6 +6,7 @@
 
 import { Readable } from 'node:stream';
 import { CONTRACT_HARNESSES } from '../harness/contract-harness.js';
+import { NATIVE_RESOURCE_KINDS, createNativeId } from '../../../src/native/index.js';
 
 const HEADER = { user_name: 'tester', character_name: 'Alice', chat_metadata: {} };
 // Multi-byte UTF-8 content guards against silent mojibake in the restore
@@ -65,7 +66,9 @@ describe.each(CONTRACT_HARNESSES)('engine.dumpUser/restoreUser on $name', ({ mak
     test('dump→deleteUser→restore round-trips all user data', async () => {
         if (h.kind === 'fs') return; // fs branch is skipped per spec
 
-        // Seed all 9 Repo-backed resource types.
+        // Seed legacy Repo-backed resources plus one first-class Native row.
+        const nativePackageId = createNativeId('package');
+        const nativeKey = { kind: NATIVE_RESOURCE_KINDS.package, handle: h.handle, packageId: nativePackageId };
         await h.engine.withTransaction(h.handle, async (tx) => {
             await tx.putResource({ kind: 'chat', handle: h.handle, charDir: 'Alice', name: 'c1' },
                 { header: HEADER, body: MESSAGES });
@@ -80,6 +83,12 @@ describe.each(CONTRACT_HARNESSES)('engine.dumpUser/restoreUser on $name', ({ mak
                 { doc: { id: 'g1', name: 'Test', chats: [] } });
             await tx.putResource({ kind: 'settings', handle: h.handle }, { doc: { user_name: 'test' } });
             await tx.putResource({ kind: 'stats', handle: h.handle }, { doc: { totalChats: 0 } });
+            await tx.putResource(nativeKey, {
+                doc: { packageId: nativePackageId, marker: 'ORIGINAL' },
+                integrity: 'a'.repeat(64),
+                createdAt: 100,
+                updatedAt: 100,
+            });
         });
 
         // Capture dump.
@@ -111,6 +120,12 @@ describe.each(CONTRACT_HARNESSES)('engine.dumpUser/restoreUser on $name', ({ mak
                 { doc: { id: 'g1', name: 'MUTATED', chats: [] } });
             await tx.putResource({ kind: 'settings', handle: h.handle }, { doc: { user_name: 'MUTATED' } });
             await tx.putResource({ kind: 'stats', handle: h.handle }, { doc: { totalChats: 999 } });
+            await tx.putResource(nativeKey, {
+                doc: { packageId: nativePackageId, marker: 'MUTATED' },
+                integrity: 'b'.repeat(64),
+                createdAt: 100,
+                updatedAt: 200,
+            });
         });
 
         // Restore from dump — must overwrite the mutations and bring back the
@@ -118,10 +133,8 @@ describe.each(CONTRACT_HARNESSES)('engine.dumpUser/restoreUser on $name', ({ mak
         await h.engine.restoreUser(h.handle, bufferToStream(dumpBuf));
 
         // Probe every Repo-backed resource — must match what we ORIGINALLY
-        // wrote, not the mutations. All 9 user-data tables are covered: 7 base
-        // records plus the two sidecar namespaces (chat_states + preset_states)
-        // so the round-trip claim is verifiable for every table dumped by
-        // DUMP_TABLES.
+        // wrote, not the mutations. All user-data tables are covered, including native_resources, so the
+        // round-trip claim is verifiable for every table dumped by DUMP_TABLES.
         //
         // Note on shape: most Repo handlers (preset/world/named-doc/group/
         // settings/stats) return the parsed JSON doc DIRECTLY — there is no
@@ -137,6 +150,7 @@ describe.each(CONTRACT_HARNESSES)('engine.dumpUser/restoreUser on $name', ({ mak
             group: await tx.getResource({ kind: 'group', handle: h.handle, id: 'g1' }),
             settings: await tx.getResource({ kind: 'settings', handle: h.handle }),
             stats: await tx.getResource({ kind: 'stats', handle: h.handle }),
+            native: await tx.getResource(nativeKey),
         }));
         expect(probes.chat).not.toBeNull();
         expect(probes.chat.body).toEqual(MESSAGES);
@@ -149,6 +163,7 @@ describe.each(CONTRACT_HARNESSES)('engine.dumpUser/restoreUser on $name', ({ mak
         expect(probes.group?.name).toBe('Test');
         expect(probes.settings?.user_name).toBe('test');
         expect(probes.stats?.totalChats).toBe(0);
+        expect(probes.native?.doc?.marker).toBe('ORIGINAL');
     });
 
     test('restoreUser decodes multi-byte UTF-8 across chunk boundaries', async () => {

@@ -5,7 +5,15 @@ import { inspectMemory } from './diagnostics.js';
 
 export function inspectorPayload(snapshot, mode) {
     // Chat variable tables and rollback backups are not inputs to source validation.
-    const chat = snapshot.chat.map(({ memory_os_source_id, mes, name, is_user, is_system, swipe_id }) => ({ memory_os_source_id, mes, name, is_user, is_system, swipe_id }));
+    const chat = snapshot.chat.map(({ memory_os_source_id, atri_native, mes, name, is_user, is_system, swipe_id }) => ({
+        memory_os_source_id,
+        ...(atri_native?.messageId ? { atri_native: { messageId: atri_native.messageId } } : {}),
+        mes,
+        name,
+        is_user,
+        is_system,
+        swipe_id,
+    }));
     const state = { ...snapshot.state, historyBuild: snapshot.state.historyBuild ? { ...snapshot.state.historyBuild, before: undefined } : undefined };
     if (mode === 'graph') {
         delete state.sources; delete state.dependencies; delete state.providerSources; delete state.providerSnapshots; delete state.historyBuild;

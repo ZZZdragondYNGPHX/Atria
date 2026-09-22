@@ -1,3 +1,4 @@
+import { nativeSessionRuntime } from '../../native/session-runtime.js';
 /**
  * Regex Core architecture boundary.
  *
@@ -822,6 +823,7 @@ export function getRegexScripts(options = DEFAULT_GET_REGEX_SCRIPTS_OPTIONS) {
     return [
         ...Object.values(SCRIPT_TYPES).flatMap(type => getScriptsByType(type, options)),
         ...collectRuntimeRegexScripts(options),
+        ...nativeSessionRuntime.regexScripts(),
     ];
 }
 
@@ -945,6 +947,7 @@ export function getScriptsByType(scriptType, { allowedOnly } = DEFAULT_GET_REGEX
         case SCRIPT_TYPES.GLOBAL:
             return sanitizePersistedRegexScriptList(extension_settings.regex ?? [], SCRIPT_TYPES.GLOBAL);
         case SCRIPT_TYPES.SCOPED: {
+            if (nativeSessionRuntime.active) return [];
             if (allowedOnly && !extension_settings?.character_allowed_regex?.includes(characters?.[this_chid]?.avatar)) {
                 return [];
             }
@@ -1210,9 +1213,15 @@ export function getRegexedString(rawString, placement, { characterOverride, isMa
     const staticPlan = getStaticRegexExecutionPlan();
     const staticCandidates = getRegexExecutionCandidates(staticPlan, placement, executionParams);
 
-    // Runtime provider callbacks remain dynamic by contract. Evaluate them on
-    // every call, but still narrow them by placement/lane before execution.
-    const runtimeScripts = collectRuntimeRegexScripts({ allowedOnly: true });
+    // Runtime provider callbacks and the active Native Package projection
+    // are dynamic by contract. Evaluate them on every call, but still narrow
+    // them by placement/lane before execution. Keep the same ordering exposed
+    // by getRegexScripts(): registered runtime providers first, Native Package
+    // processors last.
+    const runtimeScripts = [
+        ...collectRuntimeRegexScripts({ allowedOnly: true }),
+        ...nativeSessionRuntime.regexScripts().map(script => ({ ...script, __runtime_owner: 'native-session' })),
+    ];
     const runtimeCandidates = runtimeScripts.length > 0
         ? getRegexExecutionCandidates(
             createRegexExecutionPlan(runtimeScripts, { warnInvalidPlacement: true }),

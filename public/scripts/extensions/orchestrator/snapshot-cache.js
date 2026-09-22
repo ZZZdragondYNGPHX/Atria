@@ -99,8 +99,8 @@ export function getLoadedAnchorMap(context) {
 
 export function getLoadedOrchestrationHistoryAnchors(context) {
     const map = getLoadedAnchorMap(context);
-    return Object.keys(map)
-        .map(Number)
+    return Object.entries(map)
+        .map(([key, snapshot]) => Number(key) || normalizeAnchorPlayableFloor(snapshot?.anchorPlayableFloor))
         .filter((value) => Number.isInteger(value) && value > 0)
         .sort((a, b) => a - b);
 }
@@ -114,6 +114,7 @@ export function setLatestOrchestrationSnapshotFromPick(chatKey, pick) {
     latestOrchestrationSnapshot = {
         chatKey: normalizedChatKey,
         anchorPlayableFloor: normalizeAnchorPlayableFloor(pick.playableFloor),
+        anchorMessageId: String(pick.messageId || pick.snapshot?.anchorMessageId || '').trim() || null,
         anchorHash: String(pick.snapshot?.anchorHash || '').trim(),
         capsuleText: String(pick.snapshot?.capsuleText || '').trim(),
         executionIdentity: String(pick.snapshot?.executionIdentity || ''),
@@ -194,6 +195,12 @@ export function canReuseLatestOrchestrationSnapshot(chatKey, anchor, executionId
     if (String(latestOrchestrationSnapshot.chatKey || '') !== String(chatKey || '')) {
         return false;
     }
+    const storedMessageId = String(latestOrchestrationSnapshot.anchorMessageId || '').trim();
+    const incomingMessageId = String(anchor.messageId || '').trim();
+    if (storedMessageId && incomingMessageId) {
+        return storedMessageId === incomingMessageId
+            && String(latestOrchestrationSnapshot.anchorHash || '') === String(anchor.hash || '');
+    }
     return normalizeAnchorPlayableFloor(latestOrchestrationSnapshot.anchorPlayableFloor) === normalizeAnchorPlayableFloor(anchor.playableFloor)
         && String(latestOrchestrationSnapshot.anchorHash || '') === String(anchor.hash || '');
 }
@@ -222,8 +229,10 @@ export async function storeCompletedOrchestrationSnapshot(context, anchor, capsu
         return null;
     }
 
+    const anchorMessageId = String(anchor?.messageId || '').trim();
     const nextSnapshot = {
         anchorHash,
+        ...(anchorMessageId ? { anchorMessageId, anchorPlayableFloor } : {}),
         capsuleText: nextCapsuleText,
         ...(executionIdentity ? { executionIdentity } : {}),
         stageOutputs: compactStageOutputs(stageOutputs || []),
@@ -235,10 +244,12 @@ export async function storeCompletedOrchestrationSnapshot(context, anchor, capsu
     }
 
     if (!isCurrent()) return null;
-    const map = { ...getLoadedAnchorMap(context), [anchorPlayableFloor]: nextSnapshot };
+    const stateKey = anchorMessageId || String(anchorPlayableFloor);
+    const map = { ...getLoadedAnchorMap(context), [stateKey]: nextSnapshot };
     setLatestAnchorMap(chatKey, map);
     setLatestOrchestrationSnapshotFromPick(chatKey, {
         playableFloor: anchorPlayableFloor,
+        ...(anchorMessageId ? { messageId: anchorMessageId } : {}),
         snapshot: nextSnapshot,
     });
     return latestOrchestrationSnapshot;
@@ -320,10 +331,12 @@ export async function persistEditedSnapshotToFloorState(context, snapshot) {
     }
     const swipeIdRaw = target.message.swipe_id;
     const swipeId = Number.isInteger(swipeIdRaw) && swipeIdRaw >= 0 ? swipeIdRaw : 0;
+    const messageId = String(target.message?.atri_native?.messageId || snapshot?.anchorMessageId || '').trim();
     const anchor = {
         playableFloor: anchorPlayableFloor,
         chatIndex: target.index,
         swipeId,
+        ...(messageId ? { messageId } : {}),
         hash: String(snapshot?.anchorHash || ''),
     };
     const dataSnapshot = {
@@ -336,7 +349,11 @@ export async function persistEditedSnapshotToFloorState(context, snapshot) {
     if (!result.ok) return result;
     const chatKey = getChatKey(context);
     if (chatKey) {
-        const map = { ...getLoadedAnchorMap(context), [anchorPlayableFloor]: dataSnapshot };
+        const stateKey = messageId || String(anchorPlayableFloor);
+        const map = { ...getLoadedAnchorMap(context), [stateKey]: {
+            ...dataSnapshot,
+            ...(messageId ? { anchorMessageId: messageId, anchorPlayableFloor } : {}),
+        } };
         setLatestAnchorMap(chatKey, map);
     }
     return { ok: true };
@@ -372,7 +389,9 @@ export async function getPreviousOrchestrationCapsuleText(context, payload) {
 
     const anchorMap = getLoadedAnchorMap(context);
     for (const anchorPlayableFloor of candidateAnchors) {
-        const snapshot = anchorMap[anchorPlayableFloor];
+        const target = getPlayableMessageAt(messages, anchorPlayableFloor);
+        const messageId = String(target?.message?.atri_native?.messageId || '').trim();
+        const snapshot = (messageId ? anchorMap[messageId] : null) ?? anchorMap[anchorPlayableFloor];
         if (!snapshot || !isStoredOrchestrationSnapshotValidForMessages(anchorPlayableFloor, snapshot, messages)) {
             continue;
         }

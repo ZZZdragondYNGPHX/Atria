@@ -1,3 +1,4 @@
+import { nativeSessionRuntime } from './native/session-runtime.js';
 import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
 import { evaluateWorldInfoStateConditions, shouldActivateWorldInfoFromStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
 import {
@@ -1937,6 +1938,10 @@ export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanD
         worldInfoEventReplay: activatedWorldInfo.worldInfoEventReplay === true,
         worldInfoCommitScope: {
             chatId: String(getCurrentChatId() || ''),
+            ...(nativeSessionRuntime.active ? {
+                revisionId: nativeSessionRuntime.snapshot?.revision?.revisionId ?? '',
+                branchId: nativeSessionRuntime.snapshot?.revision?.branchId ?? '',
+            } : {}),
         },
     };
 }
@@ -1978,6 +1983,13 @@ export async function commitWorldInfoEvaluation(evaluation) {
     if (expectedChatId && expectedChatId !== currentChatId) {
         return { committed: false, reason: 'scope_changed' };
     }
+    const expectedRevisionId = String(evaluation.worldInfoCommitScope?.revisionId || '');
+    if (
+        expectedRevisionId
+        && expectedRevisionId !== String(nativeSessionRuntime.snapshot?.revision?.revisionId || '')
+    ) {
+        return { committed: false, reason: 'scope_changed' };
+    }
 
     const expectedStateFingerprint = String(evaluation.worldInfoStateProviderFingerprint || '');
     if (expectedStateFingerprint) {
@@ -1992,25 +2004,41 @@ export async function commitWorldInfoEvaluation(evaluation) {
     let stateEventBaselineUpdated = false;
     if (evaluation.worldInfoEventPendingState && typeof evaluation.worldInfoEventPendingState === 'object') {
         try {
-            const floorState = await getWorldInfoEventFloorState();
-            const scope = evaluation.worldInfoEventScope;
-            const options = Number.isInteger(scope?.floor) && scope.floor >= 0
-                ? {
-                    floor: scope.floor,
-                    swipeId: Number.isInteger(scope?.swipeId) ? scope.swipeId : 0,
-                }
-                : undefined;
-            const result = await floorState.update(
-                () => structuredClone(evaluation.worldInfoEventPendingState),
-                options,
-            );
+            let result;
+            if (nativeSessionRuntime.active) {
+                // During an accepted Native generation this baseline is Draft-local:
+                // it must commit atomically with the assistant Timeline write. Quiet
+                // non-Draft operations may publish an ordinary coherent state Revision.
+                result = nativeSessionRuntime.generation
+                    ? nativeSessionRuntime.stageState(
+                        WORLD_INFO_EVENT_STATE_NAMESPACE,
+                        structuredClone(evaluation.worldInfoEventPendingState),
+                    )
+                    : await nativeSessionRuntime.updateState(
+                        WORLD_INFO_EVENT_STATE_NAMESPACE,
+                        () => structuredClone(evaluation.worldInfoEventPendingState),
+                    );
+            } else {
+                const floorState = await getWorldInfoEventFloorState();
+                const scope = evaluation.worldInfoEventScope;
+                const options = Number.isInteger(scope?.floor) && scope.floor >= 0
+                    ? {
+                        floor: scope.floor,
+                        swipeId: Number.isInteger(scope?.swipeId) ? scope.swipeId : 0,
+                    }
+                    : undefined;
+                result = await floorState.update(
+                    () => structuredClone(evaluation.worldInfoEventPendingState),
+                    options,
+                );
+            }
             if (!result?.ok) {
-                console.warn('[WI] Failed to commit event FloorState baseline', result);
+                console.warn('[WI] Failed to commit event state baseline', result);
                 return { committed: false, reason: 'state_commit_failed' };
             }
             stateEventBaselineUpdated = result.updated === true;
         } catch (error) {
-            console.warn('[WI] Failed to commit event FloorState baseline', error);
+            console.warn('[WI] Failed to commit event state baseline', error);
             return { committed: false, reason: 'state_commit_failed' };
         }
     }
@@ -10021,7 +10049,17 @@ async function getPersonaLore() {
     return entries;
 }
 
-export async function getSortedEntries() {
+export async function getSortedEntries(options = {}) {
+    if (nativeSessionRuntime.active) {
+        // N6 compiles exact pinned Native Knowledge for the requested target,
+        // then hands candidates to the mature selector without reading a World
+        // Info book or reconstructing identity from rendered text.
+        const target = options?.target ?? 'narrator';
+        return nativeSessionRuntime.knowledgeEntries({ target }).map(entry => {
+            const [decorators, content] = parseDecorators(entry.content || '');
+            return { ...entry, decorators, content, hash: getStringHash(JSON.stringify(entry)) };
+        });
+    }
     try {
         const [
             globalLore,
@@ -10162,10 +10200,19 @@ function buildWorldInfoStateProviderContext(context, trigger = 'normal') {
             ? context.getCurrentChatId.bind(context)
             : getCurrentChatId,
         memoryOsGenerationType: String(trigger || 'normal'),
+        nativeSnapshot: nativeSessionRuntime.active ? nativeSessionRuntime.snapshot : null,
     };
 }
 
 function getWorldInfoEventScope(context) {
+    if (nativeSessionRuntime.active) {
+        const timeline = nativeSessionRuntime.snapshot?.timeline ?? [];
+        return {
+            revisionId: nativeSessionRuntime.snapshot?.revision?.revisionId ?? '',
+            branchId: nativeSessionRuntime.snapshot?.revision?.branchId ?? '',
+            messageId: timeline.at(-1)?.messageId ?? '',
+        };
+    }
     const sourceChat = Array.isArray(context?.chat) ? context.chat : [];
     const floor = sourceChat.length - 1;
     const message = floor >= 0 ? sourceChat[floor] : null;
@@ -10176,6 +10223,10 @@ function getWorldInfoEventScope(context) {
 }
 
 async function getWorldInfoEventRuntimeState() {
+    if (nativeSessionRuntime.active) {
+        const state = nativeSessionRuntime.readState(WORLD_INFO_EVENT_STATE_NAMESPACE);
+        return state && typeof state === 'object' && !Array.isArray(state) ? state : {};
+    }
     const floorState = await getWorldInfoEventFloorState();
     await floorState.ready();
     const result = await floorState.get();
@@ -10238,6 +10289,16 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     if (world_info_budget_cap > 0 && budget > world_info_budget_cap) {
         console.debug(`[WI] Budget ${budget} exceeds cap ${world_info_budget_cap}, using cap`);
         budget = world_info_budget_cap;
+    }
+    if (nativeSessionRuntime.active) {
+        const contextBudget = nativeSessionRuntime.contextLaneBudget('knowledge');
+        if (contextBudget) {
+            // ContextPlan already restricts Native candidates to selected
+            // Knowledge identities. Use the lane cap here rather than exact
+            // selected-content usage because WI's mature overflow check is
+            // `>= budget`; an exact-fit entry must remain admissible.
+            budget = Math.min(budget, Math.max(0, Number(contextBudget.cap) || 0));
+        }
     }
 
     console.debug(`[WI] Context size: ${maxContext}; WI budget: ${budget} (max% = ${world_info_budget}%, cap = ${world_info_budget_cap})`);

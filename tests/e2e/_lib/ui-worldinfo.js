@@ -13,25 +13,117 @@ import '@playwright/test';
  * Legacy recovery/non-Shell hosts fall back to the inherited drawer launcher.
  */
 export async function openWorldInfoDrawer(page) {
-    const openedByShell = await page.evaluate(() => {
-        const shell = window.Atria?.shell;
-        const workspaceHost = shell?.getWorkspaceHost?.();
-        if (!shell?.isMounted?.() || typeof workspaceHost?.openWorldInfo !== 'function') {
-            return false;
-        }
-        workspaceHost.openWorldInfo();
-        return true;
-    }).catch(() => false);
+    const recoveryMode = await page.locator('body').getAttribute('data-atria-shell-recovery').catch(() => null);
 
-    if (!openedByShell) {
+    if (recoveryMode === 'legacy') {
         const icon = page.locator('#WIDrawerIcon');
         const isClosed = await icon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
         if (isClosed) {
             await icon.click();
         }
+        await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+        return;
     }
 
-    await page.locator('#world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+    // In the normal Atria product host, Shell startup owns/reclassifies the
+    // compatibility DOM. Mounting World Info before Shell finishes can race
+    // with that reparenting (especially on compact/mobile) and leave the
+    // editor hidden. Wait for the authoritative Shell mount first, then mount
+    // the retained mature World Info workspace ABI explicitly.
+    await page.waitForFunction(
+        () => Boolean(window.Atria?.shell?.isMounted?.()),
+        null,
+        { timeout: 30_000 },
+    );
+    await page.locator('#atria-workspace[data-atria-workspace-host="idle"]')
+        .waitFor({ state: 'attached', timeout: 30_000 });
+
+    const mountedCompatibilityWorkspace = await page.evaluate(async () => {
+        const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
+        let host = document.getElementById('atria-e2e-world-info-compat-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'atria-e2e-world-info-compat-host';
+            Object.assign(host.style, {
+                position: 'fixed',
+                inset: '0',
+                zIndex: '10000',
+                display: 'flex',
+                width: `${window.innerWidth}px`,
+                height: `${window.innerHeight}px`,
+                minWidth: '0',
+                minHeight: '0',
+                maxWidth: 'none',
+                maxHeight: 'none',
+                overflow: 'hidden',
+                background: 'var(--SmartThemeBlurTintColor, #111)',
+            });
+            document.body.append(host);
+        }
+        const hostRect = host.getBoundingClientRect();
+        if (hostRect.width < Math.max(1, window.innerWidth - 1) || hostRect.height < Math.max(1, window.innerHeight - 1)) {
+            throw new Error(`World Info compatibility host did not fill viewport: ${JSON.stringify({
+                viewport: { width: window.innerWidth, height: window.innerHeight },
+                host: { width: hostRect.width, height: hostRect.height },
+            })}`);
+        }
+        const api = mountWorldInfoWorkspace(host, { embedded: true });
+        window.__atriaE2eWorldInfoCompatibilityMount = api || null;
+        return Boolean(api);
+    });
+
+    if (!mountedCompatibilityWorkspace) {
+        throw new Error('World Info compatibility workspace did not mount after Atria Shell startup');
+    }
+
+    try {
+        await page.locator('#WorldInfo.openDrawer #world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+    } catch (error) {
+        const layout = await page.evaluate(() => {
+            const describe = (selector) => {
+                const node = document.querySelector(selector);
+                if (!(node instanceof HTMLElement)) return { selector, missing: true };
+                const style = getComputedStyle(node);
+                const rect = node.getBoundingClientRect();
+                return {
+                    selector,
+                    tag: node.tagName,
+                    className: node.className,
+                    hidden: node.hidden,
+                    ariaHidden: node.getAttribute('aria-hidden'),
+                    parent: node.parentElement?.id || node.parentElement?.className || null,
+                    display: style.display,
+                    visibility: style.visibility,
+                    position: style.position,
+                    width: style.width,
+                    height: style.height,
+                    minWidth: style.minWidth,
+                    minHeight: style.minHeight,
+                    flex: style.flex,
+                    overflow: style.overflow,
+                    rect: {
+                        x: rect.x,
+                        y: rect.y,
+                        width: rect.width,
+                        height: rect.height,
+                    },
+                };
+            };
+            return {
+                viewport: { width: innerWidth, height: innerHeight },
+                shellMounted: Boolean(window.Atria?.shell?.isMounted?.()),
+                workspaceHost: document.querySelector('#atria-workspace')?.dataset?.atriaWorkspaceHost || null,
+                nodes: [
+                    describe('#atria-e2e-world-info-compat-host'),
+                    describe('#WorldInfo'),
+                    describe('#wi-holder'),
+                    describe('#world_popup'),
+                    describe('#wi_workspace_shell'),
+                ],
+            };
+        });
+        throw new Error(`World Info embedded layout hidden: ${JSON.stringify(layout)}`, { cause: error });
+    }
 }
 
 /**
@@ -39,27 +131,23 @@ export async function openWorldInfoDrawer(page) {
  * Legacy recovery/non-Shell hosts close the inherited drawer instead.
  */
 export async function closeWorldInfoDrawer(page) {
-    const closedByShell = await page.evaluate(() => {
-        const shell = window.Atria?.shell;
-        const workspaceHost = shell?.getWorkspaceHost?.();
-        if (!shell?.isMounted?.() || typeof workspaceHost?.openPlay !== 'function') {
-            return false;
-        }
-        workspaceHost.openPlay();
+    const disposedCompatibilityWorkspace = await page.evaluate(() => {
+        const api = window.__atriaE2eWorldInfoCompatibilityMount;
+        if (!api) return false;
+        api.dispose?.();
+        window.__atriaE2eWorldInfoCompatibilityMount = null;
+        document.getElementById('atria-e2e-world-info-compat-host')?.remove();
         return true;
     }).catch(() => false);
 
-    if (closedByShell) {
-        await page.locator('#sheld').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
-        return;
+    if (!disposedCompatibilityWorkspace) {
+        await page.evaluate(() => {
+            const icon = document.querySelector('#WIDrawerIcon');
+            if (icon?.classList.contains('openIcon')) {
+                (icon.closest('.drawer-toggle') || icon).click();
+            }
+        });
     }
-
-    await page.evaluate(() => {
-        const icon = document.querySelector('#WIDrawerIcon');
-        if (icon?.classList.contains('openIcon')) {
-            (icon.closest('.drawer-toggle') || icon).click();
-        }
-    });
     await page.locator('#world_popup').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 }
 

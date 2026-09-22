@@ -3,6 +3,10 @@ import {
     createAtriaStatePanel,
 } from './primitives.js';
 import { formatShellText, translateShellText } from './localization.js';
+import {
+    mountNativeWorksWorkspace,
+    mountNativeWorldKnowledgeWorkspace,
+} from '../native/library-workspaces.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
     return createAtriaStatePanel(documentRef, kind, {
@@ -22,9 +26,8 @@ function createLocalizedRuntimeCard(documentRef, options = {}) {
 }
 
 export const LIBRARY_SECTIONS = Object.freeze([
-    Object.freeze({ id: 'characters', label: 'Characters' }),
-    Object.freeze({ id: 'games', label: 'Games' }),
-    Object.freeze({ id: 'world-info', label: 'Worlds & Knowledge' }),
+    Object.freeze({ id: 'works', label: 'Works' }),
+    Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
     Object.freeze({ id: 'skills', label: 'Skills' }),
 ]);
 
@@ -43,8 +46,15 @@ function sectionById(list, id, fallbackId) {
 
 export function normalizeLibrarySection(route) {
     const childId = String(route?.child?.id || '').trim();
-    if (childId.startsWith('character:')) return 'characters';
-    return sectionById(LIBRARY_SECTIONS, childId || 'characters', 'characters').id;
+    if (!childId || childId === 'works' || childId.startsWith('work:')) return 'works';
+    if (
+        childId === 'worlds-knowledge'
+        || childId === 'worlds'
+        || childId === 'knowledge'
+        || childId.startsWith('world:')
+        || childId.startsWith('knowledge:')
+    ) return 'worlds-knowledge';
+    return sectionById(LIBRARY_SECTIONS, childId, 'works').id;
 }
 
 export function normalizeRuntimeSection(route) {
@@ -122,193 +132,6 @@ function restorePlacement(node, placement) {
     if (placement.ariaHidden === null) node.removeAttribute('aria-hidden');
     else node.setAttribute('aria-hidden', placement.ariaHidden);
     delete node.dataset.atriaWorkspaceEmbedded;
-}
-
-function characterLabel(context, id) {
-    const numeric = Number(id);
-    return String(context?.characters?.[numeric]?.name || `Character ${id}`).trim();
-}
-
-function mountCharactersWorkspace({ document: documentRef, body, route, host }) {
-    const root = documentRef.getElementById('right-nav-panel');
-    if (!root) {
-        const panel = createLocalizedStatePanel(documentRef, 'loading', {
-            title: 'Characters',
-            message: 'The existing Character controller is still booting.',
-        });
-        body.replaceChildren(panel);
-        return { root: panel, dispose: () => panel.remove() };
-    }
-
-    const placement = savePlacement(root);
-    root.dataset.atriaWorkspaceEmbedded = 'true';
-    root.classList.remove('closedDrawer');
-    root.classList.add('openDrawer');
-    root.removeAttribute('aria-hidden');
-    body.replaceChildren(root);
-
-    const context = globalThis.Atria?.getContext?.();
-    let applyingRoute = false;
-
-    function showList() {
-        documentRef.getElementById('rm_button_characters')?.click?.();
-    }
-
-    function applyRoute(nextRoute) {
-        const childId = String(nextRoute?.child?.id || '');
-        if (!childId.startsWith('character:')) {
-            showList();
-            return;
-        }
-        const id = Number(childId.slice('character:'.length));
-        if (!Number.isInteger(id) || id < 0 || Number(context?.characterId) === id) return;
-        applyingRoute = true;
-        Promise.resolve(context?.selectCharacterById?.(id))
-            .catch(error => console.warn('[atria-shell] Character detail route failed', error))
-            .finally(() => { applyingRoute = false; });
-    }
-
-    function onCharacterClick(event) {
-        if (applyingRoute) return;
-        const card = event.target?.closest?.('.character_select');
-        if (!card || !root.contains(card)) return;
-        const raw = card.getAttribute('chid') ?? card.dataset?.chid;
-        const id = Number(raw);
-        if (!Number.isInteger(id) || id < 0) return;
-        queueMicrotask(() => host.openLibraryCharacter(id, characterLabel(context, id)));
-    }
-
-    root.addEventListener('click', onCharacterClick);
-    applyRoute(route);
-
-    return {
-        root,
-        updateRoute(nextRoute) {
-            applyRoute(nextRoute);
-        },
-        dispose() {
-            root.removeEventListener('click', onCharacterClick);
-            restorePlacement(root, placement);
-        },
-    };
-}
-
-async function mapWithConcurrency(items, concurrency, mapper) {
-    const source = [...items];
-    const output = new Array(source.length);
-    let next = 0;
-    const workers = Array.from({ length: Math.min(concurrency, source.length) }, async () => {
-        while (next < source.length) {
-            const index = next++;
-            output[index] = await mapper(source[index], index);
-        }
-    });
-    await Promise.all(workers);
-    return output;
-}
-
-async function mountGamesWorkspace({ document: documentRef, body, host }) {
-    const loading = createLocalizedStatePanel(documentRef, 'loading', {
-        title: 'Games',
-        message: 'Discovering existing Game Packages from the current character library…',
-    });
-    body.replaceChildren(loading);
-
-    const context = globalThis.Atria?.getContext?.();
-    const characters = Array.isArray(context?.characters) ? context.characters : [];
-    const candidates = characters
-        .map((character, index) => ({ character, index }))
-        .filter(item => item.character && String(item.character.avatar || '').trim());
-
-    const { GAME_PACKAGE_STATUS, loadGamePackage } = await import('../extensions/game-runtime/package-loader.js');
-    const headers = context?.getRequestHeaders?.() || {};
-    const discovered = await mapWithConcurrency(candidates, 4, async ({ character, index }) => {
-        const avatar = String(character.avatar || '').trim();
-        const packageId = avatar.endsWith('.png') ? avatar.slice(0, -4) : avatar;
-        try {
-            const state = await loadGamePackage(packageId, { headers });
-            if (state.status === GAME_PACKAGE_STATUS.NONE) return null;
-            return { character, index, packageId, state };
-        } catch (error) {
-            return {
-                character,
-                index,
-                packageId,
-                state: {
-                    status: GAME_PACKAGE_STATUS.ERROR,
-                    active: false,
-                    manifest: null,
-                    errors: [error?.message || String(error)],
-                },
-            };
-        }
-    });
-
-    const games = discovered.filter(Boolean);
-    const root = documentRef.createElement('section');
-    root.className = 'atria-library-games';
-    root.dataset.atriaLibraryGames = 'true';
-
-    if (!games.length) {
-        root.append(createLocalizedStatePanel(documentRef, 'empty', {
-            title: 'No Game Packages found',
-            message: 'Narrative Cards remain in Characters. Game Studio authors Game Packages; Library only discovers and opens existing packages.',
-        }));
-        body.replaceChildren(root);
-        return { root, dispose: () => root.remove() };
-    }
-
-    const grid = documentRef.createElement('div');
-    grid.className = 'atria-library-games__grid';
-    for (const game of games) {
-        const manifest = game.state.manifest;
-        const ready = game.state.status === GAME_PACKAGE_STATUS.READY;
-        const card = createLocalizedRuntimeCard(documentRef, {
-            title: manifest?.name || game.character.name || game.packageId,
-            description: manifest?.description || (ready
-                ? 'Game Package attached to this character card.'
-                : (game.state.errors?.[0] || 'Game Package requires attention.')),
-            status: ready ? `v${manifest?.version || '?'} · ${manifest?.ui?.mode || 'runtime'}` : game.state.status,
-            tone: ready ? 'success' : 'warning',
-        });
-        card.dataset.atriaGameCharacter = String(game.index);
-
-        const actions = documentRef.createElement('div');
-        actions.className = 'atria-domain-workspace__actions';
-
-        const play = documentRef.createElement('button');
-        play.type = 'button';
-        play.textContent = translateShellText('Open in Play');
-        play.disabled = !ready;
-        play.addEventListener('click', async () => {
-            await context?.selectCharacterById?.(game.index);
-            host.openPlay();
-        });
-
-        const studio = documentRef.createElement('button');
-        studio.type = 'button';
-        studio.textContent = translateShellText('Open in Studio');
-        studio.addEventListener('click', () => host.openStudio(game.index));
-
-        actions.append(play, studio);
-        card.append(actions);
-        grid.append(card);
-    }
-    root.append(grid);
-    body.replaceChildren(root);
-    return { root, dispose: () => root.remove() };
-}
-
-async function mountWorldWorkspace({ document: documentRef, body }) {
-    const worldInfo = await import('../world-info/workspace.js');
-    const mounted = worldInfo.mountWorldInfoWorkspace(body, { embedded: true });
-    if (mounted) return mounted;
-    const panel = createLocalizedStatePanel(documentRef, 'loading', {
-        title: 'Worlds & Knowledge',
-        message: 'World Info is still finishing its existing controller bootstrap.',
-    });
-    body.replaceChildren(panel);
-    return { root: panel, dispose: () => panel.remove() };
 }
 
 async function mountSkillsWorkspace({ document: documentRef, body }) {
@@ -748,9 +571,8 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
 
 async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
-    if (section === 'characters') return mountCharactersWorkspace(args);
-    if (section === 'games') return await mountGamesWorkspace(args);
-    if (section === 'world-info') return await mountWorldWorkspace(args);
+    if (section === 'works') return mountNativeWorksWorkspace(args);
+    if (section === 'worlds-knowledge') return mountNativeWorldKnowledgeWorkspace(args);
     return await mountSkillsWorkspace(args);
 }
 

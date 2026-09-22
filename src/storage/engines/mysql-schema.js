@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runMigrations } from './schema-runner.js';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 // MySQL 8 schema mirroring sqlite-schema.js. Key dialect choices:
 //   - VARCHAR(128) on PK string columns. The plan called for VARCHAR(128)

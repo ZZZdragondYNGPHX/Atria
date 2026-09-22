@@ -129,7 +129,7 @@ async function buildObjectPatchOperationsAsync(prev, next) {
     return compare(prev ?? {}, next ?? {});
 }
 
-function makeContext(chatRef) {
+function makeContext(chatRef, { native = false } = {}) {
     const store = makeStore();
     const eventSource = makeEventSource();
     const fsDeps = {
@@ -140,6 +140,7 @@ function makeContext(chatRef) {
         eventSource,
         event_types,
         getChat: () => chatRef.value,
+        isNativeSession: () => native,
     };
     let createdInstance = null;
     const context = {
@@ -461,5 +462,33 @@ describe('Atria namespace hard cutover', () => {
             STATE_NAMESPACE: 'atria_search_tools_anchors',
             META_NAMESPACE: 'atria_search_tools_anchors__meta',
         });
+    });
+});
+
+
+describe('N5 Native search snapshot identity', () => {
+    test('uses stable messageId and survives swipe-id changes without floor rollback', async () => {
+        const messageId = 'msg_0123456789abcdef0123456789abcdef';
+        const nativeUser = {
+            ...userMsg('native query', { swipe_id: 0 }),
+            atri_native: { messageId },
+        };
+        const chatRef = { value: [nativeUser] };
+        const { context } = makeContext(chatRef, { native: true });
+        const anchor = buildAnchorAt(chatRef.value, 0);
+        expect(anchor).toMatchObject({ messageId, playableFloor: 1 });
+
+        const result = await commitAnchorSnapshot(context, anchor, makeSnapshot(anchor));
+        expect(result.ok).toBe(true);
+        const map = await loadAnchorMap(context);
+        expect(map[messageId]).toBeTruthy();
+        expect(map['1']).toBeUndefined();
+
+        chatRef.value[0] = {
+            ...nativeUser,
+            swipe_id: 7,
+        };
+        const pick = pickLatestValidSnapshot(context, await loadAnchorMap(context));
+        expect(pick).toMatchObject({ messageId, playableFloor: 1 });
     });
 });

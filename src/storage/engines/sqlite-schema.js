@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runMigrationsSync } from './schema-runner.js';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 // SQLite schema mirroring mysql/postgres counterparts. Statements live in
 // ./migrations/sqlite/0001-initial.sql; this module bootstraps nothing — sqlite

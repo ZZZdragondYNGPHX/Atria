@@ -20,6 +20,10 @@ import { resolveGamePackageAssetUrl } from './manifest.js';
 import { GAME_PACKAGE_STATUS, loadGamePackage } from './package-loader.js';
 import { activateGamePackageUi } from './ui/live.js';
 import { createGameWorldSession } from './world/session.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    onNativeSessionLifecycle,
+} from '../../native/session-lifecycle.js';
 
 const MODULE_NAME = 'game-runtime';
 export const GAME_PACKAGE_CHANGED_EVENT = 'atria:game-package-changed';
@@ -741,9 +745,22 @@ export function getGameAttempt(attemptId) {
     return currentTurnController?.getAttempt(attemptId) || null;
 }
 
+function isNativeConversationActive() {
+    return Boolean(getContext()?.chat?.some(message => String(message?.atri_native?.messageId || '').trim()));
+}
+
 eventSource.on(eventTypes.CHAT_CHANGED, () => {
+    if (isNativeConversationActive()) return;
     void reloadGamePackage();
 });
+
+for (const lifecycle of [
+    NATIVE_SESSION_LIFECYCLE.SESSION_LOADED,
+    NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
+    NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
+]) {
+    onNativeSessionLifecycle(lifecycle, () => reloadGamePackage());
+}
 
 for (const structuralEvent of [
     eventTypes.MESSAGE_SWIPED,
@@ -752,6 +769,7 @@ for (const structuralEvent of [
     eventTypes.CHAT_BRANCH_CREATED,
 ].filter(Boolean)) {
     eventSource.on(structuralEvent, () => {
+        if (isNativeConversationActive()) return;
         void syncCurrentWorldBranch();
     });
 }

@@ -38,9 +38,14 @@ export async function createGameWorldSession(options = {}) {
     });
 
     let branchOverride = null;
+    const isNativeSession = () => {
+        if (typeof options.isNativeSession === 'function') return Boolean(options.isNativeSession());
+        return getChat().some(message => String(message?.atri_native?.messageId || '').trim());
+    };
+    const getAuthoritativeBranchPath = () => isNativeSession() ? [] : buildGameBranchPath(getChat());
     const resolveActiveBranchPath = () => branchOverride
         ? [...branchOverride]
-        : buildGameBranchPath(getChat());
+        : getAuthoritativeBranchPath();
 
     await runtime.load(resolveActiveBranchPath());
 
@@ -85,11 +90,11 @@ export async function createGameWorldSession(options = {}) {
 
         async clearBranchOverrideInternal() {
             branchOverride = null;
-            return runtime.switchBranch(buildGameBranchPath(getChat()));
+            return runtime.switchBranch(getAuthoritativeBranchPath());
         },
 
         getChatBranchPathInternal() {
-            return buildGameBranchPath(getChat());
+            return getAuthoritativeBranchPath();
         },
 
         getState() {

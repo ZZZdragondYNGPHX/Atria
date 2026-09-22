@@ -23,6 +23,7 @@ const DEFAULT_RETRIES = { transient: 3 };
 const DUMP_TABLES = Object.freeze([
     { name: 'settings', cols: ['handle', 'doc', 'updated_at'] },
     { name: 'stats', cols: ['handle', 'doc', 'updated_at'] },
+    { name: 'native_resources', cols: ['handle', 'kind', 'resource_key', 'doc', 'integrity', 'updated_at', 'created_at'] },
     { name: 'groups_table', cols: ['handle', 'id', 'doc', 'updated_at', 'created_at'] },
     { name: 'named_docs', cols: ['handle', 'bucket', 'name', 'doc', 'updated_at'] },
     { name: 'worlds', cols: ['handle', 'name', 'doc', 'updated_at'] },
@@ -197,7 +198,7 @@ export class MysqlEngine {
      *
      * Table order matters where there are FKs: child rows first (chat_states
      * has an FK on chats), then parents, then unrelated singletons. The list
-     * is the canonical 9 user-data tables from migrations/mysql/0001-initial.sql.
+     * is the user-data tables from migrations/mysql/0001-initial.sql.
      * @param {string} handle
      */
     async deleteUser(handle) {
@@ -211,7 +212,7 @@ export class MysqlEngine {
                         for (const table of [
                             'chat_states', 'preset_states',
                             'chats', 'presets', 'worlds',
-                            'named_docs', 'groups_table',
+                            'named_docs', 'groups_table', 'native_resources',
                             'settings', 'stats',
                         ]) {
                             await conn.query(`DELETE FROM ${table} WHERE handle = ?`, [handle]);

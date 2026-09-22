@@ -21,6 +21,11 @@ import {
     pickLatestValidSnapshot,
 } from './persistence.js';
 import { registerSearchToolsOrchestrationTools } from './orchestrator-tools.js';
+import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    onNativeSessionLifecycle,
+} from '../../native/session-lifecycle.js';
 
 const __ctx = Atria.getContext();
 const eventSource = __ctx.eventSource;
@@ -708,6 +713,7 @@ function materializeSearchAgentSnapshot(chatKey, anchorPlayableFloor, snapshot) 
         chatKey: normalizedChatKey,
         anchorFloor: normalizedAnchor,
         anchorPlayableFloor: normalizedAnchor,
+        anchorMessageId: String(normalizedSnapshot.anchorMessageId || '').trim() || null,
         anchorHash: String(normalizedSnapshot.anchorHash || '').trim(),
         updatedAt: normalizedSnapshot.updatedAt,
         summary: normalizedSnapshot.summary,
@@ -1948,6 +1954,13 @@ function canReuseLatestSearchAgentSnapshot(chatKey, anchor) {
         return false;
     }
 
+    const storedMessageId = String(latestSearchAgentSnapshot.anchorMessageId || '').trim();
+    const incomingMessageId = String(anchor.messageId || '').trim();
+    if (storedMessageId && incomingMessageId) {
+        return storedMessageId === incomingMessageId
+            && String(latestSearchAgentSnapshot.anchorHash || '') === String(anchor.hash || '');
+    }
+
     const storedFloor = Number(latestSearchAgentSnapshot.anchorFloor);
     const incomingFloor = Number(anchor.floor);
     const storedPlayableFloor = Number(latestSearchAgentSnapshot.anchorPlayableFloor);
@@ -1978,6 +1991,7 @@ async function storeCompletedSearchAgentSnapshot(context, anchor, result) {
     const chatKey = getChatKey(context);
     const anchorPlayableFloor = normalizeAnchorPlayableFloor(anchor?.playableFloor);
     const anchorHash = String(anchor?.hash || '').trim();
+    const anchorMessageId = String(anchor?.messageId || '').trim();
     const managedEntries = normalizeStoredManagedEntries(result?.managedEntries);
     if (!chatKey || !anchorPlayableFloor || !anchorHash) {
         latestSearchAgentSnapshot = null;
@@ -1990,6 +2004,7 @@ async function storeCompletedSearchAgentSnapshot(context, anchor, result) {
 
     const nextSnapshot = {
         anchorHash,
+        ...(anchorMessageId ? { anchorMessageId, anchorPlayableFloor } : {}),
         updatedAt: new Date().toISOString(),
         summary: normalizeWhitespace(result?.summary || ''),
         mutationCount: Math.max(0, Math.floor(Number(result?.mutationCount || 0))),
@@ -1998,29 +2013,31 @@ async function storeCompletedSearchAgentSnapshot(context, anchor, result) {
         managedEntries,
     };
 
-    // Compound op: drop any anchors above this floor (a fresh search at an
-    // earlier turn invalidates everything above) AND add the new snapshot,
-    // all tagged at the new anchor's user message so the cleanup survives
-    // exactly as long as the new anchor itself does.
     const messages = Array.isArray(context?.chat) ? context.chat : [];
     const target = getPlayableMessageAt(messages, anchorPlayableFloor);
     if (!target?.message || !target.message.is_user) {
         throw new Error(i18n('Failed to persist search agent snapshot.'));
     }
-    const swipeIdRaw = target.message.swipe_id;
-    const swipeId = Number.isInteger(swipeIdRaw) && swipeIdRaw >= 0 ? swipeIdRaw : 0;
 
     const fs = await getFloorStateInstance(context);
     const currentMap = await loadAnchorMap(context);
     const ops = [];
-    for (const key of Object.keys(currentMap)) {
-        const f = Number(key);
-        if (Number.isInteger(f) && f > anchorPlayableFloor) {
-            ops.push({ op: 'remove', path: `/${f}` });
+    if (!anchorMessageId) {
+        // Legacy/ST sessions still inherit floor/swipe rollback semantics.
+        for (const key of Object.keys(currentMap)) {
+            const f = Number(key);
+            if (Number.isInteger(f) && f > anchorPlayableFloor) {
+                ops.push({ op: 'remove', path: `/${f}` });
+            }
         }
     }
-    ops.push({ op: 'add', path: `/${anchorPlayableFloor}`, value: nextSnapshot });
-    const patchResult = await fs.patch(ops, { floor: target.index, swipeId });
+    const stateKey = anchorMessageId || String(anchorPlayableFloor);
+    ops.push({ op: 'add', path: `/${stateKey}`, value: nextSnapshot });
+    const swipeIdRaw = target.message.swipe_id;
+    const swipeId = Number.isInteger(swipeIdRaw) && swipeIdRaw >= 0 ? swipeIdRaw : 0;
+    const patchResult = anchorMessageId
+        ? await fs.patch(ops)
+        : await fs.patch(ops, { floor: target.index, swipeId });
     if (!patchResult.ok) {
         console.warn(`[search-tools] floor-state patch failed (reason=${patchResult.reason}, hint=${patchResult.hint})`);
         // Anchor lost mid-write (user message deleted or no longer is_user
@@ -2070,6 +2087,9 @@ async function applyManualManagedEntriesUpdate(context, nextEntries) {
                 context,
                 {
                     playableFloor: latestSearchAgentSnapshot.anchorPlayableFloor,
+                    ...(latestSearchAgentSnapshot.anchorMessageId
+                        ? { messageId: latestSearchAgentSnapshot.anchorMessageId }
+                        : {}),
                     hash: latestSearchAgentSnapshot.anchorHash,
                 },
                 updated,
@@ -2935,20 +2955,33 @@ jQuery(() => {
         });
     }
 
+    const reloadSearchRevisionState = () => {
+        abortActiveSearchAgentRun();
+        loadedChatStateKey = '';
+        latestSearchAgentSnapshot = null;
+        latestManagedEntries = [];
+        const liveContext = getContext();
+        void loadSearchToolsChatState(liveContext, { force: true })
+            .then(() => syncSharedLorebookForCurrentChat(liveContext))
+            .catch((error) => {
+                console.warn(`[${MODULE_NAME}] Failed to reload search revision state`, error);
+                return syncSharedLorebookForCurrentChat(liveContext);
+            })
+            .finally(() => refreshUiStatusForCurrentChat());
+    };
+
+    for (const lifecycle of [
+        NATIVE_SESSION_LIFECYCLE.SESSION_LOADED,
+        NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
+        NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
+    ]) {
+        onNativeSessionLifecycle(lifecycle, reloadSearchRevisionState);
+    }
+
     if (context?.eventTypes?.CHAT_CHANGED) {
         context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
-            abortActiveSearchAgentRun();
-            loadedChatStateKey = '';
-            latestSearchAgentSnapshot = null;
-            latestManagedEntries = [];
-            const liveContext = getContext();
-            void loadSearchToolsChatState(liveContext, { force: true })
-                .then(() => syncSharedLorebookForCurrentChat(liveContext))
-                .catch((error) => {
-                    console.warn(`[${MODULE_NAME}] Failed to reload search chat state on chat change`, error);
-                    return syncSharedLorebookForCurrentChat(liveContext);
-                })
-                .finally(() => refreshUiStatusForCurrentChat());
+            if (nativeSessionRuntime.active) return;
+            reloadSearchRevisionState();
         });
     }
 

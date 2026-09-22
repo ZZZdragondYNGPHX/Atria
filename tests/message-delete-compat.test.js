@@ -27,6 +27,11 @@ function harness(patched = true) {
         eventSource: { emit: jest.fn(async () => {}) },
         event_types: { MESSAGE_DELETED: 'message_deleted' },
         deleteSwipe: jest.fn(async () => {}),
+        nativeSessionRuntime: {
+            active: false,
+            isCommittedMessage: jest.fn(() => false),
+            denyCommittedAction: jest.fn(() => false),
+        },
     };
     vm.createContext(context);
     vm.runInContext(`${helper}\n${deletion}`, context);

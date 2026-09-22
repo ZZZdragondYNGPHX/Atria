@@ -179,12 +179,12 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'library',
-            child: { id: 'world-info', kind: 'workspace' },
+            child: { id: 'worlds', kind: 'workspace' },
         });
         expect(host.getActiveWorkspace()).toMatchObject({
             key: 'library',
             kind: 'library',
-            section: 'world-info',
+            section: 'worlds-knowledge',
         });
         expect(adapters.library).toHaveBeenCalledTimes(1);
 
@@ -336,11 +336,12 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         const agentsController = records.find(item => item.kind === 'agents').controller;
 
-        host.openStudio(7);
+        host.openStudio('project_11111111111111111111111111111111', 'Project');
         await flushWorkspace();
 
         expect(agentsController.dispose).toHaveBeenCalledTimes(1);
         expect(host.getActiveWorkspace()?.key).toBe('studio');
+        expect(navigation.getRoute().child?.id).toBe('project:project_11111111111111111111111111111111');
         expect(document.querySelectorAll('#chat')).toHaveLength(1);
         expect(document.querySelectorAll('#send_form')).toHaveLength(1);
         expect(document.querySelectorAll('#send_textarea')).toHaveLength(1);
@@ -397,7 +398,7 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'library',
-            child: { id: 'world-info' },
+            child: { id: 'worlds' },
         });
 
         const api = document.createElement('button');
@@ -492,9 +493,12 @@ describe('R7G WorkspaceHost', () => {
             },
         });
 
-        host.openStudio(7);
+        host.openStudio('project_22222222222222222222222222222222', 'Project');
         await flushWorkspace();
-        expect(navigation.getRoute().domain).toBe('studio');
+        expect(navigation.getRoute()).toMatchObject({
+            domain: 'studio',
+            child: { id: 'project:project_22222222222222222222222222222222', kind: 'detail' },
+        });
 
         await registry.execute('workspace.memory', {});
         await flushWorkspace();
@@ -507,11 +511,11 @@ describe('R7G WorkspaceHost', () => {
             section: 'memory',
         });
 
-        await registry.execute('workspace.world-info', {});
+        await registry.execute('workspace.worlds', {});
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'library',
-            child: { id: 'world-info', kind: 'workspace' },
+            child: { id: 'worlds', kind: 'workspace' },
         });
 
         await registry.execute('workspace.settings', {});
@@ -554,11 +558,15 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'orchestration', label: 'Orchestration', kind: 'workspace' },
         })).toMatchObject({ key: 'agents:workspace', kind: 'agents', section: 'orchestration', title: 'Orchestration' });
         expect(routeDescriptor({ domain: 'library', child: null, breadcrumb: ['Library'] }))
-            .toMatchObject({ key: 'library', kind: 'library', section: 'characters', title: 'Characters' });
+            .toMatchObject({ key: 'library', kind: 'library', section: 'works', title: 'Works' });
         expect(routeDescriptor({
             domain: 'library',
-            child: { id: 'world-info', label: 'Worlds & Knowledge', kind: 'workspace' },
-        })).toMatchObject({ key: 'library', kind: 'library', section: 'world-info' });
+            child: { id: 'worlds', label: 'Worlds', kind: 'workspace' },
+        })).toMatchObject({ key: 'library', kind: 'library', section: 'worlds-knowledge' });
+        expect(routeDescriptor({
+            domain: 'library',
+            child: { id: 'knowledge', label: 'Knowledge Bases', kind: 'workspace' },
+        })).toMatchObject({ key: 'library', kind: 'library', section: 'worlds-knowledge' });
         expect(routeDescriptor({ domain: 'runtime', child: null, breadcrumb: ['Runtime'] }))
             .toMatchObject({ key: 'runtime', kind: 'runtime', section: 'overview', title: 'Overview' });
         expect(routeDescriptor({

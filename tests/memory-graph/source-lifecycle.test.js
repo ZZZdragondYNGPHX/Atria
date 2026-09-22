@@ -1,5 +1,9 @@
 import { describe, test, expect, jest } from '@jest/globals';
-import { createSourceLifecycle, PROVENANCE_NAMESPACE } from '../../public/scripts/extensions/memory-graph/source-lifecycle.js';
+import {
+    createSourceLifecycle,
+    PROVENANCE_NAMESPACE,
+    NATIVE_PROVENANCE_NAMESPACE,
+} from '../../public/scripts/extensions/memory-graph/source-lifecycle.js';
 import { sourceContent } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
 
 function fixture() {
@@ -306,5 +310,59 @@ describe('Memory OS production source lifecycle', () => {
         expect(f.store.nodes.n_1.archived).toBe(true);
         expect(Object.keys(f.disk.get(f.context.key).sources)).toHaveLength(1);
         expect(f.context.chat[0].memory_os_source_id).toBeUndefined();
+    });
+});
+
+
+describe('N5 Native memory source identity', () => {
+    test('uses messageId and SessionState provenance without mutating committed projection metadata', async () => {
+        const disk = new Map();
+        const target = { key: 'legacy-target-that-must-not-be-used' };
+        const context = {
+            key: 'native:ses_0123456789abcdef0123456789abcdef',
+            enabled: true,
+            chat: [{
+                mes: 'Native source',
+                is_user: false,
+                swipe_id: 0,
+                atri_native: { messageId: 'msg_0123456789abcdef0123456789abcdef' },
+            }],
+            saveChat: jest.fn(async () => {
+                throw new Error('Native source identity must not save committed chat');
+            }),
+            getChatState: jest.fn(async (namespace, options = {}) => ({
+                ok: true,
+                state: structuredClone(disk.get(namespace) || null),
+                options,
+            })),
+            updateChatState: jest.fn(async (namespace, reducer, options = {}) => {
+                const next = await reducer(structuredClone(disk.get(namespace) || null));
+                disk.set(namespace, structuredClone(next));
+                return { ok: true, state: structuredClone(next), options };
+            }),
+        };
+        const lifecycle = createSourceLifecycle({
+            getContext: () => context,
+            resolveScope: ctx => ({ key: ctx.key, target }),
+            enabled: ctx => ctx.enabled,
+            newId: () => 'legacy-generated-id',
+        });
+
+        const ticket = await lifecycle.capture(context, [0]);
+        expect(ticket.episodeIds[0]).toContain(context.chat[0].atri_native.messageId);
+        expect(context.chat[0].memory_os_source_id).toBeUndefined();
+        expect(context.saveChat).not.toHaveBeenCalled();
+        expect(disk.has(NATIVE_PROVENANCE_NAMESPACE)).toBe(true);
+        expect(disk.has(PROVENANCE_NAMESPACE)).toBe(false);
+
+        const readCall = context.getChatState.mock.calls.find(([namespace]) => namespace === NATIVE_PROVENANCE_NAMESPACE);
+        const writeCall = context.updateChatState.mock.calls.find(([namespace]) => namespace === NATIVE_PROVENANCE_NAMESPACE);
+        expect(readCall?.[1]).toEqual({});
+        expect(writeCall?.[2]).toEqual({});
+
+        // Compatibility swipe ABI is not part of Native source authority.
+        context.chat[0].swipe_id = 9;
+        expect(await lifecycle.listFacts(context)).toEqual([]);
+        expect(context.chat[0].memory_os_source_id).toBeUndefined();
     });
 });

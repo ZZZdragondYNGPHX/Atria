@@ -34,8 +34,14 @@ export async function awaitMainUI(page, baseURL) {
     page.on('pageerror', onPageError);
     page.on('console', onConsole);
 
-    if (baseURL) await page.goto(baseURL);
-    else await page.goto('/');
+    const useLegacyRecovery = process.env.ATRIA_E2E_SHELL_RECOVERY === 'legacy';
+    if (baseURL) {
+        const target = new URL(baseURL);
+        if (useLegacyRecovery) target.searchParams.set('atriaShellRecovery', 'legacy');
+        await page.goto(target.href);
+    } else {
+        await page.goto(useLegacyRecovery ? '/?atriaShellRecovery=legacy' : '/');
+    }
     const gate = page.locator('#userList .userSelect:last-child');
     try {
         await gate.waitFor({ state: 'visible', timeout: 2000 });
@@ -238,46 +244,48 @@ export async function selectCharacterByName(page, name) {
         await onboardingHeader.waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
     }
 
-    const openedByShell = await page.evaluate(() => {
+    const selectedThroughCompatibilityAbi = await page.evaluate(async (wantName) => {
         const shell = window.Atria?.shell;
-        const workspaceHost = shell?.getWorkspaceHost?.();
-        if (!shell?.isMounted?.() || typeof workspaceHost?.openLibrarySection !== 'function') {
-            return false;
-        }
-        workspaceHost.openLibrarySection('characters');
-        return true;
-    }).catch(() => false);
+        if (!shell?.isMounted?.()) return false;
 
-    if (openedByShell) {
-        await page.locator('#rm_print_characters_block').waitFor({ state: 'visible', timeout: 10_000 });
-    } else {
+        // N9/N10 retired Characters as Product Library authority. Legacy
+        // World Info regression tests still need a non-Native Character host,
+        // so use the retained ST compatibility ABI directly rather than
+        // reopening the retired Library route.
+        const ctx = window.Atria?.getContext?.();
+        const idx = ctx?.characters?.findIndex(character => character?.name === wantName) ?? -1;
+        if (idx < 0 || typeof ctx?.selectCharacterById !== 'function') {
+            throw new Error(`character "${wantName}" not present in compatibility host`);
+        }
+        await ctx.selectCharacterById(idx, { switchMenu: false });
+        return true;
+    }, name).catch(() => false);
+
+    if (!selectedThroughCompatibilityAbi) {
         const drawer = page.locator('#rightNavDrawerIcon');
         const drawerClosed = await drawer.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
         if (drawerClosed) await drawer.click();
+
+        // If a prior character was already selected, the character surface is
+        // showing the character-edit panel rather than the list. Click the
+        // "Characters" sub-panel button so #rm_print_characters_block becomes
+        // visible again.
+        const listVisible = await page.locator('#rm_print_characters_block:visible').count().catch(() => 0);
+        if (!listVisible) {
+            await page.evaluate(() => {
+                const btn = document.querySelector('#rm_button_characters');
+                if (btn) btn.click();
+            });
+            await page.locator('#rm_print_characters_block').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
+        }
+
+        const charBlock = page.locator('#rm_print_characters_block');
+        await charBlock.waitFor({ state: 'visible', timeout: 10_000 });
+
+        const card = charBlock.locator('.character_select', { hasText: name }).first();
+        await card.waitFor({ state: 'visible', timeout: 10_000 });
+        await card.click();
     }
-
-    // If a prior character was already selected, the character surface is
-    // showing the character-edit panel rather than the list. Click the
-    // "Characters" sub-panel button so #rm_print_characters_block becomes
-    // visible again. Use a JS click so a toast or transient overlay
-    // can't intercept the gesture (force:true on the locator click still
-    // dispatches via pointer coordinates and is blocked by overlays in
-    // some layouts).
-    const listVisible = await page.locator('#rm_print_characters_block:visible').count().catch(() => 0);
-    if (!listVisible) {
-        await page.evaluate(() => {
-            const btn = document.querySelector('#rm_button_characters');
-            if (btn) btn.click();
-        });
-        await page.locator('#rm_print_characters_block').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
-    }
-
-    const charBlock = page.locator('#rm_print_characters_block');
-    await charBlock.waitFor({ state: 'visible', timeout: 10_000 });
-
-    const card = charBlock.locator('.character_select', { hasText: name }).first();
-    await card.waitFor({ state: 'visible', timeout: 10_000 });
-    await card.click();
 
     await page.waitForFunction(() => {
         const ctx = window.Atria?.getContext?.();
