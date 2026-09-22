@@ -13,17 +13,31 @@ import '@playwright/test';
  * Legacy recovery/non-Shell hosts fall back to the inherited drawer launcher.
  */
 export async function openWorldInfoDrawer(page) {
-    const openedByShell = await page.evaluate(() => {
+    const mountedCompatibilityWorkspace = await page.evaluate(async () => {
         const shell = window.Atria?.shell;
-        const workspaceHost = shell?.getWorkspaceHost?.();
-        if (!shell?.isMounted?.() || typeof workspaceHost?.openWorldInfo !== 'function') {
-            return false;
+        if (!shell?.isMounted?.()) return false;
+
+        // N9/N10 route the product World Info entry point to Native Worlds &
+        // Knowledge. These tests intentionally cover the retained mature ST
+        // World Info editor/runtime ABI, so mount that compatibility surface
+        // explicitly without reviving the retired product route.
+        const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
+        let host = document.getElementById('atria-e2e-world-info-compat-host');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'atria-e2e-world-info-compat-host';
+            host.style.position = 'fixed';
+            host.style.inset = '0';
+            host.style.zIndex = '10000';
+            host.style.background = 'var(--SmartThemeBlurTintColor, #111)';
+            document.body.append(host);
         }
-        workspaceHost.openWorldInfo();
-        return true;
+        const api = mountWorldInfoWorkspace(host, { embedded: true });
+        window.__atriaE2eWorldInfoCompatibilityMount = api || null;
+        return Boolean(api);
     }).catch(() => false);
 
-    if (!openedByShell) {
+    if (!mountedCompatibilityWorkspace) {
         const icon = page.locator('#WIDrawerIcon');
         const isClosed = await icon.evaluate(el => el.classList.contains('closedIcon')).catch(() => true);
         if (isClosed) {
@@ -39,27 +53,23 @@ export async function openWorldInfoDrawer(page) {
  * Legacy recovery/non-Shell hosts close the inherited drawer instead.
  */
 export async function closeWorldInfoDrawer(page) {
-    const closedByShell = await page.evaluate(() => {
-        const shell = window.Atria?.shell;
-        const workspaceHost = shell?.getWorkspaceHost?.();
-        if (!shell?.isMounted?.() || typeof workspaceHost?.openPlay !== 'function') {
-            return false;
-        }
-        workspaceHost.openPlay();
+    const disposedCompatibilityWorkspace = await page.evaluate(() => {
+        const api = window.__atriaE2eWorldInfoCompatibilityMount;
+        if (!api) return false;
+        api.dispose?.();
+        window.__atriaE2eWorldInfoCompatibilityMount = null;
+        document.getElementById('atria-e2e-world-info-compat-host')?.remove();
         return true;
     }).catch(() => false);
 
-    if (closedByShell) {
-        await page.locator('#sheld').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
-        return;
+    if (!disposedCompatibilityWorkspace) {
+        await page.evaluate(() => {
+            const icon = document.querySelector('#WIDrawerIcon');
+            if (icon?.classList.contains('openIcon')) {
+                (icon.closest('.drawer-toggle') || icon).click();
+            }
+        });
     }
-
-    await page.evaluate(() => {
-        const icon = document.querySelector('#WIDrawerIcon');
-        if (icon?.classList.contains('openIcon')) {
-            (icon.closest('.drawer-toggle') || icon).click();
-        }
-    });
     await page.locator('#world_popup').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 }
 
