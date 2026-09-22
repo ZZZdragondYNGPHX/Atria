@@ -13,6 +13,15 @@ import '@playwright/test';
  * Legacy recovery/non-Shell hosts fall back to the inherited drawer launcher.
  */
 export async function openWorldInfoDrawer(page) {
+    const recoveryMode = await page.locator('body').getAttribute('data-atria-shell-recovery').catch(() => null);
+    if (recoveryMode !== 'legacy') {
+        await page.waitForFunction(
+            () => Boolean(window.Atria?.shell?.isMounted?.()),
+            null,
+            { timeout: 10_000 },
+        ).catch(() => {});
+    }
+
     const mountedCompatibilityWorkspace = await page.evaluate(async () => {
         const shell = window.Atria?.shell;
         if (!shell?.isMounted?.()) return false;
