@@ -84,10 +84,6 @@ function optionalTimestamp(value, field) {
     return value == null ? undefined : timestamp(value, field);
 }
 
-function optionalText(value, field, options) {
-    return value == null ? undefined : text(value, field, options);
-}
-
 function uniqueNativeIds(values, kind, field) {
     if (values === undefined) return [];
     if (!Array.isArray(values)) throw new TypeError(field + ' must be an array');
