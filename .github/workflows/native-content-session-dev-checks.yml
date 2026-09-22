@@ -163,7 +163,6 @@ jobs:
       - n0-contracts
       - n1-storage
       - n2-package-project
-      - n5-runtime-state
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
