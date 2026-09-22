@@ -7878,24 +7878,63 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     }
 
     if (nativeSessionRuntime.active) {
+        const systemContractText = [system, jailbreak].map(value => String(value ?? '')).filter(Boolean).join('\n');
+        const extensionFramingText = Object.entries(extension_prompts || {})
+            .filter(([key]) => key !== 'atria_native_context')
+            .map(([, value]) => String(value?.value ?? ''))
+            .filter(Boolean)
+            .join('\n');
         const framingReserveText = [
             description,
             personality,
             persona,
             scenario,
-            system,
-            jailbreak,
             charDepthPrompt,
             creatorNotes,
             mesExamples,
+            quiet_prompt,
+            promptBias,
+            extensionFramingText,
         ].map(value => String(value ?? '')).filter(Boolean).join('\n');
         const framingReserveTokens = framingReserveText
             ? await getTokenCountAsync(framingReserveText, 0)
             : 0;
+        const activeToolSchemas = canUseTools
+            ? (await Promise.all(ToolManager.tools.map(async tool =>
+                await tool.shouldRegister() ? tool.toFunctionOpenAI() : null))).filter(Boolean)
+            : [];
         let knowledgeLaneCap = Math.round(Number(world_info_budget || 0) * this_max_context / 100) || 1;
         if (Number(world_info_budget_cap) > 0) {
             knowledgeLaneCap = Math.min(knowledgeLaneCap, Number(world_info_budget_cap));
         }
+        const contextProviders = [
+            {
+                providerId: 'native-runtime-contract',
+                provide: () => systemContractText ? [{
+                    contextItemId: 'runtime:system-contract',
+                    lane: 'runtime_system',
+                    authority: 'runtime_mechanics',
+                    authorityRank: 900,
+                    priority: 1000,
+                    content: systemContractText,
+                    required: true,
+                    metadata: { accountingOnly: true },
+                }] : [],
+            },
+            {
+                providerId: 'native-tool-contracts',
+                provide: () => activeToolSchemas.length ? [{
+                    contextItemId: 'tools:registered-schemas',
+                    lane: 'tools',
+                    authority: 'runtime_mechanics',
+                    authorityRank: 900,
+                    priority: 900,
+                    content: JSON.stringify(activeToolSchemas),
+                    required: true,
+                    metadata: { accountingOnly: true, toolCount: activeToolSchemas.length },
+                }] : [],
+            },
+        ];
         const contextPlan = await nativeSessionRuntime.prepareContext({
             target: 'narrator',
             policy: 'balanced',
@@ -7905,6 +7944,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             externalHardReserveTokens: framingReserveTokens,
             laneCaps: { knowledge: Math.max(0, Math.floor(knowledgeLaneCap)) },
             deferredLanes: ['memory'],
+            providers: contextProviders,
             countTokens: value => getTokenCountAsync(String(value ?? ''), 0),
         });
         coreChat = nativeSessionRuntime.filterCoreChatForContext(coreChat, contextPlan);

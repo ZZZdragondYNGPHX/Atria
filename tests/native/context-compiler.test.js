@@ -238,6 +238,27 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
         expect(actor.sourceSelection.selectedKnowledgeIdentities[0]).not.toBe(agent.sourceSelection.selectedKnowledgeIdentities[0]);
     });
 
+    test('non-negotiable runtime/tool material fails closed instead of being silently dropped', async () => {
+        const compiler = new SessionContextCompiler({
+            providers: [createContextProvider({
+                providerId: 'oversized-runtime',
+                provide: async () => [{
+                    contextItemId: 'runtime:oversized',
+                    lane: CONTEXT_LANES.runtime,
+                    authority: 'runtime_mechanics',
+                    authorityRank: 900,
+                    priority: 1000,
+                    content: 'x'.repeat(20000),
+                    required: true,
+                }],
+            })],
+        });
+        await expect(compiler.compile(buildSnapshot(2), budget({
+            modelContextLimit: 1200,
+            responseReserve: 300,
+        }))).rejects.toMatchObject({ code: 'native_context_hard_reserve_overflow' });
+    });
+
     test('provider/utility failure degrades gracefully without blocking Context compilation', async () => {
         const compiler = new SessionContextCompiler({
             providers: [createContextProvider({

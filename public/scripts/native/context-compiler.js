@@ -853,15 +853,21 @@ export class SessionContextCompiler {
 
         const requiredGroups = groups.filter(group => group.required);
         for (const group of requiredGroups) {
-            if (canFit(group)) includeGroup(group, 'hard_reserve');
-            else rejected.push(...group.items.map(item => ({
-                contextItemId: item.contextItemId,
-                lane: item.lane,
-                reason: 'hard_reserve_overflow',
-                tokenCount: item.tokenCount,
-                sourceRefs: item.sourceRefs,
-                metadata: clone(item.metadata),
-            })));
+            if (canFit(group)) {
+                includeGroup(group, 'hard_reserve');
+                continue;
+            }
+            const error = new Error('Native Context hard reserve cannot fit non-negotiable material');
+            error.code = 'native_context_hard_reserve_overflow';
+            error.details = {
+                lane: group.lane,
+                atomicGroup: group.key,
+                requiredTokens: group.tokens,
+                promptBudget,
+                usedTokens,
+                laneCap: laneUsage[group.lane]?.cap ?? null,
+            };
+            throw error;
         }
         const actualHardReserve = Math.min(
             promptBudget,
