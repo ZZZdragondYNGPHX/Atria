@@ -406,7 +406,36 @@ export class SessionCore {
         const save = await this._saves.get(handle, sessionId, saveId);
         if (!save) throw new NotFoundError('native save point', { saveId });
         const current = await this._current(handle, sessionId, expectedRevisionId);
+        if (
+            current.session.headRevisionId === save.revisionId
+            && current.session.activeBranchId === save.branchId
+        ) {
+            return current;
+        }
+
+        // Loading a historical Save is non-destructive. The saved Revision is
+        // an immutable source root; continuing publishes a new derived Branch
+        // and leaves every pre-existing Branch HEAD untouched.
         const source = await this.load(handle, sessionId, { revisionId: save.revisionId });
-        return this._publish(handle, { ...source, session: current.session }, { graph: current.graph });
+        const last = source.timeline.at(-1);
+        const forkPoint = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
+        const branchId = createNativeId('branch');
+        const branch = {
+            branchId,
+            sessionId,
+            parentBranchId: source.revision.branchId,
+            forkPoint,
+            createdAt: Date.now(),
+            ...(save.displayName === undefined ? {} : { displayName: save.displayName }),
+        };
+        return this._publish(handle, { ...source, session: current.session }, {
+            branchId,
+            timeline: source.timeline,
+            branches: [branch],
+            graph: [
+                ...current.graph,
+                { branchId, forkRevisionId: source.revision.revisionId, branch },
+            ],
+        });
     }
 }
