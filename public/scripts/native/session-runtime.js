@@ -2,7 +2,6 @@ import {
     assertCommittedProjection,
     committedTimelineMutation,
     nativeAssetUrl,
-    projectKnowledgeEntries,
     projectNativeSession,
     runtimeMetadata,
     timelineIntents,
@@ -11,6 +10,7 @@ import {
     NATIVE_SESSION_LIFECYCLE,
     emitNativeSessionLifecycle,
 } from './session-lifecycle.js';
+import { compileNativeKnowledgeEntries, compileNativeKnowledgePlan } from './knowledge-runtime.js';
 
 function copy(value) {
     return JSON.parse(JSON.stringify(value));
@@ -608,7 +608,13 @@ export class NativeSessionRuntime {
         return next;
     }
 
-    knowledgeEntries() { return this.active ? projectKnowledgeEntries(this.snapshot) : null; }
+    knowledgePlan(options = {}) {
+        return this.active ? compileNativeKnowledgePlan(this.snapshot, options) : null;
+    }
+
+    knowledgeEntries(options = {}) {
+        return this.active ? compileNativeKnowledgeEntries(this.snapshot, options).entries : null;
+    }
 
     regexScripts() { return this.active ? this.snapshot.manifest.processors?.regex ?? [] : []; }
 
