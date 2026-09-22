@@ -52,6 +52,12 @@ import {
 
 const bookmarkNameToken = 'Checkpoint #';
 
+function nativeCheckpointRetired(action = 'Checkpoint Chat') {
+    if (!nativeSessionRuntime.active) return false;
+    nativeSessionRuntime.denyCommittedAction(action);
+    return true;
+}
+
 function buildBranchChatStateTarget(chatName) {
     if (selected_group) {
         const currentChatId = String(groups?.find(x => x.id == selected_group)?.chat_id || '').trim();
@@ -201,6 +207,7 @@ export function showBookmarksButtons() {
 }
 
 async function saveBookmarkMenu() {
+    if (nativeCheckpointRetired()) return null;
     if (!chat.length) {
         toastr.warning('The chat is empty.', 'Checkpoint creation failed');
         return;
@@ -319,6 +326,7 @@ export async function createBranch(mesId, { swipeId = null } = {}) {
  * @returns {Promise<string?>} - A promise that resolves to the bookmark name when the bookmark is created.
  */
 export async function createNewBookmark(mesId, { forceName = null } = {}) {
+    if (nativeCheckpointRetired()) return null;
     if (this_chid === undefined && !selected_group) {
         toastr.info('No character selected.', 'Create Checkpoint');
         return null;
@@ -664,6 +672,7 @@ function registerBookmarksSlashCommands() {
         name: 'checkpoint-go',
         returns: 'Name of the checkpoint',
         callback: async (args, text) => {
+            if (nativeCheckpointRetired('Open Checkpoint Chat')) return '';
             const mesId = Number(args.mesId ?? text ?? getLastMessageId());
             if (!validateMessageId(mesId, 'Open Checkpoint')) return '';
 
@@ -700,6 +709,7 @@ function registerBookmarksSlashCommands() {
         name: 'checkpoint-exit',
         returns: 'The name of the chat exited to. Returns an empty string if not in a checkpoint chat.',
         callback: async () => {
+            if (nativeCheckpointRetired('Checkpoint Chat')) return '';
             const mainChat = await backToMainChat();
             return mainChat ?? '';
         },
@@ -709,6 +719,7 @@ function registerBookmarksSlashCommands() {
         name: 'checkpoint-parent',
         returns: 'Name of the parent chat for this checkpoint',
         callback: async () => {
+            if (nativeCheckpointRetired('Checkpoint Chat')) return '';
             const mainChatName = getMainChatName();
             return mainChatName ?? '';
         },
@@ -718,6 +729,7 @@ function registerBookmarksSlashCommands() {
         name: 'checkpoint-get',
         returns: 'Name of the chat',
         callback: async (args, text) => {
+            if (nativeCheckpointRetired('Checkpoint Chat')) return '';
             const mesId = Number(args.mesId ?? text ?? getLastMessageId());
             if (!validateMessageId(mesId, 'Get Checkpoint')) return '';
 
@@ -742,6 +754,7 @@ function registerBookmarksSlashCommands() {
         returns: 'JSON array of all existing checkpoints in this chat, as an array',
         /** @param {{links?: string}} args @returns {Promise<string>} */
         callback: async (args, _) => {
+            if (nativeCheckpointRetired('Checkpoint Chat')) return '';
             const result = Object.entries(chat)
                 .filter(([_, message]) => message.extra?.bookmark_link)
                 .map(([mesId, message]) => isTrueBoolean(args.links) ? message.extra.bookmark_link : Number(mesId));
