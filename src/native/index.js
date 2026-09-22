@@ -63,3 +63,18 @@ export {
     SessionRepo,
     WorldRepo,
 } from './repositories/index.js';
+
+export {
+    ATRIA_PROJECT_FORMAT,
+    ATRIA_PROJECT_MANIFEST,
+    ATRIA_PROJECT_SCHEMA_VERSION,
+    assertAtriaProjectSource,
+    validateAtriaProjectSource,
+} from './project-source.js';
+
+export { ProjectStore } from './project-store.js';
+
+export {
+    NativeDependencyError,
+    resolveProjectDependencyClosure,
+} from './dependency-closure.js';
