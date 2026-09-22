@@ -3,6 +3,10 @@ import {
     createAtriaStatePanel,
 } from './primitives.js';
 import { formatShellText, translateShellText } from './localization.js';
+import {
+    mountNativeWorksWorkspace,
+    mountNativeWorldKnowledgeWorkspace,
+} from '../native/library-workspaces.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
     return createAtriaStatePanel(documentRef, kind, {
@@ -22,9 +26,8 @@ function createLocalizedRuntimeCard(documentRef, options = {}) {
 }
 
 export const LIBRARY_SECTIONS = Object.freeze([
-    Object.freeze({ id: 'characters', label: 'Characters' }),
-    Object.freeze({ id: 'games', label: 'Games' }),
-    Object.freeze({ id: 'world-info', label: 'Worlds & Knowledge' }),
+    Object.freeze({ id: 'works', label: 'Works' }),
+    Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
     Object.freeze({ id: 'skills', label: 'Skills' }),
 ]);
 
@@ -43,8 +46,15 @@ function sectionById(list, id, fallbackId) {
 
 export function normalizeLibrarySection(route) {
     const childId = String(route?.child?.id || '').trim();
-    if (childId.startsWith('character:')) return 'characters';
-    return sectionById(LIBRARY_SECTIONS, childId || 'characters', 'characters').id;
+    if (!childId || childId === 'works' || childId.startsWith('work:')) return 'works';
+    if (
+        childId === 'worlds-knowledge'
+        || childId === 'worlds'
+        || childId === 'knowledge'
+        || childId.startsWith('world:')
+        || childId.startsWith('knowledge:')
+    ) return 'worlds-knowledge';
+    return sectionById(LIBRARY_SECTIONS, childId, 'works').id;
 }
 
 export function normalizeRuntimeSection(route) {
@@ -748,9 +758,8 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
 
 async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
-    if (section === 'characters') return mountCharactersWorkspace(args);
-    if (section === 'games') return await mountGamesWorkspace(args);
-    if (section === 'world-info') return await mountWorldWorkspace(args);
+    if (section === 'works') return mountNativeWorksWorkspace(args);
+    if (section === 'worlds-knowledge') return mountNativeWorldKnowledgeWorkspace(args);
     return await mountSkillsWorkspace(args);
 }
 
