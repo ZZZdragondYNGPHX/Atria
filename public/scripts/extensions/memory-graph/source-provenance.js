@@ -2,6 +2,12 @@
 
 export const SOURCE_ID_FIELD = 'memory_os_source_id';
 
+export function sourceMessageId(message) {
+    const nativeId = String(message?.atri_native?.messageId || '').trim();
+    if (nativeId) return nativeId;
+    return String(message?.[SOURCE_ID_FIELD] || '').trim();
+}
+
 export function emptyProvenance() {
     return {
         version: 1,
@@ -28,10 +34,11 @@ export function normalizeProvenance(raw) {
 
 // Exact source comparison, deliberately not the legacy 32-bit vector hash.
 export function sourceContent(message) {
+    const nativeId = String(message?.atri_native?.messageId || '').trim();
     return JSON.stringify([
         String(message?.mes || ''), String(message?.name || ''),
         Boolean(message?.is_user), Boolean(message?.is_system),
-        Number.isInteger(message?.swipe_id) ? message.swipe_id : 0,
+        nativeId || (Number.isInteger(message?.swipe_id) ? message.swipe_id : 0),
     ]);
 }
 
@@ -60,7 +67,7 @@ export function addDependency(state, parent, child) {
 function sourceLookup(chat) {
     const result = new Map();
     for (let floor = 0; floor < chat.length; floor++) {
-        const id = chat[floor]?.[SOURCE_ID_FIELD];
+        const id = sourceMessageId(chat[floor]);
         if (typeof id !== 'string' || !id) continue;
         // Duplicate imported IDs cannot prove which message was the source.
         result.set(id, result.has(id) ? null : { message: chat[floor], floor });
@@ -75,7 +82,9 @@ export function reconcileSources(state, chat, forced = new Set()) {
     for (const [id, source] of Object.entries(state.sources)) {
         const found = current.get(id);
         const content = found ? sourceContent(found.message) : null;
-        if (!forced.has(id) && source.content === content && source.floor === found?.floor && source.status === 'active') continue;
+        const nativeIdentity = Boolean(found?.message?.atri_native?.messageId);
+        const positionMatches = nativeIdentity || source.floor === found?.floor;
+        if (!forced.has(id) && source.content === content && positionMatches && source.status === 'active') continue;
         if (!found && source.status === 'deleted') continue;
         source.revision += 1;
         source.content = content;
@@ -98,7 +107,7 @@ export function captureEpisodes(state, chat, floors, scopeId, now = Date.now()) 
     const ids = [];
     for (const floor of new Set(floors)) {
         const message = chat[floor];
-        const id = message?.[SOURCE_ID_FIELD];
+        const id = sourceMessageId(message);
         if (!id || lookup.get(id)?.floor !== floor) throw new Error('Ambiguous memory source identity');
         if (!state.sources[id]) {
             state.sources[id] = { revision: 1, content: sourceContent(message), floor, status: 'active' };
@@ -123,8 +132,10 @@ export function episodesAreCurrent(state, ids, chat, scopeId, lookup = sourceLoo
     return ids.length > 0 && ids.every(id => {
         const episode = state.episodes[id];
         const found = lookup.get(episode?.messageIds?.[0]);
+        const nativeIdentity = Boolean(found?.message?.atri_native?.messageId);
+        const positionMatches = nativeIdentity || found?.floor === episode.sourceFloor;
         return episode?.status === 'active' && episode.scopeId === scopeId && found
-            && found.floor === episode.sourceFloor && sourceContent(found.message) === episode.sourceContent;
+            && positionMatches && sourceContent(found.message) === episode.sourceContent;
     });
 }
 
