@@ -1733,11 +1733,14 @@ No production UI cutover yet.
 
 ### N4 — Native Runtime Projection & Write Barrier
 
-**Status: in progress.** Preserve all N0–N3 validated work and the useful N4 runtime seams already implemented through the live branch. Current known work-branch HEAD at this design amendment is:
+**Status: complete and validated — 2026-09-22.**
 
-`952410a3f3d200754b046ccc2868166282958094`
-
-Do not reset/restart N4.
+- Validated work-branch HEAD: `ec95a260f4a26a4c23091227f77865dba1ae2273`
+- CI: **Native Content Session Dev Checks #87**
+- Run: `35693455407`
+- Result: **success**
+- N0/N1/N2/N3 regressions, full root lint, real-host Chromium Native Session acceptance, complete Node regression and frontend build all passed.
+- N5 is next. Do not restart N4, create a new branch, or merge to main.
 
 Keep:
 
@@ -1796,6 +1799,34 @@ These must not change Native authority or fall back to legacy storage.
 Do not implement full N5 state integration, N6 KnowledgeCompiler, N7 ContextCompiler, N9 UI cutover, or N10 deletion of SillyTavern internals inside N4.
 
 **Exit:** mature ST generation/rendering can operate as a mutable Draft/runtime workspace downstream of an immutable Native committed Timeline, with a tested commit/write barrier and Native-only writes.
+
+### N4 validation record
+
+N4 now establishes the immutable committed-Timeline/runtime boundary required by later Native phases:
+
+- the mature ST generation/rendering host remains a mutable Draft/runtime compatibility workspace downstream of Native authority;
+- committed Native Timeline entries are append-only from the product/runtime command surface;
+- committed Edit/Delete/manual Swipe/Swipe deletion/Variant switching and direct canonical `chat[]` rewrites fail closed with no JSONL/`/api/chats/*` fallback;
+- committed-message fingerprints protect role/actor/content/attachment/provenance authority while presentation-only overlays such as `extra.display_text` remain outside Timeline authority;
+- Send commits the user turn before assistant generation, preserving an exact post-user Revision;
+- Continue appends a new Assistant entry with `continuationOf` provenance instead of rewriting the prior Assistant;
+- Retry Reply forks from the exact post-user Revision and appends a new Assistant reply; unsent Composer drafts/attachments do not become part of Retry;
+- Stop finalizes the Generation Draft explicitly, including the no-assistant-placeholder case, without advancing HEAD past the committed post-user Revision when the Draft is discarded;
+- Package Regex participates in the actual runtime hot path, pinned Native Knowledge remains compatibility-projected fail-closed, and attachments route through AssetStore;
+- R7 Play host identity/uniqueness is preserved for `#sheld`, `#chat`, `#form_sheld`, `#send_form`, and `#send_textarea`;
+- real-host acceptance proves Native writes remain Native-only and legacy persistence is not used as fallback.
+
+Final validation on exact HEAD `ec95a260f4a26a4c23091227f77865dba1ae2273`:
+
+- N0 Native Contracts: success;
+- N2 Package Project Composition: success;
+- N1 Storage + N3 Core + N4 Projection: success;
+- N4 Live Native Session Browser Acceptance: success;
+- N4 Complete Node Regression and Frontend Build: success;
+- complete Node regression: **748 suites / 8705 tests passed**;
+- frontend build: success.
+
+N4 is frozen at this validated boundary. Later changes to runtime-state authority belong to N5; KnowledgeCompiler belongs to N6; bounded context architecture belongs to N7.
 
 ### N5 — Native Runtime State & Revision Lifecycle
 
