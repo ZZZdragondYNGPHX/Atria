@@ -64,6 +64,9 @@ export function createNativeSessionRouter(getServices = services) {
             if (typeof command.saveId !== 'string') throw new TypeError('Native restore requires saveId');
             res.json(await core.restoreSavePoint(handle, sessionId, command.saveId, { expectedRevisionId }));
         } else if (command?.type === 'fork') {
+            if (command.variantId !== undefined || command.swipeId !== undefined) {
+                throw new TypeError('Native Branch cannot select a committed Variant');
+            }
             res.json(await core.forkBranch(handle, sessionId, { ...command, expectedRevisionId }));
         } else if (command?.type === 'retry') {
             res.json(await core.retryReply(handle, sessionId, {
