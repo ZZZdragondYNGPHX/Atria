@@ -35,6 +35,8 @@ export async function openWorldInfoDrawer(page) {
         null,
         { timeout: 30_000 },
     );
+    await page.locator('#atria-workspace[data-atria-workspace-host="idle"]')
+        .waitFor({ state: 'attached', timeout: 30_000 });
 
     const mountedCompatibilityWorkspace = await page.evaluate(async () => {
         const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
