@@ -312,7 +312,12 @@ async function renderWorkDetail(documentRef, root, host, packageId, refresh) {
     const actions = createActions(documentRef);
     const latest = work.sessions?.[0];
     if (latest) {
-        actions.append(button(documentRef, 'Continue', () => openNativeSession(host, latest.sessionId)));
+        actions.append(button(
+            documentRef,
+            'Continue',
+            () => openNativeSession(host, latest.sessionId),
+            { disabled: latest.dependency?.status !== 'ready' },
+        ));
     }
 
     const entryPoints = manifest?.entryPoints || [];
