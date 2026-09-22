@@ -61,6 +61,51 @@ describe('N3 resolved KnowledgeBindingSet', () => {
         expect(await f.sessionRepo.list(h.handle)).toEqual([]);
     });
 
+    test('Session remains pinned to Library revision N after Library current moves to N+1 until explicit update', async () => {
+        const libraryN = knowledgeSnapshot('Library revision N');
+        const bindingN = bindingFor(libraryN, 'library');
+        await publishKnowledge(h, f.knowledgeRepo, libraryN, bindingN);
+
+        const created = await f.core.create(h.handle, {
+            ...f.start,
+            libraryBindingIds: [bindingN.knowledgeBindingId],
+        });
+        const pinned = created.knowledge.snapshots.find(item => item.kind === 'library');
+        expect(pinned.snapshot.revision.knowledgeRevisionId).toBe(libraryN.revision.knowledgeRevisionId);
+        expect(pinned.snapshot.entries[0].content).toBe('Library revision N');
+
+        const libraryN1 = structuredClone(libraryN);
+        libraryN1.revision.knowledgeRevisionId = createNativeId('knowledgeRevision');
+        libraryN1.revision.entryIds = [...libraryN.revision.entryIds];
+        libraryN1.knowledgeBase.currentRevisionId = libraryN1.revision.knowledgeRevisionId;
+        libraryN1.entries[0].content = 'Library revision N+1';
+        await f.knowledgeRepo.commitRevision(h.handle, libraryN1.revision, libraryN1.entries);
+
+        const reloaded = await f.core.load(h.handle, created.session.sessionId);
+        const stillPinned = reloaded.knowledge.snapshots.find(item => item.kind === 'library');
+        expect(stillPinned.snapshot.revision.knowledgeRevisionId).toBe(libraryN.revision.knowledgeRevisionId);
+        expect(stillPinned.snapshot.entries[0].content).toBe('Library revision N');
+
+        const bindingN1 = {
+            ...bindingN,
+            source: {
+                ...bindingN.source,
+                knowledgeRevisionId: libraryN1.revision.knowledgeRevisionId,
+            },
+        };
+        await f.knowledgeRepo.saveBinding(h.handle, bindingN1);
+        const upgraded = await f.core.updateKnowledge(
+            h.handle,
+            created.session.sessionId,
+            { libraryBindingIds: [bindingN1.knowledgeBindingId] },
+            { expectedRevisionId: reloaded.revision.revisionId },
+        );
+        const upgradedSnapshot = upgraded.knowledge.snapshots.find(item => item.kind === 'library');
+        expect(upgradedSnapshot.snapshot.revision.knowledgeRevisionId).toBe(libraryN1.revision.knowledgeRevisionId);
+        expect(upgradedSnapshot.snapshot.entries[0].content).toBe('Library revision N+1');
+        expect(upgraded.revision.revisionId).not.toBe(reloaded.revision.revisionId);
+    });
+
     test('Package-contained Knowledge is never resolved against a same-ID Library revision', async () => {
         const hostile = structuredClone(f.knowledge);
         hostile.entries[0].content = 'Different Library data';
