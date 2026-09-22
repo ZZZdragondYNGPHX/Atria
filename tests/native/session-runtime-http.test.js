@@ -111,6 +111,29 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
         }
     });
 
+    test('N10 branch boundary rejects committed Variant/Swipe selection without changing HEAD', async () => {
+        const before = view.revision.revisionId;
+        const target = view.timeline[0];
+
+        for (const extra of [
+            { variantId: target.activeVariantId },
+            { swipeId: 0 },
+        ]) {
+            const response = await request(app).post('/command').send({
+                sessionId: view.session.sessionId,
+                expectedRevisionId: before,
+                command: {
+                    type: 'fork',
+                    revisionId: before,
+                    messageId: target.messageId,
+                    ...extra,
+                },
+            });
+            expect(response.status).toBe(400);
+            expect((await f.core.load(h.handle, view.session.sessionId)).revision.revisionId).toBe(before);
+        }
+    });
+
     test('Retry Reply forks from exact post-user revision rather than adding a Variant', async () => {
         const user = await request(app).post('/command').send({
             sessionId: view.session.sessionId,
