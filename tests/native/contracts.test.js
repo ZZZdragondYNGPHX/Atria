@@ -137,6 +137,7 @@ function snapshotSave(overrides = {}) {
             messageId: IDs.messageId,
             variantId: IDs.variantId,
         },
+        knowledgeHead: 'knowledge_set_1',
         stateHeads: {
             atri_game_world: 'world_head_1',
             atri_memory_graph: 'memory_head_1',
@@ -213,6 +214,12 @@ describe('N0 opaque Native identity', () => {
             revision: 'rev',
             savePoint: 'save',
             asset: 'asset',
+            world: 'world',
+            worldRevision: 'worldv',
+            knowledgeBase: 'kb',
+            knowledgeRevision: 'kbv',
+            knowledgeEntry: 'kentry',
+            knowledgeBinding: 'kbind',
         });
     });
 
@@ -348,6 +355,7 @@ describe('N0 Session, Timeline, Revision and SavePoint contracts', () => {
             sessionId: IDs.sessionId,
             branchId: IDs.branchId,
             timelineHead: null,
+            knowledgeHead: 'knowledge_set_1',
             stateHeads: {
                 atri_game_world: 'world_head_1',
                 atri_memory_graph: 'memory_head_1',
@@ -360,6 +368,7 @@ describe('N0 Session, Timeline, Revision and SavePoint contracts', () => {
             sessionId: IDs.sessionId,
             branchId: IDs.branchId,
             timelineHead: null,
+            knowledgeHead: 'knowledge_set_1',
             stateHeads: { memory_graph: 'old_head' },
             createdAt: 10,
         })).toThrow(/Atria-owned/);
@@ -369,6 +378,7 @@ describe('N0 Session, Timeline, Revision and SavePoint contracts', () => {
             sessionId: IDs.sessionId,
             branchId: IDs.branchId,
             timelineHead: null,
+            knowledgeHead: 'knowledge_set_1',
             stateHeads: { atri_game_world: 'states/world.json' },
             createdAt: 10,
         })).toThrow(/state-head token/);
@@ -437,6 +447,12 @@ describe('N0 Native Store schema v1', () => {
             'packages',
             'package_versions',
             'package_states',
+            'worlds',
+            'world_revisions',
+            'knowledge_bases',
+            'knowledge_revisions',
+            'knowledge_entries',
+            'knowledge_bindings',
             'sessions',
             'session_branches',
             'timeline_entries',
