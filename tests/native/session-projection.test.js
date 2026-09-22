@@ -6,6 +6,11 @@ import {
     projectKnowledgeEntries,
 } from '../../public/scripts/native/session-projection.js';
 import { NativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    onNativeSessionLifecycle,
+    resetNativeSessionLifecycleForTesting,
+} from '../../public/scripts/native/session-lifecycle.js';
 
 describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ make }) => {
     let h, f, runtime, messages, projection, reported;
@@ -38,12 +43,25 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
             if (command.type === 'switch') {
                 return f.core.switchBranch(h.handle, body.sessionId, command.branchId, { expectedRevisionId });
             }
+            if (command.type === 'restore') {
+                return f.core.restoreSavePoint(h.handle, body.sessionId, command.saveId, { expectedRevisionId });
+            }
+            if (command.type === 'runtime') {
+                return f.core.applyRuntimeCommit(h.handle, body.sessionId, {
+                    commands: command.commands ?? [],
+                    statePatch: command.statePatch ?? {},
+                    deleteNamespaces: command.deleteNamespaces ?? [],
+                }, { expectedRevisionId });
+            }
             return f.core.applyTimelineCommands(h.handle, body.sessionId, command.commands, { expectedRevisionId });
         };
         await runtime.open(view.session.sessionId);
     });
 
-    afterEach(async () => { await h?.cleanup(); });
+    afterEach(async () => {
+        resetNativeSessionLifecycleForTesting();
+        await h?.cleanup();
+    });
 
     async function appendUser(text = 'Explore') {
         messages.push({ name: 'Player', is_user: true, is_system: false, mes: text, extra: {} });
@@ -57,6 +75,48 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         await runtime.persist();
         return messages.at(-1);
     }
+
+    test('N5 revision-backed variables and lifecycle use stable Native identities', async () => {
+        const events = [];
+        for (const type of Object.values(NATIVE_SESSION_LIFECYCLE)) {
+            onNativeSessionLifecycle(type, event => events.push(event));
+        }
+
+        let variables = { route: 'harbor' };
+        runtime.host.runtimeState = () => ({
+            atri_variables: { schemaVersion: 1, values: variables },
+        });
+
+        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'Track state', extra: {} });
+        await runtime.persist();
+
+        const messageId = runtime.snapshot.timeline.at(-1).messageId;
+        expect(messageId).toMatch(/^msg_[a-f0-9]{32}$/);
+        expect(runtime.snapshot.states.atri_variables).toEqual({
+            schemaVersion: 1,
+            values: { route: 'harbor' },
+        });
+        const appended = events.find(event => event.type === NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED);
+        expect(appended.messageIds).toContain(messageId);
+        expect(events.some(event => event.type === NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED)).toBe(true);
+
+        variables = { route: 'market' };
+        const stateOnly = await runtime.updateState('atri_variables', current => ({
+            ...current,
+            values: variables,
+        }));
+        expect(stateOnly.updated).toBe(true);
+        expect(runtime.snapshot.states.atri_variables.values.route).toBe('market');
+
+        const beforeReload = events.length;
+        await runtime.reload();
+        expect(events.slice(beforeReload).some(event => event.type === NATIVE_SESSION_LIFECYCLE.SESSION_LOADED)).toBe(true);
+
+        expect(await runtime.prepareGeneration('normal')).toBe('normal');
+        await runtime.finalizeStoppedGeneration();
+        expect(events.some(event => event.type === NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED)).toBe(true);
+    });
+
 
     test('Send/generation append immutable entries and preserve opaque identities', async () => {
         const greetingId = messages[0].atri_native.messageId;

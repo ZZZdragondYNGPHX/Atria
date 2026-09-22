@@ -193,6 +193,51 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
         expect(response.headers['x-content-type-options']).toBe('nosniff');
     });
 
+    test('N5 runtime command atomically commits state with Timeline and restores exact Revision state', async () => {
+        const save = await f.core.createSavePoint(h.handle, view.session.sessionId, {
+            revisionId: view.revision.revisionId,
+            kind: 'quick',
+        });
+        const committed = await request(app).post('/command').send({
+            sessionId: view.session.sessionId,
+            expectedRevisionId: view.revision.revisionId,
+            command: {
+                type: 'runtime',
+                commands: [{ type: 'append', draft: { role: 'user', content: 'Stateful turn' } }],
+                statePatch: {
+                    atri_variables: { schemaVersion: 1, values: { hp: 7 } },
+                    atri_search_tools_anchors: { anchor: { query: 'dock' } },
+                },
+            },
+        });
+        expect(committed.status).toBe(200);
+        expect(committed.body.timeline.at(-1).content).toBe('Stateful turn');
+        expect(committed.body.states.atri_variables.values.hp).toBe(7);
+        expect(committed.body.revision.stateHeads.atri_variables).toBeTruthy();
+
+        const deleted = await request(app).post('/command').send({
+            sessionId: view.session.sessionId,
+            expectedRevisionId: committed.body.revision.revisionId,
+            command: {
+                type: 'runtime',
+                deleteNamespaces: ['atri_search_tools_anchors'],
+            },
+        });
+        expect(deleted.status).toBe(200);
+        expect(deleted.body.states.atri_search_tools_anchors).toBeUndefined();
+
+        const restored = await request(app).post('/command').send({
+            sessionId: view.session.sessionId,
+            expectedRevisionId: deleted.body.revision.revisionId,
+            command: { type: 'restore', saveId: save.saveId },
+        });
+        expect(restored.status).toBe(200);
+        expect(restored.body.timeline).toHaveLength(view.timeline.length);
+        expect(restored.body.states.atri_variables).toBeUndefined();
+        expect(restored.body.revision.revisionId).not.toBe(save.revisionId);
+    });
+
+
     test('unauthenticated runtime entry is rejected before accessing stores', async () => {
         const unauthenticated = express();
         unauthenticated.use(createNativeSessionRouter(() => {
