@@ -225,6 +225,51 @@ jobs:
           src/native/session-core.js
           src/endpoints/native-session.js
 
+  n6-knowledge-runtime:
+    name: N6 Native Knowledge Runtime Integration
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N6 Checkpoint K and Knowledge/WI integration
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/knowledge-runtime.test.js
+          native/session-knowledge.test.js
+          native/session-projection.test.js
+          world-info/state-conditions.test.js
+          world-info/state-events.test.js
+          world-info/provenance.test.js
+          world-info/selection-strategy.test.js
+      - name: Run N6 source lint
+        run: >-
+          npx eslint
+          public/scripts/native/*.js
+          public/scripts/world-info.js
+          public/scripts/atri-world-info-provenance.js
+          public/scripts/atri-world-info-state-events.js
+          public/scripts/extensions/memory-graph/state-providers.js
+          tests/native/knowledge-runtime.test.js
+
   n4-live-runtime:
     name: N4 Live Native Session Browser Acceptance
     needs:
@@ -274,10 +319,11 @@ jobs:
           retention-days: 7
 
   n4-final-regression:
-    name: N5 Complete Node Regression and Frontend Build
+    name: N6 Complete Node Regression and Frontend Build
     needs:
       - n4-live-runtime
       - n5-runtime-state
+      - n6-knowledge-runtime
     runs-on: ubuntu-latest
     timeout-minutes: 40
     services:

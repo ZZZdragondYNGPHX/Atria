@@ -76,6 +76,44 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         return messages.at(-1);
     }
 
+    test('Draft-local staged SessionState commits with accepted assistant and is discarded on Stop', async () => {
+        await appendUser('Stage state');
+        const postUserRevisionId = runtime.snapshot.revision.revisionId;
+        expect(await runtime.prepareGeneration('normal')).toBe('normal');
+
+        runtime.stageState('atri_world_info_events', {
+            version: 1,
+            baseline: { providers: {} },
+        });
+        expect(runtime.readState('atri_world_info_events')).toEqual({
+            version: 1,
+            baseline: { providers: {} },
+        });
+
+        await runtime.finalizeStoppedGeneration();
+        expect(runtime.snapshot.revision.revisionId).toBe(postUserRevisionId);
+        expect(runtime.readState('atri_world_info_events')).toBeNull();
+
+        expect(await runtime.prepareGeneration('normal')).toBe('normal');
+        runtime.stageState('atri_world_info_events', {
+            version: 1,
+            baseline: { providers: { current: true } },
+        });
+        messages.push({
+            name: 'Actor',
+            is_user: false,
+            is_system: false,
+            mes: 'Accepted response',
+            extra: {},
+        });
+        await runtime.persist();
+        expect(runtime.snapshot.revision.revisionId).not.toBe(postUserRevisionId);
+        expect(runtime.readState('atri_world_info_events')).toEqual({
+            version: 1,
+            baseline: { providers: { current: true } },
+        });
+    });
+
     test('N5 revision-backed variables and lifecycle use stable Native identities', async () => {
         const events = [];
         for (const type of Object.values(NATIVE_SESSION_LIFECYCLE)) {
