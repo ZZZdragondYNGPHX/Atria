@@ -31,4 +31,13 @@ describe('lazy variable-op panel loading', () => {
         expect(source).toContain('panelHandlerInitialized = true;');
         expect(source).toContain('refreshAllButtons();');
     });
+    test('keeps committed Native Timeline messages read-only', () => {
+        const source = readFileSync(PANEL_URL, 'utf8');
+
+        expect(source).toContain("message?.atri_native?.messageId");
+        expect(source).toContain('Committed Native Timeline entries are immutable');
+        expect(source).toContain('isNativeCommitted');
+        expect(source).toContain('&& Array.isArray(message?.extra?.var_ops)');
+    });
+
 });

@@ -216,7 +216,10 @@ jobs:
           public/scripts/extensions/search-tools/main.js
           public/scripts/extensions/game-runtime/index.js
           public/scripts/extensions/game-runtime/world/session.js
+          public/scripts/extensions/game-runtime/world/persistence.js
+          public/scripts/extensions/game-runtime/world/runtime.js
           public/scripts/variable-op-log/index.js
+          public/scripts/variable-op-log/panel.js
           src/native/session-core.js
           src/endpoints/native-session.js
 
