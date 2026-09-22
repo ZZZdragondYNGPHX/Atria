@@ -156,3 +156,92 @@ jobs:
           npx eslint
           src/native/*.js
           src/native/repositories/*.js
+
+  n4-live-runtime:
+    name: N4 Live Native Session Browser Acceptance
+    needs:
+      - n0-contracts
+      - n1-storage
+      - n2-package-project
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Initialize Atria config
+        run: npm run init
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Lint N4 live acceptance
+        working-directory: tests
+        run: npx eslint "e2e/native-session/**/*.js"
+      - name: Run N4 real-host Native Session acceptance
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/native-session/01-live-runtime.e2e.js
+          --project=e2e
+          --workers=1
+
+  n4-final-regression:
+    name: N4 Complete Node Regression and Frontend Build
+    needs:
+      - n4-live-runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atria
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atria_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready -U atria -d atria_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run complete Node unit regression
+        env:
+          ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
+        run: npm run test:unit:serial --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
