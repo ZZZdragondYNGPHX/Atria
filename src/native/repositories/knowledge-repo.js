@@ -194,17 +194,15 @@ export class KnowledgeRepo {
             throw new TypeError('KnowledgeRepo only stores Library-owned KnowledgeBindings');
         }
         return this._engine.withTransaction(handle, async (tx) => {
-            {
-                const revision = await getNativeDocument(
-                    tx,
-                    this._revisionKey(
-                        handle,
-                        binding.source.knowledgeBaseId,
-                        binding.source.knowledgeRevisionId,
-                    ),
-                );
-                if (!revision) throw new NotFoundError('native knowledge revision', binding.source);
-            }
+            const revision = await getNativeDocument(
+                tx,
+                this._revisionKey(
+                    handle,
+                    binding.source.knowledgeBaseId,
+                    binding.source.knowledgeRevisionId,
+                ),
+            );
+            if (!revision) throw new NotFoundError('native knowledge revision', binding.source);
             return putMutable(tx, this._bindingKey(handle, binding.knowledgeBindingId), binding, options);
         });
     }
