@@ -52,6 +52,17 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
                     },
                 }]);
             }
+            if (
+                path === '/api/native/product/worlds/world_11111111111111111111111111111111'
+                && method === 'PUT'
+            ) {
+                const body = JSON.parse(options.body);
+                return response({
+                    worldId: 'world_11111111111111111111111111111111',
+                    displayName: body.displayName,
+                    currentRevisionId: 'worldrev_22222222222222222222222222222222',
+                });
+            }
             if (path === '/api/native/product/worlds/world_11111111111111111111111111111111') {
                 return response({
                     world: {
@@ -92,6 +103,17 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
                     },
                     bindingCount: 1,
                 }]);
+            }
+            if (
+                path === '/api/native/product/knowledge/kb_11111111111111111111111111111111'
+                && method === 'PUT'
+            ) {
+                const body = JSON.parse(options.body);
+                return response({
+                    knowledgeBaseId: 'kb_11111111111111111111111111111111',
+                    displayName: body.displayName,
+                    currentRevisionId: 'kbrev_22222222222222222222222222222222',
+                });
             }
             if (path === '/api/native/product/knowledge/kb_11111111111111111111111111111111') {
                 return response({
@@ -222,6 +244,12 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         await flush();
         expect(body.querySelector('[data-atria-world-detail]')).not.toBeNull();
         expect(body.querySelectorAll('[data-atria-revision-id]')).toHaveLength(2);
+        const worldName = body.querySelector('[aria-label="World name"]');
+        worldName.value = 'Renamed World';
+        [...body.querySelectorAll('button')].find(node => node.textContent === 'Rename World').click();
+        await flush();
+        expect(body.querySelector('[data-atria-world-detail] .atria-runtime-card__title').textContent)
+            .toBe('Renamed World');
 
         controller.updateRoute({
             domain: 'library',
@@ -229,6 +257,12 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         });
         await flush();
         expect(body.querySelector('[data-atria-knowledge-detail]')).not.toBeNull();
+        const knowledgeName = body.querySelector('[aria-label="Knowledge Base name"]');
+        knowledgeName.value = 'Renamed Knowledge';
+        [...body.querySelectorAll('button')].find(node => node.textContent === 'Rename Knowledge Base').click();
+        await flush();
+        expect(body.querySelector('[data-atria-knowledge-detail] .atria-runtime-card__title').textContent)
+            .toBe('Renamed Knowledge');
         expect(body.querySelector('[data-atria-knowledge-entry-id="entry_1"]').textContent).toContain('Native entry');
         expect(body.querySelector('[data-atria-knowledge-bindings="true"]').textContent)
             .toContain('world-revision');
