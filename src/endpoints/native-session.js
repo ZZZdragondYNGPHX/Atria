@@ -40,7 +40,10 @@ export function createNativeSessionRouter(getServices = services) {
         // Runtime writes must name their projected revision. Never silently rebase a stale client.
         assertNativeId(expectedRevisionId, 'revision');
         if (command?.type === 'timeline') {
-            for (const item of command.commands ?? []) {
+            if (!Array.isArray(command.commands) || command.commands.some(item => item?.type !== 'append' || item.beforeMessageId !== undefined)) {
+                throw new TypeError('Native runtime Timeline commands are append-only');
+            }
+            for (const item of command.commands) {
                 for (const attachment of item.draft?.metadata?.attachments ?? []) {
                     assertNativeId(attachment.assetId, 'asset');
                     if (!await assets.getRef(handle, attachment.assetId)) throw new TypeError('Missing Native attachment');
@@ -49,6 +52,11 @@ export function createNativeSessionRouter(getServices = services) {
             res.json(await core.applyTimelineCommands(handle, sessionId, command.commands, { expectedRevisionId }));
         } else if (command?.type === 'fork') {
             res.json(await core.forkBranch(handle, sessionId, { ...command, expectedRevisionId }));
+        } else if (command?.type === 'retry') {
+            res.json(await core.retryReply(handle, sessionId, {
+                messageId: command.messageId,
+                expectedRevisionId,
+            }));
         } else if (command?.type === 'switch') {
             res.json(await core.switchBranch(handle, sessionId, command.branchId, { expectedRevisionId }));
         } else throw new TypeError('Unsupported Native runtime command');
