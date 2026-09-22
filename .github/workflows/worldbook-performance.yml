@@ -149,6 +149,15 @@ jobs:
           e2e/worldinfo/34-workspace-ui.e2e.js
           --workers=1
 
+      - name: Stress mobile World Info Workspace startup ordering
+        working-directory: tests
+        run: >-
+          npx playwright test
+          e2e/worldinfo/34-workspace-ui.e2e.js
+          --grep "mobile workspace uses drill-down"
+          --repeat-each=3
+          --workers=1
+
       - name: Upload synthetic baseline
         if: always()
         uses: actions/upload-artifact@v4
