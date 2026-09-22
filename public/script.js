@@ -6717,8 +6717,14 @@ class StreamingProcessor {
         // Defer the MESSAGE_RECEIVED/CHARACTER_MESSAGE_RENDERED emits to AFTER
         // the persist below so extension listeners can't race us into a
         // double-write that BE then dedups (producing a snapshot phantom).
-        // See commit 6c99b32d0 (HAR analysis) for the race details.
-        await this.finalizeIntermediaryMessage(messageId, text, { unlockUI: true, deferEmit: true });
+        // Native also defers UI unlock: hideStopButton() emits GENERATION_ENDED,
+        // so Native must commit the Draft and bind opaque IDs before that
+        // completion boundary becomes externally observable.
+        const deferNativeGenerationEnd = nativeSessionRuntime.active;
+        await this.finalizeIntermediaryMessage(messageId, text, {
+            unlockUI: !deferNativeGenerationEnd,
+            deferEmit: true,
+        });
 
         const isAborted = this.abortController.signal.aborted;
         if (!isAborted && power_user.auto_swipe && generatedTextFiltered(text)) {
@@ -6759,6 +6765,10 @@ class StreamingProcessor {
         if (this.type !== 'impersonate') {
             await eventSource.emit(event_types.MESSAGE_RECEIVED, this.messageId, this.type);
             await eventSource.emit(event_types.CHARACTER_MESSAGE_RENDERED, this.messageId, this.type);
+        }
+
+        if (deferNativeGenerationEnd) {
+            this.markUIGenStopped();
         }
 
         playMessageSound();
