@@ -1285,32 +1285,45 @@ Do not merge partial N-phases into `main`. Each phase receives its own commits, 
 
 ### N0 — Native Contracts & Identity
 
-Current N0 implementation already exists through:
+**Status: validated.**
 
-- `ad4b15285163aee94c5db67a874db7fef39f8ce7` — initial Native content contracts;
-- `94c61fa1802016548dac9001c3265635b7a13b34` — contract lint cleanup;
-- `6be4f7e12e6c0e23faf27e2c4292823191060953` — broadened N0 validation.
+Validated HEAD:
 
-These commits remain valid and must not be reverted.
+`e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
 
-N0 is **not yet final**. Before N1, extend the current contract set with:
+Validation:
 
-- `World` / `WorldRevision`;
-- `KnowledgeBase` / `KnowledgeRevision` / `KnowledgeEntry`;
-- `KnowledgeBinding`;
-- stable Native ID families `world_*`, `worldv_*`, `kb_*`, `kbv_*`, `kentry_*`, `kbind_*`;
-- strongly typed Package-contained World/Knowledge snapshots instead of arbitrary JSON slots;
-- EntryPoint `worldIds[]`, optional `primaryWorldId`, and KnowledgeBinding references;
-- Knowledge binding-set reference/head in SessionRevision;
-- Native Store schema-v1 World/Knowledge resource kinds/families;
-- invariants rejecting legacy World Info name/`uid`/character-chat-global scope as Native identity/ownership.
+- workflow: **Native Content Session Dev Checks #12**
+- run: `35673592841`
+- Native contract suites: **2 passed / 52 tests passed**
+- adjacent `.atria` / Game Runtime package/session / Storage naming suites: **5 passed / 42 tests passed**
+- `src/native/*.js` ESLint: success
+- full root ESLint: success
+- Android/Docker: not run; N0 changed only JS contracts/tests/CI and did not require those surfaces
 
-Continue to cover the existing entity schemas, Package v2 logical manifest, `.atriasave v1`, capability/permission vocabulary and filename/name/index identity guards.
+N0 froze and implemented:
 
-Do not switch production UI.
+- Native opaque ID families for Package, PackageVersion, Actor, EntryPoint, Project, Session, Branch, TimelineEntry, Variant, SessionRevision, SavePoint, AssetRef;
+- World / WorldRevision IDs: `world_*`, `worldv_*`;
+- Knowledge IDs: `kb_*`, `kbv_*`, `kentry_*`, `kbind_*`;
+- Native entity contracts and identity invariants;
+- Package v2 logical manifest/schema;
+- `.atriasave v1` logical manifest/schema;
+- capability and permission vocabularies;
+- Native Store schema v1 resource families/keys;
+- World / immutable WorldRevision contracts;
+- KnowledgeBase / immutable KnowledgeRevision / stable KnowledgeEntry / KnowledgeBinding contracts;
+- optional Knowledge discovery/applicability/lifecycle/relations/delivery semantics;
+- Package-contained immutable World/Knowledge snapshots;
+- EntryPoint `worldIds[]`, optional `primaryWorldId`, and `knowledgeBindingIds[]`;
+- Package reference-integrity checks for World, KnowledgeBinding, exact KnowledgeRevision and Asset references;
+- required SessionRevision `knowledgeHead` for future resolved Knowledge dependency pinning;
+- first-class Native Store identities for Worlds, World revisions, Knowledge bases/revisions/entries/bindings;
+- guards rejecting filename/name/path/index, legacy World Info `uid`, book/world name, character/chat/global scope and related historical persistence identities as Native authority.
 
-**Exit:** all Native identity/content contracts, including World/Knowledge, are frozen and tested before storage implementation begins.
+N0 deliberately did **not** implement repositories, storage-engine resource persistence, runtime binding resolution, KnowledgeCompiler, `.atria` binary Container v2, `.atriasave` export/import runtime, or UI cutover. Those remain assigned to later phases.
 
+**Exit satisfied:** Native identity/content contracts including World/Knowledge are frozen and tested. Later phases must consume these contracts rather than inventing parallel identity.
 ### N1 — Native Storage Foundation
 
 Implement:
@@ -1644,20 +1657,24 @@ The following invariants are load-bearing and should receive automated guards wh
 
 ---
 
-## 29. First implementation action
+## 29. Next implementation action
 
-The current implementation conversation is already in **N0 — Native Contracts & Identity**. Continue from the live branch HEAD; do not restart N0 or revert the existing N0 commits.
+N0 is complete and validated at:
+
+`refactor/atria-native-content-session-architecture@e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`
+
+The next implementation conversation starts at **N1 — Native Storage Foundation**.
 
 Before editing:
 
-1. verify live HEAD of `refactor/atria-native-content-session-architecture`;
-2. verify it still descends from the recorded `main@2c1c171136cb6f35f3f4fff7c62b148b7200485a` creation point;
+1. verify the live HEAD of `refactor/atria-native-content-session-architecture`;
+2. preserve the complete validated N0 history through `e532d3c31f69bd8ceb04d9fa59ea3d4a18e0d2c6`;
 3. read current `main:AGENTS.md`;
 4. read current `main:FORK_MAINTENANCE.md`;
 5. read `docs:handoff/latest-handoff.md`;
-6. read this Master Plan;
-7. inspect current storage/game-package/session-adjacent code from live branch;
-8. preserve the existing N0 work through `6be4f7e12e6c0e23faf27e2c4292823191060953`;
-9. implement the World/Knowledge N0 contract extension described in this plan before declaring N0 final or entering N1.
+6. read `docs:handoff/atria-native-content-session-architecture.md`;
+7. read this Master Plan;
+8. inspect current Storage Engine resource-key/transaction contracts and engine parity harnesses;
+9. implement N1 only: PackageRepo, WorldRepo, KnowledgeRepo, SessionRepo foundation, SavePointRepo, AssetStore and cross-engine Native storage primitives.
 
-Do not restart the product discussion.
+Do not redesign N0 contracts, do not create another branch, do not start N2 composition/UI work, and do not make old PNG/JSONL/World Info persistence a Native fallback.
