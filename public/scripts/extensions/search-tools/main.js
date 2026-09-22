@@ -21,6 +21,11 @@ import {
     pickLatestValidSnapshot,
 } from './persistence.js';
 import { registerSearchToolsOrchestrationTools } from './orchestrator-tools.js';
+import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    onNativeSessionLifecycle,
+} from '../../native/session-lifecycle.js';
 
 const __ctx = Atria.getContext();
 const eventSource = __ctx.eventSource;
@@ -2950,20 +2955,33 @@ jQuery(() => {
         });
     }
 
+    const reloadSearchRevisionState = () => {
+        abortActiveSearchAgentRun();
+        loadedChatStateKey = '';
+        latestSearchAgentSnapshot = null;
+        latestManagedEntries = [];
+        const liveContext = getContext();
+        void loadSearchToolsChatState(liveContext, { force: true })
+            .then(() => syncSharedLorebookForCurrentChat(liveContext))
+            .catch((error) => {
+                console.warn(`[${MODULE_NAME}] Failed to reload search revision state`, error);
+                return syncSharedLorebookForCurrentChat(liveContext);
+            })
+            .finally(() => refreshUiStatusForCurrentChat());
+    };
+
+    for (const lifecycle of [
+        NATIVE_SESSION_LIFECYCLE.SESSION_LOADED,
+        NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
+        NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
+    ]) {
+        onNativeSessionLifecycle(lifecycle, reloadSearchRevisionState);
+    }
+
     if (context?.eventTypes?.CHAT_CHANGED) {
         context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
-            abortActiveSearchAgentRun();
-            loadedChatStateKey = '';
-            latestSearchAgentSnapshot = null;
-            latestManagedEntries = [];
-            const liveContext = getContext();
-            void loadSearchToolsChatState(liveContext, { force: true })
-                .then(() => syncSharedLorebookForCurrentChat(liveContext))
-                .catch((error) => {
-                    console.warn(`[${MODULE_NAME}] Failed to reload search chat state on chat change`, error);
-                    return syncSharedLorebookForCurrentChat(liveContext);
-                })
-                .finally(() => refreshUiStatusForCurrentChat());
+            if (nativeSessionRuntime.active) return;
+            reloadSearchRevisionState();
         });
     }
 

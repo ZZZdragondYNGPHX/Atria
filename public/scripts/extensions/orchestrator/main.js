@@ -12,6 +12,11 @@ const registerExtensionApi = __ctx.registerExtensionApi;
 
 import { buildLastUserAnchor, compactStageOutputs, normalizeNodeOutputForSnapshot } from './anchors.js';
 import { i18n, i18nFormat, registerLocaleData } from './i18n.js';
+import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    onNativeSessionLifecycle,
+} from '../../native/session-lifecycle.js';
 
 import { executionConfigText, digestExecutionConfig, getOrchestrationOutcome } from './execution-mode-contract.js';
 
@@ -1325,10 +1330,16 @@ jQuery(() => {
         });
     }
     if (context.eventTypes.MESSAGE_DELETED) {
-        context.eventSource.on(context.eventTypes.MESSAGE_DELETED, onMessageDeleted);
+        context.eventSource.on(context.eventTypes.MESSAGE_DELETED, (...args) => {
+            if (nativeSessionRuntime.active) return;
+            return onMessageDeleted(...args);
+        });
     }
     if (context.eventTypes.MESSAGE_EDITED) {
-        context.eventSource.on(context.eventTypes.MESSAGE_EDITED, onMessageEdited);
+        context.eventSource.on(context.eventTypes.MESSAGE_EDITED, (...args) => {
+            if (nativeSessionRuntime.active) return;
+            return onMessageEdited(...args);
+        });
     }
     if (context.eventTypes.PRESET_CHANGED) {
         context.eventSource.on(context.eventTypes.PRESET_CHANGED, (event) => {
@@ -1346,7 +1357,7 @@ jQuery(() => {
     for (const eventName of connectionProfileEvents) {
         context.eventSource.on(eventName, () => ensureUi());
     }
-    context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
+    const reloadOrchestratorRevisionState = (reason = 'revision changed') => {
         const liveContext = getContext();
         abortActiveOrchestratorRun();
         clearCacheForChatChange();
@@ -1354,7 +1365,7 @@ jQuery(() => {
         if (run && run.status === 'running' && typeof run.abortFn === 'function') {
             try { run.abortFn(); } catch (_) { /* best effort */ }
             try {
-                finishRun({ runId: run.runId, status: 'aborted', error: 'chat changed' });
+                finishRun({ runId: run.runId, status: 'aborted', error: reason });
             } catch (_) { /* state may already be clean */ }
         }
         clearCurrentRun();
@@ -1364,6 +1375,19 @@ jQuery(() => {
         if (refreshEmbeddedWorkspace) workspaceHost.refreshActive();
         clearCapsulePrompt(liveContext);
         void loadOrchestratorChatState(liveContext).finally(() => ensureUi());
+    };
+
+    for (const lifecycle of [
+        NATIVE_SESSION_LIFECYCLE.SESSION_LOADED,
+        NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
+        NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
+    ]) {
+        onNativeSessionLifecycle(lifecycle, () => reloadOrchestratorRevisionState(lifecycle));
+    }
+
+    context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
+        if (nativeSessionRuntime.active) return;
+        reloadOrchestratorRevisionState('chat changed');
     });
 
     // Host character changes invalidate open editors and guarded Memory views.
