@@ -232,3 +232,94 @@ A0 must define/freeze the minimum contracts needed by later phases without start
 A0 must preserve existing N0–N10 Native authority and must not recreate a second manifest/session/world authority.
 
 At A0 completion: run focused contract tests/guards and appropriate lint/regression, push the same branch, update docs/handoff with the validated HEAD, then stop and provide an A1 takeover prompt.
+
+
+---
+
+## A0 implementation record — complete
+
+A0 — **Contracts & Hard-cutover Guards** is complete and validated.
+
+- Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
+- A0 validated HEAD: `1e7d32ac74411e98a5003be72c5dc06d8d72966e`
+- Baseline remains: `main@fd9a493c9040b32f4892bd92531030e58b066244`
+- Formal plan remains unchanged; A0 required no architecture/scope redesign.
+- Do not merge `main`; continue A1 on the same implementation branch.
+
+### Implemented
+
+A0 added `src/native/authoring-contracts.js` and exported it through the existing Native boundary. It freezes:
+
+- explicit Experience modes: `text`, `component`, `hybrid`, `full`;
+- one shared Component Model version for Component / Hybrid / Full;
+- Resource Descriptor / Resource Registry contracts;
+- Resource Graph mode as `derived-readonly`, never writable authority;
+- Resource authority classification without creating a second repository/manifest authority;
+- shared Authoring Operation / Workspace / ChangeSet contracts for human, agent and plugin origins;
+- optimistic Project revision/conflict semantics;
+- Project revisions as opaque tokens rather than a forced SHA-256 representation, allowing A1 Git/history integration without creating another Project authority;
+- Native Runtime Descriptor referencing existing Package / PackageVersion / EntryPoint identities and reusing the existing Package capability vocabulary;
+- Atria Plugin contract separating executable Host Plugin entrypoints from package runtime;
+- package-runtime-v1 as declarative/capability-defined only, with arbitrary package JavaScript/module/worker/eval payloads rejected;
+- Native Skill scopes: global / project / package; Character scope is not accepted.
+
+A0 also added:
+
+- `scripts/check-a0-native-authoring-hard-cutover.mjs`;
+- `.github/workflows/native-authoring-platform-a0.yml`;
+- `tests/native/authoring-contracts.test.js`.
+
+The residual guard prevents the new Native authoring implementation plane from restoring:
+
+- CardApp / `/api/card-app` authority;
+- `game.json` / `GAME_MANIFEST_PATH` runtime authority;
+- charId / Character identity;
+- swipe-derived identity;
+- Chat State / FloorState game authority.
+
+Existing N0–N10 Package / World / Knowledge / ProjectStore / Session / Timeline / SessionRevision / Save / Context authorities were not duplicated or replaced.
+
+### Validation
+
+Validated on A0 HEAD `1e7d32ac74411e98a5003be72c5dc06d8d72966e`:
+
+- Workflow: **Native Authoring Platform A0 Checks #4**
+- Run: **35799024194**
+- A0 + adjacent Native tests: **5 suites / 50 tests passed**
+  - `native/authoring-contracts.test.js`
+  - `native/contracts.test.js`
+  - `native/project-composition.test.js`
+  - `native/package-container.test.js`
+  - `native/package-build-install.test.js`
+- A0 hard-cutover residual guard: **success**
+- Guard syntax check: **success**
+- A0 focused ESLint: **success**
+- Full root lint: **success**
+
+### Explicitly not started
+
+A0 did **not** implement:
+
+- StudioService or `/api/native/studio/*`;
+- project source CRUD/batch authoring backend;
+- workspace persistence/transaction execution;
+- Resource Graph implementation;
+- Library attach/fork implementation;
+- Runtime Descriptor compiler;
+- new Studio/Product UI.
+
+Those belong to A1+.
+
+### A1 entry conditions
+
+A1 may start only from the actual latest remote HEAD of the same branch, preserving A0.
+
+Before A1 editing, re-read:
+
+1. `main:AGENTS.md`
+2. `main:FORK_MAINTENANCE.md`
+3. `docs:handoff/latest-handoff.md`
+4. `docs:refactor/atria-native-authoring-platform-product-frontend.md`
+5. this handoff
+
+A1 must implement the Native Authoring Backend against the frozen A0 contracts. It must reuse ProjectStore / AssetStore / WorldRepo / KnowledgeRepo / existing package build/preview/Git seams, must not create a second Project or resource authority, and must not start A2 Library/Resource Graph product implementation early.
