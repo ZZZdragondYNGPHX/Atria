@@ -1,3 +1,4 @@
+import { nativeSessionRuntime } from './native/session-runtime.js';
 import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
 import { evaluateWorldInfoStateConditions, shouldActivateWorldInfoFromStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
 import {
@@ -10022,6 +10023,13 @@ async function getPersonaLore() {
 }
 
 export async function getSortedEntries() {
+    if (nativeSessionRuntime.active) {
+        // Exact pinned Native candidates enter the mature selector without reading any World Info book.
+        return nativeSessionRuntime.knowledgeEntries().map(entry => {
+            const [decorators, content] = parseDecorators(entry.content || '');
+            return { ...entry, decorators, content, hash: getStringHash(JSON.stringify(entry)) };
+        });
+    }
     try {
         const [
             globalLore,

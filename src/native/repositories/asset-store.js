@@ -135,6 +135,12 @@ export class AssetStore {
         assertWritable();
         return this._engine.withTransaction(handle, async (tx) => {
             const references = [];
+            for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.timelineVariant, handle })) {
+                if (record.doc?.metadata?.attachments?.some(item => item.assetId === assetId)) {
+                    references.push({ kind: 'session-variant', sessionId: record.doc.sessionId,
+                        messageId: record.doc.messageId, variantId: record.doc.variantId });
+                }
+            }
             for (const record of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.worldRevision,
                 handle,
@@ -159,6 +165,12 @@ export class AssetStore {
         if (!ref) return [];
         return this._engine.withTransaction(handle, async (tx) => {
             const references = [];
+            for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.timelineVariant, handle })) {
+                if (record.doc?.metadata?.attachments?.some(item => item.assetId === assetId)) {
+                    references.push({ kind: 'session-variant', sessionId: record.doc.sessionId,
+                        messageId: record.doc.messageId, variantId: record.doc.variantId });
+                }
+            }
             for (const record of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.worldRevision,
                 handle,

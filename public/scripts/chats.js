@@ -1,3 +1,4 @@
+import { nativeSessionRuntime } from './native/session-runtime.js';
 // Move chat functions here from script.js (eventually)
 
 import { Popper, css, DOMPurify } from '../lib.js';
@@ -250,12 +251,15 @@ export async function populateFileAttachment(message, inputId = 'file_form_input
 
             const mediaType = MEDIA_TYPE.getFromMime(file.type);
             if (mediaType) {
-                const imageUrl = await saveBase64AsFile(base64Data, name2, fileNamePrefix, extension);
+                const nativeAsset = nativeSessionRuntime.active
+                    ? await nativeSessionRuntime.upload(base64Data, { displayName: file.name, mediaType: file.type }) : null;
+                const imageUrl = nativeAsset?.url ?? await saveBase64AsFile(base64Data, name2, fileNamePrefix, extension);
                 if (!Array.isArray(message.extra.media)) {
                     message.extra.media = [];
                 }
                 /** @type {MediaAttachment} */
                 const mediaAttachment = {
+                    ...(nativeAsset ? { assetId: nativeAsset.assetId } : {}),
                     url: imageUrl,
                     type: mediaType,
                     title: file.name,
@@ -278,7 +282,9 @@ export async function populateFileAttachment(message, inputId = 'file_form_input
                     }
                 }
 
-                const fileUrl = await uploadFileAttachment(uniqueFileName, base64Data);
+                const nativeAsset = nativeSessionRuntime.active
+                    ? await nativeSessionRuntime.upload(base64Data, { displayName: file.name, mediaType: 'text/plain' }) : null;
+                const fileUrl = nativeAsset?.url ?? await uploadFileAttachment(uniqueFileName, base64Data);
 
                 if (!fileUrl) {
                     continue;
@@ -289,6 +295,7 @@ export async function populateFileAttachment(message, inputId = 'file_form_input
                 }
 
                 message.extra.files.push({
+                    ...(nativeAsset ? { assetId: nativeAsset.assetId } : {}),
                     url: fileUrl,
                     size: file.size,
                     name: file.name,
@@ -297,6 +304,7 @@ export async function populateFileAttachment(message, inputId = 'file_form_input
             }
         }
     } catch (error) {
+        if (nativeSessionRuntime.active) throw error;
         console.error('Could not upload file', error);
         toastr.error(t`Either the file is corrupted or its format is not supported.`, t`Could not upload the file`);
     } finally {
@@ -460,7 +468,7 @@ async function deleteMessageFile(messageBlock, messageId, fileIndex) {
     message.extra.files.splice(fileIndex, 1);
 
     await patchMessagesByIndex([messageId]);
-    await deleteFileFromServer(url);
+    if (!nativeSessionRuntime.active) await deleteFileFromServer(url);
 
     appendMediaToMessage(message, messageBlock, SCROLL_BEHAVIOR.KEEP);
 }

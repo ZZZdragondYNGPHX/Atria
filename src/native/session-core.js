@@ -193,6 +193,60 @@ export class SessionCore {
             ? { ...item, activeVariantId: variantId, content: variant.content } : item) });
     }
 
+    /** Apply explicit runtime intents in one revision, never accept an authoritative chat buffer. */
+    async applyTimelineCommands(handle, sessionId, commands, { expectedRevisionId } = {}) {
+        if (!Array.isArray(commands) || !commands.length || commands.length > 1000) {
+            throw new TypeError('Expected 1..1000 Native Timeline commands');
+        }
+        const base = await this._current(handle, sessionId, expectedRevisionId);
+        let timeline = base.timeline.map(entry => ({ ...entry, variantIds: [...entry.variantIds] }));
+        const entries = [];
+        const variants = [];
+        for (const command of commands) {
+            if (command.type === 'append') {
+                const created = this._newEntry(base, command.draft, timeline.length);
+                const index = command.beforeMessageId == null ? timeline.length
+                    : timeline.findIndex(item => item.messageId === command.beforeMessageId);
+                if (index < 0) throw new NotFoundError('native timeline insertion point');
+                timeline.splice(index, 0, created.entry);
+                entries.push(created.entry);
+                variants.push(created.variant);
+                continue;
+            }
+            const index = timeline.findIndex(item => item.messageId === command.messageId);
+            if (index < 0) throw new NotFoundError('native timeline entry', { messageId: command.messageId });
+            const entry = timeline[index];
+            if (command.type === 'remove') {
+                timeline.splice(index, 1);
+            } else if (command.type === 'select') {
+                if (!entry.variantIds.includes(command.variantId)) throw new NotFoundError('native timeline variant');
+                entry.activeVariantId = command.variantId;
+            } else if (command.type === 'revise') {
+                const variant = assertVariant({ ...command.draft, sessionId, messageId: entry.messageId,
+                    variantId: createNativeId('variant'), createdAt: Date.now() });
+                if (command.replaceVariantId) {
+                    const position = entry.variantIds.indexOf(command.replaceVariantId);
+                    if (position < 0) throw new NotFoundError('native timeline variant');
+                    entry.variantIds[position] = variant.variantId;
+                    if (entry.activeVariantId === command.replaceVariantId) entry.activeVariantId = variant.variantId;
+                } else {
+                    entry.variantIds.push(variant.variantId);
+                }
+                if (command.select !== false) entry.activeVariantId = variant.variantId;
+                variants.push(variant);
+            } else if (command.type === 'removeVariant') {
+                if (!entry.variantIds.includes(command.variantId) || entry.variantIds.length < 2) {
+                    throw new TypeError('Cannot remove missing or sole Native Variant');
+                }
+                entry.variantIds = entry.variantIds.filter(id => id !== command.variantId);
+                if (entry.activeVariantId === command.variantId) entry.activeVariantId = entry.variantIds[0];
+            } else {
+                throw new TypeError('Unsupported Native Timeline command');
+            }
+        }
+        return this._publish(handle, base, { timeline, entries, variants });
+    }
+
     // Base namespace replacement only; N5 supplies runtime-specific state writers.
     async updateState(handle, sessionId, patch, { expectedRevisionId } = {}) {
         const base = await this._current(handle, sessionId, expectedRevisionId);
@@ -213,15 +267,26 @@ export class SessionCore {
         return this._publish(handle, base, { knowledge });
     }
 
-    async forkBranch(handle, sessionId, { revisionId, displayName, expectedRevisionId } = {}) {
+    async forkBranch(handle, sessionId, { revisionId, messageId, variantId, displayName, expectedRevisionId } = {}) {
         const current = await this._current(handle, sessionId, expectedRevisionId);
         const source = revisionId ? await this.load(handle, sessionId, { revisionId }) : current;
+        let timeline = source.timeline;
+        if (messageId !== undefined) {
+            const index = timeline.findIndex(item => item.messageId === messageId);
+            if (index < 0) throw new NotFoundError('native fork message');
+            timeline = timeline.slice(0, index + 1);
+            const last = timeline.at(-1);
+            if (variantId && !last.variantIds.includes(variantId)) throw new NotFoundError('native fork variant');
+            timeline[index] = { ...last, activeVariantId: variantId ?? last.activeVariantId };
+        } else if (variantId !== undefined) throw new TypeError('Fork Variant requires messageId');
+        const last = timeline.at(-1);
+        const forkPoint = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
         const branchId = createNativeId('branch');
         const branch = { branchId, sessionId, parentBranchId: source.revision.branchId,
-            forkPoint: source.revision.timelineHead, createdAt: Date.now(),
+            forkPoint, createdAt: Date.now(),
             ...(displayName === undefined ? {} : { displayName }) };
         return this._publish(handle, { ...source, session: current.session }, {
-            branchId, branches: [branch], graph: [...current.graph,
+            branchId, timeline, branches: [branch], graph: [...current.graph,
                 { branchId, forkRevisionId: source.revision.revisionId, branch }],
         });
     }

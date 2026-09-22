@@ -58,8 +58,15 @@ export async function readSessionSnapshot(tx, handle, session, value) {
             const fork = assertSessionRevision(await readCheckedDocument(tx, {
                 kind: K.sessionRevision, handle, sessionId, revisionId: node.forkRevisionId,
             }));
-            if (fork.sessionId !== sessionId || fork.branchId !== node.branch.parentBranchId
-                || hashNativeDocument(fork.timelineHead) !== hashNativeDocument(node.branch.forkPoint)) {
+            const forkTimeline = await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId,
+                namespace: TIMELINE_NAMESPACE, head: fork.stateHeads[TIMELINE_NAMESPACE] });
+            if (hashNativeDocument(forkTimeline) !== fork.stateHeads[TIMELINE_NAMESPACE]) {
+                throw new Error('Fork Timeline integrity mismatch');
+            }
+            const point = node.branch.forkPoint;
+            const matches = point === null ? forkTimeline.length === 0 : forkTimeline.some(item =>
+                item.messageId === point.messageId && item.variantIds.includes(point.variantId));
+            if (fork.sessionId !== sessionId || fork.branchId !== node.branch.parentBranchId || !matches) {
                 throw new TypeError('Branch fork point mismatch');
             }
         } else if (node.branch.forkPoint !== null) throw new TypeError('Root Branch cannot have a fork point');

@@ -1,3 +1,4 @@
+import { nativeSessionRuntime } from './native/session-runtime.js';
 import {
     characters,
     saveChat,
@@ -230,6 +231,7 @@ function getBranchChatSnapshot(mesId, { swipeId = null } = {}) {
 
 // Export is used by Timelines extension. Do not remove.
 export async function createBranch(mesId, { swipeId = null } = {}) {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.fork(Number(mesId), { swipeId });
     if (!chat.length) {
         toastr.warning('The chat is empty.', 'Branch creation failed');
         return;
@@ -534,6 +536,7 @@ export async function convertSoloToGroupChat() {
  * @returns {Promise<string?>} Branch file name
  */
 export async function branchChat(mesId, { swipeId = null } = {}) {
+    if (nativeSessionRuntime.active) return nativeSessionRuntime.fork(Number(mesId), { swipeId });
     if (this_chid === undefined && !selected_group) {
         toastr.info('No character selected.', 'Create Branch');
         return null;

@@ -46,7 +46,7 @@ jobs:
         run: npm run lint
 
   n1-storage:
-    name: N1 Storage + N3 Session Core
+    name: N1 Storage + N3 Core + N4 Projection
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -109,6 +109,13 @@ jobs:
           native/session-core.contract.test.js
           native/session-durability.test.js
           native/session-knowledge.test.js
+          native/session-projection.test.js
+          native/session-runtime-http.test.js
+      - name: Run N4 adapter source lint
+        run: >-
+          npx eslint
+          public/scripts/native/*.js
+          src/endpoints/native-session.js
       - name: Run N1 source lint
         run: >-
           npx eslint
