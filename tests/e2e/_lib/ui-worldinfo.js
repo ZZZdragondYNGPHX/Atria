@@ -39,17 +39,12 @@ export async function openWorldInfoDrawer(page) {
         .waitFor({ state: 'attached', timeout: 30_000 });
 
     const mountedCompatibilityWorkspace = await page.evaluate(async () => {
-        const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
-        let host = document.getElementById('atria-e2e-world-info-compat-host');
-        if (!host) {
-            host = document.createElement('div');
-            host.id = 'atria-e2e-world-info-compat-host';
-            host.style.position = 'fixed';
-            host.style.inset = '0';
-            host.style.zIndex = '10000';
-            host.style.background = 'var(--SmartThemeBlurTintColor, #111)';
-            document.body.append(host);
+        const shell = window.Atria?.shell?.getShell?.();
+        const host = shell?.slots?.workspace || document.getElementById('atria-workspace');
+        if (!(host instanceof HTMLElement)) {
+            throw new Error('Atria Workspace slot is unavailable');
         }
+        const { mountWorldInfoWorkspace } = await import('/scripts/world-info/workspace.js');
         const api = mountWorldInfoWorkspace(host, { embedded: true });
         window.__atriaE2eWorldInfoCompatibilityMount = api || null;
         return Boolean(api);
@@ -72,7 +67,6 @@ export async function closeWorldInfoDrawer(page) {
         if (!api) return false;
         api.dispose?.();
         window.__atriaE2eWorldInfoCompatibilityMount = null;
-        document.getElementById('atria-e2e-world-info-compat-host')?.remove();
         return true;
     }).catch(() => false);
 
