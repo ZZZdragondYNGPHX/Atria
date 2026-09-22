@@ -114,12 +114,10 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
         ].find(item => item.sourceRefs?.some(ref => ref.messageId === target.messageId));
         expect(group).toBeDefined();
         expect(group.sourceRefs.some(ref => ref.messageId === target.messageId)).toBe(true);
-        if (plan.included.includes(group)) {
-            expect(group.tokenCount).toBeGreaterThan(300);
-        } else {
-            expect(['budget', 'lane_cap', 'derived_lag_budget', 'outside_recent_raw_window'])
-                .toContain(group.reason);
-        }
+        const validOutcome = plan.included.includes(group)
+            ? Number(group.tokenCount) > 300
+            : ['budget', 'lane_cap', 'derived_lag_budget', 'outside_recent_raw_window'].includes(group.reason);
+        expect(validOutcome).toBe(true);
     });
 
     test('Recent Raw uses complete TurnGroups and never partial-message trimming', async () => {
@@ -336,6 +334,16 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
         expect(plan.diagnostics).toEqual(expect.arrayContaining([
             expect.objectContaining({ providerId: 'utility-failure', reason: 'provider_failed_graceful' }),
         ]));
+    });
+
+    test('Knowledge lane exposes selected usage separately from the selector cap', async () => {
+        const plan = await compileNativeContextPlan(buildSnapshot(4), budget({
+            laneCaps: { [CONTEXT_LANES.knowledge]: 320 },
+            minimumGuarantees: { [CONTEXT_LANES.knowledge]: 80 },
+        }));
+        expect(plan.laneUsage.knowledge.tokens).toBeLessThanOrEqual(320);
+        expect(plan.laneUsage.knowledge.cap).toBe(320);
+        expect(plan.laneUsage.knowledge.cap).toBeGreaterThanOrEqual(plan.laneUsage.knowledge.tokens);
     });
 
     test('late Memory recall replaces, but cannot exceed, its reserved lane budget', async () => {

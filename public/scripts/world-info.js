@@ -10293,7 +10293,11 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     if (nativeSessionRuntime.active) {
         const contextBudget = nativeSessionRuntime.contextLaneBudget('knowledge');
         if (contextBudget) {
-            budget = Math.min(budget, Math.max(0, Number(contextBudget.tokens) || 0));
+            // ContextPlan already restricts Native candidates to selected
+            // Knowledge identities. Use the lane cap here rather than exact
+            // selected-content usage because WI's mature overflow check is
+            // `>= budget`; an exact-fit entry must remain admissible.
+            budget = Math.min(budget, Math.max(0, Number(contextBudget.cap) || 0));
         }
     }
 
