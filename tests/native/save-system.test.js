@@ -9,6 +9,7 @@ import {
     preflightAtriaSaveContainer,
 } from '../../src/native/index.js';
 import {
+    CONTRACT_HARNESSES,
     makeTempFsEngineHarness,
     makeTempSqliteEngineHarness,
 } from '../storage/harness/contract-harness.js';
@@ -97,6 +98,40 @@ describe.each(SAVE_HARNESSES)('N8 Native Save System - %s', (_name, makeHarness)
             expect(oldFuture.timeline.at(-1).content).toBe('original future');
         } finally {
             await h.cleanup();
+        }
+    });
+});
+
+describe.each(CONTRACT_HARNESSES)('N8 .atriasave clean-store import parity - $name', ({ make }) => {
+    test('logical snapshot imports through the active Native storage engine', async () => {
+        const source = await makeTempFsEngineHarness();
+        const target = await make();
+        try {
+            const f = await installFixture(source);
+            let view = await f.core.create(source.handle, f.start);
+            view = await f.core.updateState(source.handle, view.session.sessionId, {
+                atri_memory_graph: { nodes: { parity: { value: target.kind } } },
+            });
+            const save = await f.saveSystem.manualSave(source.handle, view.session.sessionId);
+            const exported = await f.saveSystem.exportSnapshot(
+                source.handle,
+                view.session.sessionId,
+                save.saveId,
+            );
+
+            const other = services(target);
+            await installExactPackage(source, target, f, other, view);
+            const imported = await other.saveSystem.importSave(target.handle, exported.archive);
+            expect(imported.revision.revisionId).toBe(save.revisionId);
+            expect(imported.states.atri_memory_graph).toEqual(view.states.atri_memory_graph);
+            expect((await other.savePointRepo.get(
+                target.handle,
+                imported.session.sessionId,
+                save.saveId,
+            )).revisionId).toBe(save.revisionId);
+        } finally {
+            await source.cleanup();
+            await target.cleanup();
         }
     });
 });
