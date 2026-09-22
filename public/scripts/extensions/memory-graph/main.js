@@ -1552,8 +1552,10 @@ async function loadMemoryStoreByTarget(context, target) {
         throw new Error('Chat state API is unavailable in extension context.');
     }
 
-    const metaResult = await context.getChatState(META_NAMESPACE, { target });
-    const meta = metaResult?.ok ? metaResult.state : null;
+    // Native SessionState has no legacy chat target. The persistence helper
+    // deliberately drops explicit targets while Native is active; Legacy/ST
+    // still reads the selected chat sidecar through the supplied target.
+    const meta = await loadMetaFields(context, target);
 
     // Hard cutover: the current Atria FloorState namespace is the only graph
     // source. Missing current metadata means a fresh Atria graph, not a cue to
@@ -2068,6 +2070,7 @@ async function persistRecallMetadataByChatKey(context, chatKey, { trace, project
  * and clear runtime caches that might have been populated speculatively.
  */
 async function inheritMemoryStoreForBranch(context, payload) {
+    if (isNativeMemorySession(context)) return;
     const sourceTarget = normalizeExplicitChatStateTarget(payload?.sourceTarget);
     const targetTarget = normalizeExplicitChatStateTarget(payload?.targetTarget);
     if (!sourceTarget || !targetTarget) {
