@@ -324,7 +324,7 @@ export function assertResourceRegistryContract(value) {
         throw new TypeError('ResourceRegistry.schemaVersion must be 1');
     }
     if (value.graphMode !== ATRIA_RESOURCE_GRAPH_MODE) {
-        throw new TypeError("ResourceRegistry.graphMode must be 'derived-readonly'");
+        throw new TypeError('ResourceRegistry.graphMode must be \'derived-readonly\'');
     }
     if (!Array.isArray(value.descriptors)) throw new TypeError('ResourceRegistry.descriptors must be an array');
     const descriptors = value.descriptors.map(assertResourceDescriptor);
@@ -370,7 +370,7 @@ export function assertProjectRevisionConflict(value) {
     object(value, 'ProjectRevisionConflict');
     only(value, ['code', 'projectId', 'expectedRevision', 'actualRevision'], 'ProjectRevisionConflict');
     if (value.code !== ATRIA_PROJECT_CONFLICT_CODE) {
-        throw new TypeError("ProjectRevisionConflict.code must be 'project_revision_conflict'");
+        throw new TypeError('ProjectRevisionConflict.code must be \'project_revision_conflict\'');
     }
     const expectedRevision = digest(value.expectedRevision, 'ProjectRevisionConflict.expectedRevision');
     const actualRevision = digest(value.actualRevision, 'ProjectRevisionConflict.actualRevision');
@@ -528,7 +528,7 @@ export function assertPackageRuntimeV1(value) {
     if (value.format !== ATRIA_PACKAGE_RUNTIME_FORMAT) throw new TypeError('PackageRuntimeV1.format is invalid');
     if (value.version !== ATRIA_PACKAGE_RUNTIME_VERSION) throw new TypeError('PackageRuntimeV1.version must be 1');
     if (value.execution !== 'declarative') {
-        throw new TypeError("PackageRuntimeV1.execution must be 'declarative'");
+        throw new TypeError('PackageRuntimeV1.execution must be \'declarative\'');
     }
     if (!Array.isArray(value.contributions)) throw new TypeError('PackageRuntimeV1.contributions must be an array');
     rejectExecutablePackagePayload(value, 'PackageRuntimeV1');
