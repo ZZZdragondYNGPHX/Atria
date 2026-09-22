@@ -127,6 +127,8 @@ jobs:
 
       - name: Run World Info runtime and workspace acceptance
         working-directory: tests
+        env:
+          ATRIA_E2E_SHELL_RECOVERY: legacy
         run: >-
           npx playwright test
           e2e/worldinfo/25-activation-strategies.e2e.js
