@@ -323,6 +323,15 @@ describe('N4 pure projection authority', () => {
         expect(projectKnowledgeEntries(view)).toEqual([]);
     });
 
+    test('presentation-only display_text overlay is outside committed Timeline authority', async () => {
+        const f = await installFixture(h);
+        const view = await f.core.create(h.handle, f.start);
+        const projected = projectNativeSession(view).chat;
+
+        projected[0].extra.display_text = 'Translated presentation cache';
+        expect(timelineIntents(view, projected)).toEqual([]);
+    });
+
     test('unknown identity, path-only attachment and direct committed mutation fail closed', async () => {
         const f = await installFixture(h);
         const view = await f.core.create(h.handle, f.start);
@@ -333,7 +342,12 @@ describe('N4 pure projection authority', () => {
 
         const attachment = projectNativeSession(view).chat;
         attachment[0].extra.files = [{ url: '/user/files/old.txt' }];
-        expect(() => timelineIntents(view, attachment)).toThrow(/assetId|committed/i);
+        try {
+            timelineIntents(view, attachment);
+            throw new Error('expected non-canonical attachment violation');
+        } catch (error) {
+            expect(error).toMatchObject({ code: 'native_committed_timeline_mutation' });
+        }
 
         const changed = projectNativeSession(view).chat;
         changed[0].mes = 'rewritten';
