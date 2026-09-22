@@ -39,3 +39,18 @@ export {
     validateAtriaPackageManifest,
     validateAtriaSave,
 } from './contracts.js';
+
+export {
+    KNOWLEDGE_BINDING_MODES,
+    KNOWLEDGE_SOURCE_KINDS,
+    KNOWLEDGE_VISIBILITY_TARGETS,
+    WORLD_KNOWLEDGE_FORBIDDEN_IDENTITY_FIELDS,
+    assertKnowledgeBase,
+    assertKnowledgeBinding,
+    assertKnowledgeEntry,
+    assertKnowledgeRevision,
+    assertPackagedKnowledgeSnapshot,
+    assertPackagedWorldSnapshot,
+    assertWorld,
+    assertWorldRevision,
+} from './world-knowledge.js';
