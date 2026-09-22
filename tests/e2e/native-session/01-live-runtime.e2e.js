@@ -344,7 +344,7 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
         expect(preContinueHistory.revision.branchId).toBe(branchBeforeContinue);
     });
 
-    test('negative: committed Edit/Delete/Swipe/Swipe Delete/Variant switch/direct chat[] mutation cannot change Native authority', async ({ page }) => {
+    test('negative: retired Edit/Delete/Swipe/Checkpoint/Chat-Files and direct chat[] mutation cannot change Native authority', async ({ page }) => {
         test.setTimeout(120_000);
         await awaitMainUI(page, server.baseURL);
         await openNativeSession(page, mainSessionId);
@@ -359,46 +359,45 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
         const assistantText = state.messages[assistantIndex].mes;
         const assistantRow = page.locator(`.mes[mesid="${assistantIndex}"]`);
 
-        // N9 retires committed in-place mutation controls at the product
-        // surface instead of inviting a click that N4 then has to reject.
-        await expect(assistantRow.locator('.mes_edit').first()).toBeHidden();
-        await expect(assistantRow.locator('.mes_edit_delete').first()).toBeHidden();
+        for (const selector of [
+            '.mes_edit',
+            '.mes_edit_delete',
+            '.swipe_left',
+            '.swipe_right',
+            '.swipes-counter',
+            '.swipe_picker_block',
+            '.mes_create_bookmark',
+            '.mes_bookmark',
+        ]) {
+            await expect(assistantRow.locator(selector).first()).toBeHidden();
+        }
+        for (const selector of [
+            '#option_regenerate',
+            '#option_select_chat',
+            '#option_new_bookmark',
+            '#option_back_to_main',
+        ]) {
+            await expect(page.locator(selector).first()).toBeHidden();
+        }
+
         state = await nativeRuntimeState(page);
+        expect(state.messages[assistantIndex].variantIds).toHaveLength(1);
+        expect(state.messages[assistantIndex].swipe_id).toBe(0);
         expect(state.messages[assistantIndex].mes).toBe(assistantText);
         let after = await loadNativeSnapshot(page, mainSessionId);
         expect(after.revision.revisionId).toBe(before.revision.revisionId);
         expect(requests.trace.filter(item => item.path === '/api/native/session/command')).toHaveLength(commandCount);
 
-        // Open the N3-seeded two-Variant compatibility Session. N4 still
-        // projects its selected Variant, while N9 removes Swipe/Picker
-        // mutation affordances entirely.
-        await openNativeSession(page, seeded.compatibilitySession.sessionId);
-        before = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
-        state = await nativeRuntimeState(page);
-        expect(state.messages[0].variantIds).toHaveLength(2);
-        expect(state.messages[0].swipe_id).toBe(1);
-        const selectedText = state.messages[0].mes;
-
-        commandCount = requests.trace.filter(item => item.path === '/api/native/session/command').length;
-        await expect(page.locator('#chat .last_mes .swipe_left').first()).toBeHidden();
-        await expect(page.locator('#chat .last_mes .swipe_right').first()).toBeHidden();
-        await expect(page.locator('#chat .last_mes .swipes-counter').first()).toBeHidden();
-        await expect(page.locator('dialog.swipe_picker_popup[open]')).toHaveCount(0);
-        state = await nativeRuntimeState(page);
-        expect(state.messages[0].swipe_id).toBe(1);
-        expect(state.messages[0].mes).toBe(selectedText);
-        after = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
-        expect(after.revision.revisionId).toBe(before.revision.revisionId);
-        expect(requests.trace.filter(item => item.path === '/api/native/session/command')).toHaveLength(commandCount);
-
-        // Simulate a third-party plugin bypassing the UI and directly changing
-        // committed compatibility state. The write barrier must fail before
-        // transport, leave Native authority unchanged, and require reload.
-        const direct = await page.evaluate(async () => {
+        // A plugin cannot fabricate a host-only Swipe and turn it into Native
+        // committed authority. The write barrier fails before transport.
+        const directSwipe = await page.evaluate(async index => {
             const mod = await import('/script.js');
             const ctx = window.Atria.getContext();
-            ctx.chat[0].swipe_id = 0;
-            ctx.chat[0].mes = ctx.chat[0].swipes[0];
+            const message = ctx.chat[index];
+            message.swipes.push('N10_FORBIDDEN_HOST_SWIPE');
+            message.swipe_info.push({});
+            message.swipe_id = 1;
+            message.mes = 'N10_FORBIDDEN_HOST_SWIPE';
             let code = '';
             try {
                 await mod.nativeSessionRuntime.persist();
@@ -406,13 +405,13 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
                 code = error.code || error.message;
             }
             return { code, failed: mod.nativeSessionRuntime.failed };
-        });
-        expect(direct).toEqual({
+        }, assistantIndex);
+        expect(directSwipe).toEqual({
             code: 'native_committed_timeline_mutation',
             failed: true,
         });
         expect(requests.trace.filter(item => item.path === '/api/native/session/command')).toHaveLength(commandCount);
-        after = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
+        after = await loadNativeSnapshot(page, mainSessionId);
         expect(after.revision.revisionId).toBe(before.revision.revisionId);
 
         await page.evaluate(async () => {
@@ -421,17 +420,19 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
         });
         state = await nativeRuntimeState(page);
         expect(state.failed).toBe(false);
-        expect(state.messages[0].swipe_id).toBe(1);
-        expect(state.messages[0].mes).toBe(selectedText);
+        expect(state.messages[assistantIndex].variantIds).toHaveLength(1);
+        expect(state.messages[assistantIndex].swipe_id).toBe(0);
+        expect(state.messages[assistantIndex].mes).toBe(assistantText);
 
-        // Repeat direct mutation on canonical content, not only Variant state.
-        before = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
+        // Direct committed content mutation remains forbidden independently
+        // of the retired Swipe/Variant UI.
+        before = await loadNativeSnapshot(page, mainSessionId);
         commandCount = requests.trace.filter(item => item.path === '/api/native/session/command').length;
-        const contentMutation = await page.evaluate(async () => {
+        const contentMutation = await page.evaluate(async index => {
             const mod = await import('/script.js');
             const ctx = window.Atria.getContext();
-            ctx.chat[0].mes = 'N4_FORBIDDEN_PLUGIN_REWRITE';
-            ctx.chat[0].swipes[ctx.chat[0].swipe_id] = 'N4_FORBIDDEN_PLUGIN_REWRITE';
+            ctx.chat[index].mes = 'N10_FORBIDDEN_PLUGIN_REWRITE';
+            ctx.chat[index].swipes[ctx.chat[index].swipe_id] = 'N10_FORBIDDEN_PLUGIN_REWRITE';
             let code = '';
             try {
                 await mod.nativeSessionRuntime.persist();
@@ -439,13 +440,13 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
                 code = error.code || error.message;
             }
             return { code, failed: mod.nativeSessionRuntime.failed };
-        });
+        }, assistantIndex);
         expect(contentMutation.code).toBe('native_committed_timeline_mutation');
         expect(contentMutation.failed).toBe(true);
         expect(requests.trace.filter(item => item.path === '/api/native/session/command')).toHaveLength(commandCount);
-        after = await loadNativeSnapshot(page, seeded.compatibilitySession.sessionId);
+        after = await loadNativeSnapshot(page, mainSessionId);
         expect(after.revision.revisionId).toBe(before.revision.revisionId);
-        expect(after.timeline[0].content).toBe(selectedText);
+        expect(after.timeline[assistantIndex].content).toBe(assistantText);
 
         await page.evaluate(async () => {
             const mod = await import('/script.js');
@@ -457,9 +458,6 @@ test.describe.serial('N4 Native Session immutable live-host acceptance', () => {
         expectStableR7Nodes(await assertR7NodesStable(page));
         requests.stop();
 
-        // Return to the positive session and prove the previous accepted HEAD
-        // was not affected by compatibility-session rejection tests.
-        await openNativeSession(page, mainSessionId);
         const restored = await nativeRuntimeState(page);
         expect(restored.branchId).toBe(positiveHead.branchId);
         expect(restored.revisionId).toBe(positiveHead.revisionId);
