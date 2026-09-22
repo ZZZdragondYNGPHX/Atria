@@ -127,6 +127,9 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/worlds', route(async (_req, res, { product }, handle) => {
         res.json(await product.listWorlds(handle));
     }));
+    router.post('/worlds', route(async (req, res, { product }, handle) => {
+        res.json(await product.createWorld(handle, req.body || {}));
+    }));
     router.get('/worlds/:worldId', route(async (req, res, { product }, handle) => {
         res.json(await product.getWorld(handle, req.params.worldId));
     }));
@@ -136,6 +139,9 @@ export function createNativeProductRouter(getServices = services) {
 
     router.get('/knowledge', route(async (_req, res, { product }, handle) => {
         res.json(await product.listKnowledgeBases(handle));
+    }));
+    router.post('/knowledge', route(async (req, res, { product }, handle) => {
+        res.json(await product.createKnowledgeBase(handle, req.body || {}));
     }));
     router.get('/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
         res.json(await product.getKnowledgeBase(handle, req.params.knowledgeBaseId, {
@@ -167,6 +173,18 @@ export function createNativeProductRouter(getServices = services) {
     }));
     router.post('/sessions/:sessionId/promote-knowledge', route(async (req, res, { product }, handle) => {
         res.json(await product.promoteEmbeddedKnowledge(handle, req.params.sessionId, req.body || {}));
+    }));
+    router.post('/sessions/:sessionId/export', route(async (req, res, { product }, handle) => {
+        const archive = await product.exportSave(handle, req.params.sessionId, req.body || {});
+        res.json({ data: Buffer.from(archive).toString('base64') });
+    }));
+    router.post('/saves/preflight-import', route(async (req, res, { product }, handle) => {
+        res.json(await product.preflightSaveImport(handle, decodeArchive(req.body?.data)));
+    }));
+    router.post('/saves/import', route(async (req, res, { product }, handle) => {
+        res.json(await product.importSave(handle, decodeArchive(req.body?.data), {
+            password: req.body?.password,
+        }));
     }));
     router.delete('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
         res.json({ deleted: await product.deleteSession(handle, req.params.sessionId) });
