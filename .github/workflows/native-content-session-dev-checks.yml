@@ -318,6 +318,47 @@ jobs:
           tests/native/context-compiler.test.js
           tests/native/context-history.test.js
 
+  n8-save-system:
+    name: N8 Save System / Checkpoint B
+    needs:
+      - n7-context
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run N8 Checkpoint B
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests --
+          --runInBand
+          native/save-system.test.js
+          native/session-core.contract.test.js
+          native/session-durability.test.js
+          native/session-knowledge.test.js
+          native/storage-round-trip.test.js
+      - name: Run N8 source lint
+        run: >-
+          npx eslint
+          src/native/save-container.js
+          src/native/save-system.js
+          src/native/session-core.js
+          src/native/contracts.js
+          src/native/repositories/session-repo.js
+          tests/native/save-system.test.js
+
   n4-live-runtime:
     name: N4 Live Native Session Browser Acceptance
     needs:
@@ -367,12 +408,13 @@ jobs:
           retention-days: 7
 
   n4-final-regression:
-    name: N7 Complete Node Regression and Frontend Build
+    name: N8 Complete Node Regression and Frontend Build
     needs:
       - n4-live-runtime
       - n5-runtime-state
       - n6-knowledge-runtime
       - n7-context
+      - n8-save-system
     runs-on: ubuntu-latest
     timeout-minutes: 40
     services:
