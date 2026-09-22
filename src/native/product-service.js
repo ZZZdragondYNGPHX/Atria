@@ -1,4 +1,5 @@
 import { ConflictError, NotFoundError } from '../storage/errors.js';
+import { createNativeId } from './identity.js';
 
 function clone(value) {
     return value == null ? value : structuredClone(value);
@@ -106,7 +107,10 @@ export class NativeProductService {
             manifest: opened.manifest,
             preflight: opened.preflight,
             versions,
-            sessions: byUpdatedAt(sessions.filter(item => item.packageId === packageId)),
+            sessions: await Promise.all(
+                byUpdatedAt(sessions.filter(item => item.packageId === packageId))
+                    .map(item => this._sessionSummary(handle, item)),
+            ),
             ...(opened.error ? { error: opened.error } : {}),
         };
     }
@@ -176,6 +180,19 @@ export class NativeProductService {
             if (source) result.push(source);
         }
         return result;
+    }
+
+    async createWorld(handle, { displayName }) {
+        const name = String(displayName || '').trim();
+        if (!name) throw new TypeError('Native World displayName is required');
+        const now = Date.now();
+        return this._worlds.create(handle, {
+            worldId: createNativeId('world'),
+            displayName: name,
+            currentRevisionId: null,
+            createdAt: now,
+            updatedAt: now,
+        });
     }
 
     async deleteWorld(handle, worldId) {
@@ -253,6 +270,19 @@ export class NativeProductService {
         };
     }
 
+    async createKnowledgeBase(handle, { displayName }) {
+        const name = String(displayName || '').trim();
+        if (!name) throw new TypeError('Native KnowledgeBase displayName is required');
+        const now = Date.now();
+        return this._knowledge.create(handle, {
+            knowledgeBaseId: createNativeId('knowledgeBase'),
+            displayName: name,
+            currentRevisionId: null,
+            createdAt: now,
+            updatedAt: now,
+        });
+    }
+
     async deleteKnowledgeBase(handle, knowledgeBaseId) {
         const refs = [];
         for (const source of await this._projectSources(handle)) {
@@ -278,20 +308,72 @@ export class NativeProductService {
         return this._knowledge.delete(handle, knowledgeBaseId);
     }
 
+    async _sessionDependency(handle, session) {
+        const required = {
+            packageId: session.packageId,
+            packageVersionId: session.packageVersionId,
+            packageVersion: session.packageVersion,
+            packageContentHash: session.packageContentHash,
+            entryPointId: session.entryPointId,
+        };
+        let opened;
+        try {
+            opened = await this._installer.open(handle, session.packageId, session.packageVersionId);
+        } catch (error) {
+            return {
+                status: 'invalid',
+                code: error?.code || 'native_session_package_invalid',
+                required,
+            };
+        }
+        if (!opened) {
+            return { status: 'missing', code: 'native_session_package_missing', required };
+        }
+        const exact = (
+            opened.packageVersion.version === session.packageVersion
+            && opened.packageVersion.packageContentHash === session.packageContentHash
+            && opened.manifest.entryPoints.some(item => item.entryPointId === session.entryPointId)
+        );
+        return {
+            status: exact ? 'ready' : 'mismatch',
+            code: exact ? null : 'native_session_package_mismatch',
+            required,
+            installed: {
+                packageVersion: opened.packageVersion,
+                ...(exact ? { name: opened.manifest.name, version: opened.manifest.version } : {}),
+            },
+        };
+    }
+
+    async _sessionSummary(handle, session) {
+        const [dependency, saves] = await Promise.all([
+            this._sessionDependency(handle, session),
+            this._saves.list(handle, session.sessionId),
+        ]);
+        return { ...session, dependency, saveCount: saves.length };
+    }
+
     async listSessions(handle, { packageId = null } = {}) {
         const sessions = await this._sessions.list(handle);
-        return byUpdatedAt(packageId ? sessions.filter(item => item.packageId === packageId) : sessions);
+        return Promise.all(
+            byUpdatedAt(packageId ? sessions.filter(item => item.packageId === packageId) : sessions)
+                .map(item => this._sessionSummary(handle, item)),
+        );
     }
 
     async getSession(handle, sessionId) {
-        const [snapshot, saves, branches, revisions] = await Promise.all([
-            this._core.load(handle, sessionId),
+        const session = await this._sessions.get(handle, sessionId);
+        if (!session) throw new NotFoundError('native session', { sessionId });
+        const [dependency, saves, branches, revisions] = await Promise.all([
+            this._sessionDependency(handle, session),
             this._saves.list(handle, sessionId),
             this._sessions.listBranches(handle, sessionId),
             this._sessions.listRevisions(handle, sessionId),
         ]);
         return {
-            snapshot,
+            session,
+            dependency,
+            snapshot: dependency.status === 'ready' ? await this._core.load(handle, sessionId) : null,
             saves: [...saves].sort((left, right) => Number(right.createdAt) - Number(left.createdAt)),
             branches,
             revisions,
@@ -307,6 +389,20 @@ export class NativeProductService {
 
     async restoreSave(handle, sessionId, saveId, expectedRevisionId) {
         return this._core.restoreSavePoint(handle, sessionId, saveId, { expectedRevisionId });
+    }
+
+    async exportSave(handle, sessionId, { saveId = null, password = undefined } = {}) {
+        return saveId
+            ? this._saveSystem.exportSnapshot(handle, sessionId, saveId, { password })
+            : this._saveSystem.exportSession(handle, sessionId, { password });
+    }
+
+    async preflightSaveImport(handle, archive) {
+        return this._saveSystem.preflightImport(handle, archive);
+    }
+
+    async importSave(handle, archive, { password = undefined } = {}) {
+        return this._saveSystem.importSave(handle, archive, { password });
     }
 
     async deleteSession(handle, sessionId) {
@@ -337,13 +433,37 @@ export class NativeProductService {
     async updateProjectDependencies(handle, projectId, dependencies) {
         const source = await this._projects.get(handle, projectId);
         if (!source) throw new NotFoundError('native studio project', { projectId });
+        const nextDependencies = clone(dependencies || {
+            worlds: [],
+            knowledge: [],
+            knowledgeBindings: [],
+        });
+        for (const dependency of nextDependencies.worlds || []) {
+            if (!await this._worlds.getRevision(handle, dependency.worldId, dependency.worldRevisionId)) {
+                throw new NotFoundError('native project World dependency', dependency);
+            }
+        }
+        for (const dependency of nextDependencies.knowledge || []) {
+            if (!await this._knowledge.getRevision(
+                handle,
+                dependency.knowledgeBaseId,
+                dependency.knowledgeRevisionId,
+            )) {
+                throw new NotFoundError('native project Knowledge dependency', dependency);
+            }
+        }
+        for (const knowledgeBindingId of nextDependencies.knowledgeBindings || []) {
+            if (!await this._knowledge.getBinding(handle, knowledgeBindingId)) {
+                throw new NotFoundError('native project KnowledgeBinding dependency', { knowledgeBindingId });
+            }
+        }
         const next = {
             ...clone(source),
             project: {
                 ...clone(source.project),
                 updatedAt: Math.max(Date.now(), Number(source.project.updatedAt || 0)),
             },
-            dependencies: clone(dependencies),
+            dependencies: nextDependencies,
         };
         return this._projects.save(handle, next);
     }
