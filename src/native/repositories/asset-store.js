@@ -105,9 +105,25 @@ export class AssetStore {
 
     async deleteRef(handle, assetId) {
         assertWritable();
-        return this._engine.withTransaction(handle, tx => tx.deleteResource(
-            this._refKey(handle, assetId),
-        ));
+        return this._engine.withTransaction(handle, async (tx) => {
+            const references = [];
+            for (const record of await tx.listResources({
+                kind: NATIVE_RESOURCE_KINDS.worldRevision,
+                handle,
+            })) {
+                if (record.doc?.assetIds?.includes(assetId)) {
+                    references.push({
+                        kind: 'world-revision',
+                        worldId: record.doc.worldId,
+                        worldRevisionId: record.doc.worldRevisionId,
+                    });
+                }
+            }
+            if (references.length) {
+                throw new ConflictError('native_asset_ref_referenced', { assetId, references });
+            }
+            return tx.deleteResource(this._refKey(handle, assetId));
+        });
     }
 
     async getReferences(handle, assetId) {

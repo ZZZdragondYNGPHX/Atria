@@ -138,6 +138,18 @@ export class KnowledgeRepo {
         ) {
             throw new TypeError('KnowledgeRepo.commitRevision entries must match KnowledgeRevision.entryIds in order');
         }
+        const entryIdSet = new Set(revision.entryIds);
+        for (const entry of entries) {
+            for (const field of ['requiredEntryIds', 'relatedEntryIds']) {
+                for (const relatedId of entry.relations?.[field] || []) {
+                    if (!entryIdSet.has(relatedId)) {
+                        throw new TypeError(
+                            `KnowledgeRepo.commitRevision ${field} must reference entries in the same immutable revision`,
+                        );
+                    }
+                }
+            }
+        }
 
         return this._engine.withTransaction(handle, async (tx) => {
             const baseKey = this._baseKey(handle, revision.knowledgeBaseId);
@@ -348,6 +360,49 @@ export class KnowledgeRepo {
                 });
             }
             return tx.deleteResource(this._bindingKey(handle, knowledgeBindingId));
+        });
+    }
+
+    async delete(handle, knowledgeBaseId) {
+        assertWritable();
+        return this._engine.withTransaction(handle, async (tx) => {
+            const references = [];
+            for (const binding of await tx.listResources({
+                kind: NATIVE_RESOURCE_KINDS.knowledgeBinding,
+                handle,
+            })) {
+                const source = binding.doc?.source;
+                if (source?.kind === 'library' && source.knowledgeBaseId === knowledgeBaseId) {
+                    references.push({
+                        kind: 'knowledge-binding',
+                        knowledgeBindingId: binding.doc.knowledgeBindingId,
+                        knowledgeRevisionId: source.knowledgeRevisionId,
+                    });
+                }
+            }
+            if (references.length) {
+                throw new ConflictError('native_knowledge_base_referenced', {
+                    knowledgeBaseId,
+                    references,
+                });
+            }
+
+            for (const revision of await tx.listResources({
+                kind: NATIVE_RESOURCE_KINDS.knowledgeRevision,
+                handle,
+                knowledgeBaseId,
+            })) {
+                for (const entry of await tx.listResources({
+                    kind: NATIVE_RESOURCE_KINDS.knowledgeEntry,
+                    handle,
+                    knowledgeBaseId,
+                    knowledgeRevisionId: revision.key.knowledgeRevisionId,
+                })) {
+                    await tx.deleteResource(entry.key);
+                }
+                await tx.deleteResource(revision.key);
+            }
+            return tx.deleteResource(this._baseKey(handle, knowledgeBaseId));
         });
     }
 }

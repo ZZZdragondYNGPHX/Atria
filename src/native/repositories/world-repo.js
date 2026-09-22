@@ -85,6 +85,25 @@ export class WorldRepo {
             const world = await getNativeDocument(tx, worldKey);
             if (!world) throw new NotFoundError('native world', { worldId: revision.worldId });
 
+            for (const knowledgeBindingId of revision.knowledgeBindingIds) {
+                const binding = await getNativeDocument(tx, {
+                    kind: NATIVE_RESOURCE_KINDS.knowledgeBinding,
+                    handle,
+                    knowledgeBindingId,
+                });
+                if (!binding) {
+                    throw new NotFoundError('native knowledge binding', { knowledgeBindingId });
+                }
+            }
+            for (const assetId of revision.assetIds) {
+                const assetRef = await getNativeDocument(tx, {
+                    kind: NATIVE_RESOURCE_KINDS.assetRef,
+                    handle,
+                    assetId,
+                });
+                if (!assetRef) throw new NotFoundError('native asset ref', { assetId });
+            }
+
             await putImmutable(
                 tx,
                 this._revisionKey(handle, revision.worldId, revision.worldRevisionId),

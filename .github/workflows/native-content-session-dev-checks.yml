@@ -91,6 +91,7 @@ jobs:
           npm run test:unit --prefix tests --
           --runInBand
           native/storage-foundation.contract.test.js
+          native/storage-references.contract.test.js
           native/storage-round-trip.test.js
           native/storage-commit-last.test.js
           storage/engines/mysql-schema.test.js

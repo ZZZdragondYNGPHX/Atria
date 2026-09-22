@@ -1,11 +1,13 @@
 import {
+    KnowledgeRepo,
     NATIVE_RESOURCE_KINDS,
     SessionRepo,
+    WorldRepo,
     createNativeId,
 } from '../../src/native/index.js';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 
-function failSessionHeadEngine(baseEngine) {
+function failPublishEngine(baseEngine, publishKind, errorMessage) {
     let fail = false;
     return {
         kind: 'fs',
@@ -15,8 +17,8 @@ function failSessionHeadEngine(baseEngine) {
                 get(target, prop) {
                     if (prop === 'putResource') {
                         return async (key, record) => {
-                            if (fail && key?.kind === NATIVE_RESOURCE_KINDS.session) {
-                                throw new Error('injected session-head publish failure');
+                            if (fail && key?.kind === publishKind) {
+                                throw new Error(errorMessage);
                             }
                             return target.putResource(key, record);
                         };
@@ -66,7 +68,11 @@ describe('N1 FS commit-last failure semantics', () => {
             createdAt: 2,
         });
 
-        const failingEngine = failSessionHeadEngine(h.engine);
+        const failingEngine = failPublishEngine(
+            h.engine,
+            NATIVE_RESOURCE_KINDS.session,
+            'injected session-head publish failure',
+        );
         const repo = new SessionRepo({ engine: failingEngine });
         const revisionId = createNativeId('revision');
         const revision = {
@@ -83,10 +89,85 @@ describe('N1 FS commit-last failure semantics', () => {
         await expect(repo.commitRevision(handle, revision))
             .rejects.toThrow('injected session-head publish failure');
 
-        // FsEngine has no rollback: immutable child survives, but the Session
-        // HEAD commit marker stays on the previous value. The orphan is not
-        // observable as committed progress and is eligible for later GC.
         expect(await baseRepo.getRevision(handle, sessionId, revisionId)).toEqual(revision);
         expect((await baseRepo.get(handle, sessionId)).headRevisionId).toBeNull();
+    });
+
+    test('failed World current-pointer publish leaves an orphan immutable WorldRevision only', async () => {
+        const handle = h.handle;
+        const worldId = createNativeId('world');
+        const revisionId = createNativeId('worldRevision');
+        const baseRepo = new WorldRepo({ engine: h.engine });
+        await baseRepo.create(handle, {
+            worldId,
+            displayName: 'World',
+            currentRevisionId: null,
+            createdAt: 1,
+            updatedAt: 1,
+        });
+
+        const failingEngine = failPublishEngine(
+            h.engine,
+            NATIVE_RESOURCE_KINDS.world,
+            'injected world-pointer publish failure',
+        );
+        const repo = new WorldRepo({ engine: failingEngine });
+        const revision = {
+            worldRevisionId: revisionId,
+            worldId,
+            knowledgeBindingIds: [],
+            assetIds: [],
+            metadata: {},
+            createdAt: 2,
+        };
+        failingEngine.arm();
+
+        await expect(repo.commitRevision(handle, revision))
+            .rejects.toThrow('injected world-pointer publish failure');
+
+        expect(await baseRepo.getRevision(handle, worldId, revisionId)).toEqual(revision);
+        expect((await baseRepo.get(handle, worldId)).currentRevisionId).toBeNull();
+    });
+
+    test('failed Knowledge current-pointer publish leaves immutable entries/revision without publishing it', async () => {
+        const handle = h.handle;
+        const knowledgeBaseId = createNativeId('knowledgeBase');
+        const knowledgeRevisionId = createNativeId('knowledgeRevision');
+        const entryId = createNativeId('knowledgeEntry');
+        const baseRepo = new KnowledgeRepo({ engine: h.engine });
+        await baseRepo.create(handle, {
+            knowledgeBaseId,
+            displayName: 'Knowledge',
+            currentRevisionId: null,
+            createdAt: 1,
+            updatedAt: 1,
+        });
+
+        const failingEngine = failPublishEngine(
+            h.engine,
+            NATIVE_RESOURCE_KINDS.knowledgeBase,
+            'injected knowledge-pointer publish failure',
+        );
+        const repo = new KnowledgeRepo({ engine: failingEngine });
+        const revision = {
+            knowledgeRevisionId,
+            knowledgeBaseId,
+            entryIds: [entryId],
+            metadata: {},
+            createdAt: 2,
+        };
+        const entry = {
+            knowledgeEntryId: entryId,
+            content: 'immutable entry',
+            metadata: {},
+        };
+        failingEngine.arm();
+
+        await expect(repo.commitRevision(handle, revision, [entry]))
+            .rejects.toThrow('injected knowledge-pointer publish failure');
+
+        expect(await baseRepo.getRevision(handle, knowledgeBaseId, knowledgeRevisionId)).toEqual(revision);
+        expect(await baseRepo.getEntry(handle, knowledgeBaseId, knowledgeRevisionId, entryId)).toEqual(entry);
+        expect((await baseRepo.get(handle, knowledgeBaseId)).currentRevisionId).toBeNull();
     });
 });
