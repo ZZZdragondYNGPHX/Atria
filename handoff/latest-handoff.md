@@ -1,3 +1,114 @@
+# Active checkpoint: N4 amended — immutable Timeline / write barrier
+
+## Status
+
+**N4 remains in progress. Do not start N5 and do not restart N4.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Current known work HEAD: `952410a3f3d200754b046ccc2868166282958094`
+- Last fully validated phase: N3 at `c42ee3e98a27fbea97ded0917de081bcc8893680`
+- Formal Master Plan: `refactor/atria-native-content-session-architecture.md`
+- Detailed handoff: `handoff/atria-native-content-session-architecture.md`
+- Implementation sequence: **N0–N10**
+- main remains untouched; no new task branch or main merge.
+
+If the remote work branch has advanced beyond the SHA above, use the actual latest remote HEAD and preserve those commits.
+
+## Frozen N4 design amendment
+
+Native committed Timeline is immutable for users, plugins, Agents, Package Runtime and Atria-owned writers.
+
+N4 must preserve its useful projection/generation work but change the mutation contract:
+
+- keep Native Session → transient ST runtime projection;
+- keep Native-only HTTP/command transport, Branch/switch/reload/history, Regex/Knowledge compatibility, attachments and real-host infrastructure;
+- add a committed-message Write Barrier/fingerprint guard;
+- committed Edit/Delete/Swipe/Swipe-delete/Variant switch are **not Native product capabilities**;
+- direct `chat[]` mutation of committed projected content must fail closed and must not create a Native rewrite or `/api/chats/*` fallback;
+- remove committed `revise/remove/removeVariant/selectVariant` semantics from the Native product command path;
+- ST swipe-shaped buffers may remain only as transient Draft/generator compatibility;
+- Retry Reply = fork from the post-user revision → generate/append a new Assistant TimelineEntry;
+- committed Continue = append a new continuation TimelineEntry;
+- Stop acts on Generation Draft: partial result may be committed or Draft discarded.
+
+Existing N4 real-host tests that currently prove Edit/Delete/Swipe mutation success must be rewritten as negative/fail-closed acceptance rather than deleted without replacement.
+
+## N4 positive acceptance
+
+Verify:
+
+- Send;
+- Stop/Draft handling;
+- generation;
+- Continue-as-new-entry;
+- Retry Reply as Fork + new Assistant message;
+- Branch/switch;
+- historical revision view;
+- reload;
+- attachments;
+- prompt assembly;
+- Regex;
+- existing World Info/Knowledge compatibility;
+- R7 Play host invariants;
+- no legacy persistence fallback.
+
+## N4 negative acceptance
+
+Verify Native authority remains unchanged and no legacy save occurs for:
+
+- committed Edit;
+- committed Delete;
+- manual Swipe;
+- Swipe delete;
+- committed Variant switch;
+- direct third-party/projected `chat[]` canonical-content mutation.
+
+## Later architecture amendment
+
+The program now continues:
+
+- N5 — Native Runtime State & Revision Lifecycle
+- N6 — Native Knowledge Runtime Integration
+- N7 — Native Context Architecture
+- N8 — Save System & `.atriasave`
+- N9 — Product UI Cutover
+- N10 — Hard Cutover & Legacy Retirement
+
+N7 introduces bounded Context Projection:
+
+- complete canonical Timeline remains permanent and immutable;
+- SessionContextCompiler owns the total token budget;
+- Recent Raw is token-budgeted in complete TurnGroups;
+- Narrative Spine is source-backed Scene → Chapter → Arc → Campaign;
+- Active Commitments are separate from summaries;
+- Memory/Narrative/Commitment semantic work is gated/reused/asynchronous where possible;
+- derived artifacts carry branch/revision/source provenance and coverage;
+- uncovered history never disappears behind a stale summary;
+- ContextPlan records included/rejected reasons and lane token usage;
+- no mandatory per-turn stack of separate Memory + Commitment + Summary model calls.
+
+Checkpoint C after N7 proves Context remains bounded as Timeline grows while canonical history stays retrievable.
+
+## Next action
+
+Continue the current N4 implementation from the live remote HEAD under this amended acceptance contract.
+
+Do not:
+
+- reset to the old N4 checkpoint;
+- start N5;
+- create another branch;
+- merge main;
+- reintroduce JSONL/Character/World Info authority;
+- implement full N7 ContextCompiler early;
+- remove broad SillyTavern swipe internals just because Native Swipe product semantics are retired.
+
+Ordinary failures should be diagnosed and fixed autonomously. Stop only for clearly long CI, required Android/Termux logs, required real UI screenshots, or user-owned permissions/Secrets/auth.
+
+---
+
+## Previous N4 handoff (historical; superseded by immutable-Timeline amendment)
+
 # Active checkpoint: N4 in progress, continue N4
 
 ## N4 in-progress checkpoint — 2026-09-22
@@ -52,6 +163,7 @@
 `tavern-card-builder` and focused API/runtime skills read; library route `tavern-card-builder`, snapshot `2026-08-18`, ST-A0 opening gates used. Current repository source, not recalled upstream signatures, supplied API provenance. No design catalog candidate was adopted. Real-host execution remains explicitly unverified.
 
 ---
+
 
 ## Previous validated handoff (historical; superseded for next action)
 
