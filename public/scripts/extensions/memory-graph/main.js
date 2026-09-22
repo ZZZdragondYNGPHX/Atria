@@ -71,6 +71,7 @@ import { openHistoryBuildPopup } from './history-build-ui.js';
 import { getMemoryVectorStore, MEMORY_OS_DEFAULT_ENABLED, isMemoryOsEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
+import { evaluateDerivationGate } from '../../native/context-derived.js';
 import { FACT_TOOL_NAME, factExtractionTool, factExtractionContext, readFactToolCalls } from './fact-extraction.js';
 import { temporalExtractionContext, readTemporalToolCalls } from './temporal-extraction.js';
 import {
@@ -9280,6 +9281,48 @@ async function runScheduledExtractionPass(chatKey) {
             refreshUiStats();
             return;
         }
+        if (isNativeMemorySession(runtimeContext)) {
+            const worldState = nativeSessionRuntime.readState('atri_game_world');
+            const journalEvents = Array.isArray(worldState?.journal?.events)
+                ? worldState.journal.events.slice(-32)
+                : [];
+            const decision = evaluateDerivationGate({
+                policy: nativeSessionRuntime.currentContextPlan()?.policy || 'balanced',
+                events: journalEvents,
+                turnsSinceDigest: preview.gap,
+                memory: {
+                    pendingCount: preview.gap,
+                    conflict: Boolean(store?.lastExtractionDebug?.conflict),
+                    compactionDue: Boolean(store?.lastExtractionDebug?.compactionDue),
+                },
+                hasCommittedEvidence: preview.gap > 0,
+            });
+            if (!decision.runMemoryConsolidation) {
+                store.lastExtractionDebug = {
+                    beginSeq: preview.beginSeq,
+                    latestSeq: preview.latestSeq,
+                    coveredSeqTo: preview.coveredSeqTo,
+                    extracted: false,
+                    reason: 'derivation_gate_deferred',
+                    derivation: {
+                        policy: decision.policy,
+                        cheapMemoryIngest: decision.cheapMemoryIngest,
+                        reasons: [...decision.reasons],
+                    },
+                    at: Date.now(),
+                };
+                updateUiStatus(i18nFormat(
+                    'Extraction ${0}: begin=${1} latest=${2} covered=${3}',
+                    'deferred',
+                    Number(preview.beginSeq || 0),
+                    Number(preview.latestSeq || 0),
+                    Number(preview.coveredSeqTo || 0),
+                ));
+                refreshUiStats();
+                return;
+            }
+        }
+
         const workingStore = normalizeStoreForRuntime(store);
         let committedStore = normalizeStoreForRuntime(store);
         // Publish the pass's scope so `applyMutationInvalidationImpl`
