@@ -441,29 +441,22 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
     });
 
-    test('N3 Variant compatibility data cannot be switched or deleted by the N4 runtime', async () => {
+    test('host Swipe ABI cannot fabricate committed Native Variant authority', async () => {
         const sessionId = runtime.snapshot.session.sessionId;
-        const greeting = runtime.snapshot.timeline[0];
-        await f.core.addVariant(h.handle, sessionId, greeting.messageId, {
-            content: 'Alternate opening',
-            metadata: {},
-        }, { expectedRevisionId: runtime.snapshot.revision.revisionId });
-        await runtime.reload();
-
-        expect(messages[0].swipes).toHaveLength(2);
-        expect(messages[0].swipe_id).toBe(1);
+        expect(runtime.snapshot.timeline[0].variantIds).toHaveLength(1);
+        expect(messages[0].swipes).toHaveLength(1);
+        expect(messages[0].swipe_id).toBe(0);
         const before = runtime.snapshot.revision.revisionId;
 
-        messages[0].swipe_id = 0;
-        messages[0].mes = messages[0].swipes[0];
+        messages[0].swipes.push('forbidden host-only alternate');
+        messages[0].swipe_info.push({});
+        messages[0].swipe_id = 1;
+        messages[0].mes = 'forbidden host-only alternate';
         await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
         expect((await f.core.load(h.handle, sessionId)).revision.revisionId).toBe(before);
 
         await runtime.reload();
-        messages[0].swipes.splice(0, 1);
-        messages[0].swipe_info.splice(0, 1);
-        messages[0].atri_native.variantIds.splice(0, 1);
-        messages[0].swipe_id = 0;
+        messages[0].atri_native.variantIds.push('variant_00000000000000000000000000');
         await expect(runtime.persist()).rejects.toMatchObject({ code: 'native_committed_timeline_mutation' });
         expect((await f.core.load(h.handle, sessionId)).revision.revisionId).toBe(before);
     });
