@@ -35,12 +35,24 @@ export class WorldRepo {
     async create(handle, value) {
         assertWritable();
         const world = assertWorld(value);
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            this._worldKey(handle, world.worldId),
-            world,
-            { expectedIntegrity: null },
-        ));
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (world.currentRevisionId) {
+                const revision = await getNativeDocument(
+                    tx,
+                    this._revisionKey(handle, world.worldId, world.currentRevisionId),
+                );
+                if (!revision) throw new NotFoundError('native world revision', {
+                    worldId: world.worldId,
+                    worldRevisionId: world.currentRevisionId,
+                });
+            }
+            return putMutable(
+                tx,
+                this._worldKey(handle, world.worldId),
+                world,
+                { expectedIntegrity: null },
+            );
+        });
     }
 
     async save(handle, value, options = {}) {

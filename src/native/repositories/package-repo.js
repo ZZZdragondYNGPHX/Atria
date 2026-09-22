@@ -46,12 +46,24 @@ export class PackageRepo {
     async create(handle, value) {
         assertWritable();
         const record = assertPackageRecord(value);
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            this._packageKey(handle, record.packageId),
-            record,
-            { expectedIntegrity: null },
-        ));
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (record.currentVersionId) {
+                const version = await getNativeDocument(
+                    tx,
+                    this._versionKey(handle, record.packageId, record.currentVersionId),
+                );
+                if (!version) throw new NotFoundError('native package version', {
+                    packageId: record.packageId,
+                    packageVersionId: record.currentVersionId,
+                });
+            }
+            return putMutable(
+                tx,
+                this._packageKey(handle, record.packageId),
+                record,
+                { expectedIntegrity: null },
+            );
+        });
     }
 
     async save(handle, value, options = {}) {

@@ -4,6 +4,7 @@ import { CONTRACT_HARNESSES } from '../storage/harness/contract-harness.js';
 import {
     AssetStore,
     KnowledgeRepo,
+    PackageRepo,
     WorldRepo,
     createNativeId,
 } from '../../src/native/index.js';
@@ -13,12 +14,14 @@ const digest = value => createHash('sha256').update(value).digest('hex');
 
 describe.each(CONTRACT_HARNESSES)('N1 Native reference/GC guards — $name', ({ make }) => {
     let h;
+    let packageRepo;
     let worldRepo;
     let knowledgeRepo;
     let assetStore;
 
     beforeEach(async () => {
         h = await make();
+        packageRepo = new PackageRepo({ engine: h.engine });
         worldRepo = new WorldRepo({ engine: h.engine });
         knowledgeRepo = new KnowledgeRepo({ engine: h.engine });
         assetStore = new AssetStore({
@@ -32,6 +35,34 @@ describe.each(CONTRACT_HARNESSES)('N1 Native reference/GC guards — $name', ({ 
 
     afterEach(async () => {
         await h.cleanup();
+    });
+
+    test('root create cannot publish a dangling current pointer', async () => {
+        const handle = h.handle;
+
+        await expect(packageRepo.create(handle, {
+            packageId: createNativeId('package'),
+            displayName: 'Dangling Package',
+            currentVersionId: createNativeId('packageVersion'),
+            createdAt: 1,
+            updatedAt: 1,
+        })).rejects.toThrow(/native package version/);
+
+        await expect(worldRepo.create(handle, {
+            worldId: createNativeId('world'),
+            displayName: 'Dangling World',
+            currentRevisionId: createNativeId('worldRevision'),
+            createdAt: 1,
+            updatedAt: 1,
+        })).rejects.toThrow(/native world revision/);
+
+        await expect(knowledgeRepo.create(handle, {
+            knowledgeBaseId: createNativeId('knowledgeBase'),
+            displayName: 'Dangling Knowledge',
+            currentRevisionId: createNativeId('knowledgeRevision'),
+            createdAt: 1,
+            updatedAt: 1,
+        })).rejects.toThrow(/native knowledge revision/);
     });
 
     test('Library World revisions require existing bindings/assets and protect their references', async () => {

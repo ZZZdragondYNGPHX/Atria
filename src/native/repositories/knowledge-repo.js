@@ -60,12 +60,24 @@ export class KnowledgeRepo {
     async create(handle, value) {
         assertWritable();
         const base = assertKnowledgeBase(value);
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            this._baseKey(handle, base.knowledgeBaseId),
-            base,
-            { expectedIntegrity: null },
-        ));
+        return this._engine.withTransaction(handle, async (tx) => {
+            if (base.currentRevisionId) {
+                const revision = await getNativeDocument(
+                    tx,
+                    this._revisionKey(handle, base.knowledgeBaseId, base.currentRevisionId),
+                );
+                if (!revision) throw new NotFoundError('native knowledge revision', {
+                    knowledgeBaseId: base.knowledgeBaseId,
+                    knowledgeRevisionId: base.currentRevisionId,
+                });
+            }
+            return putMutable(
+                tx,
+                this._baseKey(handle, base.knowledgeBaseId),
+                base,
+                { expectedIntegrity: null },
+            );
+        });
     }
 
     async save(handle, value, options = {}) {
