@@ -16877,6 +16877,10 @@ export function select_rm_info(type, charId, previousCharId = null) {
  * @param {boolean} [param1.switchMenu=true] Whether to switch the menu
  */
 export function select_selected_character(chid, { switchMenu = true } = {}) {
+    if (nativeSessionRuntime.active) {
+        nativeSessionRuntime.denyCommittedAction('Character/CardApp editor');
+        return;
+    }
     const character = characters[chid];
     //character select
     //console.log('select_selected_character() -- starting with input of -- ' + chid + ' (name:' + characters[chid].name + ')');
@@ -21561,10 +21565,19 @@ jQuery(async function () {
 
     //**************************CHARACTER IMPORT EXPORT*************************//
     $('#character_import_button').on('click', function () {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character import');
+            return;
+        }
         $('#character_import_file').trigger('click');
     });
 
     $('#character_import_file').on('change', async function (e) {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character import');
+            e.target.value = '';
+            return;
+        }
         $('#rm_info_avatar').html('');
 
         if (!(e.target instanceof HTMLInputElement)) {
@@ -21596,12 +21609,20 @@ jQuery(async function () {
     });
 
     $('#export_button').on('click', function () {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character PNG/JSON/CharX/BYAF export');
+            return;
+        }
         isExportPopupOpen = !isExportPopupOpen;
         $('#export_format_popup').toggle(isExportPopupOpen);
         exportPopper.update();
     });
 
     $(document).on('click', '.export_format', async function () {
+        if (nativeSessionRuntime.active) {
+            nativeSessionRuntime.denyCommittedAction('Character PNG/JSON/CharX/BYAF export');
+            return;
+        }
         const format = $(this).data('format');
 
         if (!format) {
