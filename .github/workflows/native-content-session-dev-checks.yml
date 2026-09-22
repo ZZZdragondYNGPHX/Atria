@@ -462,7 +462,8 @@ jobs:
           tests/atria-shell/native-play-controls.test.js
           tests/atria-shell/workspace-host.test.js
           tests/e2e/native-session/02-product-ui.e2e.js
-          scripts/check-n9-native-product-authority.mjs
+      - name: Check N9 guard syntax
+        run: node --check scripts/check-n9-native-product-authority.mjs
       - name: Build frontend libraries
         run: node docker/build-lib.js
       - name: Initialize Atria config
