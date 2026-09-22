@@ -96,18 +96,6 @@ export const nativeProductClient = Object.freeze({
         method: 'POST',
         body: options,
     }),
-    exportSave: (sessionId, options = {}) => request(`sessions/${encode(sessionId)}/export`, {
-        method: 'POST',
-        body: options,
-    }),
-    preflightSaveImport: data => request('saves/preflight-import', {
-        method: 'POST',
-        body: { data },
-    }),
-    importSave: (data, password = undefined) => request('saves/import', {
-        method: 'POST',
-        body: { data, ...(password === undefined ? {} : { password }) },
-    }),
     deleteSession: sessionId => request(`sessions/${encode(sessionId)}`, { method: 'DELETE' }),
 
     listProjects: () => request('projects'),
