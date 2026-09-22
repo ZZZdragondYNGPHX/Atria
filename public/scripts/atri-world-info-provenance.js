@@ -12,9 +12,13 @@ export function createWorldInfoProvenance() {
 }
 
 export function worldInfoSource(entry, content) {
+    const native = entry?.atri_native && typeof entry.atri_native === 'object'
+        ? structuredClone(entry.atri_native)
+        : null;
     return {
-        id: JSON.stringify([String(entry.world ?? ''), entry.uid ?? null]),
+        id: native?.identity || JSON.stringify([String(entry.world ?? ''), entry.uid ?? null]),
         world: String(entry.world ?? ''), uid: entry.uid ?? null,
+        ...(native ? { atri_native: native } : {}),
         sourceVersion: entry.hash ?? null, comment: String(entry.comment ?? ''),
         content,
     };
