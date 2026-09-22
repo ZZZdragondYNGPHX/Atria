@@ -3751,6 +3751,10 @@ async function maybeDeleteCharacterBoundImportedLorebook(character, { alreadyPro
  */
 export async function deleteMessage(id, swipeDeletionIndex = undefined, askConfirmation = false, deleteToolCalls = true) {
     const canDeleteSwipe = swipeDeletionIndex !== undefined && swipeDeletionIndex !== null;
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(Number(id))) {
+        nativeSessionRuntime.denyCommittedAction(canDeleteSwipe ? 'Swipe Delete' : 'Delete', Number(id));
+        return;
+    }
     if (canDeleteSwipe) {
         if (swipeDeletionIndex < 0) {
             throw new Error('Swipe index cannot be negative');
@@ -7421,10 +7425,11 @@ function applyFinalizedAuthorsNoteInjections(anBefore = [], anAfter = []) {
  * @returns {Promise<any>} Returns a promise that resolves when the text is done generating.
  */
 export async function Generate(type, { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage, quietName, jsonSchema = null, depth = 0 } = {}, dryRun = false) {
-    if (nativeSessionRuntime.active) {
-        if (!dryRun) nativeSessionRuntime.assertWritable();
-        // Native regeneration creates an immutable alternative through the existing swipe generator.
-        if (type === 'regenerate' && chat.at(-1) && !chat.at(-1).is_user) type = 'swipe';
+    if (nativeSessionRuntime.active && !dryRun) {
+        // Native lifecycle owns the committed boundary. SillyTavern remains
+        // the mutable generation workspace, but Retry/Continue are translated
+        // before any legacy regenerate/swipe bookkeeping can rewrite history.
+        type = await nativeSessionRuntime.prepareGeneration(type);
     }
     console.log('Generate entered');
     setGenerationProgress(0);
@@ -16027,6 +16032,11 @@ function openMessageDelete(fromSlashCommand, deleteToolCalls = true) {
 }
 
 function messageEditAuto(div) {
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(Number(this_edit_mes_id))) {
+        nativeSessionRuntime.denyCommittedAction('Edit', Number(this_edit_mes_id));
+        void messageEditCancel(this_edit_mes_id);
+        return;
+    }
     const { mesBlock, text, mes, bias } = updateMessage(div);
 
     mesBlock.find('.mes_text').val('');
@@ -16154,6 +16164,12 @@ async function messageEditCancel(messageId = this_edit_mes_id) {
  * @returns {Promise<boolean>} True if the messages were moved, false otherwise
  */
 async function messageEditMove(sourceId, targetId) {
+    if (nativeSessionRuntime.active
+        && (nativeSessionRuntime.isCommittedMessage(Number(sourceId))
+            || nativeSessionRuntime.isCommittedMessage(Number(targetId)))) {
+        nativeSessionRuntime.denyCommittedAction('Reorder', Number(sourceId));
+        return false;
+    }
     if (is_send_press) {
         console.warn(`The message #${sourceId} was not moved to #${targetId} because a generation is in progress.`);
         return false;
@@ -16209,6 +16225,12 @@ async function messageEditDone(div) {
         return;
     }
     const editedMessageId = Number(this_edit_mes_id);
+
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(editedMessageId)) {
+        nativeSessionRuntime.denyCommittedAction('Edit', editedMessageId);
+        await messageEditCancel(editedMessageId);
+        return;
+    }
 
     let { mesBlock, bias } = updateMessage(div);
 
@@ -17254,6 +17276,11 @@ export async function deleteSwipe(swipeId = null, messageId = chat.length - 1) {
         return;
     }
 
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(Number(messageId))) {
+        nativeSessionRuntime.denyCommittedAction('Swipe Delete', Number(messageId));
+        return;
+    }
+
     if (message.swipes.length <= 1) {
         toastr.warning(t`Can't delete the last swipe.`);
         return;
@@ -17267,7 +17294,6 @@ export async function deleteSwipe(swipeId = null, messageId = chat.length - 1) {
         return;
     }
 
-    if (nativeSessionRuntime.active) nativeSessionRuntime.removeSwipe(messageId, swipeId);
     message.swipes.splice(swipeId, 1);
 
     if (Array.isArray(message.swipe_info) && message.swipe_info.length) {
@@ -18176,6 +18202,11 @@ export async function swipe(event, direction, { source, repeated, message = chat
     }
 
     const mesId = Number(forceMesId ?? event?.currentTarget?.closest('.mes')?.getAttribute('mesid') ?? messageIndex ?? chat.length - 1);
+
+    if (nativeSessionRuntime.active && nativeSessionRuntime.isCommittedMessage(mesId)) {
+        nativeSessionRuntime.denyCommittedAction('Manual Swipe / Variant switch', mesId);
+        return;
+    }
 
     if ([SWIPE_SOURCE.DELETE, SWIPE_SOURCE.BACK, SWIPE_SOURCE.AUTO_SWIPE, SWIPE_SOURCE.SLASH_COMMAND, SWIPE_SOURCE.SWIPE_PICKER].includes(source)) {
         console.info(`The ${direction} swipe source on message #${mesId} is ${source}, Most checks have been bypassed. `);
@@ -22129,7 +22160,10 @@ export async function openNativeSession(sessionId, options = {}) {
         headers: getRequestHeaders,
         messages: () => chat,
         isGenerating: () => is_send_press || is_group_generating,
-        error: error => { stopGeneration(); toastr.error(error.message, 'Native Session write failed'); },
+        error: (error, { fatal = true } = {}) => {
+            if (fatal) stopGeneration();
+            toastr.error(error.message, fatal ? 'Native Session write failed' : 'Native committed Timeline is immutable');
+        },
         revision: projection => { chat_metadata.integrity = projection.revisionId; },
         install: async projection => {
             cancelDebouncedChatSave();
