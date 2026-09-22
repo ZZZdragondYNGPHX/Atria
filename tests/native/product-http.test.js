@@ -15,9 +15,14 @@ function makeProduct() {
         installPackage: jest.fn(async () => ({ package: { packageId: 'pkg_installed' } })),
         listWorlds: jest.fn(async () => []),
         getWorld: jest.fn(async (_handle, worldId) => ({ world: { worldId } })),
+        updateWorld: jest.fn(async (_handle, worldId, body) => ({ worldId, displayName: body.displayName })),
         deleteWorld: jest.fn(async () => true),
         listKnowledgeBases: jest.fn(async () => []),
         getKnowledgeBase: jest.fn(async (_handle, knowledgeBaseId) => ({ knowledgeBase: { knowledgeBaseId } })),
+        updateKnowledgeBase: jest.fn(async (_handle, knowledgeBaseId, body) => ({
+            knowledgeBaseId,
+            displayName: body.displayName,
+        })),
         deleteKnowledgeBase: jest.fn(async () => true),
         listSessions: jest.fn(async () => []),
         getSession: jest.fn(async (_handle, sessionId) => ({ snapshot: { session: { sessionId } } })),
@@ -73,6 +78,30 @@ describe('N9 Native Product HTTP boundary', () => {
             .send({ dependencies });
         expect(updated.status).toBe(200);
         expect(product.updateProjectDependencies).toHaveBeenCalledWith('u', 'project_test', dependencies);
+    });
+
+    test('updates mutable World/Knowledge metadata without exposing revision mutation routes', async () => {
+        const product = makeProduct();
+        const app = appFor(product);
+
+        const world = await request(app)
+            .put('/worlds/world_test')
+            .send({ displayName: 'Renamed World' });
+        expect(world.status).toBe(200);
+        expect(product.updateWorld).toHaveBeenCalledWith('u', 'world_test', {
+            displayName: 'Renamed World',
+        });
+
+        const knowledge = await request(app)
+            .put('/knowledge/kb_test')
+            .send({ displayName: 'Renamed Knowledge' });
+        expect(knowledge.status).toBe(200);
+        expect(product.updateKnowledgeBase).toHaveBeenCalledWith('u', 'kb_test', {
+            displayName: 'Renamed Knowledge',
+        });
+
+        expect((await request(app).put('/worlds/world_test/revisions/rev_test').send({})).status).toBe(404);
+        expect((await request(app).put('/knowledge/kb_test/revisions/rev_test').send({})).status).toBe(404);
     });
 
     test('decodes Package/Save archives and returns portable exports as base64', async () => {
