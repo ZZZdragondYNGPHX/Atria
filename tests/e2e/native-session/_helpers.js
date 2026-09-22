@@ -219,7 +219,10 @@ export async function loadNativeSnapshot(page, sessionId, revisionId = undefined
 export async function rememberR7Nodes(page) {
     await page.evaluate(() => {
         window.__n4R7Nodes = {
+            sheld: document.querySelector('#sheld'),
             chat: document.querySelector('#chat'),
+            formSheld: document.querySelector('#form_sheld'),
+            sendForm: document.querySelector('#send_form'),
             textarea: document.querySelector('#send_textarea'),
             send: document.querySelector('#send_but'),
             shell: document.querySelector('#atria-shell'),
@@ -231,7 +234,10 @@ export async function assertR7NodesStable(page) {
     return page.evaluate(() => {
         const before = window.__n4R7Nodes || {};
         const selectors = {
+            sheld: '#sheld',
             chat: '#chat',
+            formSheld: '#form_sheld',
+            sendForm: '#send_form',
             textarea: '#send_textarea',
             send: '#send_but',
             shell: '#atria-shell',
