@@ -65,7 +65,54 @@ export async function openWorldInfoDrawer(page) {
         throw new Error('World Info compatibility workspace did not mount after Atria Shell startup');
     }
 
-    await page.locator('#WorldInfo.openDrawer #world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+    try {
+        await page.locator('#WorldInfo.openDrawer #world_popup').waitFor({ state: 'visible', timeout: 10_000 });
+    } catch (error) {
+        const layout = await page.evaluate(() => {
+            const describe = (selector) => {
+                const node = document.querySelector(selector);
+                if (!(node instanceof HTMLElement)) return { selector, missing: true };
+                const style = getComputedStyle(node);
+                const rect = node.getBoundingClientRect();
+                return {
+                    selector,
+                    tag: node.tagName,
+                    className: node.className,
+                    hidden: node.hidden,
+                    ariaHidden: node.getAttribute('aria-hidden'),
+                    parent: node.parentElement?.id || node.parentElement?.className || null,
+                    display: style.display,
+                    visibility: style.visibility,
+                    position: style.position,
+                    width: style.width,
+                    height: style.height,
+                    minWidth: style.minWidth,
+                    minHeight: style.minHeight,
+                    flex: style.flex,
+                    overflow: style.overflow,
+                    rect: {
+                        x: rect.x,
+                        y: rect.y,
+                        width: rect.width,
+                        height: rect.height,
+                    },
+                };
+            };
+            return {
+                viewport: { width: innerWidth, height: innerHeight },
+                shellMounted: Boolean(window.Atria?.shell?.isMounted?.()),
+                workspaceHost: document.querySelector('#atria-workspace')?.dataset?.atriaWorkspaceHost || null,
+                nodes: [
+                    describe('#atria-e2e-world-info-compat-host'),
+                    describe('#WorldInfo'),
+                    describe('#wi-holder'),
+                    describe('#world_popup'),
+                    describe('#wi_workspace_shell'),
+                ],
+            };
+        });
+        throw new Error(`World Info embedded layout hidden: ${JSON.stringify(layout)}`, { cause: error });
+    }
 }
 
 /**
