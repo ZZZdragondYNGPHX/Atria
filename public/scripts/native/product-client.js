@@ -62,8 +62,28 @@ export const nativeProductClient = Object.freeze({
     ),
     deleteKnowledge: knowledgeBaseId => request(`knowledge/${encode(knowledgeBaseId)}`, { method: 'DELETE' }),
 
+    preflightSave: data => request('saves/preflight', {
+        method: 'POST',
+        body: { data },
+    }),
+    importSave: (data, password = undefined) => request('saves/import', {
+        method: 'POST',
+        body: { data, ...(password === undefined ? {} : { password }) },
+    }),
+
     listSessions: packageId => request(`sessions${packageId ? `?packageId=${encode(packageId)}` : ''}`),
     getSession: sessionId => request(`sessions/${encode(sessionId)}`),
+    exportSession: (sessionId, password = undefined) => request(`sessions/${encode(sessionId)}/export`, {
+        method: 'POST',
+        body: { ...(password === undefined ? {} : { password }) },
+    }),
+    exportSave: (sessionId, saveId, password = undefined) => request(
+        `sessions/${encode(sessionId)}/saves/${encode(saveId)}/export`,
+        {
+            method: 'POST',
+            body: { ...(password === undefined ? {} : { password }) },
+        },
+    ),
     createSave: (sessionId, options = {}) => request(`sessions/${encode(sessionId)}/save`, {
         method: 'POST',
         body: options,
