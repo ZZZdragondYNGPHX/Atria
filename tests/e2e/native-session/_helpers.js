@@ -185,6 +185,9 @@ export async function nativeRuntimeState(page) {
             active: mod.nativeSessionRuntime.active,
             failed: mod.nativeSessionRuntime.failed,
             history: mod.nativeSessionRuntime.history,
+            generation: mod.nativeSessionRuntime.generation
+                ? { kind: mod.nativeSessionRuntime.generation.kind ?? null }
+                : null,
             sessionId: snapshot?.session?.sessionId ?? null,
             revisionId: snapshot?.revision?.revisionId ?? null,
             branchId: snapshot?.revision?.branchId ?? null,
