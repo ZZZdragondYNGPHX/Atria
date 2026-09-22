@@ -298,7 +298,6 @@ describe('N4 pure projection authority', () => {
 
         const changed = projectNativeSession(view).chat;
         changed[0].mes = 'rewritten';
-        expect(() => timelineIntents(view, changed)).toMatchObject;
         try {
             timelineIntents(view, changed);
             throw new Error('expected immutable Timeline violation');
