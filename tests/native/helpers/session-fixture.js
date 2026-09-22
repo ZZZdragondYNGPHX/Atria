@@ -1,6 +1,6 @@
 import {
     AssetStore, PackageInstaller, PackageRepo, SessionRepo, SavePointRepo, SessionCore,
-    KnowledgeRepo, buildAtriaPackageContainer, createNativeId,
+    KnowledgeRepo, NativeSaveSystem, buildAtriaPackageContainer, createNativeId,
 } from '../../../src/native/index.js';
 
 export function knowledgeSnapshot(content = 'Exact knowledge') {
@@ -50,7 +50,24 @@ export function services(h, engine = h.engine) {
     const savePointRepo = new SavePointRepo({ engine });
     const knowledgeRepo = new KnowledgeRepo({ engine });
     const core = new SessionCore({ sessionRepo, savePointRepo, packageInstaller, knowledgeRepo });
-    return { core, sessionRepo, savePointRepo, packageRepo, assetStore, packageInstaller, knowledgeRepo };
+    const saveSystem = new NativeSaveSystem({
+        sessionCore: core,
+        sessionRepo,
+        savePointRepo,
+        packageInstaller,
+        assetStore,
+        knowledgeRepo,
+    });
+    return {
+        core,
+        saveSystem,
+        sessionRepo,
+        savePointRepo,
+        packageRepo,
+        assetStore,
+        packageInstaller,
+        knowledgeRepo,
+    };
 }
 
 export async function installFixture(h, fixture = sessionFixture(), svc = services(h)) {
