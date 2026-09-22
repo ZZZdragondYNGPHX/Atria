@@ -212,9 +212,8 @@ export class SessionCore {
         return base;
     }
 
-    async _findTimelineBoundary(handle, sessionId, source, messageId, variantId = undefined) {
+    async _findTimelineBoundary(handle, sessionId, source, messageId) {
         assertNativeId(messageId, 'message');
-        if (variantId !== undefined) assertNativeId(variantId, 'variant');
 
         let cursor = source;
         let boundary = null;
@@ -227,10 +226,8 @@ export class SessionCore {
             const last = cursor.timeline.at(-1);
             const matchesMessage = cursor.revision.timelineHead?.messageId === messageId
                 && last?.messageId === messageId;
-            const matchesVariant = variantId === undefined
-                || (last?.variantIds?.includes(variantId) && last?.activeVariantId === variantId);
 
-            if (matchesMessage && matchesVariant) {
+            if (matchesMessage) {
                 boundary = cursor;
             } else if (boundary) {
                 break;
@@ -241,10 +238,7 @@ export class SessionCore {
             cursor = await this.load(handle, sessionId, { revisionId: parentRevisionId });
         }
         if (!boundary) {
-            throw new NotFoundError('native timeline boundary revision', {
-                messageId,
-                ...(variantId === undefined ? {} : { variantId }),
-            });
+            throw new NotFoundError('native timeline boundary revision', { messageId });
         }
         return boundary;
     }
@@ -255,30 +249,11 @@ export class SessionCore {
         return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant] });
     }
 
-    async addVariant(handle, sessionId, messageId, draft, { expectedRevisionId } = {}) {
-        const base = await this._current(handle, sessionId, expectedRevisionId);
-        const entry = base.timeline.find(item => item.messageId === messageId);
-        if (!entry) throw new NotFoundError('native timeline entry', { messageId });
-        const variant = assertVariant({ ...draft, sessionId, messageId, variantId: createNativeId('variant'), createdAt: Date.now() });
-        const timeline = base.timeline.map(item => item === entry ? { ...item, content: variant.content,
-            variantIds: [...item.variantIds, variant.variantId], activeVariantId: variant.variantId } : item);
-        return this._publish(handle, base, { timeline, variants: [variant] });
-    }
-
-    async selectVariant(handle, sessionId, messageId, variantId, { expectedRevisionId } = {}) {
-        const base = await this._current(handle, sessionId, expectedRevisionId);
-        const entry = base.timeline.find(item => item.messageId === messageId);
-        const variant = base.variants.find(item => item.messageId === messageId && item.variantId === variantId);
-        if (!entry || !variant) throw new NotFoundError('native timeline variant', { messageId, variantId });
-        return this._publish(handle, base, { timeline: base.timeline.map(item => item === entry
-            ? { ...item, activeVariantId: variantId, content: variant.content } : item) });
-    }
-
     /**
      * Publish runtime Drafts as one append-only revision.
-     * Committed Timeline entries/Variants are immutable at the Native product
-     * boundary; N3 low-level Variant primitives remain for their validated
-     * contract but are not exposed through this N4 runtime command path.
+     * Committed Timeline entries and their single birth Variant are immutable
+     * Native authority. Retry/re-entry create derived Branches/Revisions;
+     * there is no post-commit Variant add/select mutation surface.
      */
     async applyRuntimeCommit(handle, sessionId, {
         commands = [],
@@ -350,31 +325,21 @@ export class SessionCore {
         });
     }
 
-    async forkBranch(handle, sessionId, { revisionId, messageId, variantId, displayName, expectedRevisionId } = {}) {
+    async forkBranch(handle, sessionId, { revisionId, messageId, displayName, expectedRevisionId } = {}) {
         const current = await this._current(handle, sessionId, expectedRevisionId);
         let source = revisionId ? await this.load(handle, sessionId, { revisionId }) : current;
         let timeline = source.timeline;
         if (messageId !== undefined) {
             const selected = timeline.find(item => item.messageId === messageId);
             if (!selected) throw new NotFoundError('native fork message');
-            const selectedVariantId = variantId ?? selected.activeVariantId;
-            if (selectedVariantId && !selected.variantIds.includes(selectedVariantId)) {
-                throw new NotFoundError('native fork variant');
-            }
             // A message-scoped fork means "fork from the coherent Revision at
             // that Timeline boundary", not "slice old text while inheriting
             // later state". Walk back across state-only revisions whose
             // Timeline HEAD stayed on the same message and pick the earliest
             // boundary in the nearest ancestry block.
-            source = await this._findTimelineBoundary(
-                handle,
-                sessionId,
-                source,
-                messageId,
-                selectedVariantId ?? undefined,
-            );
+            source = await this._findTimelineBoundary(handle, sessionId, source, messageId);
             timeline = source.timeline;
-        } else if (variantId !== undefined) throw new TypeError('Fork Variant requires messageId');
+        }
         const last = timeline.at(-1);
         const forkPoint = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
         const branchId = createNativeId('branch');
