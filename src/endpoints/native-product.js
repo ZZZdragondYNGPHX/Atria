@@ -152,6 +152,15 @@ export function createNativeProductRouter(getServices = services) {
         res.json({ deleted: await product.deleteKnowledgeBase(handle, req.params.knowledgeBaseId) });
     }));
 
+    router.post('/saves/preflight', route(async (req, res, { product }, handle) => {
+        res.json(await product.preflightSaveImport(handle, decodeArchive(req.body?.data)));
+    }));
+    router.post('/saves/import', route(async (req, res, { product }, handle) => {
+        res.json(await product.importSave(handle, decodeArchive(req.body?.data), {
+            ...(req.body?.password === undefined ? {} : { password: req.body.password }),
+        }));
+    }));
+
     router.get('/sessions', route(async (req, res, { product }, handle) => {
         res.json(await product.listSessions(handle, {
             packageId: req.query.packageId || null,
@@ -159,6 +168,26 @@ export function createNativeProductRouter(getServices = services) {
     }));
     router.get('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
         res.json(await product.getSession(handle, req.params.sessionId));
+    }));
+    router.post('/sessions/:sessionId/export', route(async (req, res, { product }, handle) => {
+        const archive = await product.exportSession(handle, req.params.sessionId, {
+            ...(req.body?.password === undefined ? {} : { password: req.body.password }),
+        });
+        res.json({
+            data: archive.toString('base64'),
+            fileName: `${req.params.sessionId}.atriasave`,
+            mediaType: 'application/octet-stream',
+        });
+    }));
+    router.post('/sessions/:sessionId/saves/:saveId/export', route(async (req, res, { product }, handle) => {
+        const archive = await product.exportSnapshot(handle, req.params.sessionId, req.params.saveId, {
+            ...(req.body?.password === undefined ? {} : { password: req.body.password }),
+        });
+        res.json({
+            data: archive.toString('base64'),
+            fileName: `${req.params.saveId}.atriasave`,
+            mediaType: 'application/octet-stream',
+        });
     }));
     router.post('/sessions/:sessionId/save', route(async (req, res, { product }, handle) => {
         res.json(await product.createSave(handle, req.params.sessionId, req.body || {}));
