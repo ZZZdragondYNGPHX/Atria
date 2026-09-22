@@ -68,6 +68,7 @@ export class NativeSessionRuntime {
         this.failed = false;
         this.history = false;
         this.generation = null;
+        this.stagedStates = {};
     }
 
     get active() { return this.snapshot !== null; }
@@ -77,15 +78,43 @@ export class NativeSessionRuntime {
     readState(namespace) {
         if (!this.active) return null;
         const key = normalizeNativeStateNamespace(namespace);
+        if (Object.prototype.hasOwnProperty.call(this.stagedStates, key)) {
+            return copy(this.stagedStates[key]);
+        }
         const value = this.snapshot?.states?.[key];
         return value === undefined ? null : copy(value);
     }
 
+    /**
+     * Stage Draft-local SessionState so it is committed atomically with the
+     * accepted Native generation. Stop/abort clears this buffer and therefore
+     * cannot publish a state-only Revision from generation-local work.
+     */
+    stageState(namespace, value) {
+        this.assertWritable();
+        const key = normalizeNativeStateNamespace(namespace);
+        if (value === undefined || value === null) throw new TypeError('Staged Native state must be non-null');
+        const next = copy(value);
+        const current = this.readState(key);
+        if (equalJson(current, next)) return { ok: true, state: current, updated: false };
+        this.stagedStates[key] = next;
+        return { ok: true, state: copy(next), updated: true };
+    }
+
+    _clearStagedStates(namespaces = null) {
+        if (Array.isArray(namespaces)) {
+            for (const namespace of namespaces) delete this.stagedStates[normalizeNativeStateNamespace(namespace)];
+            return;
+        }
+        this.stagedStates = {};
+    }
+
     _runtimeStatePatch() {
         const source = this.host?.runtimeState?.();
-        if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+        const hostState = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+        const merged = { ...hostState, ...this.stagedStates };
         const patch = {};
-        for (const [rawNamespace, rawValue] of Object.entries(source)) {
+        for (const [rawNamespace, rawValue] of Object.entries(merged)) {
             if (rawValue === undefined) continue;
             const namespace = normalizeNativeStateNamespace(rawNamespace);
             const value = copy(rawValue);
@@ -141,6 +170,7 @@ export class NativeSessionRuntime {
                     command: { type: 'runtime', statePatch: { [key]: copy(nextValue) } },
                 });
                 this.snapshot = next;
+                this._clearStagedStates([key]);
                 this.host?.revision?.(projectNativeSession(next));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
                     stateNamespaces: [key],
@@ -169,6 +199,7 @@ export class NativeSessionRuntime {
                     command: { type: 'runtime', deleteNamespaces: [key] },
                 });
                 this.snapshot = next;
+                this._clearStagedStates([key]);
                 this.host?.revision?.(projectNativeSession(next));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
                     deletedStateNamespaces: [key],
@@ -241,6 +272,7 @@ export class NativeSessionRuntime {
         const snapshot = await this.request('load', { sessionId, revisionId });
         this.queue = Promise.resolve();
         this.snapshot = snapshot;
+        this._clearStagedStates();
         this.history = revisionId !== undefined;
         this.failed = false;
         this.generation = null;
@@ -280,6 +312,7 @@ export class NativeSessionRuntime {
         this.failed = false;
         this.history = false;
         this.generation = null;
+        this._clearStagedStates();
         await this.host.clear();
     }
 
@@ -382,6 +415,7 @@ export class NativeSessionRuntime {
         if (['', '...'].includes(continuation.trim())) {
             const aborted = this.generation;
             this.generation = null;
+            this._clearStagedStates();
             await this.host.install(projectNativeSession(this.snapshot));
             await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
                 kind: aborted?.kind ?? 'continue',
@@ -415,6 +449,7 @@ export class NativeSessionRuntime {
             });
             this.snapshot = next;
             this.generation = null;
+            this._clearStagedStates();
             await this.host.install(projectNativeSession(next));
             const appended = next.timeline.slice(previous.timeline.length).map(item => item.messageId);
             await this._emit(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, next, previous, { messageIds: appended });
@@ -459,6 +494,7 @@ export class NativeSessionRuntime {
                 // Revision, so discard the draft and reinstall canonical
                 // SessionState instead of publishing a state-only Revision.
                 this.generation = null;
+                this._clearStagedStates();
                 await this.host.install(projectNativeSession(this.snapshot));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
                     kind: aborted?.kind ?? 'append',
@@ -490,6 +526,7 @@ export class NativeSessionRuntime {
                     command: { type: 'runtime', commands, statePatch },
                 });
                 this.snapshot = next;
+                this._clearStagedStates();
                 const projection = projectNativeSession(next);
                 // Existing committed objects already passed the barrier. Newly
                 // committed Draft objects keep their JS identity but are
@@ -533,6 +570,7 @@ export class NativeSessionRuntime {
         if (this.generation) {
             const aborted = this.generation;
             this.generation = null;
+            this._clearStagedStates();
             await this.host.install(projectNativeSession(this.snapshot));
             await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
                 kind: aborted?.kind ?? 'append',
