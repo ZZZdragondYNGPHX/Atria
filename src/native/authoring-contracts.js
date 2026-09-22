@@ -358,10 +358,10 @@ export function assertProjectRevision(value) {
     only(value, ['projectId', 'revision', 'parentRevision', 'createdAt'], 'ProjectRevision');
     return Object.freeze({
         projectId: assertNativeId(value.projectId, 'project', 'ProjectRevision.projectId'),
-        revision: digest(value.revision, 'ProjectRevision.revision'),
+        revision: token(value.revision, 'ProjectRevision.revision'),
         parentRevision: value.parentRevision == null
             ? null
-            : digest(value.parentRevision, 'ProjectRevision.parentRevision'),
+            : token(value.parentRevision, 'ProjectRevision.parentRevision'),
         ...(value.createdAt == null ? {} : { createdAt: timestamp(value.createdAt, 'ProjectRevision.createdAt') }),
     });
 }
@@ -372,8 +372,8 @@ export function assertProjectRevisionConflict(value) {
     if (value.code !== ATRIA_PROJECT_CONFLICT_CODE) {
         throw new TypeError('ProjectRevisionConflict.code must be \'project_revision_conflict\'');
     }
-    const expectedRevision = digest(value.expectedRevision, 'ProjectRevisionConflict.expectedRevision');
-    const actualRevision = digest(value.actualRevision, 'ProjectRevisionConflict.actualRevision');
+    const expectedRevision = token(value.expectedRevision, 'ProjectRevisionConflict.expectedRevision');
+    const actualRevision = token(value.actualRevision, 'ProjectRevisionConflict.actualRevision');
     if (expectedRevision === actualRevision) {
         throw new TypeError('ProjectRevisionConflict requires different expected and actual revisions');
     }
@@ -396,7 +396,7 @@ export function assertAuthoringWorkspace(value) {
     return Object.freeze({
         workspaceId: token(value.workspaceId, 'AuthoringWorkspace.workspaceId'),
         projectId: assertNativeId(value.projectId, 'project', 'AuthoringWorkspace.projectId'),
-        baseRevision: digest(value.baseRevision, 'AuthoringWorkspace.baseRevision'),
+        baseRevision: token(value.baseRevision, 'AuthoringWorkspace.baseRevision'),
         origin: assertOrigin(value.origin, 'AuthoringWorkspace.origin'),
         operations: Object.freeze(operations),
         ...(value.createdAt == null ? {} : { createdAt: timestamp(value.createdAt, 'AuthoringWorkspace.createdAt') }),
@@ -445,7 +445,7 @@ export function assertAuthoringChangeSet(value) {
     });
     const resultingRevision = value.resultingRevision == null
         ? null
-        : digest(value.resultingRevision, 'ChangeSet.resultingRevision');
+        : token(value.resultingRevision, 'ChangeSet.resultingRevision');
     if (value.validation.status !== 'passed' && resultingRevision !== null) {
         throw new TypeError('Only a passed ChangeSet may publish a resultingRevision');
     }
@@ -453,7 +453,7 @@ export function assertAuthoringChangeSet(value) {
         changeSetId: token(value.changeSetId, 'ChangeSet.changeSetId'),
         workspaceId: token(value.workspaceId, 'ChangeSet.workspaceId'),
         projectId: assertNativeId(value.projectId, 'project', 'ChangeSet.projectId'),
-        baseRevision: digest(value.baseRevision, 'ChangeSet.baseRevision'),
+        baseRevision: token(value.baseRevision, 'ChangeSet.baseRevision'),
         operations: Object.freeze(operations),
         validation: Object.freeze({
             status: value.validation.status,
