@@ -1232,3 +1232,177 @@ N9 completed the product-surface cutover but deliberately did **not** perform N1
 N10 must now remove residual Native product dependence on legacy identities/formats/authorities while preserving mature runtime ABI machinery that remains necessary behind adapters.
 
 N10 scope is the frozen Master Plan section **N10 — Hard Cutover & Legacy Retirement**. Do not redesign N0–N9.
+
+---
+
+## N10 implementation record — validated 2026-09-22
+
+**Status: N10 complete and validated. N0–N10 implementation is frozen; final integration is next.**
+
+- Working branch: `refactor/atria-native-content-session-architecture`
+- Validated HEAD: `031971954d907a930f0db8ed0bf1d1eefeaf43ef`
+- Workflow: **Native Content Session Dev Checks #224**
+- Run: `35733418199`
+- Result: **success**
+- `main` remained untouched through N10 implementation/validation.
+- Final integration sequence is now: permanent docs → PR to `main` → required PR CI → merge → integrated-main verification → delete temporary refactor branch.
+
+### Hard-cut authority retirement
+
+N10 closed the remaining Active Native product paths that could still expose predecessor persistence/content/history semantics.
+
+Committed Native Timeline authority is now append/fork/revision based:
+
+- `SessionCore.addVariant()` and `SessionCore.selectVariant()` are retired;
+- each new committed TimelineEntry keeps its single birth Variant identity;
+- Native Branch transport rejects committed `variantId` / `swipeId` selection;
+- runtime Branch creation cannot select a committed Swipe/Variant;
+- Retry Reply continues to fork from the exact post-user Revision and appends a fresh Assistant TimelineEntry;
+- Re-enter Turn / Restart From Here remain Revision/Branch operations;
+- direct host/plugin mutation of committed content, swipe arrays or selected swipe fails the N4 Write Barrier before publication.
+
+The ST conversation host may still use `swipes`, `swipe_id`, `swipe_info` and related structures as mutable generation/runtime ABI before/around projection. Those fields are not Native identity and cannot publish a second committed authority.
+
+### Product Library and legacy content identity
+
+The R7 Product Library no longer retains Character/Game/legacy World Info authority adapters.
+
+Retired from Product Library / route authority:
+
+- Character Library mount;
+- legacy Game discovery from Character avatars;
+- legacy World Info Library mount;
+- `openLibraryCharacter()` compatibility route alias.
+
+Current Library product authority is:
+
+- Works → Package / PackageVersion;
+- Worlds & Knowledge → WorldRepo / KnowledgeRepo immutable revisions;
+- Skills → existing Skills controller.
+
+Native identity remains opaque. Contracts continue to reject predecessor identity fields including:
+
+- `characterId`;
+- `charDir`;
+- `avatar_url`;
+- `swipe_id` / swipe index aliases;
+- World Info numeric `uid`;
+- world/book filename/name identity;
+- `charaFilename`;
+- `selected_world_info`.
+
+World Info numeric `uid` may still be synthesized inside the mature selector/projection ABI, but only as adapter-local indexing. Native Knowledge authority remains `knowledgeBaseId + knowledgeRevisionId + knowledgeEntryId + knowledgeBindingId`.
+
+### Legacy Character/chat product flows retired in Native sessions
+
+While a Native Session is active:
+
+- Manage Chat Files is hidden and its action fails closed;
+- Checkpoint Chat create/open/query/exit/list operations fail closed;
+- Character/CardApp editor cannot open against the transient projected Character object;
+- Character import is blocked;
+- PNG / JSON / CharX / BYAF Character export is blocked;
+- related Character import/export/delete/duplicate/connection controls are hidden.
+
+These SillyTavern capabilities remain available for non-Native legacy chats/cards. N10 does not delete genuine upstream Character/chat functionality; it prevents Active Native product flow from treating it as authority.
+
+### World Info / FloorState boundary
+
+N10 retains mature World Info generation/selection ABI behind the Native adapter while making the authority boundary explicit:
+
+- Native World Info candidates come from pinned Native Knowledge via `nativeSessionRuntime.knowledgeEntries()`;
+- Native World Info event state reads from SessionRevision-backed Native state;
+- accepted Native World Info event changes stage/commit through `nativeSessionRuntime.stageState()` / `updateState()`;
+- FloorState is used only by the non-Native World Info branch;
+- Native self-owned modules do not use FloorState/chat structural events as Session authority.
+
+Therefore `WorldInfoRepo`, `worlds/<name>.json`, book names, numeric WI `uid`, chat-lorebook and character primary/auxiliary lorebook selection cannot silently become Native authority.
+
+### N10 residual guard
+
+Added:
+
+- `scripts/check-n10-native-hard-cutover.mjs`
+
+The gate scans Active Native authority/product surfaces and prevents reintroduction of:
+
+- Character / JSONL / World Info persistence endpoint fallback;
+- WorldInfoRepo / file-based World identity;
+- Character/file/avatar identity in Native authority code;
+- FloorState / structural message-event authority;
+- committed Variant mutation primitives;
+- Character/Games/WorldInfo Product Library authority adapters;
+- Character Library route aliases;
+- Native Manage Chat Files / Checkpoint Chat;
+- Native Character/CardApp import/export identity;
+- World Info adapter bypass of pinned Knowledge / SessionRevision state.
+
+Final N10 run scanned **39 authority files** successfully.
+
+### R7 Shell after hard cutover
+
+N10 preserves the R7 Shell and route authority while updating acceptance to current Native product semantics.
+
+The final browser gate proves:
+
+- one `#sheld`, `#chat`, `#send_form`, and `#send_textarea` host;
+- Native Works → Work detail → EntryPoint → Play;
+- Native Timeline / Context controls;
+- Library Worlds & Knowledge;
+- Native Studio;
+- Runtime;
+- Plugins;
+- Settings;
+- return to Native Play;
+- desktop → compact/mobile survival and Bottom Navigation;
+- R7 final-hardening / compatibility DOM contract.
+
+Historical R7 browser assertions that expected Character Library authority or committed Edit/Regenerate/Swipe product behavior are intentionally superseded by N9/N10 and are not current acceptance criteria.
+
+### N10 final validation
+
+Exact HEAD `031971954d907a930f0db8ed0bf1d1eefeaf43ef` passed:
+
+- N0 Native Contracts: success;
+- N1 Storage + N3/N5 Core + N4 Projection: success;
+- N2 Package Project Composition: success;
+- N4 real-host Chromium Native Session acceptance: success;
+- N5 Runtime State & Revision Lifecycle: success;
+- N6 Native Knowledge Runtime Integration: success;
+- N7 Native Context Architecture / Checkpoint C: success;
+- N8 Save System / Checkpoint B: success;
+- N9 Product UI Cutover: success;
+- N10 focused hard-cutover regression: **5 suites / 69 tests passed**;
+- N10 Native authority residual guard: **39 authority files scanned, passed**;
+- N10 guard syntax and source lint: success;
+- N10 R7 Shell unit regression: **13 suites / 58 tests passed**;
+- N10 R7 Shell real-host Chromium regression: **4 passed**;
+- complete Node regression: **757 suites / 8803 tests passed**;
+- frontend webpack build: success.
+
+The complete Node regression ran with MySQL/PostgreSQL services enabled.
+
+### Final architecture boundary
+
+The Active Native product path now uses these authorities end-to-end:
+
+```text
+Package / PackageVersion / EntryPoint
+        ↓
+WorldRevision + KnowledgeRevision + KnowledgeBinding
+        ↓
+Session / Branch
+        ↓
+immutable TimelineEntry + birth Variant
+        ↓
+SessionRevision
+        ↓
+SavePoint / .atriasave
+        ↓
+bounded ContextPlan + source-backed derived state
+```
+
+Character files, JSONL chats, legacy World Info files, mutable chat floors, Swipe selection and in-place committed edits are not fallback Native authorities.
+
+Mature SillyTavern generation/Character/World Info machinery remains where required as host/runtime ABI behind adapters. N10 is a hard product-authority cutover, not a total upstream runtime rewrite.
+
