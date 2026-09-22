@@ -11,8 +11,12 @@ function assertJsonValue(value, field, seen = new Set()) {
     if (Array.isArray(value)) {
         value.forEach((item, index) => assertJsonValue(item, `${field}[${index}]`, seen));
     } else {
-        const proto = Object.getPrototypeOf(value);
-        if (proto !== Object.prototype && proto !== null) {
+        // Jest VM modules and plugin/worker boundaries can hand us ordinary
+        // JSON objects from another realm, where direct prototype identity
+        // differs from this realm's Object.prototype. Brand-check instead:
+        // Dates/Maps/Sets/etc. retain distinct tags while cross-realm plain
+        // objects (including null-prototype objects) remain [object Object].
+        if (Object.prototype.toString.call(value) !== '[object Object]') {
             throw new TypeError(`${field} must contain plain JSON objects only`);
         }
         for (const [key, item] of Object.entries(value)) {
