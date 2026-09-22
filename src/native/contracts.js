@@ -740,6 +740,9 @@ export function assertAtriaSave(value) {
         for (const [namespace, head] of Object.entries(revision.stateHeads)) {
             if (!stateKeys.has(namespace + '\0' + head)) throw new TypeError('SessionRevision references missing state ' + namespace + '@' + head);
         }
+        if (!stateKeys.has('atri_knowledge\0' + revision.knowledgeHead)) {
+            throw new TypeError('SessionRevision references missing state atri_knowledge@' + revision.knowledgeHead);
+        }
     }
     for (const savePoint of savePoints) {
         if (
@@ -757,6 +760,12 @@ export function assertAtriaSave(value) {
     }
     if (root.saveId && saveById.get(root.saveId).revisionId !== root.revisionId) {
         throw new TypeError('root.saveId and root.revisionId must identify the same SavePoint');
+    }
+    if (value.scope === 'snapshot') {
+        const rootRevision = revisionById.get(root.revisionId);
+        if (session.headRevisionId !== root.revisionId || session.activeBranchId !== rootRevision.branchId) {
+            throw new TypeError('.atriasave snapshot Session must publish the exported root Revision');
+        }
     }
 
     return Object.freeze({
