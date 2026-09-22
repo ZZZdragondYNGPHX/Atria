@@ -338,6 +338,35 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
         }
     });
 
+    test('same Package IDs/version with a different container hash is an exact-dependency mismatch', async () => {
+        const source = await makeTempFsEngineHarness();
+        const target = await makeTempFsEngineHarness();
+        try {
+            const f = await installFixture(source);
+            const view = await f.core.create(source.handle, f.start);
+            const save = await f.saveSystem.manualSave(source.handle, view.session.sessionId);
+            const exported = await f.saveSystem.exportSnapshot(source.handle, view.session.sessionId, save.saveId);
+
+            const other = services(target);
+            // Package containers use fresh authenticated-envelope entropy, so
+            // rebuilding the identical logical manifest preserves IDs/version
+            // but deliberately produces a different packageContentHash.
+            await installFixture(target, f, other);
+
+            const preflight = await other.saveSystem.preflightImport(target.handle, exported.archive);
+            expect(preflight.dependency).toMatchObject({
+                status: 'mismatch',
+                code: 'native_save_package_mismatch',
+            });
+            await expect(other.saveSystem.importSave(target.handle, exported.archive))
+                .rejects.toMatchObject({ code: 'native_save_package_mismatch' });
+            expect(await other.sessionRepo.list(target.handle)).toEqual([]);
+        } finally {
+            await source.cleanup();
+            await target.cleanup();
+        }
+    });
+
     test('embedded Knowledge promotion is explicit and does not silently rewrite imported Session binding policy', async () => {
         const source = await makeTempFsEngineHarness();
         const target = await makeTempFsEngineHarness();
