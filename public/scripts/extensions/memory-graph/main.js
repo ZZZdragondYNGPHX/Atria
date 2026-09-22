@@ -8240,7 +8240,14 @@ async function syncPersistentLorebookProjection(context, settings, store, assert
     );
     if (isMemoryOsEnabled(settings)) {
         const count = memoryTokenCounter(context);
-        const budget = Math.max(0, memoryTokenBudget(settings) - await count(existingStatePrompt(context, settings)));
+        const contextBudget = nativeSessionRuntime.active
+            ? nativeSessionRuntime.contextLaneBudget('memory')
+            : null;
+        const laneCap = contextBudget ? Math.max(0, Number(contextBudget.tokens) || 0) : Number.POSITIVE_INFINITY;
+        const budget = Math.max(
+            0,
+            Math.min(memoryTokenBudget(settings), laneCap) - await count(existingStatePrompt(context, settings)),
+        );
         while (alwaysInjectNodes.length && await count(corePacket) > budget) {
             assertCurrent();
             alwaysInjectNodes.pop();

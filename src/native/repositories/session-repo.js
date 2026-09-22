@@ -248,7 +248,7 @@ export class SessionRepo {
                 end === null ? selections.length : end,
                 start + boundedLimit,
             );
-            const selected = selections.slice(start, stop);
+            const selected = selections.slice(start, stop).map((item, index) => ({ ...item, sequence: start + index }));
             return {
                 sessionId,
                 revisionId: revision.revisionId,
@@ -278,7 +278,8 @@ export class SessionRepo {
                 sessionId,
                 revisionId,
             );
-            const selected = selections.filter(item => requested.has(item.messageId));
+            const selected = selections.map((item, sequence) => ({ ...item, sequence }))
+                .filter(item => requested.has(item.messageId));
             const found = new Set(selected.map(item => item.messageId));
             const missingMessageIds = [...requested].filter(id => !found.has(id));
             return {

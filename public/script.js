@@ -57,6 +57,8 @@ import {
     charUpdatePrimaryWorld,
     charSetAuxWorlds,
     deleteWorldInfoWithUndo,
+    world_info_budget,
+    world_info_budget_cap,
 } from './scripts/world-info.js';
 import { initWorldInfoWorkspace } from './scripts/world-info/workspace.js';
 
@@ -7873,6 +7875,50 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             this_max_context -= decrement;
             console.log(`Max context reduced by ${decrement} tokens of CFG prompt (${previousMaxContext} -> ${this_max_context})`);
         }
+    }
+
+    if (nativeSessionRuntime.active) {
+        const framingReserveText = [
+            description,
+            personality,
+            persona,
+            scenario,
+            system,
+            jailbreak,
+            charDepthPrompt,
+            creatorNotes,
+            mesExamples,
+        ].map(value => String(value ?? '')).filter(Boolean).join('\n');
+        const framingReserveTokens = framingReserveText
+            ? await getTokenCountAsync(framingReserveText, 0)
+            : 0;
+        let knowledgeLaneCap = Math.round(Number(world_info_budget || 0) * this_max_context / 100) || 1;
+        if (Number(world_info_budget_cap) > 0) {
+            knowledgeLaneCap = Math.min(knowledgeLaneCap, Number(world_info_budget_cap));
+        }
+        const contextPlan = await nativeSessionRuntime.prepareContext({
+            target: 'narrator',
+            policy: 'balanced',
+            modelContextLimit: getMaxContextTokens(),
+            responseReserve: getMaxResponseTokens(),
+            effectivePromptLimit: this_max_context,
+            externalHardReserveTokens: framingReserveTokens,
+            laneCaps: { knowledge: Math.max(0, Math.floor(knowledgeLaneCap)) },
+            deferredLanes: ['memory'],
+            countTokens: value => getTokenCountAsync(String(value ?? ''), 0),
+        });
+        coreChat = nativeSessionRuntime.filterCoreChatForContext(coreChat, contextPlan);
+        setExtensionPrompt(
+            'atria_native_context',
+            contextPlan.renderedWarmContext || '',
+            extension_prompt_types.IN_PROMPT,
+            0,
+            false,
+            extension_prompt_roles.SYSTEM,
+        );
+        this_max_context = Math.min(this_max_context, contextPlan.budget.promptCeiling);
+    } else {
+        setExtensionPrompt('atria_native_context', '', extension_prompt_types.IN_PROMPT, 0, false, extension_prompt_roles.SYSTEM);
     }
 
     const generationContextPayload = {

@@ -517,12 +517,12 @@ function commitmentItems(state, target, branchId) {
     return { included, rejected };
 }
 
-function memoryItems(memoryEvidence, snapshot) {
+function memoryItems(memoryEvidence, snapshot, rejectedMemoryIds = new Set()) {
     const result = [];
     for (const [index, raw] of (Array.isArray(memoryEvidence) ? memoryEvidence : []).entries()) {
         const memoryId = text(raw?.memoryId || raw?.id) || 'memory-' + index;
         const content = String(raw?.content ?? raw?.text ?? '').trim();
-        if (!content) continue;
+        if (!content || rejectedMemoryIds.has(memoryId)) continue;
         const sourceRefs = Array.isArray(raw?.sourceRefs)
             ? raw.sourceRefs
             : Array.isArray(raw?.source?.sourceRefs)
@@ -731,15 +731,31 @@ export class SessionContextCompiler {
         const narrative = narrativeItems(derivedState, snapshot.revision.branchId);
         const commitments = commitmentItems(derivedState, target, snapshot.revision.branchId);
 
+        const rejectedMemoryIds = new Set(
+            (knowledge.plan.authorityEvidence?.memory?.rejected ?? []).map(item => String(item.memoryId || '')),
+        );
         let candidates = [
             ...currentStateItems(snapshot),
             ...knowledge.items,
             ...narrative.included,
             ...commitments.included,
-            ...memoryItems(options.memoryEvidence, snapshot),
+            ...memoryItems(options.memoryEvidence, snapshot, rejectedMemoryIds),
             ...raw.recent,
         ];
         if (raw.currentUser) candidates.push(raw.currentUser);
+        for (const lane of Array.isArray(options.deferredLanes) ? options.deferredLanes : []) {
+            if (!LANE_VALUES.has(lane) || !Number.isFinite(Number(minima[lane])) || Number(minima[lane]) <= 0) continue;
+            candidates.push(normalizeContextItem({
+                contextItemId: 'deferred-reserve:' + lane,
+                lane,
+                authority: 'deferred_lane_reserve',
+                authorityRank: lane === CONTEXT_LANES.memory ? KNOWLEDGE_AUTHORITY.memoryEvidence.rank : 100,
+                priority: -1000000,
+                content: '',
+                tokenEstimate: Math.min(promptBudget, Number(minima[lane])),
+                metadata: { deferredReserve: true },
+            }));
+        }
 
         const preRejected = [
             ...knowledge.rejected,

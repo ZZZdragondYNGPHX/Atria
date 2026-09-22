@@ -10290,6 +10290,12 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
         console.debug(`[WI] Budget ${budget} exceeds cap ${world_info_budget_cap}, using cap`);
         budget = world_info_budget_cap;
     }
+    if (nativeSessionRuntime.active) {
+        const contextBudget = nativeSessionRuntime.contextLaneBudget('knowledge');
+        if (contextBudget) {
+            budget = Math.min(budget, Math.max(0, Number(contextBudget.tokens) || 0));
+        }
+    }
 
     console.debug(`[WI] Context size: ${maxContext}; WI budget: ${budget} (max% = ${world_info_budget}%, cap = ${world_info_budget_cap})`);
     const loadedEntries = await getSortedEntries();

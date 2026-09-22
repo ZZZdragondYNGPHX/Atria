@@ -11,6 +11,11 @@ import {
     emitNativeSessionLifecycle,
 } from './session-lifecycle.js';
 import { compileNativeKnowledgeEntries, compileNativeKnowledgePlan } from './knowledge-runtime.js';
+import {
+    compileNativeContextPlan,
+    filterNativeCoreChatForContext,
+    getContextLaneBudget,
+} from './context-compiler.js';
 
 function copy(value) {
     return JSON.parse(JSON.stringify(value));
@@ -69,6 +74,7 @@ export class NativeSessionRuntime {
         this.history = false;
         this.generation = null;
         this.stagedStates = {};
+        this.lastContextPlan = null;
     }
 
     get active() { return this.snapshot !== null; }
@@ -276,6 +282,7 @@ export class NativeSessionRuntime {
         this.history = revisionId !== undefined;
         this.failed = false;
         this.generation = null;
+        this.lastContextPlan = null;
         await this.host.install(projectNativeSession(snapshot));
         await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, snapshot, null, {
             historical: revisionId !== undefined,
@@ -312,6 +319,7 @@ export class NativeSessionRuntime {
         this.failed = false;
         this.history = false;
         this.generation = null;
+        this.lastContextPlan = null;
         this._clearStagedStates();
         await this.host.clear();
     }
@@ -651,7 +659,69 @@ export class NativeSessionRuntime {
     }
 
     knowledgeEntries(options = {}) {
-        return this.active ? compileNativeKnowledgeEntries(this.snapshot, options).entries : null;
+        if (!this.active) return null;
+        const compiled = compileNativeKnowledgeEntries(this.snapshot, options);
+        const plan = this.lastContextPlan;
+        const sameContext = plan
+            && plan.revisionId === this.snapshot.revision.revisionId
+            && plan.target?.kind === compiled.plan.target?.kind
+            && String(plan.target?.id || '') === String(compiled.plan.target?.id || '');
+        if (!sameContext) return compiled.entries;
+        const allowed = new Set(plan.sourceSelection?.selectedKnowledgeIdentities ?? []);
+        return compiled.entries.filter(entry => allowed.has(entry.atri_native?.identity));
+    }
+
+    async prepareContext(options = {}) {
+        if (!this.active) return null;
+        const plan = await compileNativeContextPlan(this.snapshot, options);
+        this.lastContextPlan = plan;
+        return plan;
+    }
+
+    currentContextPlan() {
+        return this.lastContextPlan ? copy(this.lastContextPlan) : null;
+    }
+
+    contextLaneBudget(lane) {
+        return getContextLaneBudget(this.lastContextPlan, lane);
+    }
+
+    filterCoreChatForContext(coreChat, plan = this.lastContextPlan) {
+        return filterNativeCoreChatForContext(coreChat, plan);
+    }
+
+    async readTimelineRange(options = {}) {
+        if (!this.active) throw new Error('No Native Session is open');
+        return this.request('timeline', {
+            sessionId: this.snapshot.session.sessionId,
+            revisionId: options.revisionId ?? this.snapshot.revision.revisionId,
+            fromSequence: options.fromSequence ?? 0,
+            toSequence: options.toSequence ?? null,
+            limit: options.limit ?? 256,
+        });
+    }
+
+    async readContextSources(sourceRefs = []) {
+        if (!this.active) throw new Error('No Native Session is open');
+        const timelineRefs = (Array.isArray(sourceRefs) ? sourceRefs : [])
+            .filter(ref => ref?.kind === 'timeline' && typeof ref.messageId === 'string' && ref.messageId);
+        const groups = new Map();
+        for (const ref of timelineRefs) {
+            const revisionId = String(ref.revisionId || this.snapshot.revision.revisionId);
+            const ids = groups.get(revisionId) ?? new Set();
+            ids.add(ref.messageId);
+            groups.set(revisionId, ids);
+        }
+        const resolved = [];
+        for (const [revisionId, ids] of groups) {
+            const response = await this.request('timeline', {
+                sessionId: this.snapshot.session.sessionId,
+                revisionId,
+                messageIds: [...ids],
+            });
+            resolved.push(response);
+        }
+        return resolved;
     }
 
     regexScripts() { return this.active ? this.snapshot.manifest.processors?.regex ?? [] : []; }
