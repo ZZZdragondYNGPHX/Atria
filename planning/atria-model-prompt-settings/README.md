@@ -1,6 +1,6 @@
 # Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：P0–P6 已完成并验证；当前下一阶段为 P7 — Product Surface Cleanup。**
+**状态：P0–P7 已完成并验证；当前下一阶段为 P8 — Hard Cut / Integration / Freeze。**
 
 ## 当前基线
 
@@ -195,3 +195,16 @@ adjacent P4/P5 cases passing separately in the combined run. Final screenshots
 inspected. Broader storage run has four failures reproduced on unchanged P5;
 see P6-VALIDATION.md for exact evidence, intermediate failures and exclusions.
 No main merge or P7/P8 implementation. P7 is next only on explicit continuation.
+
+
+## P7 completion checkpoint (2026-09-23)
+
+P7 complete at `bde2fbc1ed58bc8f9a915dc7c2e72c210917c245`. Settings is preference-only,
+Studio no longer edits package.presets, Search navigates to exact owner/revision
+Library details and refreshes on Command open, and legacy preset UI reads are
+Native-disabled behind one explicit compatibility boundary. Simplified Chinese
+Prompt/Runtime/Settings labels and dynamic stages use existing localization.
+Final FS/SQLite regression: 210 suites / 1837 tests; P4-P7 combined browser: 12
+passed, final P4/P7 follow-up: 6 passed (overlapping). Screenshots inspected.
+P0-P7/A0-A8/N9-N10 guards, lint/syntax/diff and prebuild-cache passed.
+Details/exclusions: P7-VALIDATION.md. No main merge; stop before P8.
