@@ -1922,3 +1922,49 @@ The integration owner must:
 6. verify merged `main`;
 7. perform final docs bookkeeping;
 8. delete `refactor/atria-native-authoring-platform-product-frontend` after the merge is verified.
+
+
+---
+
+## Final Integration / Merge Main — complete
+
+Final Integration was completed on 2026-09-23.
+
+### PR and merge
+
+- PR: **#84** — `refactor/atria-native-authoring-platform-product-frontend` → `main`
+- Final implementation/integration HEAD: `b4b66aabf2f56c6f4e02ad86ee9177a660365fd3`
+- Merge commit: **`2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`**
+- Merge tree: `ef9d9d0f22994465f3d166a6042ab2991e6abde9`
+- Pre-merge main baseline: `fd9a493c9040b32f4892bd92531030e58b066244`
+
+The implementation branch was behind `main` by zero commits and merged without content conflicts.
+
+### Integration-only change
+
+The PR exposed stale Backup/Storage E2E navigation that still clicked the hidden SillyTavern User Settings drawer. Tests were moved to the current Account-owned Storage Management / Backup & Sync controllers.
+
+This was a test-entry adaptation only. No A0–A9 product/runtime authority was changed or restored.
+
+### Final CI
+
+- Atria PR Checks #786 / Run 35821081970 — **success**, attempt 2
+- Backup and Storage UI #93 / Run 35821081950 — **success**
+- Worldbook Performance Foundation #394 / Run 35821081919 — **success**
+- Immersive Experience #53 / Run 35821081921 — **success**
+
+PR Checks attempt 1 had one transient MySQL hook timeout in `chat-repo-state.test.js` and was rerun unchanged; attempt 2 passed.
+
+### Merged-main authority verification
+
+The merge commit tree is byte-for-byte the same Git tree as the final CI-validated PR HEAD.
+
+Post-merge inspection confirmed all A0–A9 guard scripts and current Native authority files remain present, while representative retired A9 paths remain absent.
+
+Therefore Final Integration introduced no authority rollback, compatibility restoration, or merge-only code delta.
+
+### Task state
+
+This refactor is complete. N0–N10 and A0–A9 are no longer active implementation phases.
+
+Future tasks should branch from the new authoritative `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`.
