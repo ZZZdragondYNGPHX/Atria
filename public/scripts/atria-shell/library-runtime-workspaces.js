@@ -371,47 +371,114 @@ async function waitForConnectionManagerRoot(documentRef, timeoutMs = 6000) {
 }
 
 async function mountConnectionManagerWorkspace({ document: documentRef, body, route }) {
-    const managerRoot = await waitForConnectionManagerRoot(documentRef);
-    if (!managerRoot) {
-        const panel = createLocalizedStatePanel(documentRef, 'loading', {
-            title: 'Connections',
-            message: 'Connection Manager is still finishing its existing controller bootstrap.',
-        });
-        body.replaceChildren(panel);
-        return { root: panel, dispose: () => panel.remove() };
+    const context = globalThis.Atria?.getContext?.();
+    const settings = context?.extensionSettings?.connectionManager || {};
+    const profiles = Array.isArray(settings.profiles) ? settings.profiles : [];
+    const selectedId = String(settings.selectedProfile || '');
+
+    const root = documentRef.createElement('section');
+    root.className = 'atria-runtime-connections';
+    root.dataset.atriaRuntimeConnections = 'true';
+
+    const summary = documentRef.createElement('div');
+    summary.className = 'atria-runtime-connections__summary';
+    if (!profiles.length) {
+        summary.append(createLocalizedStatePanel(documentRef, 'empty', {
+            title: 'No connection profiles',
+            message: 'Configure a provider in Advanced Connection Manager.',
+        }));
+    } else {
+        for (const profile of profiles) {
+            const card = documentRef.createElement('article');
+            card.className = 'atria-runtime-connection-card';
+            card.dataset.atriaConnectionProfile = String(profile?.id || profile?.name || '');
+            const title = documentRef.createElement('h3');
+            title.textContent = String(profile?.name || profile?.id || 'Connection');
+            const detail = documentRef.createElement('p');
+            const mode = String(profile?.mode || 'chat');
+            detail.textContent = [
+                mode === 'embed' ? 'Embedding' : mode === 'rerank' ? 'Rerank' : 'Chat',
+                profile?.api || profile?.source || profile?.provider || '',
+                profile?.model || profile?.modelId || '',
+            ].filter(Boolean).join(' · ');
+            const status = documentRef.createElement('span');
+            status.className = 'atria-runtime-connection-card__status';
+            status.textContent = String(profile?.id || '') === selectedId ? 'Active' : 'Available';
+            if (String(profile?.id || '') === selectedId) status.dataset.tone = 'success';
+            card.append(title, detail, status);
+            summary.append(card);
+        }
     }
 
-    // The old R7F adapter only moved #atria-connection-manager-root. That
-    // block contains the profile picker, but the live chat API/model editor
-    // remains a sibling inside #rm_api_block, so profiles were effectively
-    // view-only from Runtime. Embed the complete native API authority instead.
-    const apiBlock = managerRoot.closest?.('#rm_api_block') || documentRef.getElementById('rm_api_block') || managerRoot;
-    const placement = savePlacement(apiBlock);
-    apiBlock.dataset.atriaWorkspaceEmbedded = 'true';
-    managerRoot.dataset.atriaWorkspaceEmbedded = 'true';
-    apiBlock.classList.remove('closedDrawer');
-    apiBlock.classList.add('openDrawer');
-    apiBlock.removeAttribute('aria-hidden');
-    body.replaceChildren(apiBlock);
+    const advanced = documentRef.createElement('details');
+    advanced.className = 'atria-runtime-connection-advanced';
+    advanced.dataset.atriaRuntimeConnectionAdvanced = 'true';
+    const advancedSummary = documentRef.createElement('summary');
+    advancedSummary.textContent = 'Advanced · Connection Manager';
+    const advancedHint = documentRef.createElement('p');
+    advancedHint.textContent = 'The compatibility editor keeps the existing Connection Manager persistence authority.';
+    const advancedBody = documentRef.createElement('div');
+    advancedBody.className = 'atria-runtime-connection-advanced__body';
+    advanced.append(advancedSummary, advancedHint, advancedBody);
+
+    let apiBlock = null;
+    let managerRoot = null;
+    let placement = null;
+    let loading = null;
 
     function applyRouteMode(nextRoute) {
-        // Preserve the intent of old ?atriaChild=retrieval deep links without
-        // exposing a duplicate Runtime tab. Native mode tabs remain the single
-        // switch between conversation / embedding / rerank profiles.
+        if (!managerRoot) return;
         const oldRetrievalRoute = String(nextRoute?.child?.id || '') === 'retrieval';
         const mode = oldRetrievalRoute ? 'embed' : 'chat';
         managerRoot.querySelector(`.connection_profile_mode_tab[data-mode="${mode}"]`)?.click?.();
     }
-    applyRouteMode(route);
+
+    async function mountAdvanced() {
+        if (apiBlock || loading) return;
+        loading = waitForConnectionManagerRoot(documentRef).then(node => {
+            managerRoot = node;
+            if (!managerRoot) {
+                advancedBody.replaceChildren(createLocalizedStatePanel(documentRef, 'loading', {
+                    title: 'Connections',
+                    message: 'Connection Manager is still finishing its existing controller bootstrap.',
+                }));
+                return;
+            }
+            apiBlock = managerRoot.closest?.('#rm_api_block')
+                || documentRef.getElementById('rm_api_block')
+                || managerRoot;
+            placement = savePlacement(apiBlock);
+            apiBlock.dataset.atriaWorkspaceEmbedded = 'advanced';
+            managerRoot.dataset.atriaWorkspaceEmbedded = 'advanced';
+            apiBlock.classList.remove('closedDrawer');
+            apiBlock.classList.add('openDrawer');
+            apiBlock.removeAttribute('aria-hidden');
+            advancedBody.replaceChildren(apiBlock);
+            applyRouteMode(route);
+        }).finally(() => {
+            loading = null;
+        });
+        await loading;
+    }
+
+    advanced.addEventListener('toggle', () => {
+        if (advanced.open) void mountAdvanced();
+    });
+
+    root.append(summary, advanced);
+    body.replaceChildren(root);
 
     return {
-        root: apiBlock,
+        root,
+        mountAdvanced,
         updateRoute(nextRoute) {
+            route = nextRoute;
             applyRouteMode(nextRoute);
         },
         dispose() {
-            delete managerRoot.dataset.atriaWorkspaceEmbedded;
-            restorePlacement(apiBlock, placement);
+            if (managerRoot) delete managerRoot.dataset.atriaWorkspaceEmbedded;
+            if (apiBlock && placement) restorePlacement(apiBlock, placement);
+            root.remove();
         },
     };
 }
