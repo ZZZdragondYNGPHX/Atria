@@ -38,7 +38,6 @@ describe('A7 Structured UI editor', () => {
         expect(root.querySelector('[data-atria-studio-canvas="true"] [data-atria-component-id="label"]'))
             .not.toBeNull();
 
-        controller.select('label');
         tabs.find(node => node.textContent === 'Bindings').click();
         const bindings = root.querySelector('[aria-label="Component bindings JSON"]');
         bindings.value = JSON.stringify({
@@ -52,9 +51,9 @@ describe('A7 Structured UI editor', () => {
         tabs.find(node => node.textContent === 'Source').click();
         const source = root.querySelector('[aria-label="Structured UI source JSON"]');
         const parsed = JSON.parse(source.value);
-        expect(parsed.children[0].bindings.text).toBe('player.maxHp');
-        expect(parsed.children[0].visibility).toEqual({ selector: 'player.ready', when: 'truthy' });
-        expect(parsed.children[0].responsive).toEqual({ devices: ['desktop'] });
+        expect(parsed.bindings.text).toBe('player.maxHp');
+        expect(parsed.visibility).toEqual({ selector: 'player.ready', when: 'truthy' });
+        expect(parsed.responsive).toEqual({ devices: ['desktop'] });
 
         [...root.querySelectorAll('button')].find(node => node.textContent === 'Stage UI Change').click();
         expect(onStage).toHaveBeenCalledTimes(1);
