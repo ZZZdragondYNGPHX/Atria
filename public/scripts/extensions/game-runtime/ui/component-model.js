@@ -1,3 +1,5 @@
+import { cloneGameUiValue } from './clone.js';
+
 export const EXPERIENCE_SURFACES = Object.freeze([
     'app.root',
     'chat.header',
@@ -139,7 +141,7 @@ function compileActions(raw, label) {
     if (!COMMAND_PATTERN.test(commandId)) throw new Error(label + '.actions.click.commandId is invalid');
     const mode = String(action.mode || 'dispatch').trim();
     if (!['dispatch', 'simulate'].includes(mode)) throw new Error(label + '.actions.click.mode is unsupported');
-    const args = action.args === undefined ? {} : structuredClone(action.args);
+    const args = action.args === undefined ? {} : cloneGameUiValue(action.args);
     plain(args, label + '.actions.click.args');
     json(args, { nodes: 0 });
     return Object.freeze({
