@@ -112,6 +112,7 @@ describe('A8 Project Agent HTTP boundary', () => {
 
     test('surfaces revision conflicts as 409 without replacing the Task baseRevision', async () => {
         const agent = makeAgent();
+        const app = appFor(agent);
         agent.executeTool.mockRejectedValue(new ConflictError('project_revision_conflict', {
             code: 'project_revision_conflict',
             projectId: 'project_test',
