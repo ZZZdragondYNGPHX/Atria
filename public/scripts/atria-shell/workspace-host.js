@@ -13,6 +13,7 @@ import {
     normalizeRuntimeSection,
 } from './library-runtime-workspaces.js';
 import { formatShellText, translateShellText } from './localization.js';
+import { createProductSearchIndex } from './product-search.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
     return createAtriaStatePanel(documentRef, kind, {
@@ -249,6 +250,7 @@ export function createAtriaWorkspaceHost({
     let active = null;
     let lastRouteSignature = JSON.stringify(navigation.getRoute());
     const commandDisposers = [];
+    let productSearch = null;
 
     function contextState() {
         return navigation.getContext?.() || {
@@ -679,6 +681,7 @@ export function createAtriaWorkspaceHost({
         openUtility,
         closeActive,
         refreshActive,
+        refreshSearch: () => productSearch?.refresh?.(),
         getActiveWorkspace: () => active?.descriptor || null,
         isActive: key => active?.descriptor?.key === String(key || ''),
         isMounted: () => !disposed,
@@ -688,11 +691,18 @@ export function createAtriaWorkspaceHost({
             sequence += 1;
             documentRef.removeEventListener('click', onLegacyClick, true);
             unsubscribeNavigation?.();
+            productSearch?.dispose?.();
+            productSearch = null;
             for (const dispose of commandDisposers.splice(0)) dispose();
             void disposeActive();
             clearOwnedContext();
             delete slot.dataset.atriaWorkspaceHost;
         },
+    });
+
+    productSearch = createProductSearchIndex({
+        registry: shell.registry,
+        host: api,
     });
 
     commandDisposers.push(
