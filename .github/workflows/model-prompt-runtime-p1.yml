@@ -1,0 +1,72 @@
+name: Model Prompt Runtime P1 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-model-prompt-settings
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model-prompt-runtime-p1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p1-foundation:
+    name: P1 Resource & Persistence Foundation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+
+      - name: Run P1 focused and adjacent Native tests
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/model-prompt-runtime-persistence.test.js
+          native/model-prompt-runtime-p1.test.js
+          native/model-prompt-runtime-contracts.test.js
+          native/resource-registry.test.js
+          native/library-resource.test.js
+          native/library-authoring.test.js
+          native/resource-graph.test.js
+          native/library-build-closure.test.js
+          native/package-build-install.test.js
+
+      - name: Run P0 architecture guard
+        run: node scripts/check-p0-model-prompt-runtime-architecture.mjs
+
+      - name: Run relevant frozen authoring guards
+        run: |
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a7-studio-authoring-ux.mjs
+          node scripts/check-a8-project-agent.mjs
+
+      - name: Run P1 focused lint
+        run: >-
+          npx eslint
+          src/native/contracts.js
+          src/native/project-source.js
+          src/native/dependency-closure.js
+          src/native/package-composition.js
+          src/native/authoring/resource-registry.js
+          src/native/authoring/library-service.js
+          src/native/authoring/library-authoring.js
+          src/native/authoring/resource-graph.js
+          src/native/authoring/studio-service.js
+          src/native/model-prompt-runtime/resources.js
+          src/native/model-prompt-runtime/persistence.js
+          src/endpoints/native-studio.js
+          tests/native/model-prompt-runtime-persistence.test.js
+          tests/native/model-prompt-runtime-p1.test.js
