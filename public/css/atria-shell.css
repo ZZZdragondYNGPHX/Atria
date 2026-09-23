@@ -2007,3 +2007,63 @@ body[data-atria-native-session-active="true"] #char_connections_button {
         min-height: 0;
     }
 }
+
+
+.atria-runtime-connections {
+    display: grid;
+    gap: var(--atri-space-4);
+}
+
+.atria-runtime-connections__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--atri-space-3);
+}
+
+.atria-runtime-connection-card {
+    display: grid;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-surface);
+}
+
+.atria-runtime-connection-card > h3,
+.atria-runtime-connection-card > p {
+    margin: 0;
+}
+
+.atria-runtime-connection-card > p {
+    color: var(--atri-color-text-muted);
+}
+
+.atria-runtime-connection-card__status {
+    justify-self: start;
+    padding: 2px var(--atri-space-2);
+    border-radius: var(--atri-radius-pill);
+    background: var(--atri-color-raised);
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+}
+
+.atria-runtime-connection-card__status[data-tone="success"] {
+    color: var(--atri-color-success);
+}
+
+.atria-runtime-connection-advanced {
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: color-mix(in srgb, var(--atri-color-surface) 70%, transparent);
+}
+
+.atria-runtime-connection-advanced > summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.atria-runtime-connection-advanced__body {
+    min-width: 0;
+    margin-top: var(--atri-space-3);
+}
