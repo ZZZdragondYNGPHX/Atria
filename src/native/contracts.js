@@ -504,6 +504,7 @@ export function assertAtriaPackageManifest(value) {
     const worlds = (value.worlds || []).map(assertPackagedWorldSnapshot);
     const knowledge = (value.knowledge || []).map(assertPackagedKnowledgeSnapshot);
     const knowledgeBindings = (value.knowledgeBindings || []).map(assertKnowledgeBinding);
+    const hasModelPromptResources = value.resources !== undefined;
     const modelPromptResources = (value.resources || []).map((item, index) => (
         assertPackageVersionedModelPromptResourceEnvelope(item, {
             packageId,
@@ -625,7 +626,7 @@ export function assertAtriaPackageManifest(value) {
                 packageVersionId,
             });
         }
-        if (runtime.modelPrompt !== undefined) {
+        if (runtime.modelPrompt !== undefined && hasModelPromptResources) {
             for (const role of runtime.modelPrompt.roles) {
                 for (const ref of [role.promptProgramRef, role.generationProfileRef].filter(Boolean)) {
                     const key = ref.resourceType + ':' + ref.resourceId + '@' + ref.revision;
