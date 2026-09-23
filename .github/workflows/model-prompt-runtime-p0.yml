@@ -70,4 +70,3 @@ jobs:
           src/native/model-prompt-runtime/contracts.js
           src/native/model-prompt-runtime/ports.js
           tests/native/model-prompt-runtime-contracts.test.js
-          scripts/check-p0-model-prompt-runtime-architecture.mjs
