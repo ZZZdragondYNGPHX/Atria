@@ -539,11 +539,7 @@ export class ProjectAgentService {
             operation = assertAuthoringOperation({
                 operationId: operationId(this._idFactory),
                 operationType: STUDIO_SOURCE_OPERATION_TYPES.write,
-                target: {
-                    resourceType: 'core.project-source',
-                    resourceId: requiredString(args.path, 'path'),
-                    path: requiredString(args.path, 'path'),
-                },
+                target: { path: requiredString(args.path, 'path') },
                 input: {
                     content: String(args.content ?? ''),
                     encoding: args.encoding == null ? 'utf8' : String(args.encoding),
@@ -554,11 +550,7 @@ export class ProjectAgentService {
             operation = assertAuthoringOperation({
                 operationId: operationId(this._idFactory),
                 operationType: STUDIO_SOURCE_OPERATION_TYPES.move,
-                target: {
-                    resourceType: 'core.project-source',
-                    resourceId: requiredString(args.path, 'path'),
-                    path: requiredString(args.path, 'path'),
-                },
+                target: { path: requiredString(args.path, 'path') },
                 input: { toPath: requiredString(args.toPath, 'toPath') },
                 origin,
             });
@@ -566,11 +558,7 @@ export class ProjectAgentService {
             operation = assertAuthoringOperation({
                 operationId: operationId(this._idFactory),
                 operationType: STUDIO_SOURCE_OPERATION_TYPES.delete,
-                target: {
-                    resourceType: 'core.project-source',
-                    resourceId: requiredString(args.path, 'path'),
-                    path: requiredString(args.path, 'path'),
-                },
+                target: { path: requiredString(args.path, 'path') },
                 input: {},
                 origin,
             });
