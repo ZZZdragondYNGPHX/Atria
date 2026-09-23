@@ -17,11 +17,13 @@ import { createGameLlmRuntime } from './llm/runtime.js';
 import { createGameTurnController } from './llm/turn-controller.js';
 import { listGameEventMemorySources } from './world/memory-source.js';
 import { GAME_PACKAGE_STATUS, loadNativeGamePackage } from './package-loader.js';
+import { activateNativeExperienceRuntime } from './ui/live.js';
 import { createGameWorldSession } from './world/session.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
     onNativeSessionLifecycle,
 } from '../../native/session-lifecycle.js';
+import { nativeProductClient } from '../../native/product-client.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
 
 const MODULE_NAME = 'game-runtime';
@@ -251,6 +253,16 @@ function stopCurrentGeneration() {
     return true;
 }
 
+async function saveCurrentGameSession() {
+    const sessionId = String(
+        currentPackage.sessionId
+        || nativeSessionRuntime.snapshot?.session?.sessionId
+        || '',
+    ).trim();
+    if (!sessionId) throw new Error('No active Native Session to save');
+    return nativeProductClient.createSave(sessionId, { kind: 'quick' });
+}
+
 async function disableCurrentPackageForSession() {
     revision += 1;
     await disposeCurrentUi();
@@ -326,6 +338,32 @@ export async function reloadGamePackage() {
     currentNarrator = nextRuntimeSystems?.narrator || null;
     currentOrchestratorBridge = nextRuntimeSystems?.orchestratorBridge || null;
     currentTurnRecipes = nextRuntimeSystems?.recipes || null;
+
+    if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
+        try {
+            currentUiSession = await activateNativeExperienceRuntime(next, currentWorldSession, {
+                headers: getRequestHeaders(),
+                hostActions: {
+                    exitExperience: exitCurrentGameUi,
+                    stopGeneration: stopCurrentGeneration,
+                    save: saveCurrentGameSession,
+                    openDiagnostics: openGameDiagnostics,
+                },
+            });
+        } catch (error) {
+            currentWorldSession = null;
+            disposeRuntimeSystems();
+            currentUiSession = null;
+            next = {
+                status: GAME_PACKAGE_STATUS.INVALID,
+                active: false,
+                sessionId,
+                descriptor: next.descriptor,
+                runtime: next.runtime,
+                errors: ['Experience Runtime initialization failed: ' + (error?.message || String(error))],
+            };
+        }
+    }
     publishPackageState(next);
 
     const identity = next.descriptor
@@ -336,9 +374,9 @@ export async function reloadGamePackage() {
     } else if (next.status === GAME_PACKAGE_STATUS.ERROR) {
         console.error(`[${MODULE_NAME}] Failed to load Native Game Runtime for ${identity}`, next.errors);
     } else if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
-        console.info(`[${MODULE_NAME}] Activated Native Text Runtime ${identity}`);
-    } else if (next.status === GAME_PACKAGE_STATUS.READY) {
-        console.info(`[${MODULE_NAME}] Runtime Descriptor is ready; ${next.descriptor.experience.mode} activation is deferred to A4`);
+        console.info(
+            `[${MODULE_NAME}] Activated Native ${next.descriptor.experience.mode} Experience ${identity}`,
+        );
     }
     return currentPackage;
 }
