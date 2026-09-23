@@ -23,7 +23,6 @@ import {
     onNativeSessionLifecycle,
 } from '../../native/session-lifecycle.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
-import { nativeSessionRuntime } from '../../native/session-runtime.js';
 
 const MODULE_NAME = 'game-runtime';
 export const GAME_PACKAGE_CHANGED_EVENT = 'atria:game-package-changed';
