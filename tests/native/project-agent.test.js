@@ -214,19 +214,23 @@ describe('A8 Project Agent authority', () => {
             const invalid = structuredClone(source);
             invalid.project.projectId = 'invalid-project-id';
 
+            const repairStates = [];
             for (let attempt = 1; attempt <= 2; attempt += 1) {
                 task = await agent.executeTool(h.handle, source.project.projectId, task.taskId, {
                     name: 'atri_agent_project_save',
                     args: { source: invalid, stepId: 'step_metadata' },
                 });
                 task = await agent.prepareReview(h.handle, source.project.projectId, task.taskId);
-                expect(task.repairRound).toBe(attempt);
+                repairStates.push({ round: task.repairRound, status: task.status });
                 if (attempt === 1) {
-                    expect(task.status).toBe('repair');
                     task = await agent.resetOperations(h.handle, source.project.projectId, task.taskId);
                 }
             }
 
+            expect(repairStates).toEqual([
+                { round: 1, status: 'repair' },
+                { round: 2, status: 'blocked' },
+            ]);
             expect(task.status).toBe('blocked');
             expect(task.timeline.filter(item => item.type === 'evaluation.failed')).toHaveLength(2);
             await expect(agent.executeTool(h.handle, source.project.projectId, task.taskId, {
