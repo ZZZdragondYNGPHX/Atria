@@ -79,6 +79,5 @@ jobs:
           tests/native/project-agent.test.js
           tests/native/project-agent-http.test.js
           tests/atria-shell/studio-agent-a8.test.js
-          scripts/check-a8-project-agent.mjs
       - name: Run full root lint
         run: npm run lint
