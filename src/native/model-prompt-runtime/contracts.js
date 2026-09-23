@@ -102,7 +102,7 @@ function uniqueStrings(value, field, { namespacedValues = false } = {}) {
     return freezeArray(out);
 }
 
-function assertNoSecretMaterial(value, field, seen = new Set()) {
+export function assertNoSecretMaterial(value, field, seen = new Set()) {
     if (value === null || typeof value !== 'object' || seen.has(value)) return;
     seen.add(value);
     if (Array.isArray(value)) {
@@ -402,12 +402,18 @@ function assertParameterDefinitions(value, field) {
     return Object.freeze(out);
 }
 
-function assertCondition(value, field) {
+function assertCondition(value, field, depth = 0) {
     if (value === undefined || value === null) return null;
+    if (depth > 16) throw new TypeError(field + ' exceeds condition depth');
     object(value, field);
     only(value, ['op', 'path', 'value', 'all', 'any', 'not'], field);
+    if (['op', 'all', 'any', 'not'].filter(key => value[key] !== undefined).length !== 1) {
+        throw new TypeError(field + ' must define exactly one condition');
+    }
     if (value.op !== undefined) {
-        if (!['eq', 'neq', 'in', 'exists'].includes(value.op)) throw new TypeError(field + '.op is unsupported');
+        only(value, ['op', 'path', 'value'], field);
+        if (!['eq', 'neq', 'in', 'exists', 'gt', 'gte', 'lt', 'lte', 'contains'].includes(value.op)) throw new TypeError(field + '.op is unsupported');
+        if (value.op !== 'exists' && value.value === undefined) throw new TypeError(field + '.value is required');
         return Object.freeze({
             op: value.op,
             path: text(value.path, field + '.path', 256),
@@ -416,15 +422,19 @@ function assertCondition(value, field) {
     }
     for (const key of ['all', 'any']) {
         if (value[key] !== undefined) {
-            if (!Array.isArray(value[key]) || value[key].length === 0) {
+            only(value, [key], field);
+            if (!Array.isArray(value[key]) || value[key].length === 0 || value[key].length > 64) {
                 throw new TypeError(field + '.' + key + ' must be a non-empty array');
             }
             return Object.freeze({
-                [key]: freezeArray(value[key].map((item, index) => assertCondition(item, field + '.' + key + '[' + index + ']'))),
+                [key]: freezeArray(value[key].map((item, index) => assertCondition(item, field + '.' + key + '[' + index + ']', depth + 1))),
             });
         }
     }
-    if (value.not !== undefined) return Object.freeze({ not: assertCondition(value.not, field + '.not') });
+    if (value.not !== undefined) {
+        only(value, ['not'], field);
+        return Object.freeze({ not: assertCondition(value.not, field + '.not', depth + 1) });
+    }
     throw new TypeError(field + ' must define op, all, any, or not');
 }
 
@@ -458,9 +468,22 @@ export function assertPromptModule(value) {
     });
 }
 
+function assertArtifactDefinitions(value) {
+    object(value, 'PromptProgram.artifacts');
+    const out = {};
+    for (const [name, definition] of Object.entries(value)) {
+        token(name, 'artifact name');
+        object(definition, 'artifact');
+        only(definition, ['type', 'stageId'], 'artifact');
+        if (!PARAMETER_TYPES.includes(definition.type)) throw new TypeError('Unsupported artifact type');
+        out[name] = Object.freeze({ type: definition.type, stageId: namespaced(definition.stageId, 'artifact.stageId') });
+    }
+    return Object.freeze(out);
+}
+
 function assertProgramStage(value, field) {
     object(value, field);
-    only(value, ['stageId', 'targets', 'moduleRefs', 'condition'], field);
+    only(value, ['stageId', 'targets', 'moduleRefs', 'condition', 'consumes'], field);
     if (!Array.isArray(value.moduleRefs)) throw new TypeError(field + '.moduleRefs must be an array');
     return Object.freeze({
         stageId: namespaced(value.stageId, field + '.stageId'),
@@ -469,6 +492,7 @@ function assertProgramStage(value, field) {
             (item, index) => assertExactResourceRef(item, 'core.prompt-module', field + '.moduleRefs[' + index + ']'),
         )),
         condition: assertCondition(value.condition, field + '.condition'),
+        ...(value.consumes === undefined ? {} : { consumes: uniqueStrings(value.consumes, field + '.consumes') }),
     });
 }
 
@@ -508,6 +532,9 @@ export function assertPromptProgram(value) {
         'derive',
         'responseDirective',
         'provenance',
+        'locals',
+        'artifacts',
+        'exclusiveTargets',
     ], 'PromptProgram');
     const base = assertRevisionedResourceBase(value, 'PromptProgram', 'promptProgram', 'promptProgramId');
     if (!Array.isArray(value.stages) || value.stages.length === 0) {
@@ -519,6 +546,11 @@ export function assertPromptProgram(value) {
     return Object.freeze({
         ...base,
         parameters: assertParameterDefinitions(value.parameters, 'PromptProgram.parameters'),
+        ...(value.locals === undefined ? {} : { locals: assertParameterDefinitions(value.locals, 'PromptProgram.locals') }),
+        ...(value.artifacts === undefined ? {} : { artifacts: assertArtifactDefinitions(value.artifacts) }),
+        ...(value.exclusiveTargets === undefined ? {} : {
+            exclusiveTargets: uniqueStrings(value.exclusiveTargets, 'PromptProgram.exclusiveTargets', { namespacedValues: true }),
+        }),
         parentRef: value.parentRef == null
             ? null
             : assertExactResourceRef(value.parentRef, 'core.prompt-program', 'PromptProgram.parentRef'),

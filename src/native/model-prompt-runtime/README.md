@@ -69,3 +69,72 @@ P0 snapshots retain their frozen ABI. Their existing diagnostics field includes
 effective non-secret Connection/Model/Generation/resource configuration so mutable
 player profiles do not make an accepted request unexplainable. Secret refs remain in
 the private resolved config; secret values never become snapshot/config fields.
+# P3 Request Context and Prompt Compiler
+
+P3 adds an opt-in preparation port; first-party consumers remain unchanged until P4.
+Construct `new PromptCompiler({ hostDefinitions })` and inject its bound
+`preparePrompt` into `GenerationService`. `compile` additionally returns immutable
+diagnostics and selected stage IDs for preview. Compilation has no persistence,
+network, model execution, Secret lookup or state mutation path.
+
+The compiler consumes the exact `resolved.resources` closure produced by P2. It
+validates resource identities again, resolves a bounded single-parent chain and
+flattens stable module slots. Child stages append to parent order; redeclaring a
+stage must retain its targets, condition and consumes contract. Derive `add`
+introduces a new stable slot, `disable` suppresses it, `replace` changes its exact
+resource while retaining the slot ID, and `configure.config` contains typed module
+parameter values only. Duplicate operations on one slot in a child fail closed.
+Definition conflicts and exclusive targets fail with deterministic `prompt_*` codes.
+
+Within each stage, semantic target order, descending priority and stable slot ID
+determine ordering. Provider renderers place context before/after history/input;
+Response Directive follows current input and prefill is last. Program
+`exclusiveTargets` supplements the always-exclusive `response.prefill` target.
+
+Variable syntax is `{{scope.name}}` with optional own-property JSON paths. Scopes:
+
+- `host`: typed read-only host view declared by the host's compiler instance.
+- `param`: Program definitions, values from `request.prompt.parameters`.
+- `module`: Module definitions, values from derive configure and defaults.
+- `local`: Program `locals` definitions, values from `request.prompt.locals`.
+- `artifact`: Program `artifacts` definitions, each `{ type, stageId }` declaring
+  the producer. A later stage explicitly lists names in `consumes`. Host-supplied
+  `request.prompt.artifacts[name] = { stageId, value }` must match that producer.
+
+Local values are request scratch inputs, not persistent writes. Artifacts must be
+explicit public workflow outputs, never implicit access to hidden model reasoning.
+The compiler does not execute a stage or generate its artifact. A missing consumed
+artifact fails closed. `request.prompt.stageIds` selects an orchestrator projection;
+omitting it consumes all stages in Program order, using the same resources. The
+host remains responsible for choosing projection responsibility and supplying outputs.
+
+Types are string/number/boolean/json with required/default. Finite conditions use
+`op/path/value` (eq, neq, gt/gte/lt/lte, exists, in, contains), `all`, `any`, or `not`.
+Depth is bounded to 16; conjunctions/disjunctions to 64 entries; in to 256 entries;
+contains to 4096 characters/elements. There is no expression/script execution.
+New optional resource fields are omitted when absent, preserving the P0/P1 normalized
+shape and existing resource hashes. Existing valid resources need no migration.
+
+Context providers delegate host-owned fact selection. Task/Studio readers return
+`{ source, items, budget, provenance }`; exact project/revision identity is required.
+Native Session accepts an existing selected Context Plan. The host adapter at
+`src/native/adapters/native-session-context.js` invokes the existing Native Context
+Compiler rather than adding another Timeline/Knowledge scanner. It preserves selected
+content and source refs, refuses stale revisions/unresolved reservations, and never
+also adds the duplicate renderedWarmContext. Recent raw TurnGroups retain their
+speaker-labelled text in user history messages; the adapter does not reconstruct
+individual messages from canonical Timeline text. Current input comes from selected
+context items, not a second `request.input` append.
+
+Context selection estimates remain selection metadata. GenerationService calls the
+Provider token counter once on the final IR per route attempt, covering instructions,
+facts, history, input and protocol overhead. Provider implementations must count their
+complete rendered payload; selection estimates must not be added a second time.
+Native external prompt reserves leave room for directives within the final ceiling.
+
+`renderPromptProtocol` provides OpenAI-compatible/raw-text fixtures, plus conservative
+Anthropic/Gemini projections. The latter reject interleaved system directives they
+cannot preserve instead of silently hoisting/reordering them. Tools/output contracts
+are carried separately from instructions. P2 transport adapters remain deliberately
+limited: unsupported tools/output/prefill and generation controls still fail closed.
+P3 does not add production Anthropic/Gemini transports or first-party UI/call cutover.

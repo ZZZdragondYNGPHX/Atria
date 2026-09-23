@@ -4,7 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { findArchitectureViolations } from './check-p0-model-prompt-runtime-architecture.mjs';
 
 export function checkP2Source(path, source) {
-    const violations = findArchitectureViolations(source);
+    // P3's host adapter may bridge the existing Native Context Compiler. This is
+    // a single exact import exception, not permission for Core/browser dependencies.
+    const boundarySource = path === 'src/native/adapters/native-session-context.js'
+        ? source.replace("import { compileNativeContextPlan } from '../../../public/scripts/native/context-compiler.js';", '')
+        : source;
+    const violations = findArchitectureViolations(boundarySource);
     if (/\b(?:getCurrent|saveConnectionProfile|saveModelProfile|saveRuntimeRoute|putMutable|putImmutable)\s*\(/.test(source)) {
         violations.push('P2 execution must only read exact existing authorities');
     }

@@ -2,7 +2,7 @@ import { assertEffectiveRequestSnapshot, assertPromptIR, assertRequestContextPla
 import { assertContextProviderPort, assertRouteResolverPort, assertSecretPort } from './ports.js';
 import { cancellable, checkCancellation, GenerationError, immutable, ProviderFailure } from './execution-utils.js';
 
-// Prompt preparation is an injected port. The P3 compiler will implement it.
+// Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
     constructor({ resolver, contextProvider, preparePrompt, secretPort, providerFor, now = Date.now }) {
         this.resolver = assertRouteResolverPort(resolver);

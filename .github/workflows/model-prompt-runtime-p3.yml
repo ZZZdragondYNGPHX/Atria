@@ -1,0 +1,39 @@
+name: Model Prompt Runtime P3 Checks
+on:
+  push:
+    branches: [refactor/atria-model-prompt-settings]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prompt-compiler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --prefix tests
+      - name: Focused and adjacent tests
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/model-prompt-runtime-p3.test.js native/model-prompt-runtime-p2.test.js
+          native/model-prompt-runtime-contracts.test.js native/model-prompt-runtime-persistence.test.js
+          native/model-prompt-runtime-p1.test.js native/context-compiler.test.js
+          native/library-build-closure.test.js native/library-authoring.test.js
+      - name: Architecture guards
+        run: |
+          node scripts/check-p0-model-prompt-runtime-architecture.mjs
+          node scripts/check-p0-model-prompt-runtime-architecture.mjs --self-test
+          node scripts/check-p1-model-prompt-resource-foundation.mjs
+          node scripts/check-p2-generation-core.mjs
+          node scripts/check-p3-prompt-compiler.mjs
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a7-studio-authoring-ux.mjs
+          node scripts/check-a8-project-agent.mjs
+      - run: npm run lint
+      - run: npx eslint tests/native/model-prompt-runtime-p3.test.js
+      - run: npm run frontend:prebuild-cache

@@ -259,3 +259,6 @@ export {
 export { RouteResolver } from './model-prompt-runtime/route-resolver.js';
 export { GenerationService } from './model-prompt-runtime/generation-service.js';
 export { GenerationError, ProviderFailure } from './model-prompt-runtime/execution-utils.js';
+export { PromptCompiler, flattenPromptProgram, PROMPT_TARGETS } from './model-prompt-runtime/prompt-compiler.js';
+export { createTaskContextProvider, createStudioContextProvider, createNativeSessionContextProvider } from './model-prompt-runtime/context-providers.js';
+export { renderPromptMessages, renderPromptProtocol } from './model-prompt-runtime/prompt-renderers.js';

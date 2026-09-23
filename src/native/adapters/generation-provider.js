@@ -1,4 +1,5 @@
 import { immutable, GenerationError } from '../model-prompt-runtime/execution-utils.js';
+import { renderPromptProtocol } from '../model-prompt-runtime/prompt-renderers.js';
 
 // Transport/tokenizer/stream decoding are host ports. No active host configuration is read.
 // This minimal adapter supports explicit message and raw-text fixtures; unsupported
@@ -43,18 +44,14 @@ export function createGenerationProviderAdapter({ format, send, countTokens, par
             }
             if (generation.streaming.enabled !== undefined && typeof generation.streaming.enabled !== 'boolean') throw new GenerationError('generation_adapter_stream_invalid');
             body.stream = generation.streaming.enabled ?? false;
-            const messages = [
-                ...ir.directives.map(content => ({ role: 'system', content })),
-                ...ir.contextSlots.map(content => ({ role: 'system', content })),
-                ...ir.history,
-                { role: 'user', content: ir.input },
-                ...ir.responseDirectives.map(content => ({ role: 'system', content })),
-            ];
-            if (messages.some(item => !['system', 'user', 'assistant'].includes(item.role) || typeof item.content !== 'string')) {
+            let rendered;
+            try {
+                rendered = renderPromptProtocol(ir, format);
+            } catch {
                 throw new GenerationError('generation_adapter_message_invalid');
             }
-            if (format === 'openai-compatible') body.messages = messages;
-            else body.prompt = messages.map(item => `${item.role}: ${item.content}`).join('\n') + '\nassistant:';
+            if (format === 'openai-compatible') body.messages = rendered.messages;
+            else body.prompt = rendered.prompt;
             return immutable({ endpoint: connection.endpoint, transport: connection.transport, body });
         },
         send,
