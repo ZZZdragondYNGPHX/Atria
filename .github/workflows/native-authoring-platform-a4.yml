@@ -1,0 +1,106 @@
+name: Native Authoring Platform A4 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-authoring-platform-product-frontend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-authoring-a4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a4-experience-runtime:
+    name: A4 Experience Runtime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run A4 focused and adjacent Native regressions
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          game-runtime/ui-component-model.test.js
+          game-runtime/ui-component.test.js
+          game-runtime/ui-declarative.test.js
+          game-runtime/ui-package.test.js
+          game-runtime/ui-live.test.js
+          game-runtime/ui-host-surfaces.test.js
+          game-runtime/ui-full-host.test.js
+          game-runtime/ui-native-components.test.js
+          game-runtime/ui-surfaces.test.js
+          game-runtime/ui-environment.test.js
+          game-runtime/ui-selectors.test.js
+          game-runtime/package-loader.test.js
+          native/runtime-descriptor.test.js
+          native/runtime-http.test.js
+          native/studio-preview-experience.test.js
+          native/studio-service.test.js
+          game-runtime/world-session.test.js
+          game-runtime/logic-runtime.test.js
+          game-runtime/llm-turn-context.test.js
+          game-runtime/llm-runtime.test.js
+          game-runtime/llm-turn-controller.test.js
+          native/session-core.contract.test.js
+          native/session-durability.test.js
+          native/session-runtime-http.test.js
+          native/session-projection.test.js
+          native/world-knowledge.test.js
+          native/package-build-install.test.js
+          atria-shell/native-play-host.test.js
+      - name: Run A4 Experience Runtime residual guard
+        run: node scripts/check-a4-experience-runtime.mjs
+      - name: Check A4 guard syntax
+        run: node --check scripts/check-a4-experience-runtime.mjs
+      - name: Run frozen A0/A1/A2/A3 guards
+        run: |
+          node scripts/check-a0-native-authoring-hard-cutover.mjs
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a3-native-game-runtime-cutover.mjs
+      - name: Run A4 focused lint
+        run: >-
+          npx eslint
+          src/native/runtime-descriptor.js
+          src/native/studio-preview.js
+          src/native/authoring/studio-service.js
+          public/scripts/extensions/game-runtime/index.js
+          public/scripts/extensions/game-runtime/package-loader.js
+          public/scripts/extensions/game-runtime/ui/component-model.js
+          public/scripts/extensions/game-runtime/ui/runtime.js
+          public/scripts/extensions/game-runtime/ui/declarative.js
+          public/scripts/extensions/game-runtime/ui/selectors.js
+          public/scripts/extensions/game-runtime/ui/surfaces.js
+          public/scripts/extensions/game-runtime/ui/host-surfaces.js
+          public/scripts/extensions/game-runtime/ui/native-components.js
+          public/scripts/extensions/game-runtime/ui/package.js
+          public/scripts/extensions/game-runtime/ui/live.js
+          public/scripts/extensions/game-runtime/ui/full-host.js
+          public/scripts/atria-shell/native-play-host.js
+          tests/game-runtime/ui-component-model.test.js
+          tests/game-runtime/ui-declarative.test.js
+          tests/game-runtime/ui-package.test.js
+          tests/game-runtime/ui-live.test.js
+          tests/game-runtime/ui-full-host.test.js
+          tests/game-runtime/package-loader.test.js
+          tests/native/runtime-descriptor.test.js
+          tests/native/studio-preview-experience.test.js
+      - name: Run full root lint
+        run: npm run lint
