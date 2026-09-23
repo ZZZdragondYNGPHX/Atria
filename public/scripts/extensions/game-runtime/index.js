@@ -613,6 +613,8 @@ registerExtensionApi(MODULE_NAME, {
     getTurn: getGameTurn,
     getAttempt: getGameAttempt,
     exitUi: exitCurrentGameUi,
+    stopGeneration: stopCurrentGeneration,
+    openDiagnostics: openGameDiagnostics,
     disableForSession: disableCurrentPackageForSession,
 });
 
