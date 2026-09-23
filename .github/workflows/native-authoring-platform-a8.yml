@@ -1,0 +1,84 @@
+name: Native Authoring Platform A8 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-authoring-platform-product-frontend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-authoring-a8-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a8-project-agent:
+    name: A8 Project Agent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run A8 focused and adjacent regressions
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/project-agent.test.js
+          native/project-agent-http.test.js
+          atria-shell/studio-agent-a8.test.js
+          atria-shell/studio-workspace-a7.test.js
+          native/studio-service.test.js
+          native/studio-http.test.js
+          native/studio-resource-http.test.js
+          native/resource-registry.test.js
+          native/resource-graph.test.js
+          native/library-authoring.test.js
+          native/studio-preview-experience.test.js
+          native/plugin-platform.test.js
+          native/native-skill-platform.test.js
+          game-runtime/ui-component-model.test.js
+          game-runtime/studio-preview-surface.test.js
+      - name: Run A8 residual guard
+        run: node scripts/check-a8-project-agent.mjs
+      - name: Check A8 guard syntax
+        run: node --check scripts/check-a8-project-agent.mjs
+      - name: Run frozen A0-A7 guards
+        run: |
+          node scripts/check-a0-native-authoring-hard-cutover.mjs
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a3-native-game-runtime-cutover.mjs
+          node scripts/check-a4-experience-runtime.mjs
+          node scripts/check-a5-plugin-skill-platform.mjs
+          node scripts/check-a6-native-product-frontend.mjs
+          node scripts/check-a7-studio-authoring-ux.mjs
+      - name: Run A8 focused lint
+        run: >-
+          npx eslint
+          src/native/project-agent.js
+          src/native/authoring/studio-service.js
+          src/endpoints/native-studio.js
+          src/native/index.js
+          public/scripts/native/studio-client.js
+          public/scripts/native/studio-agent.js
+          public/scripts/native/studio-workspace.js
+          tests/native/project-agent.test.js
+          tests/native/project-agent-http.test.js
+          tests/atria-shell/studio-agent-a8.test.js
+          scripts/check-a8-project-agent.mjs
+      - name: Run full root lint
+        run: npm run lint
