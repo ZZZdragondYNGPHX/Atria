@@ -27,9 +27,14 @@ jobs:
           cache: npm
       - name: Install root dependencies
         run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests
       - name: Run A3 focused and adjacent Native regressions
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
         run: >-
           npm run test:unit --prefix tests -- --runInBand
           native/runtime-descriptor.test.js
