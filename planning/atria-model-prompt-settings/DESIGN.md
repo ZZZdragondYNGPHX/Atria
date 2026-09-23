@@ -1,273 +1,571 @@
-# 总设计案：Atria 原生模型与提示方案
+# 总设计案：Atria Native Model / Prompt / Runtime
 
-## 1. 状态、目标和非目标
+## 1. 状态与目标
 
-状态为 **design-draft / reconcile-before-implementation**。用户确认的方向与代理收敛的工程建议分开记录；后者仍需根据现有重构合并后的代码修订。本稿不授权实施。
+状态：**approved / implementation-ready**。
 
-项目类型：现有 Atria 产品的模型配置、提示资源、运行绑定和设置体验重构。目标不是给旧 PromptManager 换皮，也不是重写所有模型调用代码，而是让配置拥有明确来源、稳定身份、确定的生效规则与可验证的内核边界。
+基线：`main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`。
 
-成功体验：普通玩家选择一套提示方案即可进行单模型 RP，不必启用智能体编排；进阶玩家能组合、替换和编排带变量与处理流程的提示模块；创作者能提供可派生的默认方案，并把 CoT 阶段映射到已有编排节点。用户能知道本次请求采用了哪些资源、参数、流程及调用成本，能处理冲突、失败、重置和卸载。
+实现分支：`refactor/atria-model-prompt-settings`。
 
-不做：完整 Mod 市场、任意包 JavaScript 沙箱、新插件／Skill 平台、新 Session 或资源存储权威、无限继承／复杂依赖求解、所有旧预设无损兼容、对任意自然语言冲突的完备检测。Android 和 Docker 的额外构建／验收仍为用户明确选择项。
+本任务不是重新设计 N0–N10 / A0–A9，也不是继续给 SillyTavern 旧 Preset/Connection UI 加壳。目标是把 Atria 的模型配置、Prompt 资产、Runtime 路由和请求编译从旧 ST authority 中切出，形成以后可由独立 Atria host 直接消费的核心。
 
-## 2. 四态决策账本
+长期边界：
 
-| ID | 状态／来源 | 决策 |
-|---|---|---|
-| U1 | confirmed／用户 | 以远端 main 分析；先讨论，只交付企划，等现有重构完成后再修订和动工 |
-| U2 | confirmed／用户 | 尽可能切割旧兼容，只有涉及必要底层的部分保留 |
-| U3 | confirmed／用户 | 提示预设应能像内容 Mod 一样改变 AI 行为；玩家不修改内核也能改动体验 |
-| U4 | confirmed／用户更正 | 文件直接进入远端 docs 对应目录，不交付独立企划分支；以后才新建实现分支 |
-| U5 | confirmed／用户追加 | 补足内置／自定义变量、破限类高级提示和模块化 CoT，不能把预设缩减为静态文本装配 |
-| U6 | confirmed／用户追加 | CoT 与智能体编排衔接；编排可接管部分原先由单模型提示承担的步骤，但单模型 RP 仍是一等使用路径 |
-| D1 | proposed／用户委托代理决定 | 多个提示模块组成一套方案；每个运行角色一次只采用一套方案，不直接叠加多个完整大预设 |
-| D2 | proposed／代理收敛 | 原生资源、稳定引用、请求快照；作品基础内容可覆盖，程序权限和状态权威不可通过提示改写 |
-| D3 | proposed／代理收敛 | 统一模型／生成配置；保留有消费者的底层适配，退役旧独立预设库和管理器 |
-| D4 | proposed／代理收敛 | 编辑草稿、保存版本、运行应用分离；草稿可自动保存，影响后续运行需明确应用 |
-| D5 | proposed／代理收敛 | Settings 仅承载产品偏好；Runtime、Plugins、Build、Account/Data、Diagnostics 各自拥有专业配置 |
-| D6 | proposed／代理收敛 | 变量分为宿主只读视图、模块参数、装配临时量和具名持久状态；预览可演算，不提交持久副作用 |
-| D7 | proposed／代理收敛 | 共用提示程序和流程阶段资源，单模型完整装配、编排按职责投影；不自动把自然语言 CoT 变成可执行图 |
-| G1 | pending／后续事实门 | 重构合并后的 main、A6 已解决项、A5 实际注册契约、支持后端清单与实时验收环境 |
-| G2 | pending／实施前合同门 | 具体 schema/API、字段迁移映射、可安全删除清单、模型能力回执与版本冲突接缝 |
-| X1 | rejected／不作为目标 | 为旧 DOM、全局变量、历史名称或任意扩展 hook 永久保留双系统 |
-| X2 | rejected／不作为目标 | 把预设缩成文风选择＋温度滑块，或把所有重要提示锁成“内核” |
-| X3 | rejected／不作为目标 | 用未验证的“当前仍被引用”证明兼容必须永久保留；用改写提示获得工具权限 |
+    Atria Domain / Runtime / Authoring / Model / Prompt
+                             |
+                             v
+                          Ports
+                             |
+               +-------------+-------------+
+               |                           |
+               v                           v
+       ST Compatibility Host        Future Native Host
 
-讨论方向已经收敛，不再循环询问模块组合方式。后续只因实际代码、支持范围或新用户需求改变而修订，不自动复活已否决路线。
+原则：**No New SillyTavern Authority**。
 
-## 3. 与现有重构的关系
+新 Atria-owned domain code 不得直接把 ST DOM、`extension_settings`、`power_user`、PresetManager、PromptManager 或 host globals 变成新的领域真源。
 
-现有计划已经拥有 Library、Resource Registry、Authoring Operations、Plugin/Skill、Experience Runtime 与 Product UI。A6 已计划原生 Settings 和 Runtime，明确不接受搬迁 `user-settings-block` 作为最终设置页。
+## 2. 保留的冻结 authority
 
-交付前新增事实：`docs@90fbd7ee198962a5ad417e99220a2dfb5f77f052` 已记录 A6 完成、下一阶段 A7。交接明确 Settings、Connections、Account 仍有 Advanced 兼容控制器，Play 保留隐藏的旧聊天 DOM 作为生成 ABI。这些陈述不是本次对 A6 源码或运行的验证；后续应逐项复核，而不是把 A6 全部视为尚未完成或已经彻底切割。
+本 refactor 必须继续服从下列既有权威，不建立平行系统：
 
-隐藏的 Conversation 生成 ABI 与依赖旧预设编辑器决定配置，不是同一个问题。本企划不顺手重写整个 Play 引擎；必要内部宿主接缝仍按底层保留门取证，受影响预设与设置的旧权威则按本企划退出。
+- Package / immutable PackageVersion；
+- Native Runtime Descriptor；
+- Native Session / Branch / SessionRevision；
+- `atri_world_state` / `atri_game_runtime` 与 Native Session State；
+- A1 Studio Workspace / ChangeSet / Validation / Commit；
+- A2 Resource Registry / derived-readonly Resource Graph；
+- A4 Component Model / Native Preview；
+- A5 Plugin / Skill boundaries；
+- A6 Native Play；
+- A7 Studio Authoring UX；
+- A8 Project Agent human Review/Commit boundary；
+- A9 hard-cut product authority。
 
-因此本企划不是第二个 A6：
+不得恢复 CardApp、`game.json`、charId、Swipe、Chat State 或 legacy WorldInfo 为 Native authority。
 
-- A6 的已验收路由、组件和页面直接复用；旧 main 的缺陷到时必须重新判定。
-- 本企划负责尚未完成的配置领域模型、提示装配、编辑／应用契约、作用域，以及它们需要的原生编辑器。
-- 复用 A2 资源注册、Attach/Fork/固定版本、Build 自包含依赖闭包；不为每个新名词建一张表或一个独立仓库。
-- 复用 A5 Plugin 和 Skill 的权限及作用域；提示模块不是第三种可执行扩展平台。
-- 不变更正在进行的 A0–A9 阶段与交接。待其完成后，在本企划的 P0 重新划界。
+## 3. 六个核心对象
 
-## 4. 内核、内容与玩家权限
+### 3.1 Connection Profile
 
-**内核不是默认系统提示词的同义词。**作者给出的世界观、角色解释、叙事方式和默认提示内容，可以被玩家通过自己的方案重写或重新组织。
+只回答“怎么连接”。
 
-不可由提示改变的部分是程序事实：Session/Branch/Revision 身份、资源访问授权、密钥、工具执行权限、事务、持久化验证和必要机器协议。模型输出始终是待验证的建议／结果，不自动成为权威状态。
+包含：
 
-玩家可以：添加或停用提示、替换内容、重排顺序、设置适用角色和条件、改变行为策略、调整允许的资料呈现、引导已授权工具的使用。玩家不能：通过插入文本发明工具、读取未授权资源、伪造已经执行的结构化工具结果，或绕过状态写入校验。
+- stable ID / display name；
+- transport/provider adapter；
+- endpoint；
+- proxy/network policy；
+- `secretRef`；
+- provider connection options。
 
-允许玩家偏离作者意图；偏离不等于获得内核权限。作品声明的真正机器合同必须可定位到程序验证，而不能靠作者把任意文风规则标成“不可覆盖”来扩大内核。
+不拥有 Model、temperature、Prompt、Context Template、Reasoning Prompt、stop list、tool permission。
 
-提示不是安全隔离。保护必须落实于读取、工具执行、状态提交和资源解析的真实边界。保留少量宿主协议说明也不能替代这些程序检查。
+### 3.2 Model Profile
 
-## 5. 领域对象与唯一责任
+表示一个玩家/设备可实际运行的模型实例。
 
-以下名称是设计概念，**不是已存在的 API 或最终 schema**。P0 必须映射到当时真实接口。
+包含：
 
-| 对象 | 负责什么 | 明确不负责什么 |
-|---|---|---|
-| Connection Profile | 提供商、端点、认证引用、代理及连接级限制 | 提示内容、玩家文风、Package 内密钥 |
-| Generation Profile | 模型选择／约束、采样、输出额度和模型特有选项 | Session 状态、提示条目所有权 |
-| Prompt Module | 可组合的声明式提示程序，含参数、临时变量和处理步骤；可声明受控状态意图 | 执行 JS、安装插件、增加权限、任意全局副作用或直接写核心状态 |
-| Prompt Preset | 单一基础提示程序＋有序模块＋用户覆盖 | 无限父级继承、隐式改连接或密钥 |
-| Runtime Binding | 把运行角色／用途绑定到连接、生成配置和提示方案 | 复制资源正文形成第二真源 |
-| Effective Request Snapshot | 本次请求固定的已解析输入、资源版本及参数来源 | 可变编辑器状态、任何序列化的真实认证值 |
+- stable ID；
+- Connection Profile ref；
+- remote model ID；
+- capability contract；
+- context/output limits；
+- tokenizer provenance；
+- optional message-format details；
+- provider hints。
 
-共享提示资源归 Library／现有 Resource Registry；项目资源走现有 Authoring Operation/ChangeSet；发布包携带精确闭包。玩家私有资源沿同一资源体系使用独立作用域。会话覆盖由现有 Session 状态／配置机制承载，不新增旁路文件真源。
+同一 remote model 可通过不同 Connection 形成不同 Model Profile。
 
-连接和凭据使用现有用户设置／秘密存储；生成配置复用现有合适的持久化服务。复用存储引擎、事务和 patch 能力，不意味着冻结旧 `PresetRepo` 的名称索引或旧记录语义。每类对象必须选定一个 canonical owner，禁止新资源库和旧预设库双写。
+Model discovery 只产生候选信息，不直接成为持久 identity。
 
-## 6. 提示模块与方案的装配合同
+### 3.3 Generation Profile
 
-### 6.1 模块能表达什么
+可版本化 Native resource。
 
-一项模块可包含多个条目，表达指令、角色口吻、任务处理步骤、输出偏好或可见上下文的组织方式。支持声明式增加、替换、禁用和有边界的重排；支持具名插槽、前后位置以及必要的历史相对深度，但只改变本次模型输入，不编辑已提交 Timeline。
+负责：
 
-条目使用稳定 ID，名称仅展示；替换／锚点引用必须有明确目标。条件可读取允许暴露的 Native 视图、请求元数据、模块参数与装配临时量；受控求值允许局部赋值、拼接和条件处理。禁止的是在渲染时直接改写宿主持久状态，不是禁止所有变量赋值。旧 EJS、STScript 或带持久副作用宏不作为永久运行 ABI，但其有价值的动态表达能力须有原生去向。
+- sampling；
+- output preference；
+- reasoning control；
+- stop policy；
+- cache preference；
+- streaming preference；
+- tool-choice preference；
+- narrowly scoped provider extensions。
 
-用户自定义文本不能转成 eval、动态模块导入或任意宿主访问。包内模块仍是声明式资源。可执行扩展必须由 A5 Host Plugin 边界承担。
+它不授予 Tool 权限，也不改变 Runtime Output Contract。
 
-### 6.2 方案结构与加载规则
+### 3.4 Prompt Module
 
-每份方案有一份基础程序、一个有序模块列表和最终用户覆盖。基础采用固定版本资源或内嵌程序；不允许基础引用另一份方案再无限继承。用户“派生方案”物化为独立方案并记录来源，不建立隐式更新链。
+一个可组合的声明式提示单元。
 
-每个运行角色／请求只解析一份方案。UI 可让用户一键选择；高级界面显示装配。不同角色可以使用不同方案，但不得因切换一个角色而修改其他角色的全局状态。
+核心字段：
 
-默认不自动安装模块依赖、不执行版本求解、不递归拉取远端内容。资源解析复用现有精确依赖闭包；缺失、版本错误、循环引用应拒绝应用。
+- stable identity；
+- semantic role/target；
+- stage applicability；
+- priority；
+- conditions；
+- typed parameters；
+- body；
+- provenance。
 
-同一目标出现多个替换／禁用冲突时，不默默采用“最后一个”。需要用户明确确认覆盖关系或调整模块；合并结果可预览。单纯的插入顺序可以按显式列表确定。能自动检测的是结构冲突，不能宣称理解所有自然语言矛盾。
+### 3.5 Prompt Program
 
-### 6.3 使用者与版本
+一套完整提示方案。
 
-- 作品提供默认方案，玩家可以 Fork/覆盖；作品原件和发布包不被玩家操作改写。
-- 已应用版本固定到后续请求快照，库中的新版本不偷偷影响当前会话或构建。
-- 更新是明确 Compare → Update / Keep；删除共享资源时检查绑定，不能留下悬空引用。
-- 导入的同名资源获得新身份，不覆盖内置、作品或用户原件。
-- 内置方案可恢复，定制通过派生完成；这不限制玩家修改派生后的提示行为。
+V1 支持：
 
-### 6.4 原生变量与自定义变量
+- ordered stages；
+- semantic targets；
+- single-parent derive；
+- add / disable / replace / configure by stable module ID；
+- finite condition DSL；
+- typed parameters；
+- Request Local scratch；
+- declared cross-stage artifacts；
+- Response Directive。
 
-“内置变量”是宿主提供的语义视图，不等于把旧 Character 索引或全局对象原样开放。角色、用户、场景等变量应解析自正确的 Native 资源／请求身份；可见字段有作用域和权限，不能借变量读取秘密配置。
+不支持：
 
-| 类别 | 来源与允许操作 | 生命周期／责任 |
-|---|---|---|
-| 宿主内置变量 | 读取允许的用户、角色、作品、会话和请求视图；不可通过赋值覆盖权威值 | 随本次输入快照固定；缺少对象或权限时明确处理 |
-| 模块参数 | 作者声明名称、类型、默认值、必填／可选、范围和说明；玩家可配置 | 保存于对应模块实例／方案覆盖，不写回共享资源原件 |
-| 装配临时变量 | 赋值、拼接、基础运算、条件和有界展开；跨模块只通过声明的输入／输出传递 | 每次请求及每个编排节点隔离，编译后释放；不是聊天全局变量 |
-| 模组持久变量 | 模块命名空间内的状态；读取快照，写入形成经校验的状态意图 | 复用现有账号／项目／Session 的合适权威和事务，不新增旁路 store |
+- arbitrary JavaScript/EJS；
+- arbitrary JSON Patch；
+- multiple inheritance；
+- workflow DAG；
+- tool execution；
+- model-call definition；
+- 自建持久状态 authority。
 
-模块身份与变量名共同构成命名空间。覆盖范围显式声明，禁止静默修改宿主内置值或其他模块状态；前向缺失、类型错误、循环引用、必要输入未提供应定位到来源。可选值使用显式默认值，不能普遍用空字符串掩盖配置错误。
+### 3.6 Runtime Route
 
-参数与表达式不是任意 JS。语法与解析器到 P0 对齐实际能力，必须限制展开长度、递归／迭代和计算预算；可以复用已有适合的解析算法，但不能因此沿用旧全局变量写入入口。
+把运行角色绑定到：
 
-预览、token计数、重绘和请求重试可以在隔离上下文演算临时变量，但不提交持久状态。同一固定输入快照的条件与求值应可复查；时间、随机等非稳定输入若开放，需固定本次取值／种子并说明预览与新请求的差异。
+- Model Profile；
+- Connection Profile；
+- Generation Profile；
+- Prompt Program；
+- fallback routes；
+- timeout/retry/fallback policy；
+- runtime requirements。
 
-持久状态需声明 owner、初始化触发点、版本／迁移、提交条件、分支继承和卸载规则。显式启用／初始化走已有操作事务；生成期间的状态意图在既有允许的提交点合入，不能在预览或每个编排节点中隐式提交。失败、取消、重试、恢复不得重复计数或覆盖其他分支；同一操作用既有提交／幂等机制防重。这里的失败／取消不提交针对尚未提交的意图；已经成功的事务不被后续取消隐式撤销，需要补偿时走显式操作。缺少对应权限或提交机制时拒绝该持久副作用，不回退旧 chat/global store。
+Game Runtime Role Router 继续负责角色语义、timeout/retry/fallback sequencing；公共 Route Resolver 下沉到 Generation Core，供 Game Runtime、Studio Agent、Orchestrator、Memory/Search 等复用。
 
-卸载模块不得静默删除用户状态。需要保留、重置或迁移时使用显式操作；只改变展示提示不自动改变世界事实。普通参数和临时变量不要求玩家先写插件，真正的外部执行与越权能力仍由 Plugin／内核负责。
+## 4. Scope / Ownership / Override
 
-### 6.5 高级提示、PHI 与“破限”表达
+不同层不是普通 JSON spread。
 
-保留用户编写高级指令、选择消息角色／位置、条件注入、覆盖基础内容、历史后提示和模型允许的回复前缀能力。旧系统中名为 jailbreak 的条目实际也承载 Post-History Instructions；不能因该历史名称而删除整类表达能力。
+### Package / Project
 
-在新编辑器中把这些作为可检查的提示位置／策略，而不是声称必然突破模型限制的特殊开关。用户可以改写默认行为意图，但文本本身不会增加工具／资源权限；实际效果取决于模型和服务。适配器重排、合并或不支持某种角色／前缀时必须可见，不能悄悄丢弃。此项不承诺复刻旧字段、旧绕过技巧或提供方不支持的协议。
+作者拥有：
 
-### 6.6 CoT 与智能体编排：两条一等使用路径
+- Prompt Modules / Programs；
+- Generation Profiles；
+- role capability requirements；
+- recommended Prompt/Generation resources；
+- orchestration/authoring intent。
 
-本产品语境中的自定义 CoT，是预设作者为提高单模型输出质量而写的处理流程：检查哪些输入、按何种顺序判断、何时启停模块及怎样约束最终输出。智能体编排能将其中一部分隐式步骤变成独立的规划、核查、工具操作或生成节点；它不自动取代全部 CoT，也不保证比单模型质量更高或成本更低。
+Package 不携带：
 
-四个概念不得混用：作者的 CoT 提示、模型原生 reasoning 参数、服务实际公开的推理内容／摘要、以及程序执行的编排图。CoT 是指令资源，编排拥有任务／节点／预算／执行权威；提示文字不能自行创建节点、增加调用预算或授予工具权限。模型实际标识的数量与编排节点／调用次数也不同：多个节点可以使用同一个模型。
+- API key；
+- Secret；
+- 玩家私有 Connection；
+- 玩家本机 Model Profile。
 
-共用的作者资源由通用流程阶段、作品／角色增量和条件模块组成。阶段有稳定身份、意图、所需输入、输出约定、适用角色／模式和预算；这些是设计字段，不是已实现 API。共享正文只维护一份，直连装配和节点投影引用它，不把两份完整 CoT 复制成长期平行真源。
+### Player Runtime
 
-| 运行方式 | 提示装配 | 调用与输出约束 |
-|---|---|---|
-| 单模型直连 RP | 通用主 CoT＋作品增量＋本轮条件模块，形成当前角色的一份完整方案 | 不要求用户创建或启用编排图；正常纯文本回合保持一次主要叙事生成，本功能不得暗增规划／评审调用 |
-| 智能体编排 | 按现有图的节点职责投影相关阶段；只给节点必要的上下文、局部检查及输出约定 | 沿现有调度与权限边界执行；实际调用数、模型选择、预算和结果来源可追溯，不给每个Agent重复整套主CoT |
+玩家拥有：
 
-单模型路径不是故障降级版或兼容岛，应拥有相同的变量、模块、预览和诊断能力，复用正常单请求生成入口与公共编译合同，而不是再建第二个生成引擎。额外工具循环、重试或独立状态更新如由其他已启用功能产生，仍须按其现有合同明确展示，不冒充单次调用。
+- Connections；
+- Models；
+- Secrets；
+- concrete Runtime Routes；
+- Library derived resources。
 
-编排绑定由作者／用户明确配置的阶段职责映射驱动，不自动把任意自然语言 CoT 解释成可执行图。规划节点可接管全局方案形成，核查节点可接管相应验证，最终叙事节点消费允许的结果与必要局部检查；不要把完整叙事文风交给只负责结构化提取的节点。
+### Session Override
 
-只有声明的职责和运行时可核对的上游结果满足所需输入时，才可省略已外置的全局阶段；保留最终输出者必要的局部正确性检查。不能只因文本声称“已核查”就跳过阶段；结构重复可按ID/绑定检测，自然语言语义去重不作完备承诺。
+只影响当前 Session，可被保存进 Session-owned配置，但不修改玩家全局 Runtime 或 Package 原件。
 
-跨节点传递的是可验证的任务结果／证据／摘要等约定数据，不要求传递模型未公开的完整内部推理，也不把上游输出直接升为宿主指令权限。作者可定义需要展示的结果或简短依据；角色内心描写、处理流程和模型原生推理显示分别管理。
+### Request Override
 
-切换直连／编排须显式应用，并记录本次模式和绑定版本。已有编排不可用时不能静默关闭整个质量流程或改成另一条计费路径；按已声明策略返回错误或请求选择。一般单模型 RP 必须独立可用；若特定作品有真实工具／多阶段机器合同而没有等价直连能力，应明确告知，不能伪装支持。
+一次调用有效；绝不写回上层。
 
-Inspector 显示每个角色／节点启用或省略的 CoT 阶段及原因、阶段输入来源、变量作用域、提示预算、原生reasoning设置与实际调用情况。验收比较可观测的角色一致性、设定遵守、剧情连贯性、结构正确性、延迟和token成本，不要求完整内部推理作为证据，也不先验宣布编排一定更优。
+### Kernel / Runtime Authority
 
-## 7. 生成配置、模型能力与生效顺序
+永远高于所有 Prompt/玩家 override。后层只能覆盖允许覆盖的产品参数，不能放宽 permissions、tools、state authority、output contract safety 或 Package runtime requirements。
 
-将“传输接口”“消息／文本渲染方式”“模型能力”分开。OpenAI 兼容接口不意味着所有能力相同；一个旧 textgen 分类也可能连接聊天端点。不能仅根据旧菜单所属类型推断能力。
+## 5. Prompt Program
 
-有效生成参数按以下顺序确定：选定模型适配的显式默认值 → 生成配置 → 已声明的角色／会话覆盖 → 宿主允许的本次请求选项。每层有来源记录。**不从上一次选择的活动全局对象继承缺失字段。**缺省、清空、禁用和不支持必须有不同语义。
+### 5.1 Semantic target
 
-连接解析与提示解析独立。选择提示方案不得隐式切换密钥、端点或模型；方案可以声明能力要求／参数建议，但应用建议必须在 UI 可见。便利的“一整套运行配置”应是引用组合，不是把所有字段复制进提示资源。
+Native Prompt 不把 ST 的 position/depth/prompt_order/jailbreak/character-id 当 ABI。
 
-能力合同至少覆盖 tools、结构化输出、流式、上下文／输出限制、原生推理通道及适用采样项。探测得到的能力、模型适配声明、用户覆盖应分别标来源。探测失败不能自动宣称支持，也不能偷偷丢弃工具／格式约束。
+示意 target：
 
-供应商差异通过最薄的必要投影解决；不堆多层包装。不支持的参数应显示原因或拒绝应用，不能把无效滑块伪装成生效。缓存必须以有效配置和 tokenizer/model 身份区分，不能复用全局固定 bias key。
+- `system.foundation`
+- `system.character`
+- `system.world`
+- `system.style`
+- `system.response`
+- `context.before_history`
+- `context.after_history`
+- `context.before_input`
+- `context.after_input`
+- `response.prefill`
+- `response.post_history`
+- `agent.task`
+- `agent.evidence`
+- `agent.constraints`
 
-Fallback 是运行绑定中的显式策略；切换目标后重新检查能力、预算和协议。配置错误、用户取消、权限不足不能靠静默换模型绕过。
+`response.post_history` 承接 PHI 能力，产品术语为 **Response Directive**。
 
-## 8. 编译、上下文和请求快照
+### 5.2 Stage
 
-候选主链如下，实施时必须和 Native 现有流程逐项映射，而不是另建第二条生成系统：
+Stage 是作者工作流语义，如：
 
-1. 固定 Session/Package/资源版本和配置引用；解析连接、模型能力、提示方案。
-2. 根据直连／编排角色绑定选择 CoT 阶段，在隔离求值环境展开模块、参数和临时变量；持久状态只读快照，待提交意图不在编译中落盘；确定宿主协议、工具 schema 和静态提示的必要预算。
-3. 由现有 Native Context 系统选择历史／知识／状态并分配预算；Agent 路径也沿用现有预算与上下文责任，不重复检索或裁剪。
-4. 用明确的场景策略组装消息／文本。主叙事、辅助 Agent、任务请求可以有有意差异，不强行拼成行为完全相同的模板。
-5. provider/text renderer 进行必要格式投影；记录来源、覆盖、排除与预算诊断。
-6. 发送前对实际组装内容、工具和 framing 进行最终预算／结构检查，随后固定快照并发出请求；允许的状态意图只在原有运行／Session提交点校验落盘，不把每次求值当提交。
+- understand
+- plan
+- write
+- review
+- finalize
 
-不可把新资源永久转回 `oai_settings`／旧 DOM 再执行。可以提取和复用排序、预算、协议转换等算法，但运行入口必须摆脱旧编辑器生命周期。
+它不等于 Agent、Node 或模型调用。
 
-禁止 Native Context 和提示编译器分别拥有历史裁剪权。所有会改写最终消息的贡献必须出现在最终检查之前；不能在计数后开放任意改 messages 的旧 hook。工具请求／结果成对关系、必需当前输入和机器协议不能因超预算被静默切掉。
+单模型 RP 可一次完整消费所有适用 stage。
 
-若 renderer 增加开销导致最终超限，返回具体诊断；复用现有可证明正确的重规划机制，否则失败而非无限重试或悄悄缩减。重复插入的内容按真实输出计数，不因来源相同而漏算。
+Orchestrator 只把同一资源按 node/role responsibility 投影，不自动把自然语言流程转成图，也不要求每个节点复制完整 Prompt Program。
 
-快照记录有效参数来源、资源精确版本、模块顺序、条件结果、直连／编排模式、节点职责与CoT阶段投影、变量作用域及提交意图标识、编译器／适配器版本和预算依据；不为可追溯性默认复制全部私人变量正文。可序列化／持久化快照只保留不具备调用权限的认证引用或脱敏标识，绝不保存真实认证值；真实凭据仅在受信任的发送边界解析。快照、提示预览、普通诊断及导出都不得包含由认证配置注入的密钥、密码或认证头值。完整提示预览权限不等于秘密查看权限；提示正文仍具有与原聊天内容相同的隐私边界，不默认持久化全部正文，也不承诺能确定性重放模型输出。
+### 5.3 Variables
 
-## 9. 保留、改造、退役矩阵
+V1 允许：
 
-| 现有对象 | 目标取舍 | 切割／删除条件 |
-|---|---|---|
-| 旧聊天预设管理器、全局活动设置、ghost 下拉身份 | 领域模型和编辑核心原生替换 | 绑定、保存、应用、导入和所有第一方消费者迁移，失效路径可测 |
-| 提示排序、注入、预算与正确 provider 算法 | 提取复用，不保留旧管理 ABI | 显式输入输出、脱离 DOM/global；保留经选定的行为测试 |
-| 主聊天／Agent 不同提示策略 | 统一基础规则，保留声明的场景差异 | 不用“统一”消灭有用途的差异；快照能解释来源 |
-| 文本补全传输与模型格式能力 | 保留底层适配，统一配置和能力视图 | 不再拥有独立全局预设控制面；支持列表必须有实际测试 |
-| textgen/Kobold/Novel 等独立采样预设库与旧面板 | 原生生成配置替换 | 字段映射与支持范围明确；不得用旧 UI 作永久 fallback |
-| Instruct 模板 | 保留必要格式语义，转为原生模型格式资源／适配配置 | 停止依赖名称绑定和旧选择器；38 种文件不等于可随意合并 |
-| 旧 Context 字符串模板 | 将必要编排表达迁入原生提示程序，合并重复默认内容 | 不保留旧历史名称体系；先处理引用，不能按 34/8 统计直接删文件 |
-| Sysprompt／PHI | 语义融入提示程序和显式覆盖规则 | 不再是一套独立且和 PromptManager 竞争的管理器 |
-| Reasoning、stop、tokenizer | 保留模型必要语义，明确归属 | 区分原生通道／文本格式、请求停止／响应清理、计数／token ID |
-| 内置／自定义变量 | 保留动态能力，原生作用域和事务化 | 临时赋值可用；预览无持久写，跨请求／角色／节点隔离，旧chat/global写入ABI退役 |
-| 自定义 CoT | 保留单模型主流程，并可投影到编排节点 | 不复制整套CoT到每个Agent，不自动建图，不混同模型reasoning参数 |
-| 旧 EJS/STScript／副作用宏／任意 message hook | 不纳入默认原生 ABI | 需要的赋值、条件、持久状态能力有原生去向；不能用“只读”一刀切，仍不提供全兼容模拟器 |
-| 旧设置 DOM 搬迁、巨型抽屉和仅滚动锚点分类 | 用 A6 原生页面／组件替换或补全 | 正常产品路径不依赖旧节点，未替换项不靠 Advanced 永久藏匿 |
-| Shell 路由、生命周期、SettingsRepo patch、存储引擎 | 复用经复核正确的部分 | UI 原生化不构成另建路由／设置数据库的理由 |
+1. typed Host View：只读；
+2. Program Parameter：显式配置；
+3. Request Local：一次 request 内临时；
+4. Cross-stage Artifact：显式声明的流程产物。
 
-不凭旧名称或猜测用户数量删除某个后端。P0 列出届时仍受支持的适配器；继续支持的能力必须迁入统一配置并验收。不能接入者必须形成显式下线决定，不能无声消失或永久回退旧系统。
+持久写入继续由 Runtime Intent + Native Session State/Revision 事务完成。Prompt Compiler 本身永远不写 Session DB。
 
-首版端到端路径至少覆盖一种结构化消息 API 和一种真实需要原始文本格式的本地后端；不能用“原样字符串塞进聊天接口”冒充两类格式的验收。
+### 5.4 Conditions
 
-## 10. 设置产品结构与作用域
+有限 declarative DSL：
 
-| 权威入口 | 内容 |
-|---|---|
-| Settings | General、Appearance、Language、Accessibility、Interaction 等产品偏好 |
-| Runtime | Connections、模型／生成配置、提示方案装配、运行角色绑定、能力信息 |
-| Library | 可复用提示模块／方案的资源浏览、版本、派生；不复制 Runtime 的第二个活动选择器 |
-| Plugins | 安装状态、权限、依赖和插件自身配置；贡献复用 A5 注册边界 |
-| Build／项目 | 作品默认方案、资源引用、项目设置与可验证机器合同 |
-| Account／Data | 账户、同步、备份、存储管理；Settings 中如保留 Storage 导航，应指向该权威页 |
-| Diagnostics | 请求、编译、错误与性能排查 |
+- eq / neq
+- gt / gte / lt / lte
+- exists
+- in
+- and / or / not
+- 有界 contains
 
-复用 A6 Product UI 与规范路由。搜索可以跨域，但打开结果必须进入所属路由；不要把外域完整功能重新嵌进调用页。不再用搬迁旧 `rm_api_block`、`left-nav-panel`、`AdvancedFormatting` 或 `user-settings-block` 作为完成标准。
+不在 V1 加 eval、async lookup、任意函数或 script hooks。
 
-每个设置至少要有一个可追踪定义：稳定键、owner、作用域、默认值、校验、生效方式、重置语义和迁移责任。优先简单分区组件与必要元数据，不为了这些字段先开发万能表单框架。
+### 5.5 Derive
 
-作用域默认：可同步产品偏好归账号；语言、缩放、布局密度及减少动画等设备适配默认归当前设备；语言延续已存在的设备侧语义。项目／包与会话覆盖各归现有 Native 机制。P0 必须逐字段确认，不能把旧 localStorage 悄悄改成账号同步或形成两个真源。
+V1：
 
-保存与生效不是同义词。UI 明确区分未保存、保存中、已保存未应用、已应用、需要刷新、失败与冲突。只有实际持久化成功才报保存成功；409 必须提示冲突，不能覆盖他人的修改。插件设置若依赖刷新，要显示待刷新而不是声称已经启用／停用。
+- single parent；
+- stable module IDs；
+- add；
+- disable；
+- replace；
+- configure。
 
-要求键盘操作、焦点恢复、表单标签、窄屏布局、减少动画、字段级错误、应用确认和可恢复重置。不以“桌面截图好看”替代真实使用验收。
+Build 时 resolve + validate + flatten + freeze exact revisions。Package runtime 不追“latest”。
 
-## 11. 编辑、应用与失败合同
+## 6. Request Context
 
-资源编辑可以自动保存草稿，但只在显式应用后改变后续请求。已保存版本与当前应用版本分开显示；新建、派生、保存、应用、重置在全局／项目／玩家资源中使用同一组语义。
+Native Session Context Compiler 当前存在但还没有成为所有 generation 的最终请求 authority。
 
-应用时一次性完成引用解析、能力检查、冲突检查和版本固定；失败不得留下“部分参数已换、部分仍是旧值”。应用完成的 Promise 必须连接真实工作，而不是一个预先 resolve 的占位。
+公共边界定义为：
 
-正在进行的请求继续使用原快照。用户应用新方案不改变已经发出的请求、已提交 Timeline 或其他角色的配置；需要中断时走现有明确的取消机制。
+    RequestContextPlan
 
-不可借迁移期间的“自动保存”回写作者包或同名全局资源。身份和作用域先于名称，失败必须从存储层传播到 UI。
+Provider examples：
 
-## 12. 迁移与兼容退出
+- Native Session Context Provider；
+- Studio Context Provider；
+- Task Context Provider。
 
-首版交付不承诺旧预设无损导入。提供原生导入／导出与资源版本校验；旧数据是否需要转换由 P0 明确列出支持集合，不把“以后做全兼容”写成隐性义务。
+Native Session Context 决定“哪些事实进入请求”；Prompt Compiler 决定“如何指示模型理解这些事实”。Prompt Module 不自行重新扫描 Timeline/Knowledge/Memory 建第二套 context authority。
 
-若提供一次性转换：读取明确选定的旧对象 → 生成独立原生资源和字段差异报告 → 用户确认 → 原子提交新对象。保留原件／备份；未映射字段报告丢失或拒绝，不执行其中代码，不把导入中的连接／密钥当提示资源保存。转换后运行时只读原生对象。
+## 7. Prompt IR
 
-禁止长期双读、双写、历史键 fallback、自动恢复旧名称、隐藏旧编辑器和通用兼容模拟器。阶段性 bridge 必须有具名消费者、唯一用途、删除阶段及断言；最终受影响原生主链不依赖 bridge。
+Prompt Program 不直接生成 provider-specific messages。
 
-保留底层必须举证：真实支持的消费者、不可绕过的协议／语义、明确替代成本与测试。仅因旧代码仍被引用或很大，不构成永久保留理由。
+链路：
 
-删除源文件之前检查第一方／Plugin 消费者、动态注册、路由、构建入口、资源引用、测试、导入及文档。回滚通过代码版本和可恢复数据快照完成，不把双运行系统当回滚方案。
+    RequestContextPlan
+           +
+      Prompt Program
+           |
+           v
+      Prompt Compiler
+           |
+           v
+        Prompt IR
+           |
+           v
+     Provider Renderer
 
-## 13. 首版合同、后续和停车项
+Prompt IR 至少表达：
 
-Core Spine：唯一配置／资源权威、带变量与流程的可组合提示方案、单模型RP与编排按职责投影两条一等路径、请求固定快照、复用 Native 上下文与模型适配、程序权限边界、原生编辑和可信保存结果。
+- directives；
+- context slots；
+- history/current input；
+- response directives；
+- tools；
+- output contract；
+- prefill；
+- provenance。
 
-First Usable：玩家从 Runtime 选择模型配置和提示方案，派生并启用两个模块，看到覆盖和编译预览；一次消息 API 和一次原始文本路径实际成功运行；保存／重启后配置一致；冲突、超预算、缺失引用、持久化失败和卸载／重置均可解释并恢复。项目／包原件不受修改，进行中的请求不受后续编辑影响。另需验证参数／临时赋值和受控持久状态的隔离、预览不写入，以及同一组流程资源在单模型RP完整装配和编排节点局部投影中均可用；普通RP不因CoT功能暗增Agent调用。
+OpenAI / Anthropic / Gemini / raw-text renderer 再投影到各自协议。
 
-最终集成还必须完成所选支持范围、原生设置字段清单与桥接清零，不能把 First Usable 的演示闭环当整个重构完成。
+## 8. Generation Core
 
-Growth Tracks：通过首版验收且有实际需求后，才考虑模块推荐、可选旧格式转换器、批量装配诊断及更丰富的模型探测。
+Native Generation Core 是新的正式核心，不以 `Atria.getContext()` 为依赖前提。
 
-Parking Lot：在线 Mod 市场、任意代码包沙箱、无限继承、自动依赖求解、可证明完备的自然语言冲突检测、重写成熟 provider 算法。这些不是已承诺需求。
+概念入口：
+
+    GenerationService.execute(request)
+
+职责：
+
+1. resolve Runtime Route；
+2. resolve Model/Connection/Generation/Prompt exact identity；
+3. resolve capability requirements；
+4. obtain RequestContextPlan；
+5. compile Prompt IR；
+6. freeze Effective Request Snapshot；
+7. dispatch through Provider Port；
+8. normalize response/stream and diagnostics。
+
+现有 `context.generateTask()` 变成 ST Compatibility Facade。
+
+第一方 Native 调用最终直接使用 Generation Service；第三方 legacy extension 可暂时继续调用 compatibility facade。
+
+## 9. Capability / Provider / Secret
+
+### Capabilities
+
+三态：
+
+- supported
+- unsupported
+- unknown
+
+每项带 provenance：
+
+- built-in adapter metadata；
+- provider discovery；
+- provider capability endpoint；
+- user override。
+
+required + unsupported => fail。
+required + unknown => 默认 fail，除非用户显式确认 override。
+optional + unknown => 默认不启用。
+
+### Provider
+
+Core 通过 Provider Port，只认识类似：
+
+- resolveCapabilities
+- countTokens
+- renderRequest
+- send
+- parseStream
+- normalizeResponse
+
+当前成熟 sender 可以由 Transitional ST Adapter 包装。
+
+Adapter 只能消费显式 resolved request；不能在发送时重新读取 active ST preset/global settings 作为隐藏 authority。
+
+### Secret
+
+Connection 保存 `secretRef`。
+Secret Port 在 send boundary 解引用。
+Secret value 不进入 Package、Library、Prompt、Project、普通 diagnostics 或 Effective Request serialization。
+
+## 10. Fallback
+
+Fallback 是完整 Route，不是只换一个旧 connection preset 名。
+
+切换前重新验证：
+
+- Model capability；
+- context budget；
+- tools；
+- output contract；
+- reasoning；
+- message format；
+- provider compatibility。
+
+V1 fallback policy：
+
+- automatic
+- confirm
+- disabled
+
+不引入虚假的 low/normal/high costClass；真实成本策略留给未来 Usage/Cost subsystem。
+
+## 11. Native Resource
+
+A2 Registry 已经 descriptor-driven，A8 Project Agent 也已根据 Registry 动态发现一部分资源能力。当前瓶颈主要在：
+
+- `NativeLibraryService` 仍硬编码 World/Knowledge/Binding/Asset/Package；
+- LibraryAuthoring Attach/Fork/Update 仍专用；
+- package dependency closure 仍围绕现有类型。
+
+本任务只增加足够通用的 versioned JSON resource handler，使：
+
+- `core.prompt-module`
+- `core.prompt-program`
+- `core.generation-profile`
+
+能复用 Library / exact revision / Attach/Fork/Update / Resource Graph / Package closure。
+
+不重写 WorldRepo、KnowledgeRepo、AssetStore，不建立 PromptStore。
+
+## 12. Package runtime contract
+
+`package.presets` 当前只有零散 Studio metadata 使用，没有形成 Native runtime authority。
+
+新合同使用新的明确 runtime metadata（最终字段名在 P0 contract 中冻结），表达：
+
+- role requirements；
+- recommended Prompt Program；
+- recommended Generation Profile；
+- exact resource refs。
+
+`package.presets` 不升级为新 contract，也不做长期 fallback。
+
+## 13. Product Frontend
+
+### 13.1 Long-term IA
+
+长期产品方向：
+
+- Home
+- Play
+- Library
+- Studio
+- Runtime
+
+但这不是本任务全部 UI 范围。
+
+### 13.2 本任务范围
+
+Runtime：
+
+- Routes
+- Models
+- Connections
+- Profiles
+- Diagnostics
+
+Library：
+
+- Prompt Programs
+- Prompt Modules
+- Generation Profiles
+
+现有 Build / A7 Studio workspace：
+
+- Prompt Authoring
+- Runtime Design
+
+Settings：
+
+- Appearance / Language / Interaction / Accessibility / Storage / Privacy / Advanced 等产品偏好；
+- Model / Connection / Prompt / Runtime 不再放 Settings。
+
+Search：
+
+- 搜索结果导航至正式 owning route；
+- 不把 B domain UI 注入 A domain。
+
+### 13.3 A6 global-nav decision
+
+当前 A6 guard 明确把 `Build` 作为 primary authoring domain，并拒绝 primary `Studio`。
+
+本任务不为 Model/Prompt 重构顺带重开整个 global IA，所以保留 `Build` primary route；Prompt/Runtime Authoring 在已有 A7 Studio workspace 内产品化。
+
+未来若正式升级整个 Atria Product Frontend V2，再单独讨论 Build → Studio 的一级导航变化。
+
+### 13.4 Visual / Interaction
+
+风格：现代专业创作工具，而非聊天软件或 AI 霓虹 SaaS。
+
+要求：
+
+- clear typography / spacing hierarchy；
+- fewer cards；
+- workspace/panel/tree/inspector 优先；
+- color 用于状态和选择；
+- desktop 与 mobile 独立布局；
+- Simple/Advanced Prompt authoring；
+- origin/provenance/derived/read-only 状态可见；
+- empty/error/loading/conflict 都有正式 UI；
+- 危险操作统一 Danger Zone；
+- Runtime diagnostics 解释“为什么最终这样解析”。
+
+正式页面不得通过 reparent 旧 ST DOM 完成“Native 化”。
+
+## 14. Hard Cut / Migration
+
+最终 first-party Native paths 不得继续以以下内容为 authority：
+
+- PresetManager
+- PromptManager
+- `buildPresetAwarePromptMessages`
+- `extensionSettings.connectionManager`
+- `oai_settings`
+- `power_user`
+- legacy Context/Instruct/System Prompt preset identity
+- ST macro side-effect state
+- `package.presets`
+- old DOM selectors/placement
+- first-party `Atria.getContext().generateTask`
+
+Legacy ST compatibility island可继续使用，不等于 Native 仍依赖它。
+
+旧数据策略：
+
+- 不自动双写；
+- 不后台同步；
+- 不隐式猜测迁移；
+- Native 第一次配置允许从零建立；
+- 以后若需要 Legacy Importer，只做显式、一次性、单向转换；
+- importer 不是本 refactor 完成 blocker。
+
+## 15. Frozen guard evolution
+
+冻结的是**语义不变量**，不是所有阶段性正则永久不可变。
+
+当前 main 已确认几个字面冲突：
+
+1. A6 guard 要求 Runtime Connections 保留 `atriaRuntimeConnectionAdvanced` compatibility editor。
+2. A6 guard 要求 standalone `capabilities` route。
+3. A8 guard 要求 Studio Agent 代码出现 `generateTask` 与 tools projection。
+
+本 refactor 在新 native replacement 完成前不得提前删这些 seam；完成后必须：
+
+- 修改对应 old guard，使其断言新的正式 seam；
+- 保留原 guard 中其他 frozen invariants；
+- 新增本 refactor residual guard；
+- 不能 wholesale disable A0–A9/N0–N10 guards；
+- 不能为了通过 stale regex 恢复 legacy authority。
+
+## 16. Non-goals
+
+- 重做整个 A6 shell；
+- 现在把 Build 一级导航改名 Studio；
+- 重写 N0–N10 Session/Package authority；
+- 第二个 Orchestrator；
+- Prompt 持久状态数据库；
+- 任意 Package JS；
+- marketplace；
+- 一次性重写全部 provider network stack；
+- 自动无损转换所有 ST 用户数据；
+- Android / Docker 默认构建。
