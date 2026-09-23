@@ -407,124 +407,64 @@ export async function mountPluginsUtility({
     };
 }
 
-function createProductSettingCard(documentRef, {
-    id,
-    title,
-    description,
-    value = '',
-    onOpenAdvanced,
-}) {
-    const card = documentRef.createElement('article');
-    card.className = 'atria-product-setting-card';
-    card.dataset.atriaSettingsSection = id;
-    const heading = documentRef.createElement('h3');
-    heading.textContent = translateShellText(title);
-    const copy = documentRef.createElement('p');
-    copy.textContent = description;
-    card.append(heading, copy);
-    if (value) {
-        const current = documentRef.createElement('strong');
-        current.className = 'atria-product-setting-card__value';
-        current.textContent = value;
-        card.append(current);
-    }
-    const open = makeButton(documentRef, 'Advanced controls', { icon: 'fa-solid fa-sliders' });
-    open.addEventListener('click', onOpenAdvanced);
-    card.append(open);
-    return card;
-}
+// Preference-only host bridge: move existing controls with their event handlers and
+// persistence, never the unfiltered User Settings drawer or generation controls.
+export const PREFERENCE_CONTROLS = Object.freeze({
+    appearance: ['themes', 'color-picker-block', 'font_scale'],
+    language: ['UI-language-block'],
+    interface: ['send_on_enter', 'auto_scroll_chat_to_bottom', 'auto_save_msg_edits', 'confirm_message_delete', 'before_unload_guard_mode'],
+    accessibility: ['reduced_motion', 'fast_ui_mode'],
+});
 
-export function mountSettingsUtility({
-    document: documentRef = globalThis.document,
-    slot,
-    body = slot,
-} = {}) {
-    const settingsRoot = documentRef.getElementById('user-settings-block');
-    if (!settingsRoot) {
-        const panel = createLocalizedStatePanel(documentRef, 'loading', {
-            title: 'Settings',
-            message: 'The existing User Settings controller is still booting.',
-        });
-        body.replaceChildren(panel);
-        return { root: panel, dispose: () => panel.remove() };
-    }
-
+export function mountSettingsUtility({ document: documentRef = globalThis.document, slot, body = slot, host } = {}) {
     const frame = makeUtilityFrame(documentRef, {
-        id: 'settings',
-        title: 'Settings',
-        description: 'Atria product preferences. Deep SillyTavern-compatible controls remain available under Advanced.',
+        id: 'settings', title: 'Settings',
+        description: 'Product preferences only. Models and connections belong to Runtime; Prompt assets belong to Library and Build.',
     });
-    const placement = savePlacement(documentRef, settingsRoot);
-    const accountControls = documentRef.getElementById('account_controls');
-    const accountControlsHidden = accountControls?.hidden;
-
-    const compatibility = documentRef.createElement('details');
-    compatibility.className = 'atria-settings-compatibility';
-    compatibility.dataset.atriaSettingsCompatibility = 'true';
-    const compatibilitySummary = documentRef.createElement('summary');
-    compatibilitySummary.textContent = 'Advanced · Compatibility controls';
-    const compatibilityHint = documentRef.createElement('p');
-    compatibilityHint.textContent = 'These controls keep the existing persistence authority but are not the Atria product layout.';
-    const compatibilityBody = documentRef.createElement('div');
-    compatibilityBody.className = 'atria-settings-compatibility__body';
-    compatibility.append(compatibilitySummary, compatibilityHint, compatibilityBody);
-
-    const openAdvanced = targetId => {
-        compatibility.open = true;
-        queueMicrotask(() => documentRef.getElementById(targetId)?.scrollIntoView?.({ block: 'start' }));
-    };
-
-    const languageSource = documentRef.getElementById('ui_language_select');
     const grid = documentRef.createElement('section');
-    grid.className = 'atria-product-settings-grid';
-    grid.dataset.atriaSettingsPrimary = 'true';
-    grid.append(
-        createProductSettingCard(documentRef, {
-            id: 'appearance',
-            title: 'Appearance',
-            description: 'Theme, typography and visual density.',
-            onOpenAdvanced: () => openAdvanced('UI-Theme-Block'),
-        }),
-        createProductSettingCard(documentRef, {
-            id: 'language',
-            title: 'Language',
-            description: 'Language used by the Atria and compatibility interfaces.',
-            value: languageSource?.selectedOptions?.[0]?.textContent || languageSource?.value || '',
-            onOpenAdvanced: () => openAdvanced('UI-language-block'),
-        }),
-        createProductSettingCard(documentRef, {
-            id: 'interface',
-            title: 'Interface & behavior',
-            description: 'Interaction, generation and low-frequency interface behavior.',
-            onOpenAdvanced: () => openAdvanced('power-user-options-block'),
-        }),
-        createProductSettingCard(documentRef, {
-            id: 'accessibility',
-            title: 'Accessibility',
-            description: 'Accessibility preferences continue to use the existing settings persistence authority.',
-            onOpenAdvanced: () => openAdvanced('power-user-options-block'),
-        }),
-    );
-
-    settingsRoot.dataset.atriaWorkspaceEmbedded = 'true';
-    settingsRoot.classList.remove('closedDrawer');
-    settingsRoot.classList.add('openDrawer');
-    settingsRoot.hidden = false;
-    settingsRoot.setAttribute('aria-hidden', 'false');
-    if (accountControls) accountControls.hidden = true;
-    compatibilityBody.append(settingsRoot);
-
-    frame.body.append(grid, compatibility);
-    body.replaceChildren(frame.root);
-
-    return {
-        root: frame.root,
-        dispose() {
-            if (accountControls) accountControls.hidden = accountControlsHidden;
-            restorePlacement(settingsRoot, placement);
-            frame.root.remove();
-        },
-    };
+    grid.className = 'atria-product-settings-grid'; grid.dataset.atriaSettingsPrimary = 'true';
+    const placements = [];
+    const titles = { appearance: 'Appearance', language: 'Language', interface: 'Interface & behavior', accessibility: 'Accessibility' };
+    const descriptions = { appearance: 'Theme, typography and visual density.', language: 'Language used by the Atria and compatibility interfaces.',
+        interface: 'Interaction preferences without model or generation configuration.', accessibility: 'Input and gesture preferences use the existing settings persistence.' };
+    for (const [id, controlIds] of Object.entries(PREFERENCE_CONTROLS)) {
+        const card = documentRef.createElement('section'); card.className = 'atria-product-setting-card'; card.dataset.atriaSettingsSection = id;
+        const title = documentRef.createElement('h3'); title.textContent = translateShellText(titles[id]);
+        const copy = documentRef.createElement('p'); copy.textContent = translateShellText(descriptions[id]); card.append(title, copy);
+        const controls = documentRef.createElement(id === 'appearance' ? 'details' : 'div');
+        if (id === 'appearance') {
+            controls.dataset.atriaSettingsCompatibility = 'preferences-only';
+            const summary = documentRef.createElement('summary'); summary.textContent = translateShellText('Advanced appearance controls'); controls.append(summary);
+        }
+        let count = 0;
+        for (const controlId of controlIds) {
+            const control = documentRef.getElementById(controlId);
+            if (!control) continue;
+            const node = control.matches('input, select') ? (control.closest('label') || control) : control;
+            if (!node || placements.some(([old]) => old === node)) continue;
+            const placement = savePlacement(documentRef, node); if (!placement) continue;
+            placements.push([node, placement]);
+            if (node.matches('input, select')) {
+                const label = documentRef.createElement('label');
+                label.textContent = translateShellText({ themes: 'Theme', font_scale: 'Font Scale', send_on_enter: 'Send on Enter', before_unload_guard_mode: 'Confirm before leaving' }[controlId] || controlId);
+                label.append(node); controls.append(label);
+            } else controls.append(node);
+            count++;
+        }
+        if (!count) {
+            const unavailable = documentRef.createElement('p'); unavailable.textContent = translateShellText('Preference controls are not available yet. Reopen Settings after startup.'); controls.append(unavailable);
+        }
+        card.append(controls); grid.append(card);
+    }
+    const destinations = documentRef.createElement('nav'); destinations.className = 'atria-utility-workspace__actions';
+    for (const [label, action] of [
+        ['Open Runtime Routes', () => host?.openRuntimeSection('routes')],
+        ['Prompt Programs', () => host?.openLibrarySection('prompt-programs')],
+        ['Storage & privacy', () => host?.openUtility('account')],
+        ['Diagnostics', () => host?.openUtility('diagnostics')],
+    ]) { const button = makeButton(documentRef, label); button.addEventListener('click', action); destinations.append(button); }
+    frame.body.append(destinations, grid); body.replaceChildren(frame.root);
+    return { root: frame.root, dispose() { for (const [node, placement] of placements.reverse()) restorePlacement(node, placement); frame.root.remove(); } };
 }
 
 export async function mountAccountUtility({

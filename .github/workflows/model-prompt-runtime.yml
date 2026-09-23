@@ -1,0 +1,40 @@
+name: Native Model Prompt Runtime
+on:
+  push:
+    branches: [main, refactor/atria-model-prompt-settings]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-model-prompt-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      ATRIA_DISABLE_MYSQL_TESTS: '1'
+      ATRIA_DISABLE_POSTGRES_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - run: npm ci --ignore-scripts --prefix tests
+      - run: node scripts/check-p8-model-prompt-integration.mjs
+      - run: npm run test:unit --prefix tests -- --runInBand native atria-shell game-runtime orchestrator
+      - run: npm run lint
+      - run: npm run frontend:prebuild-cache
+      - run: npx --prefix tests playwright install --with-deps chromium
+      - run: npx playwright test e2e/native-session/03-native-generation-p4.e2e.js e2e/native-session/04-native-runtime-p5.e2e.js e2e/native-session/05-native-authoring-p6.e2e.js e2e/native-session/06-native-cleanup-p7.e2e.js --project=e2e --workers=1
+        working-directory: tests
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: native-model-prompt-browser-failure
+          path: tests/test-results
+          if-no-files-found: ignore

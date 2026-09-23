@@ -1,4 +1,5 @@
 import { router as nativeSessionRouter } from './endpoints/native-session.js';
+import { router as nativeGenerationRouter } from './endpoints/native-generation.js';
 import { router as nativeProductRouter } from './endpoints/native-product.js';
 import { router as nativeStudioRouter } from './endpoints/native-studio.js';
 import https from 'node:https';
@@ -102,6 +103,7 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/characters', charactersRouter);
     app.use('/api/chats', chatsRouter);
     app.use('/api/native/session', nativeSessionRouter);
+    app.use('/api/native/generation', nativeGenerationRouter);
     app.use('/api/native/product', nativeProductRouter);
     app.use('/api/native/studio', nativeStudioRouter);
     app.use('/api/groups', groupsRouter);

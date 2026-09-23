@@ -1,3 +1,4 @@
+import { executeFirstPartyGeneration, firstPartyStreamingEnabled, streamFirstPartyGeneration } from '../../native/generation-compat.js';
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);
 }
@@ -80,13 +81,13 @@ function buildDirectorMessages(turnContext, narrativeContract) {
 function createGenerateTaskRouter(context) {
     return async ({ onChunk, ...opts } = {}) => {
         const streamEnabled = typeof context?.isStreamingPresetEnabled === 'function'
-            && context.isStreamingPresetEnabled(opts?.llmPresetName || '')
+            && firstPartyStreamingEnabled(context, opts?.llmPresetName || '')
             && typeof context?.generateTaskStream === 'function';
         if (!streamEnabled) {
-            return context.generateTask(opts);
+            return executeFirstPartyGeneration(context, 'orchestrator', { ...opts, onChunk });
         }
 
-        const { stream, result } = context.generateTaskStream(opts);
+        const { stream, result } = streamFirstPartyGeneration(context, 'orchestrator', opts);
         if (typeof onChunk === 'function') {
             void (async () => {
                 try {
@@ -238,10 +239,10 @@ export function createOrchestratorGameRuntimeApi(deps = {}) {
                     generateTask: taskRouter,
                     generateTaskStreamForMainAgent: taskRouter,
                     generateTaskStream: typeof context.generateTaskStream === 'function'
-                        ? options => context.generateTaskStream(options)
+                        ? options => streamFirstPartyGeneration(context, 'orchestrator', options)
                         : null,
                     isStreamingPresetEnabled: typeof context.isStreamingPresetEnabled === 'function'
-                        ? presetName => Boolean(context.isStreamingPresetEnabled(presetName))
+                        ? presetName => firstPartyStreamingEnabled(context, presetName)
                         : null,
                     executeLoopTool: typeof executeLoopTool === 'function'
                         ? (name, args, toolContext) => executeLoopTool(name, args, toolContext)

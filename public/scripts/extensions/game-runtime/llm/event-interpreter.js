@@ -325,8 +325,7 @@ export function buildEventInterpreterMessages(turnContext, requestInput) {
 
 export function createEventInterpreter(options = {}) {
     const roleRouter = options.roleRouter || null;
-    const generateTask = options.generateTask
-        || globalThis.Atria?.getContext?.()?.generateTask;
+    const generateTask = options.generateTask;
     if (!roleRouter && typeof generateTask !== 'function') {
         throw new Error('Event Interpreter requires Runtime Role Router or generateTask()');
     }

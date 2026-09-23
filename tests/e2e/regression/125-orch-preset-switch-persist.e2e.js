@@ -1,18 +1,19 @@
 // Atria orchestration workspace: the default preset binding survives a real host reload.
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
-import { markOnboarded } from '../_lib/fixtures.js';
+import { seedNativeSessionDataRoot } from '../native-session/_helpers.js';
 import { awaitMainUI, openExtensionsDrawer, reloadAndAwait } from '../_lib/page.js';
 let server;
+if (process.env.PW_NATIVE_CHANNEL) test.use({ channel: process.env.PW_NATIVE_CHANNEL });
 
 test.beforeAll(async () => {
-    server = await startServer({ batchKey:'regression',scenarioId:'125-native-preset-binding',extraConfig:{ 'storage.mode':'fs' } });
-    markOnboarded({ dataRoot:server.dataRoot });
+    const seeded = await seedNativeSessionDataRoot({ suffix: 'workspace-binding-p8' });
+    server = await startServer({ batchKey:'regression',scenarioId:'125-native-preset-binding', useExistingDataRoot: seeded.dataRoot, extraConfig:{ 'storage.mode':'fs' } });
 });
 
 test.afterAll(async () => { await tearDownServer(server); });
 
-test('plugin compatibility settings entry opens embedded Agents Workspace on mobile', async ({ page }) => {
+test('plugin compatibility settings entry opens embedded Agents Workspace on mobile', async ({ page }, info) => {
     test.setTimeout(90000);
     await page.setViewportSize({ width: 390, height: 844 });
     await awaitMainUI(page, server.baseURL);
@@ -64,6 +65,8 @@ test('plugin compatibility settings entry opens embedded Agents Workspace on mob
             hitInsideWorkspace: Boolean(hit?.closest?.('#agent-memory-workspace')),
         };
     });
+    await expect(page.locator('#atria-workspace')).not.toContainText('Opening workspace…');
+    await page.screenshot({ path: info.outputPath('workspace-mobile.png'), fullPage: true });
     expect(ownership).toEqual({
         embedded: true,
         inShell: true,
@@ -73,13 +76,21 @@ test('plugin compatibility settings entry opens embedded Agents Workspace on mob
     });
 });
 
-test('native definition and default binding survive page reload', async ({ page }) => {
+test('native definition and default binding survive page reload', async ({ page }, info) => {
     test.setTimeout(90000);
     await awaitMainUI(page,server.baseURL);
     await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Orchestration'); });
     const root = page.locator('#agent-memory-workspace');
+    const initialInspector = root.locator('.atria-workspace-inspector');
+    await expect(root).toBeVisible();
+    if (await initialInspector.isVisible()) await initialInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await root.locator('.workspace-more-menu > summary').click();
     await root.getByRole('button',{ name:'Duplicate',exact:true }).click();
+    // Duplicate selects the new agent and opens its inspector. Close the
+    // responsive overlay before opening the preset-level action menu.
+    await expect(initialInspector).toBeVisible();
+    await page.screenshot({ path: info.outputPath('workspace-duplicate-inspector.png'), fullPage: true });
+    await initialInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await root.locator('.workspace-more-menu > summary').click();
     await root.getByRole('button',{ name:'Preset settings',exact:true }).click();
     const inspector = root.locator('.atria-workspace-inspector');
@@ -97,4 +108,6 @@ test('native definition and default binding survive page reload', async ({ page 
     await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Orchestration'); });
     await expect(root.locator('.workspace-effective-preset strong')).toHaveText('Persistent native preset');
     await expect(root.locator('.workspace-effective-preset span')).toHaveText('default');
+    expect(await root.locator('.atria-workspace-main').evaluate(node => node.getBoundingClientRect().width)).toBeGreaterThan(500);
+    await page.screenshot({ path: info.outputPath('workspace-reloaded.png'), fullPage: true });
 });

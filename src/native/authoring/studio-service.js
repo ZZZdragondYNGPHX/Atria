@@ -108,6 +108,7 @@ export class StudioService {
         knowledgeRepo,
         assetStore,
         packageRepo = null,
+        versionedJsonResources = null,
         resourceRegistry = null,
         gitClient = createGitClient(),
         previewHost = new StudioPreviewHost(),
@@ -144,6 +145,7 @@ export class StudioService {
             knowledgeRepo,
             assetStore,
             packageRepo,
+            versionedJsonResources,
         });
         this._resourceGraph = new ResourceGraph({
             registry: this._resourceRegistry,
@@ -153,7 +155,9 @@ export class StudioService {
             knowledgeRepo,
             assetStore,
             packageRepo,
+            versionedJsonResources,
         });
+        this._versionedJsonResources = versionedJsonResources;
         this._libraryAuthoring = new LibraryAuthoringPlanner({
             libraryService: this._library,
             idFactory,
@@ -910,6 +914,7 @@ export class StudioService {
             worldRepo: this._worlds,
             knowledgeRepo: this._knowledge,
             assetStore: this._assets,
+            versionedJsonResources: this._versionedJsonResources,
         });
         return { revision, built };
     }

@@ -1,8 +1,9 @@
+import { mountPromptLibrary } from '../native/prompt-authoring.js';
+import { mountNativeRuntimeWorkspace } from '../native/runtime-workspace.js';
 import {
-    createAtriaRuntimeCard,
     createAtriaStatePanel,
 } from './primitives.js';
-import { formatShellText, translateShellText } from './localization.js';
+import { translateShellText } from './localization.js';
 import { applyAtriaPattern } from './patterns.js';
 import {
     mountNativeWorksWorkspace,
@@ -17,27 +18,21 @@ function createLocalizedStatePanel(documentRef, kind, options = {}) {
     });
 }
 
-function createLocalizedRuntimeCard(documentRef, options = {}) {
-    return createAtriaRuntimeCard(documentRef, {
-        ...options,
-        title: translateShellText(options.title),
-        description: translateShellText(options.description),
-        status: translateShellText(options.status),
-    });
-}
-
 export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'works', label: 'Works' }),
     Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
+    Object.freeze({ id: 'prompt-programs', label: 'Prompt Programs' }),
+    Object.freeze({ id: 'prompt-modules', label: 'Prompt Modules' }),
+    Object.freeze({ id: 'generation-profiles', label: 'Generation Profiles' }),
     Object.freeze({ id: 'skills', label: 'Skills' }),
 ]);
 
 export const RUNTIME_SECTIONS = Object.freeze([
-    Object.freeze({ id: 'overview', label: 'Overview' }),
-    Object.freeze({ id: 'roles', label: 'Roles' }),
+    Object.freeze({ id: 'routes', label: 'Routes' }),
+    Object.freeze({ id: 'models', label: 'Models' }),
     Object.freeze({ id: 'connections', label: 'Connections' }),
-    Object.freeze({ id: 'presets', label: 'Model / Prompt Presets' }),
-    Object.freeze({ id: 'capabilities', label: 'Capabilities' }),
+    Object.freeze({ id: 'profiles', label: 'Profiles' }),
+    Object.freeze({ id: 'diagnostics', label: 'Diagnostics' }),
 ]);
 
 function sectionById(list, id, fallbackId) {
@@ -56,16 +51,14 @@ export function normalizeLibrarySection(route) {
         || childId.startsWith('world:')
         || childId.startsWith('knowledge:')
     ) return 'worlds-knowledge';
-    return sectionById(LIBRARY_SECTIONS, childId, 'works').id;
+    return sectionById(LIBRARY_SECTIONS, childId.split(':')[0], 'works').id;
 }
 
 export function normalizeRuntimeSection(route) {
     const childId = String(route?.child?.id || '').trim();
-    // R7F exposed Retrieval as a second tab even though it mounted the same
-    // Connection Manager controller. Keep old deep links readable, but make
-    // Connections the single product/navigation surface.
-    const normalizedId = childId === 'retrieval' ? 'connections' : childId;
-    return sectionById(RUNTIME_SECTIONS, normalizedId || 'overview', 'overview').id;
+    const id = childId.split(':')[0];
+    const aliases = { overview: 'routes', roles: 'routes', retrieval: 'connections', presets: 'profiles', capabilities: 'models' };
+    return sectionById(RUNTIME_SECTIONS, aliases[id] || id, 'routes').id;
 }
 
 function buildDomainFrame(documentRef, {
@@ -108,33 +101,6 @@ function updateDomainTabs(frame, activeSection) {
         button.classList.toggle('is-selected', selected);
         button.setAttribute('aria-current', selected ? 'page' : 'false');
     }
-}
-
-function savePlacement(node) {
-    return {
-        parent: node.parentNode,
-        nextSibling: node.nextSibling,
-        className: node.getAttribute('class'),
-        style: node.getAttribute('style'),
-        ariaHidden: node.getAttribute('aria-hidden'),
-    };
-}
-
-function restorePlacement(node, placement) {
-    if (!node || !placement?.parent) return;
-    if (placement.nextSibling?.parentNode === placement.parent) {
-        placement.parent.insertBefore(node, placement.nextSibling);
-    } else {
-        placement.parent.append(node);
-    }
-
-    if (placement.className === null) node.removeAttribute('class');
-    else node.setAttribute('class', placement.className);
-    if (placement.style === null) node.removeAttribute('style');
-    else node.setAttribute('style', placement.style);
-    if (placement.ariaHidden === null) node.removeAttribute('aria-hidden');
-    else node.setAttribute('aria-hidden', placement.ariaHidden);
-    delete node.dataset.atriaWorkspaceEmbedded;
 }
 
 async function mountSkillsWorkspace({ document: documentRef, body }) {
@@ -182,539 +148,16 @@ async function mountSkillsWorkspace({ document: documentRef, body }) {
     };
 }
 
-function renderOverviewCard(documentRef, root, options) {
-    root.append(createLocalizedRuntimeCard(documentRef, options));
-}
-
-function mountRuntimeOverview({ document: documentRef, body }) {
-    const context = globalThis.Atria?.getContext?.();
-    const extensionSettings = context?.extensionSettings || {};
-    const profiles = Array.isArray(extensionSettings?.connectionManager?.profiles)
-        ? extensionSettings.connectionManager.profiles
-        : [];
-    const gameApi = context?.getExtensionApi?.('game-runtime');
-    const llmState = gameApi?.getLlmRuntimeState?.() || { active: false, roles: {}, packageId: '' };
-    const roleConfigs = gameApi?.getModelRuntimeConfig?.()?.roles || llmState.roles || {};
-
-    const root = documentRef.createElement('section');
-    root.dataset.atriaPattern = 'runtime-status';
-    root.dataset.atriaRuntimeOverview = 'true';
-
-    const selectedId = extensionSettings?.connectionManager?.selectedProfile;
-    const selected = profiles.find(profile => profile?.id === selectedId);
-    const chatProfiles = profiles.filter(profile => ['cc', 'tc'].includes(String(profile?.mode || '')));
-    const embedProfiles = profiles.filter(profile => profile?.mode === 'embed');
-    const rerankProfiles = profiles.filter(profile => profile?.mode === 'rerank');
-    const configuredRoles = Object.values(roleConfigs).filter(role => role?.primaryProfile).length;
-
-    renderOverviewCard(documentRef, root, {
-        title: 'Game Runtime',
-        description: llmState.packageId
-            ? formatShellText('Active package: 0', [llmState.packageId], undefined, 'atria.shell.runtime.activePackage')
-            : 'No Game Package is currently active.',
-        status: llmState.active ? 'Active' : 'Idle',
-        tone: llmState.active ? 'success' : 'neutral',
-    });
-    renderOverviewCard(documentRef, root, {
-        title: 'Runtime Roles',
-        description: formatShellText('${0} of ${1} roles have an explicit primary connection profile.', [configuredRoles, Object.keys(roleConfigs).length], undefined, 'atria.shell.runtime.configuredRoles'),
-        status: configuredRoles ? 'Configured' : 'Defaults',
-    });
-    renderOverviewCard(documentRef, root, {
-        title: 'Connections',
-        description: selected
-            ? formatShellText('Active profile: 0', [selected.name], undefined, 'atria.shell.runtime.activeProfile')
-            : 'No Connection Manager profile is active.',
-        status: formatShellText(
-            '${0} chat · ${1} embedding · ${2} rerank profiles',
-            [chatProfiles.length, embedProfiles.length, rerankProfiles.length],
-            undefined,
-            'atria.shell.runtime.connectionProfileCounts',
-        ),
-    });
-
-    body.replaceChildren(root);
-    return { root, dispose: () => root.remove() };
-}
-
-async function mountRuntimeRoles({ document: documentRef, body }) {
-    const context = globalThis.Atria?.getContext?.();
-    const api = context?.getExtensionApi?.('game-runtime');
-    if (!api?.getModelRuntimeConfig || !api?.setRuntimeRoleConfig) {
-        const panel = createLocalizedStatePanel(documentRef, 'loading', {
-            title: 'Runtime Roles',
-            message: 'The existing Game Runtime role controller is still booting.',
-        });
-        body.replaceChildren(panel);
-        return { root: panel, dispose: () => panel.remove() };
-    }
-
-    const { getChatCompletionConnectionProfiles } = await import('../extensions/connection-manager/profile-resolver.js');
-    const profiles = getChatCompletionConnectionProfiles();
-    const config = api.getModelRuntimeConfig();
-
-    const root = documentRef.createElement('section');
-    root.className = 'atria-runtime-roles';
-    root.dataset.atriaRuntimeRoles = 'true';
-
-    for (const [roleId, role] of Object.entries(config.roles || {})) {
-        const card = documentRef.createElement('article');
-        card.className = 'atria-runtime-role-card';
-        card.dataset.runtimeRole = roleId;
-
-        const title = documentRef.createElement('h3');
-        title.textContent = roleId.replaceAll('_', ' ');
-
-        const primaryLabel = documentRef.createElement('label');
-        primaryLabel.textContent = translateShellText('Primary connection');
-        const primary = documentRef.createElement('select');
-        primary.className = 'text_pole';
-        const none = documentRef.createElement('option');
-        none.value = '';
-        none.textContent = translateShellText('Use global/default connection');
-        primary.append(none);
-        for (const profile of profiles) {
-            const option = documentRef.createElement('option');
-            option.value = profile.name;
-            option.textContent = profile.name;
-            option.selected = profile.name === role.primaryProfile;
-            primary.append(option);
-        }
-        primaryLabel.append(primary);
-
-        const fallbacksLabel = documentRef.createElement('label');
-        fallbacksLabel.textContent = translateShellText('Fallback connections');
-        const fallbacks = documentRef.createElement('select');
-        fallbacks.className = 'text_pole';
-        fallbacks.multiple = true;
-        for (const profile of profiles) {
-            const option = documentRef.createElement('option');
-            option.value = profile.name;
-            option.textContent = profile.name;
-            option.selected = role.fallbackProfiles?.includes(profile.name);
-            fallbacks.append(option);
-        }
-        fallbacksLabel.append(fallbacks);
-
-        const limits = documentRef.createElement('div');
-        limits.className = 'atria-runtime-role-card__limits';
-        const timeout = documentRef.createElement('input');
-        timeout.type = 'number';
-        timeout.min = '1000';
-        timeout.max = '600000';
-        timeout.step = '1000';
-        timeout.value = String(role.timeoutMs);
-        timeout.setAttribute('aria-label', translateShellText('Timeout milliseconds'));
-        const retries = documentRef.createElement('input');
-        retries.type = 'number';
-        retries.min = '0';
-        retries.max = '5';
-        retries.value = String(role.retries);
-        retries.setAttribute('aria-label', translateShellText('Retries'));
-        limits.append(timeout, retries);
-
-        const meta = documentRef.createElement('small');
-        meta.textContent = formatShellText('Policy: ${0} · tools: ${1} · structured output: ${2}', [role.reasoningPolicy, translateShellText(role.requirements?.tools ? 'required' : 'optional'), translateShellText(role.requirements?.structuredOutput ? 'required' : 'optional')], undefined, 'atria.shell.runtime.rolePolicy');
-
-        async function persist() {
-            try {
-                const selectedFallbacks = [...fallbacks.selectedOptions]
-                    .map(option => option.value)
-                    .filter(name => name && name !== primary.value);
-                api.setRuntimeRoleConfig(roleId, {
-                    primaryProfile: primary.value,
-                    fallbackProfiles: selectedFallbacks,
-                    timeoutMs: Number(timeout.value),
-                    retries: Number(retries.value),
-                });
-                card.dataset.saveState = 'saved';
-            } catch (error) {
-                card.dataset.saveState = 'error';
-                console.warn('[atria-shell] Runtime Role update failed', roleId, error);
-            }
-        }
-
-        primary.addEventListener('change', persist);
-        fallbacks.addEventListener('change', persist);
-        timeout.addEventListener('change', persist);
-        retries.addEventListener('change', persist);
-
-        card.append(title, primaryLabel, fallbacksLabel, limits, meta);
-        root.append(card);
-    }
-
-    body.replaceChildren(root);
-    return { root, dispose: () => root.remove() };
-}
-
-async function waitForConnectionManagerRoot(documentRef, timeoutMs = 6000) {
-    const existing = documentRef.getElementById('atria-connection-manager-root');
-    if (existing) return existing;
-    if (typeof MutationObserver === 'undefined') return null;
-
-    return await new Promise(resolve => {
-        let settled = false;
-        const finish = value => {
-            if (settled) return;
-            settled = true;
-            observer.disconnect();
-            clearTimeout(timer);
-            resolve(value);
-        };
-        const observer = new MutationObserver(() => {
-            const node = documentRef.getElementById('atria-connection-manager-root');
-            if (node) finish(node);
-        });
-        observer.observe(documentRef.body, { childList: true, subtree: true });
-        const timer = setTimeout(() => finish(null), timeoutMs);
-    });
-}
-
-async function mountConnectionManagerWorkspace({ document: documentRef, body, route }) {
-    const context = globalThis.Atria?.getContext?.();
-    const settings = context?.extensionSettings?.connectionManager || {};
-    const profiles = Array.isArray(settings.profiles) ? settings.profiles : [];
-    const selectedId = String(settings.selectedProfile || '');
-
-    const root = documentRef.createElement('section');
-    root.className = 'atria-runtime-connections';
-    root.dataset.atriaRuntimeConnections = 'true';
-
-    const summary = documentRef.createElement('div');
-    summary.className = 'atria-runtime-connections__summary';
-    if (!profiles.length) {
-        summary.append(createLocalizedStatePanel(documentRef, 'empty', {
-            title: 'No connection profiles',
-            message: 'Configure a provider in Advanced Connection Manager.',
-        }));
-    } else {
-        for (const profile of profiles) {
-            const card = documentRef.createElement('article');
-            card.className = 'atria-runtime-connection-card';
-            card.dataset.atriaConnectionProfile = String(profile?.id || profile?.name || '');
-            const title = documentRef.createElement('h3');
-            title.textContent = String(profile?.name || profile?.id || 'Connection');
-            const detail = documentRef.createElement('p');
-            const mode = String(profile?.mode || 'chat');
-            detail.textContent = [
-                mode === 'embed' ? 'Embedding' : mode === 'rerank' ? 'Rerank' : 'Chat',
-                profile?.api || profile?.source || profile?.provider || '',
-                profile?.model || profile?.modelId || '',
-            ].filter(Boolean).join(' · ');
-            const status = documentRef.createElement('span');
-            status.className = 'atria-runtime-connection-card__status';
-            status.textContent = String(profile?.id || '') === selectedId ? 'Active' : 'Available';
-            if (String(profile?.id || '') === selectedId) status.dataset.tone = 'success';
-            card.append(title, detail, status);
-            summary.append(card);
-        }
-    }
-
-    const advanced = documentRef.createElement('details');
-    advanced.className = 'atria-runtime-connection-advanced';
-    advanced.dataset.atriaRuntimeConnectionAdvanced = 'true';
-    const advancedSummary = documentRef.createElement('summary');
-    advancedSummary.textContent = 'Advanced · Connection Manager';
-    const advancedHint = documentRef.createElement('p');
-    advancedHint.textContent = 'The compatibility editor keeps the existing Connection Manager persistence authority.';
-    const advancedBody = documentRef.createElement('div');
-    advancedBody.className = 'atria-runtime-connection-advanced__body';
-    advanced.append(advancedSummary, advancedHint, advancedBody);
-
-    let apiBlock = null;
-    let managerRoot = null;
-    let placement = null;
-    let loading = null;
-
-    function applyRouteMode(nextRoute) {
-        if (!managerRoot) return;
-        const oldRetrievalRoute = String(nextRoute?.child?.id || '') === 'retrieval';
-        const mode = oldRetrievalRoute ? 'embed' : 'chat';
-        managerRoot.querySelector(`.connection_profile_mode_tab[data-mode="${mode}"]`)?.click?.();
-    }
-
-    async function mountAdvanced() {
-        if (apiBlock || loading) return;
-        loading = waitForConnectionManagerRoot(documentRef).then(node => {
-            managerRoot = node;
-            if (!managerRoot) {
-                advancedBody.replaceChildren(createLocalizedStatePanel(documentRef, 'loading', {
-                    title: 'Connections',
-                    message: 'Connection Manager is still finishing its existing controller bootstrap.',
-                }));
-                return;
-            }
-            apiBlock = managerRoot.closest?.('#rm_api_block')
-                || documentRef.getElementById('rm_api_block')
-                || managerRoot;
-            placement = savePlacement(apiBlock);
-            apiBlock.dataset.atriaWorkspaceEmbedded = 'advanced';
-            managerRoot.dataset.atriaWorkspaceEmbedded = 'advanced';
-            apiBlock.classList.remove('closedDrawer');
-            apiBlock.classList.add('openDrawer');
-            apiBlock.removeAttribute('aria-hidden');
-            advancedBody.replaceChildren(apiBlock);
-            applyRouteMode(route);
-        }).finally(() => {
-            loading = null;
-        });
-        await loading;
-    }
-
-    advanced.addEventListener('toggle', () => {
-        if (advanced.open) void mountAdvanced();
-    });
-
-    root.append(summary, advanced);
-    body.replaceChildren(root);
-
-    return {
-        root,
-        mountAdvanced,
-        updateRoute(nextRoute) {
-            route = nextRoute;
-            applyRouteMode(nextRoute);
-        },
-        dispose() {
-            if (managerRoot) delete managerRoot.dataset.atriaWorkspaceEmbedded;
-            if (apiBlock && placement) restorePlacement(apiBlock, placement);
-            root.remove();
-        },
-    };
-}
-
-async function mountPresetWorkspace({ document: documentRef, body }) {
-    const { getPresetManager } = await import('../preset-manager.js');
-    const root = documentRef.createElement('section');
-    root.className = 'atria-runtime-presets';
-    root.dataset.atriaRuntimePresets = 'true';
-
-    const summary = documentRef.createElement('div');
-    summary.className = 'atria-runtime-preset-list';
-    summary.dataset.atriaPresetSummary = 'true';
-
-    const editor = documentRef.createElement('section');
-    editor.className = 'atria-runtime-preset-editor';
-    editor.dataset.atriaPresetEditor = 'true';
-    editor.hidden = true;
-
-    const editorHeader = documentRef.createElement('header');
-    editorHeader.className = 'atria-runtime-preset-editor__header';
-    const back = documentRef.createElement('button');
-    back.type = 'button';
-    back.className = 'atria-runtime-preset-editor__back';
-    back.textContent = translateShellText('Back to preset list');
-    const editorTitle = documentRef.createElement('h3');
-    editorTitle.textContent = translateShellText('Preset editor');
-    editorHeader.append(back, editorTitle);
-
-    const editorBody = documentRef.createElement('div');
-    editorBody.className = 'atria-runtime-preset-editor__body';
-    editor.append(editorHeader, editorBody);
-
-    const definitions = [
-        ['openai', 'Chat Completion', 'model'],
-        ['textgenerationwebui', 'Text Completion', 'model'],
-        ['context', 'Context', 'prompt'],
-        ['instruct', 'Instruct', 'prompt'],
-        ['sysprompt', 'System Prompt', 'prompt'],
-        ['reasoning', 'Reasoning', 'prompt'],
-    ];
-
-    const refreshers = [];
-    let activePlacement = null;
-    let activeSource = null;
-
-    function restoreEditorSource() {
-        if (activeSource && activePlacement) {
-            delete activeSource.dataset.atriaRuntimePresetEditorSource;
-            restorePlacement(activeSource, activePlacement);
-        }
-        activeSource = null;
-        activePlacement = null;
-        editorBody.replaceChildren();
-        editor.hidden = true;
-        summary.hidden = false;
-        delete root.dataset.atriaPresetEditing;
-        for (const refresh of refreshers) refresh();
-    }
-
-    function openNativeEditor(apiId, label, kind, manager) {
-        restoreEditorSource();
-        const source = kind === 'model'
-            ? documentRef.getElementById('left-nav-panel')
-            : documentRef.getElementById('AdvancedFormatting');
-        if (!source) {
-            const panel = createLocalizedStatePanel(documentRef, 'loading', {
-                title: label,
-                message: 'The existing preset editor is still booting.',
-            });
-            editorBody.replaceChildren(panel);
-            summary.hidden = true;
-            editor.hidden = false;
-            root.dataset.atriaPresetEditing = apiId;
-            editorTitle.textContent = translateShellText(label);
-            return;
-        }
-
-        activeSource = source;
-        activePlacement = savePlacement(source);
-        source.dataset.atriaWorkspaceEmbedded = 'true';
-        source.dataset.atriaRuntimePresetEditorSource = apiId;
-        source.classList.remove('closedDrawer');
-        source.classList.add('openDrawer');
-        source.removeAttribute('aria-hidden');
-
-        summary.hidden = true;
-        editor.hidden = false;
-        root.dataset.atriaPresetEditing = apiId;
-        editorTitle.textContent = formatShellText('Edit ${0}', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle');
-        editorBody.replaceChildren(source);
-
-        const nativeSelect = manager?.select?.get?.(0) || manager?.select?.[0] || null;
-        queueMicrotask(() => nativeSelect?.scrollIntoView?.({ block: 'start' }));
-    }
-
-    back.addEventListener('click', restoreEditorSource);
-
-    for (const [apiId, label, kind] of definitions) {
-        const manager = getPresetManager(apiId);
-        if (!manager) continue;
-        const names = manager.getAllPresets?.() || [];
-        if (!names.length) continue;
-
-        const row = documentRef.createElement('div');
-        row.className = 'atria-runtime-preset-row';
-        row.dataset.atriaPresetApi = apiId;
-
-        const title = documentRef.createElement('strong');
-        title.className = 'atria-runtime-preset-row__label';
-        title.textContent = translateShellText(label);
-
-        const select = documentRef.createElement('select');
-        select.className = 'text_pole atria-runtime-preset-row__select';
-        select.setAttribute('aria-label', formatShellText('${0} current preset', [translateShellText(label)], undefined, 'atria.shell.runtime.currentPresetAria'));
-
-        const edit = documentRef.createElement('button');
-        edit.type = 'button';
-        edit.className = 'atria-runtime-preset-row__edit';
-        edit.textContent = translateShellText('Edit');
-        edit.setAttribute('aria-label', formatShellText('Edit ${0}', [translateShellText(label)], undefined, 'atria.shell.runtime.editPresetTitle'));
-
-        function refresh() {
-            const selected = manager.getSelectedPresetName?.() || '';
-            const available = manager.getAllPresets?.() || [];
-            select.replaceChildren();
-            for (const name of available) {
-                const option = documentRef.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                option.selected = name === selected;
-                select.append(option);
-            }
-        }
-        refreshers.push(refresh);
-        refresh();
-
-        select.addEventListener('change', () => {
-            const value = manager.findPreset?.(select.value);
-            if (value !== undefined && value !== null) {
-                void Promise.resolve(manager.selectPreset?.(value));
-            }
-        });
-        edit.addEventListener('click', () => openNativeEditor(apiId, label, kind, manager));
-
-        row.append(title, select, edit);
-        summary.append(row);
-    }
-
-    root.append(summary, editor);
-    body.replaceChildren(root);
-    return {
-        root,
-        dispose() {
-            restoreEditorSource();
-            root.remove();
-        },
-    };
-}
-
-
-function mountRuntimeCapabilities({ document: documentRef, body }) {
-    const runtime = globalThis.Atria?.nativeSessionRuntime || null;
-    const snapshot = runtime?.snapshot || null;
-    const manifest = snapshot?.manifest || {};
-    const descriptor = snapshot?.runtime || manifest.runtime || {};
-    const experience = descriptor?.experience || manifest.runtime?.experience || {};
-    const plugins = Array.isArray(descriptor?.plugins)
-        ? descriptor.plugins
-        : Array.isArray(manifest.runtime?.plugins) ? manifest.runtime.plugins : [];
-    const permissions = Array.isArray(manifest.permissions) ? manifest.permissions : [];
-    const capabilities = Array.isArray(manifest.capabilities) ? manifest.capabilities : [];
-    const skillIds = Array.isArray(descriptor?.skills)
-        ? descriptor.skills.map(item => typeof item === 'string' ? item : item?.skillId).filter(Boolean)
-        : Array.isArray(manifest.runtime?.skills) ? manifest.runtime.skills : [];
-
-    const root = documentRef.createElement('section');
-    root.className = 'atria-runtime-capabilities';
-    root.dataset.atriaRuntimeCapabilities = 'true';
-
-    renderOverviewCard(documentRef, root, {
-        title: 'Experience',
-        description: snapshot
-            ? formatShellText('Mode: ${0} · exact PackageVersion ${1}', [
-                experience.mode || 'text',
-                snapshot.packageVersion?.packageVersionId || manifest.packageVersionId || 'unknown',
-            ], undefined, 'atria.shell.runtime.experienceSummary')
-            : 'Open a Native game to inspect its exact runtime capabilities.',
-        status: snapshot ? 'Active' : 'Idle',
-        tone: snapshot ? 'success' : 'neutral',
-    });
-    renderOverviewCard(documentRef, root, {
-        title: 'Package Capabilities',
-        description: capabilities.length ? capabilities.join(' · ') : 'No additional package capabilities declared.',
-        status: String(capabilities.length),
-    });
-    renderOverviewCard(documentRef, root, {
-        title: 'Permissions',
-        description: permissions.length ? permissions.join(' · ') : 'No package permissions declared.',
-        status: String(permissions.length),
-    });
-    renderOverviewCard(documentRef, root, {
-        title: 'Plugins',
-        description: plugins.length
-            ? plugins.map(item => item.pluginId || item.id || 'plugin').join(' · ')
-            : 'No Package Runtime plugins declared for the active exact version.',
-        status: String(plugins.length),
-    });
-    renderOverviewCard(documentRef, root, {
-        title: 'Skills',
-        description: skillIds.length
-            ? skillIds.join(' · ')
-            : 'No package-scoped Skills declared for the active exact version.',
-        status: String(skillIds.length),
-    });
-
-    body.replaceChildren(root);
-    return { root, dispose: () => root.remove() };
-}
-
 async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
     if (section === 'works') return mountNativeWorksWorkspace(args);
     if (section === 'worlds-knowledge') return mountNativeWorldKnowledgeWorkspace(args);
+    if (['prompt-programs', 'prompt-modules', 'generation-profiles'].includes(section)) return mountPromptLibrary(args);
     return await mountSkillsWorkspace(args);
 }
 
 async function mountRuntimeSection(args) {
-    const section = normalizeRuntimeSection(args.route);
-    if (section === 'overview') return mountRuntimeOverview(args);
-    if (section === 'roles') return await mountRuntimeRoles(args);
-    if (section === 'connections') {
-        return await mountConnectionManagerWorkspace(args);
-    }
-    if (section === 'capabilities') return mountRuntimeCapabilities(args);
-    return await mountPresetWorkspace(args);
+    return mountNativeRuntimeWorkspace({ ...args, section: normalizeRuntimeSection(args.route) });
 }
 
 function createDomainController({
@@ -762,7 +205,7 @@ function createDomainController({
 
         frame.body.replaceChildren(createLocalizedStatePanel(documentRef, 'loading', {
             title: sectionById(sections, nextSection, sections[0].id).label,
-            message: 'Opening existing controller…',
+            message: 'Loading workspace…',
         }));
 
         let mounted;

@@ -205,3 +205,60 @@ export {
     resolveNativeSkillEntries,
     toNativeSkillScope,
 } from './skill-platform.js';
+
+export {
+    ATRIA_CAPABILITY_PROVENANCE_KINDS,
+    ATRIA_CAPABILITY_STATES,
+    ATRIA_CONTEXT_SOURCE_KINDS,
+    ATRIA_MODEL_PROMPT_SCHEMA_VERSION,
+    ATRIA_PACKAGE_MODEL_PROMPT_FIELD,
+    ATRIA_RESOURCE_REF_SCOPES,
+    ATRIA_RUNTIME_ROUTE_SCOPES,
+    assertCapabilityDecision,
+    assertConnectionProfile,
+    assertEffectiveRequestSnapshot,
+    assertExactResourceRef,
+    assertGenerationProfile,
+    assertModelProfile,
+    assertPackageModelPromptRuntimeMetadata,
+    assertPromptIR,
+    assertPromptModule,
+    assertPromptProgram,
+    assertRequestContextPlan,
+    assertRuntimeRoute,
+    serializeEffectiveRequestSnapshot,
+} from './model-prompt-runtime/contracts.js';
+
+export {
+    CONTEXT_PROVIDER_METHODS,
+    GENERATION_SERVICE_METHODS,
+    PROVIDER_PORT_METHODS,
+    ROUTE_RESOLVER_METHODS,
+    SECRET_PORT_METHODS,
+    assertContextProviderPort,
+    assertGenerationServicePort,
+    assertProviderPort,
+    assertRouteResolverPort,
+    assertSecretPort,
+} from './model-prompt-runtime/ports.js';
+
+export {
+    VERSIONED_MODEL_PROMPT_RESOURCE_TYPES,
+    assertVersionedModelPromptResource,
+    collectVersionedModelPromptResourceRefs,
+    getVersionedModelPromptResourceDefinition,
+    getVersionedModelPromptResourceIdentity,
+    mapVersionedModelPromptResourceRefs,
+} from './model-prompt-runtime/resources.js';
+
+export {
+    NativeModelPromptPersistence,
+    VersionedJsonResourceHandler,
+} from './model-prompt-runtime/persistence.js';
+
+export { RouteResolver } from './model-prompt-runtime/route-resolver.js';
+export { GenerationService } from './model-prompt-runtime/generation-service.js';
+export { GenerationError, ProviderFailure } from './model-prompt-runtime/execution-utils.js';
+export { PromptCompiler, flattenPromptProgram, PROMPT_TARGETS } from './model-prompt-runtime/prompt-compiler.js';
+export { createTaskContextProvider, createStudioContextProvider, createNativeSessionContextProvider } from './model-prompt-runtime/context-providers.js';
+export { renderPromptMessages, renderPromptProtocol } from './model-prompt-runtime/prompt-renderers.js';

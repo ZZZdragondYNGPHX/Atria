@@ -63,6 +63,20 @@ describe('R7G WorkspaceHost', () => {
         `;
     });
 
+    test('P8 append-style adapters remove only the completed activation loading placeholder', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+        const agents = ({ slot }) => {
+            const root = document.createElement('section'); root.textContent = 'Ready Agents'; slot.append(root);
+            return { root, dispose: () => root.remove() };
+        };
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { agents } });
+        host.openAgentSection('orchestration'); await flushWorkspace();
+        expect(shell.slots.workspace.textContent).toBe('Ready Agents');
+        expect(shell.slots.workspace.textContent).not.toContain('Opening workspace');
+        host.dispose(); shell.destroy(); navigation.dispose();
+    });
+
     test('maps Agents child routes without creating a second top-level router', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const registry = createCommandRegistry();
@@ -198,12 +212,12 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'runtime',
-            child: { id: 'roles', kind: 'workspace' },
+            child: null,
         });
         expect(host.getActiveWorkspace()).toMatchObject({
             key: 'runtime',
             kind: 'runtime',
-            section: 'roles',
+            section: 'routes',
         });
         expect(adapters.runtime).toHaveBeenCalledTimes(1);
 
@@ -417,8 +431,8 @@ describe('R7G WorkspaceHost', () => {
         presets.click();
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
-            domain: 'runtime',
-            child: { id: 'presets' },
+            domain: 'library',
+            child: { id: 'prompt-programs' },
         });
 
         const skills = document.createElement('button');
@@ -568,7 +582,7 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'knowledge', label: 'Knowledge Bases', kind: 'workspace' },
         })).toMatchObject({ key: 'library', kind: 'library', section: 'worlds-knowledge' });
         expect(routeDescriptor({ domain: 'runtime', child: null, breadcrumb: ['Runtime'] }))
-            .toMatchObject({ key: 'runtime', kind: 'runtime', section: 'overview', title: 'Overview' });
+            .toMatchObject({ key: 'runtime', kind: 'runtime', section: 'routes', title: 'Routes' });
         expect(routeDescriptor({
             domain: 'runtime',
             child: { id: 'retrieval', label: 'Retrieval', kind: 'workspace' },

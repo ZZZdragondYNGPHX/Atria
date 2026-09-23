@@ -1,3 +1,5 @@
+import { isNativeGenerationFailure } from '../../native/generation-compat.js';
+import { nativeGenerationActive } from '../../native/generation-client.js';
 import { runDirectorWorker, createDirectorDelegateExecutor } from './engine-v2/director-worker.js';
 import { runRoutedLegacyWorkflow, createLegacyAgentGraph, agentKey } from './legacy-agent-routing.js';
 import { copy } from '../../lib/agent-runtime/contracts.js';
@@ -84,6 +86,7 @@ async function loadSkillResolution() {
  * this module stays Jest-clean.
  */
 function resolveAgentApiPresetName(settings, agentConfig) {
+    if (nativeGenerationActive()) return '';
     const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
@@ -103,6 +106,7 @@ function resolveAgentApiPresetName(settings, agentConfig) {
  * `resolveCardFirstPresetName`.
  */
 function resolveAgentPromptPresetName(settings, agentConfig) {
+    if (nativeGenerationActive()) return '';
     const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
@@ -737,6 +741,7 @@ export function createSubagentDispatcher({
                     return roundResult;
                 }, callOpts, contextForNotes || {});
             } catch (transportErr) {
+                if (isNativeGenerationFailure(transportErr)) throw transportErr;
                 if (transportErr?.code === 'context_budget' || isAbortError(transportErr, baseOpts?.abortSignal)) throw transportErr;
                 transportAttempt += 1;
                 if (transportAttempt > transportRetries) {

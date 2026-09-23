@@ -121,6 +121,27 @@ export function mountAtriaPlayProduct({
         return Boolean(runtime?.active && !runtime.history && !runtime.failed);
     }
 
+    let draftText = '';
+    const generating = () => documentRef.body.dataset.generating === 'true';
+    const updateDraft = event => {
+        draftText = String(event.detail?.text || '');
+        render();
+    };
+    documentRef.addEventListener('atria-native-play-draft', updateDraft);
+    const runtimeError = documentRef.createElement('div');
+    runtimeError.className = 'atri-runtime-notice'; runtimeError.hidden = true;
+    const showRuntimeError = event => {
+        runtimeError.replaceChildren(); runtimeError.hidden = false;
+        const message = documentRef.createElement('p'); message.textContent = event.detail.message;
+        const action = documentRef.createElement('button'); action.type = 'button';
+        action.textContent = 'Open Runtime ' + event.detail.target;
+        action.addEventListener('click', () => globalThis.Atria?.shell?.getWorkspaceHost?.()?.openRuntimeSection(event.detail.target));
+        runtimeError.append(message, action);
+    };
+    composerComponent.append(runtimeError);
+    documentRef.addEventListener('atria-native-runtime-error', showRuntimeError);
+
+
     function render() {
         const runtime = activeRuntime();
         const snapshot = runtime?.snapshot || null;
@@ -149,6 +170,11 @@ export function mountAtriaPlayProduct({
         for (const entry of snapshot.timeline || []) {
             fragment.append(messageNode(documentRef, snapshot, entry));
         }
+        if (generating() && draftText) {
+            const draft = messageNode(documentRef, snapshot, { role: 'assistant', content: draftText });
+            draft.dataset.atriaDraft = 'true';
+            fragment.append(draft);
+        }
         if (!(snapshot.timeline || []).length) {
             const empty = documentRef.createElement('div');
             empty.className = 'atria-play-conversation__empty';
@@ -158,11 +184,12 @@ export function mountAtriaPlayProduct({
         conversation.replaceChildren(fragment);
 
         const writable = runtimeWritable(runtime);
-        textarea.disabled = !writable;
+        textarea.disabled = !writable || generating();
         send.disabled = !writable;
+        send.textContent = generating() ? 'Stop' : 'Send';
         composerStatus.textContent = runtime.failed
             ? 'Native Session write barrier requires recovery.'
-            : runtime.history ? 'Historical revisions are read-only.' : '';
+            : runtime.history ? 'Historical revisions are read-only.' : generating() ? 'Generating…' : '';
         queueMicrotask(() => {
             conversation.scrollTop = conversation.scrollHeight;
         });
@@ -170,6 +197,10 @@ export function mountAtriaPlayProduct({
 
     function submit(event) {
         event.preventDefault();
+        if (generating()) {
+            globalThis.Atria?.getContext?.()?.stopGeneration?.();
+            return;
+        }
         const runtime = activeRuntime();
         const value = textarea.value.trim();
         if (!value || !runtimeWritable(runtime)) return;
@@ -193,7 +224,7 @@ export function mountAtriaPlayProduct({
     const bodyObserver = new MutationObserver(render);
     bodyObserver.observe(documentRef.body, {
         attributes: true,
-        attributeFilter: ['data-atria-native-session-active'],
+        attributeFilter: ['data-atria-native-session-active', 'data-generating'],
     });
 
     const surfaces = new Map([
@@ -224,6 +255,8 @@ export function mountAtriaPlayProduct({
         },
         refresh: render,
         dispose() {
+            documentRef.removeEventListener('atria-native-play-draft', updateDraft);
+            documentRef.removeEventListener('atria-native-runtime-error', showRuntimeError);
             bodyObserver.disconnect();
             for (const unsubscribe of unsubscribers) unsubscribe();
             composer.removeEventListener('submit', submit);

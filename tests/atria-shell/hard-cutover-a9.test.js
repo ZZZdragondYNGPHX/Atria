@@ -1,8 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(new URL('../..', import.meta.url).pathname);
+const root = fileURLToPath(new URL('../..', import.meta.url));
 
 function exists(rel) {
     return fs.existsSync(path.join(root, rel));

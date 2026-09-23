@@ -1,3 +1,4 @@
+import { mountStudioPromptTools } from './prompt-authoring.js';
 import {
     createAtriaRuntimeCard,
     createAtriaStatePanel,
@@ -26,6 +27,8 @@ import { mountStructuredUiEditor } from './studio-ui-editor.js';
 const STUDIO_VIEWS = Object.freeze([
     ['overview', 'Overview'],
     ['experience', 'Experience'],
+    ['prompt-authoring', 'Prompt Authoring'],
+    ['runtime-design', 'Runtime Design'],
     ['actors', 'Actors'],
     ['entrypoints', 'EntryPoints'],
     ['worlds', 'Worlds'],
@@ -37,7 +40,7 @@ const STUDIO_VIEWS = Object.freeze([
     ['agents', 'Agents'],
     ['skills', 'Skills'],
     ['plugins', 'Plugins'],
-    ['presets', 'Presets / Processors'],
+    ['metadata', 'Package Metadata'],
     ['simulation', 'Test / Simulation'],
     ['preview', 'Preview'],
     ['build', 'Build'],
@@ -527,9 +530,11 @@ async function mountProjectStudio(documentRef, root, projectId) {
 
     async function stageOperations(operations, label) {
         const workspace = workspaceFor(operations);
+        let accepted = false;
         try {
             const inspected = await nativeStudioClient.inspectWorkspace(projectId, workspace);
             state.pending = { label, workspace, inspected };
+            accepted = true;
             state.activityTab = 'changes';
             log('review', `ChangeSet review ready: ${label}`, inspected.changes);
         } catch (error) {
@@ -542,6 +547,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
             }
         }
         renderActivity();
+        return accepted;
     }
 
     function stageProject(nextSource, label) {
@@ -1054,6 +1060,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
         center.append(body);
 
         if (state.activeView === 'overview') renderOverview(body);
+        else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, runtimeDesign: state.activeView === 'runtime-design' });
         else if (state.activeView === 'experience') renderExperience(body);
         else if (['actors', 'entrypoints', 'worlds', 'knowledge'].includes(state.activeView)) {
             renderCollectionEditor(documentRef, body, state, state.activeView, stageProject);
@@ -1065,19 +1072,17 @@ async function mountProjectStudio(documentRef, root, projectId) {
         else if (state.activeView === 'agents') renderPackageJson(body, 'Agents / Orchestration', 'orchestration', 'Project orchestration configuration is edited without invoking A8 Project Agent.');
         else if (state.activeView === 'skills') renderPackageJson(body, 'Skills', 'skills', 'Native project/package Skill declarations use the A5 scope authority.');
         else if (state.activeView === 'plugins') renderNestedRuntimeJson(body, 'Plugins', 'plugins', 'Package-runtime plugins remain declarative and capability-defined.');
-        else if (state.activeView === 'presets') {
+        else if (state.activeView === 'metadata') {
             renderJsonSection(documentRef, body, {
-                title: 'Presets / Processors / Localization / Permissions',
+                title: 'Processors / Localization / Permissions',
                 description: 'Advanced structured project metadata remains inside the same Project source authority.',
                 value: {
-                    presets: state.source.package.presets || {},
                     processors: state.source.package.processors || {},
                     localization: state.source.package.localization || {},
                     permissions: state.source.package.permissions || [],
                 },
                 onStage: parsed => {
                     const next = patchProjectSource(state.source, source => {
-                        source.package.presets = parsed.presets || {};
                         source.package.processors = parsed.processors || {};
                         source.package.localization = parsed.localization || {};
                         source.package.permissions = parsed.permissions || [];

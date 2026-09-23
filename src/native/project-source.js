@@ -11,6 +11,12 @@ import {
     assertPackagedKnowledgeSnapshot,
     assertPackagedWorldSnapshot,
 } from './world-knowledge.js';
+import { assertExactResourceRef } from './model-prompt-runtime/contracts.js';
+import {
+    assertVersionedModelPromptResource,
+    collectVersionedModelPromptResourceRefs,
+    getVersionedModelPromptResourceIdentity,
+} from './model-prompt-runtime/resources.js';
 
 export const ATRIA_PROJECT_FORMAT = 'atria-project-source';
 export const ATRIA_PROJECT_SCHEMA_VERSION = 1;
@@ -24,6 +30,7 @@ const PROJECT_KEYS = new Set([
     'worlds',
     'knowledge',
     'knowledgeBindings',
+    'resources',
     'dependencies',
     'assetFiles',
 ]);
@@ -175,7 +182,11 @@ function assertPackageSource(value) {
 
 function assertDependencies(value = {}) {
     plain(value, 'AtriaProject.dependencies');
-    assertOnlyKeys(value, new Set(['worlds', 'knowledge', 'knowledgeBindings', 'assets']), 'AtriaProject.dependencies');
+    assertOnlyKeys(
+        value,
+        new Set(['worlds', 'knowledge', 'knowledgeBindings', 'assets', 'resources']),
+        'AtriaProject.dependencies',
+    );
 
     const worlds = unique((value.worlds || []).map((item, index) => {
         plain(item, `AtriaProject.dependencies.worlds[${index}]`);
@@ -211,7 +222,45 @@ function assertDependencies(value = {}) {
         });
     }), 'AtriaProject.dependencies.assets', item => item.assetId);
 
-    return Object.freeze({ worlds, knowledge, knowledgeBindings, assets });
+    const resources = unique((value.resources || []).map((item, index) => {
+        const ref = assertExactResourceRef(item, null, `AtriaProject.dependencies.resources[${index}]`);
+        if (ref.scope !== 'library') {
+            throw new TypeError(`AtriaProject.dependencies.resources[${index}].scope must be 'library'`);
+        }
+        return ref;
+    }), 'AtriaProject.dependencies.resources', item => (
+        item.resourceType + ':' + item.resourceId + '@' + item.revision
+    ));
+
+    return Object.freeze({ worlds, knowledge, knowledgeBindings, assets, resources });
+}
+
+function assertProjectModelPromptResources(value = [], projectId) {
+    if (!Array.isArray(value)) throw new TypeError('AtriaProject.resources must be an array');
+    const resources = value.map((item, index) => {
+        const field = `AtriaProject.resources[${index}]`;
+        plain(item, field);
+        assertOnlyKeys(item, new Set(['resourceType', 'resource']), field);
+        const resource = assertVersionedModelPromptResource(item.resourceType, item.resource);
+        const identity = getVersionedModelPromptResourceIdentity(item.resourceType, resource);
+        for (const ref of collectVersionedModelPromptResourceRefs(item.resourceType, resource)) {
+            if (ref.scope === 'package') {
+                throw new TypeError(field + ' must not reference package-owned resources');
+            }
+            if (ref.scope === 'project' && ref.projectId !== projectId) {
+                throw new TypeError(field + ' project ref must reference the enclosing Project');
+            }
+        }
+        return Object.freeze({
+            resourceType: identity.resourceType,
+            resource,
+        });
+    });
+    unique(resources, 'AtriaProject.resources', item => {
+        const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+        return identity.resourceType + ':' + identity.resourceId + '@' + identity.revision;
+    });
+    return Object.freeze(resources);
 }
 
 function assertAssetFiles(value = []) {
@@ -247,6 +296,7 @@ export function assertAtriaProjectSource(value) {
     const worlds = (value.worlds || []).map(assertPackagedWorldSnapshot);
     const knowledge = (value.knowledge || []).map(assertPackagedKnowledgeSnapshot);
     const knowledgeBindings = (value.knowledgeBindings || []).map(assertKnowledgeBinding);
+    const resources = assertProjectModelPromptResources(value.resources || [], project.projectId);
     const dependencies = assertDependencies(value.dependencies || {});
     const assetFiles = assertAssetFiles(value.assetFiles || []);
 
@@ -330,6 +380,7 @@ export function assertAtriaProjectSource(value) {
         worlds: Object.freeze(worlds),
         knowledge: Object.freeze(knowledge),
         knowledgeBindings: Object.freeze(knowledgeBindings),
+        resources,
         dependencies,
         assetFiles: Object.freeze(assetFiles),
     });

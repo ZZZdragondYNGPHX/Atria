@@ -107,11 +107,11 @@ describe('N9 Library / Runtime domain adapters', () => {
         expect(normalizeLibrarySection({ child: { id: 'world:world_1' } })).toBe('worlds-knowledge');
         expect(normalizeLibrarySection({ child: { id: 'knowledge' } })).toBe('worlds-knowledge');
         expect(normalizeLibrarySection({ child: { id: 'knowledge:kb_1' } })).toBe('worlds-knowledge');
-        expect(LIBRARY_SECTIONS.map(section => section.id)).toEqual(['works', 'worlds-knowledge', 'skills']);
+        expect(LIBRARY_SECTIONS.map(section => section.id)).toEqual(['works', 'worlds-knowledge', 'prompt-programs', 'prompt-modules', 'generation-profiles', 'skills']);
 
-        expect(normalizeRuntimeSection({ child: null })).toBe('overview');
+        expect(normalizeRuntimeSection({ child: null })).toBe('routes');
         expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('connections');
-        expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['overview', 'roles', 'connections', 'presets', 'capabilities']);
+        expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['routes', 'models', 'connections', 'profiles', 'diagnostics']);
     });
 
     test('Works is the default Library authority and does not mount the Character controller', async () => {
@@ -150,95 +150,19 @@ describe('N9 Library / Runtime domain adapters', () => {
         controller.dispose();
     });
 
-    test('Runtime Capabilities is a read-only projection of the active Native exact version', async () => {
+    test('Native Connections never reparents the legacy editor and capabilities links resolve to Models', async () => {
+        globalThis.fetch = jest.fn(async () => jsonResponse({ connections: [], models: [], routes: [], profiles: [], resources: [] }));
         const slot = document.getElementById('slot');
-        globalThis.Atria.nativeSessionRuntime = {
-            snapshot: {
-                packageVersion: { packageVersionId: 'pkgv_exact' },
-                manifest: {
-                    packageVersionId: 'pkgv_exact',
-                    capabilities: ['world.logic'],
-                    permissions: ['network'],
-                    runtime: {
-                        experience: { mode: 'component' },
-                        plugins: [{ pluginId: 'example.package-ui' }],
-                        skills: ['combat-writing'],
-                    },
-                },
-            },
-        };
-        const host = { openRuntimeSection: jest.fn() };
-        const controller = mountRuntimeDomainWorkspace({
-            document,
-            slot,
-            route: { domain: 'runtime', child: { id: 'capabilities' } },
-            host,
-        });
+        const legacy = document.getElementById('rm_api_block'); const parent = legacy.parentNode;
+        const controller = mountRuntimeDomainWorkspace({ document, slot, route: { domain: 'runtime', child: { id: 'connections' } }, host: { openRuntimeSection: jest.fn() } });
         await flush();
-
-        const root = slot.querySelector('[data-atria-runtime-capabilities="true"]');
-        expect(root).not.toBeNull();
-        expect(root.textContent).toContain('component');
-        expect(root.textContent).toContain('pkgv_exact');
-        expect(root.textContent).toContain('example.package-ui');
-        expect(root.textContent).toContain('combat-writing');
-
+        expect(slot.querySelector('[data-atria-runtime-native="connections"]')).not.toBeNull();
+        expect(slot.textContent).toContain('No connections yet');
+        expect(legacy.parentNode).toBe(parent);
+        expect(slot.contains(legacy)).toBe(false);
+        controller.updateRoute({ domain: 'runtime', child: { id: 'capabilities' } });
+        await flush();
+        expect(slot.querySelector('[data-atria-runtime-native="models"]')).not.toBeNull();
         controller.dispose();
-    });
-
-    test('Connections is Atria-native first and mounts the existing authority only under Advanced', async () => {
-        const slot = document.getElementById('slot');
-        const apiBlock = document.getElementById('rm_api_block');
-        const managerRoot = document.getElementById('atria-connection-manager-root');
-        const originalParent = apiBlock.parentNode;
-        const chat = managerRoot.querySelector('[data-mode="chat"]');
-        const embed = managerRoot.querySelector('[data-mode="embed"]');
-        const chatClick = jest.fn();
-        const embedClick = jest.fn();
-        chat.addEventListener('click', chatClick);
-        embed.addEventListener('click', embedClick);
-
-        const host = {
-            openRuntimeSection: jest.fn(),
-        };
-        const controller = mountRuntimeDomainWorkspace({
-            document,
-            slot,
-            route: { domain: 'runtime', child: { id: 'retrieval' } },
-            host,
-        });
-        await flush();
-
-        expect(slot.querySelector('[data-atria-runtime-connections="true"]').textContent)
-            .toContain('Primary Chat');
-        expect(slot.contains(apiBlock)).toBe(false);
-        expect(apiBlock.parentNode).toBe(originalParent);
-        const advanced = slot.querySelector('[data-atria-runtime-connection-advanced="true"]');
-        expect(advanced.open).toBe(false);
-        advanced.open = true;
-        advanced.dispatchEvent(new Event('toggle'));
-        await flush();
-        expect(slot.contains(apiBlock)).toBe(true);
-        expect(apiBlock.dataset.atriaWorkspaceEmbedded).toBe('advanced');
-        expect(managerRoot.dataset.atriaWorkspaceEmbedded).toBe('advanced');
-        expect(slot.querySelector('#native-chat-api-editor')).not.toBeNull();
-        expect(embedClick).toHaveBeenCalled();
-
-        controller.updateRoute({
-            domain: 'runtime',
-            child: { id: 'connections', label: 'Connections', kind: 'workspace' },
-        });
-        await flush();
-        expect(chatClick).toHaveBeenCalled();
-        expect(document.querySelectorAll('#rm_api_block')).toHaveLength(1);
-        expect(document.querySelectorAll('#atria-connection-manager-root')).toHaveLength(1);
-
-        controller.dispose();
-        await flush();
-        expect(apiBlock.parentNode).toBe(originalParent);
-        expect(apiBlock.className).toBe('drawer-content closedDrawer');
-        expect(apiBlock.getAttribute('aria-hidden')).toBe('true');
-        expect(apiBlock.dataset.atriaWorkspaceEmbedded).toBeUndefined();
-        expect(managerRoot.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 });

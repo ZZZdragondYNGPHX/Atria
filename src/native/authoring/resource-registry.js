@@ -78,6 +78,33 @@ export const CORE_RESOURCE_DESCRIPTORS = Object.freeze([
         schema: { type: 'object' },
         metadata: { category: 'work', ownership: ['library'], immutableRevision: true },
     },
+    {
+        resourceType: 'core.prompt-module',
+        displayName: 'Prompt Module',
+        provider: { kind: 'core' },
+        authority: 'native-library',
+        capabilities: ['create', 'read', 'update', 'delete', 'attach', 'fork', 'publish', 'validate'],
+        schema: { type: 'object' },
+        metadata: { category: 'prompt', ownership: ['project', 'library'], immutableRevision: true },
+    },
+    {
+        resourceType: 'core.prompt-program',
+        displayName: 'Prompt Program',
+        provider: { kind: 'core' },
+        authority: 'native-library',
+        capabilities: ['create', 'read', 'update', 'delete', 'attach', 'fork', 'publish', 'validate'],
+        schema: { type: 'object' },
+        metadata: { category: 'prompt', ownership: ['project', 'library'], immutableRevision: true },
+    },
+    {
+        resourceType: 'core.generation-profile',
+        displayName: 'Generation Profile',
+        provider: { kind: 'core' },
+        authority: 'native-library',
+        capabilities: ['create', 'read', 'update', 'delete', 'attach', 'fork', 'publish', 'validate'],
+        schema: { type: 'object' },
+        metadata: { category: 'generation', ownership: ['project', 'library'], immutableRevision: true },
+    },
 ].map(assertResourceDescriptor));
 
 function matches(descriptor, query = {}) {

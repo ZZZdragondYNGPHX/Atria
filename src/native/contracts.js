@@ -1,4 +1,10 @@
 import { assertNativeId } from './identity.js';
+import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
+import {
+    assertPackageVersionedModelPromptResourceEnvelope,
+    collectVersionedModelPromptResourceRefs,
+    getVersionedModelPromptResourceIdentity,
+} from './model-prompt-runtime/resources.js';
 import {
     assertKnowledgeBinding,
     assertPackagedKnowledgeSnapshot,
@@ -57,6 +63,11 @@ export const NATIVE_RESOURCE_KINDS = Object.freeze({
     sessionRevision: 'atri_session_revision',
     savePoint: 'atri_save_point',
     assetRef: 'atri_asset_ref',
+    versionedJsonResource: 'atri_versioned_json_resource',
+    versionedJsonResourceRevision: 'atri_versioned_json_resource_revision',
+    connectionProfile: 'atri_connection_profile',
+    modelProfile: 'atri_model_profile',
+    runtimeRoute: 'atri_runtime_route',
 });
 
 export const NATIVE_STORE_FAMILIES = Object.freeze([
@@ -96,6 +107,7 @@ export const FORBIDDEN_NATIVE_IDENTITY_FIELDS = Object.freeze([
 
 const HASH_RE = /^[a-f0-9]{64}$/;
 const STATE_HEAD_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
+const RESOURCE_TYPE_RE = /^[a-z][a-z0-9]*(?:[._:-][a-z0-9][a-z0-9_-]*)+$/;
 const NAMESPACE_RE = /^atri_[a-z0-9][a-z0-9_.-]*$/;
 
 function plain(value, field) {
@@ -455,6 +467,7 @@ const PACKAGE_KEYS = new Set([
     'worlds',
     'knowledge',
     'knowledgeBindings',
+    'resources',
     'runtime',
     'orchestration',
     'memory',
@@ -491,6 +504,14 @@ export function assertAtriaPackageManifest(value) {
     const worlds = (value.worlds || []).map(assertPackagedWorldSnapshot);
     const knowledge = (value.knowledge || []).map(assertPackagedKnowledgeSnapshot);
     const knowledgeBindings = (value.knowledgeBindings || []).map(assertKnowledgeBinding);
+    const hasModelPromptResources = value.resources !== undefined;
+    const modelPromptResources = (value.resources || []).map((item, index) => (
+        assertPackageVersionedModelPromptResourceEnvelope(item, {
+            packageId,
+            packageVersionId,
+            field: 'AtriaPackage.resources[' + index + ']',
+        })
+    ));
     for (const [items, key, field] of [
         [actors, 'actorId', 'AtriaPackage.actors'],
         [entryPoints, 'entryPointId', 'AtriaPackage.entryPoints'],
@@ -516,6 +537,21 @@ export function assertAtriaPackageManifest(value) {
     const knowledgeRevisionKeys = new Set(knowledge.map(item => (
         item.knowledgeBase.knowledgeBaseId + '@' + item.revision.knowledgeRevisionId
     )));
+    const modelPromptResourceKeys = new Set(modelPromptResources.map(item => {
+        const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+        return identity.resourceType + ':' + identity.resourceId + '@' + identity.revision;
+    }));
+    if (modelPromptResourceKeys.size !== modelPromptResources.length) {
+        throw new TypeError('AtriaPackage.resources contains duplicate exact identities');
+    }
+    for (const item of modelPromptResources) {
+        for (const ref of collectVersionedModelPromptResourceRefs(item.resourceType, item.resource)) {
+            const key = ref.resourceType + ':' + ref.resourceId + '@' + ref.revision;
+            if (!modelPromptResourceKeys.has(key)) {
+                throw new TypeError('AtriaPackage model/prompt resource references missing exact dependency ' + key);
+            }
+        }
+    }
 
     for (const entryPoint of entryPoints) {
         for (const worldId of entryPoint.worldIds) {
@@ -579,12 +615,32 @@ export function assertAtriaPackageManifest(value) {
         worlds,
         knowledge,
         knowledgeBindings,
+        resources: modelPromptResources,
         assets,
     };
+    if (value.runtime !== undefined) {
+        const runtime = cloneJson(plain(value.runtime, 'AtriaPackage.runtime'), 'AtriaPackage.runtime');
+        if (runtime.modelPrompt !== undefined) {
+            runtime.modelPrompt = assertPackageModelPromptRuntimeMetadata(runtime.modelPrompt, {
+                packageId,
+                packageVersionId,
+            });
+        }
+        if (runtime.modelPrompt !== undefined && hasModelPromptResources) {
+            for (const role of runtime.modelPrompt.roles) {
+                for (const ref of [role.promptProgramRef, role.generationProfileRef].filter(Boolean)) {
+                    const key = ref.resourceType + ':' + ref.resourceId + '@' + ref.revision;
+                    if (!modelPromptResourceKeys.has(key)) {
+                        throw new TypeError('Package.runtime.modelPrompt references missing exact resource ' + key);
+                    }
+                }
+            }
+        }
+        out.runtime = Object.freeze(runtime);
+    }
     for (const key of [
         'description',
         'author',
-        'runtime',
         'orchestration',
         'memory',
         'ui',
@@ -816,12 +872,23 @@ const RESOURCE_KEY_SPECS = Object.freeze({
     [NATIVE_RESOURCE_KINDS.sessionRevision]: [['handle', 'handle'], ['sessionId', 'session'], ['revisionId', 'revision']],
     [NATIVE_RESOURCE_KINDS.savePoint]: [['handle', 'handle'], ['sessionId', 'session'], ['saveId', 'savePoint']],
     [NATIVE_RESOURCE_KINDS.assetRef]: [['handle', 'handle'], ['assetId', 'asset']],
+    [NATIVE_RESOURCE_KINDS.versionedJsonResource]: [['handle', 'handle'], ['resourceType', 'resourceType'], ['resourceId', 'token']],
+    [NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision]: [['handle', 'handle'], ['resourceType', 'resourceType'], ['resourceId', 'token'], ['revision', 'token']],
+    [NATIVE_RESOURCE_KINDS.connectionProfile]: [['handle', 'handle'], ['connectionProfileId', 'connectionProfile']],
+    [NATIVE_RESOURCE_KINDS.modelProfile]: [['handle', 'handle'], ['modelProfileId', 'modelProfile']],
+    [NATIVE_RESOURCE_KINDS.runtimeRoute]: [['handle', 'handle'], ['runtimeRouteId', 'runtimeRoute']],
 });
 
 function assertResourceKeyField(value, type, field) {
     if (type === 'handle') return text(value, field, { maxLength: 256 });
     if (type === 'namespace') return assertNamespace(value, field);
     if (type === 'stateHead') return assertStateHead(value, field);
+    if (type === 'token') return assertStateHead(value, field);
+    if (type === 'resourceType') {
+        text(value, field, { maxLength: 192 });
+        if (!RESOURCE_TYPE_RE.test(value)) throw new TypeError(field + ' must be a namespaced resource type');
+        return value;
+    }
     return assertNativeId(value, type, field);
 }
 

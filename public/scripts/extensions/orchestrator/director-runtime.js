@@ -1,3 +1,5 @@
+import { isNativeGenerationFailure } from '../../native/generation-compat.js';
+import { nativeGenerationActive } from '../../native/generation-client.js';
 import { AgentRegistry } from '../../lib/agent-runtime/index.js';
 import { runDirectorEngine } from './engine-v2/director-adapter.js';
 import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
@@ -91,6 +93,7 @@ async function loadSkillResolution() {
  * import it transitively.
  */
 function resolveAgentApiPresetName(settings, agentConfig) {
+    if (nativeGenerationActive()) return '';
     const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
@@ -110,6 +113,7 @@ function resolveAgentApiPresetName(settings, agentConfig) {
  * `resolveCardFirstPresetName`.
  */
 function resolveAgentPromptPresetName(settings, agentConfig) {
+    if (nativeGenerationActive()) return '';
     const ctx = (typeof Atria !== 'undefined') ? Atria.getContext() : null;
     const character = ctx?.characters?.[ctx?.characterId] ?? null;
     const resolveByName = ctx?.character?.presets?.resolveByName;
@@ -640,6 +644,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                     }, deps?.contextForNotes || {});
                     break;
                 } catch (transportErr) {
+                    if (isNativeGenerationFailure(transportErr)) throw transportErr;
                     if (transportErr?.code === 'context_budget' || isAbortError(transportErr, eventData?.abortSignal)) throw transportErr;
                     transportAttempt += 1;
                     if (transportAttempt > transportRetries) {

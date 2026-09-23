@@ -1,0 +1,79 @@
+/** @jest-environment jsdom */
+import { afterEach, expect, jest, test } from '@jest/globals';
+import { mountPromptEditor, mountPromptLibrary, mountStudioPromptTools, newPromptResource, resourceRef } from '../../public/scripts/native/prompt-authoring.js';
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+const button = (root, text) => [...root.querySelectorAll('button')].find(item => item.textContent === text);
+const response = (body, ok = true) => ({ ok, json: async () => body });
+afterEach(() => { document.body.replaceChildren(); delete globalThis.fetch; });
+function editor(type = 'core.prompt-module', onSave = jest.fn()) {
+    const resource = newPromptResource(type); const root = mountPromptEditor({ document, parent: document.body,
+        entry: { resource, ref: resourceRef(type, resource, { scope: 'library' }) }, entries: [], onSave, onBack: jest.fn() });
+    return { root, resource, onSave };
+}
+test('Simple/Advanced retains edits and parse failures; failed save stays editable and success cannot double-submit', async () => {
+    const onSave = jest.fn().mockRejectedValueOnce(new Error('Save refused')).mockResolvedValueOnce({});
+    const { root } = editor('core.prompt-module', onSave); root.querySelector('[aria-label="Prompt body"]').value = 'Kept text';
+    button(root, 'Advanced editor').click(); const json = root.querySelector('textarea'); const good = json.value; json.value = '{';
+    button(root, 'Simple editor').click(); expect(root.querySelector('[role="alert"]')).not.toBeNull(); json.value = good; button(root, 'Simple editor').click();
+    expect(root.querySelector('[aria-label="Prompt body"]').value).toBe('Kept text');
+    button(root, 'Review / save revision').click(); await flush(); expect(root.textContent).toContain('Save refused');
+    expect(button(root, 'Review / save revision').disabled).toBe(false); button(root, 'Review / save revision').click(); await flush();
+    expect(button(root, 'Review / save revision').disabled).toBe(true); expect(onSave).toHaveBeenCalledTimes(2);
+});
+test('clearing Generation temperature removes the old control instead of retaining it', async () => {
+    const { root, onSave } = editor('core.generation-profile'); button(root, 'Advanced editor').click();
+    const json = root.querySelector('textarea'), value = JSON.parse(json.value); value.sampling = { temperature: 0.5 }; json.value = JSON.stringify(value);
+    button(root, 'Simple editor').click(); root.querySelector('[aria-label="Temperature"]').value = ''; button(root, 'Review / save revision').click(); await flush();
+    expect(onSave.mock.calls[0][0].sampling).not.toHaveProperty('temperature');
+});
+test('Library loading/error/retry and Package original exposes Fork but never an editor', async () => {
+    const resource = newPromptResource('core.prompt-program'); const ref = resourceRef('core.prompt-program', resource, { scope: 'package', packageId: 'pkg', packageVersionId: 'pkgv' });
+    globalThis.fetch = jest.fn().mockResolvedValueOnce(response({ error: 'Unavailable' }, false)).mockResolvedValueOnce(response([{ ref, resource }]));
+    const mounted = mountPromptLibrary({ document, body: document.body, route: { child: { id: 'prompt-programs' } }, host: {} });
+    expect(document.body.textContent).toContain('Loading'); await flush(); expect(document.body.textContent).toContain('Unavailable');
+    button(document.body, 'Retry resources').click(); await flush(); expect(document.body.textContent).toContain('Read-only original');
+    expect(button(document.body, 'New revision')).toBeUndefined(); expect(button(document.body, 'Fork to Library')).toBeDefined(); mounted.dispose();
+});
+test('Project edit prepares A1 review only, with no Library POST', async () => {
+    globalThis.fetch = jest.fn(async url => response(url.endsWith('/resources') ? [] : { routes: [] }));
+    const state = { projectId: 'project', revision: { revision: 'r1' }, source: { package: {}, resources: [] } }; const stageProject = jest.fn(async () => true);
+    await mountStudioPromptTools({ document, body: document.body, state, stageProject }); button(document.body, 'New project resource').click();
+    button(document.body, 'Review / save revision').click(); await flush();
+    expect(stageProject).toHaveBeenCalledTimes(1); expect(state.source.resources).toEqual([]);
+    expect(globalThis.fetch.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
+});
+
+test('Runtime Design reloads exact role recommendations and preserves optional requirements', async () => {
+    const resource = newPromptResource('core.prompt-program'); const ref = resourceRef('core.prompt-program', resource, { scope: 'library' });
+    globalThis.fetch = jest.fn(async url => response(url.endsWith('/resources') ? [{ resource, ref }] : { routes: [] }));
+    const state = { projectId: 'project', revision: { revision: 'r1' }, source: { package: { runtime: { modelPrompt: { schemaVersion: 1, roles: [{ role: 'role.narrator', promptProgramRef: ref, requiredCapabilities: [], optionalCapabilities: ['generation.tools'] }] } } }, resources: [] } };
+    await mountStudioPromptTools({ document, body: document.body, state, stageProject: jest.fn(), runtimeDesign: true });
+    expect(JSON.parse(document.querySelector('[aria-label="Recommended Prompt"]').value)).toEqual(ref);
+    button(document.body, 'Set role recommendation').click();
+    expect(JSON.parse(document.querySelector('[aria-label="Runtime requirements JSON"]').value).roles[0].optionalCapabilities).toEqual(['generation.tools']);
+});
+
+test('P7 same-section route updates focus the exact revision and never substitute latest', async () => {
+    const resource = newPromptResource('core.prompt-program'); resource.displayName = 'Pinned';
+    const ref = resourceRef('core.prompt-program', resource, { scope: 'library' });
+    globalThis.fetch = jest.fn(async () => response([{ ref, resource }]));
+    const view = mountPromptLibrary({ document, body: document.body, route: { child: { id: 'prompt-programs' } }, host: {} }); await flush();
+    view.updateRoute({ child: { id: 'prompt-programs:' + encodeURIComponent(JSON.stringify(ref)) } }); await flush();
+    expect(document.activeElement.dataset.selected).toBe('true'); expect(JSON.parse(document.activeElement.dataset.atriResourceKey)).toEqual(ref);
+    view.updateRoute({ child: { id: 'prompt-programs:' + encodeURIComponent(JSON.stringify({ ...ref, revision: 'missing' })) } }); await flush();
+    expect(document.querySelector('[role="alert"]').textContent).toContain('exact revision is unavailable');
+    expect(document.querySelector('[data-selected="true"]')).toBeNull(); view.dispose();
+});
+
+
+test('P7 translated editor chrome never translates user resource names or JSON payload', async () => {
+    const previous = globalThis.__i18n; globalThis.__i18n = { translate: (text, key) => key?.startsWith('atria.') ? 'Translated' : text };
+    try {
+        const resource = newPromptResource('core.prompt-program'); resource.displayName = 'Routes';
+        const ref = resourceRef('core.prompt-program', resource, { scope: 'library' });
+        globalThis.fetch = jest.fn(async () => response([{ ref, resource }]));
+        const mounted = mountPromptLibrary({ document, body: document.body, route: { child: { id: 'prompt-programs' } }, host: {} }); await flush();
+        expect(document.querySelector('article h3').textContent).toBe('Routes');
+        expect(document.querySelector('pre').textContent).toContain('"displayName": "Routes"'); mounted.dispose();
+    } finally { globalThis.__i18n = previous; }
+});

@@ -1,3 +1,6 @@
+import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
+import { isNativeGenerationFailure, executeFirstPartyGeneration } from '../../native/generation-compat.js';
+import { nativeGenerationActive } from '../../native/generation-client.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
@@ -775,19 +778,10 @@ async function loadSearchToolsChatState(context, { force = false } = {}) {
     }
 }
 
-function getOpenAIPresetNames(context) {
-    const manager = context.getPresetManager?.('openai');
-    if (!manager || typeof manager.getAllPresets !== 'function') {
-        return [];
-    }
-    const names = manager.getAllPresets();
-    if (!Array.isArray(names)) {
-        return [];
-    }
-    return [...new Set(names.map(name => String(name || '').trim()).filter(Boolean))];
-}
+function getOpenAIPresetNames(context) { return legacyPromptNames(context); }
 
 function renderOpenAIPresetOptions(context, selectedName = '') {
+    if (nativePromptUiActive()) return nativeRouteOptions();
     const selected = String(selectedName || '').trim();
     const names = getOpenAIPresetNames(context);
     const options = [`<option value="">${escapeHtml(i18n('(Current preset)'))}</option>`];
@@ -801,6 +795,7 @@ function renderOpenAIPresetOptions(context, selectedName = '') {
 }
 
 function renderConnectionProfileOptions(selectedName = '') {
+    if (nativePromptUiActive()) return nativeRouteOptions();
     const selected = String(selectedName || '').trim();
     const names = getChatCompletionConnectionProfiles()
         .map(profile => String(profile?.name || '').trim())
@@ -1303,7 +1298,7 @@ function syncMutableGenerationPayloadState(target, source) {
 }
 
 async function buildSearchAgentRuntimeWorldInfo(settings, runtimeWorldInfo) {
-    const includeWorldInfoWithPreset = settings?.includeWorldInfoWithPreset !== false;
+    const includeWorldInfoWithPreset = !nativeGenerationActive() && settings?.includeWorldInfoWithPreset !== false;
     if (!includeWorldInfoWithPreset) {
         return {};
     }
@@ -1420,7 +1415,7 @@ async function requestToolCallsWithRetry(context, settings, {
     ].filter(message => message && message.content !== undefined);
 
     const customMessages = Array.isArray(worldInfoMessages) ? worldInfoMessages : null;
-    const includeWorldInfoWithPreset = settings?.includeWorldInfoWithPreset !== false;
+    const includeWorldInfoWithPreset = !nativeGenerationActive() && settings?.includeWorldInfoWithPreset !== false;
     let presetRuntimeWorldInfo = await buildSearchAgentRuntimeWorldInfo(settings, runtimeWorldInfo);
     if (
         includeWorldInfoWithPreset
@@ -1439,7 +1434,7 @@ async function requestToolCallsWithRetry(context, settings, {
             });
             presetRuntimeWorldInfo = normalizeRuntimeWorldInfo(resolved);
         } catch (error) {
-            if (isAbortError(error, abortSignal)) {
+            if (isNativeGenerationFailure(error) || isAbortError(error, abortSignal)) {
                 throw error;
             }
             console.warn(`[${MODULE_NAME}] World info pre-resolution failed`, error);
@@ -1477,7 +1472,7 @@ async function requestToolCallsWithRetry(context, settings, {
                 },
                 abortSignal: isAbortSignalLike(abortSignal) ? abortSignal : undefined,
             };
-            const result = await context.generateTask(generateTaskOpts);
+            const result = await executeFirstPartyGeneration(context, 'search', generateTaskOpts);
             throwIfAborted(abortSignal, 'Search agent aborted.');
             const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
             const normalizedCalls = rawCalls.map(call => ({
@@ -1497,7 +1492,7 @@ async function requestToolCallsWithRetry(context, settings, {
                 assistantText: String(result?.assistantText || ''),
             };
         } catch (error) {
-            if (isAbortError(error, abortSignal)) {
+            if (isNativeGenerationFailure(error) || isAbortError(error, abortSignal)) {
                 throw error;
             }
             lastError = error;

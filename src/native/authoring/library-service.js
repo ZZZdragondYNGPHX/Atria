@@ -14,6 +14,15 @@ export const LIBRARY_RESOURCE_TYPES = Object.freeze([
     'core.knowledge-binding',
     'core.asset',
     'core.package',
+    'core.prompt-module',
+    'core.prompt-program',
+    'core.generation-profile',
+]);
+
+const VERSIONED_JSON_LIBRARY_TYPES = new Set([
+    'core.prompt-module',
+    'core.prompt-program',
+    'core.generation-profile',
 ]);
 
 const HASH_RE = /^[a-f0-9]{64}$/;
@@ -46,7 +55,13 @@ function normalizeQuery(value = {}) {
 }
 
 export class NativeLibraryService {
-    constructor({ worldRepo, knowledgeRepo, assetStore, packageRepo = null }) {
+    constructor({
+        worldRepo,
+        knowledgeRepo,
+        assetStore,
+        packageRepo = null,
+        versionedJsonResources = null,
+    }) {
         for (const [name, value] of Object.entries({ worldRepo, knowledgeRepo, assetStore })) {
             if (!value) throw new TypeError('NativeLibraryService requires ' + name);
         }
@@ -54,6 +69,7 @@ export class NativeLibraryService {
         this._knowledge = knowledgeRepo;
         this._assets = assetStore;
         this._packages = packageRepo;
+        this._versionedJsonResources = versionedJsonResources;
     }
 
     async list(handle, query = {}) {
@@ -130,6 +146,21 @@ export class NativeLibraryService {
             }
         }
 
+        if (this._versionedJsonResources) {
+            for (const resourceType of types.filter(type => VERSIONED_JSON_LIBRARY_TYPES.has(type))) {
+                for (const item of await this._versionedJsonResources.listWithRevisions(handle, { resourceType })) {
+                    output.push(Object.freeze({
+                        resourceType,
+                        resourceId: item.resourceId,
+                        displayName: item.displayName,
+                        currentRevision: item.currentRevision,
+                        revisions: item.revisions,
+                        authority: 'native-library',
+                    }));
+                }
+            }
+        }
+
         const search = normalized.search == null ? '' : String(normalized.search).trim().toLowerCase();
         return Object.freeze(output
             .filter(item => !search || (
@@ -200,6 +231,17 @@ export class NativeLibraryService {
                     contentIdentity: digestJson(snapshot),
                 }),
                 snapshot,
+            });
+        }
+
+        if (VERSIONED_JSON_LIBRARY_TYPES.has(resourceType)) {
+            if (!this._versionedJsonResources) {
+                throw new TypeError('Versioned JSON resource handler is unavailable for Library lookup');
+            }
+            return this._versionedJsonResources.getExact(handle, {
+                resourceType,
+                resourceId,
+                revision,
             });
         }
 

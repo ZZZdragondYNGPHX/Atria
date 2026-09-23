@@ -49,3 +49,14 @@ describe('Atria Shell localization', () => {
         expect(locale['atria.shell.domain.play']).toBe('游玩');
     });
 });
+
+
+test('P7 Prompt/Runtime/Settings labels and dynamic stages use owned Chinese keys', async () => {
+    const locale = JSON.parse(await fs.readFile(new URL('../../public/locales/zh-cn.json', import.meta.url), 'utf8'));
+    const translate = (fallback, key) => locale[key] || fallback;
+    expect(translateShellText('Prompt Programs', translate)).toBe('提示词程序');
+    expect(translateShellText('Prompt Authoring', translate)).toBe('提示词创作');
+    expect(translateShellText('Runtime Design', translate)).toBe('运行设计');
+    expect(translateShellText('Send on Enter', translate)).toBe('按回车发送');
+    expect(formatShellText('Stage ID ${0}', [2], translate, 'atria.product.stageIdIndex')).toBe('阶段 ID 2');
+});
