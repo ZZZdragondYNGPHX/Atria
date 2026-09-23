@@ -84,6 +84,92 @@ describe('A3 Native Runtime Descriptor compiler', () => {
         });
     });
 
+    test('derives A4 Component/Hybrid/Full runtime resources while keeping Descriptor experience minimal', () => {
+        for (const mode of ['component', 'hybrid', 'full']) {
+            const f = fixture({
+                entryPoint: {
+                    runtime: {
+                        experience: {
+                            mode,
+                            componentModelVersion: 1,
+                            component: 'ui/main.json',
+                            selectors: 'ui/selectors.json',
+                            surface: 'app.root',
+                        },
+                        game: { logic: 'logic/main.json' },
+                    },
+                },
+            });
+            const result = compileNativeRuntimeDescriptor({
+                packageVersion: f.packageVersion,
+                manifest: f.manifest,
+                entryPointId: f.entryPointId,
+            });
+
+            expect(result.descriptor.experience).toEqual({
+                mode,
+                componentModelVersion: 1,
+            });
+            expect(result.runtime.experience).toEqual({
+                mode,
+                componentModelVersion: 1,
+                component: 'ui/main.json',
+                selectors: 'ui/selectors.json',
+                surface: 'app.root',
+            });
+        }
+    });
+
+    test('A4 experience resources fail closed for missing, executable, or invalid stage definitions', () => {
+        const missing = fixture({
+            entryPoint: {
+                runtime: {
+                    experience: { mode: 'component', componentModelVersion: 1 },
+                },
+            },
+        });
+        expect(() => compileNativeRuntimeDescriptor({
+            packageVersion: missing.packageVersion,
+            manifest: missing.manifest,
+            entryPointId: missing.entryPointId,
+        })).toThrow(/requires a declarative component resource/);
+
+        const executable = fixture({
+            entryPoint: {
+                runtime: {
+                    experience: {
+                        mode: 'component',
+                        componentModelVersion: 1,
+                        component: 'ui/main.js',
+                    },
+                },
+            },
+        });
+        expect(() => compileNativeRuntimeDescriptor({
+            packageVersion: executable.packageVersion,
+            manifest: executable.manifest,
+            entryPointId: executable.entryPointId,
+        })).toThrow(/declarative \.json/);
+
+        const invalidHybridSurface = fixture({
+            entryPoint: {
+                runtime: {
+                    experience: {
+                        mode: 'hybrid',
+                        componentModelVersion: 1,
+                        component: 'ui/main.json',
+                        surface: 'sidebar.left',
+                    },
+                },
+            },
+        });
+        expect(() => compileNativeRuntimeDescriptor({
+            packageVersion: invalidHybridSurface.packageVersion,
+            manifest: invalidHybridSurface.manifest,
+            entryPointId: invalidHybridSurface.entryPointId,
+        })).toThrow(/app.root stage surface/);
+    });
+
     test('requires explicit experience instead of inferring from old UI/runtime fields', () => {
         const f = fixture({ entryPoint: { runtime: { game: { logic: 'logic/main.json' } } } });
         expect(() => compileNativeRuntimeDescriptor({
