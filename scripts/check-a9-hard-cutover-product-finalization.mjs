@@ -27,6 +27,7 @@ function assertNoMatch(file, regex, message) {
 
 const retired = [
     'src/endpoints/card-app.js',
+    'src/game-package/distribution.js',
     'public/scripts/extensions/card-app',
     'public/scripts/extensions/character-editor-assistant/studio',
     'public/scripts/extensions/game-runtime/manifest.js',

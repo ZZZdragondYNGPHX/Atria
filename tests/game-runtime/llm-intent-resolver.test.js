@@ -12,8 +12,10 @@ import { createTurnContext } from '../../public/scripts/extensions/game-runtime/
 function makeTurn() {
     return createTurnContext({
         anchor: {
-            branchPath: [0, 1],
-            journalNextSeq: 4,
+            sessionId: 'session_test',
+            branchId: 'branch_test',
+            revisionId: 'revision_test',
+            eventSeq: 4,
             serial: 2,
         },
         userInput: 'Attack the guard',
@@ -108,9 +110,7 @@ describe('R5 Intent Resolver contract', () => {
         expect(payload.user_input).toBe('Attack the guard');
         expect(payload.authoritative_observation.views.combat.enemy).toBe('guard');
         expect(payload.branch).toEqual({
-            id: 'swipes:0.1',
-            floor: 1,
-            swipe: 1,
+            id: 'branch_test',
         });
         expect(payload.raw_world).toBeUndefined();
     });

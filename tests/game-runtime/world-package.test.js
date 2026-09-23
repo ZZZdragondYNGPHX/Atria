@@ -1,28 +1,6 @@
-import { describe, expect, jest, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
 
 import { loadGameWorldDefinition } from '../../public/scripts/extensions/game-runtime/world/package.js';
-
-function response(body, status = 200) {
-    return {
-        ok: status >= 200 && status < 300,
-        status,
-        async json() {
-            return structuredClone(body);
-        },
-    };
-}
-
-const packageState = {
-    status: 'ready',
-    active: true,
-    charId: 'hero',
-    manifest: {
-        world: {
-            schema: 'world/schema.json',
-            initial: 'world/initial.json',
-        },
-    },
-};
 
 const schema = {
     type: 'object',
@@ -33,46 +11,75 @@ const schema = {
     },
 };
 
-describe('Game Package World definition', () => {
-    test('returns null when the package declares no world runtime', async () => {
-        const result = await loadGameWorldDefinition({
-            ...packageState,
-            manifest: {},
+function packageState({ state = { hp: 20 }, worldRevisionId = 'worldv_native' } = {}) {
+    return {
+        runtime: { primaryWorldId: 'world_native' },
+        snapshot: {
+            states: {
+                atri_world_state: {
+                    primaryWorldId: 'world_native',
+                    worlds: {
+                        world_native: {
+                            worldRevisionId,
+                            state,
+                        },
+                    },
+                },
+            },
+            worlds: [{
+                world: { worldId: 'world_native', displayName: 'Native World' },
+                revision: {
+                    worldId: 'world_native',
+                    worldRevisionId: 'worldv_native',
+                    schema,
+                    baseline: { hp: 20 },
+                    knowledgeBindingIds: [],
+                    assetIds: [],
+                    metadata: {},
+                },
+            }],
+        },
+    };
+}
+
+describe('Native Game World definition', () => {
+    test('supports a Session with no pinned World via initialState', () => {
+        const result = loadGameWorldDefinition({
+            runtime: { primaryWorldId: null },
+            snapshot: {
+                states: {
+                    atri_world_state: {
+                        primaryWorldId: null,
+                        initialState: { hp: 7 },
+                    },
+                },
+                worlds: [],
+            },
         });
-        expect(result).toBeNull();
+        expect(result).toMatchObject({
+            worldId: null,
+            worldRevisionId: null,
+            baseline: { hp: 7 },
+        });
     });
 
-    test('loads and validates world schema plus initial state', async () => {
-        const fetchImpl = jest.fn(async (url) => {
-            if (url.endsWith('/world/schema.json')) return response(schema);
-            if (url.endsWith('/world/initial.json')) return response({ hp: 20 });
-            throw new Error('unexpected URL ' + url);
+    test('loads exact pinned World schema and baseline from the Session PackageVersion', () => {
+        const result = loadGameWorldDefinition(packageState());
+        expect(result).toEqual({
+            worldId: 'world_native',
+            worldRevisionId: 'worldv_native',
+            schema,
+            baseline: { hp: 20 },
         });
-
-        const result = await loadGameWorldDefinition(packageState, { fetchImpl });
-
-        expect(result.schema).toEqual(schema);
-        expect(result.initialState).toEqual({ hp: 20 });
-        expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
 
-    test('rejects an initial state that violates the world schema', async () => {
-        const fetchImpl = jest.fn(async (url) => {
-            if (url.endsWith('/world/schema.json')) return response(schema);
-            return response({ hp: -1 });
-        });
-
-        await expect(loadGameWorldDefinition(packageState, { fetchImpl }))
-            .rejects.toThrow(/World State validation failed/);
+    test('rejects current Session state that violates the pinned World schema', () => {
+        expect(() => loadGameWorldDefinition(packageState({ state: { hp: -1 } })))
+            .toThrow(/World State validation failed/);
     });
 
-    test('rejects non-object world roots', async () => {
-        const fetchImpl = jest.fn(async (url) => {
-            if (url.endsWith('/world/schema.json')) return response(schema);
-            return response(['not', 'a', 'world']);
-        });
-
-        await expect(loadGameWorldDefinition(packageState, { fetchImpl }))
-            .rejects.toThrow(/initial state must be a JSON object/);
+    test('rejects a World revision that differs from the Session PackageVersion', () => {
+        expect(() => loadGameWorldDefinition(packageState({ worldRevisionId: 'worldv_other' })))
+            .toThrow(/dependency does not match/);
     });
 });

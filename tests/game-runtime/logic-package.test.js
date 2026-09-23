@@ -13,10 +13,10 @@ function response(body) {
 }
 
 const packageState = {
-    charId: 'hero',
-    manifest: {
-        logic: {
-            entry: 'logic/game.json',
+    sessionId: 'session_logic',
+    runtime: {
+        game: {
+            logic: 'logic/main.json',
         },
     },
 };
@@ -24,7 +24,7 @@ const packageState = {
 describe('Game Package logic loading', () => {
     test('compiles declarative package logic into shared runtime contracts', async () => {
         const fetchImpl = jest.fn(async (url) => {
-            expect(url).toBe('/api/card-app/hero/logic/game.json');
+            expect(url).toBe('/api/native/session/runtime/resource');
             return response({
                 commands: [{
                     id: 'rest',
@@ -52,7 +52,7 @@ describe('Game Package logic loading', () => {
 
         expect(definition.source).toEqual({
             kind: 'declarative',
-            entry: 'logic/game.json',
+            entry: 'logic/main.json',
         });
         expect(definition.commands).toHaveLength(1);
         expect(definition.reducers).toHaveLength(1);
@@ -65,8 +65,8 @@ describe('Game Package logic loading', () => {
 
     test('packages without logic produce an empty runtime definition', async () => {
         await expect(loadGameLogicDefinition({
-            charId: 'hero',
-            manifest: {},
+            sessionId: 'session_logic',
+            runtime: { game: {} },
         })).resolves.toEqual({
             commands: [],
             reducers: [],
@@ -78,9 +78,9 @@ describe('Game Package logic loading', () => {
 
     test('advanced JavaScript package logic fails closed until restricted execution exists', async () => {
         await expect(loadGameLogicDefinition({
-            charId: 'hero',
-            manifest: {
-                logic: { entry: 'logic/main.js' },
+            sessionId: 'session_logic',
+            runtime: {
+                game: { logic: 'logic/main.js' },
             },
         })).rejects.toThrow(/not yet safe to execute/);
     });

@@ -240,6 +240,7 @@ describe('N9 Native Product UI service', () => {
                 worlds: [],
                 knowledge: [],
                 knowledgeBindings: [],
+                assets: [],
             });
 
             expect(await product.deleteWorld(h.handle, worldId)).toBe(true);

@@ -42,19 +42,24 @@ describe('Declarative Game Observations', () => {
             },
         }));
         const definitions = await loadGameObservationDefinitions({
-            charId: 'hero',
-            manifest: {
-                llm: {
+            sessionId: 'session_observation',
+            runtime: {
+                game: {
                     observations: 'llm/observations.json',
                 },
             },
         }, { fetchImpl });
 
         expect(definitions).toHaveLength(1);
-        expect(fetchImpl).toHaveBeenCalledWith(
-            '/api/card-app/hero/llm/observations.json',
-            expect.objectContaining({ cache: 'no-store' }),
-        );
+        expect(fetchImpl).toHaveBeenCalledWith('/api/native/session/runtime/resource', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'session_observation',
+                path: 'llm/observations.json',
+            }),
+            cache: 'no-store',
+        });
         expect(definitions[0].select(
             { scene: { threat: 'high' } },
             { role: 'director' },

@@ -15,11 +15,10 @@ describe('L08 backup/editor residual coverage', () => {
         expect(source).toContain("operationId: globalThis.crypto?.randomUUID?.()");
     });
 
-    test('CardApp Studio open and editor apply/rollback failures create incidents', () => {
+    test('active character editor apply/rollback failures create incidents without CardApp Studio hooks', () => {
         const ui = readFileSync(new URL('../../public/scripts/extensions/character-editor-assistant/editor-ui.js', import.meta.url), 'utf8');
         const studio = readFileSync(new URL('../../public/scripts/extensions/character-editor-assistant/editor-iteration/studio.js', import.meta.url), 'utf8');
-        expect(ui).toContain("stage: 'cardapp-studio.open'");
-        expect(ui).toContain("primaryModule: 'studio'");
+        expect(ui).not.toContain('cardapp-studio.open');
         expect(studio).toContain("reportEditorCommitFailures('apply.commit'");
         expect(studio).toContain("reportEditorCommitFailures('rollback.commit'");
         expect(studio).toContain("primaryModule: 'editor'");

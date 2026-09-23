@@ -21,7 +21,9 @@ function runtimeWorld() {
     return {
         getState: () => structuredClone(state),
         getJournal: () => structuredClone(journal),
-        getBranchPath: () => [0, 0],
+        getSessionId: () => 'session_r5',
+        getBranchId: () => 'branch_r5',
+        getRevisionId: () => 'revision_r5',
         getCommands: () => [{
             id: 'open_door',
             description: 'Open the current door',
@@ -61,8 +63,7 @@ function runtimeWorld() {
                 seq: journal.nextSeq++,
                 type: 'DoorOpened',
                 payload: { door: 'north' },
-                branchPath: [0, 0],
-                branchId: 'swipes:0.0',
+                branchId: 'branch_r5',
                 meta: {
                     command: {
                         id,
