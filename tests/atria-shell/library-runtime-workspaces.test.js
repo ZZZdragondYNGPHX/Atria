@@ -52,8 +52,14 @@ describe('N9 Library / Runtime domain adapters', () => {
         context = {
             extensionSettings: {
                 connectionManager: {
-                    profiles: [],
-                    selectedProfile: null,
+                    profiles: [{
+                        id: 'chat-main',
+                        name: 'Primary Chat',
+                        mode: 'cc',
+                        provider: 'OpenAI-compatible',
+                        model: 'model-a',
+                    }],
+                    selectedProfile: 'chat-main',
                 },
             },
             getExtensionApi: jest.fn(() => null),
@@ -180,7 +186,7 @@ describe('N9 Library / Runtime domain adapters', () => {
         controller.dispose();
     });
 
-    test('Connections embeds the complete native API authority and keeps old Retrieval routes inside it', async () => {
+    test('Connections is Atria-native first and mounts the existing authority only under Advanced', async () => {
         const slot = document.getElementById('slot');
         const apiBlock = document.getElementById('rm_api_block');
         const managerRoot = document.getElementById('atria-connection-manager-root');
@@ -203,9 +209,18 @@ describe('N9 Library / Runtime domain adapters', () => {
         });
         await flush();
 
+        expect(slot.querySelector('[data-atria-runtime-connections="true"]').textContent)
+            .toContain('Primary Chat');
+        expect(slot.contains(apiBlock)).toBe(false);
+        expect(apiBlock.parentNode).toBe(originalParent);
+        const advanced = slot.querySelector('[data-atria-runtime-connection-advanced="true"]');
+        expect(advanced.open).toBe(false);
+        advanced.open = true;
+        advanced.dispatchEvent(new Event('toggle'));
+        await flush();
         expect(slot.contains(apiBlock)).toBe(true);
-        expect(apiBlock.dataset.atriaWorkspaceEmbedded).toBe('true');
-        expect(managerRoot.dataset.atriaWorkspaceEmbedded).toBe('true');
+        expect(apiBlock.dataset.atriaWorkspaceEmbedded).toBe('advanced');
+        expect(managerRoot.dataset.atriaWorkspaceEmbedded).toBe('advanced');
         expect(slot.querySelector('#native-chat-api-editor')).not.toBeNull();
         expect(embedClick).toHaveBeenCalled();
 
