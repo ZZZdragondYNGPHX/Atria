@@ -103,7 +103,7 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/studio-workspace.js',
-    /Project Agent arrives in A8[\s\S]*data\.atriaStudioAi\s*=\s*['"]placeholder['"]|data\.atriaStudioAi\s*=\s*['"]placeholder['"][\s\S]*Project Agent arrives in A8/,
+    /Project Agent arrives in A8[\s\S]*dataset\.atriaStudioAi\s*=\s*['"]placeholder['"]|dataset\.atriaStudioAi\s*=\s*['"]placeholder['"][\s\S]*Project Agent arrives in A8/,
     'A7 may reserve the AI product position but must keep Project Agent deferred to A8',
 );
 rejectPattern(

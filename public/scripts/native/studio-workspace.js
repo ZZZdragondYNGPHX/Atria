@@ -391,6 +391,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
         library: loaded.library || [],
         history: loaded.history || [],
         activeView: 'overview',
+        lastEditorView: 'overview',
         mobileView: 'editor',
         collectionSelection: {},
         selectedGraphNode: null,
@@ -445,10 +446,11 @@ async function mountProjectStudio(documentRef, root, projectId) {
 
     function resourceTreeSelect(view) {
         state.activeView = view;
+        if (view !== 'preview') state.lastEditorView = view;
         state.mobileView = view === 'preview' ? 'preview' : 'editor';
         tree.render();
         renderEditor();
-        renderInspector();
+        void renderInspector();
         updateMobile();
     }
     const tree = createResourceTree(documentRef, state, resourceTreeSelect);
@@ -1179,8 +1181,16 @@ async function mountProjectStudio(documentRef, root, projectId) {
     function updateMobile() {
         shell.dataset.atriaStudioMobileView = state.mobileView;
         if (state.mobileView === 'preview' && state.activeView !== 'preview') {
+            state.lastEditorView = state.activeView;
             state.activeView = 'preview';
+            tree.render();
             renderEditor();
+            void renderInspector();
+        } else if (state.mobileView === 'editor' && state.activeView === 'preview') {
+            state.activeView = state.lastEditorView || 'overview';
+            tree.render();
+            renderEditor();
+            void renderInspector();
         }
     }
 

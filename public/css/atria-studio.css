@@ -3084,7 +3084,8 @@ not a wall of unlabeled inputs.
 
 @media (max-width: 720px) {
     .atria-app-shell .atria-studio-workspace {
-        grid-template-rows: auto minmax(0, 1fr) auto;
+        display: flex;
+        flex-direction: column;
     }
 
     .atria-app-shell .atria-studio-topbar {
@@ -3100,7 +3101,13 @@ not a wall of unlabeled inputs.
     .atria-app-shell .atria-studio-layout {
         display: block;
         min-height: 0;
+        flex: 1 1 auto;
         overflow: hidden;
+    }
+
+    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="ai"] .atria-studio-layout,
+    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="more"] .atria-studio-layout {
+        display: none;
     }
 
     .atria-app-shell .atria-studio-resource-tree,
@@ -3131,10 +3138,21 @@ not a wall of unlabeled inputs.
 
     .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="project"] .atria-studio-resource-tree,
     .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="editor"] .atria-studio-center,
-    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="preview"] .atria-studio-center,
-    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="ai"] .atria-studio-ai-placeholder,
-    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="more"] .atria-studio-activity {
+    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="preview"] .atria-studio-center {
         display: flex;
+    }
+
+    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="ai"] .atria-studio-ai-placeholder {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        padding: var(--atri-space-3);
+        overflow: auto;
+    }
+
+    .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="more"] .atria-studio-activity {
+        display: grid;
+        flex: 1 1 auto;
     }
 
     .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="project"] .atria-studio-center,
