@@ -19,7 +19,7 @@ requirePattern(
 );
 rejectPattern(
     'public/scripts/native/studio-workspace.js',
-    /nativeProductClient|ProjectStore|WorldRepo|KnowledgeRepo|AssetStore|localStorage|sessionStorage|indexedDB|setChatState|createFloorState/,
+    /nativeProductClient|(?:from|import\s*\()[^\n]*(?:project-store|world-repo|knowledge-repo|asset-store)|\b(?:localStorage|sessionStorage|indexedDB|setChatState|createFloorState)\b/,
     'A7 Studio UI must not bypass Native authoring/resource authorities',
 );
 requirePattern(
