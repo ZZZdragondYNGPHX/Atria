@@ -306,3 +306,32 @@ The following remain future-stage evidence and are still not implemented by P0:
 - Runtime product UI;
 - first-party `generateTask` cutover;
 - final P8 residual/integration validation.
+
+
+## 14. P1 implementation evidence
+
+Validated implementation branch HEAD: `802a68654f53015800e141fd052f1a006df149e0`.
+
+Current code now proves:
+
+- `src/native/model-prompt-runtime/persistence.js` supplies the generic versioned JSON resource handler and player-owned Connection/Model/Route persistence on the existing Native storage infrastructure;
+- `src/native/model-prompt-runtime/resources.js` centralizes the three P1 resource type definitions, exact-reference discovery/mapping and Package resource-envelope validation;
+- `NativeLibraryService` consumes the handler seam instead of introducing a second Library;
+- `LibraryAuthoringPlanner` extends the existing Attach/Fork/Update path for Prompt/Generation resources;
+- `ResourceGraph` derives Project/Library nodes and exact forward/reverse references without a write path;
+- `resolveProjectDependencyClosure` recursively resolves exact model/prompt dependencies and reports `native_model_prompt_dependency_missing` rather than following latest;
+- Package build vendors resolved Prompt/Generation resources and rewrites their refs to the generated immutable PackageVersion scope;
+- Player Connection/Model/Route records use stable Native IDs and remain outside Package resources;
+- secret material remains rejected by P0 contracts; Connection persistence carries only `secretRef`.
+
+Validation evidence:
+
+- Model Prompt Runtime P1 Checks #6 / Run `35836303381`: success;
+- 9 suites / 37 tests passed;
+- P0 architecture guard: success;
+- P1 architecture guard + syntax: success;
+- A1 / A2 / A7 / A8 frozen guards: success;
+- focused ESLint: success;
+- Model Prompt Runtime P0 Checks #17 / Run `35836303445`: success.
+
+P1 did not execute full Node regression, frontend build, browser E2E, Android, Docker, or a real-host model request.
