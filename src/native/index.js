@@ -93,6 +93,11 @@ export {
 export { ResourceGraph } from './authoring/resource-graph.js';
 
 export {
+    compileNativeRuntimeDescriptor,
+    resolveNativeRuntimePackage,
+} from './runtime-descriptor.js';
+
+export {
     LibraryAuthoringPlanner,
     STUDIO_RESOURCE_OPERATION_TYPES,
 } from './authoring/library-authoring.js';
