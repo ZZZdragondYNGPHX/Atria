@@ -80,6 +80,19 @@ export {
 } from './authoring/studio-service.js';
 
 export {
+    CORE_RESOURCE_DESCRIPTORS,
+    ResourceRegistry,
+    createCoreResourceRegistry,
+} from './authoring/resource-registry.js';
+
+export {
+    LIBRARY_RESOURCE_TYPES,
+    NativeLibraryService,
+} from './authoring/library-service.js';
+
+export { ResourceGraph } from './authoring/resource-graph.js';
+
+export {
     NativeDependencyError,
     resolveProjectDependencyClosure,
 } from './dependency-closure.js';
