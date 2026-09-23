@@ -85,6 +85,15 @@ if (!index.includes('nativeSessionRuntime') || index.includes('activateGamePacka
     throw new Error('A3 Text Runtime must activate from Native Session without starting A4 UI runtime');
 }
 
+const textHost = fs.readFileSync('public/script.js', 'utf8');
+if (
+    !textHost.includes("getExtensionApi?.('game-runtime')")
+    || !textHost.includes("gameState?.descriptor?.experience?.mode === 'text'")
+    || !textHost.includes('gameApi.submitFreeText')
+) {
+    throw new Error('A3 Text Experience must route committed Native user turns through Game Runtime');
+}
+
 const endpoint = source['src/endpoints/native-session.js'];
 if (
     !endpoint.includes("'/runtime/resolve'")
