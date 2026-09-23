@@ -63,8 +63,20 @@ describe('R4 Component UI vertical slice', () => {
         });
         await world.load([0]);
 
+        const logicWorld = {
+            getState: () => world.getState(),
+            getJournal: () => world.getJournal(),
+            getSnapshot: () => ({
+                ...world.getSnapshot(),
+                branchId: 'branch_component_test',
+                revisionId: 'revision_component_test',
+            }),
+            commitEvents: (events, options) => world.commitEvents(events, options),
+            simulateEvents: (events, options) => world.simulateEvents(events, options),
+        };
+
         const logic = createGameLogicRuntime({
-            world,
+            world: logicWorld,
             commands: [{
                 id: 'damage',
                 argsSchema: {
