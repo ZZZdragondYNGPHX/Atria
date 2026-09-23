@@ -1,0 +1,98 @@
+name: Native Authoring Platform A6 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-authoring-platform-product-frontend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-authoring-a6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a6-product-frontend:
+    name: A6 Native Product Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run A6 focused and adjacent regressions
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          atria-shell/navigation-authority.test.js
+          atria-shell/app-shell.test.js
+          atria-shell/workspace-host.test.js
+          atria-shell/native-play-host.test.js
+          atria-shell/native-play-controls.test.js
+          atria-shell/native-play-product.test.js
+          atria-shell/native-product-workspaces.test.js
+          atria-shell/library-runtime-workspaces.test.js
+          atria-shell/utility-workspaces.test.js
+          atria-shell/product-search.test.js
+          atria-shell/localization.test.js
+          atria-shell/command-registry.test.js
+          atria-shell/structure.test.js
+          game-runtime/ui-host-surfaces.test.js
+          game-runtime/ui-native-components.test.js
+          game-runtime/ui-live.test.js
+          game-runtime/ui-full-host.test.js
+          native/session-projection.test.js
+          native/session-runtime-http.test.js
+          native/runtime-descriptor.test.js
+      - name: Run A6 residual guard
+        run: node scripts/check-a6-native-product-frontend.mjs
+      - name: Check A6 guard syntax
+        run: node --check scripts/check-a6-native-product-frontend.mjs
+      - name: Run frozen A0/A1/A2/A3/A4/A5 guards
+        run: |
+          node scripts/check-a0-native-authoring-hard-cutover.mjs
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a3-native-game-runtime-cutover.mjs
+          node scripts/check-a4-experience-runtime.mjs
+          node scripts/check-a5-plugin-skill-platform.mjs
+      - name: Run A6 focused lint
+        run: >-
+          npx eslint
+          public/scripts/atria-shell/constants.js
+          public/scripts/atria-shell/library-runtime-workspaces.js
+          public/scripts/atria-shell/localization.js
+          public/scripts/atria-shell/native-play-host.js
+          public/scripts/atria-shell/product-search.js
+          public/scripts/atria-shell/utility-workspaces.js
+          public/scripts/atria-shell/workspace-host.js
+          public/scripts/extensions/game-runtime/ui/host-surfaces.js
+          public/scripts/extensions/game-runtime/ui/native-components.js
+          public/scripts/native/play-controls.js
+          public/scripts/native/play-product.js
+          public/scripts/native/studio-workspace.js
+          tests/atria-shell/library-runtime-workspaces.test.js
+          tests/atria-shell/localization.test.js
+          tests/atria-shell/native-play-controls.test.js
+          tests/atria-shell/native-play-host.test.js
+          tests/atria-shell/native-play-product.test.js
+          tests/atria-shell/native-product-workspaces.test.js
+          tests/atria-shell/navigation-authority.test.js
+          tests/atria-shell/product-search.test.js
+          tests/atria-shell/utility-workspaces.test.js
+          tests/atria-shell/workspace-host.test.js
+      - name: Run full root lint
+        run: npm run lint
