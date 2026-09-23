@@ -131,6 +131,23 @@ export function createSkillRepository(dataRoot) {
         if (scope === 'all') {
             const all = [];
             all.push(...(await listScope({ kind: 'global' })));
+            const projectRoot = join(skillsRoot, 'project');
+            const projectIds = await fs.readdir(projectRoot).catch(() => []);
+            for (const projectId of projectIds) {
+                if (projectId.startsWith('.')) continue;
+                all.push(...(await listScope({ kind: 'project', projectId })));
+            }
+            const packageRoot = join(skillsRoot, 'package');
+            const packageIds = await fs.readdir(packageRoot).catch(() => []);
+            for (const packageId of packageIds) {
+                if (packageId.startsWith('.')) continue;
+                const versionRoot = join(packageRoot, packageId);
+                const versionIds = await fs.readdir(versionRoot).catch(() => []);
+                for (const packageVersionId of versionIds) {
+                    if (packageVersionId.startsWith('.')) continue;
+                    all.push(...(await listScope({ kind: 'package', packageId, packageVersionId })));
+                }
+            }
             const presetRoot = join(skillsRoot, 'preset');
             const presetNames = await fs.readdir(presetRoot).catch(() => []);
             for (const name of presetNames) {

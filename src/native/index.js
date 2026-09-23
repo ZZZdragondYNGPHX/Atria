@@ -153,9 +153,13 @@ export {
     ATRIA_COMPONENT_MODEL_VERSION,
     ATRIA_EXPERIENCE_MODES,
     ATRIA_NATIVE_SKILL_SCOPES,
+    ATRIA_HOST_PLUGIN_CAPABILITIES,
+    ATRIA_PACKAGE_RUNTIME_CAPABILITIES,
     ATRIA_PACKAGE_RUNTIME_FORMAT,
     ATRIA_PACKAGE_RUNTIME_VERSION,
     ATRIA_PLUGIN_API_VERSION,
+    ATRIA_PLUGIN_CONTRIBUTION_TYPES,
+    ATRIA_PLUGIN_PERMISSIONS,
     ATRIA_PLUGIN_FORMAT,
     ATRIA_PLUGIN_SCHEMA_VERSION,
     ATRIA_PROJECT_CONFLICT_CODE,
@@ -177,3 +181,21 @@ export {
     assertResourceDescriptor,
     assertResourceRegistryContract,
 } from './authoring-contracts.js';
+
+
+export {
+    ContributionRegistry,
+    HostPluginBoundary,
+    compilePackageRuntimePlugins,
+    resolvePluginDependencies,
+} from './plugin-platform.js';
+
+export {
+    ATRIA_HOST_PLUGIN_MANIFEST,
+    loadAtriaHostPluginDirectory,
+} from './host-plugin-loader.js';
+
+export {
+    resolveNativeSkillEntries,
+    toNativeSkillScope,
+} from './skill-platform.js';

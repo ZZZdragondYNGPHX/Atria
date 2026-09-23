@@ -4,6 +4,7 @@ import {
     assertExperienceContract,
     assertNativeRuntimeDescriptor,
 } from './authoring-contracts.js';
+import { compilePackageRuntimePlugins } from './plugin-platform.js';
 
 function plain(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -100,10 +101,14 @@ function runtimeSource(manifest, entryPoint) {
     const packageGame = gameRuntimeSource(packageRuntime.game);
     const entryGame = gameRuntimeSource(entryRuntime.game);
     const game = gameRuntimeSource({ ...packageGame, ...entryGame });
+    const plugins = compilePackageRuntimePlugins(packageRuntime.plugins || [], {
+        declaredPermissions: manifest.permissions || [],
+    }).runtimePlugins;
 
     return Object.freeze({
         experience,
         game,
+        ...(plugins.length ? { plugins } : {}),
         primaryWorldId: entryPoint.primaryWorldId
             ?? (entryPoint.worldIds.length === 1 ? entryPoint.worldIds[0] : null),
     });
@@ -217,7 +222,7 @@ export function compileNativeRuntimeDescriptor({ packageVersion, manifest, entry
         }),
         capabilities: manifest.capabilities,
         resources: compileResources(manifest, entryPoint),
-        plugins: [],
+        plugins: (runtime.plugins || []).map(item => item.pluginId),
         skills: packageSkillIds(manifest),
     });
 

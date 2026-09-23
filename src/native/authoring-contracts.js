@@ -26,8 +26,44 @@ export const ATRIA_RUNTIME_DESCRIPTOR_SCHEMA_VERSION = 1;
 export const ATRIA_PLUGIN_FORMAT = 'atria-plugin';
 export const ATRIA_PLUGIN_SCHEMA_VERSION = 1;
 export const ATRIA_PLUGIN_API_VERSION = 1;
+export const ATRIA_PLUGIN_PERMISSIONS = Object.freeze([
+    'host.project-read',
+    'host.authoring',
+    'host.build',
+    'host.play',
+    'host.network',
+]);
+export const ATRIA_HOST_PLUGIN_CAPABILITIES = Object.freeze([
+    'host.resource-registration',
+    'host.authoring',
+    'host.build',
+    'host.play',
+]);
 export const ATRIA_PACKAGE_RUNTIME_FORMAT = 'atria-package-runtime';
 export const ATRIA_PACKAGE_RUNTIME_VERSION = 1;
+export const ATRIA_PACKAGE_RUNTIME_CAPABILITIES = Object.freeze([
+    'runtime.ui',
+    'runtime.selector',
+    'runtime.command',
+    'runtime.rule',
+    'runtime.reducer',
+    'runtime.validator',
+]);
+export const ATRIA_PLUGIN_CONTRIBUTION_TYPES = Object.freeze([
+    'authoring.resource',
+    'authoring.operation',
+    'build.validator',
+    'build.generator',
+    'build.asset-importer',
+    'build.component-palette',
+    'ui.component',
+    'play.selector',
+    'play.command',
+    'play.rule',
+    'play.reducer',
+    'play.validator',
+    'play.inspector',
+]);
 export const ATRIA_NATIVE_SKILL_SCOPES = Object.freeze(['global', 'project', 'package']);
 
 const HASH_RE = /^[a-f0-9]{64}$/;
@@ -536,7 +572,13 @@ export function assertPackageRuntimeV1(value) {
         format: ATRIA_PACKAGE_RUNTIME_FORMAT,
         version: ATRIA_PACKAGE_RUNTIME_VERSION,
         execution: 'declarative',
-        capabilities: unique(value.capabilities || [], 'PackageRuntimeV1.capabilities', namespaced),
+        capabilities: unique(value.capabilities || [], 'PackageRuntimeV1.capabilities', (item, field) => {
+            const capability = namespaced(item, field);
+            if (!ATRIA_PACKAGE_RUNTIME_CAPABILITIES.includes(capability)) {
+                throw new TypeError(field + ' is not a package-runtime-v1 capability');
+            }
+            return capability;
+        }),
         contributions: Object.freeze(
             value.contributions.map((item, index) => assertContribution(item, 'PackageRuntimeV1.contributions[' + index + ']')),
         ),
@@ -558,6 +600,7 @@ export function assertAtriaPluginContract(value) {
             'displayName',
             'version',
             'permissions',
+            'dependencies',
             'host',
             'packageRuntime',
             'contributions',
@@ -580,8 +623,30 @@ export function assertAtriaPluginContract(value) {
         only(value.host, ['entrypoint', 'capabilities'], 'AtriaPlugin.host');
         host = Object.freeze({
             entrypoint: projectPath(value.host.entrypoint, 'AtriaPlugin.host.entrypoint'),
-            capabilities: unique(value.host.capabilities || [], 'AtriaPlugin.host.capabilities', namespaced),
+            capabilities: unique(value.host.capabilities || [], 'AtriaPlugin.host.capabilities', (item, field) => {
+                const capability = namespaced(item, field);
+                if (!ATRIA_HOST_PLUGIN_CAPABILITIES.includes(capability)) {
+                    throw new TypeError(field + ' is not an Atria Host Plugin capability');
+                }
+                return capability;
+            }),
         });
+    }
+    const dependencies = unique(
+        value.dependencies || [],
+        'AtriaPlugin.dependencies',
+        (item, field) => {
+            object(item, field);
+            only(item, ['pluginId', 'version', 'optional'], field);
+            return Object.freeze({
+                pluginId: namespaced(item.pluginId, field + '.pluginId'),
+                version: string(item.version, field + '.version', 128),
+                optional: item.optional === undefined ? false : Boolean(item.optional),
+            });
+        },
+    );
+    if (new Set(dependencies.map(item => item.pluginId)).size !== dependencies.length) {
+        throw new TypeError('AtriaPlugin.dependencies must not contain duplicate pluginId values');
     }
     const packageRuntime = value.packageRuntime == null
         ? undefined
@@ -599,7 +664,14 @@ export function assertAtriaPluginContract(value) {
         pluginId: namespaced(value.pluginId, 'AtriaPlugin.pluginId'),
         displayName: string(value.displayName, 'AtriaPlugin.displayName', 256),
         version: string(value.version, 'AtriaPlugin.version', 128),
-        permissions: unique(value.permissions || [], 'AtriaPlugin.permissions', namespaced),
+        permissions: unique(value.permissions || [], 'AtriaPlugin.permissions', (item, field) => {
+            const permission = namespaced(item, field);
+            if (!ATRIA_PLUGIN_PERMISSIONS.includes(permission)) {
+                throw new TypeError(field + ' is not an Atria Plugin permission');
+            }
+            return permission;
+        }),
+        dependencies: Object.freeze(dependencies),
         ...(host ? { host } : {}),
         ...(packageRuntime ? { packageRuntime } : {}),
         contributions: Object.freeze(contributions),
