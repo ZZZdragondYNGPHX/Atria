@@ -511,6 +511,8 @@ export class StudioService {
             );
             const snapshot = await this._snapshot(handle, workspace.projectId);
             const changes = [];
+            let createdPreviewId = null;
+            let keepPreview = false;
             try {
                 for (const operation of workspace.operations) {
                     changes.push(await this._inspectOperation(handle, workspace.projectId, operation));
@@ -544,6 +546,7 @@ export class StudioService {
                         ...(entryPointId == null ? {} : { entryPointId }),
                     });
                     this._previewOwners.set(runtimePreview.previewId, handle);
+                    createdPreviewId = runtimePreview.previewId;
                     previewResult = Object.freeze({
                         previewId: runtimePreview.previewId,
                         projectId: runtimePreview.projectId,
@@ -589,6 +592,7 @@ export class StudioService {
                     }
                 }
 
+                keepPreview = true;
                 return Object.freeze({
                     workspace,
                     changes: Object.freeze(changes),
@@ -597,6 +601,7 @@ export class StudioService {
                     simulation: simulationResult,
                 });
             } finally {
+                if (createdPreviewId && !keepPreview) this.closePreview(handle, createdPreviewId);
                 await this._restore(handle, workspace.projectId, snapshot);
             }
         });
@@ -721,9 +726,12 @@ export class StudioService {
                 }
 
                 const directory = this._projects.getProjectDirectory(handle, workspace.projectId);
+                const semanticOrigin = workspace.origin.kind === 'agent' && workspace.origin.id
+                    ? ` · Task ${workspace.origin.id}`
+                    : '';
                 await this._git.commitIfChanged(
                     directory,
-                    `Atria Studio ChangeSet ${changeSetId}`,
+                    `Atria Studio ChangeSet ${changeSetId}${semanticOrigin}`,
                     HISTORY_AUTHOR,
                 );
                 const resulting = await this._revisionUnlocked(handle, workspace.projectId);
