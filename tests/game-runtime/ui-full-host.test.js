@@ -24,12 +24,12 @@ describe('Full Game UI host recovery shell', () => {
         sheld.style.display = 'flex';
         const exit = jest.fn();
         const stop = jest.fn();
-        const disable = jest.fn();
+        const save = jest.fn();
         const diagnostics = jest.fn();
         const host = createFullGameHost(document, {
             onExit: exit,
             onStopGeneration: stop,
-            onDisablePackage: disable,
+            onSave: save,
             onDiagnostics: diagnostics,
         });
 
@@ -45,10 +45,10 @@ describe('Full Game UI host recovery shell', () => {
         expect(document.body.dataset.atriaGameFullActive).toBe('true');
 
         host.recovery.querySelector('[data-atria-game-recovery-action="stop"]').click();
-        host.recovery.querySelector('[data-atria-game-recovery-action="disable"]').click();
+        host.recovery.querySelector('[data-atria-game-recovery-action="save"]').click();
         host.recovery.querySelector('[data-atria-game-recovery-action="diagnostics"]').click();
         expect(stop).toHaveBeenCalledTimes(1);
-        expect(disable).toHaveBeenCalledTimes(1);
+        expect(save).toHaveBeenCalledTimes(1);
         expect(diagnostics).toHaveBeenCalledTimes(1);
 
         document.dispatchEvent(new KeyboardEvent('keydown', {
