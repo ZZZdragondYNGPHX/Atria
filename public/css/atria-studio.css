@@ -2660,6 +2660,7 @@ not a wall of unlabeled inputs.
 }
 
 .atria-app-shell .atria-studio-workspace {
+    position: relative;
     min-width: 0;
     min-height: 0;
     height: 100%;
@@ -2949,6 +2950,97 @@ not a wall of unlabeled inputs.
     display: none;
 }
 
+.atria-app-shell .atria-studio-ai-placeholder--open {
+    position: absolute;
+    z-index: 4;
+    top: 64px;
+    right: 0;
+    bottom: min(156px, 24vh);
+    width: min(420px, 44vw);
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--atri-space-3);
+    padding: var(--atri-space-3);
+    border-left: 1px solid var(--atri-color-border);
+    background: var(--atri-color-surface);
+    box-shadow: var(--atri-shadow-surface);
+    overflow: auto;
+}
+
+.atria-app-shell .atria-project-agent-header {
+    display: grid;
+    gap: var(--atri-space-2);
+}
+
+.atria-app-shell .atria-project-agent-header h3,
+.atria-app-shell .atria-project-agent-plan h4,
+.atria-app-shell .atria-project-agent-progress h4 {
+    margin: 0;
+}
+
+.atria-app-shell .atria-project-agent-header select,
+.atria-app-shell .atria-project-agent-new-task textarea {
+    width: 100%;
+}
+
+.atria-app-shell .atria-project-agent-new-task,
+.atria-app-shell .atria-project-agent-plan,
+.atria-app-shell .atria-project-agent-progress,
+.atria-app-shell .atria-project-agent-conversation {
+    display: grid;
+    gap: var(--atri-space-2);
+}
+
+.atria-app-shell .atria-project-agent-new-task textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.atria-app-shell .atria-project-agent-plan ol {
+    margin: 0;
+    padding-left: 1.4rem;
+}
+
+.atria-app-shell .atria-project-agent-plan li[data-status="completed"],
+.atria-app-shell .atria-project-agent-plan li[data-status="ready"] {
+    color: var(--atri-color-success, var(--atri-color-text));
+}
+
+.atria-app-shell .atria-project-agent-progress pre {
+    max-height: 220px;
+    margin: 0;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-family: var(--atri-font-family-mono);
+    font-size: var(--atri-font-size-caption);
+}
+
+.atria-app-shell .atria-project-agent-conversation {
+    min-height: 120px;
+    max-height: 32vh;
+    overflow: auto;
+}
+
+.atria-app-shell .atria-project-agent-message {
+    padding: var(--atri-space-2);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-surface-raised, var(--atri-color-surface));
+    white-space: pre-wrap;
+}
+
+.atria-app-shell .atria-project-agent-message[data-role="user"] {
+    border-color: color-mix(in srgb, var(--atri-color-accent) 55%, var(--atri-color-border));
+}
+
+.atria-app-shell .atria-project-agent-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--atri-space-2);
+    margin-top: auto;
+}
+
 .atria-app-shell .atria-studio-mobile-nav {
     display: none;
 }
@@ -3143,8 +3235,12 @@ not a wall of unlabeled inputs.
     }
 
     .atria-app-shell .atria-studio-workspace[data-atria-studio-mobile-view="ai"] .atria-studio-ai-placeholder {
+        position: static;
         display: flex;
         flex: 1 1 auto;
+        width: 100%;
+        min-width: 0;
+        box-shadow: none;
         flex-direction: column;
         padding: var(--atri-space-3);
         overflow: auto;
