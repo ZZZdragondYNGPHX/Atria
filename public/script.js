@@ -7684,6 +7684,42 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         await sendMessageAsUser(oai_settings.send_if_empty.trim(), messageBias);
     }
 
+    // A3 Text Experience cutover: once the user Draft has been committed by
+    // the Native Session write barrier, game-runtime owns the semantic turn.
+    // Component/Hybrid/Full remain deferred to A4 and ordinary non-game
+    // Native Sessions continue through the existing generation ABI below.
+    if (
+        nativeSessionRuntime.active
+        && !dryRun
+        && !depth
+        && !automatic_trigger
+        && [undefined, 'normal'].includes(nativeGenerationIntent)
+    ) {
+        const gameApi = Atria.getContext()?.getExtensionApi?.('game-runtime');
+        const gameState = gameApi?.getPackageState?.();
+        if (
+            gameApi?.isActive?.()
+            && gameState?.descriptor?.experience?.mode === 'text'
+            && typeof gameApi.submitFreeText === 'function'
+        ) {
+            const userMessage = chat.at(-1);
+            if (!userMessage?.is_user || !String(userMessage.mes || '').trim()) {
+                unblockGeneration(type);
+                throw new Error('Native Text Game Runtime requires the committed user turn');
+            }
+            try {
+                const result = await gameApi.submitFreeText({
+                    userInput: String(userMessage.mes),
+                });
+                unblockGeneration(type);
+                return result;
+            } catch (error) {
+                unblockGeneration(type);
+                throw error;
+            }
+        }
+    }
+
     let {
         description,
         personality,
