@@ -1,0 +1,81 @@
+name: Native Authoring Platform A7 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-authoring-platform-product-frontend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-authoring-a7-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a7-studio-authoring:
+    name: A7 Studio Authoring UX
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run A7 focused and adjacent regressions
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          atria-shell/studio-authoring.test.js
+          atria-shell/studio-ui-editor.test.js
+          atria-shell/studio-workspace-a7.test.js
+          atria-shell/native-product-workspaces.test.js
+          atria-shell/workspace-host.test.js
+          native/studio-service.test.js
+          native/studio-http.test.js
+          native/studio-resource-http.test.js
+          native/resource-registry.test.js
+          native/resource-graph.test.js
+          native/library-authoring.test.js
+          native/studio-preview-experience.test.js
+          game-runtime/ui-component-model.test.js
+          game-runtime/studio-preview-surface.test.js
+          native/plugin-platform.test.js
+          native/native-skill-platform.test.js
+      - name: Run A7 residual guard
+        run: node scripts/check-a7-studio-authoring-ux.mjs
+      - name: Check A7 guard syntax
+        run: node --check scripts/check-a7-studio-authoring-ux.mjs
+      - name: Run frozen A0-A6 guards
+        run: |
+          node scripts/check-a0-native-authoring-hard-cutover.mjs
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a3-native-game-runtime-cutover.mjs
+          node scripts/check-a4-experience-runtime.mjs
+          node scripts/check-a5-plugin-skill-platform.mjs
+          node scripts/check-a6-native-product-frontend.mjs
+      - name: Run A7 focused lint
+        run: >-
+          npx eslint
+          public/scripts/native/studio-client.js
+          public/scripts/native/studio-authoring.js
+          public/scripts/native/studio-ui-editor.js
+          public/scripts/native/studio-workspace.js
+          tests/atria-shell/studio-authoring.test.js
+          tests/atria-shell/studio-ui-editor.test.js
+          tests/atria-shell/studio-workspace-a7.test.js
+          tests/atria-shell/native-product-workspaces.test.js
+      - name: Run full root lint
+        run: npm run lint
