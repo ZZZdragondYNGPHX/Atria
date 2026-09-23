@@ -241,3 +241,17 @@ export {
     assertRouteResolverPort,
     assertSecretPort,
 } from './model-prompt-runtime/ports.js';
+
+export {
+    VERSIONED_MODEL_PROMPT_RESOURCE_TYPES,
+    assertVersionedModelPromptResource,
+    collectVersionedModelPromptResourceRefs,
+    getVersionedModelPromptResourceDefinition,
+    getVersionedModelPromptResourceIdentity,
+    mapVersionedModelPromptResourceRefs,
+} from './model-prompt-runtime/resources.js';
+
+export {
+    NativeModelPromptPersistence,
+    VersionedJsonResourceHandler,
+} from './model-prompt-runtime/persistence.js';
