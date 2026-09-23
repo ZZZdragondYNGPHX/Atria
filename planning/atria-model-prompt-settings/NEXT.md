@@ -1,65 +1,115 @@
-# NEXT：等待现有重构完成后的企划复核
+# NEXT：P0 — Baseline / Contracts / Guard Evolution
 
-## 当前事实
+## 当前状态
 
-- 交付类型：`docs` 分支下的企划文件；不是独立企划分支或实现分支。
-- 当前状态：`design-draft / awaiting-post-refactor-reconciliation`；本次追加变量、PHI及CoT／编排双路径合同。
-- 产品实现阶段：**尚未开始**。当前只有文档整理与审查证据归档。
-- 已审查基线：`main@fd9a493c9040b32f4892bd92531030e58b066244`。
-- 初版观察过 docs 的 A5/A6 交接；本次文稿修订基于上一版交付 `docs@fb374ba7fdd0f2f14587e655c6d20dd8137f020c`。
-- 交付前全局交接已更新：A6 已验收于 `e33704b91ecb0373902132fe8af9c80b204aa8ce`，下一阶段 A7。新实现未在本企划中逐行审查，且 main 仍为上述固定基线；未来恢复时必须重新核对。
-- 当前既有实现分支：`refactor/atria-native-authoring-platform-product-frontend`；本企划不修改其阶段或代替其交接。
-- 下一活动阶段：只允许先执行 [IMPLEMENTATION.md](IMPLEMENTATION.md) 的 P0 文档复核，不允许直接执行 P1–P6。
+- 设计：已封板。
+- 产品代码：尚未开始本 refactor 的实现。
+- 当前集成基线：`main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+- 正式实现分支：`refactor/atria-model-prompt-settings`
+- 正式总纲：`refactor/atria-model-prompt-settings.md`
+- 详细设计：本目录 README / DESIGN / EVIDENCE / IMPLEMENTATION。
+- N0–N10 / A0–A9：继续作为 frozen semantic foundations。
 
-## 已收敛的讨论
+实现分支已从上述 current main 创建。开始任何代码修改前必须重新 fetch 远端分支；如果别的会话已经继续推进，以远端实际最新 HEAD 为准，不得回退到创建时基线。
 
-用户明确要求：尽可能切割兼容；提示词拥有类似 SillyTavern 的行为可塑性；玩家可像使用内容 Mod 一样改动但不改内核；先完成当前重构，再修订企划，最后才新建实现分支。
+## 下一阶段
 
-用户委托代理决定组合机制。代理选择：提示模块可组合、单基础＋有序覆盖、每个运行角色一次只激活一套完整方案。它不是第二个 Plugin/Skill 运行时，也不带无限继承／依赖求解器。
+只执行：
 
-用户本次明确补充：CoT应与智能体编排连接，编排可接管部分单模型处理步骤，但仍需完整支持单模型RP。新增设计把变量分域、持久写入事务、CoT阶段资源及两种运行方式分开；不把“单模型”与“单节点／单次调用”混为一谈，也不自动把自然语言CoT变成编排图。
+**P0 — Baseline / Contracts / Guard Evolution**
 
-具体 schema/API、模型支持矩阵、变量提交接缝、CoT阶段绑定、页面残留、迁移映射和可删除文件仍需 P0。不要把这些待实物确认事项误写成用户已逐项批准或系统已实现。
+不要提前执行 P1–P8。
 
-## 文档与证据
+## P0 目标
 
-- [DESIGN.md](DESIGN.md)：总设计与去留决策。
-- [EVIDENCE.md](EVIDENCE.md)：历史基线上的分片审查、11套／142项定向测试、函数级离线复现及覆盖缺口。
-- [IMPLEMENTATION.md](IMPLEMENTATION.md)：未来阶段、首个可用闭环与30项验收合同，包含变量生命周期和CoT双路径。
-- 本次不运行产品实现、浏览器／真实模型验收、Android或Docker构建；旧测试通过不证明未来方案已实现。
-- 初版11套／142项是历史测试账本，不覆盖本次新增合同。本次只作源码静态核对和文档验证：5份文档、14个内部链接、83个固定源码锚点（43个源码文件）、V01–V30连续编号、编码／私有路径形状与历史账本核对通过，独立文档合同审阅通过。未重跑产品测试，也不能据此声称新增场景已实现。
+1. 再核对当前工作分支与 main 是否出现新提交。
+2. 将最终设计落成 Native contracts：
+   - Connection Profile
+   - Model Profile
+   - Generation Profile
+   - Prompt Module
+   - Prompt Program
+   - Runtime Route
+   - RequestContextPlan
+   - Prompt IR
+   - EffectiveRequestSnapshot
+3. 冻结 capability supported/unsupported/unknown + provenance。
+4. 冻结 package runtime metadata 的新结构；不要扶正 `package.presets`。
+5. 冻结 Port contracts：
+   - Generation Service
+   - Route Resolver
+   - Provider Port
+   - Secret Port
+   - Context Provider
+6. 建立本 refactor 的 architecture/residual guard skeleton。
+7. 建立 frozen-guard evolution matrix：
+   - A6 Advanced Connection compatibility；
+   - A6 standalone Capabilities route；
+   - A8 Studio Agent `generateTask`。
+8. P0 不提前切 UI/Runtime，不删除旧 seam。
 
-## P0 必须补齐的事实
+## P0 红线
 
-1. 用户指定的现有重构是否已结束并集成到远端 main；记录真实 commit，不以时间或分支名称推断。
-2. A6 Runtime/Settings、A5 Plugin/Skill、Library/Resource Registry、Build和Native生成的实际合同。
-3. 本证据中的每项问题是否还存在；已解决项关闭，架构改变项重写，不照搬旧行号修复。
-4. 当前仍受支持的消息／文本后端、模型能力、参数和调用者；不因旧分类直接下线。
-5. 设置逐字段的归属／作用域／保存／生效／迁移；不要引入账号与设备双真源。
-6. 提示资源、模型配置与运行绑定的唯一持久化责任；不继承DOM ghost或历史名称身份。
-7. 是否纳入一次性旧数据转换及其明确支持集合；原件备份、丢失报告与拒绝条件。
-8. 单模型请求入口、编排ModelPort与CoT阶段绑定；哪些职责可外置、哪些局部检查保留，以及调用／token成本和质量的验收。
-9. 内置／参数／临时／持久变量的权限、初始化、事务提交、重试防重、分支继承与卸载；预览不得落盘。
-10. 可实施范围、首阶段文件、实际测试环境和可恢复迁移；更新docs后再决定动工。
+- 不创建新分支。
+- 不合并 main。
+- 不重做 N0–N10 / A0–A9。
+- 不创建第二套 Session / Project / Library authority。
+- 不让 Prompt 直接获得持久状态写权限。
+- 不让 Package 保存用户 Secret / private Connection。
+- 不建立 PromptStore / second Resource Graph。
+- 不把 `Atria.getContext()` 定义成新 Core 的必需依赖。
+- 不为了新 contract 大规模重写 provider sender。
+- 不通过删掉 frozen guard 来消除冲突。
 
-## 继续时直接使用的指令
+## P0 验证
 
-> 现有 Atria 工作室／插件／产品前端重构已到达我指定的完成点。请先读取远端 main 的 AGENTS.md、FORK_MAINTENANCE.md、docs 最新交接，以及 docs:planning/atria-model-prompt-settings/ 全部文件。核验实际集成状态，以届时 main 为准逐项修订企划，关闭已解决证据、确认资源和配置权威、设置归属、支持范围、变量生命周期、CoT与单模型／编排双路径、迁移与验收。此轮先只更新并推送 docs，不根据旧稿直接修改产品代码，也不提前创建实现分支。向我报告实质变化和可执行的首阶段，待我要求动工后再从当时远端 main 创建正常临时实现分支。
+至少需要：
 
-## 范围控制
+- contract unit tests；
+- invalid scope/identity refs；
+- secret redaction/serialization tests；
+- package private-runtime rejection；
+- capability tri-state/provenance tests；
+- architecture guard syntax + behavior；
+- relevant A0–A9 / N0–N10 frozen guards；
+- focused ESLint；
+- broader checks只报告实际执行项。
 
-- 蓝图档位：单一实施蓝图；子蓝图 0，当前临时问题支线 0。
-- 本目录是排队中的未来设计，不覆盖 `handoff/latest-handoff.md`。
-- 不自动创建实施分支、PR、部署、安装服务、调用付费模型或执行迁移。
-- 不自动扩展市场、任意包JS、无限继承或通用兼容模拟器。
-- 若新基线与设计冲突，优先修订设计，不用桥接把冲突永久埋进产品。
+Android / Docker 不运行，除非用户另行明确要求。
 
-## 资料路由回执
+## P0 完成后的动作
 
-主路由：tavern-card-builder（领域入口）→ code-quality-workflow（只读审查与重构门）→ orchestrate-project-blueprint（企划与续接）。
+完成并验证 P0 后必须停下。
 
-写入前 Library 路由：`code-quality-workflow`；snapshot `2026-08-18`；加载 `ST-A0` 的目标／红线／验收门。审查时选择阅读 `ST-A4` 的提示词／预设说明，用于术语与风险定位，不替代固定 main 的源码事实。本次另读取 tavern-card-builder 的自定义CoT设计参考及相应源码；指导主流程／专项增量／目标模型边界，不把参考文档当已实现接口。
+更新：
 
-本次目标：把讨论与证据保存到docs。红线：不写产品代码、不干扰在途重构／全局交接、不留独立企划分支。验收：仅本目录Markdown文件变更、引用和范围检查通过、非强制推送到docs并核对提交可达。
+- `docs:planning/atria-model-prompt-settings/`
+- `docs:refactor/atria-model-prompt-settings.md`
+- `docs:handoff/latest-handoff.md`
 
-未采用设计／动效目录候选，不下载或发布媒体；不把指南版本声明当成当前 Atria API 真机验证。
+记录：
+
+- 工作分支 live HEAD；
+- P0 commits；
+- tests/checks；
+- frozen guard evolution matrix；
+- 未完成 P1–P8；
+- P1 目标。
+
+然后给用户 **P1 新对话提示词**，不得在同一轮直接继续 P1。
+
+## 新对话接手摘要
+
+新对话启动时依次读取：
+
+1. `main:AGENTS.md`
+2. `main:FORK_MAINTENANCE.md`
+3. `docs:handoff/latest-handoff.md`
+4. `docs:refactor/atria-model-prompt-settings.md`
+5. `docs:planning/atria-model-prompt-settings/README.md`
+6. `DESIGN.md`
+7. `EVIDENCE.md`
+8. `IMPLEMENTATION.md`
+9. 本文件
+
+然后 fetch `refactor/atria-model-prompt-settings`，以实际远端 HEAD 为准，只执行 P0。
