@@ -9,8 +9,10 @@ import {
 } from '../storage/index.js';
 import { ProjectStore } from '../native/project-store.js';
 import { StudioService } from '../native/authoring/studio-service.js';
+import { ProjectAgentService } from '../native/project-agent.js';
 
 let studioService = null;
+let projectAgentService = null;
 
 function services() {
     if (!studioService) {
@@ -21,8 +23,9 @@ function services() {
             assetStore: getAssetStore(),
             packageRepo: getPackageRepo(),
         });
+        projectAgentService = new ProjectAgentService({ studio: studioService });
     }
-    return { studio: studioService };
+    return { studio: studioService, agent: projectAgentService };
 }
 
 function decodeProjectFiles(value) {
@@ -201,6 +204,39 @@ export function createNativeStudioRouter(getServices = services) {
     router.post('/projects/:projectId/workspaces/execute', route(async (req, res, { studio }, handle) => {
         const workspace = workspaceFromBody(studio, req.params.projectId, req.body || {});
         res.json(await studio.executeWorkspace(handle, workspace));
+    }));
+
+    router.get('/projects/:projectId/agent/tasks', route(async (req, res, { agent }, handle) => {
+        res.json(agent.listTasks(handle, req.params.projectId));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.createTask(handle, req.params.projectId, req.body || {}));
+    }));
+
+    router.get('/projects/:projectId/agent/tasks/:taskId', route(async (req, res, { agent }, handle) => {
+        res.json(agent.getTask(handle, req.params.projectId, req.params.taskId));
+    }));
+
+    router.get('/projects/:projectId/agent/tasks/:taskId/context', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.getContext(handle, req.params.projectId, req.params.taskId));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks/:taskId/tool', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.executeTool(
+            handle,
+            req.params.projectId,
+            req.params.taskId,
+            req.body || {},
+        ));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks/:taskId/commit', route(async (req, res, { agent }, handle) => {
+        res.json(await agent.commit(handle, req.params.projectId, req.params.taskId));
+    }));
+
+    router.post('/projects/:projectId/agent/tasks/:taskId/takeover', route(async (req, res, { agent }, handle) => {
+        res.json(agent.takeOver(handle, req.params.projectId, req.params.taskId));
     }));
 
     router.get('/projects/:projectId/resources/closure', route(async (req, res, { studio }, handle) => {
