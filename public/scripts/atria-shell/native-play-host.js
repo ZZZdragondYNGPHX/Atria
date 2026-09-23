@@ -12,23 +12,23 @@ const REQUIRED_NATIVE_IDS = Object.freeze([
 function requireUniqueNode(documentRef, id) {
     const nodes = documentRef.querySelectorAll(`#${id}`);
     if (nodes.length !== 1) {
-        throw new Error(`R7B Native Play Host requires exactly one #${id}; found ${nodes.length}`);
+        throw new Error(`A6 Native Play Host requires exactly one #${id}; found ${nodes.length}`);
     }
     return nodes[0];
 }
 
 function assertNativeHierarchy({ sheld, chat, formSheld, sendForm, sendTextarea }) {
     if (chat.parentNode !== sheld) {
-        throw new Error('R7B Native Play Host requires #chat to remain a direct child of #sheld');
+        throw new Error('A6 Native Play Host requires #chat to remain a direct child of #sheld');
     }
     if (formSheld.parentNode !== sheld) {
-        throw new Error('R7B Native Play Host requires #form_sheld to remain a direct child of #sheld');
+        throw new Error('A6 Native Play Host requires #form_sheld to remain a direct child of #sheld');
     }
     if (sendForm.parentNode !== formSheld) {
-        throw new Error('R7B Native Play Host requires #send_form to remain a direct child of #form_sheld');
+        throw new Error('A6 Native Play Host requires #send_form to remain a direct child of #form_sheld');
     }
     if (!sendForm.contains(sendTextarea)) {
-        throw new Error('R7B Native Play Host requires #send_textarea to remain inside #send_form');
+        throw new Error('A6 Native Play Host requires #send_textarea to remain inside #send_form');
     }
 }
 
@@ -50,13 +50,13 @@ export function mountNativePlayHost({
     stage,
 } = {}) {
     if (!documentRef?.body || typeof documentRef.createElement !== 'function') {
-        throw new Error('R7B Native Play Host requires a document');
+        throw new Error('A6 Native Play Host requires a document');
     }
     if (!stage || typeof stage.appendChild !== 'function') {
-        throw new Error('R7B Native Play Host requires the Shell Stage');
+        throw new Error('A6 Native Play Host requires the Shell Stage');
     }
     if (documentRef.getElementById('atria-native-play-host')) {
-        throw new Error('R7B Native Play Host is already mounted');
+        throw new Error('A6 Native Play Host is already mounted');
     }
 
     const native = {
@@ -70,7 +70,7 @@ export function mountNativePlayHost({
 
     const originalParent = native.sheld.parentNode;
     if (!originalParent) {
-        throw new Error('R7B Native Play Host cannot mount a detached #sheld');
+        throw new Error('A6 Native Play Host cannot mount a detached #sheld');
     }
     const originalNextSibling = native.sheld.nextSibling;
     const originalStageChildren = [...stage.childNodes];
@@ -114,7 +114,7 @@ export function mountNativePlayHost({
     }
 
     function mountNativeComponent(componentId, slot) {
-        if (!mounted) throw new Error('R7C Native Play Host is not mounted');
+        if (!mounted) throw new Error('A6 Native Play Host is not mounted');
         const id = String(componentId || '').trim();
         const node = resolveNativeComponent(id);
         if (!node) {
@@ -171,9 +171,9 @@ export function mountNativePlayHost({
     }
 
     function acquireStageOwnership(ownerId) {
-        if (!mounted) throw new Error('R7C Native Play Host is not mounted');
+        if (!mounted) throw new Error('A6 Native Play Host is not mounted');
         const owner = String(ownerId || '').trim();
-        if (!owner) throw new Error('R7C Stage ownership requires an owner id');
+        if (!owner) throw new Error('A6 Stage ownership requires an owner id');
         if (stageOwnership) {
             throw new Error(`Atria Stage is already owned by '${stageOwnership.owner}'`);
         }
@@ -262,10 +262,10 @@ export function mountNativePlayHost({
             if (!mounted) return false;
 
             restoreNativeComponents();
-            productControls.dispose();
-            product.dispose();
             stageOwnership?.release();
             stageOwnership = null;
+            productControls.dispose();
+            product.dispose();
 
             if (origin.parentNode) {
                 origin.parentNode.insertBefore(native.sheld, origin);
@@ -276,7 +276,7 @@ export function mountNativePlayHost({
                     : null;
                 originalParent.insertBefore(native.sheld, reference);
             } else {
-                throw new Error('R7B Native Play Host cannot restore #sheld because its original parent is gone');
+                throw new Error('A6 Native Play Host cannot restore #sheld because its original parent is gone');
             }
 
             restoreAttribute(native.sheld, 'data-atria-native-play-mounted', previousSheldMarker);
