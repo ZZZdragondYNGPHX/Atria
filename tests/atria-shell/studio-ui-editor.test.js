@@ -41,7 +41,7 @@ describe('A7 Structured UI editor', () => {
         tabs.find(node => node.textContent === 'Bindings').click();
         const bindings = root.querySelector('[aria-label="Component bindings JSON"]');
         bindings.value = JSON.stringify({
-            bindings: { text: 'player.maxHp' },
+            bindings: { text: 'player.max_hp' },
             actions: {},
             visibility: { selector: 'player.ready', when: 'truthy' },
             responsive: { devices: ['desktop'] },
@@ -51,7 +51,7 @@ describe('A7 Structured UI editor', () => {
         tabs.find(node => node.textContent === 'Source').click();
         const source = root.querySelector('[aria-label="Structured UI source JSON"]');
         const parsed = JSON.parse(source.value);
-        expect(parsed.bindings.text).toBe('player.maxHp');
+        expect(parsed.bindings.text).toBe('player.max_hp');
         expect(parsed.visibility).toEqual({ selector: 'player.ready', when: 'truthy' });
         expect(parsed.responsive).toEqual({ devices: ['desktop'] });
 
