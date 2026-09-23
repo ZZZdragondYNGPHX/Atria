@@ -1,6 +1,6 @@
 # 实施蓝图：Atria Native Model / Prompt / Runtime P0–P8
 
-**状态：P0–P3 已完成并验证；P4 为下一实施阶段。**
+**状态：P0–P5 已完成并验证；P6 为下一实施阶段。**
 
 正式实现分支：`refactor/atria-model-prompt-settings`
 
@@ -621,3 +621,14 @@ A6 replacement gates remain unchanged for P5. No main merge or P5 implementation
 Runtime host ABI, supported controls and residual whitelist are documented in
 src/native/model-prompt-runtime/README.md. P5 must provision explicit routes and
 use Native compile-only preview instead of legacy Generate dryRun.
+
+## P5 completion checkpoint (2026-09-23)
+
+P5 complete at `0cb56b9a0d37789025fb8069d08f6f43ead2413d`. Native Runtime Routes/Models/Connections/Profiles/Diagnostics
+replace the compatibility editors, reuse P1 exact storage and P4 host, and provide
+compile-only preview, remediation, search deep links and mobile fullscreen editors.
+A6/P0 replacement gates evolved after actual visual verification. Broad FS/SQLite:
+206 suites / 1811 tests; final focused: 6 / 39; real P4/P5 browser: 8 passed.
+Guards/lint/syntax/prebuild passed. Exact commands, intermediate visual defects,
+exclusions and P6 obligations: P5-VALIDATION.md. No main merge or P6 implementation.
+P6 Library & Studio Authoring is next, only after explicit continuation.

@@ -1,54 +1,47 @@
-# NEXT: P5 — Native Runtime Product UI
+# NEXT: P6 — Library & Studio Authoring
 
-P0–P4 complete. Stop until explicit user continuation.
+P0-P5 complete. Stop until explicit user continuation.
 
 - Work branch: refactor/atria-model-prompt-settings
 - Main baseline: 2d1c3ec9c8039ecc4728ebe712f4a9f14186906f
-- P4 validated/pushed HEAD: 6cba266814a7ff04666220f1031efdb844ad4e46
-- Evidence: P4-VALIDATION.md; runtime ABI/whitelist: src/native/model-prompt-runtime/README.md.
+- P5 validated HEAD: 0cb56b9a0d37789025fb8069d08f6f43ead2413d
+- Evidence: P5-VALIDATION.md; runtime ABI: src/native/model-prompt-runtime/README.md.
 
 ## Next-session prompt
 
 Continue Atria Model / Prompt / Runtime Native Refactor on the same work branch.
-Fetch work branch, main and docs; preserve newer remote commits. Do not create a
-new branch, redo P0–P4 or merge main. Read main:AGENTS.md, main:FORK_MAINTENANCE.md,
-docs:handoff/latest-handoff.md, refactor plan, this planning pack, P4-VALIDATION.md,
-current Runtime UI/host endpoints and P0–P4 code/tests/guards before editing.
+Fetch work branch/main/docs and preserve newer commits. Do not create a new branch,
+redo P0-P5 or merge main. Read main:AGENTS.md, main:FORK_MAINTENANCE.md,
+docs:handoff/latest-handoff.md, refactor plan/planning pack, P5-VALIDATION.md and
+current P1 resource/A1 authoring/A2 Library/A7 Studio/A8 Agent code/tests/guards.
 
-Execute P5 only as specified in DESIGN.md and IMPLEMENTATION.md:
-replace A6 Model/Prompt/Connection compatibility shell with Native Runtime Routes,
-Models, Connections, Profiles and Diagnostics. Routes is primary; the editor shows
-Model → Connection → Generation → Prompt → Fallback. Capabilities belong inside
-Model/Route/Diagnostics rather than a standalone technical page. Reuse P1 storage,
-exact Library/Resource Graph and P4 host. Do not create a second Store or resolve
-Native configuration from legacy presets/settings.
+Execute P6 only as specified in IMPLEMENTATION.md and DESIGN.md:
+Library exposes Prompt Programs, Prompt Modules and Generation Profiles with origin,
+exact revision, Derived From, Used By, read-only Package originals and Fork/Derive.
+Existing Build/A7 Studio adds Prompt Authoring and Runtime Design, Simple/Advanced
+Prompt editor, stage/module tree, workspace editor/inspector, conditions/parameters/
+provenance and compile preview. AI edits must use A1 operations and human Review,
+not direct mutation. Keep Build as the primary authoring domain.
 
-Connections edits connection data and exact Secret references only. Models shows
-remote ID, capabilities/provenance and limits. Profiles edits Generation resources.
-Diagnostics shows Effective Request, context budget, prompt provenance and fallback
-attempts. Provide actionable missing/ambiguous route errors; never silently choose
-an active legacy preset. Native preview must compile without sending or persisting;
-the legacy Native Generate dryRun path is intentionally rejected in P4.
+Package work includes runtime requirements/recommended exact refs, exact build
+closure and flattened/frozen derive resources. Installed Packages must not track
+Library latest or allow player edits to Package originals. Reuse existing Store,
+Library, Resource Graph and Session authority. No second prompt database, no legacy
+preset fallback. Preserve P4 request isolation/tools/Secret/fallback and A8 gates.
 
-P4 supports explicit OpenAI-compatible/raw-text endpoints, bearer Secret IDs,
-cl100k_base/o200k_base tokenizers and documented controls. Surface unsupported
-controls honestly; P3 render-only fixtures are not transports. Preserve request
-isolation, fail-closed capabilities, tools/output authority, cancellation, complete
-route fallback, Session identity and Studio human Review/Commit boundaries.
+P5 now provides P1 configuration HTTP APIs and compile-only preview with pinned
+Session/Project context. Runtime Profiles create immutable Library revisions and
+routes remain pinned. P5 selects Library revisions and preserves existing scoped
+refs; finish the scoped-resource authoring/picker flow within P6's intended scope.
+No Prompt visual editor or Secret provisioning/import was added in P5. Unsupported
+provider controls still fail closed; do not label P3 render fixtures as transports.
 
-No legacy DOM reparenting as primary or advanced product editor. Mobile must use
-full-screen/editor flows rather than compressed desktop panels. Validate loading,
-empty, error/configured states, keyboard/focus, search deep links and save failures.
-Only after replacement works, evolve A6 Advanced Connection and standalone
-Capabilities assertions. Retain Play/search/no-second-storage and other frozen
-invariants; preserve A8's P4 seam and human Review gates.
+For frontend/UI changes, start local servers, open real pages with Playwright,
+interact at desktop/mobile sizes, capture and inspect screenshots, fix defects and
+recapture. Tests alone missed P5's 44px mobile editor; verify actual visual geometry
+and focus/keyboard behavior. Use independent mobile Studio layouts.
 
-Run focused/adjacent tests, relevant N/A/P0–P5 guards, lint, syntax/build and real
-browser integration. Start a local server and use Playwright for desktop/mobile
-interactions and screenshots; visually inspect, fix and rerun defects. DOM/unit
-checks alone are insufficient. Android/Docker remain opt-in. Use existing test
-switches when MySQL/PostgreSQL are unavailable and report exclusions honestly.
-Do not depend on CI to discover errors.
-
-Record actual results, update/push work and docs, report P5 completion and stop
-before P6 until the user explicitly continues.
+Run focused/adjacent tests, relevant frozen N/A/P0-P6 guards, lint/syntax/build and
+real browser integration. Android/Docker remain opt-in. Use existing SQL disable
+switches when services are absent and report exclusions honestly. Record actual
+results and update/push work/docs. Stop before P7 until explicit continuation.
