@@ -208,7 +208,11 @@ describe('A8 Native Studio Project Agent client', () => {
     });
 
     test('AI panel can mount while generation is unavailable without mutating the project', async () => {
-        delete globalThis.Atria.getContext().generateTask;
+        globalThis.Atria = {
+            getContext: () => ({
+                getRequestHeaders: () => ({ 'X-CSRF-Token': 'test' }),
+            }),
+        };
         document.body.innerHTML = '<aside id="ai"></aside>';
         const slot = document.getElementById('ai');
         const logs = [];
