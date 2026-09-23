@@ -1,52 +1,105 @@
-# Atria 模型、提示词预设与设置原生化企划
+# Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：待现有重构完成后复核的设计稿；不是当前实施指令。**
+**状态：设计已封板，正式实现分支已创建；产品代码尚未开始实施。**
 
-本目录保存代码审查证据、多轮讨论结论和未来实施候选方案。用户要求先完成正在进行的工作室／插件／产品前端重构，再让 AI 根据届时的实际代码修正本企划，之后才新建实现分支。
+## 当前基线
 
-## 阅读顺序与文档职责
+- 仓库：`ZZZdragondYNGPHX/Atria`
+- 已核对主线：`main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+- 正式实现分支：`refactor/atria-model-prompt-settings`
+- 正式总纲：`refactor/atria-model-prompt-settings.md`
+- 既有基础：Native Content & Session N0–N10、Native Authoring Platform & Product Frontend A0–A9 均已完成并冻结。
 
-1. [DESIGN.md](DESIGN.md)：产品目标、用户确认项、代理设计决策、对象与权威边界、去留矩阵。
-2. [EVIDENCE.md](EVIDENCE.md)：固定基线上的代码证据、实际验证、覆盖缺口；不是未来版本的现状声明。
-3. [IMPLEMENTATION.md](IMPLEMENTATION.md)：未来阶段、验收矩阵、清理门槛；不是立即执行的任务列表。
-4. [NEXT.md](NEXT.md)：唯一的本企划推进状态与下一步续接指令。
+本目录不再是“等待 A6/A7 完成后复核”的旧设计稿，而是本次重构的详细实施资料包。
 
-采用单一实施蓝图：不创建子蓝图、第二套项目总设计或独立的插件运行时。各文件分别回答“做什么”“为什么这样判断”“如何验收”“何时继续”，不维护多份进度。
+## 阅读顺序
 
-## 基线与并行任务
+1. [DESIGN.md](DESIGN.md)：最终对象模型、权威边界、Prompt/Context/Generation 架构、产品界面与 hard-cut 决策。
+2. [EVIDENCE.md](EVIDENCE.md)：基于当前 main 的代码事实、旧依赖、冻结合同和 guard 冲突。
+3. [IMPLEMENTATION.md](IMPLEMENTATION.md)：P0–P8 实施阶段、每阶段退出条件和验证要求。
+4. [NEXT.md](NEXT.md)：当前执行状态、下一阶段和新对话接手指令。
 
-| 项目 | 记录 |
-|---|---|
-| 记录日期 | 2026-09-23 |
-| 已审查产品基线 | `main@fd9a493c9040b32f4892bd92531030e58b066244` |
-| 本次恢复时读取的 docs | `abe12e787f1935beeac3b37f80a386148d23bbb6` |
-| 正在进行的实现分支 | `refactor/atria-native-authoring-platform-product-frontend` |
-| 交接所述已验收阶段 | A5 Plugin & Skill Platform；验收 HEAD `eefd6550d9b2af6c2777984e12d5f61de0898415` |
-| 交接指定的下一阶段 | A6 Native Product Frontend |
-| 恢复时观测到的在途分支 HEAD | `5028576791e25fad53761fe088bd884d205cd196`；未逐行审查，不等于已集成或已验收 |
+## 这次重构真正解决的问题
 
-交付前再次读取 `docs@90fbd7ee198962a5ad417e99220a2dfb5f77f052`：交接已推进到 **A6 完成，下一阶段 A7**；A6 验收 HEAD 为 `e33704b91ecb0373902132fe8af9c80b204aa8ce`。该交接说明 Settings/Connections 等仍保留有边界的 Advanced 兼容控制器。这是未来复核的重要输入，不等于本次已审查这些新实现，也不改变固定 main 的证据基线。
+不是“给旧 Preset Manager 换皮”，而是把 Atria 的 Model / Prompt / Runtime 从 SillyTavern 旧配置权威中切出来，使其逐步形成可独立运行的产品核心。
 
-现有重构的正式权威仍是 [Native Authoring Platform & Product Frontend 计划](../../refactor/atria-native-authoring-platform-product-frontend.md)及[全局交接](../../handoff/latest-handoff.md)。本目录不覆盖它们，也不把 A5–A9 的规划或交接陈述冒充本次执行证据。
+目标依赖方向：
 
-## 已明确的方向
+    Atria Domain / Runtime / Authoring
+                  ↓
+               Host Ports
+                  ↓
+        SillyTavern Compatibility Adapter
 
-- 最大限度切断旧 SillyTavern 预设、DOM、全局状态、内部事件和历史字段的兼容义务；必要底层协议、算法与正确基础设施可复用。
-- 保留 SillyTavern 式提示可塑性：玩家通过提示改变 AI 行为与作品体验，像内容 Mod 一样使用，但不改变程序内核与权限。
-- 用户将组合机制交由代理决定：采用可组合提示模块，每个运行角色一次只采用一套完整提示方案。
-- 设置原生化承接 A6 的实际成果，不再造一个外壳或平行设置存储。
-- 本次只向 `docs` 分支交付企划文件。**不创建、推送或保留独立企划分支；不创建实现分支；不修改产品代码。**
+SillyTavern 可以暂时继续承担宿主与底层成熟 sender，但不再定义 Atria 的配置、Prompt、Route、Context 或正式产品 UI。
 
-## 本次追加：动态提示程序与 CoT／编排衔接
+## 最终核心对象
 
-根据用户补充，提示方案不再只描述只读占位和文本装配：补入内置视图、模块参数、装配临时变量和具名持久状态；预览可演算但不得提交持久副作用。高级指令／PHI保留表达能力，不承诺突破模型限制。
+- Connection Profile
+- Model Profile
+- Generation Profile
+- Prompt Module
+- Prompt Program
+- Runtime Route
 
-单模型RP是独立完整路径：使用作者的主CoT、作品增量和条件模块，不强迫玩家开启编排。编排可以接管一部分原先由单模型提示承担的步骤，其他阶段按节点职责投影，避免每个Agent重复整套CoT。两种模式复用流程资源，区分提示CoT、原生reasoning设置和程序编排；不预设更多Agent必然更好。
+运行期产物：
 
-这些要求已同步进入总设计与30项未来验收合同。仍是企划修订，不是产品实现或新增测试通过记录。
+- Request Context Plan
+- Prompt IR
+- Effective Request Snapshot
 
-## 必须先做的下一步
+不再继续增加顶级概念。Message Format 属于 Model Profile 子能力；Stage 属于 Prompt Program；Output Contract 属于 Runtime Request。
 
-当前重构完成并形成明确集成基线后，先在 docs 中修订本企划：核对真实代码、关闭已解决问题、调整对象与阶段、重新确认支持范围与验收。只有用户随后要求动工，才从届时远端 `main` 创建正常临时实现分支。
+## 已封板的重要决定
 
-不要机械复制本稿中的旧源码位置；不要整批执行 `IMPLEMENTATION.md`；不要为清理旧兼容代码而删除用户数据。详见 [NEXT.md](NEXT.md)。
+- Package 只携带可分发作者意图与运行能力要求；不携带 Secret 或用户 Connection。
+- Model Profile 属于玩家/设备运行环境；Package 只能声明 requirement/recommendation。
+- Prompt Module / Program 与 Generation Profile 成为 Native versioned resources。
+- 单模型 RP 是一等路径；Orchestrator 只投影同一 Prompt Program 的阶段职责。
+- Prompt Stage 不是第二个 Orchestrator。
+- Prompt 不建立第二套持久状态系统；持久写入继续走 Native Session State / Revision 事务。
+- Runtime Route 使用 stable IDs/revisions，不再以旧 preset/profile 名称作为身份。
+- `context.generateTask()` 降级为兼容 facade；新的 Native Generation Service 是 Core。
+- Native Session Context 不被其他任务强行复用；公共边界是 `RequestContextPlan`。
+- A2 只增加足以承载 Prompt/Generation 的通用 versioned JSON resource handler，不重写 World/Knowledge/Asset 现有专用 repo。
+- `package.presets` 不进入新 Runtime contract。
+- 旧数据不自动双写或隐式迁移；未来如需要，只允许显式一次性单向导入。
+- 正式 Atria UI 不再 reparent legacy ST DOM。
+
+## 产品前端
+
+长期产品蓝图仍是 Home / Play / Library / Studio / Runtime。
+
+但本任务只完整落地 Model / Prompt / Runtime 相关切片，避免重新做一遍 A0–A9：
+
+- Runtime：Routes / Models / Connections / Profiles / Diagnostics
+- Library：Prompt Programs / Prompt Modules / Generation Profiles
+- Build/Studio：Prompt Authoring / Runtime Design
+- Settings：收回真正的产品偏好职责
+- Global Search：只导航到归属页面，不跨域注入 UI
+
+现有 A6 主导航中的 `Build` 本轮不改名为 Studio；这是未来全局信息架构任务，不作为本 refactor 的阻塞项。
+
+## 冻结合同
+
+N0–N10、A0–A9 的**语义不变量**继续保留。
+
+最终一致性检查确认，一部分旧 guard 包含当时的过渡实现细节，例如：
+
+- A6 强制存在 Advanced Connection compatibility editor；
+- A6 强制独立 Capabilities route；
+- A8 强制 Studio Agent 通过 `generateTask`。
+
+本次允许在对应新 authority 完成时**有证据地升级这些字面 guard**，但必须保留原本要保护的产品/权限/事务不变量。禁止简单删除 frozen guards 或为了旧正则而恢复过渡依赖。
+
+## 开发节奏
+
+这是多阶段任务。每个 P 阶段完成后：
+
+1. 运行对应 focused checks 与适用的 frozen guards；
+2. 更新 docs 进度与最新 handoff；
+3. 记录分支 HEAD、已完成、未完成、关键决策和验证；
+4. 停止继续实施；
+5. 给出下一阶段可直接复制的新对话提示词。
+
+Android / Docker 保持 opt-in。
