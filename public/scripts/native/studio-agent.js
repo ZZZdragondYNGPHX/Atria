@@ -1,4 +1,4 @@
-import { TOOL_PROTOCOL_STYLE } from '../extensions/function-call-runtime.js';
+import { executeNativeGeneration } from './generation-client.js';
 import { nativeStudioClient } from './studio-client.js';
 
 const MAX_MODEL_ROUNDS = 12;
@@ -209,11 +209,6 @@ export async function runNativeStudioAgentTask({
     abortSignal = undefined,
     maxModelRounds = MAX_MODEL_ROUNDS,
 }) {
-    const ctx = globalThis.Atria?.getContext?.();
-    if (!ctx || typeof ctx.generateTask !== 'function') {
-        throw new Error('Project Agent is unavailable because Atria generation is disabled.');
-    }
-
     let context = await nativeStudioClient.getAgentContext(projectId, taskId);
     const preflight = await nativeStudioClient.preflight(
         projectId,
@@ -239,20 +234,15 @@ export async function runNativeStudioAgentTask({
 
         const tools = [...(context.tools || []), ...skillTools()];
         const allowed = new Set(tools.map(item => item.function.name));
-        const result = await ctx.generateTask({
-            taskMessages: [
+        const result = await executeNativeGeneration({
+            role: 'studio',
+            source: { projectId, taskId, revision: context.task.baseRevision },
+            messages: [
                 { role: 'system', content: buildNativeProjectAgentSystemPrompt(context, skillEntries) },
                 ...transcript,
             ],
-            includeCharacterCard: false,
-            worldInfoSource: 'none',
-            runtimeWorldInfo: {},
             tools,
-            toolChoice: 'auto',
-            functionCallMode: 'auto',
-            functionCallOptions: { protocolStyle: TOOL_PROTOCOL_STYLE.JSON_SCHEMA },
             abortSignal,
-            substituteMacros: false,
         });
 
         const text = String(result?.assistantText || '').trim();
@@ -416,6 +406,7 @@ export function mountNativeStudioAgent({
                     messages = [{ role: 'user', content: intent }];
                     notifyTask();
                     onLog('agent', 'Created Project Task', activeTask);
+                    running = false;
                     await continueTask();
                 } catch (error) {
                     onLog('error', error?.message || String(error), error?.details);

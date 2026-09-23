@@ -13,7 +13,7 @@ export class GenerationService {
         this.now = now;
     }
 
-    async execute({ signal, handle, ...value }) {
+    async execute({ signal, handle, onChunk, ...value }) {
         try {
             const request = immutable(value);
             const mode = request.fallbackMode ?? 'disabled';
@@ -35,7 +35,7 @@ export class GenerationService {
                 }), signal);
                 if (visited.size === 1) remaining = resolved.route.policy.maxFallbackAttempts;
                 requirements = [...new Set([...requirements, ...resolved.requirements])];
-                const provider = this.providerFor(resolved.connection.providerAdapter);
+                const provider = this.providerFor(resolved.connection.providerAdapter, resolved);
                 const contextPlan = immutable(assertRequestContextPlan(await cancellable(
                     () => this.contextProvider.buildRequestContextPlan(request, resolved), signal,
                 )));
@@ -95,7 +95,7 @@ export class GenerationService {
                 }));
                 const rendered = immutable(await cancellable(() => provider.renderRequest({ resolved, snapshot }), signal));
                 try {
-                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle });
+                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk });
                     return immutable({ snapshot, response });
                 } catch (error) {
                     checkCancellation(signal);
@@ -117,7 +117,7 @@ export class GenerationService {
         }
     }
 
-    async _send({ provider, resolved, rendered, snapshot, signal, handle }) {
+    async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk }) {
         checkCancellation(signal);
         // Secret exists only in this send-boundary frame, never in config/render/snapshot.
         let secret;
@@ -149,8 +149,32 @@ export class GenerationService {
             }
             // Stream/parser/normalizer failures are application errors, never send failures.
             let response;
+            let streamed = '';
+            let published = '';
+            const publish = text => {
+                if (!text.startsWith(published)) throw new GenerationError('generation_response_invalid');
+                if (text.length > published.length) {
+                    const delta = text.slice(published.length);
+                    published = text;
+                    onChunk(immutable({ text, delta }));
+                }
+            };
             try {
-                const parsed = await cancellable(() => provider.parseStream(raw, { signal: controller.signal }), controller.signal);
+                const parsed = await cancellable(() => provider.parseStream(raw, {
+                    signal: controller.signal,
+                    onChunk: onChunk && (chunk => {
+                        if (containsSecret(chunk)) throw new GenerationError('generation_response_contains_secret');
+                        checkCancellation(controller.signal);
+                        if (typeof chunk.text !== 'string' || !chunk.text.startsWith(streamed)) throw new GenerationError('generation_response_invalid');
+                        streamed = chunk.text;
+                        // Withhold any suffix that could become a credential in a later chunk.
+                        let held = 0;
+                        for (let length = 1; length < secret.length && length <= streamed.length; length++) {
+                            if (streamed.endsWith(secret.slice(0, length))) held = length;
+                        }
+                        publish(streamed.slice(0, streamed.length - held));
+                    }),
+                }), controller.signal);
                 response = await cancellable(() => provider.normalizeResponse(parsed), controller.signal);
             } catch {
                 checkCancellation(signal);
@@ -163,6 +187,7 @@ export class GenerationService {
             if (encoded.includes(secret) || encoded.includes(JSON.stringify(secret).slice(1, -1))) {
                 throw new GenerationError('generation_response_contains_secret');
             }
+            if (onChunk && typeof response.text === 'string') publish(response.text);
             return response;
         } finally {
             secret = undefined;

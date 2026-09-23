@@ -162,8 +162,7 @@ export function validateIntentResolution(result, options = {}) {
 
 export function createIntentResolver(options = {}) {
     const roleRouter = options.roleRouter || null;
-    const generateTask = options.generateTask
-        || globalThis.Atria?.getContext?.()?.generateTask;
+    const generateTask = options.generateTask;
     if (!roleRouter && typeof generateTask !== 'function') {
         throw new Error('Intent Resolver requires Runtime Role Router or generateTask()');
     }

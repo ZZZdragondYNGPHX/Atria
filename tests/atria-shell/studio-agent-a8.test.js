@@ -101,7 +101,7 @@ describe('A8 Native Studio Project Agent client', () => {
         globalThis.Atria = {
             getContext: () => ({
                 getRequestHeaders: () => ({ 'X-CSRF-Token': 'test' }),
-                generateTask: jest.fn(async options => {
+                modelFixture: jest.fn(async options => {
                     calls.push({ type: 'generate', options });
                     generationRound += 1;
                     if (generationRound === 1) {
@@ -134,6 +134,10 @@ describe('A8 Native Studio Project Agent client', () => {
             const method = options.method || 'GET';
             const body = options.body ? JSON.parse(options.body) : null;
             calls.push({ type: 'fetch', path, method, body });
+            if (path === '/api/native/generation/execute') {
+                const result = await globalThis.Atria.getContext().modelFixture(body);
+                return response({ response: result, snapshot: { runtimeRouteId: 'route_fixture' } });
+            }
 
             if (path.endsWith(`/projects/${projectId}/preflight`) && method === 'POST') {
                 return response({
@@ -210,8 +214,8 @@ describe('A8 Native Studio Project Agent client', () => {
         expect(calls.some(item => item.type === 'fetch' && item.path.endsWith('/commit'))).toBe(false);
 
         const firstGeneration = calls.find(item => item.type === 'generate');
-        expect(firstGeneration.options.includeCharacterCard).toBe(false);
-        expect(firstGeneration.options.worldInfoSource).toBe('none');
+        expect(firstGeneration.options.role).toBe('studio');
+        expect(firstGeneration.options.revision).toBe(baseRevision);
         expect(firstGeneration.options.tools.some(item => item.function.name === 'atri_agent_read_skill')).toBe(true);
         expect(firstGeneration.options.tools.some(item => item.function.name.includes('commit'))).toBe(false);
     });

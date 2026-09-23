@@ -101,8 +101,8 @@ function runRepositoryGuard() {
         throw new Error('P0 must not prematurely remove A6 compatibility/capabilities replacement gates');
     }
     const a8 = readFileSync(resolve(ROOT, 'scripts/check-a8-project-agent.mjs'), 'utf8');
-    if (!/generateTask/.test(a8)) {
-        throw new Error('P0 must not prematurely remove the A8 generateTask replacement gate');
+    if (!/executeNativeGeneration/.test(a8) || !/context/.test(a8) || !/human Review gate/.test(a8)) {
+        throw new Error('P4 A8 replacement must preserve schema projection and human Review authority');
     }
 
     console.log('P0 model/prompt/runtime architecture guard passed (' + files.length + ' core files scanned).');

@@ -1,3 +1,5 @@
+import { executeFirstPartyGeneration } from '../../native/generation-compat.js';
+import { nativeGenerationActive } from '../../native/generation-client.js';
 import { loadGameLogicDefinition } from './logic/package.js';
 import {
     getModelRuntimeConfig as readModelRuntimeConfig,
@@ -86,8 +88,10 @@ function disposeRuntimeSystems() {
 function createRuntimeSystems(worldSession, options = {}) {
     if (!worldSession) return null;
 
-    const roleRouter = createRuntimeRoleRouter({
-        generateTask: atriaContext.generateTask,
+    const roleRouter = createRuntimeRoleRouter(nativeGenerationActive() ? {
+        executeGeneration: (role, request) => executeFirstPartyGeneration(atriaContext, role, request),
+    } : {
+        generateTask: request => executeFirstPartyGeneration(atriaContext, 'narrator', request),
         getRoleConfig: role => readRuntimeRoleConfig(getRuntimeSettingsRoot(), role),
     });
     const orchestratorBridge = createGameOrchestratorBridge({
@@ -109,7 +113,7 @@ function createRuntimeSystems(worldSession, options = {}) {
         narrativeCoordinator,
         observationProjectors: options.observationProjectors || [],
         getOrchestrationMode: () => orchestratorBridge.getMode(),
-        generateTask: atriaContext.generateTask,
+        generateTask: request => executeFirstPartyGeneration(atriaContext, 'narrator', request),
     });
 
     const attemptBranches = new Map();

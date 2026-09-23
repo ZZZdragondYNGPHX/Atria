@@ -15,12 +15,16 @@ export function renderPromptMessages(value) {
         ...ir.directives.map(content => ({ role: 'system', content })),
         ...slots.get('context.before_history'), ...ir.history,
         ...slots.get('context.after_history'), ...slots.get('context.before_input'),
-        { role: 'user', content: ir.input }, ...slots.get('context.after_input'),
+        ...(ir.input ? [{ role: 'user', content: ir.input }] : []), ...slots.get('context.after_input'),
         ...ir.responseDirectives.map(content => ({ role: 'system', content })),
         ...(ir.prefill === undefined ? [] : [{ role: 'assistant', content: ir.prefill }]),
     ];
-    if (messages.some(item => !item || !['system', 'user', 'assistant'].includes(item.role)
-        || typeof item.content !== 'string' || Object.keys(item).some(key => !['role', 'content'].includes(key)))) promptError('message_invalid');
+    if (messages.some(item => !item || !['system', 'user', 'assistant', 'tool'].includes(item.role)
+        || (typeof item.content !== 'string' && !(item.role === 'assistant' && item.content === null && item.tool_calls?.length))
+        || Object.keys(item).some(key => !['role', 'content', 'tool_calls', 'tool_call_id', 'name'].includes(key))
+        || (item.role === 'tool' && typeof item.tool_call_id !== 'string')
+        || (item.tool_calls !== undefined && (item.role !== 'assistant' || !Array.isArray(item.tool_calls)))
+        || (item.tool_call_id !== undefined && item.role !== 'tool'))) promptError('message_invalid');
     return immutable(messages);
 }
 

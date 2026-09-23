@@ -1,3 +1,4 @@
+import { executeFirstPartyGeneration, firstPartyStreamingEnabled, streamFirstPartyGeneration } from '../../native/generation-compat.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 // Implementation source: Toolify: Empower any LLM with function calling capabilities. (https://github.com/funnycups/Toolify)
@@ -125,7 +126,7 @@ function getGameRuntimeBridge() {
 // same function references.
 registerExtensionApi(MODULE_NAME, {
     recordMemoryRecall,
-    getGameRuntimeMode: context => getGameRuntimeBridge().getMode(context),
+    getGameRuntimeMode: context => getSettings().enabled ? getGameRuntimeBridge().getMode(context) : '',
     runGameGuidance: input => getGameRuntimeBridge().runGuidance(input),
     runGameDirector: input => getGameRuntimeBridge().runDirector(input),
     listRuntimeCheckpoints,
@@ -1161,9 +1162,9 @@ jQuery(() => {
                 // identical assistantText + toolCalls.
                 const generateTaskRouter = async ({ onChunk, ...opts } = {}) => {
                     const streamChunks = typeof context?.isStreamingPresetEnabled === 'function'
-                        && context.isStreamingPresetEnabled(opts?.llmPresetName || '');
+                        && firstPartyStreamingEnabled(context, opts?.llmPresetName || '');
                     if (streamChunks) {
-                        const { stream, result } = context.generateTaskStream(opts);
+                        const { stream, result } = streamFirstPartyGeneration(context, 'orchestrator', opts);
                         if (typeof onChunk === 'function') {
                             (async () => {
                                 try {
@@ -1175,7 +1176,7 @@ jQuery(() => {
                         }
                         return await result;
                     }
-                    return await context.generateTask(opts);
+                    return await executeFirstPartyGeneration(context, 'orchestrator', { ...opts, onChunk });
                 };
 
                 // Resolve target message id for director-runtime's handle
@@ -1274,10 +1275,10 @@ jQuery(() => {
                     // or hand the section the terminal text in one shot
                     // (preset `stream_openai: false`).
                     generateTaskStream: typeof context?.generateTaskStream === 'function'
-                        ? (opts) => context.generateTaskStream(opts)
+                        ? (opts) => streamFirstPartyGeneration(context, 'orchestrator', opts)
                         : null,
                     isStreamingPresetEnabled: typeof context?.isStreamingPresetEnabled === 'function'
-                        ? (presetName) => Boolean(context.isStreamingPresetEnabled(presetName))
+                        ? (presetName) => firstPartyStreamingEnabled(context, presetName)
                         : null,
                     executeLoopTool: (name, args, deps) => executeLoopTool(name, args, deps),
                     runId: directorRunId,

@@ -138,3 +138,63 @@ cannot preserve instead of silently hoisting/reordering them. Tools/output contr
 are carried separately from instructions. P2 transport adapters remain deliberately
 limited: unsupported tools/output/prefill and generation controls still fail closed.
 P3 does not add production Anthropic/Gemini transports or first-party UI/call cutover.
+
+## P4 host integration
+
+`POST /api/native/generation/execute` composes the existing Session/Studio services,
+P1 player profiles and exact Library resources with RouteResolver, PromptCompiler
+and GenerationService. Authentication owns the handle. A caller supplies a pinned
+Session revision or Project revision (and a Studio Task when applicable), a role,
+task messages, tools/output contract and optional exact player route/projection.
+Without an explicit route, exactly one non-fallback root for that role must exist.
+Missing/ambiguous routes fail closed; legacy active presets are never a default.
+
+Production adapters are `provider.openai-compatible` and `provider.raw-text` with
+an exact completions endpoint URL. Both use bearer authentication by exact Secret
+ID and JSON/SSE transport. OpenAI-compatible additionally supports function tools
+and JSON Schema output. The configured tokenizer encoding must be `cl100k_base`
+or `o200k_base`; the complete serialized body plus conservative framing is counted
+once. Supported Generation controls are temperature/topP, maxTokens, stop sequences,
+streaming.enabled and toolChoice.value. Unsupported controls/model hints/connection
+options fail before secrets or network. Other provider families remain future work.
+
+The host supplies read-only string variables `host.role`, `host.sourceKind`,
+`host.sessionId`, `host.branchId`, `host.revisionId`, `host.projectId` and
+`host.projectRevision` (inapplicable identities are empty). Caller-supplied host
+values are rejected. `prompt.parameters`, `locals`, `artifacts` and `stageIds` retain
+P3 semantics. Task dialogue follows selected Session input; tool-result rounds do
+not append an empty user message or repeat the current input after the transcript.
+
+The role host retries typed send failures within the selected route's timeout and
+retry budget, then Core resolves a complete fallback. Configuration, cancellation,
+parser/tool/application failures never trigger retries/fallback. Fallback mode is
+explicit (`disabled` by default; Game Runtime role router requests `automatic`).
+The response includes immutable request evidence and a route-attempt trace. SSE
+text is cumulative; credential-prefix tails are withheld until safe, and the final
+response is checked before publication. Transport cancellation reaches the provider.
+
+Native Play preserves the existing user/assistant Draft publication boundary,
+retry branch and continuation behavior. Live text is presentation-only until
+accepted; Stop discards it. Spec/agenda/loop/director reuse the existing Orchestrator
+bridge and same Prompt resource store. Studio keeps server-projected tools, pinned
+Task base revision, read-only Skills and human Review/Commit/Takeover authority.
+P5 configuration UI and A6 replacement gates are intentionally untouched.
+
+Residual compatibility is explicit:
+
+- `public/scripts/native/generation-compat.js` alone dispatches to the legacy
+  generateTask/stream facade when no Native Session/Project source exists.
+- Game role-router's old injected port remains for non-Native callers; production
+  Native composition injects the new generation seam. Pure LLM helpers no longer
+  discover a global legacy sender.
+- Orchestrator/Memory/Search `getOpenAIPresetNames` and the explicit character
+  preset embedding dialog retain legacy configuration UI listing. They cannot
+  resolve Native model/prompt authority. Native Orchestrator runtime preset/WI
+  resolvers return before those paths; direct director resolution does likewise.
+- Third-party extension facades and legacy `Generate` remain available. Native
+  Play branches before the legacy prompt pipeline; legacy-only code below that
+  branch is retained for compatibility and existing frozen checks.
+
+`scripts/check-p4-native-generation.mjs` scans first-party sender call sites;
+poisoned-legacy tests exercise all Native roles. A8's literal seam assertion now
+requires executeNativeGeneration while retaining every Review/Commit invariant.

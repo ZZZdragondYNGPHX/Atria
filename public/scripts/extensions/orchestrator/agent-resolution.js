@@ -49,6 +49,7 @@
  */
 
 const extension_settings = Atria.getContext().extensionSettings;
+import { nativeGenerationActive } from '../../native/generation-client.js';
 import { getChatCompletionConnectionProfiles } from '../connection-manager/profile-resolver.js';
 import { throwIfAborted } from './abort-utils.js';
 import { i18n } from './i18n.js';
@@ -290,6 +291,7 @@ export function buildAgentPromptPresetRoutingPromptData(context, settings = exte
  * @returns {{name: string, preset: object|null, origin: 'card'|'global'|null} | null}
  */
 export function resolveOrchestrationAgentApiPresetName(settings, preset = null, characterOverride = null) {
+    if (nativeGenerationActive()) return null;
     const character = getActiveCharacter(characterOverride);
     const resolveByName = getAtriaContext()?.character?.presets?.resolveByName;
     return resolveCardFirstPresetName({
@@ -311,6 +313,7 @@ export function resolveOrchestrationAgentApiPresetName(settings, preset = null, 
  * @returns {{name: string, preset: object|null, origin: 'card'|'global'|null} | null}
  */
 export function resolveOrchestrationAgentPromptPresetName(settings, preset = null, characterOverride = null) {
+    if (nativeGenerationActive()) return null;
     const character = getActiveCharacter(characterOverride);
     const resolveByName = getAtriaContext()?.character?.presets?.resolveByName;
     return resolveCardFirstPresetName({
@@ -361,6 +364,7 @@ export async function resolveOrchestrationRuntimeWorldInfo(context, settings, {
     abortSignal = null,
 } = {}) {
     const includeWorldInfoWithPreset = settings?.includeWorldInfoWithPreset !== false;
+    if (nativeGenerationActive()) return {};
     if (!includeWorldInfoWithPreset) {
         return {};
     }

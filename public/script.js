@@ -1,4 +1,5 @@
 import { nativeSessionRuntime } from './scripts/native/session-runtime.js';
+import { runNativePlayGeneration } from './scripts/native/play-generation.js';
 import { createLogger } from './scripts/logging/logger.js';
 import { ChatSnapshotCache } from './scripts/atri-chat-snapshot-cache.js';
 import { createWorldInfoDispatchAttribution, markWorldInfoDispatch } from './scripts/atri-world-info-provenance.js';
@@ -3923,7 +3924,7 @@ export async function sendTextareaMessage() {
         generateType = 'continue';
     }
 
-    if (textareaText && !selected_group && this_chid === undefined && name2 !== neutralCharacterName) {
+    if (!nativeSessionRuntime.active && textareaText && !selected_group && this_chid === undefined && name2 !== neutralCharacterName) {
         await newAssistantChat({ temporary: false });
     }
 
@@ -7441,6 +7442,40 @@ function applyFinalizedAuthorsNoteInjections(anBefore = [], anAfter = []) {
  * @returns {Promise<any>} Returns a promise that resolves when the text is done generating.
  */
 export async function Generate(type, { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage, quietName, jsonSchema = null, depth = 0 } = {}, dryRun = false) {
+    if (nativeSessionRuntime.active) {
+        if (dryRun) throw new Error('Native prompt previews use the Native compiler, not the legacy prompt builder.');
+        abortController = new AbortController();
+        const requestSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
+        const input = typeof pendingUserInputText === 'string' ? pendingUserInputText : String($('#send_textarea').val() || '');
+        pendingUserInputText = null;
+        return runNativePlayGeneration({ runtime: nativeSessionRuntime, type, signal: requestSignal, input, quietPrompt: quiet_prompt,
+            host: {
+                started: async generationType => {
+                    generation_started = new Date();
+                    deactivateSendButtons();
+                    await eventSource.emit(event_types.GENERATION_STARTED, generationType, { signal: requestSignal }, false);
+                },
+                submitUser: async text => {
+                    await sendMessageAsUser(text);
+                    $('#send_textarea').val('').trigger('input');
+                },
+                commitAssistant: (generationType, text) => saveReply({ type: generationType, getMessage: text }),
+                impersonate: text => $('#send_textarea').val(text).trigger('input'),
+                gameApi: () => Atria.getContext()?.getExtensionApi?.('game-runtime'),
+                orchestratorApi: () => Atria.getContext()?.getExtensionApi?.('orchestrator'),
+                context: () => Atria.getContext(),
+                onChunk: chunk => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: chunk.text } })),
+                ended: generationType => {
+                    document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: '' } }));
+                    unblockGeneration(generationType);
+                },
+            },
+        }).catch(error => {
+            // Stop is a completed UI action; Core still rejects cancellation.
+            if (requestSignal.aborted) return;
+            throw error;
+        });
+    }
     const nativeGenerationIntent = nativeSessionRuntime.active && !dryRun ? type : null;
     if (nativeSessionRuntime.active && !dryRun) {
         // Native lifecycle owns the committed boundary. SillyTavern remains

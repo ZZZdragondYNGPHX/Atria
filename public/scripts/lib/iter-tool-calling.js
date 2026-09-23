@@ -1,3 +1,4 @@
+import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGenerationAvailable, firstPartyStreamingEnabled, streamFirstPartyGeneration } from '../native/generation-compat.js';
 /**
  * Tool-call request driver — shared infrastructure used by the iteration-
  * studio shell (every adapter's LLM round-trip) and the orchestrator
@@ -89,7 +90,7 @@ export async function requestToolCallWithRetry(context, settings, {
     if (!fnName) {
         throw new Error('Function name is required.');
     }
-    if (!context || typeof context.generateTask !== 'function') {
+    if (!firstPartyGenerationAvailable(context)) {
         throw new Error('context.generateTask is unavailable.');
     }
 
@@ -130,7 +131,7 @@ export async function requestToolCallWithRetry(context, settings, {
                 },
                 abortSignal: attemptSignal,
             };
-            const result = await context.generateTask(generateTaskOpts);
+            const result = await executeFirstPartyGeneration(context, 'orchestrator', generateTaskOpts);
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             const calls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
             const validationError = validateParsedToolCalls(calls, tools);
@@ -143,7 +144,7 @@ export async function requestToolCallWithRetry(context, settings, {
             }
             return matched.args && typeof matched.args === 'object' ? matched.args : {};
         } catch (error) {
-            if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
+            if (isNativeGenerationFailure(error) || isAbortError(error, abortSignal) || error?.code === 'context_budget') {
                 throw error;
             }
             lastError = error;
@@ -202,7 +203,7 @@ export async function requestToolCallsWithRetry(context, settings, {
     if (!Array.isArray(tools) || tools.length === 0) {
         throw new Error('Tools are required.');
     }
-    if (!context || typeof context.generateTask !== 'function') {
+    if (!firstPartyGenerationAvailable(context)) {
         throw new Error('context.generateTask is unavailable.');
     }
 
@@ -258,10 +259,10 @@ export async function requestToolCallsWithRetry(context, settings, {
             generateTaskOpts.stream = stream;
             const streamEnabled = stream !== false && typeof context.isStreamingPresetEnabled === 'function'
                 && typeof context.generateTaskStream === 'function'
-                && context.isStreamingPresetEnabled(generateTaskOpts.llmPresetName || '');
+                && firstPartyStreamingEnabled(context, generateTaskOpts.llmPresetName || '');
             let result;
             if (streamEnabled) {
-                const { stream, result: resultPromise } = context.generateTaskStream(generateTaskOpts);
+                const { stream, result: resultPromise } = streamFirstPartyGeneration(context, 'orchestrator', generateTaskOpts);
                 let firstChunkFired = false;
                 for await (const chunk of stream) {
                     // Any chunk (text or reasoning) means upstream has
@@ -286,7 +287,7 @@ export async function requestToolCallsWithRetry(context, settings, {
                 }
                 result = await resultPromise;
             } else {
-                result = await context.generateTask(generateTaskOpts);
+                result = await executeFirstPartyGeneration(context, 'orchestrator', generateTaskOpts);
             }
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
@@ -378,7 +379,7 @@ export async function requestToolCallsWithRetry(context, settings, {
 
             return returnValue;
         } catch (error) {
-            if (isAbortError(error, abortSignal) || error?.code === 'context_budget') {
+            if (isNativeGenerationFailure(error) || isAbortError(error, abortSignal) || error?.code === 'context_budget') {
                 throw error;
             }
             lastError = error;

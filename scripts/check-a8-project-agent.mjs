@@ -65,8 +65,13 @@ rejectPattern(
 
 requirePattern(
     'public/scripts/native/studio-agent.js',
-    /generateTask[\s\S]*context\.tools|context\.tools[\s\S]*generateTask/,
+    /executeNativeGeneration[\s\S]*context\.tools|context\.tools[\s\S]*executeNativeGeneration/,
     'A8 browser Agent must project backend Authoring tool schemas into generation',
+);
+rejectPattern(
+    'public/scripts/native/studio-agent.js',
+    /\.generateTask\s*\(|buildPresetAwarePromptMessages|getPresetManager/,
+    'A8 Native Agent must use the verified P4 generation seam',
 );
 requirePattern(
     'public/scripts/native/studio-agent.js',

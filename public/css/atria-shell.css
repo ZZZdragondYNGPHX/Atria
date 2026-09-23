@@ -709,6 +709,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 .atria-native-play-host {
     position: relative;
     display: flex;
+    flex-direction: column;
     width: 100%;
     height: 100%;
     min-width: 0;
@@ -1477,6 +1478,8 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 
 .atria-native-play-actions {
     display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
     flex-wrap: wrap;
     gap: 0.45rem;
     align-items: center;
@@ -1487,6 +1490,17 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 
 .atria-native-play-actions__button {
     min-height: 2.2rem;
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-color-raised);
+    color: var(--atri-color-text);
+    padding: 0.35rem 0.65rem;
+    cursor: pointer;
+}
+
+.atria-native-play-actions__button:disabled {
+    opacity: 0.5;
+    cursor: default;
 }
 
 .atria-native-play-actions__status {
@@ -1496,6 +1510,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 }
 
 .atria-native-play-drawer {
+    flex: 0 1 auto;
     margin: 0.5rem;
     padding: 0.75rem;
     border: 1px solid var(--atri-color-border);
@@ -1650,13 +1665,19 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 
 .atria-play-product {
     width: 100%;
-    height: 100%;
+    flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr) auto;
     background: var(--atri-color-canvas);
 }
+
+.atria-play-session-header { grid-row: 1; }
+.atria-play-product > [data-atria-product-surface="app.root"] { grid-row: 2; }
+.atria-play-conversation-component { grid-row: 3; }
+.atria-play-composer-component { grid-row: 4; }
+.atria-play-conversation { grid-row: 2; }
 
 .atria-play-product[hidden] {
     display: none !important;

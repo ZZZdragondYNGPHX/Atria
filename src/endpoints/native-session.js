@@ -184,3 +184,4 @@ export function createNativeSessionRouter(getServices = services) {
 }
 
 export const router = createNativeSessionRouter();
+export { services as getNativeSessionServices };

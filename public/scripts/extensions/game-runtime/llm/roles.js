@@ -212,6 +212,19 @@ function routeQueue(config) {
 }
 
 export function createRuntimeRoleRouter(options = {}) {
+    if (typeof options.executeGeneration === 'function') {
+        return Object.freeze({
+            async execute(role, request = {}, executionOptions = {}) {
+                if (!ROLE_SET.has(role)) throw new TypeError('Unknown Native Runtime role');
+                const result = await options.executeGeneration(role, {
+                    ...request, nativeFallbackMode: request.nativeFallbackMode ?? 'automatic',
+                    abortSignal: executionOptions.abortSignal || request.abortSignal,
+                });
+                return Object.freeze({ role, runtimeRouteId: result.snapshot?.runtimeRouteId,
+                    fallbackUsed: result.routing?.fallbackUsed === true, attempts: result.routing?.attempts || [], result });
+            },
+        });
+    }
     const generateTask = options.generateTask;
     if (typeof generateTask !== 'function') {
         throw new Error('Runtime Role Router requires generateTask()');

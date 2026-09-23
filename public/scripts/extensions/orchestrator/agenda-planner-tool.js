@@ -1,3 +1,4 @@
+import { executeFirstPartyGeneration } from '../../native/generation-compat.js';
 import { validateParsedToolCalls } from '../function-call-runtime.js';
 import { waitForRpmSlot } from '../../lib/iter-tool-calling.js';
 import { isAbortError, throwIfAborted } from './abort-utils.js';
@@ -50,7 +51,7 @@ export async function requestAgendaPlannerStep(context, settings, request) {
                 primaryApiPresetName: request.apiPresetName,
                 fallbackApiPresetName: request.fallbackApiPresetName,
                 abortSignal: request.abortSignal,
-                execute: routeApiPresetName => context.generateTask({
+                execute: routeApiPresetName => executeFirstPartyGeneration(context, 'orchestrator', {
                     taskMessages: repaired ? request.repairMessages : request.taskMessages,
                     includeCharacterCard: !repaired,
                     ...(repaired ? { promptMode: 'task' } : {}),

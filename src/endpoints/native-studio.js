@@ -311,3 +311,4 @@ export function createNativeStudioRouter(getServices = services) {
 }
 
 export const router = createNativeStudioRouter();
+export { services as getNativeStudioServices };

@@ -1,3 +1,5 @@
+import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGenerationAvailable } from '../../native/generation-compat.js';
+import { nativeGenerationActive } from '../../native/generation-client.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 import { collectExtractTransaction, logExtractResponse } from './extract-transaction.js';
@@ -2961,7 +2963,7 @@ async function resolveMemoryGraphWorldInfo(context, settings, {
     abortSignal = null,
     recallRunToken = 0,
 } = {}) {
-    const includeWorldInfoWithPreset = settings?.includeWorldInfoWithPreset !== false;
+    const includeWorldInfoWithPreset = !nativeGenerationActive() && settings?.includeWorldInfoWithPreset !== false;
     if (!includeWorldInfoWithPreset) {
         return {};
     }
@@ -3331,7 +3333,7 @@ async function requestSingleFunctionCallWithRetry(context, settings, {
     if (!fnName) {
         throw new Error('Function name is required.');
     }
-    if (!context || typeof context.generateTask !== 'function') {
+    if (!firstPartyGenerationAvailable(context)) {
         throw new Error('context.generateTask is unavailable.');
     }
 
@@ -3376,7 +3378,7 @@ async function requestSingleFunctionCallWithRetry(context, settings, {
                 functionCallOptions,
                 abortSignal: requestController.signal,
             };
-            const result = await context.generateTask(generateTaskOpts);
+            const result = await executeFirstPartyGeneration(context, 'memory', generateTaskOpts);
             throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
             const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
             const normalizedCalls = rawCalls.map(call => ({
@@ -3395,7 +3397,7 @@ async function requestSingleFunctionCallWithRetry(context, settings, {
             }
             return matched.args;
         } catch (error) {
-            if (isAbortError(error, abortSignal)) {
+            if (isNativeGenerationFailure(error) || isAbortError(error, abortSignal)) {
                 throw error;
             }
             throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
@@ -3429,7 +3431,7 @@ async function requestToolCallsWithRetry(context, settings, {
     if (!Array.isArray(tools) || tools.length === 0) {
         throw new Error('Tools are required.');
     }
-    if (!context || typeof context.generateTask !== 'function') {
+    if (!firstPartyGenerationAvailable(context)) {
         throw new Error('context.generateTask is unavailable.');
     }
 
@@ -3472,11 +3474,11 @@ async function requestToolCallsWithRetry(context, settings, {
             };
             let result;
             try {
-                result = await context.generateTask(generateTaskOpts);
+                result = await executeFirstPartyGeneration(context, 'memory', generateTaskOpts);
             } catch (error) {
                 const unsupported = /tool[_ ]choice/i.test(error?.message || '') && /unsupported|not supported|does not support/i.test(error?.message || '');
                 const missingRequiredCall = error?.code === 'tool_call_missing';
-                if (!extractionControl || (!unsupported && !missingRequiredCall) || isAbortError(error, abortSignal)) throw error;
+                if (nativeGenerationActive() || !extractionControl || (!unsupported && !missingRequiredCall) || isAbortError(error, abortSignal)) throw error;
                 // Some OpenAI-compatible Gemini routes accept native tool_choice
                 // but occasionally return finish_reason=stop with no tool call.
                 // Fall back to the prompt protocol for that response only; the
@@ -3486,7 +3488,7 @@ async function requestToolCallsWithRetry(context, settings, {
                         ? '[Memory Extract Capability] Native required tool call was ignored; retrying with prompt_xml.'
                         : '[Memory Extract Capability] Native required tool_choice unsupported; using prompt_xml.',
                 );
-                result = await context.generateTask({ ...generateTaskOpts, functionCallMode: 'prompt_xml' });
+                result = await executeFirstPartyGeneration(context, 'memory', { ...generateTaskOpts, functionCallMode: 'prompt_xml' });
             }
             throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
             if (extractionControl) logExtractResponse(result, generateTaskOpts);
@@ -3508,7 +3510,7 @@ async function requestToolCallsWithRetry(context, settings, {
             return filteredCalls;
         } catch (error) {
             if (extractionControl) console.debug('[Memory Extract Response Error]', { code: error?.code, details: error?.details });
-            if (isAbortError(error, abortSignal)) {
+            if (isNativeGenerationFailure(error) || isAbortError(error, abortSignal)) {
                 throw error;
             }
             throwIfRecallRunInvalid(recallRunToken, abortSignal, 'Memory recall aborted.');
@@ -6507,7 +6509,7 @@ async function runExtractionForStore(context, store, {
                 restoreStoreFromRollbackSnapshot(store, attemptSnapshot);
                 store.lastExtractionDebug = { ...(store.lastExtractionDebug || {}), extracted: false, reason: 'failed',
                     beginSeq: Number(startFrame?.seq || 0), latestSeq: Number(endFrame?.seq || 0), at: Date.now() };
-                if (isAbortError(error, abortSignal)) {
+                if (isNativeGenerationFailure(error) || isAbortError(error, abortSignal)) {
                     throw error;
                 }
                 if (error?.code === 'memory_extract_protocol') throw error;
@@ -6796,7 +6798,7 @@ function getRecallQueryBundle(payload, context, settings = null) {
 // — caller falls back to the raw query.
 async function runQueryRewrite(context, settings, queryBundle, opts = {}) {
     const apiPresetName = String(settings?.ragRewriteApiPresetName || '').trim();
-    if (!apiPresetName) {
+    if (!apiPresetName && !nativeGenerationActive()) {
         return null;
     }
     const llmPresetName = String(settings?.ragRewriteLlmPresetName || '').trim();
