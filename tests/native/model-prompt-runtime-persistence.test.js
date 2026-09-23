@@ -51,6 +51,9 @@ function modelProfile(id, connectionProfileId) {
         remoteModelId: 'model-a',
         capabilities: [],
         limits: { contextTokens: 8192, outputTokens: 1024 },
+        tokenizer: {},
+        messageFormat: {},
+        providerHints: {},
     };
 }
 
