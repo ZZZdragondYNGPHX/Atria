@@ -37,7 +37,7 @@ function object(value, field) {
 function only(value, keys, field) {
     const allowed = new Set(keys);
     for (const key of Object.keys(value)) {
-        if (!allowed.has(key)) throw new TypeError(field + " contains unsupported field '" + key + "'");
+        if (!allowed.has(key)) throw new TypeError(`${field} contains unsupported field '${key}'`);
     }
 }
 
@@ -110,7 +110,7 @@ function assertNoSecretMaterial(value, field, seen = new Set()) {
     } else {
         for (const [key, item] of Object.entries(value)) {
             if (SECRET_KEY_RE.test(key) && !['secretRef', 'secretId'].includes(key)) {
-                throw new TypeError(field + " must not serialize secret material in field '" + key + "'");
+                throw new TypeError(`${field} must not serialize secret material in field '${key}'`);
             }
             assertNoSecretMaterial(item, field + '.' + key, seen);
         }
@@ -121,7 +121,7 @@ function assertNoSecretMaterial(value, field, seen = new Set()) {
 function assertSecretRef(value, field) {
     object(value, field);
     only(value, ['secretId', 'scope'], field);
-    if (value.scope !== 'player') throw new TypeError(field + ".scope must be 'player'");
+    if (value.scope !== 'player') throw new TypeError(field + '.scope must be \'player\'');
     return Object.freeze({
         secretId: token(value.secretId, field + '.secretId'),
         scope: 'player',
@@ -131,7 +131,7 @@ function assertSecretRef(value, field) {
 function assertPlayerProfileRef(value, kind, idField, field) {
     object(value, field);
     only(value, [idField, 'scope'], field);
-    if (value.scope !== 'player') throw new TypeError(field + ".scope must be 'player'");
+    if (value.scope !== 'player') throw new TypeError(field + '.scope must be \'player\'');
     return Object.freeze({
         [idField]: assertNativeId(value[idField], kind, field + '.' + idField),
         scope: 'player',
@@ -237,7 +237,7 @@ export function assertConnectionProfile(value) {
     if (value.schemaVersion !== ATRIA_MODEL_PROMPT_SCHEMA_VERSION) {
         throw new TypeError('ConnectionProfile.schemaVersion must be 1');
     }
-    if (value.scope !== 'player') throw new TypeError("ConnectionProfile.scope must be 'player'");
+    if (value.scope !== 'player') throw new TypeError('ConnectionProfile.scope must be \'player\'');
     const endpoint = text(value.endpoint, 'ConnectionProfile.endpoint', 2048);
     let url;
     try {
@@ -290,7 +290,7 @@ export function assertModelProfile(value) {
         'providerHints',
     ], 'ModelProfile');
     if (value.schemaVersion !== 1) throw new TypeError('ModelProfile.schemaVersion must be 1');
-    if (value.scope !== 'player') throw new TypeError("ModelProfile.scope must be 'player'");
+    if (value.scope !== 'player') throw new TypeError('ModelProfile.scope must be \'player\'');
     object(value.limits, 'ModelProfile.limits');
     only(value.limits, ['contextTokens', 'outputTokens'], 'ModelProfile.limits');
     const tokenizer = value.tokenizer === undefined
@@ -813,7 +813,7 @@ export function serializeEffectiveRequestSnapshot(value) {
 
 function assertPackageExactRef(value, expectedType, field, packageId, packageVersionId) {
     const ref = assertExactResourceRef(value, expectedType, field);
-    if (ref.scope !== 'package') throw new TypeError(field + ".scope must be 'package'");
+    if (ref.scope !== 'package') throw new TypeError(field + '.scope must be \'package\'');
     if (packageId && ref.packageId !== packageId) throw new TypeError(field + ' must reference the enclosing package');
     if (packageVersionId && ref.packageVersionId !== packageVersionId) {
         throw new TypeError(field + ' must reference the enclosing PackageVersion');
