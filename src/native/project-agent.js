@@ -82,9 +82,16 @@ function objectSchema(properties = {}, required = []) {
     };
 }
 
+const DOMAIN_RESOURCE_TYPES = Object.freeze({
+    attach: new Set(['core.world', 'core.knowledge', 'core.asset']),
+    fork: new Set(['core.world', 'core.knowledge', 'core.asset']),
+    update: new Set(['core.world', 'core.knowledge']),
+});
+
 function currentResourceTypes(registry, capability) {
+    const supported = DOMAIN_RESOURCE_TYPES[capability] || new Set();
     return (registry?.descriptors || [])
-        .filter(item => item.capabilities?.includes(capability))
+        .filter(item => item.capabilities?.includes(capability) && supported.has(item.resourceType))
         .map(item => item.resourceType)
         .sort();
 }
