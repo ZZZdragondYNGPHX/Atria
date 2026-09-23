@@ -105,13 +105,20 @@ describe('A3 Turn Controller and Native Branch lifecycle', () => {
         const adapter = branchAdapter();
         const controller = createGameTurnController({ adapter });
         const turn = baseTurn();
+        let markStarted;
+        const started = new Promise(resolve => {
+            markStarted = resolve;
+        });
         const running = controller.submit(turn, {
             execute: async ({ signal }) => {
-                await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+                markStarted();
+                if (!signal.aborted) {
+                    await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+                }
                 return null;
             },
         });
-        await Promise.resolve();
+        await started;
         const attemptId = controller.getTurn(turn.turnId).attemptIds[0];
         expect(controller.stop(attemptId)).toBe(true);
         const stopped = await running;
