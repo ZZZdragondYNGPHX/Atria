@@ -1,148 +1,169 @@
-# Active checkpoint: Native Authoring Platform A1 complete; ready for A2
+# Active checkpoint: Native Authoring Platform A2 complete; ready for A3
 
 ## Status
 
-**Atria Native Authoring Platform & Product Frontend Refactor has completed A1 — Native Authoring Backend.**
+**Atria Native Authoring Platform & Product Frontend Refactor has completed A2 — Library & Resource Architecture.**
 
-Prior Atria Native Content & Session Architecture N0–N10 remains complete and frozen. A0 contracts remain frozen and validated.
+Prior Native Content & Session Architecture N0–N10 remains complete and frozen. A0/A1 remain frozen and validated.
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
 - Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
 - A0 validated HEAD: `1e7d32ac74411e98a5003be72c5dc06d8d72966e`
 - A1 validated HEAD: `bf09c79e07204ee39303e52e89a3da3b2f7617da`
+- A2 validated HEAD: `8510e423a3faf492340fabc32a612d4796a875e3`
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Detailed handoff: `handoff/atria-native-authoring-platform-product-frontend.md`
-- Next phase: **A2 — Library & Resource Architecture**
-- Do not create a new implementation branch and do not merge `main`.
+- Next phase: **A3 — Native Game Runtime Cutover**
+- Continue on the same implementation branch. Do not create a new branch and do not merge `main`.
 
-Formal plan design did not change during A1, so the plan file was not mechanically edited.
+Formal plan design did not change during A2; no mechanical plan edit was required.
 
-## A0 frozen contracts remain authoritative
+## A2 implemented
 
-A0 still freezes:
+A2 established the Library/Resource architecture on top of the existing Native authorities.
 
-- Experience: Text / Component / Hybrid / Full;
-- shared Component Model version for Component / Hybrid / Full;
-- Resource Descriptor / Resource Registry contract;
-- Resource Graph = `derived-readonly`;
-- shared Authoring Operation / Workspace / ChangeSet contract for human / agent / plugin;
-- opaque Project revision token + `project_revision_conflict`;
-- Native Runtime Descriptor;
-- Atria Plugin contract;
-- package-runtime-v1 declarative only, no arbitrary package JavaScript;
-- Native Skill scopes = global / project / package.
+### Registry / Library
 
-Do not redefine these in A2.
+- descriptor-driven `ResourceRegistry` backed by the frozen A0 Resource Descriptor contract;
+- core descriptors for Project, Actor, World, Knowledge, KnowledgeEntry, KnowledgeBinding, Asset and Package;
+- plugin-provided descriptors can register without creating a new Native persistence authority;
+- `NativeLibraryService` lists Library resources and resolves exact immutable WorldRevision / KnowledgeRevision / Asset content hash / PackageVersion identities.
 
-## A1 implemented authority boundary
+### Derived Resource Graph
 
-A1 added the dedicated Native authoring backend:
+`ResourceGraph` is **derived-readonly** and never owns business data.
 
-- `src/native/authoring/studio-service.js`
-- `src/endpoints/native-studio.js`
-- HTTP mount: `/api/native/studio/*`
+It derives relationships from:
 
-It reuses the existing Native authorities:
+- ProjectStore;
+- AssetStore;
+- WorldRepo;
+- KnowledgeRepo;
+- PackageRepo when available.
 
-- ProjectStore
-- AssetStore
-- WorldRepo
-- KnowledgeRepo
-- existing Package composition/build
-- existing StudioPreviewHost
+It provides:
 
-No second Project/Manifest/World/Knowledge/Session/Timeline/Save persistence authority was created.
+- resource discovery/search;
+- forward references;
+- reverse references / Used By;
+- delete-safety inspection;
+- dependency inspection;
+- build-closure projection;
+- generation/signature plus changed node/edge keys as the incremental refresh foundation.
 
-### Authoring pipeline
+Graph nodes preserve Project-owned vs Library-owned relationships, including direct Project-owned World references to exact Library asset/binding dependencies.
 
-Human, Project Agent and Plugin origins use the same frozen A0 pipeline:
+### Attach / Fork / explicit Update
 
-Authoring Operation → Workspace → ChangeSet → Validation → Commit.
+All mutations continue through the A1 Authoring Operation → Workspace → ChangeSet → Validation → Commit path in `StudioService`.
 
-A1 built-in operation types:
+Added operations:
 
-- `source.write`
-- `source.move`
-- `source.delete`
-- `project.save`
+- `resource.attach`
+- `resource.fork`
+- `resource.update`
 
-Project source supports list/read/write/move/delete. Manifest updates also pass through the same operation path.
+Semantics:
 
-Batch execution snapshots ProjectStore source + manifest and rolls back the entire batch on operation failure or failed validation.
+- World Attach pins exact `worldId + worldRevisionId`;
+- Knowledge Attach pins exact `knowledgeBaseId + knowledgeRevisionId`;
+- Asset Attach pins exact `assetId + contentHash`;
+- Attach never silently follows Library latest;
+- explicit Update changes a pinned World/Knowledge revision only when the declared `fromRevision` still matches;
+- Fork creates a Project-owned derivative and records exact Library origin provenance;
+- Knowledge Fork allocates new base/revision/entry IDs and rewrites intra-Knowledge entry relations;
+- Asset Fork creates a new project-owned asset/file rather than mutating the attached Library asset.
 
-### Revision / conflict / history
+Project source dependencies now support exact Asset content identities, and package dependency closure fails closed if the stored content hash does not match the Library asset.
 
-Project revision is the ProjectStore-directory Git HEAD exposed only as the frozen A0 opaque revision token.
+### Studio / Project Agent read surface
 
-- successful ChangeSets are committed to source history;
-- history/diff are exposed through StudioService;
-- direct/out-of-band ProjectStore changes are synchronized into source history before revision comparison;
-- every mutation requires explicit `baseRevision`;
-- stale work returns `project_revision_conflict`;
-- no silent overwrite or automatic AI/human rebase occurs.
+`StudioService` and `/api/native/studio/*` now expose read-only Resource discovery surfaces for later Studio UI and Project Agent work:
 
-### Build seams
+- Registry;
+- Library listing;
+- derived Graph;
+- resource query;
+- reference / reverse-reference lookup;
+- delete-safety inspection;
+- project build-resource closure.
 
-A1 exposes:
+The HTTP mutation helpers for Attach/Fork/Update route back into the same A1 Workspace/ChangeSet authority; no alternate write path was introduced.
 
-- validation/diagnostics hooks;
-- preflight;
-- build through existing `buildProjectPackage`;
-- volatile preview through existing `StudioPreviewHost`;
-- simulation runner seam;
-- diff/change inspection.
+## A2 validation
 
-Preview/simulation do not create Native Session authority.
+Validated at `8510e423a3faf492340fabc32a612d4796a875e3`.
 
-## A1 validation
+### Native Authoring Platform A2 Checks #5
 
-Validated at `bf09c79e07204ee39303e52e89a3da3b2f7617da`.
-
-### Native Authoring Platform A1 Checks #2
-
-- Run: **35800275829**
-- focused + adjacent regressions: **7 suites / 60 tests passed**
-- A1 authoring backend residual guard: **success**
-- guard syntax: **success**
+- Run: **35802642463**
+- focused + adjacent Native regressions: **10 suites / 52 tests passed**
+- A2 Library/Resource residual guard: **success**
+- A2 guard syntax: **success**
+- A0 hard-cutover guard: **success**
+- A1 authoring backend guard: **success**
+- A1 guard syntax: **success**
 - focused ESLint: **success**
 - full root lint: **success**
 
-Focused/adjacent suites:
+Focused/adjacent suites include:
 
+- `native/resource-registry.test.js`
+- `native/library-resource.test.js`
+- `native/resource-graph.test.js`
+- `native/library-authoring.test.js`
+- `native/library-build-closure.test.js`
+- `native/studio-resource-http.test.js`
 - `native/studio-service.test.js`
-- `native/studio-http.test.js`
-- `native/authoring-contracts.test.js`
 - `native/project-composition.test.js`
 - `native/package-build-install.test.js`
-- `native/package-container.test.js`
 - `native/world-knowledge.test.js`
 
-### A0 regression on the same HEAD
+### Frozen-regression workflows on the same HEAD
 
-Native Authoring Platform A0 Checks #15:
+**Native Authoring Platform A0 Checks #20** — Run **35802642446**
 
-- Run: **35800275737**
 - **5 suites / 50 tests passed**
-- A0 hard-cutover residual guard: **success**
-- guard syntax: **success**
-- focused ESLint: **success**
-- full root lint: **success**
+- A0 hard-cutover guard + syntax: success
+- focused ESLint: success
+- full root lint: success
+
+**Native Authoring Platform A1 Checks #7** — Run **35802642487**
+
+- **7 suites / 60 tests passed**
+- A1 authoring backend guard + syntax: success
+- focused ESLint: success
+- full root lint: success
+
+## Key decisions
+
+- Resource Graph remains a projection/cache only; it cannot mutate canonical repositories.
+- No LibraryRepo/ResourceRepo/ResourceGraphRepo was introduced.
+- ProjectStore/AssetStore/WorldRepo/KnowledgeRepo/PackageRepo remain canonical.
+- Library attachment identity is exact and immutable; there is no automatic latest tracking.
+- Fork is an explicit ownership transition to a Project-owned derivative.
+- Asset Attach is an exact dependency reference; copying bytes into the Project is reserved for Fork.
+- World/Knowledge/Asset closure continues to reuse the existing Native package composition path.
+- The A1 guard was updated only to remove its obsolete “A2 must not exist yet” phase gate; all A1 authority guards remain active.
 
 ## Not started
 
-A1 deliberately did not implement:
+A2 deliberately did not implement:
 
-- A2 Resource Graph;
-- Library attach/fork/update;
-- A3 Runtime cutover;
-- A5 Plugin platform implementation;
-- A6/A7 broad frontend or Studio UX;
-- A8 Project Agent product UX.
+- A3 Runtime Descriptor compiler / game-runtime authority cutover;
+- `game.json` runtime replacement;
+- charId runtime loading replacement;
+- swipe-derived Game World branch removal;
+- Chat State `atri_game_world` removal;
+- A4 Component/Hybrid/Full runtime;
+- A5 Plugin platform;
+- A6/A7 frontend/Studio UX;
+- A8 Project Agent product workflow.
 
-## Next action — A2 only
+## Next action — A3 only
 
-Start **A2 — Library & Resource Architecture** on the same implementation branch.
+Start **A3 — Native Game Runtime Cutover** from the actual latest remote HEAD of the same implementation branch.
 
 Before editing, re-read:
 
@@ -153,19 +174,11 @@ Before editing, re-read:
 5. `docs:handoff/atria-native-authoring-platform-product-frontend.md`
 6. `src/native/authoring-contracts.js`
 7. `src/native/authoring/studio-service.js`
-8. `src/endpoints/native-studio.js`
+8. `src/native/authoring/resource-graph.js`
+9. `src/native/project-source.js`
+10. `src/native/package-composition.js`
+11. the existing Native Session / Branch / SessionRevision runtime implementation before touching game runtime authority.
 
-Fetch the implementation branch and use its actual latest remote HEAD. Preserve all A0/A1 work and do not redo it.
+A3 must reuse A0–A2 and the frozen N0–N10 Native authorities. Do not redo Library/Resource work.
 
-A2 should implement:
-
-- Resource Registry / descriptor-driven extension;
-- incrementally derived read-only Resource Graph;
-- Library immutable snapshot/reference semantics where required;
-- Attach / Fork / explicit update flows;
-- World/Knowledge authoring integration;
-- dependency/reference/delete-safety/build-closure support.
-
-All writes must continue through Authoring Operations / StudioService into existing canonical Native authorities. Resource Graph must never become writable authority.
-
-Stop after A2 validation/handoff. Do not enter A3 early, do not create a new branch, and do not merge `main`.
+Stop after A3 validation/handoff. Do not enter A4 early, do not create a new branch, and do not merge `main`.
