@@ -3,15 +3,17 @@ import { createHash } from 'node:crypto';
 import { SessionCore } from '../native/session-core.js';
 import { PackageInstaller } from '../native/package-composition.js';
 import { createNativeId, assertNativeId } from '../native/identity.js';
+import { resolveNativeRuntimePackage } from '../native/runtime-descriptor.js';
 import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo } from '../storage/index.js';
 
 function services() {
     const assets = getAssetStore();
     const sessionRepo = getSessionRepo();
+    const packageInstaller = new PackageInstaller({ packageRepo: getPackageRepo(), assetStore: assets });
     const core = new SessionCore({ sessionRepo, savePointRepo: getSavePointRepo(),
-        packageInstaller: new PackageInstaller({ packageRepo: getPackageRepo(), assetStore: assets }),
+        packageInstaller,
         knowledgeRepo: getKnowledgeRepo() });
-    return { core, assets, sessionRepo };
+    return { core, assets, sessionRepo, packageInstaller };
 }
 
 /** Authenticated handle is server-owned. No arbitrary repo method dispatch or legacy fallback. */
@@ -77,6 +79,61 @@ export function createNativeSessionRouter(getServices = services) {
             res.json(await core.switchBranch(handle, sessionId, command.branchId, { expectedRevisionId }));
         } else throw new TypeError('Unsupported Native runtime command');
     }));
+    router.post('/runtime/resolve', route(async (req, res, { core, packageInstaller }, handle) => {
+        const snapshot = await core.load(handle, req.body?.sessionId);
+        const opened = await packageInstaller.open(
+            handle,
+            snapshot.session.packageId,
+            snapshot.session.packageVersionId,
+        );
+        if (!opened) throw new TypeError('Native Runtime PackageVersion is unavailable');
+        if (opened.packageVersion.packageContentHash !== snapshot.session.packageContentHash) {
+            throw new TypeError('Native Runtime PackageVersion content mismatch');
+        }
+        const resolved = resolveNativeRuntimePackage(opened, snapshot.session.entryPointId);
+        res.json({
+            descriptor: resolved.descriptor,
+            runtime: resolved.runtime,
+        });
+    }));
+    router.post('/runtime/resource', route(async (req, res, { core, packageInstaller }, handle) => {
+        const snapshot = await core.load(handle, req.body?.sessionId);
+        const opened = await packageInstaller.open(
+            handle,
+            snapshot.session.packageId,
+            snapshot.session.packageVersionId,
+        );
+        if (!opened || opened.packageVersion.packageContentHash !== snapshot.session.packageContentHash) {
+            throw new TypeError('Native Runtime PackageVersion content mismatch');
+        }
+        // Runtime v1 executes only host-validated declarative resources. Do not
+        // provide an executable JS/module transport from package source.
+        const path = String(req.body?.path || '').trim();
+        if (
+            !path
+            || path.length > 512
+            || path.includes('\\')
+            || path.includes('\0')
+            || path.startsWith('/')
+            || path.split('/').some(segment => !segment || segment === '.' || segment === '..')
+            || !path.toLowerCase().endsWith('.json')
+        ) {
+            throw new TypeError('Native Runtime resource path must be a safe declarative .json path');
+        }
+        const bytes = opened.sourceFiles.get(path);
+        if (!bytes) {
+            const error = new Error('Native Runtime Package resource not found');
+            error.name = 'NotFoundError';
+            throw error;
+        }
+        res.set({
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-Content-Type-Options': 'nosniff',
+            'Cache-Control': 'private, no-store',
+        });
+        res.send(bytes);
+    }));
+
     router.post('/timeline', route(async (req, res, { sessionRepo }, handle) => {
         if (!sessionRepo) throw new TypeError('Native SessionRepo timeline reader is unavailable');
         const {
