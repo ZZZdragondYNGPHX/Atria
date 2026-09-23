@@ -19,10 +19,10 @@ import { promises as fsPromises } from 'node:fs';
  * @param {boolean} [opts.extensions]   — 造 extensions/foo/*
  * @param {boolean} [opts.vectors]      — 造 vectors/*
  * @param {boolean} [opts.backups]      — 造 backups/chat_*.jsonl 与 settings_*.json
- * @param {boolean} [opts.other]        — 造 groups/ · card-apps/ · thumbnails/ · secrets.json 等
+ * @param {boolean} [opts.other]        — 造 groups/ · thumbnails/ · secrets.json 等
  * @param {boolean} [opts.chatsRich]    — 造 2 char · 每 char 2 chat · 每 chat 2 sidecar + 1 group chat(用于 chats enumerator 精细测)
  * @param {boolean} [opts.charactersRich] — 造 2 char · 一带 sprites + 2 sidecar · 一只 plain PNG(用于 characters enumerator 精细测)
- * @param {boolean} [opts.otherRich]    — 造 groups + card-apps + thumbnails + secrets.json + 其它杂项(用于 other enumerator 精细测)
+ * @param {boolean} [opts.otherRich]    — 造 groups + thumbnails + secrets.json + 其它杂项(用于 other enumerator 精细测)
  * @returns {Promise<{userRoot: string, cleanup: () => Promise<void>}>}
  */
 export async function makeFixtureUser(opts = {}) {
@@ -51,8 +51,6 @@ export async function makeFixtureUser(opts = {}) {
         await write('characters/default_Seraphina.png', Buffer.alloc(50_000, 0xff));
         await write('characters/default_Seraphina/happy.png', Buffer.alloc(10_000, 0xff));
         await write('characters/default_Seraphina/sad.png', Buffer.alloc(10_000, 0xff));
-        await write('characters/default_Seraphina.state.cardapp_studio_sessions_v2.json',
-            JSON.stringify({ sessions: [] }));
     }
     if (opts.worlds) {
         await write('worlds/lorebook_a.json', JSON.stringify({ entries: {} }));
@@ -86,7 +84,6 @@ export async function makeFixtureUser(opts = {}) {
     }
     if (opts.other) {
         await write('groups/g1.json', JSON.stringify({ id: 'g1' }));
-        await write('card-apps/app.json', JSON.stringify({ name: 'app' }));
         await write('thumbnails/bg/city.jpg', Buffer.alloc(2_000));
         await write('secrets.json', JSON.stringify({ api_key_openai: 'sk-FAKE' }));
         await write('stats.json', JSON.stringify({ messages: 0 }));
@@ -118,8 +115,6 @@ export async function makeFixtureUser(opts = {}) {
         await write('characters/default_Seraphina/happy.png', Buffer.alloc(20_000, 0xff));
         await write('characters/default_Seraphina/sad.png', Buffer.alloc(20_000, 0xff));
         await write('characters/default_Seraphina/neutral.png', Buffer.alloc(20_000, 0xff));
-        await write('characters/default_Seraphina.state.cardapp_studio_sessions_v2.json',
-            JSON.stringify({ sessions: Array.from({ length: 5 }, (_, i) => ({ id: i })) }));
         await write('characters/default_Seraphina.state.atri_cea_editor_iter_sessions.json',
             JSON.stringify({ sessions: [] }));
         // Coding: 只有 PNG · 无 sprites · 无 sidecar
@@ -128,7 +123,6 @@ export async function makeFixtureUser(opts = {}) {
     if (opts.otherRich) {
         await write('groups/g1.json', JSON.stringify({ id: 'g1', name: 'Team' }));
         await write('groups/g2.json', JSON.stringify({ id: 'g2' }));
-        await write('card-apps/app1.json', JSON.stringify({ name: 'App1' }));
         await write('thumbnails/bg/city.jpg', Buffer.alloc(2_000));
         await write('thumbnails/avatar/x.jpg', Buffer.alloc(1_000));
         await write('secrets.json', JSON.stringify({

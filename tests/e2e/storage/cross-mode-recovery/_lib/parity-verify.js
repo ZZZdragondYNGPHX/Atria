@@ -11,7 +11,7 @@
 //   { settings: {missing: [...], changed: [...], extra: [...]}, ... }
 //
 // The spec asserts the diff is empty for every category that the backup
-// ZIP carries.  Categories outside the backup scope (e.g. `card-apps`,
+// ZIP carries. Categories outside the backup scope (for example extensions,
 // chat_backups, _macros_cache) are deliberately ignored — they're not in
 // the contract.
 //

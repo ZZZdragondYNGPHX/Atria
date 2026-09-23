@@ -1,8 +1,4 @@
 import { renderPresetHelpButton } from '../preset-help.js';
-import { createLogger } from '../../logging/logger.js';
-import { captureFrontendIncident } from '../../logging/incident-reporter.js';
-
-const studioEntryLogger = createLogger('studio');
 
 export function createCharacterEditorUi(deps) {
     const {
@@ -260,7 +256,6 @@ export function createCharacterEditorUi(deps) {
         <div class="inline-drawer-content">
             <div class="cea_row">
                 <div class="menu_button" id="cea_open_editor_popup">${escapeHtml(i18n('Open Editor'))}</div>
-                <div class="menu_button" id="cea_open_cardapp_studio"><i class="fa-solid fa-code"></i> ${escapeHtml(i18n('CardApp Studio'))}</div>
             </div>
             <label class="checkbox_label"><input id="cea_replace_sync" type="checkbox"/> ${escapeHtml(i18n('Enable lorebook sync popup after Replace/Update'))}</label>
             <label for="cea_sync_llm_preset">${escapeHtml(i18n('Iteration AI prompt preset (params + prompt)'))}${renderPresetHelpButton({ kind: 'iteration', targetSelectId: 'cea_sync_llm_preset' })}</label>
@@ -276,11 +271,6 @@ export function createCharacterEditorUi(deps) {
                 <textarea id="cea_editor_system_prompt" class="text_pole textarea_compact" rows="8"></textarea>
                 <div class="cea_row">
                     <div class="menu_button" id="cea_reset_editor_system_prompt">${escapeHtml(i18n('Reset to default'))}</div>
-                </div>
-                <label for="cea_cardapp_studio_system_prompt">${escapeHtml(i18n('CardApp Studio prompt'))}</label>
-                <textarea id="cea_cardapp_studio_system_prompt" class="text_pole textarea_compact" rows="8"></textarea>
-                <div class="cea_row">
-                    <div class="menu_button" id="cea_reset_cardapp_studio_system_prompt">${escapeHtml(i18n('Reset to default'))}</div>
                 </div>
             </details>
 
@@ -313,7 +303,6 @@ export function createCharacterEditorUi(deps) {
         root.find('#cea_replace_sync').prop('checked', Boolean(settings.replaceLorebookSyncEnabled));
         root.find('#cea_tool_retries').val(String(settings.toolCallRetryMax ?? defaultSettings.toolCallRetryMax));
         root.find('#cea_editor_system_prompt').val(String(settings.editorIterationSystemPrompt || ''));
-        root.find('#cea_cardapp_studio_system_prompt').val(String(settings.cardAppStudioSystemPrompt || ''));
         refreshPresetSelectors(root, context, settings);
 
         try {
@@ -393,23 +382,10 @@ export function createCharacterEditorUi(deps) {
             saveSettingsDebounced();
         });
 
-        root.on('input.cea change.cea', '#cea_cardapp_studio_system_prompt', function () {
-            const settings = getSettings();
-            settings.cardAppStudioSystemPrompt = String(jQuery(this).val() || '');
-            saveSettingsDebounced();
-        });
-
         root.on('click.cea', '#cea_reset_editor_system_prompt', function () {
             const settings = getSettings();
             settings.editorIterationSystemPrompt = defaultSettings.editorIterationSystemPrompt;
             root.find('#cea_editor_system_prompt').val(defaultSettings.editorIterationSystemPrompt);
-            saveSettingsDebounced();
-        });
-
-        root.on('click.cea', '#cea_reset_cardapp_studio_system_prompt', function () {
-            const settings = getSettings();
-            settings.cardAppStudioSystemPrompt = defaultSettings.cardAppStudioSystemPrompt;
-            root.find('#cea_cardapp_studio_system_prompt').val(defaultSettings.cardAppStudioSystemPrompt);
             saveSettingsDebounced();
         });
 
@@ -421,34 +397,6 @@ export function createCharacterEditorUi(deps) {
             await openCharacterEditorPopup(getContext());
         });
 
-        root.on('click.cea', '#cea_open_cardapp_studio', async function () {
-            const context = getContext();
-            const cardAppApi = context.getExtensionApi('card-app');
-            const charId = cardAppApi?.getCharId?.();
-            if (!charId) {
-                toastr.warning(i18n('No character selected or character has no avatar.'));
-                return;
-            }
-            try {
-                const { openCardAppStudio } = await import('./studio/studio.js');
-                await openCardAppStudio(charId);
-            } catch (err) {
-                studioEntryLogger.error('open.failed', '[CEA] Failed to open CardApp Studio', {
-                    charId: String(charId || ''),
-                    message: err?.message || String(err),
-                }, { category: 'studio' });
-                void captureFrontendIncident({
-                    type: 'tool_failure',
-                    severity: 'error',
-                    primaryModule: 'studio',
-                    stage: 'cardapp-studio.open',
-                    summary: err?.message || String(err),
-                    failure: err,
-                    environment: { charId: String(charId || '') },
-                });
-                toastr.error(String(err?.message || err));
-            }
-        });
     }
 
     return {

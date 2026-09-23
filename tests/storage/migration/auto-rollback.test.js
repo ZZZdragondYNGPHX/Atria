@@ -43,7 +43,6 @@ const USER_DIRS = Object.freeze({
     backups: 'backups',
     sysprompt: 'sysprompt',
     reasoning: 'reasoning',
-    cardApps: 'card-apps',
 });
 
 function buildDirs(userDir) {

@@ -131,7 +131,6 @@ export const CATEGORIES = Object.freeze([
         colorVar: '--storage-cat-other',
         includes: [
             { kind: 'dir', rel: 'groups' },
-            { kind: 'dir', rel: 'card-apps' },
             { kind: 'dir', rel: 'assets' },
             { kind: 'dir', rel: 'thumbnails' },
             { kind: 'file', rel: 'image-metadata.json' },

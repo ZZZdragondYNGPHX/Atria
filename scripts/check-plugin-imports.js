@@ -39,7 +39,6 @@ const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const EXT_DIR = resolve(REPO_ROOT, 'public/scripts/extensions');
 
 const ATRIA_PLUGIN_DIRS = new Set([
-    'card-app',
     'character-editor-assistant',
     'completion-preset-assistant',
     'memory-graph',

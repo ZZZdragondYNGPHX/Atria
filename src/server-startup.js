@@ -55,7 +55,6 @@ import { router as backupsRouter } from './endpoints/backups.js';
 import { router as imageMetadataRouter } from './endpoints/image-metadata.js';
 import { router as volcengineRouter } from './endpoints/volcengine.js';
 import { router as requestInspectorRouter } from './request-inspector.js';
-import { router as cardAppRouter } from './endpoints/card-app.js';
 import { router as docsRouter } from './endpoints/docs.js';
 import { createSkillsRouter } from './endpoints/skills.js';
 import { createSkillRepository } from './skills/repository.js';
@@ -142,10 +141,9 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/backups', backupsRouter);
     app.use('/api/image-metadata', imageMetadataRouter);
     app.use('/api/request-inspector', requestInspectorRouter);
-    app.use('/api/card-app', cardAppRouter);
     app.use('/api/docs', docsRouter);
-    // Skills are scoped to the authenticated user's data root, mirroring the
-    // card-app pattern. Each request resolves a fresh SkillRepository because
+    // Skills are scoped to the authenticated user's data root. Each request
+    // resolves a fresh SkillRepository because
     // request.user.directories.root depends on the authenticated session.
     //
     // The skillResourcesByUser cache stores one { repository, memoryIndex }

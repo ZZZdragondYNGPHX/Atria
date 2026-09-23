@@ -1,0 +1,106 @@
+name: Native Authoring Platform A9 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-authoring-platform-product-frontend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-authoring-a9-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a9-hard-cutover:
+    name: A9 Hard Cutover & Product Finalization
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run A9 focused and adjacent acceptance
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          atria-shell/hard-cutover-a9.test.js
+          native/runtime-descriptor.test.js
+          native/runtime-http.test.js
+          native/session-runtime-http.test.js
+          native/session-projection.test.js
+          native/studio-service.test.js
+          native/studio-http.test.js
+          native/studio-preview-experience.test.js
+          native/project-agent.test.js
+          native/project-agent-http.test.js
+          game-runtime/package-loader.test.js
+          game-runtime/world-session.test.js
+          game-runtime/logic-runtime.test.js
+          game-runtime/ui-component-model.test.js
+          game-runtime/ui-live.test.js
+          game-runtime/ui-full-host.test.js
+          atria-shell/native-play-host.test.js
+          atria-shell/native-play-product.test.js
+          atria-shell/studio-workspace-a7.test.js
+          atria-shell/studio-agent-a8.test.js
+          sync/categories.test.js
+          sync/shadow-snapshot.test.js
+          storage-inspector/enumerate-other.test.js
+      - name: Run A9 residual guard
+        run: node scripts/check-a9-hard-cutover-product-finalization.mjs
+      - name: Check A9 guard syntax
+        run: node --check scripts/check-a9-hard-cutover-product-finalization.mjs
+      - name: Run frozen A0-A8 guards
+        run: |
+          node scripts/check-a0-native-authoring-hard-cutover.mjs
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a3-native-game-runtime-cutover.mjs
+          node scripts/check-a4-experience-runtime.mjs
+          node scripts/check-a5-plugin-skill-platform.mjs
+          node scripts/check-a6-native-product-frontend.mjs
+          node scripts/check-a7-studio-authoring-ux.mjs
+          node scripts/check-a8-project-agent.mjs
+      - name: Run A9 focused ESLint
+        run: >-
+          npx eslint
+          src/server-startup.js
+          src/endpoints/characters.js
+          src/constants.js
+          src/sync/categories.js
+          src/sync/shadow.js
+          src/storage/management.js
+          src/storage/inspector.js
+          public/scripts/extensions/character-editor-assistant/index.js
+          public/scripts/extensions/character-editor-assistant/main.js
+          public/scripts/extensions/character-editor-assistant/editor-ui.js
+          public/scripts/atria-shell/native-play-host.js
+          public/scripts/extensions/game-runtime/index.js
+          public/scripts/extensions/game-runtime/package-loader.js
+          public/scripts/extensions/game-runtime/world/session.js
+          public/scripts/native/studio-workspace.js
+          public/scripts/native/studio-agent.js
+          tests/atria-shell/hard-cutover-a9.test.js
+      - name: Run complete Node regression
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: npm run test:unit:serial --prefix tests
+      - name: Build frontend libraries
+        run: node docker/build-lib.js
+      - name: Run full root lint
+        run: npm run lint

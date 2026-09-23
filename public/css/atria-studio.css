@@ -2252,7 +2252,7 @@ editor
     display: flex;
     /* Explicit row direction overrides `.atria-studio`'s default
        `flex-direction: column` — that base rule was authored for stacked
-       studio popups (CardApp, Iter Workspace), but the inline skill
+       legacy extension popups and Iter Workspace, but the inline skill
        editor wants a sidebar + main-pane shell. Same selector specificity,
        so source order wins; declaring it here keeps the override stable
        even if the rules are reordered. */

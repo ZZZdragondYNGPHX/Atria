@@ -8,7 +8,7 @@
  *   - `different` → user picks Skip / Replace per row
  *
  * The dialog is shared by:
- *   - Card-app character import (after the card lands but before commit)
+ *   - Character import (after the card lands but before commit)
  *   - Preset-manager import (after the JSON parses but before save)
  *   - Card-bound preset materialize (skills from a character-bound preset
  *     are pinned to character scope)
@@ -23,7 +23,7 @@
  *
  * Like the other Unit-{2..4} dialogs, pure helpers are exported for tests
  * without needing a DOM (Atria's Jest runs in node, not jsdom). The
- * interactive entry point `runEmbedImportFlow` is what callers (card-app /
+ * interactive entry point `runEmbedImportFlow` is what character-import
  * preset-manager hooks) invoke.
  */
 
@@ -35,7 +35,7 @@ import { ensureSkillI18n } from './i18n.js';
  * Format a SkillScope object as a short user-facing label.
  * Mirrors `formatScopeLabel` in skill-manager-panel.js — duplicated here
  * to keep this module standalone (avoids cross-module import bloat in the
- * card-app browser bundle).
+ * browser flows consume.
  *
  * @param {object} scope
  * @returns {string}

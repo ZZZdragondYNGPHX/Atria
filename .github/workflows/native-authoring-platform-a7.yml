@@ -50,7 +50,6 @@ jobs:
           native/library-authoring.test.js
           native/studio-preview-experience.test.js
           game-runtime/ui-component-model.test.js
-          game-runtime/studio-preview-surface.test.js
           native/plugin-platform.test.js
           native/native-skill-platform.test.js
       - name: Run A7 residual guard

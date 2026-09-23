@@ -25,7 +25,6 @@ import { applyJsonPatch } from '../storage/repositories/json-patch.js';
 import { ByafParser } from '../byaf.js';
 import { CharXParser, persistCharXAssets } from '../charx.js';
 import cacheBuster from '../middleware/cacheBuster.js';
-import { extractCardAppFiles, packCardAppFiles, deleteCardAppFiles } from './card-app.js';
 import { deleteRecentChatIndexEntriesUnderDirectory, invalidateRecentChatIndex, refreshRecentChatIndexEntry } from './chats.js';
 import { PatchTestFailedError, PatchMissingParentError, UnsupportedPatchOpError } from '../storage/errors.js';
 import { getChatRepo, getWorldInfoRepo } from '../storage/index.js';
@@ -2030,8 +2029,6 @@ router.post('/delete', validateAvatarUrlMiddleware, async function (request, res
         await deleteRecentChatIndexEntriesUnderDirectory(request, removedChatsDir);
     }
 
-    // Clean up CardApp files
-    deleteCardAppFiles(dir_name, request.user.directories.cardApps);
 
     return response.sendStatus(200);
 });
@@ -2518,21 +2515,6 @@ router.post('/import', async function (request, response) {
             invalidateThumbnail(request.user.directories, 'avatar', `${preservedFileName}.png`);
         }
 
-        // Extract CardApp files from character data to independent directory
-        try {
-            const charId = fileName.replace('.png', '');
-            const charFilePath = path.join(request.user.directories.characters, `${fileName}.png`);
-            const rawData = await readCharacterData(charFilePath);
-            if (rawData) {
-                const charData = JSON.parse(rawData);
-                if (extractCardAppFiles(charData, charId, request.user.directories.cardApps)) {
-                    // Re-write character data without the embedded files
-                    await writeCharacterData(charFilePath, JSON.stringify(charData), charId, request, undefined, { requireExistingOutput: true });
-                }
-            }
-        } catch (cardAppErr) {
-            console.warn('[card-app] Failed to extract CardApp files during import:', cardAppErr);
-        }
 
         response.send({ file_name: fileName });
     } catch (err) {
@@ -2615,9 +2597,6 @@ router.post('/export', validateAvatarUrlMiddleware, async function (request, res
                 const syncResult = await syncCharacterBookFromWorldInfo(jsonObject, request.user.profile.handle, _.get(jsonObject, 'data.extensions.world'));
                 applyEmbedWarning(syncResult);
                 unsetPrivateFields(jsonObject);
-                // Pack CardApp files into export data
-                const exportCharId = sanitize(request.body.avatar_url).replace('.png', '');
-                packCardAppFiles(jsonObject, exportCharId, request.user.directories.cardApps);
                 const mutatedBuffer = write(rawBuffer, JSON.stringify(toStoredV2Character(jsonObject)));
                 const contentType = mime.lookup(filename) || 'image/png';
                 response.setHeader('Content-Type', contentType);
@@ -2632,9 +2611,6 @@ router.post('/export', validateAvatarUrlMiddleware, async function (request, res
                     const syncResult = await syncCharacterBookFromWorldInfo(jsonObject, request.user.profile.handle, _.get(jsonObject, 'data.extensions.world'));
                     applyEmbedWarning(syncResult);
                     unsetPrivateFields(jsonObject);
-                    // Pack CardApp files into export data
-                    const exportCharIdJson = sanitize(request.body.avatar_url).replace('.png', '');
-                    packCardAppFiles(jsonObject, exportCharIdJson, request.user.directories.cardApps);
                     return response.type('json').send(JSON.stringify(toStoredV2Character(jsonObject), null, 4));
                 } catch {
                     return response.sendStatus(400);

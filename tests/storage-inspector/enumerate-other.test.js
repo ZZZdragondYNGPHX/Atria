@@ -4,7 +4,7 @@ import {
 } from '../../src/storage/inspector.js';
 
 describe('enumerateCategory("other") · L2', () => {
-    test('rich fixture returns groups + card-apps + thumbnails + secrets(sensitive)+ files', async () => {
+    test('rich fixture returns groups + thumbnails + secrets(sensitive)+ files', async () => {
         const { userRoot, cleanup } = await makeFixtureUser({ otherRich: true });
         try {
             const res = await enumerateCategory(userRoot, 'other');
@@ -12,7 +12,6 @@ describe('enumerateCategory("other") · L2', () => {
             expect(res.isLeaf).toBe(true);
             const keys = res.entries.map(e => e.key);
             expect(keys).toContain('groups');
-            expect(keys).toContain('card-apps');
             expect(keys).toContain('thumbnails');
             expect(keys).toContain('secrets.json');
             expect(keys).toContain('stats.json');

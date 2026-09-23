@@ -102,7 +102,6 @@ function makeFsDest(tmpRoot, handle) {
         backups: path.join(userDir, 'backups'),
         sysprompt: path.join(userDir, 'sysprompt'),
         reasoning: path.join(userDir, 'reasoning'),
-        cardApps: path.join(userDir, 'card-apps'),
     };
     for (const d of Object.values(dirs)) fs.mkdirSync(d, { recursive: true });
     const engine = new FsEngine({

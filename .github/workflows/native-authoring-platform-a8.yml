@@ -51,7 +51,6 @@ jobs:
           native/plugin-platform.test.js
           native/native-skill-platform.test.js
           game-runtime/ui-component-model.test.js
-          game-runtime/studio-preview-surface.test.js
       - name: Run A8 residual guard
         run: node scripts/check-a8-project-agent.mjs
       - name: Check A8 guard syntax

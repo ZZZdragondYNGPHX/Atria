@@ -771,9 +771,9 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 }
 
 
-/* R7C — Game Surface Integration
- * Game-first Hybrid/Full/legacy CardApp presentations may own Stage content,
- * but Host chrome and Host Recovery remain outside package ownership.
+/* Native Game Surface Integration
+ * Hybrid/Full Native experiences may own Stage content, while Host chrome
+ * and Host Recovery remain outside package ownership.
  */
 .atria-stage[data-atria-stage-owner] {
     place-items: stretch;
@@ -782,8 +782,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 }
 
 .atria-game-host-surface--stage,
-#atria-game-full-root[data-atria-game-host-scope="stage"],
-#card-app-container[data-atria-legacy-full-stage="true"] {
+#atria-game-full-root[data-atria-game-host-scope="stage"] {
     width: 100%;
     height: 100%;
     min-width: 0;
@@ -800,13 +799,11 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     pointer-events: auto;
 }
 
-.atria-host-recovery > #atria-game-full-recovery,
-.atria-host-recovery > #card-app-host-recovery {
+.atria-host-recovery > #atria-game-full-recovery {
     pointer-events: auto;
 }
 
-#atria-game-full-recovery[data-atria-game-host-scope="host-recovery"],
-.atria-card-app-host-recovery {
+#atria-game-full-recovery[data-atria-game-host-scope="host-recovery"] {
     position: absolute !important;
     top: max(var(--atri-space-2), var(--atri-safe-area-top)) !important;
     right: max(var(--atri-space-2), var(--atri-safe-area-right)) !important;
@@ -817,8 +814,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     max-width: calc(100% - (2 * var(--atri-space-2)));
 }
 
-.atria-game-recovery-action,
-.atria-card-app-recovery-action {
+.atria-game-recovery-action {
     min-height: 36px;
     padding: var(--atri-space-2) var(--atri-space-3);
     border: 1px solid var(--atri-color-border);
@@ -829,13 +825,11 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     cursor: pointer;
 }
 
-.atria-game-recovery-action:hover,
-.atria-card-app-recovery-action:hover {
+.atria-game-recovery-action:hover {
     background: var(--atri-color-surface-hover);
 }
 
-.atria-app-shell[data-atria-viewport="compact"] #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"],
-.atria-app-shell[data-atria-viewport="compact"] .atria-card-app-host-recovery {
+.atria-app-shell[data-atria-viewport="compact"] #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"] {
     top: calc(var(--atri-safe-area-top) + var(--atri-space-1)) !important;
     right: calc(var(--atri-safe-area-right) + var(--atri-space-1)) !important;
 }
