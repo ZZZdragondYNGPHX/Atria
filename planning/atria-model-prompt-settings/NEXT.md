@@ -1,28 +1,27 @@
-# P8 — final integration checkpoint
+# P0-P8 complete — integrated into main
 
-P0-P8 implementation and local product acceptance are complete. Final PR CI and
-main integration remain pending; do not describe this checkpoint as merged.
+- Main: `c664eded79b86df37bd951f1e5236a4335ce784b`.
+- Validated work head: `de6fe31b9bd0f6f364c4d34e040628d91d114fb3`.
+- Merged PR: https://github.com/ZZZdragondYNGPHX/Atria/pull/85
+- Completed temporary branch deleted locally and remotely.
+- Evidence: `P8-VALIDATION.md`; current API: main's
+  `src/native/model-prompt-runtime/README.md`.
 
-- Work HEAD: `de6fe31b9bd0f6f364c4d34e040628d91d114fb3`.
-- PR: https://github.com/ZZZdragondYNGPHX/Atria/pull/85
-- Main baseline: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`.
-- Full final evidence: `P8-VALIDATION.md`.
+There is no pending P8 implementation or P9 in this plan. Do not redo P0-P7 or
+recreate the completed branch. Begin future independent work from current main,
+following AGENTS.md and the current docs handoff.
 
-Local acceptance: 210 suites / 1844 tests; P0-P8/A0-A9/N9-N10 guards;
-root lint, cold webpack compile and diff checks; 12 P4-P7 desktop/mobile browser
-cases and 2 Workspace mobile/desktop cases. Screenshots inspected. The broader
-historical browser selection also had two missing-Chromium launch failures and
-three dependent cases not run; those are not passes.
+Final local checks: 210 suites / 1844 tests, 12 current P4-P7 browser cases and
+2 Workspace cases, desktop/mobile screenshots inspected, cold webpack build,
+root lint, P0-P8/A0-A9/N9-N10 guards. All eight final PR checks passed; complete
+Linux unit job: 776 suites / 8914 tests. Main tree matches the validated branch;
+aggregate guards passed again after merge and the worktree is clean.
 
-Finish by checking CI at the exact work HEAD, merging PR #85 without bypassing
-checks, verifying the integrated tree/guards, deleting the completed temporary
-branch, and recording the resulting main SHA here and in latest-handoff.md.
-No new product phase is authorized by this completion checkpoint.
+Retain Build, exact resource identity, Package freeze, A1/A2/A7/A8 human authority,
+explicit Secret/send/provider boundaries, no dual-write and no hidden fallback.
+Explicit non-Native/recovery/third-party islands remain intentional. Production
+transports remain OpenAI-compatible and raw-text with existing exact Secret IDs.
 
-Retain primary Build, exact resource identities, Package freeze, A1/A2/A7/A8
-human authority, explicit Secret/send/provider boundaries and no legacy hidden
-fallback. Non-Native recovery/third-party host islands remain intentional.
-No automatic migration or dual-write. See the integrated runtime README for
-supported transports and controls. Android/Docker remain opt-in; external model
-credentials, real mobile hardware and local MySQL/PostgreSQL were not tested.
-The four P6 Windows storage-extension failures remain separately documented.
+See P8-VALIDATION.md for the two historical missing-Chromium launch failures,
+three dependent cases not run, local database/device/build exclusions, and the
+pre-existing P6 Windows storage-extension failures. None are claimed as passed.

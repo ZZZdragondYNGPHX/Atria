@@ -7,7 +7,9 @@ Workspace follow-up: `cf9f3b1bc828e699b3c3ae114534b906423c2453`.
 Final work HEAD: `de6fe31` (responsive inspector browser interaction fix).
 PR: https://github.com/ZZZdragondYNGPHX/Atria/pull/85
 Baseline main: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`.
-Integration status: PENDING.
+Integration status: MERGED through PR #85 on 2026-09-23 at 13:26:30 UTC.
+Integrated main: `c664eded79b86df37bd951f1e5236a4335ce784b`.
+Local workspace is on main; completed temporary branch deleted locally/remotely.
 
 ## Final audit and implementation
 
@@ -74,8 +76,17 @@ product ownership and allowed non-Native islands.
   Settings and locale reload, exact search and empty-Native-Shell fail-closed.
   Optional Horde discovery is isolated in P6/P7 fixtures; Native endpoints are real.
   SD connection-refused probes remain unrelated warnings.
-- Remote PR checks: REMOTE_PENDING.
-- Post-merge verification: MERGE_PENDING.
+- Remote PR checks: **all eight checks passed** on `de6fe31` before merge.
+  Full Linux unit job: **776 suites / 8914 tests passed**, run `35866145468`.
+  Native integration push/PR: `35866137367` / `35866145242`; Workspace browser:
+  `35866145235`; Worldbook/performance: `35866145234`; immersive regression:
+  `35866145595`. Lint and migration guard also passed in the PR checks run.
+  These remote results are distinct from the local Windows FS/SQLite count.
+- Post-merge verification: fetched and checked out `main@c664ede`; exact tree
+  comparison against validated `de6fe31` returned no difference; P8 aggregate
+  guards reran successfully; diff check and working tree were clean. Removed the
+  fully merged temporary branch locally/remotely. No additional full test rerun
+  was needed for the identical tree; no separate post-merge CI result is claimed.
 
 ## Workspace integration follow-up
 

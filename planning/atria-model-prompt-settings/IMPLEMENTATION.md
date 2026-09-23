@@ -1,6 +1,6 @@
 # 实施蓝图：Atria Native Model / Prompt / Runtime P0–P8
 
-**P0–P8 已实现并完成本地验收；PR #85 的最终 CI 与 main 集成待完成。**
+**P0–P8 已完成验收并通过 PR #85 合入 main（c664ede）；临时分支已删除。**
 
 正式实现分支：`refactor/atria-model-prompt-settings`
 
@@ -658,3 +658,18 @@ Final FS/SQLite regression: 210 suites / 1837 tests; P4-P7 combined browser: 12
 passed, final P4/P7 follow-up: 6 passed (overlapping). Screenshots inspected.
 P0-P7/A0-A8/N9-N10 guards, lint/syntax/diff and prebuild-cache passed.
 Details/exclusions: P7-VALIDATION.md. No main merge; stop before P8.
+
+## P8 integrated completion (2026-09-23)
+
+P0-P8 is complete and merged through PR #85. Validated task head:
+`de6fe31b9bd0f6f364c4d34e040628d91d114fb3`; integrated main:
+`c664eded79b86df37bd951f1e5236a4335ce784b`. The temporary branch was deleted.
+Earlier phase-specific future/stop statements in this document are historical.
+
+Local: 210 suites / 1844 tests; current P4-P7 browser 12 cases plus Workspace
+2 cases, desktop/mobile screenshots inspected; P0-P8/A0-A9/N9-N10 guards,
+root lint and cold build passed. All eight PR checks passed, including the full
+Linux unit run (776 suites / 8914 tests). Main tree matched the validated task
+head exactly and aggregate guards passed again after merge. Full evidence and
+explicit exclusions: `planning/atria-model-prompt-settings/P8-VALIDATION.md` on docs.
+No new phase is implicitly started. Future independent work begins from live main.
