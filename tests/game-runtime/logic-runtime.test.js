@@ -127,7 +127,17 @@ async function makeRuntime() {
     });
     await world.load([0]);
 
-    const logic = createGameLogicRuntime({ world, commands });
+    const nativeWorld = {
+        ...world,
+        getSnapshot() {
+            return {
+                ...world.getSnapshot(),
+                branchId: 'branch_test',
+                revisionId: 'revision_test',
+            };
+        },
+    };
+    const logic = createGameLogicRuntime({ world: nativeWorld, commands });
     return { persistence, world, logic };
 }
 
