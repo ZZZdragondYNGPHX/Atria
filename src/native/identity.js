@@ -19,6 +19,12 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     knowledgeRevision: 'kbv',
     knowledgeEntry: 'kentry',
     knowledgeBinding: 'kbind',
+    connectionProfile: 'conn',
+    modelProfile: 'model',
+    generationProfile: 'genprof',
+    promptModule: 'pmod',
+    promptProgram: 'pprog',
+    runtimeRoute: 'route',
 });
 
 const FAMILY_BY_PREFIX = Object.freeze(Object.fromEntries(
