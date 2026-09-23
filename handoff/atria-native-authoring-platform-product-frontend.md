@@ -2,7 +2,7 @@
 
 ## Current status
 
-Planning/design is complete and frozen. **A0, A1, A2, A3 and A4 are complete and validated; A5 is next.**
+Planning/design is complete and frozen. **A0, A1, A2, A3, A4 and A5 are complete and validated; A6 is next.**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
@@ -13,9 +13,10 @@ Planning/design is complete and frozen. **A0, A1, A2, A3 and A4 are complete and
 - A2 validated HEAD: `8510e423a3faf492340fabc32a612d4796a875e3`
 - A3 validated HEAD: `ba1ba05e0cd53b0947be34bed62707a297d97ac2`
 - A4 validated HEAD: `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`
+- A5 validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Prior Native Content & Session Architecture N0–N10 remains complete and must not be redone.
-- Do not merge `main`; continue A5 on the same implementation branch.
+- Do not merge `main`; continue A6 on the same implementation branch.
 
 ## Task identity
 
@@ -211,35 +212,25 @@ Use the same implementation branch for all phases:
 
 After every phase: validate, commit/push, update docs/handoff, stop, and provide the next-phase takeover prompt. Do not create a new branch per phase. Do not merge `main` until the complete refactor reaches final integration.
 
-## Current next action — A5 only
+## Current next action — A6 only
 
-Start **A5 — Plugin & Skill Platform** from the actual latest remote HEAD of the same implementation branch.
+Start **A6 — Native Product Frontend** from the actual latest remote HEAD of the same implementation branch.
 
-Before A5 editing, re-read:
+Before A6 editing, re-read:
 
 1. `main:AGENTS.md`
 2. `main:FORK_MAINTENANCE.md`
 3. `docs:handoff/latest-handoff.md`
 4. `docs:refactor/atria-native-authoring-platform-product-frontend.md`
 5. this handoff
-6. `src/native/authoring-contracts.js`
-7. `src/native/runtime-descriptor.js`
-8. A4 Experience Runtime under `public/scripts/extensions/game-runtime/ui/`
-9. current Native Skill / orchestration / extension contribution code relevant to Plugin & Skill integration.
+6. A5 Plugin & Skill Platform implementation and tests
+7. A4 Experience Runtime and current Atria shell/product routing/frontend foundations.
 
-A5 must implement only the frozen **Plugin & Skill Platform**:
+A6 must implement only the frozen **Native Product Frontend**. It must consume the existing A0–A5 Native authorities and A5 Plugin/Skill surfaces rather than creating alternate product/runtime state.
 
-- Atria Plugin manifest/API;
-- contribution registry;
-- Host Plugin boundary;
-- declarative/capability-defined package-runtime v1;
-- permission/dependency model;
-- Native Skill scopes;
-- Build/Play contribution integration.
+A6 must not start A7 Studio Authoring UX, A8 Project Agent / Vibe Coding, or A9 final hard-cutover cleanup early.
 
-A5 must preserve all A0–A4 Native authorities and the shared Experience Runtime. It must not introduce a competing Package/Session/World/Timeline persistence authority, must not allow arbitrary package JavaScript in package-runtime v1, and must not start A6 Product Frontend, A7 Studio UX or A8 Project Agent early.
-
-Stop again after A5 validation/handoff. Do not create a new branch and do not merge `main`.
+Stop again after A6 validation/handoff. Do not create a new branch and do not merge `main`.
 
 ---
 
@@ -968,3 +959,209 @@ A5 starts only from the actual latest remote HEAD of `refactor/atria-native-auth
 
 A5 must build the Plugin & Skill Platform on the existing A0 contracts and A4 Experience Runtime. Package-runtime v1 remains declarative/capability-defined; executable Host Plugins must be kept behind an explicit Host Plugin boundary and must not create competing Native authority.
 
+
+
+---
+
+## A5 implementation record — complete
+
+A5 — **Plugin & Skill Platform** is complete and validated.
+
+- Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
+- A4 prior validated HEAD: `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`
+- A5 validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
+- Formal plan remains unchanged; A5 implemented the frozen Plugin/Skill split without a material architecture/scope change.
+- Do not merge `main`; continue A6 on the same implementation branch.
+
+### Implemented
+
+A5 turns the A0 Plugin/Skill contract skeleton into an operational Native platform.
+
+#### Atria Plugin contract and dependency/permission model
+
+The Native Plugin contract now has explicit:
+
+- Host Plugin permissions;
+- Host Plugin capabilities;
+- package-runtime-v1 capabilities;
+- supported contribution types;
+- exact Plugin dependencies with optional dependency support.
+
+Dependency resolution is deterministic and dependency-first. Missing required dependencies, exact-version mismatches and cycles fail closed.
+
+Package runtime capabilities map onto the existing Package permission model. For example:
+
+- `runtime.ui` requires Package `custom-ui`;
+- `runtime.command` requires Package `runtime-tools`;
+- `runtime.rule` / `runtime.reducer` require Package `world-write`.
+
+No second permission authority was created.
+
+#### Contribution Registry
+
+A5 adds `src/native/plugin-platform.js` with a Native `ContributionRegistry`.
+
+It distinguishes Build and Play contribution surfaces and reuses the existing A2 Resource Registry for Plugin-defined authoring resource types.
+
+A Host Plugin `authoring.resource` contribution is registered into the existing Resource Registry as:
+
+- provider = Plugin;
+- authority = `plugin-source`.
+
+The Contribution Registry is runtime coordination/registration only; it is not a Package, Project, Session, World or Timeline persistence store.
+
+#### Host Plugin boundary
+
+A5 adds an explicit `HostPluginBoundary` and `src/native/host-plugin-loader.js`.
+
+Executable Host Plugin code may run only after:
+
+- Atria Plugin manifest validation;
+- dependency checks;
+- manifest permission declaration checks;
+- explicit permission grants;
+- Host capability checks.
+
+The Host Plugin API deliberately exposes bounded capabilities instead of Native repositories.
+
+Plugin authoring writes are forced to:
+
+`Authoring Operation → Workspace → ChangeSet`
+
+with `origin: { kind: 'plugin', id: <pluginId> }`.
+
+A Plugin cannot obtain SessionRepo / PackageRepo / WorldRepo / Branch / Timeline persistence authority through the new API.
+
+The existing SillyTavern-style server plugin loader remains a legacy/internal compatibility surface; it was not renamed or promoted into the Atria Plugin standard.
+
+#### Package runtime v1
+
+Package plugins are compiled by `compilePackageRuntimePlugins()`.
+
+Package runtime v1 remains:
+
+- declarative;
+- capability-defined;
+- exact-dependency validated;
+- permission-gated;
+- non-executable.
+
+Package build rejects Host Plugin entrypoints and Host-only contributions. A package cannot smuggle executable Host Plugin code into the Package Runtime projection.
+
+The existing A0 recursive executable-payload guard remains authoritative and continues to reject JavaScript/module/worker/eval-style package payloads.
+
+#### Build integration
+
+`buildProjectPackage()` now validates the exact package plugin closure before producing the immutable PackageVersion.
+
+Host-only developer tooling is excluded from package runtime.
+
+Package Plugin definitions travel through the existing Project → Package build path; no new package manifest/persistence authority was added.
+
+#### Play integration
+
+Runtime Descriptor now derives exact package plugin identities and host-validated declarative runtime contribution projections from the Session-pinned PackageVersion.
+
+A5 adds:
+
+`public/scripts/extensions/game-runtime/ui/plugin-contributions.js`
+
+The A4 Experience Runtime consumes the package contribution registry without giving packages executable code authority.
+
+The first concrete Play integration is declarative `play.selector` contribution compilation into the existing A4 selector runtime. All Experience modes can inspect their Package Runtime contributions through the same dispatcher.
+
+A4 Text / Component / Hybrid / Full ownership rules remain unchanged.
+
+#### Native Skill scopes
+
+The new Native Skill identity remains strictly:
+
+- global;
+- project;
+- package.
+
+The existing Skills repository can now persist project/package scopes in addition to its legacy surfaces.
+
+A5 adds `src/native/skill-platform.js`, which resolves only Native global/project/exact-package scopes.
+
+Legacy Character/preset/orchestrator-preset scope support remains isolated to old chat/orchestration compatibility surfaces; Character scope is not accepted or restored as Native authoring identity.
+
+The orchestrator now has a dedicated Native skill resolver using:
+
+global → project → exact PackageVersion
+
+precedence while preserving the legacy resolver separately for legacy chat surfaces.
+
+### Key decisions
+
+- Plugin = executable/system capability + Build/Play contribution.
+- Skill = AI knowledge/workflow/guidance; a Skill does not gain Host execution authority.
+- New Host Plugin and Package Runtime are different trust/execution identities inside one Plugin ecosystem.
+- Package Runtime v1 does not execute arbitrary JavaScript.
+- Host Plugin code runs only behind explicit permission/capability checks.
+- Plugin writes use the same Authoring Operation/Workspace/ChangeSet path as Human and Agent writes.
+- A2 Resource Registry remains the resource-type registry; A5 does not create a competing registry authority.
+- Runtime Descriptor remains derived from exact PackageVersion + EntryPoint.
+- Package/Session/Branch/Timeline/World persistence authority is unchanged.
+- Native Skill scope does not include Character.
+- Formal plan did not change.
+
+### Guard / CI
+
+A5 added:
+
+- `scripts/check-a5-plugin-skill-platform.mjs`
+- `.github/workflows/native-authoring-platform-a5.yml`
+- `tests/native/plugin-platform.test.js`
+- `tests/native/plugin-build-play.test.js`
+- `tests/native/native-skill-platform.test.js`
+- `tests/game-runtime/plugin-contributions.test.js`
+
+The A5 residual guard enforces:
+
+- Host Plugin authoring uses Plugin origin and the shared authoring boundary;
+- Host Plugin API does not expose competing Native persistence authorities;
+- package runtime rejects Host Plugin execution;
+- package-runtime-v1 remains declarative and rejects executable payloads;
+- Build validates package plugin closure;
+- Runtime Descriptor projects exact Package Runtime plugins;
+- A4 Experience Runtime consumes host-validated declarative Play contributions;
+- package Play contribution code has no eval/Function/Worker/dynamic-import execution path;
+- Native Skill platform is global/project/package and does not restore Character identity.
+
+### Validation
+
+Validated on A5 HEAD `eefd6550d9b2af6c2777984e12d5f61de0898415`.
+
+**Native Authoring Platform A5 Checks #2**
+
+- Run: **35809294986**
+- focused + adjacent regressions: **16 suites / 145 tests passed**
+- A5 Plugin & Skill Platform residual guard: **success**
+- A5 guard syntax: **success**
+- frozen A0/A1/A2/A3/A4 guards: **success**
+- A5 focused ESLint: **success**
+- full root lint: **success**
+
+Independent frozen workflows on the same HEAD:
+
+- **A0 Checks #92**, Run **35809294999** — success.
+- **A1 Checks #79**, Run **35809294967** — success.
+- **A2 Checks #77**, Run **35809295009** — success.
+- **A3 Checks #43**, Run **35809294982** — success.
+- **A4 Checks #11**, Run **35809294981** — success.
+
+### Explicitly not implemented in A5
+
+- A6 Native Product Frontend redesign;
+- A7 Studio Authoring UX;
+- A8 Project Agent / Vibe Coding;
+- A9 final obsolete product-surface removal;
+- arbitrary-JavaScript package runtime;
+- full online/community plugin marketplace.
+
+### A6 entry conditions
+
+A6 starts only from the actual latest remote HEAD of `refactor/atria-native-authoring-platform-product-frontend`, preserving A0–A5.
+
+A6 must consume the established Native Package / Resource / Authoring / Runtime Descriptor / Experience / Plugin / Skill authorities. It must not create alternate persistence or runtime authority, and it must not start A7 Studio UX or A8 Project Agent implementation early.
