@@ -1,44 +1,65 @@
 import { loadGameSelectorDefinitions } from './declarative.js';
+import { createPackageRuntimeContributionRegistry } from './plugin-contributions.js';
 import { createFullGameHost } from './full-host.js';
 import { createAtriaSurfaceAdapter } from './host-surfaces.js';
-import {
-    activateGameImmersiveProvider,
-    loadGameImmersiveDefinition,
-} from './immersive.js';
 import { loadGameComponentDefinition } from './package.js';
 import { createComponentUiRuntime } from './runtime.js';
 import { createSelectorRuntime } from './selectors.js';
 import { createSurfaceHost } from './surfaces.js';
 
-export async function activateGamePackageUi(packageState, worldSession, options = {}) {
-    const ui = packageState?.manifest?.ui;
-    if (!ui) return null;
-    if (!['component', 'hybrid', 'full'].includes(ui.mode)) {
-        throw new Error(`Unsupported Game UI mode '${String(ui.mode)}'`);
+const EXPERIENCE_MODES = new Set(['text', 'component', 'hybrid', 'full']);
+
+function createTextExperienceSession(contributions) {
+    let disposed = false;
+    return Object.freeze({
+        mode: 'text',
+        status: 'active',
+        mountId: null,
+        recoveryActive: false,
+        getContributions(query = {}) {
+            return contributions.list(query);
+        },
+        refresh() {
+            return [];
+        },
+        async dispose() {
+            if (disposed) return;
+            disposed = true;
+        },
+    });
+}
+
+export async function activateNativeExperienceRuntime(packageState, worldSession, options = {}) {
+    const experience = packageState?.runtime?.experience;
+    const mode = String(experience?.mode || '').trim();
+    if (!EXPERIENCE_MODES.has(mode)) {
+        throw new Error(`Unsupported Native Experience mode '${mode}'`);
     }
+
+    const contributions = createPackageRuntimeContributionRegistry(packageState?.runtime?.plugins || []);
+
+    // Text remains the A3 host ABI. It participates in the same Experience
+    // dispatcher, but A4 does not replace Native Conversation / Composer.
+    if (mode === 'text') return createTextExperienceSession(contributions);
 
     const documentRef = options.document || globalThis.document;
     if (!documentRef) {
-        throw new Error('Game UI activation requires a document');
+        throw new Error('Native Experience UI activation requires a document');
     }
 
     const shellFoundation = options.shell || globalThis.Atria?.shell || null;
     const nativePlayHost = options.nativePlayHost || shellFoundation?.getPlayHost?.() || null;
-
-    const [selectorDefinitions, immersiveDefinition] = await Promise.all([
-        loadGameSelectorDefinitions(packageState, {
+    const selectorDefinitions = [
+        ...await loadGameSelectorDefinitions(packageState, {
             fetchImpl: options.fetchImpl,
             headers: options.headers || {},
         }),
-        loadGameImmersiveDefinition(packageState, {
-            fetchImpl: options.fetchImpl,
-            headers: options.headers || {},
-        }),
-    ]);
+        ...contributions.selectorDefinitions(),
+    ];
 
-    const isFull = ui.mode === 'full';
+    const isFull = mode === 'full';
     const adapter = isFull ? null : createAtriaSurfaceAdapter(documentRef, {
-        mode: ui.mode,
+        mode,
         shell: shellFoundation,
         nativePlayHost,
     });
@@ -46,18 +67,16 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         ? createFullGameHost(documentRef, {
             shell: shellFoundation,
             nativePlayHost,
-            onExit: options.hostActions?.exitGameUi,
+            onExit: options.hostActions?.exitExperience,
             onStopGeneration: options.hostActions?.stopGeneration,
-            onDisablePackage: options.hostActions?.disablePackage,
+            onSave: options.hostActions?.save,
             onDiagnostics: options.hostActions?.openDiagnostics,
         })
         : null;
 
     const surfaceHost = createSurfaceHost({
         resolveSurface(surfaceId) {
-            if (isFull) {
-                return surfaceId === 'app.root' ? fullHost.root : null;
-            }
+            if (isFull) return surfaceId === 'app.root' ? fullHost.root : null;
             return adapter.resolveSurface(surfaceId);
         },
         createElement: tag => documentRef.createElement(tag),
@@ -78,7 +97,7 @@ export async function activateGamePackageUi(packageState, worldSession, options 
                 return result;
             }
             if (!worldSession?.dispatchCommandInternal) {
-                throw new Error('Game UI cannot dispatch commands without an active World/Logic session');
+                throw new Error('Experience Runtime cannot dispatch without an active Native World/Logic session');
             }
             const result = await worldSession.dispatchCommandInternal(commandId, args);
             selectors.refresh();
@@ -86,7 +105,7 @@ export async function activateGamePackageUi(packageState, worldSession, options 
         },
         async simulate(commandId, args) {
             if (!worldSession?.simulateCommandInternal) {
-                throw new Error('Game UI cannot simulate commands without an active World/Logic session');
+                throw new Error('Experience Runtime cannot simulate without an active Native World/Logic session');
             }
             return await worldSession.simulateCommandInternal(commandId, args);
         },
@@ -100,7 +119,6 @@ export async function activateGamePackageUi(packageState, worldSession, options 
     });
 
     let mounted = null;
-    let immersiveSession = null;
     try {
         const definition = await loadGameComponentDefinition(packageState, {
             document: documentRef,
@@ -109,24 +127,10 @@ export async function activateGamePackageUi(packageState, worldSession, options 
             headers: options.headers || {},
             nativePlayHost,
         });
-        if (!definition) {
-            fullHost?.dispose();
-            adapter?.destroy();
-            return null;
-        }
+        if (!definition) throw new Error(mode + ' Experience did not resolve a Component Model');
         mounted = await componentRuntime.mountComponent(definition);
-
-        immersiveSession = await activateGameImmersiveProvider({
-            definition: immersiveDefinition,
-            selectors,
-            actions,
-            packageId: packageState?.manifest?.id,
-            immersiveApi: options.immersiveApi || globalThis.Atria?.immersive,
-        });
-
         fullHost?.activate();
     } catch (error) {
-        immersiveSession?.dispose?.();
         await componentRuntime.unmountAll();
         surfaceHost.unmountAll();
         fullHost?.dispose();
@@ -136,27 +140,23 @@ export async function activateGamePackageUi(packageState, worldSession, options 
 
     let disposed = false;
     return Object.freeze({
-        mode: ui.mode,
+        mode,
         status: 'active',
         get mountId() {
             return mounted?.id || null;
         },
-        get immersiveStatus() {
-            return immersiveSession?.status || null;
-        },
         get recoveryActive() {
             return fullHost?.isActive?.() || false;
         },
+        getContributions(query = {}) {
+            return contributions.list(query);
+        },
         refresh() {
-            const changed = componentRuntime.refreshSelectors();
-            void immersiveSession?.refresh?.();
-            return changed;
+            return componentRuntime.refreshSelectors();
         },
         async dispose() {
             if (disposed) return;
             disposed = true;
-            immersiveSession?.dispose?.();
-            immersiveSession = null;
             await componentRuntime.unmountAll();
             surfaceHost.unmountAll();
             fullHost?.dispose();

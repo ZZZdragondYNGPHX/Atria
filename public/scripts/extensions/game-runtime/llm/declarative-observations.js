@@ -59,15 +59,10 @@ export function compileGameObservationDefinitions(raw) {
 }
 
 export async function loadGameObservationDefinitions(packageState, options = {}) {
-    const resource = packageState?.manifest?.llm?.observations;
+    const resource = packageState?.runtime?.game?.observations;
     if (!resource) return [];
 
-    const charId = String(packageState?.charId || '').trim();
-    if (!charId) {
-        throw new Error('Game Observation resource cannot load without a character package id');
-    }
-
-    const raw = await loadGamePackageJsonResource(charId, resource, {
+    const raw = await loadGamePackageJsonResource(packageState, resource, {
         fetchImpl: options.fetchImpl,
         headers: options.headers || {},
     });

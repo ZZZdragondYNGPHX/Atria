@@ -15,8 +15,10 @@ import { createOrchestratorGameRuntimeApi } from '../../public/scripts/extension
 function makeTurn() {
     return createTurnContext({
         anchor: {
-            branchPath: [0, 1],
-            journalNextSeq: 4,
+            sessionId: 'session_test',
+            branchId: 'branch_test',
+            revisionId: 'revision_test',
+            eventSeq: 4,
             serial: 20,
         },
         userInput: 'Open the gate',

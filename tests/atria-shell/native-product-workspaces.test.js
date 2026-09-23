@@ -159,6 +159,117 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
                     }],
                 });
             }
+            if (path === '/api/native/studio/projects') {
+                return response([{
+                    project: {
+                        projectId: 'project_11111111111111111111111111111111',
+                        packageId: 'pkg_11111111111111111111111111111111',
+                        displayName: 'Native Project',
+                        updatedAt: 2,
+                    },
+                    revision: {
+                        projectId: 'project_11111111111111111111111111111111',
+                        revision: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                    },
+                }]);
+            }
+            if (path === '/api/native/studio/projects/project_11111111111111111111111111111111') {
+                return response({
+                    source: {
+                        project: {
+                            projectId: 'project_11111111111111111111111111111111',
+                            packageId: 'pkg_11111111111111111111111111111111',
+                            displayName: 'Native Project',
+                            updatedAt: 2,
+                        },
+                        package: {
+                            name: 'Native Project Work',
+                            version: '1.0.0',
+                            entryPoints: [{
+                                entryPointId: 'entrypoint_11111111111111111111111111111111',
+                                displayName: 'Start',
+                                actorIds: [],
+                                worldIds: [],
+                                knowledgeBindingIds: [],
+                                runtime: { experience: { mode: 'text' } },
+                            }],
+                            actors: [],
+                            capabilities: [],
+                            permissions: [],
+                        },
+                        worlds: [],
+                        knowledge: [],
+                        knowledgeBindings: [],
+                        dependencies: {
+                            worlds: [{
+                                worldId: 'world_11111111111111111111111111111111',
+                                worldRevisionId: 'worldrev_11111111111111111111111111111111',
+                            }],
+                            knowledge: [{
+                                knowledgeBaseId: 'kb_11111111111111111111111111111111',
+                                knowledgeRevisionId: 'kbrev_11111111111111111111111111111111',
+                            }],
+                            knowledgeBindings: [],
+                            assets: [],
+                        },
+                        assetFiles: [],
+                    },
+                    files: [{ path: 'ui/main.json', size: 10 }],
+                    revision: {
+                        projectId: 'project_11111111111111111111111111111111',
+                        revision: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                    },
+                });
+            }
+            if (path === '/api/native/studio/resources/registry') {
+                return response({ schemaVersion: 1, graphMode: 'derived-readonly', descriptors: [] });
+            }
+            if (path === '/api/native/studio/resources/graph') {
+                return response({ nodes: [], edges: [] });
+            }
+            if (path.startsWith('/api/native/studio/resources?projectId=')) {
+                return response([]);
+            }
+            if (path === '/api/native/studio/library/resources') {
+                return response([
+                    {
+                        resourceType: 'core.world',
+                        resourceId: 'world_11111111111111111111111111111111',
+                        displayName: 'Native World',
+                        currentRevision: 'worldrev_22222222222222222222222222222222',
+                        revisions: [
+                            'worldrev_11111111111111111111111111111111',
+                            'worldrev_22222222222222222222222222222222',
+                        ],
+                        authority: 'native-library',
+                    },
+                    {
+                        resourceType: 'core.knowledge',
+                        resourceId: 'kb_11111111111111111111111111111111',
+                        displayName: 'Native Knowledge',
+                        currentRevision: 'kbrev_22222222222222222222222222222222',
+                        revisions: [
+                            'kbrev_11111111111111111111111111111111',
+                            'kbrev_22222222222222222222222222222222',
+                        ],
+                        authority: 'native-library',
+                    },
+                ]);
+            }
+            if (path === '/api/native/studio/projects/project_11111111111111111111111111111111/history?limit=40') {
+                return response([]);
+            }
+            if (
+                path === '/api/native/studio/projects/project_11111111111111111111111111111111/resources/update'
+                && method === 'POST'
+            ) {
+                return response({
+                    changeSet: {
+                        changeSetId: 'changeset_update',
+                        resultingRevision: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                    },
+                });
+            }
             if (path === '/api/native/product/projects') {
                 return response([{
                     projectId: 'project_11111111111111111111111111111111',
@@ -271,26 +382,26 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         controller.dispose();
     });
 
-    test('Studio lists ProjectStore projects and saves exact World/Knowledge/Binding dependencies', async () => {
+    test('Build opens Atria Studio and explicitly updates an exact Library revision through Native Studio', async () => {
         const slot = document.getElementById('slot');
-        const host = { openStudio: jest.fn() };
+        const host = { openBuild: jest.fn() };
         const controller = mountNativeStudioWorkspace({
             document,
             slot,
-            route: { domain: 'studio', child: null },
+            route: { domain: 'build', child: null },
             host,
         });
         await flush();
 
-        expect(slot.querySelector('[data-atria-studio-projects="true"]')).not.toBeNull();
-        slot.querySelector('[data-atria-studio-project-id] button').click();
-        expect(host.openStudio).toHaveBeenCalledWith(
+        expect(slot.querySelector('[data-atria-build-projects="true"]')).not.toBeNull();
+        slot.querySelector('[data-atria-build-project-id] button').click();
+        expect(host.openBuild).toHaveBeenCalledWith(
             'project_11111111111111111111111111111111',
             'Native Project',
         );
 
         controller.updateRoute({
-            domain: 'studio',
+            domain: 'build',
             child: {
                 id: 'project:project_11111111111111111111111111111111',
                 kind: 'detail',
@@ -298,34 +409,31 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         });
         await flush();
 
-        expect(slot.querySelector('[data-atria-studio-project-detail]')).not.toBeNull();
-        const worldRow = slot.querySelector('[data-atria-dependency-kind="world"]');
-        const knowledgeRow = slot.querySelector('[data-atria-dependency-kind="knowledge"]');
-        expect(worldRow.querySelector('input').checked).toBe(true);
-        expect(worldRow.querySelector('select').value).toBe('worldrev_11111111111111111111111111111111');
-        expect(knowledgeRow.querySelector('input').checked).toBe(true);
-        expect(knowledgeRow.querySelector('select').value).toBe('kbrev_11111111111111111111111111111111');
-        expect(slot.querySelector('[data-atria-knowledge-binding-id] input').checked).toBe(true);
+        expect(slot.querySelector('[data-atria-studio-workspace]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-studio-resource-tree="true"]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-studio-inspector="true"]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-studio-activity="true"]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-studio-mobile-nav="true"]')).not.toBeNull();
 
-        worldRow.querySelector('select').value = 'worldrev_22222222222222222222222222222222';
-        knowledgeRow.querySelector('select').value = 'kbrev_22222222222222222222222222222222';
-        [...slot.querySelectorAll('button')].find(node => node.textContent === 'Save Dependencies').click();
+        slot.querySelector('[data-atria-studio-resource="worlds"]').click();
+        await flush();
+        const updateButton = [...slot.querySelectorAll('.atria-studio-library-relations__row button')]
+            .find(node => node.textContent === 'Update');
+        expect(updateButton).toBeTruthy();
+        updateButton.click();
         await flush();
 
-        const put = requests.find(item => item.method === 'PUT');
-        expect(JSON.parse(put.body)).toEqual({
-            dependencies: {
-                worlds: [{
-                    worldId: 'world_11111111111111111111111111111111',
-                    worldRevisionId: 'worldrev_22222222222222222222222222222222',
-                }],
-                knowledge: [{
-                    knowledgeBaseId: 'kb_11111111111111111111111111111111',
-                    knowledgeRevisionId: 'kbrev_22222222222222222222222222222222',
-                }],
-                knowledgeBindings: ['kbinding_11111111111111111111111111111111'],
-            },
-        });
+        const update = requests.find(item => (
+            item.path.endsWith('/resources/update') && item.method === 'POST'
+        ));
+        expect(JSON.parse(update.body)).toEqual(expect.objectContaining({
+            resourceType: 'core.world',
+            resourceId: 'world_11111111111111111111111111111111',
+            fromRevision: 'worldrev_11111111111111111111111111111111',
+            toRevision: 'worldrev_22222222222222222222222222222222',
+            baseRevision: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            origin: { kind: 'human', id: 'atria.studio' },
+        }));
 
         controller.dispose();
     });

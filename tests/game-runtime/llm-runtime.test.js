@@ -17,17 +17,10 @@ function makeSession() {
                 seq: 1,
                 type: 'CombatStarted',
                 payload: { enemy: 'guard' },
-                branchPath: [0, 1],
+                branchId: 'branch_root',
                 meta: {
                     command: { id: 'start_combat', transactionId: 'tx:1' },
                 },
-            },
-            {
-                id: 'event:other',
-                seq: 99,
-                type: 'HiddenBranchEvent',
-                payload: { secret: true },
-                branchPath: [0, 2],
             },
         ],
     };
@@ -37,7 +30,9 @@ function makeSession() {
     return {
         getState: () => structuredClone(state),
         getJournal: () => structuredClone(journal),
-        getBranchPath: () => [0, 1],
+        getSessionId: () => 'session_native',
+        getBranchId: () => 'branch_root',
+        getRevisionId: () => 'revision_current',
         getCommands: () => [
             {
                 id: 'attack',
@@ -104,7 +99,7 @@ function makeSession() {
                     seq,
                     type: 'DamageDealt',
                     payload: { amount: 1 },
-                    branchPath: [0, 1],
+                    branchId: 'branch_root',
                     meta: {
                         command: {
                             id: 'attack',
@@ -122,7 +117,7 @@ function makeSession() {
                     seq,
                     type: 'ThreatRecorded',
                     payload: { severity: args.severity },
-                    branchPath: [0, 1],
+                    branchId: 'branch_root',
                     meta: {
                         command: {
                             id: 'record_threat',
@@ -174,8 +169,8 @@ function makeSession() {
     };
 }
 
-describe('R5 Game LLM Runtime vertical slice', () => {
-    test('builds active-branch Observation and filters Command tools from it', async () => {
+describe('A3 Game LLM Runtime vertical slice', () => {
+    test('builds Native-branch Observation and filters Command tools from it', async () => {
         const session = makeSession();
         const runtime = createGameLlmRuntime({
             worldSession: session,
@@ -203,7 +198,6 @@ describe('R5 Game LLM Runtime vertical slice', () => {
         expect(observation.recentEvents.map(event => event.type))
             .toEqual(['CombatStarted']);
         expect(JSON.stringify(observation)).not.toContain('secretSeed');
-        expect(JSON.stringify(observation)).not.toContain('HiddenBranchEvent');
 
         const catalog = await runtime.getCommandTools({ observation });
         expect(catalog.tools.map(tool => tool.commandId)).toEqual(['attack']);
@@ -548,9 +542,9 @@ describe('R5 Game LLM Runtime vertical slice', () => {
                             source: 'memory_graph',
                             authority: 'historical_context',
                             branch: {
-                                id: turn.anchor.branchId,
-                                floor: turn.anchor.floor,
-                                swipe: turn.anchor.swipe,
+                                sessionId: turn.anchor.sessionId,
+                                branchId: turn.anchor.branchId,
+                                revisionId: turn.anchor.revisionId,
                             },
                             query: 'player history',
                             content: 'Earlier in the story, the player had 20 HP.',
@@ -814,14 +808,14 @@ describe('R5 Game LLM Runtime vertical slice', () => {
                     seq: 1,
                     type: 'CombatStarted',
                     payload: { enemy: 'guard' },
-                    branchPath: [0, 1],
+                    branchId: 'branch_root',
                 },
                 {
                     id: 'event:2',
                     seq: 2,
                     type: 'DamageDealt',
                     payload: { amount: 3 },
-                    branchPath: [0, 1],
+                    branchId: 'branch_root',
                     meta: {
                         command: { id: 'attack', transactionId: 'tx:2' },
                     },
@@ -840,7 +834,7 @@ describe('R5 Game LLM Runtime vertical slice', () => {
                 id: 'event:2',
                 type: 'DamageDealt',
                 payload: { amount: 3 },
-                branchPath: [0, 1],
+                branchId: 'branch_root',
             }],
             afterState: {
                 hp: 7,

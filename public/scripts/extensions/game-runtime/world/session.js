@@ -1,112 +1,224 @@
 import { createGameLogicRuntime } from '../logic/runtime.js';
 import { createReducerRegistry } from '../logic/reducers.js';
-import {
-    buildGameBranchPath,
-    normalizeGameBranchPath,
-} from './branch.js';
 import { loadGameWorldDefinition } from './package.js';
-import { createChatStateWorldPersistence } from './persistence.js';
-import { createWorldRuntime } from './runtime.js';
+import { assertValidWorldState } from './schema.js';
+
+export const GAME_RUNTIME_STATE_NAMESPACE = 'atri_game_runtime';
+
+function clone(value) {
+    return value === undefined ? undefined : structuredClone(value);
+}
+
+function deepFreeze(value, seen = new Set()) {
+    if (!value || typeof value !== 'object' || seen.has(value)) return value;
+    seen.add(value);
+    Object.freeze(value);
+    for (const child of Object.values(value)) deepFreeze(child, seen);
+    return value;
+}
+
+function normalizeRuntimeState(value) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const events = Array.isArray(source.events)
+        ? source.events.filter(event => event && typeof event === 'object').map(clone)
+        : [];
+    const maxSeq = events.reduce((max, event) => Math.max(max, Number(event.seq) || 0), 0);
+    return {
+        schemaVersion: 1,
+        nextEventSeq: Math.max(maxSeq + 1, Number.isInteger(source.nextEventSeq) ? source.nextEventSeq : 1),
+        events,
+    };
+}
+
+function eventState(nativeRuntime) {
+    return normalizeRuntimeState(nativeRuntime.snapshot?.states?.[GAME_RUNTIME_STATE_NAMESPACE]);
+}
+
+function nativeIdentity(nativeRuntime) {
+    const snapshot = nativeRuntime.snapshot;
+    if (!snapshot?.session?.sessionId || !snapshot?.revision?.revisionId || !snapshot?.revision?.branchId) {
+        throw new Error('Native Game World requires current Session/Branch/Revision identity');
+    }
+    return {
+        sessionId: snapshot.session.sessionId,
+        branchId: snapshot.revision.branchId,
+        revisionId: snapshot.revision.revisionId,
+    };
+}
+
+function currentWorldState(nativeRuntime, definition) {
+    const root = nativeRuntime.snapshot?.states?.atri_world_state;
+    if (!root) throw new Error('Native Game World state is unavailable');
+    if (definition.worldId === null) return clone(root.initialState ?? {});
+    const slot = root.worlds?.[definition.worldId];
+    if (!slot || slot.worldRevisionId !== definition.worldRevisionId) {
+        throw new Error('Native Game World revision changed unexpectedly');
+    }
+    return clone(slot.state);
+}
+
+function nextWorldRoot(nativeRuntime, definition, nextState) {
+    const root = clone(nativeRuntime.snapshot.states.atri_world_state);
+    if (definition.worldId === null) {
+        root.initialState = clone(nextState);
+    } else {
+        root.worlds[definition.worldId] = {
+            ...root.worlds[definition.worldId],
+            state: clone(nextState),
+        };
+    }
+    return root;
+}
 
 export async function createGameWorldSession(options = {}) {
     const packageState = options.packageState;
-    const context = options.context;
-    const getChat = typeof options.getChat === 'function'
-        ? options.getChat
-        : () => context?.chat || [];
-
-    const definition = await loadGameWorldDefinition(packageState, {
-        fetchImpl: options.fetchImpl,
-        headers: options.headers || {},
-    });
-    if (!definition) {
-        return null;
+    const nativeRuntime = options.nativeRuntime;
+    if (!nativeRuntime?.active || !nativeRuntime.snapshot || typeof nativeRuntime.commitStatePatch !== 'function') {
+        throw new Error('Game World session requires the active Native Session Runtime');
     }
 
+    const definition = loadGameWorldDefinition(packageState, { nativeRuntime });
     const reducerRegistry = options.reducerRegistry || createReducerRegistry(options.reducers || {});
     if (!reducerRegistry || typeof reducerRegistry.toMap !== 'function' || typeof reducerRegistry.list !== 'function') {
         throw new Error('Game World session requires a Reducer Registry');
     }
+    const reducers = reducerRegistry.toMap();
 
-    const runtime = createWorldRuntime({
-        initialState: definition.initialState,
-        schema: definition.schema,
-        reducers: reducerRegistry.toMap(),
-        persistence: options.persistence || createChatStateWorldPersistence(context),
-        snapshotEvery: options.snapshotEvery,
-        maxSnapshots: options.maxSnapshots,
-    });
+    function getState() {
+        const state = currentWorldState(nativeRuntime, definition);
+        assertValidWorldState(state, definition.schema);
+        return state;
+    }
 
-    let branchOverride = null;
-    const isNativeSession = () => {
-        if (typeof options.isNativeSession === 'function') return Boolean(options.isNativeSession());
-        return getChat().some(message => String(message?.atri_native?.messageId || '').trim());
-    };
-    const getAuthoritativeBranchPath = () => isNativeSession() ? [] : buildGameBranchPath(getChat());
-    const resolveActiveBranchPath = () => branchOverride
-        ? [...branchOverride]
-        : getAuthoritativeBranchPath();
+    function getJournal() {
+        const state = eventState(nativeRuntime);
+        const identity = nativeIdentity(nativeRuntime);
+        return {
+            version: 1,
+            nextSeq: state.nextEventSeq,
+            events: clone(state.events),
+            branchId: identity.branchId,
+            revisionId: identity.revisionId,
+        };
+    }
 
-    await runtime.load(resolveActiveBranchPath());
+    function projectEvents(drafts) {
+        const identity = nativeIdentity(nativeRuntime);
+        const runtimeState = eventState(nativeRuntime);
+        let state = getState();
+        const committed = [];
+        for (const draft of Array.isArray(drafts) ? drafts : []) {
+            const type = String(draft?.type || '').trim();
+            if (!type) throw new Error('World Event type must be a non-empty string');
+            const reducer = reducers.get(type);
+            if (typeof reducer !== 'function') {
+                throw new Error(`No World reducer registered for event type '${type}'`);
+            }
+            const seq = runtimeState.nextEventSeq++;
+            const event = {
+                id: 'event:' + identity.branchId + ':' + seq,
+                seq,
+                type,
+                payload: clone(draft?.payload ?? {}),
+                ...(draft?.meta && typeof draft.meta === 'object' && !Array.isArray(draft.meta)
+                    ? { meta: clone(draft.meta) }
+                    : {}),
+                branchId: identity.branchId,
+            };
+            const next = reducer(deepFreeze(clone(state)), clone(event));
+            if (!next || typeof next !== 'object' || Array.isArray(next)) {
+                throw new Error(`World reducer '${type}' must return an object state`);
+            }
+            assertValidWorldState(next, definition.schema);
+            state = clone(next);
+            committed.push(event);
+            runtimeState.events.push(clone(event));
+        }
+        return { identity, state, committed, runtimeState };
+    }
+
+    function simulateEvents(eventDrafts) {
+        const projected = projectEvents(eventDrafts);
+        return {
+            state: clone(projected.state),
+            events: clone(projected.committed),
+            committed: clone(projected.committed),
+            branchId: projected.identity.branchId,
+            revisionId: projected.identity.revisionId,
+        };
+    }
+
+    async function commitEvents(eventDrafts) {
+        const projected = projectEvents(eventDrafts);
+        if (projected.committed.length === 0) {
+            return {
+                state: clone(projected.state),
+                committed: [],
+                branchId: projected.identity.branchId,
+                revisionId: projected.identity.revisionId,
+            };
+        }
+
+        const next = await nativeRuntime.commitStatePatch({
+            atri_world_state: nextWorldRoot(nativeRuntime, definition, projected.state),
+            [GAME_RUNTIME_STATE_NAMESPACE]: projected.runtimeState,
+        });
+        return {
+            state: getState(),
+            committed: clone(projected.committed),
+            branchId: next.revision.branchId,
+            revisionId: next.revision.revisionId,
+        };
+    }
 
     const logicRuntime = createGameLogicRuntime({
         commands: options.commands || [],
         rules: options.rules || [],
         ruleLimits: options.ruleLimits,
         rngSeed: options.rngSeed ?? (
-            packageState?.manifest?.id
-                ? packageState.manifest.id + '@' + String(packageState.manifest.version || '0')
+            packageState?.descriptor?.packageVersionId
+                ? packageState.descriptor.packageVersionId + ':' + packageState.descriptor.entryPointId
                 : undefined
         ),
         world: {
-            getState: () => runtime.getState(),
-            getJournal: () => runtime.getJournal(),
-            getSnapshot: () => runtime.getSnapshot(),
-            commitEvents: eventDrafts => runtime.commitEvents(eventDrafts, {
-                branchPath: resolveActiveBranchPath(),
-            }),
-            simulateEvents: eventDrafts => runtime.simulateEvents(eventDrafts, {
-                branchPath: resolveActiveBranchPath(),
-            }),
+            getState,
+            getJournal,
+            getSnapshot() {
+                const identity = nativeIdentity(nativeRuntime);
+                return {
+                    state: getState(),
+                    branchId: identity.branchId,
+                    revisionId: identity.revisionId,
+                };
+            },
+            commitEvents,
+            simulateEvents,
         },
     });
 
-    async function syncRuntimeBranch(options = {}) {
-        if (options.clearOverride === true) branchOverride = null;
-        return runtime.switchBranch(resolveActiveBranchPath());
-    }
-
     return Object.freeze({
-        definition: Object.freeze(structuredClone(definition)),
+        definition: Object.freeze(clone(definition)),
 
         async syncBranch() {
-            return syncRuntimeBranch({ clearOverride: true });
+            return {
+                ...nativeIdentity(nativeRuntime),
+                state: getState(),
+            };
         },
 
-        async switchBranchPathInternal(branchPath) {
-            branchOverride = normalizeGameBranchPath(branchPath);
-            return runtime.switchBranch(branchOverride);
+        getState,
+        getJournal,
+
+        getSessionId() {
+            return nativeIdentity(nativeRuntime).sessionId;
         },
 
-        async clearBranchOverrideInternal() {
-            branchOverride = null;
-            return runtime.switchBranch(getAuthoritativeBranchPath());
+        getBranchId() {
+            return nativeIdentity(nativeRuntime).branchId;
         },
 
-        getChatBranchPathInternal() {
-            return getAuthoritativeBranchPath();
-        },
-
-        getState() {
-            return runtime.getState();
-        },
-
-        getJournal() {
-            return runtime.getJournal();
-        },
-
-        getBranchPath() {
-            return [...runtime.getSnapshot().branchPath];
+        getRevisionId() {
+            return nativeIdentity(nativeRuntime).revisionId;
         },
 
         getCommands() {
@@ -129,20 +241,16 @@ export async function createGameWorldSession(options = {}) {
             return logicRuntime.validateCommand(commandId, args);
         },
 
-        async dispatchCommandInternal(commandId, args) {
-            await syncRuntimeBranch();
+        dispatchCommandInternal(commandId, args) {
             return logicRuntime.dispatch(commandId, args);
         },
 
-        async simulateCommandInternal(commandId, args) {
-            await syncRuntimeBranch();
+        simulateCommandInternal(commandId, args) {
             return logicRuntime.simulate(commandId, args);
         },
 
-        async commitEventsInternal(eventDrafts) {
-            return runtime.commitEvents(eventDrafts, {
-                branchPath: resolveActiveBranchPath(),
-            });
+        commitEventsInternal(eventDrafts) {
+            return commitEvents(eventDrafts);
         },
     });
 }

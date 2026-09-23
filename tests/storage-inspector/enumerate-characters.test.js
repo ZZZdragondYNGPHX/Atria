@@ -25,7 +25,7 @@ describe('enumerateCategory("characters") · L2', () => {
             const sera = res.entries[0];
             expect(sera.kind).toBe('character-group');
             expect(sera.canDrill).toBe(true);
-            // Sera 应包含: PNG 60K + 3 sprites 各 20K + 2 sidecars
+            // Sera 应包含: PNG 60K + 3 sprites 各 20K + current editor sidecar
             expect(sera.sizeBytes).toBeGreaterThan(60_000 + 60_000);  // > 120K
             // Coding 只有 PNG · 无 sprites/sidecar
             const coding = res.entries[1];
@@ -44,7 +44,7 @@ describe('enumerateCharacterDetail · L3 叶子', () => {
             expect(res.isLeaf).toBe(true);
             expect(res.path).toEqual(['characters', 'default_Seraphina']);
             const kinds = res.entries.map(e => e.kind).sort();
-            expect(kinds).toEqual(expect.arrayContaining(['character-card', 'character-sprites', 'character-sidecar', 'character-sidecar']));
+            expect(kinds).toEqual(expect.arrayContaining(['character-card', 'character-sprites', 'character-sidecar']));
 
             const card = res.entries.find(e => e.kind === 'character-card');
             const sprites = res.entries.find(e => e.kind === 'character-sprites');
@@ -57,7 +57,7 @@ describe('enumerateCharacterDetail · L3 叶子', () => {
 
             const sidecars = res.entries.filter(e => e.kind === 'character-sidecar');
             const labels = sidecars.map(s => s.label).sort();
-            expect(labels).toEqual(['atri_cea_editor_iter_sessions', 'cardapp_studio_sessions_v2']);
+            expect(labels).toEqual(['atri_cea_editor_iter_sessions']);
         } finally {
             await cleanup();
         }

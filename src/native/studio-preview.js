@@ -1,7 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { assertNativeId } from './identity.js';
 import { inspectAtriaPackageContainer } from './package-container.js';
+import { compileNativeRuntimeDescriptor } from './runtime-descriptor.js';
 
 function clonePreview(value) {
     return structuredClone(value);
@@ -24,6 +25,22 @@ export class StudioPreviewHost {
             : inspected.manifest.entryPoints.find(item => item.entryPointId === entryPointId);
         if (!entryPoint) throw new Error('Studio Preview entry point does not exist in Package');
 
+        const runtimeExperience = entryPoint.runtime?.experience
+            ?? inspected.manifest.runtime?.experience
+            ?? null;
+        const compiledRuntime = runtimeExperience == null
+            ? null
+            : compileNativeRuntimeDescriptor({
+                packageVersion: {
+                    packageId: inspected.manifest.packageId,
+                    packageVersionId: inspected.manifest.packageVersionId,
+                    version: inspected.manifest.version,
+                    packageContentHash: createHash('sha256').update(archive).digest('hex'),
+                },
+                manifest: inspected.manifest,
+                entryPointId: entryPoint.entryPointId,
+            });
+
         const previewId = 'preview_' + String(this._previewIdFactory()).replaceAll('-', '').toLowerCase();
         if (!/^preview_[a-f0-9]{32}$/.test(previewId)) {
             throw new Error('StudioPreviewHost previewIdFactory must return a UUID-shaped value');
@@ -36,6 +53,8 @@ export class StudioPreviewHost {
             packageId: inspected.manifest.packageId,
             packageVersionId: inspected.manifest.packageVersionId,
             entryPointId: entryPoint.entryPointId,
+            descriptor: compiledRuntime?.descriptor ?? null,
+            runtime: compiledRuntime?.runtime ?? null,
             persisted: false,
             createdAt: Date.now(),
             manifest: inspected.manifest,
@@ -62,6 +81,7 @@ export class StudioPreviewHost {
             packageId: record.packageId,
             packageVersionId: record.packageVersionId,
             entryPointId: record.entryPointId,
+            experience: record.descriptor?.experience ?? null,
             persisted: false,
             createdAt: record.createdAt,
         }));

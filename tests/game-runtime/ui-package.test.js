@@ -2,155 +2,153 @@
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
-import {
-    loadGameComponentDefinition,
-    sanitizeGameHtmlFragment,
-} from '../../public/scripts/extensions/game-runtime/ui/package.js';
+import { loadGameComponentDefinition } from '../../public/scripts/extensions/game-runtime/ui/package.js';
 
-describe('Game Package Component HTML', () => {
+function packageState(mode, options = {}) {
+    return {
+        sessionId: options.sessionId || 'session_ui',
+        runtime: {
+            experience: {
+                mode,
+                componentModelVersion: 1,
+                component: options.component || 'ui/main.json',
+                ...(options.selectors ? { selectors: options.selectors } : {}),
+                surface: options.surface || 'app.root',
+            },
+        },
+    };
+}
+
+function jsonFetch(payload) {
+    return jest.fn(async (url, init) => {
+        expect(url).toBe('/api/native/session/runtime/resource');
+        expect(init.method).toBe('POST');
+        return {
+            ok: true,
+            status: 200,
+            async json() {
+                return JSON.parse(JSON.stringify(payload));
+            },
+        };
+    });
+}
+
+function mountContext() {
+    return {
+        container: document.createElement('div'),
+        selectors: {
+            get: jest.fn(() => null),
+            subscribe: jest.fn(() => jest.fn()),
+        },
+        actions: {
+            dispatch: jest.fn(),
+            simulate: jest.fn(),
+        },
+    };
+}
+
+describe('A4 Native Package Component Model', () => {
     beforeEach(() => {
         document.body.innerHTML = '';
     });
 
-    test('sanitizes active content and inline handlers before mounting', () => {
-        const fragment = sanitizeGameHtmlFragment(document, `
-            <section id="safe" onclick="window.pwned = true">
-                <a id="bad-link" href="javascript:alert(1)">bad</a>
-                <img id="safe-image" src="assets/portrait.png" onerror="alert(1)">
-                <script>window.pwned = true</script>
-                <iframe src="https://example.com"></iframe>
-                <style>body { display:none }</style>
-                <span>HP</span>
-            </section>
-        `);
-
-        const host = document.createElement('div');
-        host.appendChild(fragment);
-
-        expect(host.querySelector('#safe')).not.toBeNull();
-        expect(host.querySelector('#safe').hasAttribute('onclick')).toBe(false);
-        expect(host.querySelector('#bad-link').hasAttribute('href')).toBe(false);
-        expect(host.querySelector('#safe-image').getAttribute('src')).toBe('assets/portrait.png');
-        expect(host.querySelector('#safe-image').hasAttribute('onerror')).toBe(false);
-        expect(host.querySelector('script')).toBeNull();
-        expect(host.querySelector('iframe')).toBeNull();
-        expect(host.querySelector('style')).toBeNull();
-    });
-
-    test('loads a declared static Component entry and preserves stable surface metadata', async () => {
-        const fetchImpl = jest.fn(async () => ({
-            ok: true,
-            status: 200,
-            async text() {
-                return '<section id="hud">HUD</section>';
-            },
-        }));
-        const definition = await loadGameComponentDefinition({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'component',
-                    entry: 'ui/hud.html',
-                    surface: 'chat.header',
-                },
-            },
-        }, {
-            document,
-            fetchImpl,
+    test('loads a Session-bound declarative Component Model and preserves semantic surface metadata', async () => {
+        const fetchImpl = jsonFetch({
+            id: 'hud',
+            type: 'container',
+            props: { className: 'hud-shell' },
+            children: [
+                { id: 'label', type: 'text', props: { text: 'Ready' } },
+            ],
         });
 
-        expect(fetchImpl).toHaveBeenCalledWith(
-            '/api/card-app/hero/ui/hud.html',
-            expect.objectContaining({ cache: 'no-store' }),
+        const definition = await loadGameComponentDefinition(
+            packageState('component', { surface: 'chat.header' }),
+            { document, fetchImpl },
         );
-        expect(definition).toMatchObject({
-            id: 'package.component',
-            surface: 'chat.header',
-            className: 'atria-game-package-component',
-        });
 
-        const container = document.createElement('div');
-        const dispose = await definition.mount({
-            container,
-            selectors: {
-                get() {
-                    throw new Error('fixture has no selectors');
-                },
-                subscribe() {
-                    throw new Error('fixture has no selectors');
-                },
-            },
-            actions: {
-                dispatch: jest.fn(),
-                simulate: jest.fn(),
-            },
+        expect(definition).toMatchObject({
+            id: 'experience.component',
+            mode: 'component',
+            surface: 'chat.header',
+            className: 'atria-experience-component',
+            componentResource: 'ui/main.json',
         });
-        expect(container.querySelector('#hud')?.textContent).toBe('HUD');
-        expect(container.dataset.atriaGameDevice).toBeTruthy();
+        expect(fetchImpl).toHaveBeenCalledWith(
+            '/api/native/session/runtime/resource',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({
+                    sessionId: 'session_ui',
+                    path: 'ui/main.json',
+                }),
+                cache: 'no-store',
+            }),
+        );
+
+        const context = mountContext();
+        const dispose = await definition.mount(context);
+        expect(context.container.querySelector('[data-atria-component-id="hud"]')).not.toBeNull();
+        expect(context.container.querySelector('[data-atria-component-id="label"]')?.textContent).toBe('Ready');
+        expect(context.container.dataset.atriaGameDevice).toBeTruthy();
         dispose();
     });
 
-    test('Component cannot claim native components and Hybrid is rooted at app.root', async () => {
-        const componentFetch = jest.fn(async () => ({
-            ok: true,
-            status: 200,
-            async text() {
-                return '<div data-atria-native-component="conversation"></div>';
-            },
-        }));
-        const component = await loadGameComponentDefinition({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'component',
-                    entry: 'ui/hud.html',
-                    surface: 'app.root',
-                },
-            },
-        }, {
-            document,
-            fetchImpl: componentFetch,
-        });
-
-        await expect(component.mount({
-            container: document.createElement('div'),
-            selectors: {
-                get: jest.fn(),
-                subscribe: jest.fn(),
-            },
-            actions: {
-                dispatch: jest.fn(),
-                simulate: jest.fn(),
-            },
-        })).rejects.toThrow(/Native component slots require Hybrid or Full/);
-
-        for (const mode of ['hybrid', 'full']) {
-            await expect(loadGameComponentDefinition({
-                charId: 'hero',
-                manifest: {
-                    ui: {
-                        mode,
-                        entry: 'ui/game.html',
-                        surface: 'sidebar.left',
-                    },
-                },
-            }, {
+    test('Component cannot claim Native slots', async () => {
+        await expect(loadGameComponentDefinition(
+            packageState('component'),
+            {
                 document,
-                fetchImpl: componentFetch,
-            })).rejects.toThrow(/requires the app.root surface/);
+                fetchImpl: jsonFetch({
+                    id: 'root',
+                    type: 'native-slot',
+                    props: { component: 'conversation' },
+                }),
+            },
+        )).rejects.toThrow(/cannot claim Native Conversation\/Composer slots/);
+    });
+
+    test('Hybrid and Full require app.root while sharing the same Component Model loader', async () => {
+        for (const mode of ['hybrid', 'full']) {
+            await expect(loadGameComponentDefinition(
+                packageState(mode, { surface: 'sidebar.left' }),
+                {
+                    document,
+                    fetchImpl: jsonFetch({ id: 'root', type: 'container' }),
+                },
+            )).rejects.toThrow(/requires the app.root surface/);
+
+            const definition = await loadGameComponentDefinition(
+                packageState(mode),
+                {
+                    document,
+                    fetchImpl: jsonFetch({
+                        id: 'root',
+                        type: 'container',
+                        children: [{
+                            id: 'conversation',
+                            type: 'native-slot',
+                            props: { component: 'conversation' },
+                        }],
+                    }),
+                },
+            );
+            expect(definition.mode).toBe(mode);
+            expect(definition.surface).toBe('app.root');
         }
     });
 
-    test('rejects script-style Component entrypoints in the static R4 slice', async () => {
+    test('rejects script-style Component resources and does not expose arbitrary package JavaScript', async () => {
         await expect(loadGameComponentDefinition({
-            charId: 'hero',
-            manifest: {
-                ui: {
+            sessionId: 'session_ui',
+            runtime: {
+                experience: {
                     mode: 'component',
-                    entry: 'ui/main.js',
+                    componentModelVersion: 1,
+                    component: 'ui/main.js',
                     surface: 'app.root',
                 },
             },
-        }, { document })).rejects.toThrow(/must be an \.html file/);
+        }, { document })).rejects.toThrow(/declarative \.json/);
     });
 });

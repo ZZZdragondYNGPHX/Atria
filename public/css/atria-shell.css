@@ -771,9 +771,9 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 }
 
 
-/* R7C — Game Surface Integration
- * Game-first Hybrid/Full/legacy CardApp presentations may own Stage content,
- * but Host chrome and Host Recovery remain outside package ownership.
+/* Native Game Surface Integration
+ * Hybrid/Full Native experiences may own Stage content, while Host chrome
+ * and Host Recovery remain outside package ownership.
  */
 .atria-stage[data-atria-stage-owner] {
     place-items: stretch;
@@ -782,8 +782,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 }
 
 .atria-game-host-surface--stage,
-#atria-game-full-root[data-atria-game-host-scope="stage"],
-#card-app-container[data-atria-legacy-full-stage="true"] {
+#atria-game-full-root[data-atria-game-host-scope="stage"] {
     width: 100%;
     height: 100%;
     min-width: 0;
@@ -800,13 +799,11 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     pointer-events: auto;
 }
 
-.atria-host-recovery > #atria-game-full-recovery,
-.atria-host-recovery > #card-app-host-recovery {
+.atria-host-recovery > #atria-game-full-recovery {
     pointer-events: auto;
 }
 
-#atria-game-full-recovery[data-atria-game-host-scope="host-recovery"],
-.atria-card-app-host-recovery {
+#atria-game-full-recovery[data-atria-game-host-scope="host-recovery"] {
     position: absolute !important;
     top: max(var(--atri-space-2), var(--atri-safe-area-top)) !important;
     right: max(var(--atri-space-2), var(--atri-safe-area-right)) !important;
@@ -817,8 +814,7 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     max-width: calc(100% - (2 * var(--atri-space-2)));
 }
 
-.atria-game-recovery-action,
-.atria-card-app-recovery-action {
+.atria-game-recovery-action {
     min-height: 36px;
     padding: var(--atri-space-2) var(--atri-space-3);
     border: 1px solid var(--atri-color-border);
@@ -829,13 +825,11 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     cursor: pointer;
 }
 
-.atria-game-recovery-action:hover,
-.atria-card-app-recovery-action:hover {
+.atria-game-recovery-action:hover {
     background: var(--atri-color-surface-hover);
 }
 
-.atria-app-shell[data-atria-viewport="compact"] #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"],
-.atria-app-shell[data-atria-viewport="compact"] .atria-card-app-host-recovery {
+.atria-app-shell[data-atria-viewport="compact"] #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"] {
     top: calc(var(--atri-safe-area-top) + var(--atri-space-1)) !important;
     right: calc(var(--atri-safe-area-right) + var(--atri-space-1)) !important;
 }
@@ -1630,4 +1624,440 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 .atria-native-portable-save__result pre {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+}
+
+
+/* A6 — Native Product Frontend
+ * The SillyTavern conversation subtree remains mounted only as the internal
+ * generation ABI. Atria Conversation / Composer are the product-facing Play
+ * surface and consume the committed Native Session projection.
+ */
+.atria-native-play-host > #sheld.atria-native-play-abi {
+    position: absolute !important;
+    inset: auto auto 0 0 !important;
+    width: 1px !important;
+    height: 1px !important;
+    min-width: 1px !important;
+    min-height: 1px !important;
+    max-width: 1px !important;
+    max-height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    clip-path: inset(50%) !important;
+    z-index: -1 !important;
+}
+
+.atria-play-product {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    background: var(--atri-color-canvas);
+}
+
+.atria-play-product[hidden] {
+    display: none !important;
+}
+
+.atria-play-session-header {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--atri-space-3);
+    padding: var(--atri-space-3) var(--atri-space-4);
+    border-bottom: 1px solid var(--atri-color-border);
+    background: var(--atri-color-surface);
+}
+
+.atria-play-session-header__identity {
+    min-width: 0;
+}
+
+.atria-play-session-header h2,
+.atria-play-session-header p {
+    margin: 0;
+}
+
+.atria-play-session-header h2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--atri-font-size-heading);
+}
+
+.atria-play-session-header p {
+    margin-top: var(--atri-space-1);
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+}
+
+.atria-play-session-header__state {
+    flex: 0 0 auto;
+    padding: var(--atri-space-1) var(--atri-space-2);
+    border-radius: var(--atri-radius-pill);
+    background: var(--atri-color-raised);
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+}
+
+.atria-play-session-header__state[data-tone="success"] {
+    color: var(--atri-color-success);
+}
+
+.atria-play-session-header__state[data-tone="danger"] {
+    color: var(--atri-color-danger);
+}
+
+.atria-play-product-surface:empty {
+    display: none;
+}
+
+.atria-play-conversation-component {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+}
+
+.atria-play-conversation {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: var(--atri-space-5) max(var(--atri-space-4), calc((100% - 860px) / 2));
+    display: flex;
+    flex-direction: column;
+    gap: var(--atri-space-4);
+    scroll-behavior: smooth;
+}
+
+.atria-play-message {
+    width: min(100%, 760px);
+    display: grid;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-3) var(--atri-space-4);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-surface);
+    box-shadow: var(--atri-shadow-surface);
+}
+
+.atria-play-message[data-role="user"] {
+    align-self: flex-end;
+    width: min(88%, 680px);
+    background: color-mix(in srgb, var(--atri-color-accent) 12%, var(--atri-color-surface));
+}
+
+.atria-play-message[data-role="system"] {
+    width: min(92%, 720px);
+    align-self: center;
+    border-style: dashed;
+    background: transparent;
+}
+
+.atria-play-message__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--atri-space-2);
+}
+
+.atria-play-message__header > span {
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+    text-transform: capitalize;
+}
+
+.atria-play-message__body {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.65;
+}
+
+.atria-play-conversation__empty {
+    margin: auto;
+    color: var(--atri-color-text-muted);
+    text-align: center;
+}
+
+.atria-play-composer-component {
+    min-width: 0;
+    border-top: 1px solid var(--atri-color-border);
+    background: color-mix(in srgb, var(--atri-color-surface) 96%, transparent);
+}
+
+.atria-play-composer {
+    width: min(100%, 900px);
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--atri-space-2);
+    align-items: end;
+    padding: var(--atri-space-3) var(--atri-space-4);
+}
+
+.atria-play-composer__input {
+    width: 100%;
+    min-height: 44px;
+    max-height: 180px;
+    resize: vertical;
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-raised);
+    color: var(--atri-color-text);
+    padding: var(--atri-space-3);
+    outline: none;
+}
+
+.atria-play-composer__input:focus {
+    border-color: var(--atri-color-focus);
+}
+
+.atria-play-composer__send {
+    min-width: 72px;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-accent);
+    color: var(--atri-color-accent-contrast);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.atria-play-composer__send:disabled,
+.atria-play-composer__input:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.atria-play-composer__status {
+    grid-column: 1 / -1;
+    min-height: 1em;
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+}
+
+.atria-domain-workspace[data-atria-domain-workspace="library"][data-atria-pattern="master-detail"] {
+    grid-template-columns: minmax(172px, 220px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: var(--atri-space-4);
+}
+
+.atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__nav {
+    flex-direction: column;
+    border-bottom: 0;
+    border-right: 1px solid var(--atri-color-border);
+    padding: 0 var(--atri-space-3) 0 0;
+}
+
+.atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__body {
+    padding-top: 0;
+}
+
+.atria-runtime-capabilities {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--atri-space-3);
+}
+
+@media (max-width: 719px) {
+    .atria-play-session-header {
+        padding: var(--atri-space-2) var(--atri-space-3);
+    }
+
+    .atria-play-conversation {
+        padding: var(--atri-space-3);
+        gap: var(--atri-space-3);
+    }
+
+    .atria-play-message,
+    .atria-play-message[data-role="user"],
+    .atria-play-message[data-role="system"] {
+        width: 100%;
+    }
+
+    .atria-play-composer {
+        padding: var(--atri-space-2) var(--atri-space-3);
+    }
+
+    .atria-domain-workspace[data-atria-domain-workspace="library"][data-atria-pattern="master-detail"] {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 0;
+    }
+
+    .atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__nav {
+        flex-direction: row;
+        border-right: 0;
+        border-bottom: 1px solid var(--atri-color-border);
+        padding: 0 0 var(--atri-space-2);
+    }
+
+    .atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__body {
+        padding-top: var(--atri-space-3);
+    }
+}
+
+
+/* A6 utility product surfaces. Legacy controllers can remain under Advanced,
+ * but the primary product content is rendered by Atria components.
+ */
+.atria-native-plugin-surface,
+.atria-product-settings-grid,
+.atria-account-overview {
+    min-width: 0;
+}
+
+.atria-native-plugin-surface {
+    display: grid;
+    gap: var(--atri-space-3);
+}
+
+.atria-native-plugin-surface > h3,
+.atria-native-plugin-surface > p,
+.atria-product-setting-card > h3,
+.atria-product-setting-card > p,
+.atria-account-card > h3,
+.atria-account-card > p {
+    margin: 0;
+}
+
+.atria-native-plugin-surface > p,
+.atria-product-setting-card > p,
+.atria-account-card > p {
+    color: var(--atri-color-text-muted);
+    line-height: 1.5;
+}
+
+.atria-plugin-legacy-body {
+    display: grid;
+    gap: var(--atri-space-3);
+}
+
+.atria-product-settings-grid,
+.atria-account-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--atri-space-3);
+}
+
+.atria-product-setting-card,
+.atria-account-card {
+    min-width: 0;
+    min-height: 156px;
+    display: grid;
+    align-content: start;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-4);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-surface);
+}
+
+.atria-product-setting-card__value {
+    color: var(--atri-color-accent);
+}
+
+.atria-product-setting-card > .atria-utility-action {
+    margin-top: auto;
+    justify-self: start;
+}
+
+.atria-settings-compatibility,
+.atria-account-advanced,
+.atria-plugin-compatibility[data-atria-legacy-plugins="true"] {
+    margin-top: var(--atri-space-4);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: color-mix(in srgb, var(--atri-color-surface) 70%, transparent);
+}
+
+.atria-settings-compatibility > summary,
+.atria-account-advanced > summary,
+.atria-plugin-compatibility[data-atria-legacy-plugins="true"] > summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.atria-account-advanced__body {
+    min-width: 0;
+    margin-top: var(--atri-space-3);
+}
+
+@media (max-width: 719px) {
+    .atria-product-settings-grid,
+    .atria-account-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .atria-product-setting-card,
+    .atria-account-card {
+        min-height: 0;
+    }
+}
+
+
+.atria-runtime-connections {
+    display: grid;
+    gap: var(--atri-space-4);
+}
+
+.atria-runtime-connections__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--atri-space-3);
+}
+
+.atria-runtime-connection-card {
+    display: grid;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-surface);
+}
+
+.atria-runtime-connection-card > h3,
+.atria-runtime-connection-card > p {
+    margin: 0;
+}
+
+.atria-runtime-connection-card > p {
+    color: var(--atri-color-text-muted);
+}
+
+.atria-runtime-connection-card__status {
+    justify-self: start;
+    padding: 2px var(--atri-space-2);
+    border-radius: var(--atri-radius-pill);
+    background: var(--atri-color-raised);
+    color: var(--atri-color-text-muted);
+    font-size: var(--atri-font-size-caption);
+}
+
+.atria-runtime-connection-card__status[data-tone="success"] {
+    color: var(--atri-color-success);
+}
+
+.atria-runtime-connection-advanced {
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: color-mix(in srgb, var(--atri-color-surface) 70%, transparent);
+}
+
+.atria-runtime-connection-advanced > summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.atria-runtime-connection-advanced__body {
+    min-width: 0;
+    margin-top: var(--atri-space-3);
 }

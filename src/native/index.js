@@ -75,6 +75,40 @@ export {
 export { ProjectStore } from './project-store.js';
 
 export {
+    STUDIO_SOURCE_OPERATION_TYPES,
+    StudioService,
+} from './authoring/studio-service.js';
+
+export {
+    PROJECT_AGENT_MAX_REPAIR_ROUNDS,
+    ProjectAgentService,
+    buildProjectAgentTools,
+} from './project-agent.js';
+
+export {
+    CORE_RESOURCE_DESCRIPTORS,
+    ResourceRegistry,
+    createCoreResourceRegistry,
+} from './authoring/resource-registry.js';
+
+export {
+    LIBRARY_RESOURCE_TYPES,
+    NativeLibraryService,
+} from './authoring/library-service.js';
+
+export { ResourceGraph } from './authoring/resource-graph.js';
+
+export {
+    compileNativeRuntimeDescriptor,
+    resolveNativeRuntimePackage,
+} from './runtime-descriptor.js';
+
+export {
+    LibraryAuthoringPlanner,
+    STUDIO_RESOURCE_OPERATION_TYPES,
+} from './authoring/library-authoring.js';
+
+export {
     NativeDependencyError,
     resolveProjectDependencyClosure,
 } from './dependency-closure.js';
@@ -117,3 +151,57 @@ export {
 export { NativeSaveSystem } from './save-system.js';
 
 export { NativeProductService } from './product-service.js';
+
+export {
+    ATRIA_AUTHORING_ORIGINS,
+    ATRIA_AUTHORING_SCHEMA_VERSION,
+    ATRIA_CHANGESET_VALIDATION_STATES,
+    ATRIA_COMPONENT_MODEL_VERSION,
+    ATRIA_EXPERIENCE_MODES,
+    ATRIA_NATIVE_SKILL_SCOPES,
+    ATRIA_HOST_PLUGIN_CAPABILITIES,
+    ATRIA_PACKAGE_RUNTIME_CAPABILITIES,
+    ATRIA_PACKAGE_RUNTIME_FORMAT,
+    ATRIA_PACKAGE_RUNTIME_VERSION,
+    ATRIA_PLUGIN_API_VERSION,
+    ATRIA_PLUGIN_CONTRIBUTION_TYPES,
+    ATRIA_PLUGIN_PERMISSIONS,
+    ATRIA_PLUGIN_FORMAT,
+    ATRIA_PLUGIN_SCHEMA_VERSION,
+    ATRIA_PROJECT_CONFLICT_CODE,
+    ATRIA_RESOURCE_AUTHORITIES,
+    ATRIA_RESOURCE_CAPABILITIES,
+    ATRIA_RESOURCE_GRAPH_MODE,
+    ATRIA_RUNTIME_DESCRIPTOR_FORMAT,
+    ATRIA_RUNTIME_DESCRIPTOR_SCHEMA_VERSION,
+    assertAtriaPluginContract,
+    assertAuthoringChangeSet,
+    assertAuthoringOperation,
+    assertAuthoringWorkspace,
+    assertExperienceContract,
+    assertNativeRuntimeDescriptor,
+    assertNativeSkillScope,
+    assertPackageRuntimeV1,
+    assertProjectRevision,
+    assertProjectRevisionConflict,
+    assertResourceDescriptor,
+    assertResourceRegistryContract,
+} from './authoring-contracts.js';
+
+
+export {
+    ContributionRegistry,
+    HostPluginBoundary,
+    compilePackageRuntimePlugins,
+    resolvePluginDependencies,
+} from './plugin-platform.js';
+
+export {
+    ATRIA_HOST_PLUGIN_MANIFEST,
+    loadAtriaHostPluginDirectory,
+} from './host-plugin-loader.js';
+
+export {
+    resolveNativeSkillEntries,
+    toNativeSkillScope,
+} from './skill-platform.js';

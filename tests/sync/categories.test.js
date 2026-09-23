@@ -47,7 +47,6 @@ describe('SYNC_CATEGORIES registry', () => {
             groups: '/tmp/fake-user/groups',
             groupChats: '/tmp/fake-user/group chats',
             worlds: '/tmp/fake-user/worlds',
-            cardApps: '/tmp/fake-user/card-apps',
             openAI_Settings: '/tmp/fake-user/OpenAI Settings',
             novelAI_Settings: '/tmp/fake-user/NovelAI Settings',
             koboldAI_Settings: '/tmp/fake-user/KoboldAI Settings',

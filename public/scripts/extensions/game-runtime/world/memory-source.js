@@ -1,5 +1,3 @@
-import { getGameBranchId, isGameBranchPathCompatible } from './branch.js';
-
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);
 }
@@ -10,11 +8,10 @@ export function buildGameEventMemorySource(event) {
     }
     const eventId = String(event.id || '').trim();
     const type = String(event.type || '').trim();
-    if (!eventId || !type) {
-        throw new Error('Game Event memory source requires event id and type');
+    const branchId = String(event.branchId || '').trim();
+    if (!eventId || !type || !branchId) {
+        throw new Error('Game Event memory source requires event id, type and Native branchId');
     }
-    const branchPath = Array.isArray(event.branchPath) ? [...event.branchPath] : [];
-    const branchId = String(event.branchId || getGameBranchId(branchPath));
     const commandId = String(event?.meta?.command?.id || '').trim();
     const payload = clone(event.payload ?? {});
     const content = JSON.stringify({
@@ -34,18 +31,15 @@ export function buildGameEventMemorySource(event) {
             eventId,
             type,
             payload,
-            branchPath,
+            branchId,
             commandId,
         ]),
         content,
     });
 }
 
-export function listActiveGameEventMemorySources(journal, activeBranchPath) {
-    const branchPath = Array.isArray(activeBranchPath) ? [...activeBranchPath] : [];
+export function listGameEventMemorySources(journal) {
     return Object.freeze(
-        (journal?.events || [])
-            .filter(event => isGameBranchPathCompatible(event?.branchPath || [], branchPath))
-            .map(buildGameEventMemorySource),
+        (journal?.events || []).map(buildGameEventMemorySource),
     );
 }

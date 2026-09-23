@@ -6,7 +6,7 @@ import { mountNativePlayHost } from '../../public/scripts/atria-shell/native-pla
 import { createAtriaSurfaceAdapter } from '../../public/scripts/extensions/game-runtime/ui/host-surfaces.js';
 import { createFullGameHost } from '../../public/scripts/extensions/game-runtime/ui/full-host.js';
 
-describe('R7B Native Play Host', () => {
+describe('A6 Native Play Product Host', () => {
     beforeEach(() => {
         document.body.innerHTML = `
             <div id="native-before"></div>
@@ -26,7 +26,7 @@ describe('R7B Native Play Host', () => {
         `;
     });
 
-    test('reparents one live native subtree without replacing Conversation or Composer nodes', () => {
+    test('keeps one legacy generation ABI while Atria owns visible Conversation and Composer', () => {
         const stage = document.getElementById('atria-stage');
         const sheld = document.getElementById('sheld');
         const chat = document.getElementById('chat');
@@ -51,6 +51,11 @@ describe('R7B Native Play Host', () => {
         expect(chat.parentElement).toBe(sheld);
         expect(formSheld.parentElement).toBe(sheld);
         expect(sendForm.parentElement).toBe(formSheld);
+        expect(sheld.classList.contains('atria-native-play-abi')).toBe(true);
+        expect(sheld.getAttribute('aria-hidden')).toBe('true');
+        expect(host.product.root.id).toBe('atria-play-product');
+        expect(host.product.conversation.id).toBe('atria-play-conversation');
+        expect(host.product.composer.id).toBe('atria-play-composer');
         expect(textarea.__atriaRuntimeMarker).toEqual({ composing: true });
         expect(document.querySelectorAll('#chat')).toHaveLength(1);
         expect(document.querySelectorAll('#send_form')).toHaveLength(1);
@@ -98,12 +103,14 @@ describe('R7B Native Play Host', () => {
         expect(document.getElementById('atria-native-play-host')).toBeNull();
     });
 
-    test('coordinates Hybrid native slots and Stage ownership without replacing native nodes', () => {
+    test('coordinates Hybrid Atria product components and Stage ownership without moving the legacy ABI', () => {
         const stage = document.getElementById('atria-stage');
         const host = mountNativePlayHost({ document, stage });
         const chat = host.native.chat;
         const sendForm = host.native.sendForm;
         const textarea = host.native.sendTextarea;
+        const productConversation = host.product.getComponent('conversation');
+        const productComposer = host.product.getComponent('composer');
 
         const gameSurface = document.createElement('section');
         gameSurface.id = 'hybrid-stage-surface';
@@ -128,13 +135,17 @@ describe('R7B Native Play Host', () => {
         expect(document.getElementById('chat')).toBe(chat);
         expect(document.getElementById('send_form')).toBe(sendForm);
         expect(document.getElementById('send_textarea')).toBe(textarea);
-        expect(chat.parentElement).toBe(conversationSlot);
-        expect(sendForm.parentElement).toBe(composerSlot);
+        expect(productConversation.parentElement).toBe(conversationSlot);
+        expect(productComposer.parentElement).toBe(composerSlot);
+        expect(chat.parentElement).toBe(host.native.sheld);
+        expect(sendForm.parentElement).toBe(host.native.formSheld);
         expect(host.assertIntegrity()).toBe(true);
         expect(() => host.acquireStageOwnership('game-runtime:full')).toThrow(/already owned/);
 
         composer.restore();
         conversation.restore();
+        expect(productConversation.parentElement).toBe(host.product.root);
+        expect(productComposer.parentElement).toBe(host.product.root);
         expect(chat.parentElement).toBe(host.native.sheld);
         expect(sendForm.parentElement).toBe(host.native.formSheld);
         expect(host.getActiveNativeComponents()).toEqual([]);
@@ -148,26 +159,24 @@ describe('R7B Native Play Host', () => {
         host.unmount();
     });
 
-    test('preserves R4 native component surface composition inside the moved subtree', () => {
+    test('mounts Component surfaces into Atria product Conversation and Composer', () => {
         const host = mountNativePlayHost({
             document,
             stage: document.getElementById('atria-stage'),
         });
-        const adapter = createAtriaSurfaceAdapter(document);
+        const adapter = createAtriaSurfaceAdapter(document, { nativePlayHost: host });
 
         const header = adapter.resolveSurface('chat.header');
         const footer = adapter.resolveSurface('chat.footer');
         const before = adapter.resolveSurface('composer.before');
         const after = adapter.resolveSurface('composer.after');
 
-        expect(header.parentElement).toBe(host.native.sheld);
-        expect(header.nextElementSibling).toBe(host.native.chat);
-        expect(footer.parentElement).toBe(host.native.sheld);
-        expect(footer.nextElementSibling).toBe(host.native.formSheld);
-        expect(before.parentElement).toBe(host.native.formSheld);
-        expect(before.nextElementSibling).toBe(host.native.sendForm);
-        expect(after.parentElement).toBe(host.native.formSheld);
-        expect(after.previousElementSibling).toBe(host.native.sendForm);
+        expect(header).toBe(host.resolveHostSurface('chat.header'));
+        expect(footer).toBe(host.resolveHostSurface('chat.footer'));
+        expect(before).toBe(host.resolveHostSurface('composer.before'));
+        expect(after).toBe(host.resolveHostSurface('composer.after'));
+        expect(header.closest('[data-atria-native-product-component="conversation"]')).not.toBeNull();
+        expect(before.closest('[data-atria-native-product-component="composer"]')).not.toBeNull();
 
         adapter.destroy();
         host.unmount();
@@ -179,7 +188,6 @@ describe('R7B Native Play Host', () => {
             stage: document.getElementById('atria-stage'),
         });
         const sheld = playHost.native.sheld;
-        sheld.style.display = 'flex';
         const full = createFullGameHost(document, {
             onExit: jest.fn(),
             onStopGeneration: jest.fn(),
@@ -188,12 +196,11 @@ describe('R7B Native Play Host', () => {
         });
 
         expect(full.activate()).toBe(true);
-        expect(sheld.style.display).toBe('none');
+        expect(playHost.root.style.display).toBe('');
         expect(full.recovery.parentElement).toBe(document.body);
         expect(full.root.contains(full.recovery)).toBe(false);
 
         full.dispose();
-        expect(sheld.style.display).toBe('flex');
         expect(sheld.parentElement).toBe(playHost.root);
         expect(playHost.assertIntegrity()).toBe(true);
 

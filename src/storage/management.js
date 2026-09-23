@@ -33,7 +33,6 @@ const SIMPLE_DIRS = Object.freeze({
 
 const OTHER_ROOTS = new Set([
     'groups',
-    'card-apps',
     'assets',
     'thumbnails',
     'image-metadata.json',

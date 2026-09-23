@@ -29,8 +29,10 @@ function request(overrides = {}) {
 function turn() {
     return createTurnContext({
         anchor: {
-            branchPath: [0, 1],
-            journalNextSeq: 5,
+            sessionId: 'session_test',
+            branchId: 'branch_test',
+            revisionId: 'revision_test',
+            eventSeq: 5,
             serial: 3,
         },
         userInput: 'You will regret this.',

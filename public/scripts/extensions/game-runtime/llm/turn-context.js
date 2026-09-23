@@ -1,8 +1,4 @@
 import { cloneGameLlmValue } from './clone.js';
-import {
-    getGameBranchId,
-    normalizeGameBranchPath,
-} from '../world/branch.js';
 
 export const TURN_FACT_PRECEDENCE = Object.freeze([
     'world_observation',
@@ -24,43 +20,38 @@ function deepFreeze(value, seen = new Set()) {
 }
 
 function normalizeAnchor(input = {}) {
-    const branchPath = normalizeGameBranchPath(input.branchPath || []);
-    const branchId = getGameBranchId(branchPath);
-    const floor = Number.isInteger(input.floor)
-        ? input.floor
-        : Math.max(-1, branchPath.length - 1);
-    const swipe = Number.isInteger(input.swipe)
-        ? input.swipe
-        : (branchPath.at(-1) ?? 0);
-    const journalNextSeq = Number.isInteger(input.journalNextSeq) && input.journalNextSeq >= 1
-        ? input.journalNextSeq
+    const sessionId = String(input.sessionId || '').trim();
+    const branchId = String(input.branchId || '').trim();
+    const revisionId = String(input.revisionId || '').trim();
+    const eventSeq = Number.isInteger(input.eventSeq) && input.eventSeq >= 1
+        ? input.eventSeq
         : 1;
     const serial = Number.isInteger(input.serial) && input.serial >= 0
         ? input.serial
         : 0;
-
-    if (floor < -1) throw new Error('Turn Context floor must be >= -1');
-    if (swipe < 0) throw new Error('Turn Context swipe must be >= 0');
-
+    if (!sessionId || !branchId || !revisionId) {
+        throw new Error('Turn Context requires Native Session/Branch/Revision identity');
+    }
     return Object.freeze({
-        branchPath: Object.freeze([...branchPath]),
+        sessionId,
         branchId,
-        floor,
-        swipe,
-        journalNextSeq,
+        revisionId,
+        eventSeq,
         serial,
     });
 }
 
 export function createTurnId(anchorInput = {}) {
     const anchor = normalizeAnchor(anchorInput);
+    const sessionToken = anchor.sessionId.replace(/[^A-Za-z0-9._-]/g, '_');
     const branchToken = anchor.branchId.replace(/[^A-Za-z0-9._-]/g, '_');
+    const revisionToken = anchor.revisionId.replace(/[^A-Za-z0-9._-]/g, '_');
     return [
         'turn',
+        sessionToken,
         branchToken,
-        'floor', anchor.floor,
-        'swipe', anchor.swipe,
-        'seq', anchor.journalNextSeq,
+        revisionToken,
+        'event', anchor.eventSeq,
         'n', anchor.serial,
     ].join(':');
 }
@@ -89,12 +80,12 @@ function buildTurnProvenance(input, anchor) {
     return {
         worldObservation: {
             authorityRank: 1,
-            source: 'world_runtime',
+            source: 'native_world_state',
             branchId: anchor.branchId,
         },
         committedEvents: {
             authorityRank: 2,
-            source: 'event_journal',
+            source: 'native_session_revision',
             items: committedEvents.map(event => ({
                 id: String(event?.id || '').trim() || null,
                 type: String(event?.type || '').trim() || null,
@@ -112,7 +103,7 @@ function buildTurnProvenance(input, anchor) {
         },
         activeBranchChat: {
             authorityRank: 4,
-            source: 'chat',
+            source: 'native_timeline',
             branchId: anchor.branchId,
             itemCount: recentChat.length,
         },

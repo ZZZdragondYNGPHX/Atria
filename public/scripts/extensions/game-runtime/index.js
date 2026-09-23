@@ -15,15 +15,16 @@ import { createRuntimeRoleRouter } from './llm/roles.js';
 import { loadGameObservationDefinitions } from './llm/declarative-observations.js';
 import { createGameLlmRuntime } from './llm/runtime.js';
 import { createGameTurnController } from './llm/turn-controller.js';
-import { listActiveGameEventMemorySources } from './world/memory-source.js';
-import { resolveGamePackageAssetUrl } from './manifest.js';
-import { GAME_PACKAGE_STATUS, loadGamePackage } from './package-loader.js';
-import { activateGamePackageUi } from './ui/live.js';
+import { listGameEventMemorySources } from './world/memory-source.js';
+import { GAME_PACKAGE_STATUS, loadNativeGamePackage } from './package-loader.js';
+import { activateNativeExperienceRuntime } from './ui/live.js';
 import { createGameWorldSession } from './world/session.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
     onNativeSessionLifecycle,
 } from '../../native/session-lifecycle.js';
+import { nativeProductClient } from '../../native/product-client.js';
+import { nativeSessionRuntime } from '../../native/session-runtime.js';
 
 const MODULE_NAME = 'game-runtime';
 export const GAME_PACKAGE_CHANGED_EVENT = 'atria:game-package-changed';
@@ -48,8 +49,9 @@ let currentTurnRecipes = null;
 let currentPackage = Object.freeze({
     status: GAME_PACKAGE_STATUS.NONE,
     active: false,
-    charId: '',
-    manifest: null,
+    sessionId: '',
+    descriptor: null,
+    runtime: null,
     errors: [],
 });
 
@@ -111,195 +113,79 @@ function createRuntimeSystems(worldSession, options = {}) {
     });
 
     const attemptBranches = new Map();
-    const turnMessageIndices = new Map();
+    const turnBases = new Map();
 
-    function getAttemptVariantIndex(branch) {
-        const path = Array.isArray(branch?.branchPath) ? branch.branchPath : [];
-        return Number.isInteger(path.at(-1)) ? path.at(-1) : 0;
+    async function ensureBranch(branchId) {
+        if (nativeSessionRuntime.snapshot?.revision?.branchId === branchId) return;
+        await nativeSessionRuntime.switchBranch(branchId);
     }
 
-    async function publishAttemptNarrative({ turnId, attemptId, branch, turn }) {
+    async function publishAttemptNarrative({ turnId, attemptId, turn }) {
         const prose = String(turn?.narrative?.text || '').trim();
         if (!prose) return null;
-
-        const variantIndex = getAttemptVariantIndex(branch);
-        let messageIndex = turnMessageIndices.get(turnId);
         const liveContext = getContext();
-        let message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
-
-        if (!message) {
-            messageIndex = await liveContext.addMessages({
-                name: liveContext.name2 || 'Assistant',
-                mes: prose,
-                is_user: false,
-                is_system: false,
-                swipe_id: variantIndex,
-                swipes: [prose],
-                swipe_info: [{
-                    extra: {
-                        atria_game_turn_id: turnId,
-                        atria_game_attempt_id: attemptId,
-                    },
-                }],
-                extra: {
-                    atria_game_turn_id: turnId,
-                    atria_game_attempt_id: attemptId,
-                },
-            });
-            turnMessageIndices.set(turnId, messageIndex);
-            return messageIndex;
-        }
-
-        const swipes = Array.isArray(message.swipes)
-            ? [...message.swipes]
-            : [String(message.mes || '')];
-        const swipeInfo = Array.isArray(message.swipe_info)
-            ? structuredClone(message.swipe_info)
-            : swipes.map(() => ({}));
-        while (swipes.length <= variantIndex) swipes.push('');
-        while (swipeInfo.length <= variantIndex) swipeInfo.push({});
-        swipes[variantIndex] = prose;
-        swipeInfo[variantIndex] = {
-            ...(swipeInfo[variantIndex] || {}),
+        await liveContext.addMessages({
+            name: liveContext.name2 || 'Assistant',
+            mes: prose,
+            is_user: false,
+            is_system: false,
             extra: {
-                ...(swipeInfo[variantIndex]?.extra || {}),
                 atria_game_turn_id: turnId,
                 atria_game_attempt_id: attemptId,
             },
-        };
-
-        await liveContext.updateMessages({
-            index: messageIndex,
-            patch: {
-                mes: prose,
-                swipe_id: variantIndex,
-                swipes,
-                swipe_info: swipeInfo,
-                extra: {
-                    ...(message.extra || {}),
-                    atria_game_turn_id: turnId,
-                    atria_game_attempt_id: attemptId,
-                },
-            },
         });
-        await liveContext.eventSource?.emit?.(liveContext.eventTypes?.MESSAGE_SWIPED, messageIndex);
-        return messageIndex;
-    }
-
-    async function activateAttemptMessage({ turnId, attemptId, branch }) {
-        const messageIndex = turnMessageIndices.get(turnId);
-        const liveContext = getContext();
-        const message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
-        if (!message) return;
-
-        const variantIndex = getAttemptVariantIndex(branch);
-        const swipes = Array.isArray(message.swipes) ? [...message.swipes] : [String(message.mes || '')];
-        if (variantIndex < 0 || variantIndex >= swipes.length || !String(swipes[variantIndex] || '').trim()) {
-            throw new Error(`Game narrative variant ${variantIndex} is unavailable`);
-        }
-        const swipeInfo = Array.isArray(message.swipe_info) ? message.swipe_info : [];
-        await liveContext.updateMessages({
-            index: messageIndex,
-            patch: {
-                mes: swipes[variantIndex],
-                swipe_id: variantIndex,
-                extra: {
-                    ...(message.extra || {}),
-                    ...(swipeInfo[variantIndex]?.extra || {}),
-                    atria_game_turn_id: turnId,
-                    atria_game_attempt_id: attemptId,
-                },
-            },
-        });
-        await liveContext.eventSource?.emit?.(liveContext.eventTypes?.MESSAGE_SWIPED, messageIndex);
+        await nativeSessionRuntime.persist();
+        return nativeSessionRuntime.snapshot?.timeline?.at(-1)?.messageId ?? null;
     }
 
     const turnController = createGameTurnController({
         adapter: {
-            async createAttemptBranch({ attemptIndex }) {
-                const base = typeof worldSession.getChatBranchPathInternal === 'function'
-                    ? worldSession.getChatBranchPathInternal()
-                    : worldSession.getBranchPath();
-                return {
-                    branchPath: [...base, attemptIndex],
-                    variantId: 'attempt:' + attemptIndex,
+            async createAttemptBranch({ turnId, attemptId, kind, baseAnchor }) {
+                if (!nativeSessionRuntime.active) {
+                    throw new Error('Game Turn attempt requires an active Native Session');
+                }
+                turnBases.set(turnId, structuredClone(baseAnchor));
+                const forked = await nativeSessionRuntime.forkRevision(baseAnchor.revisionId, {
+                    displayName: 'Game ' + String(kind || 'attempt'),
+                });
+                const branch = {
+                    sessionId: forked.session.sessionId,
+                    branchId: forked.revision.branchId,
+                    revisionId: forked.revision.revisionId,
                 };
+                if (attemptId) attemptBranches.set(attemptId, branch);
+                return branch;
             },
-            async prepareAttempt({ attemptId, branch }) {
-                attemptBranches.set(attemptId, [...branch.branchPath]);
-                await worldSession.switchBranchPathInternal?.(branch.branchPath);
+            async prepareAttempt({ turnId, attemptId, branch }) {
+                attemptBranches.set(attemptId, structuredClone(branch));
+                turnBases.set(turnId, turnBases.get(turnId) || structuredClone(branch));
+                await ensureBranch(branch.branchId);
             },
             async activateAttempt({ turnId, attemptId, branch, turn }) {
-                attemptBranches.set(attemptId, [...branch.branchPath]);
-                await worldSession.switchBranchPathInternal?.(branch.branchPath);
-                await publishAttemptNarrative({ turnId, attemptId, branch, turn });
+                attemptBranches.set(attemptId, structuredClone(branch));
+                await ensureBranch(branch.branchId);
+                await publishAttemptNarrative({ turnId, attemptId, turn });
             },
-            async activateAttemptBranch({ turnId, attemptId, branch }) {
-                attemptBranches.set(attemptId, [...branch.branchPath]);
-                await worldSession.switchBranchPathInternal?.(branch.branchPath);
-                await activateAttemptMessage({ turnId, attemptId, branch });
+            async activateAttemptBranch({ attemptId, branch }) {
+                attemptBranches.set(attemptId, structuredClone(branch));
+                await ensureBranch(branch.branchId);
             },
-            async deactivateAttempt({ restoreAttemptId }) {
-                const restore = restoreAttemptId
-                    ? attemptBranches.get(restoreAttemptId)
-                    : null;
-                if (restore) {
-                    await worldSession.switchBranchPathInternal?.(restore);
-                } else {
-                    await worldSession.clearBranchOverrideInternal?.();
-                }
+            async deactivateAttempt({ turnId, restoreAttemptId }) {
+                const restore = restoreAttemptId ? attemptBranches.get(restoreAttemptId) : null;
+                const base = turnBases.get(turnId);
+                const target = restore || base;
+                if (target?.branchId) await ensureBranch(target.branchId);
             },
             async restoreBeforeTurn({ turnId }) {
-                const messageIndex = turnMessageIndices.get(turnId);
-                if (Number.isInteger(messageIndex) && getContext().chat?.[messageIndex]) {
-                    await getContext().deleteMessages(messageIndex);
-                    turnMessageIndices.delete(turnId);
-                }
-                await worldSession.clearBranchOverrideInternal?.();
+                const base = turnBases.get(turnId);
+                if (base?.branchId) await ensureBranch(base.branchId);
             },
             async deleteAssistantResult({ turnId }) {
-                const messageIndex = turnMessageIndices.get(turnId);
-                const liveContext = getContext();
-                if (Number.isInteger(messageIndex) && liveContext.chat?.[messageIndex]) {
-                    await liveContext.deleteMessages(messageIndex);
-                }
-                turnMessageIndices.delete(turnId);
-                await worldSession.clearBranchOverrideInternal?.();
+                const base = turnBases.get(turnId);
+                if (base?.branchId) await ensureBranch(base.branchId);
             },
-            async replaceNarrative({ turnId, attemptId, variantId, prose }) {
-                const messageIndex = turnMessageIndices.get(turnId);
-                const liveContext = getContext();
-                const message = Number.isInteger(messageIndex) ? liveContext.chat?.[messageIndex] : null;
-                if (!message) return;
-                const activeSwipe = Number.isInteger(message.swipe_id) ? message.swipe_id : 0;
-                const swipes = Array.isArray(message.swipes) ? [...message.swipes] : [String(message.mes || '')];
-                const swipeInfo = Array.isArray(message.swipe_info)
-                    ? structuredClone(message.swipe_info)
-                    : swipes.map(() => ({}));
-                swipes[activeSwipe] = prose;
-                swipeInfo[activeSwipe] = {
-                    ...(swipeInfo[activeSwipe] || {}),
-                    extra: {
-                        ...(swipeInfo[activeSwipe]?.extra || {}),
-                        atria_game_turn_id: turnId,
-                        atria_game_attempt_id: attemptId,
-                        atria_game_prose_variant_id: variantId,
-                    },
-                };
-                await liveContext.updateMessages({
-                    index: messageIndex,
-                    patch: {
-                        mes: prose,
-                        swipes,
-                        swipe_info: swipeInfo,
-                        extra: {
-                            ...(message.extra || {}),
-                            atria_game_turn_id: turnId,
-                            atria_game_attempt_id: attemptId,
-                            atria_game_prose_variant_id: variantId,
-                        },
-                    },
-                });
+            async replaceNarrative() {
+                throw new Error('Committed Native narrative cannot be edited in place; retry the Turn to create a new Branch');
             },
         },
     });
@@ -315,14 +201,6 @@ function createRuntimeSystems(worldSession, options = {}) {
     };
 }
 
-function getCurrentCharacterPackageId() {
-    const context = getContext();
-    const characterId = context?.characterId;
-    if (characterId === null || characterId === undefined) return '';
-    const avatar = String(context?.characters?.[characterId]?.avatar || '').trim();
-    return avatar.endsWith('.png') ? avatar.slice(0, -4) : avatar;
-}
-
 function publishPackageState(next) {
     currentPackage = Object.freeze({
         ...next,
@@ -334,8 +212,9 @@ function publishPackageState(next) {
             detail: {
                 status: currentPackage.status,
                 active: currentPackage.active,
-                charId: currentPackage.charId,
-                manifest: currentPackage.manifest,
+                sessionId: currentPackage.sessionId,
+                descriptor: currentPackage.descriptor,
+                experience: currentPackage.descriptor?.experience ?? null,
                 errors: [...currentPackage.errors],
             },
         }));
@@ -374,6 +253,16 @@ function stopCurrentGeneration() {
     return true;
 }
 
+async function saveCurrentGameSession() {
+    const sessionId = String(
+        currentPackage.sessionId
+        || nativeSessionRuntime.snapshot?.session?.sessionId
+        || '',
+    ).trim();
+    if (!sessionId) throw new Error('No active Native Session to save');
+    return nativeProductClient.createSave(sessionId, { kind: 'quick' });
+}
+
 async function disableCurrentPackageForSession() {
     revision += 1;
     await disposeCurrentUi();
@@ -402,116 +291,97 @@ function openGameDiagnostics() {
 
 export async function reloadGamePackage() {
     const loadRevision = ++revision;
-    const charId = getCurrentCharacterPackageId();
-    let next = await loadGamePackage(charId, {
-        headers: getRequestHeaders(),
-    });
-
-    if (loadRevision !== revision) {
-        return currentPackage;
-    }
+    const sessionId = nativeSessionRuntime.active
+        ? String(nativeSessionRuntime.snapshot?.session?.sessionId || '')
+        : '';
+    let next = await loadNativeGamePackage(sessionId, { headers: getRequestHeaders() });
+    if (loadRevision !== revision) return currentPackage;
 
     let nextWorldSession = null;
-    let nextUiSession = null;
     let nextRuntimeSystems = null;
-    if (next.status === GAME_PACKAGE_STATUS.READY) {
+    if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
         try {
+            next = { ...next, snapshot: nativeSessionRuntime.snapshot };
             const [logicDefinition, observationProjectors] = await Promise.all([
-                loadGameLogicDefinition(next, {
-                    headers: getRequestHeaders(),
-                }),
-                loadGameObservationDefinitions(next, {
-                    headers: getRequestHeaders(),
-                }),
+                loadGameLogicDefinition(next, { headers: getRequestHeaders() }),
+                loadGameObservationDefinitions(next, { headers: getRequestHeaders() }),
             ]);
             nextWorldSession = await createGameWorldSession({
                 packageState: next,
-                context: atriaContext,
-                getChat: () => getContext()?.chat || [],
-                headers: getRequestHeaders(),
+                nativeRuntime: nativeSessionRuntime,
                 commands: logicDefinition.commands,
                 reducers: logicDefinition.reducers,
                 rules: logicDefinition.rules,
                 interpretations: logicDefinition.interpretations,
             });
             nextRuntimeSystems = createRuntimeSystems(nextWorldSession, { observationProjectors });
-            nextUiSession = await activateGamePackageUi(next, nextWorldSession, {
-                headers: getRequestHeaders(),
-                dispatchCommand: async (commandId, args) => {
-                    const baseTurn = nextRuntimeSystems.llmSession.beginTurn({
-                        origin: 'ui_action',
-                    });
-                    nextRuntimeSystems.recipes.set(baseTurn.turnId, {
-                        kind: 'ui_action',
-                        input: {
-                            commandId,
-                            args: structuredClone(args || {}),
-                        },
-                    });
-                    return nextRuntimeSystems.turnController.submit(baseTurn, {
-                        execute: ({ turn, signal, transition }) => (
-                            nextRuntimeSystems.llmSession.completeUiActionTurn({
-                                commandId,
-                                args,
-                                turnContext: turn,
-                                abortSignal: signal,
-                                transition,
-                            })
-                        ),
-                    });
-                },
-                hostActions: {
-                    exitGameUi: exitCurrentGameUi,
-                    stopGeneration: stopCurrentGeneration,
-                    disablePackage: disableCurrentPackageForSession,
-                    openDiagnostics: openGameDiagnostics,
-                },
-            });
         } catch (error) {
-            await nextUiSession?.dispose?.();
-            nextUiSession = null;
             nextWorldSession = null;
             nextRuntimeSystems = null;
             next = {
                 status: GAME_PACKAGE_STATUS.INVALID,
                 active: false,
-                charId,
-                manifest: null,
-                errors: [
-                    'Game Runtime initialization failed: ' + (error?.message || String(error)),
-                ],
+                sessionId,
+                descriptor: null,
+                runtime: null,
+                errors: ['Game Runtime initialization failed: ' + (error?.message || String(error))],
             };
         }
     }
 
-    if (loadRevision !== revision) {
-        await nextUiSession?.dispose?.();
-        return currentPackage;
-    }
-
+    if (loadRevision !== revision) return currentPackage;
     await disposeCurrentUi();
     disposeRuntimeSystems();
     currentWorldSession = nextWorldSession;
-    currentUiSession = nextUiSession;
     currentLlmSession = nextRuntimeSystems?.llmSession || null;
     currentTurnController = nextRuntimeSystems?.turnController || null;
     currentNarrator = nextRuntimeSystems?.narrator || null;
     currentOrchestratorBridge = nextRuntimeSystems?.orchestratorBridge || null;
     currentTurnRecipes = nextRuntimeSystems?.recipes || null;
+
+    if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
+        try {
+            currentUiSession = await activateNativeExperienceRuntime(next, currentWorldSession, {
+                headers: getRequestHeaders(),
+                hostActions: {
+                    exitExperience: exitCurrentGameUi,
+                    stopGeneration: stopCurrentGeneration,
+                    save: saveCurrentGameSession,
+                    openDiagnostics: openGameDiagnostics,
+                },
+            });
+        } catch (error) {
+            currentWorldSession = null;
+            disposeRuntimeSystems();
+            currentUiSession = null;
+            next = {
+                status: GAME_PACKAGE_STATUS.INVALID,
+                active: false,
+                sessionId,
+                descriptor: next.descriptor,
+                runtime: next.runtime,
+                errors: ['Experience Runtime initialization failed: ' + (error?.message || String(error))],
+            };
+        }
+    }
     publishPackageState(next);
 
+    const identity = next.descriptor
+        ? next.descriptor.packageId + '@' + next.descriptor.packageVersionId
+        : sessionId || 'none';
     if (next.status === GAME_PACKAGE_STATUS.INVALID) {
-        console.warn(`[${MODULE_NAME}] Rejected invalid Game Package for ${charId}`, next.errors);
+        console.warn(`[${MODULE_NAME}] Rejected Native Game Runtime for ${identity}`, next.errors);
     } else if (next.status === GAME_PACKAGE_STATUS.ERROR) {
-        console.error(`[${MODULE_NAME}] Failed to load Game Package for ${charId}`, next.errors);
-    } else if (next.status === GAME_PACKAGE_STATUS.READY) {
-        console.info(`[${MODULE_NAME}] Activated package ${next.manifest.id}@${next.manifest.version} for ${charId}`);
+        console.error(`[${MODULE_NAME}] Failed to load Native Game Runtime for ${identity}`, next.errors);
+    } else if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
+        console.info(
+            `[${MODULE_NAME}] Activated Native ${next.descriptor.experience.mode} Experience ${identity}`,
+        );
     }
-
     return currentPackage;
 }
 
-async function syncCurrentWorldBranch() {
+async function syncCurrentWorldRevision() {
     const session = currentWorldSession;
     if (!session) return null;
 
@@ -529,31 +399,27 @@ async function syncCurrentWorldBranch() {
             status: GAME_PACKAGE_STATUS.ERROR,
             active: false,
             errors: [
-                'World Runtime branch replay failed: ' + (error?.message || String(error)),
+                'Native Game Runtime revision sync failed: ' + (error?.message || String(error)),
             ],
         });
-        console.error(`[${MODULE_NAME}] World branch replay failed`, error);
+        console.error(`[${MODULE_NAME}] Native Game Runtime revision sync failed`, error);
         return null;
     }
 }
 
 export function getGamePackageState() {
     return {
-        ...currentPackage,
+        status: currentPackage.status,
+        active: currentPackage.active,
+        sessionId: currentPackage.sessionId,
+        descriptor: currentPackage.descriptor ? structuredClone(currentPackage.descriptor) : null,
+        runtime: currentPackage.runtime ? structuredClone(currentPackage.runtime) : null,
         errors: [...currentPackage.errors],
-        manifest: currentPackage.manifest ? structuredClone(currentPackage.manifest) : null,
     };
 }
 
 export function isGamePackageActive() {
     return currentPackage.status === GAME_PACKAGE_STATUS.READY && currentPackage.active === true;
-}
-
-export function resolveGameAsset(relativePath) {
-    if (!isGamePackageActive() || !currentPackage.charId) {
-        throw new Error('No active Game Package');
-    }
-    return resolveGamePackageAssetUrl(currentPackage.charId, relativePath);
 }
 
 export function getWorldState() {
@@ -564,24 +430,29 @@ export function getWorldJournal() {
     return currentWorldSession ? currentWorldSession.getJournal() : null;
 }
 
-export function getWorldBranchPath() {
-    return currentWorldSession ? currentWorldSession.getBranchPath() : [];
+export function getWorldBranchIdentity() {
+    if (!currentWorldSession) return null;
+    return {
+        sessionId: currentWorldSession.getSessionId(),
+        branchId: currentWorldSession.getBranchId(),
+        revisionId: currentWorldSession.getRevisionId(),
+    };
 }
 
 export function getAuthoritativeMemorySources() {
-    if (!currentWorldSession) return [];
-    return listActiveGameEventMemorySources(
-        currentWorldSession.getJournal(),
-        currentWorldSession.getBranchPath(),
-    );
+    return currentWorldSession
+        ? listGameEventMemorySources(currentWorldSession.getJournal())
+        : [];
 }
 
 export function getLlmRuntimeState() {
     return {
         active: Boolean(currentLlmSession),
         roles: getModelRuntimeConfig().roles,
-        packageId: currentPackage.manifest?.id || '',
-        branchPath: getWorldBranchPath(),
+        packageId: currentPackage.descriptor?.packageId || '',
+        packageVersionId: currentPackage.descriptor?.packageVersionId || '',
+        entryPointId: currentPackage.descriptor?.entryPointId || '',
+        branch: getWorldBranchIdentity(),
     };
 }
 
@@ -745,43 +616,25 @@ export function getGameAttempt(attemptId) {
     return currentTurnController?.getAttempt(attemptId) || null;
 }
 
-function isNativeConversationActive() {
-    return Boolean(getContext()?.chat?.some(message => String(message?.atri_native?.messageId || '').trim()));
-}
-
 eventSource.on(eventTypes.CHAT_CHANGED, () => {
-    if (isNativeConversationActive()) return;
-    void reloadGamePackage();
+    if (!nativeSessionRuntime.active) void reloadGamePackage();
 });
 
+onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => reloadGamePackage());
 for (const lifecycle of [
-    NATIVE_SESSION_LIFECYCLE.SESSION_LOADED,
     NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
     NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
 ]) {
-    onNativeSessionLifecycle(lifecycle, () => reloadGamePackage());
-}
-
-for (const structuralEvent of [
-    eventTypes.MESSAGE_SWIPED,
-    eventTypes.MESSAGE_SWIPE_DELETED,
-    eventTypes.MESSAGE_DELETED,
-    eventTypes.CHAT_BRANCH_CREATED,
-].filter(Boolean)) {
-    eventSource.on(structuralEvent, () => {
-        if (isNativeConversationActive()) return;
-        void syncCurrentWorldBranch();
-    });
+    onNativeSessionLifecycle(lifecycle, () => syncCurrentWorldRevision());
 }
 
 registerExtensionApi(MODULE_NAME, {
     reloadPackage: reloadGamePackage,
     getPackageState: getGamePackageState,
     isActive: isGamePackageActive,
-    resolveAsset: resolveGameAsset,
     getWorldState,
     getWorldJournal,
-    getWorldBranchPath,
+    getWorldBranchIdentity,
     getAuthoritativeMemorySources,
     getModelRuntimeConfig,
     getRuntimeRoleConfig,
@@ -798,6 +651,8 @@ registerExtensionApi(MODULE_NAME, {
     getTurn: getGameTurn,
     getAttempt: getGameAttempt,
     exitUi: exitCurrentGameUi,
+    stopGeneration: stopCurrentGeneration,
+    openDiagnostics: openGameDiagnostics,
     disableForSession: disableCurrentPackageForSession,
 });
 

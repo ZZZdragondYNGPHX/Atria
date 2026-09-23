@@ -13,7 +13,6 @@ function fakeDirsAt(root) {
         groups: path.join(root, 'groups'),
         groupChats: path.join(root, 'group chats'),
         worlds: path.join(root, 'worlds'),
-        cardApps: path.join(root, 'card-apps'),
     };
 }
 
@@ -122,22 +121,6 @@ describe('snapshotLiveToShadow', () => {
         expect(files).toContain('chats/双子/对话_1.jsonl');
     });
 
-    test('ignores nested .git directories in card-apps (spec §6.4)', async () => {
-        // card-apps has its own git repos per character; snapshot must not recurse into them.
-        fs.mkdirSync(path.join(liveRoot, 'card-apps', 'demo', '.git'), { recursive: true });
-        fs.writeFileSync(path.join(liveRoot, 'card-apps', 'demo', '.git', 'HEAD'), 'ref: refs/heads/main');
-        fs.writeFileSync(path.join(liveRoot, 'card-apps', 'demo', 'index.js'), '// app');
-
-        await snapshotLiveToShadow({
-            userRoot, peerId: 'p',
-            directories: fakeDirsAt(liveRoot),
-            enabledCategoryIds: ['card-apps'],
-        });
-
-        const paths = await ensureShadowRepo({ userRoot, peerId: 'p' });
-        expect(fs.existsSync(path.join(paths.workdir, 'card-apps/demo/index.js'))).toBe(true);
-        expect(fs.existsSync(path.join(paths.workdir, 'card-apps/demo/.git'))).toBe(false);
-    });
 
     test('handles file-kind category paths (settings.json at root)', async () => {
         // The 'settings' category resolves a file-kind SyncPath (rootFile('settings.json'))

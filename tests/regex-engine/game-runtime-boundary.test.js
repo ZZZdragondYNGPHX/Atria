@@ -8,30 +8,32 @@ const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, '..', '..');
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
 
-describe('Regex/Game Runtime architecture boundary', () => {
+describe('Regex/Native Game Runtime architecture boundary', () => {
     test('Regex Core does not depend on Game Runtime', () => {
         const source = read('public/scripts/extensions/regex/engine.js');
         expect(source).not.toMatch(/from\s+['"][^'"]*game-runtime/i);
         expect(source).not.toMatch(/import\([^)]*game-runtime/i);
     });
 
-    test('Game Runtime foundation does not depend on Regex for state, package activation or assets', () => {
+    test('Native Game Runtime authority does not depend on Regex or retired CardApp transport', () => {
         for (const relative of [
-            'public/scripts/extensions/game-runtime/manifest.js',
             'public/scripts/extensions/game-runtime/package-loader.js',
+            'public/scripts/extensions/game-runtime/world/session.js',
             'public/scripts/extensions/game-runtime/index.js',
         ]) {
             const source = read(relative);
             expect(source).not.toMatch(/extensions\/regex|regex\/engine|getRegexedString|registerManagedRegexProvider/);
+            expect(source).not.toMatch(/\/api\/card-app|GAME_MANIFEST_PATH|game\.json/);
         }
     });
 
-    test('Game Runtime foundation has no world mutation or DOM takeover surface in R0/R1', () => {
+    test('Native state authority does not use Chat State or swipe-derived branches', () => {
         const source = [
-            read('public/scripts/extensions/game-runtime/manifest.js'),
             read('public/scripts/extensions/game-runtime/package-loader.js'),
-            read('public/scripts/extensions/game-runtime/index.js'),
+            read('public/scripts/extensions/game-runtime/world/session.js'),
         ].join('\n');
-        expect(source).not.toMatch(/querySelector|createElement|innerHTML|setVariable|updateChatState|patchChatState|world\.hp|set_state/);
+        expect(source).not.toMatch(/getChatState|updateChatState|deleteChatState|atri_game_world|buildGameBranchPath|swipe_id|swipeId/);
+        expect(source).toContain('atri_world_state');
+        expect(source).toContain('atri_game_runtime');
     });
 });

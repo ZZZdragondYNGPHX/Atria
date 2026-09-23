@@ -8,14 +8,34 @@ import {
 } from '../../public/scripts/extensions/game-runtime/ui/declarative.js';
 import { createSelectorRuntime } from '../../public/scripts/extensions/game-runtime/ui/selectors.js';
 
-describe('Declarative Game UI bindings', () => {
+function selectorPackage(path = 'ui/selectors.json') {
+    return {
+        sessionId: 'session_ui',
+        runtime: {
+            experience: {
+                mode: 'component',
+                componentModelVersion: 1,
+                component: 'ui/main.json',
+                selectors: path,
+                surface: 'app.root',
+            },
+        },
+    };
+}
+
+describe('A4 declarative Experience UI bindings', () => {
     beforeEach(() => {
         document.body.innerHTML = '';
     });
 
-    test('loads safe Formula selectors from the declared UI selector resource', async () => {
-        const fetchImpl = jest.fn(async (url) => {
-            expect(url).toBe('/api/card-app/hero/ui/selectors.json');
+    test('loads safe Formula selectors from the exact Session-bound resource', async () => {
+        const fetchImpl = jest.fn(async (url, init) => {
+            expect(url).toBe('/api/native/session/runtime/resource');
+            expect(init.method).toBe('POST');
+            expect(JSON.parse(init.body)).toEqual({
+                sessionId: 'session_ui',
+                path: 'ui/selectors.json',
+            });
             return {
                 ok: true,
                 status: 200,
@@ -28,15 +48,7 @@ describe('Declarative Game UI bindings', () => {
             };
         });
 
-        const definitions = await loadGameSelectorDefinitions({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    selectors: 'ui/selectors.json',
-                },
-            },
-        }, { fetchImpl });
-
+        const definitions = await loadGameSelectorDefinitions(selectorPackage(), { fetchImpl });
         expect(definitions.map(item => item.id)).toEqual(['player.hp', 'player.ratio']);
         expect(definitions[0].select({ player: { hp: 7 } })).toBe(7);
         expect(definitions[1].select({ player: { hp: 5, maxHp: 10 } })).toBe(0.5);
@@ -84,6 +96,39 @@ describe('Declarative Game UI bindings', () => {
         expect(root.querySelector('#name').value).toBe('Wounded Hero');
         expect(root.querySelector('#panel').hidden).toBe(true);
 
+        dispose();
+    });
+
+    test('binds structured visibility without overwriting other hidden reasons', () => {
+        let world = { ready: false };
+        const selectors = createSelectorRuntime({
+            getWorldState: () => world,
+            definitions: [{ id: 'player.ready', select: state => state.ready }],
+        });
+        const root = document.createElement('section');
+        root.innerHTML = '<div id="panel" data-atria-visible-selector="player.ready" data-atria-visible-when="truthy"></div>';
+        const panel = root.querySelector('#panel');
+        panel.dataset.atriaHiddenResponsive = 'true';
+
+        const dispose = bindDeclarativeGameUi(root, {
+            selectors,
+            actions: { dispatch: jest.fn(), simulate: jest.fn() },
+        });
+        expect(panel.hidden).toBe(true);
+
+        world = { ready: true };
+        selectors.refresh();
+        expect(panel.hidden).toBe(true);
+
+        panel.dataset.atriaHiddenResponsive = 'false';
+        selectors.refresh();
+        // No selector transition occurred on this refresh, so explicitly
+        // trigger the visibility reason by toggling through a false state.
+        world = { ready: false };
+        selectors.refresh();
+        world = { ready: true };
+        selectors.refresh();
+        expect(panel.hidden).toBe(false);
         dispose();
     });
 
@@ -175,7 +220,7 @@ describe('Declarative Game UI bindings', () => {
         })).toThrow(/blocked key/);
     });
 
-    test('malformed selector resources fail before UI activation', async () => {
+    test('malformed selector resources fail before Experience activation', async () => {
         const fetchImpl = jest.fn(async () => ({
             ok: true,
             status: 200,
@@ -186,11 +231,7 @@ describe('Declarative Game UI bindings', () => {
             },
         }));
 
-        await expect(loadGameSelectorDefinitions({
-            charId: 'hero',
-            manifest: {
-                ui: { selectors: 'ui/selectors.json' },
-            },
-        }, { fetchImpl })).rejects.toThrow(/unknown field/);
+        await expect(loadGameSelectorDefinitions(selectorPackage(), { fetchImpl }))
+            .rejects.toThrow(/unknown field/);
     });
 });

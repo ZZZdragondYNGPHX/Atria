@@ -1,0 +1,58 @@
+name: Native Authoring Platform A1 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-authoring-platform-product-frontend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-authoring-a1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a1-backend:
+    name: A1 Native Authoring Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run A1 focused and adjacent Native regressions
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/studio-service.test.js
+          native/studio-http.test.js
+          native/authoring-contracts.test.js
+          native/project-composition.test.js
+          native/package-build-install.test.js
+          native/package-container.test.js
+          native/world-knowledge.test.js
+      - name: Run A1 authoring backend guard
+        run: node scripts/check-a1-native-authoring-backend.mjs
+      - name: Check A1 guard syntax
+        run: node --check scripts/check-a1-native-authoring-backend.mjs
+      - name: Run A1 focused lint
+        run: >-
+          npx eslint
+          src/native/authoring/studio-service.js
+          src/endpoints/native-studio.js
+          src/native/project-store.js
+          src/native/index.js
+          src/git/client.js
+          src/server-startup.js
+          tests/native/studio-service.test.js
+          tests/native/studio-http.test.js
+      - name: Run full root lint
+        run: npm run lint

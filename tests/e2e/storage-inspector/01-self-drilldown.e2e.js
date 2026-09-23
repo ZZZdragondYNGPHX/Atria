@@ -3,10 +3,9 @@
 // Boots a Atria server in single-user mode (enableUserAccounts:false so
 // the default admin logs in without a password), seeds a plausible corpus
 // under default-user/, then drives the User Profile → Storage Inspector
-// popup entirely through real DOM gestures:
+// popup through the current Storage Management controller:
 //
-//   1. Open Storage Management via #user-settings-button → #account_button
-//      → .userStorageManagementButton.
+//   1. Open the controller retained by Atria Account.
 //   2. Verify L1 shows the stacked bar + at least the categories that our
 //      fixture populates.
 //   3. Verify leaf categories do not expose invalid deeper navigation.
@@ -53,26 +52,14 @@ test.describe('Storage Inspector · self drill-down', () => {
     test('drills supported paths and blocks leaf-category over-drill', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
 
-        // Open user-settings drawer, click Account (#account_button) to
-        // launch the User Profile popup, then the Storage Management button
-        // inside it.
-        const drawerClosed = await page.locator('#user-settings-button .drawer-icon.closedIcon').count().then(n => n > 0);
-        if (drawerClosed) {
-            await page.locator('#user-settings-button .drawer-toggle').click();
-            await page.waitForFunction(() => {
-                const el = document.getElementById('user-settings-block');
-                return el && !el.classList.contains('closedDrawer');
-            }, { timeout: 5_000 });
-        }
-        await page.locator('#account_button').click();
-        // User Profile popup is a callGenericPopup TEXT modal — wait for
-        // its Storage Management button to be visible.
-        const profilePopup = page.locator('dialog.popup[open]').last();
-        await profilePopup.locator('.userStorageManagementButton').click();
+        // A6 hides the legacy SillyTavern settings drawer. Exercise the
+        // current Storage Management controller that Account embeds under
+        // Advanced instead of depending on that retired navigation surface.
+        await page.evaluate(async () => {
+            const mod = await import('/scripts/storage-management.js');
+            void mod.openStorageManagement();
+        });
 
-        // The Inspector popup is a NEW callGenericPopup mounted on top of
-        // the profile popup. Grab the top-most open dialog and scope from
-        // there for the rest of the drill.
         const inspector = page.locator('dialog.popup[open]').last().locator('.storageManagementServerMount .storageInspectorContainer');
         await inspector.waitFor({ state: 'visible', timeout: 10_000 });
 

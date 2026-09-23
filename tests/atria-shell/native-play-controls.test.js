@@ -108,13 +108,11 @@ describe('N9 Native Play product controls', () => {
 
     test('empty Play shows Native landing instead of the legacy empty chat host', async () => {
         const root = document.getElementById('root');
-        const sheld = document.getElementById('sheld');
         const controls = mountNativePlayControls({ document, root });
         await flush();
 
         expect(controls.landing.hidden).toBe(false);
         expect(controls.root.hidden).toBe(true);
-        expect(sheld.style.display).toBe('none');
         expect(controls.landing.textContent).toContain('Continue a Native game');
         expect(requests.map(item => item.path)).toEqual(expect.arrayContaining([
             '/api/native/product/sessions',
@@ -122,7 +120,6 @@ describe('N9 Native Play product controls', () => {
         ]));
 
         controls.dispose();
-        expect(sheld.style.display).toBe('');
     });
 
     test('active Native Session exposes product actions, Timeline and Context diagnostics', async () => {

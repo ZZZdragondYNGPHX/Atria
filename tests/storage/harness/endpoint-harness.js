@@ -70,7 +70,6 @@ const USER_DIRS = Object.freeze({
     backups: 'backups',
     sysprompt: 'sysprompt',
     reasoning: 'reasoning',
-    cardApps: 'card-apps',
 });
 
 function buildDirs(userDir) {
@@ -102,7 +101,6 @@ function precreateCommonDirs(dirs) {
     fs.mkdirSync(dirs.context, { recursive: true });
     fs.mkdirSync(dirs.sysprompt, { recursive: true });
     fs.mkdirSync(dirs.reasoning, { recursive: true });
-    fs.mkdirSync(dirs.cardApps, { recursive: true });
 }
 
 // Local dev container defaults — keep in sync with mysql-harness.js / pg-harness.js.

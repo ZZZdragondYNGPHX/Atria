@@ -26,17 +26,10 @@ test.afterAll(async () => {
 });
 
 async function openInspector(page) {
-    const drawerClosed = await page.locator('#user-settings-button .drawer-icon.closedIcon').count().then(n => n > 0);
-    if (drawerClosed) {
-        await page.locator('#user-settings-button .drawer-toggle').click();
-        await page.waitForFunction(() => {
-            const el = document.getElementById('user-settings-block');
-            return el && !el.classList.contains('closedDrawer');
-        }, { timeout: 5_000 });
-    }
-    await page.locator('#account_button').click();
-    const profilePopup = page.locator('dialog.popup[open]').last();
-    await profilePopup.locator('.userStorageManagementButton').click();
+    await page.evaluate(async () => {
+        const mod = await import('/scripts/storage-management.js');
+        void mod.openStorageManagement();
+    });
     const inspector = page.locator('dialog.popup[open]').last().locator('.storageManagementServerMount .storageInspectorContainer');
     await inspector.waitFor({ state: 'visible', timeout: 10_000 });
     await inspector.locator('.storageInspectorLoading.displayNone').waitFor({ state: 'attached', timeout: 15_000 });

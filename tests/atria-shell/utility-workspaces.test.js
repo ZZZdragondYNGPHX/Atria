@@ -10,7 +10,7 @@ import {
     mountSettingsUtility,
 } from '../../public/scripts/atria-shell/utility-workspaces.js';
 
-describe('R7G utility workspace adapters via WorkspaceHost slot contract', () => {
+describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
     beforeEach(() => {
         document.body.innerHTML = `
             <div id="extensions-home">
@@ -88,14 +88,35 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
             enableExtension,
         };
 
+        const productClient = {
+            listWorks: jest.fn(async () => [{
+                package: { packageId: 'pkg_1', displayName: 'Native Work' },
+                manifest: {
+                    runtime: {
+                        plugins: [{
+                            pluginId: 'native.package-ui',
+                            version: '1.0.0',
+                            packageRuntime: {
+                                capabilities: ['ui.contributions'],
+                                contributions: [{ type: 'play.toolbar', id: 'toolbar' }],
+                            },
+                        }],
+                    },
+                },
+            }]),
+        };
         const controller = await mountPluginsUtility({
             document,
             slot,
             extensionAuthority,
+            productClient,
         });
 
+        expect(slot.querySelector('[data-atria-plugin-surface="native"]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-native-plugin="native.package-ui"]')).not.toBeNull();
         expect(slot.querySelectorAll('[data-atria-plugin]')).toHaveLength(1);
         expect(slot.querySelector('[data-atria-plugin="third-party/example"]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-legacy-plugins="true"]').open).toBe(false);
         expect(slot.textContent).not.toContain('Atria Orchestrator');
         expect(slot.contains(settingsOne)).toBe(true);
         expect(slot.contains(settingsTwo)).toBe(true);
@@ -120,7 +141,7 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
         expect(settingsOne.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 
-    test('Settings reparents the exact legacy form without creating another settings store', async () => {
+    test('Settings presents Atria product cards and keeps the exact legacy authority under Advanced', async () => {
         const slot = document.getElementById('slot');
         const settingsRoot = document.getElementById('user-settings-block');
         const language = document.getElementById('ui_language_select');
@@ -129,6 +150,7 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
 
         const controller = mountSettingsUtility({ document, body: slot });
 
+        expect(slot.querySelector('[data-atria-settings-primary="true"]')).not.toBeNull();
         expect(slot.contains(settingsRoot)).toBe(true);
         expect(document.getElementById('ui_language_select')).toBe(language);
         expect(document.querySelectorAll('#ui_language_select')).toHaveLength(1);
@@ -140,7 +162,7 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
 
         const compatibility = slot.querySelector('[data-atria-settings-compatibility="true"]');
         expect(compatibility.open).toBe(false);
-        slot.querySelector('[data-atria-settings-section="language"]').click();
+        slot.querySelector('[data-atria-settings-section="language"] .atria-utility-action').click();
         await Promise.resolve();
         expect(compatibility.open).toBe(true);
         expect(document.getElementById('ui_language_select')).toBe(language);
@@ -153,7 +175,7 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
         expect(document.getElementById('ui_language_select')).toBe(language);
     });
 
-    test('Account mounts the existing profile controller instead of creating account state', async () => {
+    test('Account is Atria-native first and lazily mounts the existing authority only under Advanced', async () => {
         const slot = document.getElementById('slot');
         const profile = document.createElement('section');
         profile.id = 'existing-account-profile';
@@ -165,12 +187,23 @@ describe('R7G utility workspace adapters via WorkspaceHost slot contract', () =>
         const controller = await mountAccountUtility({
             document,
             slot,
-            accountAuthority: { openUserProfile },
+            accountAuthority: {
+                accountsEnabled: true,
+                getCurrentUserHandle: () => 'alice',
+                openUserProfile,
+            },
         });
 
+        expect(slot.querySelector('[data-atria-account-primary="true"]').textContent).toContain('alice');
+        expect(openUserProfile).not.toHaveBeenCalled();
+        const advanced = slot.querySelector('[data-atria-account-advanced="true"]');
+        advanced.open = true;
+        advanced.dispatchEvent(new Event('toggle'));
+        await Promise.resolve();
+        await Promise.resolve();
         expect(openUserProfile).toHaveBeenCalledTimes(1);
         expect(slot.contains(profile)).toBe(true);
-        expect(profile.dataset.atriaAccountEmbedded).toBe('true');
+        expect(profile.dataset.atriaAccountEmbedded).toBe('advanced');
         expect(document.querySelectorAll('#existing-account-profile')).toHaveLength(1);
 
         controller.dispose();

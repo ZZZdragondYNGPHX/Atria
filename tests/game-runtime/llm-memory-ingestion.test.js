@@ -9,8 +9,10 @@ import { createTurnContext } from '../../public/scripts/extensions/game-runtime/
 function turn() {
     return createTurnContext({
         anchor: {
-            branchPath: [0, 1],
-            journalNextSeq: 3,
+            sessionId: 'session_test',
+            branchId: 'branch_test',
+            revisionId: 'revision_test',
+            eventSeq: 3,
             serial: 6,
         },
         userInput: 'Attack the guard',
@@ -19,8 +21,7 @@ function turn() {
             seq: 2,
             type: 'DamageDealt',
             payload: { amount: 3, target: 'guard_02' },
-            branchPath: [0, 1],
-            branchId: 'swipes:0.1',
+            branchId: 'branch_test',
             meta: {
                 command: {
                     id: 'attack',
@@ -46,7 +47,7 @@ describe('R5 post-turn authoritative Memory ingestion', () => {
             id: 'game-event:event:2',
             kind: 'game_event',
             eventId: 'event:2',
-            branchId: 'swipes:0.1',
+            branchId: 'branch_test',
         });
         expect(prepared.facts).toEqual([{
             action: 'create',
@@ -175,10 +176,12 @@ describe('R5 post-turn authoritative Memory ingestion', () => {
     test('turns without committed Events finalize without fabricating authoritative facts', async () => {
         const emptyTurn = createTurnContext({
             anchor: {
-                branchPath: [0],
-                journalNextSeq: 1,
-                serial: 7,
-            },
+            sessionId: 'session_test',
+            branchId: 'branch_test',
+            revisionId: 'revision_test',
+            eventSeq: 1,
+            serial: 7,
+        },
             userInput: 'Hello',
         });
         const openSession = jest.fn();

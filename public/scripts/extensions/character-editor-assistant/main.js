@@ -8,7 +8,6 @@ import { createCharacterEditorDiffUi } from './diff-ui.js';
 import { createCharacterEditorUi } from './editor-ui.js';
 import { openUnifiedCharacterEditorPopup } from './editor-iteration/studio.js';
 import { DEFAULT_SYSTEM_PROMPT as DEFAULT_EDITOR_ITERATION_SYSTEM_PROMPT } from './editor-iteration/studio.js';
-import { DEFAULT_SYSTEM_PROMPT as DEFAULT_CARDAPP_STUDIO_SYSTEM_PROMPT } from './studio/ai-chat.js';
 import { applyEdits } from '../../iteration-library/index.js';
 import { mdLiteral } from '../../iteration-library/markdown-escape.js';
 import { openSimulationReview } from '../../iteration-library/simulation-review/index.js';
@@ -89,7 +88,6 @@ const defaultSettings = {
     toolCallRetryMax: 2,
     maxJournalEntries: 120,
     editorIterationSystemPrompt: DEFAULT_EDITOR_ITERATION_SYSTEM_PROMPT,
-    cardAppStudioSystemPrompt: DEFAULT_CARDAPP_STUDIO_SYSTEM_PROMPT,
 };
 
 
@@ -239,7 +237,6 @@ function registerLocaleData() {
         'Tool-call retries on invalid/missing tool call (N)': '工具调用重试次数（无效/缺失时）',
         'Custom System Prompts (advanced)': '自定义系统提示词（高级）',
         'Editor iteration prompt': '编辑器迭代提示词',
-        'CardApp Studio prompt': 'CardApp Studio 提示词',
         'Reset to default': '重置为默认',
 
         'History': '修改历史',
@@ -361,11 +358,7 @@ function registerLocaleData() {
         'Next': '下一页',
         '${0} matches': '匹配 ${0} 项',
         'No entries match this search.': '没有匹配的条目。',
-        // CardApp Studio
-        'CardApp Studio': 'CardApp Studio',
-        'Open CardApp Studio': '打开 CardApp Studio',
         'No character selected or character has no avatar.': '未选择角色或角色没有头像。',
-        'CardApp Studio is already open.': 'CardApp Studio 已经打开了。',
         'Live preview shows behind this popup. Use the reload button to refresh.': '实时预览显示在弹窗背景中。使用重新加载按钮刷新。',
         'Reload preview': '重新加载预览',
         'No files.': '没有文件。',
@@ -467,19 +460,7 @@ function registerLocaleData() {
         'Failed to save character editor changes (storage corrupted, reload chat).': '保存角色编辑器更改失败（存储已损坏，请重新加载聊天）。',
         'Failed to save character editor changes (disk write failed).': '保存角色编辑器更改失败（磁盘写入失败）。',
         'Failed to save character editor changes.': '保存角色编辑器更改失败。',
-        // CardApp Studio session-write toasts — reason-aware surfaces from
         // formatSaveSessionsError (studio.js).
-        'Failed to save CardApp Studio session (invalid request).': '保存 CardApp Studio 会话失败（请求无效）。',
-        'Failed to save CardApp Studio session (no active character).': '保存 CardApp Studio 会话失败（没有活动角色）。',
-        'Failed to save CardApp Studio session (invalid commit).': '保存 CardApp Studio 会话失败（提交无效）。',
-        'CardApp Studio storage destroyed, reload the page.': 'CardApp Studio 存储已销毁，请刷新页面。',
-        'Failed to save CardApp Studio session (storage conflict, try again).': '保存 CardApp Studio 会话失败（存储冲突，请重试）。',
-        'Failed to save CardApp Studio session (server error).': '保存 CardApp Studio 会话失败（服务器错误）。',
-        'Failed to save CardApp Studio session (network error).': '保存 CardApp Studio 会话失败（网络错误）。',
-        'Failed to save CardApp Studio session (storage corrupted, reload chat).': '保存 CardApp Studio 会话失败（存储已损坏，请重新加载聊天）。',
-        'Failed to save CardApp Studio session (disk write failed).': '保存 CardApp Studio 会话失败（磁盘写入失败）。',
-        'Failed to save CardApp Studio session.': '保存 CardApp Studio 会话失败。',
-        'CardApp Studio reverted to its standalone UI. Brief iteration-studio sessions cleared — files on disk unchanged.': 'CardApp Studio 已恢复为独立界面。已清空过渡迭代版的会话——磁盘上的文件保持不变。',
     });
     addLocaleData('zh-tw', {
         'Character Editor Assistant': '角色卡編輯助手',
@@ -569,7 +550,6 @@ function registerLocaleData() {
         'Tool-call retries on invalid/missing tool call (N)': '工具調用重試次數（無效/缺失時）',
         'Custom System Prompts (advanced)': '自訂系統提示詞（進階）',
         'Editor iteration prompt': '編輯器迭代提示詞',
-        'CardApp Studio prompt': 'CardApp Studio 提示詞',
         'Reset to default': '重置為預設',
 
         'History': '修改歷史',
@@ -691,11 +671,7 @@ function registerLocaleData() {
         'Next': '下一頁',
         '${0} matches': '匹配 ${0} 項',
         'No entries match this search.': '沒有匹配的條目。',
-        // CardApp Studio
-        'CardApp Studio': 'CardApp Studio',
-        'Open CardApp Studio': '開啟 CardApp Studio',
         'No character selected or character has no avatar.': '未選擇角色或角色沒有頭像。',
-        'CardApp Studio is already open.': 'CardApp Studio 已經開啟了。',
         'Live preview shows behind this popup. Use the reload button to refresh.': '即時預覽顯示在彈窗背景中。使用重新載入按鈕刷新。',
         'Reload preview': '重新載入預覽',
         'No files.': '沒有檔案。',
@@ -797,19 +773,7 @@ function registerLocaleData() {
         'Failed to save character editor changes (storage corrupted, reload chat).': '儲存角色編輯器變更失敗（儲存已損毀，請重新載入聊天）。',
         'Failed to save character editor changes (disk write failed).': '儲存角色編輯器變更失敗（磁碟寫入失敗）。',
         'Failed to save character editor changes.': '儲存角色編輯器變更失敗。',
-        // CardApp Studio session-write toasts — reason-aware surfaces from
         // formatSaveSessionsError (studio.js).
-        'Failed to save CardApp Studio session (invalid request).': '儲存 CardApp Studio 會話失敗（請求無效）。',
-        'Failed to save CardApp Studio session (no active character).': '儲存 CardApp Studio 會話失敗（沒有活動角色）。',
-        'Failed to save CardApp Studio session (invalid commit).': '儲存 CardApp Studio 會話失敗（提交無效）。',
-        'CardApp Studio storage destroyed, reload the page.': 'CardApp Studio 儲存已銷毀，請重新整理頁面。',
-        'Failed to save CardApp Studio session (storage conflict, try again).': '儲存 CardApp Studio 會話失敗（儲存衝突，請重試）。',
-        'Failed to save CardApp Studio session (server error).': '儲存 CardApp Studio 會話失敗（伺服器錯誤）。',
-        'Failed to save CardApp Studio session (network error).': '儲存 CardApp Studio 會話失敗（網路錯誤）。',
-        'Failed to save CardApp Studio session (storage corrupted, reload chat).': '儲存 CardApp Studio 會話失敗（儲存已損毀，請重新載入聊天）。',
-        'Failed to save CardApp Studio session (disk write failed).': '儲存 CardApp Studio 會話失敗（磁碟寫入失敗）。',
-        'Failed to save CardApp Studio session.': '儲存 CardApp Studio 會話失敗。',
-        'CardApp Studio reverted to its standalone UI. Brief iteration-studio sessions cleared — files on disk unchanged.': 'CardApp Studio 已還原為獨立介面。已清空過渡迭代版的會話——磁碟上的檔案保持不變。',
     });
 }
 
@@ -894,7 +858,6 @@ function ensureSettings() {
     settings.toolCallRetryMax = Math.max(0, Math.min(10, Math.floor(Number(settings.toolCallRetryMax || defaultSettings.toolCallRetryMax) || 0)));
     settings.maxJournalEntries = Math.max(20, Math.min(500, Number(settings.maxJournalEntries || defaultSettings.maxJournalEntries)));
     settings.editorIterationSystemPrompt = String(settings.editorIterationSystemPrompt || '').trim() || DEFAULT_EDITOR_ITERATION_SYSTEM_PROMPT;
-    settings.cardAppStudioSystemPrompt = String(settings.cardAppStudioSystemPrompt || '').trim() || DEFAULT_CARDAPP_STUDIO_SYSTEM_PROMPT;
 }
 
 function getSettings() {

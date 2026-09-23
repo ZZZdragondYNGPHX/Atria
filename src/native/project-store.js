@@ -171,6 +171,30 @@ export class ProjectStore {
         return safePath;
     }
 
+    async moveFile(handle, projectId, fromRelativePath, toRelativePath) {
+        const fromPath = normalizeRelativePath(fromRelativePath);
+        const toPath = normalizeRelativePath(toRelativePath);
+        if (fromPath === toPath) return toPath;
+
+        const projectDir = this._projectDir(handle, projectId);
+        if (!fs.existsSync(this._manifestPath(handle, projectId))) {
+            throw new Error('Studio Project does not exist: ' + projectId);
+        }
+
+        const sourcePath = path.join(projectDir, ...fromPath.split('/'));
+        const destinationPath = path.join(projectDir, ...toPath.split('/'));
+        if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+            throw new Error('Project source does not exist: ' + fromPath);
+        }
+        if (fs.existsSync(destinationPath)) {
+            throw new Error('Project source destination already exists: ' + toPath);
+        }
+
+        fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+        fs.renameSync(sourcePath, destinationPath);
+        return toPath;
+    }
+
     async deleteFile(handle, projectId, relativePath) {
         const safePath = normalizeRelativePath(relativePath);
         const filePath = path.join(this._projectDir(handle, projectId), ...safePath.split('/'));

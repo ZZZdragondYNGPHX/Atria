@@ -39,6 +39,12 @@ export function encodeScopePath(scope) {
     switch (scope.kind) {
         case 'global':
             return 'global';
+        case 'project':
+            assertSafe(scope.projectId);
+            return `project/${scope.projectId}`;
+        case 'package':
+            assertSafe(scope.packageId, scope.packageVersionId);
+            return `package/${scope.packageId}/${scope.packageVersionId}`;
         case 'preset':
             // Preset scope is keyed by preset name alone. The earlier
             // (apiId, name) shape forced users to bind skills to a specific
@@ -68,6 +74,12 @@ export function decodeScopePath(path) {
         case 'global':
             if (parts.length !== 1) throw new Error('global scope has no sub-path');
             return { kind: 'global' };
+        case 'project':
+            if (parts.length !== 2) throw new Error('project scope path: project/<projectId>');
+            return { kind: 'project', projectId: parts[1] };
+        case 'package':
+            if (parts.length !== 3) throw new Error('package scope path: package/<packageId>/<packageVersionId>');
+            return { kind: 'package', packageId: parts[1], packageVersionId: parts[2] };
         case 'preset':
             if (parts.length !== 2) throw new Error('preset scope path: preset/<name>');
             return { kind: 'preset', name: parts[1] };
@@ -100,6 +112,8 @@ export function scopeLabel(scope) {
     if (!scope || typeof scope !== 'object') return 'unknown';
     switch (scope.kind) {
         case 'global': return 'global';
+        case 'project': return `project:${scope.projectId}`;
+        case 'package': return `package:${scope.packageId}@${scope.packageVersionId}`;
         case 'preset': return `preset:${scope.name}`;
         case 'orch-preset': return `orch:${scope.mode}/${scope.name}`;
         case 'character': return `character:${scope.characterFile}`;

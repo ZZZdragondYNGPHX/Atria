@@ -107,9 +107,8 @@ export async function ensureShadowRepo({ userRoot, peerId }) {
  *   - Symlinks are skipped — both the live walker and the
  *     workdir walker treat them as non-data; the live walker emits a
  *     `console.warn` so a misconfigured user data dir is observable.
- *   - Nested `.git` directories are skipped at every depth —
- *     card-apps initialize per-character git repos and we must not pull their
- *     `.git` internals into the shadow's index.
+ *   - Nested `.git` directories are skipped at every depth so embedded
+ *     repositories never leak VCS internals into the shadow's index.
  *   - Change detection avoids `git.statusMatrix` (whose racy-git WORKDIR
  *     comparison can collide on rapid same-second rewrites) and avoids the
  *     "commit-then-rewind" pattern (which would orphan a fresh commit object
@@ -417,9 +416,8 @@ async function resolveHeadOidOrNull(dir, gitdir) {
  *
  * Nested `.git` directories are skipped at every depth in both walks: in the
  * shadow walk that's defensive — the shadow's own `.git` is split off into
- * `paths.gitDir`, not inside the workdir — but a stray `.git` would corrupt
- * the desired set. In the live walk it protects `card-apps/`
- * which already has per-character git repos we must never overwrite.
+ * `paths.gitDir`, not inside the workdir — while in the live walk it prevents
+ * embedded repositories from being copied or overwritten.
  *
  * Symlinks and other non-file entries are silently ignored on both sides,
  * matching `snapshotLiveToShadow`'s policy: they aren't synced

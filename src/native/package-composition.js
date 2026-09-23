@@ -8,6 +8,7 @@ import {
 } from './contracts.js';
 import { createNativeId } from './identity.js';
 import { resolveProjectDependencyClosure } from './dependency-closure.js';
+import { compilePackageRuntimePlugins } from './plugin-platform.js';
 import {
     buildAtriaPackageContainer,
     inspectAtriaPackageContainer,
@@ -76,6 +77,18 @@ export async function buildProjectPackage({
     }
 
     const packageVersionId = idFactory('packageVersion');
+    const runtimePlugins = source.package.runtime?.plugins;
+    const compiledPlugins = runtimePlugins === undefined
+        ? null
+        : compilePackageRuntimePlugins(runtimePlugins, {
+            declaredPermissions: source.package.permissions,
+        });
+    const packageRuntime = source.package.runtime === undefined
+        ? undefined
+        : {
+            ...source.package.runtime,
+            ...(compiledPlugins ? { plugins: compiledPlugins.manifests } : {}),
+        };
     const manifest = assertAtriaPackageManifest({
         format: 'atria-package',
         schemaVersion: 2,
@@ -83,6 +96,7 @@ export async function buildProjectPackage({
         packageId: source.project.packageId,
         packageVersionId,
         ...source.package,
+        ...(packageRuntime === undefined ? {} : { runtime: packageRuntime }),
         worlds: closure.worlds,
         knowledge: closure.knowledge,
         knowledgeBindings: closure.knowledgeBindings,

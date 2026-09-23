@@ -175,7 +175,7 @@ function assertPackageSource(value) {
 
 function assertDependencies(value = {}) {
     plain(value, 'AtriaProject.dependencies');
-    assertOnlyKeys(value, new Set(['worlds', 'knowledge', 'knowledgeBindings']), 'AtriaProject.dependencies');
+    assertOnlyKeys(value, new Set(['worlds', 'knowledge', 'knowledgeBindings', 'assets']), 'AtriaProject.dependencies');
 
     const worlds = unique((value.worlds || []).map((item, index) => {
         plain(item, `AtriaProject.dependencies.worlds[${index}]`);
@@ -199,19 +199,32 @@ function assertDependencies(value = {}) {
         assertNativeId(id, 'knowledgeBinding', `AtriaProject.dependencies.knowledgeBindings[${index}]`)
     )), 'AtriaProject.dependencies.knowledgeBindings', item => item);
 
-    return Object.freeze({ worlds, knowledge, knowledgeBindings });
+    const assets = unique((value.assets || []).map((item, index) => {
+        plain(item, `AtriaProject.dependencies.assets[${index}]`);
+        assertOnlyKeys(item, new Set(['assetId', 'contentHash']), `AtriaProject.dependencies.assets[${index}]`);
+        if (typeof item.contentHash !== 'string' || !/^[a-f0-9]{64}$/.test(item.contentHash)) {
+            throw new TypeError(`AtriaProject.dependencies.assets[${index}].contentHash must be a lowercase SHA-256 digest`);
+        }
+        return Object.freeze({
+            assetId: assertNativeId(item.assetId, 'asset', 'Project Asset dependency assetId'),
+            contentHash: item.contentHash,
+        });
+    }), 'AtriaProject.dependencies.assets', item => item.assetId);
+
+    return Object.freeze({ worlds, knowledge, knowledgeBindings, assets });
 }
 
 function assertAssetFiles(value = []) {
     if (!Array.isArray(value)) throw new TypeError('AtriaProject.assetFiles must be an array');
     const assets = value.map((item, index) => {
         plain(item, `AtriaProject.assetFiles[${index}]`);
-        assertOnlyKeys(item, new Set(['assetId', 'path', 'mediaType', 'logicalName']), `AtriaProject.assetFiles[${index}]`);
+        assertOnlyKeys(item, new Set(['assetId', 'path', 'mediaType', 'logicalName', 'metadata']), `AtriaProject.assetFiles[${index}]`);
         return Object.freeze({
             assetId: assertNativeId(item.assetId, 'asset', 'AtriaProject assetId'),
             path: projectPath(item.path, 'AtriaProject asset path'),
             ...(item.mediaType == null ? {} : { mediaType: text(item.mediaType, 'AtriaProject asset mediaType', { maxLength: 256 }) }),
             ...(item.logicalName == null ? {} : { logicalName: text(item.logicalName, 'AtriaProject asset logicalName', { maxLength: 512 }) }),
+            ...(item.metadata === undefined ? {} : { metadata: cloneJson(item.metadata, 'AtriaProject asset metadata') }),
         });
     });
     unique(assets, 'AtriaProject.assetFiles assetId', item => item.assetId);
@@ -253,7 +266,7 @@ export function assertAtriaProjectSource(value) {
     )));
     const bindingIds = new Set(knowledgeBindings.map(item => item.knowledgeBindingId));
     for (const bindingId of dependencies.knowledgeBindings) bindingIds.add(bindingId);
-    const assetIds = new Set(assetFiles.map(item => item.assetId));
+    const assetIds = new Set([...assetFiles.map(item => item.assetId), ...dependencies.assets.map(item => item.assetId)]);
 
     for (const binding of knowledgeBindings) {
         if (binding.source.kind !== 'project') {

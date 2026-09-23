@@ -136,15 +136,7 @@ export const SYNC_CATEGORIES = [
         syncDefault: 'on',
         warnings: [],
     },
-    {
-        id: 'card-apps',
-        displayKey: 'sync.category.card-apps',
-        descriptionKey: 'sync.category.card-apps.desc',
-        paths: [directory(d => d.cardApps)],
-        conflictMode: 'file',
-        syncDefault: 'on',
-        warnings: [],
-    },
+
     {
         id: 'skills',
         displayKey: 'sync.category.skills',

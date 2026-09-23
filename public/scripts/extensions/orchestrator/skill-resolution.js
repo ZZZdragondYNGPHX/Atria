@@ -190,6 +190,87 @@ export async function resolveAgentVisibleSkills({ modeProfile, agentConfig, runt
     );
 }
 
+
+/**
+ * Resolve skills for Native Build/Play identities without reusing Character
+ * scope as authoring identity. The legacy orchestrator resolver above remains
+ * available to legacy chat surfaces; Native callers use only
+ * global -> project -> exact package precedence.
+ *
+ * @param {object} args
+ * @param {object} args.modeProfile
+ * @param {object|null} args.agentConfig
+ * @param {{projectId?:string, packageId?:string, packageVersionId?:string, skillIds?:string[]}} args.nativeContext
+ * @returns {Promise<Array>}
+ */
+export async function resolveNativeAgentVisibleSkills({ modeProfile, agentConfig, nativeContext = {} }) {
+    const now = Date.now();
+    if (!cachedInventory || (now - cacheStamp) > CACHE_TTL_MS) {
+        try {
+            cachedInventory = await skillsApi.list({ scope: 'all' });
+            cacheStamp = now;
+        } catch (e) {
+            console.warn('[skill-resolution] failed to load Native skill inventory:', e?.message || e);
+            cachedInventory = [];
+            cacheStamp = now;
+        }
+    }
+    const raw = Array.isArray(cachedInventory) ? cachedInventory : [];
+    const merged = new Map();
+
+    for (const entry of raw) {
+        if (entry?.scope?.kind === 'global') merged.set(entry.name, entry);
+    }
+    if (nativeContext.projectId) {
+        for (const entry of raw) {
+            if (
+                entry?.scope?.kind === 'project'
+                && entry.scope.projectId === nativeContext.projectId
+            ) {
+                merged.set(entry.name, entry);
+            }
+        }
+    }
+    if (nativeContext.packageId && nativeContext.packageVersionId) {
+        for (const entry of raw) {
+            if (
+                entry?.scope?.kind === 'package'
+                && entry.scope.packageId === nativeContext.packageId
+                && entry.scope.packageVersionId === nativeContext.packageVersionId
+            ) {
+                merged.set(entry.name, entry);
+            }
+        }
+    }
+
+    ensureSkillsFieldShape(modeProfile);
+    const modeVisible = Array.isArray(modeProfile?.skills?.visible)
+        ? modeProfile.skills.visible : ['*'];
+    const modeDeny = Array.isArray(modeProfile?.skills?.deny)
+        ? modeProfile.skills.deny : [];
+    const agentVisible = Array.isArray(agentConfig?.skills?.visible)
+        ? agentConfig.skills.visible : null;
+    const agentDeny = Array.isArray(agentConfig?.skills?.deny)
+        ? agentConfig.skills.deny : [];
+
+    const effectiveVisible = !agentVisible || agentVisible.length === 0
+        ? modeVisible
+        : (agentVisible[0] === '+' ? [...modeVisible, ...agentVisible.slice(1)] : agentVisible);
+    const visibleSet = new Set(effectiveVisible);
+    const denySet = new Set([...modeDeny, ...agentDeny]);
+    const declared = Array.isArray(nativeContext.skillIds) && nativeContext.skillIds.length
+        ? new Set(nativeContext.skillIds)
+        : null;
+
+    return [...merged.values()].filter(entry => {
+        if (!entry || typeof entry.name !== 'string') return false;
+        if (!visibleSet.has('*') && !visibleSet.has(entry.name)) return false;
+        if (denySet.has(entry.name)) return false;
+        if (!declared) return true;
+        return entry.scope?.kind === 'global' || declared.has(entry.name);
+    });
+}
+
 /**
  * Build the `<available_skills>` system-message block appended to an
  * agent's task messages.

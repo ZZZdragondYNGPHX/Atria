@@ -98,7 +98,6 @@ const USER_DIR_TEMPLATE = Object.freeze({
     backups: 'backups',
     sysprompt: 'sysprompt',
     reasoning: 'reasoning',
-    cardApps: 'card-apps',
     skills: 'skills',
 });
 
