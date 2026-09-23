@@ -1,4 +1,9 @@
-import { loadGamePackageTextResource } from '../package-loader.js';
+import { loadGamePackageJsonResource } from '../package-loader.js';
+import {
+    applyResponsiveComponentVisibility,
+    compileExperienceComponentModel,
+    renderExperienceComponentModel,
+} from './component-model.js';
 import { bindDeclarativeGameUi } from './declarative.js';
 import { createResponsiveEnvironment } from './environment.js';
 import {
@@ -6,106 +11,49 @@ import {
     createNativeComponentRegistry,
 } from './native-components.js';
 
-const BLOCKED_ELEMENTS = Object.freeze([
-    'script',
-    'iframe',
-    'object',
-    'embed',
-    'link',
-    'meta',
-    'base',
-    'style',
-]);
-
-const URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'xlink:href']);
-const SUPPORTED_STATIC_UI_MODES = new Set(['component', 'hybrid', 'full']);
-
-function isUnsafeUrl(value) {
-    const normalized = String(value || '').trim().replace(/[\u0000-\u001F\u007F\s]+/g, '');
-    return /^(?:javascript|vbscript):/i.test(normalized)
-        || /^data:text\/html/i.test(normalized);
-}
-
-export function sanitizeGameHtmlFragment(documentRef, html) {
-    if (!documentRef || typeof documentRef.createElement !== 'function') {
-        throw new Error('Game UI HTML sanitizer requires a document');
-    }
-
-    const template = documentRef.createElement('template');
-    template.innerHTML = String(html ?? '');
-
-    for (const selector of BLOCKED_ELEMENTS) {
-        for (const element of template.content.querySelectorAll(selector)) {
-            element.remove();
-        }
-    }
-
-    for (const element of template.content.querySelectorAll('*')) {
-        for (const attribute of [...element.attributes]) {
-            const name = attribute.name.toLowerCase();
-            if (name.startsWith('on') || name === 'srcdoc') {
-                element.removeAttribute(attribute.name);
-                continue;
-            }
-            if (URL_ATTRIBUTES.has(name) && isUnsafeUrl(attribute.value)) {
-                element.removeAttribute(attribute.name);
-            }
-        }
-    }
-
-    return template.content.cloneNode(true);
-}
+const SUPPORTED_COMPONENT_MODES = new Set(['component', 'hybrid', 'full']);
 
 export async function loadGameComponentDefinition(packageState, options = {}) {
-    const ui = packageState?.manifest?.ui;
-    if (!ui || !SUPPORTED_STATIC_UI_MODES.has(ui.mode)) return null;
+    const experience = packageState?.runtime?.experience;
+    const mode = String(experience?.mode || '').trim();
+    if (!SUPPORTED_COMPONENT_MODES.has(mode)) return null;
 
-    const charId = String(packageState?.charId || '').trim();
-    if (!charId) {
-        throw new Error('Game UI cannot load without a character package id');
+    const entry = String(experience?.component || '').trim();
+    if (!entry) {
+        throw new Error(`${mode} Experience requires a declarative Component Model resource`);
+    }
+    if (!entry.endsWith('.json')) {
+        throw new Error(`${mode} Experience component resource must be declarative .json`);
     }
 
-    const entry = String(ui.entry || '').trim();
-    if (!entry.endsWith('.html')) {
-        throw new Error(
-            `${ui.mode === 'full' ? 'Full' : (ui.mode === 'hybrid' ? 'Hybrid' : 'Component')} UI entry '${entry}' must be an .html file in the current R4 runtime`,
-        );
-    }
-    if (['hybrid', 'full'].includes(ui.mode) && (ui.surface || 'app.root') !== 'app.root') {
-        throw new Error(`${ui.mode === 'full' ? 'Full' : 'Hybrid'} UI currently requires the app.root surface`);
+    const surface = String(experience?.surface || 'app.root').trim();
+    if (['hybrid', 'full'].includes(mode) && surface !== 'app.root') {
+        throw new Error(`${mode} Experience requires the app.root surface`);
     }
 
-    const html = await loadGamePackageTextResource(charId, entry, {
+    const raw = await loadGamePackageJsonResource(packageState, entry, {
         fetchImpl: options.fetchImpl,
         headers: options.headers || {},
     });
+    const compiled = compileExperienceComponentModel(raw, { mode });
+
     const documentRef = options.document || globalThis.document;
     const windowRef = options.window || globalThis.window;
-    if (!documentRef) {
-        throw new Error('Game UI requires a document');
-    }
+    if (!documentRef) throw new Error('Component Model requires a document');
 
     return Object.freeze({
-        id: ui.mode === 'full'
-            ? 'package.full'
-            : (ui.mode === 'hybrid' ? 'package.hybrid' : 'package.component'),
-        mode: ui.mode,
-        surface: ui.surface || 'app.root',
-        className: 'atria-game-package-' + ui.mode,
+        id: 'experience.' + mode,
+        mode,
+        surface,
+        className: 'atria-experience-' + mode,
+        componentResource: entry,
         async mount(context) {
-            const fragment = sanitizeGameHtmlFragment(documentRef, html);
-            const hasNativeSlots = Boolean(
-                fragment.querySelector?.('[data-atria-native-component]'),
-            );
-            if (ui.mode === 'component' && hasNativeSlots) {
-                throw new Error('Native component slots require Hybrid or Full UI mode');
-            }
-
+            const root = renderExperienceComponentModel(documentRef, compiled);
             if (typeof context.container.replaceChildren === 'function') {
-                context.container.replaceChildren(fragment);
+                context.container.replaceChildren(root);
             } else {
                 context.container.innerHTML = '';
-                context.container.appendChild(fragment);
+                context.container.appendChild(root);
             }
 
             const cleanup = [];
@@ -113,11 +61,16 @@ export async function loadGameComponentDefinition(packageState, options = {}) {
                 const responsive = createResponsiveEnvironment(context.container, {
                     window: windowRef,
                 });
+                const syncResponsive = environment => (
+                    applyResponsiveComponentVisibility(context.container, environment)
+                );
+                syncResponsive(responsive.get());
+                cleanup.push(responsive.subscribe(syncResponsive));
                 cleanup.push(() => responsive.dispose());
 
                 cleanup.push(bindDeclarativeGameUi(context.container, context));
 
-                if (['hybrid', 'full'].includes(ui.mode)) {
+                if (compiled.usesNativeComponents) {
                     const registry = createNativeComponentRegistry(documentRef, {
                         nativePlayHost: options.nativePlayHost,
                     });
