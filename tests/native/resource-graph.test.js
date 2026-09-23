@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { describe, expect, test } from '@jest/globals';
 
 import {
@@ -155,5 +157,89 @@ describe('A2 derived Resource Graph', () => {
         } finally {
             await h.cleanup();
         }
+    });    test('connects project-owned World nodes directly to exact Library asset dependencies', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const projects = new ProjectStore({ directoriesByHandle: () => h.dirs });
+            const worlds = new WorldRepo({ engine: h.engine });
+            const knowledge = new KnowledgeRepo({ engine: h.engine });
+            const assets = new AssetStore({ engine: h.engine, directoriesByHandle: () => h.dirs });
+            const registry = createCoreResourceRegistry();
+            const library = new NativeLibraryService({
+                worldRepo: worlds,
+                knowledgeRepo: knowledge,
+                assetStore: assets,
+            });
+            const graph = new ResourceGraph({
+                registry,
+                libraryService: library,
+                projectStore: projects,
+                worldRepo: worlds,
+                knowledgeRepo: knowledge,
+                assetStore: assets,
+            });
+
+            const bytes = Buffer.from('library map');
+            const contentHash = createHash('sha256').update(bytes).digest('hex');
+            const assetId = createNativeId('asset');
+            await assets.put(h.handle, {
+                assetId,
+                contentHash,
+                size: bytes.length,
+                mediaType: 'text/plain',
+            }, bytes);
+
+            const worldId = createNativeId('world');
+            const worldRevisionId = createNativeId('worldRevision');
+            const source = projectSource(worldId, worldRevisionId);
+            source.worlds = [{
+                world: {
+                    worldId,
+                    displayName: 'Forked Project World',
+                    currentRevisionId: worldRevisionId,
+                    createdAt: 1,
+                    updatedAt: 1,
+                },
+                revision: {
+                    worldId,
+                    worldRevisionId,
+                    baseline: {},
+                    knowledgeBindingIds: [],
+                    assetIds: [assetId],
+                    metadata: {},
+                    createdAt: 1,
+                },
+            }];
+            source.dependencies.worlds = [];
+            source.dependencies.assets = [{ assetId, contentHash }];
+            await projects.create(h.handle, source);
+
+            const reverse = await graph.references(h.handle, {
+                resourceType: 'core.asset',
+                resourceId: assetId,
+                revision: contentHash,
+            }, { reverse: true });
+
+            expect(reverse).toEqual(expect.arrayContaining([
+                expect.objectContaining({
+                    edge: expect.objectContaining({ kind: 'attaches-exact' }),
+                    node: expect.objectContaining({
+                        resourceType: 'core.project',
+                        resourceId: source.project.projectId,
+                    }),
+                }),
+                expect.objectContaining({
+                    edge: expect.objectContaining({ kind: 'references' }),
+                    node: expect.objectContaining({
+                        resourceType: 'core.world',
+                        resourceId: worldId,
+                        ownership: 'project',
+                    }),
+                }),
+            ]));
+        } finally {
+            await h.cleanup();
+        }
     });
+
 });

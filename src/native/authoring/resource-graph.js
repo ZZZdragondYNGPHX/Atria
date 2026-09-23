@@ -261,7 +261,7 @@ export class ResourceGraph {
         }
 
         const binding = exact.snapshot;
-        return this._addNode(nodes, {
+        const bindingNode = this._addNode(nodes, {
             key,
             scope: 'library',
             resourceType: ref.resourceType,
@@ -278,6 +278,13 @@ export class ResourceGraph {
                 knowledgeRevisionId: binding.source.knowledgeRevisionId,
             },
         });
+        const knowledgeNode = await this._addExactLibraryResource(handle, nodes, edges, {
+            resourceType: 'core.knowledge',
+            resourceId: binding.source.knowledgeBaseId,
+            revision: binding.source.knowledgeRevisionId,
+        });
+        this._addEdge(edges, bindingNode.key, knowledgeNode.key, 'references-exact');
+        return bindingNode;
     }
 
     async _derive(handle) {
@@ -423,11 +430,32 @@ export class ResourceGraph {
                 });
                 this._addEdge(edges, project.key, worldNode.key, 'contains');
                 for (const bindingId of snapshot.revision.knowledgeBindingIds) {
-                    const target = bindingNodes.get(bindingId);
+                    let target = bindingNodes.get(bindingId);
+                    if (!target) {
+                        const binding = await this._knowledge.getBinding(handle, bindingId);
+                        if (binding) {
+                            target = await this._addExactLibraryResource(handle, nodes, edges, {
+                                resourceType: 'core.knowledge-binding',
+                                resourceId: bindingId,
+                                revision: hash(binding),
+                            });
+                        }
+                    }
                     if (target) this._addEdge(edges, worldNode.key, target.key, 'references');
                 }
                 for (const assetId of snapshot.revision.assetIds) {
-                    const target = projectAssets.get(assetId);
+                    let target = projectAssets.get(assetId);
+                    if (!target) {
+                        const dependency = (source.dependencies?.assets || [])
+                            .find(item => item.assetId === assetId);
+                        if (dependency) {
+                            target = await this._addExactLibraryResource(handle, nodes, edges, {
+                                resourceType: 'core.asset',
+                                resourceId: assetId,
+                                revision: dependency.contentHash,
+                            });
+                        }
+                    }
                     if (target) this._addEdge(edges, worldNode.key, target.key, 'references');
                 }
             }
