@@ -75,6 +75,11 @@ export {
 export { ProjectStore } from './project-store.js';
 
 export {
+    STUDIO_SOURCE_OPERATION_TYPES,
+    StudioService,
+} from './authoring/studio-service.js';
+
+export {
     NativeDependencyError,
     resolveProjectDependencyClosure,
 } from './dependency-closure.js';
