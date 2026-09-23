@@ -312,7 +312,16 @@ describe('Game Logic Runtime command transaction', () => {
             releaseFirst = resolve;
         });
         const logic = createGameLogicRuntime({
-            world,
+            world: {
+                ...world,
+                getSnapshot() {
+                    return {
+                        ...world.getSnapshot(),
+                        branchId: 'branch_test',
+                        revisionId: 'revision_test',
+                    };
+                },
+            },
             commands: [{
                 id: 'queued_damage',
                 async execute() {
