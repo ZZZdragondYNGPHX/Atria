@@ -225,6 +225,12 @@ describe('N0 opaque Native identity', () => {
             knowledgeRevision: 'kbv',
             knowledgeEntry: 'kentry',
             knowledgeBinding: 'kbind',
+            connectionProfile: 'conn',
+            modelProfile: 'model',
+            generationProfile: 'genprof',
+            promptModule: 'pmod',
+            promptProgram: 'pprog',
+            runtimeRoute: 'route',
         });
     });
 
