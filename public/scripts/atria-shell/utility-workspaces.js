@@ -407,12 +407,6 @@ export async function mountPluginsUtility({
     };
 }
 
-const SETTINGS_SECTIONS = Object.freeze([
-    Object.freeze({ id: 'appearance', label: 'Appearance', target: 'UI-Theme-Block' }),
-    Object.freeze({ id: 'language', label: 'Language', target: 'UI-language-block' }),
-    Object.freeze({ id: 'interface', label: 'Interface & behavior', target: 'power-user-options-block' }),
-]);
-
 function createProductSettingCard(documentRef, {
     id,
     title,
