@@ -135,6 +135,15 @@ describe('A8 Native Studio Project Agent client', () => {
             const body = options.body ? JSON.parse(options.body) : null;
             calls.push({ type: 'fetch', path, method, body });
 
+            if (path.endsWith(`/projects/${projectId}/preflight`) && method === 'POST') {
+                return response({
+                    projectId,
+                    revision: { projectId, revision: baseRevision },
+                    manifest: { packageId: 'package_test' },
+                    packageVersion: { packageVersionId: 'packageVersion_test' },
+                    preflight: { requiredPermissions: [] },
+                });
+            }
             if (path === '/api/skills?scope=all') {
                 return response([{
                     name: 'project-guidance',
