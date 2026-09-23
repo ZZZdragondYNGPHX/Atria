@@ -8,6 +8,10 @@ import {
 } from './contracts.js';
 import { createNativeId } from './identity.js';
 import { resolveProjectDependencyClosure } from './dependency-closure.js';
+import {
+    getVersionedModelPromptResourceIdentity,
+    mapVersionedModelPromptResourceRefs,
+} from './model-prompt-runtime/resources.js';
 import { compilePackageRuntimePlugins } from './plugin-platform.js';
 import {
     buildAtriaPackageContainer,
@@ -58,6 +62,7 @@ export async function buildProjectPackage({
     worldRepo,
     knowledgeRepo,
     assetStore,
+    versionedJsonResources = null,
     idFactory = createNativeId,
 }) {
     if (!projectStore) throw new TypeError('buildProjectPackage requires ProjectStore');
@@ -70,6 +75,7 @@ export async function buildProjectPackage({
         worldRepo,
         knowledgeRepo,
         assetStore,
+        versionedJsonResources,
     });
     const assetPayloads = await collectProjectAssets({ handle, source, projectStore });
     for (const payload of closure.assets) {
@@ -77,6 +83,34 @@ export async function buildProjectPackage({
     }
 
     const packageVersionId = idFactory('packageVersion');
+    const packageRef = ref => ({
+        resourceType: ref.resourceType,
+        resourceId: ref.resourceId,
+        revision: ref.revision,
+        scope: 'package',
+        packageId: source.project.packageId,
+        packageVersionId,
+    });
+    const packagedModelPromptResources = closure.resources.map(item => {
+        const resource = mapVersionedModelPromptResourceRefs(
+            item.resourceType,
+            item.resource,
+            ref => packageRef(ref),
+        );
+        return Object.freeze({
+            resourceType: item.resourceType,
+            resource,
+            origin: Object.freeze({
+                scope: 'package',
+                packageId: source.project.packageId,
+                packageVersionId,
+            }),
+        });
+    });
+    const packagedResourceKeys = new Set(packagedModelPromptResources.map(item => {
+        const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+        return identity.resourceType + ':' + identity.resourceId + '@' + identity.revision;
+    }));
     const runtimePlugins = source.package.runtime?.plugins;
     const compiledPlugins = runtimePlugins === undefined
         ? null
@@ -87,8 +121,26 @@ export async function buildProjectPackage({
         ? undefined
         : {
             ...source.package.runtime,
+            ...(source.package.runtime.modelPrompt === undefined ? {} : {
+                modelPrompt: {
+                    ...source.package.runtime.modelPrompt,
+                    roles: (source.package.runtime.modelPrompt.roles || []).map(role => ({
+                        ...role,
+                        ...(role.promptProgramRef ? { promptProgramRef: packageRef(role.promptProgramRef) } : {}),
+                        ...(role.generationProfileRef ? { generationProfileRef: packageRef(role.generationProfileRef) } : {}),
+                    })),
+                },
+            }),
             ...(compiledPlugins ? { plugins: compiledPlugins.manifests } : {}),
         };
+    for (const role of packageRuntime?.modelPrompt?.roles || []) {
+        for (const ref of [role.promptProgramRef, role.generationProfileRef].filter(Boolean)) {
+            const key = ref.resourceType + ':' + ref.resourceId + '@' + ref.revision;
+            if (!packagedResourceKeys.has(key)) {
+                throw new Error('Package model/prompt closure is missing exact resource ' + key);
+            }
+        }
+    }
     const manifest = assertAtriaPackageManifest({
         format: 'atria-package',
         schemaVersion: 2,
@@ -100,6 +152,7 @@ export async function buildProjectPackage({
         worlds: closure.worlds,
         knowledge: closure.knowledge,
         knowledgeBindings: closure.knowledgeBindings,
+        resources: packagedModelPromptResources,
         assets: [...assetPayloads.values()].map(item => item.ref),
     });
 

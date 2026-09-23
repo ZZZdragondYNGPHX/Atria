@@ -1,6 +1,11 @@
 import { assertNativeId } from './identity.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
 import {
+    assertPackageVersionedModelPromptResourceEnvelope,
+    collectVersionedModelPromptResourceRefs,
+    getVersionedModelPromptResourceIdentity,
+} from './model-prompt-runtime/resources.js';
+import {
     assertKnowledgeBinding,
     assertPackagedKnowledgeSnapshot,
     assertPackagedWorldSnapshot,
@@ -462,6 +467,7 @@ const PACKAGE_KEYS = new Set([
     'worlds',
     'knowledge',
     'knowledgeBindings',
+    'resources',
     'runtime',
     'orchestration',
     'memory',
@@ -498,6 +504,13 @@ export function assertAtriaPackageManifest(value) {
     const worlds = (value.worlds || []).map(assertPackagedWorldSnapshot);
     const knowledge = (value.knowledge || []).map(assertPackagedKnowledgeSnapshot);
     const knowledgeBindings = (value.knowledgeBindings || []).map(assertKnowledgeBinding);
+    const modelPromptResources = (value.resources || []).map((item, index) => (
+        assertPackageVersionedModelPromptResourceEnvelope(item, {
+            packageId,
+            packageVersionId,
+            field: 'AtriaPackage.resources[' + index + ']',
+        })
+    ));
     for (const [items, key, field] of [
         [actors, 'actorId', 'AtriaPackage.actors'],
         [entryPoints, 'entryPointId', 'AtriaPackage.entryPoints'],
@@ -523,6 +536,21 @@ export function assertAtriaPackageManifest(value) {
     const knowledgeRevisionKeys = new Set(knowledge.map(item => (
         item.knowledgeBase.knowledgeBaseId + '@' + item.revision.knowledgeRevisionId
     )));
+    const modelPromptResourceKeys = new Set(modelPromptResources.map(item => {
+        const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+        return identity.resourceType + ':' + identity.resourceId + '@' + identity.revision;
+    }));
+    if (modelPromptResourceKeys.size !== modelPromptResources.length) {
+        throw new TypeError('AtriaPackage.resources contains duplicate exact identities');
+    }
+    for (const item of modelPromptResources) {
+        for (const ref of collectVersionedModelPromptResourceRefs(item.resourceType, item.resource)) {
+            const key = ref.resourceType + ':' + ref.resourceId + '@' + ref.revision;
+            if (!modelPromptResourceKeys.has(key)) {
+                throw new TypeError('AtriaPackage model/prompt resource references missing exact dependency ' + key);
+            }
+        }
+    }
 
     for (const entryPoint of entryPoints) {
         for (const worldId of entryPoint.worldIds) {
@@ -586,6 +614,7 @@ export function assertAtriaPackageManifest(value) {
         worlds,
         knowledge,
         knowledgeBindings,
+        resources: modelPromptResources,
         assets,
     };
     if (value.runtime !== undefined) {
@@ -595,6 +624,16 @@ export function assertAtriaPackageManifest(value) {
                 packageId,
                 packageVersionId,
             });
+        }
+        if (runtime.modelPrompt !== undefined) {
+            for (const role of runtime.modelPrompt.roles) {
+                for (const ref of [role.promptProgramRef, role.generationProfileRef].filter(Boolean)) {
+                    const key = ref.resourceType + ':' + ref.resourceId + '@' + ref.revision;
+                    if (!modelPromptResourceKeys.has(key)) {
+                        throw new TypeError('Package.runtime.modelPrompt references missing exact resource ' + key);
+                    }
+                }
+            }
         }
         out.runtime = Object.freeze(runtime);
     }

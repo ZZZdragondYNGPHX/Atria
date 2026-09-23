@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 
 import { resolveProjectDependencyClosure } from '../dependency-closure.js';
+import {
+    VERSIONED_MODEL_PROMPT_RESOURCE_TYPES,
+    collectVersionedModelPromptResourceRefs,
+    getVersionedModelPromptResourceIdentity,
+} from '../model-prompt-runtime/resources.js';
 
 function hash(value) {
     return createHash('sha256').update(
@@ -57,6 +62,7 @@ export class ResourceGraph {
         knowledgeRepo,
         assetStore,
         packageRepo = null,
+        versionedJsonResources = null,
     }) {
         for (const [name, value] of Object.entries({
             registry,
@@ -75,6 +81,7 @@ export class ResourceGraph {
         this._knowledge = knowledgeRepo;
         this._assets = assetStore;
         this._packages = packageRepo;
+        this._versionedJsonResources = versionedJsonResources;
         this._cache = new Map();
     }
 
@@ -244,6 +251,34 @@ export class ResourceGraph {
             });
         }
 
+        if (VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(ref.resourceType)) {
+            const identity = getVersionedModelPromptResourceIdentity(ref.resourceType, exact.snapshot);
+            const node = this._addNode(nodes, {
+                key,
+                scope: 'library',
+                resourceType: ref.resourceType,
+                resourceId: identity.resourceId,
+                revision: identity.revision,
+                contentIdentity: exact.ref.contentIdentity,
+                displayName: identity.displayName,
+                authority: 'native-library',
+                ownership: 'library',
+                immutable: true,
+                metadata: {
+                    origin: 'library',
+                    provenance: exact.snapshot.provenance || [],
+                },
+            });
+            for (const dependency of collectVersionedModelPromptResourceRefs(ref.resourceType, exact.snapshot)) {
+                if (dependency.scope !== 'library') {
+                    throw new TypeError('Library model/prompt graph resource contains non-Library exact ref');
+                }
+                const target = await this._addExactLibraryResource(handle, nodes, edges, dependency);
+                this._addEdge(edges, node.key, target.key, 'references-exact');
+            }
+            return node;
+        }
+
         if (ref.resourceType === 'core.package') {
             return this._addNode(nodes, {
                 key,
@@ -336,6 +371,50 @@ export class ResourceGraph {
                     metadata: {},
                 });
                 this._addEdge(edges, project.key, actorNode.key, 'contains');
+            }
+
+            const projectResourceNodes = new Map();
+            for (const item of source.resources || []) {
+                const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+                const resourceNode = this._addNode(nodes, {
+                    key: nodeKey(projectScope, identity.resourceType, identity.resourceId, identity.revision),
+                    scope: projectScope,
+                    projectId: root.projectId,
+                    resourceType: identity.resourceType,
+                    resourceId: identity.resourceId,
+                    revision: identity.revision,
+                    contentIdentity: hash(item.resource),
+                    displayName: identity.displayName,
+                    authority: 'project-source',
+                    ownership: 'project',
+                    immutable: false,
+                    metadata: {
+                        origin: 'project',
+                        provenance: item.resource.provenance || [],
+                    },
+                });
+                projectResourceNodes.set(
+                    identity.resourceType + ':' + identity.resourceId + '@' + identity.revision,
+                    resourceNode,
+                );
+                this._addEdge(edges, project.key, resourceNode.key, 'contains');
+            }
+            for (const item of source.resources || []) {
+                const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+                const from = projectResourceNodes.get(
+                    identity.resourceType + ':' + identity.resourceId + '@' + identity.revision,
+                );
+                for (const ref of collectVersionedModelPromptResourceRefs(item.resourceType, item.resource)) {
+                    let target = null;
+                    if (ref.scope === 'project') {
+                        target = projectResourceNodes.get(
+                            ref.resourceType + ':' + ref.resourceId + '@' + ref.revision,
+                        ) || null;
+                    } else if (ref.scope === 'library') {
+                        target = await this._addExactLibraryResource(handle, nodes, edges, ref);
+                    }
+                    if (target) this._addEdge(edges, from.key, target.key, 'references-exact');
+                }
             }
 
             const projectKnowledge = new Map();
@@ -484,6 +563,10 @@ export class ResourceGraph {
                 });
                 this._addEdge(edges, project.key, target.key, 'attaches-exact');
             }
+            for (const dependency of source.dependencies?.resources || []) {
+                const target = await this._addExactLibraryResource(handle, nodes, edges, dependency);
+                this._addEdge(edges, project.key, target.key, 'attaches-exact');
+            }
             for (const bindingId of source.dependencies?.knowledgeBindings || []) {
                 const binding = await this._knowledge.getBinding(handle, bindingId);
                 if (!binding) continue;
@@ -618,6 +701,7 @@ export class ResourceGraph {
             worldRepo: this._worlds,
             knowledgeRepo: this._knowledge,
             assetStore: this._assets,
+            versionedJsonResources: this._versionedJsonResources,
         });
         const resources = [];
         for (const item of closure.worlds) {
@@ -646,6 +730,14 @@ export class ResourceGraph {
                 resourceType: 'core.asset',
                 resourceId: item.ref.assetId,
                 revision: item.ref.contentHash,
+            }));
+        }
+        for (const item of closure.resources) {
+            const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+            resources.push(Object.freeze({
+                resourceType: identity.resourceType,
+                resourceId: identity.resourceId,
+                revision: identity.revision,
             }));
         }
         return Object.freeze({

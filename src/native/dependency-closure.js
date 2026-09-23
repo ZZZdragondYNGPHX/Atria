@@ -3,6 +3,12 @@ import {
     assertPackagedKnowledgeSnapshot,
     assertPackagedWorldSnapshot,
 } from './world-knowledge.js';
+import { assertExactResourceRef } from './model-prompt-runtime/contracts.js';
+import {
+    collectVersionedModelPromptResourceRefs,
+    getVersionedModelPromptResourceIdentity,
+} from './model-prompt-runtime/resources.js';
+import { hashNativeDocument } from './repositories/common.js';
 
 export class NativeDependencyError extends Error {
     constructor(code, details = {}) {
@@ -77,6 +83,7 @@ export async function resolveProjectDependencyClosure({
     worldRepo,
     knowledgeRepo,
     assetStore,
+    versionedJsonResources = null,
 }) {
     if (!source) throw new TypeError('Dependency closure requires a Project source');
     if (!worldRepo || !knowledgeRepo || !assetStore) {
@@ -87,10 +94,91 @@ export async function resolveProjectDependencyClosure({
     const knowledge = new Map();
     const bindings = new Map();
     const assets = new Map();
+    const modelPromptResources = new Map();
+    const projectModelPromptResources = new Map();
+    const resolvingModelPromptResources = new Set();
     const projectAssetIds = new Set((source.assetFiles || []).map(item => item.assetId));
     const exactAssetDependencies = new Map(
         (source.dependencies?.assets || []).map(item => [item.assetId, item.contentHash]),
     );
+
+    const modelPromptKey = (resourceType, resourceId, revision) => (
+        resourceType + ':' + resourceId + '@' + revision
+    );
+
+    for (const item of source.resources || []) {
+        const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+        projectModelPromptResources.set(
+            modelPromptKey(identity.resourceType, identity.resourceId, identity.revision),
+            item.resource,
+        );
+    }
+
+    const addModelPromptResource = async (resourceType, resource, origin) => {
+        const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
+        const key = modelPromptKey(resourceType, identity.resourceId, identity.revision);
+        const existing = modelPromptResources.get(key);
+        if (existing) {
+            if (hashNativeDocument(existing.resource) !== hashNativeDocument(resource)) {
+                throw new NativeDependencyError('native_model_prompt_dependency_conflict', { key });
+            }
+            return existing;
+        }
+        const entry = Object.freeze({
+            resourceType,
+            resource,
+            origin: Object.freeze({ ...origin }),
+        });
+        modelPromptResources.set(key, entry);
+        if (resolvingModelPromptResources.has(key)) return entry;
+        resolvingModelPromptResources.add(key);
+        try {
+            for (const ref of collectVersionedModelPromptResourceRefs(resourceType, resource)) {
+                await resolveModelPromptRef(ref);
+            }
+        } finally {
+            resolvingModelPromptResources.delete(key);
+        }
+        return entry;
+    };
+
+    const resolveModelPromptRef = async (value) => {
+        const ref = assertExactResourceRef(value, null, 'Model/prompt dependency ref');
+        const key = modelPromptKey(ref.resourceType, ref.resourceId, ref.revision);
+        if (modelPromptResources.has(key)) return modelPromptResources.get(key);
+        if (ref.scope === 'project') {
+            if (ref.projectId !== source.project.projectId) {
+                throw new NativeDependencyError('native_model_prompt_dependency_project_mismatch', {
+                    projectId: source.project.projectId,
+                    ref,
+                });
+            }
+            const resource = projectModelPromptResources.get(key);
+            if (!resource) {
+                throw new NativeDependencyError('native_model_prompt_dependency_missing', { ref });
+            }
+            return addModelPromptResource(ref.resourceType, resource, {
+                scope: 'project',
+                projectId: source.project.projectId,
+            });
+        }
+        if (ref.scope === 'library') {
+            if (!versionedJsonResources) {
+                throw new NativeDependencyError('native_model_prompt_resource_handler_missing', { ref });
+            }
+            let exact;
+            try {
+                exact = await versionedJsonResources.getExact(handle, ref);
+            } catch (error) {
+                if (error?.name === 'NotFoundError') {
+                    throw new NativeDependencyError('native_model_prompt_dependency_missing', { ref });
+                }
+                throw error;
+            }
+            return addModelPromptResource(ref.resourceType, exact.snapshot, { scope: 'library' });
+        }
+        throw new NativeDependencyError('native_model_prompt_dependency_scope_unsupported', { ref });
+    };
 
     const addKnowledgeSnapshot = (snapshot) => {
         const parsed = assertPackagedKnowledgeSnapshot(snapshot);
@@ -274,6 +362,22 @@ export async function resolveProjectDependencyClosure({
         }
     }
 
+    for (const item of source.resources || []) {
+        const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+        await resolveModelPromptRef({
+            resourceType: identity.resourceType,
+            resourceId: identity.resourceId,
+            revision: identity.revision,
+            scope: 'project',
+            projectId: source.project.projectId,
+        });
+    }
+    for (const ref of source.dependencies?.resources || []) await resolveModelPromptRef(ref);
+    for (const role of source.package.runtime?.modelPrompt?.roles || []) {
+        if (role.promptProgramRef) await resolveModelPromptRef(role.promptProgramRef);
+        if (role.generationProfileRef) await resolveModelPromptRef(role.generationProfileRef);
+    }
+
     // Final entry-point closure validation happens here instead of following
     // Library "latest" pointers or display names.
     const worldIds = new Set(worlds.keys());
@@ -305,5 +409,6 @@ export async function resolveProjectDependencyClosure({
             ref: item.ref,
             bytes: Buffer.from(item.bytes),
         }))),
+        resources: Object.freeze([...modelPromptResources.values()]),
     });
 }

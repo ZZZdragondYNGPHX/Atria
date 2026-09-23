@@ -18,6 +18,7 @@ import {
 import {
     VERSIONED_MODEL_PROMPT_RESOURCE_TYPES,
     assertVersionedModelPromptResource,
+    collectVersionedModelPromptResourceRefs,
     getVersionedModelPromptResourceIdentity,
 } from './resources.js';
 
@@ -59,6 +60,11 @@ export class VersionedJsonResourceHandler {
     async commit(handle, resourceType, value, { setCurrent = true } = {}) {
         assertWritable();
         const resource = assertVersionedModelPromptResource(resourceType, value);
+        for (const ref of collectVersionedModelPromptResourceRefs(resourceType, resource)) {
+            if (ref.scope !== 'library') {
+                throw new TypeError('Library versioned resources may reference Library exact refs only');
+            }
+        }
         const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
         return this._engine.withTransaction(handle, async (tx) => {
             await putImmutable(

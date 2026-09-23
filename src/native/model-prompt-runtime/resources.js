@@ -97,3 +97,49 @@ export function mapVersionedModelPromptResourceRefs(resourceType, value, mapper)
     ));
     return assertVersionedModelPromptResource(resourceType, resource);
 }
+
+export function assertPackageVersionedModelPromptResourceEnvelope(value, {
+    packageId,
+    packageVersionId,
+    field = 'Package.resources[]',
+} = {}) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new TypeError(field + ' must be an object');
+    }
+    const keys = new Set(Object.keys(value));
+    for (const key of keys) {
+        if (!['resourceType', 'resource', 'origin'].includes(key)) {
+            throw new TypeError(field + " contains unsupported field '" + key + "'");
+        }
+    }
+    const resource = assertVersionedModelPromptResource(value.resourceType, value.resource);
+    const identity = getVersionedModelPromptResourceIdentity(value.resourceType, resource);
+    if (!value.origin || typeof value.origin !== 'object' || Array.isArray(value.origin)) {
+        throw new TypeError(field + '.origin must be an object');
+    }
+    if (
+        value.origin.scope !== 'package'
+        || value.origin.packageId !== packageId
+        || value.origin.packageVersionId !== packageVersionId
+    ) {
+        throw new TypeError(field + '.origin must identify the enclosing PackageVersion');
+    }
+    for (const ref of collectVersionedModelPromptResourceRefs(value.resourceType, resource)) {
+        if (
+            ref.scope !== 'package'
+            || ref.packageId !== packageId
+            || ref.packageVersionId !== packageVersionId
+        ) {
+            throw new TypeError(field + ' contains a non-package exact dependency');
+        }
+    }
+    return Object.freeze({
+        resourceType: identity.resourceType,
+        resource,
+        origin: Object.freeze({
+            scope: 'package',
+            packageId,
+            packageVersionId,
+        }),
+    });
+}
