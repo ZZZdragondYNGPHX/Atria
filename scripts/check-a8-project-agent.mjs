@@ -75,7 +75,7 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/studio-agent.js',
-    /provider\?\.kind\s*===\s*['"]plugin['"][\s\S]*pluginResourceDescriptors/,
+    /pluginResourceDescriptors[\s\S]*provider\?\.kind\s*===\s*['"]plugin['"]/,
     'A8 Project Agent must surface A5 Plugin authoring resource contributions',
 );
 requirePattern(
@@ -111,8 +111,13 @@ requirePattern(
 );
 requirePattern(
     'src/native/authoring/studio-service.js',
-    /Atria Studio ChangeSet[\s\S]*Task \$\{workspace\.origin\.id\}/,
+    /Task \$\{workspace\.origin\.id\}/,
     'A8 committed Agent ChangeSets must retain semantic Task identity in Git history',
+);
+requirePattern(
+    'src/native/authoring/studio-service.js',
+    /Atria Studio ChangeSet \$\{changeSetId\}\$\{semanticOrigin\}/,
+    'A8 Git history must retain ChangeSet identity and semantic Agent Task origin',
 );
 
 console.log('A8 Project Agent residual guard passed.');
