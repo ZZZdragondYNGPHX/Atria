@@ -79,7 +79,7 @@ function normalizeCloneOptions(options = {}) {
  * @property {(dir: string, hash: string) => Promise<string>} diff
  */
 
-const DEFAULT_AUTHOR = { name: 'CardApp Studio', email: 'studio@atria.local' };
+const DEFAULT_AUTHOR = { name: 'Atria Studio', email: 'studio@atria.local' };
 
 /**
  * Recursively enumerate every regular file inside a working directory, skipping
