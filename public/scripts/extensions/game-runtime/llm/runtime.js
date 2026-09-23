@@ -1,6 +1,5 @@
 import { cloneGameLlmValue } from './clone.js';
 import { createInterpretationMappingRegistry } from '../logic/interpretations.js';
-import { isGameBranchPathCompatible } from '../world/branch.js';
 import { createEventInterpreter } from './event-interpreter.js';
 import { createIntentResolver } from './intent-resolver.js';
 import { createMemoryRecallBridge } from './memory-bridge.js';
@@ -15,7 +14,7 @@ import {
 const clone = cloneGameLlmValue;
 
 function assertWorldSession(session) {
-    for (const method of ['getState', 'getJournal', 'getBranchPath', 'getCommands']) {
+    for (const method of ['getState', 'getJournal', 'getSessionId', 'getBranchId', 'getRevisionId', 'getCommands']) {
         if (typeof session?.[method] !== 'function') {
             throw new Error('Game LLM Runtime requires worldSession.' + method + '()');
         }
@@ -23,11 +22,7 @@ function assertWorldSession(session) {
 }
 
 function getActiveEvents(session) {
-    const branchPath = session.getBranchPath();
-    const journal = session.getJournal();
-    return (journal?.events || []).filter(event => (
-        isGameBranchPathCompatible(event?.branchPath || [], branchPath)
-    ));
+    return [...(session.getJournal()?.events || [])];
 }
 
 export function createGameLlmRuntime(options = {}) {
@@ -51,7 +46,11 @@ export function createGameLlmRuntime(options = {}) {
         || createMemoryRecallBridge({
             context: options.context,
             memoryApi: options.memoryApi,
-            getCurrentBranchPath: () => worldSession.getBranchPath(),
+            getCurrentBranchIdentity: () => ({
+                sessionId: worldSession.getSessionId(),
+                branchId: worldSession.getBranchId(),
+                revisionId: worldSession.getRevisionId(),
+            }),
         });
     const memoryIngestion = options.memoryIngestion
         || createPostTurnMemoryIngestion({
@@ -84,7 +83,6 @@ export function createGameLlmRuntime(options = {}) {
 
     function beginTurn(input = {}) {
         const journal = worldSession.getJournal();
-        const branchPath = worldSession.getBranchPath();
         const serial = Number.isInteger(input.serial) && input.serial >= 0
             ? input.serial
             : turnSerial++;
@@ -98,8 +96,10 @@ export function createGameLlmRuntime(options = {}) {
             origin: input.origin || 'free_text',
             userInput: input.userInput,
             anchor: {
-                branchPath,
-                journalNextSeq: Number.isInteger(journal?.nextSeq) ? journal.nextSeq : 1,
+                sessionId: worldSession.getSessionId(),
+                branchId: worldSession.getBranchId(),
+                revisionId: worldSession.getRevisionId(),
+                eventSeq: Number.isInteger(journal?.nextSeq) ? journal.nextSeq : 1,
                 serial,
             },
             observation,
