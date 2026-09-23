@@ -92,4 +92,3 @@ for (const width of [1440, 390]) {
         await expect(root).toContainText('No routes yet'); await page.screenshot({ path: info.outputPath(`empty-${width}.png`), fullPage: true });
     });
 }
-
