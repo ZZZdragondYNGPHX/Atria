@@ -20,13 +20,13 @@ test.afterAll(async () => {
 });
 
 async function openBackupSyncCenter(page) {
-    const drawerClosed = await page.locator('#user-settings-button .drawer-icon.closedIcon').count().then(n => n > 0);
-    if (drawerClosed) {
-        await page.locator('#user-settings-button .drawer-toggle').click();
-    }
-    await page.locator('#account_button').click();
-    const profile = page.locator('dialog.popup[open]').last();
-    await profile.locator('.userBackupSyncButton').click();
+    // A6 makes Account an Atria utility and hides the old settings drawer.
+    // Exercise the current Backup & Sync controller used by Account rather
+    // than restoring or depending on the retired SillyTavern navigation.
+    await page.evaluate(async () => {
+        const mod = await import('/scripts/backup-sync-center.js');
+        void mod.openBackupSyncCenter({ handle: 'default-user' });
+    });
     const center = page.locator('.backupSyncCenter').last();
     await center.waitFor({ state: 'visible', timeout: 10_000 });
     return center;
