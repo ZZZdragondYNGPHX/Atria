@@ -1,6 +1,6 @@
 # Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：P0–P7 已完成并验证；当前下一阶段为 P8 — Hard Cut / Integration / Freeze。**
+**P0–P8 已实现并完成本地验收；PR #85 的最终 CI 与 main 集成待完成。**
 
 ## 当前基线
 

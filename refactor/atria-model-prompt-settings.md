@@ -2,7 +2,7 @@
 
 ## Status
 
-**P0–P7 已完成并验证。当前停止在 P8 接手点；P8 尚未实施。**
+**P0–P8 已实现并完成本地验收；PR #85 的最终 CI 与 main 集成待完成。**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Baseline: `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
