@@ -83,9 +83,9 @@ export async function loadNativeGamePackage(session, options = {}) {
 
         return Object.freeze({
             status: GAME_PACKAGE_STATUS.READY,
-            // A3 completes Text Experience only. Other explicit modes are
-            // valid descriptors but remain inactive until A4.
-            active: descriptor.experience.mode === 'text',
+            // A4 activates every explicit Native Experience through the same
+            // Session-bound Runtime Descriptor authority.
+            active: ['text', 'component', 'hybrid', 'full'].includes(descriptor.experience.mode),
             sessionId,
             descriptor: Object.freeze(structuredClone(descriptor)),
             runtime: Object.freeze(structuredClone(runtime)),
