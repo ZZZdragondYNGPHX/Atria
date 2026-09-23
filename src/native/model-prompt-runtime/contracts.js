@@ -15,7 +15,7 @@ export const ATRIA_PACKAGE_MODEL_PROMPT_FIELD = 'modelPrompt';
 
 const TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const NAMESPACED_RE = /^[a-z][a-z0-9]*(?:[._:-][a-z0-9][a-z0-9_-]*)+$/;
-const SECRET_KEY_RE = /^(?:api[_-]?key|secret|secretvalue|token|access[_-]?token|password|authorization|credentials?|private[_-]?key)$/i;
+const SECRET_KEY_RE = /^(?:api[_-]?key|secret|secretvalue|access[_-]?token|refresh[_-]?token|auth[_-]?token|password|authorization|credentials?|private[_-]?key|bearer)$/i;
 const RESOURCE_KIND_BY_TYPE = Object.freeze({
     'core.generation-profile': 'generationProfile',
     'core.prompt-module': 'promptModule',
