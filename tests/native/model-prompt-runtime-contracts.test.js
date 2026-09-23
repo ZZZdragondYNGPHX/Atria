@@ -29,7 +29,6 @@ import {
 
 const PACKAGE_ID = createNativeId('package');
 const PACKAGE_VERSION_ID = createNativeId('packageVersion');
-const PROJECT_ID = createNativeId('project');
 const SESSION_ID = createNativeId('session');
 const BRANCH_ID = createNativeId('branch');
 const REVISION_ID = createNativeId('revision');
