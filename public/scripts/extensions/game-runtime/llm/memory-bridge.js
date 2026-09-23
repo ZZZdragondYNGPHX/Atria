@@ -55,7 +55,7 @@ function assertTurnBranchCurrent(turnContext, currentIdentity) {
         || expectedBranchId !== actualBranchId
     ) {
         throw new Error(
-            "Memory recall Native branch changed from '" + expectedBranchId + "' to '" + actualBranchId + "'",
+            `Memory recall Native branch changed from '${expectedBranchId}' to '${actualBranchId}'`,
         );
     }
 }
