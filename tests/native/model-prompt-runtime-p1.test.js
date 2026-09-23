@@ -224,6 +224,22 @@ describe('P1 A2 Library / Graph / Package integration', () => {
                     ref: `library:core.generation-profile:${generationId}@generation-v1`,
                 }),
             ]));
+            const projectGenerationNodes = await service.queryResources(h.handle, {
+                resourceType: 'core.generation-profile',
+                projectId: source.project.projectId,
+                ownership: 'project',
+            });
+            expect(projectGenerationNodes).toHaveLength(1);
+            expect(projectGenerationNodes[0]).toMatchObject({
+                ownership: 'project',
+                authority: 'project-source',
+                metadata: {
+                    origin: 'project',
+                    provenance: expect.arrayContaining([
+                        expect.objectContaining({ source: 'atria.resource-fork' }),
+                    ]),
+                },
+            });
 
             const forward = await service.getResourceReferences(h.handle, programRef);
             expect(forward).toEqual(expect.arrayContaining([
@@ -302,6 +318,21 @@ describe('P1 A2 Library / Graph / Package integration', () => {
                 resourceId: moduleId,
                 revision: 'module-v1',
             });
+            const packagedFork = built.built.manifest.resources.find(
+                item => item.resourceType === 'core.generation-profile'
+                    && item.resource.displayName === 'Project Generation Fork',
+            );
+            expect(packagedFork.origin).toEqual({
+                scope: 'package',
+                packageId: source.project.packageId,
+                packageVersionId,
+            });
+            expect(packagedFork.resource.provenance).toEqual(expect.arrayContaining([
+                expect.objectContaining({
+                    source: 'atria.resource-fork',
+                    ref: `library:core.generation-profile:${generationId}@generation-v1`,
+                }),
+            ]));
         } finally {
             await h.cleanup();
         }
