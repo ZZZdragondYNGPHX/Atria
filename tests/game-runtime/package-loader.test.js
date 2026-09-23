@@ -79,7 +79,7 @@ describe('A3 Native Game Runtime loader', () => {
         });
     });
 
-    test('keeps non-Text descriptors inactive until A4 without changing identity', async () => {
+    test('activates non-Text descriptors in A4 without changing Native identity', async () => {
         const componentDescriptor = {
             ...descriptor,
             experience: { mode: 'component', componentModelVersion: 1 },
@@ -88,7 +88,12 @@ describe('A3 Native Game Runtime loader', () => {
             body: {
                 descriptor: componentDescriptor,
                 runtime: {
-                    experience: { mode: 'component', componentModelVersion: 1 },
+                    experience: {
+                        mode: 'component',
+                        componentModelVersion: 1,
+                        component: 'ui/main.json',
+                        surface: 'app.root',
+                    },
                     game: {},
                     primaryWorldId: null,
                 },
@@ -96,7 +101,7 @@ describe('A3 Native Game Runtime loader', () => {
         }));
         const result = await loadNativeGamePackage('session_component', { fetchImpl });
         expect(result.status).toBe(GAME_PACKAGE_STATUS.READY);
-        expect(result.active).toBe(false);
+        expect(result.active).toBe(true);
         expect(result.descriptor.entryPointId).toBe(descriptor.entryPointId);
     });
 
