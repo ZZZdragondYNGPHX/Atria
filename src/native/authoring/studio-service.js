@@ -354,6 +354,23 @@ export class StudioService {
         return workspace;
     }
 
+    async prepareAuthoringOperation(handle, projectId, operationValue) {
+        await this._project(handle, projectId);
+        const operation = assertAuthoringOperation(operationValue);
+        if (operation.operationType !== STUDIO_RESOURCE_OPERATION_TYPES.fork) {
+            return operation;
+        }
+        const input = await this._libraryAuthoring.prepareForkInput(
+            handle,
+            operation.target,
+            operation.input,
+        );
+        return assertAuthoringOperation({
+            ...operation,
+            input,
+        });
+    }
+
     async _snapshot(handle, projectId) {
         const source = await this._project(handle, projectId);
         const files = new Map();
@@ -467,6 +484,121 @@ export class StudioService {
                 changes.push(await this._inspectOperation(handle, workspace.projectId, operation));
             }
             return Object.freeze({ workspace, changes: Object.freeze(changes) });
+        });
+    }
+
+    async evaluateWorkspace(handle, workspaceValue, {
+        preview = true,
+        simulation = true,
+        entryPointId = undefined,
+        simulationOptions = {},
+    } = {}) {
+        const workspace = assertAuthoringWorkspace(workspaceValue);
+        if (!workspace.operations.length) {
+            throw new TypeError('Authoring workspace must contain at least one operation');
+        }
+        for (const operation of workspace.operations) {
+            if (!sameOrigin(operation.origin, workspace.origin)) {
+                throw new TypeError('Authoring operation origin must match its Workspace origin');
+            }
+        }
+
+        return this._queue(workspace.projectId, async () => {
+            const base = await this._assertBaseRevision(
+                handle,
+                workspace.projectId,
+                workspace.baseRevision,
+            );
+            const snapshot = await this._snapshot(handle, workspace.projectId);
+            const changes = [];
+            try {
+                for (const operation of workspace.operations) {
+                    changes.push(await this._inspectOperation(handle, workspace.projectId, operation));
+                    await this._applyOperation(handle, workspace.projectId, operation);
+                }
+
+                const validation = await this._validateUnlocked(handle, workspace.projectId);
+                if (validation.status === 'failed') {
+                    return Object.freeze({
+                        workspace,
+                        changes: Object.freeze(changes),
+                        validation,
+                        preview: null,
+                        simulation: null,
+                    });
+                }
+
+                let previewResult = null;
+                if (preview) {
+                    const built = await buildProjectPackage({
+                        handle,
+                        projectId: workspace.projectId,
+                        projectStore: this._projects,
+                        worldRepo: this._worlds,
+                        knowledgeRepo: this._knowledge,
+                        assetStore: this._assets,
+                    });
+                    const runtimePreview = this._previewHost.create({
+                        projectId: workspace.projectId,
+                        archive: built.archive,
+                        ...(entryPointId == null ? {} : { entryPointId }),
+                    });
+                    this._previewOwners.set(runtimePreview.previewId, handle);
+                    previewResult = Object.freeze({
+                        previewId: runtimePreview.previewId,
+                        projectId: runtimePreview.projectId,
+                        packageId: runtimePreview.packageId,
+                        packageVersionId: runtimePreview.packageVersionId,
+                        entryPointId: runtimePreview.entryPointId,
+                        experience: runtimePreview.descriptor?.experience ?? null,
+                        descriptor: runtimePreview.descriptor,
+                        runtime: runtimePreview.runtime,
+                        persisted: false,
+                        createdAt: runtimePreview.createdAt,
+                    });
+                }
+
+                let simulationResult = null;
+                if (simulation) {
+                    if (!this._simulationRunner) {
+                        simulationResult = Object.freeze({
+                            projectId: workspace.projectId,
+                            revision: base,
+                            status: 'unavailable',
+                            code: 'native_studio_simulation_unavailable',
+                        });
+                    } else {
+                        const source = await this._project(handle, workspace.projectId);
+                        const result = await this._simulationRunner({
+                            handle,
+                            projectId: workspace.projectId,
+                            revision: base,
+                            source,
+                            options: simulationOptions,
+                            projectStore: this._projects,
+                            worldRepo: this._worlds,
+                            knowledgeRepo: this._knowledge,
+                            assetStore: this._assets,
+                        });
+                        simulationResult = Object.freeze({
+                            projectId: workspace.projectId,
+                            revision: base,
+                            status: 'completed',
+                            result,
+                        });
+                    }
+                }
+
+                return Object.freeze({
+                    workspace,
+                    changes: Object.freeze(changes),
+                    validation,
+                    preview: previewResult,
+                    simulation: simulationResult,
+                });
+            } finally {
+                await this._restore(handle, workspace.projectId, snapshot);
+            }
         });
     }
 
