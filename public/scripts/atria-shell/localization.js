@@ -113,7 +113,6 @@ const SHELL_TEXT_KEYS = Object.freeze({
     'The existing account controller is unavailable.': 'atria.shell.account.unavailable',
     'Identity, account-isolated storage, settings snapshots, backup and recovery continue to use the existing account controller.': 'atria.shell.account.description',
     'This domain is reserved for the next staged R7 integration phase.': 'atria.shell.workspace.placeholder',
-    'Build': 'atria.shell.studio.gameStudio',
     'Select a character or game project to open the existing Game Studio controller.': 'atria.shell.studio.selectProject',
     'Build owns Native project entry, dependencies and build-facing project context.': 'atria.shell.context.studio',
     'Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.': 'atria.shell.context.diagnostics',
