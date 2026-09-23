@@ -86,6 +86,11 @@ test('native definition and default binding survive page reload', async ({ page 
     if (await initialInspector.isVisible()) await initialInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await root.locator('.workspace-more-menu > summary').click();
     await root.getByRole('button',{ name:'Duplicate',exact:true }).click();
+    // Duplicate selects the new agent and opens its inspector. Close the
+    // responsive overlay before opening the preset-level action menu.
+    await expect(initialInspector).toBeVisible();
+    await page.screenshot({ path: info.outputPath('workspace-duplicate-inspector.png'), fullPage: true });
+    await initialInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
     await root.locator('.workspace-more-menu > summary').click();
     await root.getByRole('button',{ name:'Preset settings',exact:true }).click();
     const inspector = root.locator('.atria-workspace-inspector');
