@@ -34,7 +34,7 @@ function gameRuntimeSource(value) {
     if (!plain(value)) throw new TypeError('Native Runtime game config must be an object');
     const allowed = new Set(['logic', 'observations']);
     for (const key of Object.keys(value)) {
-        if (!allowed.has(key)) throw new TypeError("Native Runtime game config contains unsupported field '" + key + "'");
+        if (!allowed.has(key)) throw new TypeError(`Native Runtime game config contains unsupported field '${key}'`);
     }
     return Object.freeze({
         ...(value.logic === undefined ? {} : { logic: runtimeJsonPath(value.logic, 'Native Runtime game.logic') }),
