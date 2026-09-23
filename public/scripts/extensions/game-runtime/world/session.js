@@ -112,7 +112,7 @@ export async function createGameWorldSession(options = {}) {
             if (!type) throw new Error('World Event type must be a non-empty string');
             const reducer = reducers.get(type);
             if (typeof reducer !== 'function') {
-                throw new Error("No World reducer registered for event type '" + type + "'");
+                throw new Error(`No World reducer registered for event type '${type}'`);
             }
             const seq = runtimeState.nextEventSeq++;
             const event = {
@@ -127,7 +127,7 @@ export async function createGameWorldSession(options = {}) {
             };
             const next = reducer(deepFreeze(clone(state)), clone(event));
             if (!next || typeof next !== 'object' || Array.isArray(next)) {
-                throw new Error("World reducer '" + type + "' must return an object state");
+                throw new Error(`World reducer '${type}' must return an object state`);
             }
             assertValidWorldState(next, definition.schema);
             state = clone(next);
