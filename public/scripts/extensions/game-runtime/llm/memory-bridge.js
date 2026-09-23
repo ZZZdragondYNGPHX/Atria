@@ -1,5 +1,4 @@
 import { cloneGameLlmValue } from './clone.js';
-import { getGameBranchId, normalizeGameBranchPath } from '../world/branch.js';
 
 const MAX_QUERY_CHARS = 12000;
 const MAX_MEMORY_CONTENT_CHARS = 48000;
@@ -44,15 +43,19 @@ function normalizeReference(raw) {
     });
 }
 
-function assertTurnBranchCurrent(turnContext, currentBranchPath) {
-    const turnPath = normalizeGameBranchPath(turnContext?.anchor?.branchPath || []);
-    const currentPath = normalizeGameBranchPath(currentBranchPath || []);
+function assertTurnBranchCurrent(turnContext, currentIdentity) {
+    const expectedSessionId = String(turnContext?.anchor?.sessionId || '').trim();
+    const expectedBranchId = String(turnContext?.anchor?.branchId || '').trim();
+    const actualSessionId = String(currentIdentity?.sessionId || '').trim();
+    const actualBranchId = String(currentIdentity?.branchId || '').trim();
     if (
-        turnPath.length !== currentPath.length
-        || turnPath.some((value, index) => value !== currentPath[index])
+        !expectedSessionId
+        || !expectedBranchId
+        || expectedSessionId !== actualSessionId
+        || expectedBranchId !== actualBranchId
     ) {
         throw new Error(
-            `Memory recall branch changed from '${getGameBranchId(turnPath)}' to '${getGameBranchId(currentPath)}'`,
+            "Memory recall Native branch changed from '" + expectedBranchId + "' to '" + actualBranchId + "'",
         );
     }
 }
@@ -116,9 +119,9 @@ export function normalizeMemoryRecallPacket(result, turnContext, query) {
         source: 'memory_graph',
         authority: 'historical_context',
         branch: {
-            id: turnContext.anchor.branchId,
-            floor: turnContext.anchor.floor,
-            swipe: turnContext.anchor.swipe,
+            sessionId: turnContext.anchor.sessionId,
+            branchId: turnContext.anchor.branchId,
+            revisionId: turnContext.anchor.revisionId,
         },
         query: truncate(query, MAX_QUERY_CHARS),
         content: truncate(result?.content ?? result?.text ?? '', MAX_MEMORY_CONTENT_CHARS),
@@ -144,9 +147,9 @@ export function createMemoryRecallBridge(options = {}) {
     const context = options.context
         || globalThis.Atria?.getContext?.()
         || null;
-    const getCurrentBranchPath = options.getCurrentBranchPath;
-    if (typeof getCurrentBranchPath !== 'function') {
-        throw new Error('Memory Recall Bridge requires getCurrentBranchPath()');
+    const getCurrentBranchIdentity = options.getCurrentBranchIdentity;
+    if (typeof getCurrentBranchIdentity !== 'function') {
+        throw new Error('Memory Recall Bridge requires getCurrentBranchIdentity()');
     }
 
     const resolveMemoryApi = () => (
@@ -161,7 +164,7 @@ export function createMemoryRecallBridge(options = {}) {
                 throw new Error('Memory Recall Bridge requires Turn Context');
             }
 
-            assertTurnBranchCurrent(turnContext, getCurrentBranchPath());
+            assertTurnBranchCurrent(turnContext, getCurrentBranchIdentity());
 
             const memoryApi = resolveMemoryApi();
             if (!memoryApi || typeof memoryApi.openSession !== 'function') {
@@ -202,14 +205,14 @@ export function createMemoryRecallBridge(options = {}) {
             if (typeof result?.assertCurrent === 'function') {
                 result.assertCurrent();
             }
-            assertTurnBranchCurrent(turnContext, getCurrentBranchPath());
+            assertTurnBranchCurrent(turnContext, getCurrentBranchIdentity());
 
             const packet = normalizeMemoryRecallPacket(result, turnContext, query);
 
             if (typeof result?.assertCurrent === 'function') {
                 result.assertCurrent();
             }
-            assertTurnBranchCurrent(turnContext, getCurrentBranchPath());
+            assertTurnBranchCurrent(turnContext, getCurrentBranchIdentity());
 
             return Object.freeze({
                 status: packet.content || packet.references.length > 0
