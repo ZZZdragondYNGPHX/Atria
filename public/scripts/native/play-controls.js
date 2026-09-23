@@ -73,9 +73,6 @@ export function mountNativePlayControls({
 } = {}) {
     if (!documentRef?.body || !root) throw new Error('Native Play controls require document and host root');
 
-    const sheld = root.querySelector('#sheld');
-    const previousSheldDisplay = sheld?.style?.display ?? '';
-
     const landing = documentRef.createElement('section');
     landing.className = 'atria-native-play-landing';
     landing.dataset.atriaNativePlayLanding = 'true';
@@ -428,7 +425,6 @@ export function mountNativePlayControls({
         const active = documentRef.body.dataset.atriaNativeSessionActive === 'true';
         toolbar.hidden = !active;
         landing.hidden = active;
-        if (sheld) sheld.style.display = active ? previousSheldDisplay : 'none';
         if (!active) {
             drawer.hidden = true;
             status.textContent = '';
@@ -464,7 +460,6 @@ export function mountNativePlayControls({
         sync,
         dispose() {
             observer.disconnect();
-            if (sheld) sheld.style.display = previousSheldDisplay;
             toolbar.remove();
             landing.remove();
             drawer.remove();
