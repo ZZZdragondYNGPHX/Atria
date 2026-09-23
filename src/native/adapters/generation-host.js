@@ -14,7 +14,7 @@ export class NativeGenerationHost {
         Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort });
     }
 
-    async execute(handle, value, signal, onChunk) {
+    async execute(handle, value, signal, onChunk, { preview = false } = {}) {
         const input = immutable(value);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
         const role = 'role.' + input.role;
@@ -111,7 +111,7 @@ export class NativeGenerationHost {
         const request = { requestId: input.requestId, role, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId },
             handle, signal, onChunk, requirements, tools: input.tools || [], outputContract: input.outputContract ?? null,
             prompt: { ...input.prompt, host: hostView }, fallbackMode: input.fallbackMode ?? 'disabled', unknownCapabilityOverrides: input.unknownCapabilityOverrides || [] };
-        const result = await service.execute(request);
+        const result = await service.execute(request, { preview });
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts } });
     }
 }

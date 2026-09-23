@@ -198,12 +198,12 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'runtime',
-            child: { id: 'roles', kind: 'workspace' },
+            child: null,
         });
         expect(host.getActiveWorkspace()).toMatchObject({
             key: 'runtime',
             kind: 'runtime',
-            section: 'roles',
+            section: 'routes',
         });
         expect(adapters.runtime).toHaveBeenCalledTimes(1);
 
@@ -418,7 +418,7 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'runtime',
-            child: { id: 'presets' },
+            child: { id: 'profiles' },
         });
 
         const skills = document.createElement('button');
@@ -568,7 +568,7 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'knowledge', label: 'Knowledge Bases', kind: 'workspace' },
         })).toMatchObject({ key: 'library', kind: 'library', section: 'worlds-knowledge' });
         expect(routeDescriptor({ domain: 'runtime', child: null, breadcrumb: ['Runtime'] }))
-            .toMatchObject({ key: 'runtime', kind: 'runtime', section: 'overview', title: 'Overview' });
+            .toMatchObject({ key: 'runtime', kind: 'runtime', section: 'routes', title: 'Routes' });
         expect(routeDescriptor({
             domain: 'runtime',
             child: { id: 'retrieval', label: 'Retrieval', kind: 'workspace' },

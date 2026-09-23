@@ -2082,3 +2082,51 @@ body[data-atria-native-session-active="true"] #char_connections_button {
     min-width: 0;
     margin-top: var(--atri-space-3);
 }
+/* Native Runtime product UI: shared layout, independent mobile editor flow. */
+.atri-runtime { max-width: 1080px; width: 100%; margin: 0 auto; padding: 24px; box-sizing: border-box; min-width: 0; }
+.atri-runtime h2 { margin: 0 0 12px; font-size: 1.5rem; }
+.atri-runtime h3 { margin: 0 0 6px; font-size: 1rem; }
+.atri-runtime-description { opacity: .75; margin-bottom: 24px; line-height: 1.6; }
+.atri-runtime button { background: var(--atri-color-raised, #303440); color: inherit; border: 1px solid var(--atri-color-border, #606575); border-radius: 6px; padding: 10px 14px; cursor: pointer; }
+.atri-runtime button:hover { border-color: currentColor; }
+.atri-runtime button:disabled { opacity: .55; cursor: wait; }
+.atri-runtime :focus-visible { outline: 2px solid var(--atri-color-accent, #91baff); outline-offset: 3px; }
+.atri-runtime-toolbar { display: flex; gap: 16px; align-items: end; margin: 20px 0; }
+.atri-runtime label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: .9rem; }
+.atri-runtime-toolbar label { flex: 1; }
+.atri-runtime input, .atri-runtime select { width: 100%; min-width: 0; box-sizing: border-box; color: inherit; background: var(--atri-color-surface, #20232b); border: 1px solid var(--atri-color-border, #606575); border-radius: 5px; padding: 10px; font: inherit; }
+.atri-runtime select option { background: #20232b; color: #eee; }
+.atri-runtime-list { border-top: 1px solid var(--atri-color-border, #606575); }
+.atri-runtime-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--atri-color-border, #606575); }
+.atri-runtime-row > div { min-width: 0; }
+.atri-runtime-row p, .atri-runtime small { overflow-wrap: anywhere; opacity: .75; }
+.atri-runtime-row button { flex-shrink: 0; }
+.atri-runtime-notice { padding: 12px 14px; margin: 8px 0; border-left: 3px solid var(--atri-color-accent, #91baff); background: rgba(130,150,180,.08); line-height: 1.6; overflow-wrap: anywhere; }
+.atri-runtime-notice[role="alert"] { border-color: #ed9c86; }
+.atri-runtime-form { display: grid; gap: 18px; max-width: 760px; margin: 24px 0; }
+.atri-runtime-form button[type="submit"] { background: #365379; color: #fff; font-weight: 600; }
+.atri-runtime details { border-bottom: 1px solid var(--atri-color-border, #606575); padding: 16px 0; }
+.atri-runtime summary { cursor: pointer; }
+.atri-runtime pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; max-height: 420px; overflow: auto; }
+.atri-runtime[data-editor] > button { margin-bottom: 20px; }
+@media (max-width: 700px) {
+    .atri-runtime { padding: 16px 12px; }
+    .atri-runtime-toolbar { flex-direction: column; align-items: stretch; }
+    .atri-runtime-row { align-items: stretch; flex-direction: column; gap: 8px; }
+    .atri-runtime input, .atri-runtime select { font-size: 16px; min-height: 44px; }
+    .atri-runtime button { min-height: 44px; }
+    .atri-runtime[data-editor] { position: fixed; inset: 0; height: 100dvh; max-height: 100dvh; z-index: 3900; overflow-y: auto; background: var(--atri-color-surface, #20232b); padding: 20px 16px; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+    .atri-runtime[data-editor] > button { position: sticky; top: 0; z-index: 1; }
+}
+
+.atria-domain-workspace[data-atria-domain-workspace="runtime"][data-atria-pattern="runtime-status"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
+}
+.atria-domain-workspace[data-atria-domain-workspace="runtime"] > .atria-domain-workspace__nav {
+    align-items: start;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    padding-bottom: 12px;
+}

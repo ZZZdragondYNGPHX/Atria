@@ -1,3 +1,4 @@
+import { rememberRuntimeEvidence, runtimeGenerationError } from './runtime-client.js';
 import { nativeSessionRuntime } from './session-runtime.js';
 
 export async function executeNativeGeneration({ role, messages = [], tools = [], outputContract = null, abortSignal, source, onChunk, ...options } = {}) {
@@ -22,7 +23,7 @@ export async function executeNativeGeneration({ role, messages = [], tools = [],
             for (const line of lines) {
                 if (!line.startsWith('data:')) continue;
                 const event = JSON.parse(line.slice(5));
-                if (event.error) throw Object.assign(new Error(event.error), { code: event.error });
+                if (event.error) throw runtimeGenerationError(event.error);
                 if (event.chunk) { try { onChunk?.(event.chunk); } catch { /* Presentation observers do not own the request. */ } }
                 if (event.result) payload = event.result;
             }
@@ -30,7 +31,8 @@ export async function executeNativeGeneration({ role, messages = [], tools = [],
         }
         if (!payload) throw new Error('Native generation stream ended without a result');
     } else payload = await response.json();
-    if (!response.ok) throw Object.assign(new Error(payload.error || 'Native generation failed'), { code: payload.error, status: response.status });
+    if (!response.ok) throw runtimeGenerationError(payload.error || 'Native generation failed', response.status);
+    rememberRuntimeEvidence(payload);
     return { ...payload.response, requestInfo: payload.snapshot, snapshot: payload.snapshot, routing: payload.routing };
 }
 

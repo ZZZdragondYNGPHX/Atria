@@ -97,8 +97,8 @@ function runRepositoryGuard() {
     }
 
     const a6 = readFileSync(resolve(ROOT, 'scripts/check-a6-native-product-frontend.mjs'), 'utf8');
-    if (!/atriaRuntimeConnectionAdvanced/.test(a6) || !/Capabilities route/.test(a6)) {
-        throw new Error('P0 must not prematurely remove A6 compatibility/capabilities replacement gates');
+    if (!/P5 Native Connections/.test(a6) || !/P5 Models must explain capabilities/.test(a6) || !/second store/.test(a6)) {
+        throw new Error('P5 A6 replacement must preserve Native Connections, capability projection and no-second-store gates');
     }
     const a8 = readFileSync(resolve(ROOT, 'scripts/check-a8-project-agent.mjs'), 'utf8');
     if (!/executeNativeGeneration/.test(a8) || !/context/.test(a8) || !/human Review gate/.test(a8)) {

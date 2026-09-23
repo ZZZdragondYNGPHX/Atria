@@ -11,6 +11,7 @@ describe('A6 Product Search', () => {
             openLibraryWorld: jest.fn(),
             openLibraryKnowledge: jest.fn(),
             openBuild: jest.fn(),
+            openRuntimeSection: jest.fn(),
         };
         const productClient = {
             listWorks: jest.fn(async () => [{
@@ -29,7 +30,7 @@ describe('A6 Product Search', () => {
             }]),
         };
 
-        const index = createProductSearchIndex({ registry, host, productClient });
+        const index = createProductSearchIndex({ registry, host, productClient, loadRuntime: async () => ({ models: [{ modelProfileId: 'model_1', displayName: 'Moon Model' }] }) });
         await index.refresh();
 
         const results = registry.search('moon');
@@ -46,6 +47,9 @@ describe('A6 Product Search', () => {
 
         await registry.execute('resource.knowledge.kb_1');
         expect(host.openLibraryKnowledge).toHaveBeenCalledWith('kb_1', 'Moon Lore');
+
+        await registry.execute('runtime.models.model_1');
+        expect(host.openRuntimeSection).toHaveBeenCalledWith('models', 'model_1');
 
         index.dispose();
         expect(registry.search('moon')).toEqual([]);

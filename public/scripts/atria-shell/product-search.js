@@ -1,3 +1,4 @@
+import { runtimeRequest } from '../native/runtime-client.js';
 import { nativeProductClient } from '../native/product-client.js';
 
 function clean(value) {
@@ -17,7 +18,7 @@ function fulfilled(result) {
  * caches persistently, or renders foreign-domain content. Every result runs
  * the WorkspaceHost route that owns the selected entity.
  */
-export function createProductSearchIndex({ registry, host, productClient = nativeProductClient } = {}) {
+export function createProductSearchIndex({ registry, host, productClient = nativeProductClient, loadRuntime = runtimeRequest } = {}) {
     if (!registry?.register || !host) throw new Error('Product Search requires registry and WorkspaceHost');
 
     let disposed = false;
@@ -39,6 +40,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             productClient.listWorlds(),
             productClient.listKnowledge(),
             productClient.listProjects(),
+            loadRuntime(),
         ]);
         if (disposed || token !== revision) return false;
 
@@ -96,6 +98,15 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
                 keywords: ['build', 'project', packageIdForProject(item), projectId, title].filter(Boolean),
                 run: () => host.openBuild(projectId, title),
             });
+        }
+        const runtime = result[4].status === 'fulfilled' ? result[4].value : {};
+        for (const [section, key] of Object.entries({ routes: 'runtimeRouteId', models: 'modelProfileId', connections: 'connectionProfileId', profiles: 'generationProfileId' })) {
+            for (const item of runtime[section] || []) {
+                const id = item[key];
+                add({ id: 'runtime.' + section + '.' + safeId(id), title: item.displayName,
+                    description: section + ' · Runtime', group: 'Runtime', keywords: ['runtime', section, id, item.displayName],
+                    run: () => host.openRuntimeSection(section, id) });
+            }
         }
         return true;
     }

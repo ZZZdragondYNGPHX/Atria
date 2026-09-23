@@ -59,20 +59,26 @@ requirePattern(
     /master-detail/,
     'A6 Library must use the master-detail product pattern',
 );
+// P5 replacement gates: Native Runtime owns Connections and capability projection.
 requirePattern(
     'public/scripts/atria-shell/library-runtime-workspaces.js',
-    /id:\s*['"]capabilities['"]/,
-    'A6 Runtime must expose a Capabilities route',
+    /id:\s*['"]routes['"][\s\S]*id:\s*['"]models['"][\s\S]*id:\s*['"]diagnostics['"]/,
+    'P5 Runtime must expose Routes, Models and Diagnostics',
 );
 requirePattern(
-    'public/scripts/atria-shell/library-runtime-workspaces.js',
-    /atriaRuntimeCapabilities/,
-    'A6 Runtime Capabilities must project the active Native runtime',
+    'public/scripts/native/runtime-workspace.js',
+    /Capabilities[\s\S]*provenance/,
+    'P5 Models must explain capabilities and provenance',
 );
 requirePattern(
-    'public/scripts/atria-shell/library-runtime-workspaces.js',
-    /atriaRuntimeConnections[\s\S]*atriaRuntimeConnectionAdvanced/,
-    'A6 Runtime Connections must be native-first with Advanced compatibility editor',
+    'public/scripts/native/runtime-workspace.js',
+    /section === 'connections'[\s\S]*Exact Secret ID/,
+    'P5 Native Connections must edit explicit profiles and exact Secret references',
+);
+rejectPattern(
+    'public/scripts/native/runtime-workspace.js',
+    /connectionManager|rm_api_block|localStorage|indexedDB/,
+    'P5 Native Runtime must not embed legacy editors or create a second store',
 );
 rejectPattern(
     'public/scripts/atria-shell/library-runtime-workspaces.js',

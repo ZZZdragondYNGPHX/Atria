@@ -143,6 +143,53 @@ describe('P4 authenticated Native generation host and real HTTP transport', () =
     });
 });
 
+describe('P5 configuration and compile-only preview', () => {
+    test('preview matches execute snapshot without resolving Secret, sending or persisting', async () => {
+        const f = await fixture();
+        const before = await f.persistence.listRuntimeRoutes(f.h.handle);
+        const preview = await f.host.execute(f.h.handle, f.request, undefined, undefined, { preview: true });
+        expect(preview.preview).toBe(true);
+        expect(preview.routing.attempts).toEqual([]);
+        expect(f.requests).toEqual([]);
+        expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
+        expect(await f.persistence.listRuntimeRoutes(f.h.handle)).toEqual(before);
+        const executed = await f.host.execute(f.h.handle, f.request);
+        expect(preview.snapshot.promptIr).toEqual(executed.snapshot.promptIr);
+        expect(preview.snapshot.diagnostics).toEqual(executed.snapshot.diagnostics);
+        expect(preview.rendered.body).toEqual(f.requests[0].body);
+        await expect(f.host.execute(f.h.handle, { ...f.request, revision: 'stale' }, undefined, undefined, { preview: true }))
+            .rejects.toMatchObject({ code: 'native_generation_revision_conflict' });
+    });
+    test('authenticated configuration CRUD preserves exact revisions and rejects missing/cyclic fallbacks', async () => {
+        const f = await fixture();
+        const app = express(); app.use(express.json());
+        app.use((req, _res, next) => { if (req.headers['x-test-user']) req.user = { profile: { handle: f.h.handle } }; next(); });
+        app.use('/api/native/generation', createNativeGenerationRouter(() => f.host));
+        const base = '/api/native/generation';
+        await supertest(app).get(base + '/configuration').expect(401);
+        await supertest(app).put(base + '/configuration/connections').send(f.connection).expect(401);
+        await supertest(app).post(base + '/preview').send(f.request).expect(401);
+        const put = (kind, body) => supertest(app).put(base + '/configuration/' + kind).set('x-test-user', 'yes').send(body);
+        await put('connections', { ...f.connection, displayName: 'Updated connection' }).expect(200);
+        await put('connections', { ...f.connection, endpoint: 'https://user:password@example.com' }).expect(400);
+        await put('profiles', { ...f.generation, revision: 'r2', output: { maxTokens: 128 } }).expect(200);
+        await put('profiles', { ...f.generation, output: { maxTokens: 3 } }).expect(400);
+        const config = await supertest(app).get(base + '/configuration').set('x-test-user', 'yes').expect(200);
+        expect(config.body.profiles[0].revision).toBe('r2');
+        expect(config.body.routes[0].generationProfileRef.revision).toBe('r1');
+        expect(config.body.resources.find(item => item.resourceType === 'core.generation-profile').revisions).toEqual(['r1', 'r2']);
+        const route = f.routes[0];
+        await put('routes', { ...route, fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: createNativeId('runtimeRoute') }] }).expect(400);
+        const alternative = { ...route, runtimeRouteId: createNativeId('runtimeRoute'), fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: route.runtimeRouteId }] };
+        await put('routes', alternative).expect(200);
+        await put('routes', { ...route, fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: alternative.runtimeRouteId }] }).expect(400);
+        const preview = await supertest(app).post(base + '/preview').set('x-test-user', 'yes').send({ ...f.request, handle: 'foreign' }).expect(200);
+        expect(preview.body.preview).toBe(true);
+        expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
+        expect(f.requests).toEqual([]);
+    });
+});
+
 describe('P4 Native Play publication uses the existing lifecycle', () => {
     function hostFixture() {
         const events = [];

@@ -13,7 +13,7 @@ export class GenerationService {
         this.now = now;
     }
 
-    async execute({ signal, handle, onChunk, ...value }) {
+    async execute({ signal, handle, onChunk, ...value }, { preview = false } = {}) {
         try {
             const request = immutable(value);
             const mode = request.fallbackMode ?? 'disabled';
@@ -94,6 +94,7 @@ export class GenerationService {
                     },
                 }));
                 const rendered = immutable(await cancellable(() => provider.renderRequest({ resolved, snapshot }), signal));
+                if (preview) return immutable({ snapshot, rendered, preview: true });
                 try {
                     const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk });
                     return immutable({ snapshot, response });

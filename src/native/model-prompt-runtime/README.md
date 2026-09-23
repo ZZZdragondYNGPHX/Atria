@@ -198,3 +198,37 @@ Residual compatibility is explicit:
 `scripts/check-p4-native-generation.mjs` scans first-party sender call sites;
 poisoned-legacy tests exercise all Native roles. A8's literal seam assertion now
 requires executeNativeGeneration while retaining every Review/Commit invariant.
+
+## P5 Runtime product surfaces
+
+Runtime owns Routes (default), Models, Connections, Profiles and Diagnostics. Its
+configuration endpoint at `/api/native/generation/configuration` reads the existing
+P1 player profiles and exact Library resource revisions. PUT to a named collection
+uses the same P1 persistence methods; Generation edits commit a new immutable
+Library revision. Existing routes remain pinned. Profile fields are preserved;
+unsupported provider controls still fail closed during preview/execution.
+
+Authenticated POST `/api/native/generation/preview` uses the P4 host's pinned
+Session or Project identity and the same GenerationService pipeline, stopping
+after render/budget validation and before Secret resolution or send. It never
+persists configuration or context. Execute cannot enable preview via request JSON.
+Diagnostics renders snapshot/effective config, token budget, prompt provenance,
+capabilities and the latest successful request's fallback attempts in memory.
+Preview attempts are empty because preview never sends. Error actions navigate
+to owning Runtime sections; machine-readable error codes remain intact.
+
+Connections accept exact Secret IDs only, with no credential creation/import.
+Endpoint credentials/query/fragment are rejected by the configuration API.
+Route saves validate exact Library dependencies and bounded same-role acyclic
+fallback links. Project/Package refs remain exact and are validated with their
+host context at preview/execute. The UI selects Library revisions and preserves
+existing scoped refs; new scoped-resource authoring/pickers remain P6 work.
+Prompt authoring and import are not added in P5. A new installation without a
+Prompt Program must provision one through existing A1 authoring/P1 APIs until P6.
+
+Runtime editors own their DOM; there is no legacy Connection Manager or preset
+reparenting. Mobile uses a viewport-sized editor with background inert, focus
+containment, Back/Escape and request cancellation on dispose. Product Search is
+an ephemeral projection navigating stable resource IDs, not a persistent index.
+Saving failures preserve edits; a successful save with failed list refresh is
+reported distinctly and cannot accidentally submit a duplicate revision.

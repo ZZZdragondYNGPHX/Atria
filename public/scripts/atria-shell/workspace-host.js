@@ -268,7 +268,7 @@ export function createAtriaWorkspaceHost({
                 : descriptor.kind === 'library'
                     ? formatShellText('Library / ${0} uses Native Package, World and Knowledge authorities; Skills keep their existing manager.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
                     : descriptor.kind === 'runtime'
-                        ? formatShellText('Runtime / ${0} projects the existing Runtime Role, API connection and preset authorities.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.runtime')
+                        ? formatShellText('Runtime / ${0} uses Native routes and exact model, connection, Generation and Prompt resources.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.nativeRuntime')
                         : descriptor.kind === 'diagnostics'
                             ? translateShellText('Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.')
                             : descriptor.kind === 'plugins'
@@ -503,12 +503,13 @@ export function createAtriaWorkspaceHost({
         );
     }
 
-    function openRuntimeSection(section = 'overview') {
-        const requestedId = String(section || 'overview').trim().toLowerCase();
+    function openRuntimeSection(section = 'routes', resourceId = '') {
+        const requestedId = String(section || 'routes').trim().toLowerCase();
         // Retrieval used to be a duplicate Runtime tab pointing at the same
         // Connection Manager. Keep callers compatible while routing to the
         // single Connections surface.
-        const id = requestedId === 'retrieval' ? 'connections' : requestedId;
+        const aliases = { overview: 'routes', roles: 'routes', retrieval: 'connections', presets: 'profiles', capabilities: 'models' };
+        const id = aliases[requestedId] || requestedId;
         const item = RUNTIME_SECTIONS.find(candidate => candidate.id === id) || RUNTIME_SECTIONS[0];
         if (navigation.getRoute().domain !== 'runtime') {
             navigation.navigate('runtime', {
@@ -516,7 +517,7 @@ export function createAtriaWorkspaceHost({
                 history: 'push',
             });
         }
-        if (item.id === 'overview') {
+        if (item.id === 'routes' && !resourceId) {
             if (navigation.getRoute().child) {
                 return navigation.clearChild({
                     history: 'push',
@@ -526,7 +527,7 @@ export function createAtriaWorkspaceHost({
             return navigation.getRoute();
         }
         return navigation.navigateChild({
-            id: item.id,
+            id: resourceId ? item.id + ':' + resourceId : item.id,
             label: item.label,
             kind: 'workspace',
         }, {
@@ -796,8 +797,8 @@ export function createAtriaWorkspaceHost({
         }),
         shell.registry.register({
             id: 'workspace.runtime-roles',
-            title: translateShellText('Open Runtime Roles'),
-            description: translateShellText('Open R5 Runtime Role routing configuration'),
+            title: translateShellText('Open Runtime Routes'),
+            description: translateShellText('Configure Native model and prompt routes'),
             group: translateShellText('Workspaces'),
             keywords: ['runtime', 'roles', 'narrator', 'intent'],
             run: () => openRuntimeSection('roles'),
@@ -805,15 +806,15 @@ export function createAtriaWorkspaceHost({
         shell.registry.register({
             id: 'workspace.connections',
             title: translateShellText('Open Runtime Connections'),
-            description: translateShellText('Open the existing Connection Manager controller'),
+            description: translateShellText('Configure Native provider endpoints and Secret references'),
             group: translateShellText('Workspaces'),
             keywords: ['runtime', 'connections', 'providers', 'models'],
             run: () => openRuntimeSection('connections'),
         }),
         shell.registry.register({
             id: 'workspace.presets',
-            title: translateShellText('Open Model / Prompt Presets'),
-            description: translateShellText('Open existing preset authorities through Runtime'),
+            title: translateShellText('Open Generation Profiles'),
+            description: translateShellText('Edit Native Generation resources'),
             group: translateShellText('Workspaces'),
             keywords: ['runtime', 'presets', 'prompts'],
             run: () => openRuntimeSection('presets'),

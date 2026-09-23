@@ -1,3 +1,4 @@
+import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import express from 'express';
 import { getStorageEngine } from '../storage/index.js';
 import { getUserDirectories } from '../users.js';
@@ -32,7 +33,62 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
-    router.post('/execute', async (request, response) => {
+    router.get('/configuration', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const host = getHost();
+            const [connections, models, routes, resources] = await Promise.all([
+                host.persistence.listConnectionProfiles(handle), host.persistence.listModelProfiles(handle),
+                host.persistence.listRuntimeRoutes(handle), host.library.listWithRevisions(handle),
+            ]);
+            const profiles = await Promise.all(resources.filter(item => item.resourceType === 'core.generation-profile')
+                .map(item => host.library.getCurrent(handle, item.resourceType, item.resourceId)));
+            response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot) });
+        } catch { response.status(500).json({ error: 'native_generation_configuration_unavailable' }); }
+    });
+    router.put('/configuration/:kind', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const host = getHost();
+            const methods = { connections: 'saveConnectionProfile', models: 'saveModelProfile', routes: 'saveRuntimeRoute' };
+            const method = methods[request.params.kind];
+            if (request.params.kind === 'connections') {
+                const endpoint = new URL(request.body.endpoint);
+                if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new Error('Endpoint must not contain credentials');
+            }
+            if (request.params.kind === 'routes') {
+                const candidate = request.body;
+                // Validate against exact P1 resources before mutating the player route.
+                const persistence = Object.create(host.persistence);
+                persistence.getRuntimeRoute = async (owner, id) => id === candidate.runtimeRouteId ? candidate : host.persistence.getRuntimeRoute(owner, id);
+                const resolver = new RouteResolver({ persistence, library: host.library, providers: host.providers });
+                // Project/Package refs require their host context at preview/execute time.
+                if (candidate.generationProfileRef?.scope === 'library' && candidate.promptProgramRef?.scope === 'library') {
+                    await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: candidate.runtimeRouteId }, role: candidate.role });
+                }
+                const visited = new Set();
+                const visit = async (route, active = new Set()) => {
+                    if (active.has(route.runtimeRouteId)) throw new Error('Fallback cycle');
+                    if (visited.has(route.runtimeRouteId)) return;
+                    if (visited.size >= 128) throw new Error('Fallback graph too large');
+                    visited.add(route.runtimeRouteId);
+                    const next = new Set(active).add(route.runtimeRouteId);
+                    for (const ref of route.fallbackRouteRefs || []) {
+                        const fallback = await persistence.getRuntimeRoute(handle, ref.runtimeRouteId);
+                        if (!fallback || fallback.role !== candidate.role) throw new Error('Fallback role mismatch');
+                        await visit(fallback, next);
+                    }
+                };
+                await visit(candidate);
+            }
+            if (method) return response.json(await host.persistence[method](handle, request.body));
+            if (request.params.kind === 'profiles') return response.json(await host.library.commit(handle, 'core.generation-profile', request.body));
+            return response.sendStatus(404);
+        } catch { response.status(400).json({ error: 'native_generation_configuration_invalid' }); }
+    });
+    router.post(['/execute', '/preview'], async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
         const controller = new AbortController();
@@ -44,7 +100,7 @@ export function createNativeGenerationRouter(getHost = services) {
         const abort = () => { if (!response.writableEnded) controller.abort(); };
         response.on('close', abort);
         try {
-            const result = await getHost().execute(handle, request.body, controller.signal, streaming ? chunk => emit({ chunk }) : undefined);
+            const result = await getHost().execute(handle, request.body, controller.signal, streaming ? chunk => emit({ chunk }) : undefined, { preview: request.path === '/preview' });
             if (!controller.signal.aborted) {
                 if (streaming) { emit({ result }); response.end(); } else response.json(result);
             }

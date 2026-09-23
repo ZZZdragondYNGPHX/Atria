@@ -128,6 +128,19 @@ export function mountAtriaPlayProduct({
         render();
     };
     documentRef.addEventListener('atria-native-play-draft', updateDraft);
+    const runtimeError = documentRef.createElement('div');
+    runtimeError.className = 'atri-runtime-notice'; runtimeError.hidden = true;
+    const showRuntimeError = event => {
+        runtimeError.replaceChildren(); runtimeError.hidden = false;
+        const message = documentRef.createElement('p'); message.textContent = event.detail.message;
+        const action = documentRef.createElement('button'); action.type = 'button';
+        action.textContent = 'Open Runtime ' + event.detail.target;
+        action.addEventListener('click', () => globalThis.Atria?.shell?.getWorkspaceHost?.()?.openRuntimeSection(event.detail.target));
+        runtimeError.append(message, action);
+    };
+    composerComponent.append(runtimeError);
+    documentRef.addEventListener('atria-native-runtime-error', showRuntimeError);
+
 
     function render() {
         const runtime = activeRuntime();
@@ -243,6 +256,7 @@ export function mountAtriaPlayProduct({
         refresh: render,
         dispose() {
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);
+            documentRef.removeEventListener('atria-native-runtime-error', showRuntimeError);
             bodyObserver.disconnect();
             for (const unsubscribe of unsubscribers) unsubscribe();
             composer.removeEventListener('submit', submit);
