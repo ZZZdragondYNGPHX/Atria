@@ -114,6 +114,57 @@ generateTask → st-context 插件提示组装 → 共享 sendOpenAIRequest
 | NAT-01 / S,U | Native Context Compiler 与主聊天接入已存在；PreparedContext 有预算契约。[Native][native-context]、[接入][native-context-call]、[预算][prepared-context] | Native Context policy 不等于旧字符串 Context Template；不新增平行 compiler |
 | NAT-02 / S,U | Native character 的 avatar/index 只是宿主投影；旧 OpenAI 聊天持久化被关闭。[投影][native-projection]、[隔离][native-persist] | 不可将旧角色存储服务直接当 Native 权威；未审在途 A5/A6 实现 |
 
+### 5.4 有界补充：变量、PHI、模块化 CoT 与编排接缝
+
+- 文稿更新起点按主审指定的 `docs@fb374ba7fdd0f2f14587e655c6d20dd8137f020c`；源码仍固定为本文 main 基准，未核验后续实现。
+- 本补充只读代表函数，证据等级均为 **S,U**；未执行新的函数级复现、测试或真机验收，原 **11 套／142 项**历史账本不变。
+
+| ID | 静态确认与源码锚点 | 解释边界 |
+|---|---|---|
+| VAR-01 | `env-macros` 的 user/char、角色描述、charPrompt/charInstruction 读取 env；MacroEnvBuilder 构建名称、角色与模型环境并允许 provider 扩充。[内置宏][supp-env]、[环境构建][supp-env-builder] | 证明有内置环境与扩展接缝，不证明新只读变量域或请求隔离已实现 |
+| VAR-02 | `setvar` 调 `ctx.variables.local.set`；st-context 将其接到 setLocalVariable，写 chat_metadata.variables 并调 saveMetadataDebounced。[宏][supp-setvar]、[绑定][supp-variable-bridge]、[本地写入][supp-local-state] | 宏求值可带持久化副作用，不能把所有宏展开视为纯编译 |
+| VAR-03 | setGlobalVariable 写 extension_settings.variables.global 后调 saveSettingsDebounced。[全局写入][supp-global-state] | 这是旧聊天/用户设置存储分域，不是拟议模块状态的 Native 必要接口 |
+| VAR-04 | generateTask 的 applyMacroSubstitution 给调用方字符串消息传 `skipSideEffects:true`。[局部护栏][supp-macro-guard] | 只确认这个调用点的参数；不证明所有预览、preset 宏或 provider 均无副作用 |
+| PHI-01 | PromptManager 内部 ID 精确为小写 `jailbreak`，显示名是 `Post-History Instructions`；main/PHI 的角色 override 检查禁用状态与 forbid_overrides。[PHI 定义][supp-phi]、[覆盖条件][supp-prompt-overrides] | 高级提示已有 role、注入、trigger 等能力，见 PM-01；名称不是新接口或必定最后注入的保证 |
+| COT-01 | OpenAI 请求对象含 include_reasoning、reasoning_effort，后者由 getReasoningEffort(settings, model) 取得。[请求字段][supp-native-reasoning] | 这是模型原生 reasoning 参数，不是作者 CoT 文本，也不是编排调度；未遍历 provider 支持矩阵 |
+| ORCH-01 | compilePreset 生成 Plan.agents/nodes/edges；每 agent 的 instructions 来自 systemPrompt，modelProfile 含 apiPresetName/promptPresetName；运行时上下文可消费 agent.instructions。[Plan][supp-plan]、[上下文层][supp-agent-context] | 已有按节点职责配置的承载点，不证明“CoT 模块→节点”映射、去重或阶段接管已实现 |
+| ORCH-02 | runtime 在上下文/取消检查后调用 ports.model.request；代表适配器向注入的 send 传 taskMessages、abortSignal。[model-port][supp-model-port]、[适配器][supp-model-adapter] | 证明模型端口与执行宿主分离；不把该适配器指定为新系统永久接口 |
+| ORCH-03 | 共享迭代请求构造携带 apiPresetName/llmPresetName，非流式分支调用 context.generateTask；其 sender 再传局部配置与信号给 sendOpenAIRequest。[请求组装][supp-iter-request]、[调用][supp-iter-dispatch]、[发送接缝][supp-task-dispatch] | 编排可复用现有请求能力，不需要据此强迫单模型 RP 包进 Agent 图 |
+
+**新设计需求，不是现状已实现结论：**
+- 将内置变量、编译 scratch、模块持久状态明确分域，是本次企划需求；既有 env、chat variables 或 runtime scratch 不等于这一新契约。
+- 旧聊天变量持久化只作能力与迁移证据；新 Native 模块不必暴露或永久支持旧 setvar/全局存储 ABI。
+- 作者 CoT prompt 是可组合的任务/判断指令；模型原生 reasoning 是请求能力；编排 runtime 管节点与调用，三者不处于同一层，也不等于读取模型隐藏推理。
+- 编排可承接部分原本放在单模型提示中的阶段，是待设计和验证的衔接需求；上述接缝不证明自动拆分或接管已经完成。
+- 单模型 RP 必须保持一等路径，不强迫启用 Agent 编排；源码不能推出编排必然提高质量或必须替代单模型。
+
+**新增未来验证缺口（由设计/实施文档承接，不另立权威）：**
+- 预览和 dry-run 不得写模块持久状态或旧聊天变量；需覆盖宏、嵌套展开及异常路径，而非只检查 skipSideEffects 参数。
+- 验证角色、请求和节点间的变量/scratch 隔离；明确哪些持久状态可共享，不能借旧全局对象默认共享。
+- 重试、取消和恢复不重复提交状态、不接受过期输出；调用次数、预算与副作用需要可观测证据。
+- 单模型模式不会因启用 CoT 模块隐式增加模型调用，也不会被要求启动编排 runtime。
+- 编排节点按职责消费 CoT 阶段及必要输入，而非每节点复制整套 CoT；阶段覆盖、去重与用户可见结果需分别验证。
+
+本补充源码锚点（均钉住原 main，未新增运行回执）：
+
+[supp-env]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/macros/definitions/env-macros.js#L14-L95
+[supp-env-builder]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/macros/engine/MacroEnvBuilder.js#L81-L174
+[supp-setvar]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/macros/definitions/variable-macros.js#L8-L33
+[supp-variable-bridge]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/st-context.js#L2714-L2734
+[supp-local-state]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/variables.js#L65-L107
+[supp-global-state]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/variables.js#L132-L160
+[supp-macro-guard]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/generate-task.js#L101-L116
+[supp-phi]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/PromptManager.js#L5076-L5082
+[supp-prompt-overrides]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/openai.js#L2062-L2079
+[supp-native-reasoning]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/openai.js#L3733-L3743
+[supp-plan]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/extensions/orchestrator/engine-v2/preset-compiler.js#L11-L33
+[supp-agent-context]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/lib/agent-runtime/context-compiler.js#L24-L38
+[supp-model-port]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/lib/agent-runtime/runtime.js#L217-L237
+[supp-model-adapter]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/extensions/orchestrator/legacy-runtime-ports.js#L10-L24
+[supp-iter-request]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/lib/iter-tool-calling.js#L222-L235
+[supp-iter-dispatch]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/lib/iter-tool-calling.js#L287-L291
+[supp-task-dispatch]: https://github.com/ZZZdragondYNGPHX/Atria/blob/fd9a493c9040b32f4892bd92531030e58b066244/public/scripts/generate-task.js#L410-L451
+
 ## 6. 验证账本
 
 ### 6.1 已实际执行：主审在固定 main 上的回执
