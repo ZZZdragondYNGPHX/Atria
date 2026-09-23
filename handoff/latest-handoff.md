@@ -1,116 +1,185 @@
-# Active checkpoint: Native Authoring Platform & Product Frontend Refactor integrated into main
+# Active checkpoint: Atria Model / Prompt / Runtime Native Refactor ready for P0
 
 ## Status
 
-**Atria Native Authoring Platform & Product Frontend Refactor is fully complete and merged.**
+Atria Native Content & Session N0–N10 and Native Authoring Platform / Product Frontend A0–A9 remain complete, integrated and frozen.
 
-Native Content & Session Architecture N0–N10 and Native Authoring Platform A0–A9 remain complete, frozen and validated.
+A new staged refactor has now been designed and sealed:
+
+**Atria Model / Prompt / Runtime Native Refactor**
+
+Product implementation has **not** started yet.
 
 - Repository: `ZZZdragondYNGPHX/Atria`
-- Final PR: **#84** — `refactor/atria-native-authoring-platform-product-frontend` → `main`
-- Final integration branch HEAD: `b4b66aabf2f56c6f4e02ad86ee9177a660365fd3`
-- Merge commit / current verified main HEAD: **`2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`**
-- Merged tree: `ef9d9d0f22994465f3d166a6042ab2991e6abde9`
-- Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
-- Detailed completed handoff: `handoff/atria-native-authoring-platform-product-frontend.md`
+- Current verified main baseline: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+- Implementation branch: `refactor/atria-model-prompt-settings`
+- Branch was created from the above current main; no task implementation commits existed at creation.
+- Formal plan: `refactor/atria-model-prompt-settings.md`
+- Detailed planning pack: `planning/atria-model-prompt-settings/`
+- Next phase: **P0 — Baseline / Contracts / Guard Evolution**
 
-No A0–A9 architecture was reopened during integration.
+Before any work, fetch the remote implementation branch and preserve any newer commits pushed by another conversation.
 
-## Final integration record
+## Why this refactor exists
 
-The implementation branch was fetched against live `main@fd9a493c9040b32f4892bd92531030e58b066244`.
+Current A6 product surfaces are Native-first visually, but Model / Prompt / Connection authority is still partly inherited from SillyTavern:
 
-The final branch was:
+- Runtime reads `extensionSettings.connectionManager`;
+- Runtime Presets uses `getPresetManager()`;
+- Runtime Connections can reparent old Connection Manager DOM;
+- `generateTask()` still resolves ST connection/prompt/world-info/macro state;
+- `buildPresetAwarePromptMessages` still relies on the old prompt/preset system;
+- Native Session Context exists but is not yet the final generation request assembly authority.
 
-- ahead of `main`: 183 commits before integration-only test fixes;
-- behind `main`: 0 commits;
-- merge base: exactly the live pre-merge `main`;
-- conflict-free.
+The goal is to make Atria's runtime/model/prompt system a host-independent Native core, while temporarily retaining mature ST senders only behind explicit adapters.
 
-PR #84 was created and remained mergeable.
+## Final design
 
-### Integration-only correction
+Six persistent/core product objects:
 
-Backup/Storage browser E2E still opened the old hidden SillyTavern User Settings drawer. A6 intentionally makes Account/Settings Atria product utilities and hides that drawer from product UI.
+1. Connection Profile
+2. Model Profile
+3. Generation Profile
+4. Prompt Module
+5. Prompt Program
+6. Runtime Route
 
-The E2E entrypoints were updated to exercise the current Storage Management / Backup & Sync controllers directly. No product code, old drawer surface, compatibility authority, CardApp path, `game.json` authority, charId identity, swipe authority, or Chat State authority was restored.
+Runtime artifacts:
 
-Final integration branch HEAD after those test-only corrections:
+- Request Context Plan
+- Prompt IR
+- Effective Request Snapshot
 
-`b4b66aabf2f56c6f4e02ad86ee9177a660365fd3`
+Native generation direction:
 
-## Final PR CI
+    first-party Atria
+        -> Runtime Route
+        -> Generation Service
+        -> Request Context Plan
+        -> Prompt Compiler / Prompt IR
+        -> Effective Request Snapshot
+        -> Provider Port
+        -> transitional ST adapter or future Native adapter
 
-Validated on final PR HEAD `b4b66aabf2f56c6f4e02ad86ee9177a660365fd3`.
+`context.generateTask()` becomes a compatibility facade, not the Native Core.
 
-- **Atria PR Checks #786** / Run **35821081970** — success on attempt 2
-  - Lint — success
-  - Atria Migration Guard — success
-  - Unit Tests — success
-- **Backup and Storage UI #93** / Run **35821081950** — success
-- **Worldbook Performance Foundation #394** / Run **35821081919** — success
-- **Immersive Experience #53** / Run **35821081921** — success
+## Product direction
 
-Attempt 1 of Atria PR Checks had one transient MySQL harness timeout in `storage/repositories/chat-repo-state.test.js` with `Pool is closed`; FS, SQLite and Postgres variants passed. The failed workflow was rerun without code/test-contract changes and passed on attempt 2.
+Atria is intentionally moving toward an independent product core rather than permanently treating SillyTavern internals as its domain layer.
 
-The previously validated A9 implementation remained:
+New rule:
 
-- A9 Checks #6 / Run **35819590765** — success
-- focused + adjacent: 26 suites / 175 tests passed
-- A9 residual guard — success
-- A0–A8 frozen guards — success
-- complete Node regression: 759 suites / 8104 tests passed
-- frontend webpack build — success
-- full root lint — success
+**No New SillyTavern Authority**
 
-## Merged-main verification
+Allowed:
 
-PR #84 merged with merge commit:
+    Atria Core <- Host Port <- ST Adapter
 
-`2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+Forbidden:
 
-The merge commit tree is exactly the same tree as the final PR HEAD:
+    Atria Core -> ST globals / DOM / PresetManager as domain truth
 
-`ef9d9d0f22994465f3d166a6042ab2991e6abde9`
+## Resource direction
 
-Post-merge inspection confirmed:
+A2 Resource Registry / derived Resource Graph remain authoritative.
 
-- A0–A9 residual guard scripts remain present on `main`;
-- A3 Native Runtime Descriptor remains present;
-- A6 Atria-native Play remains present;
-- A7 Atria Studio remains present;
-- A8 Project Agent and A1 StudioService remain present;
-- hidden `atria-native-play-abi` and Session projection ABI are retained;
-- Game Runtime extension `manifest.json` remains only as SillyTavern extension-loading ABI;
-- retired CardApp endpoint/runtime paths remain absent;
-- retired CardApp Studio remains absent;
-- retired Game World branch/persistence/runtime/journal remain absent;
-- retired immersive Play surface remains absent;
-- retired `.atria game.json` distribution authority remains absent.
+This task will add a generic versioned JSON resource path for:
 
-Because the merge commit contains the exact CI-validated PR tree, no content-level authority changed during the merge.
+- `core.prompt-module`
+- `core.prompt-program`
+- `core.generation-profile`
 
-## Current authority
+Do not create PromptStore or a second Library.
 
-Current `main` authority remains:
+A8 Project Agent already consumes Registry-driven resource capabilities in several places; current bottlenecks are primarily LibraryService, LibraryAuthoring Attach/Fork/Update and package dependency closure.
 
-- Package / immutable PackageVersion
-- Native Runtime Descriptor
-- Native Session / Branch / SessionRevision
-- `atri_world_state`
-- `atri_game_runtime`
-- Atria-native Play
-- Atria Studio
-- Project Agent
-- A1 Authoring Operation / Workspace / ChangeSet / Validation / Commit
-- A2 Resource Registry / derived Resource Graph
-- A4 shared Component Model / Native Preview
-- A5 Plugin / Skill boundaries
+## Prompt direction
 
-Do not restore retired CardApp / `game.json` / charId / swipe-derived / Chat State game authority in later work.
+Prompt Program is not a renamed ST preset.
 
-## Remaining
+V1:
 
-No implementation phase remains for this refactor.
+- semantic targets;
+- ordered stages;
+- finite condition DSL;
+- typed parameters;
+- request scratch / declared cross-stage artifacts;
+- Response Directive;
+- single-parent derive;
+- add / disable / replace / configure.
 
-Normal future development should start from the current `main` under the repository task/branch rules.
+Prompt Stage is not an Orchestrator. Durable state mutation remains owned by Native Session State / Revision transactions.
+
+Single-model RP is first-class. Orchestration consumes projected stages from the same resources rather than requiring a separate prompt system.
+
+## Frontend scope
+
+Long-term Atria IA may evolve toward Home / Play / Library / Studio / Runtime, but this task does not reopen the whole A6 shell.
+
+This refactor productizes only the affected slice:
+
+- Runtime: Routes / Models / Connections / Profiles / Diagnostics
+- Library: Prompt Programs / Prompt Modules / Generation Profiles
+- existing Build / A7 Studio: Prompt Authoring / Runtime Design
+- Settings: remove Model / Prompt / Runtime authority
+- Search: navigate to owning route only
+
+The A6 primary `Build` route remains unchanged in this task.
+
+Formal Atria pages must not reparent legacy ST DOM.
+
+## Frozen-contract consistency check
+
+N0–N10 / A0–A9 semantic authorities remain frozen.
+
+However, the current old guards contain several transitional literal assertions that the new architecture will intentionally supersede:
+
+- A6 requires the Advanced Connection compatibility editor;
+- A6 requires a standalone Runtime Capabilities route;
+- A8 requires Studio Agent generation through `generateTask`.
+
+Do not delete those guards early. When each replacement seam is implemented and tested, evolve only the obsolete literal assertion while preserving the original invariant and all unrelated frozen checks.
+
+Never wholesale disable frozen guards.
+
+## Migration / hard cut
+
+No automatic bidirectional migration.
+
+No runtime dual-write.
+
+No hidden fallback from Native config to old ST preset/global state.
+
+Legacy import, if later added, must be explicit, one-way and non-blocking for this refactor.
+
+At final P8, first-party Native paths must no longer use old Prompt/Preset/Connection Manager authority. Legacy non-Native ST / third-party compatibility may remain in an isolated host island.
+
+## Phases
+
+- P0 — Baseline / Contracts / Guard Evolution
+- P1 — Native Resource & Persistence Foundation
+- P2 — Generation Core & Route Resolution
+- P3 — Request Context & Prompt Compiler
+- P4 — First-party Runtime Cutover
+- P5 — Native Runtime Product UI
+- P6 — Library & Studio Authoring
+- P7 — Product Surface Cleanup
+- P8 — Hard Cut / Integration / Freeze
+
+Only one phase should be executed per conversation checkpoint.
+
+## Immediate next action
+
+Execute **P0 only** on `refactor/atria-model-prompt-settings`.
+
+P0 must establish contracts, architecture guards and the frozen-guard evolution matrix without prematurely removing the existing compatibility seams.
+
+After P0:
+
+1. validate;
+2. update docs/handoff;
+3. record branch HEAD and checks;
+4. stop;
+5. produce a P1 handoff prompt.
+
+Android and Docker remain opt-in.
