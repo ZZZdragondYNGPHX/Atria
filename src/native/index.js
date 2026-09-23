@@ -80,6 +80,12 @@ export {
 } from './authoring/studio-service.js';
 
 export {
+    PROJECT_AGENT_MAX_REPAIR_ROUNDS,
+    ProjectAgentService,
+    buildProjectAgentTools,
+} from './project-agent.js';
+
+export {
     CORE_RESOURCE_DESCRIPTORS,
     ResourceRegistry,
     createCoreResourceRegistry,
