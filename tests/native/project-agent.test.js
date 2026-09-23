@@ -129,13 +129,19 @@ describe('A8 Project Agent authority', () => {
             });
             expect((await studio.getProject(h.handle, source.project.projectId)).source.project.displayName)
                 .toBe('A8 Project');
-            expect(() => agent.setPlan(h.handle, source.project.projectId, task.taskId, {
-                summary: 'Changed after review',
-                steps: [{ id: 'other', title: 'Other change', impact: 'low' }],
-            })).toThrow(expect.objectContaining({
+            let reviewLockError;
+            try {
+                agent.setPlan(h.handle, source.project.projectId, task.taskId, {
+                    summary: 'Changed after review',
+                    steps: [{ id: 'other', title: 'Other change', impact: 'low' }],
+                });
+            } catch (error) {
+                reviewLockError = error;
+            }
+            expect(reviewLockError).toMatchObject({
                 name: 'ConflictError',
                 code: 'project_agent_review_locked',
-            }));
+            });
 
             const committed = await agent.commit(h.handle, source.project.projectId, task.taskId);
             expect(committed.status).toBe('completed');
