@@ -47,7 +47,7 @@ jobs:
       - name: Check A2 guard syntax
         run: node --check scripts/check-a2-library-resource-architecture.mjs
       - name: Run A0 hard-cutover guard
-        run: node scripts/check-a0-native-authoring-contracts.mjs
+        run: node scripts/check-a0-native-authoring-hard-cutover.mjs
       - name: Run A1 authoring backend guard
         run: node scripts/check-a1-native-authoring-backend.mjs
       - name: Check A1 guard syntax
