@@ -255,3 +255,7 @@ export {
     NativeModelPromptPersistence,
     VersionedJsonResourceHandler,
 } from './model-prompt-runtime/persistence.js';
+
+export { RouteResolver } from './model-prompt-runtime/route-resolver.js';
+export { GenerationService } from './model-prompt-runtime/generation-service.js';
+export { GenerationError, ProviderFailure } from './model-prompt-runtime/execution-utils.js';

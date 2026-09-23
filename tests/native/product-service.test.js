@@ -241,6 +241,7 @@ describe('N9 Native Product UI service', () => {
                 knowledge: [],
                 knowledgeBindings: [],
                 assets: [],
+                resources: [],
             });
 
             expect(await product.deleteWorld(h.handle, worldId)).toBe(true);
